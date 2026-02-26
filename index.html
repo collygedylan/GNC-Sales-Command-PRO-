@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GNC Sale Pro 01</title>
+    <title>GNC SALES</title>
     
     <meta name="theme-color" content="#007a4d">
     <meta name="mobile-web-app-capable" content="yes">
@@ -83,7 +83,7 @@
 
     <div id="view-login">
         <div class="login-card">
-            <div class="text-3xl text-[#007a4d] font-bold mb-6">GNC SALE PRO 01</div>
+            <div class="text-3xl text-[#007a4d] font-bold mb-6">GNC SALES</div>
             <div id="login-inputs">
                 <input type="text" id="username-input" class="input-field mb-4 text-center border-2" placeholder="USERNAME">
                 <input type="password" id="pin-code" class="input-field mb-4 text-center border-2 tracking-widest" placeholder="PASSWORD">
@@ -129,7 +129,7 @@
                 <i class="ph-bold ph-list menu-btn text-2xl cursor-pointer" onclick="toggleMenu()"></i>
                 <div class="flex flex-col">
                     <div class="font-bold text-lg leading-tight"><span id="header-user">User</span></div>
-                    <div class="text-[10px] opacity-80 leading-tight">GNC Sale Pro 01</div>
+                    <div class="text-[10px] opacity-80 leading-tight">GNC SALES</div>
                 </div>
             </div>
         </header>
@@ -154,7 +154,7 @@
             
             <div id="view-home" class="hidden">
                 <div class="bg-[#007a4d] text-white p-8 rounded-2xl mb-6 shadow-lg text-center">
-                    <h1 class="text-2xl font-bold">GNC SALE PRO 01</h1>
+                    <h1 class="text-2xl font-bold">GNC SALES</h1>
                     <p class="opacity-80 text-sm">Inventory Management</p>
                 </div>
                 
@@ -470,6 +470,37 @@
                             item.DOM_ID = 'fi_' + idx;
                             return item;
                         });
+
+                        // --- START TOURNAMENT DEDUPLICATION ---
+                        let itemsWithPriority = {};
+                        fullInventory.forEach(item => {
+                            const pri = parseFloat(item.PRIORITY);
+                            const ptr = parseFloat(item.PTRAVAILABLE) || 0;
+                            const ss = parseFloat(item.SEASONSUPPLY) || 0;
+                            const iCode = String(item.ITEMCODE || "").trim().toUpperCase();
+
+                            // Only qualify items with a priority and > 10% supply
+                            if (iCode && !isNaN(pri) && pri > 0 && ptr > (ss * 0.10)) {
+                                if (!itemsWithPriority[iCode]) itemsWithPriority[iCode] = [];
+                                itemsWithPriority[iCode].push(item);
+                            }
+                        });
+
+                        let seasonWinnerIds = new Set();
+                        for (const code in itemsWithPriority) {
+                            let group = itemsWithPriority[code];
+                            // Sort by priority (lowest number wins)
+                            group.sort((a, b) => parseFloat(a.PRIORITY) - parseFloat(b.PRIORITY));
+                            // Add the winner to the Set
+                            seasonWinnerIds.add(group[0].UNIQUE_ID);
+                        }
+
+                        // Tag every item so the app knows where it belongs
+                        fullInventory.forEach(item => {
+                            item.APP_TAB_ASSIGNMENT = seasonWinnerIds.has(item.UNIQUE_ID) ? 'season' : 'location';
+                        });
+                        // --- END TOURNAMENT DEDUPLICATION ---
+
                         lowStockInventory = (res.lowStock || []).map((item, idx) => {
                             item.DOM_ID = 'ls_' + idx;
                             return item;
@@ -518,7 +549,7 @@
                     await navigator.credentials.create({
                         publicKey: {
                             challenge: challenge,
-                            rp: { name: "GNC Sale Pro 01", id: window.location.hostname },
+                            rp: { name: "GNC SALES", id: window.location.hostname },
                             user: { id: userId, name: user, displayName: user.toUpperCase() },
                             pubKeyCredParams: [{type: "public-key", alg: -7}, {type: "public-key", alg: -257}],
                             authenticatorSelection: { 
@@ -1220,14 +1251,12 @@
                 if (i.DATE_COMPLETED && i.DATE_COMPLETED !== "") return false;
 
                 const pri = parseFloat(i.PRIORITY);
-                const ptr = parseFloat(i.PTRAVAILABLE) || 0;
-                const ss = parseFloat(i.SEASONSUPPLY) || 0;
-                
                 if (isNaN(pri) || pri <= 0) return false; 
                 
-                const isSeason = ptr > (ss * 0.10);
-                if (activeTaskTab === 'season') return isSeason;
-                if (activeTaskTab === 'location') return !isSeason;
+                // Rely on the Deduplication Tags created during Login
+                if (activeTaskTab === 'season') return i.APP_TAB_ASSIGNMENT === 'season';
+                if (activeTaskTab === 'location') return i.APP_TAB_ASSIGNMENT === 'location';
+                
                 return true;
             });
 
