@@ -1110,11 +1110,16 @@
             else if (dockViewLevel === 2) {
                 crumb.innerText = `Dock ${selectedDockNum} > ${selectedDockName} (${selectedDockSize})`;
                 
-                let finalItems = fullInventory.filter(i => 
-                    String(i.ITEMCODE || "").trim().toUpperCase() === String(selectedDockItemCode || "").trim().toUpperCase() && 
-                    i.COMMONNAME === selectedDockName && 
-                    i.CONTSIZE === selectedDockSize
-                );
+                let targetCode = String(selectedDockItemCode || "").trim().toUpperCase();
+
+                let finalItems = fullInventory.filter(i => {
+                    let iCode = String(i.ITEMCODE || "").trim().toUpperCase();
+                    if (targetCode && targetCode !== "NO ITEM") {
+                        return iCode === targetCode;
+                    } else {
+                        return i.COMMONNAME === selectedDockName && i.CONTSIZE === selectedDockSize;
+                    }
+                });
                 
                 finalItems.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
 
