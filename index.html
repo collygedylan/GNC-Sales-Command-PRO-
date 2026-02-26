@@ -430,7 +430,7 @@
         let selectedDockNum = null;
         let selectedDockName = null;
         let selectedDockSize = null;
-        let selectedDockLoc = null;
+        let selectedDockItemCode = null;
 
         function getDirectImageUrl(url) {
             if (!url) return "";
@@ -968,7 +968,7 @@
                 dockViewLevel = 1; 
                 selectedDockName = null; 
                 selectedDockSize = null; 
-                selectedDockLoc = null;
+                selectedDockItemCode = null;
             }
             renderDocks();
         }
@@ -978,16 +978,16 @@
             selectedDockNum = null;
             selectedDockName = null;
             selectedDockSize = null;
-            selectedDockLoc = null;
+            selectedDockItemCode = null;
             document.getElementById('docks-search').value = "";
             renderDocks();
         }
 
         function selectDockNum(num) { selectedDockNum = num; dockViewLevel = 1; renderDocks(); }
-        function selectDockPlant(name, size, loc) { 
+        function selectDockPlant(itemCode, name, size) { 
+            selectedDockItemCode = itemCode; 
             selectedDockName = name; 
             selectedDockSize = size; 
-            selectedDockLoc = loc; 
             dockViewLevel = 2; 
             renderDocks(); 
         }
@@ -1043,10 +1043,10 @@
                     return;
                 }
 
-                // Group by STOPNUMBER and attach plants inside
+                // Group by STOPNUMBER and attach plants inside using ITEMCODE instead of LOC
                 let stopsMap = {};
                 dockItems.forEach(i => {
-                    let stopNum = i.STOPNUMBER || "Unassigned"; // USING STOPNUMBER HERE
+                    let stopNum = i.STOPNUMBER || "Unassigned"; 
                     if (!stopsMap[stopNum]) {
                         stopsMap[stopNum] = {
                             salesRep: i.SALESREPNAME || i.SALESREP || "Unknown Rep",
@@ -1058,11 +1058,11 @@
                     
                     let name = i.COMMONNAME || i['PLANT NAME'] || i.DESC || i.DESCRIPTION || 'Unknown';
                     let size = i.CONTSIZE || i.SIZE || i.CONTAINER || '-';
-                    let loc = i.LOCATIONCODE || i.LOCATION || 'No Loc';
-                    let key = `${name}|${size}|${loc}`;
+                    let itemCode = i.ITEMCODE || i.ITEM || 'No Item';
+                    let key = `${itemCode}|${name}|${size}`;
                     
                     if (!stopsMap[stopNum].plants[key]) {
-                        stopsMap[stopNum].plants[key] = { name, size, loc, count: 0 };
+                        stopsMap[stopNum].plants[key] = { itemCode, name, size, count: 0 };
                     }
                     stopsMap[stopNum].plants[key].count++;
                 });
@@ -1089,12 +1089,12 @@
                     
                     Object.values(s.plants).sort((a,b) => a.name.localeCompare(b.name)).forEach(p => {
                         html += `
-                            <div class="p-3 border-b border-gray-100 last:border-b-0 cursor-pointer hover:bg-gray-50 active:bg-gray-100 flex justify-between items-center" onclick="selectDockPlant('${p.name.replace(/'/g, "\\'")}', '${p.size}', '${p.loc.replace(/'/g, "\\'")}')">
+                            <div class="p-3 border-b border-gray-100 last:border-b-0 cursor-pointer hover:bg-gray-50 active:bg-gray-100 flex justify-between items-center" onclick="selectDockPlant('${p.itemCode.replace(/'/g, "\\'")}', '${p.name.replace(/'/g, "\\'")}', '${p.size}')">
                                 <div class="flex-grow min-w-0 pr-3">
                                     <div class="font-bold text-sm text-[#007a4d] truncate">${p.name}</div>
                                     <div class="text-[11px] font-semibold text-gray-500 mt-1 flex items-center gap-2">
                                         <span class="bg-gray-100 border border-gray-200 px-1.5 py-0.5 rounded text-gray-700">${p.size}</span>
-                                        <span><i class="ph-bold ph-map-pin text-red-500 mr-0.5"></i>${p.loc}</span>
+                                        <span class="text-blue-600"><i class="ph-bold ph-barcode mr-0.5"></i>${p.itemCode}</span>
                                     </div>
                                 </div>
                                 <i class="ph-bold ph-caret-right text-gray-300 text-lg"></i>
@@ -1111,15 +1111,15 @@
                 crumb.innerText = `Dock ${selectedDockNum} > ${selectedDockName} (${selectedDockSize})`;
                 
                 let finalItems = fullInventory.filter(i => 
+                    String(i.ITEMCODE || "").trim().toUpperCase() === String(selectedDockItemCode || "").trim().toUpperCase() && 
                     i.COMMONNAME === selectedDockName && 
-                    i.CONTSIZE === selectedDockSize && 
-                    (i.LOCATIONCODE || 'No Loc') === selectedDockLoc
+                    i.CONTSIZE === selectedDockSize
                 );
                 
                 finalItems.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
 
                 if (finalItems.length === 0) {
-                     container.innerHTML = `<div class="back-btn" onclick="dockViewLevel=1; renderDocks()"><i class="ph-bold ph-arrow-left"></i> Back to Stop</div><div class="p-8 text-center text-gray-400">This plant size/loc was requested for the Dock, but no matching records exist in the Master Inventory.</div>`;
+                     container.innerHTML = `<div class="back-btn" onclick="dockViewLevel=1; renderDocks()"><i class="ph-bold ph-arrow-left"></i> Back to Stop</div><div class="p-8 text-center text-gray-400">This plant was requested for the Dock, but no matching records exist in the Master Inventory.</div>`;
                      return;
                 }
                 
