@@ -167,12 +167,12 @@
                     <div onclick="switchView('review')" class="home-btn col-span-2 text-red-600 border-red-200 bg-red-50 admin-only"><i class="ph-bold ph-warning-circle text-3xl"></i><span class="font-bold">Manager Review</span></div>
                 </div>
 
-                <div id="admin-files-section" class="hidden admin-only mt-8">
-                    <h2 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Recently Processed Source Files</h2>
-                    <div id="admin-files-list" class="space-y-2">
+                <div id="dylan-files-section" class="hidden dylan-only mt-8">
+                    <h2 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Active Google Sheets (Dylan Only)</h2>
+                    <div id="dylan-files-list" class="space-y-2">
                         <div class="bg-white p-4 rounded-xl border border-gray-100 flex items-center justify-center gap-2 text-gray-400 text-xs">
                             <div class="spinner !w-4 !h-4 !border-2 !border-gray-200 !border-t-[#007a4d]"></div>
-                            Loading files...
+                            Loading connected sheets...
                         </div>
                     </div>
                 </div>
@@ -563,35 +563,35 @@
         }
 
         function fetchRecentFiles() {
-            if (currentRole !== 'Admin') return;
+            if (currentUser !== 'dylan_collyge' && currentUser !== 'dylan') return;
             fetch(GOOGLE_SCRIPT_URL + "?action=getRecentFiles")
                 .then(r => r.json())
                 .then(res => {
-                    const container = document.getElementById('admin-files-list');
+                    const container = document.getElementById('dylan-files-list');
                     if (res.status === 'success') {
                         if (res.data.length === 0) {
-                            container.innerHTML = `<div class="bg-white p-4 rounded-xl border border-gray-100 text-center text-xs text-gray-400">No recent files found.</div>`;
+                            container.innerHTML = `<div class="bg-white p-4 rounded-xl border border-gray-100 text-center text-xs text-gray-400">No active sheets found.</div>`;
                             return;
                         }
                         container.innerHTML = res.data.map(f => {
                             const d = new Date(f.date);
-                            const dateStr = `${d.getMonth()+1}/${d.getDate()}/${d.getFullYear()}`;
+                            const dateStr = `${d.getMonth()+1}/${d.getDate()}/${d.getFullYear()} at ${d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
                             return `
                             <a href="${f.url}" target="_blank" class="flex items-center gap-3 bg-white p-3 rounded-xl border border-gray-200 shadow-sm hover:bg-gray-50 transition-colors">
                                 <i class="ph-fill ph-file-xls text-green-600 text-3xl"></i>
                                 <div class="flex-grow min-w-0">
                                     <div class="text-sm font-bold text-gray-800 truncate">${f.name}</div>
-                                    <div class="text-[10px] text-gray-400 font-bold uppercase">Processed: ${dateStr}</div>
+                                    <div class="text-[10px] text-gray-400 font-bold uppercase">Synced: ${dateStr}</div>
                                 </div>
                                 <i class="ph-bold ph-caret-right text-gray-300"></i>
                             </a>`;
                         }).join('');
                     } else {
-                        container.innerHTML = `<div class="bg-red-50 text-red-500 p-4 rounded-xl text-xs font-bold text-center">Failed to load files.</div>`;
+                        container.innerHTML = `<div class="bg-red-50 text-red-500 p-4 rounded-xl text-xs font-bold text-center">Failed to load sheets.</div>`;
                     }
                 })
                 .catch(err => {
-                    document.getElementById('admin-files-list').innerHTML = `<div class="bg-red-50 text-red-500 p-4 rounded-xl text-xs font-bold text-center">Network Error.</div>`;
+                    document.getElementById('dylan-files-list').innerHTML = `<div class="bg-red-50 text-red-500 p-4 rounded-xl text-xs font-bold text-center">Network Error.</div>`;
                 });
         }
 
@@ -600,15 +600,17 @@
             document.getElementById('app-wrapper').classList.remove('hidden');
             const isAdmin = (currentRole === 'Admin');
             document.querySelectorAll('.admin-only').forEach(el => el.style.display = isAdmin ? 'block' : 'none');
-            if (isAdmin) {
-                document.getElementById('admin-files-section').classList.remove('hidden');
-                fetchRecentFiles();
-            }
+            
             const isDylan = (currentUser === 'dylan_collyge' || currentUser === 'dylan');
             document.querySelectorAll('.dylan-only').forEach(el => {
                 el.style.display = isDylan ? 'block' : 'none';
                 el.classList.remove('hidden'); 
             });
+
+            if (isDylan) {
+                fetchRecentFiles();
+            }
+
             switchView('home');
         }
 
