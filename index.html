@@ -1043,10 +1043,10 @@
                     return;
                 }
 
-                // Group by STOP and attach plants inside
+                // Group by STOPNUMBER and attach plants inside
                 let stopsMap = {};
                 dockItems.forEach(i => {
-                    let stopNum = i.STOP || "Unassigned";
+                    let stopNum = i.STOPNUMBER || "Unassigned"; // USING STOPNUMBER HERE
                     if (!stopsMap[stopNum]) {
                         stopsMap[stopNum] = {
                             salesRep: i.SALESREPNAME || i.SALESREP || "Unknown Rep",
