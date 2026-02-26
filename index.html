@@ -454,35 +454,66 @@
 
             document.getElementById('login-inputs').classList.add('hidden');
             document.getElementById('loading-spinner').classList.remove('hidden');
-            document.getElementById('loading-text').innerText = "Authenticating & Syncing...";
+            document.getElementById('loading-text').innerText = "Loading...";
 
-            const loginUrl = `${GOOGLE_SCRIPT_URL}?action=login&username=${encodeURIComponent(inputUser)}&password=${encodeURIComponent(inputPass)}`;
+            // 1. INSTANT LOGIN IF WE HAVE CACHED DATA
+            const cachedData = localStorage.getItem('gnc_inventory_cache');
+            if (cachedData) {
+                const parsedCache = JSON.parse(cachedData);
+                currentUser = inputUser;
+                currentRole = parsedCache.role;
+                document.getElementById('header-user').innerText = currentUser.toUpperCase();
 
+                fullInventory = parsedCache.fullInventory;
+                lowStockInventory = parsedCache.lowStockInventory;
+                socInventory = parsedCache.socInventory;
+                
+                showToast("Instant Login", "Refreshing latest data in background...", false);
+                applyRolePermissions(); 
+                
+                // Fetch fresh data invisibly
+                fetchLatestData(inputUser, inputPass, false);
+                return;
+            }
+
+            // 2. FIRST TIME LOGIN (MUST WAIT)
+            fetchLatestData(inputUser, inputPass, true);
+        }
+
+        function fetchLatestData(user, pass, isFirstTime) {
+            const loginUrl = `${GOOGLE_SCRIPT_URL}?action=login&username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}`;
+            
             fetch(loginUrl)
                 .then(response => response.json())
                 .then(res => {
                     if (res.status === 'success') {
-                        currentUser = inputUser;
-                        currentRole = res.role;
-                        document.getElementById('header-user').innerText = currentUser.toUpperCase();
-
-                        fullInventory = res.data.map((item, idx) => {
-                            item.DOM_ID = 'fi_' + idx;
-                            return item;
-                        });
-                        lowStockInventory = (res.lowStock || []).map((item, idx) => {
-                            item.DOM_ID = 'ls_' + idx;
-                            return item;
-                        });
-                        socInventory = res.socData || [];
-                        
-                        // NEW: Trigger biometric setup if they logged in manually
-                        if (!isBiometricLogin && window.PublicKeyCredential) {
-                            promptToEnableBiometrics(inputUser, inputPass);
+                        if (isFirstTime) {
+                            currentUser = user;
+                            currentRole = res.role;
+                            document.getElementById('header-user').innerText = currentUser.toUpperCase();
                         }
 
-                        applyRolePermissions();
-                    } else {
+                        // Process the data
+                        fullInventory = res.data.map((item, idx) => { item.DOM_ID = 'fi_' + idx; return item; });
+                        lowStockInventory = (res.lowStock || []).map((item, idx) => { item.DOM_ID = 'ls_' + idx; return item; });
+                        socInventory = res.socData || [];
+
+                        // Save to cache for next time
+                        localStorage.setItem('gnc_inventory_cache', JSON.stringify({
+                            role: res.role,
+                            fullInventory: fullInventory,
+                            lowStockInventory: lowStockInventory,
+                            socInventory: socInventory
+                        }));
+
+                        if (isFirstTime) {
+                            if (window.PublicKeyCredential) promptToEnableBiometrics(user, pass);
+                            applyRolePermissions();
+                        } else {
+                            // Silently update the screen you are currently looking at
+                            reRenderCurrentView();
+                        }
+                    } else if (isFirstTime) {
                         alert("MISMATCH DETECTED!\n\nIncorrect Username or Password.");
                         document.getElementById('pin-code').value = "";
                         document.getElementById('login-inputs').classList.remove('hidden');
@@ -490,9 +521,13 @@
                     }
                 })
                 .catch(err => {
-                    showToast("Error", "Network Error. Please try again.", true);
-                    document.getElementById('login-inputs').classList.remove('hidden');
-                    document.getElementById('loading-spinner').classList.add('hidden');
+                    if (isFirstTime) {
+                        showToast("Error", "Network Error. Please try again.", true);
+                        document.getElementById('login-inputs').classList.remove('hidden');
+                        document.getElementById('loading-spinner').classList.add('hidden');
+                    } else {
+                        showToast("Offline", "Could not reach server to refresh. Using local data.", true);
+                    }
                 });
         }
 
@@ -1519,15 +1554,7 @@
         }
 
         function saveData(isComplete = false) {
-            let btnDraft = activeDetailTab === 'request' ? document.getElementById('req-btn-save-draft') : document.getElementById('btn-save-draft');
-            let btnComp = activeDetailTab === 'request' ? null : document.getElementById('btn-save-complete');
-            
-            if (isComplete) { 
-                if(btnComp) btnComp.innerText = "SAVING..."; 
-            } else { 
-                if(btnDraft) btnDraft.innerText = "SAVING..."; 
-            }
-            
+            // Apply all changes locally immediately
             activeItem.MATCH = document.getElementById('in-match').value;
             activeItem.SPEC = document.getElementById('in-spec').value;
             activeItem.CALIPER = document.getElementById('in-caliper').value;
@@ -1560,27 +1587,22 @@
                 isComplete: isComplete 
             };
 
+            // OPTIMISTIC UPDATE: Don't make the user wait
+            if (isComplete) {
+                activeItem.DATE_COMPLETED = new Date().toISOString();
+                showToast("Success", "Marked Complete! Saving in background...", false);
+                goBackFromDetail(); // Kick you right back out to the list instantly
+            } else {
+                showToast("Success", "Draft saved locally! Syncing to server...", false);
+            }
+
+            // Fire the fetch off in the background quietly
             fetch(GOOGLE_SCRIPT_URL, {
                 method: "POST",
                 body: JSON.stringify(payload)
-            })
-            .then(res => res.json())
-            .then(data => {
-                if(btnDraft) btnDraft.innerText = (activeDetailTab === 'request') ? "SAVE REQUEST DATA" : "SAVE DRAFT";
-                if(btnComp) btnComp.innerText = "MARK COMPLETE";
-                
-                if(data.status === 'success') {
-                    showToast("Success", isComplete ? "Task Completed!" : "Draft saved to Google Sheet.");
-                    if (isComplete) {
-                        activeItem.DATE_COMPLETED = new Date().toISOString();
-                        goBackFromDetail();
-                    }
-                } else { showToast("Error", data.message, true); }
-            })
-            .catch(err => {
-                if(btnDraft) btnDraft.innerText = (activeDetailTab === 'request') ? "SAVE REQUEST DATA" : "SAVE DRAFT";
-                if(btnComp) btnComp.innerText = "MARK COMPLETE";
-                showToast("Network Error", "Could not reach server.", true);
+            }).catch(err => {
+                console.error("Background sync failed:", err);
+                showToast("Sync Error", "Could not sync data to server. It is saved locally.", true);
             });
         }
     </script>
