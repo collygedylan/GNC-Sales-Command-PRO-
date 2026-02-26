@@ -970,28 +970,30 @@
             if (dockViewLevel === 0) {
                 crumb.innerText = "Select a Dock";
                 let activeDocks = new Set();
-                if (term) {
-                    socInventory.forEach(i => {
+                
+                socInventory.forEach(i => {
+                    if (term) {
                         let pName = (i.COMMONNAME || i['PLANT NAME'] || i.DESC || i.DESCRIPTION || 'Unknown').toLowerCase();
-                        if (pName.includes(term)) activeDocks.add(i.DOCK_NUM);
-                    });
-                } else {
-                    for(let i=1; i<=56; i++) activeDocks.add(i);
-                }
+                        if (pName.includes(term) && i.DOCK_NUM) activeDocks.add(i.DOCK_NUM);
+                    } else {
+                        if (i.DOCK_NUM) activeDocks.add(i.DOCK_NUM);
+                    }
+                });
 
                 let html = '<div class="grid grid-cols-4 gap-2">';
-                for(let i=1; i<=56; i++) {
-                    if (!activeDocks.has(i)) continue;
+                let sortedDocks = Array.from(activeDocks).sort((a, b) => a - b);
+                
+                sortedDocks.forEach(i => {
                     html += `
                     <div class="bg-white border border-gray-200 p-3 rounded-xl shadow-sm text-center cursor-pointer hover:bg-gray-50 active:scale-95 transition-transform" onclick="selectDockNum(${i})">
                         <i class="ph-bold ph-truck text-2xl text-orange-500 mb-1"></i>
                         <div class="font-bold text-[10px] text-gray-700">DOCK ${i}</div>
                     </div>`;
-                }
+                });
                 html += '</div>';
-                
+
                 if (activeDocks.size === 0) {
-                    container.innerHTML = `<div class="p-8 text-center text-gray-400">No docks contain plants matching "${term}".</div>`;
+                    container.innerHTML = `<div class="p-8 text-center text-gray-400">No docks ${term ? `contain plants matching "${term}"` : 'have data currently'}.</div>`;
                 } else { container.innerHTML = html; }
             } 
             else if (dockViewLevel === 1) {
