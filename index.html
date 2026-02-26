@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GNC SALES PRO 001</title>
+    <title>GNC Sale Pro 01</title>
     
     <meta name="theme-color" content="#007a4d">
     <meta name="mobile-web-app-capable" content="yes">
@@ -83,7 +83,7 @@
 
     <div id="view-login">
         <div class="login-card">
-            <div class="text-3xl text-[#007a4d] font-bold mb-6">GNC SALES PRO 001</div>
+            <div class="text-3xl text-[#007a4d] font-bold mb-6">GNC SALE PRO 01</div>
             <div id="login-inputs">
                 <input type="text" id="username-input" class="input-field mb-4 text-center border-2" placeholder="USERNAME">
                 <input type="password" id="pin-code" class="input-field mb-4 text-center border-2 tracking-widest" placeholder="PASSWORD">
@@ -129,7 +129,7 @@
                 <i class="ph-bold ph-list menu-btn text-2xl cursor-pointer" onclick="toggleMenu()"></i>
                 <div class="flex flex-col">
                     <div class="font-bold text-lg leading-tight"><span id="header-user">User</span></div>
-                    <div class="text-[10px] opacity-80 leading-tight">GNC SALES PRO 001</div>
+                    <div class="text-[10px] opacity-80 leading-tight">GNC Sale Pro 01</div>
                 </div>
             </div>
         </header>
@@ -154,7 +154,7 @@
             
             <div id="view-home" class="hidden">
                 <div class="bg-[#007a4d] text-white p-8 rounded-2xl mb-6 shadow-lg text-center">
-                    <h1 class="text-2xl font-bold">GNC SALES PRO 001</h1>
+                    <h1 class="text-2xl font-bold">GNC SALE PRO 01</h1>
                     <p class="opacity-80 text-sm">Inventory Management</p>
                 </div>
                 
@@ -454,80 +454,45 @@
 
             document.getElementById('login-inputs').classList.add('hidden');
             document.getElementById('loading-spinner').classList.remove('hidden');
-            document.getElementById('loading-text').innerText = "Loading...";
+            document.getElementById('loading-text').innerText = "Authenticating & Syncing...";
 
-            // 1. INSTANT LOGIN IF WE HAVE CACHED DATA
-            const cachedData = localStorage.getItem('gnc_inventory_cache');
-            if (cachedData) {
-                const parsedCache = JSON.parse(cachedData);
-                currentUser = inputUser;
-                currentRole = parsedCache.role;
-                document.getElementById('header-user').innerText = currentUser.toUpperCase();
+            const loginUrl = `${GOOGLE_SCRIPT_URL}?action=login&username=${encodeURIComponent(inputUser)}&password=${encodeURIComponent(inputPass)}`;
 
-                fullInventory = parsedCache.fullInventory;
-                lowStockInventory = parsedCache.lowStockInventory;
-                socInventory = parsedCache.socInventory;
-                
-                showToast("Instant Login", "Refreshing latest data in background...", false);
-                applyRolePermissions(); 
-                
-                // Fetch fresh data invisibly
-                fetchLatestData(inputUser, inputPass, false);
-                return;
-            }
-
-            // 2. FIRST TIME LOGIN (MUST WAIT)
-            fetchLatestData(inputUser, inputPass, true);
-        }
-
-        function fetchLatestData(user, pass, isFirstTime) {
-            const loginUrl = `${GOOGLE_SCRIPT_URL}?action=login&username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}`;
-            
-            fetch(loginUrl, { method: 'GET', redirect: 'follow' })
+            fetch(loginUrl)
                 .then(response => response.json())
                 .then(res => {
                     if (res.status === 'success') {
-                        if (isFirstTime) {
-                            currentUser = user;
-                            currentRole = res.role;
-                            document.getElementById('header-user').innerText = currentUser.toUpperCase();
-                        }
+                        currentUser = inputUser;
+                        currentRole = res.role;
+                        document.getElementById('header-user').innerText = currentUser.toUpperCase();
 
-                        // Process the data
-                        fullInventory = res.data.map((item, idx) => { item.DOM_ID = 'fi_' + idx; return item; });
-                        lowStockInventory = (res.lowStock || []).map((item, idx) => { item.DOM_ID = 'ls_' + idx; return item; });
+                        fullInventory = res.data.map((item, idx) => {
+                            item.DOM_ID = 'fi_' + idx;
+                            return item;
+                        });
+                        lowStockInventory = (res.lowStock || []).map((item, idx) => {
+                            item.DOM_ID = 'ls_' + idx;
+                            return item;
+                        });
                         socInventory = res.socData || [];
-
-                        // Save to cache for next time
-                        localStorage.setItem('gnc_inventory_cache', JSON.stringify({
-                            role: res.role,
-                            fullInventory: fullInventory,
-                            lowStockInventory: lowStockInventory,
-                            socInventory: socInventory
-                        }));
-
-                        if (isFirstTime) {
-                            if (window.PublicKeyCredential) promptToEnableBiometrics(user, pass);
-                            applyRolePermissions();
-                        } else {
-                            // Silently update the screen you are currently looking at
-                            reRenderCurrentView();
+                        
+                        // NEW: Trigger biometric setup if they logged in manually
+                        if (!isBiometricLogin && window.PublicKeyCredential) {
+                            promptToEnableBiometrics(inputUser, inputPass);
                         }
-                    } else if (isFirstTime) {
-                        alert("MISMATCH DETECTED!\n\nIncorrect Username or Password.\n" + (res.message || ""));
+
+                        applyRolePermissions();
+                    } else {
+                        alert("MISMATCH DETECTED!\n\nIncorrect Username or Password.");
                         document.getElementById('pin-code').value = "";
                         document.getElementById('login-inputs').classList.remove('hidden');
                         document.getElementById('loading-spinner').classList.add('hidden');
                     }
                 })
                 .catch(err => {
-                    if (isFirstTime) {
-                        showToast("Error", "Network Error. Please try again.", true);
-                        document.getElementById('login-inputs').classList.remove('hidden');
-                        document.getElementById('loading-spinner').classList.add('hidden');
-                    } else {
-                        showToast("Offline", "Could not reach server to refresh. Using local data.", true);
-                    }
+                    showToast("Error", "Network Error. Please try again.", true);
+                    document.getElementById('login-inputs').classList.remove('hidden');
+                    document.getElementById('loading-spinner').classList.add('hidden');
                 });
         }
 
@@ -553,7 +518,7 @@
                     await navigator.credentials.create({
                         publicKey: {
                             challenge: challenge,
-                            rp: { name: "GNC SALES PRO 001", id: window.location.hostname },
+                            rp: { name: "GNC Sale Pro 01", id: window.location.hostname },
                             user: { id: userId, name: user, displayName: user.toUpperCase() },
                             pubKeyCredParams: [{type: "public-key", alg: -7}, {type: "public-key", alg: -257}],
                             authenticatorSelection: { 
@@ -605,7 +570,7 @@
 
         function fetchRecentFiles() {
             if (currentUser !== 'dylan_collyge' && currentUser !== 'dylan') return;
-            fetch(GOOGLE_SCRIPT_URL + "?action=getRecentFiles", { method: 'GET', redirect: 'follow' })
+            fetch(GOOGLE_SCRIPT_URL + "?action=getRecentFiles")
                 .then(r => r.json())
                 .then(res => {
                     const container = document.getElementById('dylan-files-list');
@@ -960,7 +925,6 @@
             
             fetch(GOOGLE_SCRIPT_URL, {
                 method: 'POST',
-                redirect: 'follow',
                 body: JSON.stringify({ type: 'batch_assign', ids: uniqueIds, assignTo: user, tabType: pendingTabType })
             }).then(res => res.json())
             .then(data => {
@@ -1447,7 +1411,6 @@
 
             fetch(GOOGLE_SCRIPT_URL, {
                 method: "POST",
-                redirect: 'follow',
                 body: JSON.stringify({ type: "image", image: base64Data, mimeType: "image/jpeg", filename: filename, folderContext: context })
             })
             .then(res => res.json())
@@ -1556,7 +1519,15 @@
         }
 
         function saveData(isComplete = false) {
-            // Apply all changes locally immediately
+            let btnDraft = activeDetailTab === 'request' ? document.getElementById('req-btn-save-draft') : document.getElementById('btn-save-draft');
+            let btnComp = activeDetailTab === 'request' ? null : document.getElementById('btn-save-complete');
+            
+            if (isComplete) { 
+                if(btnComp) btnComp.innerText = "SAVING..."; 
+            } else { 
+                if(btnDraft) btnDraft.innerText = "SAVING..."; 
+            }
+            
             activeItem.MATCH = document.getElementById('in-match').value;
             activeItem.SPEC = document.getElementById('in-spec').value;
             activeItem.CALIPER = document.getElementById('in-caliper').value;
@@ -1589,23 +1560,27 @@
                 isComplete: isComplete 
             };
 
-            // OPTIMISTIC UPDATE: Don't make the user wait
-            if (isComplete) {
-                activeItem.DATE_COMPLETED = new Date().toISOString();
-                showToast("Success", "Marked Complete! Saving in background...", false);
-                goBackFromDetail(); // Kick you right back out to the list instantly
-            } else {
-                showToast("Success", "Draft saved locally! Syncing to server...", false);
-            }
-
-            // Fire the fetch off in the background quietly
             fetch(GOOGLE_SCRIPT_URL, {
                 method: "POST",
-                redirect: 'follow',
                 body: JSON.stringify(payload)
-            }).catch(err => {
-                console.error("Background sync failed:", err);
-                showToast("Sync Error", "Could not sync data to server. It is saved locally.", true);
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(btnDraft) btnDraft.innerText = (activeDetailTab === 'request') ? "SAVE REQUEST DATA" : "SAVE DRAFT";
+                if(btnComp) btnComp.innerText = "MARK COMPLETE";
+                
+                if(data.status === 'success') {
+                    showToast("Success", isComplete ? "Task Completed!" : "Draft saved to Google Sheet.");
+                    if (isComplete) {
+                        activeItem.DATE_COMPLETED = new Date().toISOString();
+                        goBackFromDetail();
+                    }
+                } else { showToast("Error", data.message, true); }
+            })
+            .catch(err => {
+                if(btnDraft) btnDraft.innerText = (activeDetailTab === 'request') ? "SAVE REQUEST DATA" : "SAVE DRAFT";
+                if(btnComp) btnComp.innerText = "MARK COMPLETE";
+                showToast("Network Error", "Could not reach server.", true);
             });
         }
     </script>
