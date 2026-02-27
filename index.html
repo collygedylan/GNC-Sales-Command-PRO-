@@ -524,13 +524,13 @@
         }
 
         document.addEventListener('DOMContentLoaded', async () => {
-            if (window.PublicKeyCredential && localStorage.getItem('gnc_user_v2') && localStorage.getItem('gnc_pin_v2')) {
+            if (window.PublicKeyCredential && localStorage.getItem('gnc_user_v3') && localStorage.getItem('gnc_pin_v3')) {
                 document.getElementById('btn-fingerprint').classList.remove('hidden');
             }
         });
 
         async function promptToEnableBiometrics(user, pass) {
-            if (localStorage.getItem('gnc_user_v2') === user) return;
+            if (localStorage.getItem('gnc_user_v3') === user) return;
 
             if (confirm("Would you like to enable Fingerprint/FaceID login for next time?")) {
                 try {
@@ -555,8 +555,8 @@
                         }
                     });
 
-                    localStorage.setItem('gnc_user_v2', user);
-                    localStorage.setItem('gnc_pin_v2', pass);
+                    localStorage.setItem('gnc_user_v3', user);
+                    localStorage.setItem('gnc_pin_v3', pass);
                     document.getElementById('btn-fingerprint').classList.remove('hidden');
                     showToast("Success", "Passkey enabled!");
                     
@@ -581,8 +581,8 @@
                 });
 
                 if (credential) {
-                    document.getElementById('username-input').value = localStorage.getItem('gnc_user_v2');
-                    document.getElementById('pin-code').value = localStorage.getItem('gnc_pin_v2');
+                    document.getElementById('username-input').value = localStorage.getItem('gnc_user_v3');
+                    document.getElementById('pin-code').value = localStorage.getItem('gnc_pin_v3');
                     handleLogin(true); 
                 }
             } catch (err) {
