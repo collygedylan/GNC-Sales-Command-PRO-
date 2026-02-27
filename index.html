@@ -455,6 +455,9 @@
         let reviewViewLevel = 0;
         let selectedReviewUser = null;
         let activeReviewTab = "completed"; 
+
+        let requestViewLevel = 0;
+        let requestFilterMode = null;
         
         let dockViewLevel = 0;
         let selectedDockNum = null;
@@ -698,9 +701,6 @@
         }
 
         function switchView(viewId) {
-            // Note: INTENTIONALLY not clearing selection here so items stay queued up 
-            // when bouncing between Drive Mode, Tasks, etc.
-            
             ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-low-stock','view-detail','view-docks'].forEach(id => { 
                 document.getElementById(id).classList.add('hidden'); 
             });
@@ -716,7 +716,7 @@
             }
             if(viewId === 'review') { 
                 reviewViewLevel = 0; 
-                setReviewTab('completed'); // Default back to completed tab when opened
+                setReviewTab('completed'); 
             }
             if(viewId === 'sales-office') { renderSalesOffice(); }
             if(viewId === 'low-stock') { resetLowStockView(); }
@@ -749,6 +749,13 @@
             document.getElementById('review-tab-reserves').classList.toggle('active', tab === 'reserves');
             document.getElementById('review-tab-request').classList.toggle('active', tab === 'request');
             reviewViewLevel = 0; 
+            requestViewLevel = 0; 
+            renderReview();
+        }
+
+        function selectRequestCategory(cat) {
+            requestFilterMode = cat;
+            requestViewLevel = 1;
             renderReview();
         }
 
@@ -914,7 +921,6 @@
             const domIds = Array.from(selectedItems);
             const uniqueIds = [];
             
-            // 1. Tag locally for the active session
             domIds.forEach(dId => {
                 let item = fullInventory.find(i => i.DOM_ID === dId) || lowStockInventory.find(i => i.DOM_ID === dId);
                 if (item) {
@@ -925,7 +931,6 @@
 
             showToast("Processing...", "Saving to Request tab...", false);
 
-            // 2. Ping Google Sheet to permanently write "TRUE" to the IS REQUEST column
             fetch(GOOGLE_SCRIPT_URL, {
                 method: 'POST',
                 body: JSON.stringify({ type: 'batch_request', ids: uniqueIds })
@@ -1134,7 +1139,6 @@
                     return;
                 }
 
-                // Group by STOPNUMBER and attach plants inside using ITEMCODE instead of LOC
                 let stopsMap = {};
                 dockItems.forEach(i => {
                     let stopNum = i.STOPNUMBER || "Unassigned"; 
@@ -1273,7 +1277,6 @@
                 if (!i.DATE_COMPLETED || i.DATE_COMPLETED === "") return false;
                 const ptr = parseFloat(i.PTRAVAILABLE) || 0;
                 const ss = parseFloat(i.SEASONSUPPLY) || 0;
-                // Matches the 10% or greater logic
                 return ptr >= (ss * 1.10); 
             });
 
@@ -1297,28 +1300,59 @@
             }
 
             if (activeReviewTab === 'request') {
-                crumb.innerText = "Request View";
-                
-                // Combine items from inventory that have been tagged as requests
                 let reqItems = fullInventory.filter(i => i.IS_REQUEST === true);
                 let reqLowStock = lowStockInventory.filter(i => i.IS_REQUEST === true);
-                
                 let combinedReq = [...reqItems, ...reqLowStock];
                 
-                // Remove any accidental duplicates based on DOM_ID
                 combinedReq = combinedReq.filter((v,i,a) => a.findIndex(t => (t.DOM_ID === v.DOM_ID)) === i);
 
-                if (combinedReq.length === 0) {
-                    container.innerHTML = `<div class="p-8 text-center text-gray-400">No requested items at this time.</div>`;
+                const isReqCompleted = (item) => {
+                    return (
+                        (item.REQ_SALES_NOTE && String(item.REQ_SALES_NOTE).trim() !== "") || 
+                        (item.REQ_PHOTO_LINK && String(item.REQ_PHOTO_LINK).trim() !== "") || 
+                        (item.REQ_COMMENTS && String(item.REQ_COMMENTS).trim() !== "") ||
+                        (item.REQ_SPEC && String(item.REQ_SPEC).trim() !== "") ||
+                        (item.REQ_CALIPER && String(item.REQ_CALIPER).trim() !== "") ||
+                        (item.REQ_MATCH && String(item.REQ_MATCH).trim() !== "") ||
+                        (item.REQ_PICK && String(item.REQ_PICK).trim() !== "")
+                    );
+                };
+
+                let pendingReqs = combinedReq.filter(i => !isReqCompleted(i));
+                let completedReqs = combinedReq.filter(i => isReqCompleted(i));
+
+                if (requestViewLevel === 0) {
+                    crumb.innerText = "Request View";
+                    container.innerHTML = `
+                        <div class="drill-item" onclick="selectRequestCategory('pending')">
+                            <span class="font-bold text-lg text-orange-600">All Pending Requests <span class="text-gray-400 text-sm font-normal">(${pendingReqs.length})</span></span>
+                            <i class="ph-bold ph-caret-right text-gray-300"></i>
+                        </div>
+                        <div class="drill-item" onclick="selectRequestCategory('completed')">
+                            <span class="font-bold text-lg text-green-600">All Completed Requests <span class="text-gray-400 text-sm font-normal">(${completedReqs.length})</span></span>
+                            <i class="ph-bold ph-caret-right text-gray-300"></i>
+                        </div>
+                    `;
                     return;
                 }
 
-                // Sort alphabetically/numerically by LOCATIONCODE
-                combinedReq.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
-                
-                // Output the cards (using the orange status color to stand out)
-                container.innerHTML = combinedReq.map(i => generateCard(i, 'review', 'status-orange')).join('');
-                return;
+                if (requestViewLevel === 1) {
+                    crumb.innerText = requestFilterMode === 'pending' ? "Requests / Pending" : "Requests / Completed";
+                    let displayItems = requestFilterMode === 'pending' ? pendingReqs : completedReqs;
+
+                    displayItems.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
+
+                    let html = `<div class="back-btn" onclick="requestViewLevel=0; renderReview()"><i class="ph-bold ph-arrow-left"></i> Back to Categories</div>`;
+                    
+                    if (displayItems.length === 0) {
+                        html += `<div class="p-8 text-center text-gray-400">No ${requestFilterMode} requests at this time.</div>`;
+                    } else {
+                        let colorClass = requestFilterMode === 'pending' ? 'status-orange' : 'status-green';
+                        html += displayItems.map(i => generateCard(i, 'review', colorClass)).join('');
+                    }
+                    container.innerHTML = html;
+                    return;
+                }
             }
 
             let completedItems = fullInventory.filter(i => i.DATE_COMPLETED && i.DATE_COMPLETED !== "");
@@ -1486,17 +1520,14 @@
             }
         }
 
-        // Function to apply Quick Notes to a specific input field
         function applyQuickNote(val, targetInputId) {
             if (!val) return;
             const targetInput = document.getElementById(targetInputId);
-            // Append with a space if there's already text, otherwise just set it
             if (targetInput.value.trim() !== "") {
                 targetInput.value = (targetInput.value + " " + val).toUpperCase();
             } else {
                 targetInput.value = val.toUpperCase();
             }
-            // Reset the select dropdown back to default
             if (targetInputId === 'in-sales-desc') {
                 document.getElementById('quick-note-select').value = "";
             } else {
@@ -1514,7 +1545,6 @@
             ['view-drive','view-tasks','view-review','view-sales-office','view-low-stock','view-docks'].forEach(v => document.getElementById(v).classList.add('hidden'));
             document.getElementById('view-detail').classList.remove('hidden');
             
-            // Hide Notes & Actions if coming from Docks
             const dtabActions = document.getElementById('dtab-actions');
             if (sourceView === 'docks') {
                 dtabActions.style.display = 'none';
@@ -1547,7 +1577,6 @@
             document.getElementById('req-sales-desc').value = activeItem.REQ_SALES_NOTE || "";
             document.getElementById('req-comments').value = activeItem.REQ_COMMENTS || ""; 
 
-            // POPULATE QUICK NOTES DROPDOWN
             const quickContainer = document.getElementById('quick-note-container');
             const quickSelect = document.getElementById('quick-note-select');
             const reqQuickContainer = document.getElementById('req-quick-note-container');
@@ -1591,8 +1620,6 @@
             document.getElementById('expand-content').innerHTML = '';
 
             renderPhotoPreview();
-            
-            // Ensure we start on overview, especially if coming from Docks
             switchDetailTab('overview');
         }
 
