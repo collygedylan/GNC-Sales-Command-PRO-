@@ -233,7 +233,7 @@
                 
                 <div class="task-tabs mb-4">
                     <div id="review-tab-completed" class="task-tab active" onclick="setReviewTab('completed')">Completed Tasks</div>
-                    <div id="review-tab-reserves" class="task-tab" onclick="setReviewTab('reserves')">Reserves</div>
+                    <div id="review-tab-request" class="task-tab" onclick="setReviewTab('request')">Requests</div> <div id="review-tab-reserves" class="task-tab" onclick="setReviewTab('reserves')">Reserves</div>
                 </div>
 
                 <div id="review-content"></div>
@@ -399,6 +399,8 @@
                 <button onclick="initiateBatchAction('email')" class="flex-1 bg-blue-100 text-blue-700 p-2 rounded-lg text-xs font-bold hover:bg-blue-200"><i class="ph-bold ph-envelope block text-lg mb-1"></i> Email</button>
                 <button onclick="initiateBatchAction('text')" class="flex-1 bg-green-100 text-green-700 p-2 rounded-lg text-xs font-bold hover:bg-green-200"><i class="ph-bold ph-chat block text-lg mb-1"></i> Text</button>
                 <button onclick="initiateBatchAction('assign')" class="flex-1 bg-purple-600 text-white p-2 rounded-lg text-xs font-bold shadow-md"><i class="ph-bold ph-user-plus block text-lg mb-1"></i> Assign</button>
+                
+                <button onclick="initiateBatchAction('flag_request')" class="flex-1 bg-yellow-100 text-yellow-700 p-2 rounded-lg text-xs font-bold hover:bg-yellow-200 shadow-sm"><i class="ph-bold ph-star block text-lg mb-1"></i> Request</button>
             </div>
         </div>
 
@@ -763,6 +765,7 @@
         function setReviewTab(tab) {
             activeReviewTab = tab;
             document.getElementById('review-tab-completed').classList.toggle('active', tab === 'completed');
+            document.getElementById('review-tab-request').classList.toggle('active', tab === 'request');
             document.getElementById('review-tab-reserves').classList.toggle('active', tab === 'reserves');
             reviewViewLevel = 0; 
             renderReview();
@@ -919,7 +922,42 @@
         
         function initiateBatchAction(action) {
             pendingAction = action;
-            document.getElementById('tab-select-modal').classList.remove('hidden');
+            if (action === 'flag_request') {
+                confirmFlagRequest(); // Bypass the modal and send directly
+            } else {
+                document.getElementById('tab-select-modal').classList.remove('hidden');
+            }
+        }
+
+        function confirmFlagRequest() {
+            showToast("Updating...", "Sending to Manager Review...", false);
+            
+            const domIds = Array.from(selectedItems);
+            const uniqueIds = [];
+            let itemsToUpdate = [];
+            
+            domIds.forEach(dId => {
+                let item = fullInventory.find(i => i.DOM_ID === dId) || lowStockInventory.find(i => i.DOM_ID === dId);
+                if (item) {
+                    uniqueIds.push(item.UNIQUE_ID);
+                    itemsToUpdate.push(item);
+                }
+            });
+            
+            fetch(GOOGLE_SCRIPT_URL, {
+                method: 'POST',
+                body: JSON.stringify({ type: 'batch_request', ids: uniqueIds })
+            }).then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showToast("Success", `Items flagged for Manager Review!`);
+                    itemsToUpdate.forEach(item => {
+                        item.MANAGER_REQUEST = "TRUE";
+                    });
+                    clearSelection();
+                    reRenderCurrentView(); 
+                } else { showToast("Error", "Failed to flag items", true); }
+            }).catch(err => showToast("Error", "Network error.", true));
         }
 
         function processTabSelection(tab) {
@@ -1275,6 +1313,21 @@
             if (activeReviewTab === 'reserves') {
                 crumb.innerText = "Reserves View";
                 container.innerHTML = `<div class="p-8 text-center text-gray-400">Reserves list will go here.</div>`;
+                return;
+            }
+
+            // --- NEW REQUEST TAB LOGIC ---
+            if (activeReviewTab === 'request') {
+                crumb.innerText = "Manager Requests";
+                let reqItems = fullInventory.filter(i => String(i.MANAGER_REQUEST).toUpperCase() === 'TRUE');
+
+                if (reqItems.length === 0) {
+                    container.innerHTML = `<div class="p-8 text-center text-gray-400">No items flagged for review.</div>`;
+                    return;
+                }
+
+                reqItems.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
+                container.innerHTML = reqItems.map(i => generateCard(i, 'review', 'status-orange')).join('');
                 return;
             }
 
