@@ -368,6 +368,10 @@
                             <label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label>
                             <input type="text" id="req-pick" class="input-field" placeholder="e.g. Needs spacing">
                         </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-500 uppercase">Comments</label>
+                            <input type="text" id="req-comments" class="input-field" placeholder="Any additional comments...">
+                        </div>
                     </div>
 
                     <div class="flex gap-2 mt-4">
@@ -920,6 +924,8 @@
                 
                 let sales = tabType === 'request' ? i.REQ_SALES_NOTE : (i.SALES_NOTE || i.SALESNOTE || i.SALESDESC);
                 if (sales) returnText += `  Sales Note: ${sales}\n`;
+
+                if (tabType === 'request' && i.REQ_COMMENTS) returnText += `  Comments: ${i.REQ_COMMENTS}\n`;
                 
                 let photo = tabType === 'request' ? i.REQ_PHOTO_LINK : (i.SAVED_PHOTO_LINK || i['PHOTO LINK'] || i.PHOTOLINK);
                 if (photo && photo.trim() !== "") {
@@ -1213,7 +1219,7 @@
                 if (!i.DATE_COMPLETED || i.DATE_COMPLETED === "") return false;
                 const ptr = parseFloat(i.PTRAVAILABLE) || 0;
                 const ss = parseFloat(i.SEASONSUPPLY) || 0;
-                // FIX: Matches the 10% or greater logic
+                // FIX: Matches the >= 1.10 logic
                 return ptr >= (ss * 1.10); 
             });
 
@@ -1453,6 +1459,7 @@
             document.getElementById('req-spec').value = activeItem.REQ_SPEC || "";
             document.getElementById('req-pick').value = activeItem.REQ_PICK || "";
             document.getElementById('req-sales-desc').value = activeItem.REQ_SALES_NOTE || "";
+            document.getElementById('req-comments').value = activeItem.REQ_COMMENTS || ""; // <-- NEW REQ COMMENTS LOAD
 
             // POPULATE QUICK NOTES DROPDOWN
             const quickContainer = document.getElementById('quick-note-container');
@@ -1720,6 +1727,7 @@
             activeItem.REQ_CALIPER = document.getElementById('req-caliper').value;
             activeItem.REQ_PICK = document.getElementById('req-pick').value;
             activeItem.REQ_SALES_NOTE = document.getElementById('req-sales-desc').value.toUpperCase();
+            activeItem.REQ_COMMENTS = document.getElementById('req-comments').value; // <-- NEW REQ COMMENTS SAVE
 
             const payload = {
                 type: "update",
@@ -1736,6 +1744,7 @@
                 reqCaliper: activeItem.REQ_CALIPER,
                 reqPick: activeItem.REQ_PICK,
                 reqSalesDesc: activeItem.REQ_SALES_NOTE,
+                reqComments: activeItem.REQ_COMMENTS, // <-- NEW PAYLOAD FIELD
                 reqPhotoLink: activeItem.REQ_PHOTO_LINK || "",
                 reqPhotoName: activeItem.REQ_PHOTO_NAME || "",
                 isComplete: isComplete 
