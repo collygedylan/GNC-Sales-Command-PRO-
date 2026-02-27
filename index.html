@@ -124,6 +124,19 @@
         </div>
     </div>
 
+    <div id="request-rep-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
+            <h3 class="font-bold text-lg mb-4 text-orange-600">Who requested this?</h3>
+            <div class="grid grid-cols-1 gap-3 mb-4">
+                <button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm" onclick="confirmRequestAction('Brian Hatfield')">Brian Hatfield</button>
+                <button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm" onclick="confirmRequestAction('Annette Hancock')">Annette Hancock</button>
+                <button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm" onclick="confirmRequestAction('Kevin Effinger')">Kevin Effinger</button>
+                <button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm" onclick="confirmRequestAction('Ben Brown')">Ben Brown</button>
+            </div>
+            <button class="text-gray-500 font-bold py-2 px-4" onclick="document.getElementById('request-rep-modal').classList.add('hidden')">Cancel</button>
+        </div>
+    </div>
+
     <div id="app-wrapper" class="hidden h-full flex flex-col">
         <header class="nav-header sticky top-0 z-50 p-4 flex justify-between items-center shadow-md">
             <div class="flex items-center gap-3">
@@ -460,6 +473,7 @@
         let requestViewLevel = 0;
         let requestFilterMode = null;
         let selectedReqRep = null;
+        let selectedReqRepStatus = null; // NEW
         
         let dockViewLevel = 0;
         let selectedDockNum = null;
@@ -767,6 +781,12 @@
             renderReview();
         }
 
+        function selectRepStatus(status) {
+            selectedReqRepStatus = status;
+            requestViewLevel = 3;
+            renderReview();
+        }
+
         function getLocPrefix(loc) {
             if(!loc) return "Unassigned";
             const match = loc.match(/^[A-Za-z]+/);
@@ -918,14 +938,15 @@
         
         function initiateBatchAction(action) {
             if (action === 'request_action') {
-                moveToRequestTab();
+                document.getElementById('request-rep-modal').classList.remove('hidden');
                 return;
             }
             pendingAction = action;
             document.getElementById('tab-select-modal').classList.remove('hidden');
         }
 
-        function moveToRequestTab() {
+        function confirmRequestAction(repName) {
+            document.getElementById('request-rep-modal').classList.add('hidden');
             const domIds = Array.from(selectedItems);
             const uniqueIds = [];
             
@@ -933,15 +954,16 @@
                 let item = fullInventory.find(i => i.DOM_ID === dId) || lowStockInventory.find(i => i.DOM_ID === dId);
                 if (item) {
                     item.IS_REQUEST = true; 
+                    item.REQUESTED_BY = repName; // Update local state immediately
                     uniqueIds.push(item.UNIQUE_ID);
                 }
             });
 
-            showToast("Processing...", "Saving to Request tab...", false);
+            showToast("Processing...", `Saving request for ${repName}...`, false);
 
             fetch(GOOGLE_SCRIPT_URL, {
                 method: 'POST',
-                body: JSON.stringify({ type: 'batch_request', ids: uniqueIds })
+                body: JSON.stringify({ type: 'batch_request', ids: uniqueIds, repName: repName })
             }).then(res => res.json())
             .then(data => {
                 if (data.status === 'success') {
@@ -1329,6 +1351,7 @@
                 let pendingReqs = combinedReq.filter(i => !isReqCompleted(i));
                 let completedReqs = combinedReq.filter(i => isReqCompleted(i));
 
+                // LEVEL 0: Categories
                 if (requestViewLevel === 0) {
                     crumb.innerText = "Request View";
                     container.innerHTML = `
@@ -1348,6 +1371,7 @@
                     return;
                 }
 
+                // LEVEL 1: Either list of Reps, OR the list of All Pending/All Completed cards
                 if (requestViewLevel === 1) {
                     if (requestFilterMode === 'reps') {
                         crumb.innerText = "Requests / Sales Reps";
@@ -1357,7 +1381,7 @@
                         reps.forEach(rep => {
                             let repFirstName = rep.split(' ')[0].toUpperCase();
                             let count = combinedReq.filter(i => {
-                                let matchStr = (i.SALESREP || i.SALESREPNAME || i['SALES REP'] || i.REQUESTED_BY || i.ASSIGNEDTO || "").toUpperCase();
+                                let matchStr = (i.REQUESTED_BY || i.SALESREP || i.SALESREPNAME || i['SALES REP'] || i.ASSIGNEDTO || "").toUpperCase();
                                 return matchStr.includes(repFirstName);
                             }).length;
                             
@@ -1384,23 +1408,53 @@
                     }
                 }
 
+                // LEVEL 2: Inside a specific Sales Rep -> Show Status Folders
                 if (requestViewLevel === 2 && requestFilterMode === 'reps') {
                     crumb.innerText = `Requests / ${selectedReqRep}`;
                     
                     let repFirstName = selectedReqRep.split(' ')[0].toUpperCase();
-                    let displayItems = combinedReq.filter(i => {
-                        let matchStr = (i.SALESREP || i.SALESREPNAME || i['SALES REP'] || i.REQUESTED_BY || i.ASSIGNEDTO || "").toUpperCase();
+                    let repItems = combinedReq.filter(i => {
+                        let matchStr = (i.REQUESTED_BY || i.SALESREP || i.SALESREPNAME || i['SALES REP'] || i.ASSIGNEDTO || "").toUpperCase();
                         return matchStr.includes(repFirstName);
                     });
 
+                    let repPending = repItems.filter(i => !isReqCompleted(i));
+                    let repCompleted = repItems.filter(i => isReqCompleted(i));
+
+                    container.innerHTML = `
+                        <div class="back-btn" onclick="requestViewLevel=1; renderReview()"><i class="ph-bold ph-arrow-left"></i> Back to Sales Reps</div>
+                        <div class="drill-item" onclick="selectRepStatus('pending')">
+                            <span class="font-bold text-lg text-orange-600">Pending Requests <span class="text-gray-400 text-sm font-normal">(${repPending.length})</span></span>
+                            <i class="ph-bold ph-caret-right text-gray-300"></i>
+                        </div>
+                        <div class="drill-item" onclick="selectRepStatus('completed')">
+                            <span class="font-bold text-lg text-green-600">Completed Requests <span class="text-gray-400 text-sm font-normal">(${repCompleted.length})</span></span>
+                            <i class="ph-bold ph-caret-right text-gray-300"></i>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // LEVEL 3: Inside a specific Sales Rep -> Inside a Status Folder -> Show Cards
+                if (requestViewLevel === 3 && requestFilterMode === 'reps') {
+                    crumb.innerText = `Requests / ${selectedReqRep} / ${selectedReqRepStatus}`;
+                    
+                    let repFirstName = selectedReqRep.split(' ')[0].toUpperCase();
+                    let repItems = combinedReq.filter(i => {
+                        let matchStr = (i.REQUESTED_BY || i.SALESREP || i.SALESREPNAME || i['SALES REP'] || i.ASSIGNEDTO || "").toUpperCase();
+                        return matchStr.includes(repFirstName);
+                    });
+
+                    let displayItems = selectedReqRepStatus === 'pending' ? repItems.filter(i => !isReqCompleted(i)) : repItems.filter(i => isReqCompleted(i));
                     displayItems.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
 
-                    let html = `<div class="back-btn" onclick="requestViewLevel=1; renderReview()"><i class="ph-bold ph-arrow-left"></i> Back to Sales Reps</div>`;
+                    let html = `<div class="back-btn" onclick="requestViewLevel=2; renderReview()"><i class="ph-bold ph-arrow-left"></i> Back to Folders</div>`;
                     
                     if (displayItems.length === 0) {
-                        html += `<div class="p-8 text-center text-gray-400">No requests for ${selectedReqRep} at this time.</div>`;
+                        html += `<div class="p-8 text-center text-gray-400">No ${selectedReqRepStatus} requests for ${selectedReqRep} at this time.</div>`;
                     } else {
-                        html += displayItems.map(i => generateCard(i, 'review', 'status-blue')).join('');
+                        let colorClass = selectedReqRepStatus === 'pending' ? 'status-orange' : 'status-green';
+                        html += displayItems.map(i => generateCard(i, 'review', colorClass)).join('');
                     }
                     container.innerHTML = html;
                     return;
@@ -1702,7 +1756,7 @@
 
         function renderAllFields() {
             if(!activeItem) return;
-            const hiddenKeys = ['UNIQUE_ID', 'UNIQUEID', 'ASSIGNEDTO', 'DOM_ID', 'IS_REQUEST']; 
+            const hiddenKeys = ['UNIQUE_ID', 'UNIQUEID', 'ASSIGNEDTO', 'DOM_ID', 'IS_REQUEST', 'REQUESTED_BY']; 
             let html = '<div class="grid grid-cols-1 gap-2">';
             for (const [key, value] of Object.entries(activeItem)) { 
                 if(hiddenKeys.includes(key)) continue; 
