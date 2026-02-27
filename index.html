@@ -48,6 +48,7 @@
         .status-green { border-left-color: #22c55e; } 
         .status-purple { border-left-color: #9333ea; } 
         .status-orange { border-left-color: #f97316; } 
+        .status-blue { border-left-color: #3b82f6; }
         
         .task-tabs { display: flex; border-bottom: 1px solid #e5e7eb; background: #f9fafb; margin-bottom: 10px; }
         .task-tab { flex: 1; text-align: center; padding: 12px; font-size: 11px; font-weight: 700; color: #6b7280; cursor: pointer; border-bottom: 3px solid transparent; text-transform: uppercase; }
@@ -458,6 +459,7 @@
 
         let requestViewLevel = 0;
         let requestFilterMode = null;
+        let selectedReqRep = null;
         
         let dockViewLevel = 0;
         let selectedDockNum = null;
@@ -756,6 +758,12 @@
         function selectRequestCategory(cat) {
             requestFilterMode = cat;
             requestViewLevel = 1;
+            renderReview();
+        }
+
+        function selectRequestRep(rep) {
+            selectedReqRep = rep;
+            requestViewLevel = 2;
             renderReview();
         }
 
@@ -1332,23 +1340,67 @@
                             <span class="font-bold text-lg text-green-600">All Completed Requests <span class="text-gray-400 text-sm font-normal">(${completedReqs.length})</span></span>
                             <i class="ph-bold ph-caret-right text-gray-300"></i>
                         </div>
+                        <div class="drill-item" onclick="selectRequestCategory('reps')">
+                            <span class="font-bold text-lg text-blue-600">Sales Reps</span>
+                            <i class="ph-bold ph-caret-right text-gray-300"></i>
+                        </div>
                     `;
                     return;
                 }
 
                 if (requestViewLevel === 1) {
-                    crumb.innerText = requestFilterMode === 'pending' ? "Requests / Pending" : "Requests / Completed";
-                    let displayItems = requestFilterMode === 'pending' ? pendingReqs : completedReqs;
+                    if (requestFilterMode === 'reps') {
+                        crumb.innerText = "Requests / Sales Reps";
+                        let reps = ["Brian Hatfield", "Annette Hancock", "Kevin Effinger", "Ben Brown"];
+                        let html = `<div class="back-btn" onclick="requestViewLevel=0; renderReview()"><i class="ph-bold ph-arrow-left"></i> Back to Categories</div>`;
+                        
+                        reps.forEach(rep => {
+                            let repFirstName = rep.split(' ')[0].toUpperCase();
+                            let count = combinedReq.filter(i => {
+                                let matchStr = (i.SALESREP || i.SALESREPNAME || i['SALES REP'] || i.REQUESTED_BY || i.ASSIGNEDTO || "").toUpperCase();
+                                return matchStr.includes(repFirstName);
+                            }).length;
+                            
+                            html += `<div class="drill-item" onclick="selectRequestRep('${rep}')"><span class="font-bold text-lg">${rep} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
+                        });
+                        container.innerHTML = html;
+                        return;
+                    } else {
+                        crumb.innerText = requestFilterMode === 'pending' ? "Requests / Pending" : "Requests / Completed";
+                        let displayItems = requestFilterMode === 'pending' ? pendingReqs : completedReqs;
+
+                        displayItems.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
+
+                        let html = `<div class="back-btn" onclick="requestViewLevel=0; renderReview()"><i class="ph-bold ph-arrow-left"></i> Back to Categories</div>`;
+                        
+                        if (displayItems.length === 0) {
+                            html += `<div class="p-8 text-center text-gray-400">No ${requestFilterMode} requests at this time.</div>`;
+                        } else {
+                            let colorClass = requestFilterMode === 'pending' ? 'status-orange' : 'status-green';
+                            html += displayItems.map(i => generateCard(i, 'review', colorClass)).join('');
+                        }
+                        container.innerHTML = html;
+                        return;
+                    }
+                }
+
+                if (requestViewLevel === 2 && requestFilterMode === 'reps') {
+                    crumb.innerText = `Requests / ${selectedReqRep}`;
+                    
+                    let repFirstName = selectedReqRep.split(' ')[0].toUpperCase();
+                    let displayItems = combinedReq.filter(i => {
+                        let matchStr = (i.SALESREP || i.SALESREPNAME || i['SALES REP'] || i.REQUESTED_BY || i.ASSIGNEDTO || "").toUpperCase();
+                        return matchStr.includes(repFirstName);
+                    });
 
                     displayItems.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
 
-                    let html = `<div class="back-btn" onclick="requestViewLevel=0; renderReview()"><i class="ph-bold ph-arrow-left"></i> Back to Categories</div>`;
+                    let html = `<div class="back-btn" onclick="requestViewLevel=1; renderReview()"><i class="ph-bold ph-arrow-left"></i> Back to Sales Reps</div>`;
                     
                     if (displayItems.length === 0) {
-                        html += `<div class="p-8 text-center text-gray-400">No ${requestFilterMode} requests at this time.</div>`;
+                        html += `<div class="p-8 text-center text-gray-400">No requests for ${selectedReqRep} at this time.</div>`;
                     } else {
-                        let colorClass = requestFilterMode === 'pending' ? 'status-orange' : 'status-green';
-                        html += displayItems.map(i => generateCard(i, 'review', colorClass)).join('');
+                        html += displayItems.map(i => generateCard(i, 'review', 'status-blue')).join('');
                     }
                     container.innerHTML = html;
                     return;
