@@ -395,11 +395,12 @@
                 <span class="text-xs font-bold text-[#007a4d]"><span id="sel-count">0</span> Items Selected</span>
                 <span class="text-[10px] font-bold text-red-500 cursor-pointer bg-red-50 px-3 py-1 rounded-md uppercase" onclick="clearSelection()">Clear Selection</span>
             </div>
-            <div class="flex gap-2">
-                <button onclick="initiateBatchAction('copy')" class="flex-1 bg-gray-100 text-gray-700 p-2 rounded-lg text-xs font-bold hover:bg-gray-200"><i class="ph-bold ph-copy block text-lg mb-1"></i> Copy</button>
-                <button onclick="initiateBatchAction('email')" class="flex-1 bg-blue-100 text-blue-700 p-2 rounded-lg text-xs font-bold hover:bg-blue-200"><i class="ph-bold ph-envelope block text-lg mb-1"></i> Email</button>
-                <button onclick="initiateBatchAction('text')" class="flex-1 bg-green-100 text-green-700 p-2 rounded-lg text-xs font-bold hover:bg-green-200"><i class="ph-bold ph-chat block text-lg mb-1"></i> Text</button>
-                <button onclick="initiateBatchAction('assign')" class="flex-1 bg-purple-600 text-white p-2 rounded-lg text-xs font-bold shadow-md"><i class="ph-bold ph-user-plus block text-lg mb-1"></i> Assign</button>
+            <div class="flex gap-1">
+                <button onclick="initiateBatchAction('copy')" class="flex-1 bg-gray-100 text-gray-700 p-2 rounded-lg text-[10px] font-bold hover:bg-gray-200"><i class="ph-bold ph-copy block text-lg mb-1"></i> Copy</button>
+                <button onclick="initiateBatchAction('email')" class="flex-1 bg-blue-100 text-blue-700 p-2 rounded-lg text-[10px] font-bold hover:bg-blue-200"><i class="ph-bold ph-envelope block text-lg mb-1"></i> Email</button>
+                <button onclick="initiateBatchAction('text')" class="flex-1 bg-green-100 text-green-700 p-2 rounded-lg text-[10px] font-bold hover:bg-green-200"><i class="ph-bold ph-chat block text-lg mb-1"></i> Text</button>
+                <button onclick="initiateBatchAction('assign')" class="flex-1 bg-purple-100 text-purple-700 p-2 rounded-lg text-[10px] font-bold hover:bg-purple-200"><i class="ph-bold ph-user-plus block text-lg mb-1"></i> Assign</button>
+                <button onclick="initiateBatchAction('request_action')" class="flex-1 bg-orange-500 text-white p-2 rounded-lg text-[10px] font-bold shadow-md"><i class="ph-bold ph-warning-circle block text-lg mb-1"></i> Request</button>
             </div>
         </div>
 
@@ -453,7 +454,7 @@
 
         let reviewViewLevel = 0;
         let selectedReviewUser = null;
-        let activeReviewTab = "completed"; // NEW STATE FOR MANAGER REVIEW TABS
+        let activeReviewTab = "completed"; 
         
         let dockViewLevel = 0;
         let selectedDockNum = null;
@@ -697,7 +698,9 @@
         }
 
         function switchView(viewId) {
-            clearSelection(); 
+            // Note: INTENTIONALLY not clearing selection here so items stay queued up 
+            // when bouncing between Drive Mode, Tasks, etc.
+            
             ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-low-stock','view-detail','view-docks'].forEach(id => { 
                 document.getElementById(id).classList.add('hidden'); 
             });
@@ -740,7 +743,6 @@
             renderTasks();
         }
 
-        // NEW: Handles switching between Completed and Reserves in the Manager Review
         function setReviewTab(tab) {
             activeReviewTab = tab;
             document.getElementById('review-tab-completed').classList.toggle('active', tab === 'completed');
@@ -900,8 +902,42 @@
         }
         
         function initiateBatchAction(action) {
+            if (action === 'request_action') {
+                moveToRequestTab();
+                return;
+            }
             pendingAction = action;
             document.getElementById('tab-select-modal').classList.remove('hidden');
+        }
+
+        function moveToRequestTab() {
+            const domIds = Array.from(selectedItems);
+            const uniqueIds = [];
+            
+            // 1. Tag locally for the active session
+            domIds.forEach(dId => {
+                let item = fullInventory.find(i => i.DOM_ID === dId) || lowStockInventory.find(i => i.DOM_ID === dId);
+                if (item) {
+                    item.IS_REQUEST = true; 
+                    uniqueIds.push(item.UNIQUE_ID);
+                }
+            });
+
+            showToast("Processing...", "Saving to Request tab...", false);
+
+            // 2. Ping Google Sheet to permanently write "TRUE" to the IS REQUEST column
+            fetch(GOOGLE_SCRIPT_URL, {
+                method: 'POST',
+                body: JSON.stringify({ type: 'batch_request', ids: uniqueIds })
+            }).then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showToast("Success", "Items moved to Request tab!");
+                    clearSelection();
+                    switchView('review');
+                    setReviewTab('request');
+                } else { showToast("Error", "Failed to update sheet.", true); }
+            }).catch(err => showToast("Error", "Network error.", true));
         }
 
         function processTabSelection(tab) {
@@ -1254,7 +1290,6 @@
             const container = document.getElementById('review-content');
             const crumb = document.getElementById('review-crumb');
 
-            // NEW: DIVERTS TO RESERVES UI IF TAB IS CLICKED
             if (activeReviewTab === 'reserves') {
                 crumb.innerText = "Reserves View";
                 container.innerHTML = `<div class="p-8 text-center text-gray-400">Reserves list will go here.</div>`;
@@ -1263,7 +1298,26 @@
 
             if (activeReviewTab === 'request') {
                 crumb.innerText = "Request View";
-                container.innerHTML = `<div class="p-8 text-center text-gray-400">Request list will go here.</div>`;
+                
+                // Combine items from inventory that have been tagged as requests
+                let reqItems = fullInventory.filter(i => i.IS_REQUEST === true);
+                let reqLowStock = lowStockInventory.filter(i => i.IS_REQUEST === true);
+                
+                let combinedReq = [...reqItems, ...reqLowStock];
+                
+                // Remove any accidental duplicates based on DOM_ID
+                combinedReq = combinedReq.filter((v,i,a) => a.findIndex(t => (t.DOM_ID === v.DOM_ID)) === i);
+
+                if (combinedReq.length === 0) {
+                    container.innerHTML = `<div class="p-8 text-center text-gray-400">No requested items at this time.</div>`;
+                    return;
+                }
+
+                // Sort alphabetically/numerically by LOCATIONCODE
+                combinedReq.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
+                
+                // Output the cards (using the orange status color to stand out)
+                container.innerHTML = combinedReq.map(i => generateCard(i, 'review', 'status-orange')).join('');
                 return;
             }
 
@@ -1569,7 +1623,7 @@
 
         function renderAllFields() {
             if(!activeItem) return;
-            const hiddenKeys = ['UNIQUE_ID', 'UNIQUEID', 'ASSIGNEDTO', 'DOM_ID']; 
+            const hiddenKeys = ['UNIQUE_ID', 'UNIQUEID', 'ASSIGNEDTO', 'DOM_ID', 'IS_REQUEST']; 
             let html = '<div class="grid grid-cols-1 gap-2">';
             for (const [key, value] of Object.entries(activeItem)) { 
                 if(hiddenKeys.includes(key)) continue; 
