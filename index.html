@@ -417,6 +417,7 @@
         let fullInventory = []; 
         let lowStockInventory = []; 
         let socInventory = []; 
+        let reservesInventory = []; // NEW: Holds Reserves List
         let salesNotesDict = {}; 
         
         let currentUser = "";
@@ -452,8 +453,13 @@
 
         let reviewViewLevel = 0;
         let selectedReviewUser = null;
-        let activeReviewTab = "completed"; // NEW STATE FOR MANAGER REVIEW TABS
+        let activeReviewTab = "completed"; 
         
+        let reservesViewLevel = 0; // NEW: State for Reserves Drilldown
+        let selectedReservesName = null;
+        let selectedReservesSize = null;
+        let selectedReservesItemCode = null;
+
         let dockViewLevel = 0;
         let selectedDockNum = null;
         let selectedDockName = null;
@@ -496,6 +502,7 @@
                         document.getElementById('header-user').innerText = currentUser.toUpperCase();
 
                         salesNotesDict = res.salesNotesMap || {};
+                        reservesInventory = res.reservesData || [];
 
                         fullInventory = res.data.map((item, idx) => {
                             item.DOM_ID = 'fi_' + idx;
@@ -712,7 +719,7 @@
             }
             if(viewId === 'review') { 
                 reviewViewLevel = 0; 
-                setReviewTab('completed'); // Default back to completed tab when opened
+                setReviewTab('completed'); 
             }
             if(viewId === 'sales-office') { renderSalesOffice(); }
             if(viewId === 'low-stock') { resetLowStockView(); }
@@ -739,12 +746,12 @@
             renderTasks();
         }
 
-        // NEW: Handles switching between Completed and Reserves in the Manager Review
         function setReviewTab(tab) {
             activeReviewTab = tab;
             document.getElementById('review-tab-completed').classList.toggle('active', tab === 'completed');
             document.getElementById('review-tab-reserves').classList.toggle('active', tab === 'reserves');
             reviewViewLevel = 0; 
+            reservesViewLevel = 0; 
             renderReview();
         }
 
@@ -1096,7 +1103,6 @@
                     return;
                 }
 
-                // Group by STOPNUMBER and attach plants inside using ITEMCODE instead of LOC
                 let stopsMap = {};
                 dockItems.forEach(i => {
                     let stopNum = i.STOPNUMBER || "Unassigned"; 
@@ -1186,6 +1192,101 @@
             }
         }
 
+        // NEW: Handles Drilldown selection in Reserves Tab
+        function selectReservesName(name) { selectedReservesName = name; reservesViewLevel = 1; renderReview(); }
+        function selectReservesSize(size, iCode) { selectedReservesSize = size; selectedReservesItemCode = iCode; reservesViewLevel = 2; renderReview(); }
+
+        // NEW: Handles displaying the Reserves hierarchy inside the Manager Review Tab
+        function renderReserves() {
+            const container = document.getElementById('review-content');
+            const crumb = document.getElementById('review-crumb');
+
+            if (reservesInventory.length === 0) {
+                crumb.innerText = "Reserves View";
+                container.innerHTML = `<div class="p-8 text-center text-gray-400">No reserves data available.</div>`;
+                return;
+            }
+
+            // Map data to Master Inventory to pull accurate COMMONNAME and CONTSIZE using ITEMCODE
+            let enrichedReserves = reservesInventory.map(r => {
+                let iCode = String(r.ITEMCODE || r.ITEM || "").trim();
+                let masterMatch = fullInventory.find(m => String(m.ITEMCODE).trim().toUpperCase() === iCode.toUpperCase());
+                
+                return {
+                    ...r,
+                    ENRICHED_NAME: masterMatch ? masterMatch.COMMONNAME : (r.COMMONNAME || 'Unknown Name'),
+                    ENRICHED_SIZE: masterMatch ? masterMatch.CONTSIZE : (r.CONTSIZE || r.SIZE || 'Unknown Size'),
+                    ENRICHED_ICODE: iCode
+                };
+            });
+
+            if (reservesViewLevel === 0) {
+                crumb.innerText = "Reserves > Plant Names";
+                const names = [...new Set(enrichedReserves.map(i => i.ENRICHED_NAME))].sort();
+                container.innerHTML = names.map(n => {
+                    const count = enrichedReserves.filter(i => i.ENRICHED_NAME === n).length;
+                    return `<div class="drill-item" onclick="selectReservesName('${n.replace(/'/g, "\\'")}')">
+                                <span class="font-bold text-lg">${n} <span class="text-gray-400 text-sm font-normal">(${count})</span></span>
+                                <i class="ph-bold ph-caret-right text-gray-300"></i>
+                            </div>`;
+                }).join('');
+            } 
+            else if (reservesViewLevel === 1) {
+                crumb.innerText = `Reserves > ${selectedReservesName}`;
+                const namedItems = enrichedReserves.filter(i => i.ENRICHED_NAME === selectedReservesName);
+                
+                // Group by Size AND ItemCode to show ItemCode badge properly
+                let sizeGroups = {};
+                namedItems.forEach(i => {
+                    let key = `${i.ENRICHED_SIZE}|${i.ENRICHED_ICODE}`;
+                    if (!sizeGroups[key]) sizeGroups[key] = { size: i.ENRICHED_SIZE, iCode: i.ENRICHED_ICODE, count: 0 };
+                    sizeGroups[key].count++;
+                });
+
+                let html = `<div class="back-btn" onclick="reservesViewLevel=0; renderReview()"><i class="ph-bold ph-arrow-left"></i> Back to Names</div>
+                            <div class="font-bold text-[#007a4d] mb-4 px-2 text-xl border-b pb-2">${selectedReservesName}</div>`;
+                
+                Object.values(sizeGroups).sort((a,b) => a.size.localeCompare(b.size)).forEach(sg => {
+                    html += `<div class="drill-item" onclick="selectReservesSize('${sg.size}', '${sg.iCode.replace(/'/g, "\\'")}')">
+                                <div>
+                                    <div class="font-bold text-lg">${sg.size} <span class="text-gray-400 text-sm font-normal">(${sg.count})</span></div>
+                                    <div class="text-xs font-bold text-blue-600"><i class="ph-bold ph-barcode mr-1"></i>${sg.iCode}</div>
+                                </div>
+                                <i class="ph-bold ph-caret-right text-gray-300"></i>
+                            </div>`;
+                });
+                container.innerHTML = html;
+            }
+            else if (reservesViewLevel === 2) {
+                crumb.innerText = `Reserves > ${selectedReservesSize}`;
+                let finalItems = enrichedReserves.filter(i => i.ENRICHED_NAME === selectedReservesName && i.ENRICHED_SIZE === selectedReservesSize && i.ENRICHED_ICODE === selectedReservesItemCode);
+                
+                let html = `<div class="back-btn" onclick="reservesViewLevel=1; renderReview()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>`;
+                
+                finalItems.forEach(item => {
+                    let cust = item.CUSTOMERNAME || item.CUSTOMER || 'Unknown Customer';
+                    let cons = item.CONSIGNEENAME || item.CONSIGNEE || '';
+                    if (cons && cons.trim() !== "" && cons !== cust) cust += ` - ${cons}`;
+                    
+                    let rep = item.SALESREPNAME || item.SALESREP || 'Unknown Rep';
+                    let qty = item.QUANTITYORDERED || item.QTY || item.QUANTITY || '0';
+
+                    html += `
+                    <div class="bg-white border border-gray-200 border-l-4 border-l-blue-500 rounded-lg p-4 mb-3 shadow-sm">
+                        <div class="flex justify-between items-start mb-2">
+                            <div class="font-bold text-gray-800 leading-tight pr-2">${cust}</div>
+                            <div class="bg-blue-100 text-blue-800 font-bold text-lg px-3 py-1 rounded-md">${qty}</div>
+                        </div>
+                        <div class="text-xs font-bold text-gray-500 flex items-center gap-1 uppercase">
+                            <i class="ph-bold ph-user text-blue-500"></i> ${rep}
+                        </div>
+                    </div>`;
+                });
+
+                container.innerHTML = html;
+            }
+        }
+
         function resetLowStockView() { 
             lowStockViewLevel = 0; 
             selectedLowStockName = null; 
@@ -1235,7 +1336,6 @@
                 if (!i.DATE_COMPLETED || i.DATE_COMPLETED === "") return false;
                 const ptr = parseFloat(i.PTRAVAILABLE) || 0;
                 const ss = parseFloat(i.SEASONSUPPLY) || 0;
-                // Matches the 10% or greater logic
                 return ptr >= (ss * 1.10); 
             });
 
@@ -1252,10 +1352,8 @@
             const container = document.getElementById('review-content');
             const crumb = document.getElementById('review-crumb');
 
-            // NEW: DIVERTS TO RESERVES UI IF TAB IS CLICKED
             if (activeReviewTab === 'reserves') {
-                crumb.innerText = "Reserves View";
-                container.innerHTML = `<div class="p-8 text-center text-gray-400">Reserves list will go here.</div>`;
+                renderReserves();
                 return;
             }
 
