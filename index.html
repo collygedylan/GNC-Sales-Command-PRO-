@@ -139,7 +139,7 @@
             <div class="drawer-header">Menu</div>
             <div class="drawer-item" onclick="switchView('home'); toggleMenu();"><i class="ph-bold ph-house"></i> Home</div>
             <div class="drawer-item" onclick="switchView('drive'); toggleMenu();"><i class="ph-bold ph-car"></i> Drive Mode</div>
-            <div class="drawer-item" onclick="switchView('tasks'); toggleMenu();"><i class="ph-bold ph-clipboard-text"></i> My Tasks</div>
+            <div class="drawer-item hide-for-qc" onclick="switchView('tasks'); toggleMenu();"><i class="ph-bold ph-clipboard-text"></i> My Tasks</div>
             <div class="drawer-item text-orange-600 font-bold" onclick="switchView('docks'); toggleMenu();"><i class="ph-bold ph-truck"></i> Docks</div>
             
             <hr class="my-2">
@@ -159,8 +159,8 @@
                 </div>
                 
                 <div class="grid grid-cols-2 gap-4">
-                    <div onclick="switchView('tasks')" class="home-btn"><i class="ph-bold ph-clipboard-text text-3xl text-[#007a4d]"></i><span class="font-bold">Tasks</span></div>
-                    <div onclick="switchView('drive')" class="home-btn"><i class="ph-bold ph-car text-3xl text-blue-600"></i><span class="font-bold">Drive Mode</span></div>
+                    <div onclick="switchView('tasks')" class="home-btn hide-for-qc"><i class="ph-bold ph-clipboard-text text-3xl text-[#007a4d]"></i><span class="font-bold">Tasks</span></div>
+                    <div id="btn-drive-mode" onclick="switchView('drive')" class="home-btn"><i class="ph-bold ph-car text-3xl text-blue-600"></i><span class="font-bold">Drive Mode</span></div>
                     <div onclick="switchView('docks')" class="home-btn col-span-2 border-orange-200 bg-orange-50 text-orange-700"><i class="ph-bold ph-truck text-3xl"></i><span class="font-bold">Docks</span></div>
                     <div onclick="switchView('sales-office')" class="home-btn col-span-2 text-purple-600 border-purple-200 bg-purple-50 admin-only"><i class="ph-bold ph-briefcase text-3xl"></i><span class="font-bold">Sales Office</span></div>
                     <div onclick="switchView('low-stock')" class="home-btn col-span-2 text-purple-600 border-purple-200 bg-purple-50 dylan-only hidden"><i class="ph-bold ph-trend-down text-3xl"></i><span class="font-bold">Low Stock List</span></div>
@@ -405,7 +405,7 @@
         <nav class="fixed bottom-0 w-full bg-white border-t flex justify-around py-3 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-50">
             <div onclick="switchView('home')"><i class="ph-bold ph-house text-2xl text-gray-400"></i></div>
             <div onclick="switchView('drive')"><i class="ph-bold ph-car text-2xl text-gray-400"></i></div>
-            <div onclick="switchView('tasks')"><i class="ph-bold ph-clipboard-text text-2xl text-gray-400"></i></div>
+            <div class="hide-for-qc" onclick="switchView('tasks')"><i class="ph-bold ph-clipboard-text text-2xl text-gray-400"></i></div>
             <div onclick="switchView('docks')"><i class="ph-bold ph-truck text-2xl text-gray-400"></i></div>
         </nav>
     </div>
@@ -477,7 +477,7 @@
         }
 
         // ==========================================
-        // NEW: UNIVERSAL CUSTOM SORT ENGINE
+        // UNIVERSAL CUSTOM SORT ENGINE
         // ==========================================
         function customItemSort(a, b) {
             // 1. Sort by Priority (Smallest to Largest, nulls/blanks at bottom)
@@ -715,14 +715,33 @@
         function applyRolePermissions() {
             document.getElementById('view-login').style.display = 'none';
             document.getElementById('app-wrapper').classList.remove('hidden');
+            
             const isAdmin = (currentRole === 'Admin');
-            document.querySelectorAll('.admin-only').forEach(el => el.style.display = isAdmin ? 'block' : 'none');
+            document.querySelectorAll('.admin-only').forEach(el => {
+                if(isAdmin) { el.classList.remove('hidden'); el.style.display = ''; }
+                else { el.classList.add('hidden'); }
+            });
             
             const isDylan = (currentUser === 'dylan_collyge' || currentUser === 'dylan');
             document.querySelectorAll('.dylan-only').forEach(el => {
-                el.style.display = isDylan ? 'block' : 'none';
-                el.classList.remove('hidden'); 
+                if(isDylan) { el.classList.remove('hidden'); el.style.display = ''; }
+                else { el.classList.add('hidden'); }
             });
+
+            // NEW QC LOGIC: Hides tasks
+            const isQC = (currentRole === 'QC');
+            document.querySelectorAll('.hide-for-qc').forEach(el => {
+                if(isQC) { el.classList.add('hidden'); }
+                else { el.classList.remove('hidden'); el.style.display = ''; }
+            });
+
+            // Make Drive Mode span full width on Home if Tasks is hidden
+            const driveBtn = document.getElementById('btn-drive-mode');
+            if (isQC) {
+                driveBtn.classList.add('col-span-2');
+            } else {
+                driveBtn.classList.remove('col-span-2');
+            }
 
             if (isDylan) {
                 fetchRecentFiles();
@@ -1222,7 +1241,6 @@
                     }
                 });
                 
-                // NEW: APPLY UNIVERSAL CUSTOM SORT
                 finalItems.sort(customItemSort);
 
                 if (finalItems.length === 0) {
@@ -1235,11 +1253,9 @@
             }
         }
 
-        // NEW: Handles Drilldown selection in Reserves Tab
         function selectReservesName(name) { selectedReservesName = name; reservesViewLevel = 1; renderReview(); }
         function selectReservesSize(size, iCode) { selectedReservesSize = size; selectedReservesItemCode = iCode; reservesViewLevel = 2; renderReview(); }
 
-        // NEW: Handles displaying the Reserves hierarchy inside the Manager Review Tab
         function renderReserves() {
             const container = document.getElementById('review-content');
             const crumb = document.getElementById('review-crumb');
@@ -1250,7 +1266,6 @@
                 return;
             }
 
-            // Map data to Master Inventory to pull accurate COMMONNAME and CONTSIZE using ITEMCODE
             let enrichedReserves = reservesInventory.map(r => {
                 let iCode = String(r.ITEMCODE || r.ITEM || "").trim();
                 let masterMatch = fullInventory.find(m => String(m.ITEMCODE).trim().toUpperCase() === iCode.toUpperCase());
@@ -1278,7 +1293,6 @@
                 crumb.innerText = `Reserves > ${selectedReservesName}`;
                 const namedItems = enrichedReserves.filter(i => i.ENRICHED_NAME === selectedReservesName);
                 
-                // Group by Size AND ItemCode to show ItemCode badge properly
                 let sizeGroups = {};
                 namedItems.forEach(i => {
                     let key = `${i.ENRICHED_SIZE}|${i.ENRICHED_ICODE}`;
@@ -1369,7 +1383,6 @@
                 crumb.innerText = `${selectedLowStockName} / ${selectedLowStockSize}`;
                 let finalItems = lowStockInventory.filter(i => i.COMMONNAME === selectedLowStockName && i.CONTSIZE === selectedLowStockSize);
                 
-                // NEW: APPLY UNIVERSAL CUSTOM SORT
                 finalItems.sort(customItemSort);
                 
                 container.innerHTML = `<div class="back-btn" onclick="backToLowStockSizes()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>` + finalItems.map(i => generateCard(i, 'low-stock', 'status-purple')).join('');
@@ -1390,7 +1403,6 @@
                 return;
             }
 
-            // NEW: APPLY UNIVERSAL CUSTOM SORT
             officeItems.sort(customItemSort);
             
             container.innerHTML = officeItems.map(i => generateCard(i, 'sales-office')).join('');
@@ -1424,7 +1436,6 @@
                 crumb.innerText = `Review / ${selectedReviewUser}`;
                 let userItems = completedItems.filter(i => (i.ASSIGNEDTO || "Unassigned") === selectedReviewUser);
                 
-                // NEW: APPLY UNIVERSAL CUSTOM SORT
                 userItems.sort(customItemSort);
                 
                 container.innerHTML = `<div class="back-btn" onclick="reviewViewLevel=0; renderReview()"><i class="ph-bold ph-arrow-left"></i> Back to Users</div>` + 
@@ -1484,7 +1495,6 @@
                 crumb.innerText = `${selectedDriveName} / ${selectedDriveSize}`;
                 let finalItems = filteredItems.filter(i => i.COMMONNAME === selectedDriveName && i.CONTSIZE === selectedDriveSize);
                 
-                // NEW: APPLY UNIVERSAL CUSTOM SORT
                 finalItems.sort(customItemSort);
                 
                 container.innerHTML = `<div class="back-btn" onclick="backToDriveSizes()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>` + finalItems.map(i => generateCard(i, 'drive')).join('');
@@ -1571,7 +1581,6 @@
                 crumb.innerText = `${displayUser} / ${selectedTaskBlock} / ${selectedTaskLoc}`; 
                 let items = myItems.filter(i => (i.BLOCKALPHA || "Unassigned") === selectedTaskBlock && getLocPrefix(i.LOCATIONCODE) === selectedTaskLoc);
                 
-                // NEW: APPLY UNIVERSAL CUSTOM SORT
                 items.sort(customItemSort);
                 
                 container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=1; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Locs</div>` + 
