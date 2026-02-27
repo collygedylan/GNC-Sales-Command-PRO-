@@ -230,6 +230,12 @@
                     <h2 class="text-sm font-bold text-red-500 uppercase">Manager Review</h2>
                     <span id="review-crumb" class="text-xs font-bold text-[#007a4d]"></span>
                 </div>
+                
+                <div class="task-tabs mb-4">
+                    <div id="review-tab-completed" class="task-tab active" onclick="setReviewTab('completed')">Completed Tasks</div>
+                    <div id="review-tab-reserves" class="task-tab" onclick="setReviewTab('reserves')">Reserves</div>
+                </div>
+
                 <div id="review-content"></div>
             </div>
             
@@ -411,7 +417,7 @@
         let fullInventory = []; 
         let lowStockInventory = []; 
         let socInventory = []; 
-        let salesNotesDict = {}; // NEW: Holds the external Quick Notes
+        let salesNotesDict = {}; 
         
         let currentUser = "";
         let currentRole = "";
@@ -446,6 +452,7 @@
 
         let reviewViewLevel = 0;
         let selectedReviewUser = null;
+        let activeReviewTab = "completed"; // NEW STATE FOR MANAGER REVIEW TABS
         
         let dockViewLevel = 0;
         let selectedDockNum = null;
@@ -488,7 +495,6 @@
                         currentRole = res.role;
                         document.getElementById('header-user').innerText = currentUser.toUpperCase();
 
-                        // Capture the external notes mapping
                         salesNotesDict = res.salesNotesMap || {};
 
                         fullInventory = res.data.map((item, idx) => {
@@ -504,7 +510,6 @@
                             const ss = parseFloat(item.SEASONSUPPLY) || 0;
                             const iCode = String(item.ITEMCODE || "").trim().toUpperCase();
 
-                            // FIX: Must be 10% OR GREATER THAN Season Supply (>= 1.10)
                             if (iCode && !isNaN(pri) && pri > 0 && ptr >= (ss * 1.10)) {
                                 if (!itemsWithPriority[iCode]) itemsWithPriority[iCode] = [];
                                 itemsWithPriority[iCode].push(item);
@@ -515,7 +520,6 @@
                         for (const code in itemsWithPriority) {
                             let group = itemsWithPriority[code];
                             
-                            // Lowest Priority wins. If tied, Greatest Quantity wins.
                             group.sort((a, b) => {
                                 const priA = parseFloat(a.PRIORITY);
                                 const priB = parseFloat(b.PRIORITY);
@@ -706,7 +710,10 @@
                 if (currentRole === 'Admin' && !taskViewTargetUser) renderTeamSelector();
                 else renderTasks();
             }
-            if(viewId === 'review') { reviewViewLevel = 0; renderReview(); }
+            if(viewId === 'review') { 
+                reviewViewLevel = 0; 
+                setReviewTab('completed'); // Default back to completed tab when opened
+            }
             if(viewId === 'sales-office') { renderSalesOffice(); }
             if(viewId === 'low-stock') { resetLowStockView(); }
             if(viewId === 'docks') { 
@@ -730,6 +737,15 @@
             document.getElementById('tab-location').classList.toggle('active', tab === 'location');
             taskViewLevel = 0; 
             renderTasks();
+        }
+
+        // NEW: Handles switching between Completed and Reserves in the Manager Review
+        function setReviewTab(tab) {
+            activeReviewTab = tab;
+            document.getElementById('review-tab-completed').classList.toggle('active', tab === 'completed');
+            document.getElementById('review-tab-reserves').classList.toggle('active', tab === 'reserves');
+            reviewViewLevel = 0; 
+            renderReview();
         }
 
         function getLocPrefix(loc) {
@@ -1219,7 +1235,7 @@
                 if (!i.DATE_COMPLETED || i.DATE_COMPLETED === "") return false;
                 const ptr = parseFloat(i.PTRAVAILABLE) || 0;
                 const ss = parseFloat(i.SEASONSUPPLY) || 0;
-                // FIX: Matches the >= 1.10 logic
+                // Matches the 10% or greater logic
                 return ptr >= (ss * 1.10); 
             });
 
@@ -1235,6 +1251,14 @@
         function renderReview() {
             const container = document.getElementById('review-content');
             const crumb = document.getElementById('review-crumb');
+
+            // NEW: DIVERTS TO RESERVES UI IF TAB IS CLICKED
+            if (activeReviewTab === 'reserves') {
+                crumb.innerText = "Reserves View";
+                container.innerHTML = `<div class="p-8 text-center text-gray-400">Reserves list will go here.</div>`;
+                return;
+            }
+
             let completedItems = fullInventory.filter(i => i.DATE_COMPLETED && i.DATE_COMPLETED !== "");
             
             if (completedItems.length === 0) {
@@ -1400,7 +1424,7 @@
             }
         }
 
-        // NEW: Function to apply Quick Notes to a specific input field
+        // Function to apply Quick Notes to a specific input field
         function applyQuickNote(val, targetInputId) {
             if (!val) return;
             const targetInput = document.getElementById(targetInputId);
@@ -1459,7 +1483,7 @@
             document.getElementById('req-spec').value = activeItem.REQ_SPEC || "";
             document.getElementById('req-pick').value = activeItem.REQ_PICK || "";
             document.getElementById('req-sales-desc').value = activeItem.REQ_SALES_NOTE || "";
-            document.getElementById('req-comments').value = activeItem.REQ_COMMENTS || ""; // <-- NEW REQ COMMENTS LOAD
+            document.getElementById('req-comments').value = activeItem.REQ_COMMENTS || ""; 
 
             // POPULATE QUICK NOTES DROPDOWN
             const quickContainer = document.getElementById('quick-note-container');
@@ -1727,7 +1751,7 @@
             activeItem.REQ_CALIPER = document.getElementById('req-caliper').value;
             activeItem.REQ_PICK = document.getElementById('req-pick').value;
             activeItem.REQ_SALES_NOTE = document.getElementById('req-sales-desc').value.toUpperCase();
-            activeItem.REQ_COMMENTS = document.getElementById('req-comments').value; // <-- NEW REQ COMMENTS SAVE
+            activeItem.REQ_COMMENTS = document.getElementById('req-comments').value; 
 
             const payload = {
                 type: "update",
@@ -1744,7 +1768,7 @@
                 reqCaliper: activeItem.REQ_CALIPER,
                 reqPick: activeItem.REQ_PICK,
                 reqSalesDesc: activeItem.REQ_SALES_NOTE,
-                reqComments: activeItem.REQ_COMMENTS, // <-- NEW PAYLOAD FIELD
+                reqComments: activeItem.REQ_COMMENTS, 
                 reqPhotoLink: activeItem.REQ_PHOTO_LINK || "",
                 reqPhotoName: activeItem.REQ_PHOTO_NAME || "",
                 isComplete: isComplete 
