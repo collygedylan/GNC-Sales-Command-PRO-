@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GNC Command</title>
+    <title>GNC SALES COMMAND</title>
     
     <meta name="theme-color" content="#007a4d">
     <meta name="mobile-web-app-capable" content="yes">
@@ -83,7 +83,7 @@
 
     <div id="view-login">
         <div class="login-card">
-            <div class="text-3xl text-[#007a4d] font-bold mb-6">GNC Command</div>
+            <div class="text-3xl text-[#007a4d] font-bold mb-6">GNC SALES COMMAND</div>
             <div id="login-inputs">
                 <input type="text" id="username-input" class="input-field mb-4 text-center border-2" placeholder="USERNAME">
                 <input type="password" id="pin-code" class="input-field mb-4 text-center border-2 tracking-widest" placeholder="PASSWORD">
@@ -95,7 +95,7 @@
             </div>
             <div id="loading-spinner" class="hidden mt-6 flex flex-col items-center">
                 <div class="spinner"></div>
-                <div id="loading-text" class="text-white font-bold text-sm mt-3 text-center">Authenticating...</div>
+                <div id="loading-text" class="text-white font-bold text-sm mt-3 text-center">Authenticating & Syncing...</div>
             </div>
         </div>
     </div>
@@ -129,7 +129,7 @@
                 <i class="ph-bold ph-list menu-btn text-2xl cursor-pointer" onclick="toggleMenu()"></i>
                 <div class="flex flex-col">
                     <div class="font-bold text-lg leading-tight"><span id="header-user">User</span></div>
-                    <div class="text-[10px] opacity-80 leading-tight">GNC Command</div>
+                    <div class="text-[10px] opacity-80 leading-tight">GNC SALES COMMAND</div>
                 </div>
             </div>
         </header>
@@ -154,7 +154,7 @@
             
             <div id="view-home" class="hidden">
                 <div class="bg-[#007a4d] text-white p-8 rounded-2xl mb-6 shadow-lg text-center">
-                    <h1 class="text-2xl font-bold">GNC Command</h1>
+                    <h1 class="text-2xl font-bold">GNC SALES COMMAND</h1>
                     <p class="opacity-80 text-sm">Inventory Management</p>
                 </div>
                 
@@ -233,7 +233,7 @@
                 
                 <div class="task-tabs mb-4">
                     <div id="review-tab-completed" class="task-tab active" onclick="setReviewTab('completed')">Completed Tasks</div>
-                    <div id="review-tab-request" class="task-tab" onclick="setReviewTab('request')">Requests</div> <div id="review-tab-reserves" class="task-tab" onclick="setReviewTab('reserves')">Reserves</div>
+                    <div id="review-tab-reserves" class="task-tab" onclick="setReviewTab('reserves')">Reserves</div>
                 </div>
 
                 <div id="review-content"></div>
@@ -399,8 +399,6 @@
                 <button onclick="initiateBatchAction('email')" class="flex-1 bg-blue-100 text-blue-700 p-2 rounded-lg text-xs font-bold hover:bg-blue-200"><i class="ph-bold ph-envelope block text-lg mb-1"></i> Email</button>
                 <button onclick="initiateBatchAction('text')" class="flex-1 bg-green-100 text-green-700 p-2 rounded-lg text-xs font-bold hover:bg-green-200"><i class="ph-bold ph-chat block text-lg mb-1"></i> Text</button>
                 <button onclick="initiateBatchAction('assign')" class="flex-1 bg-purple-600 text-white p-2 rounded-lg text-xs font-bold shadow-md"><i class="ph-bold ph-user-plus block text-lg mb-1"></i> Assign</button>
-                
-                <button onclick="initiateBatchAction('flag_request')" class="flex-1 bg-yellow-100 text-yellow-700 p-2 rounded-lg text-xs font-bold hover:bg-yellow-200 shadow-sm"><i class="ph-bold ph-star block text-lg mb-1"></i> Request</button>
             </div>
         </div>
 
@@ -454,7 +452,7 @@
 
         let reviewViewLevel = 0;
         let selectedReviewUser = null;
-        let activeReviewTab = "completed"; 
+        let activeReviewTab = "completed"; // NEW STATE FOR MANAGER REVIEW TABS
         
         let dockViewLevel = 0;
         let selectedDockNum = null;
@@ -485,11 +483,10 @@
 
             document.getElementById('login-inputs').classList.add('hidden');
             document.getElementById('loading-spinner').classList.remove('hidden');
-            document.getElementById('loading-text').innerText = "Authenticating...";
+            document.getElementById('loading-text').innerText = "Authenticating & Syncing...";
 
             const loginUrl = `${GOOGLE_SCRIPT_URL}?action=login&username=${encodeURIComponent(inputUser)}&password=${encodeURIComponent(inputPass)}`;
 
-            // 1. Authenticate First
             fetch(loginUrl)
                 .then(response => response.json())
                 .then(res => {
@@ -498,29 +495,9 @@
                         currentRole = res.role;
                         document.getElementById('header-user').innerText = currentUser.toUpperCase();
 
-                        if (!isBiometricLogin && window.PublicKeyCredential) {
-                            promptToEnableBiometrics(inputUser, inputPass);
-                        }
+                        salesNotesDict = res.salesNotesMap || {};
 
-                        // 2. Fetch Data in Parallel once logged in
-                        document.getElementById('loading-text').innerText = "Downloading Inventory Data...";
-
-                        const p1 = fetch(`${GOOGLE_SCRIPT_URL}?action=getInventory`).then(r => r.json());
-                        const p2 = fetch(`${GOOGLE_SCRIPT_URL}?action=getSOC`).then(r => r.json());
-                        const p3 = fetch(`${GOOGLE_SCRIPT_URL}?action=getNotes`).then(r => r.json());
-
-                        return Promise.all([p1, p2, p3]);
-                    } else {
-                        throw new Error("MISMATCH");
-                    }
-                })
-                .then(results => {
-                    const invRes = results[0];
-                    const socRes = results[1];
-                    const notesRes = results[2];
-
-                    if (invRes.status === 'success') {
-                        fullInventory = invRes.data.map((item, idx) => {
+                        fullInventory = res.data.map((item, idx) => {
                             item.DOM_ID = 'fi_' + idx;
                             return item;
                         });
@@ -560,26 +537,26 @@
                         });
                         // --- END TOURNAMENT DEDUPLICATION ---
 
-                        lowStockInventory = (invRes.lowStock || []).map((item, idx) => {
+                        lowStockInventory = (res.lowStock || []).map((item, idx) => {
                             item.DOM_ID = 'ls_' + idx;
                             return item;
                         });
+                        socInventory = res.socData || [];
                         
-                        socInventory = socRes.socData || [];
-                        salesNotesDict = notesRes.salesNotesMap || {};
-                        
+                        if (!isBiometricLogin && window.PublicKeyCredential) {
+                            promptToEnableBiometrics(inputUser, inputPass);
+                        }
+
                         applyRolePermissions();
                     } else {
-                        throw new Error("Fetch failed");
+                        alert("MISMATCH DETECTED!\n\nIncorrect Username or Password.");
+                        document.getElementById('pin-code').value = "";
+                        document.getElementById('login-inputs').classList.remove('hidden');
+                        document.getElementById('loading-spinner').classList.add('hidden');
                     }
                 })
                 .catch(err => {
-                    if (err.message === "MISMATCH") {
-                        alert("MISMATCH DETECTED!\n\nIncorrect Username or Password.");
-                        document.getElementById('pin-code').value = "";
-                    } else {
-                        showToast("Error", "Network Error loading data. Please try again.", true);
-                    }
+                    showToast("Error", "Network Error. Please try again.", true);
                     document.getElementById('login-inputs').classList.remove('hidden');
                     document.getElementById('loading-spinner').classList.add('hidden');
                 });
@@ -604,7 +581,7 @@
                     await navigator.credentials.create({
                         publicKey: {
                             challenge: challenge,
-                            rp: { name: "GNC Command", id: window.location.hostname },
+                            rp: { name: "GNC SALES COMMAND", id: window.location.hostname },
                             user: { id: userId, name: user, displayName: user.toUpperCase() },
                             pubKeyCredParams: [{type: "public-key", alg: -7}, {type: "public-key", alg: -257}],
                             authenticatorSelection: { 
@@ -735,7 +712,7 @@
             }
             if(viewId === 'review') { 
                 reviewViewLevel = 0; 
-                setReviewTab('completed'); 
+                setReviewTab('completed'); // Default back to completed tab when opened
             }
             if(viewId === 'sales-office') { renderSalesOffice(); }
             if(viewId === 'low-stock') { resetLowStockView(); }
@@ -762,10 +739,10 @@
             renderTasks();
         }
 
+        // NEW: Handles switching between Completed and Reserves in the Manager Review
         function setReviewTab(tab) {
             activeReviewTab = tab;
             document.getElementById('review-tab-completed').classList.toggle('active', tab === 'completed');
-            document.getElementById('review-tab-request').classList.toggle('active', tab === 'request');
             document.getElementById('review-tab-reserves').classList.toggle('active', tab === 'reserves');
             reviewViewLevel = 0; 
             renderReview();
@@ -922,42 +899,7 @@
         
         function initiateBatchAction(action) {
             pendingAction = action;
-            if (action === 'flag_request') {
-                confirmFlagRequest(); // Bypass the modal and send directly
-            } else {
-                document.getElementById('tab-select-modal').classList.remove('hidden');
-            }
-        }
-
-        function confirmFlagRequest() {
-            showToast("Updating...", "Sending to Manager Review...", false);
-            
-            const domIds = Array.from(selectedItems);
-            const uniqueIds = [];
-            let itemsToUpdate = [];
-            
-            domIds.forEach(dId => {
-                let item = fullInventory.find(i => i.DOM_ID === dId) || lowStockInventory.find(i => i.DOM_ID === dId);
-                if (item) {
-                    uniqueIds.push(item.UNIQUE_ID);
-                    itemsToUpdate.push(item);
-                }
-            });
-            
-            fetch(GOOGLE_SCRIPT_URL, {
-                method: 'POST',
-                body: JSON.stringify({ type: 'batch_request', ids: uniqueIds })
-            }).then(res => res.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    showToast("Success", `Items flagged for Manager Review!`);
-                    itemsToUpdate.forEach(item => {
-                        item.MANAGER_REQUEST = "TRUE";
-                    });
-                    clearSelection();
-                    reRenderCurrentView(); 
-                } else { showToast("Error", "Failed to flag items", true); }
-            }).catch(err => showToast("Error", "Network error.", true));
+            document.getElementById('tab-select-modal').classList.remove('hidden');
         }
 
         function processTabSelection(tab) {
@@ -1310,24 +1252,10 @@
             const container = document.getElementById('review-content');
             const crumb = document.getElementById('review-crumb');
 
+            // NEW: DIVERTS TO RESERVES UI IF TAB IS CLICKED
             if (activeReviewTab === 'reserves') {
                 crumb.innerText = "Reserves View";
                 container.innerHTML = `<div class="p-8 text-center text-gray-400">Reserves list will go here.</div>`;
-                return;
-            }
-
-            // --- NEW REQUEST TAB LOGIC ---
-            if (activeReviewTab === 'request') {
-                crumb.innerText = "Manager Requests";
-                let reqItems = fullInventory.filter(i => String(i.MANAGER_REQUEST).toUpperCase() === 'TRUE');
-
-                if (reqItems.length === 0) {
-                    container.innerHTML = `<div class="p-8 text-center text-gray-400">No items flagged for review.</div>`;
-                    return;
-                }
-
-                reqItems.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
-                container.innerHTML = reqItems.map(i => generateCard(i, 'review', 'status-orange')).join('');
                 return;
             }
 
@@ -1872,3 +1800,4 @@
     </script>
 </body>
 </html>
+
