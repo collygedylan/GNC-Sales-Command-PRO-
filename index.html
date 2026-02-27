@@ -234,6 +234,7 @@
                 <div class="task-tabs mb-4">
                     <div id="review-tab-completed" class="task-tab active" onclick="setReviewTab('completed')">Completed Tasks</div>
                     <div id="review-tab-reserves" class="task-tab" onclick="setReviewTab('reserves')">Reserves</div>
+                    <div id="review-tab-request" class="task-tab" onclick="setReviewTab('request')">Request</div>
                 </div>
 
                 <div id="review-content"></div>
@@ -744,6 +745,7 @@
             activeReviewTab = tab;
             document.getElementById('review-tab-completed').classList.toggle('active', tab === 'completed');
             document.getElementById('review-tab-reserves').classList.toggle('active', tab === 'reserves');
+            document.getElementById('review-tab-request').classList.toggle('active', tab === 'request');
             reviewViewLevel = 0; 
             renderReview();
         }
@@ -1256,6 +1258,12 @@
             if (activeReviewTab === 'reserves') {
                 crumb.innerText = "Reserves View";
                 container.innerHTML = `<div class="p-8 text-center text-gray-400">Reserves list will go here.</div>`;
+                return;
+            }
+
+            if (activeReviewTab === 'request') {
+                crumb.innerText = "Request View";
+                container.innerHTML = `<div class="p-8 text-center text-gray-400">Request list will go here.</div>`;
                 return;
             }
 
@@ -1800,4 +1808,3 @@
     </script>
 </body>
 </html>
-
