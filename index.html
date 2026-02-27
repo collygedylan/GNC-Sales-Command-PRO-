@@ -480,7 +480,8 @@
                             const ss = parseFloat(item.SEASONSUPPLY) || 0;
                             const iCode = String(item.ITEMCODE || "").trim().toUpperCase();
 
-                            if (iCode && !isNaN(pri) && pri > 0 && ptr > (ss * 0.10)) {
+                            // Must be 10% GREATER THAN Season Supply (1.10)
+                            if (iCode && !isNaN(pri) && pri > 0 && ptr > (ss * 1.10)) {
                                 if (!itemsWithPriority[iCode]) itemsWithPriority[iCode] = [];
                                 itemsWithPriority[iCode].push(item);
                             }
@@ -489,7 +490,17 @@
                         let seasonWinnerIds = new Set();
                         for (const code in itemsWithPriority) {
                             let group = itemsWithPriority[code];
-                            group.sort((a, b) => parseFloat(a.PRIORITY) - parseFloat(b.PRIORITY));
+                            
+                            // Sort by Priority first, then by Highest Quantity on a tie
+                            group.sort((a, b) => {
+                                const priA = parseFloat(a.PRIORITY);
+                                const priB = parseFloat(b.PRIORITY);
+                                if (priA === priB) {
+                                    return (parseFloat(b.PTRAVAILABLE) || 0) - (parseFloat(a.PTRAVAILABLE) || 0);
+                                }
+                                return priA - priB;
+                            });
+                            
                             seasonWinnerIds.add(group[0].DOM_ID);
                         }
 
@@ -1182,7 +1193,7 @@
                 if (!i.DATE_COMPLETED || i.DATE_COMPLETED === "") return false;
                 const ptr = parseFloat(i.PTRAVAILABLE) || 0;
                 const ss = parseFloat(i.SEASONSUPPLY) || 0;
-                return ptr > (ss * 0.10); 
+                return ptr > (ss * 1.10); 
             });
 
             if (officeItems.length === 0) {
