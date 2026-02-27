@@ -417,7 +417,7 @@
         let fullInventory = []; 
         let lowStockInventory = []; 
         let socInventory = []; 
-        let reservesInventory = []; // NEW: Holds Reserves List
+        let reservesInventory = []; 
         let salesNotesDict = {}; 
         
         let currentUser = "";
@@ -455,7 +455,7 @@
         let selectedReviewUser = null;
         let activeReviewTab = "completed"; 
         
-        let reservesViewLevel = 0; // NEW: State for Reserves Drilldown
+        let reservesViewLevel = 0; 
         let selectedReservesName = null;
         let selectedReservesSize = null;
         let selectedReservesItemCode = null;
@@ -475,6 +475,48 @@
             }
             return url;
         }
+
+        // ==========================================
+        // NEW: UNIVERSAL CUSTOM SORT ENGINE
+        // ==========================================
+        function customItemSort(a, b) {
+            // 1. Sort by Priority (Smallest to Largest, nulls/blanks at bottom)
+            let priA = parseFloat(a.PRIORITY);
+            let priB = parseFloat(b.PRIORITY);
+            let hasPriA = !isNaN(priA) && String(a.PRIORITY).trim() !== "";
+            let hasPriB = !isNaN(priB) && String(b.PRIORITY).trim() !== "";
+
+            if (hasPriA && !hasPriB) return -1;
+            if (!hasPriA && hasPriB) return 1;
+            if (hasPriA && hasPriB && priA !== priB) return priA - priB;
+
+            // 2. Sort by LOTCODE Custom Ranking
+            function getLotRank(lot) {
+                let l = String(lot || "").toUpperCase();
+                if (l.includes("26.S1")) return 1;
+                if (l.includes("26.F1")) return 2;
+                if (l.includes("U1")) return 3;
+                if (l.includes("U2")) return 4;
+                if (l.includes("U3")) return 5;
+                if (l.includes("X")) return 6;
+                if (l.includes("Y")) return 7;
+                if (l.includes("Z")) return 8;
+                return 9; // Everything else
+            }
+
+            let rankA = getLotRank(a.LOTCODE);
+            let rankB = getLotRank(b.LOTCODE);
+
+            if (rankA !== rankB) return rankA - rankB;
+
+            // 3. Fallback: Alphabetical LOTCODE (sorts the "rest")
+            let lotCompare = String(a.LOTCODE || "").localeCompare(String(b.LOTCODE || ""));
+            if (lotCompare !== 0) return lotCompare;
+
+            // 4. Fallback: Location Code
+            return String(a.LOCATIONCODE || "").localeCompare(String(b.LOCATIONCODE || ""), undefined, {numeric: true});
+        }
+        // ==========================================
 
         window.onload = function() {};
 
@@ -1180,7 +1222,8 @@
                     }
                 });
                 
-                finalItems.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
+                // NEW: APPLY UNIVERSAL CUSTOM SORT
+                finalItems.sort(customItemSort);
 
                 if (finalItems.length === 0) {
                      container.innerHTML = `<div class="back-btn" onclick="dockViewLevel=1; renderDocks()"><i class="ph-bold ph-arrow-left"></i> Back to Stop</div><div class="p-8 text-center text-gray-400">This plant was requested for the Dock, but no matching records exist in the Master Inventory.</div>`;
@@ -1325,7 +1368,10 @@
             else if (lowStockViewLevel === 2) {
                 crumb.innerText = `${selectedLowStockName} / ${selectedLowStockSize}`;
                 let finalItems = lowStockInventory.filter(i => i.COMMONNAME === selectedLowStockName && i.CONTSIZE === selectedLowStockSize);
-                finalItems.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
+                
+                // NEW: APPLY UNIVERSAL CUSTOM SORT
+                finalItems.sort(customItemSort);
+                
                 container.innerHTML = `<div class="back-btn" onclick="backToLowStockSizes()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>` + finalItems.map(i => generateCard(i, 'low-stock', 'status-purple')).join('');
             }
         }
@@ -1344,7 +1390,9 @@
                 return;
             }
 
-            officeItems.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
+            // NEW: APPLY UNIVERSAL CUSTOM SORT
+            officeItems.sort(customItemSort);
+            
             container.innerHTML = officeItems.map(i => generateCard(i, 'sales-office')).join('');
         }
 
@@ -1375,7 +1423,10 @@
             } else if (reviewViewLevel === 1) {
                 crumb.innerText = `Review / ${selectedReviewUser}`;
                 let userItems = completedItems.filter(i => (i.ASSIGNEDTO || "Unassigned") === selectedReviewUser);
-                userItems.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
+                
+                // NEW: APPLY UNIVERSAL CUSTOM SORT
+                userItems.sort(customItemSort);
+                
                 container.innerHTML = `<div class="back-btn" onclick="reviewViewLevel=0; renderReview()"><i class="ph-bold ph-arrow-left"></i> Back to Users</div>` + 
                 userItems.map(i => generateCard(i, 'review')).join('');
             }
@@ -1432,7 +1483,10 @@
             else if (driveViewLevel === 2) {
                 crumb.innerText = `${selectedDriveName} / ${selectedDriveSize}`;
                 let finalItems = filteredItems.filter(i => i.COMMONNAME === selectedDriveName && i.CONTSIZE === selectedDriveSize);
-                finalItems.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
+                
+                // NEW: APPLY UNIVERSAL CUSTOM SORT
+                finalItems.sort(customItemSort);
+                
                 container.innerHTML = `<div class="back-btn" onclick="backToDriveSizes()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>` + finalItems.map(i => generateCard(i, 'drive')).join('');
             }
         }
@@ -1516,23 +1570,23 @@
             else if (taskViewLevel === 2) {
                 crumb.innerText = `${displayUser} / ${selectedTaskBlock} / ${selectedTaskLoc}`; 
                 let items = myItems.filter(i => (i.BLOCKALPHA || "Unassigned") === selectedTaskBlock && getLocPrefix(i.LOCATIONCODE) === selectedTaskLoc);
-                items.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
+                
+                // NEW: APPLY UNIVERSAL CUSTOM SORT
+                items.sort(customItemSort);
+                
                 container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=1; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Locs</div>` + 
                 items.map(i => generateCard(i, 'tasks')).join('');
             }
         }
 
-        // Function to apply Quick Notes to a specific input field
         function applyQuickNote(val, targetInputId) {
             if (!val) return;
             const targetInput = document.getElementById(targetInputId);
-            // Append with a space if there's already text, otherwise just set it
             if (targetInput.value.trim() !== "") {
                 targetInput.value = (targetInput.value + " " + val).toUpperCase();
             } else {
                 targetInput.value = val.toUpperCase();
             }
-            // Reset the select dropdown back to default
             if (targetInputId === 'in-sales-desc') {
                 document.getElementById('quick-note-select').value = "";
             } else {
@@ -1550,7 +1604,6 @@
             ['view-drive','view-tasks','view-review','view-sales-office','view-low-stock','view-docks'].forEach(v => document.getElementById(v).classList.add('hidden'));
             document.getElementById('view-detail').classList.remove('hidden');
             
-            // Hide Notes & Actions if coming from Docks
             const dtabActions = document.getElementById('dtab-actions');
             if (sourceView === 'docks') {
                 dtabActions.style.display = 'none';
@@ -1583,7 +1636,6 @@
             document.getElementById('req-sales-desc').value = activeItem.REQ_SALES_NOTE || "";
             document.getElementById('req-comments').value = activeItem.REQ_COMMENTS || ""; 
 
-            // POPULATE QUICK NOTES DROPDOWN
             const quickContainer = document.getElementById('quick-note-container');
             const quickSelect = document.getElementById('quick-note-select');
             const reqQuickContainer = document.getElementById('req-quick-note-container');
@@ -1627,8 +1679,6 @@
             document.getElementById('expand-content').innerHTML = '';
 
             renderPhotoPreview();
-            
-            // Ensure we start on overview, especially if coming from Docks
             switchDetailTab('overview');
         }
 
