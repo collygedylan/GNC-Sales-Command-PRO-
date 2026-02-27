@@ -95,7 +95,7 @@
             </div>
             <div id="loading-spinner" class="hidden mt-6 flex flex-col items-center">
                 <div class="spinner"></div>
-                <div id="loading-text" class="text-white font-bold text-sm mt-3 text-center">Authenticating & Syncing...</div>
+                <div id="loading-text" class="text-white font-bold text-sm mt-3 text-center">Authenticating...</div>
             </div>
         </div>
     </div>
@@ -452,7 +452,7 @@
 
         let reviewViewLevel = 0;
         let selectedReviewUser = null;
-        let activeReviewTab = "completed"; // NEW STATE FOR MANAGER REVIEW TABS
+        let activeReviewTab = "completed"; 
         
         let dockViewLevel = 0;
         let selectedDockNum = null;
@@ -483,10 +483,11 @@
 
             document.getElementById('login-inputs').classList.add('hidden');
             document.getElementById('loading-spinner').classList.remove('hidden');
-            document.getElementById('loading-text').innerText = "Authenticating & Syncing...";
+            document.getElementById('loading-text').innerText = "Authenticating...";
 
             const loginUrl = `${GOOGLE_SCRIPT_URL}?action=login&username=${encodeURIComponent(inputUser)}&password=${encodeURIComponent(inputPass)}`;
 
+            // 1. Authenticate First
             fetch(loginUrl)
                 .then(response => response.json())
                 .then(res => {
@@ -495,9 +496,29 @@
                         currentRole = res.role;
                         document.getElementById('header-user').innerText = currentUser.toUpperCase();
 
-                        salesNotesDict = res.salesNotesMap || {};
+                        if (!isBiometricLogin && window.PublicKeyCredential) {
+                            promptToEnableBiometrics(inputUser, inputPass);
+                        }
 
-                        fullInventory = res.data.map((item, idx) => {
+                        // 2. Fetch Data in Parallel once logged in
+                        document.getElementById('loading-text').innerText = "Downloading Inventory Data...";
+
+                        const p1 = fetch(`${GOOGLE_SCRIPT_URL}?action=getInventory`).then(r => r.json());
+                        const p2 = fetch(`${GOOGLE_SCRIPT_URL}?action=getSOC`).then(r => r.json());
+                        const p3 = fetch(`${GOOGLE_SCRIPT_URL}?action=getNotes`).then(r => r.json());
+
+                        return Promise.all([p1, p2, p3]);
+                    } else {
+                        throw new Error("MISMATCH");
+                    }
+                })
+                .then(results => {
+                    const invRes = results[0];
+                    const socRes = results[1];
+                    const notesRes = results[2];
+
+                    if (invRes.status === 'success') {
+                        fullInventory = invRes.data.map((item, idx) => {
                             item.DOM_ID = 'fi_' + idx;
                             return item;
                         });
@@ -537,26 +558,26 @@
                         });
                         // --- END TOURNAMENT DEDUPLICATION ---
 
-                        lowStockInventory = (res.lowStock || []).map((item, idx) => {
+                        lowStockInventory = (invRes.lowStock || []).map((item, idx) => {
                             item.DOM_ID = 'ls_' + idx;
                             return item;
                         });
-                        socInventory = res.socData || [];
                         
-                        if (!isBiometricLogin && window.PublicKeyCredential) {
-                            promptToEnableBiometrics(inputUser, inputPass);
-                        }
-
+                        socInventory = socRes.socData || [];
+                        salesNotesDict = notesRes.salesNotesMap || {};
+                        
                         applyRolePermissions();
                     } else {
-                        alert("MISMATCH DETECTED!\n\nIncorrect Username or Password.");
-                        document.getElementById('pin-code').value = "";
-                        document.getElementById('login-inputs').classList.remove('hidden');
-                        document.getElementById('loading-spinner').classList.add('hidden');
+                        throw new Error("Fetch failed");
                     }
                 })
                 .catch(err => {
-                    showToast("Error", "Network Error. Please try again.", true);
+                    if (err.message === "MISMATCH") {
+                        alert("MISMATCH DETECTED!\n\nIncorrect Username or Password.");
+                        document.getElementById('pin-code').value = "";
+                    } else {
+                        showToast("Error", "Network Error loading data. Please try again.", true);
+                    }
                     document.getElementById('login-inputs').classList.remove('hidden');
                     document.getElementById('loading-spinner').classList.add('hidden');
                 });
@@ -712,7 +733,7 @@
             }
             if(viewId === 'review') { 
                 reviewViewLevel = 0; 
-                setReviewTab('completed'); // Default back to completed tab when opened
+                setReviewTab('completed'); 
             }
             if(viewId === 'sales-office') { renderSalesOffice(); }
             if(viewId === 'low-stock') { resetLowStockView(); }
@@ -739,7 +760,6 @@
             renderTasks();
         }
 
-        // NEW: Handles switching between Completed and Reserves in the Manager Review
         function setReviewTab(tab) {
             activeReviewTab = tab;
             document.getElementById('review-tab-completed').classList.toggle('active', tab === 'completed');
@@ -1252,7 +1272,6 @@
             const container = document.getElementById('review-content');
             const crumb = document.getElementById('review-crumb');
 
-            // NEW: DIVERTS TO RESERVES UI IF TAB IS CLICKED
             if (activeReviewTab === 'reserves') {
                 crumb.innerText = "Reserves View";
                 container.innerHTML = `<div class="p-8 text-center text-gray-400">Reserves list will go here.</div>`;
@@ -1800,4 +1819,3 @@
     </script>
 </body>
 </html>
-
