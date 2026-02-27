@@ -48,8 +48,6 @@
         .status-green { border-left-color: #22c55e; } 
         .status-purple { border-left-color: #9333ea; } 
         .status-orange { border-left-color: #f97316; } 
-        .status-red { border-left-color: #ef4444; } /* NEW: For HOLDSTOPCODE S */
-        .status-yellow { border-left-color: #eab308; } /* NEW: For HOLDSTOPCODE H */
         
         .task-tabs { display: flex; border-bottom: 1px solid #e5e7eb; background: #f9fafb; margin-bottom: 10px; }
         .task-tab { flex: 1; text-align: center; padding: 12px; font-size: 11px; font-weight: 700; color: #6b7280; cursor: pointer; border-bottom: 3px solid transparent; text-transform: uppercase; }
@@ -141,7 +139,7 @@
             <div class="drawer-header">Menu</div>
             <div class="drawer-item" onclick="switchView('home'); toggleMenu();"><i class="ph-bold ph-house"></i> Home</div>
             <div class="drawer-item" onclick="switchView('drive'); toggleMenu();"><i class="ph-bold ph-car"></i> Drive Mode</div>
-            <div class="drawer-item hide-for-qc" onclick="switchView('tasks'); toggleMenu();"><i class="ph-bold ph-clipboard-text"></i> My Tasks</div>
+            <div class="drawer-item" onclick="switchView('tasks'); toggleMenu();"><i class="ph-bold ph-clipboard-text"></i> My Tasks</div>
             <div class="drawer-item text-orange-600 font-bold" onclick="switchView('docks'); toggleMenu();"><i class="ph-bold ph-truck"></i> Docks</div>
             
             <hr class="my-2">
@@ -161,8 +159,8 @@
                 </div>
                 
                 <div class="grid grid-cols-2 gap-4">
-                    <div onclick="switchView('tasks')" class="home-btn hide-for-qc"><i class="ph-bold ph-clipboard-text text-3xl text-[#007a4d]"></i><span class="font-bold">Tasks</span></div>
-                    <div id="btn-drive-mode" onclick="switchView('drive')" class="home-btn"><i class="ph-bold ph-car text-3xl text-blue-600"></i><span class="font-bold">Drive Mode</span></div>
+                    <div onclick="switchView('tasks')" class="home-btn"><i class="ph-bold ph-clipboard-text text-3xl text-[#007a4d]"></i><span class="font-bold">Tasks</span></div>
+                    <div onclick="switchView('drive')" class="home-btn"><i class="ph-bold ph-car text-3xl text-blue-600"></i><span class="font-bold">Drive Mode</span></div>
                     <div onclick="switchView('docks')" class="home-btn col-span-2 border-orange-200 bg-orange-50 text-orange-700"><i class="ph-bold ph-truck text-3xl"></i><span class="font-bold">Docks</span></div>
                     <div onclick="switchView('sales-office')" class="home-btn col-span-2 text-purple-600 border-purple-200 bg-purple-50 admin-only"><i class="ph-bold ph-briefcase text-3xl"></i><span class="font-bold">Sales Office</span></div>
                     <div onclick="switchView('low-stock')" class="home-btn col-span-2 text-purple-600 border-purple-200 bg-purple-50 dylan-only hidden"><i class="ph-bold ph-trend-down text-3xl"></i><span class="font-bold">Low Stock List</span></div>
@@ -407,7 +405,7 @@
         <nav class="fixed bottom-0 w-full bg-white border-t flex justify-around py-3 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-50">
             <div onclick="switchView('home')"><i class="ph-bold ph-house text-2xl text-gray-400"></i></div>
             <div onclick="switchView('drive')"><i class="ph-bold ph-car text-2xl text-gray-400"></i></div>
-            <div class="hide-for-qc" onclick="switchView('tasks')"><i class="ph-bold ph-clipboard-text text-2xl text-gray-400"></i></div>
+            <div onclick="switchView('tasks')"><i class="ph-bold ph-clipboard-text text-2xl text-gray-400"></i></div>
             <div onclick="switchView('docks')"><i class="ph-bold ph-truck text-2xl text-gray-400"></i></div>
         </nav>
     </div>
@@ -419,7 +417,6 @@
         let fullInventory = []; 
         let lowStockInventory = []; 
         let socInventory = []; 
-        let reservesInventory = []; 
         let salesNotesDict = {}; 
         
         let currentUser = "";
@@ -455,13 +452,8 @@
 
         let reviewViewLevel = 0;
         let selectedReviewUser = null;
-        let activeReviewTab = "completed"; 
+        let activeReviewTab = "completed"; // NEW STATE FOR MANAGER REVIEW TABS
         
-        let reservesViewLevel = 0; 
-        let selectedReservesName = null;
-        let selectedReservesSize = null;
-        let selectedReservesItemCode = null;
-
         let dockViewLevel = 0;
         let selectedDockNum = null;
         let selectedDockName = null;
@@ -477,48 +469,6 @@
             }
             return url;
         }
-
-        // ==========================================
-        // UNIVERSAL CUSTOM SORT ENGINE
-        // ==========================================
-        function customItemSort(a, b) {
-            // 1. Sort by Priority (Smallest to Largest, nulls/blanks at bottom)
-            let priA = parseFloat(a.PRIORITY);
-            let priB = parseFloat(b.PRIORITY);
-            let hasPriA = !isNaN(priA) && String(a.PRIORITY).trim() !== "";
-            let hasPriB = !isNaN(priB) && String(b.PRIORITY).trim() !== "";
-
-            if (hasPriA && !hasPriB) return -1;
-            if (!hasPriA && hasPriB) return 1;
-            if (hasPriA && hasPriB && priA !== priB) return priA - priB;
-
-            // 2. Sort by LOTCODE Custom Ranking
-            function getLotRank(lot) {
-                let l = String(lot || "").toUpperCase();
-                if (l.includes("26.S1")) return 1;
-                if (l.includes("26.F1")) return 2;
-                if (l.includes("U1")) return 3;
-                if (l.includes("U2")) return 4;
-                if (l.includes("U3")) return 5;
-                if (l.includes("X")) return 6;
-                if (l.includes("Y")) return 7;
-                if (l.includes("Z")) return 8;
-                return 9; // Everything else
-            }
-
-            let rankA = getLotRank(a.LOTCODE);
-            let rankB = getLotRank(b.LOTCODE);
-
-            if (rankA !== rankB) return rankA - rankB;
-
-            // 3. Fallback: Alphabetical LOTCODE (sorts the "rest")
-            let lotCompare = String(a.LOTCODE || "").localeCompare(String(b.LOTCODE || ""));
-            if (lotCompare !== 0) return lotCompare;
-
-            // 4. Fallback: Location Code
-            return String(a.LOCATIONCODE || "").localeCompare(String(b.LOCATIONCODE || ""), undefined, {numeric: true});
-        }
-        // ==========================================
 
         window.onload = function() {};
 
@@ -546,7 +496,6 @@
                         document.getElementById('header-user').innerText = currentUser.toUpperCase();
 
                         salesNotesDict = res.salesNotesMap || {};
-                        reservesInventory = res.reservesData || [];
 
                         fullInventory = res.data.map((item, idx) => {
                             item.DOM_ID = 'fi_' + idx;
@@ -717,33 +666,14 @@
         function applyRolePermissions() {
             document.getElementById('view-login').style.display = 'none';
             document.getElementById('app-wrapper').classList.remove('hidden');
-            
             const isAdmin = (currentRole === 'Admin');
-            document.querySelectorAll('.admin-only').forEach(el => {
-                if(isAdmin) { el.classList.remove('hidden'); el.style.display = ''; }
-                else { el.classList.add('hidden'); }
-            });
+            document.querySelectorAll('.admin-only').forEach(el => el.style.display = isAdmin ? 'block' : 'none');
             
             const isDylan = (currentUser === 'dylan_collyge' || currentUser === 'dylan');
             document.querySelectorAll('.dylan-only').forEach(el => {
-                if(isDylan) { el.classList.remove('hidden'); el.style.display = ''; }
-                else { el.classList.add('hidden'); }
+                el.style.display = isDylan ? 'block' : 'none';
+                el.classList.remove('hidden'); 
             });
-
-            // NEW QC LOGIC: Hides tasks
-            const isQC = (currentRole === 'QC');
-            document.querySelectorAll('.hide-for-qc').forEach(el => {
-                if(isQC) { el.classList.add('hidden'); }
-                else { el.classList.remove('hidden'); el.style.display = ''; }
-            });
-
-            // Make Drive Mode span full width on Home if Tasks is hidden
-            const driveBtn = document.getElementById('btn-drive-mode');
-            if (isQC) {
-                driveBtn.classList.add('col-span-2');
-            } else {
-                driveBtn.classList.remove('col-span-2');
-            }
 
             if (isDylan) {
                 fetchRecentFiles();
@@ -782,7 +712,7 @@
             }
             if(viewId === 'review') { 
                 reviewViewLevel = 0; 
-                setReviewTab('completed'); 
+                setReviewTab('completed'); // Default back to completed tab when opened
             }
             if(viewId === 'sales-office') { renderSalesOffice(); }
             if(viewId === 'low-stock') { resetLowStockView(); }
@@ -809,12 +739,12 @@
             renderTasks();
         }
 
+        // NEW: Handles switching between Completed and Reserves in the Manager Review
         function setReviewTab(tab) {
             activeReviewTab = tab;
             document.getElementById('review-tab-completed').classList.toggle('active', tab === 'completed');
             document.getElementById('review-tab-reserves').classList.toggle('active', tab === 'reserves');
             reviewViewLevel = 0; 
-            reservesViewLevel = 0; 
             renderReview();
         }
 
@@ -911,7 +841,7 @@
             }
         }
 
-        function generateCard(item, sourceView, defaultColorClass = 'status-green') {
+        function generateCard(item, sourceView, colorClass = 'status-green') {
             let thumbHtml = '';
             let photoLink = item.SAVED_PHOTO_LINK || item['PHOTO LINK'] || item.PHOTOLINK || "";
             
@@ -930,18 +860,6 @@
             const isChecked = selectedItems.has(item.DOM_ID) ? 'checked' : '';
             const tagColor = item.FIELDTAGCOLOR || item['FIELD TAG COLOR'] || '-';
 
-            // NEW HOLDSTOPCODE LOGIC (Overrides Left Border Color)
-            let holdCode = String(item.HOLDSTOPCODE || item['HOLD STOP CODE'] || item.HOLD || "").trim().toUpperCase();
-            let cardColor = defaultColorClass;
-            
-            if (holdCode === 'S') {
-                cardColor = 'status-red';
-            } else if (holdCode === 'H') {
-                cardColor = 'status-yellow';
-            } else if (holdCode === '') {
-                cardColor = 'status-green';
-            }
-
             return `
             <div class="flex items-center w-full mb-2 item-row" data-dom-id="${item.DOM_ID}"
                  onmousedown="startPress(event, '${item.DOM_ID}')" 
@@ -957,7 +875,7 @@
                     <input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm pointer-events-none" ${isChecked}>
                 </div>
                 
-                <div class="inv-card ${cardColor} flex items-center justify-between flex-grow !mb-0 transition-transform active:scale-[0.99]">
+                <div class="inv-card ${colorClass} flex items-center justify-between flex-grow !mb-0 transition-transform active:scale-[0.99]">
                     <div class="flex-grow min-w-0">
                         <div class="flex justify-between font-bold text-sm mb-1">
                             <span class="text-[#007a4d] truncate pr-2">${item.LOCATIONCODE || 'No Loc'} • ${item.COMMONNAME || 'Unknown'}</span>
@@ -1178,6 +1096,7 @@
                     return;
                 }
 
+                // Group by STOPNUMBER and attach plants inside using ITEMCODE instead of LOC
                 let stopsMap = {};
                 dockItems.forEach(i => {
                     let stopNum = i.STOPNUMBER || "Unassigned"; 
@@ -1255,7 +1174,7 @@
                     }
                 });
                 
-                finalItems.sort(customItemSort);
+                finalItems.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
 
                 if (finalItems.length === 0) {
                      container.innerHTML = `<div class="back-btn" onclick="dockViewLevel=1; renderDocks()"><i class="ph-bold ph-arrow-left"></i> Back to Stop</div><div class="p-8 text-center text-gray-400">This plant was requested for the Dock, but no matching records exist in the Master Inventory.</div>`;
@@ -1264,97 +1183,6 @@
                 
                 container.innerHTML = `<div class="back-btn" onclick="dockViewLevel=1; renderDocks()"><i class="ph-bold ph-arrow-left"></i> Back to Stop</div>` + 
                 finalItems.map(i => generateCard(i, 'docks', 'status-orange')).join('');
-            }
-        }
-
-        function selectReservesName(name) { selectedReservesName = name; reservesViewLevel = 1; renderReview(); }
-        function selectReservesSize(size, iCode) { selectedReservesSize = size; selectedReservesItemCode = iCode; reservesViewLevel = 2; renderReview(); }
-
-        function renderReserves() {
-            const container = document.getElementById('review-content');
-            const crumb = document.getElementById('review-crumb');
-
-            if (reservesInventory.length === 0) {
-                crumb.innerText = "Reserves View";
-                container.innerHTML = `<div class="p-8 text-center text-gray-400">No reserves data available.</div>`;
-                return;
-            }
-
-            let enrichedReserves = reservesInventory.map(r => {
-                let iCode = String(r.ITEMCODE || r.ITEM || "").trim();
-                let masterMatch = fullInventory.find(m => String(m.ITEMCODE).trim().toUpperCase() === iCode.toUpperCase());
-                
-                return {
-                    ...r,
-                    ENRICHED_NAME: masterMatch ? masterMatch.COMMONNAME : (r.COMMONNAME || 'Unknown Name'),
-                    ENRICHED_SIZE: masterMatch ? masterMatch.CONTSIZE : (r.CONTSIZE || r.SIZE || 'Unknown Size'),
-                    ENRICHED_ICODE: iCode
-                };
-            });
-
-            if (reservesViewLevel === 0) {
-                crumb.innerText = "Reserves > Plant Names";
-                const names = [...new Set(enrichedReserves.map(i => i.ENRICHED_NAME))].sort();
-                container.innerHTML = names.map(n => {
-                    const count = enrichedReserves.filter(i => i.ENRICHED_NAME === n).length;
-                    return `<div class="drill-item" onclick="selectReservesName('${n.replace(/'/g, "\\'")}')">
-                                <span class="font-bold text-lg">${n} <span class="text-gray-400 text-sm font-normal">(${count})</span></span>
-                                <i class="ph-bold ph-caret-right text-gray-300"></i>
-                            </div>`;
-                }).join('');
-            } 
-            else if (reservesViewLevel === 1) {
-                crumb.innerText = `Reserves > ${selectedReservesName}`;
-                const namedItems = enrichedReserves.filter(i => i.ENRICHED_NAME === selectedReservesName);
-                
-                let sizeGroups = {};
-                namedItems.forEach(i => {
-                    let key = `${i.ENRICHED_SIZE}|${i.ENRICHED_ICODE}`;
-                    if (!sizeGroups[key]) sizeGroups[key] = { size: i.ENRICHED_SIZE, iCode: i.ENRICHED_ICODE, count: 0 };
-                    sizeGroups[key].count++;
-                });
-
-                let html = `<div class="back-btn" onclick="reservesViewLevel=0; renderReview()"><i class="ph-bold ph-arrow-left"></i> Back to Names</div>
-                            <div class="font-bold text-[#007a4d] mb-4 px-2 text-xl border-b pb-2">${selectedReservesName}</div>`;
-                
-                Object.values(sizeGroups).sort((a,b) => a.size.localeCompare(b.size)).forEach(sg => {
-                    html += `<div class="drill-item" onclick="selectReservesSize('${sg.size}', '${sg.iCode.replace(/'/g, "\\'")}')">
-                                <div>
-                                    <div class="font-bold text-lg">${sg.size} <span class="text-gray-400 text-sm font-normal">(${sg.count})</span></div>
-                                    <div class="text-xs font-bold text-blue-600"><i class="ph-bold ph-barcode mr-1"></i>${sg.iCode}</div>
-                                </div>
-                                <i class="ph-bold ph-caret-right text-gray-300"></i>
-                            </div>`;
-                });
-                container.innerHTML = html;
-            }
-            else if (reservesViewLevel === 2) {
-                crumb.innerText = `Reserves > ${selectedReservesSize}`;
-                let finalItems = enrichedReserves.filter(i => i.ENRICHED_NAME === selectedReservesName && i.ENRICHED_SIZE === selectedReservesSize && i.ENRICHED_ICODE === selectedReservesItemCode);
-                
-                let html = `<div class="back-btn" onclick="reservesViewLevel=1; renderReview()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>`;
-                
-                finalItems.forEach(item => {
-                    let cust = item.CUSTOMERNAME || item.CUSTOMER || 'Unknown Customer';
-                    let cons = item.CONSIGNEENAME || item.CONSIGNEE || '';
-                    if (cons && cons.trim() !== "" && cons !== cust) cust += ` - ${cons}`;
-                    
-                    let rep = item.SALESREPNAME || item.SALESREP || 'Unknown Rep';
-                    let qty = item.QUANTITYORDERED || item.QTY || item.QUANTITY || '0';
-
-                    html += `
-                    <div class="bg-white border border-gray-200 border-l-4 border-l-blue-500 rounded-lg p-4 mb-3 shadow-sm">
-                        <div class="flex justify-between items-start mb-2">
-                            <div class="font-bold text-gray-800 leading-tight pr-2">${cust}</div>
-                            <div class="bg-blue-100 text-blue-800 font-bold text-lg px-3 py-1 rounded-md">${qty}</div>
-                        </div>
-                        <div class="text-xs font-bold text-gray-500 flex items-center gap-1 uppercase">
-                            <i class="ph-bold ph-user text-blue-500"></i> ${rep}
-                        </div>
-                    </div>`;
-                });
-
-                container.innerHTML = html;
             }
         }
 
@@ -1396,9 +1224,7 @@
             else if (lowStockViewLevel === 2) {
                 crumb.innerText = `${selectedLowStockName} / ${selectedLowStockSize}`;
                 let finalItems = lowStockInventory.filter(i => i.COMMONNAME === selectedLowStockName && i.CONTSIZE === selectedLowStockSize);
-                
-                finalItems.sort(customItemSort);
-                
+                finalItems.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
                 container.innerHTML = `<div class="back-btn" onclick="backToLowStockSizes()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>` + finalItems.map(i => generateCard(i, 'low-stock', 'status-purple')).join('');
             }
         }
@@ -1409,6 +1235,7 @@
                 if (!i.DATE_COMPLETED || i.DATE_COMPLETED === "") return false;
                 const ptr = parseFloat(i.PTRAVAILABLE) || 0;
                 const ss = parseFloat(i.SEASONSUPPLY) || 0;
+                // Matches the 10% or greater logic
                 return ptr >= (ss * 1.10); 
             });
 
@@ -1417,8 +1244,7 @@
                 return;
             }
 
-            officeItems.sort(customItemSort);
-            
+            officeItems.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
             container.innerHTML = officeItems.map(i => generateCard(i, 'sales-office')).join('');
         }
 
@@ -1426,8 +1252,10 @@
             const container = document.getElementById('review-content');
             const crumb = document.getElementById('review-crumb');
 
+            // NEW: DIVERTS TO RESERVES UI IF TAB IS CLICKED
             if (activeReviewTab === 'reserves') {
-                renderReserves();
+                crumb.innerText = "Reserves View";
+                container.innerHTML = `<div class="p-8 text-center text-gray-400">Reserves list will go here.</div>`;
                 return;
             }
 
@@ -1449,9 +1277,7 @@
             } else if (reviewViewLevel === 1) {
                 crumb.innerText = `Review / ${selectedReviewUser}`;
                 let userItems = completedItems.filter(i => (i.ASSIGNEDTO || "Unassigned") === selectedReviewUser);
-                
-                userItems.sort(customItemSort);
-                
+                userItems.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
                 container.innerHTML = `<div class="back-btn" onclick="reviewViewLevel=0; renderReview()"><i class="ph-bold ph-arrow-left"></i> Back to Users</div>` + 
                 userItems.map(i => generateCard(i, 'review')).join('');
             }
@@ -1508,9 +1334,7 @@
             else if (driveViewLevel === 2) {
                 crumb.innerText = `${selectedDriveName} / ${selectedDriveSize}`;
                 let finalItems = filteredItems.filter(i => i.COMMONNAME === selectedDriveName && i.CONTSIZE === selectedDriveSize);
-                
-                finalItems.sort(customItemSort);
-                
+                finalItems.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
                 container.innerHTML = `<div class="back-btn" onclick="backToDriveSizes()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>` + finalItems.map(i => generateCard(i, 'drive')).join('');
             }
         }
@@ -1594,22 +1418,23 @@
             else if (taskViewLevel === 2) {
                 crumb.innerText = `${displayUser} / ${selectedTaskBlock} / ${selectedTaskLoc}`; 
                 let items = myItems.filter(i => (i.BLOCKALPHA || "Unassigned") === selectedTaskBlock && getLocPrefix(i.LOCATIONCODE) === selectedTaskLoc);
-                
-                items.sort(customItemSort);
-                
+                items.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
                 container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=1; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Locs</div>` + 
                 items.map(i => generateCard(i, 'tasks')).join('');
             }
         }
 
+        // Function to apply Quick Notes to a specific input field
         function applyQuickNote(val, targetInputId) {
             if (!val) return;
             const targetInput = document.getElementById(targetInputId);
+            // Append with a space if there's already text, otherwise just set it
             if (targetInput.value.trim() !== "") {
                 targetInput.value = (targetInput.value + " " + val).toUpperCase();
             } else {
                 targetInput.value = val.toUpperCase();
             }
+            // Reset the select dropdown back to default
             if (targetInputId === 'in-sales-desc') {
                 document.getElementById('quick-note-select').value = "";
             } else {
@@ -1627,6 +1452,7 @@
             ['view-drive','view-tasks','view-review','view-sales-office','view-low-stock','view-docks'].forEach(v => document.getElementById(v).classList.add('hidden'));
             document.getElementById('view-detail').classList.remove('hidden');
             
+            // Hide Notes & Actions if coming from Docks
             const dtabActions = document.getElementById('dtab-actions');
             if (sourceView === 'docks') {
                 dtabActions.style.display = 'none';
@@ -1659,6 +1485,7 @@
             document.getElementById('req-sales-desc').value = activeItem.REQ_SALES_NOTE || "";
             document.getElementById('req-comments').value = activeItem.REQ_COMMENTS || ""; 
 
+            // POPULATE QUICK NOTES DROPDOWN
             const quickContainer = document.getElementById('quick-note-container');
             const quickSelect = document.getElementById('quick-note-select');
             const reqQuickContainer = document.getElementById('req-quick-note-container');
@@ -1702,6 +1529,8 @@
             document.getElementById('expand-content').innerHTML = '';
 
             renderPhotoPreview();
+            
+            // Ensure we start on overview, especially if coming from Docks
             switchDetailTab('overview');
         }
 
@@ -1971,3 +1800,4 @@
     </script>
 </body>
 </html>
+
