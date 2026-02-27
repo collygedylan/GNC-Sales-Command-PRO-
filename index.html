@@ -296,6 +296,14 @@
                             <label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label>
                             <input type="text" id="in-caliper" class="input-field" placeholder="e.g. 2 inch">
                         </div>
+                        
+                        <div id="quick-note-container" class="hidden mb-2">
+                            <label class="text-[10px] font-bold text-green-700 uppercase">Quick Notes</label>
+                            <select id="quick-note-select" class="input-field border-green-500 bg-green-50 text-sm font-bold text-green-800" onchange="applyQuickNote(this.value, 'in-sales-desc')">
+                                <option value="">-- Select a Quick Note --</option>
+                            </select>
+                        </div>
+                        
                         <div>
                             <label class="text-[10px] font-bold text-green-700 uppercase">Sales Description</label>
                             <input type="text" id="in-sales-desc" class="input-field border-green-500 bg-green-50 uppercase" oninput="this.value = this.value.toUpperCase()" placeholder="TYPE NOTES HERE...">
@@ -344,6 +352,14 @@
                             <label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label>
                             <input type="text" id="req-caliper" class="input-field" placeholder="e.g. 2 inch">
                         </div>
+
+                        <div id="req-quick-note-container" class="hidden mb-2">
+                            <label class="text-[10px] font-bold text-purple-700 uppercase">Quick Notes</label>
+                            <select id="req-quick-note-select" class="input-field border-purple-500 bg-purple-50 text-sm font-bold text-purple-800" onchange="applyQuickNote(this.value, 'req-sales-desc')">
+                                <option value="">-- Select a Quick Note --</option>
+                            </select>
+                        </div>
+
                         <div>
                             <label class="text-[10px] font-bold text-purple-700 uppercase">Sales Description</label>
                             <input type="text" id="req-sales-desc" class="input-field border-purple-500 bg-purple-50 uppercase" oninput="this.value = this.value.toUpperCase()" placeholder="TYPE NOTES HERE...">
@@ -391,6 +407,7 @@
         let fullInventory = []; 
         let lowStockInventory = []; 
         let socInventory = []; 
+        let salesNotesDict = {}; // NEW: Holds the external Quick Notes
         
         let currentUser = "";
         let currentRole = "";
@@ -467,6 +484,9 @@
                         currentRole = res.role;
                         document.getElementById('header-user').innerText = currentUser.toUpperCase();
 
+                        // Capture the external notes mapping
+                        salesNotesDict = res.salesNotesMap || {};
+
                         fullInventory = res.data.map((item, idx) => {
                             item.DOM_ID = 'fi_' + idx;
                             return item;
@@ -480,8 +500,8 @@
                             const ss = parseFloat(item.SEASONSUPPLY) || 0;
                             const iCode = String(item.ITEMCODE || "").trim().toUpperCase();
 
-                            // Must be 10% GREATER THAN Season Supply (1.10)
-                            if (iCode && !isNaN(pri) && pri > 0 && ptr > (ss * 1.10)) {
+                            // FIX: Must be 10% OR GREATER THAN Season Supply (>= 1.10)
+                            if (iCode && !isNaN(pri) && pri > 0 && ptr >= (ss * 1.10)) {
                                 if (!itemsWithPriority[iCode]) itemsWithPriority[iCode] = [];
                                 itemsWithPriority[iCode].push(item);
                             }
@@ -491,7 +511,7 @@
                         for (const code in itemsWithPriority) {
                             let group = itemsWithPriority[code];
                             
-                            // Sort by Priority first, then by Highest Quantity on a tie
+                            // Lowest Priority wins. If tied, Greatest Quantity wins.
                             group.sort((a, b) => {
                                 const priA = parseFloat(a.PRIORITY);
                                 const priB = parseFloat(b.PRIORITY);
@@ -1193,7 +1213,8 @@
                 if (!i.DATE_COMPLETED || i.DATE_COMPLETED === "") return false;
                 const ptr = parseFloat(i.PTRAVAILABLE) || 0;
                 const ss = parseFloat(i.SEASONSUPPLY) || 0;
-                return ptr > (ss * 1.10); 
+                // FIX: Matches the 10% or greater logic
+                return ptr >= (ss * 1.10); 
             });
 
             if (officeItems.length === 0) {
@@ -1373,6 +1394,24 @@
             }
         }
 
+        // NEW: Function to apply Quick Notes to a specific input field
+        function applyQuickNote(val, targetInputId) {
+            if (!val) return;
+            const targetInput = document.getElementById(targetInputId);
+            // Append with a space if there's already text, otherwise just set it
+            if (targetInput.value.trim() !== "") {
+                targetInput.value = (targetInput.value + " " + val).toUpperCase();
+            } else {
+                targetInput.value = val.toUpperCase();
+            }
+            // Reset the select dropdown back to default
+            if (targetInputId === 'in-sales-desc') {
+                document.getElementById('quick-note-select').value = "";
+            } else {
+                document.getElementById('req-quick-note-select').value = "";
+            }
+        }
+
         function openDetail(uniqueId, sourceView) {
             lastView = sourceView;
             
@@ -1383,7 +1422,7 @@
             ['view-drive','view-tasks','view-review','view-sales-office','view-low-stock','view-docks'].forEach(v => document.getElementById(v).classList.add('hidden'));
             document.getElementById('view-detail').classList.remove('hidden');
             
-            // NEW CONSTRAINT: Hide Notes & Actions if coming from Docks
+            // Hide Notes & Actions if coming from Docks
             const dtabActions = document.getElementById('dtab-actions');
             if (sourceView === 'docks') {
                 dtabActions.style.display = 'none';
@@ -1414,6 +1453,33 @@
             document.getElementById('req-spec').value = activeItem.REQ_SPEC || "";
             document.getElementById('req-pick').value = activeItem.REQ_PICK || "";
             document.getElementById('req-sales-desc').value = activeItem.REQ_SALES_NOTE || "";
+
+            // POPULATE QUICK NOTES DROPDOWN
+            const quickContainer = document.getElementById('quick-note-container');
+            const quickSelect = document.getElementById('quick-note-select');
+            const reqQuickContainer = document.getElementById('req-quick-note-container');
+            const reqQuickSelect = document.getElementById('req-quick-note-select');
+            
+            quickSelect.innerHTML = '<option value="">-- Select a Quick Note --</option>';
+            reqQuickSelect.innerHTML = '<option value="">-- Select a Quick Note --</option>';
+            
+            let cNameClean = String(activeItem.COMMONNAME || "").trim().toUpperCase();
+            if (salesNotesDict[cNameClean] && salesNotesDict[cNameClean].length > 0) {
+                salesNotesDict[cNameClean].forEach(note => {
+                    let opt1 = document.createElement('option');
+                    opt1.value = note; opt1.innerText = note;
+                    quickSelect.appendChild(opt1);
+                    
+                    let opt2 = document.createElement('option');
+                    opt2.value = note; opt2.innerText = note;
+                    reqQuickSelect.appendChild(opt2);
+                });
+                quickContainer.classList.remove('hidden');
+                reqQuickContainer.classList.remove('hidden');
+            } else {
+                quickContainer.classList.add('hidden');
+                reqQuickContainer.classList.add('hidden');
+            }
 
             const caliperSizes = ["7DP", "#7", "#10", "#15", "#25", "#45"];
             if (caliperSizes.includes(activeItem.CONTSIZE)) {
