@@ -236,12 +236,12 @@
                 </div>
             </div>
 
-            <div id="view-request" class="hidden admin-only">
+            <div id="view-request" class="hidden">
                 <div id="request-crumb" class="text-xs font-bold text-[#007a4d] mb-3 empty:hidden"></div>
                 <div id="request-content"></div>
             </div>
 
-            <div id="view-reserves" class="hidden admin-only">
+            <div id="view-reserves" class="hidden">
                 <input type="text" id="reserves-search" class="input-field mb-2" placeholder="Search Plants or Customers..." onkeyup="handleReservesSearch()">
                 <div id="reserves-crumb" class="text-xs font-bold text-[#007a4d] mb-3 empty:hidden"></div>
                 <div id="reserves-content"></div>
@@ -253,12 +253,12 @@
                 <div id="docks-content"></div>
             </div>
 
-            <div id="view-low-stock" class="hidden dylan-only">
+            <div id="view-low-stock" class="hidden">
                 <div id="low-stock-crumb" class="text-xs font-bold text-[#007a4d] mb-3">Action Required</div>
                 <div id="low-stock-content"></div>
             </div>
 
-            <div id="view-sales-office" class="hidden admin-only">
+            <div id="view-sales-office" class="hidden">
                 <div class="text-xs font-bold text-[#007a4d] mb-3">Completed Season Items</div>
                 <div id="sales-office-content"></div>
             </div>
@@ -279,7 +279,7 @@
                 <div id="task-content"></div>
             </div>
             
-            <div id="view-review" class="hidden admin-only">
+            <div id="view-review" class="hidden">
                 <div id="review-crumb" class="text-xs font-bold text-[#007a4d] mb-3"></div>
                 <div class="task-tabs mb-4">
                     <div id="review-tab-completed" class="task-tab active" onclick="setReviewTab('completed')">Completed Tasks</div>
@@ -870,13 +870,25 @@
         function applyRolePermissions() {
             document.getElementById('view-login').style.display = 'none';
             document.getElementById('app-wrapper').classList.remove('hidden');
+            
             const isAdmin = (currentRole === 'Admin');
-            document.querySelectorAll('.admin-only').forEach(el => el.style.display = isAdmin ? 'block' : 'none');
+            document.querySelectorAll('.admin-only').forEach(el => {
+                if(isAdmin) {
+                    el.classList.remove('hidden');
+                    el.style.display = ''; // clean up any old inline block
+                } else {
+                    el.classList.add('hidden');
+                }
+            });
             
             const isDylan = (currentUser === 'dylan_collyge' || currentUser === 'dylan');
             document.querySelectorAll('.dylan-only').forEach(el => {
-                el.style.display = isDylan ? 'block' : 'none';
-                el.classList.remove('hidden'); 
+                if(isDylan) {
+                    el.classList.remove('hidden');
+                    el.style.display = ''; // clean up any old inline block
+                } else {
+                    el.classList.add('hidden');
+                }
             });
 
             switchView('home');
