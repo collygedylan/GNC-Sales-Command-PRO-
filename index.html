@@ -37,6 +37,9 @@
         .drawer-item { padding: 16px 20px; border-bottom: 1px solid #f3f4f6; cursor: pointer; display: flex; align-items: center; gap: 12px; color: #374151; font-weight: 500; }
 
         /* CARDS & UI */
+        .home-btn { background: white; padding: 24px; border-radius: 12px; border: 1px solid #e5e7eb; display: flex; flex-direction: column; align-items: center; gap: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); cursor: pointer; transition: transform 0.2s; }
+        .home-btn:active { background-color: #f9fafb; transform: scale(0.98); }
+        
         .drill-item { border-bottom: 1px solid #e5e7eb; padding: 16px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; background: white; transition: background 0.1s; user-select: none; }
         .drill-item:active { background: #f3f4f6; }
         .back-btn { display: flex; align-items: center; gap: 5px; color: #6b7280; font-size: 14px; font-weight: 600; margin-bottom: 20px; cursor: pointer; padding: 10px 0; }
@@ -278,6 +281,10 @@
             
             <div id="view-review" class="hidden admin-only">
                 <div id="review-crumb" class="text-xs font-bold text-[#007a4d] mb-3"></div>
+                <div class="task-tabs mb-4">
+                    <div id="review-tab-completed" class="task-tab active" onclick="setReviewTab('completed')">Completed Tasks</div>
+                    <div id="review-tab-reserves" class="task-tab" onclick="setReviewTab('reserves')">Reserves</div>
+                </div>
                 <div id="review-content"></div>
             </div>
             
@@ -496,6 +503,7 @@
 
         let reviewViewLevel = 0;
         let selectedReviewUser = null;
+        let activeReviewTab = "completed"; 
 
         let requestViewLevel = 0;
         let requestFilterMode = null;
@@ -1274,7 +1282,7 @@
                     if (!stopsMap[stopNum].plants[key]) {
                         stopsMap[stopNum].plants[key] = { itemCode, name, size, count: 0 };
                     }
-                    stopsMap[stopNum].plants[key].count++;
+                        stopsMap[stopNum].plants[key].count++;
                 });
 
                 let html = `<div class="back-btn" onclick="dockViewLevel=0; document.getElementById('docks-search').value=''; renderDocks()"><i class="ph-bold ph-arrow-left"></i> Back to Docks</div>`;
@@ -1650,15 +1658,38 @@
                     if (item.CONSIGNEENAME && item.CONSIGNEENAME !== item.CUSTOMERNAME) {
                         custDisplay += ` - ${item.CONSIGNEENAME}`;
                     }
+
+                    let qtyReserved = parseInt(String(item.QUANTITYORDERED || item['QUANTITY ORDERED'] || item.QTYORDERED || item.QTY || 0).replace(/,/g, '')) || 0;
+                    let shipped = parseInt(String(item.SHIPPED || item['QTY SHIPPED'] || 0).replace(/,/g, '')) || 0;
+                    let remaining = qtyReserved - shipped;
+                    
+                    let remainingColor = remaining > 0 ? "text-orange-600" : "text-green-600";
                     
                     return `
-                    <div class="drill-item flex-col items-start gap-2" onclick="openDetail('${item.UNIQUE_ID}', 'reserves')">
-                        <div class="flex justify-between w-full items-center">
-                            <span class="font-bold text-[15px] text-gray-800 leading-tight pr-4">${custDisplay}</span>
-                            <i class="ph-bold ph-caret-right text-gray-300 text-xl flex-shrink-0"></i>
+                    <div class="bg-white border-b border-gray-200 p-4 flex flex-col items-start gap-2 cursor-pointer active:bg-gray-50 transition-colors" onclick="openDetail('${item.UNIQUE_ID}', 'reserves')">
+                        <div class="flex justify-between w-full items-start mb-2">
+                            <div class="pr-4">
+                                <div class="font-bold text-[15px] text-gray-800 leading-tight">${custDisplay}</div>
+                                <div class="text-xs font-bold text-indigo-600 mt-1"><i class="ph-bold ph-user mr-1"></i>${item.SALESREPNAME}</div>
+                            </div>
+                            <i class="ph-bold ph-caret-right text-gray-300 text-xl flex-shrink-0 mt-1"></i>
                         </div>
-                        <div class="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-1 rounded inline-block mt-1">
-                            <i class="ph-bold ph-user mr-1"></i>${item.SALESREPNAME}
+                        
+                        <div class="w-full flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg p-2 text-center mt-2">
+                            <div class="flex-1">
+                                <div class="text-[9px] font-bold text-gray-500 uppercase">QTY Reserved</div>
+                                <div class="font-bold text-gray-800 text-sm">${qtyReserved}</div>
+                            </div>
+                            <div class="w-px h-8 bg-gray-200 mx-2"></div>
+                            <div class="flex-1">
+                                <div class="text-[9px] font-bold text-gray-500 uppercase">Shipped</div>
+                                <div class="font-bold text-gray-800 text-sm">${shipped}</div>
+                            </div>
+                            <div class="w-px h-8 bg-gray-200 mx-2"></div>
+                            <div class="flex-1">
+                                <div class="text-[9px] font-bold text-gray-500 uppercase">Remaining</div>
+                                <div class="font-bold ${remainingColor} text-sm">${remaining}</div>
+                            </div>
                         </div>
                     </div>`;
                 }).join('');
