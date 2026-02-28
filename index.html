@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GNC SALES PRO 01</title>
+    <title>GNC SALES PRO 002</title>
     
     <meta name="theme-color" content="#007a4d">
     <meta name="mobile-web-app-capable" content="yes">
@@ -84,7 +84,7 @@
 
     <div id="view-login">
         <div class="login-card">
-            <div class="text-3xl text-[#007a4d] font-bold mb-6">GNC SALES PRO 01</div>
+            <div class="text-3xl text-[#007a4d] font-bold mb-6">GNC SALES PRO 002</div>
             <div id="login-inputs">
                 <input type="text" id="username-input" class="input-field mb-4 text-center border-2" placeholder="USERNAME">
                 <input type="password" id="pin-code" class="input-field mb-4 text-center border-2 tracking-widest" placeholder="PASSWORD">
@@ -125,15 +125,36 @@
     </div>
 
     <div id="request-rep-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
-        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center flex flex-col">
-            <h3 class="font-bold text-lg mb-2 text-orange-600">Who requested this?</h3>
-            <input type="text" id="rep-search-input" class="input-field mb-3 border-orange-200 focus:border-orange-500" placeholder="Search or type name..." onkeyup="filterRepList()">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center flex flex-col max-h-[90vh]">
             
-            <div id="rep-list-container" class="grid grid-cols-1 gap-2 mb-4 max-h-[50vh] overflow-y-auto px-2 py-1">
+            <div id="step-1-rep" class="flex flex-col">
+                <h3 class="font-bold text-lg mb-2 text-orange-600">Who requested this?</h3>
+                <input type="text" id="rep-search-input" class="input-field mb-3 border-orange-200 focus:border-orange-500" placeholder="Search or type name..." onkeyup="filterRepList()">
+                
+                <div id="rep-list-container" class="grid grid-cols-1 gap-2 mb-4 max-h-[40vh] overflow-y-auto px-2 py-1">
                 </div>
 
-            <button id="custom-rep-btn" class="hidden w-full bg-orange-600 text-white font-bold p-3 rounded-lg mb-4 shadow-sm" onclick="submitCustomRep()">Assign to: <span></span></button>
-            <button class="text-gray-500 font-bold py-2 px-4" onclick="document.getElementById('request-rep-modal').classList.add('hidden')">Cancel</button>
+                <button id="custom-rep-btn" class="hidden w-full bg-orange-600 text-white font-bold p-3 rounded-lg mb-4 shadow-sm" onclick="selectRepForRequest(document.getElementById('rep-search-input').value.trim())">Assign to: <span></span></button>
+            </div>
+
+            <div id="step-2-cust" class="hidden flex flex-col text-left">
+                <div class="flex items-center mb-4 border-b border-gray-100 pb-2">
+                    <i class="ph-bold ph-arrow-left text-gray-400 text-2xl mr-2 cursor-pointer p-1" onclick="document.getElementById('step-2-cust').classList.add('hidden'); document.getElementById('step-1-rep').classList.remove('hidden');"></i>
+                    <h3 class="font-bold text-lg text-orange-600">Customer & Qty</h3>
+                </div>
+
+                <label class="text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Total Quantity</label>
+                <input type="number" id="req-qty-input" class="input-field mb-4 border-orange-200 font-bold" placeholder="e.g. 15">
+
+                <label class="text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Customer / Consignee</label>
+                <input type="text" id="cust-search-input" class="input-field mb-2 border-orange-200" placeholder="Search or type customer..." onkeyup="populateCustomerList()">
+                
+                <div id="cust-list-container" class="grid grid-cols-1 gap-2 mb-6 max-h-[30vh] overflow-y-auto px-1 py-1"></div>
+
+                <button class="w-full bg-[#007a4d] text-white font-bold p-4 rounded-xl shadow-lg mt-auto" onclick="finalizeRequestAction()">SUBMIT REQUEST</button>
+            </div>
+
+            <button class="text-gray-500 font-bold py-2 px-4 mt-2" onclick="document.getElementById('request-rep-modal').classList.add('hidden')">Cancel</button>
         </div>
     </div>
 
@@ -143,7 +164,7 @@
                 <i class="ph-bold ph-list menu-btn text-2xl cursor-pointer" onclick="toggleMenu()"></i>
                 <div class="flex flex-col">
                     <div class="font-bold text-lg leading-tight"><span id="header-user">User</span></div>
-                    <div class="text-[10px] opacity-80 leading-tight">GNC SALES PRO 01</div>
+                    <div class="text-[10px] opacity-80 leading-tight">GNC SALES PRO 002</div>
                 </div>
             </div>
         </header>
@@ -170,7 +191,7 @@
             
             <div id="view-home" class="hidden">
                 <div class="bg-[#007a4d] text-white p-6 rounded-2xl mb-6 shadow-lg text-center">
-                    <h1 class="text-2xl font-bold">GNC SALES PRO 01</h1>
+                    <h1 class="text-2xl font-bold">GNC SALES PRO 002</h1>
                     <p class="opacity-80 text-sm">Dashboard</p>
                 </div>
                 
@@ -558,6 +579,7 @@
         let selectedReqRep = null;
         let selectedReqRepStatus = null; 
         let selectedReqFolder = null; 
+        let tempSelectedReqRep = ""; // Used for the Request Modal flow
         
         let dockViewLevel = 0;
         let selectedDockNum = null;
@@ -818,7 +840,7 @@
                     await navigator.credentials.create({
                         publicKey: {
                             challenge: challenge,
-                            rp: { name: "GNC SALES PRO 01", id: window.location.hostname },
+                            rp: { name: "GNC SALES PRO 002", id: window.location.hostname },
                             user: { id: userId, name: user, displayName: user.toUpperCase() },
                             pubKeyCredParams: [{type: "public-key", alg: -7}, {type: "public-key", alg: -257}],
                             authenticatorSelection: { 
@@ -1156,7 +1178,10 @@
             document.getElementById('tab-select-modal').classList.remove('hidden');
         }
 
+        // --- NEW MULTI-STEP REQUEST MODAL FLOW ---
         function openRequestModal() {
+            document.getElementById('step-1-rep').classList.remove('hidden');
+            document.getElementById('step-2-cust').classList.add('hidden');
             document.getElementById('request-rep-modal').classList.remove('hidden');
             document.getElementById('rep-search-input').value = "";
             filterRepList();
@@ -1173,7 +1198,7 @@
             salesRepList.forEach(rep => {
                 if (rep.toLowerCase().includes(val)) {
                     if (rep.toLowerCase() === val) exactMatch = true;
-                    html += `<button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm text-left" onclick="confirmRequestAction('${rep}')">${rep}</button>`;
+                    html += `<button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm text-left" onclick="selectRepForRequest('${rep}')">${rep}</button>`;
                 }
             });
 
@@ -1187,12 +1212,69 @@
             }
         }
 
-        function submitCustomRep() {
-            const val = document.getElementById('rep-search-input').value.trim();
-            if(val) confirmRequestAction(val);
+        function selectRepForRequest(repName) {
+            tempSelectedReqRep = repName;
+            document.getElementById('step-1-rep').classList.add('hidden');
+            document.getElementById('step-2-cust').classList.remove('hidden');
+            
+            document.getElementById('req-qty-input').value = "";
+            document.getElementById('cust-search-input').value = "";
+            
+            populateCustomerList();
         }
 
-        function confirmRequestAction(repName) {
+        function populateCustomerList() {
+            const val = document.getElementById('cust-search-input').value.toLowerCase().trim();
+            const container = document.getElementById('cust-list-container');
+            
+            let custSet = new Set();
+            const addCusts = (arr) => {
+                arr.forEach(i => {
+                    let rName = String(i.SALESREPNAME || i.SALESREP || i['SALES REP'] || "").toUpperCase();
+                    if (rName.includes(tempSelectedReqRep.toUpperCase())) {
+                        let c = String(i.CUSTOMERNAME || i.CUSTOMER || "").trim();
+                        let cons = String(i.CONSIGNEENAME || i.CONSIGNEE || "").trim();
+                        if (c) {
+                            let display = cons && cons !== c ? `${c} - ${cons}` : c;
+                            custSet.add(display);
+                        }
+                    }
+                });
+            };
+            
+            addCusts(socInventory);
+            addCusts(reservesInventory);
+            
+            let custArray = Array.from(custSet).sort();
+            
+            let html = "";
+            custArray.forEach(c => {
+                if (c.toLowerCase().includes(val)) {
+                    html += `<div class="bg-orange-50 text-orange-800 font-bold p-3 rounded-lg border border-orange-200 shadow-sm text-left cursor-pointer active:bg-orange-100" onclick="setCustomerInput('${c.replace(/'/g, "\\'")}')">${c}</div>`;
+                }
+            });
+            
+            if (html === "") {
+                html = `<div class="text-xs text-gray-400 p-2 text-center">No matching customers found. Type above to use a custom name.</div>`;
+            }
+            
+            container.innerHTML = html;
+        }
+
+        function setCustomerInput(val) {
+            document.getElementById('cust-search-input').value = val;
+            populateCustomerList(); // Refilter
+        }
+
+        function finalizeRequestAction() {
+            let cust = document.getElementById('cust-search-input').value.trim();
+            let qty = document.getElementById('req-qty-input').value.trim();
+            
+            if (!cust) {
+                showToast("Required", "Please enter or select a customer.", true);
+                return;
+            }
+            
             document.getElementById('request-rep-modal').classList.add('hidden');
             const domIds = Array.from(selectedItems);
             const uniqueIds = [];
@@ -1205,17 +1287,26 @@
                 let item = fullInventory.find(i => i.DOM_ID === dId) || lowStockInventory.find(i => i.DOM_ID === dId) || reservesInventory.find(i => i.DOM_ID === dId);
                 if (item) {
                     item.IS_REQUEST = true; 
-                    item.REQUESTED_BY = repName; 
+                    item.REQUESTED_BY = tempSelectedReqRep; 
                     item.REQUEST_FOLDER = folderId; 
+                    item.REQ_CUSTOMER = cust;
+                    item.REQ_QTY = qty;
                     uniqueIds.push(item.UNIQUE_ID);
                 }
             });
 
-            showToast("Processing...", `Saving request for ${repName}...`, false);
+            showToast("Processing...", `Saving request for ${tempSelectedReqRep}...`, false);
 
             fetch(GOOGLE_SCRIPT_URL, {
                 method: 'POST',
-                body: JSON.stringify({ type: 'batch_request', ids: uniqueIds, repName: repName, folderId: folderId })
+                body: JSON.stringify({ 
+                    type: 'batch_request', 
+                    ids: uniqueIds, 
+                    repName: tempSelectedReqRep, 
+                    folderId: folderId,
+                    customer: cust,
+                    qty: qty
+                })
             }).then(res => res.json())
             .then(data => {
                 if (data.status === 'success') {
@@ -1225,6 +1316,8 @@
                 } else { showToast("Error", "Failed to update sheet.", true); }
             }).catch(err => showToast("Error", "Network error.", true));
         }
+
+        // --- END NEW MODAL FLOW ---
 
         function processTabSelection(tab) {
             pendingTabType = tab;
