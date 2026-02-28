@@ -125,31 +125,15 @@
     </div>
 
     <div id="request-rep-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
-        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
-            <h3 class="font-bold text-lg mb-4 text-orange-600">Who requested this?</h3>
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center flex flex-col">
+            <h3 class="font-bold text-lg mb-2 text-orange-600">Who requested this?</h3>
+            <input type="text" id="rep-search-input" class="input-field mb-3 border-orange-200 focus:border-orange-500" placeholder="Search or type name..." onkeyup="filterRepList()">
             
-            <div class="grid grid-cols-1 gap-3 mb-4 max-h-[60vh] overflow-y-auto px-2 py-1">
-                <button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm" onclick="confirmRequestAction('Abbey Burka')">Abbey Burka</button>
-                <button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm" onclick="confirmRequestAction('Annette Hancock')">Annette Hancock</button>
-                <button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm" onclick="confirmRequestAction('Ben Brown')">Ben Brown</button>
-                <button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm" onclick="confirmRequestAction('Ben Harveson')">Ben Harveson</button>
-                <button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm" onclick="confirmRequestAction('Ben Machino')">Ben Machino</button>
-                <button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm" onclick="confirmRequestAction('Brian Hatfield')">Brian Hatfield</button>
-                <button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm" onclick="confirmRequestAction('Casey Rufener')">Casey Rufener</button>
-                <button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm" onclick="confirmRequestAction('Chris Farrow')">Chris Farrow</button>
-                <button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm" onclick="confirmRequestAction('Chris Gaydos')">Chris Gaydos</button>
-                <button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm" onclick="confirmRequestAction('David Brandt')">David Brandt</button>
-                <button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm" onclick="confirmRequestAction('Ellen Deely')">Ellen Deely</button>
-                <button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm" onclick="confirmRequestAction('Jessica Robertson')">Jessica Robertson</button>
-                <button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm" onclick="confirmRequestAction('Josh Ringleb')">Josh Ringleb</button>
-                <button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm" onclick="confirmRequestAction('Kevin Effinger')">Kevin Effinger</button>
-                <button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm" onclick="confirmRequestAction('Nate Douglas')">Nate Douglas</button>
-                <button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm" onclick="confirmRequestAction('Toby Brown')">Toby Brown</button>
-                <button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm" onclick="confirmRequestAction('Traci Earle')">Traci Earle</button>
-                <button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm" onclick="confirmRequestAction('Tracey Tapscott')">Tracey Tapscott</button>
-                <button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm" onclick="confirmRequestAction('Troy Lee')">Troy Lee</button>
-                <button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm" onclick="confirmRequestAction('Wes Lugas')">Wes Lugas</button>
-            </div>
+            <div id="rep-list-container" class="grid grid-cols-1 gap-2 mb-4 max-h-[50vh] overflow-y-auto px-2 py-1">
+                </div>
+
+            <button id="custom-rep-btn" class="hidden w-full bg-orange-600 text-white font-bold p-3 rounded-lg mb-4 shadow-sm" onclick="submitCustomRep()">Assign to: <span></span></button>
+            
             <button class="text-gray-500 font-bold py-2 px-4" onclick="document.getElementById('request-rep-modal').classList.add('hidden')">Cancel</button>
         </div>
     </div>
@@ -514,6 +498,7 @@
         let requestFilterMode = null;
         let selectedReqRep = null;
         let selectedReqRepStatus = null; 
+        let selectedReqFolder = null; // NEW
         
         let dockViewLevel = 0;
         let selectedDockNum = null;
@@ -524,6 +509,8 @@
         let reservesViewLevel = 0;
         let selectedReservesName = null;
         let selectedReservesSize = null;
+
+        const salesRepList = ["Abbey Burka", "Annette Hancock", "Ben Brown", "Ben Harveson", "Ben Machino", "Brian Hatfield", "Casey Rufener", "Chris Farrow", "Chris Gaydos", "David Brandt", "Ellen Deely", "Jessica Robertson", "Josh Ringleb", "Kevin Effinger", "Nate Douglas", "Toby Brown", "Traci Earle", "Tracey Tapscott", "Troy Lee", "Wes Lugas"];
 
         function getDirectImageUrl(url) {
             if (!url) return "";
@@ -810,6 +797,12 @@
             renderRequest();
         }
         
+        function selectRequestFolder(folderId) {
+            selectedReqFolder = folderId;
+            requestViewLevel = 4;
+            renderRequest();
+        }
+
         function handleReservesSearch() {
             const term = document.getElementById('reserves-search').value;
             if (term.length > 0 && reservesViewLevel > 0) { 
@@ -974,11 +967,48 @@
         
         function initiateBatchAction(action) {
             if (action === 'request_action') {
-                document.getElementById('request-rep-modal').classList.remove('hidden');
+                openRequestModal();
                 return;
             }
             pendingAction = action;
             document.getElementById('tab-select-modal').classList.remove('hidden');
+        }
+
+        // --- NEW MODAL FILTER LOGIC ---
+        function openRequestModal() {
+            document.getElementById('request-rep-modal').classList.remove('hidden');
+            document.getElementById('rep-search-input').value = "";
+            filterRepList();
+        }
+
+        function filterRepList() {
+            const val = document.getElementById('rep-search-input').value.toLowerCase().trim();
+            const container = document.getElementById('rep-list-container');
+            const customBtn = document.getElementById('custom-rep-btn');
+            
+            let html = "";
+            let exactMatch = false;
+
+            salesRepList.forEach(rep => {
+                if (rep.toLowerCase().includes(val)) {
+                    if (rep.toLowerCase() === val) exactMatch = true;
+                    html += `<button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm text-left" onclick="confirmRequestAction('${rep}')">${rep}</button>`;
+                }
+            });
+
+            container.innerHTML = html;
+
+            if (val.length > 0 && !exactMatch) {
+                customBtn.classList.remove('hidden');
+                customBtn.querySelector('span').innerText = document.getElementById('rep-search-input').value;
+            } else {
+                customBtn.classList.add('hidden');
+            }
+        }
+
+        function submitCustomRep() {
+            const val = document.getElementById('rep-search-input').value.trim();
+            if(val) confirmRequestAction(val);
         }
 
         function confirmRequestAction(repName) {
@@ -986,11 +1016,17 @@
             const domIds = Array.from(selectedItems);
             const uniqueIds = [];
             
+            // GENERATE UNIQUE FOLDER ID (REQ-YYYY-MM-DD-HHMMSS)
+            const dateStr = new Date().toISOString().split('T')[0]; 
+            const shortTime = new Date().toLocaleTimeString('en-US', {hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit'}).replace(/:/g, ''); 
+            const folderId = `REQ-${dateStr}-${shortTime}`;
+            
             domIds.forEach(dId => {
                 let item = fullInventory.find(i => i.DOM_ID === dId) || lowStockInventory.find(i => i.DOM_ID === dId);
                 if (item) {
                     item.IS_REQUEST = true; 
                     item.REQUESTED_BY = repName; 
+                    item.REQUEST_FOLDER = folderId; // NEW
                     uniqueIds.push(item.UNIQUE_ID);
                 }
             });
@@ -999,7 +1035,7 @@
 
             fetch(GOOGLE_SCRIPT_URL, {
                 method: 'POST',
-                body: JSON.stringify({ type: 'batch_request', ids: uniqueIds, repName: repName })
+                body: JSON.stringify({ type: 'batch_request', ids: uniqueIds, repName: repName, folderId: folderId }) // ADDED FOLDER ID
             }).then(res => res.json())
             .then(data => {
                 if (data.status === 'success') {
@@ -1367,6 +1403,7 @@
             container.innerHTML = officeItems.map(i => generateCard(i, 'sales-office')).join('');
         }
 
+        // --- NEW DEDICATED REQUEST LOGIC ---
         function renderRequest() {
             const container = document.getElementById('request-content');
             const crumb = document.getElementById('request-crumb');
@@ -1414,11 +1451,9 @@
             if (requestViewLevel === 1) {
                 if (requestFilterMode === 'reps') {
                     crumb.innerText = "Sales Reps";
-                    let reps = ["Abbey Burka", "Annette Hancock", "Ben Brown", "Ben Harveson", "Ben Machino", "Brian Hatfield", "Casey Rufener", "Chris Farrow", "Chris Gaydos", "David Brandt", "Ellen Deely", "Jessica Robertson", "Josh Ringleb", "Kevin Effinger", "Nate Douglas", "Toby Brown", "Traci Earle", "Tracey Tapscott", "Troy Lee", "Wes Lugas"];
-                    
                     let html = `<div class="back-btn" onclick="requestViewLevel=0; renderRequest()"><i class="ph-bold ph-arrow-left"></i> Back to Categories</div>`;
                     
-                    reps.forEach(rep => {
+                    salesRepList.forEach(rep => {
                         let parts = rep.toUpperCase().split(' ');
                         let count = combinedReq.filter(i => {
                             let matchStr = (i.REQUESTED_BY || i.SALESREP || i.SALESREPNAME || i['SALES REP'] || i.ASSIGNEDTO || "").toUpperCase();
@@ -1474,8 +1509,9 @@
                 return;
             }
 
+            // LEVEL 3: FOLDERS LIST
             if (requestViewLevel === 3 && requestFilterMode === 'reps') {
-                crumb.innerText = `${selectedReqRep} / ${selectedReqRepStatus}`;
+                crumb.innerText = `${selectedReqRep} / ${selectedReqRepStatus} / Folders`;
                 
                 let parts = selectedReqRep.toUpperCase().split(' ');
                 let repItems = combinedReq.filter(i => {
@@ -1484,21 +1520,68 @@
                 });
 
                 let displayItems = selectedReqRepStatus === 'pending' ? repItems.filter(i => !isReqCompleted(i)) : repItems.filter(i => isReqCompleted(i));
-                displayItems.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
-
-                let html = `<div class="back-btn" onclick="requestViewLevel=2; renderRequest()"><i class="ph-bold ph-arrow-left"></i> Back to Folders</div>`;
                 
-                if (displayItems.length === 0) {
-                    html += `<div class="p-8 text-center text-gray-400">No ${selectedReqRepStatus} requests for ${selectedReqRep} at this time.</div>`;
+                const folders = [...new Set(displayItems.map(i => i.REQUEST_FOLDER || "Uncategorized"))].sort((a,b) => b.localeCompare(a)); 
+                
+                let html = `<div class="back-btn" onclick="requestViewLevel=2; renderRequest()"><i class="ph-bold ph-arrow-left"></i> Back to Status</div>`;
+                
+                if (folders.length === 0) {
+                     html += `<div class="p-8 text-center text-gray-400">No ${selectedReqRepStatus} requests.</div>`;
+                } else {
+                     folders.forEach(f => {
+                         const count = displayItems.filter(i => (i.REQUEST_FOLDER || "Uncategorized") === f).length;
+                         
+                         let fLabel = f;
+                         if (f.startsWith('REQ-')) {
+                             const p = f.split('-'); 
+                             if(p.length >= 4) {
+                                 let timeStr = p[4] || "";
+                                 if (timeStr.length === 6) {
+                                     timeStr = `${timeStr.substring(0,2)}:${timeStr.substring(2,4)}`;
+                                 }
+                                 fLabel = `${p[1]}/${p[2]}/${p[3]} at ${timeStr}`;
+                             }
+                         }
+                         
+                         html += `<div class="drill-item" onclick="selectRequestFolder('${f}')">
+                                     <span class="font-bold text-lg text-[#007a4d]"><i class="ph-fill ph-folder mr-2 text-yellow-500"></i>${fLabel} <span class="text-gray-400 text-sm font-normal">(${count})</span></span>
+                                     <i class="ph-bold ph-caret-right text-gray-300"></i>
+                                  </div>`;
+                     });
+                }
+                container.innerHTML = html;
+                return;
+            }
+
+            // LEVEL 4: INSIDE FOLDER
+            if (requestViewLevel === 4 && requestFilterMode === 'reps') {
+                crumb.innerText = `${selectedReqRep} / ${selectedReqRepStatus} / Folder`;
+                
+                let parts = selectedReqRep.toUpperCase().split(' ');
+                let repItems = combinedReq.filter(i => {
+                    let matchStr = (i.REQUESTED_BY || i.SALESREP || i.SALESREPNAME || i['SALES REP'] || i.ASSIGNEDTO || "").toUpperCase();
+                    return matchStr.includes(parts[0]) && matchStr.includes(parts[1]);
+                });
+
+                let displayItems = selectedReqRepStatus === 'pending' ? repItems.filter(i => !isReqCompleted(i)) : repItems.filter(i => isReqCompleted(i));
+                let folderItems = displayItems.filter(i => (i.REQUEST_FOLDER || "Uncategorized") === selectedReqFolder);
+
+                folderItems.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
+
+                let html = `<div class="back-btn" onclick="requestViewLevel=3; renderRequest()"><i class="ph-bold ph-arrow-left"></i> Back to Folders</div>`;
+                
+                if (folderItems.length === 0) {
+                    html += `<div class="p-8 text-center text-gray-400">Folder is empty.</div>`;
                 } else {
                     let colorClass = selectedReqRepStatus === 'pending' ? 'status-orange' : 'status-green';
-                    html += displayItems.map(i => generateCard(i, 'request', colorClass)).join('');
+                    html += folderItems.map(i => generateCard(i, 'request', colorClass)).join('');
                 }
                 container.innerHTML = html;
                 return;
             }
         }
 
+        // --- REMAINDER OF MANAGER REVIEW ---
         function renderReview() {
             const container = document.getElementById('review-content');
             const crumb = document.getElementById('review-crumb');
@@ -1871,7 +1954,7 @@
 
         function renderAllFields() {
             if(!activeItem) return;
-            const hiddenKeys = ['UNIQUE_ID', 'UNIQUEID', 'ASSIGNEDTO', 'DOM_ID', 'IS_REQUEST', 'REQUESTED_BY']; 
+            const hiddenKeys = ['UNIQUE_ID', 'UNIQUEID', 'ASSIGNEDTO', 'DOM_ID', 'IS_REQUEST', 'REQUESTED_BY', 'REQUEST_FOLDER']; 
             let html = '<div class="grid grid-cols-1 gap-2">';
             for (const [key, value] of Object.entries(activeItem)) { 
                 if(hiddenKeys.includes(key)) continue; 
