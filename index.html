@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GNC SALES PRO 002</title>
+    <title>GNC PRO 005</title>
     
     <meta name="theme-color" content="#007a4d">
     <meta name="mobile-web-app-capable" content="yes">
@@ -84,7 +84,7 @@
 
     <div id="view-login">
         <div class="login-card">
-            <div class="text-3xl text-[#007a4d] font-bold mb-6">GNC SALES PRO 002</div>
+            <div class="text-3xl text-[#007a4d] font-bold mb-6">GNC PRO 005</div>
             <div id="login-inputs">
                 <input type="text" id="username-input" class="input-field mb-4 text-center border-2" placeholder="USERNAME">
                 <input type="password" id="pin-code" class="input-field mb-4 text-center border-2 tracking-widest" placeholder="PASSWORD">
@@ -164,7 +164,7 @@
                 <i class="ph-bold ph-list menu-btn text-2xl cursor-pointer" onclick="toggleMenu()"></i>
                 <div class="flex flex-col">
                     <div class="font-bold text-lg leading-tight"><span id="header-user">User</span></div>
-                    <div class="text-[10px] opacity-80 leading-tight">GNC SALES PRO 002</div>
+                    <div class="text-[10px] opacity-80 leading-tight">GNC PRO 005</div>
                 </div>
             </div>
         </header>
@@ -191,7 +191,7 @@
             
             <div id="view-home" class="hidden">
                 <div class="bg-[#007a4d] text-white p-6 rounded-2xl mb-6 shadow-lg text-center">
-                    <h1 class="text-2xl font-bold">GNC SALES PRO 002</h1>
+                    <h1 class="text-2xl font-bold">GNC PRO 005</h1>
                     <p class="opacity-80 text-sm">Dashboard</p>
                 </div>
                 
@@ -840,7 +840,7 @@
                     await navigator.credentials.create({
                         publicKey: {
                             challenge: challenge,
-                            rp: { name: "GNC SALES PRO 002", id: window.location.hostname },
+                            rp: { name: "GNC PRO 005", id: window.location.hostname },
                             user: { id: userId, name: user, displayName: user.toUpperCase() },
                             pubKeyCredParams: [{type: "public-key", alg: -7}, {type: "public-key", alg: -257}],
                             authenticatorSelection: { 
@@ -1223,19 +1223,26 @@
             populateCustomerList();
         }
 
+        // --- UPDATED POPULATE CUSTOMER LIST ---
         function populateCustomerList() {
             const val = document.getElementById('cust-search-input').value.toLowerCase().trim();
             const container = document.getElementById('cust-list-container');
             
             let custSet = new Set();
+            
             const addCusts = (arr) => {
                 arr.forEach(i => {
                     let rName = String(i.SALESREPNAME || i.SALESREP || i['SALES REP'] || "").toUpperCase();
+                    
                     if (rName.includes(tempSelectedReqRep.toUpperCase())) {
-                        let c = String(i.CUSTOMERNAME || i.CUSTOMER || "").trim();
-                        let cons = String(i.CONSIGNEENAME || i.CONSIGNEE || "").trim();
-                        if (c) {
-                            let display = cons && cons !== c ? `${c} - ${cons}` : c;
+                        let c = String(i.CUSTOMERNAME || i.CUSTOMER || i['CUSTOMER NAME'] || "").trim();
+                        let cons = String(i.CONSIGNEENAME || i.CONSIGNEE || i['CONSIGNEE NAME'] || "").trim();
+                        
+                        if (c || cons) {
+                            let display = c;
+                            if (cons && cons !== c) {
+                                display = c ? `${c} - ${cons}` : cons;
+                            }
                             custSet.add(display);
                         }
                     }
@@ -1249,7 +1256,7 @@
             
             let html = "";
             custArray.forEach(c => {
-                if (c.toLowerCase().includes(val)) {
+                if (c.toLowerCase().includes(val) || val === "") {
                     html += `<div class="bg-orange-50 text-orange-800 font-bold p-3 rounded-lg border border-orange-200 shadow-sm text-left cursor-pointer active:bg-orange-100" onclick="setCustomerInput('${c.replace(/'/g, "\\'")}')">${c}</div>`;
                 }
             });
