@@ -127,6 +127,7 @@
     <div id="request-rep-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-orange-600">Who requested this?</h3>
+            
             <div class="grid grid-cols-1 gap-3 mb-4 max-h-[60vh] overflow-y-auto px-2 py-1">
                 <button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm" onclick="confirmRequestAction('Abbey Burka')">Abbey Burka</button>
                 <button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm" onclick="confirmRequestAction('Annette Hancock')">Annette Hancock</button>
@@ -171,6 +172,7 @@
             <div class="drawer-item" onclick="switchView('drive'); toggleMenu();"><i class="ph-bold ph-car"></i> Drive Mode</div>
             <div class="drawer-item" onclick="switchView('tasks'); toggleMenu();"><i class="ph-bold ph-clipboard-text"></i> My Tasks</div>
             <div class="drawer-item text-orange-600 font-bold" onclick="switchView('docks'); toggleMenu();"><i class="ph-bold ph-truck"></i> Docks</div>
+            
             <hr class="my-2">
             <div class="drawer-item text-blue-600 font-bold admin-only" onclick="switchView('request'); toggleMenu();"><i class="ph-bold ph-chat-circle-text"></i> Requests</div>
             <div class="drawer-item text-purple-600 font-bold admin-only" onclick="switchView('sales-office'); toggleMenu();"><i class="ph-bold ph-briefcase"></i> Sales Office</div>
@@ -231,6 +233,7 @@
                             </div>
                             <i class="ph-bold ph-arrow-square-out text-gray-300"></i>
                         </a>
+                        
                         <a href="https://docs.google.com/spreadsheets/d/1g7Dy2mDDljTs3e9FhQhdDQ-b7sw_gU1vCdcA14N4mKk/edit" target="_blank" class="flex items-center gap-3 bg-white p-3 rounded-xl border border-gray-200 shadow-sm hover:bg-blue-50 transition-colors">
                             <div class="bg-blue-100 p-2 rounded-lg"><i class="ph-fill ph-book-open-text text-blue-600 text-2xl"></i></div>
                             <div class="flex-grow min-w-0">
@@ -1278,7 +1281,20 @@
                     }
                 });
                 
-                finalItems.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
+                // NEW: Sort by Priority (1 is top, blank/null goes to bottom)
+                finalItems.sort((a, b) => {
+                    let priA = parseFloat(a.PRIORITY);
+                    let priB = parseFloat(b.PRIORITY);
+                    
+                    if (isNaN(priA)) priA = Infinity;
+                    if (isNaN(priB)) priB = Infinity;
+                    
+                    if (priA !== priB) {
+                        return priA - priB;
+                    }
+                    
+                    return (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true});
+                });
 
                 if (finalItems.length === 0) {
                      container.innerHTML = `<div class="back-btn" onclick="dockViewLevel=1; renderDocks()"><i class="ph-bold ph-arrow-left"></i> Back to Stop</div><div class="p-8 text-center text-gray-400">This plant was requested for the Dock, but no matching records exist in the Master Inventory.</div>`;
