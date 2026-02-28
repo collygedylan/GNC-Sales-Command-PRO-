@@ -548,7 +548,7 @@
             document.getElementById('loading-spinner').classList.remove('hidden');
             document.getElementById('loading-text').innerText = "Authenticating...";
 
-            // PHASE 1: Quick Auth
+            // PHASE 1: LIGHTNING FAST AUTHENTICATION
             const authUrl = `${GOOGLE_SCRIPT_URL}?action=auth&username=${encodeURIComponent(inputUser)}&password=${encodeURIComponent(inputPass)}`;
 
             fetch(authUrl)
@@ -563,13 +563,10 @@
                             promptToEnableBiometrics(inputUser, inputPass);
                         }
 
-                        // UNLOCK THE APP IMMEDIATELY!
+                        // UNLOCK THE APP IMMEDIATELY
                         applyRolePermissions();
                         
-                        // Notify user that heavy data is loading in the background
-                        showToast("Welcome!", "Downloading inventory data in background...", false);
-                        
-                        // PHASE 2: Fetch Data
+                        // PHASE 2: INSTANT CACHE LOAD + BACKGROUND SYNC
                         fetchBackgroundData();
                         
                     } else {
@@ -587,91 +584,173 @@
         }
 
         function fetchBackgroundData() {
+            // 1. Check for local memory cache for INSTANT load
+            const cachedData = localStorage.getItem('gnc_data_cache_v2');
+            if (cachedData) {
+                try {
+                    const res = JSON.parse(cachedData);
+                    processAndLoadData(res);
+                    showToast("Ready", "Loaded from cache. Updating in background...", false);
+                } catch(e) { console.warn("Cache parse error", e); }
+            } else {
+                showToast("Welcome!", "Downloading database...", false);
+            }
+
+            // 2. Fetch the highly compressed 2D Array data from Google
             const dataUrl = `${GOOGLE_SCRIPT_URL}?action=getData`;
             
             fetch(dataUrl)
                 .then(response => response.json())
                 .then(res => {
                     if (res.status === 'success') {
-                        salesNotesDict = res.salesNotesMap || {};
-                        socInventory = res.socData || [];
-
-                        fullInventory = (res.data || []).map((item, idx) => {
-                            item.DOM_ID = 'fi_' + idx;
-                            return item;
-                        });
-
-                        // --- START TOURNAMENT DEDUPLICATION ---
-                        let itemsWithPriority = {};
-                        fullInventory.forEach(item => {
-                            const pri = parseFloat(item.PRIORITY);
-                            const ptr = parseFloat(item.PTRAVAILABLE) || 0;
-                            const ss = parseFloat(item.SEASONSUPPLY) || 0;
-                            const iCode = String(item.ITEMCODE || "").trim().toUpperCase();
-
-                            if (iCode && !isNaN(pri) && pri > 0 && ptr >= (ss * 1.10)) {
-                                if (!itemsWithPriority[iCode]) itemsWithPriority[iCode] = [];
-                                itemsWithPriority[iCode].push(item);
-                            }
-                        });
-
-                        let seasonWinnerIds = new Set();
-                        for (const code in itemsWithPriority) {
-                            let group = itemsWithPriority[code];
-                            group.sort((a, b) => {
-                                const priA = parseFloat(a.PRIORITY);
-                                const priB = parseFloat(b.PRIORITY);
-                                if (priA === priB) {
-                                    return (parseFloat(b.PTRAVAILABLE) || 0) - (parseFloat(a.PTRAVAILABLE) || 0);
-                                }
-                                return priA - priB;
-                            });
-                            seasonWinnerIds.add(group[0].DOM_ID);
-                        }
-
-                        fullInventory.forEach(item => {
-                            item.APP_TAB_ASSIGNMENT = seasonWinnerIds.has(item.DOM_ID) ? 'season' : 'location';
-                        });
-                        // --- END TOURNAMENT DEDUPLICATION ---
-
-                        lowStockInventory = (res.lowStock || []).map((item, idx) => {
-                            item.DOM_ID = 'ls_' + idx;
-                            return item;
-                        });
+                        try {
+                            localStorage.setItem('gnc_data_cache_v2', JSON.stringify(res));
+                        } catch(e) { console.warn("Local storage full, skipped caching"); }
                         
-                        reservesInventory = (res.reservesData || []).map((item, idx) => {
-                            item.DOM_ID = 'res_' + idx;
-                            item.UNIQUE_ID = item.UNIQUE_ID || 'res_uid_' + idx; 
-                            
-                            let resCode = String(item.ITEMCODE || item.ITEM || "").trim().toUpperCase();
-                            let masterItem = fullInventory.find(f => String(f.ITEMCODE || "").trim().toUpperCase() === resCode);
-                            
-                            item.COMMONNAME = masterItem ? masterItem.COMMONNAME : (item.COMMONNAME || item['PLANT NAME'] || item.DESCRIPTION || item.DESC || 'Unknown Plant');
-                            item.CONTSIZE = masterItem ? masterItem.CONTSIZE : (item.CONTSIZE || item.SIZE || item.CONTAINER || '-');
-                            item.CUSTOMERNAME = item.CUSTOMERNAME || item.CUSTOMER || 'Unknown Customer';
-                            item.CONSIGNEENAME = item.CONSIGNEENAME || item.CONSIGNEE || '';
-                            item.SALESREPNAME = item.SALESREPNAME || item.SALESREP || item['SALES REP'] || 'Unknown Rep';
-                            
-                            if (masterItem) {
-                                item.LOCATIONCODE = masterItem.LOCATIONCODE;
-                                item.PTRAVAILABLE = masterItem.PTRAVAILABLE;
-                                item.SEASONSUPPLY = masterItem.SEASONSUPPLY;
-                                item.PRIORITY = masterItem.PRIORITY;
-                                item.QUALITYCODE = masterItem.QUALITYCODE;
-                                item.FIELDTAGCOLOR = masterItem.FIELDTAGCOLOR;
-                                item.LOTCODE = masterItem.LOTCODE;
-                            }
-                            return item;
-                        });
-
-                        showToast("Sync Complete", "All inventory loaded and ready.", false);
-                        reRenderCurrentView();
+                        processAndLoadData(res);
+                        showToast("Sync Complete", "Live database updated.", false);
                     }
                 })
                 .catch(err => {
                     console.error("Background sync failed:", err);
-                    showToast("Sync Error", "Could not download data. Check connection.", true);
+                    if (!cachedData) showToast("Sync Error", "Could not download data. Check connection.", true);
                 });
+        }
+
+        // Helper function to turn Compressed 2D Arrays back into usable App Objects
+        function mapCompressedToObj(compressedData, isMaster = false) {
+            if(!compressedData || !compressedData.headers) return [];
+            const h = compressedData.headers;
+            return compressedData.rows.map(row => {
+                let obj = {};
+                h.forEach((colName, idx) => {
+                    obj[colName] = row[idx]; 
+                });
+                
+                // Set explicitly expected keys
+                if(isMaster) {
+                    const getVal = (names) => {
+                        for(let n of names) { let idx = h.indexOf(n); if(idx > -1) return row[idx]; }
+                        return "";
+                    };
+                    
+                    obj.UNIQUE_ID = getVal(['UNIQUE ID']);
+                    obj.COMMONNAME = getVal(['COMMONNAME']);
+                    obj.CONTSIZE = getVal(['CONTSIZE']);
+                    obj.LOCATIONCODE = getVal(['LOCATIONCODE']);
+                    obj.PTRAVAILABLE = getVal(['PTRAVAILABLE']);
+                    obj.SEASONSUPPLY = getVal(['SEASON_SUPPLY', 'SEASONSUPPLY']);
+                    obj.PRIORITY = getVal(['PRIORITY']);
+                    obj.QUALITYCODE = getVal(['QUALITYCODE']);
+                    obj.FIELDTAGCOLOR = getVal(['FIELD TAG COLOR', 'FIELDTAGCOLOR']);
+                    obj.ITEMCODE = getVal(['ITEMCODE']);
+                    obj.LOTCODE = getVal(['LOTCODE']);
+                    obj.BLOCKALPHA = getVal(['BLOCKALPHA']);
+                    obj.ASSIGNEDTO = getVal(['ASSIGNEDTO']);
+                    obj.DATE_COMPLETED = getVal(['DATE COMPLETED']);
+                    
+                    let isReqVal = getVal(['IS REQUEST']);
+                    obj.IS_REQUEST = (String(isReqVal).toUpperCase() === 'TRUE' || isReqVal === true);
+                    obj.REQUESTED_BY = getVal(['REQUESTED BY']);
+                    obj.REQUEST_FOLDER = getVal(['REQUEST FOLDER']);
+                    
+                    obj.MATCH = getVal(['MATCH', 'MATCHPCT']);
+                    obj.SPEC = getVal(['SPEC']);
+                    obj.CALIPER = getVal(['CALIPER']);
+                    obj.PIC_NOTE = getVal(['PIC NOTE', 'PICKNOTE']);
+                    obj.SALES_NOTE = getVal(['SALES NOTE', 'SALESDESC']);
+                    obj.SAVED_PHOTO_LINK = getVal(['PHOTO LINK']);
+                    obj.SAVED_PHOTO_NAME = getVal(['PHOTO NAME']);
+                    
+                    obj.REQ_MATCH = getVal(['REQ MATCH']);
+                    obj.REQ_SPEC = getVal(['REQ SPEC']);
+                    obj.REQ_CALIPER = getVal(['REQ CALIPER']);
+                    obj.REQ_PICK = getVal(['REQ PIC NOTE']);
+                    obj.REQ_SALES_NOTE = getVal(['REQ SALES NOTE']);
+                    obj.REQ_COMMENTS = getVal(['REQ COMMENTS']);
+                    obj.REQ_PHOTO_LINK = getVal(['REQ PHOTO LINK']);
+                    obj.REQ_PHOTO_NAME = getVal(['REQ PHOTO NAME']);
+                } else {
+                     if (obj['DOCK']) obj.DOCK_NUM = parseInt(String(obj['DOCK']).replace(/\D/g, ''), 10);
+                }
+                return obj;
+            });
+        }
+
+        function processAndLoadData(res) {
+            salesNotesDict = res.salesNotesMap || {};
+            
+            // Map compressed data arrays to Javascript Objects instantly
+            fullInventory = mapCompressedToObj(res.data, true).map((item, idx) => {
+                item.DOM_ID = 'fi_' + idx;
+                return item;
+            });
+            lowStockInventory = mapCompressedToObj(res.lowStock, true).map((item, idx) => {
+                item.DOM_ID = 'ls_' + idx;
+                return item;
+            });
+            socInventory = mapCompressedToObj(res.socData, false);
+            reservesInventory = mapCompressedToObj(res.reservesData, false);
+
+            // --- START TOURNAMENT DEDUPLICATION ---
+            let itemsWithPriority = {};
+            fullInventory.forEach(item => {
+                const pri = parseFloat(item.PRIORITY);
+                const ptr = parseFloat(item.PTRAVAILABLE) || 0;
+                const ss = parseFloat(item.SEASONSUPPLY) || 0;
+                const iCode = String(item.ITEMCODE || "").trim().toUpperCase();
+
+                if (iCode && !isNaN(pri) && pri > 0 && ptr >= (ss * 1.10)) {
+                    if (!itemsWithPriority[iCode]) itemsWithPriority[iCode] = [];
+                    itemsWithPriority[iCode].push(item);
+                }
+            });
+
+            let seasonWinnerIds = new Set();
+            for (const code in itemsWithPriority) {
+                let group = itemsWithPriority[code];
+                group.sort((a, b) => {
+                    const priA = parseFloat(a.PRIORITY);
+                    const priB = parseFloat(b.PRIORITY);
+                    if (priA === priB) {
+                        return (parseFloat(b.PTRAVAILABLE) || 0) - (parseFloat(a.PTRAVAILABLE) || 0);
+                    }
+                    return priA - priB;
+                });
+                seasonWinnerIds.add(group[0].DOM_ID);
+            }
+
+            fullInventory.forEach(item => {
+                item.APP_TAB_ASSIGNMENT = seasonWinnerIds.has(item.DOM_ID) ? 'season' : 'location';
+            });
+            // --- END TOURNAMENT DEDUPLICATION ---
+            
+            reservesInventory = reservesInventory.map((item, idx) => {
+                item.DOM_ID = 'res_' + idx;
+                item.UNIQUE_ID = item.UNIQUE_ID || 'res_uid_' + idx; 
+                
+                let resCode = String(item.ITEMCODE || item.ITEM || "").trim().toUpperCase();
+                let masterItem = fullInventory.find(f => String(f.ITEMCODE || "").trim().toUpperCase() === resCode);
+                
+                item.COMMONNAME = masterItem ? masterItem.COMMONNAME : (item.COMMONNAME || item['PLANT NAME'] || item.DESCRIPTION || item.DESC || 'Unknown Plant');
+                item.CONTSIZE = masterItem ? masterItem.CONTSIZE : (item.CONTSIZE || item.SIZE || item.CONTAINER || '-');
+                item.CUSTOMERNAME = item.CUSTOMERNAME || item.CUSTOMER || 'Unknown Customer';
+                item.CONSIGNEENAME = item.CONSIGNEENAME || item.CONSIGNEE || '';
+                item.SALESREPNAME = item.SALESREPNAME || item.SALESREP || item['SALES REP'] || 'Unknown Rep';
+                
+                if (masterItem) {
+                    item.LOCATIONCODE = masterItem.LOCATIONCODE;
+                    item.PTRAVAILABLE = masterItem.PTRAVAILABLE;
+                    item.SEASONSUPPLY = masterItem.SEASONSUPPLY;
+                    item.PRIORITY = masterItem.PRIORITY;
+                    item.QUALITYCODE = masterItem.QUALITYCODE;
+                    item.FIELDTAGCOLOR = masterItem.FIELDTAGCOLOR;
+                    item.LOTCODE = masterItem.LOTCODE;
+                }
+                return item;
+            });
+
+            reRenderCurrentView();
         }
 
         document.addEventListener('DOMContentLoaded', async () => {
