@@ -37,9 +37,6 @@
         .drawer-item { padding: 16px 20px; border-bottom: 1px solid #f3f4f6; cursor: pointer; display: flex; align-items: center; gap: 12px; color: #374151; font-weight: 500; }
 
         /* CARDS & UI */
-        .home-btn { background: white; padding: 24px; border-radius: 12px; border: 1px solid #e5e7eb; display: flex; flex-direction: column; align-items: center; gap: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); cursor: pointer; transition: transform 0.2s; }
-        .home-btn:active { background-color: #f9fafb; transform: scale(0.98); }
-        
         .drill-item { border-bottom: 1px solid #e5e7eb; padding: 16px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; background: white; transition: background 0.1s; user-select: none; }
         .drill-item:active { background: #f3f4f6; }
         .back-btn { display: flex; align-items: center; gap: 5px; color: #6b7280; font-size: 14px; font-weight: 600; margin-bottom: 20px; cursor: pointer; padding: 10px 0; }
@@ -133,7 +130,6 @@
                 </div>
 
             <button id="custom-rep-btn" class="hidden w-full bg-orange-600 text-white font-bold p-3 rounded-lg mb-4 shadow-sm" onclick="submitCustomRep()">Assign to: <span></span></button>
-            
             <button class="text-gray-500 font-bold py-2 px-4" onclick="document.getElementById('request-rep-modal').classList.add('hidden')">Cancel</button>
         </div>
     </div>
@@ -159,6 +155,7 @@
             
             <hr class="my-2">
             <div class="drawer-item text-blue-600 font-bold admin-only" onclick="switchView('request'); toggleMenu();"><i class="ph-bold ph-chat-circle-text"></i> Requests</div>
+            <div class="drawer-item text-indigo-600 font-bold admin-only" onclick="switchView('reserves'); toggleMenu();"><i class="ph-bold ph-bookmark-simple"></i> Reserves</div>
             <div class="drawer-item text-purple-600 font-bold admin-only" onclick="switchView('sales-office'); toggleMenu();"><i class="ph-bold ph-briefcase"></i> Sales Office</div>
             <div class="drawer-item text-red-600 font-bold admin-only" onclick="switchView('low-stock'); toggleMenu();"><i class="ph-bold ph-trend-down"></i> Low Stock List</div>
             <div class="drawer-item text-yellow-600 font-bold admin-only" onclick="switchView('review'); toggleMenu();"><i class="ph-bold ph-warning-circle"></i> Manager Review</div>
@@ -192,6 +189,12 @@
                         <i class="ph-bold ph-chat-circle-text text-3xl text-blue-600"></i>
                         <span class="font-bold text-sm text-gray-800">Requests</span>
                     </div>
+                    
+                    <div onclick="switchView('reserves')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform col-span-2 cursor-pointer admin-only">
+                        <i class="ph-bold ph-bookmark-simple text-3xl text-indigo-600"></i>
+                        <span class="font-bold text-sm text-gray-800">Reserves</span>
+                    </div>
+
                     <div onclick="switchView('sales-office')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer admin-only">
                         <i class="ph-bold ph-briefcase text-3xl text-purple-600"></i>
                         <span class="font-bold text-sm text-gray-800">Sales Office</span>
@@ -235,6 +238,12 @@
                 <div id="request-content"></div>
             </div>
 
+            <div id="view-reserves" class="hidden admin-only">
+                <input type="text" id="reserves-search" class="input-field mb-2" placeholder="Search Plants or Customers..." onkeyup="handleReservesSearch()">
+                <div id="reserves-crumb" class="text-xs font-bold text-[#007a4d] mb-3 empty:hidden"></div>
+                <div id="reserves-content"></div>
+            </div>
+
             <div id="view-docks" class="hidden">
                 <input type="text" id="docks-search" class="input-field mb-2" placeholder="Search Plants..." onkeyup="handleDocksSearch()">
                 <div id="docks-crumb" class="text-xs font-bold text-[#007a4d] mb-3">Select a Dock</div>
@@ -269,11 +278,6 @@
             
             <div id="view-review" class="hidden admin-only">
                 <div id="review-crumb" class="text-xs font-bold text-[#007a4d] mb-3"></div>
-                <div class="task-tabs mb-4">
-                    <div id="review-tab-completed" class="task-tab active" onclick="setReviewTab('completed')">Completed Tasks</div>
-                    <div id="review-tab-reserves" class="task-tab" onclick="setReviewTab('reserves')">Reserves</div>
-                </div>
-                <input type="text" id="reserves-search" class="input-field mb-2 hidden" placeholder="Search Plants or Customers..." onkeyup="handleReservesSearch()">
                 <div id="review-content"></div>
             </div>
             
@@ -492,13 +496,12 @@
 
         let reviewViewLevel = 0;
         let selectedReviewUser = null;
-        let activeReviewTab = "completed"; 
 
         let requestViewLevel = 0;
         let requestFilterMode = null;
         let selectedReqRep = null;
         let selectedReqRepStatus = null; 
-        let selectedReqFolder = null; // NEW
+        let selectedReqFolder = null; 
         
         let dockViewLevel = 0;
         let selectedDockNum = null;
@@ -599,11 +602,27 @@
                         reservesInventory = (res.reservesData || []).map((item, idx) => {
                             item.DOM_ID = 'res_' + idx;
                             item.UNIQUE_ID = item.UNIQUE_ID || 'res_uid_' + idx; 
-                            item.COMMONNAME = item.COMMONNAME || item['PLANT NAME'] || item.DESCRIPTION || item.DESC || 'Unknown Plant';
-                            item.CONTSIZE = item.CONTSIZE || item.SIZE || item.CONTAINER || '-';
+                            
+                            let resCode = String(item.ITEMCODE || item.ITEM || "").trim().toUpperCase();
+                            let masterItem = fullInventory.find(f => String(f.ITEMCODE || "").trim().toUpperCase() === resCode);
+                            
+                            item.COMMONNAME = masterItem ? masterItem.COMMONNAME : (item.COMMONNAME || item['PLANT NAME'] || item.DESCRIPTION || item.DESC || 'Unknown Plant');
+                            item.CONTSIZE = masterItem ? masterItem.CONTSIZE : (item.CONTSIZE || item.SIZE || item.CONTAINER || '-');
+                            
                             item.CUSTOMERNAME = item.CUSTOMERNAME || item.CUSTOMER || 'Unknown Customer';
                             item.CONSIGNEENAME = item.CONSIGNEENAME || item.CONSIGNEE || '';
                             item.SALESREPNAME = item.SALESREPNAME || item.SALESREP || item['SALES REP'] || 'Unknown Rep';
+                            
+                            if (masterItem) {
+                                item.LOCATIONCODE = masterItem.LOCATIONCODE;
+                                item.PTRAVAILABLE = masterItem.PTRAVAILABLE;
+                                item.SEASONSUPPLY = masterItem.SEASONSUPPLY;
+                                item.PRIORITY = masterItem.PRIORITY;
+                                item.QUALITYCODE = masterItem.QUALITYCODE;
+                                item.FIELDTAGCOLOR = masterItem.FIELDTAGCOLOR;
+                                item.LOTCODE = masterItem.LOTCODE;
+                            }
+                            
                             return item;
                         });
                         
@@ -723,7 +742,7 @@
         }
 
         function switchView(viewId) {
-            ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-low-stock','view-detail','view-docks','view-request'].forEach(id => { 
+            ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-low-stock','view-detail','view-docks','view-request','view-reserves'].forEach(id => { 
                 document.getElementById(id).classList.add('hidden'); 
             });
             document.getElementById('view-' + viewId).classList.remove('hidden');
@@ -738,11 +757,16 @@
             }
             if(viewId === 'review') { 
                 reviewViewLevel = 0; 
-                setReviewTab('completed'); 
+                renderReview(); 
             }
             if(viewId === 'request') {
                 requestViewLevel = 0;
                 renderRequest();
+            }
+            if(viewId === 'reserves') {
+                document.getElementById('reserves-search').value = "";
+                reservesViewLevel = 0;
+                renderReserves();
             }
             if(viewId === 'sales-office') { renderSalesOffice(); }
             if(viewId === 'low-stock') { resetLowStockView(); }
@@ -760,6 +784,7 @@
             if(!document.getElementById('view-docks').classList.contains('hidden')) renderDocks();
             if(!document.getElementById('view-review').classList.contains('hidden')) renderReview();
             if(!document.getElementById('view-request').classList.contains('hidden')) renderRequest();
+            if(!document.getElementById('view-reserves').classList.contains('hidden')) renderReserves();
         }
 
         function setTaskTab(tab) {
@@ -768,15 +793,6 @@
             document.getElementById('tab-location').classList.toggle('active', tab === 'location');
             taskViewLevel = 0; 
             renderTasks();
-        }
-
-        function setReviewTab(tab) {
-            activeReviewTab = tab;
-            document.getElementById('review-tab-completed').classList.toggle('active', tab === 'completed');
-            document.getElementById('review-tab-reserves').classList.toggle('active', tab === 'reserves');
-            reviewViewLevel = 0; 
-            reservesViewLevel = 0;
-            renderReview();
         }
 
         function selectRequestCategory(cat) {
@@ -810,11 +826,11 @@
                 selectedReservesName = null; 
                 selectedReservesSize = null; 
             }
-            renderReview();
+            renderReserves();
         }
 
-        function selectReservesName(name) { selectedReservesName = name; reservesViewLevel = 1; renderReview(); }
-        function selectReservesSize(size) { selectedReservesSize = size; reservesViewLevel = 2; renderReview(); }
+        function selectReservesName(name) { selectedReservesName = name; reservesViewLevel = 1; renderReserves(); }
+        function selectReservesSize(size) { selectedReservesSize = size; reservesViewLevel = 2; renderReserves(); }
 
         function getLocPrefix(loc) {
             if(!loc) return "Unassigned";
@@ -974,7 +990,6 @@
             document.getElementById('tab-select-modal').classList.remove('hidden');
         }
 
-        // --- NEW MODAL FILTER LOGIC ---
         function openRequestModal() {
             document.getElementById('request-rep-modal').classList.remove('hidden');
             document.getElementById('rep-search-input').value = "";
@@ -1016,17 +1031,16 @@
             const domIds = Array.from(selectedItems);
             const uniqueIds = [];
             
-            // GENERATE UNIQUE FOLDER ID (REQ-YYYY-MM-DD-HHMMSS)
             const dateStr = new Date().toISOString().split('T')[0]; 
             const shortTime = new Date().toLocaleTimeString('en-US', {hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit'}).replace(/:/g, ''); 
             const folderId = `REQ-${dateStr}-${shortTime}`;
             
             domIds.forEach(dId => {
-                let item = fullInventory.find(i => i.DOM_ID === dId) || lowStockInventory.find(i => i.DOM_ID === dId);
+                let item = fullInventory.find(i => i.DOM_ID === dId) || lowStockInventory.find(i => i.DOM_ID === dId) || reservesInventory.find(i => i.DOM_ID === dId);
                 if (item) {
                     item.IS_REQUEST = true; 
                     item.REQUESTED_BY = repName; 
-                    item.REQUEST_FOLDER = folderId; // NEW
+                    item.REQUEST_FOLDER = folderId; 
                     uniqueIds.push(item.UNIQUE_ID);
                 }
             });
@@ -1035,7 +1049,7 @@
 
             fetch(GOOGLE_SCRIPT_URL, {
                 method: 'POST',
-                body: JSON.stringify({ type: 'batch_request', ids: uniqueIds, repName: repName, folderId: folderId }) // ADDED FOLDER ID
+                body: JSON.stringify({ type: 'batch_request', ids: uniqueIds, repName: repName, folderId: folderId })
             }).then(res => res.json())
             .then(data => {
                 if (data.status === 'success') {
@@ -1060,7 +1074,7 @@
         function getSelectedItemsText(tabType) {
             let items = [];
             selectedItems.forEach(domId => {
-                let found = fullInventory.find(i => i.DOM_ID === domId) || lowStockInventory.find(i => i.DOM_ID === domId);
+                let found = fullInventory.find(i => i.DOM_ID === domId) || lowStockInventory.find(i => i.DOM_ID === domId) || reservesInventory.find(i => i.DOM_ID === domId);
                 if (found) items.push(found);
             });
 
@@ -1136,7 +1150,7 @@
             let itemsToUpdate = [];
             
             domIds.forEach(dId => {
-                let item = fullInventory.find(i => i.DOM_ID === dId) || lowStockInventory.find(i => i.DOM_ID === dId);
+                let item = fullInventory.find(i => i.DOM_ID === dId) || lowStockInventory.find(i => i.DOM_ID === dId) || reservesInventory.find(i => i.DOM_ID === dId);
                 if (item) {
                     uniqueIds.push(item.UNIQUE_ID);
                     itemsToUpdate.push(item);
@@ -1317,7 +1331,6 @@
                     }
                 });
                 
-                // NEW: Sort by Priority (1 is top, blank/null goes to bottom)
                 finalItems.sort((a, b) => {
                     let priA = parseFloat(a.PRIORITY);
                     let priB = parseFloat(b.PRIORITY);
@@ -1403,14 +1416,14 @@
             container.innerHTML = officeItems.map(i => generateCard(i, 'sales-office')).join('');
         }
 
-        // --- NEW DEDICATED REQUEST LOGIC ---
         function renderRequest() {
             const container = document.getElementById('request-content');
             const crumb = document.getElementById('request-crumb');
 
             let reqItems = fullInventory.filter(i => i.IS_REQUEST === true);
             let reqLowStock = lowStockInventory.filter(i => i.IS_REQUEST === true);
-            let combinedReq = [...reqItems, ...reqLowStock];
+            let reqReserves = reservesInventory.filter(i => i.IS_REQUEST === true);
+            let combinedReq = [...reqItems, ...reqLowStock, ...reqReserves];
             
             combinedReq = combinedReq.filter((v,i,a) => a.findIndex(t => (t.DOM_ID === v.DOM_ID)) === i);
 
@@ -1451,6 +1464,7 @@
             if (requestViewLevel === 1) {
                 if (requestFilterMode === 'reps') {
                     crumb.innerText = "Sales Reps";
+                    
                     let html = `<div class="back-btn" onclick="requestViewLevel=0; renderRequest()"><i class="ph-bold ph-arrow-left"></i> Back to Categories</div>`;
                     
                     salesRepList.forEach(rep => {
@@ -1509,7 +1523,6 @@
                 return;
             }
 
-            // LEVEL 3: FOLDERS LIST
             if (requestViewLevel === 3 && requestFilterMode === 'reps') {
                 crumb.innerText = `${selectedReqRep} / ${selectedReqRepStatus} / Folders`;
                 
@@ -1553,7 +1566,6 @@
                 return;
             }
 
-            // LEVEL 4: INSIDE FOLDER
             if (requestViewLevel === 4 && requestFilterMode === 'reps') {
                 crumb.innerText = `${selectedReqRep} / ${selectedReqRepStatus} / Folder`;
                 
@@ -1581,82 +1593,84 @@
             }
         }
 
-        // --- REMAINDER OF MANAGER REVIEW ---
-        function renderReview() {
-            const container = document.getElementById('review-content');
-            const crumb = document.getElementById('review-crumb');
+        function renderReserves() {
+            const container = document.getElementById('reserves-content');
+            const crumb = document.getElementById('reserves-crumb');
 
             const resSearch = document.getElementById('reserves-search');
             if (resSearch) resSearch.classList.add('hidden'); 
 
-            if (activeReviewTab === 'reserves') {
-                if (reservesViewLevel === 0 && resSearch) resSearch.classList.remove('hidden'); 
-                
-                const term = resSearch ? resSearch.value.toLowerCase() : "";
+            if (reservesViewLevel === 0 && resSearch) resSearch.classList.remove('hidden'); 
+            
+            const term = resSearch ? resSearch.value.toLowerCase() : "";
 
-                let filteredReserves = reservesInventory;
-                if (term) {
-                    filteredReserves = filteredReserves.filter(i => (i.COMMONNAME || "").toLowerCase().includes(term) || (i.CUSTOMERNAME || "").toLowerCase().includes(term) || (i.SALESREPNAME || "").toLowerCase().includes(term));
-                }
-
-                if (filteredReserves.length === 0) {
-                    crumb.innerText = "Reserves View";
-                    container.innerHTML = `<div class="p-8 text-center text-gray-400">No reserves data available.</div>`;
-                    return;
-                }
-
-                if (reservesViewLevel === 0) {
-                    crumb.innerText = `Reserves / Select Plant (${filteredReserves.length} items)`;
-                    const names = [...new Set(filteredReserves.map(i => i.COMMONNAME))].sort();
-                    container.innerHTML = names.map(n => `<div class="drill-item" onclick="selectReservesName('${n.replace(/'/g, "\\'")}')"><span class="font-bold text-lg">${n}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
-                    return;
-                }
-
-                if (reservesViewLevel === 1) {
-                    crumb.innerText = `Reserves / ${selectedReservesName}`;
-                    const namedItems = filteredReserves.filter(i => i.COMMONNAME === selectedReservesName);
-                    const sizes = [...new Set(namedItems.map(i => i.CONTSIZE))].sort();
-                    
-                    let html = `<div class="back-btn" onclick="reservesViewLevel=0; renderReview()"><i class="ph-bold ph-arrow-left"></i> Back to Plants</div>`;
-                    html += `<div class="font-bold text-[#007a4d] mb-4 px-2 text-xl border-b pb-2">${selectedReservesName}</div>`;
-                    
-                    html += sizes.map(s => {
-                        const count = namedItems.filter(i => i.CONTSIZE === s).length;
-                        return `<div class="drill-item" onclick="selectReservesSize('${s}')"><span class="font-bold text-lg">${s} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
-                    }).join('');
-                    
-                    container.innerHTML = html;
-                    return;
-                }
-
-                if (reservesViewLevel === 2) {
-                    crumb.innerText = `Reserves / ${selectedReservesName} (${selectedReservesSize})`;
-                    let displayItems = filteredReserves.filter(i => i.COMMONNAME === selectedReservesName && i.CONTSIZE === selectedReservesSize);
-                    
-                    let html = `<div class="back-btn" onclick="reservesViewLevel=1; renderReview()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>`;
-                    
-                    html += displayItems.map(item => {
-                        let custDisplay = item.CUSTOMERNAME;
-                        if (item.CONSIGNEENAME && item.CONSIGNEENAME !== item.CUSTOMERNAME) {
-                            custDisplay += ` - ${item.CONSIGNEENAME}`;
-                        }
-                        
-                        return `
-                        <div class="drill-item flex-col items-start gap-2" onclick="openDetail('${item.UNIQUE_ID}', 'review')">
-                            <div class="flex justify-between w-full items-center">
-                                <span class="font-bold text-[15px] text-gray-800 leading-tight pr-4">${custDisplay}</span>
-                                <i class="ph-bold ph-caret-right text-gray-300 text-xl flex-shrink-0"></i>
-                            </div>
-                            <div class="text-xs font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-1 rounded inline-block mt-1">
-                                <i class="ph-bold ph-user mr-1"></i>${item.SALESREPNAME}
-                            </div>
-                        </div>`;
-                    }).join('');
-                    
-                    container.innerHTML = html;
-                    return;
-                }
+            let filteredReserves = reservesInventory;
+            if (term) {
+                filteredReserves = filteredReserves.filter(i => (i.COMMONNAME || "").toLowerCase().includes(term) || (i.CUSTOMERNAME || "").toLowerCase().includes(term) || (i.SALESREPNAME || "").toLowerCase().includes(term));
             }
+
+            if (filteredReserves.length === 0) {
+                crumb.innerText = "Reserves";
+                container.innerHTML = `<div class="p-8 text-center text-gray-400">No reserves data available.</div>`;
+                return;
+            }
+
+            if (reservesViewLevel === 0) {
+                crumb.innerText = `Select Plant (${filteredReserves.length} items)`;
+                const names = [...new Set(filteredReserves.map(i => i.COMMONNAME))].sort();
+                container.innerHTML = names.map(n => `<div class="drill-item" onclick="selectReservesName('${n.replace(/'/g, "\\'")}')"><span class="font-bold text-lg">${n}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
+                return;
+            }
+
+            if (reservesViewLevel === 1) {
+                crumb.innerText = `${selectedReservesName}`;
+                const namedItems = filteredReserves.filter(i => i.COMMONNAME === selectedReservesName);
+                const sizes = [...new Set(namedItems.map(i => i.CONTSIZE))].sort();
+                
+                let html = `<div class="back-btn" onclick="reservesViewLevel=0; renderReserves()"><i class="ph-bold ph-arrow-left"></i> Back to Plants</div>`;
+                html += `<div class="font-bold text-indigo-600 mb-4 px-2 text-xl border-b pb-2">${selectedReservesName}</div>`;
+                
+                html += sizes.map(s => {
+                    const count = namedItems.filter(i => i.CONTSIZE === s).length;
+                    return `<div class="drill-item" onclick="selectReservesSize('${s}')"><span class="font-bold text-lg">${s} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
+                }).join('');
+                
+                container.innerHTML = html;
+                return;
+            }
+
+            if (reservesViewLevel === 2) {
+                crumb.innerText = `${selectedReservesName} (${selectedReservesSize})`;
+                let displayItems = filteredReserves.filter(i => i.COMMONNAME === selectedReservesName && i.CONTSIZE === selectedReservesSize);
+                
+                let html = `<div class="back-btn" onclick="reservesViewLevel=1; renderReserves()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>`;
+                
+                html += displayItems.map(item => {
+                    let custDisplay = item.CUSTOMERNAME;
+                    if (item.CONSIGNEENAME && item.CONSIGNEENAME !== item.CUSTOMERNAME) {
+                        custDisplay += ` - ${item.CONSIGNEENAME}`;
+                    }
+                    
+                    return `
+                    <div class="drill-item flex-col items-start gap-2" onclick="openDetail('${item.UNIQUE_ID}', 'reserves')">
+                        <div class="flex justify-between w-full items-center">
+                            <span class="font-bold text-[15px] text-gray-800 leading-tight pr-4">${custDisplay}</span>
+                            <i class="ph-bold ph-caret-right text-gray-300 text-xl flex-shrink-0"></i>
+                        </div>
+                        <div class="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-1 rounded inline-block mt-1">
+                            <i class="ph-bold ph-user mr-1"></i>${item.SALESREPNAME}
+                        </div>
+                    </div>`;
+                }).join('');
+                
+                container.innerHTML = html;
+                return;
+            }
+        }
+
+        function renderReview() {
+            const container = document.getElementById('review-content');
+            const crumb = document.getElementById('review-crumb');
 
             let completedItems = fullInventory.filter(i => i.DATE_COMPLETED && i.DATE_COMPLETED !== "");
             
@@ -1846,7 +1860,7 @@
             if (!activeItem) activeItem = reservesInventory.find(i => i.UNIQUE_ID === uniqueId); 
             if (!activeItem) return;
 
-            ['view-drive','view-tasks','view-review','view-sales-office','view-low-stock','view-docks','view-request'].forEach(v => document.getElementById(v).classList.add('hidden'));
+            ['view-drive','view-tasks','view-review','view-sales-office','view-low-stock','view-docks','view-request','view-reserves'].forEach(v => document.getElementById(v).classList.add('hidden'));
             document.getElementById('view-detail').classList.remove('hidden');
             
             const dtabActions = document.getElementById('dtab-actions');
