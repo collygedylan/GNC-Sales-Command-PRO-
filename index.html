@@ -463,6 +463,54 @@
     <script>
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzhJ_tytv5Rm2ag44liZAU6nsp0lQ7-9PLmjxrcuT1WA1WARubi7NyolYoTZ_qvZmzo/exec";
 
+        // --- INDEXED DB SETUP ---
+        const DB_NAME = "GNC_Sales_DB";
+        const STORE_NAME = "inventory_cache";
+
+        function openDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, 1);
+                request.onupgradeneeded = event => {
+                    const db = event.target.result;
+                    if (!db.objectStoreNames.contains(STORE_NAME)) {
+                        db.createObjectStore(STORE_NAME);
+                    }
+                };
+                request.onsuccess = event => resolve(event.target.result);
+                request.onerror = event => reject(event.target.error);
+            });
+        }
+
+        async function saveToCache(data) {
+            try {
+                const db = await openDB();
+                const tx = db.transaction(STORE_NAME, "readwrite");
+                tx.objectStore(STORE_NAME).put(data, "latest_data");
+                return new Promise((resolve) => {
+                    tx.oncomplete = () => resolve(true);
+                    tx.onerror = () => resolve(false);
+                });
+            } catch (e) {
+                console.error("Save cache failed", e);
+            }
+        }
+
+        async function loadFromCache() {
+            try {
+                const db = await openDB();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction(STORE_NAME, "readonly");
+                    const request = tx.objectStore(STORE_NAME).get("latest_data");
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => resolve(null);
+                });
+            } catch (e) {
+                console.error("Load cache failed", e);
+                return null;
+            }
+        }
+        // ------------------------
+
         let appUsers = [];
         let fullInventory = []; 
         let lowStockInventory = []; 
@@ -583,17 +631,14 @@
                 });
         }
 
-        function fetchBackgroundData() {
+        async function fetchBackgroundData() {
             // 1. Check for local memory cache for INSTANT load
-            const cachedData = localStorage.getItem('gnc_data_cache_v2');
-            if (cachedData) {
-                try {
-                    const res = JSON.parse(cachedData);
-                    processAndLoadData(res);
-                    showToast("Ready", "Loaded from cache. Updating in background...", false);
-                } catch(e) { console.warn("Cache parse error", e); }
+            const cachedRes = await loadFromCache();
+            if (cachedRes) {
+                processAndLoadData(cachedRes);
+                showToast("Ready", "Loaded from device memory. Updating in background...", false);
             } else {
-                showToast("Welcome!", "Downloading database...", false);
+                showToast("Welcome!", "Downloading database... (This only happens once)", false);
             }
 
             // 2. Fetch the highly compressed 2D Array data from Google
@@ -601,19 +646,20 @@
             
             fetch(dataUrl)
                 .then(response => response.json())
-                .then(res => {
+                .then(async res => {
                     if (res.status === 'success') {
-                        try {
-                            localStorage.setItem('gnc_data_cache_v2', JSON.stringify(res));
-                        } catch(e) { console.warn("Local storage full, skipped caching"); }
-                        
+                        await saveToCache(res); // Save to massive storage
                         processAndLoadData(res);
-                        showToast("Sync Complete", "Live database updated.", false);
+                        if(cachedRes) {
+                             showToast("Sync Complete", "Live database updated.", false);
+                        } else {
+                             showToast("Ready", "Database downloaded and saved!", false);
+                        }
                     }
                 })
                 .catch(err => {
                     console.error("Background sync failed:", err);
-                    if (!cachedData) showToast("Sync Error", "Could not download data. Check connection.", true);
+                    if (!cachedRes) showToast("Sync Error", "Could not download data. Check connection.", true);
                 });
         }
 
