@@ -127,12 +127,30 @@
     <div id="request-rep-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-orange-600">Who requested this?</h3>
-            <div class="grid grid-cols-1 gap-3 mb-4">
-                <button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm" onclick="confirmRequestAction('Brian Hatfield')">Brian Hatfield</button>
+            
+            <div class="grid grid-cols-1 gap-3 mb-4 max-h-[60vh] overflow-y-auto px-2 py-1">
+                <button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm" onclick="confirmRequestAction('Abbey Burka')">Abbey Burka</button>
                 <button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm" onclick="confirmRequestAction('Annette Hancock')">Annette Hancock</button>
-                <button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm" onclick="confirmRequestAction('Kevin Effinger')">Kevin Effinger</button>
                 <button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm" onclick="confirmRequestAction('Ben Brown')">Ben Brown</button>
+                <button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm" onclick="confirmRequestAction('Ben Harveson')">Ben Harveson</button>
+                <button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm" onclick="confirmRequestAction('Ben Machino')">Ben Machino</button>
+                <button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm" onclick="confirmRequestAction('Brian Hatfield')">Brian Hatfield</button>
+                <button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm" onclick="confirmRequestAction('Casey Rufener')">Casey Rufener</button>
+                <button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm" onclick="confirmRequestAction('Chris Farrow')">Chris Farrow</button>
+                <button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm" onclick="confirmRequestAction('Chris Gaydos')">Chris Gaydos</button>
+                <button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm" onclick="confirmRequestAction('David Brandt')">David Brandt</button>
+                <button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm" onclick="confirmRequestAction('Ellen Deely')">Ellen Deely</button>
+                <button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm" onclick="confirmRequestAction('Jessica Robertson')">Jessica Robertson</button>
+                <button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm" onclick="confirmRequestAction('Josh Ringleb')">Josh Ringleb</button>
+                <button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm" onclick="confirmRequestAction('Kevin Effinger')">Kevin Effinger</button>
+                <button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm" onclick="confirmRequestAction('Nate Douglas')">Nate Douglas</button>
+                <button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm" onclick="confirmRequestAction('Toby Brown')">Toby Brown</button>
+                <button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm" onclick="confirmRequestAction('Traci Earle')">Traci Earle</button>
+                <button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm" onclick="confirmRequestAction('Tracey Tapscott')">Tracey Tapscott</button>
+                <button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm" onclick="confirmRequestAction('Troy Lee')">Troy Lee</button>
+                <button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm" onclick="confirmRequestAction('Wes Lugas')">Wes Lugas</button>
             </div>
+            
             <button class="text-gray-500 font-bold py-2 px-4" onclick="document.getElementById('request-rep-modal').classList.add('hidden')">Cancel</button>
         </div>
     </div>
@@ -157,6 +175,7 @@
             <div class="drawer-item text-orange-600 font-bold" onclick="switchView('docks'); toggleMenu();"><i class="ph-bold ph-truck"></i> Docks</div>
             
             <hr class="my-2">
+            <div class="drawer-item text-blue-600 font-bold admin-only" onclick="switchView('request'); toggleMenu();"><i class="ph-bold ph-chat-circle-text"></i> Requests</div>
             <div class="drawer-item text-purple-600 font-bold admin-only" onclick="switchView('sales-office'); toggleMenu();"><i class="ph-bold ph-briefcase"></i> Sales Office</div>
             <div class="drawer-item text-purple-600 font-bold dylan-only hidden" onclick="switchView('low-stock'); toggleMenu();"><i class="ph-bold ph-trend-down"></i> Low Stock List</div>
             <div class="drawer-item text-red-600 font-bold admin-only" onclick="switchView('review'); toggleMenu();"><i class="ph-bold ph-warning-circle"></i> Manager Review</div>
@@ -176,6 +195,9 @@
                     <div onclick="switchView('tasks')" class="home-btn"><i class="ph-bold ph-clipboard-text text-3xl text-[#007a4d]"></i><span class="font-bold">Tasks</span></div>
                     <div onclick="switchView('drive')" class="home-btn"><i class="ph-bold ph-car text-3xl text-blue-600"></i><span class="font-bold">Drive Mode</span></div>
                     <div onclick="switchView('docks')" class="home-btn col-span-2 border-orange-200 bg-orange-50 text-orange-700"><i class="ph-bold ph-truck text-3xl"></i><span class="font-bold">Docks</span></div>
+                    
+                    <div onclick="switchView('request')" class="home-btn col-span-2 text-blue-600 border-blue-200 bg-blue-50 admin-only"><i class="ph-bold ph-chat-circle-text text-3xl"></i><span class="font-bold">Requests</span></div>
+                    
                     <div onclick="switchView('sales-office')" class="home-btn col-span-2 text-purple-600 border-purple-200 bg-purple-50 admin-only"><i class="ph-bold ph-briefcase text-3xl"></i><span class="font-bold">Sales Office</span></div>
                     <div onclick="switchView('low-stock')" class="home-btn col-span-2 text-purple-600 border-purple-200 bg-purple-50 dylan-only hidden"><i class="ph-bold ph-trend-down text-3xl"></i><span class="font-bold">Low Stock List</span></div>
                     <div onclick="switchView('review')" class="home-btn col-span-2 text-red-600 border-red-200 bg-red-50 admin-only"><i class="ph-bold ph-warning-circle text-3xl"></i><span class="font-bold">Manager Review</span></div>
@@ -190,6 +212,14 @@
                         </div>
                     </div>
                 </div>
+            </div>
+
+            <div id="view-request" class="hidden admin-only">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-sm font-bold text-blue-600 uppercase">Requests</h2>
+                    <span id="request-crumb" class="text-xs font-bold text-[#007a4d]"></span>
+                </div>
+                <div id="request-content"></div>
             </div>
 
             <div id="view-docks" class="hidden">
@@ -248,7 +278,6 @@
                 <div class="task-tabs mb-4">
                     <div id="review-tab-completed" class="task-tab active" onclick="setReviewTab('completed')">Completed Tasks</div>
                     <div id="review-tab-reserves" class="task-tab" onclick="setReviewTab('reserves')">Reserves</div>
-                    <div id="review-tab-request" class="task-tab" onclick="setReviewTab('request')">Request</div>
                 </div>
 
                 <input type="text" id="reserves-search" class="input-field mb-2 hidden" placeholder="Search Plants or Customers..." onkeyup="handleReservesSearch()">
@@ -435,7 +464,7 @@
         let fullInventory = []; 
         let lowStockInventory = []; 
         let socInventory = []; 
-        let reservesInventory = []; // NEW
+        let reservesInventory = []; 
         let salesNotesDict = {}; 
         
         let currentUser = "";
@@ -736,7 +765,7 @@
         }
 
         function switchView(viewId) {
-            ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-low-stock','view-detail','view-docks'].forEach(id => { 
+            ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-low-stock','view-detail','view-docks','view-request'].forEach(id => { 
                 document.getElementById(id).classList.add('hidden'); 
             });
             document.getElementById('view-' + viewId).classList.remove('hidden');
@@ -753,6 +782,10 @@
                 reviewViewLevel = 0; 
                 setReviewTab('completed'); 
             }
+            if(viewId === 'request') {
+                requestViewLevel = 0;
+                renderRequest();
+            }
             if(viewId === 'sales-office') { renderSalesOffice(); }
             if(viewId === 'low-stock') { resetLowStockView(); }
             if(viewId === 'docks') { 
@@ -768,6 +801,7 @@
             if(!document.getElementById('view-low-stock').classList.contains('hidden')) renderLowStock();
             if(!document.getElementById('view-docks').classList.contains('hidden')) renderDocks();
             if(!document.getElementById('view-review').classList.contains('hidden')) renderReview();
+            if(!document.getElementById('view-request').classList.contains('hidden')) renderRequest();
         }
 
         function setTaskTab(tab) {
@@ -782,9 +816,7 @@
             activeReviewTab = tab;
             document.getElementById('review-tab-completed').classList.toggle('active', tab === 'completed');
             document.getElementById('review-tab-reserves').classList.toggle('active', tab === 'reserves');
-            document.getElementById('review-tab-request').classList.toggle('active', tab === 'request');
             reviewViewLevel = 0; 
-            requestViewLevel = 0; 
             reservesViewLevel = 0;
             renderReview();
         }
@@ -792,19 +824,19 @@
         function selectRequestCategory(cat) {
             requestFilterMode = cat;
             requestViewLevel = 1;
-            renderReview();
+            renderRequest();
         }
 
         function selectRequestRep(rep) {
             selectedReqRep = rep;
             requestViewLevel = 2;
-            renderReview();
+            renderRequest();
         }
 
         function selectRepStatus(status) {
             selectedReqRepStatus = status;
             requestViewLevel = 3;
-            renderReview();
+            renderRequest();
         }
         
         function handleReservesSearch() {
@@ -1002,8 +1034,7 @@
                 if (data.status === 'success') {
                     showToast("Success", "Items moved to Request tab!");
                     clearSelection();
-                    switchView('review');
-                    setReviewTab('request');
+                    switchView('request');
                 } else { showToast("Error", "Failed to update sheet.", true); }
             }).catch(err => showToast("Error", "Network error.", true));
         }
@@ -1352,6 +1383,140 @@
             container.innerHTML = officeItems.map(i => generateCard(i, 'sales-office')).join('');
         }
 
+        // --- NEW DEDICATED REQUEST LOGIC ---
+        function renderRequest() {
+            const container = document.getElementById('request-content');
+            const crumb = document.getElementById('request-crumb');
+
+            let reqItems = fullInventory.filter(i => i.IS_REQUEST === true);
+            let reqLowStock = lowStockInventory.filter(i => i.IS_REQUEST === true);
+            let combinedReq = [...reqItems, ...reqLowStock];
+            
+            combinedReq = combinedReq.filter((v,i,a) => a.findIndex(t => (t.DOM_ID === v.DOM_ID)) === i);
+
+            const isReqCompleted = (item) => {
+                return (
+                    (item.REQ_SALES_NOTE && String(item.REQ_SALES_NOTE).trim() !== "") || 
+                    (item.REQ_PHOTO_LINK && String(item.REQ_PHOTO_LINK).trim() !== "") || 
+                    (item.REQ_COMMENTS && String(item.REQ_COMMENTS).trim() !== "") ||
+                    (item.REQ_SPEC && String(item.REQ_SPEC).trim() !== "") ||
+                    (item.REQ_CALIPER && String(item.REQ_CALIPER).trim() !== "") ||
+                    (item.REQ_MATCH && String(item.REQ_MATCH).trim() !== "") ||
+                    (item.REQ_PICK && String(item.REQ_PICK).trim() !== "")
+                );
+            };
+
+            let pendingReqs = combinedReq.filter(i => !isReqCompleted(i));
+            let completedReqs = combinedReq.filter(i => isReqCompleted(i));
+
+            if (requestViewLevel === 0) {
+                crumb.innerText = "Categories";
+                container.innerHTML = `
+                    <div class="drill-item" onclick="selectRequestCategory('pending')">
+                        <span class="font-bold text-lg text-orange-600">All Pending Requests <span class="text-gray-400 text-sm font-normal">(${pendingReqs.length})</span></span>
+                        <i class="ph-bold ph-caret-right text-gray-300"></i>
+                    </div>
+                    <div class="drill-item" onclick="selectRequestCategory('completed')">
+                        <span class="font-bold text-lg text-green-600">All Completed Requests <span class="text-gray-400 text-sm font-normal">(${completedReqs.length})</span></span>
+                        <i class="ph-bold ph-caret-right text-gray-300"></i>
+                    </div>
+                    <div class="drill-item" onclick="selectRequestCategory('reps')">
+                        <span class="font-bold text-lg text-blue-600">Sales Reps</span>
+                        <i class="ph-bold ph-caret-right text-gray-300"></i>
+                    </div>
+                `;
+                return;
+            }
+
+            if (requestViewLevel === 1) {
+                if (requestFilterMode === 'reps') {
+                    crumb.innerText = "Sales Reps";
+                    let reps = ["Abbey Burka", "Annette Hancock", "Ben Brown", "Ben Harveson", "Ben Machino", "Brian Hatfield", "Casey Rufener", "Chris Farrow", "Chris Gaydos", "David Brandt", "Ellen Deely", "Jessica Robertson", "Josh Ringleb", "Kevin Effinger", "Nate Douglas", "Toby Brown", "Traci Earle", "Tracey Tapscott", "Troy Lee", "Wes Lugas"];
+                    
+                    let html = `<div class="back-btn" onclick="requestViewLevel=0; renderRequest()"><i class="ph-bold ph-arrow-left"></i> Back to Categories</div>`;
+                    
+                    reps.forEach(rep => {
+                        let parts = rep.toUpperCase().split(' ');
+                        let count = combinedReq.filter(i => {
+                            let matchStr = (i.REQUESTED_BY || i.SALESREP || i.SALESREPNAME || i['SALES REP'] || i.ASSIGNEDTO || "").toUpperCase();
+                            return matchStr.includes(parts[0]) && matchStr.includes(parts[1]);
+                        }).length;
+                        
+                        html += `<div class="drill-item" onclick="selectRequestRep('${rep}')"><span class="font-bold text-lg">${rep} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
+                    });
+                    container.innerHTML = html;
+                    return;
+                } else {
+                    crumb.innerText = requestFilterMode === 'pending' ? "Pending" : "Completed";
+                    let displayItems = requestFilterMode === 'pending' ? pendingReqs : completedReqs;
+
+                    displayItems.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
+
+                    let html = `<div class="back-btn" onclick="requestViewLevel=0; renderRequest()"><i class="ph-bold ph-arrow-left"></i> Back to Categories</div>`;
+                    
+                    if (displayItems.length === 0) {
+                        html += `<div class="p-8 text-center text-gray-400">No ${requestFilterMode} requests at this time.</div>`;
+                    } else {
+                        let colorClass = requestFilterMode === 'pending' ? 'status-orange' : 'status-green';
+                        html += displayItems.map(i => generateCard(i, 'request', colorClass)).join('');
+                    }
+                    container.innerHTML = html;
+                    return;
+                }
+            }
+
+            if (requestViewLevel === 2 && requestFilterMode === 'reps') {
+                crumb.innerText = `${selectedReqRep}`;
+                
+                let parts = selectedReqRep.toUpperCase().split(' ');
+                let repItems = combinedReq.filter(i => {
+                    let matchStr = (i.REQUESTED_BY || i.SALESREP || i.SALESREPNAME || i['SALES REP'] || i.ASSIGNEDTO || "").toUpperCase();
+                    return matchStr.includes(parts[0]) && matchStr.includes(parts[1]);
+                });
+
+                let repPending = repItems.filter(i => !isReqCompleted(i));
+                let repCompleted = repItems.filter(i => isReqCompleted(i));
+
+                container.innerHTML = `
+                    <div class="back-btn" onclick="requestViewLevel=1; renderRequest()"><i class="ph-bold ph-arrow-left"></i> Back to Sales Reps</div>
+                    <div class="drill-item" onclick="selectRepStatus('pending')">
+                        <span class="font-bold text-lg text-orange-600">Pending Requests <span class="text-gray-400 text-sm font-normal">(${repPending.length})</span></span>
+                        <i class="ph-bold ph-caret-right text-gray-300"></i>
+                    </div>
+                    <div class="drill-item" onclick="selectRepStatus('completed')">
+                        <span class="font-bold text-lg text-green-600">Completed Requests <span class="text-gray-400 text-sm font-normal">(${repCompleted.length})</span></span>
+                        <i class="ph-bold ph-caret-right text-gray-300"></i>
+                    </div>
+                `;
+                return;
+            }
+
+            if (requestViewLevel === 3 && requestFilterMode === 'reps') {
+                crumb.innerText = `${selectedReqRep} / ${selectedReqRepStatus}`;
+                
+                let parts = selectedReqRep.toUpperCase().split(' ');
+                let repItems = combinedReq.filter(i => {
+                    let matchStr = (i.REQUESTED_BY || i.SALESREP || i.SALESREPNAME || i['SALES REP'] || i.ASSIGNEDTO || "").toUpperCase();
+                    return matchStr.includes(parts[0]) && matchStr.includes(parts[1]);
+                });
+
+                let displayItems = selectedReqRepStatus === 'pending' ? repItems.filter(i => !isReqCompleted(i)) : repItems.filter(i => isReqCompleted(i));
+                displayItems.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
+
+                let html = `<div class="back-btn" onclick="requestViewLevel=2; renderRequest()"><i class="ph-bold ph-arrow-left"></i> Back to Folders</div>`;
+                
+                if (displayItems.length === 0) {
+                    html += `<div class="p-8 text-center text-gray-400">No ${selectedReqRepStatus} requests for ${selectedReqRep} at this time.</div>`;
+                } else {
+                    let colorClass = selectedReqRepStatus === 'pending' ? 'status-orange' : 'status-green';
+                    html += displayItems.map(i => generateCard(i, 'request', colorClass)).join('');
+                }
+                container.innerHTML = html;
+                return;
+            }
+        }
+
+        // --- REMAINDER OF MANAGER REVIEW ---
         function renderReview() {
             const container = document.getElementById('review-content');
             const crumb = document.getElementById('review-crumb');
@@ -1423,134 +1588,6 @@
                         </div>`;
                     }).join('');
                     
-                    container.innerHTML = html;
-                    return;
-                }
-            }
-
-            if (activeReviewTab === 'request') {
-                let reqItems = fullInventory.filter(i => i.IS_REQUEST === true);
-                let reqLowStock = lowStockInventory.filter(i => i.IS_REQUEST === true);
-                let combinedReq = [...reqItems, ...reqLowStock];
-                
-                combinedReq = combinedReq.filter((v,i,a) => a.findIndex(t => (t.DOM_ID === v.DOM_ID)) === i);
-
-                const isReqCompleted = (item) => {
-                    return (
-                        (item.REQ_SALES_NOTE && String(item.REQ_SALES_NOTE).trim() !== "") || 
-                        (item.REQ_PHOTO_LINK && String(item.REQ_PHOTO_LINK).trim() !== "") || 
-                        (item.REQ_COMMENTS && String(item.REQ_COMMENTS).trim() !== "") ||
-                        (item.REQ_SPEC && String(item.REQ_SPEC).trim() !== "") ||
-                        (item.REQ_CALIPER && String(item.REQ_CALIPER).trim() !== "") ||
-                        (item.REQ_MATCH && String(item.REQ_MATCH).trim() !== "") ||
-                        (item.REQ_PICK && String(item.REQ_PICK).trim() !== "")
-                    );
-                };
-
-                let pendingReqs = combinedReq.filter(i => !isReqCompleted(i));
-                let completedReqs = combinedReq.filter(i => isReqCompleted(i));
-
-                if (requestViewLevel === 0) {
-                    crumb.innerText = "Request View";
-                    container.innerHTML = `
-                        <div class="drill-item" onclick="selectRequestCategory('pending')">
-                            <span class="font-bold text-lg text-orange-600">All Pending Requests <span class="text-gray-400 text-sm font-normal">(${pendingReqs.length})</span></span>
-                            <i class="ph-bold ph-caret-right text-gray-300"></i>
-                        </div>
-                        <div class="drill-item" onclick="selectRequestCategory('completed')">
-                            <span class="font-bold text-lg text-green-600">All Completed Requests <span class="text-gray-400 text-sm font-normal">(${completedReqs.length})</span></span>
-                            <i class="ph-bold ph-caret-right text-gray-300"></i>
-                        </div>
-                        <div class="drill-item" onclick="selectRequestCategory('reps')">
-                            <span class="font-bold text-lg text-blue-600">Sales Reps</span>
-                            <i class="ph-bold ph-caret-right text-gray-300"></i>
-                        </div>
-                    `;
-                    return;
-                }
-
-                if (requestViewLevel === 1) {
-                    if (requestFilterMode === 'reps') {
-                        crumb.innerText = "Requests / Sales Reps";
-                        let reps = ["Brian Hatfield", "Annette Hancock", "Kevin Effinger", "Ben Brown"];
-                        let html = `<div class="back-btn" onclick="requestViewLevel=0; renderReview()"><i class="ph-bold ph-arrow-left"></i> Back to Categories</div>`;
-                        
-                        reps.forEach(rep => {
-                            let repFirstName = rep.split(' ')[0].toUpperCase();
-                            let count = combinedReq.filter(i => {
-                                let matchStr = (i.REQUESTED_BY || i.SALESREP || i.SALESREPNAME || i['SALES REP'] || i.ASSIGNEDTO || "").toUpperCase();
-                                return matchStr.includes(repFirstName);
-                            }).length;
-                            
-                            html += `<div class="drill-item" onclick="selectRequestRep('${rep}')"><span class="font-bold text-lg">${rep} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
-                        });
-                        container.innerHTML = html;
-                        return;
-                    } else {
-                        crumb.innerText = requestFilterMode === 'pending' ? "Requests / Pending" : "Requests / Completed";
-                        let displayItems = requestFilterMode === 'pending' ? pendingReqs : completedReqs;
-
-                        displayItems.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
-
-                        let html = `<div class="back-btn" onclick="requestViewLevel=0; renderReview()"><i class="ph-bold ph-arrow-left"></i> Back to Categories</div>`;
-                        
-                        if (displayItems.length === 0) {
-                            html += `<div class="p-8 text-center text-gray-400">No ${requestFilterMode} requests at this time.</div>`;
-                        } else {
-                            let colorClass = requestFilterMode === 'pending' ? 'status-orange' : 'status-green';
-                            html += displayItems.map(i => generateCard(i, 'review', colorClass)).join('');
-                        }
-                        container.innerHTML = html;
-                        return;
-                    }
-                }
-
-                if (requestViewLevel === 2 && requestFilterMode === 'reps') {
-                    crumb.innerText = `Requests / ${selectedReqRep}`;
-                    
-                    let repFirstName = selectedReqRep.split(' ')[0].toUpperCase();
-                    let repItems = combinedReq.filter(i => {
-                        let matchStr = (i.REQUESTED_BY || i.SALESREP || i.SALESREPNAME || i['SALES REP'] || i.ASSIGNEDTO || "").toUpperCase();
-                        return matchStr.includes(repFirstName);
-                    });
-
-                    let repPending = repItems.filter(i => !isReqCompleted(i));
-                    let repCompleted = repItems.filter(i => isReqCompleted(i));
-
-                    container.innerHTML = `
-                        <div class="back-btn" onclick="requestViewLevel=1; renderReview()"><i class="ph-bold ph-arrow-left"></i> Back to Sales Reps</div>
-                        <div class="drill-item" onclick="selectRepStatus('pending')">
-                            <span class="font-bold text-lg text-orange-600">Pending Requests <span class="text-gray-400 text-sm font-normal">(${repPending.length})</span></span>
-                            <i class="ph-bold ph-caret-right text-gray-300"></i>
-                        </div>
-                        <div class="drill-item" onclick="selectRepStatus('completed')">
-                            <span class="font-bold text-lg text-green-600">Completed Requests <span class="text-gray-400 text-sm font-normal">(${repCompleted.length})</span></span>
-                            <i class="ph-bold ph-caret-right text-gray-300"></i>
-                        </div>
-                    `;
-                    return;
-                }
-
-                if (requestViewLevel === 3 && requestFilterMode === 'reps') {
-                    crumb.innerText = `Requests / ${selectedReqRep} / ${selectedReqRepStatus}`;
-                    
-                    let repFirstName = selectedReqRep.split(' ')[0].toUpperCase();
-                    let repItems = combinedReq.filter(i => {
-                        let matchStr = (i.REQUESTED_BY || i.SALESREP || i.SALESREPNAME || i['SALES REP'] || i.ASSIGNEDTO || "").toUpperCase();
-                        return matchStr.includes(repFirstName);
-                    });
-
-                    let displayItems = selectedReqRepStatus === 'pending' ? repItems.filter(i => !isReqCompleted(i)) : repItems.filter(i => isReqCompleted(i));
-                    displayItems.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
-
-                    let html = `<div class="back-btn" onclick="requestViewLevel=2; renderReview()"><i class="ph-bold ph-arrow-left"></i> Back to Folders</div>`;
-                    
-                    if (displayItems.length === 0) {
-                        html += `<div class="p-8 text-center text-gray-400">No ${selectedReqRepStatus} requests for ${selectedReqRep} at this time.</div>`;
-                    } else {
-                        let colorClass = selectedReqRepStatus === 'pending' ? 'status-orange' : 'status-green';
-                        html += displayItems.map(i => generateCard(i, 'review', colorClass)).join('');
-                    }
                     container.innerHTML = html;
                     return;
                 }
@@ -1744,7 +1781,7 @@
             if (!activeItem) activeItem = reservesInventory.find(i => i.UNIQUE_ID === uniqueId); 
             if (!activeItem) return;
 
-            ['view-drive','view-tasks','view-review','view-sales-office','view-low-stock','view-docks'].forEach(v => document.getElementById(v).classList.add('hidden'));
+            ['view-drive','view-tasks','view-review','view-sales-office','view-low-stock','view-docks','view-request'].forEach(v => document.getElementById(v).classList.add('hidden'));
             document.getElementById('view-detail').classList.remove('hidden');
             
             const dtabActions = document.getElementById('dtab-actions');
