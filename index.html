@@ -251,6 +251,8 @@
                     <div id="review-tab-request" class="task-tab" onclick="setReviewTab('request')">Request</div>
                 </div>
 
+                <input type="text" id="reserves-search" class="input-field mb-2 hidden" placeholder="Search Plants or Customers..." onkeyup="handleReservesSearch()">
+
                 <div id="review-content"></div>
             </div>
             
@@ -433,6 +435,7 @@
         let fullInventory = []; 
         let lowStockInventory = []; 
         let socInventory = []; 
+        let reservesInventory = []; // NEW
         let salesNotesDict = {}; 
         
         let currentUser = "";
@@ -473,13 +476,17 @@
         let requestViewLevel = 0;
         let requestFilterMode = null;
         let selectedReqRep = null;
-        let selectedReqRepStatus = null; // NEW
+        let selectedReqRepStatus = null; 
         
         let dockViewLevel = 0;
         let selectedDockNum = null;
         let selectedDockName = null;
         let selectedDockSize = null;
         let selectedDockItemCode = null;
+
+        let reservesViewLevel = 0;
+        let selectedReservesName = null;
+        let selectedReservesSize = null;
 
         function getDirectImageUrl(url) {
             if (!url) return "";
@@ -562,7 +569,19 @@
                             item.DOM_ID = 'ls_' + idx;
                             return item;
                         });
+                        
                         socInventory = res.socData || [];
+                        
+                        reservesInventory = (res.reservesData || []).map((item, idx) => {
+                            item.DOM_ID = 'res_' + idx;
+                            item.UNIQUE_ID = item.UNIQUE_ID || 'res_uid_' + idx; 
+                            item.COMMONNAME = item.COMMONNAME || item['PLANT NAME'] || item.DESCRIPTION || item.DESC || 'Unknown Plant';
+                            item.CONTSIZE = item.CONTSIZE || item.SIZE || item.CONTAINER || '-';
+                            item.CUSTOMERNAME = item.CUSTOMERNAME || item.CUSTOMER || 'Unknown Customer';
+                            item.CONSIGNEENAME = item.CONSIGNEENAME || item.CONSIGNEE || '';
+                            item.SALESREPNAME = item.SALESREPNAME || item.SALESREP || item['SALES REP'] || 'Unknown Rep';
+                            return item;
+                        });
                         
                         if (!isBiometricLogin && window.PublicKeyCredential) {
                             promptToEnableBiometrics(inputUser, inputPass);
@@ -766,6 +785,7 @@
             document.getElementById('review-tab-request').classList.toggle('active', tab === 'request');
             reviewViewLevel = 0; 
             requestViewLevel = 0; 
+            reservesViewLevel = 0;
             renderReview();
         }
 
@@ -786,6 +806,19 @@
             requestViewLevel = 3;
             renderReview();
         }
+        
+        function handleReservesSearch() {
+            const term = document.getElementById('reserves-search').value;
+            if (term.length > 0 && reservesViewLevel > 0) { 
+                reservesViewLevel = 0; 
+                selectedReservesName = null; 
+                selectedReservesSize = null; 
+            }
+            renderReview();
+        }
+
+        function selectReservesName(name) { selectedReservesName = name; reservesViewLevel = 1; renderReview(); }
+        function selectReservesSize(size) { selectedReservesSize = size; reservesViewLevel = 2; renderReview(); }
 
         function getLocPrefix(loc) {
             if(!loc) return "Unassigned";
@@ -954,7 +987,7 @@
                 let item = fullInventory.find(i => i.DOM_ID === dId) || lowStockInventory.find(i => i.DOM_ID === dId);
                 if (item) {
                     item.IS_REQUEST = true; 
-                    item.REQUESTED_BY = repName; // Update local state immediately
+                    item.REQUESTED_BY = repName; 
                     uniqueIds.push(item.UNIQUE_ID);
                 }
             });
@@ -1323,10 +1356,76 @@
             const container = document.getElementById('review-content');
             const crumb = document.getElementById('review-crumb');
 
+            const resSearch = document.getElementById('reserves-search');
+            if (resSearch) resSearch.classList.add('hidden'); // Hide by default
+
             if (activeReviewTab === 'reserves') {
-                crumb.innerText = "Reserves View";
-                container.innerHTML = `<div class="p-8 text-center text-gray-400">Reserves list will go here.</div>`;
-                return;
+                if (reservesViewLevel === 0 && resSearch) resSearch.classList.remove('hidden'); 
+                
+                const term = resSearch ? resSearch.value.toLowerCase() : "";
+
+                let filteredReserves = reservesInventory;
+                if (term) {
+                    filteredReserves = filteredReserves.filter(i => (i.COMMONNAME || "").toLowerCase().includes(term) || (i.CUSTOMERNAME || "").toLowerCase().includes(term) || (i.SALESREPNAME || "").toLowerCase().includes(term));
+                }
+
+                if (filteredReserves.length === 0) {
+                    crumb.innerText = "Reserves View";
+                    container.innerHTML = `<div class="p-8 text-center text-gray-400">No reserves data available.</div>`;
+                    return;
+                }
+
+                if (reservesViewLevel === 0) {
+                    crumb.innerText = `Reserves / Select Plant (${filteredReserves.length} items)`;
+                    const names = [...new Set(filteredReserves.map(i => i.COMMONNAME))].sort();
+                    container.innerHTML = names.map(n => `<div class="drill-item" onclick="selectReservesName('${n.replace(/'/g, "\\'")}')"><span class="font-bold text-lg">${n}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
+                    return;
+                }
+
+                if (reservesViewLevel === 1) {
+                    crumb.innerText = `Reserves / ${selectedReservesName}`;
+                    const namedItems = filteredReserves.filter(i => i.COMMONNAME === selectedReservesName);
+                    const sizes = [...new Set(namedItems.map(i => i.CONTSIZE))].sort();
+                    
+                    let html = `<div class="back-btn" onclick="reservesViewLevel=0; renderReview()"><i class="ph-bold ph-arrow-left"></i> Back to Plants</div>`;
+                    html += `<div class="font-bold text-[#007a4d] mb-4 px-2 text-xl border-b pb-2">${selectedReservesName}</div>`;
+                    
+                    html += sizes.map(s => {
+                        const count = namedItems.filter(i => i.CONTSIZE === s).length;
+                        return `<div class="drill-item" onclick="selectReservesSize('${s}')"><span class="font-bold text-lg">${s} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
+                    }).join('');
+                    
+                    container.innerHTML = html;
+                    return;
+                }
+
+                if (reservesViewLevel === 2) {
+                    crumb.innerText = `Reserves / ${selectedReservesName} (${selectedReservesSize})`;
+                    let displayItems = filteredReserves.filter(i => i.COMMONNAME === selectedReservesName && i.CONTSIZE === selectedReservesSize);
+                    
+                    let html = `<div class="back-btn" onclick="reservesViewLevel=1; renderReview()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>`;
+                    
+                    html += displayItems.map(item => {
+                        let custDisplay = item.CUSTOMERNAME;
+                        if (item.CONSIGNEENAME && item.CONSIGNEENAME !== item.CUSTOMERNAME) {
+                            custDisplay += ` - ${item.CONSIGNEENAME}`;
+                        }
+                        
+                        return `
+                        <div class="drill-item flex-col items-start gap-2" onclick="openDetail('${item.UNIQUE_ID}', 'review')">
+                            <div class="flex justify-between w-full items-center">
+                                <span class="font-bold text-[15px] text-gray-800 leading-tight pr-4">${custDisplay}</span>
+                                <i class="ph-bold ph-caret-right text-gray-300 text-xl flex-shrink-0"></i>
+                            </div>
+                            <div class="text-xs font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-1 rounded inline-block mt-1">
+                                <i class="ph-bold ph-user mr-1"></i>${item.SALESREPNAME}
+                            </div>
+                        </div>`;
+                    }).join('');
+                    
+                    container.innerHTML = html;
+                    return;
+                }
             }
 
             if (activeReviewTab === 'request') {
@@ -1351,7 +1450,6 @@
                 let pendingReqs = combinedReq.filter(i => !isReqCompleted(i));
                 let completedReqs = combinedReq.filter(i => isReqCompleted(i));
 
-                // LEVEL 0: Categories
                 if (requestViewLevel === 0) {
                     crumb.innerText = "Request View";
                     container.innerHTML = `
@@ -1371,7 +1469,6 @@
                     return;
                 }
 
-                // LEVEL 1: Either list of Reps, OR the list of All Pending/All Completed cards
                 if (requestViewLevel === 1) {
                     if (requestFilterMode === 'reps') {
                         crumb.innerText = "Requests / Sales Reps";
@@ -1408,7 +1505,6 @@
                     }
                 }
 
-                // LEVEL 2: Inside a specific Sales Rep -> Show Status Folders
                 if (requestViewLevel === 2 && requestFilterMode === 'reps') {
                     crumb.innerText = `Requests / ${selectedReqRep}`;
                     
@@ -1435,7 +1531,6 @@
                     return;
                 }
 
-                // LEVEL 3: Inside a specific Sales Rep -> Inside a Status Folder -> Show Cards
                 if (requestViewLevel === 3 && requestFilterMode === 'reps') {
                     crumb.innerText = `Requests / ${selectedReqRep} / ${selectedReqRepStatus}`;
                     
@@ -1646,6 +1741,7 @@
             
             activeItem = fullInventory.find(i => i.UNIQUE_ID === uniqueId);
             if (!activeItem) activeItem = lowStockInventory.find(i => i.UNIQUE_ID === uniqueId);
+            if (!activeItem) activeItem = reservesInventory.find(i => i.UNIQUE_ID === uniqueId); 
             if (!activeItem) return;
 
             ['view-drive','view-tasks','view-review','view-sales-office','view-low-stock','view-docks'].forEach(v => document.getElementById(v).classList.add('hidden'));
