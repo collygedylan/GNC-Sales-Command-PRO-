@@ -8,8 +8,8 @@
     <meta name="theme-color" content="#007a4d">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="icon" type="image/png" href="Greenleaf Logo.png">
-    <link rel="apple-touch-icon" href="Greenleaf Logo.png">
+    <link rel="icon" type="image/png" href="AppIcon.png">
+    <link rel="apple-touch-icon" href="AppIcon.png">
     <link rel="manifest" href="manifest.json">
     
     <script src="https://cdn.tailwindcss.com"></script>
@@ -560,6 +560,8 @@
         }
 
         let fullInventory = []; 
+        let seasonInventory = []; 
+        let locationInventory = []; 
         let lowStockInventory = []; 
         let socInventory = []; 
         let reservesInventory = []; 
@@ -757,8 +759,10 @@
             }
 
             try {
-                const [masterSnap, lowStockSnap, socSnap, reservesSnap] = await Promise.all([
+                const [masterSnap, seasonSnap, locationSnap, lowStockSnap, socSnap, reservesSnap] = await Promise.all([
                     db.collection('MasterInventory').get(),
+                    db.collection('SeasonNotes').get(),
+                    db.collection('LocationNotes').get(),
                     db.collection('LowStock').get(),
                     db.collection('SOC_Master').get(),
                     db.collection('Reserves').get()
@@ -766,6 +770,8 @@
 
                 const payload = {
                     master: masterSnap.docs.map(d => d.data()),
+                    season: seasonSnap.docs.map(d => d.data()),
+                    location: locationSnap.docs.map(d => d.data()),
                     lowStock: lowStockSnap.docs.map(d => d.data()),
                     soc: socSnap.docs.map(d => d.data()),
                     reserves: reservesSnap.docs.map(d => d.data()),
@@ -774,8 +780,6 @@
 
                 await saveToCache(payload); 
                 processFirebaseData(payload);
-                
-                if (isManualRefresh) { showToast("Refreshed", "Data is up to date.", false); }
 
             } catch(e) {
                 console.error("Firebase fetch error:", e);
@@ -789,7 +793,7 @@
             let item = { ...d, DOM_ID: idPrefix + idx, _COLLECTION: collectionName };
             
             item.UNIQUE_ID = d.UNIQUEID || d.UNIQUE_ID || d.UNIQUE_ID_1;
-            item.COMMONNAME = d.COMMONNAME || d.COMMON_NAME || d.PLANTNAME || d.PLANT_NAME || '';
+            item.COMMONNAME = d.COMMONNAME || d.COMMON_NAME || d.PLANTNAME || d.PLANT_NAME || d.DESCRIPTION || '';
             item.CONTSIZE = d.CONTSIZE || d.SIZE || d.CONTAINER || '';
             item.LOCATIONCODE = d.LOCATIONCODE || d.LOCATION || d.LOC || '';
             item.PTRAVAILABLE = d.PTRAVAILABLE || d.PTR_AVAILABLE || d.AVAILABLE || 0;
@@ -828,7 +832,6 @@
             let rawDock = d.DOCK || d.DOCKNUMBER || d.DOCK_NUMBER || d.DOCKNUM || '';
             if (rawDock) item.DOCK_NUM = parseInt(String(rawDock).replace(/\D/g, ''), 10);
             
-            // Bulletproof fallbacks for Reserve & SOC columns 
             item.CUSTOMERNAME = d.CUSTOMERNAME || d.CUSTOMER_NAME || d.CUSTOMER || d['CUSTOMER NAME'] || 'Unknown Customer';
             item.CONSIGNEENAME = d.CONSIGNEENAME || d.CONSIGNEE_NAME || d.CONSIGNEE || d['CONSIGNEE NAME'] || '';
             item.SALESREPNAME = d.SALESREPNAME || d.SALES_REP_NAME || d.SALESREP || d.SALES_REP || d['SALES REP'] || 'Unknown Rep';
@@ -841,49 +844,11 @@
 
         function processFirebaseData(payload) {
             fullInventory = payload.master.map((d, i) => normalizeItem(d, 'fi_', i, 'MasterInventory'));
+            seasonInventory = payload.season.map((d, i) => normalizeItem(d, 'sn_', i, 'SeasonNotes'));
+            locationInventory = payload.location.map((d, i) => normalizeItem(d, 'ln_', i, 'LocationNotes'));
             lowStockInventory = payload.lowStock.map((d, i) => normalizeItem(d, 'ls_', i, 'LowStock'));
             reservesInventory = payload.reserves.map((d, i) => normalizeItem(d, 'res_', i, 'Reserves'));
             socInventory = payload.soc.map((d, i) => normalizeItem(d, 'soc_', i, 'SOC_Master'));
-
-            let itemsWithPriority = {};
-            fullInventory.forEach(item => {
-                const priStr = String(item.PRIORITY).trim();
-                if (priStr !== "") {
-                    const pri = parseFloat(priStr);
-                    const ptr = parseFloat(String(item.PTRAVAILABLE).replace(/,/g, '')) || 0;
-                    const ss = parseFloat(String(item.SEASONSUPPLY).replace(/,/g, '')) || 0;
-                    const iCode = String(item.ITEMCODE || "").trim().toUpperCase();
-
-                    if (iCode) {
-                        if (!itemsWithPriority[iCode]) itemsWithPriority[iCode] = [];
-                        itemsWithPriority[iCode].push({ item, pri, ptr, ss });
-                    }
-                }
-            });
-
-            let seasonWinnerIds = new Set();
-            for (const code in itemsWithPriority) {
-                let group = itemsWithPriority[code];
-                let eligible = group.filter(obj => obj.ptr >= (obj.ss * 1.10));
-                
-                if (eligible.length > 0) {
-                    eligible.sort((a, b) => a.pri === b.pri ? b.ptr - a.ptr : a.pri - b.pri);
-                    seasonWinnerIds.add(eligible[0].item.DOM_ID);
-                }
-            }
-
-            let seenSeason = new Set();
-            fullInventory.forEach(item => {
-                const ic = String(item.ITEMCODE || "").trim().toUpperCase();
-                if (seasonWinnerIds.has(item.DOM_ID) && !seenSeason.has(ic)) {
-                    seenSeason.add(ic);
-                    item.APP_TAB_ASSIGNMENT = 'season';
-                } else if (String(item.PRIORITY).trim() !== "") {
-                    item.APP_TAB_ASSIGNMENT = 'location';
-                } else {
-                    item.APP_TAB_ASSIGNMENT = 'none';
-                }
-            });
 
             reservesInventory = reservesInventory.map(item => {
                 let resCode = String(item.ITEMCODE || "").trim().toUpperCase();
@@ -2151,19 +2116,17 @@
             
             let userToView = (currentRole === 'Admin') ? taskViewTargetUser : currentUser;
 
-            let myItems = fullInventory.filter(i => {
+            let baseItems = activeTaskTab === 'season' ? seasonInventory : locationInventory;
+
+            let myItems = baseItems.filter(i => {
                 if (i.DATE_COMPLETED && i.DATE_COMPLETED !== "") return false;
-                const pri = parseFloat(i.PRIORITY);
-                if (isNaN(pri) || pri <= 0) return false; 
-                if (activeTaskTab === 'season') return i.APP_TAB_ASSIGNMENT === 'season';
-                if (activeTaskTab === 'location') return i.APP_TAB_ASSIGNMENT === 'location';
+
+                if (userToView !== "All Team Tasks") {
+                    let searchName = userToView === 'dylan_collyge' ? 'Dylan' : userToView;
+                    if (!String(i.ASSIGNEDTO || "").toLowerCase().includes(searchName.toLowerCase())) return false;
+                }
                 return true;
             });
-
-            if (userToView !== "All Team Tasks") {
-                let searchName = userToView === 'dylan_collyge' ? 'Dylan' : userToView;
-                myItems = myItems.filter(i => String(i.ASSIGNEDTO || "").toLowerCase().includes(searchName.toLowerCase()));
-            }
 
             if (term) {
                 myItems = myItems.filter(i => 
@@ -2234,6 +2197,8 @@
             lastView = sourceView;
             
             activeItem = fullInventory.find(i => i.UNIQUE_ID === uniqueId);
+            if (!activeItem) activeItem = seasonInventory.find(i => i.UNIQUE_ID === uniqueId);
+            if (!activeItem) activeItem = locationInventory.find(i => i.UNIQUE_ID === uniqueId);
             if (!activeItem) activeItem = lowStockInventory.find(i => i.UNIQUE_ID === uniqueId);
             if (!activeItem) activeItem = reservesInventory.find(i => i.UNIQUE_ID === uniqueId); 
             if (!activeItem) return;
@@ -2564,6 +2529,11 @@
             let collection = activeItem._COLLECTION || 'MasterInventory';
 
             db.collection(collection).doc(docId).set(fbPayload, {merge: true}).then(() => {
+                // ALSO save to MasterInventory so Drive Mode always has the latest edits instantly
+                if (collection !== 'MasterInventory') {
+                    db.collection('MasterInventory').doc(docId).set(fbPayload, {merge: true});
+                }
+                
                 if(btnDraft) btnDraft.innerText = (activeDetailTab === 'request') ? "SAVE REQUEST DATA" : "SAVE DRAFT";
                 if(btnComp) btnComp.innerText = "MARK COMPLETE";
                 showToast("Success", isComplete ? "Task Completed!" : "Draft saved to Database.");
