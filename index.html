@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GNC PRO 005</title>
+    <title>AgriOps</title>
     
     <meta name="theme-color" content="#007a4d">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="icon" type="image/png" href="GNC LOGO.png">
-    <link rel="apple-touch-icon" href="GNC LOGO.png">
+    <link rel="icon" type="image/png" href="Greenleaf Logo.png">
+    <link rel="apple-touch-icon" href="Greenleaf Logo.png">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
@@ -92,7 +92,13 @@
 
     <div id="view-login">
         <div class="login-card">
-            <div class="text-3xl text-[#007a4d] font-bold mb-6">GNC PRO 005</div>
+            
+            <div class="flex flex-col items-center justify-center mb-6">
+                <img src="Greenleaf Logo.png" alt="Greenleaf" class="max-h-20 object-contain mb-3">
+                <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Powered by</span>
+                <img src="Ag Metric App.png" alt="Ag Metric App" class="max-h-8 object-contain">
+            </div>
+            
             <div id="login-inputs">
                 <input type="text" id="username-input" class="input-field mb-4 text-center border-2" placeholder="USERNAME">
                 <input type="password" id="pin-code" class="input-field mb-4 text-center border-2 tracking-widest" placeholder="PASSWORD">
@@ -171,7 +177,7 @@
                 <i class="ph-bold ph-list menu-btn text-2xl cursor-pointer" onclick="toggleMenu()"></i>
                 <div class="flex flex-col">
                     <div class="font-bold text-lg leading-tight"><span id="header-user">User</span></div>
-                    <div class="text-[10px] opacity-80 leading-tight">GNC PRO 005</div>
+                    <div class="text-[10px] opacity-80 leading-tight">AgriOps</div>
                 </div>
             </div>
         </header>
@@ -201,9 +207,11 @@
             </div>
 
             <div id="view-home" class="hidden">
-                <div class="bg-[#007a4d] text-white p-6 rounded-2xl mb-6 shadow-lg text-center mt-2">
-                    <h1 class="text-2xl font-bold">GNC PRO 005</h1>
-                    <p class="opacity-80 text-sm">Dashboard</p>
+                
+                <div class="bg-white border-2 border-[#007a4d] p-6 rounded-2xl mb-6 shadow-lg text-center mt-2 flex flex-col items-center justify-center">
+                    <img src="Greenleaf Logo.png" alt="Greenleaf" class="max-h-16 object-contain mb-3">
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Powered by</p>
+                    <img src="Ag Metric App.png" alt="Ag Metric App" class="max-h-8 object-contain">
                 </div>
                 
                 <h2 class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3 pl-1">App Modules</h2>
