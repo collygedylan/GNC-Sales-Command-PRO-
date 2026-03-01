@@ -639,7 +639,6 @@
             const ptrIndicator = document.getElementById('pull-to-refresh');
 
             scrollArea.addEventListener('touchstart', e => {
-                // Only start pull-to-refresh if we are at the very top of the scrollable area
                 if (scrollArea.scrollTop <= 0) {
                     ptrStartY = e.touches[0].clientY;
                     isPulling = true;
@@ -652,12 +651,10 @@
                 ptrCurrentY = e.touches[0].clientY;
                 const pullDistance = ptrCurrentY - ptrStartY;
 
-                // User is dragging downwards while at the top
                 if (pullDistance > 0 && scrollArea.scrollTop <= 0) {
-                    const height = Math.min(pullDistance * 0.4, ptrThreshold + 20); // Add a little resistance
+                    const height = Math.min(pullDistance * 0.4, ptrThreshold + 20);
                     ptrIndicator.style.height = `${height}px`;
-                    
-                    if (e.cancelable) e.preventDefault(); // Stop normal over-scroll physics
+                    if (e.cancelable) e.preventDefault(); 
                 } else {
                     isPulling = false;
                     ptrIndicator.style.height = '0px';
@@ -671,13 +668,12 @@
                 
                 const pullDistance = ptrCurrentY - ptrStartY;
                 
-                // If they pulled down far enough, trigger the refresh
                 if (pullDistance * 0.4 >= ptrThreshold) {
-                    ptrIndicator.style.height = '50px'; // Lock spinner open
-                    await fetchBackgroundData(true); // Call fetch with the manual override
-                    ptrIndicator.style.height = '0px'; // Close spinner
+                    ptrIndicator.style.height = '50px'; 
+                    await fetchBackgroundData(true); 
+                    ptrIndicator.style.height = '0px'; 
                 } else {
-                    ptrIndicator.style.height = '0px'; // Snap shut if they didn't pull far enough
+                    ptrIndicator.style.height = '0px'; 
                 }
                 
                 ptrStartY = 0;
@@ -1231,23 +1227,24 @@
             
             let custSet = new Set();
             
+            // Loop through the data and grab ALL Customers and Consignees
             const addCusts = (arr) => {
                 arr.forEach(i => {
-                    let rName = String(i.SALESREPNAME || i.SALESREP || i['SALES REP'] || "").toUpperCase();
-                    if (rName.includes(tempSelectedReqRep.toUpperCase())) {
-                        let c = String(i.CUSTOMERNAME || i.CUSTOMER || i['CUSTOMER NAME'] || "").trim();
-                        let cons = String(i.CONSIGNEENAME || i.CONSIGNEE || i['CONSIGNEE NAME'] || "").trim();
-                        if (c || cons) {
-                            let display = c;
-                            if (cons && cons !== c) {
-                                display = c ? `${c} - ${cons}` : cons;
-                            }
-                            custSet.add(display);
+                    let c = String(i.CUSTOMERNAME || i.CUSTOMER || i['CUSTOMER NAME'] || "").trim();
+                    let cons = String(i.CONSIGNEENAME || i.CONSIGNEE || i['CONSIGNEE NAME'] || "").trim();
+                    
+                    if (c || cons) {
+                        let display = c;
+                        // Combine them as "Customer - Consignee" if they are different
+                        if (cons && cons.toUpperCase() !== c.toUpperCase()) {
+                            display = c ? `${c} - ${cons}` : cons;
                         }
+                        custSet.add(display);
                     }
                 });
             };
             
+            // Pull from both SOC_Master and Reserves
             addCusts(socInventory);
             addCusts(reservesInventory);
             
@@ -1255,13 +1252,14 @@
             
             let html = "";
             custArray.forEach(c => {
+                // Filter the list as you type
                 if (c.toLowerCase().includes(val) || val === "") {
                     html += `<div class="bg-orange-50 text-orange-800 font-bold p-3 rounded-lg border border-orange-200 shadow-sm text-left cursor-pointer active:bg-orange-100" onclick="setCustomerInput('${c.replace(/'/g, "\\'")}')">${c}</div>`;
                 }
             });
             
             if (html === "") {
-                html = `<div class="text-xs text-gray-400 p-2 text-center">No matching customers found. Type above to use a custom name.</div>`;
+                html = `<div class="text-xs text-gray-400 p-2 text-center">No matching customers found. Your typed name will be used.</div>`;
             }
             
             container.innerHTML = html;
