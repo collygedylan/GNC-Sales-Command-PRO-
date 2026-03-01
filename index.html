@@ -558,7 +558,6 @@
                 return null;
             }
         }
-        // ------------------------
 
         let fullInventory = []; 
         let lowStockInventory = []; 
@@ -624,9 +623,7 @@
             if (!url) return "";
             let match = url.match(/id=([a-zA-Z0-9_-]+)/);
             if (!match) match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
-            if (match && match[1]) {
-                return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w100`;
-            }
+            if (match && match[1]) { return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w100`; }
             return url;
         }
 
@@ -698,9 +695,7 @@
                 if (isNaN(priA)) priA = Infinity;
                 if (isNaN(priB)) priB = Infinity;
                 
-                if (priA !== priB) {
-                    return priA - priB;
-                }
+                if (priA !== priB) { return priA - priB; }
                 
                 return String(a.LOCATIONCODE || "").localeCompare(String(b.LOCATIONCODE || ""), undefined, {numeric: true});
             });
@@ -782,9 +777,7 @@
                 await saveToCache(payload); 
                 processFirebaseData(payload);
                 
-                if (isManualRefresh) {
-                    showToast("Refreshed", "Data is up to date.", false);
-                }
+                if (isManualRefresh) { showToast("Refreshed", "Data is up to date.", false); }
 
             } catch(e) {
                 console.error("Firebase fetch error:", e);
@@ -794,23 +787,24 @@
             }
         }
 
+        // --- BULLETPROOF HEADER MAPPING ---
         function normalizeItem(d, idPrefix, idx, collectionName) {
             let item = { ...d, DOM_ID: idPrefix + idx, _COLLECTION: collectionName };
             
-            item.UNIQUE_ID = d.UNIQUEID || d.UNIQUE_ID;
-            item.COMMONNAME = d.COMMONNAME;
-            item.CONTSIZE = d.CONTSIZE;
-            item.LOCATIONCODE = d.LOCATIONCODE;
-            item.PTRAVAILABLE = d.PTRAVAILABLE;
-            item.SEASONSUPPLY = d.SEASONSUPPLY || d.SEASON_SUPPLY;
+            item.UNIQUE_ID = d.UNIQUEID || d.UNIQUE_ID || d.UNIQUE_ID_1;
+            item.COMMONNAME = d.COMMONNAME || d.COMMON_NAME || d.PLANTNAME || d.PLANT_NAME || '';
+            item.CONTSIZE = d.CONTSIZE || d.SIZE || d.CONTAINER || '';
+            item.LOCATIONCODE = d.LOCATIONCODE || d.LOCATION || d.LOC || '';
+            item.PTRAVAILABLE = d.PTRAVAILABLE || d.PTR_AVAILABLE || d.AVAILABLE || 0;
+            item.SEASONSUPPLY = d.SEASONSUPPLY || d.SEASON_SUPPLY || d.SUPPLY || 0;
             item.PRIORITY = d.PRIORITY;
-            item.QUALITYCODE = d.QUALITYCODE;
-            item.FIELDTAGCOLOR = d.FIELDTAGCOLOR;
-            item.ITEMCODE = d.ITEMCODE || d.ITEM; // <-- FIX: Use d.ITEM fallback 
-            item.LOTCODE = d.LOTCODE;
-            item.BLOCKALPHA = d.BLOCKALPHA;
-            item.ASSIGNEDTO = d.ASSIGNEDTO;
-            item.DATE_COMPLETED = d.DATECOMPLETED;
+            item.QUALITYCODE = d.QUALITYCODE || d.QUALITY_CODE || d.QC || '';
+            item.FIELDTAGCOLOR = d.FIELDTAGCOLOR || d.FIELD_TAG_COLOR || d.TAGCOLOR || d.TAG_COLOR || '';
+            item.ITEMCODE = d.ITEMCODE || d.ITEM_CODE || d.ITEM || '';
+            item.LOTCODE = d.LOTCODE || d.LOT_CODE || d.LOT || '';
+            item.BLOCKALPHA = d.BLOCKALPHA || d.BLOCK_ALPHA || d.BLOCK || '';
+            item.ASSIGNEDTO = d.ASSIGNEDTO || d.ASSIGNED_TO || '';
+            item.DATE_COMPLETED = d.DATECOMPLETED || d.DATE_COMPLETED || '';
             item.S_LTS = d.SLTS || d.S_LTS || 0; 
 
             item.IS_REQUEST = String(d.ISREQUEST || "").toUpperCase() === 'TRUE' || d.ISREQUEST === true;
@@ -835,12 +829,14 @@
             item.REQ_PHOTO_NAME = d.REQPHOTONAME;
 
             if (d.DOCK) item.DOCK_NUM = parseInt(String(d.DOCK).replace(/\D/g, ''), 10);
-            item.CUSTOMERNAME = d.CUSTOMERNAME;
-            item.CONSIGNEENAME = d.CONSIGNEENAME;
-            item.SALESREPNAME = d.SALESREPNAME;
-            item.STOPNUMBER = d.STOPNUMBER;
-            item.QUANTITYORDERED = d.QUANTITYORDERED;
-            item.SHIPPED = d.SHIPPED;
+            
+            // Reserves Mapping 
+            item.CUSTOMERNAME = d.CUSTOMERNAME || d.CUSTOMER_NAME || d.CUSTOMER || d['CUSTOMER NAME'] || '';
+            item.CONSIGNEENAME = d.CONSIGNEENAME || d.CONSIGNEE_NAME || d.CONSIGNEE || d['CONSIGNEE NAME'] || '';
+            item.SALESREPNAME = d.SALESREPNAME || d.SALES_REP_NAME || d.SALESREP || d.SALES_REP || d['SALES REP'] || '';
+            item.STOPNUMBER = d.STOPNUMBER || d.STOP_NUMBER || d.STOP || '';
+            item.QUANTITYORDERED = d.QUANTITYORDERED || d.QTYORDERED || d.QTY_ORDERED || d.QTY || d['QTY ORDERED'] || 0;
+            item.SHIPPED = d.SHIPPED || d.QTYSHIPPED || d.QTY_SHIPPED || d['QTY SHIPPED'] || 0;
 
             return item;
         }
@@ -1257,15 +1253,13 @@
             
             let custSet = new Set();
             
-            // Loop through the data and grab ALL Customers and Consignees
             const addCusts = (arr) => {
                 arr.forEach(i => {
-                    let c = String(i.CUSTOMERNAME || i.CUSTOMER || i['CUSTOMER NAME'] || "").trim();
-                    let cons = String(i.CONSIGNEENAME || i.CONSIGNEE || i['CONSIGNEE NAME'] || "").trim();
+                    let c = String(i.CUSTOMERNAME || "").trim();
+                    let cons = String(i.CONSIGNEENAME || "").trim();
                     
                     if (c || cons) {
                         let display = c;
-                        // Combine them as "Customer - Consignee" if they are different
                         if (cons && cons.toUpperCase() !== c.toUpperCase()) {
                             display = c ? `${c} - ${cons}` : cons;
                         }
@@ -1274,7 +1268,6 @@
                 });
             };
             
-            // Pull from both SOC_Master and Reserves
             addCusts(socInventory);
             addCusts(reservesInventory);
             
@@ -1282,7 +1275,6 @@
             
             let html = "";
             custArray.forEach(c => {
-                // Filter the list as you type
                 if (c.toLowerCase().includes(val) || val === "") {
                     html += `<div class="bg-orange-50 text-orange-800 font-bold p-3 rounded-lg border border-orange-200 shadow-sm text-left cursor-pointer active:bg-orange-100" onclick="setCustomerInput('${c.replace(/'/g, "\\'")}')">${c}</div>`;
                 }
@@ -1989,8 +1981,8 @@
                         custDisplay += ` - ${item.CONSIGNEENAME}`;
                     }
 
-                    let qtyReserved = parseInt(String(item.QUANTITYORDERED || item['QUANTITY ORDERED'] || item.QTYORDERED || item.QTY || 0).replace(/,/g, '')) || 0;
-                    let shipped = parseInt(String(item.SHIPPED || item['QTY SHIPPED'] || 0).replace(/,/g, '')) || 0;
+                    let qtyReserved = parseInt(String(item.QUANTITYORDERED || 0).replace(/,/g, '')) || 0;
+                    let shipped = parseInt(String(item.SHIPPED || 0).replace(/,/g, '')) || 0;
                     let remaining = qtyReserved - shipped;
                     
                     let remainingColor = remaining > 0 ? "text-orange-600" : "text-green-600";
@@ -2141,10 +2133,11 @@
             document.getElementById('task-content').innerHTML = `<div class="p-8 text-center text-gray-400">Select a team member to view their assigned rows.</div>`;
             document.getElementById('task-crumb').innerText = "Admin Team View";
 
-            const targetNames = ["Dylan", "Morgan", "Kayla"];
+            const targetNames = ["All Team Tasks", "Dylan", "Morgan", "Kayla"];
             let teamHtml = "";
             targetNames.forEach(name => {
-                teamHtml += `<div class="p-5 border border-blue-200 bg-blue-50 text-blue-800 rounded-lg text-center font-bold text-lg cursor-pointer" onclick="setTaskUser('${name}')">${name}</div>`;
+                let bgClass = name === "All Team Tasks" ? "bg-green-600 text-white border-green-700" : "bg-blue-50 text-blue-800 border-blue-200";
+                teamHtml += `<div class="p-5 border ${bgClass} rounded-lg text-center font-bold text-lg cursor-pointer shadow-sm" onclick="setTaskUser('${name}')">${name}</div>`;
             });
             document.getElementById('team-selector').innerHTML = teamHtml;
         }
@@ -2166,11 +2159,8 @@
             const term = document.getElementById('tasks-search').value.toLowerCase();
             
             let userToView = (currentRole === 'Admin') ? taskViewTargetUser : currentUser;
-            let searchName = userToView === 'dylan_collyge' ? 'Dylan' : userToView;
 
-            let myItems = fullInventory.filter(i => String(i.ASSIGNEDTO || "").toLowerCase().includes(searchName.toLowerCase()));
-
-            myItems = myItems.filter(i => {
+            let myItems = fullInventory.filter(i => {
                 if (i.DATE_COMPLETED && i.DATE_COMPLETED !== "") return false;
                 const pri = parseFloat(i.PRIORITY);
                 if (isNaN(pri) || pri <= 0) return false; 
@@ -2178,6 +2168,11 @@
                 if (activeTaskTab === 'location') return i.APP_TAB_ASSIGNMENT === 'location';
                 return true;
             });
+
+            if (userToView !== "All Team Tasks") {
+                let searchName = userToView === 'dylan_collyge' ? 'Dylan' : userToView;
+                myItems = myItems.filter(i => String(i.ASSIGNEDTO || "").toLowerCase().includes(searchName.toLowerCase()));
+            }
 
             if (term) {
                 myItems = myItems.filter(i => 
@@ -2188,7 +2183,7 @@
                 );
             }
 
-            const displayUser = searchName.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+            const displayUser = userToView.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
             const tabLabel = (activeTaskTab === 'season') ? 'Season Notes' : 'Location Notes';
 
             if (myItems.length === 0) {
