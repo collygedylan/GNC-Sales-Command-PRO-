@@ -3,21 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AgriOps</title>
+    <title>GNC SALES COMMAND</title>
     
     <meta name="theme-color" content="#007a4d">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="icon" type="image/png" href="AppIcon.png">
-    <link rel="apple-touch-icon" href="AppIcon.png">
+    <link rel="icon" type="image/png" href="GNC LOGO.png">
+    <link rel="apple-touch-icon" href="GNC LOGO.png">
     <link rel="manifest" href="manifest.json">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     
-    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
-
     <style>
         :root { --brand-green: #007a4d; --text-main: #111827; }
         body { font-family: "Amazon Ember", Arial, sans-serif; background-color: white; color: var(--text-main); overscroll-behavior-y: contain; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
@@ -53,6 +50,7 @@
         .status-purple { border-left-color: #9333ea; } 
         .status-orange { border-left-color: #f97316; } 
         .status-blue { border-left-color: #3b82f6; }
+        .status-indigo { border-left-color: #4f46e5; }
         
         .task-tabs { display: flex; border-bottom: 1px solid #e5e7eb; background: #f9fafb; margin-bottom: 10px; }
         .task-tab { flex: 1; text-align: center; padding: 12px; font-size: 11px; font-weight: 700; color: #6b7280; cursor: pointer; border-bottom: 3px solid transparent; text-transform: uppercase; }
@@ -79,11 +77,6 @@
         .item-row { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 
         .spinner { border: 4px solid rgba(255,255,255,0.3); border-top: 4px solid white; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto; }
-        
-        /* PULL TO REFRESH STYLES */
-        #pull-to-refresh { display: flex; justify-content: center; align-items: center; height: 0px; overflow: hidden; color: var(--brand-green); }
-        .ptr-spinner { border: 3px solid #e5e7eb; border-top: 3px solid var(--brand-green); border-radius: 50%; width: 28px; height: 28px; animation: spin 1s linear infinite; }
-        
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
@@ -93,13 +86,7 @@
 
     <div id="view-login">
         <div class="login-card">
-            
-            <div class="flex flex-col items-center justify-center mb-6">
-                <img src="Greenleaf Logo.png" alt="Greenleaf" class="max-h-20 object-contain mb-3">
-                <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Powered by</span>
-                <img src="Ag Metric App.png" alt="Ag Metric App" class="max-h-20 object-contain">
-            </div>
-            
+            <div class="text-3xl text-[#007a4d] font-bold mb-6">GNC SALES COMMAND</div>
             <div id="login-inputs">
                 <input type="text" id="username-input" class="input-field mb-4 text-center border-2" placeholder="USERNAME">
                 <input type="password" id="pin-code" class="input-field mb-4 text-center border-2 tracking-widest" placeholder="PASSWORD">
@@ -111,7 +98,7 @@
             </div>
             <div id="loading-spinner" class="hidden mt-6 flex flex-col items-center">
                 <div class="spinner"></div>
-                <div id="loading-text" class="text-white font-bold text-sm mt-3 text-center">Authenticating...</div>
+                <div id="loading-text" class="text-white font-bold text-sm mt-3 text-center">Authenticating & Syncing...</div>
             </div>
         </div>
     </div>
@@ -140,35 +127,15 @@
     </div>
 
     <div id="request-rep-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
-        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center flex flex-col max-h-[90vh]">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center flex flex-col">
+            <h3 class="font-bold text-lg mb-2 text-orange-600">Who requested this?</h3>
+            <input type="text" id="rep-search-input" class="input-field mb-3 border-orange-200 focus:border-orange-500" placeholder="Search or type name..." onkeyup="filterRepList()">
             
-            <div id="step-1-rep" class="flex flex-col">
-                <h3 class="font-bold text-lg mb-2 text-orange-600">Who requested this?</h3>
-                <input type="search" id="rep-search-input" class="input-field mb-3 border-orange-200 focus:border-orange-500" placeholder="Search or type name..." onkeyup="filterRepList()">
-                
-                <div id="rep-list-container" class="grid grid-cols-1 gap-2 mb-4 max-h-[40vh] overflow-y-auto px-2 py-1"></div>
-
-                <button id="custom-rep-btn" class="hidden w-full bg-orange-600 text-white font-bold p-3 rounded-lg mb-4 shadow-sm" onclick="selectRepForRequest(document.getElementById('rep-search-input').value.trim())">Assign to: <span></span></button>
-            </div>
-
-            <div id="step-2-cust" class="hidden flex flex-col text-left">
-                <div class="flex items-center mb-4 border-b border-gray-100 pb-2">
-                    <i class="ph-bold ph-arrow-left text-gray-400 text-2xl mr-2 cursor-pointer p-1" onclick="document.getElementById('step-2-cust').classList.add('hidden'); document.getElementById('step-1-rep').classList.remove('hidden');"></i>
-                    <h3 class="font-bold text-lg text-orange-600">Customer & Qty</h3>
+            <div id="rep-list-container" class="grid grid-cols-1 gap-2 mb-4 max-h-[50vh] overflow-y-auto px-2 py-1">
                 </div>
 
-                <label class="text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Total Quantity</label>
-                <input type="number" id="req-qty-input" class="input-field mb-4 border-orange-200 font-bold" placeholder="e.g. 15">
-
-                <label class="text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Customer / Consignee</label>
-                <input type="search" id="cust-search-input" class="input-field mb-2 border-orange-200" placeholder="Search or type customer..." onkeyup="populateCustomerList()">
-                
-                <div id="cust-list-container" class="grid grid-cols-1 gap-2 mb-6 max-h-[30vh] overflow-y-auto px-1 py-1"></div>
-
-                <button class="w-full bg-[#007a4d] text-white font-bold p-4 rounded-xl shadow-lg mt-auto" onclick="finalizeRequestAction()">SUBMIT REQUEST</button>
-            </div>
-
-            <button class="text-gray-500 font-bold py-2 px-4 mt-2" onclick="document.getElementById('request-rep-modal').classList.add('hidden')">Cancel</button>
+            <button id="custom-rep-btn" class="hidden w-full bg-orange-600 text-white font-bold p-3 rounded-lg mb-4 shadow-sm" onclick="submitCustomRep()">Assign to: <span></span></button>
+            <button class="text-gray-500 font-bold py-2 px-4" onclick="document.getElementById('request-rep-modal').classList.add('hidden')">Cancel</button>
         </div>
     </div>
 
@@ -178,7 +145,7 @@
                 <i class="ph-bold ph-list menu-btn text-2xl cursor-pointer" onclick="toggleMenu()"></i>
                 <div class="flex flex-col">
                     <div class="font-bold text-lg leading-tight"><span id="header-user">User</span></div>
-                    <div class="text-[10px] opacity-80 leading-tight">AgriOps</div>
+                    <div class="text-[10px] opacity-80 leading-tight">GNC SALES COMMAND</div>
                 </div>
             </div>
         </header>
@@ -203,16 +170,10 @@
 
         <div id="main-scroll-area" class="flex-grow overflow-y-auto p-4 pb-40 relative">
             
-            <div id="pull-to-refresh">
-                <div class="ptr-spinner"></div>
-            </div>
-
             <div id="view-home" class="hidden">
-                
-                <div class="bg-white border-2 border-[#007a4d] p-6 rounded-2xl mb-6 shadow-lg text-center mt-2 flex flex-col items-center justify-center">
-                    <img src="Greenleaf Logo.png" alt="Greenleaf" class="max-h-16 object-contain mb-3">
-                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Powered by</p>
-                    <img src="Ag Metric App.png" alt="Ag Metric App" class="max-h-16 object-contain">
+                <div class="bg-[#007a4d] text-white p-6 rounded-2xl mb-6 shadow-lg text-center">
+                    <h1 class="text-2xl font-bold">GNC COMMAND</h1>
+                    <p class="opacity-80 text-sm">Dashboard</p>
                 </div>
                 
                 <h2 class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3 pl-1">App Modules</h2>
@@ -264,48 +225,53 @@
                             </div>
                             <i class="ph-bold ph-arrow-square-out text-gray-300"></i>
                         </a>
+                        
+                        <a href="https://docs.google.com/spreadsheets/d/1g7Dy2mDDljTs3e9FhQhdDQ-b7sw_gU1vCdcA14N4mKk/edit" target="_blank" class="flex items-center gap-3 bg-white p-3 rounded-xl border border-gray-200 shadow-sm hover:bg-blue-50 transition-colors">
+                            <div class="bg-blue-100 p-2 rounded-lg"><i class="ph-fill ph-book-open-text text-blue-600 text-2xl"></i></div>
+                            <div class="flex-grow min-w-0">
+                                <div class="text-sm font-bold text-gray-800 truncate">Sales Notes Dictionary</div>
+                                <div class="text-[10px] text-gray-400 font-bold uppercase">S1_SalesNotes</div>
+                            </div>
+                            <i class="ph-bold ph-arrow-square-out text-gray-300"></i>
+                        </a>
                     </div>
                 </div>
             </div>
 
-            <div id="view-request" class="hidden mt-2">
-                <input type="search" id="request-search" class="input-field mb-2" placeholder="Search Requests..." onkeyup="renderRequest()">
+            <div id="view-request" class="hidden admin-only">
                 <div id="request-crumb" class="text-xs font-bold text-[#007a4d] mb-3 empty:hidden"></div>
                 <div id="request-content"></div>
             </div>
 
-            <div id="view-reserves" class="hidden mt-2">
-                <input type="search" id="reserves-search" class="input-field mb-2" placeholder="Search Plants or Customers..." onkeyup="renderReserves()">
+            <div id="view-reserves" class="hidden admin-only">
+                <input type="text" id="reserves-search" class="input-field mb-2" placeholder="Search Reps or Customers..." onkeyup="handleReservesSearch()">
                 <div id="reserves-crumb" class="text-xs font-bold text-[#007a4d] mb-3 empty:hidden"></div>
                 <div id="reserves-content"></div>
             </div>
 
-            <div id="view-docks" class="hidden mt-2">
-                <input type="search" id="docks-search" class="input-field mb-2" placeholder="Search Plants or Stops..." onkeyup="renderDocks()">
+            <div id="view-docks" class="hidden">
+                <input type="text" id="docks-search" class="input-field mb-2" placeholder="Search Plants..." onkeyup="handleDocksSearch()">
                 <div id="docks-crumb" class="text-xs font-bold text-[#007a4d] mb-3">Select a Dock</div>
                 <div id="docks-content"></div>
             </div>
 
-            <div id="view-low-stock" class="hidden mt-2">
-                <input type="search" id="low-stock-search" class="input-field mb-2" placeholder="Search Low Stock..." onkeyup="renderLowStock()">
+            <div id="view-low-stock" class="hidden dylan-only">
                 <div id="low-stock-crumb" class="text-xs font-bold text-[#007a4d] mb-3">Action Required</div>
                 <div id="low-stock-content"></div>
             </div>
 
-            <div id="view-sales-office" class="hidden mt-2">
-                <input type="search" id="sales-office-search" class="input-field mb-2" placeholder="Search Completed Items..." onkeyup="renderSalesOffice()">
+            <div id="view-sales-office" class="hidden admin-only">
                 <div class="text-xs font-bold text-[#007a4d] mb-3">Completed Season Items</div>
                 <div id="sales-office-content"></div>
             </div>
 
-            <div id="view-drive" class="hidden mt-2">
-                <input type="search" id="drive-search" class="input-field mb-2" placeholder="Search Names or Locs..." onkeyup="renderDrive()">
+            <div id="view-drive" class="hidden">
+                <input type="text" id="drive-search" class="input-field mb-2" placeholder="Search Names or Locs..." onkeyup="handleDriveSearch()">
                 <div id="drive-crumb" class="text-xs font-bold text-[#007a4d] mb-3 empty:hidden"></div>
                 <div id="drive-content"></div>
             </div>
 
-            <div id="view-tasks" class="hidden mt-2">
-                <input type="search" id="tasks-search" class="input-field mb-2" placeholder="Search Locs or Blocks..." onkeyup="renderTasks()">
+            <div id="view-tasks" class="hidden">
                 <div id="task-crumb" class="text-xs font-bold text-[#007a4d] mb-3"></div>
                 <div id="team-selector" class="hidden mb-4 grid grid-cols-1 gap-3"></div>
                 <div id="task-tabs-container" class="task-tabs">
@@ -315,12 +281,10 @@
                 <div id="task-content"></div>
             </div>
             
-            <div id="view-review" class="hidden mt-2">
-                <input type="search" id="review-search" class="input-field mb-2" placeholder="Search Reviewed Items..." onkeyup="renderReview()">
+            <div id="view-review" class="hidden admin-only">
                 <div id="review-crumb" class="text-xs font-bold text-[#007a4d] mb-3"></div>
                 <div class="task-tabs mb-4">
                     <div id="review-tab-completed" class="task-tab active" onclick="setReviewTab('completed')">Completed Tasks</div>
-                    <div id="review-tab-reserves" class="task-tab" onclick="setReviewTab('reserves')">Reserves</div>
                 </div>
                 <div id="review-content"></div>
             </div>
@@ -498,70 +462,10 @@
     </div>
 
     <script>
-        // BACKEND SCRIPT REQUIRED FOR IMAGE UPLOADS AND BACKUP SAVES
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzhJ_tytv5Rm2ag44liZAU6nsp0lQ7-9PLmjxrcuT1WA1WARubi7NyolYoTZ_qvZmzo/exec";
 
-        // --- NEW: FIREBASE CONFIGURATION ---
-        const firebaseConfig = {
-            apiKey: "AIzaSyBMAGho6QgALRg7E8s3vFAbB2yXpWACEus",
-            authDomain: "gnc-app-f11bc.firebaseapp.com",
-            projectId: "gnc-app-f11bc",
-            storageBucket: "gnc-app-f11bc.firebasestorage.app",
-            messagingSenderId: "221811790201",
-            appId: "1:221811790201:web:fdc69c0113488b479edfa8"
-        };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-
-        // --- INDEXED DB SETUP ---
-        const DB_NAME = "GNC_Sales_DB";
-        const STORE_NAME = "inventory_cache";
-
-        function openDB() {
-            return new Promise((resolve, reject) => {
-                const request = indexedDB.open(DB_NAME, 1);
-                request.onupgradeneeded = event => {
-                    const db = event.target.result;
-                    if (!db.objectStoreNames.contains(STORE_NAME)) {
-                        db.createObjectStore(STORE_NAME);
-                    }
-                };
-                request.onsuccess = event => resolve(event.target.result);
-                request.onerror = event => reject(event.target.error);
-            });
-        }
-
-        async function saveToCache(data) {
-            try {
-                const db = await openDB();
-                const tx = db.transaction(STORE_NAME, "readwrite");
-                tx.objectStore(STORE_NAME).put(data, "latest_data");
-                return new Promise((resolve) => {
-                    tx.oncomplete = () => resolve(true);
-                    tx.onerror = () => resolve(false);
-                });
-            } catch (e) {
-                console.error("Save cache failed", e);
-            }
-        }
-
-        async function loadFromCache() {
-            try {
-                const db = await openDB();
-                return new Promise((resolve, reject) => {
-                    const tx = db.transaction(STORE_NAME, "readonly");
-                    const request = tx.objectStore(STORE_NAME).get("latest_data");
-                    request.onsuccess = () => resolve(request.result);
-                    request.onerror = () => resolve(null);
-                });
-            } catch (e) {
-                return null;
-            }
-        }
-
+        let appUsers = [];
         let fullInventory = []; 
-        let seasonInventory = []; 
-        let locationInventory = []; 
         let lowStockInventory = []; 
         let socInventory = []; 
         let reservesInventory = []; 
@@ -607,7 +511,6 @@
         let selectedReqRep = null;
         let selectedReqRepStatus = null; 
         let selectedReqFolder = null; 
-        let tempSelectedReqRep = ""; 
         
         let dockViewLevel = 0;
         let selectedDockNum = null;
@@ -615,9 +518,10 @@
         let selectedDockSize = null;
         let selectedDockItemCode = null;
 
+        // UPDATED RESERVES VARIABLES
         let reservesViewLevel = 0;
-        let selectedReservesName = null;
-        let selectedReservesSize = null;
+        let selectedReservesRep = null;
+        let selectedReservesCustomer = null;
 
         const salesRepList = ["Abbey Burka", "Annette Hancock", "Ben Brown", "Ben Harveson", "Ben Machino", "Brian Hatfield", "Casey Rufener", "Chris Farrow", "Chris Gaydos", "David Brandt", "Ellen Deely", "Jessica Robertson", "Josh Ringleb", "Kevin Effinger", "Nate Douglas", "Toby Brown", "Traci Earle", "Tracey Tapscott", "Troy Lee", "Wes Lugas"];
 
@@ -625,83 +529,15 @@
             if (!url) return "";
             let match = url.match(/id=([a-zA-Z0-9_-]+)/);
             if (!match) match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
-            if (match && match[1]) { return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w100`; }
+            if (match && match[1]) {
+                return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w100`;
+            }
             return url;
         }
 
         window.onload = function() {};
 
-        let ptrStartY = 0;
-        let ptrCurrentY = 0;
-        let isPulling = false;
-        const ptrThreshold = 60; 
-
-        document.addEventListener('DOMContentLoaded', async () => {
-            if (window.PublicKeyCredential && localStorage.getItem('gnc_user_v3') && localStorage.getItem('gnc_pin_v3')) {
-                document.getElementById('btn-fingerprint').classList.remove('hidden');
-            }
-
-            const scrollArea = document.getElementById('main-scroll-area');
-            const ptrIndicator = document.getElementById('pull-to-refresh');
-
-            scrollArea.addEventListener('touchstart', e => {
-                if (scrollArea.scrollTop <= 0) {
-                    ptrStartY = e.touches[0].clientY;
-                    isPulling = true;
-                    ptrIndicator.style.transition = 'none';
-                }
-            }, { passive: true });
-
-            scrollArea.addEventListener('touchmove', e => {
-                if (!isPulling) return;
-                ptrCurrentY = e.touches[0].clientY;
-                const pullDistance = ptrCurrentY - ptrStartY;
-
-                if (pullDistance > 0 && scrollArea.scrollTop <= 0) {
-                    const height = Math.min(pullDistance * 0.4, ptrThreshold + 20);
-                    ptrIndicator.style.height = `${height}px`;
-                    if (e.cancelable) e.preventDefault(); 
-                } else {
-                    isPulling = false;
-                    ptrIndicator.style.height = '0px';
-                }
-            }, { passive: false });
-
-            scrollArea.addEventListener('touchend', async e => {
-                if (!isPulling) return;
-                isPulling = false;
-                ptrIndicator.style.transition = 'height 0.3s ease';
-                
-                const pullDistance = ptrCurrentY - ptrStartY;
-                
-                if (pullDistance * 0.4 >= ptrThreshold) {
-                    ptrIndicator.style.height = '50px'; 
-                    await fetchBackgroundData(true); 
-                    ptrIndicator.style.height = '0px'; 
-                } else {
-                    ptrIndicator.style.height = '0px'; 
-                }
-                
-                ptrStartY = 0;
-                ptrCurrentY = 0;
-            });
-        });
-
-        function sortAppItems(items) {
-            return items.sort((a, b) => {
-                let priA = parseFloat(a.PRIORITY);
-                let priB = parseFloat(b.PRIORITY);
-                
-                if (isNaN(priA)) priA = Infinity;
-                if (isNaN(priB)) priB = Infinity;
-                
-                if (priA !== priB) { return priA - priB; }
-                
-                return String(a.LOCATIONCODE || "").localeCompare(String(b.LOCATIONCODE || ""), undefined, {numeric: true});
-            });
-        }
-
-        async function handleLogin(isBiometricLogin = false) {
+        function handleLogin(isBiometricLogin = false) {
             const inputUser = document.getElementById('username-input').value.trim().toLowerCase();
             const inputPass = document.getElementById('pin-code').value.trim();
 
@@ -712,165 +548,126 @@
 
             document.getElementById('login-inputs').classList.add('hidden');
             document.getElementById('loading-spinner').classList.remove('hidden');
-            document.getElementById('loading-text').innerText = "Authenticating...";
+            document.getElementById('loading-text').innerText = "Authenticating & Syncing...";
 
-            try {
-                const usersSnap = await db.collection('App_Users').get();
-                let matched = false;
+            const loginUrl = `${GOOGLE_SCRIPT_URL}?action=login&username=${encodeURIComponent(inputUser)}&password=${encodeURIComponent(inputPass)}`;
 
-                usersSnap.forEach(doc => {
-                    const u = doc.data();
-                    const allValsLower = Object.values(u).map(v => String(v).toLowerCase().trim());
-                    const allVals = Object.values(u).map(v => String(v).trim());
-
-                    if (allValsLower.includes(inputUser) && allVals.includes(inputPass)) {
-                        matched = true;
+            fetch(loginUrl)
+                .then(response => response.json())
+                .then(res => {
+                    if (res.status === 'success') {
                         currentUser = inputUser;
-                        currentRole = allVals.includes('Admin') ? 'Admin' : 'User';
-                    }
-                });
+                        currentRole = res.role;
+                        document.getElementById('header-user').innerText = currentUser.toUpperCase();
 
-                if (matched) {
-                    document.getElementById('header-user').innerText = currentUser.toUpperCase();
-                    if (!isBiometricLogin && window.PublicKeyCredential) promptToEnableBiometrics(inputUser, inputPass);
-                    applyRolePermissions();
-                    fetchBackgroundData();
-                } else {
-                    alert("MISMATCH DETECTED!\n\nIncorrect Username or Password.");
-                    document.getElementById('pin-code').value = "";
+                        salesNotesDict = res.salesNotesMap || {};
+
+                        fullInventory = res.data.map((item, idx) => {
+                            item.DOM_ID = 'fi_' + idx;
+                            return item;
+                        });
+
+                        // --- START TOURNAMENT DEDUPLICATION ---
+                        let itemsWithPriority = {};
+                        fullInventory.forEach(item => {
+                            const pri = parseFloat(item.PRIORITY);
+                            const ptr = parseFloat(item.PTRAVAILABLE) || 0;
+                            const ss = parseFloat(item.SEASONSUPPLY) || 0;
+                            const iCode = String(item.ITEMCODE || "").trim().toUpperCase();
+
+                            if (iCode && !isNaN(pri) && pri > 0 && ptr >= (ss * 1.10)) {
+                                if (!itemsWithPriority[iCode]) itemsWithPriority[iCode] = [];
+                                itemsWithPriority[iCode].push(item);
+                            }
+                        });
+
+                        let seasonWinnerIds = new Set();
+                        for (const code in itemsWithPriority) {
+                            let group = itemsWithPriority[code];
+                            
+                            group.sort((a, b) => {
+                                const priA = parseFloat(a.PRIORITY);
+                                const priB = parseFloat(b.PRIORITY);
+                                if (priA === priB) {
+                                    return (parseFloat(b.PTRAVAILABLE) || 0) - (parseFloat(a.PTRAVAILABLE) || 0);
+                                }
+                                return priA - priB;
+                            });
+                            
+                            seasonWinnerIds.add(group[0].DOM_ID);
+                        }
+
+                        fullInventory.forEach(item => {
+                            item.APP_TAB_ASSIGNMENT = seasonWinnerIds.has(item.DOM_ID) ? 'season' : 'location';
+                        });
+                        // --- END TOURNAMENT DEDUPLICATION ---
+
+                        lowStockInventory = (res.lowStock || []).map((item, idx) => {
+                            item.DOM_ID = 'ls_' + idx;
+                            return item;
+                        });
+                        
+                        socInventory = res.socData || [];
+                        
+                        reservesInventory = (res.reservesData || []).map((item, idx) => {
+                            item.DOM_ID = 'res_' + idx;
+                            item.UNIQUE_ID = item.UNIQUE_ID || 'res_uid_' + idx; 
+                            
+                            let resCode = String(item.ITEMCODE || item.ITEM || "").trim().toUpperCase();
+                            let masterItem = fullInventory.find(f => String(f.ITEMCODE || "").trim().toUpperCase() === resCode);
+                            
+                            item.COMMONNAME = masterItem ? masterItem.COMMONNAME : (item.COMMONNAME || item['PLANT NAME'] || item.DESCRIPTION || item.DESC || 'Unknown Plant');
+                            item.CONTSIZE = masterItem ? masterItem.CONTSIZE : (item.CONTSIZE || item.SIZE || item.CONTAINER || '-');
+                            
+                            item.CUSTOMERNAME = item.CUSTOMERNAME || item.CUSTOMER || 'Unknown Customer';
+                            item.CONSIGNEENAME = item.CONSIGNEENAME || item.CONSIGNEE || '';
+                            
+                            // CLEANUP SALES REP NAME (Handle "Lastname, Firstname")
+                            let rawRep = item.SALESREPNAME || item.SALESREP || item['SALES REP'] || 'Unknown Rep';
+                            if (rawRep.includes(',')) {
+                                let parts = rawRep.split(',');
+                                item.SALESREPNAME = (parts[1].trim() + ' ' + parts[0].trim()).toUpperCase();
+                            } else {
+                                item.SALESREPNAME = rawRep.trim().toUpperCase();
+                            }
+                            
+                            if (masterItem) {
+                                item.LOCATIONCODE = masterItem.LOCATIONCODE;
+                                item.PTRAVAILABLE = masterItem.PTRAVAILABLE;
+                                item.SEASONSUPPLY = masterItem.SEASONSUPPLY;
+                                item.PRIORITY = masterItem.PRIORITY;
+                                item.QUALITYCODE = masterItem.QUALITYCODE;
+                                item.FIELDTAGCOLOR = masterItem.FIELDTAGCOLOR;
+                                item.LOTCODE = masterItem.LOTCODE;
+                            }
+                            
+                            return item;
+                        });
+                        
+                        if (!isBiometricLogin && window.PublicKeyCredential) {
+                            promptToEnableBiometrics(inputUser, inputPass);
+                        }
+
+                        applyRolePermissions();
+                    } else {
+                        alert("MISMATCH DETECTED!\n\nIncorrect Username or Password.");
+                        document.getElementById('pin-code').value = "";
+                        document.getElementById('login-inputs').classList.remove('hidden');
+                        document.getElementById('loading-spinner').classList.add('hidden');
+                    }
+                })
+                .catch(err => {
+                    showToast("Error", "Network Error. Please try again.", true);
                     document.getElementById('login-inputs').classList.remove('hidden');
                     document.getElementById('loading-spinner').classList.add('hidden');
-                }
-            } catch(e) {
-                console.error("Login Error:", e);
-                showToast("Error", "Network Error connecting to Firebase.", true);
-                document.getElementById('login-inputs').classList.remove('hidden');
-                document.getElementById('loading-spinner').classList.add('hidden');
+                });
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (window.PublicKeyCredential && localStorage.getItem('gnc_user_v3') && localStorage.getItem('gnc_pin_v3')) {
+                document.getElementById('btn-fingerprint').classList.remove('hidden');
             }
-        }
-
-        async function fetchBackgroundData(isManualRefresh = false) {
-            const cachedRes = await loadFromCache();
-            if (cachedRes && cachedRes.master) {
-                salesNotesDict = cachedRes.salesNotesMap || {};
-                processFirebaseData(cachedRes);
-            } else if (cachedRes && cachedRes.salesNotesMap) {
-                salesNotesDict = cachedRes.salesNotesMap;
-            }
-
-            try {
-                const [masterSnap, seasonSnap, locationSnap, lowStockSnap, socSnap, reservesSnap] = await Promise.all([
-                    db.collection('MasterInventory').get(),
-                    db.collection('SeasonNotes').get(),
-                    db.collection('LocationNotes').get(),
-                    db.collection('LowStock').get(),
-                    db.collection('SOC_Master').get(),
-                    db.collection('Reserves').get()
-                ]);
-
-                const payload = {
-                    master: masterSnap.docs.map(d => d.data()),
-                    season: seasonSnap.docs.map(d => d.data()),
-                    location: locationSnap.docs.map(d => d.data()),
-                    lowStock: lowStockSnap.docs.map(d => d.data()),
-                    soc: socSnap.docs.map(d => d.data()),
-                    reserves: reservesSnap.docs.map(d => d.data()),
-                    salesNotesMap: salesNotesDict
-                };
-
-                await saveToCache(payload); 
-                processFirebaseData(payload);
-
-            } catch(e) {
-                console.error("Firebase fetch error:", e);
-                if (!cachedRes || isManualRefresh) {
-                    showToast("Sync Error", "Could not reach database.", true);
-                }
-            }
-        }
-
-        function normalizeItem(d, idPrefix, idx, collectionName) {
-            let item = { ...d, DOM_ID: idPrefix + idx, _COLLECTION: collectionName };
-            
-            item.UNIQUE_ID = d.UNIQUEID || d.UNIQUE_ID || d.UNIQUE_ID_1;
-            item.COMMONNAME = d.COMMONNAME || d.COMMON_NAME || d.PLANTNAME || d.PLANT_NAME || d.DESCRIPTION || '';
-            item.CONTSIZE = d.CONTSIZE || d.SIZE || d.CONTAINER || '';
-            item.LOCATIONCODE = d.LOCATIONCODE || d.LOCATION || d.LOC || '';
-            item.PTRAVAILABLE = d.PTRAVAILABLE || d.PTR_AVAILABLE || d.AVAILABLE || 0;
-            item.SEASONSUPPLY = d.SEASONSUPPLY || d.SEASON_SUPPLY || d.SUPPLY || 0;
-            item.PRIORITY = d.PRIORITY;
-            item.QUALITYCODE = d.QUALITYCODE || d.QUALITY_CODE || d.QC || '';
-            item.FIELDTAGCOLOR = d.FIELDTAGCOLOR || d.FIELD_TAG_COLOR || d.TAGCOLOR || d.TAG_COLOR || '';
-            item.ITEMCODE = d.ITEMCODE || d.ITEM_CODE || d.ITEM || '';
-            item.LOTCODE = d.LOTCODE || d.LOT_CODE || d.LOT || '';
-            item.BLOCKALPHA = d.BLOCKALPHA || d.BLOCK_ALPHA || d.BLOCK || '';
-            item.ASSIGNEDTO = d.ASSIGNEDTO || d.ASSIGNED_TO || '';
-            item.DATE_COMPLETED = d.DATECOMPLETED || d.DATE_COMPLETED || '';
-            item.S_LTS = d.SLTS || d.S_LTS || 0; 
-
-            item.IS_REQUEST = String(d.ISREQUEST || "").toUpperCase() === 'TRUE' || d.ISREQUEST === true;
-            item.REQUESTED_BY = d.REQUESTEDBY;
-            item.REQUEST_FOLDER = d.REQUESTFOLDER;
-
-            item.MATCH = d.MATCH;
-            item.SPEC = d.SPEC;
-            item.CALIPER = d.CALIPER;
-            item.PIC_NOTE = d.PICNOTE;
-            item.SALES_NOTE = d.SALESNOTE;
-            item.SAVED_PHOTO_LINK = d.PHOTOLINK;
-            item.SAVED_PHOTO_NAME = d.PHOTONAME;
-
-            item.REQ_MATCH = d.REQMATCH;
-            item.REQ_SPEC = d.REQSPEC;
-            item.REQ_CALIPER = d.REQCALIPER;
-            item.REQ_PICK = d.REQPICNOTE;
-            item.REQ_SALES_NOTE = d.REQSALESNOTE;
-            item.REQ_COMMENTS = d.REQCOMMENTS;
-            item.REQ_PHOTO_LINK = d.REQPHOTOLINK;
-            item.REQ_PHOTO_NAME = d.REQPHOTONAME;
-
-            let rawDock = d.DOCK || d.DOCKNUMBER || d.DOCK_NUMBER || d.DOCKNUM || '';
-            if (rawDock) item.DOCK_NUM = parseInt(String(rawDock).replace(/\D/g, ''), 10);
-            
-            item.CUSTOMERNAME = d.CUSTOMERNAME || d.CUSTOMER_NAME || d.CUSTOMER || d['CUSTOMER NAME'] || 'Unknown Customer';
-            item.CONSIGNEENAME = d.CONSIGNEENAME || d.CONSIGNEE_NAME || d.CONSIGNEE || d['CONSIGNEE NAME'] || '';
-            item.SALESREPNAME = d.SALESREPNAME || d.SALES_REP_NAME || d.SALESREP || d.SALES_REP || d['SALES REP'] || 'Unknown Rep';
-            item.STOPNUMBER = d.STOPNUMBER || d.STOP_NUMBER || d.STOP || 'Unassigned';
-            item.QUANTITYORDERED = d.QUANTITYORDERED || d.QTYORDERED || d.QTY_ORDERED || d.QTY || d['QUANTITY ORDERED'] || 0;
-            item.SHIPPED = d.SHIPPED || d.QTYSHIPPED || d.QTY_SHIPPED || d['QTY SHIPPED'] || 0;
-
-            return item;
-        }
-
-        function processFirebaseData(payload) {
-            fullInventory = payload.master.map((d, i) => normalizeItem(d, 'fi_', i, 'MasterInventory'));
-            seasonInventory = payload.season.map((d, i) => normalizeItem(d, 'sn_', i, 'SeasonNotes'));
-            locationInventory = payload.location.map((d, i) => normalizeItem(d, 'ln_', i, 'LocationNotes'));
-            lowStockInventory = payload.lowStock.map((d, i) => normalizeItem(d, 'ls_', i, 'LowStock'));
-            reservesInventory = payload.reserves.map((d, i) => normalizeItem(d, 'res_', i, 'Reserves'));
-            socInventory = payload.soc.map((d, i) => normalizeItem(d, 'soc_', i, 'SOC_Master'));
-
-            reservesInventory = reservesInventory.map(item => {
-                let resCode = String(item.ITEMCODE || "").trim().toUpperCase();
-                let masterItem = fullInventory.find(f => String(f.ITEMCODE || "").trim().toUpperCase() === resCode);
-                
-                item.COMMONNAME = masterItem ? masterItem.COMMONNAME : (item.COMMONNAME || 'Unknown Plant');
-                item.CONTSIZE = masterItem ? masterItem.CONTSIZE : (item.CONTSIZE || '-');
-                
-                if (masterItem) {
-                    item.LOCATIONCODE = masterItem.LOCATIONCODE;
-                    item.PTRAVAILABLE = masterItem.PTRAVAILABLE;
-                    item.SEASONSUPPLY = masterItem.SEASONSUPPLY;
-                    item.PRIORITY = masterItem.PRIORITY;
-                    item.QUALITYCODE = masterItem.QUALITYCODE;
-                    item.FIELDTAGCOLOR = masterItem.FIELDTAGCOLOR;
-                    item.LOTCODE = masterItem.LOTCODE;
-                }
-                return item;
-            });
-
-            reRenderCurrentView();
-        }
+        });
 
         async function promptToEnableBiometrics(user, pass) {
             if (localStorage.getItem('gnc_user_v3') === user) return;
@@ -885,7 +682,7 @@
                     await navigator.credentials.create({
                         publicKey: {
                             challenge: challenge,
-                            rp: { name: "GNC PRO 005", id: window.location.hostname },
+                            rp: { name: "GNC SALES COMMAND", id: window.location.hostname },
                             user: { id: userId, name: user, displayName: user.toUpperCase() },
                             pubKeyCredParams: [{type: "public-key", alg: -7}, {type: "public-key", alg: -257}],
                             authenticatorSelection: { 
@@ -937,25 +734,13 @@
         function applyRolePermissions() {
             document.getElementById('view-login').style.display = 'none';
             document.getElementById('app-wrapper').classList.remove('hidden');
-            
             const isAdmin = (currentRole === 'Admin');
-            document.querySelectorAll('.admin-only').forEach(el => {
-                if(isAdmin) {
-                    el.classList.remove('hidden');
-                    el.style.display = ''; 
-                } else {
-                    el.classList.add('hidden');
-                }
-            });
+            document.querySelectorAll('.admin-only').forEach(el => el.style.display = isAdmin ? 'block' : 'none');
             
             const isDylan = (currentUser === 'dylan_collyge' || currentUser === 'dylan');
             document.querySelectorAll('.dylan-only').forEach(el => {
-                if(isDylan) {
-                    el.classList.remove('hidden');
-                    el.style.display = ''; 
-                } else {
-                    el.classList.add('hidden');
-                }
+                el.style.display = isDylan ? 'block' : 'none';
+                el.classList.remove('hidden'); 
             });
 
             switchView('home');
@@ -980,14 +765,33 @@
             });
             document.getElementById('view-' + viewId).classList.remove('hidden');
             
-            if(viewId === 'drive') { document.getElementById('drive-search').value = ""; resetDriveView(); }
-            if(viewId === 'tasks') { document.getElementById('tasks-search').value = ""; if (currentRole === 'Admin' && !taskViewTargetUser) renderTeamSelector(); else renderTasks(); }
-            if(viewId === 'review') { document.getElementById('review-search').value = ""; reviewViewLevel = 0; renderReview(); }
-            if(viewId === 'request') { document.getElementById('request-search').value = ""; requestViewLevel = 0; renderRequest(); }
-            if(viewId === 'reserves') { document.getElementById('reserves-search').value = ""; reservesViewLevel = 0; renderReserves(); }
-            if(viewId === 'sales-office') { document.getElementById('sales-office-search').value = ""; renderSalesOffice(); }
-            if(viewId === 'low-stock') { document.getElementById('low-stock-search').value = ""; resetLowStockView(); }
-            if(viewId === 'docks') { document.getElementById('docks-search').value = ""; resetDockView(); }
+            if(viewId === 'drive') {
+                document.getElementById('drive-search').value = "";
+                resetDriveView(); 
+            }
+            if(viewId === 'tasks') {
+                if (currentRole === 'Admin' && !taskViewTargetUser) renderTeamSelector();
+                else renderTasks();
+            }
+            if(viewId === 'review') { 
+                reviewViewLevel = 0; 
+                setReviewTab('completed'); 
+            }
+            if(viewId === 'request') {
+                requestViewLevel = 0;
+                renderRequest();
+            }
+            if(viewId === 'reserves') {
+                document.getElementById('reserves-search').value = "";
+                reservesViewLevel = 0;
+                renderReserves();
+            }
+            if(viewId === 'sales-office') { renderSalesOffice(); }
+            if(viewId === 'low-stock') { resetLowStockView(); }
+            if(viewId === 'docks') { 
+                document.getElementById('docks-search').value = "";
+                resetDockView(); 
+            }
         }
 
         function reRenderCurrentView() {
@@ -1009,13 +813,49 @@
             renderTasks();
         }
 
-        function selectRequestCategory(cat) { requestFilterMode = cat; requestViewLevel = 1; renderRequest(); }
-        function selectRequestRep(rep) { selectedReqRep = rep; requestViewLevel = 2; renderRequest(); }
-        function selectRepStatus(status) { selectedReqRepStatus = status; requestViewLevel = 3; renderRequest(); }
-        function selectRequestFolder(folderId) { selectedReqFolder = folderId; requestViewLevel = 4; renderRequest(); }
+        function setReviewTab(tab) {
+            activeReviewTab = tab;
+            document.getElementById('review-tab-completed').classList.toggle('active', tab === 'completed');
+            reviewViewLevel = 0; 
+            renderReview();
+        }
 
-        function selectReservesName(name) { selectedReservesName = name; reservesViewLevel = 1; renderReserves(); }
-        function selectReservesSize(size) { selectedReservesSize = size; reservesViewLevel = 2; renderReserves(); }
+        function selectRequestCategory(cat) {
+            requestFilterMode = cat;
+            requestViewLevel = 1;
+            renderRequest();
+        }
+
+        function selectRequestRep(rep) {
+            selectedReqRep = rep;
+            requestViewLevel = 2;
+            renderRequest();
+        }
+
+        function selectRepStatus(status) {
+            selectedReqRepStatus = status;
+            requestViewLevel = 3;
+            renderRequest();
+        }
+        
+        function selectRequestFolder(folderId) {
+            selectedReqFolder = folderId;
+            requestViewLevel = 4;
+            renderRequest();
+        }
+
+        function handleReservesSearch() {
+            const term = document.getElementById('reserves-search').value;
+            if (term.length > 0 && reservesViewLevel > 0) { 
+                reservesViewLevel = 0; 
+                selectedReservesRep = null; 
+                selectedReservesCustomer = null; 
+            }
+            renderReserves();
+        }
+
+        function selectReservesRep(rep) { selectedReservesRep = rep; reservesViewLevel = 1; renderReserves(); }
+        function selectReservesCustomer(cust) { selectedReservesCustomer = cust; reservesViewLevel = 2; renderReserves(); }
 
         function getLocPrefix(loc) {
             if(!loc) return "Unassigned";
@@ -1045,7 +885,9 @@
             }
         }
 
-        function cancelPress() { clearTimeout(pressTimer); }
+        function cancelPress() {
+            clearTimeout(pressTimer);
+        }
 
         function enableMultiSelect(firstDomId) {
             isMultiSelectMode = true;
@@ -1067,7 +909,9 @@
             selectedItems.clear();
             updateGlobalActionBar();
             
-            document.querySelectorAll('.card-checkbox').forEach(cb => { cb.checked = false; });
+            document.querySelectorAll('.card-checkbox').forEach(cb => {
+                cb.checked = false;
+            });
         }
 
         function toggleGlobalItem(domId, isChecked) {
@@ -1077,7 +921,10 @@
         }
 
         function handleCardClick(domId, uniqueId, sourceView) {
-            if (isLongPress) { isLongPress = false; return; }
+            if (isLongPress) {
+                isLongPress = false; 
+                return;
+            }
             
             if (isMultiSelectMode) {
                 const row = document.querySelector(`[data-dom-id="${domId}"]`);
@@ -1139,22 +986,19 @@
                 
                 <div class="inv-card ${colorClass} flex items-center justify-between flex-grow !mb-0 transition-transform active:scale-[0.99]">
                     <div class="flex-grow min-w-0">
-                        <div class="flex justify-between items-start font-bold text-sm mb-1.5">
-                            <span class="text-[#007a4d] truncate pr-2 leading-tight">${item.COMMONNAME || 'Unknown'}</span>
+                        <div class="flex justify-between font-bold text-sm mb-1">
+                            <span class="text-[#007a4d] truncate pr-2">${item.LOCATIONCODE || 'No Loc'} • ${item.COMMONNAME || 'Unknown'}</span>
                             <span class="whitespace-nowrap bg-gray-100 text-gray-800 px-1.5 py-0.5 rounded text-xs border border-gray-200">${item.CONTSIZE || '-'}</span>
                         </div>
-                        
-                        <div class="grid grid-cols-2 gap-x-2 gap-y-1 text-[10px] text-gray-600">
-                            <div class="truncate"><span class="font-bold text-gray-800">Location:</span> ${item.LOCATIONCODE || '-'}</div>
-                            <div class="truncate"><span class="font-bold text-blue-600">Priority:</span> <span class="text-blue-600">${item.PRIORITY || '-'}</span></div>
-                            
-                            <div class="truncate"><span class="font-bold text-[#007a4d]">LOC QTY:</span> ${item.PTRAVAILABLE || '0'}</div>
-                            <div class="truncate"><span class="font-bold text-gray-800">Season Supply:</span> ${item.SEASONSUPPLY || '0'}</div>
-                            
-                            <div class="truncate"><span class="font-bold text-gray-800">S_LTS:</span> ${item.S_LTS || '0'}</div>
-                            <div class="truncate"><span class="font-bold text-gray-800">Lot:</span> ${item.LOTCODE || '-'}</div>
-                            
-                            <div class="col-span-2 truncate"><span class="font-bold text-purple-600">Tag Color:</span> <span class="text-purple-600">${tagColor}</span></div>
+                        <div class="text-[11px] text-gray-500 truncate mt-0.5">
+                            <span class="font-bold text-blue-600">Pri: ${item.PRIORITY || '-'}</span> | 
+                            <span class="font-bold text-gray-800">QC: ${item.QUALITYCODE || '-'}</span> | 
+                            <span class="font-bold text-purple-600">Tag: ${tagColor}</span>
+                        </div>
+                        <div class="text-[11px] text-gray-500 truncate mt-0.5">
+                            <span class="font-bold text-[#007a4d]">Qty: ${item.PTRAVAILABLE || '0'}</span> | 
+                            <span class="font-bold text-orange-600">Lot: ${item.LOTCODE || '-'}</span> | 
+                            Supply: ${item.SEASONSUPPLY || '0'}
                         </div>
                     </div>
                     ${thumbHtml}
@@ -1172,8 +1016,6 @@
         }
 
         function openRequestModal() {
-            document.getElementById('step-1-rep').classList.remove('hidden');
-            document.getElementById('step-2-cust').classList.add('hidden');
             document.getElementById('request-rep-modal').classList.remove('hidden');
             document.getElementById('rep-search-input').value = "";
             filterRepList();
@@ -1190,7 +1032,7 @@
             salesRepList.forEach(rep => {
                 if (rep.toLowerCase().includes(val)) {
                     if (rep.toLowerCase() === val) exactMatch = true;
-                    html += `<button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm text-left" onclick="selectRepForRequest('${rep}')">${rep}</button>`;
+                    html += `<button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm text-left" onclick="confirmRequestAction('${rep}')">${rep}</button>`;
                 }
             });
 
@@ -1204,69 +1046,12 @@
             }
         }
 
-        function selectRepForRequest(repName) {
-            tempSelectedReqRep = repName;
-            document.getElementById('step-1-rep').classList.add('hidden');
-            document.getElementById('step-2-cust').classList.remove('hidden');
-            document.getElementById('req-qty-input').value = "";
-            document.getElementById('cust-search-input').value = "";
-            populateCustomerList();
+        function submitCustomRep() {
+            const val = document.getElementById('rep-search-input').value.trim();
+            if(val) confirmRequestAction(val);
         }
 
-        function populateCustomerList() {
-            const val = document.getElementById('cust-search-input').value.toLowerCase().trim();
-            const container = document.getElementById('cust-list-container');
-            
-            let custSet = new Set();
-            
-            const addCusts = (arr) => {
-                arr.forEach(i => {
-                    let c = String(i.CUSTOMERNAME || "").trim();
-                    let cons = String(i.CONSIGNEENAME || "").trim();
-                    
-                    if (c || cons) {
-                        let display = c;
-                        if (cons && cons.toUpperCase() !== c.toUpperCase()) {
-                            display = c ? `${c} - ${cons}` : cons;
-                        }
-                        custSet.add(display);
-                    }
-                });
-            };
-            
-            addCusts(socInventory);
-            addCusts(reservesInventory);
-            
-            let custArray = Array.from(custSet).sort();
-            
-            let html = "";
-            custArray.forEach(c => {
-                if (c.toLowerCase().includes(val) || val === "") {
-                    html += `<div class="bg-orange-50 text-orange-800 font-bold p-3 rounded-lg border border-orange-200 shadow-sm text-left cursor-pointer active:bg-orange-100" onclick="setCustomerInput('${c.replace(/'/g, "\\'")}')">${c}</div>`;
-                }
-            });
-            
-            if (html === "") {
-                html = `<div class="text-xs text-gray-400 p-2 text-center">No matching customers found. Your typed name will be used.</div>`;
-            }
-            
-            container.innerHTML = html;
-        }
-
-        function setCustomerInput(val) {
-            document.getElementById('cust-search-input').value = val;
-            populateCustomerList(); 
-        }
-
-        function finalizeRequestAction() {
-            let cust = document.getElementById('cust-search-input').value.trim();
-            let qty = document.getElementById('req-qty-input').value.trim();
-            
-            if (!cust) {
-                showToast("Required", "Please enter or select a customer.", true);
-                return;
-            }
-            
+        function confirmRequestAction(repName) {
             document.getElementById('request-rep-modal').classList.add('hidden');
             const domIds = Array.from(selectedItems);
             const uniqueIds = [];
@@ -1275,54 +1060,29 @@
             const shortTime = new Date().toLocaleTimeString('en-US', {hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit'}).replace(/:/g, ''); 
             const folderId = `REQ-${dateStr}-${shortTime}`;
             
-            const batch = db.batch();
-
             domIds.forEach(dId => {
                 let item = fullInventory.find(i => i.DOM_ID === dId) || lowStockInventory.find(i => i.DOM_ID === dId) || reservesInventory.find(i => i.DOM_ID === dId);
                 if (item) {
                     item.IS_REQUEST = true; 
-                    item.REQUESTED_BY = tempSelectedReqRep; 
+                    item.REQUESTED_BY = repName; 
                     item.REQUEST_FOLDER = folderId; 
-                    item.REQ_CUSTOMER = cust;
-                    item.REQ_QTY = qty;
                     uniqueIds.push(item.UNIQUE_ID);
-
-                    const docId = item.UNIQUE_ID.replace(/[^a-zA-Z0-9_-]/g, '_');
-                    const col = item._COLLECTION || 'MasterInventory';
-                    const ref = db.collection(col).doc(docId);
-
-                    batch.set(ref, {
-                        ISREQUEST: true,
-                        REQUESTEDBY: tempSelectedReqRep,
-                        REQUESTFOLDER: folderId,
-                        REQCUSTOMER: cust,
-                        REQQTY: qty
-                    }, {merge: true});
                 }
             });
 
-            showToast("Processing...", `Saving request for ${tempSelectedReqRep}...`, false);
-
-            batch.commit().then(() => {
-                showToast("Success", "Items moved to Request tab!");
-                clearSelection();
-                switchView('request');
-            }).catch(err => {
-                console.error(err);
-                showToast("Error", "Failed to update database.", true);
-            });
+            showToast("Processing...", `Saving request for ${repName}...`, false);
 
             fetch(GOOGLE_SCRIPT_URL, {
                 method: 'POST',
-                body: JSON.stringify({ 
-                    type: 'batch_request', 
-                    ids: uniqueIds, 
-                    repName: tempSelectedReqRep, 
-                    folderId: folderId,
-                    customer: cust,
-                    qty: qty
-                })
-            });
+                body: JSON.stringify({ type: 'batch_request', ids: uniqueIds, repName: repName, folderId: folderId })
+            }).then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showToast("Success", "Items moved to Request tab!");
+                    clearSelection();
+                    switchView('request');
+                } else { showToast("Error", "Failed to update sheet.", true); }
+            }).catch(err => showToast("Error", "Network error.", true));
         }
 
         function processTabSelection(tab) {
@@ -1347,39 +1107,50 @@
             let returnText = `${headerTitle}\n\n`;
 
             items.forEach(i => {
-                returnText += `▪ ${i.COMMONNAME || 'Unknown'} (${i.CONTSIZE || '-'}) | Loc: ${i.LOCATIONCODE || 'No Loc'}\n`;
-                
-                let match = tabType === 'request' ? i.REQ_MATCH : (i.MATCH || i.MATCHPCT);
-                if (match) returnText += `  Match: ${match}%\n`;
-                
-                let spec = tabType === 'request' ? i.REQ_SPEC : i.SPEC;
-                if (spec) returnText += `  Spec: ${spec}\n`;
-                
-                let caliper = tabType === 'request' ? i.REQ_CALIPER : i.CALIPER;
-                if (caliper) returnText += `  Caliper: ${caliper}\n`;
-                
-                let pick = tabType === 'request' ? i.REQ_PICK : (i.PIC_NOTE || i.PICKNOTE || i.PICK);
-                if (pick) returnText += `  Pick Note: ${pick}\n`;
-                
-                let sales = tabType === 'request' ? i.REQ_SALES_NOTE : (i.SALES_NOTE || i.SALESNOTE || i.SALESDESC);
-                if (sales) returnText += `  Sales Note: ${sales}\n`;
+                if (i.DOM_ID && i.DOM_ID.startsWith('res_')) {
+                    let qtyReserved = parseInt(String(i.QUANTITYORDERED || i['QUANTITY ORDERED'] || i.QTYORDERED || i.QTY || 0).replace(/,/g, '')) || 0;
+                    let shipped = parseInt(String(i.SHIPPED || i['QTY SHIPPED'] || 0).replace(/,/g, '')) || 0;
+                    let remaining = qtyReserved - shipped;
 
-                if (tabType === 'request' && i.REQ_COMMENTS) returnText += `  Comments: ${i.REQ_COMMENTS}\n`;
-                
-                let photo = tabType === 'request' ? i.REQ_PHOTO_LINK : (i.SAVED_PHOTO_LINK || i['PHOTO LINK'] || i.PHOTOLINK);
-                if (photo && photo.trim() !== "") {
-                    let urls = photo.split(',');
-                    let counter = 1;
-                    urls.forEach(url => {
-                        let cleanUrl = url.trim();
-                        let match = cleanUrl.match(/(https?:\/\/[^"\s>]+)/);
-                        if (match) {
-                            returnText += `  Photo ${counter}: ${match[1]}\n`;
-                            counter++;
-                        }
-                    });
+                    returnText += `▪ ${i.COMMONNAME || 'Unknown'} (${i.CONTSIZE || '-'}) | Loc: ${i.LOCATIONCODE || 'No Loc'}\n`;
+                    returnText += `  Customer: ${i.CUSTOMERNAME}\n`;
+                    returnText += `  Rep: ${i.SALESREPNAME}\n`;
+                    returnText += `  Reserved: ${qtyReserved} | Shipped: ${shipped} | Remaining: ${remaining}\n\n`;
+                } else {
+                    returnText += `▪ ${i.COMMONNAME || 'Unknown'} (${i.CONTSIZE || '-'}) | Loc: ${i.LOCATIONCODE || 'No Loc'}\n`;
+                    
+                    let match = tabType === 'request' ? i.REQ_MATCH : (i.MATCH || i.MATCHPCT);
+                    if (match) returnText += `  Match: ${match}%\n`;
+                    
+                    let spec = tabType === 'request' ? i.REQ_SPEC : i.SPEC;
+                    if (spec) returnText += `  Spec: ${spec}\n`;
+                    
+                    let caliper = tabType === 'request' ? i.REQ_CALIPER : i.CALIPER;
+                    if (caliper) returnText += `  Caliper: ${caliper}\n`;
+                    
+                    let pick = tabType === 'request' ? i.REQ_PICK : (i.PIC_NOTE || i.PICKNOTE || i.PICK);
+                    if (pick) returnText += `  Pick Note: ${pick}\n`;
+                    
+                    let sales = tabType === 'request' ? i.REQ_SALES_NOTE : (i.SALES_NOTE || i.SALESNOTE || i.SALESDESC);
+                    if (sales) returnText += `  Sales Note: ${sales}\n`;
+
+                    if (tabType === 'request' && i.REQ_COMMENTS) returnText += `  Comments: ${i.REQ_COMMENTS}\n`;
+                    
+                    let photo = tabType === 'request' ? i.REQ_PHOTO_LINK : (i.SAVED_PHOTO_LINK || i['PHOTO LINK'] || i.PHOTOLINK);
+                    if (photo && photo.trim() !== "") {
+                        let urls = photo.split(',');
+                        let counter = 1;
+                        urls.forEach(url => {
+                            let cleanUrl = url.trim();
+                            let match = cleanUrl.match(/(https?:\/\/[^"\s>]+)/);
+                            if (match) {
+                                returnText += `  Photo ${counter}: ${match[1]}\n`;
+                                counter++;
+                            }
+                        });
+                    }
+                    returnText += `\n`;
                 }
-                returnText += `\n`;
             });
 
             return returnText;
@@ -1408,40 +1179,45 @@
 
         function confirmAssign(user) {
             closeAssignModal();
-            showToast("Assigning...", "Updating database...", false);
+            showToast("Assigning...", "Updating Google Sheet...", false);
             
             const domIds = Array.from(selectedItems);
             const uniqueIds = [];
             let itemsToUpdate = [];
-            const batch = db.batch();
             
             domIds.forEach(dId => {
                 let item = fullInventory.find(i => i.DOM_ID === dId) || lowStockInventory.find(i => i.DOM_ID === dId) || reservesInventory.find(i => i.DOM_ID === dId);
                 if (item) {
-                    item.ASSIGNEDTO = user;
-                    item.DATE_COMPLETED = ""; 
                     uniqueIds.push(item.UNIQUE_ID);
                     itemsToUpdate.push(item);
-
-                    const docId = item.UNIQUE_ID.replace(/[^a-zA-Z0-9_-]/g, '_');
-                    const col = item._COLLECTION || 'MasterInventory';
-                    const ref = db.collection(col).doc(docId);
-                    batch.set(ref, { ASSIGNEDTO: user, DATECOMPLETED: "" }, {merge: true});
                 }
             });
             
-            batch.commit().then(() => {
-                showToast("Success", `Assigned to ${user}! Emails are sending...`);
-                clearSelection();
-            }).catch(err => {
-                console.error(err);
-                showToast("Error", "Assignment failed", true);
-            });
-
             fetch(GOOGLE_SCRIPT_URL, {
                 method: 'POST',
                 body: JSON.stringify({ type: 'batch_assign', ids: uniqueIds, assignTo: user, tabType: pendingTabType })
-            });
+            }).then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showToast("Success", `Assigned to ${user} and email sent!`);
+                    itemsToUpdate.forEach(item => {
+                        item.ASSIGNEDTO = user;
+                        item.DATE_COMPLETED = ""; 
+                    });
+                    clearSelection(); 
+                } else { showToast("Error", "Assignment failed", true); }
+            }).catch(err => showToast("Error", "Network error.", true));
+        }
+
+        function handleDocksSearch() {
+            const term = document.getElementById('docks-search').value;
+            if (term.length > 0 && dockViewLevel > 1) { 
+                dockViewLevel = 1; 
+                selectedDockName = null; 
+                selectedDockSize = null; 
+                selectedDockItemCode = null;
+            }
+            renderDocks();
         }
 
         function resetDockView() {
@@ -1454,13 +1230,12 @@
             renderDocks();
         }
 
-        function selectDockNum(num) { selectedDockNum = num; dockViewLevel = 1; document.getElementById('docks-search').value = ""; renderDocks(); }
+        function selectDockNum(num) { selectedDockNum = num; dockViewLevel = 1; renderDocks(); }
         function selectDockPlant(itemCode, name, size) { 
             selectedDockItemCode = itemCode; 
             selectedDockName = name; 
             selectedDockSize = size; 
             dockViewLevel = 2; 
-            document.getElementById('docks-search').value = "";
             renderDocks(); 
         }
 
@@ -1475,7 +1250,7 @@
                 
                 socInventory.forEach(i => {
                     if (term) {
-                        let searchStr = (i.COMMONNAME || i.CUSTOMERNAME || i.SALESREPNAME || 'Unknown').toLowerCase();
+                        let searchStr = (i.COMMONNAME || i['PLANT NAME'] || i.CUSTOMERNAME || i.SALESREPNAME || 'Unknown').toLowerCase();
                         if (searchStr.includes(term) && i.DOCK_NUM) activeDocks.add(i.DOCK_NUM);
                     } else {
                         if (i.DOCK_NUM) activeDocks.add(i.DOCK_NUM);
@@ -1505,7 +1280,7 @@
                 
                 if (term) {
                     dockItems = dockItems.filter(i => {
-                        let searchStr = (i.COMMONNAME || i.CUSTOMERNAME || i.SALESREPNAME || 'Unknown').toLowerCase();
+                        let searchStr = (i.COMMONNAME || i['PLANT NAME'] || i.CUSTOMERNAME || i.SALESREPNAME || 'Unknown').toLowerCase();
                         return searchStr.includes(term);
                     });
                 }
@@ -1520,22 +1295,22 @@
                     let stopNum = i.STOPNUMBER || "Unassigned"; 
                     if (!stopsMap[stopNum]) {
                         stopsMap[stopNum] = {
-                            salesRep: i.SALESREPNAME || "Unknown Rep",
-                            customer: i.CUSTOMERNAME || "Unknown Customer",
-                            consignee: i.CONSIGNEENAME || "",
+                            salesRep: i.SALESREPNAME || i.SALESREP || "Unknown Rep",
+                            customer: i.CUSTOMERNAME || i.CUSTOMER || "Unknown Customer",
+                            consignee: i.CONSIGNEENAME || i.CONSIGNEE || "",
                             plants: {} 
                         };
                     }
                     
-                    let name = i.COMMONNAME || 'Unknown';
-                    let size = i.CONTSIZE || '-';
-                    let itemCode = i.ITEMCODE || 'No Item';
+                    let name = i.COMMONNAME || i['PLANT NAME'] || i.DESC || i.DESCRIPTION || 'Unknown';
+                    let size = i.CONTSIZE || i.SIZE || i.CONTAINER || '-';
+                    let itemCode = i.ITEMCODE || i.ITEM || 'No Item';
                     let key = `${itemCode}|${name}|${size}`;
                     
                     if (!stopsMap[stopNum].plants[key]) {
                         stopsMap[stopNum].plants[key] = { itemCode, name, size, count: 0 };
                     }
-                        stopsMap[stopNum].plants[key].count++;
+                    stopsMap[stopNum].plants[key].count++;
                 });
 
                 let html = `<div class="back-btn" onclick="dockViewLevel=0; document.getElementById('docks-search').value=''; renderDocks()"><i class="ph-bold ph-arrow-left"></i> Back to Docks</div>`;
@@ -1592,23 +1367,26 @@
                     }
                 });
                 
-                if (term) {
-                    finalItems = finalItems.filter(i => 
-                        (i.LOCATIONCODE || "").toLowerCase().includes(term) ||
-                        (i.LOTCODE || "").toLowerCase().includes(term) ||
-                        (i.COMMONNAME || "").toLowerCase().includes(term) ||
-                        (i.ITEMCODE || "").toLowerCase().includes(term)
-                    );
-                }
-                
-                finalItems = sortAppItems(finalItems);
+                finalItems.sort((a, b) => {
+                    let priA = parseFloat(a.PRIORITY);
+                    let priB = parseFloat(b.PRIORITY);
+                    
+                    if (isNaN(priA)) priA = Infinity;
+                    if (isNaN(priB)) priB = Infinity;
+                    
+                    if (priA !== priB) {
+                        return priA - priB;
+                    }
+                    
+                    return (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true});
+                });
 
                 if (finalItems.length === 0) {
-                     container.innerHTML = `<div class="back-btn" onclick="dockViewLevel=1; renderDocks()"><i class="ph-bold ph-arrow-left"></i> Back to Stop</div><div class="p-8 text-center text-gray-400">No records exist for this item.</div>`;
+                     container.innerHTML = `<div class="back-btn" onclick="dockViewLevel=1; renderDocks()"><i class="ph-bold ph-arrow-left"></i> Back to Stop</div><div class="p-8 text-center text-gray-400">This plant was requested for the Dock, but no matching records exist in the Master Inventory.</div>`;
                      return;
                 }
                 
-                container.innerHTML = `<div class="back-btn" onclick="dockViewLevel=1; document.getElementById('docks-search').value=''; renderDocks()"><i class="ph-bold ph-arrow-left"></i> Back to Stop</div>` + 
+                container.innerHTML = `<div class="back-btn" onclick="dockViewLevel=1; renderDocks()"><i class="ph-bold ph-arrow-left"></i> Back to Stop</div>` + 
                 finalItems.map(i => generateCard(i, 'docks', 'status-orange')).join('');
             }
         }
@@ -1617,39 +1395,29 @@
             lowStockViewLevel = 0; 
             selectedLowStockName = null; 
             selectedLowStockSize = null; 
-            document.getElementById('low-stock-search').value = "";
             renderLowStock(); 
         }
-        function selectLowStockName(name) { selectedLowStockName = name; lowStockViewLevel = 1; document.getElementById('low-stock-search').value = ""; renderLowStock(); }
-        function selectLowStockSize(size) { selectedLowStockSize = size; lowStockViewLevel = 2; document.getElementById('low-stock-search').value = ""; renderLowStock(); }
-        function backToLowStockSizes() { lowStockViewLevel = 1; selectedLowStockSize = null; document.getElementById('low-stock-search').value = ""; renderLowStock(); }
+        function selectLowStockName(name) { selectedLowStockName = name; lowStockViewLevel = 1; renderLowStock(); }
+        function selectLowStockSize(size) { selectedLowStockSize = size; lowStockViewLevel = 2; renderLowStock(); }
+        function backToLowStockSizes() { lowStockViewLevel = 1; selectedLowStockSize = null; renderLowStock(); }
 
         function renderLowStock() {
             const container = document.getElementById('low-stock-content');
             const crumb = document.getElementById('low-stock-crumb');
-            const term = document.getElementById('low-stock-search').value.toLowerCase();
             
-            let filteredLowStock = lowStockInventory;
-            if (term) {
-                filteredLowStock = filteredLowStock.filter(i => 
-                    (i.COMMONNAME||"").toLowerCase().includes(term) || 
-                    (i.LOCATIONCODE||"").toLowerCase().includes(term)
-                );
-            }
-
-            if (filteredLowStock.length === 0) {
-                container.innerHTML = `<div class="p-8 text-center text-gray-400">No low stock items match.</div>`;
+            if (lowStockInventory.length === 0) {
+                container.innerHTML = `<div class="p-8 text-center text-gray-400">No low stock items at this time.</div>`;
                 return;
             }
 
             if (lowStockViewLevel === 0) {
                 crumb.innerText = "Select Plant";
-                const names = [...new Set(filteredLowStock.map(i => i.COMMONNAME))].sort();
+                const names = [...new Set(lowStockInventory.map(i => i.COMMONNAME))].sort();
                 container.innerHTML = names.map(n => `<div class="drill-item" onclick="selectLowStockName('${n.replace(/'/g, "\\'")}')"><span class="font-bold text-lg">${n}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
             } 
             else if (lowStockViewLevel === 1) {
                 crumb.innerText = selectedLowStockName;
-                const namedItems = filteredLowStock.filter(i => i.COMMONNAME === selectedLowStockName);
+                const namedItems = lowStockInventory.filter(i => i.COMMONNAME === selectedLowStockName);
                 const sizes = [...new Set(namedItems.map(i => i.CONTSIZE))].sort();
                 let html = `<div class="back-btn" onclick="resetLowStockView()"><i class="ph-bold ph-arrow-left"></i> Back to Names</div><div class="font-bold text-purple-600 mb-4 px-2 text-xl border-b pb-2">${selectedLowStockName}</div>`;
                 html += sizes.map(s => {
@@ -1660,44 +1428,33 @@
             } 
             else if (lowStockViewLevel === 2) {
                 crumb.innerText = `${selectedLowStockName} / ${selectedLowStockSize}`;
-                let finalItems = filteredLowStock.filter(i => i.COMMONNAME === selectedLowStockName && i.CONTSIZE === selectedLowStockSize);
-                finalItems = sortAppItems(finalItems);
+                let finalItems = lowStockInventory.filter(i => i.COMMONNAME === selectedLowStockName && i.CONTSIZE === selectedLowStockSize);
+                finalItems.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
                 container.innerHTML = `<div class="back-btn" onclick="backToLowStockSizes()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>` + finalItems.map(i => generateCard(i, 'low-stock', 'status-purple')).join('');
             }
         }
 
         function renderSalesOffice() {
             const container = document.getElementById('sales-office-content');
-            const term = document.getElementById('sales-office-search').value.toLowerCase();
-            
             let officeItems = fullInventory.filter(i => {
                 if (!i.DATE_COMPLETED || i.DATE_COMPLETED === "") return false;
-                const pri = parseFloat(i.PRIORITY);
-                if (isNaN(pri) || pri <= 0) return false;
-                return i.APP_TAB_ASSIGNMENT === 'season'; 
+                const ptr = parseFloat(i.PTRAVAILABLE) || 0;
+                const ss = parseFloat(i.SEASONSUPPLY) || 0;
+                return ptr >= (ss * 1.10); 
             });
 
-            if (term) {
-                officeItems = officeItems.filter(i => 
-                    (i.COMMONNAME||"").toLowerCase().includes(term) || 
-                    (i.LOCATIONCODE||"").toLowerCase().includes(term) ||
-                    (i.ASSIGNEDTO||"").toLowerCase().includes(term)
-                );
-            }
-
             if (officeItems.length === 0) {
-                container.innerHTML = `<div class="p-8 text-center text-gray-400">No completed Season items match.</div>`;
+                container.innerHTML = `<div class="p-8 text-center text-gray-400">No completed Season Sales Notes at this time.</div>`;
                 return;
             }
 
-            officeItems = sortAppItems(officeItems);
+            officeItems.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
             container.innerHTML = officeItems.map(i => generateCard(i, 'sales-office')).join('');
         }
 
         function renderRequest() {
             const container = document.getElementById('request-content');
             const crumb = document.getElementById('request-crumb');
-            const term = document.getElementById('request-search').value.toLowerCase();
 
             let reqItems = fullInventory.filter(i => i.IS_REQUEST === true);
             let reqLowStock = lowStockInventory.filter(i => i.IS_REQUEST === true);
@@ -1705,15 +1462,6 @@
             let combinedReq = [...reqItems, ...reqLowStock, ...reqReserves];
             
             combinedReq = combinedReq.filter((v,i,a) => a.findIndex(t => (t.DOM_ID === v.DOM_ID)) === i);
-
-            if (term) {
-                combinedReq = combinedReq.filter(i => 
-                    (i.COMMONNAME||"").toLowerCase().includes(term) || 
-                    (i.REQUESTED_BY||"").toLowerCase().includes(term) ||
-                    (i.REQUEST_FOLDER||"").toLowerCase().includes(term) ||
-                    (i.LOCATIONCODE||"").toLowerCase().includes(term)
-                );
-            }
 
             const isReqCompleted = (item) => {
                 return (
@@ -1761,9 +1509,8 @@
                             let matchStr = (i.REQUESTED_BY || i.SALESREP || i.SALESREPNAME || i['SALES REP'] || i.ASSIGNEDTO || "").toUpperCase();
                             return matchStr.includes(parts[0]) && matchStr.includes(parts[1]);
                         }).length;
-                        if (count > 0 || term === "") {
-                            html += `<div class="drill-item" onclick="selectRequestRep('${rep}')"><span class="font-bold text-lg">${rep} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
-                        }
+                        
+                        html += `<div class="drill-item" onclick="selectRequestRep('${rep}')"><span class="font-bold text-lg">${rep} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
                     });
                     container.innerHTML = html;
                     return;
@@ -1771,7 +1518,7 @@
                     crumb.innerText = requestFilterMode === 'pending' ? "Pending" : "Completed";
                     let displayItems = requestFilterMode === 'pending' ? pendingReqs : completedReqs;
 
-                    displayItems = sortAppItems(displayItems);
+                    displayItems.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
 
                     let html = `<div class="back-btn" onclick="requestViewLevel=0; renderRequest()"><i class="ph-bold ph-arrow-left"></i> Back to Categories</div>`;
                     
@@ -1799,7 +1546,7 @@
                 let repCompleted = repItems.filter(i => isReqCompleted(i));
 
                 container.innerHTML = `
-                    <div class="back-btn" onclick="requestViewLevel=1; document.getElementById('request-search').value=''; renderRequest()"><i class="ph-bold ph-arrow-left"></i> Back to Sales Reps</div>
+                    <div class="back-btn" onclick="requestViewLevel=1; renderRequest()"><i class="ph-bold ph-arrow-left"></i> Back to Sales Reps</div>
                     <div class="drill-item" onclick="selectRepStatus('pending')">
                         <span class="font-bold text-lg text-orange-600">Pending Requests <span class="text-gray-400 text-sm font-normal">(${repPending.length})</span></span>
                         <i class="ph-bold ph-caret-right text-gray-300"></i>
@@ -1867,7 +1614,7 @@
                 let displayItems = selectedReqRepStatus === 'pending' ? repItems.filter(i => !isReqCompleted(i)) : repItems.filter(i => isReqCompleted(i));
                 let folderItems = displayItems.filter(i => (i.REQUEST_FOLDER || "Uncategorized") === selectedReqFolder);
 
-                folderItems = sortAppItems(folderItems);
+                folderItems.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
 
                 let html = `<div class="back-btn" onclick="requestViewLevel=3; renderRequest()"><i class="ph-bold ph-arrow-left"></i> Back to Folders</div>`;
                 
@@ -1885,42 +1632,41 @@
         function renderReserves() {
             const container = document.getElementById('reserves-content');
             const crumb = document.getElementById('reserves-crumb');
-            const term = document.getElementById('reserves-search').value.toLowerCase();
+            const resSearch = document.getElementById('reserves-search');
+            
+            if (resSearch) resSearch.classList.remove('hidden'); 
+            
+            const term = resSearch ? resSearch.value.toLowerCase() : "";
 
             let filteredReserves = reservesInventory;
             if (term) {
-                filteredReserves = filteredReserves.filter(i => 
-                    (i.COMMONNAME || "").toLowerCase().includes(term) || 
-                    (i.CUSTOMERNAME || "").toLowerCase().includes(term) || 
-                    (i.SALESREPNAME || "").toLowerCase().includes(term) ||
-                    (i.LOCATIONCODE || "").toLowerCase().includes(term)
-                );
+                filteredReserves = filteredReserves.filter(i => (i.COMMONNAME || "").toLowerCase().includes(term) || (i.CUSTOMERNAME || "").toLowerCase().includes(term) || (i.SALESREPNAME || "").toLowerCase().includes(term));
             }
 
             if (filteredReserves.length === 0) {
                 crumb.innerText = "Reserves";
-                container.innerHTML = `<div class="p-8 text-center text-gray-400">No reserves data match.</div>`;
+                container.innerHTML = `<div class="p-8 text-center text-gray-400">No reserves data available.</div>`;
                 return;
             }
 
             if (reservesViewLevel === 0) {
-                crumb.innerText = `Select Plant (${filteredReserves.length} items)`;
-                const names = [...new Set(filteredReserves.map(i => i.COMMONNAME))].sort();
-                container.innerHTML = names.map(n => `<div class="drill-item" onclick="selectReservesName('${n.replace(/'/g, "\\'")}')"><span class="font-bold text-lg">${n}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
+                crumb.innerText = `Reserves / Select Rep (${filteredReserves.length} items)`;
+                const reps = [...new Set(filteredReserves.map(i => i.SALESREPNAME))].sort();
+                container.innerHTML = reps.map(n => `<div class="drill-item" onclick="selectReservesRep('${n.replace(/'/g, "\\'")}')"><span class="font-bold text-lg">${n}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
                 return;
             }
 
             if (reservesViewLevel === 1) {
-                crumb.innerText = `${selectedReservesName}`;
-                const namedItems = filteredReserves.filter(i => i.COMMONNAME === selectedReservesName);
-                const sizes = [...new Set(namedItems.map(i => i.CONTSIZE))].sort();
+                crumb.innerText = `Reserves / ${selectedReservesRep}`;
+                const repItems = filteredReserves.filter(i => i.SALESREPNAME === selectedReservesRep);
+                const customers = [...new Set(repItems.map(i => i.CUSTOMERNAME))].sort();
                 
-                let html = `<div class="back-btn" onclick="reservesViewLevel=0; document.getElementById('reserves-search').value=''; renderReserves()"><i class="ph-bold ph-arrow-left"></i> Back to Plants</div>`;
-                html += `<div class="font-bold text-indigo-600 mb-4 px-2 text-xl border-b pb-2">${selectedReservesName}</div>`;
+                let html = `<div class="back-btn" onclick="reservesViewLevel=0; renderReserves()"><i class="ph-bold ph-arrow-left"></i> Back to Reps</div>`;
+                html += `<div class="font-bold text-indigo-600 mb-4 px-2 text-xl border-b pb-2">${selectedReservesRep}</div>`;
                 
-                html += sizes.map(s => {
-                    const count = namedItems.filter(i => i.CONTSIZE === s).length;
-                    return `<div class="drill-item" onclick="selectReservesSize('${s}')"><span class="font-bold text-lg">${s} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
+                html += customers.map(c => {
+                    const count = repItems.filter(i => i.CUSTOMERNAME === c).length;
+                    return `<div class="drill-item" onclick="selectReservesCustomer('${c.replace(/'/g, "\\'")}')"><span class="font-bold text-lg">${c} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
                 }).join('');
                 
                 container.innerHTML = html;
@@ -1928,47 +1674,55 @@
             }
 
             if (reservesViewLevel === 2) {
-                crumb.innerText = `${selectedReservesName} (${selectedReservesSize})`;
-                let displayItems = filteredReserves.filter(i => i.COMMONNAME === selectedReservesName && i.CONTSIZE === selectedReservesSize);
+                crumb.innerText = `${selectedReservesRep} / ${selectedReservesCustomer}`;
+                let displayItems = filteredReserves.filter(i => i.SALESREPNAME === selectedReservesRep && i.CUSTOMERNAME === selectedReservesCustomer);
                 
-                let html = `<div class="back-btn" onclick="reservesViewLevel=1; document.getElementById('reserves-search').value=''; renderReserves()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>`;
+                let html = `<div class="back-btn" onclick="reservesViewLevel=1; renderReserves()"><i class="ph-bold ph-arrow-left"></i> Back to Customers</div>`;
                 
                 html += displayItems.map(item => {
-                    let custDisplay = item.CUSTOMERNAME;
-                    if (item.CONSIGNEENAME && item.CONSIGNEENAME !== item.CUSTOMERNAME) {
-                        custDisplay += ` - ${item.CONSIGNEENAME}`;
-                    }
-
-                    let qtyReserved = parseInt(String(item.QUANTITYORDERED || 0).replace(/,/g, '')) || 0;
-                    let shipped = parseInt(String(item.SHIPPED || 0).replace(/,/g, '')) || 0;
+                    let isChecked = selectedItems.has(item.DOM_ID) ? 'checked' : '';
+                    let qtyReserved = parseInt(String(item.QUANTITYORDERED || item['QUANTITY ORDERED'] || item.QTYORDERED || item.QTY || 0).replace(/,/g, '')) || 0;
+                    let shipped = parseInt(String(item.SHIPPED || item['QTY SHIPPED'] || 0).replace(/,/g, '')) || 0;
                     let remaining = qtyReserved - shipped;
-                    
                     let remainingColor = remaining > 0 ? "text-orange-600" : "text-green-600";
                     
                     return `
-                    <div class="bg-white border-b border-gray-200 p-4 flex flex-col items-start gap-2 cursor-pointer active:bg-gray-50 transition-colors" onclick="openDetail('${item.UNIQUE_ID}', 'reserves')">
-                        <div class="flex justify-between w-full items-start mb-2">
-                            <div class="pr-4">
-                                <div class="font-bold text-[15px] text-gray-800 leading-tight">${custDisplay}</div>
-                                <div class="text-xs font-bold text-indigo-600 mt-1"><i class="ph-bold ph-user mr-1"></i>${item.SALESREPNAME}</div>
-                            </div>
-                            <i class="ph-bold ph-caret-right text-gray-300 text-xl flex-shrink-0 mt-1"></i>
+                    <div class="flex items-center w-full mb-2 item-row" data-dom-id="${item.DOM_ID}"
+                         onmousedown="startPress(event, '${item.DOM_ID}')" 
+                         onmouseup="cancelPress()" 
+                         onmouseleave="cancelPress()" 
+                         ontouchstart="startPress(event, '${item.DOM_ID}')" 
+                         ontouchend="cancelPress()" 
+                         ontouchcancel="cancelPress()"
+                         ontouchmove="checkMove(event)"
+                         onclick="handleCardClick('${item.DOM_ID}', '${item.UNIQUE_ID}', 'reserves')">
+                        
+                        <div class="card-checkbox-container flex-shrink-0">
+                            <input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm pointer-events-none" ${isChecked}>
                         </div>
                         
-                        <div class="w-full flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg p-2 text-center mt-2">
-                            <div class="flex-1">
-                                <div class="text-[9px] font-bold text-gray-500 uppercase">QTY Reserved</div>
-                                <div class="font-bold text-gray-800 text-sm">${qtyReserved}</div>
+                        <div class="inv-card status-indigo flex flex-col flex-grow !mb-0 transition-transform active:scale-[0.99] p-3">
+                            <div class="flex justify-between font-bold text-sm mb-1">
+                                <span class="text-[#007a4d] truncate pr-2">${item.COMMONNAME || 'Unknown'}</span>
+                                <span class="whitespace-nowrap bg-gray-100 text-gray-800 px-1.5 py-0.5 rounded text-xs border border-gray-200">${item.CONTSIZE || '-'}</span>
                             </div>
-                            <div class="w-px h-8 bg-gray-200 mx-2"></div>
-                            <div class="flex-1">
-                                <div class="text-[9px] font-bold text-gray-500 uppercase">Shipped</div>
-                                <div class="font-bold text-gray-800 text-sm">${shipped}</div>
-                            </div>
-                            <div class="w-px h-8 bg-gray-200 mx-2"></div>
-                            <div class="flex-1">
-                                <div class="text-[9px] font-bold text-gray-500 uppercase">Remaining</div>
-                                <div class="font-bold ${remainingColor} text-sm">${remaining}</div>
+                            <div class="text-[11px] text-gray-500 mb-2">Loc: <span class="font-bold text-gray-800">${item.LOCATIONCODE || 'No Loc'}</span> | Item: ${item.ITEMCODE || '-'}</div>
+                            
+                            <div class="w-full flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg p-2 text-center">
+                                <div class="flex-1">
+                                    <div class="text-[9px] font-bold text-gray-500 uppercase">Reserved</div>
+                                    <div class="font-bold text-gray-800 text-sm">${qtyReserved}</div>
+                                </div>
+                                <div class="w-px h-8 bg-gray-200 mx-2"></div>
+                                <div class="flex-1">
+                                    <div class="text-[9px] font-bold text-gray-500 uppercase">Shipped</div>
+                                    <div class="font-bold text-gray-800 text-sm">${shipped}</div>
+                                </div>
+                                <div class="w-px h-8 bg-gray-200 mx-2"></div>
+                                <div class="flex-1">
+                                    <div class="text-[9px] font-bold text-gray-500 uppercase">Remaining</div>
+                                    <div class="font-bold ${remainingColor} text-sm">${remaining}</div>
+                                </div>
                             </div>
                         </div>
                     </div>`;
@@ -1982,20 +1736,11 @@
         function renderReview() {
             const container = document.getElementById('review-content');
             const crumb = document.getElementById('review-crumb');
-            const term = document.getElementById('review-search').value.toLowerCase();
 
             let completedItems = fullInventory.filter(i => i.DATE_COMPLETED && i.DATE_COMPLETED !== "");
             
-            if (term) {
-                completedItems = completedItems.filter(i => 
-                    (i.COMMONNAME||"").toLowerCase().includes(term) || 
-                    (i.ASSIGNEDTO||"").toLowerCase().includes(term) ||
-                    (i.LOCATIONCODE||"").toLowerCase().includes(term)
-                );
-            }
-
             if (completedItems.length === 0) {
-                container.innerHTML = `<div class="p-8 text-center text-gray-400">No matching tasks found.</div>`;
+                container.innerHTML = `<div class="p-8 text-center text-gray-400">No completed tasks to review.</div>`;
                 crumb.innerText = "All Caught Up";
                 return;
             }
@@ -2010,10 +1755,8 @@
             } else if (reviewViewLevel === 1) {
                 crumb.innerText = `Review / ${selectedReviewUser}`;
                 let userItems = completedItems.filter(i => (i.ASSIGNEDTO || "Unassigned") === selectedReviewUser);
-                
-                userItems = sortAppItems(userItems);
-                
-                container.innerHTML = `<div class="back-btn" onclick="reviewViewLevel=0; document.getElementById('review-search').value=''; renderReview()"><i class="ph-bold ph-arrow-left"></i> Back to Users</div>` + 
+                userItems.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
+                container.innerHTML = `<div class="back-btn" onclick="reviewViewLevel=0; renderReview()"><i class="ph-bold ph-arrow-left"></i> Back to Users</div>` + 
                 userItems.map(i => generateCard(i, 'review')).join('');
             }
         }
@@ -2021,24 +1764,23 @@
         function selectReviewUser(u) {
             selectedReviewUser = u;
             reviewViewLevel = 1;
-            document.getElementById('review-search').value = "";
             renderReview();
         }
 
+        function handleDriveSearch() {
+            const term = document.getElementById('drive-search').value;
+            if (term.length > 0 && driveViewLevel > 0) { driveViewLevel = 0; selectedDriveName = null; selectedDriveSize = null; }
+            renderDrive();
+        }
+        
         function selectDriveName(name) { 
             selectedDriveName = name; 
             driveViewLevel = 1; 
-            document.getElementById('drive-search').value = "";
             renderDrive(); 
         }
         
-        function selectDriveSize(size) { 
-            selectedDriveSize = size; 
-            driveViewLevel = 2; 
-            document.getElementById('drive-search').value = "";
-            renderDrive(); 
-        }
-        function backToDriveSizes() { driveViewLevel = 1; selectedDriveSize = null; document.getElementById('drive-search').value = ""; renderDrive(); }
+        function selectDriveSize(size) { selectedDriveSize = size; driveViewLevel = 2; renderDrive(); }
+        function backToDriveSizes() { driveViewLevel = 1; selectedDriveSize = null; renderDrive(); }
         function resetDriveView() { driveViewLevel = 0; selectedDriveName = null; selectedDriveSize = null; document.getElementById('drive-search').value = ""; renderDrive(); }
 
         function renderDrive() {
@@ -2047,13 +1789,7 @@
             const term = document.getElementById('drive-search').value.toLowerCase();
             
             let filteredItems = fullInventory;
-            if (term) { 
-                filteredItems = filteredItems.filter(i => 
-                    (i.COMMONNAME||"").toLowerCase().includes(term) || 
-                    (i.LOCATIONCODE||"").toLowerCase().includes(term) ||
-                    (i.ITEMCODE||"").toLowerCase().includes(term)
-                ); 
-            }
+            if (term) { filteredItems = filteredItems.filter(i => (i.COMMONNAME||"").toLowerCase().includes(term) || (i.LOCATIONCODE||"").toLowerCase().includes(term)); }
 
             if (filteredItems.length === 0) { container.innerHTML = `<div class="p-8 text-center text-gray-400">No items found.</div>`; crumb.innerText = "No Results"; return; }
 
@@ -2076,9 +1812,7 @@
             else if (driveViewLevel === 2) {
                 crumb.innerText = `${selectedDriveName} / ${selectedDriveSize}`;
                 let finalItems = filteredItems.filter(i => i.COMMONNAME === selectedDriveName && i.CONTSIZE === selectedDriveSize);
-                
-                finalItems = sortAppItems(finalItems);
-                
+                finalItems.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
                 container.innerHTML = `<div class="back-btn" onclick="backToDriveSizes()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>` + finalItems.map(i => generateCard(i, 'drive')).join('');
             }
         }
@@ -2089,11 +1823,10 @@
             document.getElementById('task-content').innerHTML = `<div class="p-8 text-center text-gray-400">Select a team member to view their assigned rows.</div>`;
             document.getElementById('task-crumb').innerText = "Admin Team View";
 
-            const targetNames = ["All Team Tasks", "Dylan", "Morgan", "Kayla"];
+            const targetNames = ["Dylan", "Morgan", "Kayla"];
             let teamHtml = "";
             targetNames.forEach(name => {
-                let bgClass = name === "All Team Tasks" ? "bg-green-600 text-white border-green-700" : "bg-blue-50 text-blue-800 border-blue-200";
-                teamHtml += `<div class="p-5 border ${bgClass} rounded-lg text-center font-bold text-lg cursor-pointer shadow-sm" onclick="setTaskUser('${name}')">${name}</div>`;
+                teamHtml += `<div class="p-5 border border-blue-200 bg-blue-50 text-blue-800 rounded-lg text-center font-bold text-lg cursor-pointer" onclick="setTaskUser('${name}')">${name}</div>`;
             });
             document.getElementById('team-selector').innerHTML = teamHtml;
         }
@@ -2106,42 +1839,35 @@
             renderTasks();
         }
 
-        function selectTaskBlock(b) { selectedTaskBlock = b; taskViewLevel = 1; document.getElementById('tasks-search').value = ""; renderTasks(); }
-        function selectTaskLoc(l) { selectedTaskLoc = l; taskViewLevel = 2; document.getElementById('tasks-search').value = ""; renderTasks(); }
+        function selectTaskBlock(b) { selectedTaskBlock = b; taskViewLevel = 1; renderTasks(); }
+        function selectTaskLoc(l) { selectedTaskLoc = l; taskViewLevel = 2; renderTasks(); }
 
         function renderTasks() {
             const container = document.getElementById('task-content');
             const crumb = document.getElementById('task-crumb');
-            const term = document.getElementById('tasks-search').value.toLowerCase();
             
             let userToView = (currentRole === 'Admin') ? taskViewTargetUser : currentUser;
+            let searchName = userToView === 'dylan_collyge' ? 'Dylan' : userToView;
 
-            let baseItems = activeTaskTab === 'season' ? seasonInventory : locationInventory;
+            let myItems = fullInventory.filter(i => String(i.ASSIGNEDTO || "").toLowerCase().includes(searchName.toLowerCase()));
 
-            let myItems = baseItems.filter(i => {
+            myItems = myItems.filter(i => {
                 if (i.DATE_COMPLETED && i.DATE_COMPLETED !== "") return false;
 
-                if (userToView !== "All Team Tasks") {
-                    let searchName = userToView === 'dylan_collyge' ? 'Dylan' : userToView;
-                    if (!String(i.ASSIGNEDTO || "").toLowerCase().includes(searchName.toLowerCase())) return false;
-                }
+                const pri = parseFloat(i.PRIORITY);
+                if (isNaN(pri) || pri <= 0) return false; 
+                
+                if (activeTaskTab === 'season') return i.APP_TAB_ASSIGNMENT === 'season';
+                if (activeTaskTab === 'location') return i.APP_TAB_ASSIGNMENT === 'location';
+                
                 return true;
             });
 
-            if (term) {
-                myItems = myItems.filter(i => 
-                    (i.COMMONNAME||"").toLowerCase().includes(term) || 
-                    (i.LOCATIONCODE||"").toLowerCase().includes(term) ||
-                    (i.BLOCKALPHA||"").toLowerCase().includes(term) ||
-                    (i.ITEMCODE||"").toLowerCase().includes(term)
-                );
-            }
-
-            const displayUser = userToView.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+            const displayUser = searchName.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
             const tabLabel = (activeTaskTab === 'season') ? 'Season Notes' : 'Location Notes';
 
             if (myItems.length === 0) {
-                container.innerHTML = `<div class="back-btn" onclick="if(currentRole==='Admin'){taskViewTargetUser=null; renderTeamSelector();}"><i class="ph-bold ph-arrow-left"></i> Change User</div><div class="p-8 text-center text-gray-400">No tasks match.</div>`;
+                container.innerHTML = `<div class="back-btn" onclick="if(currentRole==='Admin'){taskViewTargetUser=null; renderTeamSelector();}"><i class="ph-bold ph-arrow-left"></i> Change User</div><div class="p-8 text-center text-gray-400">No tasks assigned here.</div>`;
                 crumb.innerText = `${displayUser} / ${tabLabel}`;
                 return;
             }
@@ -2161,7 +1887,7 @@
                 crumb.innerText = `${displayUser} / ${selectedTaskBlock}`; 
                 const blockItems = myItems.filter(i => (i.BLOCKALPHA || "Unassigned") === selectedTaskBlock);
                 const locs = [...new Set(blockItems.map(i => getLocPrefix(i.LOCATIONCODE)))].sort((a,b) => a.localeCompare(b, undefined, {numeric: true}));
-                container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=0; document.getElementById('tasks-search').value=''; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Blocks</div>` + 
+                container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=0; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Blocks</div>` + 
                 locs.map(l => {
                     const count = blockItems.filter(i => getLocPrefix(i.LOCATIONCODE) === l).length;
                     return `<div class="drill-item" onclick="selectTaskLoc('${l}')"><span class="font-bold text-lg">${l} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
@@ -2170,10 +1896,8 @@
             else if (taskViewLevel === 2) {
                 crumb.innerText = `${displayUser} / ${selectedTaskBlock} / ${selectedTaskLoc}`; 
                 let items = myItems.filter(i => (i.BLOCKALPHA || "Unassigned") === selectedTaskBlock && getLocPrefix(i.LOCATIONCODE) === selectedTaskLoc);
-                
-                items = sortAppItems(items);
-                
-                container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=1; document.getElementById('tasks-search').value=''; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Locs</div>` + 
+                items.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
+                container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=1; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Locs</div>` + 
                 items.map(i => generateCard(i, 'tasks')).join('');
             }
         }
@@ -2197,8 +1921,6 @@
             lastView = sourceView;
             
             activeItem = fullInventory.find(i => i.UNIQUE_ID === uniqueId);
-            if (!activeItem) activeItem = seasonInventory.find(i => i.UNIQUE_ID === uniqueId);
-            if (!activeItem) activeItem = locationInventory.find(i => i.UNIQUE_ID === uniqueId);
             if (!activeItem) activeItem = lowStockInventory.find(i => i.UNIQUE_ID === uniqueId);
             if (!activeItem) activeItem = reservesInventory.find(i => i.UNIQUE_ID === uniqueId); 
             if (!activeItem) return;
@@ -2311,7 +2033,7 @@
 
         function renderAllFields() {
             if(!activeItem) return;
-            const hiddenKeys = ['UNIQUE_ID', 'UNIQUEID', 'ASSIGNEDTO', 'DOM_ID', 'IS_REQUEST', 'REQUESTED_BY', 'REQUEST_FOLDER', '_COLLECTION']; 
+            const hiddenKeys = ['UNIQUE_ID', 'UNIQUEID', 'ASSIGNEDTO', 'DOM_ID', 'IS_REQUEST', 'REQUESTED_BY', 'REQUEST_FOLDER']; 
             let html = '<div class="grid grid-cols-1 gap-2">';
             for (const [key, value] of Object.entries(activeItem)) { 
                 if(hiddenKeys.includes(key)) continue; 
@@ -2503,47 +2225,6 @@
             activeItem.REQ_SALES_NOTE = document.getElementById('req-sales-desc').value.toUpperCase();
             activeItem.REQ_COMMENTS = document.getElementById('req-comments').value; 
 
-            const docId = activeItem.UNIQUE_ID.replace(/[^a-zA-Z0-9_-]/g, '_');
-            
-            let fbPayload = {
-                MATCH: activeItem.MATCH,
-                SPEC: activeItem.SPEC,
-                CALIPER: activeItem.CALIPER,
-                PICNOTE: activeItem.PICK,
-                SALESNOTE: activeItem.SALES_NOTE,
-                REQMATCH: activeItem.REQ_MATCH,
-                REQSPEC: activeItem.REQ_SPEC,
-                REQCALIPER: activeItem.REQ_CALIPER,
-                REQPICNOTE: activeItem.REQ_PICK,
-                REQSALESNOTE: activeItem.REQ_SALES_NOTE,
-                REQCOMMENTS: activeItem.REQ_COMMENTS
-            };
-
-            if (activeItem.SAVED_PHOTO_LINK) { fbPayload.PHOTOLINK = activeItem.SAVED_PHOTO_LINK; fbPayload.PHOTONAME = activeItem.SAVED_PHOTO_NAME; }
-            if (activeItem.REQ_PHOTO_LINK) { fbPayload.REQPHOTOLINK = activeItem.REQ_PHOTO_LINK; fbPayload.REQPHOTONAME = activeItem.REQ_PHOTO_NAME; }
-            if (isComplete) { 
-                activeItem.DATE_COMPLETED = new Date().toISOString();
-                fbPayload.DATECOMPLETED = activeItem.DATE_COMPLETED; 
-            }
-
-            let collection = activeItem._COLLECTION || 'MasterInventory';
-
-            db.collection(collection).doc(docId).set(fbPayload, {merge: true}).then(() => {
-                // ALSO save to MasterInventory so Drive Mode always has the latest edits instantly
-                if (collection !== 'MasterInventory') {
-                    db.collection('MasterInventory').doc(docId).set(fbPayload, {merge: true});
-                }
-                
-                if(btnDraft) btnDraft.innerText = (activeDetailTab === 'request') ? "SAVE REQUEST DATA" : "SAVE DRAFT";
-                if(btnComp) btnComp.innerText = "MARK COMPLETE";
-                showToast("Success", isComplete ? "Task Completed!" : "Draft saved to Database.");
-                if (isComplete) goBackFromDetail();
-            }).catch(err => {
-                if(btnDraft) btnDraft.innerText = (activeDetailTab === 'request') ? "SAVE REQUEST DATA" : "SAVE DRAFT";
-                if(btnComp) btnComp.innerText = "MARK COMPLETE";
-                showToast("Error", "Network Error saving to database.", true);
-            });
-
             const payload = {
                 type: "update",
                 id: activeItem.UNIQUE_ID,
@@ -2568,6 +2249,24 @@
             fetch(GOOGLE_SCRIPT_URL, {
                 method: "POST",
                 body: JSON.stringify(payload)
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(btnDraft) btnDraft.innerText = (activeDetailTab === 'request') ? "SAVE REQUEST DATA" : "SAVE DRAFT";
+                if(btnComp) btnComp.innerText = "MARK COMPLETE";
+                
+                if(data.status === 'success') {
+                    showToast("Success", isComplete ? "Task Completed!" : "Draft saved to Google Sheet.");
+                    if (isComplete) {
+                        activeItem.DATE_COMPLETED = new Date().toISOString();
+                        goBackFromDetail();
+                    }
+                } else { showToast("Error", data.message, true); }
+            })
+            .catch(err => {
+                if(btnDraft) btnDraft.innerText = (activeDetailTab === 'request') ? "SAVE REQUEST DATA" : "SAVE DRAFT";
+                if(btnComp) btnComp.innerText = "MARK COMPLETE";
+                showToast("Network Error", "Could not reach server.", true);
             });
         }
 
