@@ -635,14 +635,13 @@
         let ptrStartY = 0;
         let ptrCurrentY = 0;
         let isPulling = false;
-        const ptrThreshold = 60; // pixels to pull before triggering refresh
+        const ptrThreshold = 60; 
 
         document.addEventListener('DOMContentLoaded', async () => {
             if (window.PublicKeyCredential && localStorage.getItem('gnc_user_v3') && localStorage.getItem('gnc_pin_v3')) {
                 document.getElementById('btn-fingerprint').classList.remove('hidden');
             }
 
-            // ATTACH PULL TO REFRESH LISTENERS
             const scrollArea = document.getElementById('main-scroll-area');
             const ptrIndicator = document.getElementById('pull-to-refresh');
 
@@ -688,6 +687,23 @@
                 ptrCurrentY = 0;
             });
         });
+
+        // --- UNIVERSAL SORTING ENGINE ---
+        function sortAppItems(items) {
+            return items.sort((a, b) => {
+                let priA = parseFloat(a.PRIORITY);
+                let priB = parseFloat(b.PRIORITY);
+                
+                if (isNaN(priA)) priA = Infinity;
+                if (isNaN(priB)) priB = Infinity;
+                
+                if (priA !== priB) {
+                    return priA - priB;
+                }
+                
+                return String(a.LOCATIONCODE || "").localeCompare(String(b.LOCATIONCODE || ""), undefined, {numeric: true});
+            });
+        }
 
         async function handleLogin(isBiometricLogin = false) {
             const inputUser = document.getElementById('username-input').value.trim().toLowerCase();
@@ -794,6 +810,7 @@
             item.BLOCKALPHA = d.BLOCKALPHA;
             item.ASSIGNEDTO = d.ASSIGNEDTO;
             item.DATE_COMPLETED = d.DATECOMPLETED;
+            item.S_LTS = d.SLTS || d.S_LTS || 0; 
 
             item.IS_REQUEST = String(d.ISREQUEST || "").toUpperCase() === 'TRUE' || d.ISREQUEST === true;
             item.REQUESTED_BY = d.REQUESTEDBY;
@@ -1122,6 +1139,7 @@
             }
         }
 
+        // --- UPDATED CARD RENDERER: CLEANER GRID, EXACT LABEL MATCHES ---
         function generateCard(item, sourceView, colorClass = 'status-green') {
             let thumbHtml = '';
             let photoLink = item.SAVED_PHOTO_LINK || item['PHOTO LINK'] || item.PHOTOLINK || "";
@@ -1158,19 +1176,22 @@
                 
                 <div class="inv-card ${colorClass} flex items-center justify-between flex-grow !mb-0 transition-transform active:scale-[0.99]">
                     <div class="flex-grow min-w-0">
-                        <div class="flex justify-between font-bold text-sm mb-1">
-                            <span class="text-[#007a4d] truncate pr-2">${item.LOCATIONCODE || 'No Loc'} • ${item.COMMONNAME || 'Unknown'}</span>
+                        <div class="flex justify-between items-start font-bold text-sm mb-1.5">
+                            <span class="text-[#007a4d] truncate pr-2 leading-tight">${item.COMMONNAME || 'Unknown'}</span>
                             <span class="whitespace-nowrap bg-gray-100 text-gray-800 px-1.5 py-0.5 rounded text-xs border border-gray-200">${item.CONTSIZE || '-'}</span>
                         </div>
-                        <div class="text-[11px] text-gray-500 truncate mt-0.5">
-                            <span class="font-bold text-blue-600">Pri: ${item.PRIORITY || '-'}</span> | 
-                            <span class="font-bold text-gray-800">QC: ${item.QUALITYCODE || '-'}</span> | 
-                            <span class="font-bold text-purple-600">Tag: ${tagColor}</span>
-                        </div>
-                        <div class="text-[11px] text-gray-500 truncate mt-0.5">
-                            <span class="font-bold text-[#007a4d]">Qty: ${item.PTRAVAILABLE || '0'}</span> | 
-                            <span class="font-bold text-orange-600">Lot: ${item.LOTCODE || '-'}</span> | 
-                            Supply: ${item.SEASONSUPPLY || '0'}
+                        
+                        <div class="grid grid-cols-2 gap-x-2 gap-y-1 text-[10px] text-gray-600">
+                            <div class="truncate"><span class="font-bold text-gray-800">Location:</span> ${item.LOCATIONCODE || '-'}</div>
+                            <div class="truncate"><span class="font-bold text-blue-600">Priority:</span> <span class="text-blue-600">${item.PRIORITY || '-'}</span></div>
+                            
+                            <div class="truncate"><span class="font-bold text-[#007a4d]">LOC QTY:</span> ${item.PTRAVAILABLE || '0'}</div>
+                            <div class="truncate"><span class="font-bold text-gray-800">Season Supply:</span> ${item.SEASONSUPPLY || '0'}</div>
+                            
+                            <div class="truncate"><span class="font-bold text-gray-800">S_LTS:</span> ${item.S_LTS || '0'}</div>
+                            <div class="truncate"><span class="font-bold text-gray-800">Lot:</span> ${item.LOTCODE || '-'}</div>
+                            
+                            <div class="col-span-2 truncate"><span class="font-bold text-purple-600">Tag Color:</span> <span class="text-purple-600">${tagColor}</span></div>
                         </div>
                     </div>
                     ${thumbHtml}
@@ -1235,7 +1256,6 @@
             
             let custSet = new Set();
             
-            // Loop through the data and grab ALL Customers and Consignees
             const addCusts = (arr) => {
                 arr.forEach(i => {
                     let c = String(i.CUSTOMERNAME || i.CUSTOMER || i['CUSTOMER NAME'] || "").trim();
@@ -1243,7 +1263,6 @@
                     
                     if (c || cons) {
                         let display = c;
-                        // Combine them as "Customer - Consignee" if they are different
                         if (cons && cons.toUpperCase() !== c.toUpperCase()) {
                             display = c ? `${c} - ${cons}` : cons;
                         }
@@ -1252,7 +1271,6 @@
                 });
             };
             
-            // Pull from both SOC_Master and Reserves
             addCusts(socInventory);
             addCusts(reservesInventory);
             
@@ -1260,7 +1278,6 @@
             
             let html = "";
             custArray.forEach(c => {
-                // Filter the list as you type
                 if (c.toLowerCase().includes(val) || val === "") {
                     html += `<div class="bg-orange-50 text-orange-800 font-bold p-3 rounded-lg border border-orange-200 shadow-sm text-left cursor-pointer active:bg-orange-100" onclick="setCustomerInput('${c.replace(/'/g, "\\'")}')">${c}</div>`;
                 }
@@ -1621,14 +1638,8 @@
                     );
                 }
                 
-                finalItems.sort((a, b) => {
-                    let priA = parseFloat(a.PRIORITY);
-                    let priB = parseFloat(b.PRIORITY);
-                    if (isNaN(priA)) priA = Infinity;
-                    if (isNaN(priB)) priB = Infinity;
-                    if (priA !== priB) return priA - priB;
-                    return (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true});
-                });
+                // Sort by Priority then Location
+                finalItems = sortAppItems(finalItems);
 
                 if (finalItems.length === 0) {
                      container.innerHTML = `<div class="back-btn" onclick="dockViewLevel=1; renderDocks()"><i class="ph-bold ph-arrow-left"></i> Back to Stop</div><div class="p-8 text-center text-gray-400">No records exist for this item.</div>`;
@@ -1688,7 +1699,10 @@
             else if (lowStockViewLevel === 2) {
                 crumb.innerText = `${selectedLowStockName} / ${selectedLowStockSize}`;
                 let finalItems = filteredLowStock.filter(i => i.COMMONNAME === selectedLowStockName && i.CONTSIZE === selectedLowStockSize);
-                finalItems.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
+                
+                // Sort by Priority then Location
+                finalItems = sortAppItems(finalItems);
+                
                 container.innerHTML = `<div class="back-btn" onclick="backToLowStockSizes()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>` + finalItems.map(i => generateCard(i, 'low-stock', 'status-purple')).join('');
             }
         }
@@ -1717,7 +1731,9 @@
                 return;
             }
 
-            officeItems.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
+            // Sort by Priority then Location
+            officeItems = sortAppItems(officeItems);
+            
             container.innerHTML = officeItems.map(i => generateCard(i, 'sales-office')).join('');
         }
 
@@ -1798,7 +1814,8 @@
                     crumb.innerText = requestFilterMode === 'pending' ? "Pending" : "Completed";
                     let displayItems = requestFilterMode === 'pending' ? pendingReqs : completedReqs;
 
-                    displayItems.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
+                    // Sort by Priority then Location
+                    displayItems = sortAppItems(displayItems);
 
                     let html = `<div class="back-btn" onclick="requestViewLevel=0; renderRequest()"><i class="ph-bold ph-arrow-left"></i> Back to Categories</div>`;
                     
@@ -1894,7 +1911,8 @@
                 let displayItems = selectedReqRepStatus === 'pending' ? repItems.filter(i => !isReqCompleted(i)) : repItems.filter(i => isReqCompleted(i));
                 let folderItems = displayItems.filter(i => (i.REQUEST_FOLDER || "Uncategorized") === selectedReqFolder);
 
-                folderItems.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
+                // Sort by Priority then Location
+                folderItems = sortAppItems(folderItems);
 
                 let html = `<div class="back-btn" onclick="requestViewLevel=3; renderRequest()"><i class="ph-bold ph-arrow-left"></i> Back to Folders</div>`;
                 
@@ -2037,7 +2055,10 @@
             } else if (reviewViewLevel === 1) {
                 crumb.innerText = `Review / ${selectedReviewUser}`;
                 let userItems = completedItems.filter(i => (i.ASSIGNEDTO || "Unassigned") === selectedReviewUser);
-                userItems.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
+                
+                // Sort by Priority then Location
+                userItems = sortAppItems(userItems);
+                
                 container.innerHTML = `<div class="back-btn" onclick="reviewViewLevel=0; document.getElementById('review-search').value=''; renderReview()"><i class="ph-bold ph-arrow-left"></i> Back to Users</div>` + 
                 userItems.map(i => generateCard(i, 'review')).join('');
             }
@@ -2101,7 +2122,10 @@
             else if (driveViewLevel === 2) {
                 crumb.innerText = `${selectedDriveName} / ${selectedDriveSize}`;
                 let finalItems = filteredItems.filter(i => i.COMMONNAME === selectedDriveName && i.CONTSIZE === selectedDriveSize);
-                finalItems.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
+                
+                // Sort by Priority then Location
+                finalItems = sortAppItems(finalItems);
+                
                 container.innerHTML = `<div class="back-btn" onclick="backToDriveSizes()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>` + finalItems.map(i => generateCard(i, 'drive')).join('');
             }
         }
@@ -2192,7 +2216,10 @@
             else if (taskViewLevel === 2) {
                 crumb.innerText = `${displayUser} / ${selectedTaskBlock} / ${selectedTaskLoc}`; 
                 let items = myItems.filter(i => (i.BLOCKALPHA || "Unassigned") === selectedTaskBlock && getLocPrefix(i.LOCATIONCODE) === selectedTaskLoc);
-                items.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
+                
+                // Sort by Priority then Location
+                items = sortAppItems(items);
+                
                 container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=1; document.getElementById('tasks-search').value=''; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Locs</div>` + 
                 items.map(i => generateCard(i, 'tasks')).join('');
             }
