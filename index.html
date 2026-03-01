@@ -10,6 +10,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="icon" type="image/png" href="Greenleaf Logo.png">
     <link rel="apple-touch-icon" href="Greenleaf Logo.png">
+    <link rel="manifest" href="manifest.json">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
@@ -1256,6 +1257,7 @@
             
             let custSet = new Set();
             
+            // Loop through the data and grab ALL Customers and Consignees
             const addCusts = (arr) => {
                 arr.forEach(i => {
                     let c = String(i.CUSTOMERNAME || i.CUSTOMER || i['CUSTOMER NAME'] || "").trim();
@@ -1263,6 +1265,7 @@
                     
                     if (c || cons) {
                         let display = c;
+                        // Combine them as "Customer - Consignee" if they are different
                         if (cons && cons.toUpperCase() !== c.toUpperCase()) {
                             display = c ? `${c} - ${cons}` : cons;
                         }
@@ -1271,6 +1274,7 @@
                 });
             };
             
+            // Pull from both SOC_Master and Reserves
             addCusts(socInventory);
             addCusts(reservesInventory);
             
@@ -1278,6 +1282,7 @@
             
             let html = "";
             custArray.forEach(c => {
+                // Filter the list as you type
                 if (c.toLowerCase().includes(val) || val === "") {
                     html += `<div class="bg-orange-50 text-orange-800 font-bold p-3 rounded-lg border border-orange-200 shadow-sm text-left cursor-pointer active:bg-orange-100" onclick="setCustomerInput('${c.replace(/'/g, "\\'")}')">${c}</div>`;
                 }
@@ -2608,6 +2613,13 @@
             fetch(GOOGLE_SCRIPT_URL, {
                 method: "POST",
                 body: JSON.stringify(payload)
+            });
+        }
+
+        // Register Service Worker for Native Install
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js');
             });
         }
     </script>
