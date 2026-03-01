@@ -629,7 +629,6 @@
 
         window.onload = function() {};
 
-        // --- PULL TO REFRESH LOGIC ---
         let ptrStartY = 0;
         let ptrCurrentY = 0;
         let isPulling = false;
@@ -686,7 +685,6 @@
             });
         });
 
-        // --- UNIVERSAL SORTING ENGINE ---
         function sortAppItems(items) {
             return items.sort((a, b) => {
                 let priA = parseFloat(a.PRIORITY);
@@ -787,7 +785,6 @@
             }
         }
 
-        // --- BULLETPROOF HEADER MAPPING ---
         function normalizeItem(d, idPrefix, idx, collectionName) {
             let item = { ...d, DOM_ID: idPrefix + idx, _COLLECTION: collectionName };
             
@@ -828,14 +825,15 @@
             item.REQ_PHOTO_LINK = d.REQPHOTOLINK;
             item.REQ_PHOTO_NAME = d.REQPHOTONAME;
 
-            if (d.DOCK) item.DOCK_NUM = parseInt(String(d.DOCK).replace(/\D/g, ''), 10);
+            let rawDock = d.DOCK || d.DOCKNUMBER || d.DOCK_NUMBER || d.DOCKNUM || '';
+            if (rawDock) item.DOCK_NUM = parseInt(String(rawDock).replace(/\D/g, ''), 10);
             
-            // Reserves Mapping 
-            item.CUSTOMERNAME = d.CUSTOMERNAME || d.CUSTOMER_NAME || d.CUSTOMER || d['CUSTOMER NAME'] || '';
+            // Bulletproof fallbacks for Reserve & SOC columns 
+            item.CUSTOMERNAME = d.CUSTOMERNAME || d.CUSTOMER_NAME || d.CUSTOMER || d['CUSTOMER NAME'] || 'Unknown Customer';
             item.CONSIGNEENAME = d.CONSIGNEENAME || d.CONSIGNEE_NAME || d.CONSIGNEE || d['CONSIGNEE NAME'] || '';
-            item.SALESREPNAME = d.SALESREPNAME || d.SALES_REP_NAME || d.SALESREP || d.SALES_REP || d['SALES REP'] || '';
-            item.STOPNUMBER = d.STOPNUMBER || d.STOP_NUMBER || d.STOP || '';
-            item.QUANTITYORDERED = d.QUANTITYORDERED || d.QTYORDERED || d.QTY_ORDERED || d.QTY || d['QTY ORDERED'] || 0;
+            item.SALESREPNAME = d.SALESREPNAME || d.SALES_REP_NAME || d.SALESREP || d.SALES_REP || d['SALES REP'] || 'Unknown Rep';
+            item.STOPNUMBER = d.STOPNUMBER || d.STOP_NUMBER || d.STOP || 'Unassigned';
+            item.QUANTITYORDERED = d.QUANTITYORDERED || d.QTYORDERED || d.QTY_ORDERED || d.QTY || d['QUANTITY ORDERED'] || 0;
             item.SHIPPED = d.SHIPPED || d.QTYSHIPPED || d.QTY_SHIPPED || d['QTY SHIPPED'] || 0;
 
             return item;
@@ -849,46 +847,50 @@
 
             let itemsWithPriority = {};
             fullInventory.forEach(item => {
-                const pri = parseFloat(item.PRIORITY);
-                const ptr = parseFloat(String(item.PTRAVAILABLE).replace(/,/g, '')) || 0;
-                const ss = parseFloat(String(item.SEASONSUPPLY).replace(/,/g, '')) || 0;
-                const iCode = String(item.ITEMCODE || "").trim().toUpperCase();
+                const priStr = String(item.PRIORITY).trim();
+                if (priStr !== "") {
+                    const pri = parseFloat(priStr);
+                    const ptr = parseFloat(String(item.PTRAVAILABLE).replace(/,/g, '')) || 0;
+                    const ss = parseFloat(String(item.SEASONSUPPLY).replace(/,/g, '')) || 0;
+                    const iCode = String(item.ITEMCODE || "").trim().toUpperCase();
 
-                if (iCode && !isNaN(pri) && pri > 0 && ptr >= (ss * 1.10)) {
-                    if (!itemsWithPriority[iCode]) itemsWithPriority[iCode] = [];
-                    itemsWithPriority[iCode].push(item);
+                    if (iCode) {
+                        if (!itemsWithPriority[iCode]) itemsWithPriority[iCode] = [];
+                        itemsWithPriority[iCode].push({ item, pri, ptr, ss });
+                    }
                 }
             });
 
             let seasonWinnerIds = new Set();
             for (const code in itemsWithPriority) {
                 let group = itemsWithPriority[code];
-                group.sort((a, b) => {
-                    const priA = parseFloat(a.PRIORITY);
-                    const priB = parseFloat(b.PRIORITY);
-                    if (priA === priB) {
-                        let bPtr = parseFloat(String(b.PTRAVAILABLE).replace(/,/g, '')) || 0;
-                        let aPtr = parseFloat(String(a.PTRAVAILABLE).replace(/,/g, '')) || 0;
-                        return bPtr - aPtr;
-                    }
-                    return priA - priB;
-                });
-                seasonWinnerIds.add(group[0].DOM_ID);
+                let eligible = group.filter(obj => obj.ptr >= (obj.ss * 1.10));
+                
+                if (eligible.length > 0) {
+                    eligible.sort((a, b) => a.pri === b.pri ? b.ptr - a.ptr : a.pri - b.pri);
+                    seasonWinnerIds.add(eligible[0].item.DOM_ID);
+                }
             }
 
+            let seenSeason = new Set();
             fullInventory.forEach(item => {
-                item.APP_TAB_ASSIGNMENT = seasonWinnerIds.has(item.DOM_ID) ? 'season' : 'location';
+                const ic = String(item.ITEMCODE || "").trim().toUpperCase();
+                if (seasonWinnerIds.has(item.DOM_ID) && !seenSeason.has(ic)) {
+                    seenSeason.add(ic);
+                    item.APP_TAB_ASSIGNMENT = 'season';
+                } else if (String(item.PRIORITY).trim() !== "") {
+                    item.APP_TAB_ASSIGNMENT = 'location';
+                } else {
+                    item.APP_TAB_ASSIGNMENT = 'none';
+                }
             });
 
             reservesInventory = reservesInventory.map(item => {
-                let resCode = String(item.ITEMCODE || item.ITEM || "").trim().toUpperCase();
+                let resCode = String(item.ITEMCODE || "").trim().toUpperCase();
                 let masterItem = fullInventory.find(f => String(f.ITEMCODE || "").trim().toUpperCase() === resCode);
                 
                 item.COMMONNAME = masterItem ? masterItem.COMMONNAME : (item.COMMONNAME || 'Unknown Plant');
                 item.CONTSIZE = masterItem ? masterItem.CONTSIZE : (item.CONTSIZE || '-');
-                item.CUSTOMERNAME = item.CUSTOMERNAME || 'Unknown Customer';
-                item.CONSIGNEENAME = item.CONSIGNEENAME || '';
-                item.SALESREPNAME = item.SALESREPNAME || 'Unknown Rep';
                 
                 if (masterItem) {
                     item.LOCATIONCODE = masterItem.LOCATIONCODE;
@@ -1136,7 +1138,6 @@
             }
         }
 
-        // --- UPDATED CARD RENDERER: CLEANER GRID, EXACT LABEL MATCHES ---
         function generateCard(item, sourceView, colorClass = 'status-green') {
             let thumbHtml = '';
             let photoLink = item.SAVED_PHOTO_LINK || item['PHOTO LINK'] || item.PHOTOLINK || "";
@@ -1509,7 +1510,7 @@
                 
                 socInventory.forEach(i => {
                     if (term) {
-                        let searchStr = (i.COMMONNAME || i['PLANT NAME'] || i.CUSTOMERNAME || i.SALESREPNAME || 'Unknown').toLowerCase();
+                        let searchStr = (i.COMMONNAME || i.CUSTOMERNAME || i.SALESREPNAME || 'Unknown').toLowerCase();
                         if (searchStr.includes(term) && i.DOCK_NUM) activeDocks.add(i.DOCK_NUM);
                     } else {
                         if (i.DOCK_NUM) activeDocks.add(i.DOCK_NUM);
@@ -1539,7 +1540,7 @@
                 
                 if (term) {
                     dockItems = dockItems.filter(i => {
-                        let searchStr = (i.COMMONNAME || i['PLANT NAME'] || i.CUSTOMERNAME || i.SALESREPNAME || 'Unknown').toLowerCase();
+                        let searchStr = (i.COMMONNAME || i.CUSTOMERNAME || i.SALESREPNAME || 'Unknown').toLowerCase();
                         return searchStr.includes(term);
                     });
                 }
@@ -1554,16 +1555,16 @@
                     let stopNum = i.STOPNUMBER || "Unassigned"; 
                     if (!stopsMap[stopNum]) {
                         stopsMap[stopNum] = {
-                            salesRep: i.SALESREPNAME || i.SALESREP || "Unknown Rep",
-                            customer: i.CUSTOMERNAME || i.CUSTOMER || "Unknown Customer",
-                            consignee: i.CONSIGNEENAME || i.CONSIGNEE || "",
+                            salesRep: i.SALESREPNAME || "Unknown Rep",
+                            customer: i.CUSTOMERNAME || "Unknown Customer",
+                            consignee: i.CONSIGNEENAME || "",
                             plants: {} 
                         };
                     }
                     
-                    let name = i.COMMONNAME || i['PLANT NAME'] || i.DESC || i.DESCRIPTION || 'Unknown';
-                    let size = i.CONTSIZE || i.SIZE || i.CONTAINER || '-';
-                    let itemCode = i.ITEMCODE || i.ITEM || 'No Item';
+                    let name = i.COMMONNAME || 'Unknown';
+                    let size = i.CONTSIZE || '-';
+                    let itemCode = i.ITEMCODE || 'No Item';
                     let key = `${itemCode}|${name}|${size}`;
                     
                     if (!stopsMap[stopNum].plants[key]) {
@@ -1635,7 +1636,6 @@
                     );
                 }
                 
-                // Sort by Priority then Location
                 finalItems = sortAppItems(finalItems);
 
                 if (finalItems.length === 0) {
@@ -1696,10 +1696,7 @@
             else if (lowStockViewLevel === 2) {
                 crumb.innerText = `${selectedLowStockName} / ${selectedLowStockSize}`;
                 let finalItems = filteredLowStock.filter(i => i.COMMONNAME === selectedLowStockName && i.CONTSIZE === selectedLowStockSize);
-                
-                // Sort by Priority then Location
                 finalItems = sortAppItems(finalItems);
-                
                 container.innerHTML = `<div class="back-btn" onclick="backToLowStockSizes()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>` + finalItems.map(i => generateCard(i, 'low-stock', 'status-purple')).join('');
             }
         }
@@ -1728,9 +1725,7 @@
                 return;
             }
 
-            // Sort by Priority then Location
             officeItems = sortAppItems(officeItems);
-            
             container.innerHTML = officeItems.map(i => generateCard(i, 'sales-office')).join('');
         }
 
@@ -1811,7 +1806,6 @@
                     crumb.innerText = requestFilterMode === 'pending' ? "Pending" : "Completed";
                     let displayItems = requestFilterMode === 'pending' ? pendingReqs : completedReqs;
 
-                    // Sort by Priority then Location
                     displayItems = sortAppItems(displayItems);
 
                     let html = `<div class="back-btn" onclick="requestViewLevel=0; renderRequest()"><i class="ph-bold ph-arrow-left"></i> Back to Categories</div>`;
@@ -1908,7 +1902,6 @@
                 let displayItems = selectedReqRepStatus === 'pending' ? repItems.filter(i => !isReqCompleted(i)) : repItems.filter(i => isReqCompleted(i));
                 let folderItems = displayItems.filter(i => (i.REQUEST_FOLDER || "Uncategorized") === selectedReqFolder);
 
-                // Sort by Priority then Location
                 folderItems = sortAppItems(folderItems);
 
                 let html = `<div class="back-btn" onclick="requestViewLevel=3; renderRequest()"><i class="ph-bold ph-arrow-left"></i> Back to Folders</div>`;
@@ -2053,7 +2046,6 @@
                 crumb.innerText = `Review / ${selectedReviewUser}`;
                 let userItems = completedItems.filter(i => (i.ASSIGNEDTO || "Unassigned") === selectedReviewUser);
                 
-                // Sort by Priority then Location
                 userItems = sortAppItems(userItems);
                 
                 container.innerHTML = `<div class="back-btn" onclick="reviewViewLevel=0; document.getElementById('review-search').value=''; renderReview()"><i class="ph-bold ph-arrow-left"></i> Back to Users</div>` + 
@@ -2120,7 +2112,6 @@
                 crumb.innerText = `${selectedDriveName} / ${selectedDriveSize}`;
                 let finalItems = filteredItems.filter(i => i.COMMONNAME === selectedDriveName && i.CONTSIZE === selectedDriveSize);
                 
-                // Sort by Priority then Location
                 finalItems = sortAppItems(finalItems);
                 
                 container.innerHTML = `<div class="back-btn" onclick="backToDriveSizes()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>` + finalItems.map(i => generateCard(i, 'drive')).join('');
@@ -2217,7 +2208,6 @@
                 crumb.innerText = `${displayUser} / ${selectedTaskBlock} / ${selectedTaskLoc}`; 
                 let items = myItems.filter(i => (i.BLOCKALPHA || "Unassigned") === selectedTaskBlock && getLocPrefix(i.LOCATIONCODE) === selectedTaskLoc);
                 
-                // Sort by Priority then Location
                 items = sortAppItems(items);
                 
                 container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=1; document.getElementById('tasks-search').value=''; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Locs</div>` + 
