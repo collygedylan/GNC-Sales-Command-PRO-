@@ -14,6 +14,9 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+
     <style>
         :root { --brand-green: #007a4d; --text-main: #111827; }
         body { font-family: "Amazon Ember", Arial, sans-serif; background-color: white; color: var(--text-main); overscroll-behavior-y: contain; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
@@ -131,8 +134,7 @@
                 <h3 class="font-bold text-lg mb-2 text-orange-600">Who requested this?</h3>
                 <input type="text" id="rep-search-input" class="input-field mb-3 border-orange-200 focus:border-orange-500" placeholder="Search or type name..." onkeyup="filterRepList()">
                 
-                <div id="rep-list-container" class="grid grid-cols-1 gap-2 mb-4 max-h-[40vh] overflow-y-auto px-2 py-1">
-                </div>
+                <div id="rep-list-container" class="grid grid-cols-1 gap-2 mb-4 max-h-[40vh] overflow-y-auto px-2 py-1"></div>
 
                 <button id="custom-rep-btn" class="hidden w-full bg-orange-600 text-white font-bold p-3 rounded-lg mb-4 shadow-sm" onclick="selectRepForRequest(document.getElementById('rep-search-input').value.trim())">Assign to: <span></span></button>
             </div>
@@ -241,15 +243,6 @@
                             <div class="flex-grow min-w-0">
                                 <div class="text-sm font-bold text-gray-800 truncate">Master Database</div>
                                 <div class="text-[10px] text-gray-400 font-bold uppercase">DriveAround_Master_Data</div>
-                            </div>
-                            <i class="ph-bold ph-arrow-square-out text-gray-300"></i>
-                        </a>
-                        
-                        <a href="https://docs.google.com/spreadsheets/d/1g7Dy2mDDljTs3e9FhQhdDQ-b7sw_gU1vCdcA14N4mKk/edit" target="_blank" class="flex items-center gap-3 bg-white p-3 rounded-xl border border-gray-200 shadow-sm hover:bg-blue-50 transition-colors">
-                            <div class="bg-blue-100 p-2 rounded-lg"><i class="ph-fill ph-book-open-text text-blue-600 text-2xl"></i></div>
-                            <div class="flex-grow min-w-0">
-                                <div class="text-sm font-bold text-gray-800 truncate">Sales Notes Dictionary</div>
-                                <div class="text-[10px] text-gray-400 font-bold uppercase">S1_SalesNotes</div>
                             </div>
                             <i class="ph-bold ph-arrow-square-out text-gray-300"></i>
                         </a>
@@ -482,7 +475,20 @@
     </div>
 
     <script>
+        // BACKEND SCRIPT REQUIRED FOR IMAGE UPLOADS AND BACKUP SAVES
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzhJ_tytv5Rm2ag44liZAU6nsp0lQ7-9PLmjxrcuT1WA1WARubi7NyolYoTZ_qvZmzo/exec";
+
+        // --- NEW: FIREBASE CONFIGURATION ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyBMAGho6QgALRg7E8s3vFAbB2yXpWACEus",
+            authDomain: "gnc-app-f11bc.firebaseapp.com",
+            projectId: "gnc-app-f11bc",
+            storageBucket: "gnc-app-f11bc.firebasestorage.app",
+            messagingSenderId: "221811790201",
+            appId: "1:221811790201:web:fdc69c0113488b479edfa8"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
 
         // --- INDEXED DB SETUP ---
         const DB_NAME = "GNC_Sales_DB";
@@ -526,13 +532,11 @@
                     request.onerror = () => resolve(null);
                 });
             } catch (e) {
-                console.error("Load cache failed", e);
                 return null;
             }
         }
         // ------------------------
 
-        let appUsers = [];
         let fullInventory = []; 
         let lowStockInventory = []; 
         let socInventory = []; 
@@ -579,7 +583,7 @@
         let selectedReqRep = null;
         let selectedReqRepStatus = null; 
         let selectedReqFolder = null; 
-        let tempSelectedReqRep = ""; // Used for the Request Modal flow
+        let tempSelectedReqRep = ""; 
         
         let dockViewLevel = 0;
         let selectedDockNum = null;
@@ -605,7 +609,8 @@
 
         window.onload = function() {};
 
-        function handleLogin(isBiometricLogin = false) {
+        // --- UPDATED LOGIN: NOW READS FROM FIREBASE ---
+        async function handleLogin(isBiometricLogin = false) {
             const inputUser = document.getElementById('username-input').value.trim().toLowerCase();
             const inputPass = document.getElementById('pin-code').value.trim();
 
@@ -618,154 +623,150 @@
             document.getElementById('loading-spinner').classList.remove('hidden');
             document.getElementById('loading-text').innerText = "Authenticating...";
 
-            // PHASE 1: LIGHTNING FAST AUTHENTICATION
-            const authUrl = `${GOOGLE_SCRIPT_URL}?action=auth&username=${encodeURIComponent(inputUser)}&password=${encodeURIComponent(inputPass)}`;
+            try {
+                const usersSnap = await db.collection('App_Users').get();
+                let matched = false;
 
-            fetch(authUrl)
-                .then(response => response.json())
-                .then(res => {
-                    if (res.status === 'success') {
+                usersSnap.forEach(doc => {
+                    const u = doc.data();
+                    
+                    // Fallback to check all values just in case column headers were weird
+                    const allValsLower = Object.values(u).map(v => String(v).toLowerCase().trim());
+                    const allVals = Object.values(u).map(v => String(v).trim());
+
+                    if (allValsLower.includes(inputUser) && allVals.includes(inputPass)) {
+                        matched = true;
                         currentUser = inputUser;
-                        currentRole = res.role;
-                        document.getElementById('header-user').innerText = currentUser.toUpperCase();
-
-                        if (!isBiometricLogin && window.PublicKeyCredential) {
-                            promptToEnableBiometrics(inputUser, inputPass);
-                        }
-
-                        // UNLOCK THE APP IMMEDIATELY
-                        applyRolePermissions();
-                        
-                        // PHASE 2: INSTANT CACHE LOAD + BACKGROUND SYNC
-                        fetchBackgroundData();
-                        
-                    } else {
-                        alert("MISMATCH DETECTED!\n\nIncorrect Username or Password.");
-                        document.getElementById('pin-code').value = "";
-                        document.getElementById('login-inputs').classList.remove('hidden');
-                        document.getElementById('loading-spinner').classList.add('hidden');
+                        currentRole = allVals.includes('Admin') ? 'Admin' : 'User';
                     }
-                })
-                .catch(err => {
-                    showToast("Error", "Network Error. Please try again.", true);
+                });
+
+                if (matched) {
+                    document.getElementById('header-user').innerText = currentUser.toUpperCase();
+                    if (!isBiometricLogin && window.PublicKeyCredential) promptToEnableBiometrics(inputUser, inputPass);
+                    applyRolePermissions();
+                    fetchBackgroundData();
+                } else {
+                    alert("MISMATCH DETECTED!\n\nIncorrect Username or Password.");
+                    document.getElementById('pin-code').value = "";
                     document.getElementById('login-inputs').classList.remove('hidden');
                     document.getElementById('loading-spinner').classList.add('hidden');
-                });
+                }
+            } catch(e) {
+                console.error("Login Error:", e);
+                showToast("Error", "Network Error connecting to Firebase.", true);
+                document.getElementById('login-inputs').classList.remove('hidden');
+                document.getElementById('loading-spinner').classList.add('hidden');
+            }
         }
 
+        // --- UPDATED FETCH: NOW READS FROM FIREBASE ---
         async function fetchBackgroundData() {
-            // 1. Check for local memory cache for INSTANT load
             const cachedRes = await loadFromCache();
-            if (cachedRes) {
-                processAndLoadData(cachedRes);
+            if (cachedRes && cachedRes.master) {
+                salesNotesDict = cachedRes.salesNotesMap || {};
+                processFirebaseData(cachedRes);
                 showToast("Ready", "Loaded from device memory. Updating in background...", false);
+            } else if (cachedRes && cachedRes.salesNotesMap) {
+                // Grab the dictionary from the old cache version just in case
+                salesNotesDict = cachedRes.salesNotesMap;
+                showToast("Welcome!", "Downloading from high-speed database...", false);
             } else {
-                showToast("Welcome!", "Downloading database... (This only happens once)", false);
+                showToast("Welcome!", "Downloading from high-speed database...", false);
             }
 
-            // 2. Fetch the highly compressed 2D Array data from Google
-            const dataUrl = `${GOOGLE_SCRIPT_URL}?action=getData`;
-            
-            fetch(dataUrl)
-                .then(response => response.json())
-                .then(async res => {
-                    if (res.status === 'success') {
-                        await saveToCache(res); // Save to massive storage
-                        processAndLoadData(res);
-                        if(cachedRes) {
-                             showToast("Sync Complete", "Live database updated.", false);
-                        } else {
-                             showToast("Ready", "Database downloaded and saved!", false);
-                        }
-                    }
-                })
-                .catch(err => {
-                    console.error("Background sync failed:", err);
-                    if (!cachedRes) showToast("Sync Error", "Could not download data. Check connection.", true);
-                });
-        }
+            try {
+                // Pull everything directly from Firestore simultaneously
+                const [masterSnap, lowStockSnap, socSnap, reservesSnap] = await Promise.all([
+                    db.collection('MasterInventory').get(),
+                    db.collection('LowStock').get(),
+                    db.collection('SOC_Master').get(),
+                    db.collection('Reserves').get()
+                ]);
 
-        // Helper function to turn Compressed 2D Arrays back into usable App Objects
-        function mapCompressedToObj(compressedData, isMaster = false) {
-            if(!compressedData || !compressedData.headers) return [];
-            const h = compressedData.headers;
-            return compressedData.rows.map(row => {
-                let obj = {};
-                h.forEach((colName, idx) => {
-                    obj[colName] = row[idx]; 
-                });
+                const payload = {
+                    master: masterSnap.docs.map(d => d.data()),
+                    lowStock: lowStockSnap.docs.map(d => d.data()),
+                    soc: socSnap.docs.map(d => d.data()),
+                    reserves: reservesSnap.docs.map(d => d.data()),
+                    salesNotesMap: salesNotesDict
+                };
+
+                await saveToCache(payload); 
+                processFirebaseData(payload);
                 
-                // Set explicitly expected keys
-                if(isMaster) {
-                    const getVal = (names) => {
-                        for(let n of names) { let idx = h.indexOf(n); if(idx > -1) return row[idx]; }
-                        return "";
-                    };
-                    
-                    obj.UNIQUE_ID = getVal(['UNIQUE ID']);
-                    obj.COMMONNAME = getVal(['COMMONNAME']);
-                    obj.CONTSIZE = getVal(['CONTSIZE']);
-                    obj.LOCATIONCODE = getVal(['LOCATIONCODE']);
-                    obj.PTRAVAILABLE = getVal(['PTRAVAILABLE']);
-                    obj.SEASONSUPPLY = getVal(['SEASON_SUPPLY', 'SEASONSUPPLY']);
-                    obj.PRIORITY = getVal(['PRIORITY']);
-                    obj.QUALITYCODE = getVal(['QUALITYCODE']);
-                    obj.FIELDTAGCOLOR = getVal(['FIELD TAG COLOR', 'FIELDTAGCOLOR']);
-                    obj.ITEMCODE = getVal(['ITEMCODE']);
-                    obj.LOTCODE = getVal(['LOTCODE']);
-                    obj.BLOCKALPHA = getVal(['BLOCKALPHA']);
-                    obj.ASSIGNEDTO = getVal(['ASSIGNEDTO']);
-                    obj.DATE_COMPLETED = getVal(['DATE COMPLETED']);
-                    
-                    let isReqVal = getVal(['IS REQUEST']);
-                    obj.IS_REQUEST = (String(isReqVal).toUpperCase() === 'TRUE' || isReqVal === true);
-                    obj.REQUESTED_BY = getVal(['REQUESTED BY']);
-                    obj.REQUEST_FOLDER = getVal(['REQUEST FOLDER']);
-                    
-                    obj.MATCH = getVal(['MATCH', 'MATCHPCT']);
-                    obj.SPEC = getVal(['SPEC']);
-                    obj.CALIPER = getVal(['CALIPER']);
-                    obj.PIC_NOTE = getVal(['PIC NOTE', 'PICKNOTE']);
-                    obj.SALES_NOTE = getVal(['SALES NOTE', 'SALESDESC']);
-                    obj.SAVED_PHOTO_LINK = getVal(['PHOTO LINK']);
-                    obj.SAVED_PHOTO_NAME = getVal(['PHOTO NAME']);
-                    
-                    obj.REQ_MATCH = getVal(['REQ MATCH']);
-                    obj.REQ_SPEC = getVal(['REQ SPEC']);
-                    obj.REQ_CALIPER = getVal(['REQ CALIPER']);
-                    obj.REQ_PICK = getVal(['REQ PIC NOTE']);
-                    obj.REQ_SALES_NOTE = getVal(['REQ SALES NOTE']);
-                    obj.REQ_COMMENTS = getVal(['REQ COMMENTS']);
-                    obj.REQ_PHOTO_LINK = getVal(['REQ PHOTO LINK']);
-                    obj.REQ_PHOTO_NAME = getVal(['REQ PHOTO NAME']);
-                } else {
-                     if (obj['DOCK']) obj.DOCK_NUM = parseInt(String(obj['DOCK']).replace(/\D/g, ''), 10);
-                }
-                return obj;
-            });
+                if(cachedRes) { showToast("Sync Complete", "Live database updated.", false); } 
+                else { showToast("Ready", "Database downloaded and saved!", false); }
+
+            } catch(e) {
+                console.error("Firebase fetch error:", e);
+                if (!cachedRes) showToast("Sync Error", "Could not reach database.", true);
+            }
         }
 
-        function processAndLoadData(res) {
-            salesNotesDict = res.salesNotesMap || {};
+        // --- HELPER: Cleans up Firebase records to match App formatting ---
+        function normalizeItem(d, idPrefix, idx, collectionName) {
+            let item = { ...d, DOM_ID: idPrefix + idx, _COLLECTION: collectionName };
             
-            // Map compressed data arrays to Javascript Objects instantly
-            fullInventory = mapCompressedToObj(res.data, true).map((item, idx) => {
-                item.DOM_ID = 'fi_' + idx;
-                return item;
-            });
-            lowStockInventory = mapCompressedToObj(res.lowStock, true).map((item, idx) => {
-                item.DOM_ID = 'ls_' + idx;
-                return item;
-            });
-            socInventory = mapCompressedToObj(res.socData, false);
-            reservesInventory = mapCompressedToObj(res.reservesData, false);
+            item.UNIQUE_ID = d.UNIQUEID || d.UNIQUE_ID;
+            item.COMMONNAME = d.COMMONNAME;
+            item.CONTSIZE = d.CONTSIZE;
+            item.LOCATIONCODE = d.LOCATIONCODE;
+            item.PTRAVAILABLE = d.PTRAVAILABLE;
+            item.SEASONSUPPLY = d.SEASONSUPPLY || d.SEASON_SUPPLY;
+            item.PRIORITY = d.PRIORITY;
+            item.QUALITYCODE = d.QUALITYCODE;
+            item.FIELDTAGCOLOR = d.FIELDTAGCOLOR;
+            item.ITEMCODE = d.ITEMCODE;
+            item.LOTCODE = d.LOTCODE;
+            item.BLOCKALPHA = d.BLOCKALPHA;
+            item.ASSIGNEDTO = d.ASSIGNEDTO;
+            item.DATE_COMPLETED = d.DATECOMPLETED;
+
+            item.IS_REQUEST = String(d.ISREQUEST || "").toUpperCase() === 'TRUE' || d.ISREQUEST === true;
+            item.REQUESTED_BY = d.REQUESTEDBY;
+            item.REQUEST_FOLDER = d.REQUESTFOLDER;
+
+            item.MATCH = d.MATCH;
+            item.SPEC = d.SPEC;
+            item.CALIPER = d.CALIPER;
+            item.PIC_NOTE = d.PICNOTE;
+            item.SALES_NOTE = d.SALESNOTE;
+            item.SAVED_PHOTO_LINK = d.PHOTOLINK;
+            item.SAVED_PHOTO_NAME = d.PHOTONAME;
+
+            item.REQ_MATCH = d.REQMATCH;
+            item.REQ_SPEC = d.REQSPEC;
+            item.REQ_CALIPER = d.REQCALIPER;
+            item.REQ_PICK = d.REQPICNOTE;
+            item.REQ_SALES_NOTE = d.REQSALESNOTE;
+            item.REQ_COMMENTS = d.REQCOMMENTS;
+            item.REQ_PHOTO_LINK = d.REQPHOTOLINK;
+            item.REQ_PHOTO_NAME = d.REQPHOTONAME;
+
+            if (d.DOCK) item.DOCK_NUM = parseInt(String(d.DOCK).replace(/\D/g, ''), 10);
+            item.CUSTOMERNAME = d.CUSTOMERNAME;
+            item.CONSIGNEENAME = d.CONSIGNEENAME;
+            item.SALESREPNAME = d.SALESREPNAME;
+            item.STOPNUMBER = d.STOPNUMBER;
+            item.QUANTITYORDERED = d.QUANTITYORDERED;
+            item.SHIPPED = d.SHIPPED;
+
+            return item;
+        }
+
+        function processFirebaseData(payload) {
+            fullInventory = payload.master.map((d, i) => normalizeItem(d, 'fi_', i, 'MasterInventory'));
+            lowStockInventory = payload.lowStock.map((d, i) => normalizeItem(d, 'ls_', i, 'LowStock'));
+            reservesInventory = payload.reserves.map((d, i) => normalizeItem(d, 'res_', i, 'Reserves'));
+            socInventory = payload.soc.map((d, i) => normalizeItem(d, 'soc_', i, 'SOC_Master'));
 
             // --- START TOURNAMENT DEDUPLICATION ---
             let itemsWithPriority = {};
             fullInventory.forEach(item => {
                 const pri = parseFloat(item.PRIORITY);
-                const ptr = parseFloat(item.PTRAVAILABLE) || 0;
-                const ss = parseFloat(item.SEASONSUPPLY) || 0;
+                const ptr = parseFloat(String(item.PTRAVAILABLE).replace(/,/g, '')) || 0;
+                const ss = parseFloat(String(item.SEASONSUPPLY).replace(/,/g, '')) || 0;
                 const iCode = String(item.ITEMCODE || "").trim().toUpperCase();
 
                 if (iCode && !isNaN(pri) && pri > 0 && ptr >= (ss * 1.10)) {
@@ -781,7 +782,9 @@
                     const priA = parseFloat(a.PRIORITY);
                     const priB = parseFloat(b.PRIORITY);
                     if (priA === priB) {
-                        return (parseFloat(b.PTRAVAILABLE) || 0) - (parseFloat(a.PTRAVAILABLE) || 0);
+                        let bPtr = parseFloat(String(b.PTRAVAILABLE).replace(/,/g, '')) || 0;
+                        let aPtr = parseFloat(String(a.PTRAVAILABLE).replace(/,/g, '')) || 0;
+                        return bPtr - aPtr;
                     }
                     return priA - priB;
                 });
@@ -792,19 +795,16 @@
                 item.APP_TAB_ASSIGNMENT = seasonWinnerIds.has(item.DOM_ID) ? 'season' : 'location';
             });
             // --- END TOURNAMENT DEDUPLICATION ---
-            
-            reservesInventory = reservesInventory.map((item, idx) => {
-                item.DOM_ID = 'res_' + idx;
-                item.UNIQUE_ID = item.UNIQUE_ID || 'res_uid_' + idx; 
-                
+
+            reservesInventory = reservesInventory.map(item => {
                 let resCode = String(item.ITEMCODE || item.ITEM || "").trim().toUpperCase();
                 let masterItem = fullInventory.find(f => String(f.ITEMCODE || "").trim().toUpperCase() === resCode);
                 
-                item.COMMONNAME = masterItem ? masterItem.COMMONNAME : (item.COMMONNAME || item['PLANT NAME'] || item.DESCRIPTION || item.DESC || 'Unknown Plant');
-                item.CONTSIZE = masterItem ? masterItem.CONTSIZE : (item.CONTSIZE || item.SIZE || item.CONTAINER || '-');
-                item.CUSTOMERNAME = item.CUSTOMERNAME || item.CUSTOMER || 'Unknown Customer';
-                item.CONSIGNEENAME = item.CONSIGNEENAME || item.CONSIGNEE || '';
-                item.SALESREPNAME = item.SALESREPNAME || item.SALESREP || item['SALES REP'] || 'Unknown Rep';
+                item.COMMONNAME = masterItem ? masterItem.COMMONNAME : (item.COMMONNAME || 'Unknown Plant');
+                item.CONTSIZE = masterItem ? masterItem.CONTSIZE : (item.CONTSIZE || '-');
+                item.CUSTOMERNAME = item.CUSTOMERNAME || 'Unknown Customer';
+                item.CONSIGNEENAME = item.CONSIGNEENAME || '';
+                item.SALESREPNAME = item.SALESREPNAME || 'Unknown Rep';
                 
                 if (masterItem) {
                     item.LOCATIONCODE = masterItem.LOCATIONCODE;
@@ -897,7 +897,7 @@
             document.querySelectorAll('.admin-only').forEach(el => {
                 if(isAdmin) {
                     el.classList.remove('hidden');
-                    el.style.display = ''; // clean up any old inline block
+                    el.style.display = ''; 
                 } else {
                     el.classList.add('hidden');
                 }
@@ -907,7 +907,7 @@
             document.querySelectorAll('.dylan-only').forEach(el => {
                 if(isDylan) {
                     el.classList.remove('hidden');
-                    el.style.display = ''; // clean up any old inline block
+                    el.style.display = ''; 
                 } else {
                     el.classList.add('hidden');
                 }
@@ -983,29 +983,10 @@
             renderTasks();
         }
 
-        function selectRequestCategory(cat) {
-            requestFilterMode = cat;
-            requestViewLevel = 1;
-            renderRequest();
-        }
-
-        function selectRequestRep(rep) {
-            selectedReqRep = rep;
-            requestViewLevel = 2;
-            renderRequest();
-        }
-
-        function selectRepStatus(status) {
-            selectedReqRepStatus = status;
-            requestViewLevel = 3;
-            renderRequest();
-        }
-        
-        function selectRequestFolder(folderId) {
-            selectedReqFolder = folderId;
-            requestViewLevel = 4;
-            renderRequest();
-        }
+        function selectRequestCategory(cat) { requestFilterMode = cat; requestViewLevel = 1; renderRequest(); }
+        function selectRequestRep(rep) { selectedReqRep = rep; requestViewLevel = 2; renderRequest(); }
+        function selectRepStatus(status) { selectedReqRepStatus = status; requestViewLevel = 3; renderRequest(); }
+        function selectRequestFolder(folderId) { selectedReqFolder = folderId; requestViewLevel = 4; renderRequest(); }
 
         function handleReservesSearch() {
             const term = document.getElementById('reserves-search').value;
@@ -1048,9 +1029,7 @@
             }
         }
 
-        function cancelPress() {
-            clearTimeout(pressTimer);
-        }
+        function cancelPress() { clearTimeout(pressTimer); }
 
         function enableMultiSelect(firstDomId) {
             isMultiSelectMode = true;
@@ -1072,9 +1051,7 @@
             selectedItems.clear();
             updateGlobalActionBar();
             
-            document.querySelectorAll('.card-checkbox').forEach(cb => {
-                cb.checked = false;
-            });
+            document.querySelectorAll('.card-checkbox').forEach(cb => { cb.checked = false; });
         }
 
         function toggleGlobalItem(domId, isChecked) {
@@ -1084,10 +1061,7 @@
         }
 
         function handleCardClick(domId, uniqueId, sourceView) {
-            if (isLongPress) {
-                isLongPress = false; 
-                return;
-            }
+            if (isLongPress) { isLongPress = false; return; }
             
             if (isMultiSelectMode) {
                 const row = document.querySelector(`[data-dom-id="${domId}"]`);
@@ -1216,14 +1190,11 @@
             tempSelectedReqRep = repName;
             document.getElementById('step-1-rep').classList.add('hidden');
             document.getElementById('step-2-cust').classList.remove('hidden');
-            
             document.getElementById('req-qty-input').value = "";
             document.getElementById('cust-search-input').value = "";
-            
             populateCustomerList();
         }
 
-        // --- UPDATED POPULATE CUSTOMER LIST ---
         function populateCustomerList() {
             const val = document.getElementById('cust-search-input').value.toLowerCase().trim();
             const container = document.getElementById('cust-list-container');
@@ -1270,9 +1241,10 @@
 
         function setCustomerInput(val) {
             document.getElementById('cust-search-input').value = val;
-            populateCustomerList(); // Refilter
+            populateCustomerList(); 
         }
 
+        // --- UPDATED BATCH REQUEST: SAVES TO FIREBASE ---
         function finalizeRequestAction() {
             let cust = document.getElementById('cust-search-input').value.trim();
             let qty = document.getElementById('req-qty-input').value.trim();
@@ -1290,6 +1262,8 @@
             const shortTime = new Date().toLocaleTimeString('en-US', {hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit'}).replace(/:/g, ''); 
             const folderId = `REQ-${dateStr}-${shortTime}`;
             
+            const batch = db.batch();
+
             domIds.forEach(dId => {
                 let item = fullInventory.find(i => i.DOM_ID === dId) || lowStockInventory.find(i => i.DOM_ID === dId) || reservesInventory.find(i => i.DOM_ID === dId);
                 if (item) {
@@ -1299,11 +1273,34 @@
                     item.REQ_CUSTOMER = cust;
                     item.REQ_QTY = qty;
                     uniqueIds.push(item.UNIQUE_ID);
+
+                    // Map to Firestore
+                    const docId = item.UNIQUE_ID.replace(/[^a-zA-Z0-9_-]/g, '_');
+                    const col = item._COLLECTION || 'MasterInventory';
+                    const ref = db.collection(col).doc(docId);
+
+                    batch.set(ref, {
+                        ISREQUEST: true,
+                        REQUESTEDBY: tempSelectedReqRep,
+                        REQUESTFOLDER: folderId,
+                        REQCUSTOMER: cust,
+                        REQQTY: qty
+                    }, {merge: true});
                 }
             });
 
             showToast("Processing...", `Saving request for ${tempSelectedReqRep}...`, false);
 
+            batch.commit().then(() => {
+                showToast("Success", "Items moved to Request tab!");
+                clearSelection();
+                switchView('request');
+            }).catch(err => {
+                console.error(err);
+                showToast("Error", "Failed to update database.", true);
+            });
+
+            // ALSO send to GAS so Google Sheets has the backup
             fetch(GOOGLE_SCRIPT_URL, {
                 method: 'POST',
                 body: JSON.stringify({ 
@@ -1314,17 +1311,8 @@
                     customer: cust,
                     qty: qty
                 })
-            }).then(res => res.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    showToast("Success", "Items moved to Request tab!");
-                    clearSelection();
-                    switchView('request');
-                } else { showToast("Error", "Failed to update sheet.", true); }
-            }).catch(err => showToast("Error", "Network error.", true));
+            });
         }
-
-        // --- END NEW MODAL FLOW ---
 
         function processTabSelection(tab) {
             pendingTabType = tab;
@@ -1407,36 +1395,45 @@
         function openAssignModal() { document.getElementById('assign-modal').classList.remove('hidden'); }
         function closeAssignModal() { document.getElementById('assign-modal').classList.add('hidden'); }
 
+        // --- UPDATED BATCH ASSIGN: SAVES TO FIREBASE AND TRIGGERS EMAIL ---
         function confirmAssign(user) {
             closeAssignModal();
-            showToast("Assigning...", "Updating Google Sheet...", false);
+            showToast("Assigning...", "Updating database...", false);
             
             const domIds = Array.from(selectedItems);
             const uniqueIds = [];
             let itemsToUpdate = [];
+            const batch = db.batch();
             
             domIds.forEach(dId => {
                 let item = fullInventory.find(i => i.DOM_ID === dId) || lowStockInventory.find(i => i.DOM_ID === dId) || reservesInventory.find(i => i.DOM_ID === dId);
                 if (item) {
+                    item.ASSIGNEDTO = user;
+                    item.DATE_COMPLETED = ""; 
                     uniqueIds.push(item.UNIQUE_ID);
                     itemsToUpdate.push(item);
+
+                    // Add to Firebase Batch Update
+                    const docId = item.UNIQUE_ID.replace(/[^a-zA-Z0-9_-]/g, '_');
+                    const col = item._COLLECTION || 'MasterInventory';
+                    const ref = db.collection(col).doc(docId);
+                    batch.set(ref, { ASSIGNEDTO: user, DATECOMPLETED: "" }, {merge: true});
                 }
             });
             
+            batch.commit().then(() => {
+                showToast("Success", `Assigned to ${user}! Emails are sending...`);
+                clearSelection();
+            }).catch(err => {
+                console.error(err);
+                showToast("Error", "Assignment failed", true);
+            });
+
+            // ALSO send to GAS so Google Sheets updates AND triggers the assignment email 
             fetch(GOOGLE_SCRIPT_URL, {
                 method: 'POST',
                 body: JSON.stringify({ type: 'batch_assign', ids: uniqueIds, assignTo: user, tabType: pendingTabType })
-            }).then(res => res.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    showToast("Success", `Assigned to ${user} and email sent!`);
-                    itemsToUpdate.forEach(item => {
-                        item.ASSIGNEDTO = user;
-                        item.DATE_COMPLETED = ""; 
-                    });
-                    clearSelection(); 
-                } else { showToast("Error", "Assignment failed", true); }
-            }).catch(err => showToast("Error", "Network error.", true));
+            });
         }
 
         function handleDocksSearch() {
@@ -1668,9 +1665,11 @@
             const container = document.getElementById('sales-office-content');
             let officeItems = fullInventory.filter(i => {
                 if (!i.DATE_COMPLETED || i.DATE_COMPLETED === "") return false;
-                const ptr = parseFloat(i.PTRAVAILABLE) || 0;
-                const ss = parseFloat(i.SEASONSUPPLY) || 0;
-                return ptr >= (ss * 1.10); 
+                
+                const pri = parseFloat(i.PRIORITY);
+                if (isNaN(pri) || pri <= 0) return false;
+
+                return i.APP_TAB_ASSIGNMENT === 'season'; 
             });
 
             if (officeItems.length === 0) {
@@ -2257,7 +2256,7 @@
 
         function renderAllFields() {
             if(!activeItem) return;
-            const hiddenKeys = ['UNIQUE_ID', 'UNIQUEID', 'ASSIGNEDTO', 'DOM_ID', 'IS_REQUEST', 'REQUESTED_BY', 'REQUEST_FOLDER']; 
+            const hiddenKeys = ['UNIQUE_ID', 'UNIQUEID', 'ASSIGNEDTO', 'DOM_ID', 'IS_REQUEST', 'REQUESTED_BY', 'REQUEST_FOLDER', '_COLLECTION']; 
             let html = '<div class="grid grid-cols-1 gap-2">';
             for (const [key, value] of Object.entries(activeItem)) { 
                 if(hiddenKeys.includes(key)) continue; 
@@ -2426,6 +2425,7 @@
             }
         }
 
+        // --- UPDATED SAVE DATA: SAVES DIRECT TO FIREBASE + BACKS UP TO SPREADSHEET ---
         function saveData(isComplete = false) {
             let btnDraft = activeDetailTab === 'request' ? document.getElementById('req-btn-save-draft') : document.getElementById('btn-save-draft');
             let btnComp = activeDetailTab === 'request' ? null : document.getElementById('btn-save-complete');
@@ -2449,6 +2449,44 @@
             activeItem.REQ_SALES_NOTE = document.getElementById('req-sales-desc').value.toUpperCase();
             activeItem.REQ_COMMENTS = document.getElementById('req-comments').value; 
 
+            const docId = activeItem.UNIQUE_ID.replace(/[^a-zA-Z0-9_-]/g, '_');
+            
+            let fbPayload = {
+                MATCH: activeItem.MATCH,
+                SPEC: activeItem.SPEC,
+                CALIPER: activeItem.CALIPER,
+                PICNOTE: activeItem.PICK,
+                SALESNOTE: activeItem.SALES_NOTE,
+                REQMATCH: activeItem.REQ_MATCH,
+                REQSPEC: activeItem.REQ_SPEC,
+                REQCALIPER: activeItem.REQ_CALIPER,
+                REQPICNOTE: activeItem.REQ_PICK,
+                REQSALESNOTE: activeItem.REQ_SALES_NOTE,
+                REQCOMMENTS: activeItem.REQ_COMMENTS
+            };
+
+            if (activeItem.SAVED_PHOTO_LINK) { fbPayload.PHOTOLINK = activeItem.SAVED_PHOTO_LINK; fbPayload.PHOTONAME = activeItem.SAVED_PHOTO_NAME; }
+            if (activeItem.REQ_PHOTO_LINK) { fbPayload.REQPHOTOLINK = activeItem.REQ_PHOTO_LINK; fbPayload.REQPHOTONAME = activeItem.REQ_PHOTO_NAME; }
+            if (isComplete) { 
+                activeItem.DATE_COMPLETED = new Date().toISOString();
+                fbPayload.DATECOMPLETED = activeItem.DATE_COMPLETED; 
+            }
+
+            let collection = activeItem._COLLECTION || 'MasterInventory';
+
+            // 1. SAVE TO FIREBASE INSTANTLY
+            db.collection(collection).doc(docId).set(fbPayload, {merge: true}).then(() => {
+                if(btnDraft) btnDraft.innerText = (activeDetailTab === 'request') ? "SAVE REQUEST DATA" : "SAVE DRAFT";
+                if(btnComp) btnComp.innerText = "MARK COMPLETE";
+                showToast("Success", isComplete ? "Task Completed!" : "Draft saved to Database.");
+                if (isComplete) goBackFromDetail();
+            }).catch(err => {
+                if(btnDraft) btnDraft.innerText = (activeDetailTab === 'request') ? "SAVE REQUEST DATA" : "SAVE DRAFT";
+                if(btnComp) btnComp.innerText = "MARK COMPLETE";
+                showToast("Error", "Network Error saving to database.", true);
+            });
+
+            // 2. SEND TO GOOGLE SCRIPT SO THE SHEET STAYS UPDATED IN THE BACKGROUND
             const payload = {
                 type: "update",
                 id: activeItem.UNIQUE_ID,
@@ -2473,24 +2511,6 @@
             fetch(GOOGLE_SCRIPT_URL, {
                 method: "POST",
                 body: JSON.stringify(payload)
-            })
-            .then(res => res.json())
-            .then(data => {
-                if(btnDraft) btnDraft.innerText = (activeDetailTab === 'request') ? "SAVE REQUEST DATA" : "SAVE DRAFT";
-                if(btnComp) btnComp.innerText = "MARK COMPLETE";
-                
-                if(data.status === 'success') {
-                    showToast("Success", isComplete ? "Task Completed!" : "Draft saved to Google Sheet.");
-                    if (isComplete) {
-                        activeItem.DATE_COMPLETED = new Date().toISOString();
-                        goBackFromDetail();
-                    }
-                } else { showToast("Error", data.message, true); }
-            })
-            .catch(err => {
-                if(btnDraft) btnDraft.innerText = (activeDetailTab === 'request') ? "SAVE REQUEST DATA" : "SAVE DRAFT";
-                if(btnComp) btnComp.innerText = "MARK COMPLETE";
-                showToast("Network Error", "Could not reach server.", true);
             });
         }
     </script>
