@@ -806,7 +806,7 @@
             item.PRIORITY = d.PRIORITY;
             item.QUALITYCODE = d.QUALITYCODE;
             item.FIELDTAGCOLOR = d.FIELDTAGCOLOR;
-            item.ITEMCODE = d.ITEMCODE;
+            item.ITEMCODE = d.ITEMCODE || d.ITEM; // <-- FIX: Use d.ITEM fallback 
             item.LOTCODE = d.LOTCODE;
             item.BLOCKALPHA = d.BLOCKALPHA;
             item.ASSIGNEDTO = d.ASSIGNEDTO;
