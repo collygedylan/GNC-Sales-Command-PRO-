@@ -1126,7 +1126,7 @@
 
                 let thumbUrl = getDirectImageUrl(cleanUrl);
                 if (thumbUrl.startsWith('http')) {
-                    thumbHtml = `<div class="ml-3 flex-shrink-0"><img src="${thumbUrl}" class="w-12 h-12 rounded-md object-cover border border-gray-200" loading="lazy"></div>`;
+                    thumbHtml = `<div class="ml-3 flex-shrink-0"><img src="${thumbUrl}" class="w-12 h-12 rounded-md object-cover border border-[#007a4d]/30" loading="lazy"></div>`;
                 }
             }
 
@@ -1149,26 +1149,18 @@
                 </div>
                 
                 <div class="inv-card ${colorClass} flex items-center justify-between flex-grow !mb-0 transition-transform active:scale-[0.99]">
-                    <div class="flex-grow min-w-0">
+                    <div class="flex-grow min-w-0 text-[#007a4d]">
                         <div class="flex justify-between font-bold text-sm mb-1">
-                            <span class="text-[#007a4d] truncate pr-2">${item.LOCATIONCODE || 'No Loc'} • ${item.COMMONNAME || 'Unknown'}</span>
-                            <span class="whitespace-nowrap bg-gray-100 text-gray-800 px-1.5 py-0.5 rounded text-xs border border-gray-200">${item.CONTSIZE || '-'}</span>
+                            <span class="truncate pr-2">${item.COMMONNAME || 'Unknown'} • ${item.CONTSIZE || '-'} • Loc: ${item.LOCATIONCODE || 'No Loc'}</span>
+                            <span class="whitespace-nowrap bg-[#007a4d]/10 px-1.5 py-0.5 rounded text-xs border border-[#007a4d]/20">Pri: ${item.PRIORITY || '-'}</span>
                         </div>
                         
-                        <div class="text-[11px] text-gray-500 truncate mt-0.5">
-                            <span class="font-bold text-blue-600">Item: ${item.ITEMCODE || '-'}</span> | 
-                            <span class="font-bold text-orange-600">Lot: ${item.LOTCODE || '-'}</span> | 
-                            <span class="font-bold text-purple-600">Pri: ${item.PRIORITY || '-'}</span>
+                        <div class="text-[11px] font-semibold truncate mt-0.5">
+                            Tag: ${tagColor} | Lot: ${item.LOTCODE || '-'} | PTR-Ava: ${item.PTRAVAILABLE || '0'} | s_LTS: ${item.S_LTS || '0'} | Supply: ${item.SEASONSUPPLY || '0'}
                         </div>
                         
-                        <div class="text-[11px] text-gray-500 truncate mt-0.5">
-                            <span class="font-bold text-[#007a4d]">PTR-Ava: ${item.PTRAVAILABLE || '0'}</span> | 
-                            <span class="font-bold text-red-600">s_LTS: ${item.S_LTS || '0'}</span> | 
-                            Supply: ${item.SEASONSUPPLY || '0'}
-                        </div>
-                        
-                        <div class="text-[11px] text-gray-500 truncate mt-0.5">
-                            <span class="font-bold text-gray-800">Tag: ${tagColor}</span>
+                        <div class="text-[11px] font-semibold truncate mt-0.5">
+                            Item: ${item.ITEMCODE || '-'}
                         </div>
                     </div>
                     ${thumbHtml}
