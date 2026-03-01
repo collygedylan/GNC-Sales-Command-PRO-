@@ -714,6 +714,7 @@
                     obj.ITEMCODE = getVal(['ITEMCODE']);
                     obj.LOTCODE = getVal(['LOTCODE']);
                     obj.BLOCKALPHA = getVal(['BLOCKALPHA']);
+                    obj.S_LTS = getVal(['S_LTS', 'SLTS']);
                     obj.ASSIGNEDTO = getVal(['ASSIGNEDTO']);
                     obj.DATE_COMPLETED = getVal(['DATE COMPLETED']);
                     
@@ -1153,15 +1154,21 @@
                             <span class="text-[#007a4d] truncate pr-2">${item.LOCATIONCODE || 'No Loc'} • ${item.COMMONNAME || 'Unknown'}</span>
                             <span class="whitespace-nowrap bg-gray-100 text-gray-800 px-1.5 py-0.5 rounded text-xs border border-gray-200">${item.CONTSIZE || '-'}</span>
                         </div>
+                        
                         <div class="text-[11px] text-gray-500 truncate mt-0.5">
-                            <span class="font-bold text-blue-600">Pri: ${item.PRIORITY || '-'}</span> | 
-                            <span class="font-bold text-gray-800">QC: ${item.QUALITYCODE || '-'}</span> | 
-                            <span class="font-bold text-purple-600">Tag: ${tagColor}</span>
-                        </div>
-                        <div class="text-[11px] text-gray-500 truncate mt-0.5">
-                            <span class="font-bold text-[#007a4d]">Qty: ${item.PTRAVAILABLE || '0'}</span> | 
+                            <span class="font-bold text-blue-600">Item: ${item.ITEMCODE || '-'}</span> | 
                             <span class="font-bold text-orange-600">Lot: ${item.LOTCODE || '-'}</span> | 
+                            <span class="font-bold text-purple-600">Pri: ${item.PRIORITY || '-'}</span>
+                        </div>
+                        
+                        <div class="text-[11px] text-gray-500 truncate mt-0.5">
+                            <span class="font-bold text-[#007a4d]">PTR-Ava: ${item.PTRAVAILABLE || '0'}</span> | 
+                            <span class="font-bold text-red-600">s_LTS: ${item.S_LTS || '0'}</span> | 
                             Supply: ${item.SEASONSUPPLY || '0'}
+                        </div>
+                        
+                        <div class="text-[11px] text-gray-500 truncate mt-0.5">
+                            <span class="font-bold text-gray-800">Tag: ${tagColor}</span>
                         </div>
                     </div>
                     ${thumbHtml}
