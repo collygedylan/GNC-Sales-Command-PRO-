@@ -3,14 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GNC SALES COMMAND</title>
+    <title>GNC PRO 005</title>
     
     <meta name="theme-color" content="#007a4d">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="icon" type="image/png" href="GNC LOGO.png">
     <link rel="apple-touch-icon" href="GNC LOGO.png">
-    <link rel="manifest" href="manifest.json">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
@@ -50,7 +49,6 @@
         .status-purple { border-left-color: #9333ea; } 
         .status-orange { border-left-color: #f97316; } 
         .status-blue { border-left-color: #3b82f6; }
-        .status-indigo { border-left-color: #4f46e5; }
         
         .task-tabs { display: flex; border-bottom: 1px solid #e5e7eb; background: #f9fafb; margin-bottom: 10px; }
         .task-tab { flex: 1; text-align: center; padding: 12px; font-size: 11px; font-weight: 700; color: #6b7280; cursor: pointer; border-bottom: 3px solid transparent; text-transform: uppercase; }
@@ -86,7 +84,7 @@
 
     <div id="view-login">
         <div class="login-card">
-            <div class="text-3xl text-[#007a4d] font-bold mb-6">GNC SALES COMMAND</div>
+            <div class="text-3xl text-[#007a4d] font-bold mb-6">GNC PRO 005</div>
             <div id="login-inputs">
                 <input type="text" id="username-input" class="input-field mb-4 text-center border-2" placeholder="USERNAME">
                 <input type="password" id="pin-code" class="input-field mb-4 text-center border-2 tracking-widest" placeholder="PASSWORD">
@@ -98,7 +96,7 @@
             </div>
             <div id="loading-spinner" class="hidden mt-6 flex flex-col items-center">
                 <div class="spinner"></div>
-                <div id="loading-text" class="text-white font-bold text-sm mt-3 text-center">Authenticating & Syncing...</div>
+                <div id="loading-text" class="text-white font-bold text-sm mt-3 text-center">Authenticating...</div>
             </div>
         </div>
     </div>
@@ -127,15 +125,36 @@
     </div>
 
     <div id="request-rep-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
-        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center flex flex-col">
-            <h3 class="font-bold text-lg mb-2 text-orange-600">Who requested this?</h3>
-            <input type="text" id="rep-search-input" class="input-field mb-3 border-orange-200 focus:border-orange-500" placeholder="Search or type name..." onkeyup="filterRepList()">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center flex flex-col max-h-[90vh]">
             
-            <div id="rep-list-container" class="grid grid-cols-1 gap-2 mb-4 max-h-[50vh] overflow-y-auto px-2 py-1">
+            <div id="step-1-rep" class="flex flex-col">
+                <h3 class="font-bold text-lg mb-2 text-orange-600">Who requested this?</h3>
+                <input type="text" id="rep-search-input" class="input-field mb-3 border-orange-200 focus:border-orange-500" placeholder="Search or type name..." onkeyup="filterRepList()">
+                
+                <div id="rep-list-container" class="grid grid-cols-1 gap-2 mb-4 max-h-[40vh] overflow-y-auto px-2 py-1">
                 </div>
 
-            <button id="custom-rep-btn" class="hidden w-full bg-orange-600 text-white font-bold p-3 rounded-lg mb-4 shadow-sm" onclick="submitCustomRep()">Assign to: <span></span></button>
-            <button class="text-gray-500 font-bold py-2 px-4" onclick="document.getElementById('request-rep-modal').classList.add('hidden')">Cancel</button>
+                <button id="custom-rep-btn" class="hidden w-full bg-orange-600 text-white font-bold p-3 rounded-lg mb-4 shadow-sm" onclick="selectRepForRequest(document.getElementById('rep-search-input').value.trim())">Assign to: <span></span></button>
+            </div>
+
+            <div id="step-2-cust" class="hidden flex flex-col text-left">
+                <div class="flex items-center mb-4 border-b border-gray-100 pb-2">
+                    <i class="ph-bold ph-arrow-left text-gray-400 text-2xl mr-2 cursor-pointer p-1" onclick="document.getElementById('step-2-cust').classList.add('hidden'); document.getElementById('step-1-rep').classList.remove('hidden');"></i>
+                    <h3 class="font-bold text-lg text-orange-600">Customer & Qty</h3>
+                </div>
+
+                <label class="text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Total Quantity</label>
+                <input type="number" id="req-qty-input" class="input-field mb-4 border-orange-200 font-bold" placeholder="e.g. 15">
+
+                <label class="text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Customer / Consignee</label>
+                <input type="text" id="cust-search-input" class="input-field mb-2 border-orange-200" placeholder="Search or type customer..." onkeyup="populateCustomerList()">
+                
+                <div id="cust-list-container" class="grid grid-cols-1 gap-2 mb-6 max-h-[30vh] overflow-y-auto px-1 py-1"></div>
+
+                <button class="w-full bg-[#007a4d] text-white font-bold p-4 rounded-xl shadow-lg mt-auto" onclick="finalizeRequestAction()">SUBMIT REQUEST</button>
+            </div>
+
+            <button class="text-gray-500 font-bold py-2 px-4 mt-2" onclick="document.getElementById('request-rep-modal').classList.add('hidden')">Cancel</button>
         </div>
     </div>
 
@@ -145,7 +164,7 @@
                 <i class="ph-bold ph-list menu-btn text-2xl cursor-pointer" onclick="toggleMenu()"></i>
                 <div class="flex flex-col">
                     <div class="font-bold text-lg leading-tight"><span id="header-user">User</span></div>
-                    <div class="text-[10px] opacity-80 leading-tight">GNC SALES COMMAND</div>
+                    <div class="text-[10px] opacity-80 leading-tight">GNC PRO 005</div>
                 </div>
             </div>
         </header>
@@ -172,7 +191,7 @@
             
             <div id="view-home" class="hidden">
                 <div class="bg-[#007a4d] text-white p-6 rounded-2xl mb-6 shadow-lg text-center">
-                    <h1 class="text-2xl font-bold">GNC COMMAND</h1>
+                    <h1 class="text-2xl font-bold">GNC PRO 005</h1>
                     <p class="opacity-80 text-sm">Dashboard</p>
                 </div>
                 
@@ -238,13 +257,13 @@
                 </div>
             </div>
 
-            <div id="view-request" class="hidden admin-only">
+            <div id="view-request" class="hidden">
                 <div id="request-crumb" class="text-xs font-bold text-[#007a4d] mb-3 empty:hidden"></div>
                 <div id="request-content"></div>
             </div>
 
-            <div id="view-reserves" class="hidden admin-only">
-                <input type="text" id="reserves-search" class="input-field mb-2" placeholder="Search Reps or Customers..." onkeyup="handleReservesSearch()">
+            <div id="view-reserves" class="hidden">
+                <input type="text" id="reserves-search" class="input-field mb-2" placeholder="Search Plants or Customers..." onkeyup="handleReservesSearch()">
                 <div id="reserves-crumb" class="text-xs font-bold text-[#007a4d] mb-3 empty:hidden"></div>
                 <div id="reserves-content"></div>
             </div>
@@ -255,12 +274,12 @@
                 <div id="docks-content"></div>
             </div>
 
-            <div id="view-low-stock" class="hidden dylan-only">
+            <div id="view-low-stock" class="hidden">
                 <div id="low-stock-crumb" class="text-xs font-bold text-[#007a4d] mb-3">Action Required</div>
                 <div id="low-stock-content"></div>
             </div>
 
-            <div id="view-sales-office" class="hidden admin-only">
+            <div id="view-sales-office" class="hidden">
                 <div class="text-xs font-bold text-[#007a4d] mb-3">Completed Season Items</div>
                 <div id="sales-office-content"></div>
             </div>
@@ -281,10 +300,11 @@
                 <div id="task-content"></div>
             </div>
             
-            <div id="view-review" class="hidden admin-only">
+            <div id="view-review" class="hidden">
                 <div id="review-crumb" class="text-xs font-bold text-[#007a4d] mb-3"></div>
                 <div class="task-tabs mb-4">
                     <div id="review-tab-completed" class="task-tab active" onclick="setReviewTab('completed')">Completed Tasks</div>
+                    <div id="review-tab-reserves" class="task-tab" onclick="setReviewTab('reserves')">Reserves</div>
                 </div>
                 <div id="review-content"></div>
             </div>
@@ -464,6 +484,54 @@
     <script>
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzhJ_tytv5Rm2ag44liZAU6nsp0lQ7-9PLmjxrcuT1WA1WARubi7NyolYoTZ_qvZmzo/exec";
 
+        // --- INDEXED DB SETUP ---
+        const DB_NAME = "GNC_Sales_DB";
+        const STORE_NAME = "inventory_cache";
+
+        function openDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, 1);
+                request.onupgradeneeded = event => {
+                    const db = event.target.result;
+                    if (!db.objectStoreNames.contains(STORE_NAME)) {
+                        db.createObjectStore(STORE_NAME);
+                    }
+                };
+                request.onsuccess = event => resolve(event.target.result);
+                request.onerror = event => reject(event.target.error);
+            });
+        }
+
+        async function saveToCache(data) {
+            try {
+                const db = await openDB();
+                const tx = db.transaction(STORE_NAME, "readwrite");
+                tx.objectStore(STORE_NAME).put(data, "latest_data");
+                return new Promise((resolve) => {
+                    tx.oncomplete = () => resolve(true);
+                    tx.onerror = () => resolve(false);
+                });
+            } catch (e) {
+                console.error("Save cache failed", e);
+            }
+        }
+
+        async function loadFromCache() {
+            try {
+                const db = await openDB();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction(STORE_NAME, "readonly");
+                    const request = tx.objectStore(STORE_NAME).get("latest_data");
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => resolve(null);
+                });
+            } catch (e) {
+                console.error("Load cache failed", e);
+                return null;
+            }
+        }
+        // ------------------------
+
         let appUsers = [];
         let fullInventory = []; 
         let lowStockInventory = []; 
@@ -511,6 +579,7 @@
         let selectedReqRep = null;
         let selectedReqRepStatus = null; 
         let selectedReqFolder = null; 
+        let tempSelectedReqRep = ""; // Used for the Request Modal flow
         
         let dockViewLevel = 0;
         let selectedDockNum = null;
@@ -518,10 +587,9 @@
         let selectedDockSize = null;
         let selectedDockItemCode = null;
 
-        // UPDATED RESERVES VARIABLES
         let reservesViewLevel = 0;
-        let selectedReservesRep = null;
-        let selectedReservesCustomer = null;
+        let selectedReservesName = null;
+        let selectedReservesSize = null;
 
         const salesRepList = ["Abbey Burka", "Annette Hancock", "Ben Brown", "Ben Harveson", "Ben Machino", "Brian Hatfield", "Casey Rufener", "Chris Farrow", "Chris Gaydos", "David Brandt", "Ellen Deely", "Jessica Robertson", "Josh Ringleb", "Kevin Effinger", "Nate Douglas", "Toby Brown", "Traci Earle", "Tracey Tapscott", "Troy Lee", "Wes Lugas"];
 
@@ -548,11 +616,12 @@
 
             document.getElementById('login-inputs').classList.add('hidden');
             document.getElementById('loading-spinner').classList.remove('hidden');
-            document.getElementById('loading-text').innerText = "Authenticating & Syncing...";
+            document.getElementById('loading-text').innerText = "Authenticating...";
 
-            const loginUrl = `${GOOGLE_SCRIPT_URL}?action=login&username=${encodeURIComponent(inputUser)}&password=${encodeURIComponent(inputPass)}`;
+            // PHASE 1: LIGHTNING FAST AUTHENTICATION
+            const authUrl = `${GOOGLE_SCRIPT_URL}?action=auth&username=${encodeURIComponent(inputUser)}&password=${encodeURIComponent(inputPass)}`;
 
-            fetch(loginUrl)
+            fetch(authUrl)
                 .then(response => response.json())
                 .then(res => {
                     if (res.status === 'success') {
@@ -560,95 +629,16 @@
                         currentRole = res.role;
                         document.getElementById('header-user').innerText = currentUser.toUpperCase();
 
-                        salesNotesDict = res.salesNotesMap || {};
-
-                        fullInventory = res.data.map((item, idx) => {
-                            item.DOM_ID = 'fi_' + idx;
-                            return item;
-                        });
-
-                        // --- START TOURNAMENT DEDUPLICATION ---
-                        let itemsWithPriority = {};
-                        fullInventory.forEach(item => {
-                            const pri = parseFloat(item.PRIORITY);
-                            const ptr = parseFloat(item.PTRAVAILABLE) || 0;
-                            const ss = parseFloat(item.SEASONSUPPLY) || 0;
-                            const iCode = String(item.ITEMCODE || "").trim().toUpperCase();
-
-                            if (iCode && !isNaN(pri) && pri > 0 && ptr >= (ss * 1.10)) {
-                                if (!itemsWithPriority[iCode]) itemsWithPriority[iCode] = [];
-                                itemsWithPriority[iCode].push(item);
-                            }
-                        });
-
-                        let seasonWinnerIds = new Set();
-                        for (const code in itemsWithPriority) {
-                            let group = itemsWithPriority[code];
-                            
-                            group.sort((a, b) => {
-                                const priA = parseFloat(a.PRIORITY);
-                                const priB = parseFloat(b.PRIORITY);
-                                if (priA === priB) {
-                                    return (parseFloat(b.PTRAVAILABLE) || 0) - (parseFloat(a.PTRAVAILABLE) || 0);
-                                }
-                                return priA - priB;
-                            });
-                            
-                            seasonWinnerIds.add(group[0].DOM_ID);
-                        }
-
-                        fullInventory.forEach(item => {
-                            item.APP_TAB_ASSIGNMENT = seasonWinnerIds.has(item.DOM_ID) ? 'season' : 'location';
-                        });
-                        // --- END TOURNAMENT DEDUPLICATION ---
-
-                        lowStockInventory = (res.lowStock || []).map((item, idx) => {
-                            item.DOM_ID = 'ls_' + idx;
-                            return item;
-                        });
-                        
-                        socInventory = res.socData || [];
-                        
-                        reservesInventory = (res.reservesData || []).map((item, idx) => {
-                            item.DOM_ID = 'res_' + idx;
-                            item.UNIQUE_ID = item.UNIQUE_ID || 'res_uid_' + idx; 
-                            
-                            let resCode = String(item.ITEMCODE || item.ITEM || "").trim().toUpperCase();
-                            let masterItem = fullInventory.find(f => String(f.ITEMCODE || "").trim().toUpperCase() === resCode);
-                            
-                            item.COMMONNAME = masterItem ? masterItem.COMMONNAME : (item.COMMONNAME || item['PLANT NAME'] || item.DESCRIPTION || item.DESC || 'Unknown Plant');
-                            item.CONTSIZE = masterItem ? masterItem.CONTSIZE : (item.CONTSIZE || item.SIZE || item.CONTAINER || '-');
-                            
-                            item.CUSTOMERNAME = item.CUSTOMERNAME || item.CUSTOMER || 'Unknown Customer';
-                            item.CONSIGNEENAME = item.CONSIGNEENAME || item.CONSIGNEE || '';
-                            
-                            // CLEANUP SALES REP NAME (Handle "Lastname, Firstname")
-                            let rawRep = item.SALESREPNAME || item.SALESREP || item['SALES REP'] || 'Unknown Rep';
-                            if (rawRep.includes(',')) {
-                                let parts = rawRep.split(',');
-                                item.SALESREPNAME = (parts[1].trim() + ' ' + parts[0].trim()).toUpperCase();
-                            } else {
-                                item.SALESREPNAME = rawRep.trim().toUpperCase();
-                            }
-                            
-                            if (masterItem) {
-                                item.LOCATIONCODE = masterItem.LOCATIONCODE;
-                                item.PTRAVAILABLE = masterItem.PTRAVAILABLE;
-                                item.SEASONSUPPLY = masterItem.SEASONSUPPLY;
-                                item.PRIORITY = masterItem.PRIORITY;
-                                item.QUALITYCODE = masterItem.QUALITYCODE;
-                                item.FIELDTAGCOLOR = masterItem.FIELDTAGCOLOR;
-                                item.LOTCODE = masterItem.LOTCODE;
-                            }
-                            
-                            return item;
-                        });
-                        
                         if (!isBiometricLogin && window.PublicKeyCredential) {
                             promptToEnableBiometrics(inputUser, inputPass);
                         }
 
+                        // UNLOCK THE APP IMMEDIATELY
                         applyRolePermissions();
+                        
+                        // PHASE 2: INSTANT CACHE LOAD + BACKGROUND SYNC
+                        fetchBackgroundData();
+                        
                     } else {
                         alert("MISMATCH DETECTED!\n\nIncorrect Username or Password.");
                         document.getElementById('pin-code').value = "";
@@ -661,6 +651,174 @@
                     document.getElementById('login-inputs').classList.remove('hidden');
                     document.getElementById('loading-spinner').classList.add('hidden');
                 });
+        }
+
+        async function fetchBackgroundData() {
+            // 1. Check for local memory cache for INSTANT load
+            const cachedRes = await loadFromCache();
+            if (cachedRes) {
+                processAndLoadData(cachedRes);
+                showToast("Ready", "Loaded from device memory. Updating in background...", false);
+            } else {
+                showToast("Welcome!", "Downloading database... (This only happens once)", false);
+            }
+
+            // 2. Fetch the highly compressed 2D Array data from Google
+            const dataUrl = `${GOOGLE_SCRIPT_URL}?action=getData`;
+            
+            fetch(dataUrl)
+                .then(response => response.json())
+                .then(async res => {
+                    if (res.status === 'success') {
+                        await saveToCache(res); // Save to massive storage
+                        processAndLoadData(res);
+                        if(cachedRes) {
+                             showToast("Sync Complete", "Live database updated.", false);
+                        } else {
+                             showToast("Ready", "Database downloaded and saved!", false);
+                        }
+                    }
+                })
+                .catch(err => {
+                    console.error("Background sync failed:", err);
+                    if (!cachedRes) showToast("Sync Error", "Could not download data. Check connection.", true);
+                });
+        }
+
+        // Helper function to turn Compressed 2D Arrays back into usable App Objects
+        function mapCompressedToObj(compressedData, isMaster = false) {
+            if(!compressedData || !compressedData.headers) return [];
+            const h = compressedData.headers;
+            return compressedData.rows.map(row => {
+                let obj = {};
+                h.forEach((colName, idx) => {
+                    obj[colName] = row[idx]; 
+                });
+                
+                // Set explicitly expected keys
+                if(isMaster) {
+                    const getVal = (names) => {
+                        for(let n of names) { let idx = h.indexOf(n); if(idx > -1) return row[idx]; }
+                        return "";
+                    };
+                    
+                    obj.UNIQUE_ID = getVal(['UNIQUE ID']);
+                    obj.COMMONNAME = getVal(['COMMONNAME']);
+                    obj.CONTSIZE = getVal(['CONTSIZE']);
+                    obj.LOCATIONCODE = getVal(['LOCATIONCODE']);
+                    obj.PTRAVAILABLE = getVal(['PTRAVAILABLE']);
+                    obj.SEASONSUPPLY = getVal(['SEASON_SUPPLY', 'SEASONSUPPLY']);
+                    obj.PRIORITY = getVal(['PRIORITY']);
+                    obj.QUALITYCODE = getVal(['QUALITYCODE']);
+                    obj.FIELDTAGCOLOR = getVal(['FIELD TAG COLOR', 'FIELDTAGCOLOR']);
+                    obj.ITEMCODE = getVal(['ITEMCODE']);
+                    obj.LOTCODE = getVal(['LOTCODE']);
+                    obj.BLOCKALPHA = getVal(['BLOCKALPHA']);
+                    obj.ASSIGNEDTO = getVal(['ASSIGNEDTO']);
+                    obj.DATE_COMPLETED = getVal(['DATE COMPLETED']);
+                    
+                    let isReqVal = getVal(['IS REQUEST']);
+                    obj.IS_REQUEST = (String(isReqVal).toUpperCase() === 'TRUE' || isReqVal === true);
+                    obj.REQUESTED_BY = getVal(['REQUESTED BY']);
+                    obj.REQUEST_FOLDER = getVal(['REQUEST FOLDER']);
+                    
+                    obj.MATCH = getVal(['MATCH', 'MATCHPCT']);
+                    obj.SPEC = getVal(['SPEC']);
+                    obj.CALIPER = getVal(['CALIPER']);
+                    obj.PIC_NOTE = getVal(['PIC NOTE', 'PICKNOTE']);
+                    obj.SALES_NOTE = getVal(['SALES NOTE', 'SALESDESC']);
+                    obj.SAVED_PHOTO_LINK = getVal(['PHOTO LINK']);
+                    obj.SAVED_PHOTO_NAME = getVal(['PHOTO NAME']);
+                    
+                    obj.REQ_MATCH = getVal(['REQ MATCH']);
+                    obj.REQ_SPEC = getVal(['REQ SPEC']);
+                    obj.REQ_CALIPER = getVal(['REQ CALIPER']);
+                    obj.REQ_PICK = getVal(['REQ PIC NOTE']);
+                    obj.REQ_SALES_NOTE = getVal(['REQ SALES NOTE']);
+                    obj.REQ_COMMENTS = getVal(['REQ COMMENTS']);
+                    obj.REQ_PHOTO_LINK = getVal(['REQ PHOTO LINK']);
+                    obj.REQ_PHOTO_NAME = getVal(['REQ PHOTO NAME']);
+                } else {
+                     if (obj['DOCK']) obj.DOCK_NUM = parseInt(String(obj['DOCK']).replace(/\D/g, ''), 10);
+                }
+                return obj;
+            });
+        }
+
+        function processAndLoadData(res) {
+            salesNotesDict = res.salesNotesMap || {};
+            
+            // Map compressed data arrays to Javascript Objects instantly
+            fullInventory = mapCompressedToObj(res.data, true).map((item, idx) => {
+                item.DOM_ID = 'fi_' + idx;
+                return item;
+            });
+            lowStockInventory = mapCompressedToObj(res.lowStock, true).map((item, idx) => {
+                item.DOM_ID = 'ls_' + idx;
+                return item;
+            });
+            socInventory = mapCompressedToObj(res.socData, false);
+            reservesInventory = mapCompressedToObj(res.reservesData, false);
+
+            // --- START TOURNAMENT DEDUPLICATION ---
+            let itemsWithPriority = {};
+            fullInventory.forEach(item => {
+                const pri = parseFloat(item.PRIORITY);
+                const ptr = parseFloat(item.PTRAVAILABLE) || 0;
+                const ss = parseFloat(item.SEASONSUPPLY) || 0;
+                const iCode = String(item.ITEMCODE || "").trim().toUpperCase();
+
+                if (iCode && !isNaN(pri) && pri > 0 && ptr >= (ss * 1.10)) {
+                    if (!itemsWithPriority[iCode]) itemsWithPriority[iCode] = [];
+                    itemsWithPriority[iCode].push(item);
+                }
+            });
+
+            let seasonWinnerIds = new Set();
+            for (const code in itemsWithPriority) {
+                let group = itemsWithPriority[code];
+                group.sort((a, b) => {
+                    const priA = parseFloat(a.PRIORITY);
+                    const priB = parseFloat(b.PRIORITY);
+                    if (priA === priB) {
+                        return (parseFloat(b.PTRAVAILABLE) || 0) - (parseFloat(a.PTRAVAILABLE) || 0);
+                    }
+                    return priA - priB;
+                });
+                seasonWinnerIds.add(group[0].DOM_ID);
+            }
+
+            fullInventory.forEach(item => {
+                item.APP_TAB_ASSIGNMENT = seasonWinnerIds.has(item.DOM_ID) ? 'season' : 'location';
+            });
+            // --- END TOURNAMENT DEDUPLICATION ---
+            
+            reservesInventory = reservesInventory.map((item, idx) => {
+                item.DOM_ID = 'res_' + idx;
+                item.UNIQUE_ID = item.UNIQUE_ID || 'res_uid_' + idx; 
+                
+                let resCode = String(item.ITEMCODE || item.ITEM || "").trim().toUpperCase();
+                let masterItem = fullInventory.find(f => String(f.ITEMCODE || "").trim().toUpperCase() === resCode);
+                
+                item.COMMONNAME = masterItem ? masterItem.COMMONNAME : (item.COMMONNAME || item['PLANT NAME'] || item.DESCRIPTION || item.DESC || 'Unknown Plant');
+                item.CONTSIZE = masterItem ? masterItem.CONTSIZE : (item.CONTSIZE || item.SIZE || item.CONTAINER || '-');
+                item.CUSTOMERNAME = item.CUSTOMERNAME || item.CUSTOMER || 'Unknown Customer';
+                item.CONSIGNEENAME = item.CONSIGNEENAME || item.CONSIGNEE || '';
+                item.SALESREPNAME = item.SALESREPNAME || item.SALESREP || item['SALES REP'] || 'Unknown Rep';
+                
+                if (masterItem) {
+                    item.LOCATIONCODE = masterItem.LOCATIONCODE;
+                    item.PTRAVAILABLE = masterItem.PTRAVAILABLE;
+                    item.SEASONSUPPLY = masterItem.SEASONSUPPLY;
+                    item.PRIORITY = masterItem.PRIORITY;
+                    item.QUALITYCODE = masterItem.QUALITYCODE;
+                    item.FIELDTAGCOLOR = masterItem.FIELDTAGCOLOR;
+                    item.LOTCODE = masterItem.LOTCODE;
+                }
+                return item;
+            });
+
+            reRenderCurrentView();
         }
 
         document.addEventListener('DOMContentLoaded', async () => {
@@ -682,7 +840,7 @@
                     await navigator.credentials.create({
                         publicKey: {
                             challenge: challenge,
-                            rp: { name: "GNC SALES COMMAND", id: window.location.hostname },
+                            rp: { name: "GNC PRO 005", id: window.location.hostname },
                             user: { id: userId, name: user, displayName: user.toUpperCase() },
                             pubKeyCredParams: [{type: "public-key", alg: -7}, {type: "public-key", alg: -257}],
                             authenticatorSelection: { 
@@ -734,13 +892,25 @@
         function applyRolePermissions() {
             document.getElementById('view-login').style.display = 'none';
             document.getElementById('app-wrapper').classList.remove('hidden');
+            
             const isAdmin = (currentRole === 'Admin');
-            document.querySelectorAll('.admin-only').forEach(el => el.style.display = isAdmin ? 'block' : 'none');
+            document.querySelectorAll('.admin-only').forEach(el => {
+                if(isAdmin) {
+                    el.classList.remove('hidden');
+                    el.style.display = ''; // clean up any old inline block
+                } else {
+                    el.classList.add('hidden');
+                }
+            });
             
             const isDylan = (currentUser === 'dylan_collyge' || currentUser === 'dylan');
             document.querySelectorAll('.dylan-only').forEach(el => {
-                el.style.display = isDylan ? 'block' : 'none';
-                el.classList.remove('hidden'); 
+                if(isDylan) {
+                    el.classList.remove('hidden');
+                    el.style.display = ''; // clean up any old inline block
+                } else {
+                    el.classList.add('hidden');
+                }
             });
 
             switchView('home');
@@ -775,7 +945,7 @@
             }
             if(viewId === 'review') { 
                 reviewViewLevel = 0; 
-                setReviewTab('completed'); 
+                renderReview(); 
             }
             if(viewId === 'request') {
                 requestViewLevel = 0;
@@ -813,13 +983,6 @@
             renderTasks();
         }
 
-        function setReviewTab(tab) {
-            activeReviewTab = tab;
-            document.getElementById('review-tab-completed').classList.toggle('active', tab === 'completed');
-            reviewViewLevel = 0; 
-            renderReview();
-        }
-
         function selectRequestCategory(cat) {
             requestFilterMode = cat;
             requestViewLevel = 1;
@@ -848,14 +1011,14 @@
             const term = document.getElementById('reserves-search').value;
             if (term.length > 0 && reservesViewLevel > 0) { 
                 reservesViewLevel = 0; 
-                selectedReservesRep = null; 
-                selectedReservesCustomer = null; 
+                selectedReservesName = null; 
+                selectedReservesSize = null; 
             }
             renderReserves();
         }
 
-        function selectReservesRep(rep) { selectedReservesRep = rep; reservesViewLevel = 1; renderReserves(); }
-        function selectReservesCustomer(cust) { selectedReservesCustomer = cust; reservesViewLevel = 2; renderReserves(); }
+        function selectReservesName(name) { selectedReservesName = name; reservesViewLevel = 1; renderReserves(); }
+        function selectReservesSize(size) { selectedReservesSize = size; reservesViewLevel = 2; renderReserves(); }
 
         function getLocPrefix(loc) {
             if(!loc) return "Unassigned";
@@ -1015,7 +1178,10 @@
             document.getElementById('tab-select-modal').classList.remove('hidden');
         }
 
+        // --- NEW MULTI-STEP REQUEST MODAL FLOW ---
         function openRequestModal() {
+            document.getElementById('step-1-rep').classList.remove('hidden');
+            document.getElementById('step-2-cust').classList.add('hidden');
             document.getElementById('request-rep-modal').classList.remove('hidden');
             document.getElementById('rep-search-input').value = "";
             filterRepList();
@@ -1032,7 +1198,7 @@
             salesRepList.forEach(rep => {
                 if (rep.toLowerCase().includes(val)) {
                     if (rep.toLowerCase() === val) exactMatch = true;
-                    html += `<button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm text-left" onclick="confirmRequestAction('${rep}')">${rep}</button>`;
+                    html += `<button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm text-left" onclick="selectRepForRequest('${rep}')">${rep}</button>`;
                 }
             });
 
@@ -1046,12 +1212,76 @@
             }
         }
 
-        function submitCustomRep() {
-            const val = document.getElementById('rep-search-input').value.trim();
-            if(val) confirmRequestAction(val);
+        function selectRepForRequest(repName) {
+            tempSelectedReqRep = repName;
+            document.getElementById('step-1-rep').classList.add('hidden');
+            document.getElementById('step-2-cust').classList.remove('hidden');
+            
+            document.getElementById('req-qty-input').value = "";
+            document.getElementById('cust-search-input').value = "";
+            
+            populateCustomerList();
         }
 
-        function confirmRequestAction(repName) {
+        // --- UPDATED POPULATE CUSTOMER LIST ---
+        function populateCustomerList() {
+            const val = document.getElementById('cust-search-input').value.toLowerCase().trim();
+            const container = document.getElementById('cust-list-container');
+            
+            let custSet = new Set();
+            
+            const addCusts = (arr) => {
+                arr.forEach(i => {
+                    let rName = String(i.SALESREPNAME || i.SALESREP || i['SALES REP'] || "").toUpperCase();
+                    
+                    if (rName.includes(tempSelectedReqRep.toUpperCase())) {
+                        let c = String(i.CUSTOMERNAME || i.CUSTOMER || i['CUSTOMER NAME'] || "").trim();
+                        let cons = String(i.CONSIGNEENAME || i.CONSIGNEE || i['CONSIGNEE NAME'] || "").trim();
+                        
+                        if (c || cons) {
+                            let display = c;
+                            if (cons && cons !== c) {
+                                display = c ? `${c} - ${cons}` : cons;
+                            }
+                            custSet.add(display);
+                        }
+                    }
+                });
+            };
+            
+            addCusts(socInventory);
+            addCusts(reservesInventory);
+            
+            let custArray = Array.from(custSet).sort();
+            
+            let html = "";
+            custArray.forEach(c => {
+                if (c.toLowerCase().includes(val) || val === "") {
+                    html += `<div class="bg-orange-50 text-orange-800 font-bold p-3 rounded-lg border border-orange-200 shadow-sm text-left cursor-pointer active:bg-orange-100" onclick="setCustomerInput('${c.replace(/'/g, "\\'")}')">${c}</div>`;
+                }
+            });
+            
+            if (html === "") {
+                html = `<div class="text-xs text-gray-400 p-2 text-center">No matching customers found. Type above to use a custom name.</div>`;
+            }
+            
+            container.innerHTML = html;
+        }
+
+        function setCustomerInput(val) {
+            document.getElementById('cust-search-input').value = val;
+            populateCustomerList(); // Refilter
+        }
+
+        function finalizeRequestAction() {
+            let cust = document.getElementById('cust-search-input').value.trim();
+            let qty = document.getElementById('req-qty-input').value.trim();
+            
+            if (!cust) {
+                showToast("Required", "Please enter or select a customer.", true);
+                return;
+            }
+            
             document.getElementById('request-rep-modal').classList.add('hidden');
             const domIds = Array.from(selectedItems);
             const uniqueIds = [];
@@ -1064,17 +1294,26 @@
                 let item = fullInventory.find(i => i.DOM_ID === dId) || lowStockInventory.find(i => i.DOM_ID === dId) || reservesInventory.find(i => i.DOM_ID === dId);
                 if (item) {
                     item.IS_REQUEST = true; 
-                    item.REQUESTED_BY = repName; 
+                    item.REQUESTED_BY = tempSelectedReqRep; 
                     item.REQUEST_FOLDER = folderId; 
+                    item.REQ_CUSTOMER = cust;
+                    item.REQ_QTY = qty;
                     uniqueIds.push(item.UNIQUE_ID);
                 }
             });
 
-            showToast("Processing...", `Saving request for ${repName}...`, false);
+            showToast("Processing...", `Saving request for ${tempSelectedReqRep}...`, false);
 
             fetch(GOOGLE_SCRIPT_URL, {
                 method: 'POST',
-                body: JSON.stringify({ type: 'batch_request', ids: uniqueIds, repName: repName, folderId: folderId })
+                body: JSON.stringify({ 
+                    type: 'batch_request', 
+                    ids: uniqueIds, 
+                    repName: tempSelectedReqRep, 
+                    folderId: folderId,
+                    customer: cust,
+                    qty: qty
+                })
             }).then(res => res.json())
             .then(data => {
                 if (data.status === 'success') {
@@ -1084,6 +1323,8 @@
                 } else { showToast("Error", "Failed to update sheet.", true); }
             }).catch(err => showToast("Error", "Network error.", true));
         }
+
+        // --- END NEW MODAL FLOW ---
 
         function processTabSelection(tab) {
             pendingTabType = tab;
@@ -1107,50 +1348,39 @@
             let returnText = `${headerTitle}\n\n`;
 
             items.forEach(i => {
-                if (i.DOM_ID && i.DOM_ID.startsWith('res_')) {
-                    let qtyReserved = parseInt(String(i.QUANTITYORDERED || i['QUANTITY ORDERED'] || i.QTYORDERED || i.QTY || 0).replace(/,/g, '')) || 0;
-                    let shipped = parseInt(String(i.SHIPPED || i['QTY SHIPPED'] || 0).replace(/,/g, '')) || 0;
-                    let remaining = qtyReserved - shipped;
+                returnText += `▪ ${i.COMMONNAME || 'Unknown'} (${i.CONTSIZE || '-'}) | Loc: ${i.LOCATIONCODE || 'No Loc'}\n`;
+                
+                let match = tabType === 'request' ? i.REQ_MATCH : (i.MATCH || i.MATCHPCT);
+                if (match) returnText += `  Match: ${match}%\n`;
+                
+                let spec = tabType === 'request' ? i.REQ_SPEC : i.SPEC;
+                if (spec) returnText += `  Spec: ${spec}\n`;
+                
+                let caliper = tabType === 'request' ? i.REQ_CALIPER : i.CALIPER;
+                if (caliper) returnText += `  Caliper: ${caliper}\n`;
+                
+                let pick = tabType === 'request' ? i.REQ_PICK : (i.PIC_NOTE || i.PICKNOTE || i.PICK);
+                if (pick) returnText += `  Pick Note: ${pick}\n`;
+                
+                let sales = tabType === 'request' ? i.REQ_SALES_NOTE : (i.SALES_NOTE || i.SALESNOTE || i.SALESDESC);
+                if (sales) returnText += `  Sales Note: ${sales}\n`;
 
-                    returnText += `▪ ${i.COMMONNAME || 'Unknown'} (${i.CONTSIZE || '-'}) | Loc: ${i.LOCATIONCODE || 'No Loc'}\n`;
-                    returnText += `  Customer: ${i.CUSTOMERNAME}\n`;
-                    returnText += `  Rep: ${i.SALESREPNAME}\n`;
-                    returnText += `  Reserved: ${qtyReserved} | Shipped: ${shipped} | Remaining: ${remaining}\n\n`;
-                } else {
-                    returnText += `▪ ${i.COMMONNAME || 'Unknown'} (${i.CONTSIZE || '-'}) | Loc: ${i.LOCATIONCODE || 'No Loc'}\n`;
-                    
-                    let match = tabType === 'request' ? i.REQ_MATCH : (i.MATCH || i.MATCHPCT);
-                    if (match) returnText += `  Match: ${match}%\n`;
-                    
-                    let spec = tabType === 'request' ? i.REQ_SPEC : i.SPEC;
-                    if (spec) returnText += `  Spec: ${spec}\n`;
-                    
-                    let caliper = tabType === 'request' ? i.REQ_CALIPER : i.CALIPER;
-                    if (caliper) returnText += `  Caliper: ${caliper}\n`;
-                    
-                    let pick = tabType === 'request' ? i.REQ_PICK : (i.PIC_NOTE || i.PICKNOTE || i.PICK);
-                    if (pick) returnText += `  Pick Note: ${pick}\n`;
-                    
-                    let sales = tabType === 'request' ? i.REQ_SALES_NOTE : (i.SALES_NOTE || i.SALESNOTE || i.SALESDESC);
-                    if (sales) returnText += `  Sales Note: ${sales}\n`;
-
-                    if (tabType === 'request' && i.REQ_COMMENTS) returnText += `  Comments: ${i.REQ_COMMENTS}\n`;
-                    
-                    let photo = tabType === 'request' ? i.REQ_PHOTO_LINK : (i.SAVED_PHOTO_LINK || i['PHOTO LINK'] || i.PHOTOLINK);
-                    if (photo && photo.trim() !== "") {
-                        let urls = photo.split(',');
-                        let counter = 1;
-                        urls.forEach(url => {
-                            let cleanUrl = url.trim();
-                            let match = cleanUrl.match(/(https?:\/\/[^"\s>]+)/);
-                            if (match) {
-                                returnText += `  Photo ${counter}: ${match[1]}\n`;
-                                counter++;
-                            }
-                        });
-                    }
-                    returnText += `\n`;
+                if (tabType === 'request' && i.REQ_COMMENTS) returnText += `  Comments: ${i.REQ_COMMENTS}\n`;
+                
+                let photo = tabType === 'request' ? i.REQ_PHOTO_LINK : (i.SAVED_PHOTO_LINK || i['PHOTO LINK'] || i.PHOTOLINK);
+                if (photo && photo.trim() !== "") {
+                    let urls = photo.split(',');
+                    let counter = 1;
+                    urls.forEach(url => {
+                        let cleanUrl = url.trim();
+                        let match = cleanUrl.match(/(https?:\/\/[^"\s>]+)/);
+                        if (match) {
+                            returnText += `  Photo ${counter}: ${match[1]}\n`;
+                            counter++;
+                        }
+                    });
                 }
+                returnText += `\n`;
             });
 
             return returnText;
@@ -1310,7 +1540,7 @@
                     if (!stopsMap[stopNum].plants[key]) {
                         stopsMap[stopNum].plants[key] = { itemCode, name, size, count: 0 };
                     }
-                    stopsMap[stopNum].plants[key].count++;
+                        stopsMap[stopNum].plants[key].count++;
                 });
 
                 let html = `<div class="back-btn" onclick="dockViewLevel=0; document.getElementById('docks-search').value=''; renderDocks()"><i class="ph-bold ph-arrow-left"></i> Back to Docks</div>`;
@@ -1632,9 +1862,11 @@
         function renderReserves() {
             const container = document.getElementById('reserves-content');
             const crumb = document.getElementById('reserves-crumb');
+
             const resSearch = document.getElementById('reserves-search');
-            
-            if (resSearch) resSearch.classList.remove('hidden'); 
+            if (resSearch) resSearch.classList.add('hidden'); 
+
+            if (reservesViewLevel === 0 && resSearch) resSearch.classList.remove('hidden'); 
             
             const term = resSearch ? resSearch.value.toLowerCase() : "";
 
@@ -1650,23 +1882,23 @@
             }
 
             if (reservesViewLevel === 0) {
-                crumb.innerText = `Reserves / Select Rep (${filteredReserves.length} items)`;
-                const reps = [...new Set(filteredReserves.map(i => i.SALESREPNAME))].sort();
-                container.innerHTML = reps.map(n => `<div class="drill-item" onclick="selectReservesRep('${n.replace(/'/g, "\\'")}')"><span class="font-bold text-lg">${n}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
+                crumb.innerText = `Select Plant (${filteredReserves.length} items)`;
+                const names = [...new Set(filteredReserves.map(i => i.COMMONNAME))].sort();
+                container.innerHTML = names.map(n => `<div class="drill-item" onclick="selectReservesName('${n.replace(/'/g, "\\'")}')"><span class="font-bold text-lg">${n}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
                 return;
             }
 
             if (reservesViewLevel === 1) {
-                crumb.innerText = `Reserves / ${selectedReservesRep}`;
-                const repItems = filteredReserves.filter(i => i.SALESREPNAME === selectedReservesRep);
-                const customers = [...new Set(repItems.map(i => i.CUSTOMERNAME))].sort();
+                crumb.innerText = `${selectedReservesName}`;
+                const namedItems = filteredReserves.filter(i => i.COMMONNAME === selectedReservesName);
+                const sizes = [...new Set(namedItems.map(i => i.CONTSIZE))].sort();
                 
-                let html = `<div class="back-btn" onclick="reservesViewLevel=0; renderReserves()"><i class="ph-bold ph-arrow-left"></i> Back to Reps</div>`;
-                html += `<div class="font-bold text-indigo-600 mb-4 px-2 text-xl border-b pb-2">${selectedReservesRep}</div>`;
+                let html = `<div class="back-btn" onclick="reservesViewLevel=0; renderReserves()"><i class="ph-bold ph-arrow-left"></i> Back to Plants</div>`;
+                html += `<div class="font-bold text-indigo-600 mb-4 px-2 text-xl border-b pb-2">${selectedReservesName}</div>`;
                 
-                html += customers.map(c => {
-                    const count = repItems.filter(i => i.CUSTOMERNAME === c).length;
-                    return `<div class="drill-item" onclick="selectReservesCustomer('${c.replace(/'/g, "\\'")}')"><span class="font-bold text-lg">${c} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
+                html += sizes.map(s => {
+                    const count = namedItems.filter(i => i.CONTSIZE === s).length;
+                    return `<div class="drill-item" onclick="selectReservesSize('${s}')"><span class="font-bold text-lg">${s} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
                 }).join('');
                 
                 container.innerHTML = html;
@@ -1674,55 +1906,47 @@
             }
 
             if (reservesViewLevel === 2) {
-                crumb.innerText = `${selectedReservesRep} / ${selectedReservesCustomer}`;
-                let displayItems = filteredReserves.filter(i => i.SALESREPNAME === selectedReservesRep && i.CUSTOMERNAME === selectedReservesCustomer);
+                crumb.innerText = `${selectedReservesName} (${selectedReservesSize})`;
+                let displayItems = filteredReserves.filter(i => i.COMMONNAME === selectedReservesName && i.CONTSIZE === selectedReservesSize);
                 
-                let html = `<div class="back-btn" onclick="reservesViewLevel=1; renderReserves()"><i class="ph-bold ph-arrow-left"></i> Back to Customers</div>`;
+                let html = `<div class="back-btn" onclick="reservesViewLevel=1; renderReserves()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>`;
                 
                 html += displayItems.map(item => {
-                    let isChecked = selectedItems.has(item.DOM_ID) ? 'checked' : '';
+                    let custDisplay = item.CUSTOMERNAME;
+                    if (item.CONSIGNEENAME && item.CONSIGNEENAME !== item.CUSTOMERNAME) {
+                        custDisplay += ` - ${item.CONSIGNEENAME}`;
+                    }
+
                     let qtyReserved = parseInt(String(item.QUANTITYORDERED || item['QUANTITY ORDERED'] || item.QTYORDERED || item.QTY || 0).replace(/,/g, '')) || 0;
                     let shipped = parseInt(String(item.SHIPPED || item['QTY SHIPPED'] || 0).replace(/,/g, '')) || 0;
                     let remaining = qtyReserved - shipped;
+                    
                     let remainingColor = remaining > 0 ? "text-orange-600" : "text-green-600";
                     
                     return `
-                    <div class="flex items-center w-full mb-2 item-row" data-dom-id="${item.DOM_ID}"
-                         onmousedown="startPress(event, '${item.DOM_ID}')" 
-                         onmouseup="cancelPress()" 
-                         onmouseleave="cancelPress()" 
-                         ontouchstart="startPress(event, '${item.DOM_ID}')" 
-                         ontouchend="cancelPress()" 
-                         ontouchcancel="cancelPress()"
-                         ontouchmove="checkMove(event)"
-                         onclick="handleCardClick('${item.DOM_ID}', '${item.UNIQUE_ID}', 'reserves')">
-                        
-                        <div class="card-checkbox-container flex-shrink-0">
-                            <input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm pointer-events-none" ${isChecked}>
+                    <div class="bg-white border-b border-gray-200 p-4 flex flex-col items-start gap-2 cursor-pointer active:bg-gray-50 transition-colors" onclick="openDetail('${item.UNIQUE_ID}', 'reserves')">
+                        <div class="flex justify-between w-full items-start mb-2">
+                            <div class="pr-4">
+                                <div class="font-bold text-[15px] text-gray-800 leading-tight">${custDisplay}</div>
+                                <div class="text-xs font-bold text-indigo-600 mt-1"><i class="ph-bold ph-user mr-1"></i>${item.SALESREPNAME}</div>
+                            </div>
+                            <i class="ph-bold ph-caret-right text-gray-300 text-xl flex-shrink-0 mt-1"></i>
                         </div>
                         
-                        <div class="inv-card status-indigo flex flex-col flex-grow !mb-0 transition-transform active:scale-[0.99] p-3">
-                            <div class="flex justify-between font-bold text-sm mb-1">
-                                <span class="text-[#007a4d] truncate pr-2">${item.COMMONNAME || 'Unknown'}</span>
-                                <span class="whitespace-nowrap bg-gray-100 text-gray-800 px-1.5 py-0.5 rounded text-xs border border-gray-200">${item.CONTSIZE || '-'}</span>
+                        <div class="w-full flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg p-2 text-center mt-2">
+                            <div class="flex-1">
+                                <div class="text-[9px] font-bold text-gray-500 uppercase">QTY Reserved</div>
+                                <div class="font-bold text-gray-800 text-sm">${qtyReserved}</div>
                             </div>
-                            <div class="text-[11px] text-gray-500 mb-2">Loc: <span class="font-bold text-gray-800">${item.LOCATIONCODE || 'No Loc'}</span> | Item: ${item.ITEMCODE || '-'}</div>
-                            
-                            <div class="w-full flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg p-2 text-center">
-                                <div class="flex-1">
-                                    <div class="text-[9px] font-bold text-gray-500 uppercase">Reserved</div>
-                                    <div class="font-bold text-gray-800 text-sm">${qtyReserved}</div>
-                                </div>
-                                <div class="w-px h-8 bg-gray-200 mx-2"></div>
-                                <div class="flex-1">
-                                    <div class="text-[9px] font-bold text-gray-500 uppercase">Shipped</div>
-                                    <div class="font-bold text-gray-800 text-sm">${shipped}</div>
-                                </div>
-                                <div class="w-px h-8 bg-gray-200 mx-2"></div>
-                                <div class="flex-1">
-                                    <div class="text-[9px] font-bold text-gray-500 uppercase">Remaining</div>
-                                    <div class="font-bold ${remainingColor} text-sm">${remaining}</div>
-                                </div>
+                            <div class="w-px h-8 bg-gray-200 mx-2"></div>
+                            <div class="flex-1">
+                                <div class="text-[9px] font-bold text-gray-500 uppercase">Shipped</div>
+                                <div class="font-bold text-gray-800 text-sm">${shipped}</div>
+                            </div>
+                            <div class="w-px h-8 bg-gray-200 mx-2"></div>
+                            <div class="flex-1">
+                                <div class="text-[9px] font-bold text-gray-500 uppercase">Remaining</div>
+                                <div class="font-bold ${remainingColor} text-sm">${remaining}</div>
                             </div>
                         </div>
                     </div>`;
@@ -2267,13 +2491,6 @@
                 if(btnDraft) btnDraft.innerText = (activeDetailTab === 'request') ? "SAVE REQUEST DATA" : "SAVE DRAFT";
                 if(btnComp) btnComp.innerText = "MARK COMPLETE";
                 showToast("Network Error", "Could not reach server.", true);
-            });
-        }
-
-        // Register Service Worker for Native Install
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js');
             });
         }
     </script>
