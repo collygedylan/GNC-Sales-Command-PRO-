@@ -54,8 +54,10 @@
         .task-tab { flex: 1; text-align: center; padding: 12px; font-size: 11px; font-weight: 700; color: #6b7280; cursor: pointer; border-bottom: 3px solid transparent; text-transform: uppercase; }
         .task-tab.active { color: var(--brand-green); border-bottom-color: var(--brand-green); background: white; }
 
-        .detail-tabs { display: flex; border-bottom: 1px solid #e5e7eb; background: #f9fafb; margin-bottom: 10px; }
-        .detail-tab { flex: 1; text-align: center; padding: 10px; font-size: 11px; font-weight: 700; color: #6b7280; cursor: pointer; border-bottom: 3px solid transparent; text-transform: uppercase; }
+        /* UPDATED: SCROLLABLE DETAIL TABS */
+        .detail-tabs { display: flex; overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none; border-bottom: 1px solid #e5e7eb; background: #f9fafb; margin-bottom: 10px; }
+        .detail-tabs::-webkit-scrollbar { display: none; }
+        .detail-tab { flex: 0 0 auto; text-align: center; padding: 10px 16px; font-size: 11px; font-weight: 700; color: #6b7280; cursor: pointer; border-bottom: 3px solid transparent; text-transform: uppercase; }
         .detail-tab.active { color: var(--brand-green); border-bottom-color: var(--brand-green); background: white; }
         
         .overview-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
@@ -316,8 +318,10 @@
                 
                 <div class="detail-tabs">
                     <div class="detail-tab active" onclick="switchDetailTab('overview')" id="dtab-overview">Overview</div>
-                    <div class="detail-tab" onclick="switchDetailTab('actions')" id="dtab-actions">Notes & Actions</div>
-                    <div class="detail-tab" onclick="switchDetailTab('request')" id="dtab-request">Request Data</div>
+                    <div class="detail-tab hidden" onclick="switchDetailTab('season')" id="dtab-season">Season Notes</div>
+                    <div class="detail-tab hidden" onclick="switchDetailTab('location')" id="dtab-location">Location Notes</div>
+                    <div class="detail-tab" onclick="switchDetailTab('request')" id="dtab-request">Request</div>
+                    <div class="detail-tab" onclick="switchDetailTab('notes')" id="dtab-notes">Notes & Actions</div>
                 </div>
                 
                 <div id="det-overview-content" class="py-4">
@@ -340,59 +344,171 @@
                     </div>
                 </div>
                 
-                <div id="det-actions-content" class="hidden py-4">
-                    <div id="photo-preview" class="mb-4 hidden">
+                <div id="det-season-content" class="hidden py-4">
+                    <div id="ssn-photo-preview" class="mb-4 hidden">
                         <p class="text-[10px] font-bold text-blue-600 mb-2 uppercase">Photos on file</p>
-                        <div id="photo-list-container" class="space-y-2"></div>
+                        <div id="ssn-photo-list-container" class="space-y-2"></div>
                     </div>
 
                     <div class="grid grid-cols-2 gap-2 mb-4">
                         <label class="bg-green-50 border-2 border-dashed border-green-500 text-green-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer">
                             <i class="ph-fill ph-camera text-3xl mb-1"></i>
                             <span class="text-[10px] font-bold">CAMERA</span>
-                            <input type="file" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoUpload(this)">
+                            <input type="file" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoUpload(this, 'ssn-')">
                         </label>
                         <label class="bg-blue-50 border-2 border-dashed border-blue-500 text-blue-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer">
                             <i class="ph-fill ph-image text-3xl mb-1"></i>
                             <span class="text-[10px] font-bold">LIBRARY</span>
-                            <input type="file" accept="image/*" class="hidden" onchange="handlePhotoUpload(this)">
+                            <input type="file" accept="image/*" class="hidden" onchange="handlePhotoUpload(this, 'ssn-')">
                         </label>
                     </div>
 
-                    <div id="input-container">
+                    <div id="ssn-input-container">
                         <div>
                             <label class="text-[10px] font-bold text-gray-500 uppercase">Match %</label>
-                            <input type="number" id="in-match" class="input-field" placeholder="e.g. 95">
+                            <input type="number" id="ssn-match" class="input-field" placeholder="e.g. 95">
                         </div>
                         <div>
                             <label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label>
-                            <input type="text" id="in-spec" class="input-field" placeholder="e.g. 24-30 inch">
+                            <input type="text" id="ssn-spec" class="input-field" placeholder="e.g. 24-30 inch">
                         </div>
-                        <div id="container-caliper" class="hidden">
+                        <div id="ssn-container-caliper" class="hidden">
                             <label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label>
-                            <input type="text" id="in-caliper" class="input-field" placeholder="e.g. 2 inch">
+                            <input type="text" id="ssn-caliper" class="input-field" placeholder="e.g. 2 inch">
                         </div>
                         
-                        <div id="quick-note-container" class="hidden mb-2">
+                        <div id="ssn-quick-note-container" class="hidden mb-2">
                             <label class="text-[10px] font-bold text-green-700 uppercase">Quick Notes</label>
-                            <select id="quick-note-select" class="input-field border-green-500 bg-green-50 text-sm font-bold text-green-800" onchange="applyQuickNote(this.value, 'in-sales-desc')">
+                            <select id="ssn-quick-note-select" class="input-field border-green-500 bg-green-50 text-sm font-bold text-green-800" onchange="applyQuickNote(this.value, 'ssn-sales-desc', 'ssn-quick-note-select')">
+                                <option value="">-- Select a Quick Note --</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="text-[10px] font-bold text-green-700 uppercase">Season Sales Description</label>
+                            <input type="text" id="ssn-sales-desc" class="input-field border-green-500 bg-green-50 uppercase" oninput="this.value = this.value.toUpperCase()" placeholder="TYPE NOTES HERE...">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label>
+                            <input type="text" id="ssn-pick" class="input-field" placeholder="e.g. Needs spacing">
+                        </div>
+                    </div>
+
+                    <div class="flex gap-2 mt-4">
+                        <button id="ssn-btn-save-draft" class="w-1/3 bg-gray-200 text-gray-700 font-bold py-4 rounded-xl shadow-md" onclick="saveData(false, 'ssn-')">SAVE DRAFT</button>
+                        <button id="ssn-btn-save-complete" class="w-2/3 bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg" onclick="saveData(true, 'ssn-')">MARK COMPLETE</button>
+                    </div>
+                </div>
+
+                <div id="det-location-content" class="hidden py-4">
+                    <div id="lsn-photo-preview" class="mb-4 hidden">
+                        <p class="text-[10px] font-bold text-blue-600 mb-2 uppercase">Photos on file</p>
+                        <div id="lsn-photo-list-container" class="space-y-2"></div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2 mb-4">
+                        <label class="bg-green-50 border-2 border-dashed border-green-500 text-green-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer">
+                            <i class="ph-fill ph-camera text-3xl mb-1"></i>
+                            <span class="text-[10px] font-bold">CAMERA</span>
+                            <input type="file" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoUpload(this, 'lsn-')">
+                        </label>
+                        <label class="bg-blue-50 border-2 border-dashed border-blue-500 text-blue-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer">
+                            <i class="ph-fill ph-image text-3xl mb-1"></i>
+                            <span class="text-[10px] font-bold">LIBRARY</span>
+                            <input type="file" accept="image/*" class="hidden" onchange="handlePhotoUpload(this, 'lsn-')">
+                        </label>
+                    </div>
+
+                    <div id="lsn-input-container">
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-500 uppercase">Match %</label>
+                            <input type="number" id="lsn-match" class="input-field" placeholder="e.g. 95">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label>
+                            <input type="text" id="lsn-spec" class="input-field" placeholder="e.g. 24-30 inch">
+                        </div>
+                        <div id="lsn-container-caliper" class="hidden">
+                            <label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label>
+                            <input type="text" id="lsn-caliper" class="input-field" placeholder="e.g. 2 inch">
+                        </div>
+                        
+                        <div id="lsn-quick-note-container" class="hidden mb-2">
+                            <label class="text-[10px] font-bold text-green-700 uppercase">Quick Notes</label>
+                            <select id="lsn-quick-note-select" class="input-field border-green-500 bg-green-50 text-sm font-bold text-green-800" onchange="applyQuickNote(this.value, 'lsn-sales-desc', 'lsn-quick-note-select')">
+                                <option value="">-- Select a Quick Note --</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="text-[10px] font-bold text-green-700 uppercase">Location Sales Description</label>
+                            <input type="text" id="lsn-sales-desc" class="input-field border-green-500 bg-green-50 uppercase" oninput="this.value = this.value.toUpperCase()" placeholder="TYPE NOTES HERE...">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label>
+                            <input type="text" id="lsn-pick" class="input-field" placeholder="e.g. Needs spacing">
+                        </div>
+                    </div>
+
+                    <div class="flex gap-2 mt-4">
+                        <button id="lsn-btn-save-draft" class="w-1/3 bg-gray-200 text-gray-700 font-bold py-4 rounded-xl shadow-md" onclick="saveData(false, 'lsn-')">SAVE DRAFT</button>
+                        <button id="lsn-btn-save-complete" class="w-2/3 bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg" onclick="saveData(true, 'lsn-')">MARK COMPLETE</button>
+                    </div>
+                </div>
+
+                <div id="det-notes-content" class="hidden py-4">
+                    <div id="na-photo-preview" class="mb-4 hidden">
+                        <p class="text-[10px] font-bold text-blue-600 mb-2 uppercase">Photos on file</p>
+                        <div id="na-photo-list-container" class="space-y-2"></div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2 mb-4">
+                        <label class="bg-green-50 border-2 border-dashed border-green-500 text-green-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer">
+                            <i class="ph-fill ph-camera text-3xl mb-1"></i>
+                            <span class="text-[10px] font-bold">CAMERA</span>
+                            <input type="file" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoUpload(this, 'na-')">
+                        </label>
+                        <label class="bg-blue-50 border-2 border-dashed border-blue-500 text-blue-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer">
+                            <i class="ph-fill ph-image text-3xl mb-1"></i>
+                            <span class="text-[10px] font-bold">LIBRARY</span>
+                            <input type="file" accept="image/*" class="hidden" onchange="handlePhotoUpload(this, 'na-')">
+                        </label>
+                    </div>
+
+                    <div id="na-input-container">
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-500 uppercase">Match %</label>
+                            <input type="number" id="na-match" class="input-field" placeholder="e.g. 95">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label>
+                            <input type="text" id="na-spec" class="input-field" placeholder="e.g. 24-30 inch">
+                        </div>
+                        <div id="na-container-caliper" class="hidden">
+                            <label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label>
+                            <input type="text" id="na-caliper" class="input-field" placeholder="e.g. 2 inch">
+                        </div>
+                        
+                        <div id="na-quick-note-container" class="hidden mb-2">
+                            <label class="text-[10px] font-bold text-green-700 uppercase">Quick Notes</label>
+                            <select id="na-quick-note-select" class="input-field border-green-500 bg-green-50 text-sm font-bold text-green-800" onchange="applyQuickNote(this.value, 'na-sales-desc', 'na-quick-note-select')">
                                 <option value="">-- Select a Quick Note --</option>
                             </select>
                         </div>
                         
                         <div>
                             <label class="text-[10px] font-bold text-green-700 uppercase">Sales Description</label>
-                            <input type="text" id="in-sales-desc" class="input-field border-green-500 bg-green-50 uppercase" oninput="this.value = this.value.toUpperCase()" placeholder="TYPE NOTES HERE...">
+                            <input type="text" id="na-sales-desc" class="input-field border-green-500 bg-green-50 uppercase" oninput="this.value = this.value.toUpperCase()" placeholder="TYPE NOTES HERE...">
                         </div>
                         <div>
                             <label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label>
-                            <input type="text" id="in-pick" class="input-field" placeholder="e.g. Needs spacing">
+                            <input type="text" id="na-pick" class="input-field" placeholder="e.g. Needs spacing">
                         </div>
                     </div>
 
                     <div class="flex gap-2 mt-4">
-                        <button id="btn-save-draft" class="w-1/3 bg-gray-200 text-gray-700 font-bold py-4 rounded-xl shadow-md" onclick="saveData(false)">SAVE DRAFT</button>
-                        <button id="btn-save-complete" class="w-2/3 bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg" onclick="saveData(true)">MARK COMPLETE</button>
+                        <button id="na-btn-save-draft" class="w-1/3 bg-gray-200 text-gray-700 font-bold py-4 rounded-xl shadow-md" onclick="saveData(false, 'na-')">SAVE DRAFT</button>
+                        <button id="na-btn-save-complete" class="w-2/3 bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg" onclick="saveData(true, 'na-')">MARK COMPLETE</button>
                     </div>
                 </div>
 
@@ -406,12 +522,12 @@
                         <label class="bg-purple-50 border-2 border-dashed border-purple-500 text-purple-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer">
                             <i class="ph-fill ph-camera text-3xl mb-1"></i>
                             <span class="text-[10px] font-bold">CAMERA</span>
-                            <input type="file" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoUpload(this)">
+                            <input type="file" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoUpload(this, 'req-')">
                         </label>
                         <label class="bg-blue-50 border-2 border-dashed border-blue-500 text-blue-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer">
                             <i class="ph-fill ph-image text-3xl mb-1"></i>
                             <span class="text-[10px] font-bold">LIBRARY</span>
-                            <input type="file" accept="image/*" class="hidden" onchange="handlePhotoUpload(this)">
+                            <input type="file" accept="image/*" class="hidden" onchange="handlePhotoUpload(this, 'req-')">
                         </label>
                     </div>
 
@@ -431,13 +547,13 @@
 
                         <div id="req-quick-note-container" class="hidden mb-2">
                             <label class="text-[10px] font-bold text-purple-700 uppercase">Quick Notes</label>
-                            <select id="req-quick-note-select" class="input-field border-purple-500 bg-purple-50 text-sm font-bold text-purple-800" onchange="applyQuickNote(this.value, 'req-sales-desc')">
+                            <select id="req-quick-note-select" class="input-field border-purple-500 bg-purple-50 text-sm font-bold text-purple-800" onchange="applyQuickNote(this.value, 'req-sales-desc', 'req-quick-note-select')">
                                 <option value="">-- Select a Quick Note --</option>
                             </select>
                         </div>
 
                         <div>
-                            <label class="text-[10px] font-bold text-purple-700 uppercase">Sales Description</label>
+                            <label class="text-[10px] font-bold text-purple-700 uppercase">Request Sales Description</label>
                             <input type="text" id="req-sales-desc" class="input-field border-purple-500 bg-purple-50 uppercase" oninput="this.value = this.value.toUpperCase()" placeholder="TYPE NOTES HERE...">
                         </div>
                         <div>
@@ -451,7 +567,7 @@
                     </div>
 
                     <div class="flex gap-2 mt-4">
-                        <button id="req-btn-save-draft" class="w-full bg-purple-600 text-white font-bold py-4 rounded-xl shadow-lg" onclick="saveData(false)">SAVE REQUEST DATA</button>
+                        <button id="req-btn-save-draft" class="w-full bg-purple-600 text-white font-bold py-4 rounded-xl shadow-lg" onclick="saveData(false, 'req-')">SAVE REQUEST DATA</button>
                     </div>
                 </div>
 
@@ -898,7 +1014,7 @@
             document.querySelectorAll('.admin-only').forEach(el => {
                 if(isAdmin) {
                     el.classList.remove('hidden');
-                    el.style.display = ''; // clean up any old inline block
+                    el.style.display = ''; 
                 } else {
                     el.classList.add('hidden');
                 }
@@ -908,7 +1024,7 @@
             document.querySelectorAll('.dylan-only').forEach(el => {
                 if(isDylan) {
                     el.classList.remove('hidden');
-                    el.style.display = ''; // clean up any old inline block
+                    el.style.display = ''; 
                 } else {
                     el.classList.add('hidden');
                 }
@@ -1322,8 +1438,6 @@
                 } else { showToast("Error", "Failed to update sheet.", true); }
             }).catch(err => showToast("Error", "Network error.", true));
         }
-
-        // --- END NEW MODAL FLOW ---
 
         function processTabSelection(tab) {
             pendingTabType = tab;
@@ -2125,7 +2239,7 @@
             }
         }
 
-        function applyQuickNote(val, targetInputId) {
+        function applyQuickNote(val, targetInputId, selectId) {
             if (!val) return;
             const targetInput = document.getElementById(targetInputId);
             if (targetInput.value.trim() !== "") {
@@ -2133,11 +2247,7 @@
             } else {
                 targetInput.value = val.toUpperCase();
             }
-            if (targetInputId === 'in-sales-desc') {
-                document.getElementById('quick-note-select').value = "";
-            } else {
-                document.getElementById('req-quick-note-select').value = "";
-            }
+            document.getElementById(selectId).value = "";
         }
 
         function openDetail(uniqueId, sourceView) {
@@ -2150,13 +2260,6 @@
 
             ['view-drive','view-tasks','view-review','view-sales-office','view-low-stock','view-docks','view-request','view-reserves'].forEach(v => document.getElementById(v).classList.add('hidden'));
             document.getElementById('view-detail').classList.remove('hidden');
-            
-            const dtabActions = document.getElementById('dtab-actions');
-            if (sourceView === 'docks') {
-                dtabActions.style.display = 'none';
-            } else {
-                dtabActions.style.display = '';
-            }
 
             activeItem.SAVED_PHOTO_LINK = activeItem['PHOTO LINK'] || activeItem.PHOTOLINK || activeItem.SAVED_PHOTO_LINK || "";
             activeItem.SAVED_PHOTO_NAME = activeItem['PHOTO NAME'] || activeItem.PHOTONAME || activeItem.SAVED_PHOTO_NAME || "";
@@ -2172,72 +2275,99 @@
             document.getElementById('ov-season').innerText = activeItem.SEASONSUPPLY || "--";
             document.getElementById('ov-prior').innerText = activeItem.PRIORITY || "--";
 
-            document.getElementById('in-match').value = activeItem.MATCH || activeItem.MATCHPCT || "";
-            document.getElementById('in-spec').value = activeItem.SPEC || "";
-            document.getElementById('in-pick').value = activeItem.PIC_NOTE || activeItem.PICKNOTE || activeItem.PICK || "";
-            document.getElementById('in-sales-desc').value = activeItem.SALES_NOTE || activeItem.SALESNOTE || activeItem.SALESDESC || "";
+            // Sync standard field values into all 3 inputs so they stay perfectly in sync
+            const standardPrefixes = ['ssn-', 'lsn-', 'na-'];
+            standardPrefixes.forEach(p => {
+                document.getElementById(p + 'match').value = activeItem.MATCH || activeItem.MATCHPCT || "";
+                document.getElementById(p + 'spec').value = activeItem.SPEC || "";
+                document.getElementById(p + 'pick').value = activeItem.PIC_NOTE || activeItem.PICKNOTE || activeItem.PICK || "";
+                document.getElementById(p + 'sales-desc').value = activeItem.SALES_NOTE || activeItem.SALESNOTE || activeItem.SALESDESC || "";
+                document.getElementById(p + 'caliper').value = activeItem.CALIPER || "";
+            });
             
+            // Sync request field values
             document.getElementById('req-match').value = activeItem.REQ_MATCH || "";
             document.getElementById('req-spec').value = activeItem.REQ_SPEC || "";
             document.getElementById('req-pick').value = activeItem.REQ_PICK || "";
             document.getElementById('req-sales-desc').value = activeItem.REQ_SALES_NOTE || "";
             document.getElementById('req-comments').value = activeItem.REQ_COMMENTS || ""; 
+            document.getElementById('req-caliper').value = activeItem.REQ_CALIPER || "";
 
-            const quickContainer = document.getElementById('quick-note-container');
-            const quickSelect = document.getElementById('quick-note-select');
-            const reqQuickContainer = document.getElementById('req-quick-note-container');
-            const reqQuickSelect = document.getElementById('req-quick-note-select');
-            
-            quickSelect.innerHTML = '<option value="">-- Select a Quick Note --</option>';
-            reqQuickSelect.innerHTML = '<option value="">-- Select a Quick Note --</option>';
+            // Populate Quick Notes for all tabs
+            const qSelects = ['ssn-quick-note-select', 'lsn-quick-note-select', 'na-quick-note-select', 'req-quick-note-select'];
+            qSelects.forEach(id => {
+                document.getElementById(id).innerHTML = '<option value="">-- Select a Quick Note --</option>';
+            });
             
             let cNameClean = String(activeItem.COMMONNAME || "").trim().toUpperCase();
             if (salesNotesDict[cNameClean] && salesNotesDict[cNameClean].length > 0) {
                 salesNotesDict[cNameClean].forEach(note => {
-                    let opt1 = document.createElement('option');
-                    opt1.value = note; opt1.innerText = note;
-                    quickSelect.appendChild(opt1);
-                    
-                    let opt2 = document.createElement('option');
-                    opt2.value = note; opt2.innerText = note;
-                    reqQuickSelect.appendChild(opt2);
+                    qSelects.forEach(id => {
+                        let opt = document.createElement('option');
+                        opt.value = note; opt.innerText = note;
+                        document.getElementById(id).appendChild(opt);
+                    });
                 });
-                quickContainer.classList.remove('hidden');
-                reqQuickContainer.classList.remove('hidden');
+                ['ssn-', 'lsn-', 'na-', 'req-'].forEach(p => {
+                    document.getElementById(p + 'quick-note-container').classList.remove('hidden');
+                });
             } else {
-                quickContainer.classList.add('hidden');
-                reqQuickContainer.classList.add('hidden');
+                ['ssn-', 'lsn-', 'na-', 'req-'].forEach(p => {
+                    document.getElementById(p + 'quick-note-container').classList.add('hidden');
+                });
             }
 
+            // Caliper logic
             const caliperSizes = ["7DP", "#7", "#10", "#15", "#25", "#45"];
             if (caliperSizes.includes(activeItem.CONTSIZE)) {
-                document.getElementById('container-caliper').classList.remove('hidden');
-                document.getElementById('req-container-caliper').classList.remove('hidden');
-                document.getElementById('in-caliper').value = activeItem.CALIPER || "";
-                document.getElementById('req-caliper').value = activeItem.REQ_CALIPER || "";
+                ['ssn-', 'lsn-', 'na-', 'req-'].forEach(p => {
+                    document.getElementById(p + 'container-caliper').classList.remove('hidden');
+                });
             } else {
-                document.getElementById('container-caliper').classList.add('hidden');
-                document.getElementById('req-container-caliper').classList.add('hidden');
-                document.getElementById('in-caliper').value = "";
-                document.getElementById('req-caliper').value = "";
+                ['ssn-', 'lsn-', 'na-', 'req-'].forEach(p => {
+                    document.getElementById(p + 'container-caliper').classList.add('hidden');
+                });
             }
 
             document.getElementById('expand-section').classList.remove('expanded');
             document.getElementById('expand-content').innerHTML = '';
 
             renderPhotoPreview();
-            switchDetailTab('overview');
+
+            // Set tab visibility based on context
+            document.getElementById('dtab-season').classList.add('hidden');
+            document.getElementById('dtab-location').classList.add('hidden');
+
+            let defaultTab = 'overview';
+            
+            if (sourceView === 'tasks') {
+                if (activeTaskTab === 'season') {
+                    document.getElementById('dtab-season').classList.remove('hidden');
+                    defaultTab = 'season';
+                } else if (activeTaskTab === 'location') {
+                    document.getElementById('dtab-location').classList.remove('hidden');
+                    defaultTab = 'location';
+                }
+            } else if (sourceView === 'request') {
+                defaultTab = 'request';
+            }
+            
+            switchDetailTab(defaultTab);
         }
 
         function switchDetailTab(tab) {
-            document.getElementById('dtab-overview').classList.toggle('active', tab === 'overview');
-            document.getElementById('dtab-actions').classList.toggle('active', tab === 'actions');
-            document.getElementById('dtab-request').classList.toggle('active', tab === 'request');
-            
-            document.getElementById('det-overview-content').classList.toggle('hidden', tab !== 'overview');
-            document.getElementById('det-actions-content').classList.toggle('hidden', tab !== 'actions');
-            document.getElementById('det-request-content').classList.toggle('hidden', tab !== 'request');
-            
+            ['overview', 'season', 'location', 'request', 'notes'].forEach(t => {
+                const dtab = document.getElementById('dtab-' + t);
+                const content = document.getElementById('det-' + t + '-content');
+                if (dtab) {
+                    if (t === tab) dtab.classList.add('active');
+                    else dtab.classList.remove('active');
+                }
+                if (content) {
+                    if (t === tab) content.classList.remove('hidden');
+                    else content.classList.add('hidden');
+                }
+            });
             activeDetailTab = tab; 
         }
 
@@ -2266,7 +2396,7 @@
             document.getElementById('expand-content').innerHTML = html;
         }
 
-        function handlePhotoUpload(input) {
+        function handlePhotoUpload(input, prefix) {
             if(!input.files || input.files.length === 0) return;
             showToast("Processing...", "Compressing image...", false);
             const file = input.files[0];
@@ -2288,34 +2418,27 @@
                     const dateStr = new Date().toISOString().split('T')[0];
                     const filename = `${activeItem.COMMONNAME}_${activeItem.CONTSIZE}_${dateStr}.jpg`.replace(/[\/\s,]/g, '_');
                     
-                    uploadPhotoToDrive(base64Data, filename);
+                    uploadPhotoToDrive(base64Data, filename, prefix);
                 };
                 img.src = e.target.result;
             };
             reader.readAsDataURL(file);
         }
 
-        function uploadPhotoToDrive(base64Data, filename) {
+        function uploadPhotoToDrive(base64Data, filename, prefix) {
             showToast("Uploading...", "Sending to Google Drive...", false);
             
-            let btn = activeDetailTab === 'request' ? document.getElementById('req-btn-save-draft') : document.getElementById('btn-save-complete');
+            let btn = prefix === 'req-' ? document.getElementById('req-btn-save-draft') : document.getElementById(prefix + 'btn-save-complete');
             if (btn) {
                 btn.innerText = "UPLOADING...";
                 btn.disabled = true;
             }
 
             let context = "drive"; 
-            if (activeDetailTab === 'request') {
-                context = "request";
-            } else {
-                if (lastView === 'drive' || lastView === 'docks') context = "drive";
-                else if (lastView === 'tasks') {
-                    if (activeTaskTab === 'season') context = "season";
-                    if (activeTaskTab === 'location') context = "location";
-                } 
-                else if (lastView === 'review' || lastView === 'sales-office' || lastView === 'low-stock') context = "request";
-            }
-
+            if (prefix === 'req-') context = "request";
+            else if (prefix === 'ssn-') context = "season";
+            else if (prefix === 'lsn-') context = "location";
+            
             fetch(GOOGLE_SCRIPT_URL, {
                 method: "POST",
                 body: JSON.stringify({ type: "image", image: base64Data, mimeType: "image/jpeg", filename: filename, folderContext: context })
@@ -2323,12 +2446,12 @@
             .then(res => res.json())
             .then(data => {
                 if (btn) {
-                    btn.innerText = (activeDetailTab === 'request') ? "SAVE REQUEST DATA" : "MARK COMPLETE";
+                    btn.innerText = prefix === 'req-' ? "SAVE REQUEST DATA" : "MARK COMPLETE";
                     btn.disabled = false;
                 }
                 
                 if(data.status === 'success') {
-                    if (activeDetailTab === 'request') {
+                    if (prefix === 'req-') {
                         let links = activeItem.REQ_PHOTO_LINK ? activeItem.REQ_PHOTO_LINK.split(',') : [];
                         let names = activeItem.REQ_PHOTO_NAME ? activeItem.REQ_PHOTO_NAME.split(',') : [];
                         links.push(data.url);
@@ -2344,14 +2467,14 @@
                         activeItem.SAVED_PHOTO_NAME = names.join(',');
                     }
                     renderPhotoPreview(); 
-                    saveData(false); 
+                    saveData(false, prefix); 
                 } else {
                     showToast("Error", "Upload failed.", true);
                 }
             })
             .catch(err => {
                 if (btn) {
-                    btn.innerText = (activeDetailTab === 'request') ? "SAVE REQUEST DATA" : "MARK COMPLETE";
+                    btn.innerText = prefix === 'req-' ? "SAVE REQUEST DATA" : "MARK COMPLETE";
                     btn.disabled = false;
                 }
                 showToast("Error", "Network connection failed.", true);
@@ -2359,75 +2482,65 @@
         }
 
         function renderPhotoPreview() {
-            const photoDiv = document.getElementById('photo-preview'); 
-            const photoList = document.getElementById('photo-list-container');
-            const reqPhotoDiv = document.getElementById('req-photo-preview'); 
-            const reqPhotoList = document.getElementById('req-photo-list-container');
-            
-            if (activeItem.SAVED_PHOTO_LINK && activeItem.SAVED_PHOTO_LINK !== "") {
-                photoDiv.classList.remove('hidden'); 
-                const urls = activeItem.SAVED_PHOTO_LINK.split(','); 
-                const names = activeItem.SAVED_PHOTO_NAME ? activeItem.SAVED_PHOTO_NAME.split(',') : []; 
-                let phHtml = "";
+            const buildPhotoHtml = (linkString, nameString, type) => {
+                if (!linkString) return "";
+                const urls = linkString.split(',');
+                const names = nameString ? nameString.split(',') : [];
+                let html = "";
                 urls.forEach((url, i) => {
                     let cleanUrl = url.trim();
                     let match = cleanUrl.match(/(https?:\/\/[^"\s>]+)/);
                     if (match) cleanUrl = match[1];
                     
                     const dispName = names[i] || `Photo ${i+1}`; 
+                    const iconColor = type === 'req' ? 'text-purple-600' : 'text-blue-500';
+                    const arrowColor = type === 'req' ? 'text-purple-400' : 'text-gray-300';
+                    
                     if(cleanUrl.startsWith('http')) {
-                        phHtml += `
-                        <div class="flex items-center gap-3 p-2 bg-white rounded-lg border border-gray-200 shadow-sm">
+                        html += `
+                        <div class="flex items-center gap-3 p-2 ${type === 'req'?'bg-purple-50':'bg-white'} rounded-lg border ${type === 'req'?'border-purple-200':'border-gray-200'} shadow-sm">
                             <a href="${cleanUrl}" target="_blank" class="flex-grow flex items-center gap-3">
-                                <i class="ph-fill ph-image text-2xl text-blue-500"></i>
+                                <i class="ph-fill ph-image text-2xl ${iconColor}"></i>
                                 <div class="flex-grow min-w-0">
-                                    <div class="text-xs font-bold text-blue-600 truncate">${dispName}</div>
-                                    <div class="text-[10px] text-gray-400">Tap to view</div>
-                                </div>
-                                <i class="ph-bold ph-arrow-square-out text-gray-300"></i>
-                            </a>
-                        </div>`;
-                    }
-                });
-                photoList.innerHTML = phHtml; 
-            } else { 
-                photoDiv.classList.add('hidden'); 
-            }
-
-            if (activeItem.REQ_PHOTO_LINK && activeItem.REQ_PHOTO_LINK !== "") {
-                reqPhotoDiv.classList.remove('hidden'); 
-                const urls = activeItem.REQ_PHOTO_LINK.split(','); 
-                const names = activeItem.REQ_PHOTO_NAME ? activeItem.REQ_PHOTO_NAME.split(',') : []; 
-                let phHtml = "";
-                urls.forEach((url, i) => {
-                    let cleanUrl = url.trim();
-                    let match = cleanUrl.match(/(https?:\/\/[^"\s>]+)/);
-                    if (match) cleanUrl = match[1];
-
-                    const dispName = names[i] || `Req Photo ${i+1}`; 
-                    if(cleanUrl.startsWith('http')) {
-                        phHtml += `
-                        <div class="flex items-center gap-3 p-2 bg-purple-50 rounded-lg border border-purple-200 shadow-sm">
-                            <a href="${cleanUrl}" target="_blank" class="flex-grow flex items-center gap-3">
-                                <i class="ph-fill ph-image text-2xl text-purple-600"></i>
-                                <div class="flex-grow min-w-0">
-                                    <div class="text-xs font-bold text-purple-700 truncate">${dispName}</div>
+                                    <div class="text-xs font-bold ${type === 'req'?'text-purple-700':'text-blue-600'} truncate">${dispName}</div>
                                     <div class="text-[10px] text-gray-500">Tap to view</div>
                                 </div>
-                                <i class="ph-bold ph-arrow-square-out text-purple-400"></i>
+                                <i class="ph-bold ph-arrow-square-out ${arrowColor}"></i>
                             </a>
                         </div>`;
                     }
                 });
-                reqPhotoList.innerHTML = phHtml; 
-            } else { 
-                reqPhotoDiv.classList.add('hidden'); 
+                return html;
+            };
+
+            const stdHtml = buildPhotoHtml(activeItem.SAVED_PHOTO_LINK, activeItem.SAVED_PHOTO_NAME, 'std');
+            ['ssn-', 'lsn-', 'na-'].forEach(p => {
+                const div = document.getElementById(p + 'photo-preview');
+                const list = document.getElementById(p + 'photo-list-container');
+                if (stdHtml) {
+                    div.classList.remove('hidden');
+                    list.innerHTML = stdHtml;
+                } else {
+                    div.classList.add('hidden');
+                    list.innerHTML = "";
+                }
+            });
+
+            const reqHtml = buildPhotoHtml(activeItem.REQ_PHOTO_LINK, activeItem.REQ_PHOTO_NAME, 'req');
+            const reqDiv = document.getElementById('req-photo-preview');
+            const reqList = document.getElementById('req-photo-list-container');
+            if (reqHtml) {
+                reqDiv.classList.remove('hidden');
+                reqList.innerHTML = reqHtml;
+            } else {
+                reqDiv.classList.add('hidden');
+                reqList.innerHTML = "";
             }
         }
 
-        function saveData(isComplete = false) {
-            let btnDraft = activeDetailTab === 'request' ? document.getElementById('req-btn-save-draft') : document.getElementById('btn-save-draft');
-            let btnComp = activeDetailTab === 'request' ? null : document.getElementById('btn-save-complete');
+        function saveData(isComplete = false, prefix) {
+            let btnDraft = prefix === 'req-' ? document.getElementById('req-btn-save-draft') : document.getElementById(prefix + 'btn-save-draft');
+            let btnComp = prefix === 'req-' ? null : document.getElementById(prefix + 'btn-save-complete');
             
             if (isComplete) { 
                 if(btnComp) btnComp.innerText = "SAVING..."; 
@@ -2435,11 +2548,28 @@
                 if(btnDraft) btnDraft.innerText = "SAVING..."; 
             }
             
-            activeItem.MATCH = document.getElementById('in-match').value;
-            activeItem.SPEC = document.getElementById('in-spec').value;
-            activeItem.CALIPER = document.getElementById('in-caliper').value;
-            activeItem.PICK = document.getElementById('in-pick').value;
-            activeItem.SALES_NOTE = document.getElementById('in-sales-desc').value.toUpperCase();
+            let matchVal, specVal, caliperVal, pickVal, salesDescVal;
+
+            if (prefix !== 'req-') {
+                matchVal = document.getElementById(prefix + 'match').value;
+                specVal = document.getElementById(prefix + 'spec').value;
+                caliperVal = document.getElementById(prefix + 'caliper').value;
+                pickVal = document.getElementById(prefix + 'pick').value;
+                salesDescVal = document.getElementById(prefix + 'sales-desc').value.toUpperCase();
+                
+                // Immediately sync active item to keep tabs in order
+                activeItem.MATCH = matchVal;
+                activeItem.SPEC = specVal;
+                activeItem.CALIPER = caliperVal;
+                activeItem.PICK = pickVal;
+                activeItem.SALES_NOTE = salesDescVal;
+            } else {
+                matchVal = activeItem.MATCH;
+                specVal = activeItem.SPEC;
+                caliperVal = activeItem.CALIPER;
+                pickVal = activeItem.PICK;
+                salesDescVal = activeItem.SALES_NOTE;
+            }
 
             activeItem.REQ_MATCH = document.getElementById('req-match').value;
             activeItem.REQ_SPEC = document.getElementById('req-spec').value;
@@ -2451,11 +2581,11 @@
             const payload = {
                 type: "update",
                 id: activeItem.UNIQUE_ID,
-                match: activeItem.MATCH,
-                spec: activeItem.SPEC,
-                caliper: activeItem.CALIPER,
-                pick: activeItem.PICK,
-                salesDesc: activeItem.SALES_NOTE,
+                match: matchVal,
+                spec: specVal,
+                caliper: caliperVal,
+                pick: pickVal,
+                salesDesc: salesDescVal,
                 photoLink: activeItem.SAVED_PHOTO_LINK || "", 
                 photoName: activeItem.SAVED_PHOTO_NAME || "",
                 reqMatch: activeItem.REQ_MATCH,
@@ -2475,7 +2605,7 @@
             })
             .then(res => res.json())
             .then(data => {
-                if(btnDraft) btnDraft.innerText = (activeDetailTab === 'request') ? "SAVE REQUEST DATA" : "SAVE DRAFT";
+                if(btnDraft) btnDraft.innerText = prefix === 'req-' ? "SAVE REQUEST DATA" : "SAVE DRAFT";
                 if(btnComp) btnComp.innerText = "MARK COMPLETE";
                 
                 if(data.status === 'success') {
@@ -2487,7 +2617,7 @@
                 } else { showToast("Error", data.message, true); }
             })
             .catch(err => {
-                if(btnDraft) btnDraft.innerText = (activeDetailTab === 'request') ? "SAVE REQUEST DATA" : "SAVE DRAFT";
+                if(btnDraft) btnDraft.innerText = prefix === 'req-' ? "SAVE REQUEST DATA" : "SAVE DRAFT";
                 if(btnComp) btnComp.innerText = "MARK COMPLETE";
                 showToast("Network Error", "Could not reach server.", true);
             });
