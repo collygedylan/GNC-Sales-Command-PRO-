@@ -137,7 +137,7 @@
             
             <div id="step-1-rep" class="flex flex-col">
                 <h3 class="font-bold text-lg mb-2 text-orange-600">Who requested this?</h3>
-                <input type="text" id="rep-search-input" class="input-field mb-3 border-orange-200 focus:border-orange-500" placeholder="Search or type name..." onkeyup="filterRepList()">
+                <input type="search" id="rep-search-input" class="input-field mb-3 border-orange-200 focus:border-orange-500" placeholder="Search or type name..." onkeyup="filterRepList()">
                 
                 <div id="rep-list-container" class="grid grid-cols-1 gap-2 mb-4 max-h-[40vh] overflow-y-auto px-2 py-1"></div>
 
@@ -154,7 +154,7 @@
                 <input type="number" id="req-qty-input" class="input-field mb-4 border-orange-200 font-bold" placeholder="e.g. 15">
 
                 <label class="text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Customer / Consignee</label>
-                <input type="text" id="cust-search-input" class="input-field mb-2 border-orange-200" placeholder="Search or type customer..." onkeyup="populateCustomerList()">
+                <input type="search" id="cust-search-input" class="input-field mb-2 border-orange-200" placeholder="Search or type customer..." onkeyup="populateCustomerList()">
                 
                 <div id="cust-list-container" class="grid grid-cols-1 gap-2 mb-6 max-h-[30vh] overflow-y-auto px-1 py-1"></div>
 
@@ -259,40 +259,44 @@
                 </div>
             </div>
 
-            <div id="view-request" class="hidden">
-                <div id="request-crumb" class="text-xs font-bold text-[#007a4d] mb-3 empty:hidden mt-2"></div>
+            <div id="view-request" class="hidden mt-2">
+                <input type="search" id="request-search" class="input-field mb-2" placeholder="Search Requests..." onkeyup="renderRequest()">
+                <div id="request-crumb" class="text-xs font-bold text-[#007a4d] mb-3 empty:hidden"></div>
                 <div id="request-content"></div>
             </div>
 
             <div id="view-reserves" class="hidden mt-2">
-                <input type="text" id="reserves-search" class="input-field mb-2" placeholder="Search Plants or Customers..." onkeyup="handleReservesSearch()">
+                <input type="search" id="reserves-search" class="input-field mb-2" placeholder="Search Plants or Customers..." onkeyup="renderReserves()">
                 <div id="reserves-crumb" class="text-xs font-bold text-[#007a4d] mb-3 empty:hidden"></div>
                 <div id="reserves-content"></div>
             </div>
 
             <div id="view-docks" class="hidden mt-2">
-                <input type="text" id="docks-search" class="input-field mb-2" placeholder="Search Plants..." onkeyup="handleDocksSearch()">
+                <input type="search" id="docks-search" class="input-field mb-2" placeholder="Search Plants or Stops..." onkeyup="renderDocks()">
                 <div id="docks-crumb" class="text-xs font-bold text-[#007a4d] mb-3">Select a Dock</div>
                 <div id="docks-content"></div>
             </div>
 
             <div id="view-low-stock" class="hidden mt-2">
+                <input type="search" id="low-stock-search" class="input-field mb-2" placeholder="Search Low Stock..." onkeyup="renderLowStock()">
                 <div id="low-stock-crumb" class="text-xs font-bold text-[#007a4d] mb-3">Action Required</div>
                 <div id="low-stock-content"></div>
             </div>
 
             <div id="view-sales-office" class="hidden mt-2">
+                <input type="search" id="sales-office-search" class="input-field mb-2" placeholder="Search Completed Items..." onkeyup="renderSalesOffice()">
                 <div class="text-xs font-bold text-[#007a4d] mb-3">Completed Season Items</div>
                 <div id="sales-office-content"></div>
             </div>
 
             <div id="view-drive" class="hidden mt-2">
-                <input type="text" id="drive-search" class="input-field mb-2" placeholder="Search Names or Locs..." onkeyup="handleDriveSearch()">
+                <input type="search" id="drive-search" class="input-field mb-2" placeholder="Search Names or Locs..." onkeyup="renderDrive()">
                 <div id="drive-crumb" class="text-xs font-bold text-[#007a4d] mb-3 empty:hidden"></div>
                 <div id="drive-content"></div>
             </div>
 
             <div id="view-tasks" class="hidden mt-2">
+                <input type="search" id="tasks-search" class="input-field mb-2" placeholder="Search Locs or Blocks..." onkeyup="renderTasks()">
                 <div id="task-crumb" class="text-xs font-bold text-[#007a4d] mb-3"></div>
                 <div id="team-selector" class="hidden mb-4 grid grid-cols-1 gap-3"></div>
                 <div id="task-tabs-container" class="task-tabs">
@@ -303,6 +307,7 @@
             </div>
             
             <div id="view-review" class="hidden mt-2">
+                <input type="search" id="review-search" class="input-field mb-2" placeholder="Search Reviewed Items..." onkeyup="renderReview()">
                 <div id="review-crumb" class="text-xs font-bold text-[#007a4d] mb-3"></div>
                 <div class="task-tabs mb-4">
                     <div id="review-tab-completed" class="task-tab active" onclick="setReviewTab('completed')">Completed Tasks</div>
@@ -680,7 +685,6 @@
             });
         });
 
-        // --- UPDATED LOGIN: NOW READS FROM FIREBASE ---
         async function handleLogin(isBiometricLogin = false) {
             const inputUser = document.getElementById('username-input').value.trim().toLowerCase();
             const inputPass = document.getElementById('pin-code').value.trim();
@@ -729,20 +733,16 @@
             }
         }
 
-        // --- UPDATED FETCH: NOW INCLUDES MANUAL REFRESH OVERRIDE AND SILENCED TOASTS ---
         async function fetchBackgroundData(isManualRefresh = false) {
             const cachedRes = await loadFromCache();
             if (cachedRes && cachedRes.master) {
                 salesNotesDict = cachedRes.salesNotesMap || {};
                 processFirebaseData(cachedRes);
-                // Background loading toast removed for cleaner UI
             } else if (cachedRes && cachedRes.salesNotesMap) {
                 salesNotesDict = cachedRes.salesNotesMap;
-                // Loading toast removed for cleaner UI
             }
 
             try {
-                // Pull everything directly from Firestore simultaneously
                 const [masterSnap, lowStockSnap, socSnap, reservesSnap] = await Promise.all([
                     db.collection('MasterInventory').get(),
                     db.collection('LowStock').get(),
@@ -761,21 +761,18 @@
                 await saveToCache(payload); 
                 processFirebaseData(payload);
                 
-                // Only show a toast if the user specifically asked for a refresh by pulling down
                 if (isManualRefresh) {
                     showToast("Refreshed", "Data is up to date.", false);
                 }
 
             } catch(e) {
                 console.error("Firebase fetch error:", e);
-                // If it's a manual pull or they don't have cache, let them know it failed
                 if (!cachedRes || isManualRefresh) {
                     showToast("Sync Error", "Could not reach database.", true);
                 }
             }
         }
 
-        // --- HELPER: Cleans up Firebase records to match App formatting ---
         function normalizeItem(d, idPrefix, idx, collectionName) {
             let item = { ...d, DOM_ID: idPrefix + idx, _COLLECTION: collectionName };
             
@@ -832,7 +829,6 @@
             reservesInventory = payload.reserves.map((d, i) => normalizeItem(d, 'res_', i, 'Reserves'));
             socInventory = payload.soc.map((d, i) => normalizeItem(d, 'soc_', i, 'SOC_Master'));
 
-            // --- START TOURNAMENT DEDUPLICATION ---
             let itemsWithPriority = {};
             fullInventory.forEach(item => {
                 const pri = parseFloat(item.PRIORITY);
@@ -865,7 +861,6 @@
             fullInventory.forEach(item => {
                 item.APP_TAB_ASSIGNMENT = seasonWinnerIds.has(item.DOM_ID) ? 'season' : 'location';
             });
-            // --- END TOURNAMENT DEDUPLICATION ---
 
             reservesInventory = reservesInventory.map(item => {
                 let resCode = String(item.ITEMCODE || item.ITEM || "").trim().toUpperCase();
@@ -1000,33 +995,14 @@
             });
             document.getElementById('view-' + viewId).classList.remove('hidden');
             
-            if(viewId === 'drive') {
-                document.getElementById('drive-search').value = "";
-                resetDriveView(); 
-            }
-            if(viewId === 'tasks') {
-                if (currentRole === 'Admin' && !taskViewTargetUser) renderTeamSelector();
-                else renderTasks();
-            }
-            if(viewId === 'review') { 
-                reviewViewLevel = 0; 
-                renderReview(); 
-            }
-            if(viewId === 'request') {
-                requestViewLevel = 0;
-                renderRequest();
-            }
-            if(viewId === 'reserves') {
-                document.getElementById('reserves-search').value = "";
-                reservesViewLevel = 0;
-                renderReserves();
-            }
-            if(viewId === 'sales-office') { renderSalesOffice(); }
-            if(viewId === 'low-stock') { resetLowStockView(); }
-            if(viewId === 'docks') { 
-                document.getElementById('docks-search').value = "";
-                resetDockView(); 
-            }
+            if(viewId === 'drive') { document.getElementById('drive-search').value = ""; resetDriveView(); }
+            if(viewId === 'tasks') { document.getElementById('tasks-search').value = ""; if (currentRole === 'Admin' && !taskViewTargetUser) renderTeamSelector(); else renderTasks(); }
+            if(viewId === 'review') { document.getElementById('review-search').value = ""; reviewViewLevel = 0; renderReview(); }
+            if(viewId === 'request') { document.getElementById('request-search').value = ""; requestViewLevel = 0; renderRequest(); }
+            if(viewId === 'reserves') { document.getElementById('reserves-search').value = ""; reservesViewLevel = 0; renderReserves(); }
+            if(viewId === 'sales-office') { document.getElementById('sales-office-search').value = ""; renderSalesOffice(); }
+            if(viewId === 'low-stock') { document.getElementById('low-stock-search').value = ""; resetLowStockView(); }
+            if(viewId === 'docks') { document.getElementById('docks-search').value = ""; resetDockView(); }
         }
 
         function reRenderCurrentView() {
@@ -1052,16 +1028,6 @@
         function selectRequestRep(rep) { selectedReqRep = rep; requestViewLevel = 2; renderRequest(); }
         function selectRepStatus(status) { selectedReqRepStatus = status; requestViewLevel = 3; renderRequest(); }
         function selectRequestFolder(folderId) { selectedReqFolder = folderId; requestViewLevel = 4; renderRequest(); }
-
-        function handleReservesSearch() {
-            const term = document.getElementById('reserves-search').value;
-            if (term.length > 0 && reservesViewLevel > 0) { 
-                reservesViewLevel = 0; 
-                selectedReservesName = null; 
-                selectedReservesSize = null; 
-            }
-            renderReserves();
-        }
 
         function selectReservesName(name) { selectedReservesName = name; reservesViewLevel = 1; renderReserves(); }
         function selectReservesSize(size) { selectedReservesSize = size; reservesViewLevel = 2; renderReserves(); }
@@ -1217,7 +1183,6 @@
             document.getElementById('tab-select-modal').classList.remove('hidden');
         }
 
-        // --- NEW MULTI-STEP REQUEST MODAL FLOW ---
         function openRequestModal() {
             document.getElementById('step-1-rep').classList.remove('hidden');
             document.getElementById('step-2-cust').classList.add('hidden');
@@ -1269,11 +1234,9 @@
             const addCusts = (arr) => {
                 arr.forEach(i => {
                     let rName = String(i.SALESREPNAME || i.SALESREP || i['SALES REP'] || "").toUpperCase();
-                    
                     if (rName.includes(tempSelectedReqRep.toUpperCase())) {
                         let c = String(i.CUSTOMERNAME || i.CUSTOMER || i['CUSTOMER NAME'] || "").trim();
                         let cons = String(i.CONSIGNEENAME || i.CONSIGNEE || i['CONSIGNEE NAME'] || "").trim();
-                        
                         if (c || cons) {
                             let display = c;
                             if (cons && cons !== c) {
@@ -1309,7 +1272,6 @@
             populateCustomerList(); 
         }
 
-        // --- UPDATED BATCH REQUEST: SAVES TO FIREBASE ---
         function finalizeRequestAction() {
             let cust = document.getElementById('cust-search-input').value.trim();
             let qty = document.getElementById('req-qty-input').value.trim();
@@ -1339,7 +1301,6 @@
                     item.REQ_QTY = qty;
                     uniqueIds.push(item.UNIQUE_ID);
 
-                    // Map to Firestore
                     const docId = item.UNIQUE_ID.replace(/[^a-zA-Z0-9_-]/g, '_');
                     const col = item._COLLECTION || 'MasterInventory';
                     const ref = db.collection(col).doc(docId);
@@ -1365,7 +1326,6 @@
                 showToast("Error", "Failed to update database.", true);
             });
 
-            // ALSO send to GAS so Google Sheets has the backup
             fetch(GOOGLE_SCRIPT_URL, {
                 method: 'POST',
                 body: JSON.stringify({ 
@@ -1460,7 +1420,6 @@
         function openAssignModal() { document.getElementById('assign-modal').classList.remove('hidden'); }
         function closeAssignModal() { document.getElementById('assign-modal').classList.add('hidden'); }
 
-        // --- UPDATED BATCH ASSIGN: SAVES TO FIREBASE AND TRIGGERS EMAIL ---
         function confirmAssign(user) {
             closeAssignModal();
             showToast("Assigning...", "Updating database...", false);
@@ -1478,7 +1437,6 @@
                     uniqueIds.push(item.UNIQUE_ID);
                     itemsToUpdate.push(item);
 
-                    // Add to Firebase Batch Update
                     const docId = item.UNIQUE_ID.replace(/[^a-zA-Z0-9_-]/g, '_');
                     const col = item._COLLECTION || 'MasterInventory';
                     const ref = db.collection(col).doc(docId);
@@ -1494,22 +1452,10 @@
                 showToast("Error", "Assignment failed", true);
             });
 
-            // ALSO send to GAS so Google Sheets updates AND triggers the assignment email 
             fetch(GOOGLE_SCRIPT_URL, {
                 method: 'POST',
                 body: JSON.stringify({ type: 'batch_assign', ids: uniqueIds, assignTo: user, tabType: pendingTabType })
             });
-        }
-
-        function handleDocksSearch() {
-            const term = document.getElementById('docks-search').value;
-            if (term.length > 0 && dockViewLevel > 1) { 
-                dockViewLevel = 1; 
-                selectedDockName = null; 
-                selectedDockSize = null; 
-                selectedDockItemCode = null;
-            }
-            renderDocks();
         }
 
         function resetDockView() {
@@ -1522,12 +1468,13 @@
             renderDocks();
         }
 
-        function selectDockNum(num) { selectedDockNum = num; dockViewLevel = 1; renderDocks(); }
+        function selectDockNum(num) { selectedDockNum = num; dockViewLevel = 1; document.getElementById('docks-search').value = ""; renderDocks(); }
         function selectDockPlant(itemCode, name, size) { 
             selectedDockItemCode = itemCode; 
             selectedDockName = name; 
             selectedDockSize = size; 
             dockViewLevel = 2; 
+            document.getElementById('docks-search').value = "";
             renderDocks(); 
         }
 
@@ -1659,26 +1606,30 @@
                     }
                 });
                 
+                if (term) {
+                    finalItems = finalItems.filter(i => 
+                        (i.LOCATIONCODE || "").toLowerCase().includes(term) ||
+                        (i.LOTCODE || "").toLowerCase().includes(term) ||
+                        (i.COMMONNAME || "").toLowerCase().includes(term) ||
+                        (i.ITEMCODE || "").toLowerCase().includes(term)
+                    );
+                }
+                
                 finalItems.sort((a, b) => {
                     let priA = parseFloat(a.PRIORITY);
                     let priB = parseFloat(b.PRIORITY);
-                    
                     if (isNaN(priA)) priA = Infinity;
                     if (isNaN(priB)) priB = Infinity;
-                    
-                    if (priA !== priB) {
-                        return priA - priB;
-                    }
-                    
+                    if (priA !== priB) return priA - priB;
                     return (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true});
                 });
 
                 if (finalItems.length === 0) {
-                     container.innerHTML = `<div class="back-btn" onclick="dockViewLevel=1; renderDocks()"><i class="ph-bold ph-arrow-left"></i> Back to Stop</div><div class="p-8 text-center text-gray-400">This plant was requested for the Dock, but no matching records exist in the Master Inventory.</div>`;
+                     container.innerHTML = `<div class="back-btn" onclick="dockViewLevel=1; renderDocks()"><i class="ph-bold ph-arrow-left"></i> Back to Stop</div><div class="p-8 text-center text-gray-400">No records exist for this item.</div>`;
                      return;
                 }
                 
-                container.innerHTML = `<div class="back-btn" onclick="dockViewLevel=1; renderDocks()"><i class="ph-bold ph-arrow-left"></i> Back to Stop</div>` + 
+                container.innerHTML = `<div class="back-btn" onclick="dockViewLevel=1; document.getElementById('docks-search').value=''; renderDocks()"><i class="ph-bold ph-arrow-left"></i> Back to Stop</div>` + 
                 finalItems.map(i => generateCard(i, 'docks', 'status-orange')).join('');
             }
         }
@@ -1687,29 +1638,39 @@
             lowStockViewLevel = 0; 
             selectedLowStockName = null; 
             selectedLowStockSize = null; 
+            document.getElementById('low-stock-search').value = "";
             renderLowStock(); 
         }
-        function selectLowStockName(name) { selectedLowStockName = name; lowStockViewLevel = 1; renderLowStock(); }
-        function selectLowStockSize(size) { selectedLowStockSize = size; lowStockViewLevel = 2; renderLowStock(); }
-        function backToLowStockSizes() { lowStockViewLevel = 1; selectedLowStockSize = null; renderLowStock(); }
+        function selectLowStockName(name) { selectedLowStockName = name; lowStockViewLevel = 1; document.getElementById('low-stock-search').value = ""; renderLowStock(); }
+        function selectLowStockSize(size) { selectedLowStockSize = size; lowStockViewLevel = 2; document.getElementById('low-stock-search').value = ""; renderLowStock(); }
+        function backToLowStockSizes() { lowStockViewLevel = 1; selectedLowStockSize = null; document.getElementById('low-stock-search').value = ""; renderLowStock(); }
 
         function renderLowStock() {
             const container = document.getElementById('low-stock-content');
             const crumb = document.getElementById('low-stock-crumb');
+            const term = document.getElementById('low-stock-search').value.toLowerCase();
             
-            if (lowStockInventory.length === 0) {
-                container.innerHTML = `<div class="p-8 text-center text-gray-400">No low stock items at this time.</div>`;
+            let filteredLowStock = lowStockInventory;
+            if (term) {
+                filteredLowStock = filteredLowStock.filter(i => 
+                    (i.COMMONNAME||"").toLowerCase().includes(term) || 
+                    (i.LOCATIONCODE||"").toLowerCase().includes(term)
+                );
+            }
+
+            if (filteredLowStock.length === 0) {
+                container.innerHTML = `<div class="p-8 text-center text-gray-400">No low stock items match.</div>`;
                 return;
             }
 
             if (lowStockViewLevel === 0) {
                 crumb.innerText = "Select Plant";
-                const names = [...new Set(lowStockInventory.map(i => i.COMMONNAME))].sort();
+                const names = [...new Set(filteredLowStock.map(i => i.COMMONNAME))].sort();
                 container.innerHTML = names.map(n => `<div class="drill-item" onclick="selectLowStockName('${n.replace(/'/g, "\\'")}')"><span class="font-bold text-lg">${n}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
             } 
             else if (lowStockViewLevel === 1) {
                 crumb.innerText = selectedLowStockName;
-                const namedItems = lowStockInventory.filter(i => i.COMMONNAME === selectedLowStockName);
+                const namedItems = filteredLowStock.filter(i => i.COMMONNAME === selectedLowStockName);
                 const sizes = [...new Set(namedItems.map(i => i.CONTSIZE))].sort();
                 let html = `<div class="back-btn" onclick="resetLowStockView()"><i class="ph-bold ph-arrow-left"></i> Back to Names</div><div class="font-bold text-purple-600 mb-4 px-2 text-xl border-b pb-2">${selectedLowStockName}</div>`;
                 html += sizes.map(s => {
@@ -1720,7 +1681,7 @@
             } 
             else if (lowStockViewLevel === 2) {
                 crumb.innerText = `${selectedLowStockName} / ${selectedLowStockSize}`;
-                let finalItems = lowStockInventory.filter(i => i.COMMONNAME === selectedLowStockName && i.CONTSIZE === selectedLowStockSize);
+                let finalItems = filteredLowStock.filter(i => i.COMMONNAME === selectedLowStockName && i.CONTSIZE === selectedLowStockSize);
                 finalItems.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
                 container.innerHTML = `<div class="back-btn" onclick="backToLowStockSizes()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>` + finalItems.map(i => generateCard(i, 'low-stock', 'status-purple')).join('');
             }
@@ -1728,17 +1689,25 @@
 
         function renderSalesOffice() {
             const container = document.getElementById('sales-office-content');
+            const term = document.getElementById('sales-office-search').value.toLowerCase();
+            
             let officeItems = fullInventory.filter(i => {
                 if (!i.DATE_COMPLETED || i.DATE_COMPLETED === "") return false;
-                
                 const pri = parseFloat(i.PRIORITY);
                 if (isNaN(pri) || pri <= 0) return false;
-
                 return i.APP_TAB_ASSIGNMENT === 'season'; 
             });
 
+            if (term) {
+                officeItems = officeItems.filter(i => 
+                    (i.COMMONNAME||"").toLowerCase().includes(term) || 
+                    (i.LOCATIONCODE||"").toLowerCase().includes(term) ||
+                    (i.ASSIGNEDTO||"").toLowerCase().includes(term)
+                );
+            }
+
             if (officeItems.length === 0) {
-                container.innerHTML = `<div class="p-8 text-center text-gray-400">No completed Season Sales Notes at this time.</div>`;
+                container.innerHTML = `<div class="p-8 text-center text-gray-400">No completed Season items match.</div>`;
                 return;
             }
 
@@ -1749,6 +1718,7 @@
         function renderRequest() {
             const container = document.getElementById('request-content');
             const crumb = document.getElementById('request-crumb');
+            const term = document.getElementById('request-search').value.toLowerCase();
 
             let reqItems = fullInventory.filter(i => i.IS_REQUEST === true);
             let reqLowStock = lowStockInventory.filter(i => i.IS_REQUEST === true);
@@ -1756,6 +1726,15 @@
             let combinedReq = [...reqItems, ...reqLowStock, ...reqReserves];
             
             combinedReq = combinedReq.filter((v,i,a) => a.findIndex(t => (t.DOM_ID === v.DOM_ID)) === i);
+
+            if (term) {
+                combinedReq = combinedReq.filter(i => 
+                    (i.COMMONNAME||"").toLowerCase().includes(term) || 
+                    (i.REQUESTED_BY||"").toLowerCase().includes(term) ||
+                    (i.REQUEST_FOLDER||"").toLowerCase().includes(term) ||
+                    (i.LOCATIONCODE||"").toLowerCase().includes(term)
+                );
+            }
 
             const isReqCompleted = (item) => {
                 return (
@@ -1803,8 +1782,9 @@
                             let matchStr = (i.REQUESTED_BY || i.SALESREP || i.SALESREPNAME || i['SALES REP'] || i.ASSIGNEDTO || "").toUpperCase();
                             return matchStr.includes(parts[0]) && matchStr.includes(parts[1]);
                         }).length;
-                        
-                        html += `<div class="drill-item" onclick="selectRequestRep('${rep}')"><span class="font-bold text-lg">${rep} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
+                        if (count > 0 || term === "") {
+                            html += `<div class="drill-item" onclick="selectRequestRep('${rep}')"><span class="font-bold text-lg">${rep} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
+                        }
                     });
                     container.innerHTML = html;
                     return;
@@ -1840,7 +1820,7 @@
                 let repCompleted = repItems.filter(i => isReqCompleted(i));
 
                 container.innerHTML = `
-                    <div class="back-btn" onclick="requestViewLevel=1; renderRequest()"><i class="ph-bold ph-arrow-left"></i> Back to Sales Reps</div>
+                    <div class="back-btn" onclick="requestViewLevel=1; document.getElementById('request-search').value=''; renderRequest()"><i class="ph-bold ph-arrow-left"></i> Back to Sales Reps</div>
                     <div class="drill-item" onclick="selectRepStatus('pending')">
                         <span class="font-bold text-lg text-orange-600">Pending Requests <span class="text-gray-400 text-sm font-normal">(${repPending.length})</span></span>
                         <i class="ph-bold ph-caret-right text-gray-300"></i>
@@ -1926,22 +1906,21 @@
         function renderReserves() {
             const container = document.getElementById('reserves-content');
             const crumb = document.getElementById('reserves-crumb');
-
-            const resSearch = document.getElementById('reserves-search');
-            if (resSearch) resSearch.classList.add('hidden'); 
-
-            if (reservesViewLevel === 0 && resSearch) resSearch.classList.remove('hidden'); 
-            
-            const term = resSearch ? resSearch.value.toLowerCase() : "";
+            const term = document.getElementById('reserves-search').value.toLowerCase();
 
             let filteredReserves = reservesInventory;
             if (term) {
-                filteredReserves = filteredReserves.filter(i => (i.COMMONNAME || "").toLowerCase().includes(term) || (i.CUSTOMERNAME || "").toLowerCase().includes(term) || (i.SALESREPNAME || "").toLowerCase().includes(term));
+                filteredReserves = filteredReserves.filter(i => 
+                    (i.COMMONNAME || "").toLowerCase().includes(term) || 
+                    (i.CUSTOMERNAME || "").toLowerCase().includes(term) || 
+                    (i.SALESREPNAME || "").toLowerCase().includes(term) ||
+                    (i.LOCATIONCODE || "").toLowerCase().includes(term)
+                );
             }
 
             if (filteredReserves.length === 0) {
                 crumb.innerText = "Reserves";
-                container.innerHTML = `<div class="p-8 text-center text-gray-400">No reserves data available.</div>`;
+                container.innerHTML = `<div class="p-8 text-center text-gray-400">No reserves data match.</div>`;
                 return;
             }
 
@@ -1957,7 +1936,7 @@
                 const namedItems = filteredReserves.filter(i => i.COMMONNAME === selectedReservesName);
                 const sizes = [...new Set(namedItems.map(i => i.CONTSIZE))].sort();
                 
-                let html = `<div class="back-btn" onclick="reservesViewLevel=0; renderReserves()"><i class="ph-bold ph-arrow-left"></i> Back to Plants</div>`;
+                let html = `<div class="back-btn" onclick="reservesViewLevel=0; document.getElementById('reserves-search').value=''; renderReserves()"><i class="ph-bold ph-arrow-left"></i> Back to Plants</div>`;
                 html += `<div class="font-bold text-indigo-600 mb-4 px-2 text-xl border-b pb-2">${selectedReservesName}</div>`;
                 
                 html += sizes.map(s => {
@@ -1973,7 +1952,7 @@
                 crumb.innerText = `${selectedReservesName} (${selectedReservesSize})`;
                 let displayItems = filteredReserves.filter(i => i.COMMONNAME === selectedReservesName && i.CONTSIZE === selectedReservesSize);
                 
-                let html = `<div class="back-btn" onclick="reservesViewLevel=1; renderReserves()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>`;
+                let html = `<div class="back-btn" onclick="reservesViewLevel=1; document.getElementById('reserves-search').value=''; renderReserves()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>`;
                 
                 html += displayItems.map(item => {
                     let custDisplay = item.CUSTOMERNAME;
@@ -2024,11 +2003,20 @@
         function renderReview() {
             const container = document.getElementById('review-content');
             const crumb = document.getElementById('review-crumb');
+            const term = document.getElementById('review-search').value.toLowerCase();
 
             let completedItems = fullInventory.filter(i => i.DATE_COMPLETED && i.DATE_COMPLETED !== "");
             
+            if (term) {
+                completedItems = completedItems.filter(i => 
+                    (i.COMMONNAME||"").toLowerCase().includes(term) || 
+                    (i.ASSIGNEDTO||"").toLowerCase().includes(term) ||
+                    (i.LOCATIONCODE||"").toLowerCase().includes(term)
+                );
+            }
+
             if (completedItems.length === 0) {
-                container.innerHTML = `<div class="p-8 text-center text-gray-400">No completed tasks to review.</div>`;
+                container.innerHTML = `<div class="p-8 text-center text-gray-400">No matching tasks found.</div>`;
                 crumb.innerText = "All Caught Up";
                 return;
             }
@@ -2044,7 +2032,7 @@
                 crumb.innerText = `Review / ${selectedReviewUser}`;
                 let userItems = completedItems.filter(i => (i.ASSIGNEDTO || "Unassigned") === selectedReviewUser);
                 userItems.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
-                container.innerHTML = `<div class="back-btn" onclick="reviewViewLevel=0; renderReview()"><i class="ph-bold ph-arrow-left"></i> Back to Users</div>` + 
+                container.innerHTML = `<div class="back-btn" onclick="reviewViewLevel=0; document.getElementById('review-search').value=''; renderReview()"><i class="ph-bold ph-arrow-left"></i> Back to Users</div>` + 
                 userItems.map(i => generateCard(i, 'review')).join('');
             }
         }
@@ -2052,23 +2040,24 @@
         function selectReviewUser(u) {
             selectedReviewUser = u;
             reviewViewLevel = 1;
+            document.getElementById('review-search').value = "";
             renderReview();
         }
 
-        function handleDriveSearch() {
-            const term = document.getElementById('drive-search').value;
-            if (term.length > 0 && driveViewLevel > 0) { driveViewLevel = 0; selectedDriveName = null; selectedDriveSize = null; }
-            renderDrive();
-        }
-        
         function selectDriveName(name) { 
             selectedDriveName = name; 
             driveViewLevel = 1; 
+            document.getElementById('drive-search').value = "";
             renderDrive(); 
         }
         
-        function selectDriveSize(size) { selectedDriveSize = size; driveViewLevel = 2; renderDrive(); }
-        function backToDriveSizes() { driveViewLevel = 1; selectedDriveSize = null; renderDrive(); }
+        function selectDriveSize(size) { 
+            selectedDriveSize = size; 
+            driveViewLevel = 2; 
+            document.getElementById('drive-search').value = "";
+            renderDrive(); 
+        }
+        function backToDriveSizes() { driveViewLevel = 1; selectedDriveSize = null; document.getElementById('drive-search').value = ""; renderDrive(); }
         function resetDriveView() { driveViewLevel = 0; selectedDriveName = null; selectedDriveSize = null; document.getElementById('drive-search').value = ""; renderDrive(); }
 
         function renderDrive() {
@@ -2077,7 +2066,13 @@
             const term = document.getElementById('drive-search').value.toLowerCase();
             
             let filteredItems = fullInventory;
-            if (term) { filteredItems = filteredItems.filter(i => (i.COMMONNAME||"").toLowerCase().includes(term) || (i.LOCATIONCODE||"").toLowerCase().includes(term)); }
+            if (term) { 
+                filteredItems = filteredItems.filter(i => 
+                    (i.COMMONNAME||"").toLowerCase().includes(term) || 
+                    (i.LOCATIONCODE||"").toLowerCase().includes(term) ||
+                    (i.ITEMCODE||"").toLowerCase().includes(term)
+                ); 
+            }
 
             if (filteredItems.length === 0) { container.innerHTML = `<div class="p-8 text-center text-gray-400">No items found.</div>`; crumb.innerText = "No Results"; return; }
 
@@ -2127,12 +2122,13 @@
             renderTasks();
         }
 
-        function selectTaskBlock(b) { selectedTaskBlock = b; taskViewLevel = 1; renderTasks(); }
-        function selectTaskLoc(l) { selectedTaskLoc = l; taskViewLevel = 2; renderTasks(); }
+        function selectTaskBlock(b) { selectedTaskBlock = b; taskViewLevel = 1; document.getElementById('tasks-search').value = ""; renderTasks(); }
+        function selectTaskLoc(l) { selectedTaskLoc = l; taskViewLevel = 2; document.getElementById('tasks-search').value = ""; renderTasks(); }
 
         function renderTasks() {
             const container = document.getElementById('task-content');
             const crumb = document.getElementById('task-crumb');
+            const term = document.getElementById('tasks-search').value.toLowerCase();
             
             let userToView = (currentRole === 'Admin') ? taskViewTargetUser : currentUser;
             let searchName = userToView === 'dylan_collyge' ? 'Dylan' : userToView;
@@ -2141,21 +2137,27 @@
 
             myItems = myItems.filter(i => {
                 if (i.DATE_COMPLETED && i.DATE_COMPLETED !== "") return false;
-
                 const pri = parseFloat(i.PRIORITY);
                 if (isNaN(pri) || pri <= 0) return false; 
-                
                 if (activeTaskTab === 'season') return i.APP_TAB_ASSIGNMENT === 'season';
                 if (activeTaskTab === 'location') return i.APP_TAB_ASSIGNMENT === 'location';
-                
                 return true;
             });
+
+            if (term) {
+                myItems = myItems.filter(i => 
+                    (i.COMMONNAME||"").toLowerCase().includes(term) || 
+                    (i.LOCATIONCODE||"").toLowerCase().includes(term) ||
+                    (i.BLOCKALPHA||"").toLowerCase().includes(term) ||
+                    (i.ITEMCODE||"").toLowerCase().includes(term)
+                );
+            }
 
             const displayUser = searchName.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
             const tabLabel = (activeTaskTab === 'season') ? 'Season Notes' : 'Location Notes';
 
             if (myItems.length === 0) {
-                container.innerHTML = `<div class="back-btn" onclick="if(currentRole==='Admin'){taskViewTargetUser=null; renderTeamSelector();}"><i class="ph-bold ph-arrow-left"></i> Change User</div><div class="p-8 text-center text-gray-400">No tasks assigned here.</div>`;
+                container.innerHTML = `<div class="back-btn" onclick="if(currentRole==='Admin'){taskViewTargetUser=null; renderTeamSelector();}"><i class="ph-bold ph-arrow-left"></i> Change User</div><div class="p-8 text-center text-gray-400">No tasks match.</div>`;
                 crumb.innerText = `${displayUser} / ${tabLabel}`;
                 return;
             }
@@ -2175,7 +2177,7 @@
                 crumb.innerText = `${displayUser} / ${selectedTaskBlock}`; 
                 const blockItems = myItems.filter(i => (i.BLOCKALPHA || "Unassigned") === selectedTaskBlock);
                 const locs = [...new Set(blockItems.map(i => getLocPrefix(i.LOCATIONCODE)))].sort((a,b) => a.localeCompare(b, undefined, {numeric: true}));
-                container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=0; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Blocks</div>` + 
+                container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=0; document.getElementById('tasks-search').value=''; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Blocks</div>` + 
                 locs.map(l => {
                     const count = blockItems.filter(i => getLocPrefix(i.LOCATIONCODE) === l).length;
                     return `<div class="drill-item" onclick="selectTaskLoc('${l}')"><span class="font-bold text-lg">${l} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
@@ -2185,7 +2187,7 @@
                 crumb.innerText = `${displayUser} / ${selectedTaskBlock} / ${selectedTaskLoc}`; 
                 let items = myItems.filter(i => (i.BLOCKALPHA || "Unassigned") === selectedTaskBlock && getLocPrefix(i.LOCATIONCODE) === selectedTaskLoc);
                 items.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
-                container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=1; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Locs</div>` + 
+                container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=1; document.getElementById('tasks-search').value=''; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Locs</div>` + 
                 items.map(i => generateCard(i, 'tasks')).join('');
             }
         }
@@ -2490,7 +2492,6 @@
             }
         }
 
-        // --- UPDATED SAVE DATA: SAVES DIRECT TO FIREBASE + BACKS UP TO SPREADSHEET ---
         function saveData(isComplete = false) {
             let btnDraft = activeDetailTab === 'request' ? document.getElementById('req-btn-save-draft') : document.getElementById('btn-save-draft');
             let btnComp = activeDetailTab === 'request' ? null : document.getElementById('btn-save-complete');
@@ -2539,7 +2540,6 @@
 
             let collection = activeItem._COLLECTION || 'MasterInventory';
 
-            // 1. SAVE TO FIREBASE INSTANTLY
             db.collection(collection).doc(docId).set(fbPayload, {merge: true}).then(() => {
                 if(btnDraft) btnDraft.innerText = (activeDetailTab === 'request') ? "SAVE REQUEST DATA" : "SAVE DRAFT";
                 if(btnComp) btnComp.innerText = "MARK COMPLETE";
@@ -2551,7 +2551,6 @@
                 showToast("Error", "Network Error saving to database.", true);
             });
 
-            // 2. SEND TO GOOGLE SCRIPT SO THE SHEET STAYS UPDATED IN THE BACKGROUND
             const payload = {
                 type: "update",
                 id: activeItem.UNIQUE_ID,
