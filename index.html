@@ -78,6 +78,11 @@
         .item-row { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 
         .spinner { border: 4px solid rgba(255,255,255,0.3); border-top: 4px solid white; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto; }
+        
+        /* PULL TO REFRESH STYLES */
+        #pull-to-refresh { display: flex; justify-content: center; align-items: center; height: 0px; overflow: hidden; color: var(--brand-green); }
+        .ptr-spinner { border: 3px solid #e5e7eb; border-top: 3px solid var(--brand-green); border-radius: 50%; width: 28px; height: 28px; animation: spin 1s linear infinite; }
+        
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
@@ -191,8 +196,12 @@
 
         <div id="main-scroll-area" class="flex-grow overflow-y-auto p-4 pb-40 relative">
             
+            <div id="pull-to-refresh">
+                <div class="ptr-spinner"></div>
+            </div>
+
             <div id="view-home" class="hidden">
-                <div class="bg-[#007a4d] text-white p-6 rounded-2xl mb-6 shadow-lg text-center">
+                <div class="bg-[#007a4d] text-white p-6 rounded-2xl mb-6 shadow-lg text-center mt-2">
                     <h1 class="text-2xl font-bold">GNC PRO 005</h1>
                     <p class="opacity-80 text-sm">Dashboard</p>
                 </div>
@@ -251,39 +260,39 @@
             </div>
 
             <div id="view-request" class="hidden">
-                <div id="request-crumb" class="text-xs font-bold text-[#007a4d] mb-3 empty:hidden"></div>
+                <div id="request-crumb" class="text-xs font-bold text-[#007a4d] mb-3 empty:hidden mt-2"></div>
                 <div id="request-content"></div>
             </div>
 
-            <div id="view-reserves" class="hidden">
+            <div id="view-reserves" class="hidden mt-2">
                 <input type="text" id="reserves-search" class="input-field mb-2" placeholder="Search Plants or Customers..." onkeyup="handleReservesSearch()">
                 <div id="reserves-crumb" class="text-xs font-bold text-[#007a4d] mb-3 empty:hidden"></div>
                 <div id="reserves-content"></div>
             </div>
 
-            <div id="view-docks" class="hidden">
+            <div id="view-docks" class="hidden mt-2">
                 <input type="text" id="docks-search" class="input-field mb-2" placeholder="Search Plants..." onkeyup="handleDocksSearch()">
                 <div id="docks-crumb" class="text-xs font-bold text-[#007a4d] mb-3">Select a Dock</div>
                 <div id="docks-content"></div>
             </div>
 
-            <div id="view-low-stock" class="hidden">
+            <div id="view-low-stock" class="hidden mt-2">
                 <div id="low-stock-crumb" class="text-xs font-bold text-[#007a4d] mb-3">Action Required</div>
                 <div id="low-stock-content"></div>
             </div>
 
-            <div id="view-sales-office" class="hidden">
+            <div id="view-sales-office" class="hidden mt-2">
                 <div class="text-xs font-bold text-[#007a4d] mb-3">Completed Season Items</div>
                 <div id="sales-office-content"></div>
             </div>
 
-            <div id="view-drive" class="hidden">
+            <div id="view-drive" class="hidden mt-2">
                 <input type="text" id="drive-search" class="input-field mb-2" placeholder="Search Names or Locs..." onkeyup="handleDriveSearch()">
                 <div id="drive-crumb" class="text-xs font-bold text-[#007a4d] mb-3 empty:hidden"></div>
                 <div id="drive-content"></div>
             </div>
 
-            <div id="view-tasks" class="hidden">
+            <div id="view-tasks" class="hidden mt-2">
                 <div id="task-crumb" class="text-xs font-bold text-[#007a4d] mb-3"></div>
                 <div id="team-selector" class="hidden mb-4 grid grid-cols-1 gap-3"></div>
                 <div id="task-tabs-container" class="task-tabs">
@@ -293,7 +302,7 @@
                 <div id="task-content"></div>
             </div>
             
-            <div id="view-review" class="hidden">
+            <div id="view-review" class="hidden mt-2">
                 <div id="review-crumb" class="text-xs font-bold text-[#007a4d] mb-3"></div>
                 <div class="task-tabs mb-4">
                     <div id="review-tab-completed" class="task-tab active" onclick="setReviewTab('completed')">Completed Tasks</div>
@@ -609,6 +618,68 @@
 
         window.onload = function() {};
 
+        // --- PULL TO REFRESH LOGIC ---
+        let ptrStartY = 0;
+        let ptrCurrentY = 0;
+        let isPulling = false;
+        const ptrThreshold = 60; // pixels to pull before triggering refresh
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (window.PublicKeyCredential && localStorage.getItem('gnc_user_v3') && localStorage.getItem('gnc_pin_v3')) {
+                document.getElementById('btn-fingerprint').classList.remove('hidden');
+            }
+
+            // ATTACH PULL TO REFRESH LISTENERS
+            const scrollArea = document.getElementById('main-scroll-area');
+            const ptrIndicator = document.getElementById('pull-to-refresh');
+
+            scrollArea.addEventListener('touchstart', e => {
+                // Only start pull-to-refresh if we are at the very top of the scrollable area
+                if (scrollArea.scrollTop <= 0) {
+                    ptrStartY = e.touches[0].clientY;
+                    isPulling = true;
+                    ptrIndicator.style.transition = 'none';
+                }
+            }, { passive: true });
+
+            scrollArea.addEventListener('touchmove', e => {
+                if (!isPulling) return;
+                ptrCurrentY = e.touches[0].clientY;
+                const pullDistance = ptrCurrentY - ptrStartY;
+
+                // User is dragging downwards while at the top
+                if (pullDistance > 0 && scrollArea.scrollTop <= 0) {
+                    const height = Math.min(pullDistance * 0.4, ptrThreshold + 20); // Add a little resistance
+                    ptrIndicator.style.height = `${height}px`;
+                    
+                    if (e.cancelable) e.preventDefault(); // Stop normal over-scroll physics
+                } else {
+                    isPulling = false;
+                    ptrIndicator.style.height = '0px';
+                }
+            }, { passive: false });
+
+            scrollArea.addEventListener('touchend', async e => {
+                if (!isPulling) return;
+                isPulling = false;
+                ptrIndicator.style.transition = 'height 0.3s ease';
+                
+                const pullDistance = ptrCurrentY - ptrStartY;
+                
+                // If they pulled down far enough, trigger the refresh
+                if (pullDistance * 0.4 >= ptrThreshold) {
+                    ptrIndicator.style.height = '50px'; // Lock spinner open
+                    await fetchBackgroundData(true); // Call fetch with the manual override
+                    ptrIndicator.style.height = '0px'; // Close spinner
+                } else {
+                    ptrIndicator.style.height = '0px'; // Snap shut if they didn't pull far enough
+                }
+                
+                ptrStartY = 0;
+                ptrCurrentY = 0;
+            });
+        });
+
         // --- UPDATED LOGIN: NOW READS FROM FIREBASE ---
         async function handleLogin(isBiometricLogin = false) {
             const inputUser = document.getElementById('username-input').value.trim().toLowerCase();
@@ -629,8 +700,6 @@
 
                 usersSnap.forEach(doc => {
                     const u = doc.data();
-                    
-                    // Fallback to check all values just in case column headers were weird
                     const allValsLower = Object.values(u).map(v => String(v).toLowerCase().trim());
                     const allVals = Object.values(u).map(v => String(v).trim());
 
@@ -660,19 +729,16 @@
             }
         }
 
-        // --- UPDATED FETCH: NOW READS FROM FIREBASE ---
-        async function fetchBackgroundData() {
+        // --- UPDATED FETCH: NOW INCLUDES MANUAL REFRESH OVERRIDE AND SILENCED TOASTS ---
+        async function fetchBackgroundData(isManualRefresh = false) {
             const cachedRes = await loadFromCache();
             if (cachedRes && cachedRes.master) {
                 salesNotesDict = cachedRes.salesNotesMap || {};
                 processFirebaseData(cachedRes);
-                showToast("Ready", "Loaded from device memory. Updating in background...", false);
+                // Background loading toast removed for cleaner UI
             } else if (cachedRes && cachedRes.salesNotesMap) {
-                // Grab the dictionary from the old cache version just in case
                 salesNotesDict = cachedRes.salesNotesMap;
-                showToast("Welcome!", "Downloading from high-speed database...", false);
-            } else {
-                showToast("Welcome!", "Downloading from high-speed database...", false);
+                // Loading toast removed for cleaner UI
             }
 
             try {
@@ -695,12 +761,17 @@
                 await saveToCache(payload); 
                 processFirebaseData(payload);
                 
-                if(cachedRes) { showToast("Sync Complete", "Live database updated.", false); } 
-                else { showToast("Ready", "Database downloaded and saved!", false); }
+                // Only show a toast if the user specifically asked for a refresh by pulling down
+                if (isManualRefresh) {
+                    showToast("Refreshed", "Data is up to date.", false);
+                }
 
             } catch(e) {
                 console.error("Firebase fetch error:", e);
-                if (!cachedRes) showToast("Sync Error", "Could not reach database.", true);
+                // If it's a manual pull or they don't have cache, let them know it failed
+                if (!cachedRes || isManualRefresh) {
+                    showToast("Sync Error", "Could not reach database.", true);
+                }
             }
         }
 
@@ -820,12 +891,6 @@
 
             reRenderCurrentView();
         }
-
-        document.addEventListener('DOMContentLoaded', async () => {
-            if (window.PublicKeyCredential && localStorage.getItem('gnc_user_v3') && localStorage.getItem('gnc_pin_v3')) {
-                document.getElementById('btn-fingerprint').classList.remove('hidden');
-            }
-        });
 
         async function promptToEnableBiometrics(user, pass) {
             if (localStorage.getItem('gnc_user_v3') === user) return;
