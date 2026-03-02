@@ -54,7 +54,6 @@
         .task-tab { flex: 1; text-align: center; padding: 12px; font-size: 11px; font-weight: 700; color: #6b7280; cursor: pointer; border-bottom: 3px solid transparent; text-transform: uppercase; }
         .task-tab.active { color: var(--brand-green); border-bottom-color: var(--brand-green); background: white; }
 
-        /* UPDATED: SCROLLABLE DETAIL TABS */
         .detail-tabs { display: flex; overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none; border-bottom: 1px solid #e5e7eb; background: #f9fafb; margin-bottom: 10px; }
         .detail-tabs::-webkit-scrollbar { display: none; }
         .detail-tab { flex: 0 0 auto; text-align: center; padding: 10px 16px; font-size: 11px; font-weight: 700; color: #6b7280; cursor: pointer; border-bottom: 3px solid transparent; text-transform: uppercase; }
@@ -322,6 +321,7 @@
                     <div class="detail-tab hidden" onclick="switchDetailTab('location')" id="dtab-location">Location Notes</div>
                     <div class="detail-tab hidden" onclick="switchDetailTab('request')" id="dtab-request">Request</div>
                     <div class="detail-tab hidden" onclick="switchDetailTab('notes')" id="dtab-notes">Notes & Actions</div>
+                    <div class="detail-tab hidden" onclick="switchDetailTab('docks')" id="dtab-docks">Docks</div>
                 </div>
                 
                 <div id="det-overview-content" class="py-4">
@@ -571,6 +571,46 @@
                     </div>
                 </div>
 
+                <div id="det-docks-content" class="hidden py-4">
+                    <div id="dock-photo-preview" class="mb-4 hidden">
+                        <p class="text-[10px] font-bold text-orange-600 mb-2 uppercase">Photos on file</p>
+                        <div id="dock-photo-list-container" class="space-y-2"></div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2 mb-4">
+                        <label class="bg-orange-50 border-2 border-dashed border-orange-500 text-orange-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer">
+                            <i class="ph-fill ph-camera text-3xl mb-1"></i>
+                            <span class="text-[10px] font-bold">CAMERA</span>
+                            <input type="file" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoUpload(this, 'dock-')">
+                        </label>
+                        <label class="bg-blue-50 border-2 border-dashed border-blue-500 text-blue-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer">
+                            <i class="ph-fill ph-image text-3xl mb-1"></i>
+                            <span class="text-[10px] font-bold">LIBRARY</span>
+                            <input type="file" accept="image/*" class="hidden" onchange="handlePhotoUpload(this, 'dock-')">
+                        </label>
+                    </div>
+
+                    <div id="dock-input-container">
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label>
+                            <input type="text" id="dock-spec" class="input-field" placeholder="e.g. 24-30 inch">
+                        </div>
+                        <div id="dock-container-caliper" class="hidden">
+                            <label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label>
+                            <input type="text" id="dock-caliper" class="input-field" placeholder="e.g. 2 inch">
+                        </div>
+                        
+                        <div>
+                            <label class="text-[10px] font-bold text-orange-700 uppercase">Dock Note</label>
+                            <input type="text" id="dock-sales-desc" class="input-field border-orange-500 bg-orange-50 uppercase" oninput="this.value = this.value.toUpperCase()" placeholder="TYPE NOTES HERE...">
+                        </div>
+                    </div>
+
+                    <div class="flex gap-2 mt-4">
+                        <button id="dock-btn-save-draft" class="w-full bg-orange-600 text-white font-bold py-4 rounded-xl shadow-lg" onclick="saveData(false, 'dock-')">SAVE DOCK DATA</button>
+                    </div>
+                </div>
+
             </div>
 
         </div>
@@ -702,6 +742,7 @@
         let selectedDockName = null;
         let selectedDockSize = null;
         let selectedDockItemCode = null;
+        let selectedDockCustomer = ""; // New specific state for folders
 
         let reservesViewLevel = 0;
         let selectedReservesName = null;
@@ -830,6 +871,7 @@
                     obj.ITEMCODE = getVal(['ITEMCODE']);
                     obj.LOTCODE = getVal(['LOTCODE']);
                     obj.BLOCKALPHA = getVal(['BLOCKALPHA']);
+                    obj.PLANTGROUPCODE = getVal(['PLANTGROUPCODE', 'PLANT GROUP']);
                     obj.S_LTS = getVal(['S_LTS', 'SLTS']);
                     obj.ASSIGNEDTO = getVal(['ASSIGNEDTO']);
                     obj.DATE_COMPLETED = getVal(['DATE COMPLETED']);
@@ -855,6 +897,11 @@
                     obj.REQ_COMMENTS = getVal(['REQ COMMENTS']);
                     obj.REQ_PHOTO_LINK = getVal(['REQ PHOTO LINK']);
                     obj.REQ_PHOTO_NAME = getVal(['REQ PHOTO NAME']);
+
+                    // Docks mapping
+                    obj.DOCK_NOTE = getVal(['DOCK NOTE']);
+                    obj.DOCK_PHOTO_LINK = getVal(['DOCK PHOTO LINK']);
+                    obj.DOCK_PHOTO_NAME = getVal(['DOCK PHOTO NAME']);
                 } else {
                      if (obj['DOCK']) obj.DOCK_NUM = parseInt(String(obj['DOCK']).replace(/\D/g, ''), 10);
                 }
@@ -1574,10 +1621,11 @@
         }
 
         function selectDockNum(num) { selectedDockNum = num; dockViewLevel = 1; renderDocks(); }
-        function selectDockPlant(itemCode, name, size) { 
+        function selectDockPlant(itemCode, name, size, customerStr) { 
             selectedDockItemCode = itemCode; 
             selectedDockName = name; 
             selectedDockSize = size; 
+            selectedDockCustomer = customerStr;
             dockViewLevel = 2; 
             renderDocks(); 
         }
@@ -1678,7 +1726,7 @@
                     
                     Object.values(s.plants).sort((a,b) => a.name.localeCompare(b.name)).forEach(p => {
                         html += `
-                            <div class="p-3 border-b border-gray-100 last:border-b-0 cursor-pointer hover:bg-gray-50 active:bg-gray-100 flex justify-between items-center" onclick="selectDockPlant('${p.itemCode.replace(/'/g, "\\'")}', '${p.name.replace(/'/g, "\\'")}', '${p.size}')">
+                            <div class="p-3 border-b border-gray-100 last:border-b-0 cursor-pointer hover:bg-gray-50 active:bg-gray-100 flex justify-between items-center" onclick="selectDockPlant('${p.itemCode.replace(/'/g, "\\'")}', '${p.name.replace(/'/g, "\\'")}', '${p.size}', '${custDisplay.replace(/'/g, "\\'")}')">
                                 <div class="flex-grow min-w-0 pr-3">
                                     <div class="font-bold text-sm text-[#007a4d] truncate">${p.name}</div>
                                     <div class="text-[11px] font-semibold text-gray-500 mt-1 flex items-center gap-2">
@@ -2293,6 +2341,11 @@
             document.getElementById('req-comments').value = activeItem.REQ_COMMENTS || ""; 
             document.getElementById('req-caliper').value = activeItem.REQ_CALIPER || "";
 
+            // Sync docks field values
+            document.getElementById('dock-spec').value = activeItem.DOCK_SPEC || activeItem.SPEC || "";
+            document.getElementById('dock-caliper').value = activeItem.DOCK_CALIPER || activeItem.CALIPER || "";
+            document.getElementById('dock-sales-desc').value = activeItem.DOCK_NOTE || "";
+
             // Populate Quick Notes for all tabs
             const qSelects = ['ssn-quick-note-select', 'lsn-quick-note-select', 'na-quick-note-select', 'req-quick-note-select'];
             qSelects.forEach(id => {
@@ -2329,13 +2382,21 @@
                 });
             }
 
+            // SPECIAL DOCK CALIPER LOGIC
+            const isTree = activeItem.PLANTGROUPCODE && activeItem.PLANTGROUPCODE.includes('330_TREES');
+            if (isTree && caliperSizes.includes(activeItem.CONTSIZE)) {
+                document.getElementById('dock-container-caliper').classList.remove('hidden');
+            } else {
+                document.getElementById('dock-container-caliper').classList.add('hidden');
+            }
+
             document.getElementById('expand-section').classList.remove('expanded');
             document.getElementById('expand-content').innerHTML = '';
 
             renderPhotoPreview();
 
             // 1. Hide all data entry tabs by default
-            ['season', 'location', 'request', 'notes'].forEach(t => {
+            ['season', 'location', 'request', 'notes', 'docks'].forEach(t => {
                 let el = document.getElementById('dtab-' + t);
                 if (el) el.classList.add('hidden');
             });
@@ -2356,19 +2417,21 @@
                 document.getElementById('dtab-request').classList.remove('hidden');
                 defaultTab = 'request';
             } 
+            else if (sourceView === 'docks') {
+                document.getElementById('dtab-docks').classList.remove('hidden');
+                defaultTab = 'docks';
+            }
             else { 
-                // This covers Drive Mode, Docks, Sales Office, Low Stock, Reserves, Review
+                // This covers Drive Mode, Sales Office, Low Stock, Reserves, Review
                 if (currentRole === 'Admin') {
-                    // Managers see all tabs
+                    // Managers see all tabs (except Docks) in Drive mode
                     ['season', 'location', 'request', 'notes'].forEach(t => {
                         let el = document.getElementById('dtab-' + t);
                         if (el) el.classList.remove('hidden');
                     });
                 } else {
-                    // Regular users see only standard Notes & Actions in Drive Mode (except Docks)
-                    if (sourceView !== 'docks') {
-                        document.getElementById('dtab-notes').classList.remove('hidden');
-                    }
+                    // Regular users see only standard Notes & Actions
+                    document.getElementById('dtab-notes').classList.remove('hidden');
                 }
                 defaultTab = 'overview';
             }
@@ -2377,7 +2440,7 @@
         }
 
         function switchDetailTab(tab) {
-            ['overview', 'season', 'location', 'request', 'notes'].forEach(t => {
+            ['overview', 'season', 'location', 'request', 'notes', 'docks'].forEach(t => {
                 const dtab = document.getElementById('dtab-' + t);
                 const content = document.getElementById('det-' + t + '-content');
                 if (dtab) {
@@ -2437,7 +2500,15 @@
                     
                     const base64Data = canvas.toDataURL('image/jpeg', 0.7).split(',')[1];
                     const dateStr = new Date().toISOString().split('T')[0];
-                    const filename = `${activeItem.COMMONNAME}_${activeItem.CONTSIZE}_${dateStr}.jpg`.replace(/[\/\s,]/g, '_');
+                    
+                    let filename = `${activeItem.COMMONNAME}_${activeItem.CONTSIZE}_${dateStr}.jpg`.replace(/[\/\s,]/g, '_');
+
+                    if (prefix === 'dock-') {
+                        let locStr = activeItem.LOCATIONCODE || "NoLoc";
+                        let lotStr = activeItem.LOTCODE || "NoLot";
+                        let dockStr = "DOCK" + selectedDockNum;
+                        filename = `${activeItem.COMMONNAME}-${activeItem.CONTSIZE}-${locStr}-${lotStr}-${dockStr}-${dateStr}.jpg`.replace(/[\/\s,]/g, '_');
+                    }
                     
                     uploadPhotoToDrive(base64Data, filename, prefix);
                 };
@@ -2449,7 +2520,9 @@
         function uploadPhotoToDrive(base64Data, filename, prefix) {
             showToast("Uploading...", "Sending to Google Drive...", false);
             
-            let btn = prefix === 'req-' ? document.getElementById('req-btn-save-draft') : document.getElementById(prefix + 'btn-save-complete');
+            let btn = prefix === 'req-' ? document.getElementById('req-btn-save-draft') : document.getElementById(prefix + 'btn-save-draft'); // Fallback to draft btn if complete not exist
+            if (prefix !== 'req-' && prefix !== 'dock-') btn = document.getElementById(prefix + 'btn-save-complete');
+            
             if (btn) {
                 btn.innerText = "UPLOADING...";
                 btn.disabled = true;
@@ -2459,15 +2532,25 @@
             if (prefix === 'req-') context = "request";
             else if (prefix === 'ssn-') context = "season";
             else if (prefix === 'lsn-') context = "location";
+            else if (prefix === 'dock-') context = "docks";
+
+            let payload = { type: "image", image: base64Data, mimeType: "image/jpeg", filename: filename, folderContext: context };
+
+            if (context === "docks") {
+                payload.dockNum = selectedDockNum;
+                payload.customer = selectedDockCustomer;
+            }
             
             fetch(GOOGLE_SCRIPT_URL, {
                 method: "POST",
-                body: JSON.stringify({ type: "image", image: base64Data, mimeType: "image/jpeg", filename: filename, folderContext: context })
+                body: JSON.stringify(payload)
             })
             .then(res => res.json())
             .then(data => {
                 if (btn) {
-                    btn.innerText = prefix === 'req-' ? "SAVE REQUEST DATA" : "MARK COMPLETE";
+                    if (prefix === 'req-') btn.innerText = "SAVE REQUEST DATA";
+                    else if (prefix === 'dock-') btn.innerText = "SAVE DOCK DATA";
+                    else btn.innerText = "MARK COMPLETE";
                     btn.disabled = false;
                 }
                 
@@ -2479,6 +2562,13 @@
                         names.push(filename);
                         activeItem.REQ_PHOTO_LINK = links.join(',');
                         activeItem.REQ_PHOTO_NAME = names.join(',');
+                    } else if (prefix === 'dock-') {
+                        let links = activeItem.DOCK_PHOTO_LINK ? activeItem.DOCK_PHOTO_LINK.split(',') : [];
+                        let names = activeItem.DOCK_PHOTO_NAME ? activeItem.DOCK_PHOTO_NAME.split(',') : [];
+                        links.push(data.url);
+                        names.push(filename);
+                        activeItem.DOCK_PHOTO_LINK = links.join(',');
+                        activeItem.DOCK_PHOTO_NAME = names.join(',');
                     } else {
                         let links = activeItem.SAVED_PHOTO_LINK ? activeItem.SAVED_PHOTO_LINK.split(',') : [];
                         let names = activeItem.SAVED_PHOTO_NAME ? activeItem.SAVED_PHOTO_NAME.split(',') : [];
@@ -2495,7 +2585,9 @@
             })
             .catch(err => {
                 if (btn) {
-                    btn.innerText = prefix === 'req-' ? "SAVE REQUEST DATA" : "MARK COMPLETE";
+                    if (prefix === 'req-') btn.innerText = "SAVE REQUEST DATA";
+                    else if (prefix === 'dock-') btn.innerText = "SAVE DOCK DATA";
+                    else btn.innerText = "MARK COMPLETE";
                     btn.disabled = false;
                 }
                 showToast("Error", "Network connection failed.", true);
@@ -2514,16 +2606,26 @@
                     if (match) cleanUrl = match[1];
                     
                     const dispName = names[i] || `Photo ${i+1}`; 
-                    const iconColor = type === 'req' ? 'text-purple-600' : 'text-blue-500';
-                    const arrowColor = type === 'req' ? 'text-purple-400' : 'text-gray-300';
+                    
+                    let bgClass = 'bg-white';
+                    let borderClass = 'border-gray-200';
+                    let iconColor = 'text-blue-500';
+                    let titleColor = 'text-blue-600';
+                    let arrowColor = 'text-gray-300';
+
+                    if (type === 'req') {
+                        bgClass = 'bg-purple-50'; borderClass = 'border-purple-200'; iconColor = 'text-purple-600'; titleColor = 'text-purple-700'; arrowColor = 'text-purple-400';
+                    } else if (type === 'dock') {
+                        bgClass = 'bg-orange-50'; borderClass = 'border-orange-200'; iconColor = 'text-orange-500'; titleColor = 'text-orange-700'; arrowColor = 'text-orange-400';
+                    }
                     
                     if(cleanUrl.startsWith('http')) {
                         html += `
-                        <div class="flex items-center gap-3 p-2 ${type === 'req'?'bg-purple-50':'bg-white'} rounded-lg border ${type === 'req'?'border-purple-200':'border-gray-200'} shadow-sm">
+                        <div class="flex items-center gap-3 p-2 ${bgClass} rounded-lg border ${borderClass} shadow-sm">
                             <a href="${cleanUrl}" target="_blank" class="flex-grow flex items-center gap-3">
                                 <i class="ph-fill ph-image text-2xl ${iconColor}"></i>
                                 <div class="flex-grow min-w-0">
-                                    <div class="text-xs font-bold ${type === 'req'?'text-purple-700':'text-blue-600'} truncate">${dispName}</div>
+                                    <div class="text-xs font-bold ${titleColor} truncate">${dispName}</div>
                                     <div class="text-[10px] text-gray-500">Tap to view</div>
                                 </div>
                                 <i class="ph-bold ph-arrow-square-out ${arrowColor}"></i>
@@ -2538,30 +2640,32 @@
             ['ssn-', 'lsn-', 'na-'].forEach(p => {
                 const div = document.getElementById(p + 'photo-preview');
                 const list = document.getElementById(p + 'photo-list-container');
-                if (stdHtml) {
-                    div.classList.remove('hidden');
-                    list.innerHTML = stdHtml;
-                } else {
-                    div.classList.add('hidden');
-                    list.innerHTML = "";
+                if (div && list) {
+                    if (stdHtml) { div.classList.remove('hidden'); list.innerHTML = stdHtml; } 
+                    else { div.classList.add('hidden'); list.innerHTML = ""; }
                 }
             });
 
             const reqHtml = buildPhotoHtml(activeItem.REQ_PHOTO_LINK, activeItem.REQ_PHOTO_NAME, 'req');
             const reqDiv = document.getElementById('req-photo-preview');
             const reqList = document.getElementById('req-photo-list-container');
-            if (reqHtml) {
-                reqDiv.classList.remove('hidden');
-                reqList.innerHTML = reqHtml;
-            } else {
-                reqDiv.classList.add('hidden');
-                reqList.innerHTML = "";
+            if (reqDiv && reqList) {
+                if (reqHtml) { reqDiv.classList.remove('hidden'); reqList.innerHTML = reqHtml; } 
+                else { reqDiv.classList.add('hidden'); reqList.innerHTML = ""; }
+            }
+
+            const dockHtml = buildPhotoHtml(activeItem.DOCK_PHOTO_LINK, activeItem.DOCK_PHOTO_NAME, 'dock');
+            const dockDiv = document.getElementById('dock-photo-preview');
+            const dockList = document.getElementById('dock-photo-list-container');
+            if (dockDiv && dockList) {
+                if (dockHtml) { dockDiv.classList.remove('hidden'); dockList.innerHTML = dockHtml; } 
+                else { dockDiv.classList.add('hidden'); dockList.innerHTML = ""; }
             }
         }
 
         function saveData(isComplete = false, prefix) {
-            let btnDraft = prefix === 'req-' ? document.getElementById('req-btn-save-draft') : document.getElementById(prefix + 'btn-save-draft');
-            let btnComp = prefix === 'req-' ? null : document.getElementById(prefix + 'btn-save-complete');
+            let btnDraft = document.getElementById(prefix + 'btn-save-draft');
+            let btnComp = document.getElementById(prefix + 'btn-save-complete');
             
             if (isComplete) { 
                 if(btnComp) btnComp.innerText = "SAVING..."; 
@@ -2571,14 +2675,13 @@
             
             let matchVal, specVal, caliperVal, pickVal, salesDescVal;
 
-            if (prefix !== 'req-') {
+            if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-') {
                 matchVal = document.getElementById(prefix + 'match').value;
                 specVal = document.getElementById(prefix + 'spec').value;
                 caliperVal = document.getElementById(prefix + 'caliper').value;
                 pickVal = document.getElementById(prefix + 'pick').value;
                 salesDescVal = document.getElementById(prefix + 'sales-desc').value.toUpperCase();
                 
-                // Immediately sync active item to keep tabs in order
                 activeItem.MATCH = matchVal;
                 activeItem.SPEC = specVal;
                 activeItem.CALIPER = caliperVal;
@@ -2592,12 +2695,20 @@
                 salesDescVal = activeItem.SALES_NOTE;
             }
 
-            activeItem.REQ_MATCH = document.getElementById('req-match').value;
-            activeItem.REQ_SPEC = document.getElementById('req-spec').value;
-            activeItem.REQ_CALIPER = document.getElementById('req-caliper').value;
-            activeItem.REQ_PICK = document.getElementById('req-pick').value;
-            activeItem.REQ_SALES_NOTE = document.getElementById('req-sales-desc').value.toUpperCase();
-            activeItem.REQ_COMMENTS = document.getElementById('req-comments').value; 
+            if (prefix === 'req-') {
+                activeItem.REQ_MATCH = document.getElementById('req-match').value;
+                activeItem.REQ_SPEC = document.getElementById('req-spec').value;
+                activeItem.REQ_CALIPER = document.getElementById('req-caliper').value;
+                activeItem.REQ_PICK = document.getElementById('req-pick').value;
+                activeItem.REQ_SALES_NOTE = document.getElementById('req-sales-desc').value.toUpperCase();
+                activeItem.REQ_COMMENTS = document.getElementById('req-comments').value; 
+            }
+
+            if (prefix === 'dock-') {
+                activeItem.DOCK_SPEC = document.getElementById('dock-spec').value;
+                activeItem.DOCK_CALIPER = document.getElementById('dock-caliper').value;
+                activeItem.DOCK_NOTE = document.getElementById('dock-sales-desc').value.toUpperCase();
+            }
 
             const payload = {
                 type: "update",
@@ -2609,14 +2720,17 @@
                 salesDesc: salesDescVal,
                 photoLink: activeItem.SAVED_PHOTO_LINK || "", 
                 photoName: activeItem.SAVED_PHOTO_NAME || "",
-                reqMatch: activeItem.REQ_MATCH,
-                reqSpec: activeItem.REQ_SPEC,
-                reqCaliper: activeItem.REQ_CALIPER,
-                reqPick: activeItem.REQ_PICK,
-                reqSalesDesc: activeItem.REQ_SALES_NOTE,
-                reqComments: activeItem.REQ_COMMENTS, 
+                reqMatch: activeItem.REQ_MATCH || "",
+                reqSpec: activeItem.REQ_SPEC || "",
+                reqCaliper: activeItem.REQ_CALIPER || "",
+                reqPick: activeItem.REQ_PICK || "",
+                reqSalesDesc: activeItem.REQ_SALES_NOTE || "",
+                reqComments: activeItem.REQ_COMMENTS || "", 
                 reqPhotoLink: activeItem.REQ_PHOTO_LINK || "",
                 reqPhotoName: activeItem.REQ_PHOTO_NAME || "",
+                dockNote: activeItem.DOCK_NOTE || "",
+                dockPhotoLink: activeItem.DOCK_PHOTO_LINK || "",
+                dockPhotoName: activeItem.DOCK_PHOTO_NAME || "",
                 isComplete: isComplete 
             };
 
@@ -2626,7 +2740,11 @@
             })
             .then(res => res.json())
             .then(data => {
-                if(btnDraft) btnDraft.innerText = prefix === 'req-' ? "SAVE REQUEST DATA" : "SAVE DRAFT";
+                if(btnDraft) {
+                    if(prefix === 'req-') btnDraft.innerText = "SAVE REQUEST DATA";
+                    else if(prefix === 'dock-') btnDraft.innerText = "SAVE DOCK DATA";
+                    else btnDraft.innerText = "SAVE DRAFT";
+                }
                 if(btnComp) btnComp.innerText = "MARK COMPLETE";
                 
                 if(data.status === 'success') {
@@ -2638,7 +2756,11 @@
                 } else { showToast("Error", data.message, true); }
             })
             .catch(err => {
-                if(btnDraft) btnDraft.innerText = prefix === 'req-' ? "SAVE REQUEST DATA" : "SAVE DRAFT";
+                if(btnDraft) {
+                    if(prefix === 'req-') btnDraft.innerText = "SAVE REQUEST DATA";
+                    else if(prefix === 'dock-') btnDraft.innerText = "SAVE DOCK DATA";
+                    else btnDraft.innerText = "SAVE DRAFT";
+                }
                 if(btnComp) btnComp.innerText = "MARK COMPLETE";
                 showToast("Network Error", "Could not reach server.", true);
             });
