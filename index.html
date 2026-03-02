@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GNC SALES PRO</title>
+    <title>GNC PRO 005</title>
     
     <meta name="theme-color" content="#007a4d">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="icon" type="image/png" href="GNC LOGO.png">
     <link rel="apple-touch-icon" href="GNC LOGO.png">
+    <link rel="manifest" href="manifest.json">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
@@ -55,6 +56,9 @@
         .task-tab.active { color: var(--brand-green); border-bottom-color: var(--brand-green); background: white; }
 
         /* SCROLLABLE DETAIL TABS */
+        .hide-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        
         .detail-tabs { display: flex; overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none; border-bottom: 1px solid #e5e7eb; background: #f9fafb; margin-bottom: 10px; }
         .detail-tabs::-webkit-scrollbar { display: none; }
         .detail-tab { flex: 0 0 auto; text-align: center; padding: 10px 16px; font-size: 11px; font-weight: 700; color: #6b7280; cursor: pointer; border-bottom: 3px solid transparent; text-transform: uppercase; }
@@ -88,7 +92,7 @@
         <div class="login-card">
             <div class="flex flex-col items-center mb-8 w-full relative">
                 <img src="Greenleaf%20Logo.png" alt="Greenleaf Logo" class="h-20 mb-4 object-contain drop-shadow-md" onerror="this.style.display='none'">
-                <div class="text-3xl text-[#007a4d] font-black tracking-tighter mb-1">GNC SALES PRO</div>
+                <div class="text-3xl text-[#007a4d] font-black tracking-tighter mb-1">GNC PRO 005</div>
                 
                 <div class="flex flex-col items-center gap-0.5 mt-5">
                     <span class="text-[9px] font-bold text-gray-400 uppercase tracking-[0.3em]">Powered By</span>
@@ -142,8 +146,7 @@
                 <h3 class="font-bold text-lg mb-2 text-orange-600">Who requested this?</h3>
                 <input type="text" id="rep-search-input" class="input-field mb-3 border-orange-200 focus:border-orange-500" placeholder="Search or type name..." onkeyup="filterRepList()">
                 
-                <div id="rep-list-container" class="grid grid-cols-1 gap-2 mb-4 max-h-[40vh] overflow-y-auto px-2 py-1">
-                </div>
+                <div id="rep-list-container" class="grid grid-cols-1 gap-2 mb-4 max-h-[40vh] overflow-y-auto px-2 py-1"></div>
 
                 <button id="custom-rep-btn" class="hidden w-full bg-orange-600 text-white font-bold p-3 rounded-lg mb-4 shadow-sm" onclick="selectRepForRequest(document.getElementById('rep-search-input').value.trim())">Assign to: <span></span></button>
             </div>
@@ -175,9 +178,10 @@
                 <i class="ph-bold ph-list menu-btn text-2xl cursor-pointer" onclick="toggleMenu()"></i>
                 <div class="flex flex-col">
                     <div class="font-bold text-lg leading-tight"><span id="header-user">User</span></div>
-                    <div class="text-[10px] opacity-80 leading-tight">GNC SALES PRO</div>
+                    <div class="text-[10px] opacity-80 leading-tight">GNC PRO 005</div>
                 </div>
             </div>
+            <i class="ph-bold ph-arrows-clockwise text-xl ml-2 cursor-pointer text-white" onclick="forceSync()" id="sync-icon"></i>
         </header>
 
         <div id="drawer-overlay" onclick="toggleMenu()"></div>
@@ -209,7 +213,7 @@
                         <img src="Greenleaf%20Logo.png" alt="Greenleaf Logo" class="h-11 object-contain" onerror="this.style.display='none'">
                     </div>
                     
-                    <h1 class="text-2xl font-black tracking-tight mb-1 z-10 relative">GNC SALES PRO</h1>
+                    <h1 class="text-2xl font-black tracking-tight mb-1 z-10 relative">GNC PRO 005</h1>
                     <p class="text-green-100 text-[10px] font-bold mb-5 uppercase tracking-[0.2em] z-10 relative">Dashboard</p>
                     
                     <div class="flex flex-col items-center pt-4 border-t border-white/20 w-full mt-1 z-10 relative">
@@ -221,38 +225,30 @@
                 <h2 class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3 pl-1">App Modules</h2>
                 <div class="grid grid-cols-2 gap-3 mb-8">
                     <div onclick="switchView('drive')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer">
-                        <i class="ph-bold ph-car text-3xl text-blue-600"></i>
-                        <span class="font-bold text-sm text-gray-800">Drive Mode</span>
+                        <i class="ph-bold ph-car text-3xl text-blue-600"></i><span class="font-bold text-sm text-gray-800">Drive Mode</span>
                     </div>
                     <div onclick="switchView('tasks')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer">
-                        <i class="ph-bold ph-clipboard-text text-3xl text-[#007a4d]"></i>
-                        <span class="font-bold text-sm text-gray-800">Tasks</span>
+                        <i class="ph-bold ph-clipboard-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-gray-800">Tasks</span>
                     </div>
                     <div onclick="switchView('docks')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer">
-                        <i class="ph-bold ph-truck text-3xl text-orange-600"></i>
-                        <span class="font-bold text-sm text-gray-800">Docks</span>
+                        <i class="ph-bold ph-truck text-3xl text-orange-600"></i><span class="font-bold text-sm text-gray-800">Docks</span>
                     </div>
                     <div onclick="switchView('request')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer admin-only">
-                        <i class="ph-bold ph-chat-circle-text text-3xl text-blue-600"></i>
-                        <span class="font-bold text-sm text-gray-800">Requests</span>
+                        <i class="ph-bold ph-chat-circle-text text-3xl text-blue-600"></i><span class="font-bold text-sm text-gray-800">Requests</span>
                     </div>
                     
                     <div onclick="switchView('reserves')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform col-span-2 cursor-pointer admin-only">
-                        <i class="ph-bold ph-bookmark-simple text-3xl text-indigo-600"></i>
-                        <span class="font-bold text-sm text-gray-800">Reserves</span>
+                        <i class="ph-bold ph-bookmark-simple text-3xl text-indigo-600"></i><span class="font-bold text-sm text-gray-800">Reserves</span>
                     </div>
 
                     <div onclick="switchView('sales-office')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer admin-only">
-                        <i class="ph-bold ph-briefcase text-3xl text-purple-600"></i>
-                        <span class="font-bold text-sm text-gray-800">Sales Office</span>
+                        <i class="ph-bold ph-briefcase text-3xl text-purple-600"></i><span class="font-bold text-sm text-gray-800">Sales Office</span>
                     </div>
                     <div onclick="switchView('low-stock')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer dylan-only hidden">
-                        <i class="ph-bold ph-trend-down text-3xl text-red-600"></i>
-                        <span class="font-bold text-sm text-gray-800">Low Stock</span>
+                        <i class="ph-bold ph-trend-down text-3xl text-red-600"></i><span class="font-bold text-sm text-gray-800">Low Stock</span>
                     </div>
                     <div onclick="switchView('review')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform col-span-2 cursor-pointer admin-only">
-                        <i class="ph-bold ph-warning-circle text-3xl text-yellow-600"></i>
-                        <span class="font-bold text-sm text-gray-800">Manager Review</span>
+                        <i class="ph-bold ph-warning-circle text-3xl text-yellow-600"></i><span class="font-bold text-sm text-gray-800">Manager Review</span>
                     </div>
                 </div>
 
@@ -309,6 +305,7 @@
 
             <div id="view-drive" class="hidden">
                 <input type="text" id="drive-search" class="input-field mb-2" placeholder="Search Names or Locs..." onkeyup="handleDriveSearch()">
+                <div id="drive-season-filter" class="flex gap-2 overflow-x-auto pb-2 mb-2 hide-scrollbar"></div>
                 <div id="drive-crumb" class="text-xs font-bold text-[#007a4d] mb-3 empty:hidden"></div>
                 <div id="drive-content"></div>
             </div>
@@ -374,13 +371,11 @@
 
                     <div class="grid grid-cols-2 gap-2 mb-4">
                         <label class="bg-green-50 border-2 border-dashed border-green-500 text-green-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer">
-                            <i class="ph-fill ph-camera text-3xl mb-1"></i>
-                            <span class="text-[10px] font-bold">CAMERA</span>
+                            <i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span>
                             <input type="file" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoUpload(this, 'ssn-')">
                         </label>
                         <label class="bg-blue-50 border-2 border-dashed border-blue-500 text-blue-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer">
-                            <i class="ph-fill ph-image text-3xl mb-1"></i>
-                            <span class="text-[10px] font-bold">LIBRARY</span>
+                            <i class="ph-fill ph-image text-3xl mb-1"></i><span class="text-[10px] font-bold">LIBRARY</span>
                             <input type="file" accept="image/*" class="hidden" onchange="handlePhotoUpload(this, 'ssn-')">
                         </label>
                     </div>
@@ -434,13 +429,11 @@
 
                     <div class="grid grid-cols-2 gap-2 mb-4">
                         <label class="bg-green-50 border-2 border-dashed border-green-500 text-green-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer">
-                            <i class="ph-fill ph-camera text-3xl mb-1"></i>
-                            <span class="text-[10px] font-bold">CAMERA</span>
+                            <i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span>
                             <input type="file" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoUpload(this, 'lsn-')">
                         </label>
                         <label class="bg-blue-50 border-2 border-dashed border-blue-500 text-blue-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer">
-                            <i class="ph-fill ph-image text-3xl mb-1"></i>
-                            <span class="text-[10px] font-bold">LIBRARY</span>
+                            <i class="ph-fill ph-image text-3xl mb-1"></i><span class="text-[10px] font-bold">LIBRARY</span>
                             <input type="file" accept="image/*" class="hidden" onchange="handlePhotoUpload(this, 'lsn-')">
                         </label>
                     </div>
@@ -494,13 +487,11 @@
 
                     <div class="grid grid-cols-2 gap-2 mb-4">
                         <label class="bg-green-50 border-2 border-dashed border-green-500 text-green-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer">
-                            <i class="ph-fill ph-camera text-3xl mb-1"></i>
-                            <span class="text-[10px] font-bold">CAMERA</span>
+                            <i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span>
                             <input type="file" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoUpload(this, 'na-')">
                         </label>
                         <label class="bg-blue-50 border-2 border-dashed border-blue-500 text-blue-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer">
-                            <i class="ph-fill ph-image text-3xl mb-1"></i>
-                            <span class="text-[10px] font-bold">LIBRARY</span>
+                            <i class="ph-fill ph-image text-3xl mb-1"></i><span class="text-[10px] font-bold">LIBRARY</span>
                             <input type="file" accept="image/*" class="hidden" onchange="handlePhotoUpload(this, 'na-')">
                         </label>
                     </div>
@@ -554,13 +545,11 @@
 
                     <div class="grid grid-cols-2 gap-2 mb-4">
                         <label class="bg-purple-50 border-2 border-dashed border-purple-500 text-purple-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer">
-                            <i class="ph-fill ph-camera text-3xl mb-1"></i>
-                            <span class="text-[10px] font-bold">CAMERA</span>
+                            <i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span>
                             <input type="file" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoUpload(this, 'req-')">
                         </label>
                         <label class="bg-blue-50 border-2 border-dashed border-blue-500 text-blue-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer">
-                            <i class="ph-fill ph-image text-3xl mb-1"></i>
-                            <span class="text-[10px] font-bold">LIBRARY</span>
+                            <i class="ph-fill ph-image text-3xl mb-1"></i><span class="text-[10px] font-bold">LIBRARY</span>
                             <input type="file" accept="image/*" class="hidden" onchange="handlePhotoUpload(this, 'req-')">
                         </label>
                     </div>
@@ -617,13 +606,11 @@
 
                     <div class="grid grid-cols-2 gap-2 mb-4">
                         <label class="bg-orange-50 border-2 border-dashed border-orange-500 text-orange-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer">
-                            <i class="ph-fill ph-camera text-3xl mb-1"></i>
-                            <span class="text-[10px] font-bold">CAMERA</span>
+                            <i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span>
                             <input type="file" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoUpload(this, 'dock-')">
                         </label>
                         <label class="bg-blue-50 border-2 border-dashed border-blue-500 text-blue-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer">
-                            <i class="ph-fill ph-image text-3xl mb-1"></i>
-                            <span class="text-[10px] font-bold">LIBRARY</span>
+                            <i class="ph-fill ph-image text-3xl mb-1"></i><span class="text-[10px] font-bold">LIBRARY</span>
                             <input type="file" accept="image/*" class="hidden" onchange="handlePhotoUpload(this, 'dock-')">
                         </label>
                     </div>
@@ -688,7 +675,6 @@
     <script>
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzhJ_tytv5Rm2ag44liZAU6nsp0lQ7-9PLmjxrcuT1WA1WARubi7NyolYoTZ_qvZmzo/exec";
 
-        // --- INDEXED DB SETUP ---
         const DB_NAME = "GNC_Sales_DB";
         const STORE_NAME = "inventory_cache";
 
@@ -704,6 +690,27 @@
                 request.onsuccess = event => resolve(event.target.result);
                 request.onerror = event => reject(event.target.error);
             });
+        }
+
+        function forceSync() {
+            document.getElementById('sync-icon').classList.add('animate-spin');
+            showToast("Syncing...", "Pulling fresh data from Google Sheets...", false);
+            fetch(`${GOOGLE_SCRIPT_URL}?action=getData`)
+                .then(res => res.json())
+                .then(async res => {
+                    if(res.status === 'success') {
+                        await saveToCache(res);
+                        processAndLoadData(res);
+                        showToast("Sync Complete", "Database updated.", false);
+                    } else {
+                        showToast("Error", "Failed to sync.", true);
+                    }
+                    document.getElementById('sync-icon').classList.remove('animate-spin');
+                })
+                .catch(err => {
+                    showToast("Error", "Network connection failed.", true);
+                    document.getElementById('sync-icon').classList.remove('animate-spin');
+                });
         }
 
         async function saveToCache(data) {
@@ -734,7 +741,6 @@
                 return null;
             }
         }
-        // ------------------------
 
         let appUsers = [];
         let fullInventory = []; 
@@ -763,6 +769,7 @@
         let driveViewLevel = 0;
         let selectedDriveName = null;
         let selectedDriveSize = null;
+        let selectedDriveSeasons = new Set(); 
 
         let activeTaskTab = "season";
         let taskViewTargetUser = null; 
@@ -783,7 +790,7 @@
         let selectedReqRep = null;
         let selectedReqRepStatus = null; 
         let selectedReqFolder = null; 
-        let tempSelectedReqRep = ""; // Used for the Request Modal flow
+        let tempSelectedReqRep = ""; 
         
         let dockViewLevel = 0;
         let selectedDockNum = null;
@@ -810,7 +817,14 @@
             return url;
         }
 
-        window.onload = function() {};
+        window.onload = function() {
+            const cachedUser = localStorage.getItem('gnc_user_v3');
+            const cachedRole = localStorage.getItem('gnc_role_v3');
+            
+            if (cachedUser && cachedRole) {
+                document.getElementById('username-input').value = cachedUser;
+            }
+        };
 
         function handleLogin(isBiometricLogin = false) {
             const inputUser = document.getElementById('username-input').value.trim().toLowerCase();
@@ -825,7 +839,15 @@
             document.getElementById('loading-spinner').classList.remove('hidden');
             document.getElementById('loading-text').innerText = "Authenticating...";
 
-            // PHASE 1: LIGHTNING FAST AUTHENTICATION
+            if (localStorage.getItem('gnc_user_v3') === inputUser && localStorage.getItem('gnc_pin_v3') === inputPass && localStorage.getItem('gnc_role_v3')) {
+                currentUser = inputUser;
+                currentRole = localStorage.getItem('gnc_role_v3');
+                document.getElementById('header-user').innerText = currentUser.toUpperCase();
+                applyRolePermissions();
+                fetchBackgroundData(); 
+                return;
+            }
+
             const authUrl = `${GOOGLE_SCRIPT_URL}?action=auth&username=${encodeURIComponent(inputUser)}&password=${encodeURIComponent(inputPass)}`;
 
             fetch(authUrl)
@@ -836,14 +858,15 @@
                         currentRole = res.role;
                         document.getElementById('header-user').innerText = currentUser.toUpperCase();
 
+                        localStorage.setItem('gnc_user_v3', inputUser);
+                        localStorage.setItem('gnc_pin_v3', inputPass);
+                        localStorage.setItem('gnc_role_v3', currentRole);
+
                         if (!isBiometricLogin && window.PublicKeyCredential) {
                             promptToEnableBiometrics(inputUser, inputPass);
                         }
 
-                        // UNLOCK THE APP IMMEDIATELY
                         applyRolePermissions();
-                        
-                        // PHASE 2: INSTANT CACHE LOAD + BACKGROUND SYNC
                         fetchBackgroundData();
                         
                     } else {
@@ -861,7 +884,6 @@
         }
 
         async function fetchBackgroundData() {
-            // 1. Check for local memory cache for INSTANT load
             const cachedRes = await loadFromCache();
             if (cachedRes) {
                 processAndLoadData(cachedRes);
@@ -870,14 +892,13 @@
                 showToast("Welcome!", "Downloading database... (This only happens once)", false);
             }
 
-            // 2. Fetch the highly compressed 2D Array data from Google
             const dataUrl = `${GOOGLE_SCRIPT_URL}?action=getData`;
             
             fetch(dataUrl)
                 .then(response => response.json())
                 .then(async res => {
                     if (res.status === 'success') {
-                        await saveToCache(res); // Save to massive storage
+                        await saveToCache(res); 
                         processAndLoadData(res);
                         if(cachedRes) {
                              showToast("Sync Complete", "Live database updated.", false);
@@ -892,7 +913,6 @@
                 });
         }
 
-        // Helper function to turn Compressed 2D Arrays back into usable App Objects
         function mapCompressedToObj(compressedData, isMaster = false) {
             if(!compressedData || !compressedData.headers) return [];
             const h = compressedData.headers;
@@ -902,7 +922,6 @@
                     obj[colName] = row[idx]; 
                 });
                 
-                // Set explicitly expected keys
                 if(isMaster) {
                     const getVal = (names) => {
                         for(let n of names) { let idx = h.indexOf(n); if(idx > -1) return row[idx]; }
@@ -925,6 +944,7 @@
                     obj.S_LTS = getVal(['S_LTS', 'SLTS']);
                     obj.ASSIGNEDTO = getVal(['ASSIGNEDTO']);
                     obj.DATE_COMPLETED = getVal(['DATE COMPLETED']);
+                    obj.SEASON = getVal(['SEASON']); 
                     
                     let isReqVal = getVal(['IS REQUEST']);
                     obj.IS_REQUEST = (String(isReqVal).toUpperCase() === 'TRUE' || isReqVal === true);
@@ -952,14 +972,33 @@
                     obj.REQ_CUSTOMER = getVal(['REQ CUSTOMER']);
                     obj.REQ_QTY = getVal(['REQ QTY']);
 
-                    // Docks mapping
                     obj.DOCK_SPEC = getVal(['DOCK SPEC']);
                     obj.DOCK_CALIPER = getVal(['DOCK CALIPER']);
                     obj.DOCK_NOTE = getVal(['DOCK NOTE']);
                     obj.DOCK_PHOTO_LINK = getVal(['DOCK PHOTO LINK']);
                     obj.DOCK_PHOTO_NAME = getVal(['DOCK PHOTO NAME']);
                 } else {
-                     if (obj['DOCK']) obj.DOCK_NUM = parseInt(String(obj['DOCK']).replace(/\D/g, ''), 10);
+                     let dockVal = obj['DOCK'] || obj['DOCK NUMBER'] || obj['DOCK#'] || obj['DOCK NUM'];
+                     if (!dockVal) {
+                         let dKey = Object.keys(obj).find(k => String(k).toUpperCase().includes('DOCK'));
+                         if (dKey) dockVal = obj[dKey];
+                     }
+                     if (dockVal) {
+                         let numStr = String(dockVal).replace(/\D/g, '');
+                         if (numStr) obj.DOCK_NUM = parseInt(numStr, 10);
+                     }
+
+                     let stopVal = obj['STOPNUMBER'] || obj['STOP NUMBER'] || obj['STOP'] || obj['STOP#'];
+                     if (stopVal) obj.STOPNUMBER = stopVal;
+
+                     let tripVal = obj['TRIPNUMBER'] || obj['TRIP NUMBER'] || obj['TRIP'] || obj['TRIP#'];
+                     if (tripVal) obj.TRIPNUMBER = tripVal;
+                     
+                     let itemVal = obj['ITEMCODE'] || obj['ITEM CODE'] || obj['ITEM'] || obj['ITEM#'];
+                     if (itemVal) obj.ITEMCODE = itemVal;
+                     
+                     let custVal = obj['CUSTOMERNAME'] || obj['CUSTOMER NAME'] || obj['CUSTOMER'];
+                     if (custVal) obj.CUSTOMERNAME = custVal;
                 }
                 return obj;
             });
@@ -968,7 +1007,6 @@
         function processAndLoadData(res) {
             salesNotesDict = res.salesNotesMap || {};
             
-            // Map compressed data arrays to Javascript Objects instantly
             fullInventory = mapCompressedToObj(res.data, true).map((item, idx) => {
                 item.DOM_ID = 'fi_' + idx;
                 return item;
@@ -980,13 +1018,11 @@
             socInventory = mapCompressedToObj(res.socData, false);
             reservesInventory = mapCompressedToObj(res.reservesData, false);
 
-            // --- FIX: USE EXACT IDS FROM GOOGLE SHEET TABS ---
             let exactSeasonIds = new Set(res.seasonIds || []);
 
             fullInventory.forEach(item => {
                 item.APP_TAB_ASSIGNMENT = exactSeasonIds.has(item.UNIQUE_ID) ? 'season' : 'location';
             });
-            // --- END FIX ---
             
             reservesInventory = reservesInventory.map((item, idx) => {
                 item.DOM_ID = 'res_' + idx;
@@ -1035,7 +1071,7 @@
                     await navigator.credentials.create({
                         publicKey: {
                             challenge: challenge,
-                            rp: { name: "GNC SALES PRO", id: window.location.hostname },
+                            rp: { name: "GNC PRO 005", id: window.location.hostname },
                             user: { id: userId, name: user, displayName: user.toUpperCase() },
                             pubKeyCredParams: [{type: "public-key", alg: -7}, {type: "public-key", alg: -257}],
                             authenticatorSelection: { 
@@ -1304,7 +1340,6 @@
                 bar.classList.remove('hidden');
                 document.getElementById('sel-count').innerText = selectedItems.size;
                 
-                // Hide Assign and Request in Docks View
                 const isDocksView = !document.getElementById('view-docks').classList.contains('hidden');
                 const btnAssign = document.getElementById('batch-btn-assign');
                 const btnRequest = document.getElementById('batch-btn-request');
@@ -1392,11 +1427,9 @@
                             <span class="truncate pr-2">${item.COMMONNAME || 'Unknown'} • ${item.CONTSIZE || '-'} • Loc: ${item.LOCATIONCODE || 'No Loc'}</span>
                             <span class="whitespace-nowrap bg-[#007a4d]/10 px-1.5 py-0.5 rounded text-xs border border-[#007a4d]/20">Pri: ${item.PRIORITY || '-'}</span>
                         </div>
-                        
                         <div class="text-[11px] font-semibold truncate mt-0.5">
                             Tag: ${tagColor} | Lot: ${item.LOTCODE || '-'} | PTR-Ava: ${item.PTRAVAILABLE || '0'} | s_LTS: ${item.S_LTS || '0'} | Supply: ${item.SEASONSUPPLY || '0'}
                         </div>
-                        
                         <div class="text-[11px] font-semibold truncate mt-0.5">
                             Item: ${item.ITEMCODE || '-'}
                         </div>
@@ -1415,7 +1448,6 @@
             document.getElementById('tab-select-modal').classList.remove('hidden');
         }
 
-        // --- NEW MULTI-STEP REQUEST MODAL FLOW ---
         function openRequestModal() {
             document.getElementById('step-1-rep').classList.remove('hidden');
             document.getElementById('step-2-cust').classList.add('hidden');
@@ -1460,7 +1492,6 @@
             populateCustomerList();
         }
 
-        // --- UPDATED POPULATE CUSTOMER LIST ---
         function populateCustomerList() {
             const val = document.getElementById('cust-search-input').value.toLowerCase().trim();
             const container = document.getElementById('cust-list-container');
@@ -1507,7 +1538,7 @@
 
         function setCustomerInput(val) {
             document.getElementById('cust-search-input').value = val;
-            populateCustomerList(); // Refilter
+            populateCustomerList(); 
         }
 
         function finalizeRequestAction() {
@@ -1537,6 +1568,7 @@
                     item.REQUEST_FOLDER = folderId; 
                     item.REQ_CUSTOMER = cust;
                     item.REQ_QTY = qty;
+                    item.REQ_ARCHIVED = false;
                     uniqueIds.push(item.UNIQUE_ID);
                 }
             });
@@ -1559,6 +1591,7 @@
                     showToast("Success", "Items moved to Request tab!");
                     clearSelection();
                     switchView('request');
+                    setTimeout(() => forceSync(), 1000); 
                 } else { showToast("Error", "Failed to update sheet.", true); }
             }).catch(err => showToast("Error", "Network error.", true));
         }
@@ -1574,69 +1607,105 @@
             }
         }
 
-        function getSelectedItemsText(tabType) {
+        function copyToClipboardRich(plain, html, callback) {
+            if (navigator.clipboard && window.ClipboardItem) {
+                const item = new ClipboardItem({
+                    "text/plain": new Blob([plain], { type: "text/plain" }),
+                    "text/html": new Blob([html], { type: "text/html" })
+                });
+                navigator.clipboard.write([item]).then(() => {
+                    showToast("Success", "Copied to clipboard!");
+                    if(callback) callback();
+                }).catch(err => {
+                    navigator.clipboard.writeText(plain).then(() => {
+                        showToast("Success", "Copied text to clipboard!");
+                        if(callback) callback();
+                    });
+                });
+            } else {
+                navigator.clipboard.writeText(plain).then(() => {
+                     showToast("Success", "Copied to clipboard!");
+                     if(callback) callback();
+                });
+            }
+        }
+
+        function getFormattedCopyData(tabType, items, headerTitle) {
+            let plainText = `${headerTitle}\n\n`;
+            let htmlText = `<h3 style="color:#007a4d; font-family:sans-serif;">${headerTitle}</h3><ul style="font-family:sans-serif; list-style:none; padding-left:0;">`;
+
+            items.forEach(i => {
+                let isReq = tabType === 'request';
+                plainText += `▪ ${i.COMMONNAME || 'Unknown'} (${i.CONTSIZE || '-'}) | Loc: ${i.LOCATIONCODE || 'No Loc'}\n`;
+                htmlText += `<li style="margin-bottom:15px; line-height: 1.4;"><b>▪ ${i.COMMONNAME || 'Unknown'}</b> (${i.CONTSIZE || '-'}) | Loc: <b>${i.LOCATIONCODE || 'No Loc'}</b><br>`;
+                
+                if (isReq && i.REQ_QTY) { plainText += `  Requested Qty: ${i.REQ_QTY}\n`; htmlText += `Requested Qty: ${i.REQ_QTY}<br>`; }
+                if (isReq && i.REQ_CUSTOMER) { plainText += `  Customer: ${i.REQ_CUSTOMER}\n`; htmlText += `Customer: ${i.REQ_CUSTOMER}<br>`; }
+
+                let match = isReq ? i.REQ_MATCH : (i.MATCH || i.MATCHPCT);
+                if (match) { plainText += `  Match: ${match}%\n`; htmlText += `Match: ${match}%<br>`; }
+                
+                let spec = isReq ? i.REQ_SPEC : i.SPEC;
+                if (spec) { plainText += `  Spec: ${spec}\n`; htmlText += `Spec: ${spec}<br>`; }
+                
+                let caliper = isReq ? i.REQ_CALIPER : i.CALIPER;
+                if (caliper) { plainText += `  Caliper: ${caliper}\n`; htmlText += `Caliper: ${caliper}<br>`; }
+                
+                let pick = isReq ? i.REQ_PICK : (i.PIC_NOTE || i.PICKNOTE || i.PICK);
+                if (pick) { plainText += `  Pick Note: ${pick}\n`; htmlText += `Pick Note: ${pick}<br>`; }
+                
+                let sales = isReq ? i.REQ_SALES_NOTE : (i.SALES_NOTE || i.SALESNOTE || i.SALESDESC);
+                if (sales) { plainText += `  Sales Note: ${sales}\n`; htmlText += `<span style="color:#007a4d;">Sales Note: ${sales}</span><br>`; }
+
+                if (isReq && i.REQ_COMMENTS) { plainText += `  Comments: ${i.REQ_COMMENTS}\n`; htmlText += `Comments: ${i.REQ_COMMENTS}<br>`; }
+                
+                let photo = isReq ? i.REQ_PHOTO_LINK : (i.SAVED_PHOTO_LINK || i['PHOTO LINK'] || i.PHOTOLINK);
+                let photoName = isReq ? i.REQ_PHOTO_NAME : (i.SAVED_PHOTO_NAME || i['PHOTO NAME'] || i.PHOTONAME);
+
+                if (photo && photo.trim() !== "") {
+                    let urls = photo.split(',');
+                    let names = photoName ? photoName.split(',') : [];
+                    let counter = 1;
+                    urls.forEach((url, idx) => {
+                        let cleanUrl = url.trim();
+                        let match = cleanUrl.match(/(https?:\/\/[^"\s>]+)/);
+                        if (match) cleanUrl = match[1];
+                        
+                        let dispName = names[idx] ? names[idx].trim() : `Photo ${counter}`;
+                        
+                        plainText += `  ${dispName}: ${cleanUrl}\n`;
+                        htmlText += `🖼️ <a href="${cleanUrl}" style="color:#2563eb; text-decoration:none; font-weight:bold;">${dispName}</a><br>`;
+                        counter++;
+                    });
+                }
+                plainText += `\n`;
+                htmlText += `</li>`;
+            });
+            htmlText += `</ul>`;
+
+            return { plain: plainText, html: htmlText };
+        }
+
+        function executeBatchAction(action, tabType) {
             let items = [];
             selectedItems.forEach(domId => {
                 let found = fullInventory.find(i => i.DOM_ID === domId) || lowStockInventory.find(i => i.DOM_ID === domId) || reservesInventory.find(i => i.DOM_ID === domId);
                 if (found) items.push(found);
             });
-
+            
             let headerTitle = tabType === 'request' ? "REQUEST DATA" : "SALES NOTES";
-            let returnText = `${headerTitle}\n\n`;
-
-            items.forEach(i => {
-                returnText += `▪ ${i.COMMONNAME || 'Unknown'} (${i.CONTSIZE || '-'}) | Loc: ${i.LOCATIONCODE || 'No Loc'}\n`;
-                
-                let match = tabType === 'request' ? i.REQ_MATCH : (i.MATCH || i.MATCHPCT);
-                if (match) returnText += `  Match: ${match}%\n`;
-                
-                let spec = tabType === 'request' ? i.REQ_SPEC : i.SPEC;
-                if (spec) returnText += `  Spec: ${spec}\n`;
-                
-                let caliper = tabType === 'request' ? i.REQ_CALIPER : i.CALIPER;
-                if (caliper) returnText += `  Caliper: ${caliper}\n`;
-                
-                let pick = tabType === 'request' ? i.REQ_PICK : (i.PIC_NOTE || i.PICKNOTE || i.PICK);
-                if (pick) returnText += `  Pick Note: ${pick}\n`;
-                
-                let sales = tabType === 'request' ? i.REQ_SALES_NOTE : (i.SALES_NOTE || i.SALESNOTE || i.SALESDESC);
-                if (sales) returnText += `  Sales Note: ${sales}\n`;
-
-                if (tabType === 'request' && i.REQ_COMMENTS) returnText += `  Comments: ${i.REQ_COMMENTS}\n`;
-                
-                let photo = tabType === 'request' ? i.REQ_PHOTO_LINK : (i.SAVED_PHOTO_LINK || i['PHOTO LINK'] || i.PHOTOLINK);
-                if (photo && photo.trim() !== "") {
-                    let urls = photo.split(',');
-                    let counter = 1;
-                    urls.forEach(url => {
-                        let cleanUrl = url.trim();
-                        let match = cleanUrl.match(/(https?:\/\/[^"\s>]+)/);
-                        if (match) {
-                            returnText += `  Photo ${counter}: ${match[1]}\n`;
-                            counter++;
-                        }
-                    });
-                }
-                returnText += `\n`;
-            });
-
-            return returnText;
-        }
-
-        function executeBatchAction(action, tabType) {
-            const text = getSelectedItemsText(tabType);
+            let data = getFormattedCopyData(tabType, items, headerTitle);
             
             if (action === 'copy') {
-                navigator.clipboard.writeText(text).then(() => {
-                    showToast("Success", "Copied to clipboard!");
+                copyToClipboardRich(data.plain, data.html, () => {
                     clearSelection();
                 });
             } else if (action === 'email') {
                 let sub = tabType === 'request' ? 'Request Data' : 'Sales Notes';
-                window.location.href = `mailto:?subject=${sub}&body=${encodeURIComponent(text)}`;
+                window.location.href = `mailto:?subject=${sub}&body=${encodeURIComponent(data.plain)}`;
                 clearSelection();
             } else if (action === 'text') {
-                window.location.href = `sms:?&body=${encodeURIComponent(text)}`;
+                window.location.href = `sms:?&body=${encodeURIComponent(data.plain)}`;
                 clearSelection();
             }
         }
@@ -1674,6 +1743,35 @@
                     clearSelection(); 
                 } else { showToast("Error", "Assignment failed", true); }
             }).catch(err => showToast("Error", "Network error.", true));
+        }
+
+        function toggleDriveSeason(season) {
+            if (season === 'All') {
+                selectedDriveSeasons.clear();
+            } else {
+                if (selectedDriveSeasons.has(season)) {
+                    selectedDriveSeasons.delete(season);
+                } else {
+                    selectedDriveSeasons.add(season);
+                }
+            }
+            renderDriveSeasonPills();
+            renderDrive();
+        }
+
+        function renderDriveSeasonPills() {
+            const container = document.getElementById('drive-season-filter');
+            if(!container) return;
+            const seasons = ['S1', 'F1', 'U1', 'U2', 'U3', 'X', 'Y', 'Z'];
+            
+            let html = `<div onclick="toggleDriveSeason('All')" class="flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-bold cursor-pointer border ${selectedDriveSeasons.size === 0 ? 'bg-[#007a4d] text-white border-[#007a4d]' : 'bg-white text-gray-600 border-gray-300 shadow-sm'}">All</div>`;
+            
+            seasons.forEach(s => {
+                let isActive = selectedDriveSeasons.has(s);
+                html += `<div onclick="toggleDriveSeason('${s}')" class="flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-bold cursor-pointer border transition-colors ${isActive ? 'bg-[#007a4d] text-white border-[#007a4d]' : 'bg-white text-gray-600 border-gray-300 shadow-sm hover:bg-gray-50'}">${s}</div>`;
+            });
+            
+            container.innerHTML = html;
         }
 
         function handleDocksSearch() {
@@ -1932,7 +2030,6 @@
             container.innerHTML = officeItems.map(i => generateCard(i, 'sales-office')).join('');
         }
 
-        // --- NEW COPY & DONE FUNCTIONS FOR FOLDERS ---
         function copyFolderData(folderId) {
             let items = fullInventory.filter(i => i.REQUEST_FOLDER === folderId)
                 .concat(lowStockInventory.filter(i => i.REQUEST_FOLDER === folderId))
@@ -1940,38 +2037,9 @@
             
             items = items.filter((v,i,a) => a.findIndex(t => (t.DOM_ID === v.DOM_ID)) === i);
 
-            let returnText = `REQUEST FOLDER: ${folderId}\n\n`;
-
-            items.forEach(i => {
-                returnText += `▪ ${i.COMMONNAME || 'Unknown'} (${i.CONTSIZE || '-'}) | Loc: ${i.LOCATIONCODE || 'No Loc'}\n`;
-                returnText += `  Requested Qty: ${i.REQ_QTY || 'N/A'}\n`;
-                returnText += `  Customer: ${i.REQ_CUSTOMER || 'N/A'}\n`;
-                if (i.REQ_MATCH) returnText += `  Match: ${i.REQ_MATCH}%\n`;
-                if (i.REQ_SPEC) returnText += `  Spec: ${i.REQ_SPEC}\n`;
-                if (i.REQ_CALIPER) returnText += `  Caliper: ${i.REQ_CALIPER}\n`;
-                if (i.REQ_PICK) returnText += `  Pick Note: ${i.REQ_PICK}\n`;
-                if (i.REQ_SALES_NOTE) returnText += `  Sales Note: ${i.REQ_SALES_NOTE}\n`;
-                if (i.REQ_COMMENTS) returnText += `  Comments: ${i.REQ_COMMENTS}\n`;
-                
-                let photo = i.REQ_PHOTO_LINK || i.SAVED_PHOTO_LINK || i['PHOTO LINK'] || i.PHOTOLINK;
-                if (photo && photo.trim() !== "") {
-                    let urls = photo.split(',');
-                    let counter = 1;
-                    urls.forEach(url => {
-                        let cleanUrl = url.trim();
-                        let match = cleanUrl.match(/(https?:\/\/[^"\s>]+)/);
-                        if (match) {
-                            returnText += `  Photo ${counter}: ${match[1]}\n`;
-                            counter++;
-                        }
-                    });
-                }
-                returnText += `\n`;
-            });
-
-            navigator.clipboard.writeText(returnText).then(() => {
-                showToast("Success", "Folder data copied to clipboard!");
-            });
+            let data = getFormattedCopyData('request', items, `REQUEST FOLDER: ${folderId}`);
+            
+            copyToClipboardRich(data.plain, data.html, null);
         }
 
         function markFolderDone(folderId) {
@@ -2322,154 +2390,70 @@
             renderReview();
         }
 
-        function handleDriveSearch() {
-            const term = document.getElementById('drive-search').value;
-            if (term.length > 0 && driveViewLevel > 0) { driveViewLevel = 0; selectedDriveName = null; selectedDriveSize = null; }
-            renderDrive();
-        }
-        
-        function selectDriveName(name) { 
-            selectedDriveName = name; 
-            driveViewLevel = 1; 
-            renderDrive(); 
-        }
-        
-        function selectDriveSize(size) { selectedDriveSize = size; driveViewLevel = 2; renderDrive(); }
-        function backToDriveSizes() { driveViewLevel = 1; selectedDriveSize = null; renderDrive(); }
-        function resetDriveView() { driveViewLevel = 0; selectedDriveName = null; selectedDriveSize = null; document.getElementById('drive-search').value = ""; renderDrive(); }
-
-        function renderDrive() {
-            const container = document.getElementById('drive-content');
-            const crumb = document.getElementById('drive-crumb');
-            const term = document.getElementById('drive-search').value.toLowerCase();
+        function filterDropdown(inputId, listId) {
+            if (!activeItem) return;
+            let cNameClean = String(activeItem.COMMONNAME || "").trim().toUpperCase();
+            let dict = salesNotesDict[cNameClean] || [];
             
-            let filteredItems = fullInventory;
-            if (term) { filteredItems = filteredItems.filter(i => (i.COMMONNAME||"").toLowerCase().includes(term) || (i.LOCATIONCODE||"").toLowerCase().includes(term)); }
-
-            if (filteredItems.length === 0) { container.innerHTML = `<div class="p-8 text-center text-gray-400">No items found.</div>`; crumb.innerText = "No Results"; return; }
-
-            if (driveViewLevel === 0) {
-                crumb.innerText = `Select Plant (${filteredItems.length} items)`;
-                const names = [...new Set(filteredItems.map(i => i.COMMONNAME))].sort();
-                container.innerHTML = names.map(n => `<div class="drill-item" onclick="selectDriveName('${n.replace(/'/g, "\\'")}')"><span class="font-bold text-lg">${n}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
-            } 
-            else if (driveViewLevel === 1) {
-                crumb.innerText = selectedDriveName;
-                const namedItems = filteredItems.filter(i => i.COMMONNAME === selectedDriveName);
-                const sizes = [...new Set(namedItems.map(i => i.CONTSIZE))].sort();
-                let html = `<div class="back-btn" onclick="resetDriveView()"><i class="ph-bold ph-arrow-left"></i> Back to Names</div><div class="font-bold text-[#007a4d] mb-4 px-2 text-xl border-b pb-2">${selectedDriveName}</div>`;
-                html += sizes.map(s => {
-                    const count = namedItems.filter(i => i.CONTSIZE === s).length;
-                    return `<div class="drill-item" onclick="selectDriveSize('${s}')"><span class="font-bold text-lg">${s} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
-                }).join('');
-                container.innerHTML = html;
-            } 
-            else if (driveViewLevel === 2) {
-                crumb.innerText = `${selectedDriveName} / ${selectedDriveSize}`;
-                let finalItems = filteredItems.filter(i => i.COMMONNAME === selectedDriveName && i.CONTSIZE === selectedDriveSize);
-                finalItems.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
-                container.innerHTML = `<div class="back-btn" onclick="backToDriveSizes()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>` + finalItems.map(i => generateCard(i, 'drive')).join('');
-            }
-        }
-
-        function renderTeamSelector() {
-            document.getElementById('team-selector').classList.remove('hidden');
-            document.getElementById('task-tabs-container').classList.add('hidden');
-            document.getElementById('task-content').innerHTML = `<div class="p-8 text-center text-gray-400">Select a team member to view their assigned rows.</div>`;
-            document.getElementById('task-crumb').innerText = "Admin Team View";
-
-            const targetNames = ["Dylan", "Morgan", "Kayla"];
-            let teamHtml = "";
-            targetNames.forEach(name => {
-                teamHtml += `<div class="p-5 border border-blue-200 bg-blue-50 text-blue-800 rounded-lg text-center font-bold text-lg cursor-pointer" onclick="setTaskUser('${name}')">${name}</div>`;
-            });
-            document.getElementById('team-selector').innerHTML = teamHtml;
-        }
-
-        function setTaskUser(username) {
-            taskViewTargetUser = username;
-            document.getElementById('team-selector').classList.add('hidden');
-            document.getElementById('task-tabs-container').classList.remove('hidden');
-            taskViewLevel = 0;
-            renderTasks();
-        }
-
-        function selectTaskBlock(b) { selectedTaskBlock = b; taskViewLevel = 1; renderTasks(); }
-        function selectTaskLoc(l) { selectedTaskLoc = l; taskViewLevel = 2; renderTasks(); }
-
-        function renderTasks() {
-            const container = document.getElementById('task-content');
-            const crumb = document.getElementById('task-crumb');
+            let list = document.getElementById(listId);
+            let input = document.getElementById(inputId);
             
-            let userToView = (currentRole === 'Admin') ? taskViewTargetUser : currentUser;
-            let searchName = userToView === 'dylan_collyge' ? 'Dylan' : userToView;
-
-            let myItems = fullInventory.filter(i => String(i.ASSIGNEDTO || "").toLowerCase().includes(searchName.toLowerCase()));
-
-            myItems = myItems.filter(i => {
-                if (i.DATE_COMPLETED && i.DATE_COMPLETED !== "") return false;
-
-                const pri = parseFloat(i.PRIORITY);
-                if (isNaN(pri) || pri <= 0) return false; 
-                
-                if (activeTaskTab === 'season') return i.APP_TAB_ASSIGNMENT === 'season';
-                if (activeTaskTab === 'location') return i.APP_TAB_ASSIGNMENT === 'location';
-                
-                return true;
-            });
-
-            const displayUser = searchName.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-            const tabLabel = (activeTaskTab === 'season') ? 'Season Notes' : 'Location Notes';
-
-            if (myItems.length === 0) {
-                container.innerHTML = `<div class="back-btn" onclick="if(currentRole==='Admin'){taskViewTargetUser=null; renderTeamSelector();}"><i class="ph-bold ph-arrow-left"></i> Change User</div><div class="p-8 text-center text-gray-400">No tasks assigned here.</div>`;
-                crumb.innerText = `${displayUser} / ${tabLabel}`;
+            if (dict.length === 0) {
+                list.classList.add('hidden');
                 return;
             }
 
-            if (taskViewLevel === 0) {
-                crumb.innerText = `${displayUser} / ${tabLabel} / Blocks`; 
-                const blocks = [...new Set(myItems.map(i => i.BLOCKALPHA || "Unassigned"))].sort();
-                let html = "";
-                if(currentRole === 'Admin') html += `<div class="back-btn" onclick="taskViewTargetUser=null; renderTeamSelector();"><i class="ph-bold ph-arrow-left"></i> Change User</div>`;
-                html += blocks.map(b => {
-                    const count = myItems.filter(i => (i.BLOCKALPHA || "Unassigned") === b).length;
-                    return `<div class="drill-item" onclick="selectTaskBlock('${b}')"><span class="font-bold text-lg">${b} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
-                }).join('');
-                container.innerHTML = html;
-            } 
-            else if (taskViewLevel === 1) {
-                crumb.innerText = `${displayUser} / ${selectedTaskBlock}`; 
-                const blockItems = myItems.filter(i => (i.BLOCKALPHA || "Unassigned") === selectedTaskBlock);
-                
-                const locs = [...new Set(blockItems.map(i => i.LOCATIONCODE || "No Loc"))].sort((a,b) => a.localeCompare(b, undefined, {numeric: true}));
-                
-                container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=0; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Blocks</div>` + 
-                locs.map(l => {
-                    const count = blockItems.filter(i => (i.LOCATIONCODE || "No Loc") === l).length;
-                    return `<div class="drill-item" onclick="selectTaskLoc('${l.replace(/'/g, "\\'")}')"><span class="font-bold text-lg">${l} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
-                }).join('');
-            } 
-            else if (taskViewLevel === 2) {
-                crumb.innerText = `${displayUser} / ${selectedTaskBlock} / ${selectedTaskLoc}`; 
-                
-                let items = myItems.filter(i => (i.BLOCKALPHA || "Unassigned") === selectedTaskBlock && (i.LOCATIONCODE || "No Loc") === selectedTaskLoc);
-                
-                items.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
-                container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=1; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Locations</div>` + 
-                items.map(i => generateCard(i, 'tasks')).join('');
+            let val = input.value;
+            let parts = val.split('/');
+            let currentTerm = parts[parts.length - 1].trim().toUpperCase();
+            
+            let matches = dict;
+            if (currentTerm !== "") {
+                matches = dict.filter(n => n.toUpperCase().includes(currentTerm));
             }
-        }
 
-        function applyQuickNote(val, targetInputId, selectId) {
-            if (!val) return;
-            const targetInput = document.getElementById(targetInputId);
-            if (targetInput.value.trim() !== "") {
-                targetInput.value = (targetInput.value + " " + val).toUpperCase();
-            } else {
-                targetInput.value = val.toUpperCase();
+            if (matches.length === 0) {
+                matches = dict; 
             }
-            document.getElementById(selectId).value = "";
+            
+            list.innerHTML = "";
+            matches.forEach(m => {
+                let div = document.createElement('div');
+                div.className = "p-3 border-b border-gray-100 cursor-pointer hover:bg-green-50 text-sm font-bold text-green-800 active:bg-green-100";
+                div.innerText = m;
+                div.onmousedown = function(e) {
+                    e.preventDefault(); 
+                    
+                    parts[parts.length - 1] = " " + m + " ";
+                    let newVal = parts.join('/').trim();
+                    
+                    newVal = newVal.replace(/\s*\/\s*/g, ' / ').replace(/^\/+/, '').trim();
+                    
+                    input.value = newVal + " / ";
+                    list.classList.add('hidden');
+                    input.focus();
+                };
+                list.appendChild(div);
+            });
+            
+            list.classList.remove('hidden');
+        }
+        
+        function appendSpecToDesc(prefix) {
+            let specVal = document.getElementById(prefix + 'spec').value.trim().toUpperCase();
+            if (!specVal) {
+                showToast("Notice", "Spec field is empty.", true);
+                return;
+            }
+            let descInput = document.getElementById(prefix + 'sales-desc');
+            let currentVal = descInput.value.trim();
+            
+            if (currentVal && !currentVal.endsWith('/')) {
+                descInput.value = currentVal + " / " + specVal + " / ";
+            } else {
+                descInput.value = currentVal + (currentVal ? " " : "") + specVal + " / ";
+            }
+            descInput.focus();
         }
 
         function openDetail(uniqueId, sourceView) {
@@ -2497,7 +2481,6 @@
             document.getElementById('ov-season').innerText = activeItem.SEASONSUPPLY || "--";
             document.getElementById('ov-prior').innerText = activeItem.PRIORITY || "--";
 
-            // Sync standard field values into all 3 inputs so they stay perfectly in sync
             const standardPrefixes = ['ssn-', 'lsn-', 'na-'];
             standardPrefixes.forEach(p => {
                 document.getElementById(p + 'match').value = activeItem.MATCH || activeItem.MATCHPCT || "";
@@ -2507,7 +2490,6 @@
                 document.getElementById(p + 'caliper').value = activeItem.CALIPER || "";
             });
             
-            // Sync request field values
             document.getElementById('req-match').value = activeItem.REQ_MATCH || "";
             document.getElementById('req-spec').value = activeItem.REQ_SPEC || "";
             document.getElementById('req-pick').value = activeItem.REQ_PICK || "";
@@ -2515,12 +2497,33 @@
             document.getElementById('req-comments').value = activeItem.REQ_COMMENTS || ""; 
             document.getElementById('req-caliper').value = activeItem.REQ_CALIPER || "";
 
-            // Sync docks field values
             document.getElementById('dock-spec').value = activeItem.DOCK_SPEC || activeItem.SPEC || "";
             document.getElementById('dock-caliper').value = activeItem.DOCK_CALIPER || activeItem.CALIPER || "";
             document.getElementById('dock-sales-desc').value = activeItem.DOCK_NOTE || "";
 
-            // Caliper logic
+            const qSelects = ['ssn-quick-note-select', 'lsn-quick-note-select', 'na-quick-note-select', 'req-quick-note-select'];
+            qSelects.forEach(id => {
+                document.getElementById(id).innerHTML = '<option value="">-- Select a Quick Note --</option>';
+            });
+            
+            let cNameClean = String(activeItem.COMMONNAME || "").trim().toUpperCase();
+            if (salesNotesDict[cNameClean] && salesNotesDict[cNameClean].length > 0) {
+                salesNotesDict[cNameClean].forEach(note => {
+                    qSelects.forEach(id => {
+                        let opt = document.createElement('option');
+                        opt.value = note; opt.innerText = note;
+                        document.getElementById(id).appendChild(opt);
+                    });
+                });
+                ['ssn-', 'lsn-', 'na-', 'req-'].forEach(p => {
+                    document.getElementById(p + 'quick-note-container').classList.remove('hidden');
+                });
+            } else {
+                ['ssn-', 'lsn-', 'na-', 'req-'].forEach(p => {
+                    document.getElementById(p + 'quick-note-container').classList.add('hidden');
+                });
+            }
+
             const caliperSizes = ["7DP", "#7", "#10", "#15", "#25", "#45"];
             if (caliperSizes.includes(activeItem.CONTSIZE)) {
                 ['ssn-', 'lsn-', 'na-', 'req-'].forEach(p => {
@@ -2532,7 +2535,6 @@
                 });
             }
 
-            // SPECIAL DOCK CALIPER LOGIC
             const isTree = activeItem.PLANTGROUPCODE && activeItem.PLANTGROUPCODE.includes('330_TREES');
             if (isTree && caliperSizes.includes(activeItem.CONTSIZE)) {
                 document.getElementById('dock-container-caliper').classList.remove('hidden');
@@ -2545,7 +2547,6 @@
 
             renderPhotoPreview();
 
-            // 1. Hide all data entry tabs by default
             ['season', 'location', 'request', 'notes', 'docks'].forEach(t => {
                 let el = document.getElementById('dtab-' + t);
                 if (el) el.classList.add('hidden');
@@ -2553,7 +2554,6 @@
 
             let defaultTab = 'overview';
 
-            // 2. Apply explicit visibility rules
             if (sourceView === 'tasks') {
                 if (activeTaskTab === 'season') {
                     document.getElementById('dtab-season').classList.remove('hidden');
@@ -2572,15 +2572,12 @@
                 defaultTab = 'docks';
             }
             else { 
-                // This covers Drive Mode, Sales Office, Low Stock, Reserves, Review
                 if (currentRole === 'Admin') {
-                    // Managers see all tabs (except Docks) in Drive mode
                     ['season', 'location', 'request', 'notes'].forEach(t => {
                         let el = document.getElementById('dtab-' + t);
                         if (el) el.classList.remove('hidden');
                     });
                 } else {
-                    // Regular users see only standard Notes & Actions
                     document.getElementById('dtab-notes').classList.remove('hidden');
                 }
                 defaultTab = 'overview';
@@ -2671,7 +2668,7 @@
         function uploadPhotoToDrive(base64Data, filename, prefix) {
             showToast("Uploading...", "Sending to Google Drive...", false);
             
-            let btn = prefix === 'req-' ? document.getElementById('req-btn-save-draft') : document.getElementById(prefix + 'btn-save-draft'); // Fallback to draft btn if complete not exist
+            let btn = prefix === 'req-' ? document.getElementById('req-btn-save-draft') : document.getElementById(prefix + 'btn-save-draft'); 
             if (prefix !== 'req-' && prefix !== 'dock-') btn = document.getElementById(prefix + 'btn-save-complete');
             
             if (btn) {
@@ -2918,6 +2915,17 @@
                 }
                 if(btnComp) btnComp.innerText = "MARK COMPLETE";
                 showToast("Network Error", "Could not reach server.", true);
+            });
+        }
+
+        // --- REGISTER SERVICE WORKER FOR PWA INSTALL ---
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('sw.js').then(function(registration) {
+                    console.log('ServiceWorker registration successful');
+                }).catch(function(err) {
+                    console.log('ServiceWorker registration failed: ', err);
+                });
             });
         }
     </script>
