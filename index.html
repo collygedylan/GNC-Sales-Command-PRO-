@@ -396,17 +396,21 @@
                             <input type="text" id="ssn-caliper" class="input-field" placeholder="e.g. 2 inch">
                         </div>
                         
-                        <div id="ssn-quick-note-container" class="hidden mb-2">
-                            <label class="text-[10px] font-bold text-green-700 uppercase">Quick Notes</label>
-                            <select id="ssn-quick-note-select" class="input-field border-green-500 bg-green-50 text-sm font-bold text-green-800" onchange="applyQuickNote(this.value, 'ssn-sales-desc', 'ssn-quick-note-select')">
-                                <option value="">-- Select a Quick Note --</option>
-                            </select>
+                        <div class="relative w-full mt-2 mb-2">
+                            <label class="text-[10px] font-bold text-green-700 uppercase flex justify-between">
+                                <span>Season Sales Description</span>
+                            </label>
+                            <div class="flex gap-2">
+                                <input type="text" id="ssn-sales-desc" class="input-field border-green-500 bg-green-50 uppercase flex-grow !mb-0" 
+                                    oninput="this.value = this.value.toUpperCase(); filterDropdown('ssn-sales-desc', 'ssn-dropdown-list')"
+                                    onfocus="filterDropdown('ssn-sales-desc', 'ssn-dropdown-list')"
+                                    onblur="setTimeout(()=>document.getElementById('ssn-dropdown-list').classList.add('hidden'), 200)"
+                                    placeholder="TYPE NOTES OR SEARCH...">
+                                <button type="button" class="bg-green-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('ssn-')">+ SPEC</button>
+                            </div>
+                            <div id="ssn-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-40 overflow-y-auto rounded-md shadow-xl hidden mt-1"></div>
                         </div>
-                        
-                        <div>
-                            <label class="text-[10px] font-bold text-green-700 uppercase">Season Sales Description</label>
-                            <input type="text" id="ssn-sales-desc" class="input-field border-green-500 bg-green-50 uppercase" oninput="this.value = this.value.toUpperCase()" placeholder="TYPE NOTES HERE...">
-                        </div>
+
                         <div>
                             <label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label>
                             <input type="text" id="ssn-pick" class="input-field" placeholder="e.g. Needs spacing">
@@ -452,17 +456,21 @@
                             <input type="text" id="lsn-caliper" class="input-field" placeholder="e.g. 2 inch">
                         </div>
                         
-                        <div id="lsn-quick-note-container" class="hidden mb-2">
-                            <label class="text-[10px] font-bold text-green-700 uppercase">Quick Notes</label>
-                            <select id="lsn-quick-note-select" class="input-field border-green-500 bg-green-50 text-sm font-bold text-green-800" onchange="applyQuickNote(this.value, 'lsn-sales-desc', 'lsn-quick-note-select')">
-                                <option value="">-- Select a Quick Note --</option>
-                            </select>
+                        <div class="relative w-full mt-2 mb-2">
+                            <label class="text-[10px] font-bold text-green-700 uppercase flex justify-between">
+                                <span>Location Sales Description</span>
+                            </label>
+                            <div class="flex gap-2">
+                                <input type="text" id="lsn-sales-desc" class="input-field border-green-500 bg-green-50 uppercase flex-grow !mb-0" 
+                                    oninput="this.value = this.value.toUpperCase(); filterDropdown('lsn-sales-desc', 'lsn-dropdown-list')"
+                                    onfocus="filterDropdown('lsn-sales-desc', 'lsn-dropdown-list')"
+                                    onblur="setTimeout(()=>document.getElementById('lsn-dropdown-list').classList.add('hidden'), 200)"
+                                    placeholder="TYPE NOTES OR SEARCH...">
+                                <button type="button" class="bg-green-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('lsn-')">+ SPEC</button>
+                            </div>
+                            <div id="lsn-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-40 overflow-y-auto rounded-md shadow-xl hidden mt-1"></div>
                         </div>
                         
-                        <div>
-                            <label class="text-[10px] font-bold text-green-700 uppercase">Location Sales Description</label>
-                            <input type="text" id="lsn-sales-desc" class="input-field border-green-500 bg-green-50 uppercase" oninput="this.value = this.value.toUpperCase()" placeholder="TYPE NOTES HERE...">
-                        </div>
                         <div>
                             <label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label>
                             <input type="text" id="lsn-pick" class="input-field" placeholder="e.g. Needs spacing">
@@ -508,17 +516,21 @@
                             <input type="text" id="na-caliper" class="input-field" placeholder="e.g. 2 inch">
                         </div>
                         
-                        <div id="na-quick-note-container" class="hidden mb-2">
-                            <label class="text-[10px] font-bold text-green-700 uppercase">Quick Notes</label>
-                            <select id="na-quick-note-select" class="input-field border-green-500 bg-green-50 text-sm font-bold text-green-800" onchange="applyQuickNote(this.value, 'na-sales-desc', 'na-quick-note-select')">
-                                <option value="">-- Select a Quick Note --</option>
-                            </select>
+                        <div class="relative w-full mt-2 mb-2">
+                            <label class="text-[10px] font-bold text-green-700 uppercase flex justify-between">
+                                <span>Sales Description</span>
+                            </label>
+                            <div class="flex gap-2">
+                                <input type="text" id="na-sales-desc" class="input-field border-green-500 bg-green-50 uppercase flex-grow !mb-0" 
+                                    oninput="this.value = this.value.toUpperCase(); filterDropdown('na-sales-desc', 'na-dropdown-list')"
+                                    onfocus="filterDropdown('na-sales-desc', 'na-dropdown-list')"
+                                    onblur="setTimeout(()=>document.getElementById('na-dropdown-list').classList.add('hidden'), 200)"
+                                    placeholder="TYPE NOTES OR SEARCH...">
+                                <button type="button" class="bg-green-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('na-')">+ SPEC</button>
+                            </div>
+                            <div id="na-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-40 overflow-y-auto rounded-md shadow-xl hidden mt-1"></div>
                         </div>
                         
-                        <div>
-                            <label class="text-[10px] font-bold text-green-700 uppercase">Sales Description</label>
-                            <input type="text" id="na-sales-desc" class="input-field border-green-500 bg-green-50 uppercase" oninput="this.value = this.value.toUpperCase()" placeholder="TYPE NOTES HERE...">
-                        </div>
                         <div>
                             <label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label>
                             <input type="text" id="na-pick" class="input-field" placeholder="e.g. Needs spacing">
@@ -564,17 +576,21 @@
                             <input type="text" id="req-caliper" class="input-field" placeholder="e.g. 2 inch">
                         </div>
 
-                        <div id="req-quick-note-container" class="hidden mb-2">
-                            <label class="text-[10px] font-bold text-purple-700 uppercase">Quick Notes</label>
-                            <select id="req-quick-note-select" class="input-field border-purple-500 bg-purple-50 text-sm font-bold text-purple-800" onchange="applyQuickNote(this.value, 'req-sales-desc', 'req-quick-note-select')">
-                                <option value="">-- Select a Quick Note --</option>
-                            </select>
+                        <div class="relative w-full mt-2 mb-2">
+                            <label class="text-[10px] font-bold text-purple-700 uppercase flex justify-between">
+                                <span>Request Sales Description</span>
+                            </label>
+                            <div class="flex gap-2">
+                                <input type="text" id="req-sales-desc" class="input-field border-purple-500 bg-purple-50 uppercase flex-grow !mb-0" 
+                                    oninput="this.value = this.value.toUpperCase(); filterDropdown('req-sales-desc', 'req-dropdown-list')"
+                                    onfocus="filterDropdown('req-sales-desc', 'req-dropdown-list')"
+                                    onblur="setTimeout(()=>document.getElementById('req-dropdown-list').classList.add('hidden'), 200)"
+                                    placeholder="TYPE NOTES OR SEARCH...">
+                                <button type="button" class="bg-purple-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('req-')">+ SPEC</button>
+                            </div>
+                            <div id="req-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-40 overflow-y-auto rounded-md shadow-xl hidden mt-1"></div>
                         </div>
 
-                        <div>
-                            <label class="text-[10px] font-bold text-purple-700 uppercase">Request Sales Description</label>
-                            <input type="text" id="req-sales-desc" class="input-field border-purple-500 bg-purple-50 uppercase" oninput="this.value = this.value.toUpperCase()" placeholder="TYPE NOTES HERE...">
-                        </div>
                         <div>
                             <label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label>
                             <input type="text" id="req-pick" class="input-field" placeholder="e.g. Needs spacing">
@@ -619,9 +635,19 @@
                             <input type="text" id="dock-caliper" class="input-field" placeholder="e.g. 2 inch">
                         </div>
                         
-                        <div>
-                            <label class="text-[10px] font-bold text-orange-700 uppercase">Dock Note</label>
-                            <input type="text" id="dock-sales-desc" class="input-field border-orange-500 bg-orange-50 uppercase" oninput="this.value = this.value.toUpperCase()" placeholder="TYPE NOTES HERE...">
+                        <div class="relative w-full mt-2 mb-2">
+                            <label class="text-[10px] font-bold text-orange-700 uppercase flex justify-between">
+                                <span>Dock Note</span>
+                            </label>
+                            <div class="flex gap-2">
+                                <input type="text" id="dock-sales-desc" class="input-field border-orange-500 bg-orange-50 uppercase flex-grow !mb-0" 
+                                    oninput="this.value = this.value.toUpperCase(); filterDropdown('dock-sales-desc', 'dock-dropdown-list')"
+                                    onfocus="filterDropdown('dock-sales-desc', 'dock-dropdown-list')"
+                                    onblur="setTimeout(()=>document.getElementById('dock-dropdown-list').classList.add('hidden'), 200)"
+                                    placeholder="TYPE NOTES OR SEARCH...">
+                                <button type="button" class="bg-orange-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('dock-')">+ SPEC</button>
+                            </div>
+                            <div id="dock-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-40 overflow-y-auto rounded-md shadow-xl hidden mt-1"></div>
                         </div>
                     </div>
 
@@ -761,9 +787,9 @@
         let selectedDockName = null;
         let selectedDockSize = null;
         let selectedDockItemCode = null;
-        let selectedDockCustomer = ""; // New specific state for folders
-        let selectedDockTrip = ""; // Stores trip number for photo naming
-        let selectedDockRep = ""; // Stores rep name for folder structure
+        let selectedDockCustomer = ""; 
+        let selectedDockTrip = ""; 
+        let selectedDockRep = ""; 
 
         let reservesViewLevel = 0;
         let selectedReservesName = null;
@@ -2312,16 +2338,63 @@
             }
         }
 
-        function applyQuickNote(val, targetInputId, selectId) {
-            if (!val) return;
-            const targetInput = document.getElementById(targetInputId);
-            if (targetInput.value.trim() !== "") {
-                targetInput.value = (targetInput.value + " " + val).toUpperCase();
-            } else {
-                targetInput.value = val.toUpperCase();
+        // --- NEW DROPDOWN LOGIC ---
+        function filterDropdown(inputId, listId) {
+            if (!activeItem) return;
+            let cNameClean = String(activeItem.COMMONNAME || "").trim().toUpperCase();
+            let dict = salesNotesDict[cNameClean] || [];
+            
+            let input = document.getElementById(inputId);
+            let list = document.getElementById(listId);
+            
+            if (dict.length === 0) {
+                list.classList.add('hidden');
+                return;
             }
-            document.getElementById(selectId).value = "";
+
+            let parts = input.value.split('/');
+            let currentTerm = parts[parts.length - 1].trim().toUpperCase();
+            
+            let matches = dict.filter(n => n.toUpperCase().includes(currentTerm));
+            
+            list.innerHTML = "";
+            if (matches.length > 0) {
+                list.classList.remove('hidden');
+                matches.forEach(m => {
+                    let div = document.createElement('div');
+                    div.className = "p-3 border-b border-gray-100 cursor-pointer hover:bg-gray-100 text-sm font-bold text-gray-700 active:bg-gray-200";
+                    div.innerText = m;
+                    div.onmousedown = function(e) {
+                        e.preventDefault(); // prevents input from losing focus immediately
+                        parts[parts.length - 1] = " " + m;
+                        input.value = parts.join(' / ').trim() + " / ";
+                        list.classList.add('hidden');
+                        input.focus();
+                    };
+                    list.appendChild(div);
+                });
+            } else {
+                list.classList.add('hidden');
+            }
         }
+        
+        function appendSpecToDesc(prefix) {
+            let specVal = document.getElementById(prefix + 'spec').value.trim().toUpperCase();
+            if (!specVal) {
+                showToast("Notice", "Spec field is empty.", true);
+                return;
+            }
+            let descInput = document.getElementById(prefix + 'sales-desc');
+            let currentVal = descInput.value.trim();
+            
+            if (currentVal && !currentVal.endsWith('/')) {
+                descInput.value = currentVal + " / " + specVal + " / ";
+            } else {
+                descInput.value = currentVal + (currentVal ? " " : "") + specVal + " / ";
+            }
+            descInput.focus();
+        }
+        // --------------------------
 
         function openDetail(uniqueId, sourceView) {
             lastView = sourceView;
@@ -2370,30 +2443,6 @@
             document.getElementById('dock-spec').value = activeItem.DOCK_SPEC || activeItem.SPEC || "";
             document.getElementById('dock-caliper').value = activeItem.DOCK_CALIPER || activeItem.CALIPER || "";
             document.getElementById('dock-sales-desc').value = activeItem.DOCK_NOTE || "";
-
-            // Populate Quick Notes for all tabs
-            const qSelects = ['ssn-quick-note-select', 'lsn-quick-note-select', 'na-quick-note-select', 'req-quick-note-select'];
-            qSelects.forEach(id => {
-                document.getElementById(id).innerHTML = '<option value="">-- Select a Quick Note --</option>';
-            });
-            
-            let cNameClean = String(activeItem.COMMONNAME || "").trim().toUpperCase();
-            if (salesNotesDict[cNameClean] && salesNotesDict[cNameClean].length > 0) {
-                salesNotesDict[cNameClean].forEach(note => {
-                    qSelects.forEach(id => {
-                        let opt = document.createElement('option');
-                        opt.value = note; opt.innerText = note;
-                        document.getElementById(id).appendChild(opt);
-                    });
-                });
-                ['ssn-', 'lsn-', 'na-', 'req-'].forEach(p => {
-                    document.getElementById(p + 'quick-note-container').classList.remove('hidden');
-                });
-            } else {
-                ['ssn-', 'lsn-', 'na-', 'req-'].forEach(p => {
-                    document.getElementById(p + 'quick-note-container').classList.add('hidden');
-                });
-            }
 
             // Caliper logic
             const caliperSizes = ["7DP", "#7", "#10", "#15", "#25", "#45"];
