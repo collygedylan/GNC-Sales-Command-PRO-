@@ -92,7 +92,7 @@
                 
                 <div class="flex flex-col items-center gap-1.5 mt-2 bg-gray-50 px-6 py-3 rounded-xl border border-gray-100 w-full">
                     <span class="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Powered By</span>
-                    <img src="Ag%20Metric%20App.png" alt="Ag Metric App" class="h-8 object-contain" onerror="this.style.display='none'">
+                    <img src="Ag%20Metric%20App.png" alt="Ag Metric App" class="h-16 object-contain" onerror="this.style.display='none'">
                 </div>
             </div>
 
@@ -396,21 +396,17 @@
                             <input type="text" id="ssn-caliper" class="input-field" placeholder="e.g. 2 inch">
                         </div>
                         
-                        <div class="relative w-full mt-2 mb-2">
-                            <label class="text-[10px] font-bold text-green-700 uppercase flex justify-between">
-                                <span>Season Sales Description</span>
-                            </label>
-                            <div class="flex gap-2">
-                                <input type="text" id="ssn-sales-desc" class="input-field border-green-500 bg-green-50 uppercase flex-grow !mb-0" 
-                                    oninput="this.value = this.value.toUpperCase(); filterDropdown('ssn-sales-desc', 'ssn-dropdown-list')"
-                                    onfocus="filterDropdown('ssn-sales-desc', 'ssn-dropdown-list')"
-                                    onblur="setTimeout(()=>document.getElementById('ssn-dropdown-list').classList.add('hidden'), 200)"
-                                    placeholder="TYPE NOTES OR SEARCH...">
-                                <button type="button" class="bg-green-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('ssn-')">+ SPEC</button>
-                            </div>
-                            <div id="ssn-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-40 overflow-y-auto rounded-md shadow-xl hidden mt-1"></div>
+                        <div id="ssn-quick-note-container" class="hidden mb-2">
+                            <label class="text-[10px] font-bold text-green-700 uppercase">Quick Notes</label>
+                            <select id="ssn-quick-note-select" class="input-field border-green-500 bg-green-50 text-sm font-bold text-green-800" onchange="applyQuickNote(this.value, 'ssn-sales-desc', 'ssn-quick-note-select')">
+                                <option value="">-- Select a Quick Note --</option>
+                            </select>
                         </div>
-
+                        
+                        <div>
+                            <label class="text-[10px] font-bold text-green-700 uppercase">Season Sales Description</label>
+                            <input type="text" id="ssn-sales-desc" class="input-field border-green-500 bg-green-50 uppercase" oninput="this.value = this.value.toUpperCase()" placeholder="TYPE NOTES HERE...">
+                        </div>
                         <div>
                             <label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label>
                             <input type="text" id="ssn-pick" class="input-field" placeholder="e.g. Needs spacing">
@@ -787,9 +783,9 @@
         let selectedDockName = null;
         let selectedDockSize = null;
         let selectedDockItemCode = null;
-        let selectedDockCustomer = ""; 
-        let selectedDockTrip = ""; 
-        let selectedDockRep = ""; 
+        let selectedDockCustomer = ""; // New specific state for folders
+        let selectedDockTrip = ""; // Stores trip number for photo naming
+        let selectedDockRep = ""; // Stores rep name for folder structure
 
         let reservesViewLevel = 0;
         let selectedReservesName = null;
@@ -973,13 +969,38 @@
             socInventory = mapCompressedToObj(res.socData, false);
             reservesInventory = mapCompressedToObj(res.reservesData, false);
 
-            // --- FIX: USE EXACT IDS FROM GOOGLE SHEET TABS ---
-            let exactSeasonIds = new Set(res.seasonIds || []);
+            // --- START TOURNAMENT DEDUPLICATION ---
+            let itemsWithPriority = {};
+            fullInventory.forEach(item => {
+                const pri = parseFloat(item.PRIORITY);
+                const ptr = parseFloat(item.PTRAVAILABLE) || 0;
+                const ss = parseFloat(item.SEASONSUPPLY) || 0;
+                const iCode = String(item.ITEMCODE || "").trim().toUpperCase();
+
+                if (iCode && !isNaN(pri) && pri > 0 && ptr >= (ss * 1.10)) {
+                    if (!itemsWithPriority[iCode]) itemsWithPriority[iCode] = [];
+                    itemsWithPriority[iCode].push(item);
+                }
+            });
+
+            let seasonWinnerIds = new Set();
+            for (const code in itemsWithPriority) {
+                let group = itemsWithPriority[code];
+                group.sort((a, b) => {
+                    const priA = parseFloat(a.PRIORITY);
+                    const priB = parseFloat(b.PRIORITY);
+                    if (priA === priB) {
+                        return (parseFloat(b.PTRAVAILABLE) || 0) - (parseFloat(a.PTRAVAILABLE) || 0);
+                    }
+                    return priA - priB;
+                });
+                seasonWinnerIds.add(group[0].DOM_ID);
+            }
 
             fullInventory.forEach(item => {
-                item.APP_TAB_ASSIGNMENT = exactSeasonIds.has(item.UNIQUE_ID) ? 'season' : 'location';
+                item.APP_TAB_ASSIGNMENT = seasonWinnerIds.has(item.DOM_ID) ? 'season' : 'location';
             });
-            // --- END FIX ---
+            // --- END TOURNAMENT DEDUPLICATION ---
             
             reservesInventory = reservesInventory.map((item, idx) => {
                 item.DOM_ID = 'res_' + idx;
@@ -1207,12 +1228,6 @@
 
         function selectReservesName(name) { selectedReservesName = name; reservesViewLevel = 1; renderReserves(); }
         function selectReservesSize(size) { selectedReservesSize = size; reservesViewLevel = 2; renderReserves(); }
-
-        function getLocPrefix(loc) {
-            if(!loc) return "Unassigned";
-            const match = loc.match(/^[A-Za-z]+/);
-            return match ? match[0] : loc.substring(0,2);
-        }
 
         function startPress(e, domId) {
             if (isMultiSelectMode) return;
@@ -2322,79 +2337,38 @@
             else if (taskViewLevel === 1) {
                 crumb.innerText = `${displayUser} / ${selectedTaskBlock}`; 
                 const blockItems = myItems.filter(i => (i.BLOCKALPHA || "Unassigned") === selectedTaskBlock);
-                const locs = [...new Set(blockItems.map(i => getLocPrefix(i.LOCATIONCODE)))].sort((a,b) => a.localeCompare(b, undefined, {numeric: true}));
+                
+                // FIX: Group by exact LOCATIONCODE instead of LocPrefix
+                const locs = [...new Set(blockItems.map(i => i.LOCATIONCODE || "No Loc"))].sort((a,b) => a.localeCompare(b, undefined, {numeric: true}));
+                
                 container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=0; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Blocks</div>` + 
                 locs.map(l => {
-                    const count = blockItems.filter(i => getLocPrefix(i.LOCATIONCODE) === l).length;
-                    return `<div class="drill-item" onclick="selectTaskLoc('${l}')"><span class="font-bold text-lg">${l} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
+                    const count = blockItems.filter(i => (i.LOCATIONCODE || "No Loc") === l).length;
+                    return `<div class="drill-item" onclick="selectTaskLoc('${l.replace(/'/g, "\\'")}')"><span class="font-bold text-lg">${l} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
                 }).join('');
             } 
             else if (taskViewLevel === 2) {
                 crumb.innerText = `${displayUser} / ${selectedTaskBlock} / ${selectedTaskLoc}`; 
-                let items = myItems.filter(i => (i.BLOCKALPHA || "Unassigned") === selectedTaskBlock && getLocPrefix(i.LOCATIONCODE) === selectedTaskLoc);
+                
+                // FIX: Filter by exact LOCATIONCODE
+                let items = myItems.filter(i => (i.BLOCKALPHA || "Unassigned") === selectedTaskBlock && (i.LOCATIONCODE || "No Loc") === selectedTaskLoc);
+                
                 items.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
-                container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=1; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Locs</div>` + 
+                container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=1; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Locations</div>` + 
                 items.map(i => generateCard(i, 'tasks')).join('');
             }
         }
 
-        // --- NEW DROPDOWN LOGIC ---
-        function filterDropdown(inputId, listId) {
-            if (!activeItem) return;
-            let cNameClean = String(activeItem.COMMONNAME || "").trim().toUpperCase();
-            let dict = salesNotesDict[cNameClean] || [];
-            
-            let input = document.getElementById(inputId);
-            let list = document.getElementById(listId);
-            
-            if (dict.length === 0) {
-                list.classList.add('hidden');
-                return;
-            }
-
-            let parts = input.value.split('/');
-            let currentTerm = parts[parts.length - 1].trim().toUpperCase();
-            
-            let matches = dict.filter(n => n.toUpperCase().includes(currentTerm));
-            
-            list.innerHTML = "";
-            if (matches.length > 0) {
-                list.classList.remove('hidden');
-                matches.forEach(m => {
-                    let div = document.createElement('div');
-                    div.className = "p-3 border-b border-gray-100 cursor-pointer hover:bg-gray-100 text-sm font-bold text-gray-700 active:bg-gray-200";
-                    div.innerText = m;
-                    div.onmousedown = function(e) {
-                        e.preventDefault(); // prevents input from losing focus immediately
-                        parts[parts.length - 1] = " " + m;
-                        input.value = parts.join(' / ').trim() + " / ";
-                        list.classList.add('hidden');
-                        input.focus();
-                    };
-                    list.appendChild(div);
-                });
+        function applyQuickNote(val, targetInputId, selectId) {
+            if (!val) return;
+            const targetInput = document.getElementById(targetInputId);
+            if (targetInput.value.trim() !== "") {
+                targetInput.value = (targetInput.value + " " + val).toUpperCase();
             } else {
-                list.classList.add('hidden');
+                targetInput.value = val.toUpperCase();
             }
+            document.getElementById(selectId).value = "";
         }
-        
-        function appendSpecToDesc(prefix) {
-            let specVal = document.getElementById(prefix + 'spec').value.trim().toUpperCase();
-            if (!specVal) {
-                showToast("Notice", "Spec field is empty.", true);
-                return;
-            }
-            let descInput = document.getElementById(prefix + 'sales-desc');
-            let currentVal = descInput.value.trim();
-            
-            if (currentVal && !currentVal.endsWith('/')) {
-                descInput.value = currentVal + " / " + specVal + " / ";
-            } else {
-                descInput.value = currentVal + (currentVal ? " " : "") + specVal + " / ";
-            }
-            descInput.focus();
-        }
-        // --------------------------
 
         function openDetail(uniqueId, sourceView) {
             lastView = sourceView;
@@ -2443,6 +2417,30 @@
             document.getElementById('dock-spec').value = activeItem.DOCK_SPEC || activeItem.SPEC || "";
             document.getElementById('dock-caliper').value = activeItem.DOCK_CALIPER || activeItem.CALIPER || "";
             document.getElementById('dock-sales-desc').value = activeItem.DOCK_NOTE || "";
+
+            // Populate Quick Notes for all tabs
+            const qSelects = ['ssn-quick-note-select', 'lsn-quick-note-select', 'na-quick-note-select', 'req-quick-note-select'];
+            qSelects.forEach(id => {
+                document.getElementById(id).innerHTML = '<option value="">-- Select a Quick Note --</option>';
+            });
+            
+            let cNameClean = String(activeItem.COMMONNAME || "").trim().toUpperCase();
+            if (salesNotesDict[cNameClean] && salesNotesDict[cNameClean].length > 0) {
+                salesNotesDict[cNameClean].forEach(note => {
+                    qSelects.forEach(id => {
+                        let opt = document.createElement('option');
+                        opt.value = note; opt.innerText = note;
+                        document.getElementById(id).appendChild(opt);
+                    });
+                });
+                ['ssn-', 'lsn-', 'na-', 'req-'].forEach(p => {
+                    document.getElementById(p + 'quick-note-container').classList.remove('hidden');
+                });
+            } else {
+                ['ssn-', 'lsn-', 'na-', 'req-'].forEach(p => {
+                    document.getElementById(p + 'quick-note-container').classList.add('hidden');
+                });
+            }
 
             // Caliper logic
             const caliperSizes = ["7DP", "#7", "#10", "#15", "#25", "#45"];
