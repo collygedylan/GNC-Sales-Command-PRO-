@@ -148,6 +148,10 @@
                 <button id="custom-rep-btn" class="hidden w-full bg-orange-600 text-white font-bold p-3 rounded-lg mb-4 shadow-sm" onclick="selectRepForRequest(document.getElementById('rep-search-input').value.trim())">Assign to: <span></span></button>
             </div>
 
+            <div id="step-1.5-folder" class="hidden flex flex-col text-left">
+                <div id="existing-folder-container"></div>
+            </div>
+
             <div id="step-2-cust" class="hidden flex flex-col text-left">
                 <div class="flex items-center mb-4 border-b border-gray-100 pb-2">
                     <i class="ph-bold ph-arrow-left text-gray-400 text-2xl mr-2 cursor-pointer p-1" onclick="document.getElementById('step-2-cust').classList.add('hidden'); document.getElementById('step-1-rep').classList.remove('hidden');"></i>
@@ -604,8 +608,10 @@
                         </div>
                     </div>
 
-                    <div class="flex gap-2 mt-4">
+                    <div class="flex flex-col gap-3 mt-4">
                         <button id="req-btn-save-draft" class="w-full bg-purple-600 text-white font-bold py-4 rounded-xl shadow-lg" onclick="saveData(false, 'req-')">SAVE REQUEST DATA</button>
+                        
+                        <button class="w-full bg-orange-50 text-orange-700 border border-orange-200 font-bold py-4 rounded-xl shadow-sm flex justify-center items-center gap-2 admin-only hidden" onclick="removeFromRequest()"><i class="ph-bold ph-minus-circle text-xl"></i> REMOVE FROM REQUEST (KEEP ITEM)</button>
                     </div>
                 </div>
 
@@ -783,7 +789,7 @@
         let selectedReqRep = null;
         let selectedReqRepStatus = null; 
         let selectedReqFolder = null; 
-        let tempSelectedReqRep = ""; // Used for the Request Modal flow
+        let tempSelectedReqRep = ""; 
         
         let dockViewLevel = 0;
         let selectedDockNum = null;
@@ -980,17 +986,15 @@
             socInventory = mapCompressedToObj(res.socData, false);
             reservesInventory = mapCompressedToObj(res.reservesData, false);
 
-            // --- FIX: USE EXACT IDS FROM GOOGLE SHEET TABS ---
             let exactSeasonIds = new Set(res.seasonIds || []);
 
             fullInventory.forEach(item => {
                 item.APP_TAB_ASSIGNMENT = exactSeasonIds.has(item.UNIQUE_ID) ? 'season' : 'location';
             });
-            // --- END FIX ---
             
             reservesInventory = reservesInventory.map((item, idx) => {
                 item.DOM_ID = 'res_' + idx;
-                item.UNIQUE_ID = item.UNIQUE_ID || 'res_uid_' + idx; // Fallback, but the backend script now sets this properly
+                item.UNIQUE_ID = item.UNIQUE_ID || 'res_uid_' + idx; 
                 
                 let resCode = String(item.ITEMCODE || item.ITEM || "").trim().toUpperCase();
                 let masterItem = fullInventory.find(f => String(f.ITEMCODE || "").trim().toUpperCase() === resCode);
@@ -1415,9 +1419,9 @@
             document.getElementById('tab-select-modal').classList.remove('hidden');
         }
 
-        // --- NEW MULTI-STEP REQUEST MODAL FLOW ---
         function openRequestModal() {
             document.getElementById('step-1-rep').classList.remove('hidden');
+            document.getElementById('step-1.5-folder').classList.add('hidden');
             document.getElementById('step-2-cust').classList.add('hidden');
             document.getElementById('request-rep-modal').classList.remove('hidden');
             document.getElementById('rep-search-input').value = "";
@@ -1452,15 +1456,47 @@
         function selectRepForRequest(repName) {
             tempSelectedReqRep = repName;
             document.getElementById('step-1-rep').classList.add('hidden');
-            document.getElementById('step-2-cust').classList.remove('hidden');
             
-            document.getElementById('req-qty-input').value = "";
-            document.getElementById('cust-search-input').value = "";
+            let repReqs = fullInventory.concat(lowStockInventory).concat(reservesInventory)
+                .filter(i => i.IS_REQUEST && i.REQUESTED_BY === repName && !i.REQ_ARCHIVED);
             
-            populateCustomerList();
+            let uniqueFolders = {};
+            repReqs.forEach(i => {
+                if (i.REQUEST_FOLDER) {
+                    uniqueFolders[i.REQUEST_FOLDER] = i.REQ_CUSTOMER || "Unknown";
+                }
+            });
+
+            const folderKeys = Object.keys(uniqueFolders);
+
+            if (folderKeys.length > 0) {
+                document.getElementById('step-1.5-folder').classList.remove('hidden');
+                let html = `<div class="flex items-center mb-4 border-b border-gray-100 pb-2">
+                                <i class="ph-bold ph-arrow-left text-gray-400 text-2xl mr-2 cursor-pointer p-1" onclick="document.getElementById('step-1.5-folder').classList.add('hidden'); document.getElementById('step-1-rep').classList.remove('hidden');"></i>
+                                <h3 class="font-bold text-lg text-orange-600">Select Folder</h3>
+                            </div>`;
+                folderKeys.forEach(fk => {
+                    let fLabel = fk;
+                    if (fk.startsWith('REQ-')) {
+                        const p = fk.split('-'); 
+                        fLabel = p.length >= 4 ? `${p[1]}/${p[2]}/${p[3]} - ${uniqueFolders[fk]}` : fk;
+                    }
+                    html += `<button class="w-full bg-yellow-50 text-yellow-800 font-bold p-4 rounded-xl shadow-sm border border-yellow-200 mb-2 text-left flex items-center gap-3 active:bg-yellow-100 transition-colors" onclick="finalizeRequestAction('${fk}', '${uniqueFolders[fk].replace(/'/g, "\\'")}')">
+                                <i class="ph-fill ph-folder text-2xl text-yellow-500"></i>
+                                <div class="flex flex-col min-w-0"><span class="text-sm truncate">${fLabel}</span><span class="text-[10px] text-gray-500 uppercase font-normal">Append to existing</span></div>
+                             </button>`;
+                });
+                html += `<button class="w-full bg-orange-600 text-white font-bold p-4 rounded-xl shadow-md mt-4 active:scale-95 transition-transform" onclick="document.getElementById('step-1.5-folder').classList.add('hidden'); document.getElementById('step-2-cust').classList.remove('hidden'); document.getElementById('req-qty-input').value=''; document.getElementById('cust-search-input').value=''; populateCustomerList();">+ CREATE NEW FOLDER</button>`;
+                
+                document.getElementById('existing-folder-container').innerHTML = html;
+            } else {
+                document.getElementById('step-2-cust').classList.remove('hidden');
+                document.getElementById('req-qty-input').value = "";
+                document.getElementById('cust-search-input').value = "";
+                populateCustomerList();
+            }
         }
 
-        // --- UPDATED POPULATE CUSTOMER LIST ---
         function populateCustomerList() {
             const val = document.getElementById('cust-search-input').value.toLowerCase().trim();
             const container = document.getElementById('cust-list-container');
@@ -1507,27 +1543,33 @@
 
         function setCustomerInput(val) {
             document.getElementById('cust-search-input').value = val;
-            populateCustomerList(); // Refilter
+            populateCustomerList();
         }
 
-        function finalizeRequestAction() {
-            let cust = document.getElementById('cust-search-input').value.trim();
-            let qty = document.getElementById('req-qty-input').value.trim();
-            
-            if (!cust) {
-                showToast("Required", "Please enter or select a customer.", true);
-                return;
+        function finalizeRequestAction(existingFolderId = null, existingCust = null) {
+            let cust = existingCust;
+            let qty = "";
+            let folderId = existingFolderId;
+
+            if (!existingFolderId) {
+                cust = document.getElementById('cust-search-input').value.trim();
+                qty = document.getElementById('req-qty-input').value.trim();
+                
+                if (!cust) {
+                    showToast("Required", "Please enter or select a customer.", true);
+                    return;
+                }
+                
+                const dateStr = new Date().toISOString().split('T')[0]; 
+                const shortTime = new Date().toLocaleTimeString('en-US', {hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit'}).replace(/:/g, ''); 
+                
+                let safeCustName = cust.replace(/[^a-zA-Z0-9 ]/g, "").trim().replace(/\s+/g, '-');
+                folderId = `REQ-${dateStr}-${shortTime}-${safeCustName}`;
             }
             
             document.getElementById('request-rep-modal').classList.add('hidden');
             const domIds = Array.from(selectedItems);
             const uniqueIds = [];
-            
-            const dateStr = new Date().toISOString().split('T')[0]; 
-            const shortTime = new Date().toLocaleTimeString('en-US', {hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit'}).replace(/:/g, ''); 
-            
-            let safeCustName = cust.replace(/[^a-zA-Z0-9 ]/g, "").trim().replace(/\s+/g, '-');
-            const folderId = `REQ-${dateStr}-${shortTime}-${safeCustName}`;
             
             domIds.forEach(dId => {
                 let item = fullInventory.find(i => i.DOM_ID === dId) || lowStockInventory.find(i => i.DOM_ID === dId) || reservesInventory.find(i => i.DOM_ID === dId);
@@ -1536,7 +1578,7 @@
                     item.REQUESTED_BY = tempSelectedReqRep; 
                     item.REQUEST_FOLDER = folderId; 
                     item.REQ_CUSTOMER = cust;
-                    item.REQ_QTY = qty;
+                    if (!existingFolderId) item.REQ_QTY = qty; 
                     uniqueIds.push(item.UNIQUE_ID);
                 }
             });
@@ -1932,7 +1974,6 @@
             container.innerHTML = officeItems.map(i => generateCard(i, 'sales-office')).join('');
         }
 
-        // --- NEW COPY & DONE FUNCTIONS FOR FOLDERS ---
         function copyFolderData(folderId) {
             let items = fullInventory.filter(i => i.REQUEST_FOLDER === folderId)
                 .concat(lowStockInventory.filter(i => i.REQUEST_FOLDER === folderId))
@@ -2000,6 +2041,41 @@
                     showToast("Success", "Folder archived!");
                     requestViewLevel = 3; 
                     renderRequest();
+                } else { showToast("Error", "Failed to update sheet.", true); }
+            }).catch(err => showToast("Error", "Network error.", true));
+        }
+        
+        function removeFromRequest() {
+            if(!confirm("Are you sure you want to remove this item from the Request folder? It will remain safely in the Master Inventory.")) return;
+            
+            showToast("Removing...", "Updating Google Sheet...", false);
+            
+            fetch(GOOGLE_SCRIPT_URL, {
+                method: 'POST',
+                body: JSON.stringify({ 
+                    type: 'remove_from_request', 
+                    id: activeItem.UNIQUE_ID 
+                })
+            }).then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showToast("Success", "Item removed from Request.");
+                    
+                    activeItem.IS_REQUEST = false;
+                    activeItem.REQUESTED_BY = "";
+                    activeItem.REQUEST_FOLDER = "";
+                    activeItem.REQ_CUSTOMER = "";
+                    activeItem.REQ_QTY = "";
+                    activeItem.REQ_MATCH = "";
+                    activeItem.REQ_SPEC = "";
+                    activeItem.REQ_CALIPER = "";
+                    activeItem.REQ_PICK = "";
+                    activeItem.REQ_SALES_NOTE = "";
+                    activeItem.REQ_COMMENTS = "";
+                    activeItem.REQ_PHOTO_LINK = "";
+                    activeItem.REQ_PHOTO_NAME = "";
+
+                    goBackFromDetail(); 
                 } else { showToast("Error", "Failed to update sheet.", true); }
             }).catch(err => showToast("Error", "Network error.", true));
         }
