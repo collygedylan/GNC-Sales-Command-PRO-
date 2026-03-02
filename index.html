@@ -388,15 +388,15 @@
                     <div id="ssn-input-container">
                         <div>
                             <label class="text-[10px] font-bold text-gray-500 uppercase">Match %</label>
-                            <input type="number" id="ssn-match" class="input-field" placeholder="e.g. 95">
+                            <input type="number" id="ssn-match" class="input-field" placeholder="e.g. 95" onchange="saveData(false, 'ssn-', true)">
                         </div>
                         <div>
                             <label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label>
-                            <input type="text" id="ssn-spec" class="input-field" placeholder="e.g. 24-30 inch">
+                            <input type="text" id="ssn-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'ssn-', true)">
                         </div>
                         <div id="ssn-container-caliper" class="hidden">
                             <label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label>
-                            <input type="text" id="ssn-caliper" class="input-field" placeholder="e.g. 2 inch">
+                            <input type="text" id="ssn-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'ssn-', true)">
                         </div>
                         
                         <div class="relative w-full mt-2 mb-2">
@@ -407,7 +407,7 @@
                                 <input type="text" id="ssn-sales-desc" class="input-field border-green-500 bg-green-50 uppercase flex-grow !mb-0" 
                                     oninput="this.value = this.value.toUpperCase(); filterDropdown('ssn-sales-desc', 'ssn-dropdown-list')"
                                     onfocus="filterDropdown('ssn-sales-desc', 'ssn-dropdown-list')"
-                                    onblur="setTimeout(()=>document.getElementById('ssn-dropdown-list').classList.add('hidden'), 200)"
+                                    onblur="setTimeout(()=> { document.getElementById('ssn-dropdown-list').classList.add('hidden'); saveData(false, 'ssn-', true); }, 200)"
                                     placeholder="TYPE NOTES OR SEARCH...">
                                 <button type="button" class="bg-green-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('ssn-')">+ SPEC</button>
                             </div>
@@ -416,7 +416,7 @@
 
                         <div>
                             <label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label>
-                            <input type="text" id="ssn-pick" class="input-field" placeholder="e.g. Needs spacing">
+                            <input type="text" id="ssn-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'ssn-', true)">
                         </div>
                     </div>
 
@@ -448,15 +448,15 @@
                     <div id="lsn-input-container">
                         <div>
                             <label class="text-[10px] font-bold text-gray-500 uppercase">Match %</label>
-                            <input type="number" id="lsn-match" class="input-field" placeholder="e.g. 95">
+                            <input type="number" id="lsn-match" class="input-field" placeholder="e.g. 95" onchange="saveData(false, 'lsn-', true)">
                         </div>
                         <div>
                             <label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label>
-                            <input type="text" id="lsn-spec" class="input-field" placeholder="e.g. 24-30 inch">
+                            <input type="text" id="lsn-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'lsn-', true)">
                         </div>
                         <div id="lsn-container-caliper" class="hidden">
                             <label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label>
-                            <input type="text" id="lsn-caliper" class="input-field" placeholder="e.g. 2 inch">
+                            <input type="text" id="lsn-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'lsn-', true)">
                         </div>
                         
                         <div class="relative w-full mt-2 mb-2">
@@ -467,7 +467,7 @@
                                 <input type="text" id="lsn-sales-desc" class="input-field border-green-500 bg-green-50 uppercase flex-grow !mb-0" 
                                     oninput="this.value = this.value.toUpperCase(); filterDropdown('lsn-sales-desc', 'lsn-dropdown-list')"
                                     onfocus="filterDropdown('lsn-sales-desc', 'lsn-dropdown-list')"
-                                    onblur="setTimeout(()=>document.getElementById('lsn-dropdown-list').classList.add('hidden'), 200)"
+                                    onblur="setTimeout(()=> { document.getElementById('lsn-dropdown-list').classList.add('hidden'); saveData(false, 'lsn-', true); }, 200)"
                                     placeholder="TYPE NOTES OR SEARCH...">
                                 <button type="button" class="bg-green-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('lsn-')">+ SPEC</button>
                             </div>
@@ -476,7 +476,7 @@
                         
                         <div>
                             <label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label>
-                            <input type="text" id="lsn-pick" class="input-field" placeholder="e.g. Needs spacing">
+                            <input type="text" id="lsn-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'lsn-', true)">
                         </div>
                     </div>
 
@@ -508,15 +508,15 @@
                     <div id="na-input-container">
                         <div>
                             <label class="text-[10px] font-bold text-gray-500 uppercase">Match %</label>
-                            <input type="number" id="na-match" class="input-field" placeholder="e.g. 95">
+                            <input type="number" id="na-match" class="input-field" placeholder="e.g. 95" onchange="saveData(false, 'na-', true)">
                         </div>
                         <div>
                             <label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label>
-                            <input type="text" id="na-spec" class="input-field" placeholder="e.g. 24-30 inch">
+                            <input type="text" id="na-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'na-', true)">
                         </div>
                         <div id="na-container-caliper" class="hidden">
                             <label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label>
-                            <input type="text" id="na-caliper" class="input-field" placeholder="e.g. 2 inch">
+                            <input type="text" id="na-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'na-', true)">
                         </div>
                         
                         <div class="relative w-full mt-2 mb-2">
@@ -527,7 +527,7 @@
                                 <input type="text" id="na-sales-desc" class="input-field border-green-500 bg-green-50 uppercase flex-grow !mb-0" 
                                     oninput="this.value = this.value.toUpperCase(); filterDropdown('na-sales-desc', 'na-dropdown-list')"
                                     onfocus="filterDropdown('na-sales-desc', 'na-dropdown-list')"
-                                    onblur="setTimeout(()=>document.getElementById('na-dropdown-list').classList.add('hidden'), 200)"
+                                    onblur="setTimeout(()=> { document.getElementById('na-dropdown-list').classList.add('hidden'); saveData(false, 'na-', true); }, 200)"
                                     placeholder="TYPE NOTES OR SEARCH...">
                                 <button type="button" class="bg-green-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('na-')">+ SPEC</button>
                             </div>
@@ -536,7 +536,7 @@
                         
                         <div>
                             <label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label>
-                            <input type="text" id="na-pick" class="input-field" placeholder="e.g. Needs spacing">
+                            <input type="text" id="na-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'na-', true)">
                         </div>
                     </div>
 
@@ -568,15 +568,15 @@
                     <div id="req-input-container">
                         <div>
                             <label class="text-[10px] font-bold text-gray-500 uppercase">Match %</label>
-                            <input type="number" id="req-match" class="input-field" placeholder="e.g. 95">
+                            <input type="number" id="req-match" class="input-field" placeholder="e.g. 95" onchange="saveData(false, 'req-', true)">
                         </div>
                         <div>
                             <label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label>
-                            <input type="text" id="req-spec" class="input-field" placeholder="e.g. 24-30 inch">
+                            <input type="text" id="req-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'req-', true)">
                         </div>
                         <div id="req-container-caliper" class="hidden">
                             <label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label>
-                            <input type="text" id="req-caliper" class="input-field" placeholder="e.g. 2 inch">
+                            <input type="text" id="req-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'req-', true)">
                         </div>
 
                         <div class="relative w-full mt-2 mb-2">
@@ -587,7 +587,7 @@
                                 <input type="text" id="req-sales-desc" class="input-field border-purple-500 bg-purple-50 uppercase flex-grow !mb-0" 
                                     oninput="this.value = this.value.toUpperCase(); filterDropdown('req-sales-desc', 'req-dropdown-list')"
                                     onfocus="filterDropdown('req-sales-desc', 'req-dropdown-list')"
-                                    onblur="setTimeout(()=>document.getElementById('req-dropdown-list').classList.add('hidden'), 200)"
+                                    onblur="setTimeout(()=>{ document.getElementById('req-dropdown-list').classList.add('hidden'); saveData(false, 'req-', true); }, 200)"
                                     placeholder="TYPE NOTES OR SEARCH...">
                                 <button type="button" class="bg-purple-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('req-')">+ SPEC</button>
                             </div>
@@ -596,11 +596,11 @@
 
                         <div>
                             <label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label>
-                            <input type="text" id="req-pick" class="input-field" placeholder="e.g. Needs spacing">
+                            <input type="text" id="req-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'req-', true)">
                         </div>
                         <div>
                             <label class="text-[10px] font-bold text-gray-500 uppercase">Comments</label>
-                            <input type="text" id="req-comments" class="input-field" placeholder="Any additional comments...">
+                            <input type="text" id="req-comments" class="input-field" placeholder="Any additional comments..." onchange="saveData(false, 'req-', true)">
                         </div>
                     </div>
 
@@ -631,11 +631,11 @@
                     <div id="dock-input-container">
                         <div>
                             <label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label>
-                            <input type="text" id="dock-spec" class="input-field" placeholder="e.g. 24-30 inch">
+                            <input type="text" id="dock-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'dock-', true)">
                         </div>
                         <div id="dock-container-caliper" class="hidden">
                             <label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label>
-                            <input type="text" id="dock-caliper" class="input-field" placeholder="e.g. 2 inch">
+                            <input type="text" id="dock-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'dock-', true)">
                         </div>
                         
                         <div class="relative w-full mt-2 mb-2">
@@ -646,7 +646,7 @@
                                 <input type="text" id="dock-sales-desc" class="input-field border-orange-500 bg-orange-50 uppercase flex-grow !mb-0" 
                                     oninput="this.value = this.value.toUpperCase(); filterDropdown('dock-sales-desc', 'dock-dropdown-list')"
                                     onfocus="filterDropdown('dock-sales-desc', 'dock-dropdown-list')"
-                                    onblur="setTimeout(()=>document.getElementById('dock-dropdown-list').classList.add('hidden'), 200)"
+                                    onblur="setTimeout(()=> { document.getElementById('dock-dropdown-list').classList.add('hidden'); saveData(false, 'dock-', true); }, 200)"
                                     placeholder="TYPE NOTES OR SEARCH...">
                                 <button type="button" class="bg-orange-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('dock-')">+ SPEC</button>
                             </div>
@@ -2632,7 +2632,6 @@
 
         function handlePhotoUpload(input, prefix) {
             if(!input.files || input.files.length === 0) return;
-            showToast("Processing...", "Compressing image...", false);
             const file = input.files[0];
             const reader = new FileReader();
             
@@ -2648,7 +2647,8 @@
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
                     
-                    const base64Data = canvas.toDataURL('image/jpeg', 0.7).split(',')[1];
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+                    const base64Data = dataUrl.split(',')[1];
                     const dateStr = new Date().toISOString().split('T')[0];
                     
                     let filename = `${activeItem.COMMONNAME}_${activeItem.CONTSIZE}_${dateStr}.jpg`.replace(/[\/\s,]/g, '_');
@@ -2661,11 +2661,36 @@
                         filename = `${tripStr}-${activeItem.COMMONNAME}-${activeItem.CONTSIZE}-${locStr}-${lotStr}-${dockStr}-${dateStr}.jpg`.replace(/[\/\s,]/g, '_');
                     }
                     
+                    showTemporaryPhotoPreview(prefix, dataUrl);
                     uploadPhotoToDrive(base64Data, filename, prefix);
                 };
                 img.src = e.target.result;
             };
             reader.readAsDataURL(file);
+        }
+
+        function showTemporaryPhotoPreview(prefix, dataUrl) {
+            let div = document.getElementById(prefix + 'photo-preview');
+            let list = document.getElementById(prefix + 'photo-list-container');
+            
+            if (div && list) {
+                div.classList.remove('hidden');
+                let html = `
+                <div class="flex items-center gap-3 p-2 bg-gray-50 rounded-lg border border-gray-200 shadow-sm opacity-75">
+                    <div class="w-10 h-10 rounded overflow-hidden relative border border-gray-300 flex-shrink-0">
+                        <img src="${dataUrl}" class="w-full h-full object-cover">
+                        <div class="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center">
+                            <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        </div>
+                    </div>
+                    <div class="flex-grow min-w-0">
+                        <div class="text-xs font-bold text-gray-700 truncate">Uploading to Server...</div>
+                        <div class="text-[10px] text-gray-500">Working in background</div>
+                    </div>
+                </div>`;
+                
+                list.insertAdjacentHTML('afterbegin', html);
+            }
         }
 
         function uploadPhotoToDrive(base64Data, filename, prefix) {
@@ -2731,7 +2756,7 @@
                         activeItem.SAVED_PHOTO_NAME = names.join(',');
                     }
                     renderPhotoPreview(); 
-                    saveData(false, prefix); 
+                    saveData(false, prefix, true); // Auto-save after photo uploads
                 } else {
                     showToast("Error", "Upload failed.", true);
                 }
@@ -2816,14 +2841,14 @@
             }
         }
 
-        function saveData(isComplete = false, prefix) {
+        function saveData(isComplete = false, prefix, isSilentAutoSave = false) {
             let btnDraft = document.getElementById(prefix + 'btn-save-draft');
             let btnComp = document.getElementById(prefix + 'btn-save-complete');
             
             if (isComplete) { 
                 if(btnComp) btnComp.innerText = "SAVING..."; 
             } else { 
-                if(btnDraft) btnDraft.innerText = "SAVING..."; 
+                if(btnDraft) btnDraft.innerText = isSilentAutoSave ? "AUTO-SAVING..." : "SAVING..."; 
             }
             
             let matchVal, specVal, caliperVal, pickVal, salesDescVal;
@@ -2844,7 +2869,6 @@
                 matchVal = activeItem.MATCH;
                 specVal = activeItem.SPEC;
                 caliperVal = activeItem.CALIPER;
-                // FIX: Look for PIC_NOTE first!
                 pickVal = activeItem.PIC_NOTE || activeItem.PICK || ""; 
                 salesDescVal = activeItem.SALES_NOTE;
             }
@@ -2904,7 +2928,9 @@
                 if(btnComp) btnComp.innerText = "MARK COMPLETE";
                 
                 if(data.status === 'success') {
-                    showToast("Success", isComplete ? "Task Completed!" : "Draft saved to Google Sheet.");
+                    if (!isSilentAutoSave) {
+                        showToast("Success", isComplete ? "Task Completed!" : "Draft saved to Google Sheet.");
+                    }
                     if (isComplete) {
                         activeItem.DATE_COMPLETED = new Date().toISOString();
                         goBackFromDetail();
@@ -2918,7 +2944,7 @@
                     else btnDraft.innerText = "SAVE DRAFT";
                 }
                 if(btnComp) btnComp.innerText = "MARK COMPLETE";
-                showToast("Network Error", "Could not reach server.", true);
+                if (!isSilentAutoSave) showToast("Network Error", "Could not reach server.", true);
             });
         }
     </script>
