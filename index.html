@@ -54,7 +54,7 @@
         .task-tab { flex: 1; text-align: center; padding: 12px; font-size: 11px; font-weight: 700; color: #6b7280; cursor: pointer; border-bottom: 3px solid transparent; text-transform: uppercase; }
         .task-tab.active { color: var(--brand-green); border-bottom-color: var(--brand-green); background: white; }
 
-        /* UPDATED: SCROLLABLE DETAIL TABS */
+        /* SCROLLABLE DETAIL TABS */
         .detail-tabs { display: flex; overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none; border-bottom: 1px solid #e5e7eb; background: #f9fafb; margin-bottom: 10px; }
         .detail-tabs::-webkit-scrollbar { display: none; }
         .detail-tab { flex: 0 0 auto; text-align: center; padding: 10px 16px; font-size: 11px; font-weight: 700; color: #6b7280; cursor: pointer; border-bottom: 3px solid transparent; text-transform: uppercase; }
@@ -86,7 +86,16 @@
 
     <div id="view-login">
         <div class="login-card">
-            <div class="text-3xl text-[#007a4d] font-bold mb-6">GNC PRO 005</div>
+            <div class="flex flex-col items-center mb-6">
+                <img src="Greenleaf%20Logo.png" alt="Greenleaf Logo" class="h-16 mb-2 object-contain drop-shadow-sm" onerror="this.style.display='none'">
+                <div class="text-2xl text-[#007a4d] font-black tracking-tight mb-3">GNC PRO 005</div>
+                
+                <div class="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-200 shadow-inner">
+                    <span class="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Powered By</span>
+                    <img src="Ag%20Metric%20App.png" alt="Ag Metric App" class="h-4 object-contain" onerror="this.style.display='none'">
+                </div>
+            </div>
+
             <div id="login-inputs">
                 <input type="text" id="username-input" class="input-field mb-4 text-center border-2" placeholder="USERNAME">
                 <input type="password" id="pin-code" class="input-field mb-4 text-center border-2 tracking-widest" placeholder="PASSWORD">
@@ -192,9 +201,18 @@
         <div id="main-scroll-area" class="flex-grow overflow-y-auto p-4 pb-40 relative">
             
             <div id="view-home" class="hidden">
-                <div class="bg-[#007a4d] text-white p-6 rounded-2xl mb-6 shadow-lg text-center">
+                <div class="bg-[#007a4d] text-white p-6 rounded-2xl mb-6 shadow-lg flex flex-col items-center text-center">
+                    <div class="bg-white p-3 rounded-2xl mb-3 shadow-md">
+                        <img src="Greenleaf%20Logo.png" alt="Greenleaf Logo" class="h-10 object-contain" onerror="this.style.display='none'">
+                    </div>
+                    
                     <h1 class="text-2xl font-bold">GNC PRO 005</h1>
-                    <p class="opacity-80 text-sm">Dashboard</p>
+                    <p class="opacity-90 text-sm mb-4">Dashboard</p>
+                    
+                    <div class="flex items-center gap-2 bg-black/20 px-3 py-1.5 rounded-full border border-white/20">
+                        <span class="text-[9px] font-bold text-white/90 uppercase tracking-widest">Powered By</span>
+                        <img src="Ag%20Metric%20App.png" alt="Ag Metric App" class="h-4 object-contain bg-white rounded px-1 py-0.5" onerror="this.style.display='none'">
+                    </div>
                 </div>
                 
                 <h2 class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3 pl-1">App Modules</h2>
