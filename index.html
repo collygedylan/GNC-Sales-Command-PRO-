@@ -320,8 +320,8 @@
                     <div class="detail-tab active" onclick="switchDetailTab('overview')" id="dtab-overview">Overview</div>
                     <div class="detail-tab hidden" onclick="switchDetailTab('season')" id="dtab-season">Season Notes</div>
                     <div class="detail-tab hidden" onclick="switchDetailTab('location')" id="dtab-location">Location Notes</div>
-                    <div class="detail-tab" onclick="switchDetailTab('request')" id="dtab-request">Request</div>
-                    <div class="detail-tab" onclick="switchDetailTab('notes')" id="dtab-notes">Notes & Actions</div>
+                    <div class="detail-tab hidden" onclick="switchDetailTab('request')" id="dtab-request">Request</div>
+                    <div class="detail-tab hidden" onclick="switchDetailTab('notes')" id="dtab-notes">Notes & Actions</div>
                 </div>
                 
                 <div id="det-overview-content" class="py-4">
@@ -2334,12 +2334,15 @@
 
             renderPhotoPreview();
 
-            // Set tab visibility based on context
-            document.getElementById('dtab-season').classList.add('hidden');
-            document.getElementById('dtab-location').classList.add('hidden');
+            // 1. Hide all data entry tabs by default
+            ['season', 'location', 'request', 'notes'].forEach(t => {
+                let el = document.getElementById('dtab-' + t);
+                if (el) el.classList.add('hidden');
+            });
 
             let defaultTab = 'overview';
-            
+
+            // 2. Apply explicit visibility rules
             if (sourceView === 'tasks') {
                 if (activeTaskTab === 'season') {
                     document.getElementById('dtab-season').classList.remove('hidden');
@@ -2348,10 +2351,28 @@
                     document.getElementById('dtab-location').classList.remove('hidden');
                     defaultTab = 'location';
                 }
-            } else if (sourceView === 'request') {
+            } 
+            else if (sourceView === 'request') {
+                document.getElementById('dtab-request').classList.remove('hidden');
                 defaultTab = 'request';
+            } 
+            else { 
+                // This covers Drive Mode, Docks, Sales Office, Low Stock, Reserves, Review
+                if (currentRole === 'Admin') {
+                    // Managers see all tabs
+                    ['season', 'location', 'request', 'notes'].forEach(t => {
+                        let el = document.getElementById('dtab-' + t);
+                        if (el) el.classList.remove('hidden');
+                    });
+                } else {
+                    // Regular users see only standard Notes & Actions in Drive Mode (except Docks)
+                    if (sourceView !== 'docks') {
+                        document.getElementById('dtab-notes').classList.remove('hidden');
+                    }
+                }
+                defaultTab = 'overview';
             }
-            
+
             switchDetailTab(defaultTab);
         }
 
