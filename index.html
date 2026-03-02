@@ -930,6 +930,8 @@
                     obj.IS_REQUEST = (String(isReqVal).toUpperCase() === 'TRUE' || isReqVal === true);
                     obj.REQUESTED_BY = getVal(['REQUESTED BY']);
                     obj.REQUEST_FOLDER = getVal(['REQUEST FOLDER']);
+                    let archVal = getVal(['REQ ARCHIVED']);
+                    obj.REQ_ARCHIVED = (String(archVal).toUpperCase() === 'TRUE' || archVal === true);
                     
                     obj.MATCH = getVal(['MATCH', 'MATCHPCT']);
                     obj.SPEC = getVal(['SPEC']);
@@ -947,6 +949,8 @@
                     obj.REQ_COMMENTS = getVal(['REQ COMMENTS']);
                     obj.REQ_PHOTO_LINK = getVal(['REQ PHOTO LINK']);
                     obj.REQ_PHOTO_NAME = getVal(['REQ PHOTO NAME']);
+                    obj.REQ_CUSTOMER = getVal(['REQ CUSTOMER']);
+                    obj.REQ_QTY = getVal(['REQ QTY']);
 
                     // Docks mapping
                     obj.DOCK_SPEC = getVal(['DOCK SPEC']);
@@ -1521,7 +1525,9 @@
             
             const dateStr = new Date().toISOString().split('T')[0]; 
             const shortTime = new Date().toLocaleTimeString('en-US', {hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit'}).replace(/:/g, ''); 
-            const folderId = `REQ-${dateStr}-${shortTime}`;
+            
+            let safeCustName = cust.replace(/[^a-zA-Z0-9 ]/g, "").trim().replace(/\s+/g, '-');
+            const folderId = `REQ-${dateStr}-${shortTime}-${safeCustName}`;
             
             domIds.forEach(dId => {
                 let item = fullInventory.find(i => i.DOM_ID === dId) || lowStockInventory.find(i => i.DOM_ID === dId) || reservesInventory.find(i => i.DOM_ID === dId);
@@ -1926,6 +1932,78 @@
             container.innerHTML = officeItems.map(i => generateCard(i, 'sales-office')).join('');
         }
 
+        // --- NEW COPY & DONE FUNCTIONS FOR FOLDERS ---
+        function copyFolderData(folderId) {
+            let items = fullInventory.filter(i => i.REQUEST_FOLDER === folderId)
+                .concat(lowStockInventory.filter(i => i.REQUEST_FOLDER === folderId))
+                .concat(reservesInventory.filter(i => i.REQUEST_FOLDER === folderId));
+            
+            items = items.filter((v,i,a) => a.findIndex(t => (t.DOM_ID === v.DOM_ID)) === i);
+
+            let returnText = `REQUEST FOLDER: ${folderId}\n\n`;
+
+            items.forEach(i => {
+                returnText += `▪ ${i.COMMONNAME || 'Unknown'} (${i.CONTSIZE || '-'}) | Loc: ${i.LOCATIONCODE || 'No Loc'}\n`;
+                returnText += `  Requested Qty: ${i.REQ_QTY || 'N/A'}\n`;
+                returnText += `  Customer: ${i.REQ_CUSTOMER || 'N/A'}\n`;
+                if (i.REQ_MATCH) returnText += `  Match: ${i.REQ_MATCH}%\n`;
+                if (i.REQ_SPEC) returnText += `  Spec: ${i.REQ_SPEC}\n`;
+                if (i.REQ_CALIPER) returnText += `  Caliper: ${i.REQ_CALIPER}\n`;
+                if (i.REQ_PICK) returnText += `  Pick Note: ${i.REQ_PICK}\n`;
+                if (i.REQ_SALES_NOTE) returnText += `  Sales Note: ${i.REQ_SALES_NOTE}\n`;
+                if (i.REQ_COMMENTS) returnText += `  Comments: ${i.REQ_COMMENTS}\n`;
+                
+                let photo = i.REQ_PHOTO_LINK || i.SAVED_PHOTO_LINK || i['PHOTO LINK'] || i.PHOTOLINK;
+                if (photo && photo.trim() !== "") {
+                    let urls = photo.split(',');
+                    let counter = 1;
+                    urls.forEach(url => {
+                        let cleanUrl = url.trim();
+                        let match = cleanUrl.match(/(https?:\/\/[^"\s>]+)/);
+                        if (match) {
+                            returnText += `  Photo ${counter}: ${match[1]}\n`;
+                            counter++;
+                        }
+                    });
+                }
+                returnText += `\n`;
+            });
+
+            navigator.clipboard.writeText(returnText).then(() => {
+                showToast("Success", "Folder data copied to clipboard!");
+            });
+        }
+
+        function markFolderDone(folderId) {
+            if(!confirm("Are you sure you want to mark this folder as Done? It will be hidden from the app.")) return;
+            
+            showToast("Archiving...", "Removing folder from view...", false);
+            
+            fetch(GOOGLE_SCRIPT_URL, {
+                method: 'POST',
+                body: JSON.stringify({ 
+                    type: 'archive_request_folder', 
+                    folderId: folderId
+                })
+            }).then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    const updateArchive = (arr) => {
+                        arr.forEach(i => {
+                            if (i.REQUEST_FOLDER === folderId) i.REQ_ARCHIVED = true;
+                        });
+                    };
+                    updateArchive(fullInventory);
+                    updateArchive(lowStockInventory);
+                    updateArchive(reservesInventory);
+
+                    showToast("Success", "Folder archived!");
+                    requestViewLevel = 3; 
+                    renderRequest();
+                } else { showToast("Error", "Failed to update sheet.", true); }
+            }).catch(err => showToast("Error", "Network error.", true));
+        }
+
         function renderRequest() {
             const container = document.getElementById('request-content');
             const crumb = document.getElementById('request-crumb');
@@ -1935,7 +2013,7 @@
             let reqReserves = reservesInventory.filter(i => i.IS_REQUEST === true);
             let combinedReq = [...reqItems, ...reqLowStock, ...reqReserves];
             
-            combinedReq = combinedReq.filter((v,i,a) => a.findIndex(t => (t.DOM_ID === v.DOM_ID)) === i);
+            combinedReq = combinedReq.filter((v,i,a) => a.findIndex(t => (t.DOM_ID === v.DOM_ID)) === i && !v.REQ_ARCHIVED);
 
             const isReqCompleted = (item) => {
                 return (
@@ -2064,6 +2142,9 @@
                                  }
                                  fLabel = `${p[1]}/${p[2]}/${p[3]} at ${timeStr}`;
                              }
+                             if(p.length >= 5) {
+                                 fLabel += ` - ${p.slice(4).join('-')}`;
+                             }
                          }
                          
                          html += `<div class="drill-item" onclick="selectRequestFolder('${f}')">
@@ -2095,6 +2176,12 @@
                 if (folderItems.length === 0) {
                     html += `<div class="p-8 text-center text-gray-400">Folder is empty.</div>`;
                 } else {
+                    html += `
+                    <div class="flex gap-2 mb-4">
+                        <button class="w-1/2 bg-gray-100 text-gray-700 font-bold py-3 rounded-xl shadow-sm border border-gray-200 text-xs flex items-center justify-center gap-2" onclick="copyFolderData('${selectedReqFolder}')"><i class="ph-bold ph-copy text-lg"></i> COPY DATA</button>
+                        <button class="w-1/2 bg-green-600 text-white font-bold py-3 rounded-xl shadow-md text-xs flex items-center justify-center gap-2" onclick="markFolderDone('${selectedReqFolder}')"><i class="ph-bold ph-check-circle text-lg"></i> MARK DONE</button>
+                    </div>`;
+
                     let colorClass = selectedReqRepStatus === 'pending' ? 'status-orange' : 'status-green';
                     html += folderItems.map(i => generateCard(i, 'request', colorClass)).join('');
                 }
@@ -2355,7 +2442,6 @@
                 crumb.innerText = `${displayUser} / ${selectedTaskBlock}`; 
                 const blockItems = myItems.filter(i => (i.BLOCKALPHA || "Unassigned") === selectedTaskBlock);
                 
-                // FIX: Group by exact LOCATIONCODE instead of LocPrefix
                 const locs = [...new Set(blockItems.map(i => i.LOCATIONCODE || "No Loc"))].sort((a,b) => a.localeCompare(b, undefined, {numeric: true}));
                 
                 container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=0; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Blocks</div>` + 
@@ -2367,7 +2453,6 @@
             else if (taskViewLevel === 2) {
                 crumb.innerText = `${displayUser} / ${selectedTaskBlock} / ${selectedTaskLoc}`; 
                 
-                // FIX: Filter by exact LOCATIONCODE
                 let items = myItems.filter(i => (i.BLOCKALPHA || "Unassigned") === selectedTaskBlock && (i.LOCATIONCODE || "No Loc") === selectedTaskLoc);
                 
                 items.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
@@ -2376,73 +2461,16 @@
             }
         }
 
-        // --- NEW DROPDOWN LOGIC ---
-        function filterDropdown(inputId, listId) {
-            if (!activeItem) return;
-            let cNameClean = String(activeItem.COMMONNAME || "").trim().toUpperCase();
-            let dict = salesNotesDict[cNameClean] || [];
-            
-            let list = document.getElementById(listId);
-            let input = document.getElementById(inputId);
-            
-            if (dict.length === 0) {
-                list.classList.add('hidden');
-                return;
-            }
-
-            let val = input.value;
-            let parts = val.split('/');
-            let currentTerm = parts[parts.length - 1].trim().toUpperCase();
-            
-            let matches = dict;
-            if (currentTerm !== "") {
-                matches = dict.filter(n => n.toUpperCase().includes(currentTerm));
-            }
-
-            if (matches.length === 0) {
-                matches = dict; 
-            }
-            
-            list.innerHTML = "";
-            matches.forEach(m => {
-                let div = document.createElement('div');
-                div.className = "p-3 border-b border-gray-100 cursor-pointer hover:bg-green-50 text-sm font-bold text-green-800 active:bg-green-100";
-                div.innerText = m;
-                div.onmousedown = function(e) {
-                    e.preventDefault(); 
-                    
-                    parts[parts.length - 1] = " " + m + " ";
-                    let newVal = parts.join('/').trim();
-                    
-                    newVal = newVal.replace(/\s*\/\s*/g, ' / ').replace(/^\/+/, '').trim();
-                    
-                    input.value = newVal + " / ";
-                    list.classList.add('hidden');
-                    input.focus();
-                };
-                list.appendChild(div);
-            });
-            
-            list.classList.remove('hidden');
-        }
-        
-        function appendSpecToDesc(prefix) {
-            let specVal = document.getElementById(prefix + 'spec').value.trim().toUpperCase();
-            if (!specVal) {
-                showToast("Notice", "Spec field is empty.", true);
-                return;
-            }
-            let descInput = document.getElementById(prefix + 'sales-desc');
-            let currentVal = descInput.value.trim();
-            
-            if (currentVal && !currentVal.endsWith('/')) {
-                descInput.value = currentVal + " / " + specVal + " / ";
+        function applyQuickNote(val, targetInputId, selectId) {
+            if (!val) return;
+            const targetInput = document.getElementById(targetInputId);
+            if (targetInput.value.trim() !== "") {
+                targetInput.value = (targetInput.value + " " + val).toUpperCase();
             } else {
-                descInput.value = currentVal + (currentVal ? " " : "") + specVal + " / ";
+                targetInput.value = val.toUpperCase();
             }
-            descInput.focus();
+            document.getElementById(selectId).value = "";
         }
-        // --------------------------
 
         function openDetail(uniqueId, sourceView) {
             lastView = sourceView;
