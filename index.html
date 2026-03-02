@@ -90,9 +90,9 @@
                 <img src="Greenleaf%20Logo.png" alt="Greenleaf Logo" class="h-20 mb-3 object-contain drop-shadow-sm" onerror="this.style.display='none'">
                 <div class="text-3xl text-[#007a4d] font-black tracking-tight mb-4">GNC PRO 005</div>
                 
-                <div class="flex flex-col items-center gap-1.5 mt-2 bg-gray-50 px-8 py-5 rounded-xl border border-gray-100 w-full">
+                <div class="flex flex-col items-center gap-1.5 mt-2 bg-gray-50 px-6 py-3 rounded-xl border border-gray-100 w-full">
                     <span class="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Powered By</span>
-                    <img src="Ag%20Metric%20App.png" alt="Ag Metric App" class="h-16 object-contain" onerror="this.style.display='none'">
+                    <img src="Ag%20Metric%20App.png" alt="Ag Metric App" class="h-8 object-contain" onerror="this.style.display='none'">
                 </div>
             </div>
 
@@ -566,7 +566,7 @@
 
                         <div id="req-quick-note-container" class="hidden mb-2">
                             <label class="text-[10px] font-bold text-purple-700 uppercase">Quick Notes</label>
-                            <select id="req-quick-note-select" class="input-field border-purple-500 bg-purple-50 text-sm font-bold text-purple-800" onchange="applyQuickNote(this.value, 'req-sales-desc', 'req-quick-note-select')">
+                            <select id="req-quick-note-select" class="input-field border-purple-50 text-sm font-bold text-purple-800" onchange="applyQuickNote(this.value, 'req-sales-desc', 'req-quick-note-select')">
                                 <option value="">-- Select a Quick Note --</option>
                             </select>
                         </div>
@@ -643,8 +643,8 @@
                 <button onclick="initiateBatchAction('copy')" class="flex-1 bg-gray-100 text-gray-700 p-2 rounded-lg text-[10px] font-bold hover:bg-gray-200"><i class="ph-bold ph-copy block text-lg mb-1"></i> Copy</button>
                 <button onclick="initiateBatchAction('email')" class="flex-1 bg-blue-100 text-blue-700 p-2 rounded-lg text-[10px] font-bold hover:bg-blue-200"><i class="ph-bold ph-envelope block text-lg mb-1"></i> Email</button>
                 <button onclick="initiateBatchAction('text')" class="flex-1 bg-green-100 text-green-700 p-2 rounded-lg text-[10px] font-bold hover:bg-green-200"><i class="ph-bold ph-chat block text-lg mb-1"></i> Text</button>
-                <button onclick="initiateBatchAction('assign')" class="flex-1 bg-purple-100 text-purple-700 p-2 rounded-lg text-[10px] font-bold hover:bg-purple-200"><i class="ph-bold ph-user-plus block text-lg mb-1"></i> Assign</button>
-                <button onclick="initiateBatchAction('request_action')" class="flex-1 bg-orange-500 text-white p-2 rounded-lg text-[10px] font-bold shadow-md"><i class="ph-bold ph-warning-circle block text-lg mb-1"></i> Request</button>
+                <button id="batch-btn-assign" onclick="initiateBatchAction('assign')" class="flex-1 bg-purple-100 text-purple-700 p-2 rounded-lg text-[10px] font-bold hover:bg-purple-200"><i class="ph-bold ph-user-plus block text-lg mb-1"></i> Assign</button>
+                <button id="batch-btn-request" onclick="initiateBatchAction('request_action')" class="flex-1 bg-orange-500 text-white p-2 rounded-lg text-[10px] font-bold shadow-md"><i class="ph-bold ph-warning-circle block text-lg mb-1"></i> Request</button>
             </div>
         </div>
 
@@ -1295,6 +1295,19 @@
             if (selectedItems.size > 0) {
                 bar.classList.remove('hidden');
                 document.getElementById('sel-count').innerText = selectedItems.size;
+                
+                // Hide Assign and Request in Docks View
+                const isDocksView = !document.getElementById('view-docks').classList.contains('hidden');
+                const btnAssign = document.getElementById('batch-btn-assign');
+                const btnRequest = document.getElementById('batch-btn-request');
+                
+                if (isDocksView) {
+                    if (btnAssign) btnAssign.classList.add('hidden');
+                    if (btnRequest) btnRequest.classList.add('hidden');
+                } else {
+                    if (btnAssign) btnAssign.classList.remove('hidden');
+                    if (btnRequest) btnRequest.classList.remove('hidden');
+                }
             } else {
                 bar.classList.add('hidden');
             }
