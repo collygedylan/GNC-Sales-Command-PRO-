@@ -990,7 +990,7 @@
             
             reservesInventory = reservesInventory.map((item, idx) => {
                 item.DOM_ID = 'res_' + idx;
-                item.UNIQUE_ID = item.UNIQUE_ID || 'res_uid_' + idx; 
+                item.UNIQUE_ID = item.UNIQUE_ID || 'res_uid_' + idx; // Fallback, but the backend script now sets this properly
                 
                 let resCode = String(item.ITEMCODE || item.ITEM || "").trim().toUpperCase();
                 let masterItem = fullInventory.find(f => String(f.ITEMCODE || "").trim().toUpperCase() === resCode);
@@ -2844,7 +2844,8 @@
                 matchVal = activeItem.MATCH;
                 specVal = activeItem.SPEC;
                 caliperVal = activeItem.CALIPER;
-                pickVal = activeItem.PICK;
+                // FIX: Look for PIC_NOTE first!
+                pickVal = activeItem.PIC_NOTE || activeItem.PICK || ""; 
                 salesDescVal = activeItem.SALES_NOTE;
             }
 
