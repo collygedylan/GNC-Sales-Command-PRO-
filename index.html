@@ -763,6 +763,7 @@
         let selectedDockItemCode = null;
         let selectedDockCustomer = ""; // New specific state for folders
         let selectedDockTrip = ""; // Stores trip number for photo naming
+        let selectedDockRep = ""; // Stores rep name for folder structure
 
         let reservesViewLevel = 0;
         let selectedReservesName = null;
@@ -1638,17 +1639,21 @@
             selectedDockName = null;
             selectedDockSize = null;
             selectedDockItemCode = null;
+            selectedDockCustomer = "";
+            selectedDockTrip = "";
+            selectedDockRep = "";
             document.getElementById('docks-search').value = "";
             renderDocks();
         }
 
         function selectDockNum(num) { selectedDockNum = num; dockViewLevel = 1; renderDocks(); }
-        function selectDockPlant(itemCode, name, size, customerStr, tripStr) { 
+        function selectDockPlant(itemCode, name, size, customerStr, tripStr, repStr) { 
             selectedDockItemCode = itemCode; 
             selectedDockName = name; 
             selectedDockSize = size; 
             selectedDockCustomer = customerStr;
             selectedDockTrip = tripStr;
+            selectedDockRep = repStr;
             dockViewLevel = 2; 
             renderDocks(); 
         }
@@ -1753,13 +1758,12 @@
                         <div class="flex flex-col">`;
                     
                     Object.values(s.plants).sort((a,b) => a.name.localeCompare(b.name)).forEach(p => {
-                        let safeCust = (s.customer || "").replace(/'/g, "\\'");
-                        let safeConsignee = (s.consignee || "").replace(/'/g, "\\'");
-                        let safeRep = (s.salesRep || "").replace(/'/g, "\\'");
+                        let safeCust = (custDisplay || "").replace(/'/g, "\\'");
                         let safeTrip = (s.trip || "").replace(/'/g, "\\'");
+                        let safeRep = (s.salesRep || "").replace(/'/g, "\\'");
                         
                         html += `
-                            <div class="p-3 border-b border-gray-100 last:border-b-0 cursor-pointer hover:bg-gray-50 active:bg-gray-100 flex justify-between items-center" onclick="selectDockPlant('${p.itemCode.replace(/'/g, "\\'")}', '${p.name.replace(/'/g, "\\'")}', '${p.size}', '${safeCust}', '${safeTrip}')">
+                            <div class="p-3 border-b border-gray-100 last:border-b-0 cursor-pointer hover:bg-gray-50 active:bg-gray-100 flex justify-between items-center" onclick="selectDockPlant('${p.itemCode.replace(/'/g, "\\'")}', '${p.name.replace(/'/g, "\\'")}', '${p.size}', '${safeCust}', '${safeTrip}', '${safeRep}')">
                                 <div class="flex-grow min-w-0 pr-3">
                                     <div class="font-bold text-sm text-[#007a4d] truncate">${p.name}</div>
                                     <div class="text-[11px] font-semibold text-gray-500 mt-1 flex items-center gap-2">
@@ -2572,7 +2576,9 @@
 
             if (context === "docks") {
                 payload.dockNum = selectedDockNum;
-                payload.customer = selectedDockCustomer;
+                const dateStr = new Date().toISOString().split('T')[0];
+                let tripFormat = selectedDockTrip !== "Unassigned" && selectedDockTrip !== "" ? "TRIP " + selectedDockTrip : "NoTrip";
+                payload.customFolderName = `${selectedDockRep} ${selectedDockCustomer} ${tripFormat} ${dateStr}`.trim();
             }
             
             fetch(GOOGLE_SCRIPT_URL, {
