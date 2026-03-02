@@ -762,6 +762,7 @@
         let selectedDockSize = null;
         let selectedDockItemCode = null;
         let selectedDockCustomer = ""; // New specific state for folders
+        let selectedDockTrip = ""; // Stores trip number for photo naming
 
         let reservesViewLevel = 0;
         let selectedReservesName = null;
@@ -1642,11 +1643,12 @@
         }
 
         function selectDockNum(num) { selectedDockNum = num; dockViewLevel = 1; renderDocks(); }
-        function selectDockPlant(itemCode, name, size, customerStr) { 
+        function selectDockPlant(itemCode, name, size, customerStr, tripStr) { 
             selectedDockItemCode = itemCode; 
             selectedDockName = name; 
             selectedDockSize = size; 
             selectedDockCustomer = customerStr;
+            selectedDockTrip = tripStr;
             dockViewLevel = 2; 
             renderDocks(); 
         }
@@ -1704,9 +1706,14 @@
 
                 let stopsMap = {};
                 dockItems.forEach(i => {
-                    let stopNum = i.STOPNUMBER || "Unassigned"; 
-                    if (!stopsMap[stopNum]) {
-                        stopsMap[stopNum] = {
+                    let stopNum = i.STOPNUMBER || i.STOP || "Unassigned"; 
+                    let tripNum = i.TRIPNUMBER || i.TRIP || "Unassigned";
+                    let groupKey = tripNum + "|" + stopNum;
+                    
+                    if (!stopsMap[groupKey]) {
+                        stopsMap[groupKey] = {
+                            trip: tripNum,
+                            stop: stopNum,
                             salesRep: i.SALESREPNAME || i.SALESREP || "Unknown Rep",
                             customer: i.CUSTOMERNAME || i.CUSTOMER || "Unknown Customer",
                             consignee: i.CONSIGNEENAME || i.CONSIGNEE || "",
@@ -1719,16 +1726,16 @@
                     let itemCode = i.ITEMCODE || i.ITEM || 'No Item';
                     let key = `${itemCode}|${name}|${size}`;
                     
-                    if (!stopsMap[stopNum].plants[key]) {
-                        stopsMap[stopNum].plants[key] = { itemCode, name, size, count: 0 };
+                    if (!stopsMap[groupKey].plants[key]) {
+                        stopsMap[groupKey].plants[key] = { itemCode, name, size, count: 0 };
                     }
-                        stopsMap[stopNum].plants[key].count++;
+                    stopsMap[groupKey].plants[key].count++;
                 });
 
                 let html = `<div class="back-btn" onclick="dockViewLevel=0; document.getElementById('docks-search').value=''; renderDocks()"><i class="ph-bold ph-arrow-left"></i> Back to Docks</div>`;
                 
-                Object.keys(stopsMap).sort((a,b) => String(a).localeCompare(String(b), undefined, {numeric:true})).forEach(stop => {
-                    let s = stopsMap[stop];
+                Object.keys(stopsMap).sort((a,b) => String(a).localeCompare(String(b), undefined, {numeric:true})).forEach(groupKey => {
+                    let s = stopsMap[groupKey];
                     let custDisplay = s.customer;
                     if (s.consignee && s.consignee.trim() !== "" && s.consignee !== s.customer) {
                         custDisplay += ` - ${s.consignee}`;
@@ -1738,7 +1745,7 @@
                     <div class="bg-white border border-gray-200 rounded-xl shadow-sm mb-4 overflow-hidden">
                         <div class="bg-orange-50 p-3 border-b border-gray-200">
                             <div class="flex justify-between items-start mb-1">
-                                <div class="font-bold text-lg text-orange-700">Stop ${stop}</div>
+                                <div class="font-bold text-lg text-orange-700">Trip ${s.trip} &bull; Stop ${s.stop}</div>
                                 <div class="text-[10px] font-bold text-orange-600 bg-orange-100 px-2 py-1 rounded uppercase"><i class="ph-bold ph-user mr-1"></i>${s.salesRep}</div>
                             </div>
                             <div class="text-sm font-bold text-gray-800 leading-tight">${custDisplay}</div>
@@ -1747,7 +1754,7 @@
                     
                     Object.values(s.plants).sort((a,b) => a.name.localeCompare(b.name)).forEach(p => {
                         html += `
-                            <div class="p-3 border-b border-gray-100 last:border-b-0 cursor-pointer hover:bg-gray-50 active:bg-gray-100 flex justify-between items-center" onclick="selectDockPlant('${p.itemCode.replace(/'/g, "\\'")}', '${p.name.replace(/'/g, "\\'")}', '${p.size}', '${custDisplay.replace(/'/g, "\\'")}')">
+                            <div class="p-3 border-b border-gray-100 last:border-b-0 cursor-pointer hover:bg-gray-50 active:bg-gray-100 flex justify-between items-center" onclick="selectDockPlant('${p.itemCode.replace(/'/g, "\\'")}', '${p.name.replace(/'/g, "\\'")}', '${p.size}', '${custDisplay.replace(/'/g, "\\'")}', '${s.trip.replace(/'/g, "\\'")}')">
                                 <div class="flex-grow min-w-0 pr-3">
                                     <div class="font-bold text-sm text-[#007a4d] truncate">${p.name}</div>
                                     <div class="text-[11px] font-semibold text-gray-500 mt-1 flex items-center gap-2">
@@ -2528,7 +2535,8 @@
                         let locStr = activeItem.LOCATIONCODE || "NoLoc";
                         let lotStr = activeItem.LOTCODE || "NoLot";
                         let dockStr = "DOCK" + selectedDockNum;
-                        filename = `${activeItem.COMMONNAME}-${activeItem.CONTSIZE}-${locStr}-${lotStr}-${dockStr}-${dateStr}.jpg`.replace(/[\/\s,]/g, '_');
+                        let tripStr = selectedDockTrip !== "Unassigned" && selectedDockTrip !== "" ? "TRIP" + selectedDockTrip : "NoTrip";
+                        filename = `${tripStr}-${activeItem.COMMONNAME}-${activeItem.CONTSIZE}-${locStr}-${lotStr}-${dockStr}-${dateStr}.jpg`.replace(/[\/\s,]/g, '_');
                     }
                     
                     uploadPhotoToDrive(base64Data, filename, prefix);
