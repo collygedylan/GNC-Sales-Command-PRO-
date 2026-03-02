@@ -92,7 +92,7 @@
                 
                 <div class="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-200 shadow-inner">
                     <span class="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Powered By</span>
-                    <img src="Ag%20Metric%20App.png" alt="Ag Metric App" class="h-4 object-contain" onerror="this.style.display='none'">
+                    <img src="Ag%20Metric%20App.png" alt="Ag Metric App" class="h-24 object-contain" onerror="this.style.display='none'">
                 </div>
             </div>
 
@@ -211,7 +211,7 @@
                     
                     <div class="flex items-center gap-2 bg-black/20 px-3 py-1.5 rounded-full border border-white/20">
                         <span class="text-[9px] font-bold text-white/90 uppercase tracking-widest">Powered By</span>
-                        <img src="Ag%20Metric%20App.png" alt="Ag Metric App" class="h-4 object-contain bg-white rounded px-1 py-0.5" onerror="this.style.display='none'">
+                        <img src="Ag%20Metric%20App.png" alt="Ag Metric App" class="h-24 object-contain bg-white rounded px-1 py-0.5" onerror="this.style.display='none'">
                     </div>
                 </div>
                 
@@ -2282,7 +2282,7 @@
                 crumb.innerText = `${displayUser} / ${tabLabel} / Blocks`; 
                 const blocks = [...new Set(myItems.map(i => i.BLOCKALPHA || "Unassigned"))].sort();
                 let html = "";
-                if(currentRole === 'Admin') html += `<div class="back-btn" onclick="taskViewTargetUser=null; renderTeamSelector();"><i class="ph-bold ph-arrow-left"></i> Change User</div>`;
+                if(currentRole === 'Admin') html += `<div class="back-btn" onclick="taskViewTargetUser=null; renderTeamSelector();"><i class="ph-bold ph-arrow-left"></i> Back to Blocks</div>`;
                 html += blocks.map(b => {
                     const count = myItems.filter(i => (i.BLOCKALPHA || "Unassigned") === b).length;
                     return `<div class="drill-item" onclick="selectTaskBlock('${b}')"><span class="font-bold text-lg">${b} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
