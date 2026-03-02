@@ -1574,69 +1574,106 @@
             }
         }
 
-        function getSelectedItemsText(tabType) {
+        // --- NEW RICH TEXT CLIPBOARD SYSTEM ---
+        function copyToClipboardRich(plain, html, callback) {
+            if (navigator.clipboard && window.ClipboardItem) {
+                const item = new ClipboardItem({
+                    "text/plain": new Blob([plain], { type: "text/plain" }),
+                    "text/html": new Blob([html], { type: "text/html" })
+                });
+                navigator.clipboard.write([item]).then(() => {
+                    showToast("Success", "Copied to clipboard!");
+                    if(callback) callback();
+                }).catch(err => {
+                    navigator.clipboard.writeText(plain).then(() => {
+                        showToast("Success", "Copied text to clipboard!");
+                        if(callback) callback();
+                    });
+                });
+            } else {
+                navigator.clipboard.writeText(plain).then(() => {
+                     showToast("Success", "Copied to clipboard!");
+                     if(callback) callback();
+                });
+            }
+        }
+
+        function getFormattedCopyData(tabType, items, headerTitle) {
+            let plainText = `${headerTitle}\n\n`;
+            let htmlText = `<h3 style="color:#007a4d; font-family:sans-serif;">${headerTitle}</h3><ul style="font-family:sans-serif; list-style:none; padding-left:0;">`;
+
+            items.forEach(i => {
+                let isReq = tabType === 'request';
+                plainText += `▪ ${i.COMMONNAME || 'Unknown'} (${i.CONTSIZE || '-'}) | Loc: ${i.LOCATIONCODE || 'No Loc'}\n`;
+                htmlText += `<li style="margin-bottom:15px; line-height: 1.4;"><b>▪ ${i.COMMONNAME || 'Unknown'}</b> (${i.CONTSIZE || '-'}) | Loc: <b>${i.LOCATIONCODE || 'No Loc'}</b><br>`;
+                
+                if (isReq && i.REQ_QTY) { plainText += `  Requested Qty: ${i.REQ_QTY}\n`; htmlText += `Requested Qty: ${i.REQ_QTY}<br>`; }
+                if (isReq && i.REQ_CUSTOMER) { plainText += `  Customer: ${i.REQ_CUSTOMER}\n`; htmlText += `Customer: ${i.REQ_CUSTOMER}<br>`; }
+
+                let match = isReq ? i.REQ_MATCH : (i.MATCH || i.MATCHPCT);
+                if (match) { plainText += `  Match: ${match}%\n`; htmlText += `Match: ${match}%<br>`; }
+                
+                let spec = isReq ? i.REQ_SPEC : i.SPEC;
+                if (spec) { plainText += `  Spec: ${spec}\n`; htmlText += `Spec: ${spec}<br>`; }
+                
+                let caliper = isReq ? i.REQ_CALIPER : i.CALIPER;
+                if (caliper) { plainText += `  Caliper: ${caliper}\n`; htmlText += `Caliper: ${caliper}<br>`; }
+                
+                let pick = isReq ? i.REQ_PICK : (i.PIC_NOTE || i.PICKNOTE || i.PICK);
+                if (pick) { plainText += `  Pick Note: ${pick}\n`; htmlText += `Pick Note: ${pick}<br>`; }
+                
+                let sales = isReq ? i.REQ_SALES_NOTE : (i.SALES_NOTE || i.SALESNOTE || i.SALESDESC);
+                if (sales) { plainText += `  Sales Note: ${sales}\n`; htmlText += `<span style="color:#007a4d;">Sales Note: ${sales}</span><br>`; }
+
+                if (isReq && i.REQ_COMMENTS) { plainText += `  Comments: ${i.REQ_COMMENTS}\n`; htmlText += `Comments: ${i.REQ_COMMENTS}<br>`; }
+                
+                let photo = isReq ? i.REQ_PHOTO_LINK : (i.SAVED_PHOTO_LINK || i['PHOTO LINK'] || i.PHOTOLINK);
+                let photoName = isReq ? i.REQ_PHOTO_NAME : (i.SAVED_PHOTO_NAME || i['PHOTO NAME'] || i.PHOTONAME);
+
+                if (photo && photo.trim() !== "") {
+                    let urls = photo.split(',');
+                    let names = photoName ? photoName.split(',') : [];
+                    let counter = 1;
+                    urls.forEach((url, idx) => {
+                        let cleanUrl = url.trim();
+                        let match = cleanUrl.match(/(https?:\/\/[^"\s>]+)/);
+                        if (match) cleanUrl = match[1];
+                        
+                        let dispName = names[idx] ? names[idx].trim() : `Photo ${counter}`;
+                        
+                        plainText += `  ${dispName}: ${cleanUrl}\n`;
+                        htmlText += `🖼️ <a href="${cleanUrl}" style="color:#2563eb; text-decoration:none; font-weight:bold;">${dispName}</a><br>`;
+                        counter++;
+                    });
+                }
+                plainText += `\n`;
+                htmlText += `</li>`;
+            });
+            htmlText += `</ul>`;
+
+            return { plain: plainText, html: htmlText };
+        }
+
+        function executeBatchAction(action, tabType) {
             let items = [];
             selectedItems.forEach(domId => {
                 let found = fullInventory.find(i => i.DOM_ID === domId) || lowStockInventory.find(i => i.DOM_ID === domId) || reservesInventory.find(i => i.DOM_ID === domId);
                 if (found) items.push(found);
             });
-
+            
             let headerTitle = tabType === 'request' ? "REQUEST DATA" : "SALES NOTES";
-            let returnText = `${headerTitle}\n\n`;
-
-            items.forEach(i => {
-                returnText += `▪ ${i.COMMONNAME || 'Unknown'} (${i.CONTSIZE || '-'}) | Loc: ${i.LOCATIONCODE || 'No Loc'}\n`;
-                
-                let match = tabType === 'request' ? i.REQ_MATCH : (i.MATCH || i.MATCHPCT);
-                if (match) returnText += `  Match: ${match}%\n`;
-                
-                let spec = tabType === 'request' ? i.REQ_SPEC : i.SPEC;
-                if (spec) returnText += `  Spec: ${spec}\n`;
-                
-                let caliper = tabType === 'request' ? i.REQ_CALIPER : i.CALIPER;
-                if (caliper) returnText += `  Caliper: ${caliper}\n`;
-                
-                let pick = tabType === 'request' ? i.REQ_PICK : (i.PIC_NOTE || i.PICKNOTE || i.PICK);
-                if (pick) returnText += `  Pick Note: ${pick}\n`;
-                
-                let sales = tabType === 'request' ? i.REQ_SALES_NOTE : (i.SALES_NOTE || i.SALESNOTE || i.SALESDESC);
-                if (sales) returnText += `  Sales Note: ${sales}\n`;
-
-                if (tabType === 'request' && i.REQ_COMMENTS) returnText += `  Comments: ${i.REQ_COMMENTS}\n`;
-                
-                let photo = tabType === 'request' ? i.REQ_PHOTO_LINK : (i.SAVED_PHOTO_LINK || i['PHOTO LINK'] || i.PHOTOLINK);
-                if (photo && photo.trim() !== "") {
-                    let urls = photo.split(',');
-                    let counter = 1;
-                    urls.forEach(url => {
-                        let cleanUrl = url.trim();
-                        let match = cleanUrl.match(/(https?:\/\/[^"\s>]+)/);
-                        if (match) {
-                            returnText += `  Photo ${counter}: ${match[1]}\n`;
-                            counter++;
-                        }
-                    });
-                }
-                returnText += `\n`;
-            });
-
-            return returnText;
-        }
-
-        function executeBatchAction(action, tabType) {
-            const text = getSelectedItemsText(tabType);
+            let data = getFormattedCopyData(tabType, items, headerTitle);
             
             if (action === 'copy') {
-                navigator.clipboard.writeText(text).then(() => {
-                    showToast("Success", "Copied to clipboard!");
+                copyToClipboardRich(data.plain, data.html, () => {
                     clearSelection();
                 });
             } else if (action === 'email') {
                 let sub = tabType === 'request' ? 'Request Data' : 'Sales Notes';
-                window.location.href = `mailto:?subject=${sub}&body=${encodeURIComponent(text)}`;
+                window.location.href = `mailto:?subject=${sub}&body=${encodeURIComponent(data.plain)}`;
                 clearSelection();
             } else if (action === 'text') {
-                window.location.href = `sms:?&body=${encodeURIComponent(text)}`;
+                window.location.href = `sms:?&body=${encodeURIComponent(data.plain)}`;
                 clearSelection();
             }
         }
@@ -1940,38 +1977,9 @@
             
             items = items.filter((v,i,a) => a.findIndex(t => (t.DOM_ID === v.DOM_ID)) === i);
 
-            let returnText = `REQUEST FOLDER: ${folderId}\n\n`;
-
-            items.forEach(i => {
-                returnText += `▪ ${i.COMMONNAME || 'Unknown'} (${i.CONTSIZE || '-'}) | Loc: ${i.LOCATIONCODE || 'No Loc'}\n`;
-                returnText += `  Requested Qty: ${i.REQ_QTY || 'N/A'}\n`;
-                returnText += `  Customer: ${i.REQ_CUSTOMER || 'N/A'}\n`;
-                if (i.REQ_MATCH) returnText += `  Match: ${i.REQ_MATCH}%\n`;
-                if (i.REQ_SPEC) returnText += `  Spec: ${i.REQ_SPEC}\n`;
-                if (i.REQ_CALIPER) returnText += `  Caliper: ${i.REQ_CALIPER}\n`;
-                if (i.REQ_PICK) returnText += `  Pick Note: ${i.REQ_PICK}\n`;
-                if (i.REQ_SALES_NOTE) returnText += `  Sales Note: ${i.REQ_SALES_NOTE}\n`;
-                if (i.REQ_COMMENTS) returnText += `  Comments: ${i.REQ_COMMENTS}\n`;
-                
-                let photo = i.REQ_PHOTO_LINK || i.SAVED_PHOTO_LINK || i['PHOTO LINK'] || i.PHOTOLINK;
-                if (photo && photo.trim() !== "") {
-                    let urls = photo.split(',');
-                    let counter = 1;
-                    urls.forEach(url => {
-                        let cleanUrl = url.trim();
-                        let match = cleanUrl.match(/(https?:\/\/[^"\s>]+)/);
-                        if (match) {
-                            returnText += `  Photo ${counter}: ${match[1]}\n`;
-                            counter++;
-                        }
-                    });
-                }
-                returnText += `\n`;
-            });
-
-            navigator.clipboard.writeText(returnText).then(() => {
-                showToast("Success", "Folder data copied to clipboard!");
-            });
+            let data = getFormattedCopyData('request', items, `REQUEST FOLDER: ${folderId}`);
+            
+            copyToClipboardRich(data.plain, data.html, null);
         }
 
         function markFolderDone(folderId) {
@@ -2461,16 +2469,73 @@
             }
         }
 
-        function applyQuickNote(val, targetInputId, selectId) {
-            if (!val) return;
-            const targetInput = document.getElementById(targetInputId);
-            if (targetInput.value.trim() !== "") {
-                targetInput.value = (targetInput.value + " " + val).toUpperCase();
-            } else {
-                targetInput.value = val.toUpperCase();
+        // --- NEW DROPDOWN LOGIC ---
+        function filterDropdown(inputId, listId) {
+            if (!activeItem) return;
+            let cNameClean = String(activeItem.COMMONNAME || "").trim().toUpperCase();
+            let dict = salesNotesDict[cNameClean] || [];
+            
+            let list = document.getElementById(listId);
+            let input = document.getElementById(inputId);
+            
+            if (dict.length === 0) {
+                list.classList.add('hidden');
+                return;
             }
-            document.getElementById(selectId).value = "";
+
+            let val = input.value;
+            let parts = val.split('/');
+            let currentTerm = parts[parts.length - 1].trim().toUpperCase();
+            
+            let matches = dict;
+            if (currentTerm !== "") {
+                matches = dict.filter(n => n.toUpperCase().includes(currentTerm));
+            }
+
+            if (matches.length === 0) {
+                matches = dict; 
+            }
+            
+            list.innerHTML = "";
+            matches.forEach(m => {
+                let div = document.createElement('div');
+                div.className = "p-3 border-b border-gray-100 cursor-pointer hover:bg-green-50 text-sm font-bold text-green-800 active:bg-green-100";
+                div.innerText = m;
+                div.onmousedown = function(e) {
+                    e.preventDefault(); 
+                    
+                    parts[parts.length - 1] = " " + m + " ";
+                    let newVal = parts.join('/').trim();
+                    
+                    newVal = newVal.replace(/\s*\/\s*/g, ' / ').replace(/^\/+/, '').trim();
+                    
+                    input.value = newVal + " / ";
+                    list.classList.add('hidden');
+                    input.focus();
+                };
+                list.appendChild(div);
+            });
+            
+            list.classList.remove('hidden');
         }
+        
+        function appendSpecToDesc(prefix) {
+            let specVal = document.getElementById(prefix + 'spec').value.trim().toUpperCase();
+            if (!specVal) {
+                showToast("Notice", "Spec field is empty.", true);
+                return;
+            }
+            let descInput = document.getElementById(prefix + 'sales-desc');
+            let currentVal = descInput.value.trim();
+            
+            if (currentVal && !currentVal.endsWith('/')) {
+                descInput.value = currentVal + " / " + specVal + " / ";
+            } else {
+                descInput.value = currentVal + (currentVal ? " " : "") + specVal + " / ";
+            }
+            descInput.focus();
+        }
+        // --------------------------
 
         function openDetail(uniqueId, sourceView) {
             lastView = sourceView;
@@ -2519,6 +2584,30 @@
             document.getElementById('dock-spec').value = activeItem.DOCK_SPEC || activeItem.SPEC || "";
             document.getElementById('dock-caliper').value = activeItem.DOCK_CALIPER || activeItem.CALIPER || "";
             document.getElementById('dock-sales-desc').value = activeItem.DOCK_NOTE || "";
+
+            // Populate Quick Notes for all tabs
+            const qSelects = ['ssn-quick-note-select', 'lsn-quick-note-select', 'na-quick-note-select', 'req-quick-note-select'];
+            qSelects.forEach(id => {
+                document.getElementById(id).innerHTML = '<option value="">-- Select a Quick Note --</option>';
+            });
+            
+            let cNameClean = String(activeItem.COMMONNAME || "").trim().toUpperCase();
+            if (salesNotesDict[cNameClean] && salesNotesDict[cNameClean].length > 0) {
+                salesNotesDict[cNameClean].forEach(note => {
+                    qSelects.forEach(id => {
+                        let opt = document.createElement('option');
+                        opt.value = note; opt.innerText = note;
+                        document.getElementById(id).appendChild(opt);
+                    });
+                });
+                ['ssn-', 'lsn-', 'na-', 'req-'].forEach(p => {
+                    document.getElementById(p + 'quick-note-container').classList.remove('hidden');
+                });
+            } else {
+                ['ssn-', 'lsn-', 'na-', 'req-'].forEach(p => {
+                    document.getElementById(p + 'quick-note-container').classList.add('hidden');
+                });
+            }
 
             // Caliper logic
             const caliperSizes = ["7DP", "#7", "#10", "#15", "#25", "#45"];
