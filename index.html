@@ -86,12 +86,12 @@
 
     <div id="view-login">
         <div class="login-card">
-            <div class="flex flex-col items-center mb-8 w-full relative">
-                <img src="Greenleaf%20Logo.png" alt="Greenleaf Logo" class="h-20 mb-4 object-contain drop-shadow-md" onerror="this.style.display='none'">
-                <div class="text-3xl text-[#007a4d] font-black tracking-tighter mb-1">GNC SALES PRO</div>
+            <div class="flex flex-col items-center mb-6 w-full">
+                <img src="Greenleaf%20Logo.png" alt="Greenleaf Logo" class="h-20 mb-3 object-contain drop-shadow-sm" onerror="this.style.display='none'">
+                <div class="text-3xl text-[#007a4d] font-black tracking-tight mb-4">GNC SALES PRO</div>
                 
-                <div class="flex flex-col items-center gap-0.5 mt-5">
-                    <span class="text-[9px] font-bold text-gray-400 uppercase tracking-[0.3em]">Powered By</span>
+                <div class="flex flex-col items-center gap-1.5 mt-2 bg-gray-50 px-6 py-3 rounded-xl border border-gray-100 w-full">
+                    <span class="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Powered By</span>
                     <span class="text-[17px] font-black text-gray-800 tracking-[0.2em] uppercase border-b-[3px] border-[#007a4d] pb-0.5">Ag Metric</span>
                 </div>
             </div>
@@ -1364,6 +1364,37 @@
             const isChecked = selectedItems.has(item.DOM_ID) ? 'checked' : '';
             const tagColor = item.FIELDTAGCOLOR || item['FIELD TAG COLOR'] || '-';
 
+            if (sourceView === 'sales-office') {
+                return `
+                <div class="flex items-center w-full mb-2 item-row" data-dom-id="${item.DOM_ID}"
+                     onmousedown="startPress(event, '${item.DOM_ID}')" 
+                     onmouseup="cancelPress()" 
+                     onmouseleave="cancelPress()" 
+                     ontouchstart="startPress(event, '${item.DOM_ID}')" 
+                     ontouchend="cancelPress()" 
+                     ontouchcancel="cancelPress()"
+                     ontouchmove="checkMove(event)"
+                     onclick="handleCardClick('${item.DOM_ID}', '${item.UNIQUE_ID}', '${sourceView}')">
+                    
+                    <div class="card-checkbox-container flex-shrink-0">
+                        <input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm pointer-events-none" ${isChecked}>
+                    </div>
+                    
+                    <div class="inv-card status-purple flex items-center justify-between flex-grow !mb-0 transition-transform active:scale-[0.99]">
+                        <div class="flex-grow min-w-0 text-[#007a4d]">
+                            <div class="flex justify-between font-bold text-sm mb-1">
+                                <span class="truncate pr-2">${item.COMMONNAME || 'Unknown'} • ${item.CONTSIZE || '-'}</span>
+                                <span class="whitespace-nowrap bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded text-[10px] font-bold border border-purple-200">${item.ITEMCODE || '-'}</span>
+                            </div>
+                            <div class="text-[12px] font-medium text-gray-600 mt-1 leading-snug">
+                                <span class="font-bold text-purple-600 uppercase text-[10px]">Note:</span> ${item.SALES_NOTE || 'No Note Provided'}
+                            </div>
+                        </div>
+                        ${thumbHtml}
+                    </div>
+                </div>`;
+            }
+
             return `
             <div class="flex items-center w-full mb-2 item-row" data-dom-id="${item.DOM_ID}"
                  onmousedown="startPress(event, '${item.DOM_ID}')" 
@@ -1911,9 +1942,7 @@
             const container = document.getElementById('sales-office-content');
             let officeItems = fullInventory.filter(i => {
                 if (!i.DATE_COMPLETED || i.DATE_COMPLETED === "") return false;
-                const ptr = parseFloat(i.PTRAVAILABLE) || 0;
-                const ss = parseFloat(i.SEASONSUPPLY) || 0;
-                return ptr >= (ss * 1.10); 
+                return i.APP_TAB_ASSIGNMENT === 'season'; 
             });
 
             if (officeItems.length === 0) {
@@ -2353,7 +2382,10 @@
             else if (taskViewLevel === 1) {
                 crumb.innerText = `${displayUser} / ${selectedTaskBlock}`; 
                 const blockItems = myItems.filter(i => (i.BLOCKALPHA || "Unassigned") === selectedTaskBlock);
+                
+                // FIX: Group by exact LOCATIONCODE instead of LocPrefix
                 const locs = [...new Set(blockItems.map(i => i.LOCATIONCODE || "No Loc"))].sort((a,b) => a.localeCompare(b, undefined, {numeric: true}));
+                
                 container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=0; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Blocks</div>` + 
                 locs.map(l => {
                     const count = blockItems.filter(i => (i.LOCATIONCODE || "No Loc") === l).length;
@@ -2362,23 +2394,73 @@
             } 
             else if (taskViewLevel === 2) {
                 crumb.innerText = `${displayUser} / ${selectedTaskBlock} / ${selectedTaskLoc}`; 
+                
+                // FIX: Filter by exact LOCATIONCODE
                 let items = myItems.filter(i => (i.BLOCKALPHA || "Unassigned") === selectedTaskBlock && (i.LOCATIONCODE || "No Loc") === selectedTaskLoc);
+                
                 items.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
                 container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=1; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Locations</div>` + 
                 items.map(i => generateCard(i, 'tasks')).join('');
             }
         }
 
-        function applyQuickNote(val, targetInputId, selectId) {
-            if (!val) return;
-            const targetInput = document.getElementById(targetInputId);
-            if (targetInput.value.trim() !== "") {
-                targetInput.value = (targetInput.value + " " + val).toUpperCase();
-            } else {
-                targetInput.value = val.toUpperCase();
+        // --- NEW DROPDOWN LOGIC ---
+        function filterDropdown(inputId, listId) {
+            if (!activeItem) return;
+            let cNameClean = String(activeItem.COMMONNAME || "").trim().toUpperCase();
+            let dict = salesNotesDict[cNameClean] || [];
+            
+            let input = document.getElementById(inputId);
+            let list = document.getElementById(listId);
+            
+            if (dict.length === 0) {
+                list.classList.add('hidden');
+                return;
             }
-            document.getElementById(selectId).value = "";
+
+            let parts = input.value.split('/');
+            let currentTerm = parts[parts.length - 1].trim().toUpperCase();
+            
+            let matches = dict.filter(n => n.toUpperCase().includes(currentTerm));
+            
+            list.innerHTML = "";
+            if (matches.length > 0) {
+                list.classList.remove('hidden');
+                matches.forEach(m => {
+                    let div = document.createElement('div');
+                    div.className = "p-3 border-b border-gray-100 cursor-pointer hover:bg-gray-100 text-sm font-bold text-gray-700 active:bg-gray-200";
+                    div.innerText = m;
+                    div.onmousedown = function(e) {
+                        e.preventDefault(); // prevents input from losing focus immediately
+                        parts[parts.length - 1] = " " + m;
+                        input.value = parts.join(' / ').trim() + " / ";
+                        list.classList.add('hidden');
+                        input.focus();
+                    };
+                    list.appendChild(div);
+                });
+            } else {
+                list.classList.add('hidden');
+            }
         }
+        
+        function appendSpecToDesc(prefix) {
+            let specVal = document.getElementById(prefix + 'spec').value.trim().toUpperCase();
+            if (!specVal) {
+                showToast("Notice", "Spec field is empty.", true);
+                return;
+            }
+            let descInput = document.getElementById(prefix + 'sales-desc');
+            let currentVal = descInput.value.trim();
+            
+            if (currentVal && !currentVal.endsWith('/')) {
+                descInput.value = currentVal + " / " + specVal + " / ";
+            } else {
+                descInput.value = currentVal + (currentVal ? " " : "") + specVal + " / ";
+            }
+            descInput.focus();
+        }
+        // --------------------------
 
         function openDetail(uniqueId, sourceView) {
             lastView = sourceView;
