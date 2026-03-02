@@ -54,7 +54,10 @@
         .task-tab { flex: 1; text-align: center; padding: 12px; font-size: 11px; font-weight: 700; color: #6b7280; cursor: pointer; border-bottom: 3px solid transparent; text-transform: uppercase; }
         .task-tab.active { color: var(--brand-green); border-bottom-color: var(--brand-green); background: white; }
 
-        /* SCROLLABLE DETAIL TABS */
+        /* SCROLLABLE TABS & HIDDEN SCROLLBARS */
+        .hide-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        
         .detail-tabs { display: flex; overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none; border-bottom: 1px solid #e5e7eb; background: #f9fafb; margin-bottom: 10px; }
         .detail-tabs::-webkit-scrollbar { display: none; }
         .detail-tab { flex: 0 0 auto; text-align: center; padding: 10px 16px; font-size: 11px; font-weight: 700; color: #6b7280; cursor: pointer; border-bottom: 3px solid transparent; text-transform: uppercase; }
@@ -309,6 +312,7 @@
 
             <div id="view-drive" class="hidden">
                 <input type="text" id="drive-search" class="input-field mb-2" placeholder="Search Names or Locs..." onkeyup="handleDriveSearch()">
+                <div id="drive-season-filter" class="flex gap-2 overflow-x-auto pb-2 mb-2 hide-scrollbar"></div>
                 <div id="drive-crumb" class="text-xs font-bold text-[#007a4d] mb-3 empty:hidden"></div>
                 <div id="drive-content"></div>
             </div>
@@ -763,6 +767,7 @@
         let driveViewLevel = 0;
         let selectedDriveName = null;
         let selectedDriveSize = null;
+        let selectedDriveSeasons = new Set(); // Stores filtered seasons
 
         let activeTaskTab = "season";
         let taskViewTargetUser = null; 
@@ -925,6 +930,7 @@
                     obj.S_LTS = getVal(['S_LTS', 'SLTS']);
                     obj.ASSIGNEDTO = getVal(['ASSIGNEDTO']);
                     obj.DATE_COMPLETED = getVal(['DATE COMPLETED']);
+                    obj.SEASON = getVal(['SEASON']); // <--- Added Season Column Extraction
                     
                     let isReqVal = getVal(['IS REQUEST']);
                     obj.IS_REQUEST = (String(isReqVal).toUpperCase() === 'TRUE' || isReqVal === true);
@@ -2330,6 +2336,36 @@
             renderReview();
         }
 
+        // --- NEW: TOGGLE SEASON FILTER IN DRIVE MODE ---
+        function toggleDriveSeason(season) {
+            if (season === 'All') {
+                selectedDriveSeasons.clear();
+            } else {
+                if (selectedDriveSeasons.has(season)) {
+                    selectedDriveSeasons.delete(season);
+                } else {
+                    selectedDriveSeasons.add(season);
+                }
+            }
+            renderDriveSeasonPills();
+            renderDrive();
+        }
+
+        function renderDriveSeasonPills() {
+            const container = document.getElementById('drive-season-filter');
+            if(!container) return;
+            const seasons = ['S1', 'F1', 'U1', 'U2', 'U3', 'X', 'Y', 'Z'];
+            
+            let html = `<div onclick="toggleDriveSeason('All')" class="flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-bold cursor-pointer border ${selectedDriveSeasons.size === 0 ? 'bg-[#007a4d] text-white border-[#007a4d]' : 'bg-white text-gray-600 border-gray-300 shadow-sm'}">All</div>`;
+            
+            seasons.forEach(s => {
+                let isActive = selectedDriveSeasons.has(s);
+                html += `<div onclick="toggleDriveSeason('${s}')" class="flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-bold cursor-pointer border transition-colors ${isActive ? 'bg-[#007a4d] text-white border-[#007a4d]' : 'bg-white text-gray-600 border-gray-300 shadow-sm hover:bg-gray-50'}">${s}</div>`;
+            });
+            
+            container.innerHTML = html;
+        }
+
         function handleDriveSearch() {
             const term = document.getElementById('drive-search').value;
             if (term.length > 0 && driveViewLevel > 0) { driveViewLevel = 0; selectedDriveName = null; selectedDriveSize = null; }
@@ -2344,7 +2380,15 @@
         
         function selectDriveSize(size) { selectedDriveSize = size; driveViewLevel = 2; renderDrive(); }
         function backToDriveSizes() { driveViewLevel = 1; selectedDriveSize = null; renderDrive(); }
-        function resetDriveView() { driveViewLevel = 0; selectedDriveName = null; selectedDriveSize = null; document.getElementById('drive-search').value = ""; renderDrive(); }
+        
+        function resetDriveView() { 
+            driveViewLevel = 0; 
+            selectedDriveName = null; 
+            selectedDriveSize = null; 
+            document.getElementById('drive-search').value = ""; 
+            renderDriveSeasonPills(); // Initialize pills
+            renderDrive(); 
+        }
 
         function renderDrive() {
             const container = document.getElementById('drive-content');
@@ -2354,7 +2398,15 @@
             let filteredItems = fullInventory;
             if (term) { filteredItems = filteredItems.filter(i => (i.COMMONNAME||"").toLowerCase().includes(term) || (i.LOCATIONCODE||"").toLowerCase().includes(term)); }
 
-            if (filteredItems.length === 0) { container.innerHTML = `<div class="p-8 text-center text-gray-400">No items found.</div>`; crumb.innerText = "No Results"; return; }
+            // --- NEW: APPLY SEASON FILTER TO ENTIRE DATASET ---
+            if (selectedDriveSeasons.size > 0) {
+                filteredItems = filteredItems.filter(i => {
+                    let itemSeason = String(i.SEASON || "").trim().toUpperCase();
+                    return selectedDriveSeasons.has(itemSeason);
+                });
+            }
+
+            if (filteredItems.length === 0) { container.innerHTML = `<div class="p-8 text-center text-gray-400">No items found matching criteria.</div>`; crumb.innerText = "No Results"; return; }
 
             if (driveViewLevel === 0) {
                 crumb.innerText = `Select Plant (${filteredItems.length} items)`;
@@ -2450,6 +2502,7 @@
                 crumb.innerText = `${displayUser} / ${selectedTaskBlock}`; 
                 const blockItems = myItems.filter(i => (i.BLOCKALPHA || "Unassigned") === selectedTaskBlock);
                 
+                // FIX: Group by exact LOCATIONCODE instead of LocPrefix
                 const locs = [...new Set(blockItems.map(i => i.LOCATIONCODE || "No Loc"))].sort((a,b) => a.localeCompare(b, undefined, {numeric: true}));
                 
                 container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=0; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Blocks</div>` + 
@@ -2461,6 +2514,7 @@
             else if (taskViewLevel === 2) {
                 crumb.innerText = `${displayUser} / ${selectedTaskBlock} / ${selectedTaskLoc}`; 
                 
+                // FIX: Filter by exact LOCATIONCODE
                 let items = myItems.filter(i => (i.BLOCKALPHA || "Unassigned") === selectedTaskBlock && (i.LOCATIONCODE || "No Loc") === selectedTaskLoc);
                 
                 items.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
