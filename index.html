@@ -86,12 +86,12 @@
 
     <div id="view-login">
         <div class="login-card">
-            <div class="flex flex-col items-center mb-6 w-full">
-                <img src="Greenleaf%20Logo.png" alt="Greenleaf Logo" class="h-20 mb-3 object-contain drop-shadow-sm" onerror="this.style.display='none'">
-                <div class="text-3xl text-[#007a4d] font-black tracking-tight mb-4">GNC SALES PRO</div>
+            <div class="flex flex-col items-center mb-8 w-full relative">
+                <img src="Greenleaf%20Logo.png" alt="Greenleaf Logo" class="h-20 mb-4 object-contain drop-shadow-md" onerror="this.style.display='none'">
+                <div class="text-3xl text-[#007a4d] font-black tracking-tighter mb-1">GNC SALES PRO</div>
                 
-                <div class="flex flex-col items-center gap-1.5 mt-2 bg-gray-50 px-6 py-3 rounded-xl border border-gray-100 w-full">
-                    <span class="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Powered By</span>
+                <div class="flex flex-col items-center gap-0.5 mt-5">
+                    <span class="text-[9px] font-bold text-gray-400 uppercase tracking-[0.3em]">Powered By</span>
                     <span class="text-[17px] font-black text-gray-800 tracking-[0.2em] uppercase border-b-[3px] border-[#007a4d] pb-0.5">Ag Metric</span>
                 </div>
             </div>
@@ -272,7 +272,7 @@
                             <div class="bg-blue-100 p-2 rounded-lg"><i class="ph-fill ph-book-open-text text-blue-600 text-2xl"></i></div>
                             <div class="flex-grow min-w-0">
                                 <div class="text-sm font-bold text-gray-800 truncate">Sales Notes Dictionary</div>
-                                <div class="text-[10px] text-gray-400 font-bold uppercase">S1_SalesNotes</div>
+                                <div class="text-[10px] text-gray-400 font-bold uppercase">S1_Season Sales Notes</div>
                             </div>
                             <i class="ph-bold ph-arrow-square-out text-gray-300"></i>
                         </a>
@@ -399,13 +399,6 @@
                             <input type="text" id="ssn-caliper" class="input-field" placeholder="e.g. 2 inch">
                         </div>
                         
-                        <div id="ssn-quick-note-container" class="hidden mb-2">
-                            <label class="text-[10px] font-bold text-green-700 uppercase">Quick Notes</label>
-                            <select id="ssn-quick-note-select" class="input-field border-green-500 bg-green-50 text-sm font-bold text-green-800" onchange="applyQuickNote(this.value, 'ssn-sales-desc', 'ssn-quick-note-select')">
-                                <option value="">-- Select a Quick Note --</option>
-                            </select>
-                        </div>
-                        
                         <div class="relative w-full mt-2 mb-2">
                             <label class="text-[10px] font-bold text-green-700 uppercase flex justify-between">
                                 <span>Season Sales Description</span>
@@ -418,7 +411,7 @@
                                     placeholder="TYPE NOTES OR SEARCH...">
                                 <button type="button" class="bg-green-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('ssn-')">+ SPEC</button>
                             </div>
-                            <div id="ssn-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-40 overflow-y-auto rounded-md shadow-xl hidden mt-1"></div>
+                            <div id="ssn-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div>
                         </div>
 
                         <div>
@@ -466,13 +459,6 @@
                             <input type="text" id="lsn-caliper" class="input-field" placeholder="e.g. 2 inch">
                         </div>
                         
-                        <div id="lsn-quick-note-container" class="hidden mb-2">
-                            <label class="text-[10px] font-bold text-green-700 uppercase">Quick Notes</label>
-                            <select id="lsn-quick-note-select" class="input-field border-green-500 bg-green-50 text-sm font-bold text-green-800" onchange="applyQuickNote(this.value, 'lsn-sales-desc', 'lsn-quick-note-select')">
-                                <option value="">-- Select a Quick Note --</option>
-                            </select>
-                        </div>
-                        
                         <div class="relative w-full mt-2 mb-2">
                             <label class="text-[10px] font-bold text-green-700 uppercase flex justify-between">
                                 <span>Location Sales Description</span>
@@ -485,7 +471,7 @@
                                     placeholder="TYPE NOTES OR SEARCH...">
                                 <button type="button" class="bg-green-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('lsn-')">+ SPEC</button>
                             </div>
-                            <div id="lsn-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-40 overflow-y-auto rounded-md shadow-xl hidden mt-1"></div>
+                            <div id="lsn-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div>
                         </div>
                         
                         <div>
@@ -533,13 +519,6 @@
                             <input type="text" id="na-caliper" class="input-field" placeholder="e.g. 2 inch">
                         </div>
                         
-                        <div id="na-quick-note-container" class="hidden mb-2">
-                            <label class="text-[10px] font-bold text-green-700 uppercase">Quick Notes</label>
-                            <select id="na-quick-note-select" class="input-field border-green-500 bg-green-50 text-sm font-bold text-green-800" onchange="applyQuickNote(this.value, 'na-sales-desc', 'na-quick-note-select')">
-                                <option value="">-- Select a Quick Note --</option>
-                            </select>
-                        </div>
-                        
                         <div class="relative w-full mt-2 mb-2">
                             <label class="text-[10px] font-bold text-green-700 uppercase flex justify-between">
                                 <span>Sales Description</span>
@@ -552,7 +531,7 @@
                                     placeholder="TYPE NOTES OR SEARCH...">
                                 <button type="button" class="bg-green-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('na-')">+ SPEC</button>
                             </div>
-                            <div id="na-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-40 overflow-y-auto rounded-md shadow-xl hidden mt-1"></div>
+                            <div id="na-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div>
                         </div>
                         
                         <div>
@@ -600,13 +579,6 @@
                             <input type="text" id="req-caliper" class="input-field" placeholder="e.g. 2 inch">
                         </div>
 
-                        <div id="req-quick-note-container" class="hidden mb-2">
-                            <label class="text-[10px] font-bold text-purple-700 uppercase">Quick Notes</label>
-                            <select id="req-quick-note-select" class="input-field border-purple-500 bg-purple-50 text-sm font-bold text-purple-800" onchange="applyQuickNote(this.value, 'req-sales-desc', 'req-quick-note-select')">
-                                <option value="">-- Select a Quick Note --</option>
-                            </select>
-                        </div>
-
                         <div class="relative w-full mt-2 mb-2">
                             <label class="text-[10px] font-bold text-purple-700 uppercase flex justify-between">
                                 <span>Request Sales Description</span>
@@ -619,7 +591,7 @@
                                     placeholder="TYPE NOTES OR SEARCH...">
                                 <button type="button" class="bg-purple-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('req-')">+ SPEC</button>
                             </div>
-                            <div id="req-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-40 overflow-y-auto rounded-md shadow-xl hidden mt-1"></div>
+                            <div id="req-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div>
                         </div>
 
                         <div>
@@ -678,7 +650,7 @@
                                     placeholder="TYPE NOTES OR SEARCH...">
                                 <button type="button" class="bg-orange-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('dock-')">+ SPEC</button>
                             </div>
-                            <div id="dock-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-40 overflow-y-auto rounded-md shadow-xl hidden mt-1"></div>
+                            <div id="dock-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div>
                         </div>
                     </div>
 
@@ -818,9 +790,9 @@
         let selectedDockName = null;
         let selectedDockSize = null;
         let selectedDockItemCode = null;
-        let selectedDockCustomer = ""; // New specific state for folders
-        let selectedDockTrip = ""; // Stores trip number for photo naming
-        let selectedDockRep = ""; // Stores rep name for folder structure
+        let selectedDockCustomer = ""; 
+        let selectedDockTrip = ""; 
+        let selectedDockRep = ""; 
 
         let reservesViewLevel = 0;
         let selectedReservesName = null;
@@ -2410,38 +2382,48 @@
             let cNameClean = String(activeItem.COMMONNAME || "").trim().toUpperCase();
             let dict = salesNotesDict[cNameClean] || [];
             
-            let input = document.getElementById(inputId);
             let list = document.getElementById(listId);
+            let input = document.getElementById(inputId);
             
             if (dict.length === 0) {
                 list.classList.add('hidden');
                 return;
             }
 
-            let parts = input.value.split('/');
+            let val = input.value;
+            let parts = val.split('/');
             let currentTerm = parts[parts.length - 1].trim().toUpperCase();
             
-            let matches = dict.filter(n => n.toUpperCase().includes(currentTerm));
+            let matches = dict;
+            if (currentTerm !== "") {
+                matches = dict.filter(n => n.toUpperCase().includes(currentTerm));
+            }
+
+            if (matches.length === 0) {
+                matches = dict; 
+            }
             
             list.innerHTML = "";
-            if (matches.length > 0) {
-                list.classList.remove('hidden');
-                matches.forEach(m => {
-                    let div = document.createElement('div');
-                    div.className = "p-3 border-b border-gray-100 cursor-pointer hover:bg-gray-100 text-sm font-bold text-gray-700 active:bg-gray-200";
-                    div.innerText = m;
-                    div.onmousedown = function(e) {
-                        e.preventDefault(); // prevents input from losing focus immediately
-                        parts[parts.length - 1] = " " + m;
-                        input.value = parts.join(' / ').trim() + " / ";
-                        list.classList.add('hidden');
-                        input.focus();
-                    };
-                    list.appendChild(div);
-                });
-            } else {
-                list.classList.add('hidden');
-            }
+            matches.forEach(m => {
+                let div = document.createElement('div');
+                div.className = "p-3 border-b border-gray-100 cursor-pointer hover:bg-green-50 text-sm font-bold text-green-800 active:bg-green-100";
+                div.innerText = m;
+                div.onmousedown = function(e) {
+                    e.preventDefault(); 
+                    
+                    parts[parts.length - 1] = " " + m + " ";
+                    let newVal = parts.join('/').trim();
+                    
+                    newVal = newVal.replace(/\s*\/\s*/g, ' / ').replace(/^\/+/, '').trim();
+                    
+                    input.value = newVal + " / ";
+                    list.classList.add('hidden');
+                    input.focus();
+                };
+                list.appendChild(div);
+            });
+            
+            list.classList.remove('hidden');
         }
         
         function appendSpecToDesc(prefix) {
@@ -2509,30 +2491,6 @@
             document.getElementById('dock-spec').value = activeItem.DOCK_SPEC || activeItem.SPEC || "";
             document.getElementById('dock-caliper').value = activeItem.DOCK_CALIPER || activeItem.CALIPER || "";
             document.getElementById('dock-sales-desc').value = activeItem.DOCK_NOTE || "";
-
-            // Populate Quick Notes for all tabs
-            const qSelects = ['ssn-quick-note-select', 'lsn-quick-note-select', 'na-quick-note-select', 'req-quick-note-select'];
-            qSelects.forEach(id => {
-                document.getElementById(id).innerHTML = '<option value="">-- Select a Quick Note --</option>';
-            });
-            
-            let cNameClean = String(activeItem.COMMONNAME || "").trim().toUpperCase();
-            if (salesNotesDict[cNameClean] && salesNotesDict[cNameClean].length > 0) {
-                salesNotesDict[cNameClean].forEach(note => {
-                    qSelects.forEach(id => {
-                        let opt = document.createElement('option');
-                        opt.value = note; opt.innerText = note;
-                        document.getElementById(id).appendChild(opt);
-                    });
-                });
-                ['ssn-', 'lsn-', 'na-', 'req-'].forEach(p => {
-                    document.getElementById(p + 'quick-note-container').classList.remove('hidden');
-                });
-            } else {
-                ['ssn-', 'lsn-', 'na-', 'req-'].forEach(p => {
-                    document.getElementById(p + 'quick-note-container').classList.add('hidden');
-                });
-            }
 
             // Caliper logic
             const caliperSizes = ["7DP", "#7", "#10", "#15", "#25", "#45"];
