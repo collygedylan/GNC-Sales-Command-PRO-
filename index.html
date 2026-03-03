@@ -53,6 +53,7 @@
         .status-purple { border-left-color: #9333ea; } 
         .status-orange { border-left-color: #f97316; } 
         .status-blue { border-left-color: #3b82f6; }
+        .status-pink { border-left-color: #ec4899; }
         
         .task-tabs { display: flex; border-bottom: 1px solid #e5e7eb; background: #f9fafb; margin-bottom: 10px; }
         .task-tab { flex: 1; text-align: center; padding: 12px; font-size: 11px; font-weight: 700; color: #6b7280; cursor: pointer; border-bottom: 3px solid transparent; text-transform: uppercase; }
@@ -63,6 +64,7 @@
         .detail-tabs::-webkit-scrollbar { display: none; }
         .detail-tab { flex: 0 0 auto; text-align: center; padding: 10px 16px; font-size: 11px; font-weight: 700; color: #6b7280; cursor: pointer; border-bottom: 3px solid transparent; text-transform: uppercase; }
         .detail-tab.active { color: var(--brand-green); border-bottom-color: var(--brand-green); background: white; }
+        .detail-tab.active-flyer { color: #ec4899; border-bottom-color: #ec4899; background: white; }
         
         .overview-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
         .overview-card { background: #f8fafc; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0; }
@@ -113,6 +115,35 @@
                 <div class="spinner"></div>
                 <div id="loading-text" class="text-white font-bold text-sm mt-3 text-center">Authenticating...</div>
             </div>
+        </div>
+    </div>
+
+    <div id="flyer-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center flex flex-col max-h-[90vh]">
+            <h3 class="font-bold text-xl mb-4 text-pink-600 border-b border-pink-100 pb-2">Create Flyer Task</h3>
+
+            <label class="text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1 text-left">Category</label>
+            <select id="flyer-cat-select" class="input-field mb-3 border-pink-200 font-bold text-pink-700 bg-pink-50">
+                <option value="Crop Update">Crop Update</option>
+                <option value="End Cap">End Cap</option>
+                <option value="Spot Light">Spot Light</option>
+            </select>
+
+            <label class="text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1 text-left">Task Title (Folder Name)</label>
+            <input type="text" id="flyer-title-input" class="input-field mb-3 border-pink-200 font-bold" placeholder="e.g. Spring Promo...">
+
+            <label class="text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1 text-left">Instructions</label>
+            <textarea id="flyer-inst-input" class="input-field mb-3 border-pink-200" placeholder="What needs to be done?" rows="3"></textarea>
+
+            <label class="text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1 text-left">Assign To</label>
+            <select id="flyer-assign-select" class="input-field mb-6 border-pink-200 font-bold text-gray-700">
+                <option value="Dylan">Dylan</option>
+                <option value="Kayla">Kayla</option>
+                <option value="Morgan">Morgan</option>
+            </select>
+
+            <button class="w-full bg-pink-600 text-white font-bold p-4 rounded-xl shadow-lg mt-auto active:scale-95 transition-transform" onclick="finalizeFlyerAction()">CREATE TASK</button>
+            <button class="text-gray-500 font-bold py-2 px-4 mt-2" onclick="document.getElementById('flyer-modal').classList.add('hidden')">Cancel</button>
         </div>
     </div>
 
@@ -325,8 +356,9 @@
                 <div id="task-crumb" class="text-xs font-bold text-[#007a4d] mb-3"></div>
                 <div id="team-selector" class="hidden mb-4 grid grid-cols-1 gap-3"></div>
                 <div id="task-tabs-container" class="task-tabs">
-                    <div id="tab-season" class="task-tab active" onclick="setTaskTab('season')">Season Sales Notes</div>
-                    <div id="tab-location" class="task-tab" onclick="setTaskTab('location')">Location Sales Notes</div>
+                    <div id="tab-season" class="task-tab active" onclick="setTaskTab('season')">Season</div>
+                    <div id="tab-location" class="task-tab" onclick="setTaskTab('location')">Location</div>
+                    <div id="tab-flyer" class="task-tab text-pink-600" onclick="setTaskTab('flyer')">Flyers</div>
                 </div>
                 <div id="task-content"></div>
             </div>
@@ -350,6 +382,7 @@
                     <div class="detail-tab hidden" onclick="switchDetailTab('season')" id="dtab-season">Season Notes</div>
                     <div class="detail-tab hidden" onclick="switchDetailTab('location')" id="dtab-location">Location Notes</div>
                     <div class="detail-tab hidden" onclick="switchDetailTab('request')" id="dtab-request">Request</div>
+                    <div class="detail-tab hidden" onclick="switchDetailTab('flyer')" id="dtab-flyer">Flyer Task</div>
                     <div class="detail-tab hidden" onclick="switchDetailTab('notes')" id="dtab-notes">Notes & Actions</div>
                     <div class="detail-tab hidden" onclick="switchDetailTab('docks')" id="dtab-docks">Docks</div>
                 </div>
@@ -371,6 +404,43 @@
                             <span>View All Excel Columns</span><i class="ph-bold ph-caret-down"></i>
                         </div>
                         <div id="expand-content" class="expand-content"></div>
+                    </div>
+                </div>
+
+                <div id="det-flyer-content" class="hidden py-4">
+                    <div class="bg-pink-50 border border-pink-200 p-3 rounded-lg mb-4">
+                        <div class="text-[10px] font-bold text-pink-600 uppercase mb-1">Instructions</div>
+                        <div id="flyer-inst-display" class="text-sm text-gray-800 font-medium">--</div>
+                    </div>
+
+                    <div id="flyer-photo-preview" class="mb-4 hidden">
+                        <p class="text-[10px] font-bold text-pink-600 mb-2 uppercase">Flyer Photos</p>
+                        <div id="flyer-photo-list-container" class="space-y-2"></div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2 mb-4">
+                        <label class="bg-pink-50 border-2 border-dashed border-pink-500 text-pink-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer">
+                            <i class="ph-fill ph-camera text-3xl mb-1"></i>
+                            <span class="text-[10px] font-bold">CAMERA</span>
+                            <input type="file" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoUpload(this, 'flyer-')">
+                        </label>
+                        <label class="bg-blue-50 border-2 border-dashed border-blue-500 text-blue-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer">
+                            <i class="ph-fill ph-image text-3xl mb-1"></i>
+                            <span class="text-[10px] font-bold">LIBRARY</span>
+                            <input type="file" accept="image/*" class="hidden" onchange="handlePhotoUpload(this, 'flyer-')">
+                        </label>
+                    </div>
+
+                    <div id="flyer-input-container">
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-500 uppercase">Flyer Notes</label>
+                            <textarea id="flyer-notes" class="input-field border-pink-200" placeholder="Type any notes here..." onchange="saveData(false, 'flyer-', true)"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-2 mt-4">
+                        <button id="flyer-btn-save-draft" class="w-1/3 bg-gray-200 text-gray-700 font-bold py-4 rounded-xl shadow-md" onclick="saveData(false, 'flyer-')">SAVE DRAFT</button>
+                        <button id="flyer-btn-save-complete" class="w-2/3 bg-pink-600 text-white font-bold py-4 rounded-xl shadow-lg" onclick="saveData(true, 'flyer-')">MARK COMPLETE</button>
                     </div>
                 </div>
                 
@@ -678,12 +748,16 @@
                 <span class="text-xs font-bold text-[#007a4d]"><span id="sel-count">0</span> Items Selected</span>
                 <span class="text-[10px] font-bold text-red-500 cursor-pointer bg-red-50 px-3 py-1 rounded-md uppercase" onclick="clearSelection()">Clear Selection</span>
             </div>
-            <div class="flex gap-1">
-                <button onclick="initiateBatchAction('copy')" class="flex-1 bg-gray-100 text-gray-700 p-2 rounded-lg text-[10px] font-bold hover:bg-gray-200"><i class="ph-bold ph-copy block text-lg mb-1"></i> Copy</button>
-                <button onclick="initiateBatchAction('email')" class="flex-1 bg-blue-100 text-blue-700 p-2 rounded-lg text-[10px] font-bold hover:bg-blue-200"><i class="ph-bold ph-envelope block text-lg mb-1"></i> Email</button>
-                <button onclick="initiateBatchAction('text')" class="flex-1 bg-green-100 text-green-700 p-2 rounded-lg text-[10px] font-bold hover:bg-green-200"><i class="ph-bold ph-chat block text-lg mb-1"></i> Text</button>
-                <button id="batch-btn-assign" onclick="initiateBatchAction('assign')" class="flex-1 bg-purple-100 text-purple-700 p-2 rounded-lg text-[10px] font-bold hover:bg-purple-200"><i class="ph-bold ph-user-plus block text-lg mb-1"></i> Assign</button>
-                <button id="batch-btn-request" onclick="initiateBatchAction('request_action')" class="flex-1 bg-orange-500 text-white p-2 rounded-lg text-[10px] font-bold shadow-md"><i class="ph-bold ph-warning-circle block text-lg mb-1"></i> Request</button>
+            
+            <div class="grid grid-cols-3 gap-2 mb-2">
+                <button onclick="initiateBatchAction('copy')" class="bg-gray-100 text-gray-700 p-2 rounded-lg text-[10px] font-bold hover:bg-gray-200 flex flex-col items-center"><i class="ph-bold ph-copy text-lg mb-0.5"></i> Copy</button>
+                <button onclick="initiateBatchAction('email')" class="bg-blue-100 text-blue-700 p-2 rounded-lg text-[10px] font-bold hover:bg-blue-200 flex flex-col items-center"><i class="ph-bold ph-envelope text-lg mb-0.5"></i> Email</button>
+                <button onclick="initiateBatchAction('text')" class="bg-green-100 text-green-700 p-2 rounded-lg text-[10px] font-bold hover:bg-green-200 flex flex-col items-center"><i class="ph-bold ph-chat text-lg mb-0.5"></i> Text</button>
+            </div>
+            <div class="grid grid-cols-3 gap-2">
+                <button id="batch-btn-assign" onclick="initiateBatchAction('assign')" class="bg-purple-100 text-purple-700 p-2 rounded-lg text-[10px] font-bold hover:bg-purple-200 flex flex-col items-center"><i class="ph-bold ph-user-plus text-lg mb-0.5"></i> Assign</button>
+                <button id="batch-btn-flyer" onclick="initiateBatchAction('flyer_action')" class="bg-pink-100 text-pink-700 p-2 rounded-lg text-[10px] font-bold hover:bg-pink-200 flex flex-col items-center shadow-sm border border-pink-200"><i class="ph-bold ph-megaphone text-lg mb-0.5"></i> Flyer</button>
+                <button id="batch-btn-request" onclick="initiateBatchAction('request_action')" class="bg-orange-500 text-white p-2 rounded-lg text-[10px] font-bold shadow-md flex flex-col items-center"><i class="ph-bold ph-warning-circle text-lg mb-0.5"></i> Request</button>
             </div>
         </div>
 
@@ -1013,6 +1087,17 @@
                     obj.DOCK_NOTE = getValFromMap(row, ['DOCK NOTE']);
                     obj.DOCK_PHOTO_LINK = getValFromMap(row, ['DOCK PHOTO LINK']);
                     obj.DOCK_PHOTO_NAME = getValFromMap(row, ['DOCK PHOTO NAME']);
+
+                    // NEW: FLYER COLUMNS
+                    obj.FLYER_CAT = getValFromMap(row, ['FLYER CAT', 'FLYER_CAT']);
+                    obj.FLYER_TITLE = getValFromMap(row, ['FLYER TITLE', 'FLYER_TITLE']);
+                    obj.FLYER_INST = getValFromMap(row, ['FLYER INST', 'FLYER_INST']);
+                    obj.FLYER_ASSIGNED = getValFromMap(row, ['FLYER ASSIGNED', 'FLYER_ASSIGNED']);
+                    obj.FLYER_NOTES = getValFromMap(row, ['FLYER NOTES', 'FLYER_NOTES']);
+                    obj.FLYER_PHOTO_LINK = getValFromMap(row, ['FLYER PHOTO LINK', 'FLYER_PHOTO_LINK']);
+                    obj.FLYER_PHOTO_NAME = getValFromMap(row, ['FLYER PHOTO NAME', 'FLYER_PHOTO_NAME']);
+                    obj.FLYER_COMPLETED = getValFromMap(row, ['FLYER COMPLETED', 'FLYER_COMPLETED']);
+
                 } else {
                      if (obj['DOCK']) obj.DOCK_NUM = parseInt(String(obj['DOCK']).replace(/\D/g, ''), 10);
                 }
@@ -1225,6 +1310,16 @@
             activeTaskTab = tab;
             document.getElementById('tab-season').classList.toggle('active', tab === 'season');
             document.getElementById('tab-location').classList.toggle('active', tab === 'location');
+            
+            let flyerTab = document.getElementById('tab-flyer');
+            if (tab === 'flyer') {
+                flyerTab.classList.add('border-b-[3px]', 'border-pink-500', 'bg-white');
+                flyerTab.classList.remove('border-transparent');
+            } else {
+                flyerTab.classList.remove('border-b-[3px]', 'border-pink-500', 'bg-white');
+                flyerTab.classList.add('border-transparent');
+            }
+
             taskViewLevel = 0; 
             renderTasks();
         }
@@ -1361,13 +1456,16 @@
                 
                 const btnAssign = document.getElementById('batch-btn-assign');
                 const btnRequest = document.getElementById('batch-btn-request');
+                const btnFlyer = document.getElementById('batch-btn-flyer');
                 
                 if (isDocksView || isReservesView) {
                     if (btnAssign) btnAssign.classList.add('hidden');
                     if (btnRequest) btnRequest.classList.add('hidden');
+                    if (btnFlyer) btnFlyer.classList.add('hidden');
                 } else {
                     if (btnAssign) btnAssign.classList.remove('hidden');
                     if (btnRequest) btnRequest.classList.remove('hidden');
+                    if (btnFlyer) btnFlyer.classList.remove('hidden');
                 }
             } else {
                 bar.classList.add('hidden');
@@ -1376,7 +1474,12 @@
 
         function generateCard(item, sourceView, colorClass = 'status-green') {
             let thumbHtml = '';
+            
             let photoLink = item.SAVED_PHOTO_LINK || item['PHOTO LINK'] || item.PHOTOLINK || "";
+            // Special view rules for photos
+            if (sourceView === 'tasks' && activeTaskTab === 'flyer') {
+                photoLink = item.FLYER_PHOTO_LINK || "";
+            }
             
             if (photoLink) {
                 let firstUrl = photoLink.split(',')[0];
@@ -1464,7 +1567,15 @@
                 openRequestModal();
                 return;
             }
+
+            if (action === 'flyer_action') {
+                document.getElementById('flyer-title-input').value = "";
+                document.getElementById('flyer-inst-input').value = "";
+                document.getElementById('flyer-modal').classList.remove('hidden');
+                return;
+            }
             
+            // UX FIX: Auto-select Request data if copying from Request view
             if (!document.getElementById('view-request').classList.contains('hidden') && action === 'copy') {
                 pendingTabType = 'request';
                 executeBatchAction(action, 'request');
@@ -1474,6 +1585,74 @@
             pendingAction = action;
             document.getElementById('tab-select-modal').classList.remove('hidden');
         }
+
+        // ====================================
+        // FLYER ACTION LOGIC
+        // ====================================
+        function finalizeFlyerAction() {
+            const cat = document.getElementById('flyer-cat-select').value;
+            const title = document.getElementById('flyer-title-input').value.trim();
+            const inst = document.getElementById('flyer-inst-input').value.trim();
+            const assign = document.getElementById('flyer-assign-select').value;
+
+            if (!title) {
+                showToast("Required", "Please enter a Task Title.", true);
+                return;
+            }
+
+            document.getElementById('flyer-modal').classList.add('hidden');
+            
+            const domIds = Array.from(selectedItems);
+            const uniqueIds = [];
+            
+            domIds.forEach(dId => {
+                let item = fullInventory.find(i => i.DOM_ID === dId) || lowStockInventory.find(i => i.DOM_ID === dId);
+                if (item) {
+                    item.FLYER_CAT = cat;
+                    item.FLYER_TITLE = title;
+                    item.FLYER_INST = inst;
+                    item.FLYER_ASSIGNED = assign;
+                    item.FLYER_COMPLETED = ""; // Reset complete status if re-assigned
+                    uniqueIds.push(item.UNIQUE_ID);
+                }
+            });
+
+            if (uniqueIds.length === 0) return;
+
+            showToast("Processing...", `Creating Flyer Task...`, false);
+
+            fetch(GOOGLE_SCRIPT_URL, {
+                method: 'POST',
+                body: JSON.stringify({ 
+                    type: 'batch_flyer', 
+                    ids: uniqueIds, 
+                    cat: cat, 
+                    title: title,
+                    inst: inst,
+                    assignTo: assign
+                })
+            }).then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showToast("Success", "Items assigned to Flyer Task!");
+                    clearSelection();
+                    
+                    // Switch view directly to the new task
+                    activeTaskTab = 'flyer';
+                    document.getElementById('tab-season').classList.remove('active');
+                    document.getElementById('tab-location').classList.remove('active');
+                    document.getElementById('tab-flyer').classList.add('border-b-[3px]', 'border-pink-500', 'bg-white');
+                    document.getElementById('tab-flyer').classList.remove('border-transparent');
+                    
+                    taskViewTargetUser = assign;
+                    switchView('tasks');
+                } else { showToast("Error", "Failed to update sheet.", true); }
+            }).catch(err => showToast("Error", "Network error.", true));
+        }
+
+        // ====================================
+        // REQUEST ACTION LOGIC
+        // ====================================
 
         function openRequestModal() {
             document.getElementById('step-1-rep').classList.remove('hidden');
@@ -1513,7 +1692,7 @@
             tempSelectedReqRep = repName;
             document.getElementById('step-1-rep').classList.add('hidden');
             
-            // FIX: Removed reservesInventory
+            // STRICT Master search only
             let repReqs = fullInventory.concat(lowStockInventory)
                 .filter(i => i.IS_REQUEST && i.REQUESTED_BY === repName && !i.REQ_ARCHIVED);
             
@@ -1629,7 +1808,7 @@
             const uniqueIds = [];
             
             domIds.forEach(dId => {
-                // FIX: Removed reservesInventory
+                // STRICT Master search only
                 let item = fullInventory.find(i => i.DOM_ID === dId) || lowStockInventory.find(i => i.DOM_ID === dId);
                 if (item) {
                     item.IS_REQUEST = true; 
@@ -1682,7 +1861,7 @@
         function getSelectedItemsText(tabType) {
             let items = [];
             selectedItems.forEach(domId => {
-                // FIX: Removed reservesInventory
+                // STRICT Master search only
                 let found = fullInventory.find(i => i.DOM_ID === domId) || lowStockInventory.find(i => i.DOM_ID === domId);
                 if (found) items.push(found);
             });
@@ -1762,7 +1941,7 @@
             let itemsToUpdate = [];
             
             domIds.forEach(dId => {
-                // FIX: Removed reservesInventory
+                // STRICT Master search only
                 let item = fullInventory.find(i => i.DOM_ID === dId) || lowStockInventory.find(i => i.DOM_ID === dId);
                 if (item) {
                     uniqueIds.push(item.UNIQUE_ID);
@@ -2048,7 +2227,7 @@
         }
 
         function copyFolderData(folderId) {
-            // FIX: Removed reservesInventory
+            // STRICT Master search only
             let items = fullInventory.filter(i => i.REQUEST_FOLDER === folderId)
                 .concat(lowStockInventory.filter(i => i.REQUEST_FOLDER === folderId));
             
@@ -2162,7 +2341,7 @@
             let reqItems = fullInventory.filter(i => i.IS_REQUEST === true);
             let reqLowStock = lowStockInventory.filter(i => i.IS_REQUEST === true);
             
-            // FIX: Removed reqReserves
+            // STRICT Master search only
             let combinedReq = [...reqItems, ...reqLowStock];
             
             combinedReq = combinedReq.filter((v,i,a) => a.findIndex(t => (t.DOM_ID === v.DOM_ID)) === i && !v.REQ_ARCHIVED);
@@ -2556,17 +2735,66 @@
             let userToView = (currentRole === 'Admin') ? taskViewTargetUser : currentUser;
             let searchName = userToView === 'dylan_collyge' ? 'Dylan' : userToView;
 
-            let myItems = fullInventory.filter(i => String(i.ASSIGNEDTO || "").toLowerCase().includes(searchName.toLowerCase()));
+            let myItems = fullInventory;
+
+            // --- FLYER TAB LOGIC ---
+            if (activeTaskTab === 'flyer') {
+                myItems = myItems.filter(i => 
+                    String(i.FLYER_ASSIGNED || "").toLowerCase().includes(searchName.toLowerCase()) && 
+                    (!i.FLYER_COMPLETED || i.FLYER_COMPLETED === "")
+                );
+                
+                const displayUser = searchName.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
+                if (myItems.length === 0) {
+                    container.innerHTML = `<div class="back-btn" onclick="if(currentRole==='Admin'){taskViewTargetUser=null; renderTeamSelector();}"><i class="ph-bold ph-arrow-left"></i> Change User</div><div class="p-8 text-center text-gray-400">No flyer tasks assigned here.</div>`;
+                    crumb.innerText = `${displayUser} / Flyers`;
+                    return;
+                }
+
+                if (taskViewLevel === 0) {
+                    crumb.innerText = `${displayUser} / Flyers / Categories`;
+                    const cats = ["Crop Update", "End Cap", "Spot Light"];
+                    let html = "";
+                    if(currentRole === 'Admin') html += `<div class="back-btn" onclick="taskViewTargetUser=null; renderTeamSelector();"><i class="ph-bold ph-arrow-left"></i> Change User</div>`;
+                    
+                    cats.forEach(c => {
+                        const count = myItems.filter(i => i.FLYER_CAT === c).length;
+                        html += `<div class="drill-item" onclick="selectTaskBlock('${c}')"><span class="font-bold text-lg text-pink-600">${c} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
+                    });
+                    container.innerHTML = html;
+                } 
+                else if (taskViewLevel === 1) {
+                    crumb.innerText = `${displayUser} / Flyers / ${selectedTaskBlock}`;
+                    const catItems = myItems.filter(i => i.FLYER_CAT === selectedTaskBlock);
+                    const titles = [...new Set(catItems.map(i => i.FLYER_TITLE || "Untitled Folder"))].sort();
+                    
+                    container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=0; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Categories</div>` + 
+                    titles.map(t => {
+                        const count = catItems.filter(i => (i.FLYER_TITLE || "Untitled Folder") === t).length;
+                        return `<div class="drill-item" onclick="selectTaskLoc('${t.replace(/'/g, "\\'")}')"><span class="font-bold text-lg"><i class="ph-fill ph-folder mr-2 text-pink-500"></i>${t} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
+                    }).join('');
+                } 
+                else if (taskViewLevel === 2) {
+                    crumb.innerText = `${displayUser} / ${selectedTaskBlock} / ${selectedTaskLoc}`;
+                    let items = myItems.filter(i => i.FLYER_CAT === selectedTaskBlock && (i.FLYER_TITLE || "Untitled Folder") === selectedTaskLoc);
+                    
+                    items.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
+                    container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=1; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Folders</div>` + 
+                    items.map(i => generateCard(i, 'tasks', 'status-pink')).join('');
+                }
+                return;
+            }
+
+            // --- NORMAL SEASON/LOCATION LOGIC ---
+            myItems = myItems.filter(i => String(i.ASSIGNEDTO || "").toLowerCase().includes(searchName.toLowerCase()));
 
             myItems = myItems.filter(i => {
                 if (i.DATE_COMPLETED && i.DATE_COMPLETED !== "") return false;
-
                 const pri = parseFloat(i.PRIORITY);
                 if (isNaN(pri) || pri <= 0) return false; 
-                
                 if (activeTaskTab === 'season') return i.APP_TAB_ASSIGNMENT === 'season';
                 if (activeTaskTab === 'location') return i.APP_TAB_ASSIGNMENT === 'location';
-                
                 return true;
             });
 
@@ -2716,6 +2944,10 @@
             document.getElementById('dock-caliper').value = activeItem.DOCK_CALIPER || activeItem.CALIPER || "";
             document.getElementById('dock-sales-desc').value = activeItem.DOCK_NOTE || "";
 
+            // FLYER SPECIFICS
+            document.getElementById('flyer-inst-display').innerText = activeItem.FLYER_INST || "No instructions provided.";
+            document.getElementById('flyer-notes').value = activeItem.FLYER_NOTES || "";
+
             const caliperSizes = ["7DP", "#7", "#10", "#15", "#25", "#45"];
             if (caliperSizes.includes(activeItem.CONTSIZE)) {
                 ['ssn-', 'lsn-', 'na-', 'req-'].forEach(p => {
@@ -2739,7 +2971,7 @@
 
             renderPhotoPreview();
 
-            ['season', 'location', 'request', 'notes', 'docks'].forEach(t => {
+            ['season', 'location', 'flyer', 'request', 'notes', 'docks'].forEach(t => {
                 let el = document.getElementById('dtab-' + t);
                 if (el) el.classList.add('hidden');
             });
@@ -2753,6 +2985,9 @@
                 } else if (activeTaskTab === 'location') {
                     document.getElementById('dtab-location').classList.remove('hidden');
                     defaultTab = 'location';
+                } else if (activeTaskTab === 'flyer') {
+                    document.getElementById('dtab-flyer').classList.remove('hidden');
+                    defaultTab = 'flyer';
                 }
             } 
             else if (sourceView === 'request') {
@@ -2779,12 +3014,15 @@
         }
 
         function switchDetailTab(tab) {
-            ['overview', 'season', 'location', 'request', 'notes', 'docks'].forEach(t => {
+            ['overview', 'season', 'location', 'request', 'flyer', 'notes', 'docks'].forEach(t => {
                 const dtab = document.getElementById('dtab-' + t);
                 const content = document.getElementById('det-' + t + '-content');
                 if (dtab) {
-                    if (t === tab) dtab.classList.add('active');
-                    else dtab.classList.remove('active');
+                    if (t === tab) {
+                        dtab.classList.add(t === 'flyer' ? 'active-flyer' : 'active');
+                    } else {
+                        dtab.classList.remove('active', 'active-flyer');
+                    }
                 }
                 if (content) {
                     if (t === tab) content.classList.remove('hidden');
@@ -2810,7 +3048,7 @@
 
         function renderAllFields() {
             if(!activeItem) return;
-            const hiddenKeys = ['UNIQUE_ID', 'UNIQUEID', 'ASSIGNEDTO', 'DOM_ID', 'IS_REQUEST', 'REQUESTED_BY', 'REQUEST_FOLDER']; 
+            const hiddenKeys = ['UNIQUE_ID', 'UNIQUEID', 'ASSIGNEDTO', 'DOM_ID', 'IS_REQUEST', 'REQUESTED_BY', 'REQUEST_FOLDER', 'FLYER_CAT', 'FLYER_TITLE', 'FLYER_INST', 'FLYER_ASSIGNED', 'FLYER_NOTES', 'FLYER_PHOTO_LINK', 'FLYER_PHOTO_NAME', 'FLYER_COMPLETED']; 
             let html = '<div class="grid grid-cols-1 gap-2">';
             for (const [key, value] of Object.entries(activeItem)) { 
                 if(hiddenKeys.includes(key)) continue; 
@@ -2850,6 +3088,9 @@
                         let dockStr = "DOCK" + selectedDockNum;
                         let tripStr = selectedDockTrip !== "Unassigned" && selectedDockTrip !== "" ? "TRIP" + selectedDockTrip : "NoTrip";
                         filename = `${tripStr}-${activeItem.COMMONNAME}-${activeItem.CONTSIZE}-${locStr}-${lotStr}-${dockStr}-${dateStr}.jpg`.replace(/[\/\s,]/g, '_');
+                    } else if (prefix === 'flyer-') {
+                        let locStr = activeItem.LOCATIONCODE || "NoLoc";
+                        filename = `FLYER-${activeItem.COMMONNAME}-${activeItem.CONTSIZE}-${locStr}-${dateStr}.jpg`.replace(/[\/\s,]/g, '_');
                     }
                     
                     showTemporaryPhotoPreview(prefix, dataUrl);
@@ -2904,6 +3145,7 @@
             else if (prefix === 'ssn-') context = "season";
             else if (prefix === 'lsn-') context = "location";
             else if (prefix === 'dock-') context = "docks";
+            else if (prefix === 'flyer-') context = "flyer";
 
             let payload = { type: "image", image: base64Data, mimeType: "image/jpeg", filename: filename, folderContext: context };
 
@@ -2943,6 +3185,13 @@
                         names.push(filename);
                         targetItem.DOCK_PHOTO_LINK = links.join(',');
                         targetItem.DOCK_PHOTO_NAME = names.join(',');
+                    } else if (prefix === 'flyer-') {
+                        let links = targetItem.FLYER_PHOTO_LINK ? targetItem.FLYER_PHOTO_LINK.split(',') : [];
+                        let names = targetItem.FLYER_PHOTO_NAME ? targetItem.FLYER_PHOTO_NAME.split(',') : [];
+                        links.push(data.url);
+                        names.push(filename);
+                        targetItem.FLYER_PHOTO_LINK = links.join(',');
+                        targetItem.FLYER_PHOTO_NAME = names.join(',');
                     } else {
                         let links = targetItem.SAVED_PHOTO_LINK ? targetItem.SAVED_PHOTO_LINK.split(',') : [];
                         let names = targetItem.SAVED_PHOTO_NAME ? targetItem.SAVED_PHOTO_NAME.split(',') : [];
@@ -2993,6 +3242,8 @@
                         bgClass = 'bg-purple-50'; borderClass = 'border-purple-200'; iconColor = 'text-purple-600'; titleColor = 'text-purple-700'; arrowColor = 'text-purple-400';
                     } else if (type === 'dock') {
                         bgClass = 'bg-orange-50'; borderClass = 'border-orange-200'; iconColor = 'text-orange-500'; titleColor = 'text-orange-700'; arrowColor = 'text-orange-400';
+                    } else if (type === 'flyer') {
+                        bgClass = 'bg-pink-50'; borderClass = 'border-pink-200'; iconColor = 'text-pink-500'; titleColor = 'text-pink-700'; arrowColor = 'text-pink-400';
                     }
                     
                     if(cleanUrl.startsWith('http')) {
@@ -3037,6 +3288,14 @@
                 if (dockHtml) { dockDiv.classList.remove('hidden'); dockList.innerHTML = dockHtml; } 
                 else { dockDiv.classList.add('hidden'); dockList.innerHTML = ""; }
             }
+
+            const flyerHtml = buildPhotoHtml(activeItem.FLYER_PHOTO_LINK, activeItem.FLYER_PHOTO_NAME, 'flyer');
+            const flyerDiv = document.getElementById('flyer-photo-preview');
+            const flyerList = document.getElementById('flyer-photo-list-container');
+            if (flyerDiv && flyerList) {
+                if (flyerHtml) { flyerDiv.classList.remove('hidden'); flyerList.innerHTML = flyerHtml; } 
+                else { flyerDiv.classList.add('hidden'); flyerList.innerHTML = ""; }
+            }
         }
 
         let autoSaveTimer = null;
@@ -3065,7 +3324,6 @@
             const executeSave = () => {
                 let matchVal, specVal, caliperVal, pickVal, salesDescVal;
 
-                // HELPER: Safely get values, fallback to the item's existing data if not found.
                 const getVal = (id, fallback) => {
                     const el = document.getElementById(id);
                     return el ? el.value : (fallback || "");
@@ -3089,6 +3347,8 @@
                         itemToSave.DOCK_SPEC = getVal('dock-spec', itemToSave.DOCK_SPEC);
                         itemToSave.DOCK_CALIPER = getVal('dock-caliper', itemToSave.DOCK_CALIPER);
                         itemToSave.DOCK_NOTE = getVal('dock-sales-desc', itemToSave.DOCK_NOTE).toUpperCase();
+                    } else if (prefix === 'flyer-') {
+                        itemToSave.FLYER_NOTES = getVal('flyer-notes', itemToSave.FLYER_NOTES);
                     }
                 }
 
@@ -3129,8 +3389,13 @@
                     dockNote: itemToSave.DOCK_NOTE || "",
                     dockPhotoLink: itemToSave.DOCK_PHOTO_LINK || "",
                     dockPhotoName: itemToSave.DOCK_PHOTO_NAME || "",
+                    flyerNotes: itemToSave.FLYER_NOTES || "",
+                    flyerPhotoLink: itemToSave.FLYER_PHOTO_LINK || "",
+                    flyerPhotoName: itemToSave.FLYER_PHOTO_NAME || "",
+                    flyerCompleted: (isComplete && prefix === 'flyer-') ? true : false,
                     isComplete: isComplete,
-                    isSilent: isSilentAutoSave
+                    isSilent: isSilentAutoSave,
+                    context: prefix === 'flyer-' ? 'flyer' : 'standard'
                 };
 
                 fetch(GOOGLE_SCRIPT_URL, {
@@ -3153,10 +3418,12 @@
                             showToast("Success", isComplete ? "Task Completed!" : "Draft saved to Google Sheet.");
                         }
                         if (isComplete && isCurrentView) {
-                            itemToSave.DATE_COMPLETED = new Date().toISOString();
+                            if (prefix === 'flyer-') itemToSave.FLYER_COMPLETED = new Date().toISOString();
+                            else itemToSave.DATE_COMPLETED = new Date().toISOString();
                             goBackFromDetail();
                         } else if (isComplete && !isCurrentView) {
-                            itemToSave.DATE_COMPLETED = new Date().toISOString();
+                            if (prefix === 'flyer-') itemToSave.FLYER_COMPLETED = new Date().toISOString();
+                            else itemToSave.DATE_COMPLETED = new Date().toISOString();
                         }
                     } else if (isCurrentView) { showToast("Error", data.message || "Failed to save.", true); }
                 })
