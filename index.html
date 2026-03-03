@@ -881,10 +881,10 @@
             
             fetch(dataUrl)
                 .then(response => response.json())
-                .then(async res => {
+                .then(res => {
                     if (res.status === 'success') {
-                        await saveToCache(res); // Save to massive storage
-                        processAndLoadData(res);
+                        processAndLoadData(res); // UPDATE UI IMMEDIATELY
+                        saveToCache(res);        // NON-BLOCKING BACKGROUND SAVE
                         if(cachedRes) {
                              showToast("Sync Complete", "Live database updated.", false);
                         } else {
@@ -898,72 +898,80 @@
                 });
         }
 
-        // Helper function to turn Compressed 2D Arrays back into usable App Objects
+        // ==========================================
+        // FAST COMPRESSED DATA DECODER (O(N) FIX)
+        // ==========================================
         function mapCompressedToObj(compressedData, isMaster = false) {
             if(!compressedData || !compressedData.headers) return [];
             const h = compressedData.headers;
+            
+            // PRE-CALCULATE INDEXES ONCE (Extremely Fast)
+            const idxMap = {};
+            h.forEach((colName, idx) => { idxMap[colName] = idx; });
+
+            const getValFromMap = (row, names) => {
+                for(let n of names) { 
+                    if(idxMap[n] !== undefined) return row[idxMap[n]]; 
+                }
+                return "";
+            };
+
             return compressedData.rows.map(row => {
                 let obj = {};
                 h.forEach((colName, idx) => {
                     obj[colName] = row[idx]; 
                 });
                 
-                // Set explicitly expected keys
                 if(isMaster) {
-                    const getVal = (names) => {
-                        for(let n of names) { let idx = h.indexOf(n); if(idx > -1) return row[idx]; }
-                        return "";
-                    };
+                    obj.UNIQUE_ID = getValFromMap(row, ['UNIQUE ID']);
+                    obj.COMMONNAME = getValFromMap(row, ['COMMONNAME']);
+                    obj.CONTSIZE = getValFromMap(row, ['CONTSIZE']);
+                    obj.LOCATIONCODE = getValFromMap(row, ['LOCATIONCODE']);
+                    obj.PTRAVAILABLE = getValFromMap(row, ['PTRAVAILABLE']);
+                    obj.SEASONSUPPLY = getValFromMap(row, ['SEASON_SUPPLY', 'SEASONSUPPLY']);
+                    obj.PRIORITY = getValFromMap(row, ['PRIORITY']);
+                    obj.QUALITYCODE = getValFromMap(row, ['QUALITYCODE']);
+                    obj.FIELDTAGCOLOR = getValFromMap(row, ['FIELD TAG COLOR', 'FIELDTAGCOLOR']);
+                    obj.ITEMCODE = getValFromMap(row, ['ITEMCODE']);
+                    obj.LOTCODE = getValFromMap(row, ['LOTCODE']);
+                    obj.BLOCKALPHA = getValFromMap(row, ['BLOCKALPHA']);
+                    obj.PLANTGROUPCODE = getValFromMap(row, ['PLANTGROUPCODE', 'PLANT GROUP']);
+                    obj.S_LTS = getValFromMap(row, ['S_LTS', 'SLTS']);
+                    obj.ASSIGNEDTO = getValFromMap(row, ['ASSIGNEDTO']);
+                    obj.DATE_COMPLETED = getValFromMap(row, ['DATE COMPLETED']);
                     
-                    obj.UNIQUE_ID = getVal(['UNIQUE ID']);
-                    obj.COMMONNAME = getVal(['COMMONNAME']);
-                    obj.CONTSIZE = getVal(['CONTSIZE']);
-                    obj.LOCATIONCODE = getVal(['LOCATIONCODE']);
-                    obj.PTRAVAILABLE = getVal(['PTRAVAILABLE']);
-                    obj.SEASONSUPPLY = getVal(['SEASON_SUPPLY', 'SEASONSUPPLY']);
-                    obj.PRIORITY = getVal(['PRIORITY']);
-                    obj.QUALITYCODE = getVal(['QUALITYCODE']);
-                    obj.FIELDTAGCOLOR = getVal(['FIELD TAG COLOR', 'FIELDTAGCOLOR']);
-                    obj.ITEMCODE = getVal(['ITEMCODE']);
-                    obj.LOTCODE = getVal(['LOTCODE']);
-                    obj.BLOCKALPHA = getVal(['BLOCKALPHA']);
-                    obj.PLANTGROUPCODE = getVal(['PLANTGROUPCODE', 'PLANT GROUP']);
-                    obj.S_LTS = getVal(['S_LTS', 'SLTS']);
-                    obj.ASSIGNEDTO = getVal(['ASSIGNEDTO']);
-                    obj.DATE_COMPLETED = getVal(['DATE COMPLETED']);
-                    
-                    let isReqVal = getVal(['IS REQUEST']);
+                    let isReqVal = getValFromMap(row, ['IS REQUEST']);
                     obj.IS_REQUEST = (String(isReqVal).toUpperCase() === 'TRUE' || isReqVal === true);
-                    obj.REQUESTED_BY = getVal(['REQUESTED BY']);
-                    obj.REQUEST_FOLDER = getVal(['REQUEST FOLDER']);
-                    let archVal = getVal(['REQ ARCHIVED']);
+                    obj.REQUESTED_BY = getValFromMap(row, ['REQUESTED BY']);
+                    obj.REQUEST_FOLDER = getValFromMap(row, ['REQUEST FOLDER']);
+                    
+                    let archVal = getValFromMap(row, ['REQ ARCHIVED']);
                     obj.REQ_ARCHIVED = (String(archVal).toUpperCase() === 'TRUE' || archVal === true);
                     
-                    obj.MATCH = getVal(['MATCH', 'MATCHPCT']);
-                    obj.SPEC = getVal(['SPEC']);
-                    obj.CALIPER = getVal(['CALIPER']);
-                    obj.PIC_NOTE = getVal(['PIC NOTE', 'PICKNOTE']);
-                    obj.SALES_NOTE = getVal(['SALES NOTE', 'SALESDESC']);
-                    obj.SAVED_PHOTO_LINK = getVal(['PHOTO LINK']);
-                    obj.SAVED_PHOTO_NAME = getVal(['PHOTO NAME']);
+                    obj.MATCH = getValFromMap(row, ['MATCH', 'MATCHPCT']);
+                    obj.SPEC = getValFromMap(row, ['SPEC']);
+                    obj.CALIPER = getValFromMap(row, ['CALIPER']);
+                    obj.PIC_NOTE = getValFromMap(row, ['PIC NOTE', 'PICKNOTE']);
+                    obj.SALES_NOTE = getValFromMap(row, ['SALES NOTE', 'SALESDESC']);
+                    obj.SAVED_PHOTO_LINK = getValFromMap(row, ['PHOTO LINK']);
+                    obj.SAVED_PHOTO_NAME = getValFromMap(row, ['PHOTO NAME']);
                     
-                    obj.REQ_MATCH = getVal(['REQ MATCH']);
-                    obj.REQ_SPEC = getVal(['REQ SPEC']);
-                    obj.REQ_CALIPER = getVal(['REQ CALIPER']);
-                    obj.REQ_PICK = getVal(['REQ PIC NOTE']);
-                    obj.REQ_SALES_NOTE = getVal(['REQ SALES NOTE']);
-                    obj.REQ_COMMENTS = getVal(['REQ COMMENTS']);
-                    obj.REQ_PHOTO_LINK = getVal(['REQ PHOTO LINK']);
-                    obj.REQ_PHOTO_NAME = getVal(['REQ PHOTO NAME']);
-                    obj.REQ_CUSTOMER = getVal(['REQ CUSTOMER']);
-                    obj.REQ_QTY = getVal(['REQ QTY']);
+                    obj.REQ_MATCH = getValFromMap(row, ['REQ MATCH']);
+                    obj.REQ_SPEC = getValFromMap(row, ['REQ SPEC']);
+                    obj.REQ_CALIPER = getValFromMap(row, ['REQ CALIPER']);
+                    obj.REQ_PICK = getValFromMap(row, ['REQ PIC NOTE']);
+                    obj.REQ_SALES_NOTE = getValFromMap(row, ['REQ SALES NOTE']);
+                    obj.REQ_COMMENTS = getValFromMap(row, ['REQ COMMENTS']);
+                    obj.REQ_PHOTO_LINK = getValFromMap(row, ['REQ PHOTO LINK']);
+                    obj.REQ_PHOTO_NAME = getValFromMap(row, ['REQ PHOTO NAME']);
+                    obj.REQ_CUSTOMER = getValFromMap(row, ['REQ CUSTOMER']);
+                    obj.REQ_QTY = getValFromMap(row, ['REQ QTY']);
 
-                    // Docks mapping
-                    obj.DOCK_SPEC = getVal(['DOCK SPEC']);
-                    obj.DOCK_CALIPER = getVal(['DOCK CALIPER']);
-                    obj.DOCK_NOTE = getVal(['DOCK NOTE']);
-                    obj.DOCK_PHOTO_LINK = getVal(['DOCK PHOTO LINK']);
-                    obj.DOCK_PHOTO_NAME = getVal(['DOCK PHOTO NAME']);
+                    obj.DOCK_SPEC = getValFromMap(row, ['DOCK SPEC']);
+                    obj.DOCK_CALIPER = getValFromMap(row, ['DOCK CALIPER']);
+                    obj.DOCK_NOTE = getValFromMap(row, ['DOCK NOTE']);
+                    obj.DOCK_PHOTO_LINK = getValFromMap(row, ['DOCK PHOTO LINK']);
+                    obj.DOCK_PHOTO_NAME = getValFromMap(row, ['DOCK PHOTO NAME']);
                 } else {
                      if (obj['DOCK']) obj.DOCK_NUM = parseInt(String(obj['DOCK']).replace(/\D/g, ''), 10);
                 }
@@ -3059,4 +3067,3 @@
     </script>
 </body>
 </html>
-
