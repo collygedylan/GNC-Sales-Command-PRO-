@@ -697,7 +697,7 @@
         // --- SUPABASE ENGINE SETUP ---
         const SUPABASE_URL = 'https://jvzeegvrmuvwwsqhwnke.supabase.co'; 
         const SUPABASE_KEY = 'sb_publishable_i1m_SwGfCARqrrEgeqyznw_eNhCSyql';
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         // --- INDEXED DB SETUP ---
         const DB_NAME = "GNC_Sales_DB";
@@ -839,7 +839,7 @@
 
             try {
                 // Query the new app_users table instantly
-                const { data, error } = await supabase
+                const { data, error } = await supabaseClient
                     .from('app_users')
                     .select('role')
                     .eq('username', inputUser)
