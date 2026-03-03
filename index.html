@@ -1415,6 +1415,14 @@
                 openRequestModal();
                 return;
             }
+            
+            // UX FIX: Auto-select Request data if copying from Request view
+            if (!document.getElementById('view-request').classList.contains('hidden') && action === 'copy') {
+                pendingTabType = 'request';
+                executeBatchAction(action, 'request');
+                return;
+            }
+            
             pendingAction = action;
             document.getElementById('tab-select-modal').classList.remove('hidden');
         }
@@ -1647,14 +1655,17 @@
                 if (tabType === 'request' && i.REQ_COMMENTS) returnText += `  Comments: ${i.REQ_COMMENTS}\n`;
                 
                 let photo = tabType === 'request' ? i.REQ_PHOTO_LINK : (i.SAVED_PHOTO_LINK || i['PHOTO LINK'] || i.PHOTOLINK);
-                if (photo && photo.trim() !== "") {
-                    let urls = photo.split(',');
+                if (photo && String(photo).trim() !== "") {
+                    let urls = String(photo).split(',');
                     let counter = 1;
                     urls.forEach(url => {
                         let cleanUrl = url.trim();
                         let match = cleanUrl.match(/(https?:\/\/[^"\s>]+)/);
                         if (match) {
                             returnText += `  Photo ${counter}: ${match[1]}\n`;
+                            counter++;
+                        } else if (cleanUrl.startsWith('http')) {
+                            returnText += `  Photo ${counter}: ${cleanUrl}\n`;
                             counter++;
                         }
                     });
@@ -1995,14 +2006,17 @@
                 if (i.REQ_COMMENTS) returnText += `  Comments: ${i.REQ_COMMENTS}\n`;
                 
                 let photo = i.REQ_PHOTO_LINK || i.SAVED_PHOTO_LINK || i['PHOTO LINK'] || i.PHOTOLINK;
-                if (photo && photo.trim() !== "") {
-                    let urls = photo.split(',');
+                if (photo && String(photo).trim() !== "") {
+                    let urls = String(photo).split(',');
                     let counter = 1;
                     urls.forEach(url => {
                         let cleanUrl = url.trim();
                         let match = cleanUrl.match(/(https?:\/\/[^"\s>]+)/);
                         if (match) {
                             returnText += `  Photo ${counter}: ${match[1]}\n`;
+                            counter++;
+                        } else if (cleanUrl.startsWith('http')) {
+                            returnText += `  Photo ${counter}: ${cleanUrl}\n`;
                             counter++;
                         }
                     });
@@ -2770,12 +2784,16 @@
         }
 
         function uploadPhotoToDrive(base64Data, filename, prefix) {
+            let targetItem = activeItem; 
+            if (!targetItem) return;
+            
             showToast("Uploading...", "Sending to Google Drive...", false);
             
-            let btn = prefix === 'req-' ? document.getElementById('req-btn-save-draft') : document.getElementById(prefix + 'btn-save-draft'); // Fallback to draft btn if complete not exist
+            let btn = prefix === 'req-' ? document.getElementById('req-btn-save-draft') : document.getElementById(prefix + 'btn-save-draft'); 
             if (prefix !== 'req-' && prefix !== 'dock-') btn = document.getElementById(prefix + 'btn-save-complete');
             
-            if (btn) {
+            let isCurrentView = (activeItem && activeItem.UNIQUE_ID === targetItem.UNIQUE_ID);
+            if (btn && isCurrentView) {
                 btn.innerText = "UPLOADING...";
                 btn.disabled = true;
             }
@@ -2801,7 +2819,8 @@
             })
             .then(res => res.json())
             .then(data => {
-                if (btn) {
+                isCurrentView = (activeItem && activeItem.UNIQUE_ID === targetItem.UNIQUE_ID);
+                if (btn && isCurrentView) {
                     if (prefix === 'req-') btn.innerText = "SAVE REQUEST DATA";
                     else if (prefix === 'dock-') btn.innerText = "SAVE DOCK DATA";
                     else btn.innerText = "MARK COMPLETE";
@@ -2810,41 +2829,43 @@
                 
                 if(data.status === 'success') {
                     if (prefix === 'req-') {
-                        let links = activeItem.REQ_PHOTO_LINK ? activeItem.REQ_PHOTO_LINK.split(',') : [];
-                        let names = activeItem.REQ_PHOTO_NAME ? activeItem.REQ_PHOTO_NAME.split(',') : [];
+                        let links = targetItem.REQ_PHOTO_LINK ? targetItem.REQ_PHOTO_LINK.split(',') : [];
+                        let names = targetItem.REQ_PHOTO_NAME ? targetItem.REQ_PHOTO_NAME.split(',') : [];
                         links.push(data.url);
                         names.push(filename);
-                        activeItem.REQ_PHOTO_LINK = links.join(',');
-                        activeItem.REQ_PHOTO_NAME = names.join(',');
+                        targetItem.REQ_PHOTO_LINK = links.join(',');
+                        targetItem.REQ_PHOTO_NAME = names.join(',');
                     } else if (prefix === 'dock-') {
-                        let links = activeItem.DOCK_PHOTO_LINK ? activeItem.DOCK_PHOTO_LINK.split(',') : [];
-                        let names = activeItem.DOCK_PHOTO_NAME ? activeItem.DOCK_PHOTO_NAME.split(',') : [];
+                        let links = targetItem.DOCK_PHOTO_LINK ? targetItem.DOCK_PHOTO_LINK.split(',') : [];
+                        let names = targetItem.DOCK_PHOTO_NAME ? targetItem.DOCK_PHOTO_NAME.split(',') : [];
                         links.push(data.url);
                         names.push(filename);
-                        activeItem.DOCK_PHOTO_LINK = links.join(',');
-                        activeItem.DOCK_PHOTO_NAME = names.join(',');
+                        targetItem.DOCK_PHOTO_LINK = links.join(',');
+                        targetItem.DOCK_PHOTO_NAME = names.join(',');
                     } else {
-                        let links = activeItem.SAVED_PHOTO_LINK ? activeItem.SAVED_PHOTO_LINK.split(',') : [];
-                        let names = activeItem.SAVED_PHOTO_NAME ? activeItem.SAVED_PHOTO_NAME.split(',') : [];
+                        let links = targetItem.SAVED_PHOTO_LINK ? targetItem.SAVED_PHOTO_LINK.split(',') : [];
+                        let names = targetItem.SAVED_PHOTO_NAME ? targetItem.SAVED_PHOTO_NAME.split(',') : [];
                         links.push(data.url);
                         names.push(filename);
-                        activeItem.SAVED_PHOTO_LINK = links.join(',');
-                        activeItem.SAVED_PHOTO_NAME = names.join(',');
+                        targetItem.SAVED_PHOTO_LINK = links.join(',');
+                        targetItem.SAVED_PHOTO_NAME = names.join(',');
                     }
-                    renderPhotoPreview(); 
-                    saveData(false, prefix, true); // Auto-save after photo uploads
+                    
+                    if (isCurrentView) { renderPhotoPreview(); }
+                    saveData(false, prefix, true, targetItem); 
                 } else {
-                    showToast("Error", "Upload failed.", true);
+                    if (isCurrentView) showToast("Error", "Upload failed.", true);
                 }
             })
             .catch(err => {
-                if (btn) {
+                isCurrentView = (activeItem && activeItem.UNIQUE_ID === targetItem.UNIQUE_ID);
+                if (btn && isCurrentView) {
                     if (prefix === 'req-') btn.innerText = "SAVE REQUEST DATA";
                     else if (prefix === 'dock-') btn.innerText = "SAVE DOCK DATA";
                     else btn.innerText = "MARK COMPLETE";
                     btn.disabled = false;
                 }
-                showToast("Error", "Network connection failed.", true);
+                if (isCurrentView) showToast("Error", "Network connection failed.", true);
             });
         }
 
@@ -2917,76 +2938,82 @@
             }
         }
 
-        function saveData(isComplete = false, prefix, isSilentAutoSave = false) {
+        function saveData(isComplete = false, prefix, isSilentAutoSave = false, specificItem = null) {
+            let itemToSave = specificItem || activeItem;
+            if (!itemToSave) return;
+            
             let btnDraft = document.getElementById(prefix + 'btn-save-draft');
             let btnComp = document.getElementById(prefix + 'btn-save-complete');
+            let isCurrentView = (activeItem && activeItem.UNIQUE_ID === itemToSave.UNIQUE_ID);
             
-            if (isComplete) { 
-                if(btnComp) btnComp.innerText = "SAVING..."; 
-            } else { 
-                if(btnDraft) btnDraft.innerText = isSilentAutoSave ? "AUTO-SAVING..." : "SAVING..."; 
+            if (isCurrentView) {
+                if (isComplete) { 
+                    if(btnComp) btnComp.innerText = "SAVING..."; 
+                } else { 
+                    if(btnDraft) btnDraft.innerText = isSilentAutoSave ? "AUTO-SAVING..." : "SAVING..."; 
+                }
             }
             
             let matchVal, specVal, caliperVal, pickVal, salesDescVal;
 
+            if (!specificItem) {
+                if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-') {
+                    itemToSave.MATCH = document.getElementById(prefix + 'match').value;
+                    itemToSave.SPEC = document.getElementById(prefix + 'spec').value;
+                    itemToSave.CALIPER = document.getElementById(prefix + 'caliper').value;
+                    itemToSave.PICK = document.getElementById(prefix + 'pick').value;
+                    itemToSave.SALES_NOTE = document.getElementById(prefix + 'sales-desc').value.toUpperCase();
+                } else if (prefix === 'req-') {
+                    itemToSave.REQ_MATCH = document.getElementById('req-match').value;
+                    itemToSave.REQ_SPEC = document.getElementById('req-spec').value;
+                    itemToSave.REQ_CALIPER = document.getElementById('req-caliper').value;
+                    itemToSave.REQ_PICK = document.getElementById('req-pick').value;
+                    itemToSave.REQ_SALES_NOTE = document.getElementById('req-sales-desc').value.toUpperCase();
+                    itemToSave.REQ_COMMENTS = document.getElementById('req-comments').value; 
+                } else if (prefix === 'dock-') {
+                    itemToSave.DOCK_SPEC = document.getElementById('dock-spec').value;
+                    itemToSave.DOCK_CALIPER = document.getElementById('dock-caliper').value;
+                    itemToSave.DOCK_NOTE = document.getElementById('dock-sales-desc').value.toUpperCase();
+                }
+            }
+
             if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-') {
-                matchVal = document.getElementById(prefix + 'match').value;
-                specVal = document.getElementById(prefix + 'spec').value;
-                caliperVal = document.getElementById(prefix + 'caliper').value;
-                pickVal = document.getElementById(prefix + 'pick').value;
-                salesDescVal = document.getElementById(prefix + 'sales-desc').value.toUpperCase();
-                
-                activeItem.MATCH = matchVal;
-                activeItem.SPEC = specVal;
-                activeItem.CALIPER = caliperVal;
-                activeItem.PICK = pickVal;
-                activeItem.SALES_NOTE = salesDescVal;
+                matchVal = itemToSave.MATCH;
+                specVal = itemToSave.SPEC;
+                caliperVal = itemToSave.CALIPER;
+                pickVal = itemToSave.PICK;
+                salesDescVal = itemToSave.SALES_NOTE;
             } else {
-                matchVal = activeItem.MATCH;
-                specVal = activeItem.SPEC;
-                caliperVal = activeItem.CALIPER;
-                pickVal = activeItem.PIC_NOTE || activeItem.PICK || ""; 
-                salesDescVal = activeItem.SALES_NOTE;
-            }
-
-            if (prefix === 'req-') {
-                activeItem.REQ_MATCH = document.getElementById('req-match').value;
-                activeItem.REQ_SPEC = document.getElementById('req-spec').value;
-                activeItem.REQ_CALIPER = document.getElementById('req-caliper').value;
-                activeItem.REQ_PICK = document.getElementById('req-pick').value;
-                activeItem.REQ_SALES_NOTE = document.getElementById('req-sales-desc').value.toUpperCase();
-                activeItem.REQ_COMMENTS = document.getElementById('req-comments').value; 
-            }
-
-            if (prefix === 'dock-') {
-                activeItem.DOCK_SPEC = document.getElementById('dock-spec').value;
-                activeItem.DOCK_CALIPER = document.getElementById('dock-caliper').value;
-                activeItem.DOCK_NOTE = document.getElementById('dock-sales-desc').value.toUpperCase();
+                matchVal = itemToSave.MATCH;
+                specVal = itemToSave.SPEC;
+                caliperVal = itemToSave.CALIPER;
+                pickVal = itemToSave.PIC_NOTE || itemToSave.PICK || ""; 
+                salesDescVal = itemToSave.SALES_NOTE;
             }
 
             const payload = {
                 type: "update",
-                id: activeItem.UNIQUE_ID,
+                id: itemToSave.UNIQUE_ID,
                 match: matchVal,
                 spec: specVal,
                 caliper: caliperVal,
                 pick: pickVal,
                 salesDesc: salesDescVal,
-                photoLink: activeItem.SAVED_PHOTO_LINK || "", 
-                photoName: activeItem.SAVED_PHOTO_NAME || "",
-                reqMatch: activeItem.REQ_MATCH || "",
-                reqSpec: activeItem.REQ_SPEC || "",
-                reqCaliper: activeItem.REQ_CALIPER || "",
-                reqPick: activeItem.REQ_PICK || "",
-                reqSalesDesc: activeItem.REQ_SALES_NOTE || "",
-                reqComments: activeItem.REQ_COMMENTS || "", 
-                reqPhotoLink: activeItem.REQ_PHOTO_LINK || "",
-                reqPhotoName: activeItem.REQ_PHOTO_NAME || "",
-                dockSpec: activeItem.DOCK_SPEC || "",
-                dockCaliper: activeItem.DOCK_CALIPER || "",
-                dockNote: activeItem.DOCK_NOTE || "",
-                dockPhotoLink: activeItem.DOCK_PHOTO_LINK || "",
-                dockPhotoName: activeItem.DOCK_PHOTO_NAME || "",
+                photoLink: itemToSave.SAVED_PHOTO_LINK || "", 
+                photoName: itemToSave.SAVED_PHOTO_NAME || "",
+                reqMatch: itemToSave.REQ_MATCH || "",
+                reqSpec: itemToSave.REQ_SPEC || "",
+                reqCaliper: itemToSave.REQ_CALIPER || "",
+                reqPick: itemToSave.REQ_PICK || "",
+                reqSalesDesc: itemToSave.REQ_SALES_NOTE || "",
+                reqComments: itemToSave.REQ_COMMENTS || "", 
+                reqPhotoLink: itemToSave.REQ_PHOTO_LINK || "",
+                reqPhotoName: itemToSave.REQ_PHOTO_NAME || "",
+                dockSpec: itemToSave.DOCK_SPEC || "",
+                dockCaliper: itemToSave.DOCK_CALIPER || "",
+                dockNote: itemToSave.DOCK_NOTE || "",
+                dockPhotoLink: itemToSave.DOCK_PHOTO_LINK || "",
+                dockPhotoName: itemToSave.DOCK_PHOTO_NAME || "",
                 isComplete: isComplete 
             };
 
@@ -2996,31 +3023,37 @@
             })
             .then(res => res.json())
             .then(data => {
-                if(btnDraft) {
-                    if(prefix === 'req-') btnDraft.innerText = "SAVE REQUEST DATA";
-                    else if(prefix === 'dock-') btnDraft.innerText = "SAVE DOCK DATA";
-                    else btnDraft.innerText = "SAVE DRAFT";
+                if (isCurrentView) {
+                    if(btnDraft) {
+                        if(prefix === 'req-') btnDraft.innerText = "SAVE REQUEST DATA";
+                        else if(prefix === 'dock-') btnDraft.innerText = "SAVE DOCK DATA";
+                        else btnDraft.innerText = "SAVE DRAFT";
+                    }
+                    if(btnComp) btnComp.innerText = "MARK COMPLETE";
                 }
-                if(btnComp) btnComp.innerText = "MARK COMPLETE";
                 
                 if(data.status === 'success') {
-                    if (!isSilentAutoSave) {
+                    if (!isSilentAutoSave && isCurrentView) {
                         showToast("Success", isComplete ? "Task Completed!" : "Draft saved to Google Sheet.");
                     }
-                    if (isComplete) {
-                        activeItem.DATE_COMPLETED = new Date().toISOString();
+                    if (isComplete && isCurrentView) {
+                        itemToSave.DATE_COMPLETED = new Date().toISOString();
                         goBackFromDetail();
+                    } else if (isComplete && !isCurrentView) {
+                        itemToSave.DATE_COMPLETED = new Date().toISOString();
                     }
-                } else { showToast("Error", data.message, true); }
+                } else if (isCurrentView) { showToast("Error", data.message, true); }
             })
             .catch(err => {
-                if(btnDraft) {
-                    if(prefix === 'req-') btnDraft.innerText = "SAVE REQUEST DATA";
-                    else if(prefix === 'dock-') btnDraft.innerText = "SAVE DOCK DATA";
-                    else btnDraft.innerText = "SAVE DRAFT";
+                if (isCurrentView) {
+                    if(btnDraft) {
+                        if(prefix === 'req-') btnDraft.innerText = "SAVE REQUEST DATA";
+                        else if(prefix === 'dock-') btnDraft.innerText = "SAVE DOCK DATA";
+                        else btnDraft.innerText = "SAVE DRAFT";
+                    }
+                    if(btnComp) btnComp.innerText = "MARK COMPLETE";
+                    if (!isSilentAutoSave) showToast("Network Error", "Could not reach server.", true);
                 }
-                if(btnComp) btnComp.innerText = "MARK COMPLETE";
-                if (!isSilentAutoSave) showToast("Network Error", "Could not reach server.", true);
             });
         }
     </script>
