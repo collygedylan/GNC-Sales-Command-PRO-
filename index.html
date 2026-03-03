@@ -698,6 +698,22 @@
     <script>
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzhJ_tytv5Rm2ag44liZAU6nsp0lQ7-9PLmjxrcuT1WA1WARubi7NyolYoTZ_qvZmzo/exec";
 
+        // --- WAKE LOCK API (Prevents phone from sleeping during photo uploads) ---
+        let wakeLock = null;
+        async function requestWakeLock() {
+            try {
+                if ('wakeLock' in navigator) {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                }
+            } catch (err) { console.warn("Wake Lock failed: ", err.message); }
+        }
+        function releaseWakeLock() {
+            if (wakeLock !== null) {
+                wakeLock.release().then(() => { wakeLock = null; });
+            }
+        }
+        // -------------------------------------------------------------------------
+
         // --- INDEXED DB SETUP ---
         const DB_NAME = "GNC_Sales_DB";
         const STORE_NAME = "inventory_cache";
@@ -821,7 +837,6 @@
         }
 
         window.onload = function() {
-            // Register Service Worker for Native App Install Experience
             if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.register('sw.js')
                 .then(function(registration) {
@@ -842,13 +857,11 @@
                 return;
             }
 
-            // 🚀 INSTANT LOCAL BYPASS: Skip the slow Google Auth if already cached
             if (localStorage.getItem('gnc_user_v3') === inputUser && localStorage.getItem('gnc_pin_v3') === inputPass) {
                 currentUser = inputUser;
                 currentRole = localStorage.getItem('gnc_role_v3') || 'User';
                 document.getElementById('header-user').innerText = currentUser.toUpperCase();
                 
-                // Immediately unlock UI
                 applyRolePermissions();
                 fetchBackgroundData();
                 return;
@@ -858,7 +871,6 @@
             document.getElementById('loading-spinner').classList.remove('hidden');
             document.getElementById('loading-text').innerText = "Authenticating...";
 
-            // PHASE 1: LIGHTNING FAST AUTHENTICATION
             const authUrl = `${GOOGLE_SCRIPT_URL}?action=auth&username=${encodeURIComponent(inputUser)}&password=${encodeURIComponent(inputPass)}`;
 
             fetch(authUrl)
@@ -868,7 +880,6 @@
                         currentUser = inputUser;
                         currentRole = res.role;
                         
-                        // Cache role for instant bypass next time
                         localStorage.setItem('gnc_role_v3', currentRole);
                         document.getElementById('header-user').innerText = currentUser.toUpperCase();
 
@@ -876,10 +887,7 @@
                             promptToEnableBiometrics(inputUser, inputPass);
                         }
 
-                        // UNLOCK THE APP IMMEDIATELY
                         applyRolePermissions();
-                        
-                        // PHASE 2: INSTANT CACHE LOAD + BACKGROUND SYNC
                         fetchBackgroundData();
                         
                     } else {
@@ -897,10 +905,8 @@
         }
 
         async function fetchBackgroundData() {
-            // 1. Check for local memory cache for INSTANT load
             const cachedRes = await loadFromCache();
             if (cachedRes) {
-                // Wrap in setTimeout to let UI paint unlocking animations first
                 setTimeout(() => {
                     processAndLoadData(cachedRes);
                     showToast("Ready", "Loaded from device memory. Updating in background...", false);
@@ -909,17 +915,15 @@
                 showToast("Welcome!", "Downloading database... (This only happens once)", false);
             }
 
-            // 2. Fetch the highly compressed 2D Array data from Google
             const dataUrl = `${GOOGLE_SCRIPT_URL}?action=getData`;
             
             fetch(dataUrl)
                 .then(response => response.json())
                 .then(res => {
                     if (res.status === 'success') {
-                        // Yield thread so scrolling/animations stay perfectly smooth
                         setTimeout(() => {
-                            processAndLoadData(res); // UPDATE UI
-                            saveToCache(res);        // NON-BLOCKING BACKGROUND SAVE
+                            processAndLoadData(res); 
+                            saveToCache(res);        
                             if(cachedRes) {
                                  showToast("Sync Complete", "Live database updated.", false);
                             } else {
@@ -941,7 +945,6 @@
             if(!compressedData || !compressedData.headers) return [];
             const h = compressedData.headers;
             
-            // PRE-CALCULATE INDEXES ONCE (Extremely Fast)
             const idxMap = {};
             h.forEach((colName, idx) => { idxMap[colName] = idx; });
 
@@ -958,8 +961,10 @@
                     obj[colName] = row[idx]; 
                 });
                 
+                // FORCE UNIQUE ID ASSIGNMENT FOR ALL ARRAYS (Prevents "undefined" mapping bug)
+                obj.UNIQUE_ID = getValFromMap(row, ['UNIQUE ID', 'UNIQUE_ID']) || obj['UNIQUE ID'];
+                
                 if(isMaster) {
-                    obj.UNIQUE_ID = getValFromMap(row, ['UNIQUE ID']);
                     obj.COMMONNAME = getValFromMap(row, ['COMMONNAME']);
                     obj.CONTSIZE = getValFromMap(row, ['CONTSIZE']);
                     obj.LOCATIONCODE = getValFromMap(row, ['LOCATIONCODE']);
@@ -1018,7 +1023,6 @@
         function processAndLoadData(res) {
             salesNotesDict = res.salesNotesMap || {};
             
-            // Map compressed data arrays to Javascript Objects instantly
             fullInventory = mapCompressedToObj(res.data, true).map((item, idx) => {
                 item.DOM_ID = 'fi_' + idx;
                 return item;
@@ -1038,7 +1042,6 @@
             
             reservesInventory = reservesInventory.map((item, idx) => {
                 item.DOM_ID = 'res_' + idx;
-                item.UNIQUE_ID = item.UNIQUE_ID || 'res_uid_' + idx; 
                 
                 let resCode = String(item.ITEMCODE || item.ITEM || "").trim().toUpperCase();
                 let masterItem = fullInventory.find(f => String(f.ITEMCODE || "").trim().toUpperCase() === resCode);
@@ -1352,12 +1355,14 @@
                 bar.classList.remove('hidden');
                 document.getElementById('sel-count').innerText = selectedItems.size;
                 
-                // Hide Assign and Request in Docks View
+                // Hide Assign and Request in BOTH Docks and Reserves Views
                 const isDocksView = !document.getElementById('view-docks').classList.contains('hidden');
+                const isReservesView = !document.getElementById('view-reserves').classList.contains('hidden');
+                
                 const btnAssign = document.getElementById('batch-btn-assign');
                 const btnRequest = document.getElementById('batch-btn-request');
                 
-                if (isDocksView) {
+                if (isDocksView || isReservesView) {
                     if (btnAssign) btnAssign.classList.add('hidden');
                     if (btnRequest) btnRequest.classList.add('hidden');
                 } else {
@@ -1460,7 +1465,6 @@
                 return;
             }
             
-            // UX FIX: Auto-select Request data if copying from Request view
             if (!document.getElementById('view-request').classList.contains('hidden') && action === 'copy') {
                 pendingTabType = 'request';
                 executeBatchAction(action, 'request');
@@ -1509,7 +1513,8 @@
             tempSelectedReqRep = repName;
             document.getElementById('step-1-rep').classList.add('hidden');
             
-            let repReqs = fullInventory.concat(lowStockInventory).concat(reservesInventory)
+            // FIX: Removed reservesInventory
+            let repReqs = fullInventory.concat(lowStockInventory)
                 .filter(i => i.IS_REQUEST && i.REQUESTED_BY === repName && !i.REQ_ARCHIVED);
             
             let uniqueFolders = {};
@@ -1549,24 +1554,17 @@
             }
         }
 
-        // ==========================================================
-        // SMART FILTER: Matches "Abbey Burka" to "Burka, Abbey"
-        // ==========================================================
         function populateCustomerList() {
             const val = document.getElementById('cust-search-input').value.toLowerCase().trim();
             const container = document.getElementById('cust-list-container');
             
             let custSet = new Set();
             
-            let searchParts = tempSelectedReqRep.toUpperCase().split(' ').filter(p => p.trim() !== '');
-            
             const addCusts = (arr) => {
                 arr.forEach(i => {
                     let rName = String(i.SALESREPNAME || i.SALESREP || i['SALES REP'] || "").toUpperCase();
                     
-                    let isMatch = searchParts.length > 0 && searchParts.every(part => rName.includes(part));
-                    
-                    if (isMatch || rName === tempSelectedReqRep.toUpperCase()) {
+                    if (rName.includes(tempSelectedReqRep.toUpperCase())) {
                         let c = String(i.CUSTOMERNAME || i.CUSTOMER || i['CUSTOMER NAME'] || "").trim();
                         let cons = String(i.CONSIGNEENAME || i.CONSIGNEE || i['CONSIGNEE NAME'] || "").trim();
                         
@@ -1631,7 +1629,8 @@
             const uniqueIds = [];
             
             domIds.forEach(dId => {
-                let item = fullInventory.find(i => i.DOM_ID === dId) || lowStockInventory.find(i => i.DOM_ID === dId) || reservesInventory.find(i => i.DOM_ID === dId);
+                // FIX: Removed reservesInventory
+                let item = fullInventory.find(i => i.DOM_ID === dId) || lowStockInventory.find(i => i.DOM_ID === dId);
                 if (item) {
                     item.IS_REQUEST = true; 
                     item.REQUESTED_BY = tempSelectedReqRep; 
@@ -1641,6 +1640,11 @@
                     uniqueIds.push(item.UNIQUE_ID);
                 }
             });
+
+            if (uniqueIds.length === 0) {
+                showToast("Error", "Could not request items. Invalid selection.", true);
+                return;
+            }
 
             showToast("Processing...", `Saving request for ${tempSelectedReqRep}...`, false);
 
@@ -1678,7 +1682,8 @@
         function getSelectedItemsText(tabType) {
             let items = [];
             selectedItems.forEach(domId => {
-                let found = fullInventory.find(i => i.DOM_ID === domId) || lowStockInventory.find(i => i.DOM_ID === domId) || reservesInventory.find(i => i.DOM_ID === domId);
+                // FIX: Removed reservesInventory
+                let found = fullInventory.find(i => i.DOM_ID === domId) || lowStockInventory.find(i => i.DOM_ID === domId);
                 if (found) items.push(found);
             });
 
@@ -1757,12 +1762,18 @@
             let itemsToUpdate = [];
             
             domIds.forEach(dId => {
-                let item = fullInventory.find(i => i.DOM_ID === dId) || lowStockInventory.find(i => i.DOM_ID === dId) || reservesInventory.find(i => i.DOM_ID === dId);
+                // FIX: Removed reservesInventory
+                let item = fullInventory.find(i => i.DOM_ID === dId) || lowStockInventory.find(i => i.DOM_ID === dId);
                 if (item) {
                     uniqueIds.push(item.UNIQUE_ID);
                     itemsToUpdate.push(item);
                 }
             });
+
+            if (uniqueIds.length === 0) {
+                showToast("Error", "Invalid selection for assignment.", true);
+                return;
+            }
             
             fetch(GOOGLE_SCRIPT_URL, {
                 method: 'POST',
@@ -2037,9 +2048,9 @@
         }
 
         function copyFolderData(folderId) {
+            // FIX: Removed reservesInventory
             let items = fullInventory.filter(i => i.REQUEST_FOLDER === folderId)
-                .concat(lowStockInventory.filter(i => i.REQUEST_FOLDER === folderId))
-                .concat(reservesInventory.filter(i => i.REQUEST_FOLDER === folderId));
+                .concat(lowStockInventory.filter(i => i.REQUEST_FOLDER === folderId));
             
             items = items.filter((v,i,a) => a.findIndex(t => (t.DOM_ID === v.DOM_ID)) === i);
 
@@ -2101,7 +2112,6 @@
                     };
                     updateArchive(fullInventory);
                     updateArchive(lowStockInventory);
-                    updateArchive(reservesInventory);
 
                     showToast("Success", "Folder archived!");
                     requestViewLevel = 3; 
@@ -2151,8 +2161,9 @@
 
             let reqItems = fullInventory.filter(i => i.IS_REQUEST === true);
             let reqLowStock = lowStockInventory.filter(i => i.IS_REQUEST === true);
-            let reqReserves = reservesInventory.filter(i => i.IS_REQUEST === true);
-            let combinedReq = [...reqItems, ...reqLowStock, ...reqReserves];
+            
+            // FIX: Removed reqReserves
+            let combinedReq = [...reqItems, ...reqLowStock];
             
             combinedReq = combinedReq.filter((v,i,a) => a.findIndex(t => (t.DOM_ID === v.DOM_ID)) === i && !v.REQ_ARCHIVED);
 
@@ -2197,10 +2208,10 @@
                     let html = `<div class="back-btn" onclick="requestViewLevel=0; renderRequest()"><i class="ph-bold ph-arrow-left"></i> Back to Categories</div>`;
                     
                     salesRepList.forEach(rep => {
-                        let parts = rep.toUpperCase().split(' ').filter(p => p.trim() !== '');
+                        let parts = rep.toUpperCase().split(' ');
                         let count = combinedReq.filter(i => {
                             let matchStr = (i.REQUESTED_BY || i.SALESREP || i.SALESREPNAME || i['SALES REP'] || i.ASSIGNEDTO || "").toUpperCase();
-                            return parts.length > 0 && parts.every(part => matchStr.includes(part));
+                            return matchStr.includes(parts[0]) && matchStr.includes(parts[1]);
                         }).length;
                         
                         html += `<div class="drill-item" onclick="selectRequestRep('${rep}')"><span class="font-bold text-lg">${rep} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
@@ -2229,10 +2240,10 @@
             if (requestViewLevel === 2 && requestFilterMode === 'reps') {
                 crumb.innerText = `${selectedReqRep}`;
                 
-                let parts = selectedReqRep.toUpperCase().split(' ').filter(p => p.trim() !== '');
+                let parts = selectedReqRep.toUpperCase().split(' ');
                 let repItems = combinedReq.filter(i => {
                     let matchStr = (i.REQUESTED_BY || i.SALESREP || i.SALESREPNAME || i['SALES REP'] || i.ASSIGNEDTO || "").toUpperCase();
-                    return parts.length > 0 && parts.every(part => matchStr.includes(part));
+                    return matchStr.includes(parts[0]) && matchStr.includes(parts[1]);
                 });
 
                 let repPending = repItems.filter(i => !isReqCompleted(i));
@@ -2255,10 +2266,10 @@
             if (requestViewLevel === 3 && requestFilterMode === 'reps') {
                 crumb.innerText = `${selectedReqRep} / ${selectedReqRepStatus} / Folders`;
                 
-                let parts = selectedReqRep.toUpperCase().split(' ').filter(p => p.trim() !== '');
+                let parts = selectedReqRep.toUpperCase().split(' ');
                 let repItems = combinedReq.filter(i => {
                     let matchStr = (i.REQUESTED_BY || i.SALESREP || i.SALESREPNAME || i['SALES REP'] || i.ASSIGNEDTO || "").toUpperCase();
-                    return parts.length > 0 && parts.every(part => matchStr.includes(part));
+                    return matchStr.includes(parts[0]) && matchStr.includes(parts[1]);
                 });
 
                 let displayItems = selectedReqRepStatus === 'pending' ? repItems.filter(i => !isReqCompleted(i)) : repItems.filter(i => isReqCompleted(i));
@@ -2301,10 +2312,10 @@
             if (requestViewLevel === 4 && requestFilterMode === 'reps') {
                 crumb.innerText = `${selectedReqRep} / ${selectedReqRepStatus} / Folder`;
                 
-                let parts = selectedReqRep.toUpperCase().split(' ').filter(p => p.trim() !== '');
+                let parts = selectedReqRep.toUpperCase().split(' ');
                 let repItems = combinedReq.filter(i => {
                     let matchStr = (i.REQUESTED_BY || i.SALESREP || i.SALESREPNAME || i['SALES REP'] || i.ASSIGNEDTO || "").toUpperCase();
-                    return parts.length > 0 && parts.every(part => matchStr.includes(part));
+                    return matchStr.includes(parts[0]) && matchStr.includes(parts[1]);
                 });
 
                 let displayItems = selectedReqRepStatus === 'pending' ? repItems.filter(i => !isReqCompleted(i)) : repItems.filter(i => isReqCompleted(i));
@@ -2661,6 +2672,7 @@
 
         function openDetail(uniqueId, sourceView) {
             lastView = sourceView;
+            requestWakeLock(); // ACTIVATE SCREEN AWAKE FOR UPLOADS
             
             activeItem = fullInventory.find(i => i.UNIQUE_ID === uniqueId);
             if (!activeItem) activeItem = lowStockInventory.find(i => i.UNIQUE_ID === uniqueId);
@@ -2684,7 +2696,6 @@
             document.getElementById('ov-season').innerText = activeItem.SEASONSUPPLY || "--";
             document.getElementById('ov-prior').innerText = activeItem.PRIORITY || "--";
 
-            // Sync standard field values into all 3 inputs so they stay perfectly in sync
             const standardPrefixes = ['ssn-', 'lsn-', 'na-'];
             standardPrefixes.forEach(p => {
                 document.getElementById(p + 'match').value = activeItem.MATCH || activeItem.MATCHPCT || "";
@@ -2694,7 +2705,6 @@
                 document.getElementById(p + 'caliper').value = activeItem.CALIPER || "";
             });
             
-            // Sync request field values
             document.getElementById('req-match').value = activeItem.REQ_MATCH || "";
             document.getElementById('req-spec').value = activeItem.REQ_SPEC || "";
             document.getElementById('req-pick').value = activeItem.REQ_PICK || "";
@@ -2702,12 +2712,10 @@
             document.getElementById('req-comments').value = activeItem.REQ_COMMENTS || ""; 
             document.getElementById('req-caliper').value = activeItem.REQ_CALIPER || "";
 
-            // Sync docks field values
             document.getElementById('dock-spec').value = activeItem.DOCK_SPEC || activeItem.SPEC || "";
             document.getElementById('dock-caliper').value = activeItem.DOCK_CALIPER || activeItem.CALIPER || "";
             document.getElementById('dock-sales-desc').value = activeItem.DOCK_NOTE || "";
 
-            // Caliper logic
             const caliperSizes = ["7DP", "#7", "#10", "#15", "#25", "#45"];
             if (caliperSizes.includes(activeItem.CONTSIZE)) {
                 ['ssn-', 'lsn-', 'na-', 'req-'].forEach(p => {
@@ -2719,7 +2727,6 @@
                 });
             }
 
-            // SPECIAL DOCK CALIPER LOGIC
             const isTree = activeItem.PLANTGROUPCODE && activeItem.PLANTGROUPCODE.includes('330_TREES');
             if (isTree && caliperSizes.includes(activeItem.CONTSIZE)) {
                 document.getElementById('dock-container-caliper').classList.remove('hidden');
@@ -2732,7 +2739,6 @@
 
             renderPhotoPreview();
 
-            // 1. Hide all data entry tabs by default
             ['season', 'location', 'request', 'notes', 'docks'].forEach(t => {
                 let el = document.getElementById('dtab-' + t);
                 if (el) el.classList.add('hidden');
@@ -2740,7 +2746,6 @@
 
             let defaultTab = 'overview';
 
-            // 2. Apply explicit visibility rules
             if (sourceView === 'tasks') {
                 if (activeTaskTab === 'season') {
                     document.getElementById('dtab-season').classList.remove('hidden');
@@ -2759,15 +2764,12 @@
                 defaultTab = 'docks';
             }
             else { 
-                // This covers Drive Mode, Sales Office, Low Stock, Reserves, Review
                 if (currentRole === 'Admin') {
-                    // Managers see all tabs (except Docks) in Drive mode
                     ['season', 'location', 'request', 'notes'].forEach(t => {
                         let el = document.getElementById('dtab-' + t);
                         if (el) el.classList.remove('hidden');
                     });
                 } else {
-                    // Regular users see only standard Notes & Actions
                     document.getElementById('dtab-notes').classList.remove('hidden');
                 }
                 defaultTab = 'overview';
@@ -2793,6 +2795,7 @@
         }
 
         function goBackFromDetail() {
+            releaseWakeLock(); // RELEASE AWAKE STATE
             document.getElementById('view-detail').classList.add('hidden');
             document.getElementById('view-' + lastView).classList.remove('hidden');
             reRenderCurrentView();
@@ -2827,7 +2830,6 @@
                 const img = new Image();
                 img.onload = function() {
                     const canvas = document.createElement('canvas');
-                    // OPTIMIZATION: Reduced from 1024 to 800. Cuts file size by ~40% for faster cell uploads
                     const MAX_WIDTH = 800; 
                     const scale = img.width > MAX_WIDTH ? (MAX_WIDTH / img.width) : 1;
                     
@@ -2836,7 +2838,6 @@
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
                     
-                    // OPTIMIZATION: Reduced quality from 0.7 to 0.6. Invisible to human eye, huge speed boost.
                     const dataUrl = canvas.toDataURL('image/jpeg', 0.6); 
                     const base64Data = dataUrl.split(',')[1];
                     const dateStr = new Date().toISOString().split('T')[0];
@@ -3038,11 +3039,9 @@
             }
         }
 
-        // --- DEBOUNCED AUTO-SAVE ENGINE ---
         let autoSaveTimer = null;
 
         function saveData(isComplete = false, prefix, isSilentAutoSave = false, specificItem = null) {
-            // 1. Clear any pending auto-saves so we don't spam Google's servers
             if (autoSaveTimer) {
                 clearTimeout(autoSaveTimer);
                 autoSaveTimer = null;
@@ -3063,28 +3062,33 @@
                 }
             }
 
-            // 2. The Execution block (wrapped to allow for delay)
             const executeSave = () => {
                 let matchVal, specVal, caliperVal, pickVal, salesDescVal;
 
+                // HELPER: Safely get values, fallback to the item's existing data if not found.
+                const getVal = (id, fallback) => {
+                    const el = document.getElementById(id);
+                    return el ? el.value : (fallback || "");
+                };
+
                 if (!specificItem) {
                     if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-') {
-                        itemToSave.MATCH = document.getElementById(prefix + 'match').value;
-                        itemToSave.SPEC = document.getElementById(prefix + 'spec').value;
-                        itemToSave.CALIPER = document.getElementById(prefix + 'caliper').value;
-                        itemToSave.PICK = document.getElementById(prefix + 'pick').value;
-                        itemToSave.SALES_NOTE = document.getElementById(prefix + 'sales-desc').value.toUpperCase();
+                        itemToSave.MATCH = getVal(prefix + 'match', itemToSave.MATCH || itemToSave.MATCHPCT);
+                        itemToSave.SPEC = getVal(prefix + 'spec', itemToSave.SPEC);
+                        itemToSave.CALIPER = getVal(prefix + 'caliper', itemToSave.CALIPER);
+                        itemToSave.PICK = getVal(prefix + 'pick', itemToSave.PIC_NOTE || itemToSave.PICKNOTE || itemToSave.PICK);
+                        itemToSave.SALES_NOTE = getVal(prefix + 'sales-desc', itemToSave.SALES_NOTE || itemToSave.SALESNOTE || itemToSave.SALESDESC).toUpperCase();
                     } else if (prefix === 'req-') {
-                        itemToSave.REQ_MATCH = document.getElementById('req-match').value;
-                        itemToSave.REQ_SPEC = document.getElementById('req-spec').value;
-                        itemToSave.REQ_CALIPER = document.getElementById('req-caliper').value;
-                        itemToSave.REQ_PICK = document.getElementById('req-pick').value;
-                        itemToSave.REQ_SALES_NOTE = document.getElementById('req-sales-desc').value.toUpperCase();
-                        itemToSave.REQ_COMMENTS = document.getElementById('req-comments').value; 
+                        itemToSave.REQ_MATCH = getVal('req-match', itemToSave.REQ_MATCH);
+                        itemToSave.REQ_SPEC = getVal('req-spec', itemToSave.REQ_SPEC);
+                        itemToSave.REQ_CALIPER = getVal('req-caliper', itemToSave.REQ_CALIPER);
+                        itemToSave.REQ_PICK = getVal('req-pick', itemToSave.REQ_PICK);
+                        itemToSave.REQ_SALES_NOTE = getVal('req-sales-desc', itemToSave.REQ_SALES_NOTE).toUpperCase();
+                        itemToSave.REQ_COMMENTS = getVal('req-comments', itemToSave.REQ_COMMENTS); 
                     } else if (prefix === 'dock-') {
-                        itemToSave.DOCK_SPEC = document.getElementById('dock-spec').value;
-                        itemToSave.DOCK_CALIPER = document.getElementById('dock-caliper').value;
-                        itemToSave.DOCK_NOTE = document.getElementById('dock-sales-desc').value.toUpperCase();
+                        itemToSave.DOCK_SPEC = getVal('dock-spec', itemToSave.DOCK_SPEC);
+                        itemToSave.DOCK_CALIPER = getVal('dock-caliper', itemToSave.DOCK_CALIPER);
+                        itemToSave.DOCK_NOTE = getVal('dock-sales-desc', itemToSave.DOCK_NOTE).toUpperCase();
                     }
                 }
 
@@ -3154,7 +3158,7 @@
                         } else if (isComplete && !isCurrentView) {
                             itemToSave.DATE_COMPLETED = new Date().toISOString();
                         }
-                    } else if (isCurrentView) { showToast("Error", data.message, true); }
+                    } else if (isCurrentView) { showToast("Error", data.message || "Failed to save.", true); }
                 })
                 .catch(err => {
                     if (isCurrentView) {
@@ -3169,14 +3173,11 @@
                 });
             };
 
-            // 3. If it's a silent auto-save (just clicking out of a box), wait 1000ms. 
-            //    If they type somewhere else in that 1000ms, it resets, bundling them together.
             if (isSilentAutoSave && !isComplete && !specificItem) {
                 autoSaveTimer = setTimeout(() => {
                     executeSave();
                 }, 1000);
             } else {
-                // If they explicitly clicked a button or uploaded a photo, run instantly
                 executeSave();
             }
         }
