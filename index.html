@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GNC SALES PRO</title>
+    <title>GNC SALES/INV</title>
     
     <meta name="theme-color" content="#007a4d">
     <link rel="manifest" href="manifest.json">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="application-name" content="GNC PRO">
+    <meta name="application-name" content="GNC SALES/INV">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-title" content="GNC PRO">
+    <meta name="apple-mobile-web-app-title" content="GNC SALES/INV">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="icon" type="image/png" href="GNC LOGO.png">
     <link rel="apple-touch-icon" href="GNC LOGO.png">
@@ -92,7 +92,7 @@
         <div class="login-card">
             <div class="flex flex-col items-center mb-8 w-full relative">
                 <img src="Greenleaf%20Logo.png" alt="Greenleaf Logo" class="h-20 mb-4 object-contain drop-shadow-md" onerror="this.style.display='none'">
-                <div class="text-3xl text-[#007a4d] font-black tracking-tighter mb-1">GNC SALES PRO</div>
+                <div class="text-3xl text-[#007a4d] font-black tracking-tighter mb-1">GNC SALES/INV</div>
                 
                 <div class="flex flex-col items-center gap-0.5 mt-5">
                     <span class="text-[9px] font-bold text-gray-400 uppercase tracking-[0.3em]">Powered By</span>
@@ -183,7 +183,7 @@
                 <i class="ph-bold ph-list menu-btn text-2xl cursor-pointer" onclick="toggleMenu()"></i>
                 <div class="flex flex-col">
                     <div class="font-bold text-lg leading-tight"><span id="header-user">User</span></div>
-                    <div class="text-[10px] opacity-80 leading-tight">GNC SALES PRO</div>
+                    <div class="text-[10px] opacity-80 leading-tight">GNC SALES/INV</div>
                 </div>
             </div>
         </header>
@@ -203,7 +203,7 @@
             <div class="drawer-item text-red-600 font-bold admin-only" onclick="switchView('low-stock'); toggleMenu();"><i class="ph-bold ph-trend-down"></i> Low Stock List</div>
             <div class="drawer-item text-yellow-600 font-bold admin-only" onclick="switchView('review'); toggleMenu();"><i class="ph-bold ph-warning-circle"></i> Manager Review</div>
             <hr class="my-2">
-            <div class="drawer-item text-red-600" onclick="location.reload()"><i class="ph-bold ph-sign-out"></i> Logout</div>
+            <div class="drawer-item text-red-600" onclick="localStorage.clear(); sessionStorage.clear(); indexedDB.deleteDatabase('GNC_Sales_DB'); location.reload();"><i class="ph-bold ph-sign-out"></i> Logout</div>
         </div>
 
         <div id="main-scroll-area" class="flex-grow overflow-y-auto p-4 pb-40 relative">
@@ -217,7 +217,7 @@
                         <img src="Greenleaf%20Logo.png" alt="Greenleaf Logo" class="h-11 object-contain" onerror="this.style.display='none'">
                     </div>
                     
-                    <h1 class="text-2xl font-black tracking-tight mb-1 z-10 relative">GNC SALES PRO</h1>
+                    <h1 class="text-2xl font-black tracking-tight mb-1 z-10 relative">GNC SALES/INV</h1>
                     <p class="text-green-100 text-[10px] font-bold mb-5 uppercase tracking-[0.2em] z-10 relative">Dashboard</p>
                     
                     <div class="flex flex-col items-center pt-4 border-t border-white/20 w-full mt-1 z-10 relative">
@@ -1083,7 +1083,7 @@
                     await navigator.credentials.create({
                         publicKey: {
                             challenge: challenge,
-                            rp: { name: "GNC SALES PRO", id: window.location.hostname },
+                            rp: { name: "GNC SALES/INV", id: window.location.hostname },
                             user: { id: userId, name: user, displayName: user.toUpperCase() },
                             pubKeyCredParams: [{type: "public-key", alg: -7}, {type: "public-key", alg: -257}],
                             authenticatorSelection: { 
@@ -2595,6 +2595,36 @@
             }
         }
 
+        function filterDropdown(inputId, listId) {
+            const val = document.getElementById(inputId).value.toLowerCase().trim();
+            const list = document.getElementById(listId);
+            
+            const plantName = activeItem ? activeItem.COMMONNAME.toUpperCase() : "";
+            const suggestedNotes = salesNotesDict[plantName] || [];
+
+            let html = "";
+
+            if (suggestedNotes.length > 0) {
+                html += `<div class="px-3 py-1 bg-green-100 text-green-800 text-[10px] font-bold uppercase tracking-wider border-b border-green-200">Recommended for ${plantName}</div>`;
+                suggestedNotes.forEach(note => {
+                    if (note.toLowerCase().includes(val) || val === "") {
+                        html += `<div class="px-3 py-3 border-b border-gray-100 hover:bg-green-50 active:bg-green-100 cursor-pointer text-sm font-semibold text-green-700" onmousedown="applyQuickNote('${note.replace(/'/g, "\\'")}', '${inputId}', '${listId}')">${note}</div>`;
+                    }
+                });
+            }
+
+            const genericNotes = ["Needs weeded", "Needs pruned", "Yellowing leaves", "Too small", "Ready to ship", "Hold for next season", "Poor structure", "Needs spacing"];
+            html += `<div class="px-3 py-1 bg-gray-100 text-gray-600 text-[10px] font-bold uppercase tracking-wider border-b border-gray-200">Common Notes</div>`;
+            genericNotes.forEach(note => {
+                if (note.toLowerCase().includes(val) || val === "") {
+                    html += `<div class="px-3 py-3 border-b border-gray-100 hover:bg-gray-50 active:bg-gray-200 cursor-pointer text-sm font-medium text-gray-700" onmousedown="applyQuickNote('${note.replace(/'/g, "\\'")}', '${inputId}', '${listId}')">${note}</div>`;
+                }
+            });
+
+            list.innerHTML = html;
+            list.classList.remove('hidden');
+        }
+
         function applyQuickNote(val, targetInputId, selectId) {
             if (!val) return;
             const targetInput = document.getElementById(targetInputId);
@@ -2604,6 +2634,22 @@
                 targetInput.value = val.toUpperCase();
             }
             document.getElementById(selectId).value = "";
+        }
+
+        function appendSpecToDesc(prefix) {
+            const specVal = document.getElementById(prefix + 'spec').value;
+            const caliperVal = document.getElementById(prefix + 'caliper').value;
+            const descInput = document.getElementById(prefix + 'sales-desc');
+            
+            let appendStr = "";
+            if (specVal && caliperVal) appendStr = ` (${specVal} / ${caliperVal})`;
+            else if (specVal) appendStr = ` (${specVal})`;
+            else if (caliperVal) appendStr = ` (${caliperVal})`;
+
+            if (appendStr !== "") {
+                descInput.value = (descInput.value + appendStr).toUpperCase();
+                saveData(false, prefix, true);
+            }
         }
 
         function openDetail(uniqueId, sourceView) {
@@ -2764,6 +2810,7 @@
             document.getElementById('expand-content').innerHTML = html;
         }
 
+        // --- FAST COMPRESSION PHOTO UPLOAD ---
         function handlePhotoUpload(input, prefix) {
             if(!input.files || input.files.length === 0) return;
             const file = input.files[0];
@@ -2773,7 +2820,8 @@
                 const img = new Image();
                 img.onload = function() {
                     const canvas = document.createElement('canvas');
-                    const MAX_WIDTH = 1024; 
+                    // OPTIMIZATION: Reduced from 1024 to 800. Cuts file size by ~40% for faster cell uploads
+                    const MAX_WIDTH = 800; 
                     const scale = img.width > MAX_WIDTH ? (MAX_WIDTH / img.width) : 1;
                     
                     canvas.width = img.width * scale;
@@ -2781,7 +2829,8 @@
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
                     
-                    const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+                    // OPTIMIZATION: Reduced quality from 0.7 to 0.6. Invisible to human eye, huge speed boost.
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.6); 
                     const base64Data = dataUrl.split(',')[1];
                     const dateStr = new Date().toISOString().split('T')[0];
                     
@@ -2982,7 +3031,16 @@
             }
         }
 
+        // --- DEBOUNCED AUTO-SAVE ENGINE ---
+        let autoSaveTimer = null;
+
         function saveData(isComplete = false, prefix, isSilentAutoSave = false, specificItem = null) {
+            // 1. Clear any pending auto-saves so we don't spam Google's servers
+            if (autoSaveTimer) {
+                clearTimeout(autoSaveTimer);
+                autoSaveTimer = null;
+            }
+
             let itemToSave = specificItem || activeItem;
             if (!itemToSave) return;
             
@@ -2997,108 +3055,123 @@
                     if(btnDraft) btnDraft.innerText = isSilentAutoSave ? "AUTO-SAVING..." : "SAVING..."; 
                 }
             }
-            
-            let matchVal, specVal, caliperVal, pickVal, salesDescVal;
 
-            if (!specificItem) {
-                if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-') {
-                    itemToSave.MATCH = document.getElementById(prefix + 'match').value;
-                    itemToSave.SPEC = document.getElementById(prefix + 'spec').value;
-                    itemToSave.CALIPER = document.getElementById(prefix + 'caliper').value;
-                    itemToSave.PICK = document.getElementById(prefix + 'pick').value;
-                    itemToSave.SALES_NOTE = document.getElementById(prefix + 'sales-desc').value.toUpperCase();
-                } else if (prefix === 'req-') {
-                    itemToSave.REQ_MATCH = document.getElementById('req-match').value;
-                    itemToSave.REQ_SPEC = document.getElementById('req-spec').value;
-                    itemToSave.REQ_CALIPER = document.getElementById('req-caliper').value;
-                    itemToSave.REQ_PICK = document.getElementById('req-pick').value;
-                    itemToSave.REQ_SALES_NOTE = document.getElementById('req-sales-desc').value.toUpperCase();
-                    itemToSave.REQ_COMMENTS = document.getElementById('req-comments').value; 
-                } else if (prefix === 'dock-') {
-                    itemToSave.DOCK_SPEC = document.getElementById('dock-spec').value;
-                    itemToSave.DOCK_CALIPER = document.getElementById('dock-caliper').value;
-                    itemToSave.DOCK_NOTE = document.getElementById('dock-sales-desc').value.toUpperCase();
+            // 2. The Execution block (wrapped to allow for delay)
+            const executeSave = () => {
+                let matchVal, specVal, caliperVal, pickVal, salesDescVal;
+
+                if (!specificItem) {
+                    if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-') {
+                        itemToSave.MATCH = document.getElementById(prefix + 'match').value;
+                        itemToSave.SPEC = document.getElementById(prefix + 'spec').value;
+                        itemToSave.CALIPER = document.getElementById(prefix + 'caliper').value;
+                        itemToSave.PICK = document.getElementById(prefix + 'pick').value;
+                        itemToSave.SALES_NOTE = document.getElementById(prefix + 'sales-desc').value.toUpperCase();
+                    } else if (prefix === 'req-') {
+                        itemToSave.REQ_MATCH = document.getElementById('req-match').value;
+                        itemToSave.REQ_SPEC = document.getElementById('req-spec').value;
+                        itemToSave.REQ_CALIPER = document.getElementById('req-caliper').value;
+                        itemToSave.REQ_PICK = document.getElementById('req-pick').value;
+                        itemToSave.REQ_SALES_NOTE = document.getElementById('req-sales-desc').value.toUpperCase();
+                        itemToSave.REQ_COMMENTS = document.getElementById('req-comments').value; 
+                    } else if (prefix === 'dock-') {
+                        itemToSave.DOCK_SPEC = document.getElementById('dock-spec').value;
+                        itemToSave.DOCK_CALIPER = document.getElementById('dock-caliper').value;
+                        itemToSave.DOCK_NOTE = document.getElementById('dock-sales-desc').value.toUpperCase();
+                    }
                 }
-            }
 
-            if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-') {
-                matchVal = itemToSave.MATCH;
-                specVal = itemToSave.SPEC;
-                caliperVal = itemToSave.CALIPER;
-                pickVal = itemToSave.PICK;
-                salesDescVal = itemToSave.SALES_NOTE;
-            } else {
-                matchVal = itemToSave.MATCH;
-                specVal = itemToSave.SPEC;
-                caliperVal = itemToSave.CALIPER;
-                pickVal = itemToSave.PIC_NOTE || itemToSave.PICK || ""; 
-                salesDescVal = itemToSave.SALES_NOTE;
-            }
+                if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-') {
+                    matchVal = itemToSave.MATCH;
+                    specVal = itemToSave.SPEC;
+                    caliperVal = itemToSave.CALIPER;
+                    pickVal = itemToSave.PICK;
+                    salesDescVal = itemToSave.SALES_NOTE;
+                } else {
+                    matchVal = itemToSave.MATCH;
+                    specVal = itemToSave.SPEC;
+                    caliperVal = itemToSave.CALIPER;
+                    pickVal = itemToSave.PIC_NOTE || itemToSave.PICK || ""; 
+                    salesDescVal = itemToSave.SALES_NOTE;
+                }
 
-            const payload = {
-                type: "update",
-                id: itemToSave.UNIQUE_ID,
-                match: matchVal,
-                spec: specVal,
-                caliper: caliperVal,
-                pick: pickVal,
-                salesDesc: salesDescVal,
-                photoLink: itemToSave.SAVED_PHOTO_LINK || "", 
-                photoName: itemToSave.SAVED_PHOTO_NAME || "",
-                reqMatch: itemToSave.REQ_MATCH || "",
-                reqSpec: itemToSave.REQ_SPEC || "",
-                reqCaliper: itemToSave.REQ_CALIPER || "",
-                reqPick: itemToSave.REQ_PICK || "",
-                reqSalesDesc: itemToSave.REQ_SALES_NOTE || "",
-                reqComments: itemToSave.REQ_COMMENTS || "", 
-                reqPhotoLink: itemToSave.REQ_PHOTO_LINK || "",
-                reqPhotoName: itemToSave.REQ_PHOTO_NAME || "",
-                dockSpec: itemToSave.DOCK_SPEC || "",
-                dockCaliper: itemToSave.DOCK_CALIPER || "",
-                dockNote: itemToSave.DOCK_NOTE || "",
-                dockPhotoLink: itemToSave.DOCK_PHOTO_LINK || "",
-                dockPhotoName: itemToSave.DOCK_PHOTO_NAME || "",
-                isComplete: isComplete 
+                const payload = {
+                    type: "update",
+                    id: itemToSave.UNIQUE_ID,
+                    match: matchVal,
+                    spec: specVal,
+                    caliper: caliperVal,
+                    pick: pickVal,
+                    salesDesc: salesDescVal,
+                    photoLink: itemToSave.SAVED_PHOTO_LINK || "", 
+                    photoName: itemToSave.SAVED_PHOTO_NAME || "",
+                    reqMatch: itemToSave.REQ_MATCH || "",
+                    reqSpec: itemToSave.REQ_SPEC || "",
+                    reqCaliper: itemToSave.REQ_CALIPER || "",
+                    reqPick: itemToSave.REQ_PICK || "",
+                    reqSalesDesc: itemToSave.REQ_SALES_NOTE || "",
+                    reqComments: itemToSave.REQ_COMMENTS || "", 
+                    reqPhotoLink: itemToSave.REQ_PHOTO_LINK || "",
+                    reqPhotoName: itemToSave.REQ_PHOTO_NAME || "",
+                    dockSpec: itemToSave.DOCK_SPEC || "",
+                    dockCaliper: itemToSave.DOCK_CALIPER || "",
+                    dockNote: itemToSave.DOCK_NOTE || "",
+                    dockPhotoLink: itemToSave.DOCK_PHOTO_LINK || "",
+                    dockPhotoName: itemToSave.DOCK_PHOTO_NAME || "",
+                    isComplete: isComplete,
+                    isSilent: isSilentAutoSave
+                };
+
+                fetch(GOOGLE_SCRIPT_URL, {
+                    method: "POST",
+                    body: JSON.stringify(payload)
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (isCurrentView) {
+                        if(btnDraft) {
+                            if(prefix === 'req-') btnDraft.innerText = "SAVE REQUEST DATA";
+                            else if(prefix === 'dock-') btnDraft.innerText = "SAVE DOCK DATA";
+                            else btnDraft.innerText = "SAVE DRAFT";
+                        }
+                        if(btnComp) btnComp.innerText = "MARK COMPLETE";
+                    }
+                    
+                    if(data.status === 'success') {
+                        if (!isSilentAutoSave && isCurrentView) {
+                            showToast("Success", isComplete ? "Task Completed!" : "Draft saved to Google Sheet.");
+                        }
+                        if (isComplete && isCurrentView) {
+                            itemToSave.DATE_COMPLETED = new Date().toISOString();
+                            goBackFromDetail();
+                        } else if (isComplete && !isCurrentView) {
+                            itemToSave.DATE_COMPLETED = new Date().toISOString();
+                        }
+                    } else if (isCurrentView) { showToast("Error", data.message, true); }
+                })
+                .catch(err => {
+                    if (isCurrentView) {
+                        if(btnDraft) {
+                            if(prefix === 'req-') btnDraft.innerText = "SAVE REQUEST DATA";
+                            else if(prefix === 'dock-') btnDraft.innerText = "SAVE DOCK DATA";
+                            else btnDraft.innerText = "SAVE DRAFT";
+                        }
+                        if(btnComp) btnComp.innerText = "MARK COMPLETE";
+                        if (!isSilentAutoSave) showToast("Network Error", "Could not reach server.", true);
+                    }
+                });
             };
 
-            fetch(GOOGLE_SCRIPT_URL, {
-                method: "POST",
-                body: JSON.stringify(payload)
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (isCurrentView) {
-                    if(btnDraft) {
-                        if(prefix === 'req-') btnDraft.innerText = "SAVE REQUEST DATA";
-                        else if(prefix === 'dock-') btnDraft.innerText = "SAVE DOCK DATA";
-                        else btnDraft.innerText = "SAVE DRAFT";
-                    }
-                    if(btnComp) btnComp.innerText = "MARK COMPLETE";
-                }
-                
-                if(data.status === 'success') {
-                    if (!isSilentAutoSave && isCurrentView) {
-                        showToast("Success", isComplete ? "Task Completed!" : "Draft saved to Google Sheet.");
-                    }
-                    if (isComplete && isCurrentView) {
-                        itemToSave.DATE_COMPLETED = new Date().toISOString();
-                        goBackFromDetail();
-                    } else if (isComplete && !isCurrentView) {
-                        itemToSave.DATE_COMPLETED = new Date().toISOString();
-                    }
-                } else if (isCurrentView) { showToast("Error", data.message, true); }
-            })
-            .catch(err => {
-                if (isCurrentView) {
-                    if(btnDraft) {
-                        if(prefix === 'req-') btnDraft.innerText = "SAVE REQUEST DATA";
-                        else if(prefix === 'dock-') btnDraft.innerText = "SAVE DOCK DATA";
-                        else btnDraft.innerText = "SAVE DRAFT";
-                    }
-                    if(btnComp) btnComp.innerText = "MARK COMPLETE";
-                    if (!isSilentAutoSave) showToast("Network Error", "Could not reach server.", true);
-                }
-            });
+            // 3. If it's a silent auto-save (just clicking out of a box), wait 1000ms. 
+            //    If they type somewhere else in that 1000ms, it resets, bundling them together.
+            if (isSilentAutoSave && !isComplete && !specificItem) {
+                autoSaveTimer = setTimeout(() => {
+                    executeSave();
+                }, 1000);
+            } else {
+                // If they explicitly clicked a button or uploaded a photo, run instantly
+                executeSave();
+            }
         }
     </script>
 </body>
