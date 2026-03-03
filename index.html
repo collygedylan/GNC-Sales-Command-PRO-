@@ -1549,17 +1549,24 @@
             }
         }
 
+        // ==========================================================
+        // SMART FILTER: Matches "Abbey Burka" to "Burka, Abbey"
+        // ==========================================================
         function populateCustomerList() {
             const val = document.getElementById('cust-search-input').value.toLowerCase().trim();
             const container = document.getElementById('cust-list-container');
             
             let custSet = new Set();
             
+            let searchParts = tempSelectedReqRep.toUpperCase().split(' ').filter(p => p.trim() !== '');
+            
             const addCusts = (arr) => {
                 arr.forEach(i => {
                     let rName = String(i.SALESREPNAME || i.SALESREP || i['SALES REP'] || "").toUpperCase();
                     
-                    if (rName.includes(tempSelectedReqRep.toUpperCase())) {
+                    let isMatch = searchParts.length > 0 && searchParts.every(part => rName.includes(part));
+                    
+                    if (isMatch || rName === tempSelectedReqRep.toUpperCase()) {
                         let c = String(i.CUSTOMERNAME || i.CUSTOMER || i['CUSTOMER NAME'] || "").trim();
                         let cons = String(i.CONSIGNEENAME || i.CONSIGNEE || i['CONSIGNEE NAME'] || "").trim();
                         
@@ -2190,10 +2197,10 @@
                     let html = `<div class="back-btn" onclick="requestViewLevel=0; renderRequest()"><i class="ph-bold ph-arrow-left"></i> Back to Categories</div>`;
                     
                     salesRepList.forEach(rep => {
-                        let parts = rep.toUpperCase().split(' ');
+                        let parts = rep.toUpperCase().split(' ').filter(p => p.trim() !== '');
                         let count = combinedReq.filter(i => {
                             let matchStr = (i.REQUESTED_BY || i.SALESREP || i.SALESREPNAME || i['SALES REP'] || i.ASSIGNEDTO || "").toUpperCase();
-                            return matchStr.includes(parts[0]) && matchStr.includes(parts[1]);
+                            return parts.length > 0 && parts.every(part => matchStr.includes(part));
                         }).length;
                         
                         html += `<div class="drill-item" onclick="selectRequestRep('${rep}')"><span class="font-bold text-lg">${rep} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
@@ -2222,10 +2229,10 @@
             if (requestViewLevel === 2 && requestFilterMode === 'reps') {
                 crumb.innerText = `${selectedReqRep}`;
                 
-                let parts = selectedReqRep.toUpperCase().split(' ');
+                let parts = selectedReqRep.toUpperCase().split(' ').filter(p => p.trim() !== '');
                 let repItems = combinedReq.filter(i => {
                     let matchStr = (i.REQUESTED_BY || i.SALESREP || i.SALESREPNAME || i['SALES REP'] || i.ASSIGNEDTO || "").toUpperCase();
-                    return matchStr.includes(parts[0]) && matchStr.includes(parts[1]);
+                    return parts.length > 0 && parts.every(part => matchStr.includes(part));
                 });
 
                 let repPending = repItems.filter(i => !isReqCompleted(i));
@@ -2248,10 +2255,10 @@
             if (requestViewLevel === 3 && requestFilterMode === 'reps') {
                 crumb.innerText = `${selectedReqRep} / ${selectedReqRepStatus} / Folders`;
                 
-                let parts = selectedReqRep.toUpperCase().split(' ');
+                let parts = selectedReqRep.toUpperCase().split(' ').filter(p => p.trim() !== '');
                 let repItems = combinedReq.filter(i => {
                     let matchStr = (i.REQUESTED_BY || i.SALESREP || i.SALESREPNAME || i['SALES REP'] || i.ASSIGNEDTO || "").toUpperCase();
-                    return matchStr.includes(parts[0]) && matchStr.includes(parts[1]);
+                    return parts.length > 0 && parts.every(part => matchStr.includes(part));
                 });
 
                 let displayItems = selectedReqRepStatus === 'pending' ? repItems.filter(i => !isReqCompleted(i)) : repItems.filter(i => isReqCompleted(i));
@@ -2294,10 +2301,10 @@
             if (requestViewLevel === 4 && requestFilterMode === 'reps') {
                 crumb.innerText = `${selectedReqRep} / ${selectedReqRepStatus} / Folder`;
                 
-                let parts = selectedReqRep.toUpperCase().split(' ');
+                let parts = selectedReqRep.toUpperCase().split(' ').filter(p => p.trim() !== '');
                 let repItems = combinedReq.filter(i => {
                     let matchStr = (i.REQUESTED_BY || i.SALESREP || i.SALESREPNAME || i['SALES REP'] || i.ASSIGNEDTO || "").toUpperCase();
-                    return matchStr.includes(parts[0]) && matchStr.includes(parts[1]);
+                    return parts.length > 0 && parts.every(part => matchStr.includes(part));
                 });
 
                 let displayItems = selectedReqRepStatus === 'pending' ? repItems.filter(i => !isReqCompleted(i)) : repItems.filter(i => isReqCompleted(i));
