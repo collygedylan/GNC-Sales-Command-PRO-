@@ -842,6 +842,18 @@
                 return;
             }
 
+            // 🚀 INSTANT LOCAL BYPASS: Skip the slow Google Auth if already cached
+            if (localStorage.getItem('gnc_user_v3') === inputUser && localStorage.getItem('gnc_pin_v3') === inputPass) {
+                currentUser = inputUser;
+                currentRole = localStorage.getItem('gnc_role_v3') || 'User';
+                document.getElementById('header-user').innerText = currentUser.toUpperCase();
+                
+                // Immediately unlock UI
+                applyRolePermissions();
+                fetchBackgroundData();
+                return;
+            }
+
             document.getElementById('login-inputs').classList.add('hidden');
             document.getElementById('loading-spinner').classList.remove('hidden');
             document.getElementById('loading-text').innerText = "Authenticating...";
@@ -855,6 +867,9 @@
                     if (res.status === 'success') {
                         currentUser = inputUser;
                         currentRole = res.role;
+                        
+                        // Cache role for instant bypass next time
+                        localStorage.setItem('gnc_role_v3', currentRole);
                         document.getElementById('header-user').innerText = currentUser.toUpperCase();
 
                         if (!isBiometricLogin && window.PublicKeyCredential) {
@@ -885,8 +900,11 @@
             // 1. Check for local memory cache for INSTANT load
             const cachedRes = await loadFromCache();
             if (cachedRes) {
-                processAndLoadData(cachedRes);
-                showToast("Ready", "Loaded from device memory. Updating in background...", false);
+                // Wrap in setTimeout to let UI paint unlocking animations first
+                setTimeout(() => {
+                    processAndLoadData(cachedRes);
+                    showToast("Ready", "Loaded from device memory. Updating in background...", false);
+                }, 50);
             } else {
                 showToast("Welcome!", "Downloading database... (This only happens once)", false);
             }
@@ -898,13 +916,16 @@
                 .then(response => response.json())
                 .then(res => {
                     if (res.status === 'success') {
-                        processAndLoadData(res); // UPDATE UI IMMEDIATELY
-                        saveToCache(res);        // NON-BLOCKING BACKGROUND SAVE
-                        if(cachedRes) {
-                             showToast("Sync Complete", "Live database updated.", false);
-                        } else {
-                             showToast("Ready", "Database downloaded and saved!", false);
-                        }
+                        // Yield thread so scrolling/animations stay perfectly smooth
+                        setTimeout(() => {
+                            processAndLoadData(res); // UPDATE UI
+                            saveToCache(res);        // NON-BLOCKING BACKGROUND SAVE
+                            if(cachedRes) {
+                                 showToast("Sync Complete", "Live database updated.", false);
+                            } else {
+                                 showToast("Ready", "Database downloaded and saved!", false);
+                            }
+                        }, 100);
                     }
                 })
                 .catch(err => {
