@@ -615,7 +615,7 @@
                     <div class="flex flex-col gap-3 mt-4">
                         <button id="req-btn-save-draft" class="w-full bg-purple-600 text-white font-bold py-4 rounded-xl shadow-lg" onclick="saveData(false, 'req-')">SAVE REQUEST DATA</button>
                         
-                        <button class="w-full bg-orange-50 text-orange-700 border border-orange-200 font-bold py-4 rounded-xl shadow-sm flex justify-center items-center gap-2 admin-only hidden" onclick="removeFromRequest()"><i class="ph-bold ph-minus-circle text-xl"></i> REMOVE FROM REQUEST (KEEP ITEM)</button>
+                        <button class="w-full bg-orange-50 text-orange-700 border border-orange-200 font-bold py-4 rounded-xl shadow-sm flex justify-center items-center gap-2 admin-only" onclick="removeFromRequest()"><i class="ph-bold ph-minus-circle text-xl"></i> REMOVE FROM REQUEST (KEEP ITEM)</button>
                     </div>
                 </div>
 
@@ -751,6 +751,7 @@
         let lowStockInventory = []; 
         let socInventory = []; 
         let reservesInventory = []; 
+        let requestsInventory = []; // NEW CLONED REQUEST ARRAY
         let salesNotesDict = {}; 
         
         let currentUser = "";
@@ -960,8 +961,6 @@
                     obj.ASSIGNEDTO = getValFromMap(row, ['ASSIGNEDTO']);
                     obj.DATE_COMPLETED = getValFromMap(row, ['DATE COMPLETED']);
                     
-                    let isReqVal = getValFromMap(row, ['IS REQUEST']);
-                    obj.IS_REQUEST = (String(isReqVal).toUpperCase() === 'TRUE' || isReqVal === true);
                     obj.REQUESTED_BY = getValFromMap(row, ['REQUESTED BY']);
                     obj.REQUEST_FOLDER = getValFromMap(row, ['REQUEST FOLDER']);
                     
@@ -1010,6 +1009,16 @@
                 item.DOM_ID = 'ls_' + idx;
                 return item;
             });
+            
+            if (res.requestsData) {
+                requestsInventory = mapCompressedToObj(res.requestsData, true).map((item, idx) => {
+                    item.DOM_ID = 'req_' + item.UNIQUE_ID;
+                    return item;
+                });
+            } else {
+                requestsInventory = [];
+            }
+
             socInventory = mapCompressedToObj(res.socData, false);
             reservesInventory = mapCompressedToObj(res.reservesData, false);
 
@@ -1364,7 +1373,15 @@
 
         function generateCard(item, sourceView, colorClass = 'status-green') {
             let thumbHtml = '';
-            let photoLink = item.SAVED_PHOTO_LINK || item['PHOTO LINK'] || item.PHOTOLINK || "";
+            let photoLink = "";
+            
+            if (sourceView === 'request') {
+                photoLink = item.REQ_PHOTO_LINK || item.SAVED_PHOTO_LINK || item['PHOTO LINK'] || item.PHOTOLINK || "";
+            } else if (sourceView === 'docks') {
+                photoLink = item.DOCK_PHOTO_LINK || item.SAVED_PHOTO_LINK || item['PHOTO LINK'] || item.PHOTOLINK || "";
+            } else {
+                photoLink = item.SAVED_PHOTO_LINK || item['PHOTO LINK'] || item.PHOTOLINK || "";
+            }
             
             if (photoLink) {
                 let firstUrl = photoLink.split(',')[0];
@@ -1523,8 +1540,7 @@
             tempSelectedReqRep = repName;
             document.getElementById('step-1-rep').classList.add('hidden');
             
-            let repReqs = fullInventory.concat(lowStockInventory).concat(reservesInventory)
-                .filter(i => i.IS_REQUEST && i.REQUESTED_BY === repName && !i.REQ_ARCHIVED);
+            let repReqs = requestsInventory.filter(i => i.REQUESTED_BY === repName && !i.REQ_ARCHIVED);
             
             let uniqueFolders = {};
             repReqs.forEach(i => {
@@ -1643,18 +1659,11 @@
             domIds.forEach(dId => {
                 let item = fullInventory.find(i => i.DOM_ID === dId) || lowStockInventory.find(i => i.DOM_ID === dId) || reservesInventory.find(i => i.DOM_ID === dId);
                 if (item) {
-                    item.IS_REQUEST = true; 
-                    item.REQUESTED_BY = tempSelectedReqRep; 
-                    item.REQUEST_FOLDER = folderId; 
-                    item.REQ_CUSTOMER = cust;
-                    if (!existingFolderId) item.REQ_QTY = qty; 
                     uniqueIds.push(item.UNIQUE_ID);
-                    
-                    backupLocalItem(item); 
                 }
             });
 
-            showToast("Processing...", `Saving request for ${tempSelectedReqRep}...`, false);
+            showToast("Processing...", `Creating Clone Tickets for ${tempSelectedReqRep}...`, false);
 
             fetch(GOOGLE_SCRIPT_URL, {
                 method: 'POST',
@@ -1669,9 +1678,10 @@
             }).then(res => res.json())
             .then(data => {
                 if (data.status === 'success') {
-                    showToast("Success", "Items moved to Request tab!");
+                    showToast("Success", "Request tickets cloned! Syncing...", false);
                     clearSelection();
                     switchView('request');
+                    fetchBackgroundData(); 
                 } else { showToast("Error", "Failed to update sheet.", true); }
             }).catch(err => showToast("Error", "Network error.", true));
         }
@@ -1690,7 +1700,7 @@
         function getSelectedItemsText(tabType) {
             let items = [];
             selectedItems.forEach(domId => {
-                let found = fullInventory.find(i => i.DOM_ID === domId) || lowStockInventory.find(i => i.DOM_ID === domId) || reservesInventory.find(i => i.DOM_ID === domId);
+                let found = fullInventory.find(i => i.DOM_ID === domId) || lowStockInventory.find(i => i.DOM_ID === domId) || reservesInventory.find(i => i.DOM_ID === domId) || requestsInventory.find(i => i.DOM_ID === domId);
                 if (found) items.push(found);
             });
 
@@ -1769,7 +1779,7 @@
             let itemsToUpdate = [];
             
             domIds.forEach(dId => {
-                let item = fullInventory.find(i => i.DOM_ID === dId) || lowStockInventory.find(i => i.DOM_ID === dId) || reservesInventory.find(i => i.DOM_ID === dId);
+                let item = fullInventory.find(i => i.DOM_ID === dId) || lowStockInventory.find(i => i.DOM_ID === dId) || reservesInventory.find(i => i.DOM_ID === dId) || requestsInventory.find(i => i.DOM_ID === dId);
                 if (item) {
                     uniqueIds.push(item.UNIQUE_ID);
                     itemsToUpdate.push(item);
@@ -2049,9 +2059,7 @@
         }
 
         function copyFolderData(folderId) {
-            let items = fullInventory.filter(i => i.REQUEST_FOLDER === folderId)
-                .concat(lowStockInventory.filter(i => i.REQUEST_FOLDER === folderId))
-                .concat(reservesInventory.filter(i => i.REQUEST_FOLDER === folderId));
+            let items = requestsInventory.filter(i => i.REQUEST_FOLDER === folderId);
             
             items = items.filter((v,i,a) => a.findIndex(t => (t.DOM_ID === v.DOM_ID)) === i);
 
@@ -2106,14 +2114,9 @@
             }).then(res => res.json())
             .then(data => {
                 if (data.status === 'success') {
-                    const updateArchive = (arr) => {
-                        arr.forEach(i => {
-                            if (i.REQUEST_FOLDER === folderId) i.REQ_ARCHIVED = true;
-                        });
-                    };
-                    updateArchive(fullInventory);
-                    updateArchive(lowStockInventory);
-                    updateArchive(reservesInventory);
+                    requestsInventory.forEach(i => {
+                        if (i.REQUEST_FOLDER === folderId) i.REQ_ARCHIVED = true;
+                    });
 
                     showToast("Success", "Folder archived!");
                     requestViewLevel = 3; 
@@ -2123,7 +2126,7 @@
         }
         
         function removeFromRequest() {
-            if(!confirm("Are you sure you want to remove this item from the Request folder? It will remain safely in the Master Inventory.")) return;
+            if(!confirm("Are you sure you want to remove this item from the Request folder? It will be deleted from the request but remain safely in the Master Inventory.")) return;
             
             showToast("Removing...", "Updating Google Sheet...", false);
             
@@ -2138,20 +2141,7 @@
                 if (data.status === 'success') {
                     showToast("Success", "Item removed from Request.");
                     
-                    activeItem.IS_REQUEST = false;
-                    activeItem.REQUESTED_BY = "";
-                    activeItem.REQUEST_FOLDER = "";
-                    activeItem.REQ_CUSTOMER = "";
-                    activeItem.REQ_QTY = "";
-                    activeItem.REQ_MATCH = "";
-                    activeItem.REQ_SPEC = "";
-                    activeItem.REQ_CALIPER = "";
-                    activeItem.REQ_PICK = "";
-                    activeItem.REQ_SALES_NOTE = "";
-                    activeItem.REQ_COMMENTS = "";
-                    activeItem.REQ_PHOTO_LINK = "";
-                    activeItem.REQ_PHOTO_NAME = "";
-
+                    activeItem.REQ_ARCHIVED = true; 
                     goBackFromDetail(); 
                 } else { showToast("Error", "Failed to update sheet.", true); }
             }).catch(err => showToast("Error", "Network error.", true));
@@ -2161,12 +2151,7 @@
             const container = document.getElementById('request-content');
             const crumb = document.getElementById('request-crumb');
 
-            let reqItems = fullInventory.filter(i => i.IS_REQUEST === true);
-            let reqLowStock = lowStockInventory.filter(i => i.IS_REQUEST === true);
-            let reqReserves = reservesInventory.filter(i => i.IS_REQUEST === true);
-            let combinedReq = [...reqItems, ...reqLowStock, ...reqReserves];
-            
-            combinedReq = combinedReq.filter((v,i,a) => a.findIndex(t => (t.DOM_ID === v.DOM_ID)) === i && !v.REQ_ARCHIVED);
+            let combinedReq = requestsInventory.filter(i => !i.REQ_ARCHIVED);
 
             const isReqCompleted = (item) => {
                 return (
@@ -2211,7 +2196,7 @@
                     salesRepList.forEach(rep => {
                         let parts = rep.toUpperCase().split(' ').filter(p => p.trim() !== '');
                         let count = combinedReq.filter(i => {
-                            let matchStr = (i.REQUESTED_BY || i.SALESREP || i.SALESREPNAME || i['SALES REP'] || i.ASSIGNEDTO || "").toUpperCase();
+                            let matchStr = (i.REQUESTED_BY || "").toUpperCase();
                             return parts.length > 0 && parts.every(part => matchStr.includes(part));
                         }).length;
                         
@@ -2243,7 +2228,7 @@
                 
                 let parts = selectedReqRep.toUpperCase().split(' ').filter(p => p.trim() !== '');
                 let repItems = combinedReq.filter(i => {
-                    let matchStr = (i.REQUESTED_BY || i.SALESREP || i.SALESREPNAME || i['SALES REP'] || i.ASSIGNEDTO || "").toUpperCase();
+                    let matchStr = (i.REQUESTED_BY || "").toUpperCase();
                     return parts.length > 0 && parts.every(part => matchStr.includes(part));
                 });
 
@@ -2269,7 +2254,7 @@
                 
                 let parts = selectedReqRep.toUpperCase().split(' ').filter(p => p.trim() !== '');
                 let repItems = combinedReq.filter(i => {
-                    let matchStr = (i.REQUESTED_BY || i.SALESREP || i.SALESREPNAME || i['SALES REP'] || i.ASSIGNEDTO || "").toUpperCase();
+                    let matchStr = (i.REQUESTED_BY || "").toUpperCase();
                     return parts.length > 0 && parts.every(part => matchStr.includes(part));
                 });
 
@@ -2315,7 +2300,7 @@
                 
                 let parts = selectedReqRep.toUpperCase().split(' ').filter(p => p.trim() !== '');
                 let repItems = combinedReq.filter(i => {
-                    let matchStr = (i.REQUESTED_BY || i.SALESREP || i.SALESREPNAME || i['SALES REP'] || i.ASSIGNEDTO || "").toUpperCase();
+                    let matchStr = (i.REQUESTED_BY || "").toUpperCase();
                     return parts.length > 0 && parts.every(part => matchStr.includes(part));
                 });
 
@@ -2677,6 +2662,8 @@
             activeItem = fullInventory.find(i => i.UNIQUE_ID === uniqueId);
             if (!activeItem) activeItem = lowStockInventory.find(i => i.UNIQUE_ID === uniqueId);
             if (!activeItem) activeItem = reservesInventory.find(i => i.UNIQUE_ID === uniqueId); 
+            if (!activeItem) activeItem = requestsInventory.find(i => i.UNIQUE_ID === uniqueId);
+            
             if (!activeItem) return;
 
             ['view-drive','view-tasks','view-review','view-sales-office','view-low-stock','view-docks','view-request','view-reserves'].forEach(v => document.getElementById(v).classList.add('hidden'));
@@ -2739,6 +2726,7 @@
 
             renderPhotoPreview();
 
+            // Hide all data entry tabs by default
             ['season', 'location', 'request', 'notes', 'docks'].forEach(t => {
                 let el = document.getElementById('dtab-' + t);
                 if (el) el.classList.add('hidden');
@@ -2840,10 +2828,232 @@
                     changed = true;
                     continue;
                 }
-                let item = fullInventory.find(i => i.UNIQUE_ID === uid) || lowStockInventory.find(i => i.UNIQUE_ID === uid) || reservesInventory.find(i => i.UNIQUE_ID === uid);
-                if (item) Object.assign(item, pendingEdits[uid].data);
+                let item = fullInventory.find(i => i.UNIQUE_ID === uid) || lowStockInventory.find(i => i.UNIQUE_ID === uid) || reservesInventory.find(i => i.UNIQUE_ID === uid) || requestsInventory.find(i => i.UNIQUE_ID === uid);
+                
+                if (item) {
+                    Object.assign(item, pendingEdits[uid].data); 
+                    saveData(false, 'ssn-', true, item); 
+                }
             }
             if (changed) localStorage.setItem('gnc_pending_edits', JSON.stringify(pendingEdits));
+        }
+
+        function handlePhotoUpload(input, prefix) {
+            if(!input.files || input.files.length === 0) return;
+            const file = input.files[0];
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 800; 
+                    const scale = img.width > MAX_WIDTH ? (MAX_WIDTH / img.width) : 1;
+                    
+                    canvas.width = img.width * scale;
+                    canvas.height = img.height * scale;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.6); 
+                    const base64Data = dataUrl.split(',')[1];
+                    const dateStr = new Date().toISOString().split('T')[0];
+                    
+                    let filename = `${activeItem.COMMONNAME}_${activeItem.CONTSIZE}_${dateStr}.jpg`.replace(/[\/\s,]/g, '_');
+
+                    if (prefix === 'dock-') {
+                        let locStr = activeItem.LOCATIONCODE || "NoLoc";
+                        let lotStr = activeItem.LOTCODE || "NoLot";
+                        let dockStr = "DOCK" + selectedDockNum;
+                        let tripStr = selectedDockTrip !== "Unassigned" && selectedDockTrip !== "" ? "TRIP" + selectedDockTrip : "NoTrip";
+                        filename = `${tripStr}-${activeItem.COMMONNAME}-${activeItem.CONTSIZE}-${locStr}-${lotStr}-${dockStr}-${dateStr}.jpg`.replace(/[\/\s,]/g, '_');
+                    }
+                    
+                    showTemporaryPhotoPreview(prefix, dataUrl);
+                    uploadPhotoToDrive(base64Data, filename, prefix);
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function showTemporaryPhotoPreview(prefix, dataUrl) {
+            let div = document.getElementById(prefix + 'photo-preview');
+            let list = document.getElementById(prefix + 'photo-list-container');
+            
+            if (div && list) {
+                div.classList.remove('hidden');
+                let html = `
+                <div class="flex items-center gap-3 p-2 bg-gray-50 rounded-lg border border-gray-200 shadow-sm opacity-75">
+                    <div class="w-10 h-10 rounded overflow-hidden relative border border-gray-300 flex-shrink-0">
+                        <img src="${dataUrl}" class="w-full h-full object-cover">
+                        <div class="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center">
+                            <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        </div>
+                    </div>
+                    <div class="flex-grow min-w-0">
+                        <div class="text-xs font-bold text-gray-700 truncate">Uploading to Server...</div>
+                        <div class="text-[10px] text-gray-500">Working in background</div>
+                    </div>
+                </div>`;
+                
+                list.insertAdjacentHTML('afterbegin', html);
+            }
+        }
+
+        function uploadPhotoToDrive(base64Data, filename, prefix) {
+            let targetItem = activeItem; 
+            if (!targetItem) return;
+            
+            showToast("Uploading...", "Sending to Google Drive...", false);
+            
+            let btn = prefix === 'req-' ? document.getElementById('req-btn-save-draft') : document.getElementById(prefix + 'btn-save-draft'); 
+            if (prefix !== 'req-' && prefix !== 'dock-') btn = document.getElementById(prefix + 'btn-save-complete');
+            
+            let isCurrentView = (activeItem && activeItem.UNIQUE_ID === targetItem.UNIQUE_ID);
+            if (btn && isCurrentView) {
+                btn.innerText = "UPLOADING...";
+                btn.disabled = true;
+            }
+
+            let context = "drive"; 
+            if (prefix === 'req-') context = "request";
+            else if (prefix === 'ssn-') context = "season";
+            else if (prefix === 'lsn-') context = "location";
+            else if (prefix === 'dock-') context = "docks";
+
+            let payload = { type: "image", image: base64Data, mimeType: "image/jpeg", filename: filename, folderContext: context };
+
+            if (context === "docks") {
+                payload.dockNum = selectedDockNum;
+                const dateStr = new Date().toISOString().split('T')[0];
+                let tripFormat = selectedDockTrip !== "Unassigned" && selectedDockTrip !== "" ? "TRIP " + selectedDockTrip : "NoTrip";
+                payload.customFolderName = `${selectedDockRep} ${selectedDockCustomer} ${tripFormat} ${dateStr}`.trim();
+            }
+            
+            fetch(GOOGLE_SCRIPT_URL, {
+                method: "POST",
+                body: JSON.stringify(payload)
+            })
+            .then(res => res.json())
+            .then(data => {
+                isCurrentView = (activeItem && activeItem.UNIQUE_ID === targetItem.UNIQUE_ID);
+                if (btn && isCurrentView) {
+                    if (prefix === 'req-') btn.innerText = "SAVE REQUEST DATA";
+                    else if (prefix === 'dock-') btn.innerText = "SAVE DOCK DATA";
+                    else btn.innerText = "MARK COMPLETE";
+                    btn.disabled = false;
+                }
+                
+                if(data.status === 'success') {
+                    if (prefix === 'req-') {
+                        let links = targetItem.REQ_PHOTO_LINK ? targetItem.REQ_PHOTO_LINK.split(',') : [];
+                        let names = targetItem.REQ_PHOTO_NAME ? targetItem.REQ_PHOTO_NAME.split(',') : [];
+                        links.push(data.url);
+                        names.push(filename);
+                        targetItem.REQ_PHOTO_LINK = links.join(',');
+                        targetItem.REQ_PHOTO_NAME = names.join(',');
+                    } else if (prefix === 'dock-') {
+                        let links = targetItem.DOCK_PHOTO_LINK ? targetItem.DOCK_PHOTO_LINK.split(',') : [];
+                        let names = targetItem.DOCK_PHOTO_NAME ? targetItem.DOCK_PHOTO_NAME.split(',') : [];
+                        links.push(data.url);
+                        names.push(filename);
+                        targetItem.DOCK_PHOTO_LINK = links.join(',');
+                        targetItem.DOCK_PHOTO_NAME = names.join(',');
+                    } else {
+                        let links = targetItem.SAVED_PHOTO_LINK ? targetItem.SAVED_PHOTO_LINK.split(',') : [];
+                        let names = targetItem.SAVED_PHOTO_NAME ? targetItem.SAVED_PHOTO_NAME.split(',') : [];
+                        links.push(data.url);
+                        names.push(filename);
+                        targetItem.SAVED_PHOTO_LINK = links.join(',');
+                        targetItem.SAVED_PHOTO_NAME = names.join(',');
+                    }
+                    
+                    if (isCurrentView) { renderPhotoPreview(); }
+                    saveData(false, prefix, true, targetItem); 
+                } else {
+                    if (isCurrentView) showToast("Error", "Upload failed.", true);
+                }
+            })
+            .catch(err => {
+                isCurrentView = (activeItem && activeItem.UNIQUE_ID === targetItem.UNIQUE_ID);
+                if (btn && isCurrentView) {
+                    if (prefix === 'req-') btn.innerText = "SAVE REQUEST DATA";
+                    else if (prefix === 'dock-') btn.innerText = "SAVE DOCK DATA";
+                    else btn.innerText = "MARK COMPLETE";
+                    btn.disabled = false;
+                }
+                if (isCurrentView) showToast("Error", "Network connection failed.", true);
+            });
+        }
+
+        function renderPhotoPreview() {
+            const buildPhotoHtml = (linkString, nameString, type) => {
+                if (!linkString) return "";
+                const urls = linkString.split(',');
+                const names = nameString ? nameString.split(',') : [];
+                let html = "";
+                urls.forEach((url, i) => {
+                    let cleanUrl = url.trim();
+                    let match = cleanUrl.match(/(https?:\/\/[^"\s>]+)/);
+                    if (match) cleanUrl = match[1];
+                    
+                    const dispName = names[i] || `Photo ${i+1}`; 
+                    
+                    let bgClass = 'bg-white';
+                    let borderClass = 'border-gray-200';
+                    let iconColor = 'text-blue-500';
+                    let titleColor = 'text-blue-600';
+                    let arrowColor = 'text-gray-300';
+
+                    if (type === 'req') {
+                        bgClass = 'bg-purple-50'; borderClass = 'border-purple-200'; iconColor = 'text-purple-600'; titleColor = 'text-purple-700'; arrowColor = 'text-purple-400';
+                    } else if (type === 'dock') {
+                        bgClass = 'bg-orange-50'; borderClass = 'border-orange-200'; iconColor = 'text-orange-500'; titleColor = 'text-orange-700'; arrowColor = 'text-orange-400';
+                    }
+                    
+                    if(cleanUrl.startsWith('http')) {
+                        html += `
+                        <div class="flex items-center gap-3 p-2 ${bgClass} rounded-lg border ${borderClass} shadow-sm">
+                            <a href="${cleanUrl}" target="_blank" class="flex-grow flex items-center gap-3">
+                                <i class="ph-fill ph-image text-2xl ${iconColor}"></i>
+                                <div class="flex-grow min-w-0">
+                                    <div class="text-xs font-bold ${titleColor} truncate">${dispName}</div>
+                                    <div class="text-[10px] text-gray-500">Tap to view</div>
+                                </div>
+                                <i class="ph-bold ph-arrow-square-out ${arrowColor}"></i>
+                            </a>
+                        </div>`;
+                    }
+                });
+                return html;
+            };
+
+            const stdHtml = buildPhotoHtml(activeItem.SAVED_PHOTO_LINK, activeItem.SAVED_PHOTO_NAME, 'std');
+            ['ssn-', 'lsn-', 'na-'].forEach(p => {
+                const div = document.getElementById(p + 'photo-preview');
+                const list = document.getElementById(p + 'photo-list-container');
+                if (div && list) {
+                    if (stdHtml) { div.classList.remove('hidden'); list.innerHTML = stdHtml; } 
+                    else { div.classList.add('hidden'); list.innerHTML = ""; }
+                }
+            });
+
+            const reqHtml = buildPhotoHtml(activeItem.REQ_PHOTO_LINK, activeItem.REQ_PHOTO_NAME, 'req');
+            const reqDiv = document.getElementById('req-photo-preview');
+            const reqList = document.getElementById('req-photo-list-container');
+            if (reqDiv && reqList) {
+                if (reqHtml) { reqDiv.classList.remove('hidden'); reqList.innerHTML = reqHtml; } 
+                else { reqDiv.classList.add('hidden'); reqList.innerHTML = ""; }
+            }
+
+            const dockHtml = buildPhotoHtml(activeItem.DOCK_PHOTO_LINK, activeItem.DOCK_PHOTO_NAME, 'dock');
+            const dockDiv = document.getElementById('dock-photo-preview');
+            const dockList = document.getElementById('dock-photo-list-container');
+            if (dockDiv && dockList) {
+                if (dockHtml) { dockDiv.classList.remove('hidden'); dockList.innerHTML = dockHtml; } 
+                else { dockDiv.classList.add('hidden'); dockList.innerHTML = ""; }
+            }
         }
 
         let autoSaveTimer = null;
