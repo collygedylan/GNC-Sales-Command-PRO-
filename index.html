@@ -662,6 +662,7 @@
         
         let currentUser = "";
         let currentRole = "";
+        let safeRole = ""; 
         let repPermutations = []; 
         
         let activeItem = null;
@@ -766,7 +767,7 @@
         }
 
         function isMyRep(repNameStr) {
-            if (currentRole !== 'SALESREP') return true; 
+            if (safeRole !== 'SALESREP') return true; 
             if (!repNameStr) return false;
             let str = String(repNameStr).toLowerCase();
             return repPermutations.some(p => str.includes(p));
@@ -784,6 +785,7 @@
             if (localStorage.getItem('gnc_user_v3') === inputUser && localStorage.getItem('gnc_pin_v3') === inputPass) {
                 currentUser = inputUser;
                 currentRole = localStorage.getItem('gnc_role_v3') || 'User';
+                safeRole = String(currentRole).toUpperCase().replace(/\s+/g, '');
                 document.getElementById('header-user').innerText = currentUser.toUpperCase();
                 
                 setRepPermutations(currentUser);
@@ -804,6 +806,7 @@
                     if (res.status === 'success') {
                         currentUser = inputUser;
                         currentRole = res.role;
+                        safeRole = String(currentRole).toUpperCase().replace(/\s+/g, '');
                         
                         localStorage.setItem('gnc_role_v3', currentRole);
                         document.getElementById('header-user').innerText = currentUser.toUpperCase();
@@ -868,7 +871,6 @@
         function mapCompressedToObj(compressedData, isMaster = false) {
             if(!compressedData || !compressedData.headers) return [];
             const h = compressedData.headers;
-            
             const idxMap = {};
             h.forEach((colName, idx) => { idxMap[colName] = idx; });
 
@@ -1011,7 +1013,6 @@
             });
 
             applyLocalEdits(); 
-
             reRenderCurrentView();
         }
 
@@ -1019,10 +1020,10 @@
             document.getElementById('view-login').style.display = 'none';
             document.getElementById('app-wrapper').classList.remove('hidden');
             
-            const isAdmin = (currentRole === 'Admin');
-            const isRep = (currentRole === 'SALESREP');
-            const isCsr = (currentRole === 'CSR');
-            const isQc = (currentRole === 'QC');
+            const isAdmin = (safeRole === 'ADMIN');
+            const isRep = (safeRole === 'SALESREP');
+            const isCsr = (safeRole === 'CSR');
+            const isQc = (safeRole === 'QC');
             
             document.querySelectorAll('.admin-only').forEach(el => el.classList.add('hidden'));
             document.querySelectorAll('.admin-rep-only, .admin-rep-csr-only').forEach(el => el.classList.add('hidden'));
@@ -1086,7 +1087,7 @@
                 resetDriveView(); 
             }
             if(viewId === 'tasks') {
-                if (currentRole === 'Admin' && !taskViewTargetUser) renderTeamSelector();
+                if (safeRole === 'ADMIN' && !taskViewTargetUser) renderTeamSelector();
                 else renderTasks();
             }
             if(viewId === 'reports') {
@@ -1387,7 +1388,7 @@
         }
 
         function openRequestModal() {
-            if (currentRole === 'SALESREP') {
+            if (safeRole === 'SALESREP') {
                 let parts = currentUser.split('_');
                 let first = parts[0].charAt(0).toUpperCase() + parts[0].slice(1);
                 let last = parts.length > 1 ? parts[parts.length-1].charAt(0).toUpperCase() + parts[parts.length-1].slice(1) : "";
@@ -1433,7 +1434,7 @@
             if (folderKeys.length > 0) {
                 document.getElementById('step-1.5-folder').classList.remove('hidden');
                 let html = `<div class="flex items-center mb-4 border-b border-gray-100 pb-2">
-                                ${currentRole !== 'SALESREP' ? `<i class="ph-bold ph-arrow-left text-gray-400 text-2xl mr-2 cursor-pointer p-1" onclick="document.getElementById('step-1.5-folder').classList.add('hidden'); document.getElementById('step-1-rep').classList.remove('hidden');"></i>` : ''}
+                                ${safeRole !== 'SALESREP' ? `<i class="ph-bold ph-arrow-left text-gray-400 text-2xl mr-2 cursor-pointer p-1" onclick="document.getElementById('step-1.5-folder').classList.add('hidden'); document.getElementById('step-1-rep').classList.remove('hidden');"></i>` : ''}
                                 <h3 class="font-bold text-lg text-orange-600">Select Folder</h3>
                             </div>`;
                 folderKeys.forEach(fk => {
@@ -1697,8 +1698,7 @@
                             let cleanUrl = url.trim();
                             let match = cleanUrl.match(/(https?:\/\/[^"\s>]+)/);
                             if (match) cleanUrl = match[1];
-                            if (cleanUrl.startsWith('http')) returnText += `  Photo ${counter}: ${cleanUrl}\n`;
-                            counter++;
+                            if (cleanUrl.startsWith('http')) { returnText += `  Photo ${counter}: ${cleanUrl}\n`; counter++; }
                         });
                     }
                 } else {
@@ -1730,8 +1730,7 @@
                             let cleanUrl = url.trim();
                             let match = cleanUrl.match(/(https?:\/\/[^"\s>]+)/);
                             if (match) cleanUrl = match[1];
-                            if (cleanUrl.startsWith('http')) returnText += `  Photo ${counter}: ${cleanUrl}\n`;
-                            counter++;
+                            if (cleanUrl.startsWith('http')) { returnText += `  Photo ${counter}: ${cleanUrl}\n`; counter++; }
                         });
                     }
                 }
@@ -2217,7 +2216,7 @@
             const container = document.getElementById('request-content');
             const crumb = document.getElementById('request-crumb');
             let combinedReq = requestsInventory.filter(i => !i.REQ_ARCHIVED);
-            if (currentRole === 'SALESREP') combinedReq = combinedReq.filter(i => isMyRep(i.REQUESTED_BY));
+            if (safeRole === 'SALESREP') combinedReq = combinedReq.filter(i => isMyRep(i.REQUESTED_BY));
 
             const isReqCompleted = (item) => {
                 return ((item.REQ_SALES_NOTE && String(item.REQ_SALES_NOTE).trim() !== "") || (item.REQ_PHOTO_LINK && String(item.REQ_PHOTO_LINK).trim() !== "") || (item.REQ_COMMENTS && String(item.REQ_COMMENTS).trim() !== "") || (item.REQ_SPEC && String(item.REQ_SPEC).trim() !== "") || (item.REQ_CALIPER && String(item.REQ_CALIPER).trim() !== "") || (item.REQ_MATCH && String(item.REQ_MATCH).trim() !== "") || (item.REQ_PICK && String(item.REQ_PICK).trim() !== ""));
@@ -2228,10 +2227,10 @@
 
             if (requestViewLevel === 0) {
                 crumb.innerText = "Categories";
-                let repDrillHtml = currentRole === 'SALESREP' ? '' : `<div class="drill-item" onclick="selectRequestCategory('reps')"><span class="font-bold text-lg text-blue-600">Sales Reps</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
+                let repDrillHtml = safeRole === 'SALESREP' ? '' : `<div class="drill-item" onclick="selectRequestCategory('reps')"><span class="font-bold text-lg text-blue-600">Sales Reps</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
                 container.innerHTML = `
-                    <div class="drill-item" onclick="selectRequestCategory('pending')"><span class="font-bold text-lg text-orange-600">${currentRole === 'SALESREP' ? 'My ' : 'All '}Pending Requests <span class="text-gray-400 text-sm font-normal">(${pendingReqs.length})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>
-                    <div class="drill-item" onclick="selectRequestCategory('completed')"><span class="font-bold text-lg text-green-600">${currentRole === 'SALESREP' ? 'My ' : 'All '}Completed Requests <span class="text-gray-400 text-sm font-normal">(${completedReqs.length})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>
+                    <div class="drill-item" onclick="selectRequestCategory('pending')"><span class="font-bold text-lg text-orange-600">${safeRole === 'SALESREP' ? 'My ' : 'All '}Pending Requests <span class="text-gray-400 text-sm font-normal">(${pendingReqs.length})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>
+                    <div class="drill-item" onclick="selectRequestCategory('completed')"><span class="font-bold text-lg text-green-600">${safeRole === 'SALESREP' ? 'My ' : 'All '}Completed Requests <span class="text-gray-400 text-sm font-normal">(${completedReqs.length})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>
                     ${repDrillHtml}`;
                 return;
             }
@@ -2357,7 +2356,7 @@
             const resSearch = document.getElementById('reserves-search');
             
             if (resSearch) resSearch.classList.add('hidden'); 
-            if (reservesViewLevel === 0 && resSearch && currentRole !== 'SALESREP') resSearch.classList.remove('hidden'); 
+            if (reservesViewLevel === 0 && resSearch && safeRole !== 'SALESREP') resSearch.classList.remove('hidden'); 
             
             const term = resSearch ? resSearch.value.toLowerCase() : "";
 
@@ -2366,7 +2365,7 @@
                 filteredReserves = filteredReserves.filter(i => (i.COMMONNAME || "").toLowerCase().includes(term) || (i.CUSTOMERNAME || "").toLowerCase().includes(term) || (i.SALESREPNAME || "").toLowerCase().includes(term));
             }
 
-            if (currentRole === 'SALESREP') filteredReserves = filteredReserves.filter(i => isMyRep(i.SALESREPNAME));
+            if (safeRole === 'SALESREP') filteredReserves = filteredReserves.filter(i => isMyRep(i.SALESREPNAME));
 
             if (filteredReserves.length === 0) {
                 crumb.innerText = "Reserves";
@@ -2375,7 +2374,7 @@
             }
 
             if (reservesViewLevel === 0) {
-                if (currentRole === 'SALESREP') {
+                if (safeRole === 'SALESREP') {
                     let myReps = [...new Set(filteredReserves.map(i => i.SALESREPNAME || "Unknown Rep"))];
                     if (myReps.length > 0) { selectReservesRep(myReps[0]); return; }
                 }
@@ -2389,7 +2388,7 @@
 
             if (reservesViewLevel === 1) {
                 crumb.innerText = `${selectedReservesRep}`;
-                let html = currentRole === 'SALESREP' ? '' : `<div class="back-btn" onclick="reservesViewLevel=0; renderReserves()"><i class="ph-bold ph-arrow-left"></i> Back to Reps</div>`;
+                let html = safeRole === 'SALESREP' ? '' : `<div class="back-btn" onclick="reservesViewLevel=0; renderReserves()"><i class="ph-bold ph-arrow-left"></i> Back to Reps</div>`;
                 html += `<div class="task-tabs mb-4"><div class="task-tab ${reservesDrillMode === 'plant' ? 'active' : ''}" onclick="setReservesDrillMode('plant')">By Plant</div><div class="task-tab ${reservesDrillMode === 'customer' ? 'active' : ''}" onclick="setReservesDrillMode('customer')">By Customer</div></div>`;
 
                 if (reservesDrillMode === 'plant') {
@@ -2558,7 +2557,7 @@
             const container = document.getElementById('task-content');
             const crumb = document.getElementById('task-crumb');
             
-            let userToView = (currentRole === 'Admin') ? taskViewTargetUser : currentUser;
+            let userToView = (safeRole === 'ADMIN') ? taskViewTargetUser : currentUser;
             let searchName = userToView === 'dylan_collyge' ? 'Dylan' : userToView;
 
             let myItems = fullInventory.filter(i => String(i.ASSIGNEDTO || "").toLowerCase().includes(searchName.toLowerCase()));
@@ -2576,7 +2575,7 @@
             const tabLabel = (activeTaskTab === 'season') ? 'Season Notes' : 'Location Notes';
 
             if (myItems.length === 0) {
-                container.innerHTML = `<div class="back-btn" onclick="if(currentRole==='Admin'){taskViewTargetUser=null; renderTeamSelector();}"><i class="ph-bold ph-arrow-left"></i> Change User</div><div class="p-8 text-center text-gray-400">No tasks assigned here.</div>`;
+                container.innerHTML = `<div class="back-btn" onclick="if(safeRole==='ADMIN'){taskViewTargetUser=null; renderTeamSelector();}"><i class="ph-bold ph-arrow-left"></i> Change User</div><div class="p-8 text-center text-gray-400">No tasks assigned here.</div>`;
                 crumb.innerText = `${displayUser} / ${tabLabel}`;
                 return;
             }
@@ -2585,7 +2584,7 @@
                 crumb.innerText = `${displayUser} / ${tabLabel} / Blocks`; 
                 const blocks = [...new Set(myItems.map(i => i.BLOCKALPHA || "Unassigned"))].sort();
                 let html = "";
-                if(currentRole === 'Admin') html += `<div class="back-btn" onclick="taskViewTargetUser=null; renderTeamSelector();"><i class="ph-bold ph-arrow-left"></i> Change User</div>`;
+                if(safeRole === 'ADMIN') html += `<div class="back-btn" onclick="taskViewTargetUser=null; renderTeamSelector();"><i class="ph-bold ph-arrow-left"></i> Change User</div>`;
                 html += blocks.map(b => {
                     const count = myItems.filter(i => (i.BLOCKALPHA || "Unassigned") === b).length;
                     return `<div class="drill-item" onclick="selectTaskBlock('${b}')"><span class="font-bold text-lg">${b} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
@@ -2727,7 +2726,7 @@
             document.getElementById('expand-content').innerHTML = '';
             
             const lgPhotoBox = document.getElementById('ov-large-photo');
-            if (currentRole === 'SALESREP') {
+            if (safeRole === 'SALESREP') {
                 let pLink = activeItem.SAVED_PHOTO_LINK || activeItem['PHOTO LINK'] || activeItem.PHOTOLINK || activeItem.REQ_PHOTO_LINK || activeItem.DOCK_PHOTO_LINK || "";
                 if (pLink) {
                     let urls = pLink.split(',');
@@ -2750,7 +2749,7 @@
 
             let defaultTab = 'overview';
 
-            if (currentRole === 'SALESREP') {
+            if (safeRole === 'SALESREP') {
                 document.querySelectorAll('.detail-tab').forEach(t => t.classList.add('hidden'));
                 document.getElementById('dtab-overview').classList.remove('hidden');
             } else if (sourceView === 'tasks') {
@@ -2760,12 +2759,12 @@
             else if (sourceView === 'request') { document.getElementById('dtab-request').classList.remove('hidden'); defaultTab = 'request'; } 
             else if (sourceView === 'docks') { document.getElementById('dtab-docks').classList.remove('hidden'); defaultTab = 'docks'; }
             else { 
-                if (currentRole === 'Admin') {
+                if (safeRole === 'ADMIN') {
                     ['season', 'location', 'request', 'notes'].forEach(t => {
                         let el = document.getElementById('dtab-' + t);
                         if (el) el.classList.remove('hidden');
                     });
-                } else if (currentRole === 'CSR') {
+                } else if (safeRole === 'CSR') {
                     document.getElementById('dtab-notes').classList.remove('hidden');
                     document.getElementById('dtab-request').classList.remove('hidden');
                 } else {
