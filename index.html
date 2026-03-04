@@ -341,10 +341,6 @@
             
             <div id="view-review" class="hidden">
                 <div id="review-crumb" class="text-xs font-bold text-[#007a4d] mb-3"></div>
-                <div class="task-tabs mb-4">
-                    <div id="review-tab-completed" class="task-tab active" onclick="setReviewTab('completed')">Completed Tasks</div>
-                    <div id="review-tab-reserves" class="task-tab" onclick="setReviewTab('reserves')">Reserves</div>
-                </div>
                 <div id="review-content"></div>
             </div>
             
@@ -759,7 +755,8 @@
         let lowStockInventory = []; 
         let socInventory = []; 
         let reservesInventory = []; 
-        let requestsInventory = []; // NEW CLONED REQUEST ARRAY
+        let requestsInventory = []; 
+        let managerReviewInventory = []; // NEW ARRAY FOR MANAGER REVIEW
         let salesNotesDict = {}; 
         
         let currentUser = "";
@@ -793,9 +790,11 @@
         let selectedLowStockName = null;
         let selectedLowStockSize = null;
 
+        // MANAGER REVIEW VARS
         let reviewViewLevel = 0;
-        let selectedReviewUser = null;
-        let activeReviewTab = "completed"; 
+        let selectedReviewItemCode = null;
+        let selectedReviewCommonName = null;
+        let selectedReviewContSize = null;
 
         let requestViewLevel = 0;
         let requestFilterMode = null;
@@ -804,7 +803,6 @@
         let selectedReqFolder = null; 
         let tempSelectedReqRep = ""; 
         
-        // NEW STATE VARS FOR QUANTITY STEP
         let tempReqFolder = null;
         let tempReqCust = null;
         let previousReqStep = "";
@@ -999,7 +997,6 @@
                     obj.REQ_CUSTOMER = getValFromMap(row, ['REQ CUSTOMER']);
                     obj.REQ_QTY = getValFromMap(row, ['REQ QTY']);
                     
-                    // Pull in new columns dynamically if present
                     obj.REQ_DESIRED_SPEC = getValFromMap(row, ['DESIRED SPEC']);
                     obj.REQ_DESIRED_CALIPER = getValFromMap(row, ['DESIRED CALIPER']);
                     obj.REQ_EST_SHIP = getValFromMap(row, ['EST SHIP']);
@@ -1027,6 +1024,15 @@
                 item.DOM_ID = 'ls_' + idx;
                 return item;
             });
+            
+            if (res.managerReviewData) {
+                managerReviewInventory = mapCompressedToObj(res.managerReviewData, true).map((item, idx) => {
+                    item.DOM_ID = 'mr_' + idx;
+                    return item;
+                });
+            } else {
+                managerReviewInventory = [];
+            }
             
             if (res.requestsData) {
                 requestsInventory = mapCompressedToObj(res.requestsData, true).map((item, idx) => {
@@ -1199,8 +1205,7 @@
                 else renderTasks();
             }
             if(viewId === 'review') { 
-                reviewViewLevel = 0; 
-                renderReview(); 
+                resetReviewView(); 
             }
             if(viewId === 'request') {
                 requestViewLevel = 0;
@@ -2585,38 +2590,74 @@
             }
         }
 
+        function resetReviewView() {
+            reviewViewLevel = 0;
+            selectedReviewItemCode = null;
+            selectedReviewCommonName = null;
+            selectedReviewContSize = null;
+            renderReview();
+        }
+
+        function selectReviewGroup(iCode, cName, cSize) {
+            selectedReviewItemCode = iCode;
+            selectedReviewCommonName = cName;
+            selectedReviewContSize = cSize;
+            reviewViewLevel = 1;
+            renderReview();
+        }
+
         function renderReview() {
             const container = document.getElementById('review-content');
             const crumb = document.getElementById('review-crumb');
 
-            let completedItems = fullInventory.filter(i => i.DATE_COMPLETED && i.DATE_COMPLETED !== "");
-            
-            if (completedItems.length === 0) {
-                container.innerHTML = `<div class="p-8 text-center text-gray-400">No completed tasks to review.</div>`;
-                crumb.innerText = "All Caught Up";
+            if (managerReviewInventory.length === 0) {
+                container.innerHTML = `<div class="p-8 text-center text-gray-400">No items require manager review at this time.</div>`;
+                crumb.innerText = "Manager Review";
                 return;
             }
 
             if (reviewViewLevel === 0) {
-                crumb.innerText = `Completed Tasks by User`;
-                const users = [...new Set(completedItems.map(i => i.ASSIGNEDTO || "Unassigned"))].sort();
-                container.innerHTML = users.map(u => {
-                    const count = completedItems.filter(i => (i.ASSIGNEDTO || "Unassigned") === u).length;
-                    return `<div class="drill-item" onclick="selectReviewUser('${u}')"><span class="font-bold text-lg">${u} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
+                crumb.innerText = "Items Requiring Review";
+                
+                let groups = {};
+                managerReviewInventory.forEach(i => {
+                    let code = i.ITEMCODE || "UNKNOWN";
+                    if (!groups[code]) {
+                        groups[code] = {
+                            itemCode: code,
+                            commonName: i.COMMONNAME || "Unknown",
+                            contSize: i.CONTSIZE || "-",
+                            count: 0
+                        };
+                    }
+                    groups[code].count++;
+                });
+                
+                let sortedGroups = Object.values(groups).sort((a,b) => a.commonName.localeCompare(b.commonName));
+                
+                let html = sortedGroups.map(g => {
+                    return `
+                    <div class="bg-white border border-red-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectReviewGroup('${g.itemCode.replace(/'/g, "\\'")}', '${g.commonName.replace(/'/g, "\\'")}', '${g.contSize}')">
+                        <div class="flex-grow min-w-0 pr-3">
+                            <div class="font-bold text-[15px] text-red-700 truncate">${g.commonName}</div>
+                            <div class="text-xs font-semibold text-gray-600 mt-1">${g.contSize} <span class="mx-2 text-gray-300">|</span> <span class="font-mono text-red-600">${g.itemCode}</span></div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="bg-red-100 text-red-800 text-[10px] font-bold px-2 py-1 rounded-full">${g.count} Locs</span>
+                            <i class="ph-bold ph-caret-right text-gray-400 text-xl"></i>
+                        </div>
+                    </div>`;
                 }).join('');
+                
+                container.innerHTML = html;
             } else if (reviewViewLevel === 1) {
-                crumb.innerText = `Review / ${selectedReviewUser}`;
-                let userItems = completedItems.filter(i => (i.ASSIGNEDTO || "Unassigned") === selectedReviewUser);
-                userItems.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
-                container.innerHTML = `<div class="back-btn" onclick="reviewViewLevel=0; renderReview()"><i class="ph-bold ph-arrow-left"></i> Back to Users</div>` + 
-                userItems.map(i => generateCard(i, 'review')).join('');
+                crumb.innerText = `Review / ${selectedReviewCommonName} (${selectedReviewContSize})`;
+                let items = managerReviewInventory.filter(i => i.ITEMCODE === selectedReviewItemCode);
+                items.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
+                
+                container.innerHTML = `<div class="back-btn" onclick="resetReviewView()"><i class="ph-bold ph-arrow-left"></i> Back to Items</div>` + 
+                items.map(i => generateCard(i, 'review', 'status-orange')).join('');
             }
-        }
-
-        function selectReviewUser(u) {
-            selectedReviewUser = u;
-            reviewViewLevel = 1;
-            renderReview();
         }
 
         function handleDriveSearch() {
@@ -2820,6 +2861,7 @@
             
             activeItem = fullInventory.find(i => i.UNIQUE_ID === uniqueId);
             if (!activeItem) activeItem = lowStockInventory.find(i => i.UNIQUE_ID === uniqueId);
+            if (!activeItem) activeItem = managerReviewInventory.find(i => i.UNIQUE_ID === uniqueId);
             if (!activeItem) activeItem = reservesInventory.find(i => i.UNIQUE_ID === uniqueId); 
             if (!activeItem) activeItem = requestsInventory.find(i => i.UNIQUE_ID === uniqueId);
             
@@ -2987,7 +3029,7 @@
                     changed = true;
                     continue;
                 }
-                let item = fullInventory.find(i => i.UNIQUE_ID === uid) || lowStockInventory.find(i => i.UNIQUE_ID === uid) || reservesInventory.find(i => i.UNIQUE_ID === uid) || requestsInventory.find(i => i.UNIQUE_ID === uid);
+                let item = fullInventory.find(i => i.UNIQUE_ID === uid) || lowStockInventory.find(i => i.UNIQUE_ID === uid) || reservesInventory.find(i => i.UNIQUE_ID === uid) || requestsInventory.find(i => i.UNIQUE_ID === uid) || managerReviewInventory.find(i => i.UNIQUE_ID === uid);
                 
                 if (item) {
                     Object.assign(item, pendingEdits[uid].data); 
