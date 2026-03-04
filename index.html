@@ -201,13 +201,13 @@
             <div class="drawer-header">Menu</div>
             <div class="drawer-item" onclick="switchView('home'); toggleMenu();"><i class="ph-bold ph-house"></i> Home</div>
             <div class="drawer-item" onclick="switchView('drive'); toggleMenu();"><i class="ph-bold ph-car"></i> Drive Mode</div>
-            <div class="drawer-item rep-hidden" onclick="switchView('tasks'); toggleMenu();"><i class="ph-bold ph-clipboard-text"></i> My Tasks</div>
+            <div class="drawer-item rep-hidden csr-hidden" onclick="switchView('tasks'); toggleMenu();"><i class="ph-bold ph-clipboard-text"></i> My Tasks</div>
             <div class="drawer-item text-orange-600 font-bold" onclick="switchView('docks'); toggleMenu();"><i class="ph-bold ph-truck"></i> Docks</div>
             
             <hr class="my-2">
-            <div class="drawer-item text-blue-600 font-bold admin-rep-only hidden" onclick="switchView('request'); toggleMenu();"><i class="ph-bold ph-chat-circle-text"></i> Requests</div>
-            <div class="drawer-item text-indigo-600 font-bold admin-rep-only hidden" onclick="switchView('reserves'); toggleMenu();"><i class="ph-bold ph-bookmark-simple"></i> Reserves</div>
-            <div class="drawer-item text-purple-600 font-bold admin-only hidden" onclick="switchView('sales-office'); toggleMenu();"><i class="ph-bold ph-briefcase"></i> Sales Office</div>
+            <div class="drawer-item text-blue-600 font-bold admin-rep-csr-only hidden" onclick="switchView('request'); toggleMenu();"><i class="ph-bold ph-chat-circle-text"></i> Requests</div>
+            <div class="drawer-item text-indigo-600 font-bold admin-rep-csr-only hidden" onclick="switchView('reserves'); toggleMenu();"><i class="ph-bold ph-bookmark-simple"></i> Reserves</div>
+            <div class="drawer-item text-purple-600 font-bold admin-csr-only hidden" onclick="switchView('sales-office'); toggleMenu();"><i class="ph-bold ph-briefcase"></i> Sales Office</div>
             <div class="drawer-item text-emerald-600 font-bold admin-only hidden" onclick="switchView('reports'); toggleMenu();"><i class="ph-bold ph-chart-bar"></i> Reports</div>
             <div class="drawer-item text-red-600 font-bold dylan-only hidden" onclick="switchView('low-stock'); toggleMenu();"><i class="ph-bold ph-trend-down"></i> Low Stock List</div>
             <div class="drawer-item text-yellow-600 font-bold admin-only hidden" onclick="switchView('review'); toggleMenu();"><i class="ph-bold ph-warning-circle"></i> Manager Review</div>
@@ -241,7 +241,7 @@
                         <i class="ph-bold ph-car text-3xl text-blue-600"></i>
                         <span class="font-bold text-sm text-gray-800">Drive Mode</span>
                     </div>
-                    <div onclick="switchView('tasks')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer rep-hidden">
+                    <div onclick="switchView('tasks')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer rep-hidden csr-hidden">
                         <i class="ph-bold ph-clipboard-text text-3xl text-[#007a4d]"></i>
                         <span class="font-bold text-sm text-gray-800">Tasks</span>
                     </div>
@@ -249,17 +249,17 @@
                         <i class="ph-bold ph-truck text-3xl text-orange-600"></i>
                         <span class="font-bold text-sm text-gray-800">Docks</span>
                     </div>
-                    <div onclick="switchView('request')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer admin-rep-only hidden">
+                    <div onclick="switchView('request')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer admin-rep-csr-only hidden">
                         <i class="ph-bold ph-chat-circle-text text-3xl text-blue-600"></i>
                         <span class="font-bold text-sm text-gray-800">Requests</span>
                     </div>
                     
-                    <div onclick="switchView('reserves')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform col-span-2 cursor-pointer admin-rep-only hidden">
+                    <div onclick="switchView('reserves')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform col-span-2 admin-rep-csr-only hidden">
                         <i class="ph-bold ph-bookmark-simple text-3xl text-indigo-600"></i>
                         <span class="font-bold text-sm text-gray-800">Reserves</span>
                     </div>
 
-                    <div onclick="switchView('sales-office')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer admin-only hidden">
+                    <div onclick="switchView('sales-office')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer admin-csr-only hidden">
                         <i class="ph-bold ph-briefcase text-3xl text-purple-600"></i>
                         <span class="font-bold text-sm text-gray-800">Sales Office</span>
                     </div>
@@ -645,7 +645,7 @@
                     <div class="flex flex-col gap-3 mt-4">
                         <button id="req-btn-save-draft" class="w-full bg-purple-600 text-white font-bold py-4 rounded-xl shadow-lg" onclick="saveData(false, 'req-')">SAVE REQUEST DATA</button>
                         
-                        <button class="w-full bg-orange-50 text-orange-700 border border-orange-200 font-bold py-4 rounded-xl shadow-sm flex justify-center items-center gap-2 admin-only" onclick="removeFromRequest()"><i class="ph-bold ph-minus-circle text-xl"></i> REMOVE FROM REQUEST (KEEP ITEM)</button>
+                        <button class="w-full bg-orange-50 text-orange-700 border border-orange-200 font-bold py-4 rounded-xl shadow-sm flex justify-center items-center gap-2 admin-csr-only hidden" onclick="removeFromRequest()"><i class="ph-bold ph-minus-circle text-xl"></i> REMOVE FROM REQUEST (KEEP ITEM)</button>
                     </div>
                 </div>
 
@@ -712,7 +712,7 @@
                 <button onclick="initiateBatchAction('copy')" class="flex-1 bg-gray-100 text-gray-700 p-2 rounded-lg text-[10px] font-bold hover:bg-gray-200"><i class="ph-bold ph-copy block text-lg mb-1"></i> Copy</button>
                 <button onclick="initiateBatchAction('email')" class="flex-1 bg-blue-100 text-blue-700 p-2 rounded-lg text-[10px] font-bold hover:bg-blue-200"><i class="ph-bold ph-envelope block text-lg mb-1"></i> Email</button>
                 <button onclick="initiateBatchAction('text')" class="flex-1 bg-green-100 text-green-700 p-2 rounded-lg text-[10px] font-bold hover:bg-green-200"><i class="ph-bold ph-chat block text-lg mb-1"></i> Text</button>
-                <button id="batch-btn-assign" onclick="initiateBatchAction('assign')" class="flex-1 bg-purple-100 text-purple-700 p-2 rounded-lg text-[10px] font-bold hover:bg-purple-200"><i class="ph-bold ph-user-plus block text-lg mb-1"></i> Assign</button>
+                <button id="batch-btn-assign" onclick="initiateBatchAction('assign')" class="flex-1 bg-purple-100 text-purple-700 p-2 rounded-lg text-[10px] font-bold hover:bg-purple-200 admin-csr-only hidden"><i class="ph-bold ph-user-plus block text-lg mb-1"></i> Assign</button>
                 <button id="batch-btn-request" onclick="initiateBatchAction('request_action')" class="flex-1 bg-orange-500 text-white p-2 rounded-lg text-[10px] font-bold shadow-md"><i class="ph-bold ph-warning-circle block text-lg mb-1"></i> Request</button>
             </div>
         </div>
@@ -720,7 +720,7 @@
         <nav class="fixed bottom-0 w-full bg-white border-t flex justify-around py-3 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-50">
             <div onclick="switchView('home')"><i class="ph-bold ph-house text-2xl text-gray-400"></i></div>
             <div onclick="switchView('drive')"><i class="ph-bold ph-car text-2xl text-gray-400"></i></div>
-            <div onclick="switchView('tasks')"><i class="ph-bold ph-clipboard-text text-2xl text-gray-400"></i></div>
+            <div onclick="switchView('tasks')" class="rep-hidden csr-hidden"><i class="ph-bold ph-clipboard-text text-2xl text-gray-400"></i></div>
             <div onclick="switchView('docks')"><i class="ph-bold ph-truck text-2xl text-gray-400"></i></div>
         </nav>
     </div>
@@ -782,7 +782,7 @@
         let socInventory = []; 
         let reservesInventory = []; 
         let requestsInventory = []; 
-        let managerReviewInventory = []; 
+        let managerReviewInventory = []; // NEW ARRAY FOR MANAGER REVIEW
         let salesNotesDict = {}; 
         
         let currentUser = "";
@@ -1060,6 +1060,7 @@
                     obj.REQ_CUSTOMER = getValFromMap(row, ['REQ CUSTOMER']);
                     obj.REQ_QTY = getValFromMap(row, ['REQ QTY']);
                     
+                    // Pull in new columns dynamically if present
                     obj.REQ_DESIRED_SPEC = getValFromMap(row, ['DESIRED SPEC']);
                     obj.REQ_DESIRED_CALIPER = getValFromMap(row, ['DESIRED CALIPER']);
                     obj.REQ_EST_SHIP = getValFromMap(row, ['EST SHIP']);
@@ -1151,18 +1152,30 @@
             
             const isAdmin = (currentRole === 'Admin');
             const isRep = (currentRole === 'SALESREP');
+            const isCsr = (currentRole === 'CSR');
             
+            // Hide restricted classes by default
             document.querySelectorAll('.admin-only').forEach(el => el.classList.add('hidden'));
-            document.querySelectorAll('.admin-rep-only').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.admin-rep-only, .admin-rep-csr-only').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.admin-csr-only').forEach(el => el.classList.add('hidden'));
+            
+            // Show hidden-by-role classes by default
             document.querySelectorAll('.rep-hidden').forEach(el => el.classList.remove('hidden'));
+            document.querySelectorAll('.csr-hidden').forEach(el => el.classList.remove('hidden'));
             
             if (isAdmin) {
                 document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('hidden'));
-                document.querySelectorAll('.admin-rep-only').forEach(el => el.classList.remove('hidden'));
+                document.querySelectorAll('.admin-rep-only, .admin-rep-csr-only').forEach(el => el.classList.remove('hidden'));
+                document.querySelectorAll('.admin-csr-only').forEach(el => el.classList.remove('hidden'));
             }
             if (isRep) {
-                document.querySelectorAll('.admin-rep-only').forEach(el => el.classList.remove('hidden'));
+                document.querySelectorAll('.admin-rep-only, .admin-rep-csr-only').forEach(el => el.classList.remove('hidden'));
                 document.querySelectorAll('.rep-hidden').forEach(el => el.classList.add('hidden'));
+            }
+            if (isCsr) {
+                document.querySelectorAll('.admin-rep-csr-only').forEach(el => el.classList.remove('hidden'));
+                document.querySelectorAll('.admin-csr-only').forEach(el => el.classList.remove('hidden'));
+                document.querySelectorAll('.csr-hidden').forEach(el => el.classList.add('hidden'));
             }
             
             const isDylan = (currentUser === 'dylan_collyge' || currentUser === 'dylan');
@@ -1387,6 +1400,7 @@
             }
         }
 
+        // NEW FUNCTIONS FOR SALES OFFICE ACTIONS
         function copyTextToClipboard(text, label) {
             navigator.clipboard.writeText(text).then(() => {
                 showToast("Copied!", `${label} copied to clipboard.`);
@@ -1396,6 +1410,7 @@
         }
 
         function markSalesOfficeComplete(uniqueId, domId) {
+            // Optimistically remove from DOM
             const row = document.querySelector(`[data-dom-id="${domId}"]`);
             if (row) row.remove();
             
@@ -3335,6 +3350,10 @@
                         let el = document.getElementById('dtab-' + t);
                         if (el) el.classList.remove('hidden');
                     });
+                } else if (currentRole === 'CSR') {
+                    // CSRs get notes and request
+                    document.getElementById('dtab-notes').classList.remove('hidden');
+                    document.getElementById('dtab-request').classList.remove('hidden');
                 } else {
                     document.getElementById('dtab-notes').classList.remove('hidden');
                 }
