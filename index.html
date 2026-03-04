@@ -603,6 +603,7 @@
     </div>
 
     <script>
+        // REPLACE THIS EXACT URL WITH YOUR NEWLY COPIED ONE
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzhJ_tytv5Rm2ag44liZAU6nsp0lQ7-9PLmjxrcuT1WA1WARubi7NyolYoTZ_qvZmzo/exec";
 
         const DB_NAME = "GNC_Sales_DB";
@@ -751,6 +752,62 @@
             }
         };
 
+        // --- BIOMETRIC FINGERPRINT LOGIN LOGIC ---
+        window.addEventListener('DOMContentLoaded', () => {
+            if (localStorage.getItem('gnc_bio_enabled') === 'true' && window.PublicKeyCredential) {
+                const bioBtn = document.getElementById('btn-fingerprint');
+                if (bioBtn) bioBtn.classList.remove('hidden');
+            }
+        });
+
+        async function promptToEnableBiometrics(user, pin) {
+            if (!confirm("Would you like to enable Fingerprint/FaceID login for future use?")) return;
+            
+            try {
+                const publicKey = {
+                    challenge: new Uint8Array(32),
+                    rp: { name: "GNC PRO" },
+                    user: { id: new Uint8Array(16), name: user, displayName: user },
+                    pubKeyCredParams: [{ type: "public-key", alg: -7 }],
+                    authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required" },
+                    timeout: 60000
+                };
+                await navigator.credentials.create({ publicKey });
+                
+                localStorage.setItem('gnc_bio_enabled', 'true');
+                localStorage.setItem('gnc_bio_user', user);
+                localStorage.setItem('gnc_bio_pin', pin);
+                showToast("Success", "Fingerprint login enabled!");
+            } catch (err) {
+                console.log("Biometric enrollment cancelled", err);
+            }
+        }
+
+        async function loginWithBiometric() {
+            try {
+                const publicKey = {
+                    challenge: new Uint8Array(32),
+                    timeout: 60000,
+                    userVerification: "required"
+                };
+                await navigator.credentials.get({ publicKey });
+                
+                const savedUser = localStorage.getItem('gnc_bio_user');
+                const savedPin = localStorage.getItem('gnc_bio_pin');
+                
+                if (savedUser && savedPin) {
+                    document.getElementById('username-input').value = savedUser;
+                    document.getElementById('pin-code').value = savedPin;
+                    handleLogin(true); 
+                } else {
+                    showToast("Error", "Credentials lost. Please log in normally.", true);
+                }
+            } catch (err) {
+                showToast("Error", "Fingerprint cancelled or not recognized.", true);
+            }
+        }
+        // -----------------------------------------
+
         function setRepPermutations(user) {
             let parts = user.split('_');
             if (parts.length >= 2) {
@@ -808,6 +865,8 @@
                         currentRole = res.role;
                         safeRole = String(currentRole).toUpperCase().replace(/\s+/g, '');
                         
+                        localStorage.setItem('gnc_user_v3', inputUser);
+                        localStorage.setItem('gnc_pin_v3', inputPass);
                         localStorage.setItem('gnc_role_v3', currentRole);
                         document.getElementById('header-user').innerText = currentUser.toUpperCase();
 
