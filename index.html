@@ -1380,13 +1380,39 @@
             }
         }
 
-        function copySalesOfficeData(itemCode, locCode, lotCode, noteText) {
-            const textToCopy = `${itemCode}\t${locCode}\t${lotCode}\t${noteText}`;
-            navigator.clipboard.writeText(textToCopy).then(() => {
-                showToast("Copied!", "Row-specific data copied to clipboard.");
+        // NEW FUNCTIONS FOR SALES OFFICE ACTIONS
+        function copyTextToClipboard(text, label) {
+            navigator.clipboard.writeText(text).then(() => {
+                showToast("Copied!", `${label} copied to clipboard.`);
             }).catch(err => {
                 showToast("Error", "Could not copy text.", true);
             });
+        }
+
+        function markSalesOfficeComplete(uniqueId, domId) {
+            // Optimistically remove from DOM
+            const row = document.querySelector(`[data-dom-id="${domId}"]`);
+            if (row) row.remove();
+            
+            let item = fullInventory.find(i => i.UNIQUE_ID === uniqueId);
+            if (item) {
+                item.DATE_COMPLETED = "ERP Synced"; 
+            }
+
+            showToast("Complete", "Row marked as complete.");
+
+            fetch(GOOGLE_SCRIPT_URL, {
+                method: 'POST',
+                body: JSON.stringify({ 
+                    type: 'archive_sales_office', 
+                    id: uniqueId 
+                })
+            }).then(res => res.json())
+            .then(data => {
+                if (data.status !== 'success') {
+                    showToast("Error", "Failed to sync completion to sheet.", true); 
+                }
+            }).catch(err => showToast("Error", "Network error.", true));
         }
 
         function generateCard(item, sourceView, colorClass = 'status-green') {
@@ -1461,8 +1487,14 @@
                         </div>
 
                         <div class="flex gap-2">
-                            <button class="flex-1 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-md active:bg-purple-800" onclick="event.stopPropagation(); copySalesOfficeData('${itemCode}', '${locCode}', '${lotCode}', '${safeNote}')">
-                                <i class="ph-bold ph-copy text-lg"></i> COPY ROW TO ERP
+                            <button class="flex-1 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-700 text-[10px] font-bold py-2.5 rounded-lg transition-colors flex flex-col items-center justify-center gap-1 active:bg-indigo-200" onclick="event.stopPropagation(); copyTextToClipboard('${itemCode}', 'ITEM CODE')">
+                                <i class="ph-bold ph-barcode text-xl"></i> COPY ITEMCODE
+                            </button>
+                            <button class="flex-1 bg-purple-50 border border-purple-200 hover:bg-purple-100 text-purple-700 text-[10px] font-bold py-2.5 rounded-lg transition-colors flex flex-col items-center justify-center gap-1 active:bg-purple-200" onclick="event.stopPropagation(); copyTextToClipboard('${safeNote}', 'SALES NOTE')">
+                                <i class="ph-bold ph-chat-text text-xl"></i> COPY NOTE
+                            </button>
+                            <button class="flex-1 bg-[#007a4d] hover:bg-green-700 text-white text-[10px] font-bold py-2.5 rounded-lg transition-colors flex flex-col items-center justify-center gap-1 shadow-md active:scale-95" onclick="event.stopPropagation(); markSalesOfficeComplete('${item.UNIQUE_ID}', '${item.DOM_ID}')">
+                                <i class="ph-bold ph-check-circle text-xl"></i> COMPLETE
                             </button>
                         </div>
                     </div>
@@ -2167,7 +2199,7 @@
         function renderSalesOffice() {
             const container = document.getElementById('sales-office-content');
             let officeItems = fullInventory.filter(i => {
-                if (!i.DATE_COMPLETED || i.DATE_COMPLETED === "") return false;
+                if (!i.DATE_COMPLETED || i.DATE_COMPLETED === "" || String(i.DATE_COMPLETED).includes("ERP Synced")) return false;
                 return i.APP_TAB_ASSIGNMENT === 'season'; 
             });
 
