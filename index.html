@@ -159,18 +159,26 @@
             <div id="step-2-cust" class="hidden flex flex-col text-left">
                 <div class="flex items-center mb-4 border-b border-gray-100 pb-2">
                     <i class="ph-bold ph-arrow-left text-gray-400 text-2xl mr-2 cursor-pointer p-1" onclick="document.getElementById('step-2-cust').classList.add('hidden'); document.getElementById('step-1-rep').classList.remove('hidden');"></i>
-                    <h3 class="font-bold text-lg text-orange-600">Customer & Qty</h3>
+                    <h3 class="font-bold text-lg text-orange-600">Customer</h3>
                 </div>
-
-                <label class="text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Total Quantity</label>
-                <input type="number" id="req-qty-input" class="input-field mb-4 border-orange-200 font-bold" placeholder="e.g. 15">
 
                 <label class="text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Customer / Consignee</label>
                 <input type="text" id="cust-search-input" class="input-field mb-2 border-orange-200" placeholder="Search or type customer..." onkeyup="populateCustomerList()">
                 
                 <div id="cust-list-container" class="grid grid-cols-1 gap-2 mb-6 max-h-[30vh] overflow-y-auto px-1 py-1"></div>
 
-                <button class="w-full bg-[#007a4d] text-white font-bold p-4 rounded-xl shadow-lg mt-auto" onclick="finalizeRequestAction()">SUBMIT REQUEST</button>
+                <button class="w-full bg-orange-600 text-white font-bold p-4 rounded-xl shadow-lg mt-auto" onclick="processCustStep()">NEXT: ENTER QUANTITIES</button>
+            </div>
+            
+            <div id="step-3-qty" class="hidden flex flex-col text-left h-full">
+                <div class="flex items-center mb-4 border-b border-gray-100 pb-2">
+                    <i class="ph-bold ph-arrow-left text-gray-400 text-2xl mr-2 cursor-pointer p-1" onclick="goBackFromQty()"></i>
+                    <h3 class="font-bold text-lg text-orange-600">Item Quantities</h3>
+                </div>
+                
+                <div id="qty-list-container" class="flex flex-col gap-2 overflow-y-auto max-h-[40vh] mb-4 p-1"></div>
+                
+                <button class="w-full bg-[#007a4d] text-white font-bold p-4 rounded-xl shadow-lg mt-auto" onclick="submitRequestWithQtys()">SUBMIT REQUEST</button>
             </div>
 
             <button class="text-gray-500 font-bold py-2 px-4 mt-2" onclick="document.getElementById('request-rep-modal').classList.add('hidden')">Cancel</button>
@@ -795,6 +803,11 @@
         let selectedReqRepStatus = null; 
         let selectedReqFolder = null; 
         let tempSelectedReqRep = ""; 
+        
+        // NEW STATE VARS FOR QUANTITY STEP
+        let tempReqFolder = null;
+        let tempReqCust = null;
+        let previousReqStep = "";
         
         let dockViewLevel = 0;
         let selectedDockNum = null;
@@ -1506,6 +1519,7 @@
             document.getElementById('step-1-rep').classList.remove('hidden');
             document.getElementById('step-1.5-folder').classList.add('hidden');
             document.getElementById('step-2-cust').classList.add('hidden');
+            document.getElementById('step-3-qty').classList.add('hidden');
             document.getElementById('request-rep-modal').classList.remove('hidden');
             document.getElementById('rep-search-input').value = "";
             filterRepList();
@@ -1563,17 +1577,16 @@
                         const p = fk.split('-'); 
                         fLabel = p.length >= 4 ? `${p[1]}/${p[2]}/${p[3]} - ${uniqueFolders[fk]}` : fk;
                     }
-                    html += `<button class="w-full bg-yellow-50 text-yellow-800 font-bold p-4 rounded-xl shadow-sm border border-yellow-200 mb-2 text-left flex items-center gap-3 active:bg-yellow-100 transition-colors" onclick="finalizeRequestAction('${fk}', '${uniqueFolders[fk].replace(/'/g, "\\'")}')">
+                    html += `<button class="w-full bg-yellow-50 text-yellow-800 font-bold p-4 rounded-xl shadow-sm border border-yellow-200 mb-2 text-left flex items-center gap-3 active:bg-yellow-100 transition-colors" onclick="goToQtyStep('${fk}', '${uniqueFolders[fk].replace(/'/g, "\\'")}', 'step-1.5-folder')">
                                 <i class="ph-fill ph-folder text-2xl text-yellow-500"></i>
                                 <div class="flex flex-col min-w-0"><span class="text-sm truncate">${fLabel}</span><span class="text-[10px] text-gray-500 uppercase font-normal">Append to existing</span></div>
                              </button>`;
                 });
-                html += `<button class="w-full bg-orange-600 text-white font-bold p-4 rounded-xl shadow-md mt-4 active:scale-95 transition-transform" onclick="document.getElementById('step-1.5-folder').classList.add('hidden'); document.getElementById('step-2-cust').classList.remove('hidden'); document.getElementById('req-qty-input').value=''; document.getElementById('cust-search-input').value=''; populateCustomerList();">+ CREATE NEW FOLDER</button>`;
+                html += `<button class="w-full bg-orange-600 text-white font-bold p-4 rounded-xl shadow-md mt-4 active:scale-95 transition-transform" onclick="document.getElementById('step-1.5-folder').classList.add('hidden'); document.getElementById('step-2-cust').classList.remove('hidden'); document.getElementById('cust-search-input').value=''; populateCustomerList();">+ CREATE NEW FOLDER</button>`;
                 
                 document.getElementById('existing-folder-container').innerHTML = html;
             } else {
                 document.getElementById('step-2-cust').classList.remove('hidden');
-                document.getElementById('req-qty-input').value = "";
                 document.getElementById('cust-search-input').value = "";
                 populateCustomerList();
             }
@@ -1631,20 +1644,62 @@
             populateCustomerList();
         }
 
-        function finalizeRequestAction(existingFolderId = null, existingCust = null) {
+        function processCustStep() {
+            let cust = document.getElementById('cust-search-input').value.trim();
+            if (!cust) {
+                showToast("Required", "Please enter or select a customer.", true);
+                return;
+            }
+            goToQtyStep(null, cust, 'step-2-cust');
+        }
+
+        function goToQtyStep(folderId, cust, fromStepId) {
+            tempReqFolder = folderId;
+            tempReqCust = cust;
+            previousReqStep = fromStepId;
+
+            document.getElementById('step-1.5-folder').classList.add('hidden');
+            document.getElementById('step-2-cust').classList.add('hidden');
+            document.getElementById('step-3-qty').classList.remove('hidden');
+
+            let container = document.getElementById('qty-list-container');
+            let html = "";
+            
+            selectedItems.forEach(dId => {
+                let item = fullInventory.find(i => i.DOM_ID === dId) || lowStockInventory.find(i => i.DOM_ID === dId) || reservesInventory.find(i => i.DOM_ID === dId);
+                if(item) {
+                    html += `
+                    <div class="flex items-center justify-between bg-orange-50/50 p-3 rounded-lg border border-orange-100 shadow-sm">
+                        <div class="flex-grow min-w-0 pr-3">
+                            <div class="text-sm font-bold text-gray-800 truncate">${item.COMMONNAME || 'Unknown'}</div>
+                            <div class="text-xs text-gray-500 font-semibold">${item.CONTSIZE || '-'} | Loc: ${item.LOCATIONCODE || '-'}</div>
+                        </div>
+                        <input type="number" class="item-qty-input w-20 p-2 border-2 border-orange-200 rounded-lg text-center font-bold focus:border-orange-500 focus:outline-none" placeholder="Qty" data-uid="${item.UNIQUE_ID}">
+                    </div>`;
+                }
+            });
+            container.innerHTML = html;
+        }
+
+        function goBackFromQty() {
+            document.getElementById('step-3-qty').classList.add('hidden');
+            document.getElementById(previousReqStep).classList.remove('hidden');
+        }
+
+        function submitRequestWithQtys() {
+            let qtyMap = {};
+            document.querySelectorAll('.item-qty-input').forEach(input => {
+                qtyMap[input.getAttribute('data-uid')] = input.value.trim();
+            });
+
+            finalizeRequestAction(tempReqFolder, tempReqCust, qtyMap);
+        }
+
+        function finalizeRequestAction(existingFolderId, existingCust, qtyMap) {
             let cust = existingCust;
-            let qty = "";
             let folderId = existingFolderId;
 
             if (!existingFolderId) {
-                cust = document.getElementById('cust-search-input').value.trim();
-                qty = document.getElementById('req-qty-input').value.trim();
-                
-                if (!cust) {
-                    showToast("Required", "Please enter or select a customer.", true);
-                    return;
-                }
-                
                 const dateStr = new Date().toISOString().split('T')[0]; 
                 const shortTime = new Date().toLocaleTimeString('en-US', {hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit'}).replace(/:/g, ''); 
                 
@@ -1654,12 +1709,15 @@
             
             document.getElementById('request-rep-modal').classList.add('hidden');
             const domIds = Array.from(selectedItems);
-            const uniqueIds = [];
+            const itemsData = [];
             
             domIds.forEach(dId => {
                 let item = fullInventory.find(i => i.DOM_ID === dId) || lowStockInventory.find(i => i.DOM_ID === dId) || reservesInventory.find(i => i.DOM_ID === dId);
                 if (item) {
-                    uniqueIds.push(item.UNIQUE_ID);
+                    itemsData.push({
+                        id: item.UNIQUE_ID,
+                        qty: qtyMap[item.UNIQUE_ID] || ""
+                    });
                 }
             });
 
@@ -1669,11 +1727,10 @@
                 method: 'POST',
                 body: JSON.stringify({ 
                     type: 'batch_request', 
-                    ids: uniqueIds, 
+                    items: itemsData, 
                     repName: tempSelectedReqRep, 
                     folderId: folderId,
-                    customer: cust,
-                    qty: qty
+                    customer: cust
                 })
             }).then(res => res.json())
             .then(data => {
