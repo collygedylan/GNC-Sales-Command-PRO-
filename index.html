@@ -1548,9 +1548,16 @@
                 return;
             }
             
-            if (!document.getElementById('view-request').classList.contains('hidden') && action === 'copy') {
-                pendingTabType = 'request';
+            const isRequestView = !document.getElementById('view-request').classList.contains('hidden');
+            const isDocksView = !document.getElementById('view-docks').classList.contains('hidden');
+            
+            if (isRequestView) {
                 executeBatchAction(action, 'request');
+                return;
+            }
+            
+            if (isDocksView) {
+                executeBatchAction(action, 'docks');
                 return;
             }
             
@@ -1861,47 +1868,73 @@
                 if (found) items.push(found);
             });
 
-            let headerTitle = tabType === 'request' ? "REQUEST DATA" : "SALES NOTES";
+            let headerTitle = "SALES NOTES";
+            if (tabType === 'request') headerTitle = "REQUEST DATA";
+            if (tabType === 'docks') headerTitle = "DOCK NOTES";
+            
             let returnText = `${headerTitle}\n\n`;
 
             items.forEach(i => {
                 returnText += `▪ ${i.COMMONNAME || 'Unknown'} (${i.CONTSIZE || '-'}) | Loc: ${i.LOCATIONCODE || 'No Loc'}\n`;
                 
-                let match = tabType === 'request' ? i.REQ_MATCH : (i.MATCH || i.MATCHPCT);
-                if (match) returnText += `  Match: ${match}%\n`;
-                
-                let spec = tabType === 'request' ? i.REQ_SPEC : i.SPEC;
-                if (spec) returnText += `  Spec: ${spec}\n`;
-                
-                let caliper = tabType === 'request' ? i.REQ_CALIPER : i.CALIPER;
-                if (caliper) returnText += `  Caliper: ${caliper}\n`;
-                
-                let pick = tabType === 'request' ? i.REQ_PICK : (i.PIC_NOTE || i.PICKNOTE || i.PICK);
-                if (pick) returnText += `  Pick Note: ${pick}\n`;
-                
-                let sales = tabType === 'request' ? i.REQ_SALES_NOTE : (i.SALES_NOTE || i.SALESNOTE || i.SALESDESC);
-                if (sales) returnText += `  Sales Note: ${sales}\n`;
+                if (tabType === 'docks') {
+                    if (i.DOCK_SPEC) returnText += `  Spec: ${i.DOCK_SPEC}\n`;
+                    if (i.DOCK_CALIPER) returnText += `  Caliper: ${i.DOCK_CALIPER}\n`;
+                    if (i.DOCK_NOTE) returnText += `  Dock Note: ${i.DOCK_NOTE}\n`;
+                    
+                    let photo = i.DOCK_PHOTO_LINK || i.SAVED_PHOTO_LINK || i['PHOTO LINK'] || i.PHOTOLINK;
+                    if (photo && String(photo).trim() !== "") {
+                        let urls = String(photo).split(',');
+                        let counter = 1;
+                        urls.forEach(url => {
+                            let cleanUrl = url.trim();
+                            let match = cleanUrl.match(/(https?:\/\/[^"\s>]+)/);
+                            if (match) {
+                                returnText += `  Photo ${counter}: ${match[1]}\n`;
+                                counter++;
+                            } else if (cleanUrl.startsWith('http')) {
+                                returnText += `  Photo ${counter}: ${cleanUrl}\n`;
+                                counter++;
+                            }
+                        });
+                    }
+                } else {
+                    let match = tabType === 'request' ? i.REQ_MATCH : (i.MATCH || i.MATCHPCT);
+                    if (match) returnText += `  Match: ${match}%\n`;
+                    
+                    let spec = tabType === 'request' ? i.REQ_SPEC : i.SPEC;
+                    if (spec) returnText += `  Spec: ${spec}\n`;
+                    
+                    let caliper = tabType === 'request' ? i.REQ_CALIPER : i.CALIPER;
+                    if (caliper) returnText += `  Caliper: ${caliper}\n`;
+                    
+                    let pick = tabType === 'request' ? i.REQ_PICK : (i.PIC_NOTE || i.PICKNOTE || i.PICK);
+                    if (pick) returnText += `  Pick Note: ${pick}\n`;
+                    
+                    let sales = tabType === 'request' ? i.REQ_SALES_NOTE : (i.SALES_NOTE || i.SALESNOTE || i.SALESDESC);
+                    if (sales) returnText += `  Sales Note: ${sales}\n`;
 
-                if (tabType === 'request' && i.REQ_COMMENTS) returnText += `  Comments: ${i.REQ_COMMENTS}\n`;
-                if (tabType === 'request' && i.REQ_DESIRED_SPEC) returnText += `  Desired Spec: ${i.REQ_DESIRED_SPEC}\n`;
-                if (tabType === 'request' && i.REQ_DESIRED_CALIPER) returnText += `  Desired Caliper: ${i.REQ_DESIRED_CALIPER}\n`;
-                if (tabType === 'request' && i.REQ_EST_SHIP) returnText += `  Est Ship: ${i.REQ_EST_SHIP}\n`;
-                
-                let photo = tabType === 'request' ? i.REQ_PHOTO_LINK : (i.SAVED_PHOTO_LINK || i['PHOTO LINK'] || i.PHOTOLINK);
-                if (photo && String(photo).trim() !== "") {
-                    let urls = String(photo).split(',');
-                    let counter = 1;
-                    urls.forEach(url => {
-                        let cleanUrl = url.trim();
-                        let match = cleanUrl.match(/(https?:\/\/[^"\s>]+)/);
-                        if (match) {
-                            returnText += `  Photo ${counter}: ${match[1]}\n`;
-                            counter++;
-                        } else if (cleanUrl.startsWith('http')) {
-                            returnText += `  Photo ${counter}: ${cleanUrl}\n`;
-                            counter++;
-                        }
-                    });
+                    if (tabType === 'request' && i.REQ_COMMENTS) returnText += `  Comments: ${i.REQ_COMMENTS}\n`;
+                    if (tabType === 'request' && i.REQ_DESIRED_SPEC) returnText += `  Desired Spec: ${i.REQ_DESIRED_SPEC}\n`;
+                    if (tabType === 'request' && i.REQ_DESIRED_CALIPER) returnText += `  Desired Caliper: ${i.REQ_DESIRED_CALIPER}\n`;
+                    if (tabType === 'request' && i.REQ_EST_SHIP) returnText += `  Est Ship: ${i.REQ_EST_SHIP}\n`;
+                    
+                    let photo = tabType === 'request' ? i.REQ_PHOTO_LINK : (i.SAVED_PHOTO_LINK || i['PHOTO LINK'] || i.PHOTOLINK);
+                    if (photo && String(photo).trim() !== "") {
+                        let urls = String(photo).split(',');
+                        let counter = 1;
+                        urls.forEach(url => {
+                            let cleanUrl = url.trim();
+                            let match = cleanUrl.match(/(https?:\/\/[^"\s>]+)/);
+                            if (match) {
+                                returnText += `  Photo ${counter}: ${match[1]}\n`;
+                                counter++;
+                            } else if (cleanUrl.startsWith('http')) {
+                                returnText += `  Photo ${counter}: ${cleanUrl}\n`;
+                                counter++;
+                            }
+                        });
+                    }
                 }
                 returnText += `\n`;
             });
@@ -1918,7 +1951,10 @@
                     clearSelection();
                 });
             } else if (action === 'email') {
-                let sub = tabType === 'request' ? 'Request Data' : 'Sales Notes';
+                let sub = 'Sales Notes';
+                if (tabType === 'request') sub = 'Request Data';
+                if (tabType === 'docks') sub = 'Dock Notes';
+                
                 window.location.href = `mailto:?subject=${sub}&body=${encodeURIComponent(text)}`;
                 clearSelection();
             } else if (action === 'text') {
