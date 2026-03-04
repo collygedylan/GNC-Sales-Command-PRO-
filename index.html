@@ -167,16 +167,16 @@
                 
                 <div id="cust-list-container" class="grid grid-cols-1 gap-2 mb-6 max-h-[30vh] overflow-y-auto px-1 py-1"></div>
 
-                <button class="w-full bg-orange-600 text-white font-bold p-4 rounded-xl shadow-lg mt-auto" onclick="processCustStep()">NEXT: ENTER QUANTITIES</button>
+                <button class="w-full bg-orange-600 text-white font-bold p-4 rounded-xl shadow-lg mt-auto" onclick="processCustStep()">NEXT: ITEM DETAILS</button>
             </div>
             
             <div id="step-3-qty" class="hidden flex flex-col text-left h-full">
                 <div class="flex items-center mb-4 border-b border-gray-100 pb-2">
                     <i class="ph-bold ph-arrow-left text-gray-400 text-2xl mr-2 cursor-pointer p-1" onclick="goBackFromQty()"></i>
-                    <h3 class="font-bold text-lg text-orange-600">Item Quantities</h3>
+                    <h3 class="font-bold text-lg text-orange-600">Request Details</h3>
                 </div>
                 
-                <div id="qty-list-container" class="flex flex-col gap-2 overflow-y-auto max-h-[40vh] mb-4 p-1"></div>
+                <div id="qty-list-container" class="flex flex-col gap-3 overflow-y-auto max-h-[50vh] mb-4 p-1"></div>
                 
                 <button class="w-full bg-[#007a4d] text-white font-bold p-4 rounded-xl shadow-lg mt-auto" onclick="submitRequestWithQtys()">SUBMIT REQUEST</button>
             </div>
@@ -998,6 +998,11 @@
                     obj.REQ_PHOTO_NAME = getValFromMap(row, ['REQ PHOTO NAME']);
                     obj.REQ_CUSTOMER = getValFromMap(row, ['REQ CUSTOMER']);
                     obj.REQ_QTY = getValFromMap(row, ['REQ QTY']);
+                    
+                    // Pull in new columns dynamically if present
+                    obj.REQ_DESIRED_SPEC = getValFromMap(row, ['DESIRED SPEC']);
+                    obj.REQ_DESIRED_CALIPER = getValFromMap(row, ['DESIRED CALIPER']);
+                    obj.REQ_EST_SHIP = getValFromMap(row, ['EST SHIP']);
 
                     obj.DOCK_SPEC = getValFromMap(row, ['DOCK SPEC']);
                     obj.DOCK_CALIPER = getValFromMap(row, ['DOCK CALIPER']);
@@ -1668,13 +1673,48 @@
             selectedItems.forEach(dId => {
                 let item = fullInventory.find(i => i.DOM_ID === dId) || lowStockInventory.find(i => i.DOM_ID === dId) || reservesInventory.find(i => i.DOM_ID === dId);
                 if(item) {
+                    const isTree = item.PLANTGROUPCODE && String(item.PLANTGROUPCODE).includes('330_TREES');
+                    const isCaliperSize = ["#7", "#10", "#15", "#25", "#45"].includes(item.CONTSIZE);
+                    
+                    let caliperHtml = "";
+                    if (isTree && isCaliperSize) {
+                        caliperHtml = `
+                        <div class="col-span-2">
+                            <label class="text-[9px] font-bold text-gray-500 uppercase ml-1">Desired Caliper</label>
+                            <input type="text" class="item-caliper-input w-full p-2 border border-orange-200 rounded-md text-sm focus:border-orange-500 focus:outline-none" placeholder="Enter Caliper or N/A" data-uid="${item.UNIQUE_ID}">
+                        </div>`;
+                    }
+
                     html += `
-                    <div class="flex items-center justify-between bg-orange-50/50 p-3 rounded-lg border border-orange-100 shadow-sm">
-                        <div class="flex-grow min-w-0 pr-3">
-                            <div class="text-sm font-bold text-gray-800 truncate">${item.COMMONNAME || 'Unknown'}</div>
-                            <div class="text-xs text-gray-500 font-semibold">${item.CONTSIZE || '-'} | Loc: ${item.LOCATIONCODE || '-'}</div>
+                    <div class="bg-orange-50/50 p-3 rounded-lg border border-orange-100 shadow-sm mb-2 flex flex-col gap-2">
+                        <div class="flex-grow min-w-0">
+                            <div class="text-sm font-bold text-gray-800">${item.COMMONNAME || 'Unknown'}</div>
+                            <div class="text-[11px] text-gray-500 font-semibold">${item.CONTSIZE || '-'} | Loc: ${item.LOCATIONCODE || '-'}</div>
                         </div>
-                        <input type="number" class="item-qty-input w-20 p-2 border-2 border-orange-200 rounded-lg text-center font-bold focus:border-orange-500 focus:outline-none" placeholder="Qty" data-uid="${item.UNIQUE_ID}">
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="text-[9px] font-bold text-gray-500 uppercase ml-1">QTY</label>
+                                <input type="number" class="item-qty-input w-full p-2 border border-orange-200 rounded-md text-sm font-bold focus:border-orange-500 focus:outline-none" placeholder="Qty" data-uid="${item.UNIQUE_ID}">
+                            </div>
+                            <div>
+                                <label class="text-[9px] font-bold text-gray-500 uppercase ml-1">Est Ship</label>
+                                <select class="item-est-ship-input w-full p-2 border border-orange-200 rounded-md text-sm font-bold focus:border-orange-500 focus:outline-none" data-uid="${item.UNIQUE_ID}">
+                                    <option value="ASAP">ASAP</option>
+                                    <option value="3 Days">3 Days</option>
+                                    <option value="5 Days">5 Days</option>
+                                    <option value="2 Weeks">2 Weeks</option>
+                                    <option value="3 Weeks">3 Weeks</option>
+                                    <option value="1 Month">1 Month</option>
+                                    <option value="6 Weeks">6 Weeks</option>
+                                    <option value="2 Months">2 Months</option>
+                                </select>
+                            </div>
+                            <div class="col-span-2">
+                                <label class="text-[9px] font-bold text-gray-500 uppercase ml-1">Desired Spec</label>
+                                <input type="text" class="item-spec-input w-full p-2 border border-orange-200 rounded-md text-sm focus:border-orange-500 focus:outline-none" placeholder="Enter Spec or N/A" data-uid="${item.UNIQUE_ID}">
+                            </div>
+                            ${caliperHtml}
+                        </div>
                     </div>`;
                 }
             });
@@ -1687,15 +1727,33 @@
         }
 
         function submitRequestWithQtys() {
-            let qtyMap = {};
+            let itemsData = {};
+            
             document.querySelectorAll('.item-qty-input').forEach(input => {
-                qtyMap[input.getAttribute('data-uid')] = input.value.trim();
+                let uid = input.getAttribute('data-uid');
+                if (!itemsData[uid]) itemsData[uid] = {};
+                itemsData[uid].qty = input.value.trim();
+            });
+            
+            document.querySelectorAll('.item-spec-input').forEach(input => {
+                let uid = input.getAttribute('data-uid');
+                if (itemsData[uid]) itemsData[uid].spec = input.value.trim();
             });
 
-            finalizeRequestAction(tempReqFolder, tempReqCust, qtyMap);
+            document.querySelectorAll('.item-caliper-input').forEach(input => {
+                let uid = input.getAttribute('data-uid');
+                if (itemsData[uid]) itemsData[uid].caliper = input.value.trim();
+            });
+
+            document.querySelectorAll('.item-est-ship-input').forEach(input => {
+                let uid = input.getAttribute('data-uid');
+                if (itemsData[uid]) itemsData[uid].estShip = input.value.trim();
+            });
+
+            finalizeRequestAction(tempReqFolder, tempReqCust, itemsData);
         }
 
-        function finalizeRequestAction(existingFolderId, existingCust, qtyMap) {
+        function finalizeRequestAction(existingFolderId, existingCust, itemsDataObj) {
             let cust = existingCust;
             let folderId = existingFolderId;
 
@@ -1709,14 +1767,18 @@
             
             document.getElementById('request-rep-modal').classList.add('hidden');
             const domIds = Array.from(selectedItems);
-            const itemsData = [];
+            const itemsDataArray = [];
             
             domIds.forEach(dId => {
                 let item = fullInventory.find(i => i.DOM_ID === dId) || lowStockInventory.find(i => i.DOM_ID === dId) || reservesInventory.find(i => i.DOM_ID === dId);
                 if (item) {
-                    itemsData.push({
+                    let dataObj = itemsDataObj[item.UNIQUE_ID] || {};
+                    itemsDataArray.push({
                         id: item.UNIQUE_ID,
-                        qty: qtyMap[item.UNIQUE_ID] || ""
+                        qty: dataObj.qty || "",
+                        targetSpec: dataObj.spec || "",
+                        targetCaliper: dataObj.caliper || "",
+                        estShip: dataObj.estShip || ""
                     });
                 }
             });
@@ -1727,7 +1789,7 @@
                 method: 'POST',
                 body: JSON.stringify({ 
                     type: 'batch_request', 
-                    items: itemsData, 
+                    items: itemsDataArray, 
                     repName: tempSelectedReqRep, 
                     folderId: folderId,
                     customer: cust
@@ -1783,6 +1845,9 @@
                 if (sales) returnText += `  Sales Note: ${sales}\n`;
 
                 if (tabType === 'request' && i.REQ_COMMENTS) returnText += `  Comments: ${i.REQ_COMMENTS}\n`;
+                if (tabType === 'request' && i.REQ_DESIRED_SPEC) returnText += `  Desired Spec: ${i.REQ_DESIRED_SPEC}\n`;
+                if (tabType === 'request' && i.REQ_DESIRED_CALIPER) returnText += `  Desired Caliper: ${i.REQ_DESIRED_CALIPER}\n`;
+                if (tabType === 'request' && i.REQ_EST_SHIP) returnText += `  Est Ship: ${i.REQ_EST_SHIP}\n`;
                 
                 let photo = tabType === 'request' ? i.REQ_PHOTO_LINK : (i.SAVED_PHOTO_LINK || i['PHOTO LINK'] || i.PHOTOLINK);
                 if (photo && String(photo).trim() !== "") {
@@ -2126,6 +2191,11 @@
                 returnText += `▪ ${i.COMMONNAME || 'Unknown'} (${i.CONTSIZE || '-'}) | Loc: ${i.LOCATIONCODE || 'No Loc'}\n`;
                 returnText += `  Requested Qty: ${i.REQ_QTY || 'N/A'}\n`;
                 returnText += `  Customer: ${i.REQ_CUSTOMER || 'N/A'}\n`;
+                
+                if (i.REQ_DESIRED_SPEC) returnText += `  Desired Spec: ${i.REQ_DESIRED_SPEC}\n`;
+                if (i.REQ_DESIRED_CALIPER) returnText += `  Desired Caliper: ${i.REQ_DESIRED_CALIPER}\n`;
+                if (i.REQ_EST_SHIP) returnText += `  Est Ship: ${i.REQ_EST_SHIP}\n`;
+                
                 if (i.REQ_MATCH) returnText += `  Match: ${i.REQ_MATCH}%\n`;
                 if (i.REQ_SPEC) returnText += `  Spec: ${i.REQ_SPEC}\n`;
                 if (i.REQ_CALIPER) returnText += `  Caliper: ${i.REQ_CALIPER}\n`;
