@@ -201,16 +201,16 @@
             <div class="drawer-header">Menu</div>
             <div class="drawer-item" onclick="switchView('home'); toggleMenu();"><i class="ph-bold ph-house"></i> Home</div>
             <div class="drawer-item" onclick="switchView('drive'); toggleMenu();"><i class="ph-bold ph-car"></i> Drive Mode</div>
-            <div class="drawer-item" onclick="switchView('tasks'); toggleMenu();"><i class="ph-bold ph-clipboard-text"></i> My Tasks</div>
+            <div class="drawer-item rep-hidden" onclick="switchView('tasks'); toggleMenu();"><i class="ph-bold ph-clipboard-text"></i> My Tasks</div>
             <div class="drawer-item text-orange-600 font-bold" onclick="switchView('docks'); toggleMenu();"><i class="ph-bold ph-truck"></i> Docks</div>
             
             <hr class="my-2">
-            <div class="drawer-item text-blue-600 font-bold admin-only" onclick="switchView('request'); toggleMenu();"><i class="ph-bold ph-chat-circle-text"></i> Requests</div>
-            <div class="drawer-item text-indigo-600 font-bold admin-only" onclick="switchView('reserves'); toggleMenu();"><i class="ph-bold ph-bookmark-simple"></i> Reserves</div>
-            <div class="drawer-item text-purple-600 font-bold admin-only" onclick="switchView('sales-office'); toggleMenu();"><i class="ph-bold ph-briefcase"></i> Sales Office</div>
-            <div class="drawer-item text-emerald-600 font-bold admin-only" onclick="switchView('reports'); toggleMenu();"><i class="ph-bold ph-chart-bar"></i> Reports</div>
-            <div class="drawer-item text-red-600 font-bold admin-only" onclick="switchView('low-stock'); toggleMenu();"><i class="ph-bold ph-trend-down"></i> Low Stock List</div>
-            <div class="drawer-item text-yellow-600 font-bold admin-only" onclick="switchView('review'); toggleMenu();"><i class="ph-bold ph-warning-circle"></i> Manager Review</div>
+            <div class="drawer-item text-blue-600 font-bold admin-rep-only hidden" onclick="switchView('request'); toggleMenu();"><i class="ph-bold ph-chat-circle-text"></i> Requests</div>
+            <div class="drawer-item text-indigo-600 font-bold admin-rep-only hidden" onclick="switchView('reserves'); toggleMenu();"><i class="ph-bold ph-bookmark-simple"></i> Reserves</div>
+            <div class="drawer-item text-purple-600 font-bold admin-only hidden" onclick="switchView('sales-office'); toggleMenu();"><i class="ph-bold ph-briefcase"></i> Sales Office</div>
+            <div class="drawer-item text-emerald-600 font-bold admin-only hidden" onclick="switchView('reports'); toggleMenu();"><i class="ph-bold ph-chart-bar"></i> Reports</div>
+            <div class="drawer-item text-red-600 font-bold dylan-only hidden" onclick="switchView('low-stock'); toggleMenu();"><i class="ph-bold ph-trend-down"></i> Low Stock List</div>
+            <div class="drawer-item text-yellow-600 font-bold admin-only hidden" onclick="switchView('review'); toggleMenu();"><i class="ph-bold ph-warning-circle"></i> Manager Review</div>
             <hr class="my-2">
             <div class="drawer-item text-red-600" onclick="localStorage.clear(); sessionStorage.clear(); indexedDB.deleteDatabase('GNC_Sales_DB'); location.reload();"><i class="ph-bold ph-sign-out"></i> Logout</div>
         </div>
@@ -241,7 +241,7 @@
                         <i class="ph-bold ph-car text-3xl text-blue-600"></i>
                         <span class="font-bold text-sm text-gray-800">Drive Mode</span>
                     </div>
-                    <div onclick="switchView('tasks')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer">
+                    <div onclick="switchView('tasks')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer rep-hidden">
                         <i class="ph-bold ph-clipboard-text text-3xl text-[#007a4d]"></i>
                         <span class="font-bold text-sm text-gray-800">Tasks</span>
                     </div>
@@ -249,22 +249,22 @@
                         <i class="ph-bold ph-truck text-3xl text-orange-600"></i>
                         <span class="font-bold text-sm text-gray-800">Docks</span>
                     </div>
-                    <div onclick="switchView('request')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer admin-only">
+                    <div onclick="switchView('request')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer admin-rep-only hidden">
                         <i class="ph-bold ph-chat-circle-text text-3xl text-blue-600"></i>
                         <span class="font-bold text-sm text-gray-800">Requests</span>
                     </div>
                     
-                    <div onclick="switchView('reserves')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform col-span-2 cursor-pointer admin-only">
+                    <div onclick="switchView('reserves')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform col-span-2 cursor-pointer admin-rep-only hidden">
                         <i class="ph-bold ph-bookmark-simple text-3xl text-indigo-600"></i>
                         <span class="font-bold text-sm text-gray-800">Reserves</span>
                     </div>
 
-                    <div onclick="switchView('sales-office')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer admin-only">
+                    <div onclick="switchView('sales-office')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer admin-only hidden">
                         <i class="ph-bold ph-briefcase text-3xl text-purple-600"></i>
                         <span class="font-bold text-sm text-gray-800">Sales Office</span>
                     </div>
                     
-                    <div onclick="switchView('reports')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer admin-only">
+                    <div onclick="switchView('reports')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer admin-only hidden">
                         <i class="ph-bold ph-chart-bar text-3xl text-emerald-600"></i>
                         <span class="font-bold text-sm text-gray-800">Reports</span>
                     </div>
@@ -274,7 +274,7 @@
                         <span class="font-bold text-sm text-gray-800">Low Stock</span>
                     </div>
                     
-                    <div onclick="switchView('review')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform col-span-2 cursor-pointer admin-only">
+                    <div onclick="switchView('review')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform col-span-2 cursor-pointer admin-only hidden">
                         <i class="ph-bold ph-warning-circle text-3xl text-yellow-600"></i>
                         <span class="font-bold text-sm text-gray-800">Manager Review</span>
                     </div>
@@ -393,6 +393,8 @@
                         <div class="overview-card"><div class="overview-label">Tag Color</div><div id="ov-tag" class="overview-val">--</div></div>
                         <div class="overview-card"><div class="overview-label">Season Supply</div><div id="ov-season" class="overview-val">--</div></div>
                     </div>
+                    
+                    <div id="ov-large-photo" class="mt-4 hidden mb-4"></div>
 
                     <div id="expand-section" class="mt-6">
                         <div class="expand-trigger" onclick="toggleExpand()">
@@ -780,11 +782,12 @@
         let socInventory = []; 
         let reservesInventory = []; 
         let requestsInventory = []; 
-        let managerReviewInventory = []; // NEW ARRAY FOR MANAGER REVIEW
+        let managerReviewInventory = []; 
         let salesNotesDict = {}; 
         
         let currentUser = "";
         let currentRole = "";
+        let repPermutations = []; 
         
         let activeItem = null;
         let lastView = "";
@@ -877,6 +880,28 @@
             }
         };
 
+        function setRepPermutations(user) {
+            let parts = user.split('_');
+            if (parts.length >= 2) {
+                let first = parts[0];
+                let last = parts[parts.length - 1];
+                repPermutations = [
+                    `${first} ${last}`.toLowerCase(),
+                    `${last}, ${first}`.toLowerCase(),
+                    `${last},${first}`.toLowerCase()
+                ];
+            } else {
+                repPermutations = [user.toLowerCase()];
+            }
+        }
+
+        function isMyRep(repNameStr) {
+            if (currentRole !== 'SALESREP') return true; 
+            if (!repNameStr) return false;
+            let str = String(repNameStr).toLowerCase();
+            return repPermutations.some(p => str.includes(p));
+        }
+
         function handleLogin(isBiometricLogin = false) {
             const inputUser = document.getElementById('username-input').value.trim().toLowerCase();
             const inputPass = document.getElementById('pin-code').value.trim();
@@ -891,6 +916,7 @@
                 currentRole = localStorage.getItem('gnc_role_v3') || 'User';
                 document.getElementById('header-user').innerText = currentUser.toUpperCase();
                 
+                setRepPermutations(currentUser);
                 applyRolePermissions();
                 fetchBackgroundData();
                 return;
@@ -911,6 +937,8 @@
                         
                         localStorage.setItem('gnc_role_v3', currentRole);
                         document.getElementById('header-user').innerText = currentUser.toUpperCase();
+
+                        setRepPermutations(currentUser);
 
                         if (!isBiometricLogin && window.PublicKeyCredential) {
                             promptToEnableBiometrics(inputUser, inputPass);
@@ -1032,7 +1060,6 @@
                     obj.REQ_CUSTOMER = getValFromMap(row, ['REQ CUSTOMER']);
                     obj.REQ_QTY = getValFromMap(row, ['REQ QTY']);
                     
-                    // Pull in new columns dynamically if present
                     obj.REQ_DESIRED_SPEC = getValFromMap(row, ['DESIRED SPEC']);
                     obj.REQ_DESIRED_CALIPER = getValFromMap(row, ['DESIRED CALIPER']);
                     obj.REQ_EST_SHIP = getValFromMap(row, ['EST SHIP']);
@@ -1118,87 +1145,25 @@
             reRenderCurrentView();
         }
 
-        document.addEventListener('DOMContentLoaded', async () => {
-            if (window.PublicKeyCredential && localStorage.getItem('gnc_user_v3') && localStorage.getItem('gnc_pin_v3')) {
-                document.getElementById('btn-fingerprint').classList.remove('hidden');
-            }
-        });
-
-        async function promptToEnableBiometrics(user, pass) {
-            if (localStorage.getItem('gnc_user_v3') === user) return;
-
-            if (confirm("Would you like to enable Fingerprint/FaceID login for next time?")) {
-                try {
-                    const challenge = new Uint8Array(32);
-                    window.crypto.getRandomValues(challenge);
-                    const userId = new Uint8Array(16);
-                    window.crypto.getRandomValues(userId);
-
-                    await navigator.credentials.create({
-                        publicKey: {
-                            challenge: challenge,
-                            rp: { name: "GNC SALES PRO", id: window.location.hostname },
-                            user: { id: userId, name: user, displayName: user.toUpperCase() },
-                            pubKeyCredParams: [{type: "public-key", alg: -7}, {type: "public-key", alg: -257}],
-                            authenticatorSelection: { 
-                                authenticatorAttachment: "platform", 
-                                residentKey: "required", 
-                                requireResidentKey: true, 
-                                userVerification: "required" 
-                            },
-                            timeout: 60000
-                        }
-                    });
-
-                    localStorage.setItem('gnc_user_v3', user);
-                    localStorage.setItem('gnc_pin_v3', pass);
-                    document.getElementById('btn-fingerprint').classList.remove('hidden');
-                    showToast("Success", "Passkey enabled!");
-                    
-                } catch(e) {
-                    console.error(e);
-                    showToast("Notice", "Passkey setup canceled or unsupported.", true);
-                }
-            }
-        }
-
-        async function loginWithBiometric() {
-            try {
-                const challenge = new Uint8Array(32);
-                window.crypto.getRandomValues(challenge);
-
-                const credential = await navigator.credentials.get({
-                    publicKey: {
-                        challenge: challenge,
-                        timeout: 60000,
-                        userVerification: "required" 
-                    }
-                });
-
-                if (credential) {
-                    document.getElementById('username-input').value = localStorage.getItem('gnc_user_v3');
-                    document.getElementById('pin-code').value = localStorage.getItem('gnc_pin_v3');
-                    handleLogin(true); 
-                }
-            } catch (err) {
-                console.error(err);
-                showToast("Biometric Error", "Fingerprint failed or was canceled.", true);
-            }
-        }
-
         function applyRolePermissions() {
             document.getElementById('view-login').style.display = 'none';
             document.getElementById('app-wrapper').classList.remove('hidden');
             
             const isAdmin = (currentRole === 'Admin');
-            document.querySelectorAll('.admin-only').forEach(el => {
-                if(isAdmin) {
-                    el.classList.remove('hidden');
-                    el.style.display = ''; 
-                } else {
-                    el.classList.add('hidden');
-                }
-            });
+            const isRep = (currentRole === 'SALESREP');
+            
+            document.querySelectorAll('.admin-only').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.admin-rep-only').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.rep-hidden').forEach(el => el.classList.remove('hidden'));
+            
+            if (isAdmin) {
+                document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('hidden'));
+                document.querySelectorAll('.admin-rep-only').forEach(el => el.classList.remove('hidden'));
+            }
+            if (isRep) {
+                document.querySelectorAll('.admin-rep-only').forEach(el => el.classList.remove('hidden'));
+                document.querySelectorAll('.rep-hidden').forEach(el => el.classList.add('hidden'));
+            }
             
             const isDylan = (currentUser === 'dylan_collyge' || currentUser === 'dylan');
             document.querySelectorAll('.dylan-only').forEach(el => {
@@ -1303,6 +1268,18 @@
             selectedReqFolder = folderId;
             requestViewLevel = 4;
             renderRequest();
+        }
+
+        function handleReservesSearch() {
+            const term = document.getElementById('reserves-search').value;
+            if (term.length > 0 && reservesViewLevel > 0) { 
+                reservesViewLevel = 0; 
+                selectedReservesRep = null;
+                selectedReservesName = null; 
+                selectedReservesSize = null; 
+                selectedReservesCustomer = null;
+            }
+            renderReserves();
         }
 
         function getLocPrefix(loc) {
@@ -1410,7 +1387,6 @@
             }
         }
 
-        // NEW FUNCTIONS FOR SALES OFFICE ACTIONS
         function copyTextToClipboard(text, label) {
             navigator.clipboard.writeText(text).then(() => {
                 showToast("Copied!", `${label} copied to clipboard.`);
@@ -1420,7 +1396,6 @@
         }
 
         function markSalesOfficeComplete(uniqueId, domId) {
-            // Optimistically remove from DOM
             const row = document.querySelector(`[data-dom-id="${domId}"]`);
             if (row) row.remove();
             
@@ -1590,6 +1565,14 @@
         }
 
         function openRequestModal() {
+            if (currentRole === 'SALESREP') {
+                let parts = currentUser.split('_');
+                let first = parts[0].charAt(0).toUpperCase() + parts[0].slice(1);
+                let last = parts.length > 1 ? parts[parts.length-1].charAt(0).toUpperCase() + parts[parts.length-1].slice(1) : "";
+                selectRepForRequest(`${first} ${last}`);
+                return;
+            }
+
             document.getElementById('step-1-rep').classList.remove('hidden');
             document.getElementById('step-1.5-folder').classList.add('hidden');
             document.getElementById('step-2-cust').classList.add('hidden');
@@ -1627,6 +1610,7 @@
         function selectRepForRequest(repName) {
             tempSelectedReqRep = repName;
             document.getElementById('step-1-rep').classList.add('hidden');
+            document.getElementById('request-rep-modal').classList.remove('hidden'); 
             
             let repReqs = requestsInventory.filter(i => i.REQUESTED_BY === repName && !i.REQ_ARCHIVED);
             
@@ -1642,7 +1626,7 @@
             if (folderKeys.length > 0) {
                 document.getElementById('step-1.5-folder').classList.remove('hidden');
                 let html = `<div class="flex items-center mb-4 border-b border-gray-100 pb-2">
-                                <i class="ph-bold ph-arrow-left text-gray-400 text-2xl mr-2 cursor-pointer p-1" onclick="document.getElementById('step-1.5-folder').classList.add('hidden'); document.getElementById('step-1-rep').classList.remove('hidden');"></i>
+                                ${currentRole !== 'SALESREP' ? `<i class="ph-bold ph-arrow-left text-gray-400 text-2xl mr-2 cursor-pointer p-1" onclick="document.getElementById('step-1.5-folder').classList.add('hidden'); document.getElementById('step-1-rep').classList.remove('hidden');"></i>` : ''}
                                 <h3 class="font-bold text-lg text-orange-600">Select Folder</h3>
                             </div>`;
                 folderKeys.forEach(fk => {
@@ -1852,7 +1836,7 @@
                 }
             });
 
-            showToast("Processing...", `Creating Clone Tickets for ${tempSelectedReqRep}...`, false);
+            showToast("Processing...", `Creating Clone Tickets...`, false);
 
             fetch(GOOGLE_SCRIPT_URL, {
                 method: 'POST',
@@ -2068,6 +2052,8 @@
                 let activeDocks = new Set();
                 
                 socInventory.forEach(i => {
+                    if (!isMyRep(i.SALESREPNAME)) return;
+
                     if (term) {
                         let searchStr = (i.COMMONNAME || i['PLANT NAME'] || i.CUSTOMERNAME || i.SALESREPNAME || 'Unknown').toLowerCase();
                         if (searchStr.includes(term) && i.DOCK_NUM) activeDocks.add(i.DOCK_NUM);
@@ -2095,7 +2081,7 @@
             
             else if (dockViewLevel === 1) {
                 crumb.innerText = `Dock ${selectedDockNum} > Stops & Plants`;
-                let dockItems = socInventory.filter(i => i.DOCK_NUM === selectedDockNum);
+                let dockItems = socInventory.filter(i => i.DOCK_NUM === selectedDockNum && isMyRep(i.SALESREPNAME));
                 
                 if (term) {
                     dockItems = dockItems.filter(i => {
@@ -2580,6 +2566,10 @@
             const crumb = document.getElementById('request-crumb');
 
             let combinedReq = requestsInventory.filter(i => !i.REQ_ARCHIVED);
+            
+            if (currentRole === 'SALESREP') {
+                combinedReq = combinedReq.filter(i => isMyRep(i.REQUESTED_BY));
+            }
 
             const isReqCompleted = (item) => {
                 return (
@@ -2598,19 +2588,23 @@
 
             if (requestViewLevel === 0) {
                 crumb.innerText = "Categories";
-                container.innerHTML = `
-                    <div class="drill-item" onclick="selectRequestCategory('pending')">
-                        <span class="font-bold text-lg text-orange-600">All Pending Requests <span class="text-gray-400 text-sm font-normal">(${pendingReqs.length})</span></span>
-                        <i class="ph-bold ph-caret-right text-gray-300"></i>
-                    </div>
-                    <div class="drill-item" onclick="selectRequestCategory('completed')">
-                        <span class="font-bold text-lg text-green-600">All Completed Requests <span class="text-gray-400 text-sm font-normal">(${completedReqs.length})</span></span>
-                        <i class="ph-bold ph-caret-right text-gray-300"></i>
-                    </div>
+                
+                let repDrillHtml = currentRole === 'SALESREP' ? '' : `
                     <div class="drill-item" onclick="selectRequestCategory('reps')">
                         <span class="font-bold text-lg text-blue-600">Sales Reps</span>
                         <i class="ph-bold ph-caret-right text-gray-300"></i>
+                    </div>`;
+                    
+                container.innerHTML = `
+                    <div class="drill-item" onclick="selectRequestCategory('pending')">
+                        <span class="font-bold text-lg text-orange-600">${currentRole === 'SALESREP' ? 'My ' : 'All '}Pending Requests <span class="text-gray-400 text-sm font-normal">(${pendingReqs.length})</span></span>
+                        <i class="ph-bold ph-caret-right text-gray-300"></i>
                     </div>
+                    <div class="drill-item" onclick="selectRequestCategory('completed')">
+                        <span class="font-bold text-lg text-green-600">${currentRole === 'SALESREP' ? 'My ' : 'All '}Completed Requests <span class="text-gray-400 text-sm font-normal">(${completedReqs.length})</span></span>
+                        <i class="ph-bold ph-caret-right text-gray-300"></i>
+                    </div>
+                    ${repDrillHtml}
                 `;
                 return;
             }
@@ -2833,7 +2827,7 @@
             const resSearch = document.getElementById('reserves-search');
             
             if (resSearch) resSearch.classList.add('hidden'); 
-            if (reservesViewLevel === 0 && resSearch) resSearch.classList.remove('hidden'); 
+            if (reservesViewLevel === 0 && resSearch && currentRole !== 'SALESREP') resSearch.classList.remove('hidden'); 
             
             const term = resSearch ? resSearch.value.toLowerCase() : "";
 
@@ -2846,6 +2840,10 @@
                 );
             }
 
+            if (currentRole === 'SALESREP') {
+                filteredReserves = filteredReserves.filter(i => isMyRep(i.SALESREPNAME));
+            }
+
             if (filteredReserves.length === 0) {
                 crumb.innerText = "Reserves";
                 container.innerHTML = `<div class="p-8 text-center text-gray-400">No reserves data available.</div>`;
@@ -2853,6 +2851,14 @@
             }
 
             if (reservesViewLevel === 0) {
+                if (currentRole === 'SALESREP') {
+                    let myReps = [...new Set(filteredReserves.map(i => i.SALESREPNAME || "Unknown Rep"))];
+                    if (myReps.length > 0) {
+                        selectReservesRep(myReps[0]); 
+                        return;
+                    }
+                }
+
                 crumb.innerText = "Select Sales Rep";
                 const reps = [...new Set(filteredReserves.map(i => i.SALESREPNAME || "Unknown Rep"))].sort();
                 container.innerHTML = reps.map(r => `<div class="drill-item" onclick="selectReservesRep('${r.replace(/'/g, "\\'")}')"><span class="font-bold text-lg">${r}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
@@ -2864,7 +2870,7 @@
             if (reservesViewLevel === 1) {
                 crumb.innerText = `${selectedReservesRep}`;
                 
-                let html = `<div class="back-btn" onclick="reservesViewLevel=0; renderReserves()"><i class="ph-bold ph-arrow-left"></i> Back to Reps</div>`;
+                let html = currentRole === 'SALESREP' ? '' : `<div class="back-btn" onclick="reservesViewLevel=0; renderReserves()"><i class="ph-bold ph-arrow-left"></i> Back to Reps</div>`;
                 
                 html += `
                 <div class="task-tabs mb-4">
@@ -3273,6 +3279,24 @@
 
             document.getElementById('expand-section').classList.remove('expanded');
             document.getElementById('expand-content').innerHTML = '';
+            
+            // Handle massive photo view for Sales Reps
+            const lgPhotoBox = document.getElementById('ov-large-photo');
+            if (currentRole === 'SALESREP') {
+                let pLink = activeItem.SAVED_PHOTO_LINK || activeItem['PHOTO LINK'] || activeItem.PHOTOLINK || activeItem.REQ_PHOTO_LINK || activeItem.DOCK_PHOTO_LINK || "";
+                if (pLink) {
+                    let urls = pLink.split(',');
+                    let urlMatch = urls[0].match(/(https?:\/\/[^"\s>]+)/);
+                    let cleanUrl = urlMatch ? urlMatch[1] : urls[0].trim();
+                    lgPhotoBox.innerHTML = `<img src="${cleanUrl}" class="w-full rounded-xl shadow-md border border-gray-200 object-cover mt-4 mb-2">`;
+                    lgPhotoBox.classList.remove('hidden');
+                } else {
+                    lgPhotoBox.classList.add('hidden');
+                    lgPhotoBox.innerHTML = '';
+                }
+            } else {
+                lgPhotoBox.classList.add('hidden');
+            }
 
             renderPhotoPreview();
 
@@ -3284,7 +3308,11 @@
 
             let defaultTab = 'overview';
 
-            if (sourceView === 'tasks') {
+            if (currentRole === 'SALESREP') {
+                // They only see overview
+                document.querySelectorAll('.detail-tab').forEach(t => t.classList.add('hidden'));
+                document.getElementById('dtab-overview').classList.remove('hidden');
+            } else if (sourceView === 'tasks') {
                 if (activeTaskTab === 'season') {
                     document.getElementById('dtab-season').classList.remove('hidden');
                     defaultTab = 'season';
