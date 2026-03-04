@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GNC SALES/INV</title>
+    <title>GNC SALES PRO</title>
     
     <meta name="theme-color" content="#007a4d">
     <link rel="manifest" href="manifest.json">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="application-name" content="GNC SALES/INV">
+    <meta name="application-name" content="GNC SALES PRO">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-title" content="GNC SALES/INV">
+    <meta name="apple-mobile-web-app-title" content="GNC SALES PRO">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="icon" type="image/png" href="GNC LOGO.png">
     <link rel="apple-touch-icon" href="GNC LOGO.png">
@@ -92,7 +92,7 @@
         <div class="login-card">
             <div class="flex flex-col items-center mb-8 w-full relative">
                 <img src="Greenleaf%20Logo.png" alt="Greenleaf Logo" class="h-20 mb-4 object-contain drop-shadow-md" onerror="this.style.display='none'">
-                <div class="text-3xl text-[#007a4d] font-black tracking-tighter mb-1">GNC SALES/INV</div>
+                <div class="text-3xl text-[#007a4d] font-black tracking-tighter mb-1">GNC SALES PRO</div>
                 
                 <div class="flex flex-col items-center gap-0.5 mt-5">
                     <span class="text-[9px] font-bold text-gray-400 uppercase tracking-[0.3em]">Powered By</span>
@@ -191,7 +191,7 @@
                 <i class="ph-bold ph-list menu-btn text-2xl cursor-pointer" onclick="toggleMenu()"></i>
                 <div class="flex flex-col">
                     <div class="font-bold text-lg leading-tight"><span id="header-user">User</span></div>
-                    <div class="text-[10px] opacity-80 leading-tight">GNC SALES/INV</div>
+                    <div class="text-[10px] opacity-80 leading-tight">GNC SALES PRO</div>
                 </div>
             </div>
         </header>
@@ -225,7 +225,7 @@
                         <img src="Greenleaf%20Logo.png" alt="Greenleaf Logo" class="h-11 object-contain" onerror="this.style.display='none'">
                     </div>
                     
-                    <h1 class="text-2xl font-black tracking-tight mb-1 z-10 relative">GNC SALES/INV</h1>
+                    <h1 class="text-2xl font-black tracking-tight mb-1 z-10 relative">GNC SALES PRO</h1>
                     <p class="text-green-100 text-[10px] font-bold mb-5 uppercase tracking-[0.2em] z-10 relative">Dashboard</p>
                     
                     <div class="flex flex-col items-center pt-4 border-t border-white/20 w-full mt-1 z-10 relative">
@@ -997,6 +997,7 @@
                     obj.REQ_CUSTOMER = getValFromMap(row, ['REQ CUSTOMER']);
                     obj.REQ_QTY = getValFromMap(row, ['REQ QTY']);
                     
+                    // Pull in new columns dynamically if present
                     obj.REQ_DESIRED_SPEC = getValFromMap(row, ['DESIRED SPEC']);
                     obj.REQ_DESIRED_CALIPER = getValFromMap(row, ['DESIRED CALIPER']);
                     obj.REQ_EST_SHIP = getValFromMap(row, ['EST SHIP']);
@@ -1101,7 +1102,7 @@
                     await navigator.credentials.create({
                         publicKey: {
                             challenge: challenge,
-                            rp: { name: "GNC SALES/INV", id: window.location.hostname },
+                            rp: { name: "GNC SALES PRO", id: window.location.hostname },
                             user: { id: userId, name: user, displayName: user.toUpperCase() },
                             pubKeyCredParams: [{type: "public-key", alg: -7}, {type: "public-key", alg: -257}],
                             authenticatorSelection: { 
@@ -2626,16 +2627,16 @@
                         groups[code] = {
                             itemCode: code,
                             commonName: i.COMMONNAME || "Unknown",
-                            contSize: i.CONTSIZE || "-",
-                            count: 0
+                            contSize: i.CONTSIZE || "-"
                         };
                     }
-                    groups[code].count++;
                 });
                 
                 let sortedGroups = Object.values(groups).sort((a,b) => a.commonName.localeCompare(b.commonName));
                 
                 let html = sortedGroups.map(g => {
+                    let totalDriveModeCount = fullInventory.filter(fi => fi.ITEMCODE === g.itemCode).length;
+                    
                     return `
                     <div class="bg-white border border-red-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectReviewGroup('${g.itemCode.replace(/'/g, "\\'")}', '${g.commonName.replace(/'/g, "\\'")}', '${g.contSize}')">
                         <div class="flex-grow min-w-0 pr-3">
@@ -2643,7 +2644,7 @@
                             <div class="text-xs font-semibold text-gray-600 mt-1">${g.contSize} <span class="mx-2 text-gray-300">|</span> <span class="font-mono text-red-600">${g.itemCode}</span></div>
                         </div>
                         <div class="flex items-center gap-2">
-                            <span class="bg-red-100 text-red-800 text-[10px] font-bold px-2 py-1 rounded-full">${g.count} Locs</span>
+                            <span class="bg-red-100 text-red-800 text-[10px] font-bold px-2 py-1 rounded-full">${totalDriveModeCount} Locs</span>
                             <i class="ph-bold ph-caret-right text-gray-400 text-xl"></i>
                         </div>
                     </div>`;
@@ -2652,7 +2653,7 @@
                 container.innerHTML = html;
             } else if (reviewViewLevel === 1) {
                 crumb.innerText = `Review / ${selectedReviewCommonName} (${selectedReviewContSize})`;
-                let items = managerReviewInventory.filter(i => i.ITEMCODE === selectedReviewItemCode);
+                let items = fullInventory.filter(i => i.ITEMCODE === selectedReviewItemCode);
                 items.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
                 
                 container.innerHTML = `<div class="back-btn" onclick="resetReviewView()"><i class="ph-bold ph-arrow-left"></i> Back to Items</div>` + 
