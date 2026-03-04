@@ -326,7 +326,7 @@
             </div>
 
             <div id="view-reserves" class="hidden">
-                <input type="text" id="reserves-search" class="input-field mb-2" placeholder="Search Plants or Customers..." onkeyup="handleReservesSearch()">
+                <input type="text" id="reserves-search" class="input-field mb-2" placeholder="Search Reps, Plants or Customers..." onkeyup="handleReservesSearch()">
                 <div id="reserves-crumb" class="text-xs font-bold text-[#007a4d] mb-3 empty:hidden"></div>
                 <div id="reserves-content"></div>
             </div>
@@ -845,9 +845,13 @@
         let selectedDockTrip = ""; 
         let selectedDockRep = ""; 
 
+        // RESERVES VARS
         let reservesViewLevel = 0;
+        let selectedReservesRep = null;
+        let reservesDrillMode = 'plant'; 
         let selectedReservesName = null;
         let selectedReservesSize = null;
+        let selectedReservesCustomer = null;
 
         const salesRepList = ["Abbey Burka", "Annette Hancock", "Ben Brown", "Ben Harveson", "Ben Machino", "Brian Hatfield", "Casey Rufener", "Chris Farrow", "Chris Gaydos", "David Brandt", "Ellen Deely", "Jessica Robertson", "Josh Ringleb", "Kevin Effinger", "Nate Douglas", "Toby Brown", "Traci Earle", "Tracey Tapscott", "Troy Lee", "Wes Lugas"];
 
@@ -1247,9 +1251,7 @@
                 renderRequest();
             }
             if(viewId === 'reserves') {
-                document.getElementById('reserves-search').value = "";
-                reservesViewLevel = 0;
-                renderReserves();
+                resetReservesView();
             }
             if(viewId === 'sales-office') { renderSalesOffice(); }
             if(viewId === 'low-stock') { resetLowStockView(); }
@@ -1302,19 +1304,6 @@
             requestViewLevel = 4;
             renderRequest();
         }
-
-        function handleReservesSearch() {
-            const term = document.getElementById('reserves-search').value;
-            if (term.length > 0 && reservesViewLevel > 0) { 
-                reservesViewLevel = 0; 
-                selectedReservesName = null; 
-                selectedReservesSize = null; 
-            }
-            renderReserves();
-        }
-
-        function selectReservesName(name) { selectedReservesName = name; reservesViewLevel = 1; renderReserves(); }
-        function selectReservesSize(size) { selectedReservesSize = size; reservesViewLevel = 2; renderReserves(); }
 
         function getLocPrefix(loc) {
             if(!loc) return "Unassigned";
@@ -2767,20 +2756,94 @@
             }
         }
 
+        function resetReservesView() {
+            reservesViewLevel = 0;
+            selectedReservesRep = null;
+            reservesDrillMode = 'plant';
+            selectedReservesName = null;
+            selectedReservesSize = null;
+            selectedReservesCustomer = null;
+            document.getElementById('reserves-search').value = "";
+            renderReserves();
+        }
+
+        function setReservesDrillMode(mode) {
+            reservesDrillMode = mode;
+            reservesViewLevel = 1;
+            renderReserves();
+        }
+
+        function selectReservesRep(rep) {
+            selectedReservesRep = rep;
+            reservesViewLevel = 1;
+            renderReserves();
+        }
+
+        function selectReservesCustomer(cust) {
+            selectedReservesCustomer = cust;
+            reservesViewLevel = 2;
+            renderReserves();
+        }
+
+        function generateReserveCard(item) {
+            let custDisplay = item.CUSTOMERNAME || "Unknown Customer";
+            if (item.CONSIGNEENAME && item.CONSIGNEENAME !== item.CUSTOMERNAME) {
+                custDisplay += ` - ${item.CONSIGNEENAME}`;
+            }
+
+            let qtyReserved = parseInt(String(item.QUANTITYORDERED || item['QUANTITY ORDERED'] || item.QTYORDERED || item.QTY || 0).replace(/,/g, '')) || 0;
+            let shipped = parseInt(String(item.SHIPPED || item['QTY SHIPPED'] || 0).replace(/,/g, '')) || 0;
+            let remaining = qtyReserved - shipped;
+            
+            let remainingColor = remaining > 0 ? "text-orange-600" : "text-green-600";
+            
+            return `
+            <div class="bg-white border-b border-gray-200 p-4 flex flex-col items-start gap-2 cursor-pointer active:bg-gray-50 transition-colors" onclick="openDetail('${item.UNIQUE_ID}', 'reserves')">
+                <div class="flex justify-between w-full items-start mb-2">
+                    <div class="pr-4">
+                        <div class="font-bold text-[15px] text-[#007a4d] leading-tight">${item.COMMONNAME || 'Unknown'} (${item.CONTSIZE || '-'})</div>
+                        <div class="text-xs font-bold text-gray-800 mt-1">${custDisplay}</div>
+                        <div class="text-[10px] font-bold text-indigo-600 mt-1"><i class="ph-bold ph-user mr-1"></i>${item.SALESREPNAME || 'Unknown Rep'}</div>
+                    </div>
+                    <i class="ph-bold ph-caret-right text-gray-300 text-xl flex-shrink-0 mt-1"></i>
+                </div>
+                
+                <div class="w-full flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg p-2 text-center mt-2">
+                    <div class="flex-1">
+                        <div class="text-[9px] font-bold text-gray-500 uppercase">Ordered</div>
+                        <div class="font-bold text-gray-800 text-sm">${qtyReserved}</div>
+                    </div>
+                    <div class="w-px h-8 bg-gray-200 mx-2"></div>
+                    <div class="flex-1">
+                        <div class="text-[9px] font-bold text-gray-500 uppercase">Shipped</div>
+                        <div class="font-bold text-gray-800 text-sm">${shipped}</div>
+                    </div>
+                    <div class="w-px h-8 bg-gray-200 mx-2"></div>
+                    <div class="flex-1">
+                        <div class="text-[9px] font-bold text-gray-500 uppercase">Remaining</div>
+                        <div class="font-bold ${remainingColor} text-sm">${remaining}</div>
+                    </div>
+                </div>
+            </div>`;
+        }
+
         function renderReserves() {
             const container = document.getElementById('reserves-content');
             const crumb = document.getElementById('reserves-crumb');
-
             const resSearch = document.getElementById('reserves-search');
+            
             if (resSearch) resSearch.classList.add('hidden'); 
-
             if (reservesViewLevel === 0 && resSearch) resSearch.classList.remove('hidden'); 
             
             const term = resSearch ? resSearch.value.toLowerCase() : "";
 
             let filteredReserves = reservesInventory;
             if (term) {
-                filteredReserves = filteredReserves.filter(i => (i.COMMONNAME || "").toLowerCase().includes(term) || (i.CUSTOMERNAME || "").toLowerCase().includes(term) || (i.SALESREPNAME || "").toLowerCase().includes(term));
+                filteredReserves = filteredReserves.filter(i => 
+                    (i.COMMONNAME || "").toLowerCase().includes(term) || 
+                    (i.CUSTOMERNAME || "").toLowerCase().includes(term) || 
+                    (i.SALESREPNAME || "").toLowerCase().includes(term)
+                );
             }
 
             if (filteredReserves.length === 0) {
@@ -2790,75 +2853,86 @@
             }
 
             if (reservesViewLevel === 0) {
-                crumb.innerText = `Select Plant (${filteredReserves.length} items)`;
-                const names = [...new Set(filteredReserves.map(i => i.COMMONNAME))].sort();
-                container.innerHTML = names.map(n => `<div class="drill-item" onclick="selectReservesName('${n.replace(/'/g, "\\'")}')"><span class="font-bold text-lg">${n}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
+                crumb.innerText = "Select Sales Rep";
+                const reps = [...new Set(filteredReserves.map(i => i.SALESREPNAME || "Unknown Rep"))].sort();
+                container.innerHTML = reps.map(r => `<div class="drill-item" onclick="selectReservesRep('${r.replace(/'/g, "\\'")}')"><span class="font-bold text-lg">${r}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
                 return;
             }
 
+            let repFiltered = filteredReserves.filter(i => (i.SALESREPNAME || "Unknown Rep") === selectedReservesRep);
+
             if (reservesViewLevel === 1) {
-                crumb.innerText = `${selectedReservesName}`;
-                const namedItems = filteredReserves.filter(i => i.COMMONNAME === selectedReservesName);
-                const sizes = [...new Set(namedItems.map(i => i.CONTSIZE))].sort();
+                crumb.innerText = `${selectedReservesRep}`;
                 
-                let html = `<div class="back-btn" onclick="reservesViewLevel=0; renderReserves()"><i class="ph-bold ph-arrow-left"></i> Back to Plants</div>`;
-                html += `<div class="font-bold text-indigo-600 mb-4 px-2 text-xl border-b pb-2">${selectedReservesName}</div>`;
+                let html = `<div class="back-btn" onclick="reservesViewLevel=0; renderReserves()"><i class="ph-bold ph-arrow-left"></i> Back to Reps</div>`;
                 
-                html += sizes.map(s => {
-                    const count = namedItems.filter(i => i.CONTSIZE === s).length;
-                    return `<div class="drill-item" onclick="selectReservesSize('${s}')"><span class="font-bold text-lg">${s} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
-                }).join('');
+                html += `
+                <div class="task-tabs mb-4">
+                    <div class="task-tab ${reservesDrillMode === 'plant' ? 'active' : ''}" onclick="setReservesDrillMode('plant')">By Plant</div>
+                    <div class="task-tab ${reservesDrillMode === 'customer' ? 'active' : ''}" onclick="setReservesDrillMode('customer')">By Customer</div>
+                </div>
+                `;
+
+                if (reservesDrillMode === 'plant') {
+                    const names = [...new Set(repFiltered.map(i => i.COMMONNAME))].sort();
+                    html += names.map(n => `<div class="drill-item" onclick="selectReservesName('${n.replace(/'/g, "\\'")}')"><span class="font-bold text-lg">${n}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
+                } else {
+                    let custSet = new Set();
+                    repFiltered.forEach(i => {
+                        let c = String(i.CUSTOMERNAME || "Unknown Customer").trim();
+                        let cons = String(i.CONSIGNEENAME || "").trim();
+                        let display = c;
+                        if (cons && cons !== c) display += ` - ${cons}`;
+                        custSet.add(display);
+                    });
+                    const custs = [...custSet].sort();
+                    html += custs.map(c => `<div class="drill-item" onclick="selectReservesCustomer('${c.replace(/'/g, "\\'")}')"><span class="font-bold text-lg">${c}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
+                }
                 
                 container.innerHTML = html;
                 return;
             }
 
             if (reservesViewLevel === 2) {
-                crumb.innerText = `${selectedReservesName} (${selectedReservesSize})`;
-                let displayItems = filteredReserves.filter(i => i.COMMONNAME === selectedReservesName && i.CONTSIZE === selectedReservesSize);
-                
-                let html = `<div class="back-btn" onclick="reservesViewLevel=1; renderReserves()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>`;
-                
-                html += displayItems.map(item => {
-                    let custDisplay = item.CUSTOMERNAME;
-                    if (item.CONSIGNEENAME && item.CONSIGNEENAME !== item.CUSTOMERNAME) {
-                        custDisplay += ` - ${item.CONSIGNEENAME}`;
-                    }
+                if (reservesDrillMode === 'plant') {
+                    crumb.innerText = `${selectedReservesRep} / ${selectedReservesName}`;
+                    const namedItems = repFiltered.filter(i => i.COMMONNAME === selectedReservesName);
+                    const sizes = [...new Set(namedItems.map(i => i.CONTSIZE))].sort();
+                    
+                    let html = `<div class="back-btn" onclick="reservesViewLevel=1; renderReserves()"><i class="ph-bold ph-arrow-left"></i> Back to Plants</div>`;
+                    html += `<div class="font-bold text-indigo-600 mb-4 px-2 text-xl border-b pb-2">${selectedReservesName}</div>`;
+                    
+                    html += sizes.map(s => {
+                        const count = namedItems.filter(i => i.CONTSIZE === s).length;
+                        return `<div class="drill-item" onclick="selectReservesSize('${s}')"><span class="font-bold text-lg">${s} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
+                    }).join('');
+                    
+                    container.innerHTML = html;
+                    return;
+                } else {
+                    crumb.innerText = `${selectedReservesRep} / ${selectedReservesCustomer}`;
+                    
+                    let displayItems = repFiltered.filter(i => {
+                        let c = String(i.CUSTOMERNAME || "Unknown Customer").trim();
+                        let cons = String(i.CONSIGNEENAME || "").trim();
+                        let display = c;
+                        if (cons && cons !== c) display += ` - ${cons}`;
+                        return display === selectedReservesCustomer;
+                    });
+                    
+                    let html = `<div class="back-btn" onclick="reservesViewLevel=1; renderReserves()"><i class="ph-bold ph-arrow-left"></i> Back to Customers</div>`;
+                    html += displayItems.map(item => generateReserveCard(item)).join('');
+                    container.innerHTML = html;
+                    return;
+                }
+            }
 
-                    let qtyReserved = parseInt(String(item.QUANTITYORDERED || item['QUANTITY ORDERED'] || item.QTYORDERED || item.QTY || 0).replace(/,/g, '')) || 0;
-                    let shipped = parseInt(String(item.SHIPPED || item['QTY SHIPPED'] || 0).replace(/,/g, '')) || 0;
-                    let remaining = qtyReserved - shipped;
-                    
-                    let remainingColor = remaining > 0 ? "text-orange-600" : "text-green-600";
-                    
-                    return `
-                    <div class="bg-white border-b border-gray-200 p-4 flex flex-col items-start gap-2 cursor-pointer active:bg-gray-50 transition-colors" onclick="openDetail('${item.UNIQUE_ID}', 'reserves')">
-                        <div class="flex justify-between w-full items-start mb-2">
-                            <div class="pr-4">
-                                <div class="font-bold text-[15px] text-gray-800 leading-tight">${custDisplay}</div>
-                                <div class="text-xs font-bold text-indigo-600 mt-1"><i class="ph-bold ph-user mr-1"></i>${item.SALESREPNAME}</div>
-                            </div>
-                            <i class="ph-bold ph-caret-right text-gray-300 text-xl flex-shrink-0 mt-1"></i>
-                        </div>
-                        
-                        <div class="w-full flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg p-2 text-center mt-2">
-                            <div class="flex-1">
-                                <div class="text-[9px] font-bold text-gray-500 uppercase">QTY Reserved</div>
-                                <div class="font-bold text-gray-800 text-sm">${qtyReserved}</div>
-                            </div>
-                            <div class="w-px h-8 bg-gray-200 mx-2"></div>
-                            <div class="flex-1">
-                                <div class="text-[9px] font-bold text-gray-500 uppercase">Shipped</div>
-                                <div class="font-bold text-gray-800 text-sm">${shipped}</div>
-                            </div>
-                            <div class="w-px h-8 bg-gray-200 mx-2"></div>
-                            <div class="flex-1">
-                                <div class="text-[9px] font-bold text-gray-500 uppercase">Remaining</div>
-                                <div class="font-bold ${remainingColor} text-sm">${remaining}</div>
-                            </div>
-                        </div>
-                    </div>`;
-                }).join('');
+            if (reservesViewLevel === 3 && reservesDrillMode === 'plant') {
+                crumb.innerText = `${selectedReservesRep} / ${selectedReservesName} (${selectedReservesSize})`;
+                let displayItems = repFiltered.filter(i => i.COMMONNAME === selectedReservesName && i.CONTSIZE === selectedReservesSize);
+                
+                let html = `<div class="back-btn" onclick="reservesViewLevel=2; renderReserves()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>`;
+                html += displayItems.map(item => generateReserveCard(item)).join('');
                 
                 container.innerHTML = html;
                 return;
