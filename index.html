@@ -226,18 +226,22 @@
                 
                 <h2 class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3 pl-1">App Modules</h2>
                 <div class="grid grid-cols-2 gap-3 mb-8">
+                    
                     <div onclick="switchView('drive')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer">
                         <i class="ph-bold ph-car text-3xl text-blue-600"></i>
                         <span class="font-bold text-sm text-gray-800">Drive Mode</span>
                     </div>
+                    
                     <div onclick="switchView('tasks')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer rep-hidden csr-hidden">
                         <i class="ph-bold ph-clipboard-text text-3xl text-[#007a4d]"></i>
                         <span class="font-bold text-sm text-gray-800">Tasks</span>
                     </div>
+                    
                     <div onclick="switchView('docks')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer">
                         <i class="ph-bold ph-truck text-3xl text-orange-600"></i>
                         <span class="font-bold text-sm text-gray-800">Docks</span>
                     </div>
+                    
                     <div onclick="switchView('request')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer admin-rep-csr-only hidden">
                         <i class="ph-bold ph-chat-circle-text text-3xl text-blue-600"></i>
                         <span class="font-bold text-sm text-gray-800">Requests</span>
@@ -267,6 +271,7 @@
                         <i class="ph-bold ph-warning-circle text-3xl text-yellow-600"></i>
                         <span class="font-bold text-sm text-gray-800">Manager Review</span>
                     </div>
+
                 </div>
             </div>
 
@@ -700,7 +705,21 @@
     </div>
 
     <script>
+        // REPLACE THIS EXACT URL WITH YOUR NEWLY COPIED ONE
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzhJ_tytv5Rm2ag44liZAU6nsp0lQ7-9PLmjxrcuT1WA1WARubi7NyolYoTZ_qvZmzo/exec";
+
+        window.onload = function() {
+            // Nuke old service workers to force updates instantly
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                    for(let registration of registrations) {
+                        registration.unregister();
+                    }
+                });
+                // Re-register fresh
+                navigator.serviceWorker.register('sw.js').catch(function(error) {});
+            }
+        };
 
         const DB_NAME = "GNC_Sales_DB";
         const STORE_NAME = "inventory_cache";
@@ -840,16 +859,6 @@
             return url;
         }
 
-        window.onload = function() {
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('sw.js')
-                .then(function(registration) {
-                    console.log('Service Worker Registered Successfully!');
-                })
-                .catch(function(error) {});
-            }
-        };
-
         // --- BIOMETRIC FINGERPRINT LOGIN LOGIC ---
         window.addEventListener('DOMContentLoaded', () => {
             if (localStorage.getItem('gnc_bio_enabled') === 'true' && window.PublicKeyCredential) {
@@ -860,7 +869,6 @@
 
         async function promptToEnableBiometrics(user, pin) {
             if (!confirm("Would you like to enable Fingerprint/FaceID login for future use?")) return;
-            
             try {
                 const publicKey = {
                     challenge: new Uint8Array(32),
@@ -871,38 +879,25 @@
                     timeout: 60000
                 };
                 await navigator.credentials.create({ publicKey });
-                
                 localStorage.setItem('gnc_bio_enabled', 'true');
                 localStorage.setItem('gnc_bio_user', user);
                 localStorage.setItem('gnc_bio_pin', pin);
                 showToast("Success", "Fingerprint login enabled!");
-            } catch (err) {
-                console.log("Biometric enrollment cancelled", err);
-            }
+            } catch (err) { console.log("Biometric enrollment cancelled", err); }
         }
 
         async function loginWithBiometric() {
             try {
-                const publicKey = {
-                    challenge: new Uint8Array(32),
-                    timeout: 60000,
-                    userVerification: "required"
-                };
+                const publicKey = { challenge: new Uint8Array(32), timeout: 60000, userVerification: "required" };
                 await navigator.credentials.get({ publicKey });
-                
                 const savedUser = localStorage.getItem('gnc_bio_user');
                 const savedPin = localStorage.getItem('gnc_bio_pin');
-                
                 if (savedUser && savedPin) {
                     document.getElementById('username-input').value = savedUser;
                     document.getElementById('pin-code').value = savedPin;
                     handleLogin(true); 
-                } else {
-                    showToast("Error", "Credentials lost. Please log in normally.", true);
-                }
-            } catch (err) {
-                showToast("Error", "Fingerprint cancelled or not recognized.", true);
-            }
+                } else { showToast("Error", "Credentials lost. Please log in normally.", true); }
+            } catch (err) { showToast("Error", "Fingerprint cancelled or not recognized.", true); }
         }
         // -----------------------------------------
 
@@ -911,14 +906,8 @@
             if (parts.length >= 2) {
                 let first = parts[0];
                 let last = parts[parts.length - 1];
-                repPermutations = [
-                    `${first} ${last}`.toLowerCase(),
-                    `${last}, ${first}`.toLowerCase(),
-                    `${last},${first}`.toLowerCase()
-                ];
-            } else {
-                repPermutations = [user.toLowerCase()];
-            }
+                repPermutations = [`${first} ${last}`.toLowerCase(), `${last}, ${first}`.toLowerCase(), `${last},${first}`.toLowerCase()];
+            } else { repPermutations = [user.toLowerCase()]; }
         }
 
         function isMyRep(repNameStr) {
@@ -932,17 +921,13 @@
             const inputUser = document.getElementById('username-input').value.trim().toLowerCase();
             const inputPass = document.getElementById('pin-code').value.trim();
 
-            if (!inputUser || !inputPass) {
-                showToast("Error", "Please enter username and password", true);
-                return;
-            }
+            if (!inputUser || !inputPass) { showToast("Error", "Please enter username and password", true); return; }
 
             if (localStorage.getItem('gnc_user_v3') === inputUser && localStorage.getItem('gnc_pin_v3') === inputPass) {
                 currentUser = inputUser;
                 currentRole = localStorage.getItem('gnc_role_v3') || 'User';
                 safeRole = String(currentRole).toUpperCase().replace(/\s+/g, '');
                 document.getElementById('header-user').innerText = currentUser.toUpperCase();
-                
                 setRepPermutations(currentUser);
                 applyRolePermissions();
                 fetchBackgroundData();
@@ -970,13 +955,10 @@
 
                         setRepPermutations(currentUser);
 
-                        if (!isBiometricLogin && window.PublicKeyCredential) {
-                            promptToEnableBiometrics(inputUser, inputPass);
-                        }
+                        if (!isBiometricLogin && window.PublicKeyCredential) promptToEnableBiometrics(inputUser, inputPass);
 
                         applyRolePermissions();
                         fetchBackgroundData();
-                        
                     } else {
                         alert("MISMATCH DETECTED!\n\nIncorrect Username or Password.");
                         document.getElementById('pin-code').value = "";
@@ -998,9 +980,7 @@
                     processAndLoadData(cachedRes);
                     showToast("Ready", "Loaded from device memory. Updating in background...", false);
                 }, 50);
-            } else {
-                showToast("Welcome!", "Downloading database... (This only happens once)", false);
-            }
+            } else { showToast("Welcome!", "Downloading database... (This only happens once)", false); }
 
             const dataUrl = `${GOOGLE_SCRIPT_URL}?action=getData`;
             
@@ -1011,11 +991,8 @@
                         setTimeout(() => {
                             processAndLoadData(res); 
                             saveToCache(res);        
-                            if(cachedRes) {
-                                 showToast("Sync Complete", "Live database updated.", false);
-                            } else {
-                                 showToast("Ready", "Database downloaded and saved!", false);
-                            }
+                            if(cachedRes) showToast("Sync Complete", "Live database updated.", false);
+                            else showToast("Ready", "Database downloaded and saved!", false);
                         }, 100);
                     }
                 })
@@ -1028,7 +1005,6 @@
         function mapCompressedToObj(compressedData, isMaster = false) {
             if(!compressedData || !compressedData.headers) return [];
             const h = compressedData.headers;
-            
             const idxMap = {};
             h.forEach((colName, idx) => { idxMap[colName] = idx; });
 
@@ -1113,6 +1089,7 @@
                 item.DOM_ID = 'fi_' + idx;
                 return item;
             });
+            
             lowStockInventory = mapCompressedToObj(res.lowStock, true).map((item, idx) => {
                 item.DOM_ID = 'ls_' + idx;
                 return item;
@@ -1186,26 +1163,31 @@
 
             // 2. DETERMINE ROLE SAFELY
             let roleStr = String(currentRole).toUpperCase();
+            let userStr = String(currentUser).toLowerCase();
+            
             let isRep = roleStr.includes('REP');
             let isCsr = roleStr.includes('CSR');
             let isQc = roleStr.includes('QC');
+            let isDylan = userStr.includes('dylan');
             
-            // If they are not a Rep, CSR, or QC, they get full Admin access automatically
-            let isAdmin = (!isRep && !isCsr && !isQc) || roleStr.includes('ADMIN') || roleStr.includes('MANAGER');
+            // Dylan always gets Admin powers, regardless of spreadsheet typos
+            let isAdmin = (!isRep && !isCsr && !isQc) || roleStr.includes('ADMIN') || roleStr.includes('MANAGER') || isDylan;
 
-            // 3. APPLY RESTRICTIONS
-            if (isRep && !isAdmin) {
+            // 3. APPLY RESTRICTIONS based on exact roles
+            if (isAdmin) {
+                // Do nothing, leave everything visible!
+            } 
+            else if (isRep) {
                 document.querySelectorAll('.rep-hidden, .admin-only, .admin-csr-only').forEach(el => el.classList.add('hidden'));
             }
-            else if (isCsr && !isAdmin) {
+            else if (isCsr) {
                 document.querySelectorAll('.csr-hidden, .admin-only').forEach(el => el.classList.add('hidden'));
             }
-            else if (isQc && !isAdmin) {
+            else if (isQc) {
                 document.querySelectorAll('.admin-only, .admin-rep-only, .admin-rep-csr-only, .admin-csr-only').forEach(el => el.classList.add('hidden'));
             }
 
-            // 4. DYLAN SPECIFIC OVERRIDES
-            let isDylan = String(currentUser).toLowerCase().includes('dylan');
+            // 4. Handle Dylan-specific elements (like Low Stock)
             if (!isDylan && !isAdmin) {
                 document.querySelectorAll('.dylan-only').forEach(el => el.classList.add('hidden'));
             }
