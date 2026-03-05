@@ -251,8 +251,11 @@
             </div>
 
             <div id="view-reserves" class="hidden">
-                <input type="text" id="reserves-search" class="input-field mb-2" placeholder="Search Reps, Plants or Customers..." onkeyup="handleReservesSearch()">
-                <div id="reserves-crumb" class="text-xs font-bold text-[#007a4d] mb-3 empty:hidden"></div>
+                <div id="reserves-search-container" class="relative mb-2">
+                    <input type="text" id="reserves-search" class="input-field w-full pr-10 !mb-0" placeholder="Search..." onkeyup="handleReservesSearch()">
+                    <i id="reserves-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearReservesSearch()"></i>
+                </div>
+                <div id="reserves-crumb" class="text-xs font-bold text-[#007a4d] mb-3 mt-3 empty:hidden"></div>
                 <div id="reserves-content"></div>
             </div>
 
@@ -603,7 +606,6 @@
     </div>
 
     <script>
-        // REPLACE THIS EXACT URL WITH YOUR NEWLY COPIED ONE
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzhJ_tytv5Rm2ag44liZAU6nsp0lQ7-9PLmjxrcuT1WA1WARubi7NyolYoTZ_qvZmzo/exec";
 
         const DB_NAME = "GNC_Sales_DB";
@@ -1214,15 +1216,17 @@
             renderRequest();
         }
 
+        function clearReservesSearch() {
+            document.getElementById('reserves-search').value = "";
+            document.getElementById('reserves-search-clear').classList.add('hidden');
+            renderReserves();
+        }
+
         function handleReservesSearch() {
-            const term = document.getElementById('reserves-search').value;
-            if (term.length > 0 && reservesViewLevel > 0) { 
-                reservesViewLevel = 0; 
-                selectedReservesRep = null;
-                selectedReservesName = null; 
-                selectedReservesSize = null; 
-                selectedReservesCustomer = null;
-            }
+            const term = document.getElementById('reserves-search').value.toLowerCase();
+            const clearBtn = document.getElementById('reserves-search-clear');
+            if (term.length > 0) clearBtn.classList.remove('hidden');
+            else clearBtn.classList.add('hidden');
             renderReserves();
         }
 
@@ -2377,13 +2381,47 @@
             }
         }
 
-        function resetReservesView() {
-            reservesViewLevel = 0; selectedReservesRep = null; reservesDrillMode = 'plant'; selectedReservesName = null; selectedReservesSize = null; selectedReservesCustomer = null; document.getElementById('reserves-search').value = ""; renderReserves();
+        function clearReservesSearch() {
+            document.getElementById('reserves-search').value = "";
+            document.getElementById('reserves-search-clear').classList.add('hidden');
+            renderReserves();
         }
 
-        function setReservesDrillMode(mode) { reservesDrillMode = mode; reservesViewLevel = 1; renderReserves(); }
-        function selectReservesRep(rep) { selectedReservesRep = rep; reservesViewLevel = 1; renderReserves(); }
-        function selectReservesCustomer(cust) { selectedReservesCustomer = cust; reservesViewLevel = 2; renderReserves(); }
+        function handleReservesSearch() {
+            const term = document.getElementById('reserves-search').value.toLowerCase();
+            const clearBtn = document.getElementById('reserves-search-clear');
+            if (term.length > 0) clearBtn.classList.remove('hidden');
+            else clearBtn.classList.add('hidden');
+            renderReserves();
+        }
+
+        function resetReservesView() {
+            reservesViewLevel = 0; 
+            selectedReservesRep = null; 
+            reservesDrillMode = 'plant'; 
+            selectedReservesName = null; 
+            selectedReservesSize = null; 
+            selectedReservesCustomer = null; 
+            clearReservesSearch(); 
+        }
+
+        function setReservesDrillMode(mode) { 
+            reservesDrillMode = mode; 
+            reservesViewLevel = 1; 
+            clearReservesSearch(); 
+        }
+        
+        function selectReservesRep(rep) { 
+            selectedReservesRep = rep; 
+            reservesViewLevel = 1; 
+            clearReservesSearch(); 
+        }
+        
+        function selectReservesCustomer(cust) { 
+            selectedReservesCustomer = cust; 
+            reservesViewLevel = 2; 
+            renderReserves(); 
+        }
 
         function generateReserveCard(item) {
             let custDisplay = item.CUSTOMERNAME || "Unknown Customer";
@@ -2412,18 +2450,18 @@
         function renderReserves() {
             const container = document.getElementById('reserves-content');
             const crumb = document.getElementById('reserves-crumb');
-            const resSearch = document.getElementById('reserves-search');
+            const resSearchContainer = document.getElementById('reserves-search-container');
+            const searchInput = document.getElementById('reserves-search');
             
-            if (resSearch) resSearch.classList.add('hidden'); 
-            if (reservesViewLevel === 0 && resSearch && safeRole !== 'SALESREP') resSearch.classList.remove('hidden'); 
+            if (reservesViewLevel <= 1) {
+                resSearchContainer.classList.remove('hidden');
+            } else {
+                resSearchContainer.classList.add('hidden');
+            }
             
-            const term = resSearch ? resSearch.value.toLowerCase() : "";
+            const term = searchInput.value.toLowerCase();
 
             let filteredReserves = reservesInventory;
-            if (term) {
-                filteredReserves = filteredReserves.filter(i => (i.COMMONNAME || "").toLowerCase().includes(term) || (i.CUSTOMERNAME || "").toLowerCase().includes(term) || (i.SALESREPNAME || "").toLowerCase().includes(term));
-            }
-
             if (safeRole === 'SALESREP') filteredReserves = filteredReserves.filter(i => isMyRep(i.SALESREPNAME));
 
             if (filteredReserves.length === 0) {
@@ -2438,8 +2476,16 @@
                     if (myReps.length > 0) { selectReservesRep(myReps[0]); return; }
                 }
                 crumb.innerText = "Select Sales Rep";
-                const reps = [...new Set(filteredReserves.map(i => i.SALESREPNAME || "Unknown Rep"))].sort();
-                container.innerHTML = reps.map(r => `<div class="drill-item" onclick="selectReservesRep('${r.replace(/'/g, "\\'")}')"><span class="font-bold text-lg">${r}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
+                searchInput.placeholder = "Search Reps...";
+                
+                let reps = [...new Set(filteredReserves.map(i => i.SALESREPNAME || "Unknown Rep"))].sort();
+                if (term) reps = reps.filter(r => r.toLowerCase().includes(term));
+                
+                if (reps.length === 0) {
+                    container.innerHTML = `<div class="p-8 text-center text-gray-400">No reps found matching "${term}".</div>`;
+                } else {
+                    container.innerHTML = reps.map(r => `<div class="drill-item" onclick="selectReservesRep('${r.replace(/'/g, "\\'")}')"><span class="font-bold text-lg">${r}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
+                }
                 return;
             }
 
@@ -2447,13 +2493,18 @@
 
             if (reservesViewLevel === 1) {
                 crumb.innerText = `${selectedReservesRep}`;
-                let html = safeRole === 'SALESREP' ? '' : `<div class="back-btn" onclick="reservesViewLevel=0; renderReserves()"><i class="ph-bold ph-arrow-left"></i> Back to Reps</div>`;
+                let html = safeRole === 'SALESREP' ? '' : `<div class="back-btn" onclick="reservesViewLevel=0; clearReservesSearch();"><i class="ph-bold ph-arrow-left"></i> Back to Reps</div>`;
                 html += `<div class="task-tabs mb-4"><div class="task-tab ${reservesDrillMode === 'plant' ? 'active' : ''}" onclick="setReservesDrillMode('plant')">By Plant</div><div class="task-tab ${reservesDrillMode === 'customer' ? 'active' : ''}" onclick="setReservesDrillMode('customer')">By Customer</div></div>`;
 
                 if (reservesDrillMode === 'plant') {
-                    const names = [...new Set(repFiltered.map(i => i.COMMONNAME))].sort();
-                    html += names.map(n => `<div class="drill-item" onclick="selectReservesName('${n.replace(/'/g, "\\'")}')"><span class="font-bold text-lg">${n}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
+                    searchInput.placeholder = "Search Plants...";
+                    let names = [...new Set(repFiltered.map(i => i.COMMONNAME))].sort();
+                    if (term) names = names.filter(n => n.toLowerCase().includes(term));
+                    
+                    if (names.length === 0) html += `<div class="p-8 text-center text-gray-400">No plants found matching "${term}".</div>`;
+                    else html += names.map(n => `<div class="drill-item" onclick="selectReservesName('${n.replace(/'/g, "\\'")}')"><span class="font-bold text-lg">${n}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
                 } else {
+                    searchInput.placeholder = "Search Customers...";
                     let custSet = new Set();
                     repFiltered.forEach(i => {
                         let c = String(i.CUSTOMERNAME || "Unknown Customer").trim();
@@ -2462,8 +2513,11 @@
                         if (cons && cons !== c) display += ` - ${cons}`;
                         custSet.add(display);
                     });
-                    const custs = [...custSet].sort();
-                    html += custs.map(c => `<div class="drill-item" onclick="selectReservesCustomer('${c.replace(/'/g, "\\'")}')"><span class="font-bold text-lg">${c}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
+                    let custs = [...custSet].sort();
+                    if (term) custs = custs.filter(c => c.toLowerCase().includes(term));
+                    
+                    if (custs.length === 0) html += `<div class="p-8 text-center text-gray-400">No customers found matching "${term}".</div>`;
+                    else html += custs.map(c => `<div class="drill-item" onclick="selectReservesCustomer('${c.replace(/'/g, "\\'")}')"><span class="font-bold text-lg">${c}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
                 }
                 container.innerHTML = html;
                 return;
