@@ -49,6 +49,7 @@
         .status-purple { border-left-color: #9333ea; } 
         .status-orange { border-left-color: #f97316; } 
         .status-blue { border-left-color: #3b82f6; }
+        .status-indigo { border-left-color: #4f46e5; }
         
         .task-tabs { display: flex; border-bottom: 1px solid #e5e7eb; background: #f9fafb; margin-bottom: 10px; }
         .task-tab { flex: 1; text-align: center; padding: 12px; font-size: 11px; font-weight: 700; color: #6b7280; cursor: pointer; border-bottom: 3px solid transparent; text-transform: uppercase; }
@@ -76,6 +77,9 @@
 
         .spinner { border: 4px solid rgba(255,255,255,0.3); border-top: 4px solid white; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        #ptr-indicator { height: 0; overflow: hidden; display: flex; align-items: center; justify-content: center; transition: height 0.3s ease; background: transparent; }
+        .ptr-spinner { border: 3px solid rgba(0,122,77,0.2); border-top: 3px solid var(--brand-green); border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
         
         .scrollbar-none::-webkit-scrollbar { display: none; }
         .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
@@ -215,12 +219,17 @@
             <div class="drawer-item text-emerald-600 font-bold admin-only hidden" onclick="switchView('reports'); toggleMenu();"><i class="ph-bold ph-chart-bar"></i> Reports</div>
             <div class="drawer-item text-red-600 font-bold dylan-only hidden" onclick="switchView('low-stock'); toggleMenu();"><i class="ph-bold ph-trend-down"></i> Low Stock List</div>
             <div class="drawer-item text-yellow-600 font-bold admin-only hidden" onclick="switchView('review'); toggleMenu();"><i class="ph-bold ph-warning-circle"></i> Manager Review</div>
-            <hr class="my-2">
-            <div class="drawer-item text-red-600" onclick="localStorage.clear(); sessionStorage.clear(); indexedDB.deleteDatabase('GNC_Sales_DB'); location.reload();"><i class="ph-bold ph-sign-out"></i> Logout</div>
+            
+            <hr class="my-3 border-gray-200">
+            <div class="drawer-item text-red-600 bg-red-50 font-bold justify-center rounded-lg mx-4 mt-2 mb-4" onclick="localStorage.clear(); sessionStorage.clear(); indexedDB.deleteDatabase('GNC_Sales_DB'); location.reload();">
+                <i class="ph-bold ph-sign-out text-xl"></i> Log Out
+            </div>
         </div>
 
         <div id="main-scroll-area" class="flex-grow overflow-y-auto p-4 pb-40 relative">
             
+            <div id="ptr-indicator"><div class="ptr-spinner"></div></div>
+
             <div id="view-home" class="hidden">
                 <div class="bg-[#007a4d] text-white p-6 rounded-2xl mb-6 shadow-lg flex flex-col items-center text-center relative overflow-hidden">
                     <div class="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-white opacity-5 rounded-full pointer-events-none"></div>
@@ -1037,16 +1046,17 @@
         // 🚀 HIGH-SPEED DATA SYNC (Directly hitting Supabase Tables)
         // =========================================================
         async function fetchBackgroundData() {
+            const ptrIndicator = document.getElementById('ptr-indicator');
+            if (ptrIndicator && ptrIndicator.style.height !== '40px') ptrIndicator.style.height = '40px'; 
+
             const cachedRes = await loadFromCache();
             if (cachedRes) {
                 setTimeout(() => {
                     processAndLoadData(cachedRes);
-                    showToast("Ready", "Loaded from device memory. Updating from Supabase...", false);
                 }, 50);
-            } else { showToast("Welcome!", "Downloading database...", false); }
+            } 
 
             try {
-                // Fetch all 8 tables simultaneously from Supabase (using Promise.allSettled to prevent app crashes if a table is missing)
                 const results = await Promise.allSettled([
                     supabaseFetch('drivearound_master_data', 'GET', null, 'select=*'),
                     supabaseFetch('low_stock', 'GET', null, 'select=*'),
@@ -1054,8 +1064,8 @@
                     supabaseFetch('reserves', 'GET', null, 'select=*'),
                     supabaseFetch('soc_master', 'GET', null, 'select=*'),
                     supabaseFetch('manager_review', 'GET', null, 'select=*'),
-                    supabaseFetch('season_salesnote', 'GET', null, 'select=unique_id'),
-                    supabaseFetch('location_salesnotes', 'GET', null, 'select=unique_id')
+                    supabaseFetch('season_salesnote', 'GET', null, 'select=*'),
+                    supabaseFetch('location_salesnotes', 'GET', null, 'select=*')
                 ]);
 
                 const driveData = results[0].status === 'fulfilled' ? results[0].value : [];
@@ -1066,7 +1076,6 @@
                 const reviewData = results[5].status === 'fulfilled' ? results[5].value : [];
                 const seasonData = results[6].status === 'fulfilled' ? results[6].value : [];
 
-                // Helper to format Supabase Lowercase keys -> App Uppercase keys
                 const formatArr = (arr, sourceTable) => {
                     if(!arr || !Array.isArray(arr)) return [];
                     return arr.map((item, idx) => {
@@ -1074,13 +1083,11 @@
                         for (let k in item) { if(item[k] !== null) obj[k.toUpperCase()] = item[k]; }
                         if(!obj.UNIQUE_ID) obj.UNIQUE_ID = obj.ID || `${sourceTable}_${idx}`;
                         
-                        // Legacy alias mapping
                         obj.SAVED_PHOTO_LINK = obj.PHOTO_LINK || obj.PHOTOLINK || "";
                         obj.SAVED_PHOTO_NAME = obj.PHOTO_NAME || obj.PHOTONAME || "";
                         obj.SEASONSUPPLY = obj.SEASON_SUPPLY || obj.SEASONSUPPLY || 0;
                         obj.FIELDTAGCOLOR = obj.FIELD_TAG_COLOR || obj.FIELDTAGCOLOR || "-";
                         obj.PTRAVAILABLE = obj.PTRAVAILABLE || 0;
-                        
                         return obj;
                     });
                 };
@@ -1093,18 +1100,18 @@
                     reservesData: formatArr(resData, 'reserves'),
                     socData: formatArr(socData, 'soc_master'),
                     managerReviewData: formatArr(reviewData, 'manager_review'),
-                    seasonIds: (seasonData || []).map(i => i.unique_id)
+                    seasonIds: (seasonData || []).map(i => i.unique_id || i.UNIQUE_ID || i['UNIQUE ID']).filter(Boolean)
                 };
 
                 setTimeout(() => {
                     processAndLoadData(resObj); 
                     saveToCache(resObj);        
-                    if(cachedRes) showToast("Sync Complete", "Live database updated.", false);
-                    else showToast("Ready", "Database downloaded and saved!", false);
+                    if (ptrIndicator) ptrIndicator.style.height = '0px'; 
                 }, 100);
 
             } catch (err) {
                 console.error("Background sync failed:", err);
+                if (ptrIndicator) ptrIndicator.style.height = '0px'; 
                 if (!cachedRes) showToast("Sync Error", "Could not download data. Check connection.", true);
             }
         }
@@ -1117,19 +1124,27 @@
             
             socInventory = res.socData;
             socInventory.forEach(item => {
+                item.DOCK_NUM = item.DOCK_NUM || item.DOCK || item.dock; 
                 item.SALESREPNAME = item.SALESREPNAME || item.SALESREP || item['SALES_REP'] || 'Unknown Rep';
                 item.CUSTOMERNAME = item.CUSTOMERNAME || item.CUSTOMER || 'Unknown Customer';
                 item.CONSIGNEENAME = item.CONSIGNEENAME || item.CONSIGNEE || '';
             });
 
             reservesInventory = res.reservesData;
-            let exactSeasonIds = new Set(res.seasonIds || []);
-            fullInventory.forEach(item => { item.APP_TAB_ASSIGNMENT = exactSeasonIds.has(item.UNIQUE_ID) ? 'season' : 'location'; });
+            let exactSeasonIds = new Set((res.seasonIds || []).map(id => String(id)));
+            fullInventory.forEach(item => { 
+                item.APP_TAB_ASSIGNMENT = exactSeasonIds.has(String(item.UNIQUE_ID)) ? 'season' : 'location'; 
+            });
             
             reservesInventory = reservesInventory.map((item, idx) => {
                 item.DOM_ID = 'res_' + idx; item.UNIQUE_ID = item.UNIQUE_ID || 'res_uid_' + idx; 
-                let resCode = String(item.ITEMCODE || item.ITEM || "").trim().toUpperCase(); let masterItem = fullInventory.find(f => String(f.ITEMCODE || "").trim().toUpperCase() === resCode);
-                item.COMMONNAME = masterItem ? masterItem.COMMONNAME : (item.COMMONNAME || item['PLANT_NAME'] || item.DESCRIPTION || item.DESC || 'Unknown Plant'); item.CONTSIZE = masterItem ? masterItem.CONTSIZE : (item.CONTSIZE || item.SIZE || item.CONTAINER || '-'); item.CUSTOMERNAME = item.CUSTOMERNAME || item.CUSTOMER || 'Unknown Customer'; item.CONSIGNEENAME = item.CONSIGNEENAME || item.CONSIGNEE || ''; item.SALESREPNAME = item.SALESREPNAME || item.SALESREP || item['SALES_REP'] || 'Unknown Rep';
+                let resCode = String(item.ITEMCODE || item.ITEM || "").trim().toUpperCase(); 
+                let masterItem = fullInventory.find(f => String(f.ITEMCODE || "").trim().toUpperCase() === resCode);
+                item.COMMONNAME = masterItem ? masterItem.COMMONNAME : (item.COMMONNAME || item['PLANT_NAME'] || item.DESCRIPTION || item.DESC || 'Unknown Plant'); 
+                item.CONTSIZE = masterItem ? masterItem.CONTSIZE : (item.CONTSIZE || item.SIZE || item.CONTAINER || '-'); 
+                item.CUSTOMERNAME = item.CUSTOMERNAME || item.CUSTOMER || 'Unknown Customer'; 
+                item.CONSIGNEENAME = item.CONSIGNEENAME || item.CONSIGNEE || ''; 
+                item.SALESREPNAME = item.SALESREPNAME || item.SALESREP || item['SALES_REP'] || 'Unknown Rep';
                 if (masterItem) { item.LOCATIONCODE = masterItem.LOCATIONCODE; item.PTRAVAILABLE = masterItem.PTRAVAILABLE; item.SEASONSUPPLY = masterItem.SEASONSUPPLY; item.PRIORITY = masterItem.PRIORITY; item.QUALITYCODE = masterItem.QUALITYCODE; item.FIELDTAGCOLOR = masterItem.FIELDTAGCOLOR; item.LOTCODE = masterItem.LOTCODE; }
                 return item;
             });
@@ -1634,7 +1649,7 @@
             } 
             else if (dockViewLevel === 1) {
                 crumb.innerText = `Dock ${selectedDockNum} > Stops & Plants`;
-                let dockItems = socInventory.filter(i => i.DOCK_NUM === selectedDockNum && isMyRep(i.SALESREPNAME));
+                let dockItems = socInventory.filter(i => i.DOCK_NUM == selectedDockNum && isMyRep(i.SALESREPNAME));
                 if (term) { dockItems = dockItems.filter(i => { let searchStr = (i.COMMONNAME || i['PLANT_NAME'] || i.CUSTOMERNAME || i.SALESREPNAME || 'Unknown').toLowerCase(); return searchStr.includes(term); }); }
                 if (dockItems.length === 0) { container.innerHTML = `<div class="back-btn" onclick="dockViewLevel=0; renderDocks()"><i class="ph-bold ph-arrow-left"></i> Back to Docks</div><div class="p-8 text-center text-gray-400">No matching stops found.</div>`; return; }
                 let stopsMap = {};
@@ -1663,6 +1678,56 @@
                 finalItems.sort((a, b) => { let priA = parseFloat(a.PRIORITY); let priB = parseFloat(b.PRIORITY); if (isNaN(priA)) priA = Infinity; if (isNaN(priB)) priB = Infinity; if (priA !== priB) return priA - priB; return (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}); });
                 if (finalItems.length === 0) { container.innerHTML = `<div class="back-btn" onclick="dockViewLevel=1; renderDocks()"><i class="ph-bold ph-arrow-left"></i> Back to Stop</div><div class="p-8 text-center text-gray-400">This plant was requested for the Dock, but no matching records exist in the Master Inventory.</div>`; return; }
                 container.innerHTML = `<div class="back-btn" onclick="dockViewLevel=1; renderDocks()"><i class="ph-bold ph-arrow-left"></i> Back to Stop</div>` + finalItems.map(i => generateCard(i, 'docks', 'status-orange')).join('');
+            }
+        }
+
+        function resetReservesView() {
+            reservesViewLevel = 0;
+            selectedReservesCustomer = null;
+            document.getElementById('reserves-search').value = "";
+            renderReserves();
+        }
+
+        function selectReservesCustomer(cust) {
+            selectedReservesCustomer = cust;
+            reservesViewLevel = 1;
+            renderReserves();
+        }
+
+        function renderReserves() {
+            const container = document.getElementById('reserves-content');
+            const crumb = document.getElementById('reserves-crumb');
+            const term = document.getElementById('reserves-search').value.toLowerCase();
+            
+            let items = reservesInventory;
+            if (safeRole === 'SALESREP') items = items.filter(i => isMyRep(i.SALESREPNAME));
+            
+            if (term) {
+                items = items.filter(i => 
+                    (i.COMMONNAME||"").toLowerCase().includes(term) || 
+                    (i.CUSTOMERNAME||"").toLowerCase().includes(term) ||
+                    (i.ITEMCODE||"").toLowerCase().includes(term)
+                );
+            }
+            
+            if (items.length === 0) { 
+                container.innerHTML = `<div class="p-8 text-center text-gray-400">No active reserves found.</div>`; 
+                crumb.innerText = "No Results";
+                return; 
+            }
+            
+            if (reservesViewLevel === 0) {
+                crumb.innerText = "Reserves > Customers";
+                const customers = [...new Set(items.map(i => i.CUSTOMERNAME || "Unknown Customer"))].sort();
+                container.innerHTML = customers.map(c => {
+                    const count = items.filter(i => (i.CUSTOMERNAME || "Unknown Customer") === c).length;
+                    return `<div class="drill-item" onclick="selectReservesCustomer('${c.replace(/'/g, "\\'")}')"><span class="font-bold text-lg">${c} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
+                }).join('');
+            } else if (reservesViewLevel === 1) {
+                crumb.innerText = `Reserves > ${selectedReservesCustomer}`;
+                let displayItems = items.filter(i => (i.CUSTOMERNAME || "Unknown Customer") === selectedReservesCustomer);
+                displayItems.sort((a,b) => (a.COMMONNAME||"").localeCompare(b.COMMONNAME||""));
+                container.innerHTML = `<div class="back-btn" onclick="reservesViewLevel=0; renderReserves()"><i class="ph-bold ph-arrow-left"></i> Back to Customers</div>` + displayItems.map(i => generateCard(i, 'reserves', 'status-indigo')).join('');
             }
         }
 
@@ -2214,6 +2279,59 @@
             };
             if (isSilentAutoSave && !isComplete && !specificItem) { autoSaveTimer = setTimeout(() => { executeSave(); }, 1000); } else { executeSave(); }
         }
+
+        // =========================================================
+        // 🚀 PULL-TO-REFRESH LOGIC
+        // =========================================================
+        let ptrStartY = 0;
+        let ptrCurrentY = 0;
+        let isPulling = false;
+        
+        window.addEventListener('DOMContentLoaded', () => {
+            const scrollArea = document.getElementById('main-scroll-area');
+            const ptrIndicator = document.getElementById('ptr-indicator');
+
+            scrollArea.addEventListener('touchstart', (e) => {
+                // Only allow pull-to-refresh if we are at the very top of the scroll area
+                if (scrollArea.scrollTop <= 0) {
+                    ptrStartY = e.touches[0].clientY;
+                    isPulling = true;
+                }
+            }, { passive: true });
+
+            scrollArea.addEventListener('touchmove', (e) => {
+                if (!isPulling) return;
+                ptrCurrentY = e.touches[0].clientY;
+                let pullDistance = ptrCurrentY - ptrStartY;
+
+                // If pulling down
+                if (pullDistance > 0 && scrollArea.scrollTop <= 0) {
+                    ptrIndicator.style.transition = 'none'; // Disable transition for a 1:1 smooth pull
+                    ptrIndicator.style.height = Math.min(pullDistance * 0.4, 60) + 'px'; // Max pull height of 60px
+                } else {
+                    isPulling = false;
+                }
+            }, { passive: true });
+
+            scrollArea.addEventListener('touchend', () => {
+                if (!isPulling) return;
+                isPulling = false;
+                let pullDistance = ptrCurrentY - ptrStartY;
+                
+                ptrIndicator.style.transition = 'height 0.3s ease'; // Turn transition back on to snap
+                
+                if (pullDistance > 50) { // If pulled past 50 pixels, trigger refresh
+                    if (navigator.vibrate) navigator.vibrate(50); // Haptic feedback
+                    ptrIndicator.style.height = '40px'; // Hold open at 40px while loading
+                    fetchBackgroundData(); // Trigger the API Sync
+                } else {
+                    ptrIndicator.style.height = '0px'; // Snap closed if not pulled far enough
+                }
+                
+                ptrStartY = 0;
+                ptrCurrentY = 0;
+            });
+        });
     </script>
 </body>
 </html>
