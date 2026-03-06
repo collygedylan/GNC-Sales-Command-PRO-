@@ -23,8 +23,9 @@
         body { font-family: "Amazon Ember", Arial, sans-serif; background-color: white; color: var(--text-main); overscroll-behavior-y: contain; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
         .nav-header { background: var(--brand-green); color: white; padding-top: max(10px, env(safe-area-inset-top)); }
         
+        /* CSS FIX: Explicit display controls for the login flow */
         #view-login { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: var(--brand-green); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
-        #view-change-password { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: var(--brand-green); z-index: 10000; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
+        #view-change-password { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: var(--brand-green); z-index: 10000; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
         
         .login-card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); width: 100%; max-width: 360px; text-align: center; }
         .input-field { width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 15px; margin-bottom: 12px; }
@@ -127,7 +128,7 @@
         </div>
     </div>
 
-    <div id="view-change-password" class="hidden fixed inset-0 bg-[#007a4d] z-[10000] flex flex-col items-center justify-center p-4">
+    <div id="view-change-password">
         <div class="login-card">
             <h2 class="text-2xl font-black text-[#007a4d] mb-2">Change Password</h2>
             <p class="text-xs text-gray-500 font-bold mb-6">For security, please set a new password for your account to continue.</p>
@@ -1036,8 +1037,8 @@
                         const needsPasswordChange = isDefaultPassword && !hasChangedLocally;
 
                         if (needsPasswordChange && !isBiometricLogin) {
-                            document.getElementById('view-login').classList.add('hidden');
-                            document.getElementById('view-change-password').classList.remove('hidden');
+                            document.getElementById('view-login').style.display = 'none';
+                            document.getElementById('view-change-password').style.display = 'flex';
                         } else {
                             finalizeLogin(inputUser, inputPass, isBiometricLogin);
                         }
@@ -1062,8 +1063,8 @@
             if (!newPass || newPass.length < 4) { showToast("Error", "Password must be at least 4 characters", true); return; }
             if (newPass !== confirmPass) { showToast("Error", "Passwords do not match!", true); return; }
             
-            document.getElementById('view-change-password').classList.add('hidden');
-            document.getElementById('view-login').classList.remove('hidden');
+            document.getElementById('view-change-password').style.display = 'none';
+            document.getElementById('view-login').style.display = 'flex';
             document.getElementById('login-inputs').classList.add('hidden');
             document.getElementById('loading-spinner').classList.remove('hidden');
             document.getElementById('loading-text').innerText = "Updating Password...";
@@ -1071,15 +1072,20 @@
             // Push new password securely to the app_users table in Supabase
             const payload = { password: newPass };
             
-            supabaseFetch('app_users', 'PATCH', payload, `username=eq.${currentUser}`)
-                .then(() => {
+            supabaseFetch('app_users', 'PATCH', payload, `username=eq.${encodeURIComponent(currentUser)}`)
+                .then((res) => {
+                    if(res && res.error) { throw new Error("Supabase error"); }
                     localStorage.setItem('gnc_pw_changed_' + currentUser, 'true'); // Lock it locally so it doesn't prompt again
+                    document.getElementById('new-password').value = "";
+                    document.getElementById('confirm-password').value = "";
                     finalizeLogin(currentUser, newPass, false);
                 })
                 .catch(err => {
                     showToast("Error", "Failed to update password.", true);
-                    document.getElementById('view-change-password').classList.remove('hidden');
-                    document.getElementById('view-login').classList.add('hidden');
+                    document.getElementById('view-change-password').style.display = 'flex';
+                    document.getElementById('view-login').style.display = 'none';
+                    document.getElementById('login-inputs').classList.remove('hidden');
+                    document.getElementById('loading-spinner').classList.add('hidden');
                 });
         }
 
