@@ -79,6 +79,11 @@
 
         .spinner { border: 4px solid rgba(255,255,255,0.3); border-top: 4px solid white; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* PTR CSS */
+        #ptr-container { position: absolute; top: 0; left: 0; width: 100%; display: flex; justify-content: center; align-items: flex-end; z-index: 10; pointer-events: none; }
+        .ptr-spinner { border: 3px solid rgba(0,122,77,0.2); border-top: 3px solid var(--brand-green); border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; margin-bottom: 10px; opacity: 0; transition: opacity 0.2s; }
+        .ptr-spinner.active { opacity: 1; }
         
         .scrollbar-none::-webkit-scrollbar { display: none; }
         .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
@@ -1094,6 +1099,16 @@
         // 🚀 HIGH-SPEED DATA SYNC (Directly hitting Supabase Tables)
         // =========================================================
         async function fetchBackgroundData() {
+            const ptrIndicator = document.getElementById('ptr-indicator');
+            const ptrSpinner = document.getElementById('ptr-spinner');
+            const viewWrapper = document.getElementById('view-wrapper');
+
+            if (ptrIndicator && ptrIndicator.style.height !== '60px') {
+                ptrIndicator.style.height = '60px'; 
+                if(ptrSpinner) ptrSpinner.classList.add('active');
+                if(viewWrapper) viewWrapper.style.transform = `translateY(60px)`;
+            }
+
             const cachedRes = await loadFromCache();
             if (cachedRes) {
                 setTimeout(() => {
@@ -1151,10 +1166,16 @@
                 setTimeout(() => {
                     processAndLoadData(resObj); 
                     saveToCache(resObj);        
-                }, 100);
+                    if (ptrIndicator) ptrIndicator.style.height = '0px'; 
+                    if (ptrSpinner) ptrSpinner.classList.remove('active');
+                    if (viewWrapper) viewWrapper.style.transform = `translateY(0px)`;
+                }, 400); // 400ms delay just to make the refresh animation feel smooth
 
             } catch (err) {
                 console.error("Background sync failed:", err);
+                if (ptrIndicator) ptrIndicator.style.height = '0px'; 
+                if (ptrSpinner) ptrSpinner.classList.remove('active');
+                if (viewWrapper) viewWrapper.style.transform = `translateY(0px)`;
                 if (!cachedRes) showToast("Sync Error", "Could not download data. Check connection.", true);
             }
         }
@@ -1692,7 +1713,6 @@
         }
 
         function selectDockNum(num) { selectedDockNum = num; dockViewLevel = 1; renderDocks(); }
-        function selectDockPlant(itemCode, name, size, customerStr, tripStr, repStr) { selectedDockItemCode = itemCode; selectedDockName = name; selectedDockSize = size; selectedDockCustomer = customerStr; selectedDockTrip = tripStr; selectedDockRep = repStr; dockViewLevel = 2; renderDocks(); }
 
         function renderDocks() {
             const container = document.getElementById('docks-content'); const crumb = document.getElementById('docks-crumb'); const term = document.getElementById('docks-search').value.toLowerCase();
@@ -1702,47 +1722,58 @@
                 let activeDocks = new Set();
                 socInventory.forEach(i => {
                     if (!isMyRep(i.SALESREPNAME)) return;
-                    if (term) { let searchStr = (i.COMMONNAME || i['PLANT_NAME'] || i.CUSTOMERNAME || i.SALESREPNAME || 'Unknown').toLowerCase(); if (searchStr.includes(term) && i.DOCK_NUM) activeDocks.add(i.DOCK_NUM); } 
-                    else { if (i.DOCK_NUM) activeDocks.add(i.DOCK_NUM); }
+                    if (i.DOCK_NUM && String(i.DOCK_NUM).trim() !== "") {
+                        if (term) { 
+                            let searchStr = (i.COMMONNAME || i['PLANT_NAME'] || i.CUSTOMERNAME || i.SALESREPNAME || 'Unknown').toLowerCase(); 
+                            if (searchStr.includes(term)) activeDocks.add(String(i.DOCK_NUM).trim()); 
+                        } 
+                        else { activeDocks.add(String(i.DOCK_NUM).trim()); }
+                    }
                 });
                 let html = '<div class="grid grid-cols-4 gap-2">';
-                let sortedDocks = Array.from(activeDocks).sort((a, b) => a - b);
-                sortedDocks.forEach(i => { html += `<div class="bg-white border border-gray-200 p-3 rounded-xl shadow-sm text-center cursor-pointer hover:bg-gray-50 active:scale-95 transition-transform" onclick="selectDockNum(${i})"><i class="ph-bold ph-truck text-2xl text-orange-500 mb-1"></i><div class="font-bold text-[10px] text-gray-700">DOCK ${i}</div></div>`; });
+                let sortedDocks = Array.from(activeDocks).sort((a, b) => a.localeCompare(b, undefined, {numeric: true}));
+                sortedDocks.forEach(i => { html += `<div class="bg-white border border-gray-200 p-3 rounded-xl shadow-sm text-center cursor-pointer hover:bg-gray-50 active:scale-95 transition-transform" onclick="selectDockNum('${i.replace(/'/g, "\\'")}')"><i class="ph-bold ph-truck text-2xl text-orange-500 mb-1"></i><div class="font-bold text-[10px] text-gray-700">DOCK ${i}</div></div>`; });
                 html += '</div>';
                 if (activeDocks.size === 0) container.innerHTML = `<div class="p-8 text-center text-gray-400">No docks ${term ? `contain items matching "${term}"` : 'have data currently'}.</div>`;
                 else container.innerHTML = html;
             } 
             else if (dockViewLevel === 1) {
                 crumb.innerText = `Dock ${selectedDockNum} > Stops & Plants`;
-                let dockItems = socInventory.filter(i => i.DOCK_NUM == selectedDockNum && isMyRep(i.SALESREPNAME));
+                let dockItems = socInventory.filter(i => String(i.DOCK_NUM).trim() === String(selectedDockNum) && isMyRep(i.SALESREPNAME));
                 if (term) { dockItems = dockItems.filter(i => { let searchStr = (i.COMMONNAME || i['PLANT_NAME'] || i.CUSTOMERNAME || i.SALESREPNAME || 'Unknown').toLowerCase(); return searchStr.includes(term); }); }
                 if (dockItems.length === 0) { container.innerHTML = `<div class="back-btn" onclick="dockViewLevel=0; renderDocks()"><i class="ph-bold ph-arrow-left"></i> Back to Docks</div><div class="p-8 text-center text-gray-400">No matching stops found.</div>`; return; }
+                
                 let stopsMap = {};
                 dockItems.forEach(i => {
                     let stopNum = i.STOPNUMBER || i.STOP || "Unassigned"; let tripNum = i.TRIPNUMBER || i.TRIP || "Unassigned"; let groupKey = tripNum + "|" + stopNum;
-                    if (!stopsMap[groupKey]) { stopsMap[groupKey] = { trip: tripNum, stop: stopNum, salesRep: i.SALESREPNAME || i.SALESREP || "Unknown Rep", customer: i.CUSTOMERNAME || i.CUSTOMER || "Unknown Customer", consignee: i.CONSIGNEENAME || i.CONSIGNEE || "", plants: {} }; }
-                    let name = i.COMMONNAME || i['PLANT_NAME'] || i.DESC || i.DESCRIPTION || 'Unknown'; let size = i.CONTSIZE || i.SIZE || i.CONTAINER || '-'; let itemCode = i.ITEMCODE || i.ITEM || 'No Item'; let key = `${itemCode}|${name}|${size}`;
-                    if (!stopsMap[groupKey].plants[key]) stopsMap[groupKey].plants[key] = { itemCode, name, size, count: 0 }; stopsMap[groupKey].plants[key].count++;
+                    if (!stopsMap[groupKey]) { stopsMap[groupKey] = { trip: tripNum, stop: stopNum, salesRep: i.SALESREPNAME || i.SALESREP || "Unknown Rep", customer: i.CUSTOMERNAME || i.CUSTOMER || "Unknown Customer", consignee: i.CONSIGNEENAME || i.CONSIGNEE || "", items: [] }; }
+                    
+                    let targetCode = String(i.ITEMCODE || i.ITEM || "").trim().toUpperCase();
+                    let masterItem = fullInventory.find(fi => String(fi.ITEMCODE || "").trim().toUpperCase() === targetCode);
+                    
+                    if (masterItem) {
+                        if (!stopsMap[groupKey].items.includes(masterItem)) { stopsMap[groupKey].items.push(masterItem); }
+                    } else {
+                        // Fallback fake item so it doesn't break if ERP has a plant not in Master DB yet
+                        let fakeItem = { DOM_ID: 'fake_' + Math.random().toString(36).substr(2, 9), UNIQUE_ID: 'fake_' + Math.random().toString(36).substr(2, 9), COMMONNAME: i.COMMONNAME || i['PLANT_NAME'] || i.DESC || 'Unknown', CONTSIZE: i.CONTSIZE || i.SIZE || i.CONTAINER || '-', ITEMCODE: i.ITEMCODE || i.ITEM || 'No Item', LOCATIONCODE: "Not in Master", PTRAVAILABLE: 0, PRIORITY: '-', FIELDTAGCOLOR: '-', LOTCODE: '-' };
+                        stopsMap[groupKey].items.push(fakeItem);
+                    }
                 });
+
                 let html = `<div class="back-btn" onclick="dockViewLevel=0; document.getElementById('docks-search').value=''; renderDocks()"><i class="ph-bold ph-arrow-left"></i> Back to Docks</div>`;
+                
                 Object.keys(stopsMap).sort((a,b) => String(a).localeCompare(String(b), undefined, {numeric:true})).forEach(groupKey => {
                     let s = stopsMap[groupKey]; let custDisplay = s.customer; if (s.consignee && s.consignee.trim() !== "" && s.consignee !== s.customer) custDisplay += ` - ${s.consignee}`;
-                    html += `<div class="bg-white border border-gray-200 rounded-xl shadow-sm mb-4 overflow-hidden"><div class="bg-orange-50 p-3 border-b border-gray-200"><div class="flex justify-between items-start mb-1"><div class="font-bold text-lg text-orange-700">Trip ${s.trip} &bull; Stop ${s.stop}</div><div class="text-[10px] font-bold text-orange-600 bg-orange-100 px-2 py-1 rounded uppercase"><i class="ph-bold ph-user mr-1"></i>${s.salesRep}</div></div><div class="text-sm font-bold text-gray-800 leading-tight">${custDisplay}</div></div><div class="flex flex-col">`;
-                    Object.values(s.plants).sort((a,b) => a.name.localeCompare(b.name)).forEach(p => {
-                        let safeCust = (custDisplay || "").replace(/'/g, "\\'"); let safeTrip = (s.trip || "").replace(/'/g, "\\'"); let safeRep = (s.salesRep || "").replace(/'/g, "\\'");
-                        html += `<div class="p-3 border-b border-gray-100 last:border-b-0 cursor-pointer hover:bg-gray-50 active:bg-gray-100 flex justify-between items-center" onclick="selectDockPlant('${p.itemCode.replace(/'/g, "\\'")}', '${p.name.replace(/'/g, "\\'")}', '${p.size}', '${safeCust}', '${safeTrip}', '${safeRep}')"><div class="flex-grow min-w-0 pr-3"><div class="font-bold text-sm text-[#007a4d] truncate">${p.name}</div><div class="text-[11px] font-semibold text-gray-500 mt-1 flex items-center gap-2"><span class="bg-gray-100 border border-gray-200 px-1.5 py-0.5 rounded text-gray-700">${p.size}</span><span class="text-blue-600"><i class="ph-bold ph-barcode mr-0.5"></i>${p.itemCode}</span></div></div><i class="ph-bold ph-caret-right text-gray-300 text-lg"></i></div>`;
+                    html += `<div class="bg-gray-100 border border-gray-200 rounded-xl shadow-sm mb-6 overflow-hidden"><div class="bg-orange-100 p-3 border-b border-orange-200"><div class="flex justify-between items-start mb-1"><div class="font-black text-lg text-orange-800">Trip ${s.trip} &bull; Stop ${s.stop}</div><div class="text-[10px] font-bold text-orange-600 bg-white px-2 py-1 rounded uppercase shadow-sm"><i class="ph-bold ph-user mr-1"></i>${s.salesRep}</div></div><div class="text-sm font-bold text-gray-800 leading-tight">${custDisplay}</div></div><div class="p-3 flex flex-col">`;
+                    
+                    s.items.sort((a, b) => { let priA = parseFloat(a.PRIORITY); let priB = parseFloat(b.PRIORITY); if (isNaN(priA)) priA = Infinity; if (isNaN(priB)) priB = Infinity; if (priA !== priB) return priA - priB; return (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}); });
+                    
+                    s.items.forEach(item => {
+                        html += generateCard(item, 'docks', 'status-orange');
                     });
                     html += `</div></div>`;
                 });
                 container.innerHTML = html;
-            }
-            else if (dockViewLevel === 2) {
-                crumb.innerText = `Dock ${selectedDockNum} > ${selectedDockName} (${selectedDockSize})`;
-                let targetCode = String(selectedDockItemCode || "").trim().toUpperCase();
-                let finalItems = fullInventory.filter(i => { let iCode = String(i.ITEMCODE || "").trim().toUpperCase(); if (targetCode && targetCode !== "NO ITEM") return iCode === targetCode; else return i.COMMONNAME === selectedDockName && i.CONTSIZE === selectedDockSize; });
-                finalItems.sort((a, b) => { let priA = parseFloat(a.PRIORITY); let priB = parseFloat(b.PRIORITY); if (isNaN(priA)) priA = Infinity; if (isNaN(priB)) priB = Infinity; if (priA !== priB) return priA - priB; return (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}); });
-                if (finalItems.length === 0) { container.innerHTML = `<div class="back-btn" onclick="dockViewLevel=1; renderDocks()"><i class="ph-bold ph-arrow-left"></i> Back to Stop</div><div class="p-8 text-center text-gray-400">This plant was requested for the Dock, but no matching records exist in the Master Inventory.</div>`; return; }
-                container.innerHTML = `<div class="back-btn" onclick="dockViewLevel=1; renderDocks()"><i class="ph-bold ph-arrow-left"></i> Back to Stop</div>` + finalItems.map(i => generateCard(i, 'docks', 'status-orange')).join('');
             }
         }
 
