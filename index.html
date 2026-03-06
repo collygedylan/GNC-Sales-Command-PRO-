@@ -864,6 +864,29 @@
         });
 
         // =========================================================
+        // WAKE LOCK API (Prevents screen from sleeping during sync)
+        // =========================================================
+        let wakeLock = null;
+
+        async function requestWakeLock() {
+            if ('wakeLock' in navigator) {
+                try {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                } catch (err) {
+                    console.log("Wake Lock error: ", err);
+                }
+            }
+        }
+
+        function releaseWakeLock() {
+            if (wakeLock !== null) {
+                wakeLock.release().then(() => {
+                    wakeLock = null;
+                });
+            }
+        }
+
+        // =========================================================
         // 🚀 SUPABASE API CONFIGURATION 🚀
         // =========================================================
         const SUPABASE_URL = "https://gmkmsjvzzujjxfmcpyud.supabase.co";
@@ -1234,6 +1257,8 @@
         }
 
         async function fetchBackgroundData() {
+            await requestWakeLock(); // 🚨 PREVENT SCREEN SLEEP DURING SYNC
+
             const cachedRes = await loadFromCache();
             if (cachedRes) {
                 setTimeout(() => { processAndLoadData(cachedRes); }, 50);
@@ -1291,13 +1316,15 @@
                 setTimeout(() => {
                     processAndLoadData(resObj); 
                     saveToCache(resObj);        
-                    closePTR(); // Hides the pull-to-refresh spinner when done
+                    closePTR(); 
+                    releaseWakeLock(); // 🚨 LET SCREEN SLEEP AGAIN
                 }, 100);
 
             } catch (err) {
                 console.error("Background sync failed:", err);
                 if (!cachedRes) showToast("Sync Error", "Could not download data. Check connection.", true);
-                closePTR(); // Hides the pull-to-refresh spinner if it failed
+                closePTR(); 
+                releaseWakeLock(); // 🚨 LET SCREEN SLEEP AGAIN ON ERROR
             }
         }
 
@@ -1534,7 +1561,7 @@
             // Standard layout for tasks, requests, etc.
             return `<div class="flex items-center w-full mb-2 item-row" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm pointer-events-none" ${isChecked}></div><div class="inv-card ${colorClass} flex items-center justify-between flex-grow !mb-0 transition-transform active:scale-[0.99]"><div class="flex-grow min-w-0 text-[#007a4d]"><div class="flex justify-between font-bold text-sm mb-1"><span class="truncate pr-2">${item.COMMONNAME || 'Unknown'} • ${item.CONTSIZE || '-'} • Loc: ${item.LOCATIONCODE || 'No Loc'}</span><span class="whitespace-nowrap bg-[#007a4d]/10 px-1.5 py-0.5 rounded text-xs border border-[#007a4d]/20">Pri: ${item.PRIORITY || '-'}</span></div><div class="text-[11px] font-semibold truncate mt-0.5">Tag: ${tagColor} | Lot: ${item.LOTCODE || '-'} | PTR-Ava: ${item.PTRAVAILABLE || '0'} | s_LTS: ${item.S_LTS || '0'} | Supply: ${item.SEASONSUPPLY || '0'}</div><div class="text-[11px] font-semibold truncate mt-0.5">Item: ${item.ITEMCODE || '-'}</div></div>${thumbHtml}</div></div>`;
         }
-        
+
         function initiateBatchAction(action) {
             if (action === 'request_action') { openRequestModal(); return; }
             const isRequestView = !document.getElementById('view-request').classList.contains('hidden'); const isDocksView = !document.getElementById('view-docks').classList.contains('hidden');
