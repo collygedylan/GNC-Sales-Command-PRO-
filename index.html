@@ -85,6 +85,14 @@
 
     <div id="toast-notification"></div>
 
+    <div id="photo-modal" class="hidden fixed inset-0 bg-black bg-opacity-95 z-[15000] flex flex-col items-center justify-center p-4">
+        <div class="absolute top-0 left-0 w-full p-6 flex justify-between items-start bg-gradient-to-b from-black/80 to-transparent z-50">
+            <div id="photo-modal-caption" class="text-white font-bold text-sm leading-tight drop-shadow-md pr-4 uppercase tracking-wide"></div>
+            <i class="ph-bold ph-x text-white text-3xl cursor-pointer bg-black/50 p-2 rounded-full active:scale-95 transition-transform" onclick="closePhotoModal()"></i>
+        </div>
+        <img id="photo-modal-img" src="" class="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl z-40 mt-10">
+    </div>
+
     <div id="view-login">
         <div class="login-card">
             <div class="flex flex-col items-center mb-8 w-full relative">
@@ -965,6 +973,20 @@
         }
 
         // =========================================================
+        // 🚀 FULL SCREEN PHOTO MODAL 
+        // =========================================================
+        function openPhotoModal(url, caption) {
+            document.getElementById('photo-modal-img').src = url;
+            document.getElementById('photo-modal-caption').innerText = caption;
+            document.getElementById('photo-modal').classList.remove('hidden');
+        }
+
+        function closePhotoModal() {
+            document.getElementById('photo-modal').classList.add('hidden');
+            document.getElementById('photo-modal-img').src = "";
+        }
+
+        // =========================================================
         // 🚀 LOGIN (Directly hitting Supabase app_users table) 
         // =========================================================
         function handleLogin(isBiometricLogin = false) {
@@ -1282,6 +1304,9 @@
             updateGlobalActionBar(); 
         }
 
+        // =========================================================
+        // 🚀 SMART CLICK ROUTER (OPENS PHOTO DIRECTLY FOR SALES REPS)
+        // =========================================================
         function handleCardClick(domId, uniqueId, sourceView) {
             if (isLongPress) { isLongPress = false; return; }
             if (isMultiSelectMode) { 
@@ -1290,7 +1315,23 @@
                     const cb = row.querySelector('.card-checkbox'); 
                     if(cb) { cb.checked = !cb.checked; toggleGlobalItem(domId, cb.checked); } 
                 } 
-            } else { openDetail(uniqueId, sourceView); }
+            } else { 
+                // IF SALESREP & DRIVE MODE -> Open Photo Modal directly
+                if (safeRole === 'SALESREP' && sourceView === 'drive') {
+                    let item = fullInventory.find(i => i.UNIQUE_ID === uniqueId) || lowStockInventory.find(i => i.UNIQUE_ID === uniqueId) || reservesInventory.find(i => i.UNIQUE_ID === uniqueId);
+                    if (item) {
+                        let pLink = item.SAVED_PHOTO_LINK || item['PHOTO_LINK'] || item.PHOTOLINK || "";
+                        if (pLink) {
+                            let urls = pLink.split(','); let urlMatch = urls[0].match(/(https?:\/\/[^"\s>]+)/); let cleanUrl = urlMatch ? urlMatch[1] : urls[0].trim();
+                            openPhotoModal(cleanUrl, `${item.COMMONNAME} (${item.CONTSIZE}) - Loc: ${item.LOCATIONCODE || 'N/A'}`);
+                        } else {
+                            showToast("No Photo", "There is no photo on file for this item.", true);
+                        }
+                    }
+                } else {
+                    openDetail(uniqueId, sourceView); 
+                }
+            }
         }
 
         function updateGlobalActionBar() {
@@ -1320,6 +1361,9 @@
                 .catch(err => showToast("Error", "Network error.", true));
         }
 
+        // =========================================================
+        // 🚀 CUSTOM CARD GENERATOR (FOR DRIVE MODE)
+        // =========================================================
         function generateCard(item, sourceView, colorClass = 'status-green') {
             let thumbHtml = ''; let photoLink = "";
             if (sourceView === 'request') photoLink = item.REQ_PHOTO_LINK || item.SAVED_PHOTO_LINK || item['PHOTO_LINK'] || item.PHOTOLINK || "";
@@ -1328,7 +1372,7 @@
             
             if (photoLink) {
                 let firstUrl = photoLink.split(',')[0]; let cleanUrl = firstUrl.trim(); let urlMatch = firstUrl.match(/(https?:\/\/[^"\s>]+)/); if (urlMatch) cleanUrl = urlMatch[1];
-                let thumbUrl = getDirectImageUrl(cleanUrl); if (thumbUrl.startsWith('http')) { thumbHtml = `<div class="ml-3 flex-shrink-0"><img src="${thumbUrl}" class="w-12 h-12 rounded-md object-cover border border-[#007a4d]/30" loading="lazy"></div>`; }
+                let thumbUrl = getDirectImageUrl(cleanUrl); if (thumbUrl.startsWith('http')) { thumbHtml = `<div class="ml-3 flex-shrink-0"><img src="${thumbUrl}" class="w-16 h-16 rounded-md object-cover border border-gray-300 shadow-sm" loading="lazy"></div>`; }
             }
             const isChecked = selectedItems.has(item.DOM_ID) ? 'checked' : ''; const tagColor = item.FIELDTAGCOLOR || item['FIELD_TAG_COLOR'] || '-'; const safeUidJs = String(item.UNIQUE_ID).replace(/'/g, "\\'");
 
@@ -1336,6 +1380,31 @@
                 let noteText = item.SALES_NOTE || item.SALESNOTE || item.SALESDESC || 'No Note Provided'; let itemCode = item.ITEMCODE || '-'; let locCode = item.LOCATIONCODE || '-'; let lotCode = item.LOTCODE || '-'; let safeNote = noteText.replace(/'/g, "\\'").replace(/"/g, "&quot;");
                 return `<div class="flex items-center w-full mb-3 item-row relative" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm pointer-events-none" ${isChecked}></div><div class="inv-card status-purple flex-grow !mb-0 bg-purple-50/40 border border-purple-200 transition-transform active:scale-[0.99]"><div class="flex justify-between items-start mb-3"><div class="font-bold text-lg text-[#007a4d] leading-tight pr-2 select-text" style="-webkit-user-select: text; user-select: text;">${item.COMMONNAME || 'Unknown'}<br><span class="text-sm text-gray-500 font-semibold">${item.CONTSIZE || '-'}</span></div>${thumbHtml}</div><div class="bg-white p-3 rounded-lg border border-purple-200 shadow-sm mb-3 select-text cursor-text" style="-webkit-user-select: text; user-select: text;" onclick="event.stopPropagation();"><div class="flex justify-between items-center mb-1"><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Item Code</span><span class="font-black text-purple-700 font-mono tracking-wide text-sm">${itemCode}</span></div><div class="flex justify-between items-center mb-1 border-b border-gray-100 pb-1"><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Location / Lot</span><span class="font-bold text-gray-600 text-xs">${locCode} / ${lotCode}</span></div><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5 mt-2">New Sales Note</div><div class="text-[15px] font-bold text-gray-800 leading-snug">${noteText}</div></div><div class="flex gap-2"><button class="flex-1 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-700 text-[10px] font-bold py-2.5 rounded-lg transition-colors flex flex-col items-center justify-center gap-1 active:bg-indigo-200" onclick="event.stopPropagation(); copyTextToClipboard('${itemCode}', 'ITEM CODE')"><i class="ph-bold ph-barcode text-xl"></i> COPY ITEMCODE</button><button class="flex-1 bg-purple-50 border border-purple-200 hover:bg-purple-100 text-purple-700 text-[10px] font-bold py-2.5 rounded-lg transition-colors flex flex-col items-center justify-center gap-1 active:bg-purple-200" onclick="event.stopPropagation(); copyTextToClipboard('${safeNote}', 'SALES NOTE')"><i class="ph-bold ph-chat-text text-xl"></i> COPY NOTE</button><button class="flex-1 bg-[#007a4d] hover:bg-green-700 text-white text-[10px] font-bold py-2.5 rounded-lg transition-colors flex flex-col items-center justify-center gap-1 shadow-md active:scale-95" onclick="event.stopPropagation(); markSalesOfficeComplete('${safeUidJs}', '${item.DOM_ID}')"><i class="ph-bold ph-check-circle text-xl"></i> COMPLETE</button></div></div></div>`;
             }
+            
+            // NEW CUSTOM CARD LAYOUT FOR DRIVE MODE
+            if (sourceView === 'drive') {
+                return `<div class="flex items-center w-full mb-3 item-row relative bg-white p-4 rounded-xl border border-gray-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')">
+                    <div class="card-checkbox-container flex-shrink-0">
+                        <input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm pointer-events-none" ${isChecked}>
+                    </div>
+                    <div class="flex flex-grow items-start justify-between min-w-0">
+                        <div class="flex-grow min-w-0 pr-2">
+                            <div class="font-black text-gray-800 text-[16px] leading-tight truncate mb-0.5">${item.COMMONNAME || 'Unknown'}</div>
+                            <div class="font-bold text-[#007a4d] text-sm mb-2">${item.CONTSIZE || '-'}</div>
+                            <div class="text-[11px] font-mono text-gray-500 mb-2 flex items-center bg-gray-100 px-2 py-0.5 rounded w-max"><i class="ph-bold ph-barcode mr-1.5 text-gray-400"></i>${item.ITEMCODE || '-'}</div>
+                            <div class="flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600">
+                                <span class="bg-gray-100 px-1.5 py-0.5 rounded">Avail: <span class="text-gray-900">${item.PTRAVAILABLE || '0'}</span></span>
+                                <span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">Loc: ${item.LOCATIONCODE || 'No Loc'}</span>
+                                <span class="bg-gray-100 px-1.5 py-0.5 rounded">Lot: ${item.LOTCODE || '-'}</span>
+                                <span class="bg-orange-50 text-orange-700 px-1.5 py-0.5 rounded border border-orange-100">Pri: ${item.PRIORITY || '-'}</span>
+                            </div>
+                        </div>
+                        ${thumbHtml}
+                    </div>
+                </div>`;
+            }
+
+            // Standard layout for tasks, requests, etc.
             return `<div class="flex items-center w-full mb-2 item-row" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm pointer-events-none" ${isChecked}></div><div class="inv-card ${colorClass} flex items-center justify-between flex-grow !mb-0 transition-transform active:scale-[0.99]"><div class="flex-grow min-w-0 text-[#007a4d]"><div class="flex justify-between font-bold text-sm mb-1"><span class="truncate pr-2">${item.COMMONNAME || 'Unknown'} • ${item.CONTSIZE || '-'} • Loc: ${item.LOCATIONCODE || 'No Loc'}</span><span class="whitespace-nowrap bg-[#007a4d]/10 px-1.5 py-0.5 rounded text-xs border border-[#007a4d]/20">Pri: ${item.PRIORITY || '-'}</span></div><div class="text-[11px] font-semibold truncate mt-0.5">Tag: ${tagColor} | Lot: ${item.LOTCODE || '-'} | PTR-Ava: ${item.PTRAVAILABLE || '0'} | s_LTS: ${item.S_LTS || '0'} | Supply: ${item.SEASONSUPPLY || '0'}</div><div class="text-[11px] font-semibold truncate mt-0.5">Item: ${item.ITEMCODE || '-'}</div></div>${thumbHtml}</div></div>`;
         }
         
@@ -1994,7 +2063,7 @@
         function switchDetailTab(tab) {
             ['overview', 'season', 'location', 'request', 'notes', 'docks'].forEach(t => {
                 const dtab = document.getElementById('dtab-' + t); const content = document.getElementById('det-' + t + '-content');
-                if (dtab) { if (t === Math.floor(Date.now() / 1000)) dtab.classList.add('active'); else dtab.classList.remove('active'); }
+                if (dtab) { if (t === tab) dtab.classList.add('active'); else dtab.classList.remove('active'); }
                 if (content) { if (t === tab) content.classList.remove('hidden'); else content.classList.add('hidden'); }
             }); activeDetailTab = tab; 
         }
