@@ -799,7 +799,10 @@
                             } 
                         };
                         const response = await fetch(url, options);
-                        if (!response.ok) { console.error(`Supabase error on ${table}:`, response.statusText); break; }
+                        if (!response.ok) { 
+                            console.error(`Supabase error on ${table}:`, response.statusText); 
+                            break; 
+                        }
                         const text = await response.text();
                         const data = text ? JSON.parse(text) : [];
                         if (Array.isArray(data) && data.length > 0) {
@@ -1445,7 +1448,7 @@
                 let html = `<div class="flex items-center mb-4 border-b border-gray-100 pb-2">${safeRole !== 'SALESREP' ? `<i class="ph-bold ph-arrow-left text-gray-400 text-2xl mr-2 cursor-pointer p-1" onclick="document.getElementById('step-1.5-folder').classList.add('hidden'); document.getElementById('step-1-rep').classList.remove('hidden');"></i>` : ''}<h3 class="font-bold text-lg text-orange-600">Select Folder</h3></div>`;
                 folderKeys.forEach(fk => {
                     let fLabel = fk; if (fk.startsWith('REQ-')) { const p = fk.split('-'); fLabel = p.length >= 4 ? `${p[1]}/${p[2]}/${p[3]} - ${uniqueFolders[fk]}` : fk; }
-                    html += `<button class="w-full bg-yellow-50 text-yellow-800 font-bold p-4 rounded-xl shadow-sm border border-yellow-200 mb-2 text-left flex items-center gap-3 active:bg-yellow-100 transition-colors" onclick="goToQtyStep('${fk}', '${uniqueFolders[fk].replace(/'/g, "\\'")}', 'step-1.5-folder')"><i class="ph-fill ph-folder text-2xl text-yellow-500"></i><div class="flex flex-col min-w-0"><span class="text-sm truncate">${fLabel}</span><span class="text-[10px] text-gray-500 uppercase font-normal">Append to existing</span></div></button>`;
+                    html += `<button class="w-full bg-yellow-50 text-yellow-800 font-bold p-4 rounded-xl shadow-sm border border-yellow-200 mb-2 text-left flex items-center gap-3 active:bg-yellow-100 transition-colors" onclick="goToQtyStep('${fk}', '${String(uniqueFolders[fk]).replace(/'/g, "\\'")}', 'step-1.5-folder')"><i class="ph-fill ph-folder text-2xl text-yellow-500"></i><div class="flex flex-col min-w-0"><span class="text-sm truncate">${fLabel}</span><span class="text-[10px] text-gray-500 uppercase font-normal">Append to existing</span></div></button>`;
                 });
                 html += `<button class="w-full bg-orange-600 text-white font-bold p-4 rounded-xl shadow-md mt-4 active:scale-95 transition-transform" onclick="document.getElementById('step-1.5-folder').classList.add('hidden'); document.getElementById('step-2-cust').classList.remove('hidden'); document.getElementById('cust-search-input').value=''; populateCustomerList();">+ CREATE NEW FOLDER</button>`;
                 document.getElementById('existing-folder-container').innerHTML = html;
@@ -1458,7 +1461,7 @@
             const scan = (arr) => { arr.forEach(i => { let sheetRep = String(i.SALESREPNAME || i.SALESREP || i.SALES_REP || "").toUpperCase(); if (sheetRep.includes(flippedName) || sheetRep.includes(standardName)) { let c = String(i.CUSTOMERNAME || i.CUSTOMER || "").trim(); let cons = String(i.CONSIGNEENAME || i.CONSIGNEE || "").trim(); if (c || cons) { let display = c; if (cons && cons !== c) display = `${c} | ${cons}`; custSet.add(display); } } }); };
             scan(socInventory); scan(reservesInventory);
             let sorted = Array.from(custSet).sort(); let html = "";
-            sorted.forEach(c => { if (c.toLowerCase().includes(val) || val === "") { html += `<div class="bg-orange-50 text-orange-800 font-bold p-3 rounded-lg border border-orange-200 shadow-sm text-left cursor-pointer active:bg-orange-100 mb-2" onclick="setCustomerInput('${c.replace(/'/g, "\\'")}')">${c}</div>`; } });
+            sorted.forEach(c => { if (c.toLowerCase().includes(val) || val === "") { html += `<div class="bg-orange-50 text-orange-800 font-bold p-3 rounded-lg border border-orange-200 shadow-sm text-left cursor-pointer active:bg-orange-100 mb-2" onclick="setCustomerInput('${String(c).replace(/'/g, "\\'")}')">${c}</div>`; } });
             if (html === "") html = `<div class="text-xs text-gray-400 p-2 text-center">No matching customers found. Type above to use a custom name.</div>`;
             container.innerHTML = html;
         }
@@ -1592,7 +1595,7 @@
                 crumb.innerText = "Select a Dock"; let activeDocks = new Set();
                 socInventory.forEach(i => { if (!isMyRep(i.SALESREPNAME)) return; if (i.DOCK_NUM && String(i.DOCK_NUM).trim() !== "") { if (term) { let searchStr = (i.COMMONNAME || i['PLANT_NAME'] || i.CUSTOMERNAME || i.SALESREPNAME || 'Unknown').toLowerCase(); if (searchStr.includes(term)) activeDocks.add(String(i.DOCK_NUM).trim()); } else { activeDocks.add(String(i.DOCK_NUM).trim()); } } });
                 let html = '<div class="grid grid-cols-2 gap-4">'; let sortedDocks = Array.from(activeDocks).sort((a, b) => a.localeCompare(b, undefined, {numeric: true}));
-                sortedDocks.forEach(i => { html += `<div class="bg-white border border-gray-200 p-6 rounded-2xl shadow-sm text-center cursor-pointer hover:bg-gray-50 active:scale-95 transition-transform flex flex-col items-center justify-center gap-2" onclick="selectDockNum('${i.replace(/'/g, "\\'")}')"><i class="ph-bold ph-truck text-5xl text-orange-500"></i><div class="font-black text-lg text-gray-800">DOCK ${i}</div></div>`; }); html += '</div>';
+                sortedDocks.forEach(i => { html += `<div class="bg-white border border-gray-200 p-6 rounded-2xl shadow-sm text-center cursor-pointer hover:bg-gray-50 active:scale-95 transition-transform flex flex-col items-center justify-center gap-2" onclick="selectDockNum('${String(i).replace(/'/g, "\\'")}')"><i class="ph-bold ph-truck text-5xl text-orange-500"></i><div class="font-black text-lg text-gray-800">DOCK ${i}</div></div>`; }); html += '</div>';
                 if (activeDocks.size === 0) container.innerHTML = `<div class="p-8 text-center text-gray-400">No docks ${term ? `contain items matching "${term}"` : 'have data currently'}.</div>`; else container.innerHTML = html;
             } 
             else if (dockViewLevel === 1) {
@@ -1634,7 +1637,7 @@
             if (items.length === 0) { container.innerHTML = `<div class="p-8 text-center text-gray-400">No active reserves found.</div>`; crumb.innerText = "No Results"; return; }
             if (reservesViewLevel === 0) {
                 crumb.innerText = "Reserves > Customers"; const customers = [...new Set(items.map(i => i.CUSTOMERNAME || "Unknown Customer"))].sort();
-                container.innerHTML = customers.map(c => { const count = items.filter(i => (i.CUSTOMERNAME || "Unknown Customer") === c).length; return `<div class="drill-item" onclick="selectReservesCustomer('${c.replace(/'/g, "\\'")}')"><span class="font-bold text-lg">${c} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`; }).join('');
+                container.innerHTML = customers.map(c => { const count = items.filter(i => (i.CUSTOMERNAME || "Unknown Customer") === c).length; return `<div class="drill-item" onclick="selectReservesCustomer('${String(c).replace(/'/g, "\\'")}')"><span class="font-bold text-lg">${c} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`; }).join('');
             } else if (reservesViewLevel === 1) {
                 crumb.innerText = `Reserves > ${selectedReservesCustomer}`; let displayItems = items.filter(i => (i.CUSTOMERNAME || "Unknown Customer") === selectedReservesCustomer); displayItems.sort((a,b) => (a.COMMONNAME||"").localeCompare(b.COMMONNAME||""));
                 container.innerHTML = `<div class="back-btn" onclick="reservesViewLevel=0; renderReserves()"><i class="ph-bold ph-arrow-left"></i> Back to Customers</div>` + displayItems.map(i => generateCard(i, 'reserves', 'status-indigo')).join('');
@@ -1650,15 +1653,20 @@
             const container = document.getElementById('low-stock-content'); const crumb = document.getElementById('low-stock-crumb');
             if (lowStockInventory.length === 0) { container.innerHTML = `<div class="p-8 text-center text-gray-400">No low stock items at this time.</div>`; return; }
             if (lowStockViewLevel === 0) {
-                crumb.innerText = "Select Plant"; const names = [...new Set(lowStockInventory.map(i => i.COMMONNAME))].sort();
-                container.innerHTML = names.map(n => `<div class="drill-item" onclick="selectLowStockName('${n.replace(/'/g, "\\'")}')"><span class="font-bold text-lg">${n}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
+                crumb.innerText = "Select Plant"; 
+                const names = [...new Set(lowStockInventory.map(i => i.COMMONNAME || 'Unknown'))].sort();
+                container.innerHTML = names.map(n => `<div class="drill-item" onclick="selectLowStockName('${String(n).replace(/'/g, "\\'")}')"><span class="font-bold text-lg">${n}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
             } else if (lowStockViewLevel === 1) {
-                crumb.innerText = selectedLowStockName; const namedItems = lowStockInventory.filter(i => i.COMMONNAME === selectedLowStockName); const sizes = [...new Set(namedItems.map(i => i.CONTSIZE))].sort();
+                crumb.innerText = selectedLowStockName; 
+                const namedItems = lowStockInventory.filter(i => (i.COMMONNAME || 'Unknown') === selectedLowStockName); 
+                const sizes = [...new Set(namedItems.map(i => i.CONTSIZE || 'Unknown Size'))].sort();
                 let html = `<div class="back-btn" onclick="resetLowStockView()"><i class="ph-bold ph-arrow-left"></i> Back to Names</div><div class="font-bold text-purple-600 mb-4 px-2 text-xl border-b pb-2">${selectedLowStockName}</div>`;
-                html += sizes.map(s => { const count = namedItems.filter(i => i.CONTSIZE === s).length; return `<div class="drill-item" onclick="selectLowStockSize('${s}')"><span class="font-bold text-lg">${s} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`; }).join('');
+                html += sizes.map(s => { const count = namedItems.filter(i => (i.CONTSIZE || 'Unknown Size') === s).length; return `<div class="drill-item" onclick="selectLowStockSize('${String(s).replace(/'/g, "\\'")}')"><span class="font-bold text-lg">${s} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`; }).join('');
                 container.innerHTML = html;
             } else if (lowStockViewLevel === 2) {
-                crumb.innerText = `${selectedLowStockName} / ${selectedLowStockSize}`; let finalItems = lowStockInventory.filter(i => i.COMMONNAME === selectedLowStockName && i.CONTSIZE === selectedLowStockSize); finalItems.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
+                crumb.innerText = `${selectedLowStockName} / ${selectedLowStockSize}`; 
+                let finalItems = lowStockInventory.filter(i => (i.COMMONNAME || 'Unknown') === selectedLowStockName && (i.CONTSIZE || 'Unknown Size') === selectedLowStockSize); 
+                finalItems.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
                 container.innerHTML = `<div class="back-btn" onclick="backToLowStockSizes()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>` + finalItems.map(i => generateCard(i, 'low-stock', 'status-purple')).join('');
             }
         }
@@ -1699,7 +1707,7 @@
                 seasonItems.forEach(i => { let code = i.ITEMCODE || "UNKNOWN"; if (!groups[code]) { groups[code] = { itemCode: code, commonName: i.COMMONNAME || "Unknown", contSize: i.CONTSIZE || "-", totalPtr: 0, listPrice: parseFloat(String(i.LISTPRICE).replace(/[^0-9.-]+/g,"")) || 0 }; } groups[code].totalPtr += parseInt(String(i.PTRAVAILABLE).replace(/,/g, '')) || 0; });
                 let sortedGroups = Object.values(groups).sort((a,b) => a.commonName.localeCompare(b.commonName));
                 let html = sortedGroups.map(g => { let formattedValue = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(g.totalPtr * g.listPrice);
-                    return `<div class="bg-white border border-emerald-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectReportItem('${g.itemCode.replace(/'/g, "\\'")}')"><div class="flex-grow min-w-0 pr-3"><div class="font-bold text-[15px] text-[#007a4d] truncate">${g.commonName}</div><div class="text-xs font-semibold text-gray-600 mt-1">${g.contSize} <span class="mx-2 text-gray-300">|</span> <span class="font-mono text-emerald-700">${g.itemCode}</span></div></div><div class="flex flex-col items-end gap-1"><span class="text-lg font-black text-gray-800">${formattedValue}</span><span class="text-[10px] text-gray-500 font-bold uppercase">Qty: ${g.totalPtr}</span></div></div>`;
+                    return `<div class="bg-white border border-emerald-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectReportItem('${String(g.itemCode).replace(/'/g, "\\'")}')"><div class="flex-grow min-w-0 pr-3"><div class="font-bold text-[15px] text-[#007a4d] truncate">${g.commonName}</div><div class="text-xs font-semibold text-gray-600 mt-1">${g.contSize} <span class="mx-2 text-gray-300">|</span> <span class="font-mono text-emerald-700">${g.itemCode}</span></div></div><div class="flex flex-col items-end gap-1"><span class="text-lg font-black text-gray-800">${formattedValue}</span><span class="text-[10px] text-gray-500 font-bold uppercase">Qty: ${g.totalPtr}</span></div></div>`;
                 }).join('');
                 container.innerHTML = html;
             } else if (reportViewLevel === 1) {
@@ -1771,7 +1779,7 @@
                      folders.forEach(f => {
                          const count = displayItems.filter(i => (i.REQUEST_FOLDER || "Uncategorized") === f).length; let fLabel = f;
                          if (f.startsWith('REQ-')) { const p = f.split('-'); if(p.length >= 4) { let timeStr = p[4] || ""; if (timeStr.length === 6) timeStr = `${timeStr.substring(0,2)}:${timeStr.substring(2,4)}`; fLabel = `${p[1]}/${p[2]}/${p[3]} at ${timeStr}`; } if(p.length >= 5) fLabel += ` - ${p.slice(4).join('-')}`; }
-                         html += `<div class="drill-item" onclick="selectRequestFolder('${f}')"><span class="font-bold text-lg text-[#007a4d]"><i class="ph-fill ph-folder mr-2 text-yellow-500"></i>${fLabel} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
+                         html += `<div class="drill-item" onclick="selectRequestFolder('${String(f).replace(/'/g, "\\'")}')"><span class="font-bold text-lg text-[#007a4d]"><i class="ph-fill ph-folder mr-2 text-yellow-500"></i>${fLabel} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
                      });
                 }
                 container.innerHTML = html; return;
@@ -1780,7 +1788,7 @@
                 crumb.innerText = `${selectedReqRep} / ${selectedReqRepStatus} / Folder`; let parts = selectedReqRep.toUpperCase().split(' ').filter(p => p.trim() !== ''); let repItems = combinedReq.filter(i => { let matchStr = (i.REQUESTED_BY || "").toUpperCase(); return parts.length > 0 && parts.every(part => matchStr.includes(part)); }); let displayItems = selectedReqRepStatus === 'pending' ? repItems.filter(i => !isReqCompleted(i)) : repItems.filter(i => isReqCompleted(i)); let folderItems = displayItems.filter(i => (i.REQUEST_FOLDER || "Uncategorized") === selectedReqFolder); folderItems.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true})); let html = `<div class="back-btn" onclick="requestViewLevel=3; renderRequest()"><i class="ph-bold ph-arrow-left"></i> Back to Folders</div>`;
                 if (folderItems.length === 0) html += `<div class="p-8 text-center text-gray-400">Folder is empty.</div>`;
                 else {
-                    html += `<div class="flex gap-2 mb-4"><button class="w-1/2 bg-gray-100 text-gray-700 font-bold py-3 rounded-xl shadow-sm border border-gray-200 text-xs flex items-center justify-center gap-2" onclick="copyFolderData('${selectedReqFolder}')"><i class="ph-bold ph-copy text-lg"></i> COPY DATA</button><button class="w-1/2 bg-green-600 text-white font-bold py-3 rounded-xl shadow-md text-xs flex items-center justify-center gap-2" onclick="markFolderDone('${selectedReqFolder}')"><i class="ph-bold ph-check-circle text-lg"></i> MARK DONE</button></div>`;
+                    html += `<div class="flex gap-2 mb-4"><button class="w-1/2 bg-gray-100 text-gray-700 font-bold py-3 rounded-xl shadow-sm border border-gray-200 text-xs flex items-center justify-center gap-2" onclick="copyFolderData('${String(selectedReqFolder).replace(/'/g, "\\'")}')"><i class="ph-bold ph-copy text-lg"></i> COPY DATA</button><button class="w-1/2 bg-green-600 text-white font-bold py-3 rounded-xl shadow-md text-xs flex items-center justify-center gap-2" onclick="markFolderDone('${String(selectedReqFolder).replace(/'/g, "\\'")}')"><i class="ph-bold ph-check-circle text-lg"></i> MARK DONE</button></div>`;
                     let colorClass = selectedReqRepStatus === 'pending' ? 'status-orange' : 'status-green'; html += folderItems.map(i => generateCard(i, 'request', colorClass)).join('');
                 }
                 container.innerHTML = html; return;
@@ -1876,24 +1884,67 @@
             let itemToSave = specificItem || activeItem; if (!itemToSave) return;
             let btnDraft = document.getElementById(prefix + 'btn-save-draft'); let btnComp = document.getElementById(prefix + 'btn-save-complete'); let isCurrentView = (activeItem && activeItem.UNIQUE_ID === itemToSave.UNIQUE_ID);
             
-            if (isCurrentView) { if (isComplete) { if(btnComp) btnComp.innerText = "SAVING..."; } else { if(btnDraft) btnDraft.innerText = isSilentAutoSave ? "AUTO-SAVING..." : "SAVING..."; } }
+            if (isCurrentView) { 
+                if (isComplete) { 
+                    if(btnComp) btnComp.innerText = "SAVING..."; 
+                } else { 
+                    if(btnDraft) btnDraft.innerText = isSilentAutoSave ? "AUTO-SAVING..." : "SAVING..."; 
+                } 
+            }
             
             const executeSave = () => {
                 if (!specificItem) {
-                    if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-') { itemToSave.MATCH = document.getElementById(prefix + 'match').value; itemToSave.SPEC = document.getElementById(prefix + 'spec').value; itemToSave.CALIPER = document.getElementById(prefix + 'caliper').value; itemToSave.PICK = document.getElementById(prefix + 'pick').value; itemToSave.SALES_NOTE = document.getElementById(prefix + 'sales-desc').value.toUpperCase(); } 
-                    else if (prefix === 'req-') { itemToSave.REQ_MATCH = document.getElementById('req-match').value; itemToSave.REQ_SPEC = document.getElementById('req-spec').value; itemToSave.REQ_CALIPER = document.getElementById('req-caliper').value; itemToSave.REQ_PICK = document.getElementById('req-pick').value; itemToSave.REQ_SALES_NOTE = document.getElementById('req-sales-desc').value.toUpperCase(); itemToSave.REQ_COMMENTS = document.getElementById('req-comments').value; } 
-                    else if (prefix === 'dock-') { itemToSave.DOCK_SPEC = document.getElementById('dock-spec').value; itemToSave.DOCK_CALIPER = document.getElementById('dock-caliper').value; itemToSave.DOCK_NOTE = document.getElementById('dock-sales-desc').value.toUpperCase(); }
+                    if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-') { 
+                        itemToSave.MATCH = document.getElementById(prefix + 'match').value; 
+                        itemToSave.SPEC = document.getElementById(prefix + 'spec').value; 
+                        itemToSave.CALIPER = document.getElementById(prefix + 'caliper').value; 
+                        itemToSave.PICK = document.getElementById(prefix + 'pick').value; 
+                        itemToSave.SALES_NOTE = document.getElementById(prefix + 'sales-desc').value.toUpperCase(); 
+                    } 
+                    else if (prefix === 'req-') { 
+                        itemToSave.REQ_MATCH = document.getElementById('req-match').value; 
+                        itemToSave.REQ_SPEC = document.getElementById('req-spec').value; 
+                        itemToSave.REQ_CALIPER = document.getElementById('req-caliper').value; 
+                        itemToSave.REQ_PICK = document.getElementById('req-pick').value; 
+                        itemToSave.REQ_SALES_NOTE = document.getElementById('req-sales-desc').value.toUpperCase(); 
+                        itemToSave.REQ_COMMENTS = document.getElementById('req-comments').value; 
+                    } 
+                    else if (prefix === 'dock-') { 
+                        itemToSave.DOCK_SPEC = document.getElementById('dock-spec').value; 
+                        itemToSave.DOCK_CALIPER = document.getElementById('dock-caliper').value; 
+                        itemToSave.DOCK_NOTE = document.getElementById('dock-sales-desc').value.toUpperCase(); 
+                    }
                 }
                 backupLocalItem(itemToSave);
 
                 const payload = {};
-                if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-') { payload.match = itemToSave.MATCH || ""; payload.spec = itemToSave.SPEC || ""; payload.caliper = itemToSave.CALIPER || ""; payload.pic_note = itemToSave.PICK || ""; payload.sales_note = itemToSave.SALES_NOTE || ""; } 
-                else if (prefix === 'req-') { payload.req_match = itemToSave.REQ_MATCH || ""; payload.req_spec = itemToSave.REQ_SPEC || ""; payload.req_caliper = itemToSave.REQ_CALIPER || ""; payload.req_pic_note = itemToSave.REQ_PICK || ""; payload.req_sales_note = itemToSave.REQ_SALES_NOTE || ""; payload.req_comments = itemToSave.REQ_COMMENTS || ""; } 
-                else if (prefix === 'dock-') { payload.dock_spec = itemToSave.DOCK_SPEC || ""; payload.dock_caliper = itemToSave.DOCK_CALIPER || ""; payload.dock_note = itemToSave.DOCK_NOTE || ""; }
+                if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-') { 
+                    payload.match = itemToSave.MATCH || ""; 
+                    payload.spec = itemToSave.SPEC || ""; 
+                    payload.caliper = itemToSave.CALIPER || ""; 
+                    payload.pic_note = itemToSave.PICK || ""; 
+                    payload.sales_note = itemToSave.SALES_NOTE || ""; 
+                } 
+                else if (prefix === 'req-') { 
+                    payload.req_match = itemToSave.REQ_MATCH || ""; 
+                    payload.req_spec = itemToSave.REQ_SPEC || ""; 
+                    payload.req_caliper = itemToSave.REQ_CALIPER || ""; 
+                    payload.req_pic_note = itemToSave.REQ_PICK || ""; 
+                    payload.req_sales_note = itemToSave.REQ_SALES_NOTE || ""; 
+                    payload.req_comments = itemToSave.REQ_COMMENTS || ""; 
+                } 
+                else if (prefix === 'dock-') { 
+                    payload.dock_spec = itemToSave.DOCK_SPEC || ""; 
+                    payload.dock_caliper = itemToSave.DOCK_CALIPER || ""; 
+                    payload.dock_note = itemToSave.DOCK_NOTE || ""; 
+                }
 
-                if (itemToSave.SAVED_PHOTO_LINK) payload.photo_link = itemToSave.SAVED_PHOTO_LINK; if (itemToSave.SAVED_PHOTO_NAME) payload.photo_name = itemToSave.SAVED_PHOTO_NAME;
-                if (itemToSave.REQ_PHOTO_LINK) payload.req_photo_link = itemToSave.REQ_PHOTO_LINK; if (itemToSave.REQ_PHOTO_NAME) payload.req_photo_name = itemToSave.REQ_PHOTO_NAME;
-                if (itemToSave.DOCK_PHOTO_LINK) payload.dock_photo_link = itemToSave.DOCK_PHOTO_LINK; if (itemToSave.DOCK_PHOTO_NAME) payload.dock_photo_name = itemToSave.DOCK_PHOTO_NAME;
+                if (itemToSave.SAVED_PHOTO_LINK) payload.photo_link = itemToSave.SAVED_PHOTO_LINK; 
+                if (itemToSave.SAVED_PHOTO_NAME) payload.photo_name = itemToSave.SAVED_PHOTO_NAME;
+                if (itemToSave.REQ_PHOTO_LINK) payload.req_photo_link = itemToSave.REQ_PHOTO_LINK; 
+                if (itemToSave.REQ_PHOTO_NAME) payload.req_photo_name = itemToSave.REQ_PHOTO_NAME;
+                if (itemToSave.DOCK_PHOTO_LINK) payload.dock_photo_link = itemToSave.DOCK_PHOTO_LINK; 
+                if (itemToSave.DOCK_PHOTO_NAME) payload.dock_photo_name = itemToSave.DOCK_PHOTO_NAME;
 
                 // 🚨 IF COMPLETE, IT PUSHES TO THE SALES OFFICE VAULT 🚨
                 if (isComplete) { 
@@ -1920,15 +1971,40 @@
 
                 supabaseFetch(targetTable, 'PATCH', payload, `unique_id=eq.${itemToSave.UNIQUE_ID}`)
                 .then(data => {
-                    if (isCurrentView) { if(btnDraft) { if(prefix === 'req-') btnDraft.innerText = "SAVE REQUEST DATA"; else if(prefix === 'dock-') btnDraft.innerText = "SAVE DOCK DATA"; else btnDraft.innerText = "SAVE DRAFT"; } if(btnComp) btnComp.innerText = "MARK DONE"; }
-                    if (!isSilentAutoSave && isCurrentView) showToast("Success", isComplete ? "Task Completed & Sent to Sales Office!" : "Draft saved to Database."); 
-                    if (isComplete && isCurrentView) { itemToSave.DATE_COMPLETED = new Date().toISOString(); goBackFromDetail(); } 
-                    else if (isComplete && !isCurrentView) { itemToSave.DATE_COMPLETED = new Date().toISOString(); }
+                    if (isCurrentView) { 
+                        if(btnDraft) { 
+                            if(prefix === 'req-') btnDraft.innerText = "SAVE REQUEST DATA"; 
+                            else if(prefix === 'dock-') btnDraft.innerText = "SAVE DOCK DATA"; 
+                            else btnDraft.innerText = "SAVE DRAFT"; 
+                        } 
+                        if(btnComp) btnComp.innerText = "MARK DONE"; 
+                    }
+                    if (!isSilentAutoSave && isCurrentView) {
+                        showToast("Success", isComplete ? "Task Completed & Sent to Sales Office!" : "Draft saved to Database."); 
+                    }
+                    if (isComplete && isCurrentView) { 
+                        itemToSave.DATE_COMPLETED = new Date().toISOString(); goBackFromDetail(); 
+                    } 
+                    else if (isComplete && !isCurrentView) { 
+                        itemToSave.DATE_COMPLETED = new Date().toISOString(); 
+                    }
                 }).catch(err => { 
-                    if (isCurrentView) { if(btnDraft) { if(prefix === 'req-') btnDraft.innerText = "SAVE REQUEST DATA"; else if(prefix === 'dock-') btnDraft.innerText = "SAVE DOCK DATA"; else btnDraft.innerText = "SAVE DRAFT"; } if(btnComp) btnComp.innerText = "MARK DONE"; if (!isSilentAutoSave) showToast("Network Error", "Could not reach database.", true); } 
+                    if (isCurrentView) { 
+                        if(btnDraft) { 
+                            if(prefix === 'req-') btnDraft.innerText = "SAVE REQUEST DATA"; 
+                            else if(prefix === 'dock-') btnDraft.innerText = "SAVE DOCK DATA"; 
+                            else btnDraft.innerText = "SAVE DRAFT"; 
+                        } 
+                        if(btnComp) btnComp.innerText = "MARK DONE"; 
+                        if (!isSilentAutoSave) showToast("Network Error", "Could not reach database.", true); 
+                    } 
                 });
             };
-            if (isSilentAutoSave && !isComplete && !specificItem) { autoSaveTimer = setTimeout(() => { executeSave(); }, 1000); } else { executeSave(); }
+            if (isSilentAutoSave && !isComplete && !specificItem) { 
+                autoSaveTimer = setTimeout(() => { executeSave(); }, 1000); 
+            } else { 
+                executeSave(); 
+            }
         }
     </script>
 </body>
