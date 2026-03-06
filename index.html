@@ -72,7 +72,6 @@
         .card-checkbox-container { width: 0; overflow: hidden; opacity: 0; transition: width 0.3s, opacity 0.3s, margin 0.3s; }
         body.multi-select-mode .card-checkbox-container { width: 24px; opacity: 1; margin-right: 12px; }
         
-        /* 🚨 PREVENTS HIGHLIGHTING & STOPS DOUBLE-TAP ZOOM TO MAKE LONG PRESS UNBREAKABLE 🚨 */
         .item-row { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: manipulation; }
 
         .spinner { border: 4px solid rgba(255,255,255,0.3); border-top: 4px solid white; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto; }
@@ -713,18 +712,41 @@
     </div>
 
     <script>
-        // REPLACE THIS EXACT URL WITH YOUR NEWLY COPIED ONE
+        // =========================================================
+        // 🚀 SUPABASE API CONFIGURATION 🚀
+        // =========================================================
+        const SUPABASE_URL = "https://gmkmsjvzzujjxfmcpyud.supabase.co";
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdta21zanZ6enVqanhmbWNweXVkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjYwMTE1MywiZXhwIjoyMDg4MTc3MTUzfQ.E6UDlfJrdftcyPFKPcyCDfuLw5TGfqoVVoNx9N139As";
+        
+        // Google Script URL is ONLY kept alive to handle Photo Uploads to Google Drive folders
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzhJ_tytv5Rm2ag44liZAU6nsp0lQ7-9PLmjxrcuT1WA1WARubi7NyolYoTZ_qvZmzo/exec";
 
+        async function supabaseFetch(table, method = 'GET', body = null, query = '') {
+            const url = `${SUPABASE_URL}/rest/v1/${table}${query ? '?' + query : ''}`;
+            const options = {
+                method: method,
+                headers: {
+                    'apikey': SUPABASE_KEY,
+                    'Authorization': 'Bearer ' + SUPABASE_KEY,
+                    'Content-Type': 'application/json'
+                }
+            };
+            if (method === 'POST' || method === 'PATCH') {
+                options.headers['Prefer'] = method === 'POST' ? 'return=representation,resolution=merge-duplicates' : 'return=representation';
+                if(body) options.body = JSON.stringify(body);
+            }
+            const response = await fetch(url, options);
+            if (!response.ok) throw new Error('Supabase error: ' + response.statusText);
+            
+            const text = await response.text();
+            return text ? JSON.parse(text) : {};
+        }
+
         window.onload = function() {
-            // Nuke old service workers to force updates instantly
             if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.getRegistrations().then(function(registrations) {
-                    for(let registration of registrations) {
-                        registration.unregister();
-                    }
+                    for(let registration of registrations) { registration.unregister(); }
                 });
-                // Re-register fresh
                 navigator.serviceWorker.register('sw.js').catch(function(error) {});
             }
         };
@@ -737,9 +759,7 @@
                 const request = indexedDB.open(DB_NAME, 1);
                 request.onupgradeneeded = event => {
                     const db = event.target.result;
-                    if (!db.objectStoreNames.contains(STORE_NAME)) {
-                        db.createObjectStore(STORE_NAME);
-                    }
+                    if (!db.objectStoreNames.contains(STORE_NAME)) { db.createObjectStore(STORE_NAME); }
                 };
                 request.onsuccess = event => resolve(event.target.result);
                 request.onerror = event => reject(event.target.error);
@@ -755,9 +775,7 @@
                     tx.oncomplete = () => resolve(true);
                     tx.onerror = () => resolve(false);
                 });
-            } catch (e) {
-                console.error("Save cache failed", e);
-            }
+            } catch (e) { console.error("Save cache failed", e); }
         }
 
         async function loadFromCache() {
@@ -769,10 +787,7 @@
                     request.onsuccess = () => resolve(request.result);
                     request.onerror = () => resolve(null);
                 });
-            } catch (e) {
-                console.error("Load cache failed", e);
-                return null;
-            }
+            } catch (e) { return null; }
         }
 
         let appUsers = [];
@@ -923,6 +938,9 @@
             return repPermutations.some(p => str.includes(p));
         }
 
+        // =========================================================
+        // 🚀 LOGIN (Directly hitting Supabase app_users table) 
+        // =========================================================
         function handleLogin(isBiometricLogin = false) {
             const inputUser = document.getElementById('username-input').value.trim().toLowerCase();
             const inputPass = document.getElementById('pin-code').value.trim();
@@ -944,14 +962,12 @@
             document.getElementById('loading-spinner').classList.remove('hidden');
             document.getElementById('loading-text').innerText = "Authenticating...";
 
-            const authUrl = `${GOOGLE_SCRIPT_URL}?action=auth&username=${encodeURIComponent(inputUser)}&password=${encodeURIComponent(inputPass)}`;
-
-            fetch(authUrl)
-                .then(response => response.json())
-                .then(res => {
-                    if (res.status === 'success') {
+            supabaseFetch('app_users', 'GET', null, `username=eq.${encodeURIComponent(inputUser)}&password=eq.${encodeURIComponent(inputPass)}&select=*`)
+                .then(data => {
+                    if (data && data.length > 0) {
+                        const userRecord = data[0];
                         currentUser = inputUser;
-                        currentRole = res.role;
+                        currentRole = userRecord.role || 'User';
                         safeRole = String(currentRole).toUpperCase().replace(/\s+/g, '');
                         
                         localStorage.setItem('gnc_user_v3', inputUser);
@@ -979,137 +995,95 @@
                 });
         }
 
+        // =========================================================
+        // 🚀 HIGH-SPEED DATA SYNC (Directly hitting Supabase Tables)
+        // =========================================================
         async function fetchBackgroundData() {
             const cachedRes = await loadFromCache();
             if (cachedRes) {
                 setTimeout(() => {
                     processAndLoadData(cachedRes);
-                    showToast("Ready", "Loaded from device memory. Updating in background...", false);
+                    showToast("Ready", "Loaded from device memory. Updating from Supabase...", false);
                 }, 50);
-            } else { showToast("Welcome!", "Downloading database... (This only happens once)", false); }
+            } else { showToast("Welcome!", "Downloading database...", false); }
 
-            const dataUrl = `${GOOGLE_SCRIPT_URL}?action=getData&t=${new Date().getTime()}`;
-            
-            fetch(dataUrl, { cache: 'no-store' })
-                .then(response => response.json())
-                .then(res => {
-                    if (res.status === 'success') {
-                        setTimeout(() => {
-                            processAndLoadData(res); 
-                            saveToCache(res);        
-                            if(cachedRes) showToast("Sync Complete", "Live database updated.", false);
-                            else showToast("Ready", "Database downloaded and saved!", false);
-                        }, 100);
-                    }
-                })
-                .catch(err => {
-                    console.error("Background sync failed:", err);
-                    if (!cachedRes) showToast("Sync Error", "Could not download data. Check connection.", true);
-                });
-        }
+            try {
+                // Fetch all 8 tables simultaneously from Supabase!
+                const [driveData, lowStockData, reqData, resData, socData, reviewData, seasonData, locationData] = await Promise.all([
+                    supabaseFetch('drivearound_master_data', 'GET', null, 'select=*'),
+                    supabaseFetch('low_stock', 'GET', null, 'select=*'),
+                    supabaseFetch('active_request', 'GET', null, 'select=*'),
+                    supabaseFetch('reserves', 'GET', null, 'select=*'),
+                    supabaseFetch('soc_master', 'GET', null, 'select=*'),
+                    supabaseFetch('manager_review', 'GET', null, 'select=*'),
+                    supabaseFetch('season_salesnote', 'GET', null, 'select=unique_id'),
+                    supabaseFetch('location_salesnotes', 'GET', null, 'select=unique_id')
+                ]);
 
-        function mapCompressedToObj(compressedData, isMaster = false) {
-            if(!compressedData || !compressedData.headers) return [];
-            const h = compressedData.headers;
-            const idxMap = {};
-            h.forEach((colName, idx) => { idxMap[colName] = idx; });
+                // Helper to format Supabase Lowercase keys -> App Uppercase keys
+                const formatArr = (arr, sourceTable) => {
+                    if(!arr) return [];
+                    return arr.map((item, idx) => {
+                        let obj = { SOURCE_TABLE: sourceTable };
+                        for (let k in item) { if(item[k] !== null) obj[k.toUpperCase()] = item[k]; }
+                        if(!obj.UNIQUE_ID) obj.UNIQUE_ID = obj.ID || `${sourceTable}_${idx}`;
+                        
+                        // Legacy alias mapping
+                        obj.SAVED_PHOTO_LINK = obj.PHOTO_LINK || obj.PHOTOLINK || "";
+                        obj.SAVED_PHOTO_NAME = obj.PHOTO_NAME || obj.PHOTONAME || "";
+                        obj.SEASONSUPPLY = obj.SEASON_SUPPLY || obj.SEASONSUPPLY || 0;
+                        obj.FIELDTAGCOLOR = obj.FIELD_TAG_COLOR || obj.FIELDTAGCOLOR || "-";
+                        obj.PTRAVAILABLE = obj.PTRAVAILABLE || 0;
+                        
+                        return obj;
+                    });
+                };
 
-            const getValFromMap = (row, names) => {
-                for(let n of names) { 
-                    if(idxMap[n] !== undefined) return row[idxMap[n]]; 
-                }
-                return "";
-            };
+                let resObj = {
+                    status: 'success',
+                    data: formatArr(driveData, 'drivearound_master_data'),
+                    lowStock: formatArr(lowStockData, 'low_stock'),
+                    requestsData: formatArr(reqData, 'active_request'),
+                    reservesData: formatArr(resData, 'reserves'),
+                    socData: formatArr(socData, 'soc_master'),
+                    managerReviewData: formatArr(reviewData, 'manager_review'),
+                    seasonIds: (seasonData || []).map(i => i.unique_id)
+                };
 
-            return compressedData.rows.map(row => {
-                let obj = {};
-                h.forEach((colName, idx) => {
-                    obj[colName] = row[idx]; 
-                });
-                
-                if(isMaster) {
-                    obj.UNIQUE_ID = getValFromMap(row, ['UNIQUE ID']);
-                    obj.COMMONNAME = getValFromMap(row, ['COMMONNAME']);
-                    obj.CONTSIZE = getValFromMap(row, ['CONTSIZE']);
-                    obj.LOCATIONCODE = getValFromMap(row, ['LOCATIONCODE']);
-                    obj.PTRAVAILABLE = getValFromMap(row, ['PTRAVAILABLE']);
-                    obj.SEASONSUPPLY = getValFromMap(row, ['SEASON_SUPPLY', 'SEASONSUPPLY']);
-                    obj.PRIORITY = getValFromMap(row, ['PRIORITY']);
-                    obj.QUALITYCODE = getValFromMap(row, ['QUALITYCODE']);
-                    obj.FIELDTAGCOLOR = getValFromMap(row, ['FIELD TAG COLOR', 'FIELDTAGCOLOR']);
-                    obj.ITEMCODE = getValFromMap(row, ['ITEMCODE']);
-                    obj.LOTCODE = getValFromMap(row, ['LOTCODE']);
-                    obj.BLOCKALPHA = getValFromMap(row, ['BLOCKALPHA']);
-                    obj.PLANTGROUPCODE = getValFromMap(row, ['PLANTGROUPCODE', 'PLANT GROUP']);
-                    obj.S_LTS = getValFromMap(row, ['S_LTS', 'SLTS']);
-                    obj.ASSIGNEDTO = getValFromMap(row, ['ASSIGNEDTO']);
-                    obj.DATE_COMPLETED = getValFromMap(row, ['DATE COMPLETED']);
-                    obj.SEASON = getValFromMap(row, ['SEASON']);
-                    obj.LISTPRICE = getValFromMap(row, ['LISTPRICE', 'LIST PRICE', 'PRICE']);
-                    
-                    obj.REQUESTED_BY = getValFromMap(row, ['REQUESTED BY']);
-                    obj.REQUEST_FOLDER = getValFromMap(row, ['REQUEST FOLDER']);
-                    
-                    let archVal = getValFromMap(row, ['REQ ARCHIVED']);
-                    obj.REQ_ARCHIVED = (String(archVal).toUpperCase() === 'TRUE' || archVal === true);
-                    
-                    obj.MATCH = getValFromMap(row, ['MATCH', 'MATCHPCT']);
-                    obj.SPEC = getValFromMap(row, ['SPEC']);
-                    obj.CALIPER = getValFromMap(row, ['CALIPER']);
-                    obj.PIC_NOTE = getValFromMap(row, ['PIC NOTE', 'PICKNOTE']);
-                    obj.SALES_NOTE = getValFromMap(row, ['SALES NOTE', 'SALESDESC']);
-                    obj.SAVED_PHOTO_LINK = getValFromMap(row, ['PHOTO LINK']);
-                    obj.SAVED_PHOTO_NAME = getValFromMap(row, ['PHOTO NAME']);
-                    
-                    obj.REQ_MATCH = getValFromMap(row, ['REQ MATCH']);
-                    obj.REQ_SPEC = getValFromMap(row, ['REQ SPEC']);
-                    obj.REQ_CALIPER = getValFromMap(row, ['REQ CALIPER']);
-                    obj.REQ_PICK = getValFromMap(row, ['REQ PIC NOTE']);
-                    obj.REQ_SALES_NOTE = getValFromMap(row, ['REQ SALES NOTE']);
-                    obj.REQ_COMMENTS = getValFromMap(row, ['REQ COMMENTS']);
-                    obj.REQ_PHOTO_LINK = getValFromMap(row, ['REQ PHOTO LINK']);
-                    obj.REQ_PHOTO_NAME = getValFromMap(row, ['REQ PHOTO NAME']);
-                    obj.REQ_CUSTOMER = getValFromMap(row, ['REQ CUSTOMER']);
-                    obj.REQ_QTY = getValFromMap(row, ['REQ QTY']);
-                    
-                    obj.REQ_DESIRED_SPEC = getValFromMap(row, ['DESIRED SPEC']);
-                    obj.REQ_DESIRED_CALIPER = getValFromMap(row, ['DESIRED CALIPER']);
-                    obj.REQ_EST_SHIP = getValFromMap(row, ['EST SHIP']);
+                setTimeout(() => {
+                    processAndLoadData(resObj); 
+                    saveToCache(resObj);        
+                    if(cachedRes) showToast("Sync Complete", "Live database updated.", false);
+                    else showToast("Ready", "Database downloaded and saved!", false);
+                }, 100);
 
-                    obj.DOCK_SPEC = getValFromMap(row, ['DOCK SPEC']);
-                    obj.DOCK_CALIPER = getValFromMap(row, ['DOCK CALIPER']);
-                    obj.DOCK_NOTE = getValFromMap(row, ['DOCK NOTE']);
-                    obj.DOCK_PHOTO_LINK = getValFromMap(row, ['DOCK PHOTO LINK']);
-                    obj.DOCK_PHOTO_NAME = getValFromMap(row, ['DOCK PHOTO NAME']);
-                } else {
-                     if (obj['DOCK']) obj.DOCK_NUM = parseInt(String(obj['DOCK']).replace(/\D/g, ''), 10);
-                }
-                return obj;
-            });
+            } catch (err) {
+                console.error("Background sync failed:", err);
+                if (!cachedRes) showToast("Sync Error", "Could not download data. Check connection.", true);
+            }
         }
 
         function processAndLoadData(res) {
-            salesNotesDict = res.salesNotesMap || {};
-            fullInventory = mapCompressedToObj(res.data, true).map((item, idx) => { item.DOM_ID = 'fi_' + idx; return item; });
-            lowStockInventory = mapCompressedToObj(res.lowStock, true).map((item, idx) => { item.DOM_ID = 'ls_' + idx; return item; });
-            managerReviewInventory = res.managerReviewData ? mapCompressedToObj(res.managerReviewData, true).map((item, idx) => { item.DOM_ID = 'mr_' + idx; return item; }) : [];
-            requestsInventory = res.requestsData ? mapCompressedToObj(res.requestsData, true).map((item, idx) => { item.DOM_ID = 'req_' + item.UNIQUE_ID; return item; }) : [];
+            fullInventory = res.data.map((item, idx) => { item.DOM_ID = 'fi_' + idx; return item; });
+            lowStockInventory = res.lowStock.map((item, idx) => { item.DOM_ID = 'ls_' + idx; return item; });
+            managerReviewInventory = res.managerReviewData ? res.managerReviewData.map((item, idx) => { item.DOM_ID = 'mr_' + idx; return item; }) : [];
+            requestsInventory = res.requestsData ? res.requestsData.map((item, idx) => { item.DOM_ID = 'req_' + item.UNIQUE_ID; return item; }) : [];
             
-            socInventory = mapCompressedToObj(res.socData, false);
+            socInventory = res.socData;
             socInventory.forEach(item => {
-                item.SALESREPNAME = item.SALESREPNAME || item.SALESREP || item['SALES REP'] || 'Unknown Rep';
+                item.SALESREPNAME = item.SALESREPNAME || item.SALESREP || item['SALES_REP'] || 'Unknown Rep';
                 item.CUSTOMERNAME = item.CUSTOMERNAME || item.CUSTOMER || 'Unknown Customer';
                 item.CONSIGNEENAME = item.CONSIGNEENAME || item.CONSIGNEE || '';
             });
 
-            reservesInventory = mapCompressedToObj(res.reservesData, false);
+            reservesInventory = res.reservesData;
             let exactSeasonIds = new Set(res.seasonIds || []);
             fullInventory.forEach(item => { item.APP_TAB_ASSIGNMENT = exactSeasonIds.has(item.UNIQUE_ID) ? 'season' : 'location'; });
             
             reservesInventory = reservesInventory.map((item, idx) => {
                 item.DOM_ID = 'res_' + idx; item.UNIQUE_ID = item.UNIQUE_ID || 'res_uid_' + idx; 
                 let resCode = String(item.ITEMCODE || item.ITEM || "").trim().toUpperCase(); let masterItem = fullInventory.find(f => String(f.ITEMCODE || "").trim().toUpperCase() === resCode);
-                item.COMMONNAME = masterItem ? masterItem.COMMONNAME : (item.COMMONNAME || item['PLANT NAME'] || item.DESCRIPTION || item.DESC || 'Unknown Plant'); item.CONTSIZE = masterItem ? masterItem.CONTSIZE : (item.CONTSIZE || item.SIZE || item.CONTAINER || '-'); item.CUSTOMERNAME = item.CUSTOMERNAME || item.CUSTOMER || 'Unknown Customer'; item.CONSIGNEENAME = item.CONSIGNEENAME || item.CONSIGNEE || ''; item.SALESREPNAME = item.SALESREPNAME || item.SALESREP || item['SALES REP'] || 'Unknown Rep';
+                item.COMMONNAME = masterItem ? masterItem.COMMONNAME : (item.COMMONNAME || item['PLANT_NAME'] || item.DESCRIPTION || item.DESC || 'Unknown Plant'); item.CONTSIZE = masterItem ? masterItem.CONTSIZE : (item.CONTSIZE || item.SIZE || item.CONTAINER || '-'); item.CUSTOMERNAME = item.CUSTOMERNAME || item.CUSTOMER || 'Unknown Customer'; item.CONSIGNEENAME = item.CONSIGNEENAME || item.CONSIGNEE || ''; item.SALESREPNAME = item.SALESREPNAME || item.SALESREP || item['SALES_REP'] || 'Unknown Rep';
                 if (masterItem) { item.LOCATIONCODE = masterItem.LOCATIONCODE; item.PTRAVAILABLE = masterItem.PTRAVAILABLE; item.SEASONSUPPLY = masterItem.SEASONSUPPLY; item.PRIORITY = masterItem.PRIORITY; item.QUALITYCODE = masterItem.QUALITYCODE; item.FIELDTAGCOLOR = masterItem.FIELDTAGCOLOR; item.LOTCODE = masterItem.LOTCODE; }
                 return item;
             });
@@ -1225,7 +1199,6 @@
             const match = loc.match(/^[A-Za-z]+/); return match ? match[0] : loc.substring(0,2);
         }
 
-        // 🚨 UPGRADED LONG-PRESS LOGIC 🚨
         function startPress(e, domId) {
             if (isMultiSelectMode) return; 
             isLongPress = false;
@@ -1241,14 +1214,14 @@
                 isLongPress = true; 
                 if (navigator.vibrate) navigator.vibrate(50); 
                 enableMultiSelect(domId); 
-            }, 1000); // 1000ms is the standard reliable mobile long-press time
+            }, 1000); 
         }
 
         function checkMove(e) {
             if(e.type === 'touchmove') { 
                 let dx = Math.abs(e.touches[0].clientX - touchStartX); 
                 let dy = Math.abs(e.touches[0].clientY - touchStartY); 
-                if (dx > 20 || dy > 20) cancelPress(); // Increased to 20px to forgive finger wobble
+                if (dx > 20 || dy > 20) cancelPress(); 
             }
         }
 
@@ -1309,25 +1282,31 @@
 
         function copyTextToClipboard(text, label) { navigator.clipboard.writeText(text).then(() => { showToast("Copied!", `${label} copied to clipboard.`); }).catch(err => { showToast("Error", "Could not copy text.", true); }); }
 
+        // =========================================================
+        // 🚀 ARCHIVE SALES OFFICE ITEM (Supabase Update)
+        // =========================================================
         function markSalesOfficeComplete(uniqueId, domId) {
             const row = document.querySelector(`[data-dom-id="${domId}"]`); if (row) row.remove();
             let item = fullInventory.find(i => i.UNIQUE_ID === uniqueId); if (item) { item.DATE_COMPLETED = "ERP Synced"; }
             showToast("Complete", "Row marked as complete.");
-            fetch(GOOGLE_SCRIPT_URL, { method: 'POST', body: JSON.stringify({ type: 'archive_sales_office', id: uniqueId }) }).then(res => res.json())
-            .then(data => { if (data.status !== 'success') showToast("Error", "Failed to sync completion to sheet.", true); }).catch(err => showToast("Error", "Network error.", true));
+            
+            const targetTable = item ? (item.SOURCE_TABLE || 'drivearound_master_data') : 'drivearound_master_data';
+            supabaseFetch(targetTable, 'PATCH', { date_completed: 'ERP Synced' }, `unique_id=eq.${uniqueId}`)
+                .then(data => { if(data.error) showToast("Error", "Failed to sync completion to database.", true); })
+                .catch(err => showToast("Error", "Network error.", true));
         }
 
         function generateCard(item, sourceView, colorClass = 'status-green') {
             let thumbHtml = ''; let photoLink = "";
-            if (sourceView === 'request') photoLink = item.REQ_PHOTO_LINK || item.SAVED_PHOTO_LINK || item['PHOTO LINK'] || item.PHOTOLINK || "";
-            else if (sourceView === 'docks') photoLink = item.DOCK_PHOTO_LINK || item.SAVED_PHOTO_LINK || item['PHOTO LINK'] || item.PHOTOLINK || "";
-            else photoLink = item.SAVED_PHOTO_LINK || item['PHOTO LINK'] || item.PHOTOLINK || "";
+            if (sourceView === 'request') photoLink = item.REQ_PHOTO_LINK || item.SAVED_PHOTO_LINK || item['PHOTO_LINK'] || item.PHOTOLINK || "";
+            else if (sourceView === 'docks') photoLink = item.DOCK_PHOTO_LINK || item.SAVED_PHOTO_LINK || item['PHOTO_LINK'] || item.PHOTOLINK || "";
+            else photoLink = item.SAVED_PHOTO_LINK || item['PHOTO_LINK'] || item.PHOTOLINK || "";
             
             if (photoLink) {
                 let firstUrl = photoLink.split(',')[0]; let cleanUrl = firstUrl.trim(); let urlMatch = firstUrl.match(/(https?:\/\/[^"\s>]+)/); if (urlMatch) cleanUrl = urlMatch[1];
                 let thumbUrl = getDirectImageUrl(cleanUrl); if (thumbUrl.startsWith('http')) { thumbHtml = `<div class="ml-3 flex-shrink-0"><img src="${thumbUrl}" class="w-12 h-12 rounded-md object-cover border border-[#007a4d]/30" loading="lazy"></div>`; }
             }
-            const isChecked = selectedItems.has(item.DOM_ID) ? 'checked' : ''; const tagColor = item.FIELDTAGCOLOR || item['FIELD TAG COLOR'] || '-'; const safeUidJs = String(item.UNIQUE_ID).replace(/'/g, "\\'");
+            const isChecked = selectedItems.has(item.DOM_ID) ? 'checked' : ''; const tagColor = item.FIELDTAGCOLOR || item['FIELD_TAG_COLOR'] || '-'; const safeUidJs = String(item.UNIQUE_ID).replace(/'/g, "\\'");
 
             if (sourceView === 'sales-office') {
                 let noteText = item.SALES_NOTE || item.SALESNOTE || item.SALESDESC || 'No Note Provided'; let itemCode = item.ITEMCODE || '-'; let locCode = item.LOCATIONCODE || '-'; let lotCode = item.LOTCODE || '-'; let safeNote = noteText.replace(/'/g, "\\'").replace(/"/g, "&quot;");
@@ -1408,6 +1387,26 @@
 
         function goBackFromQty() { document.getElementById('step-3-qty').classList.add('hidden'); document.getElementById(previousReqStep).classList.remove('hidden'); }
 
+        // =========================================================
+        // 🚀 BATCH ACTIONS & ASSIGNMENTS (Supabase Updates)
+        // =========================================================
+        function confirmAssign(user) {
+            closeAssignModal(); showToast("Assigning...", "Updating Database...", false);
+            const domIds = Array.from(selectedItems); let promises = [];
+            domIds.forEach(dId => { 
+                let item = fullInventory.find(i => i.DOM_ID === dId) || lowStockInventory.find(i => i.DOM_ID === dId); 
+                if (item) { 
+                    item.ASSIGNEDTO = user; item.DATE_COMPLETED = ""; 
+                    const table = item.SOURCE_TABLE || 'drivearound_master_data';
+                    promises.push(supabaseFetch(table, 'PATCH', { assignedto: user, date_completed: null }, `unique_id=eq.${item.UNIQUE_ID}`));
+                } 
+            });
+            
+            Promise.all(promises).then(() => {
+                showToast("Success", `Assigned to ${user}!`); clearSelection(); reRenderCurrentView();
+            }).catch(err => { showToast("Error", "Assignment failed", true); });
+        }
+
         function submitRequestWithQtys() {
             let itemsData = {};
             document.querySelectorAll('.item-qty-input').forEach(input => { let uid = input.getAttribute('data-uid'); if (!itemsData[uid]) itemsData[uid] = {}; itemsData[uid].qty = input.value.trim(); });
@@ -1423,18 +1422,53 @@
                 const dateStr = new Date().toISOString().split('T')[0]; const shortTime = new Date().toLocaleTimeString('en-US', {hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit'}).replace(/:/g, ''); 
                 let safeCustName = cust.replace(/[^a-zA-Z0-9 ]/g, "").trim().replace(/\s+/g, '-'); folderId = `REQ-${dateStr}-${shortTime}-${safeCustName}`;
             }
-            document.getElementById('request-rep-modal').classList.add('hidden'); const domIds = Array.from(selectedItems); const itemsDataArray = [];
+            document.getElementById('request-rep-modal').classList.add('hidden'); const domIds = Array.from(selectedItems); 
+            
+            const uuidGen = () => Date.now().toString(36) + Math.random().toString(36).substring(2);
+            let insertPayloads = [];
+
             domIds.forEach(dId => {
                 let item = fullInventory.find(i => i.DOM_ID === dId) || lowStockInventory.find(i => i.DOM_ID === dId) || reservesInventory.find(i => i.DOM_ID === dId);
                 if (item) {
                     let dataObj = itemsDataObj[item.UNIQUE_ID] || {};
-                    itemsDataArray.push({ id: item.UNIQUE_ID, qty: dataObj.qty || "", targetSpec: dataObj.spec || "", targetCaliper: dataObj.caliper || "", estShip: dataObj.estShip || "" });
-                    let clone = JSON.parse(JSON.stringify(item)); clone.UNIQUE_ID = 'REQ-TEMP-' + Date.now() + Math.floor(Math.random() * 1000); clone.DOM_ID = 'req_' + clone.UNIQUE_ID; clone.REQUESTED_BY = tempSelectedReqRep; clone.REQUEST_FOLDER = folderId; clone.REQ_CUSTOMER = cust; clone.REQ_QTY = dataObj.qty || ""; clone.REQ_DESIRED_SPEC = dataObj.spec || ""; clone.REQ_DESIRED_CALIPER = dataObj.caliper || ""; clone.REQ_EST_SHIP = dataObj.estShip || ""; clone.REQ_ARCHIVED = false;
-                    let pLink = item.SAVED_PHOTO_LINK || item['PHOTO LINK'] || item.PHOTOLINK || ""; let pName = item.SAVED_PHOTO_NAME || item['PHOTO NAME'] || item.PHOTONAME || ""; clone.REQ_PHOTO_LINK = pLink; clone.REQ_PHOTO_NAME = pName; requestsInventory.push(clone);
+                    let newReqId = 'REQ-' + uuidGen();
+                    
+                    let newReq = {
+                        unique_id: newReqId,
+                        master_id: item.UNIQUE_ID,
+                        commonname: item.COMMONNAME,
+                        contsize: item.CONTSIZE,
+                        locationcode: item.LOCATIONCODE,
+                        lotcode: item.LOTCODE,
+                        itemcode: item.ITEMCODE,
+                        ptravailable: item.PTRAVAILABLE,
+                        season_supply: item.SEASONSUPPLY,
+                        priority: item.PRIORITY,
+                        qualitycode: item.QUALITYCODE,
+                        field_tag_color: item.FIELDTAGCOLOR,
+                        plantgroupcode: item.PLANTGROUPCODE,
+                        requested_by: tempSelectedReqRep,
+                        request_folder: folderId,
+                        req_customer: cust,
+                        req_qty: dataObj.qty || "",
+                        desired_spec: dataObj.spec || "",
+                        desired_caliper: dataObj.caliper || "",
+                        est_ship: dataObj.estShip || "",
+                        req_photo_link: item.SAVED_PHOTO_LINK || item.REQ_PHOTO_LINK || "",
+                        req_photo_name: item.SAVED_PHOTO_NAME || item.REQ_PHOTO_NAME || "",
+                        req_archived: false
+                    };
+                    insertPayloads.push(newReq);
+                    
+                    let clone = JSON.parse(JSON.stringify(item)); clone.UNIQUE_ID = newReqId; clone.DOM_ID = 'req_' + newReqId; clone.REQUESTED_BY = tempSelectedReqRep; clone.REQUEST_FOLDER = folderId; clone.REQ_CUSTOMER = cust; clone.REQ_QTY = dataObj.qty || ""; clone.REQ_DESIRED_SPEC = dataObj.spec || ""; clone.REQ_DESIRED_CALIPER = dataObj.caliper || ""; clone.REQ_EST_SHIP = dataObj.estShip || ""; clone.REQ_ARCHIVED = false;
+                    clone.REQ_PHOTO_LINK = newReq.req_photo_link; clone.REQ_PHOTO_NAME = newReq.req_photo_name; requestsInventory.push(clone);
                 }
             });
             showToast("Processing...", `Creating Clone Tickets...`, false); clearSelection(); switchView('request'); 
-            fetch(GOOGLE_SCRIPT_URL, { method: 'POST', body: JSON.stringify({ type: 'batch_request', items: itemsDataArray, repName: tempSelectedReqRep, folderId: folderId, customer: cust }) }).then(res => res.json()).then(data => { if (data.status === 'success') { showToast("Success", "Request tickets cloned! Syncing...", false); setTimeout(() => { fetchBackgroundData(); }, 3500); } else { showToast("Error", "Failed to update sheet.", true); } }).catch(err => showToast("Error", "Network error.", true));
+            
+            supabaseFetch('active_request', 'POST', insertPayloads).then(() => {
+                showToast("Success", "Request tickets cloned!", false);
+            }).catch(err => showToast("Error", "Network error.", true));
         }
 
         function processTabSelection(tab) { pendingTabType = tab; document.getElementById('tab-select-modal').classList.add('hidden'); if (pendingAction === 'assign') { openAssignModal(); } else { executeBatchAction(pendingAction, pendingTabType); } }
@@ -1474,13 +1508,6 @@
         function openAssignModal() { document.getElementById('assign-modal').classList.remove('hidden'); }
         function closeAssignModal() { document.getElementById('assign-modal').classList.add('hidden'); }
 
-        function confirmAssign(user) {
-            closeAssignModal(); showToast("Assigning...", "Updating Google Sheet...", false);
-            const domIds = Array.from(selectedItems); const uniqueIds = []; let itemsToUpdate = [];
-            domIds.forEach(dId => { let item = fullInventory.find(i => i.DOM_ID === dId) || lowStockInventory.find(i => i.DOM_ID === dId) || reservesInventory.find(i => i.DOM_ID === dId) || requestsInventory.find(i => i.DOM_ID === dId); if (item) { uniqueIds.push(item.UNIQUE_ID); itemsToUpdate.push(item); } });
-            fetch(GOOGLE_SCRIPT_URL, { method: 'POST', body: JSON.stringify({ type: 'batch_assign', ids: uniqueIds, assignTo: user, tabType: pendingTabType }) }).then(res => res.json()).then(data => { if (data.status === 'success') { showToast("Success", `Assigned to ${user} and email sent!`); itemsToUpdate.forEach(item => { item.ASSIGNEDTO = user; item.DATE_COMPLETED = ""; }); clearSelection(); reRenderCurrentView(); } else { showToast("Error", "Assignment failed", true); } }).catch(err => showToast("Error", "Network error.", true));
-        }
-
         function handleDocksSearch() {
             const term = document.getElementById('docks-search').value;
             if (term.length > 0 && dockViewLevel > 1) { dockViewLevel = 1; selectedDockName = null; selectedDockSize = null; selectedDockItemCode = null; }
@@ -1502,7 +1529,7 @@
                 let activeDocks = new Set();
                 socInventory.forEach(i => {
                     if (!isMyRep(i.SALESREPNAME)) return;
-                    if (term) { let searchStr = (i.COMMONNAME || i['PLANT NAME'] || i.CUSTOMERNAME || i.SALESREPNAME || 'Unknown').toLowerCase(); if (searchStr.includes(term) && i.DOCK_NUM) activeDocks.add(i.DOCK_NUM); } 
+                    if (term) { let searchStr = (i.COMMONNAME || i['PLANT_NAME'] || i.CUSTOMERNAME || i.SALESREPNAME || 'Unknown').toLowerCase(); if (searchStr.includes(term) && i.DOCK_NUM) activeDocks.add(i.DOCK_NUM); } 
                     else { if (i.DOCK_NUM) activeDocks.add(i.DOCK_NUM); }
                 });
                 let html = '<div class="grid grid-cols-4 gap-2">';
@@ -1515,13 +1542,13 @@
             else if (dockViewLevel === 1) {
                 crumb.innerText = `Dock ${selectedDockNum} > Stops & Plants`;
                 let dockItems = socInventory.filter(i => i.DOCK_NUM === selectedDockNum && isMyRep(i.SALESREPNAME));
-                if (term) { dockItems = dockItems.filter(i => { let searchStr = (i.COMMONNAME || i['PLANT NAME'] || i.CUSTOMERNAME || i.SALESREPNAME || 'Unknown').toLowerCase(); return searchStr.includes(term); }); }
+                if (term) { dockItems = dockItems.filter(i => { let searchStr = (i.COMMONNAME || i['PLANT_NAME'] || i.CUSTOMERNAME || i.SALESREPNAME || 'Unknown').toLowerCase(); return searchStr.includes(term); }); }
                 if (dockItems.length === 0) { container.innerHTML = `<div class="back-btn" onclick="dockViewLevel=0; renderDocks()"><i class="ph-bold ph-arrow-left"></i> Back to Docks</div><div class="p-8 text-center text-gray-400">No matching stops found.</div>`; return; }
                 let stopsMap = {};
                 dockItems.forEach(i => {
                     let stopNum = i.STOPNUMBER || i.STOP || "Unassigned"; let tripNum = i.TRIPNUMBER || i.TRIP || "Unassigned"; let groupKey = tripNum + "|" + stopNum;
                     if (!stopsMap[groupKey]) { stopsMap[groupKey] = { trip: tripNum, stop: stopNum, salesRep: i.SALESREPNAME || i.SALESREP || "Unknown Rep", customer: i.CUSTOMERNAME || i.CUSTOMER || "Unknown Customer", consignee: i.CONSIGNEENAME || i.CONSIGNEE || "", plants: {} }; }
-                    let name = i.COMMONNAME || i['PLANT NAME'] || i.DESC || i.DESCRIPTION || 'Unknown'; let size = i.CONTSIZE || i.SIZE || i.CONTAINER || '-'; let itemCode = i.ITEMCODE || i.ITEM || 'No Item'; let key = `${itemCode}|${name}|${size}`;
+                    let name = i.COMMONNAME || i['PLANT_NAME'] || i.DESC || i.DESCRIPTION || 'Unknown'; let size = i.CONTSIZE || i.SIZE || i.CONTAINER || '-'; let itemCode = i.ITEMCODE || i.ITEM || 'No Item'; let key = `${itemCode}|${name}|${size}`;
                     if (!stopsMap[groupKey].plants[key]) stopsMap[groupKey].plants[key] = { itemCode, name, size, count: 0 }; stopsMap[groupKey].plants[key].count++;
                 });
                 let html = `<div class="back-btn" onclick="dockViewLevel=0; document.getElementById('docks-search').value=''; renderDocks()"><i class="ph-bold ph-arrow-left"></i> Back to Docks</div>`;
@@ -1644,16 +1671,33 @@
             navigator.clipboard.writeText(returnText).then(() => { showToast("Success", "Folder data copied to clipboard!"); });
         }
 
+        // =========================================================
+        // 🚀 ARCHIVE REQUEST FOLDER (Supabase Update)
+        // =========================================================
         function markFolderDone(folderId) {
             if(!confirm("Are you sure you want to mark this folder as Done? It will be hidden from the app.")) return;
             showToast("Archiving...", "Removing folder from view...", false);
-            fetch(GOOGLE_SCRIPT_URL, { method: 'POST', body: JSON.stringify({ type: 'archive_request_folder', folderId: folderId }) }).then(res => res.json()).then(data => { if (data.status === 'success') { requestsInventory.forEach(i => { if (i.REQUEST_FOLDER === folderId) i.REQ_ARCHIVED = true; }); showToast("Success", "Folder archived!"); requestViewLevel = 3; renderRequest(); } else { showToast("Error", "Failed to update sheet.", true); } }).catch(err => showToast("Error", "Network error.", true));
+            
+            supabaseFetch('active_request', 'PATCH', { req_archived: true }, `request_folder=eq.${folderId}`)
+                .then(() => {
+                    requestsInventory.forEach(i => { if (i.REQUEST_FOLDER === folderId) i.REQ_ARCHIVED = true; }); 
+                    showToast("Success", "Folder archived!"); 
+                    requestViewLevel = 3; renderRequest();
+                }).catch(err => showToast("Error", "Network error.", true));
         }
         
+        // =========================================================
+        // 🚀 REMOVE SINGLE REQUEST (Supabase Update)
+        // =========================================================
         function removeFromRequest() {
             if(!confirm("Are you sure you want to remove this item from the Request folder? It will be deleted from the request but remain safely in the Master Inventory.")) return;
-            showToast("Removing...", "Updating Google Sheet...", false);
-            fetch(GOOGLE_SCRIPT_URL, { method: 'POST', body: JSON.stringify({ type: 'remove_from_request', id: activeItem.UNIQUE_ID }) }).then(res => res.json()).then(data => { if (data.status === 'success') { showToast("Success", "Item removed from Request."); activeItem.REQ_ARCHIVED = true; goBackFromDetail(); } else { showToast("Error", "Failed to update sheet.", true); } }).catch(err => showToast("Error", "Network error.", true));
+            showToast("Removing...", "Updating Database...", false);
+            
+            supabaseFetch('active_request', 'DELETE', null, `unique_id=eq.${activeItem.UNIQUE_ID}`)
+                .then(() => {
+                    showToast("Success", "Item removed from Request."); 
+                    activeItem.REQ_ARCHIVED = true; goBackFromDetail();
+                }).catch(err => showToast("Error", "Network error.", true));
         }
 
         function renderRequest() {
@@ -1880,8 +1924,8 @@
 
             ['view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-docks','view-request','view-reserves'].forEach(v => document.getElementById(v).classList.add('hidden')); document.getElementById('view-detail').classList.remove('hidden');
 
-            activeItem.SAVED_PHOTO_LINK = activeItem['PHOTO LINK'] || activeItem.PHOTOLINK || activeItem.SAVED_PHOTO_LINK || ""; activeItem.SAVED_PHOTO_NAME = activeItem['PHOTO NAME'] || activeItem.PHOTONAME || activeItem.SAVED_PHOTO_NAME || "";
-            document.getElementById('det-common').innerText = activeItem.COMMONNAME || "--"; document.getElementById('det-size').innerText = activeItem.CONTSIZE || "--"; document.getElementById('ov-loc').innerText = activeItem.LOCATIONCODE || "--"; document.getElementById('ov-avail').innerText = activeItem.PTRAVAILABLE || "0"; document.getElementById('ov-item').innerText = activeItem.ITEMCODE || "--"; document.getElementById('ov-lot').innerText = activeItem.LOTCODE || "--"; document.getElementById('ov-qual').innerText = activeItem.QUALITYCODE || "--"; document.getElementById('ov-tag').innerText = activeItem.FIELDTAGCOLOR || activeItem['FIELD TAG COLOR'] || "--"; document.getElementById('ov-season').innerText = activeItem.SEASONSUPPLY || "--"; document.getElementById('ov-prior').innerText = activeItem.PRIORITY || "--";
+            activeItem.SAVED_PHOTO_LINK = activeItem['PHOTO_LINK'] || activeItem.PHOTOLINK || activeItem.SAVED_PHOTO_LINK || ""; activeItem.SAVED_PHOTO_NAME = activeItem['PHOTO_NAME'] || activeItem.PHOTONAME || activeItem.SAVED_PHOTO_NAME || "";
+            document.getElementById('det-common').innerText = activeItem.COMMONNAME || "--"; document.getElementById('det-size').innerText = activeItem.CONTSIZE || "--"; document.getElementById('ov-loc').innerText = activeItem.LOCATIONCODE || "--"; document.getElementById('ov-avail').innerText = activeItem.PTRAVAILABLE || "0"; document.getElementById('ov-item').innerText = activeItem.ITEMCODE || "--"; document.getElementById('ov-lot').innerText = activeItem.LOTCODE || "--"; document.getElementById('ov-qual').innerText = activeItem.QUALITYCODE || "--"; document.getElementById('ov-tag').innerText = activeItem.FIELDTAGCOLOR || activeItem['FIELD_TAG_COLOR'] || "--"; document.getElementById('ov-season').innerText = activeItem.SEASONSUPPLY || "--"; document.getElementById('ov-prior').innerText = activeItem.PRIORITY || "--";
 
             const standardPrefixes = ['ssn-', 'lsn-', 'na-'];
             standardPrefixes.forEach(p => { document.getElementById(p + 'match').value = activeItem.MATCH || activeItem.MATCHPCT || ""; document.getElementById(p + 'spec').value = activeItem.SPEC || ""; document.getElementById(p + 'pick').value = activeItem.PIC_NOTE || activeItem.PICKNOTE || activeItem.PICK || ""; document.getElementById(p + 'sales-desc').value = activeItem.SALES_NOTE || activeItem.SALESNOTE || activeItem.SALESDESC || ""; document.getElementById(p + 'caliper').value = activeItem.CALIPER || ""; });
@@ -1900,7 +1944,7 @@
             
             const lgPhotoBox = document.getElementById('ov-large-photo');
             if (safeRole === 'SALESREP') {
-                let pLink = activeItem.SAVED_PHOTO_LINK || activeItem['PHOTO LINK'] || activeItem.PHOTOLINK || activeItem.REQ_PHOTO_LINK || activeItem.DOCK_PHOTO_LINK || "";
+                let pLink = activeItem.SAVED_PHOTO_LINK || activeItem['PHOTO_LINK'] || activeItem.PHOTOLINK || activeItem.REQ_PHOTO_LINK || activeItem.DOCK_PHOTO_LINK || "";
                 if (pLink) { let urls = pLink.split(','); let urlMatch = urls[0].match(/(https?:\/\/[^"\s>]+)/); let cleanUrl = urlMatch ? urlMatch[1] : urls[0].trim(); lgPhotoBox.innerHTML = `<img src="${cleanUrl}" class="w-full rounded-xl shadow-md border border-gray-200 object-cover mt-4 mb-2">`; lgPhotoBox.classList.remove('hidden'); } 
                 else { lgPhotoBox.classList.add('hidden'); lgPhotoBox.innerHTML = ''; }
             } else { lgPhotoBox.classList.add('hidden'); }
@@ -1960,6 +2004,9 @@
             if (changed) localStorage.setItem('gnc_pending_edits', JSON.stringify(pendingEdits));
         }
 
+        // =========================================================
+        // 📸 IMAGE UPLOADS (Still sent to Google Script for Drive Storage)
+        // =========================================================
         function handlePhotoUpload(input, prefix) {
             if(!input.files || input.files.length === 0) return; const file = input.files[0]; const reader = new FileReader();
             reader.onload = function(e) {
@@ -2023,31 +2070,54 @@
 
         let autoSaveTimer = null;
 
+        // =========================================================
+        // 🚀 SAVE DATA (Directly hitting Supabase!)
+        // =========================================================
         function saveData(isComplete = false, prefix, isSilentAutoSave = false, specificItem = null) {
             if (autoSaveTimer) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
             let itemToSave = specificItem || activeItem; if (!itemToSave) return;
             let btnDraft = document.getElementById(prefix + 'btn-save-draft'); let btnComp = document.getElementById(prefix + 'btn-save-complete'); let isCurrentView = (activeItem && activeItem.UNIQUE_ID === itemToSave.UNIQUE_ID);
+            
             if (isCurrentView) { if (isComplete) { if(btnComp) btnComp.innerText = "SAVING..."; } else { if(btnDraft) btnDraft.innerText = isSilentAutoSave ? "AUTO-SAVING..." : "SAVING..."; } }
+            
             const executeSave = () => {
-                let matchVal, specVal, caliperVal, pickVal, salesDescVal;
                 if (!specificItem) {
                     if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-') { itemToSave.MATCH = document.getElementById(prefix + 'match').value; itemToSave.SPEC = document.getElementById(prefix + 'spec').value; itemToSave.CALIPER = document.getElementById(prefix + 'caliper').value; itemToSave.PICK = document.getElementById(prefix + 'pick').value; itemToSave.SALES_NOTE = document.getElementById(prefix + 'sales-desc').value.toUpperCase(); } 
                     else if (prefix === 'req-') { itemToSave.REQ_MATCH = document.getElementById('req-match').value; itemToSave.REQ_SPEC = document.getElementById('req-spec').value; itemToSave.REQ_CALIPER = document.getElementById('req-caliper').value; itemToSave.REQ_PICK = document.getElementById('req-pick').value; itemToSave.REQ_SALES_NOTE = document.getElementById('req-sales-desc').value.toUpperCase(); itemToSave.REQ_COMMENTS = document.getElementById('req-comments').value; } 
                     else if (prefix === 'dock-') { itemToSave.DOCK_SPEC = document.getElementById('dock-spec').value; itemToSave.DOCK_CALIPER = document.getElementById('dock-caliper').value; itemToSave.DOCK_NOTE = document.getElementById('dock-sales-desc').value.toUpperCase(); }
                 }
-                if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-') { matchVal = itemToSave.MATCH; specVal = itemToSave.SPEC; caliperVal = itemToSave.CALIPER; pickVal = itemToSave.PICK; salesDescVal = itemToSave.SALES_NOTE; } 
-                else { matchVal = itemToSave.MATCH; specVal = itemToSave.SPEC; caliperVal = itemToSave.CALIPER; pickVal = itemToSave.PIC_NOTE || itemToSave.PICK || ""; salesDescVal = itemToSave.SALES_NOTE; }
                 backupLocalItem(itemToSave);
-                const payload = {
-                    type: "update", id: itemToSave.UNIQUE_ID, match: matchVal, spec: specVal, caliper: caliperVal, pick: pickVal, salesDesc: salesDescVal, photoLink: itemToSave.SAVED_PHOTO_LINK || "", photoName: itemToSave.SAVED_PHOTO_NAME || "",
-                    reqMatch: itemToSave.REQ_MATCH || "", reqSpec: itemToSave.REQ_SPEC || "", reqCaliper: itemToSave.REQ_CALIPER || "", reqPick: itemToSave.REQ_PICK || "", reqSalesDesc: itemToSave.REQ_SALES_NOTE || "", reqComments: itemToSave.REQ_COMMENTS || "", reqPhotoLink: itemToSave.REQ_PHOTO_LINK || "", reqPhotoName: itemToSave.REQ_PHOTO_NAME || "",
-                    dockSpec: itemToSave.DOCK_SPEC || "", dockCaliper: itemToSave.DOCK_CALIPER || "", dockNote: itemToSave.DOCK_NOTE || "", dockPhotoLink: itemToSave.DOCK_PHOTO_LINK || "", dockPhotoName: itemToSave.DOCK_PHOTO_NAME || "", isComplete: isComplete, isSilent: isSilentAutoSave
-                };
-                fetch(GOOGLE_SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) }).then(res => res.json()).then(data => {
+
+                // 🚨 Format Supabase Payload (Lowercase keys)
+                const payload = {};
+                if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-') {
+                    payload.match = itemToSave.MATCH || ""; payload.spec = itemToSave.SPEC || ""; payload.caliper = itemToSave.CALIPER || ""; payload.pic_note = itemToSave.PICK || ""; payload.sales_note = itemToSave.SALES_NOTE || "";
+                } else if (prefix === 'req-') {
+                    payload.req_match = itemToSave.REQ_MATCH || ""; payload.req_spec = itemToSave.REQ_SPEC || ""; payload.req_caliper = itemToSave.REQ_CALIPER || ""; payload.req_pic_note = itemToSave.REQ_PICK || ""; payload.req_sales_note = itemToSave.REQ_SALES_NOTE || ""; payload.req_comments = itemToSave.REQ_COMMENTS || "";
+                } else if (prefix === 'dock-') {
+                    payload.dock_spec = itemToSave.DOCK_SPEC || ""; payload.dock_caliper = itemToSave.DOCK_CALIPER || ""; payload.dock_note = itemToSave.DOCK_NOTE || "";
+                }
+
+                if (itemToSave.SAVED_PHOTO_LINK) payload.photo_link = itemToSave.SAVED_PHOTO_LINK;
+                if (itemToSave.SAVED_PHOTO_NAME) payload.photo_name = itemToSave.SAVED_PHOTO_NAME;
+                if (itemToSave.REQ_PHOTO_LINK) payload.req_photo_link = itemToSave.REQ_PHOTO_LINK;
+                if (itemToSave.REQ_PHOTO_NAME) payload.req_photo_name = itemToSave.REQ_PHOTO_NAME;
+                if (itemToSave.DOCK_PHOTO_LINK) payload.dock_photo_link = itemToSave.DOCK_PHOTO_LINK;
+                if (itemToSave.DOCK_PHOTO_NAME) payload.dock_photo_name = itemToSave.DOCK_PHOTO_NAME;
+
+                if (isComplete) { payload.date_completed = new Date().toISOString(); }
+
+                const targetTable = itemToSave.SOURCE_TABLE || 'drivearound_master_data';
+
+                supabaseFetch(targetTable, 'PATCH', payload, `unique_id=eq.${itemToSave.UNIQUE_ID}`)
+                .then(data => {
                     if (isCurrentView) { if(btnDraft) { if(prefix === 'req-') btnDraft.innerText = "SAVE REQUEST DATA"; else if(prefix === 'dock-') btnDraft.innerText = "SAVE DOCK DATA"; else btnDraft.innerText = "SAVE DRAFT"; } if(btnComp) btnComp.innerText = "MARK COMPLETE"; }
-                    if(data.status === 'success') { if (!isSilentAutoSave && isCurrentView) showToast("Success", isComplete ? "Task Completed!" : "Draft saved to Google Sheet."); if (isComplete && isCurrentView) { itemToSave.DATE_COMPLETED = new Date().toISOString(); goBackFromDetail(); } else if (isComplete && !isCurrentView) { itemToSave.DATE_COMPLETED = new Date().toISOString(); } } 
-                    else if (isCurrentView) { showToast("Error", data.message, true); }
-                }).catch(err => { if (isCurrentView) { if(btnDraft) { if(prefix === 'req-') btnDraft.innerText = "SAVE REQUEST DATA"; else if(prefix === 'dock-') btnDraft.innerText = "SAVE DOCK DATA"; else btnDraft.innerText = "SAVE DRAFT"; } if(btnComp) btnComp.innerText = "MARK COMPLETE"; if (!isSilentAutoSave) showToast("Network Error", "Could not reach server.", true); } });
+                    if (!isSilentAutoSave && isCurrentView) showToast("Success", isComplete ? "Task Completed!" : "Draft saved to Database."); 
+                    if (isComplete && isCurrentView) { itemToSave.DATE_COMPLETED = new Date().toISOString(); goBackFromDetail(); } 
+                    else if (isComplete && !isCurrentView) { itemToSave.DATE_COMPLETED = new Date().toISOString(); }
+                }).catch(err => { 
+                    if (isCurrentView) { if(btnDraft) { if(prefix === 'req-') btnDraft.innerText = "SAVE REQUEST DATA"; else if(prefix === 'dock-') btnDraft.innerText = "SAVE DOCK DATA"; else btnDraft.innerText = "SAVE DRAFT"; } if(btnComp) btnComp.innerText = "MARK COMPLETE"; if (!isSilentAutoSave) showToast("Network Error", "Could not reach database.", true); } 
+                });
             };
             if (isSilentAutoSave && !isComplete && !specificItem) { autoSaveTimer = setTimeout(() => { executeSave(); }, 1000); } else { executeSave(); }
         }
