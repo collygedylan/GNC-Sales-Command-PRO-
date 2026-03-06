@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GNC 01</title>
+    <title>GNC</title>
     
     <meta name="theme-color" content="#007a4d">
     <link rel="manifest" href="manifest.json">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="application-name" content="GNC 01">
+    <meta name="application-name" content="GNC">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-title" content="GNC 01">
+    <meta name="apple-mobile-web-app-title" content="GNC">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="icon" type="image/png" href="Ag Metric App.png">
     <link rel="apple-touch-icon" href="Ag Metric App.png">
@@ -24,6 +24,8 @@
         .nav-header { background: var(--brand-green); color: white; padding-top: max(10px, env(safe-area-inset-top)); }
         
         #view-login { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: var(--brand-green); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
+        #view-change-password { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: var(--brand-green); z-index: 10000; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
+        
         .login-card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); width: 100%; max-width: 360px; text-align: center; }
         .input-field { width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 15px; margin-bottom: 12px; }
 
@@ -78,8 +80,10 @@
         .spinner { border: 4px solid rgba(255,255,255,0.3); border-top: 4px solid white; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        #ptr-indicator { height: 0; overflow: hidden; display: flex; align-items: center; justify-content: center; transition: height 0.3s ease; background: transparent; }
-        .ptr-spinner { border: 3px solid rgba(0,122,77,0.2); border-top: 3px solid var(--brand-green); border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
+        /* PTR CSS */
+        #ptr-container { position: absolute; top: 0; left: 0; width: 100%; display: flex; justify-content: center; align-items: flex-end; z-index: 10; pointer-events: none; }
+        .ptr-spinner { border: 3px solid rgba(0,122,77,0.2); border-top: 3px solid var(--brand-green); border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; margin-bottom: 10px; opacity: 0; transition: opacity 0.2s; }
+        .ptr-spinner.active { opacity: 1; }
         
         .scrollbar-none::-webkit-scrollbar { display: none; }
         .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
@@ -101,7 +105,7 @@
         <div class="login-card">
             <div class="flex flex-col items-center mb-8 w-full relative">
                 <img src="Greenleaf%20Logo.png" alt="Greenleaf Logo" class="h-20 mb-4 object-contain drop-shadow-md" onerror="this.style.display='none'">
-                <div class="text-3xl text-[#007a4d] font-black tracking-tighter mb-1">GNC 01</div>
+                <div class="text-3xl text-[#007a4d] font-black tracking-tighter mb-1">GNC</div>
                 
                 <div class="flex flex-col items-center gap-0.5 mt-5">
                     <span class="text-[9px] font-bold text-gray-400 uppercase tracking-[0.3em]">Powered By</span>
@@ -122,6 +126,18 @@
                 <div class="spinner"></div>
                 <div id="loading-text" class="text-white font-bold text-sm mt-3 text-center">Authenticating...</div>
             </div>
+        </div>
+    </div>
+
+    <div id="view-change-password">
+        <div class="login-card">
+            <h2 class="text-2xl font-black text-[#007a4d] mb-2">Change Password</h2>
+            <p class="text-xs text-gray-500 font-bold mb-6">For security, please set a new password for your account to continue.</p>
+            
+            <input type="password" id="new-password" class="input-field mb-3 text-center border-2 tracking-widest" placeholder="NEW PASSWORD">
+            <input type="password" id="confirm-password" class="input-field mb-6 text-center border-2 tracking-widest" placeholder="CONFIRM PASSWORD">
+            
+            <button class="w-full bg-[#007a4d] text-white font-bold py-3 rounded-lg shadow-md active:scale-95 transition-transform" onclick="submitNewPassword()">SAVE & CONTINUE</button>
         </div>
     </div>
 
@@ -194,7 +210,7 @@
                 <i class="ph-bold ph-list menu-btn text-2xl cursor-pointer" onclick="toggleMenu()"></i>
                 <div class="flex flex-col">
                     <div class="font-bold text-lg leading-tight"><span id="header-user">User</span></div>
-                    <div class="text-[10px] opacity-80 leading-tight">GNC 01</div>
+                    <div class="text-[10px] opacity-80 leading-tight">GNC</div>
                 </div>
             </div>
         </header>
@@ -228,483 +244,483 @@
 
         <div id="main-scroll-area" class="flex-grow overflow-y-auto p-4 pb-40 relative">
             
-            <div id="ptr-indicator"><div class="ptr-spinner"></div></div>
+            <div id="ptr-container"><div class="ptr-spinner" id="ptr-spinner"></div></div>
 
-            <div id="view-home" class="hidden">
-                <div class="bg-[#007a4d] text-white p-6 rounded-2xl mb-6 shadow-lg flex flex-col items-center text-center relative overflow-hidden">
-                    <div class="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-white opacity-5 rounded-full pointer-events-none"></div>
-                    <div class="absolute bottom-0 left-0 -mb-10 -ml-10 w-32 h-32 bg-black opacity-10 rounded-full pointer-events-none"></div>
-                    
-                    <div class="bg-white p-3.5 rounded-2xl mb-3 shadow-md z-10 relative">
-                        <img src="Greenleaf%20Logo.png" alt="Greenleaf Logo" class="h-11 object-contain" onerror="this.style.display='none'">
+            <div id="view-wrapper" style="position:relative; z-index:20;">
+                <div id="view-home" class="hidden">
+                    <div class="bg-[#007a4d] text-white p-6 rounded-2xl mb-6 shadow-lg flex flex-col items-center text-center relative overflow-hidden">
+                        <div class="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-white opacity-5 rounded-full pointer-events-none"></div>
+                        <div class="absolute bottom-0 left-0 -mb-10 -ml-10 w-32 h-32 bg-black opacity-10 rounded-full pointer-events-none"></div>
+                        
+                        <div class="bg-white p-3.5 rounded-2xl mb-3 shadow-md z-10 relative">
+                            <img src="Greenleaf%20Logo.png" alt="Greenleaf Logo" class="h-11 object-contain" onerror="this.style.display='none'">
+                        </div>
+                        
+                        <h1 class="text-2xl font-black tracking-tight mb-1 z-10 relative">GNC</h1>
+                        <p class="text-green-100 text-[10px] font-bold mb-5 uppercase tracking-[0.2em] z-10 relative">Dashboard</p>
+                        
+                        <div class="flex flex-col items-center pt-4 border-t border-white/20 w-full mt-1 z-10 relative">
+                            <span class="text-[9px] font-bold text-white/70 uppercase tracking-[0.3em] mb-1">Powered By</span>
+                            <div class="text-[15px] font-black tracking-[0.2em] text-white uppercase drop-shadow-sm">Ag Metric</div>
+                        </div>
                     </div>
                     
-                    <h1 class="text-2xl font-black tracking-tight mb-1 z-10 relative">GNC 01</h1>
-                    <p class="text-green-100 text-[10px] font-bold mb-5 uppercase tracking-[0.2em] z-10 relative">Dashboard</p>
-                    
-                    <div class="flex flex-col items-center pt-4 border-t border-white/20 w-full mt-1 z-10 relative">
-                        <span class="text-[9px] font-bold text-white/70 uppercase tracking-[0.3em] mb-1">Powered By</span>
-                        <div class="text-[15px] font-black tracking-[0.2em] text-white uppercase drop-shadow-sm">Ag Metric</div>
+                    <h2 class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3 pl-1">App Modules</h2>
+                    <div class="grid grid-cols-2 gap-3 mb-8">
+                        
+                        <div onclick="switchView('drive')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer">
+                            <i class="ph-bold ph-car text-3xl text-blue-600"></i>
+                            <span class="font-bold text-sm text-gray-800">Drive Mode</span>
+                        </div>
+                        
+                        <div onclick="switchView('tasks')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer rep-hidden csr-hidden">
+                            <i class="ph-bold ph-clipboard-text text-3xl text-[#007a4d]"></i>
+                            <span class="font-bold text-sm text-gray-800">Tasks</span>
+                        </div>
+                        
+                        <div onclick="switchView('docks')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer">
+                            <i class="ph-bold ph-truck text-3xl text-orange-600"></i>
+                            <span class="font-bold text-sm text-gray-800">Docks</span>
+                        </div>
+                        
+                        <div onclick="switchView('request')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer admin-rep-csr-only hidden">
+                            <i class="ph-bold ph-chat-circle-text text-3xl text-blue-600"></i>
+                            <span class="font-bold text-sm text-gray-800">Requests</span>
+                        </div>
+                        
+                        <div onclick="switchView('reserves')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform col-span-2 cursor-pointer admin-rep-csr-only hidden">
+                            <i class="ph-bold ph-bookmark-simple text-3xl text-indigo-600"></i>
+                            <span class="font-bold text-sm text-gray-800">Reserves</span>
+                        </div>
+
+                        <div onclick="switchView('sales-office')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer admin-csr-only hidden">
+                            <i class="ph-bold ph-briefcase text-3xl text-purple-600"></i>
+                            <span class="font-bold text-sm text-gray-800">Sales Office</span>
+                        </div>
+                        
+                        <div onclick="switchView('reports')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer admin-only hidden">
+                            <i class="ph-bold ph-chart-bar text-3xl text-emerald-600"></i>
+                            <span class="font-bold text-sm text-gray-800">Reports</span>
+                        </div>
+                        
+                        <div onclick="switchView('low-stock')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer dylan-only hidden">
+                            <i class="ph-bold ph-trend-down text-3xl text-red-600"></i>
+                            <span class="font-bold text-sm text-gray-800">Low Stock</span>
+                        </div>
+                        
+                        <div onclick="switchView('review')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform col-span-2 cursor-pointer admin-only hidden">
+                            <i class="ph-bold ph-warning-circle text-3xl text-yellow-600"></i>
+                            <span class="font-bold text-sm text-gray-800">Manager Review</span>
+                        </div>
+
                     </div>
+                </div>
+
+                <div id="view-reports" class="hidden">
+                    <div id="reports-crumb" class="text-xs font-bold text-[#007a4d] mb-3">Crop Value Summary</div>
+                    <div class="detail-tabs mb-4">
+                        <div class="detail-tab report-tab active border-[#007a4d] text-[#007a4d]" onclick="setReportTab('ALL')" id="rtab-ALL">Summary</div>
+                        <div class="detail-tab report-tab" onclick="setReportTab('S1')" id="rtab-S1">S1 Value</div>
+                        <div class="detail-tab report-tab" onclick="setReportTab('F1')" id="rtab-F1">F1 Value</div>
+                        <div class="detail-tab report-tab" onclick="setReportTab('U1')" id="rtab-U1">U1 Value</div>
+                        <div class="detail-tab report-tab" onclick="setReportTab('U2')" id="rtab-U2">U2 Value</div>
+                        <div class="detail-tab report-tab" onclick="setReportTab('U3')" id="rtab-U3">U3 Value</div>
+                        <div class="detail-tab report-tab" onclick="setReportTab('X')" id="rtab-X">X Value</div>
+                        <div class="detail-tab report-tab" onclick="setReportTab('Y')" id="rtab-Y">Y Value</div>
+                        <div class="detail-tab report-tab" onclick="setReportTab('Z')" id="rtab-Z">Z Value</div>
+                    </div>
+                    <div id="reports-content"></div>
+                </div>
+
+                <div id="view-request" class="hidden">
+                    <div id="request-crumb" class="text-xs font-bold text-[#007a4d] mb-3 empty:hidden"></div>
+                    <div id="request-content"></div>
+                </div>
+
+                <div id="view-reserves" class="hidden">
+                    <div id="reserves-search-container" class="relative mb-2">
+                        <input type="text" id="reserves-search" class="input-field w-full pr-10 !mb-0" placeholder="Search..." onkeyup="handleReservesSearch()">
+                        <i id="reserves-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearReservesSearch()"></i>
+                    </div>
+                    <div id="reserves-crumb" class="text-xs font-bold text-[#007a4d] mb-3 mt-3 empty:hidden"></div>
+                    <div id="reserves-content"></div>
+                </div>
+
+                <div id="view-docks" class="hidden">
+                    <input type="text" id="docks-search" class="input-field mb-2" placeholder="Search Plants..." onkeyup="handleDocksSearch()">
+                    <div id="docks-crumb" class="text-xs font-bold text-[#007a4d] mb-3">Select a Dock</div>
+                    <div id="docks-content"></div>
+                </div>
+
+                <div id="view-low-stock" class="hidden">
+                    <div id="low-stock-crumb" class="text-xs font-bold text-[#007a4d] mb-3">Action Required</div>
+                    <div id="low-stock-content"></div>
+                </div>
+
+                <div id="view-sales-office" class="hidden">
+                    <div class="text-xs font-bold text-[#007a4d] mb-3">Completed Season Items</div>
+                    <div id="sales-office-content"></div>
+                </div>
+
+                <div id="view-drive" class="hidden">
+                    <div id="drive-search-container" class="relative mb-2">
+                        <input type="text" id="drive-search" class="input-field w-full pr-10 !mb-0" placeholder="Search Names or Locs..." onkeyup="handleDriveSearch()">
+                        <i id="drive-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearDriveSearch()"></i>
+                    </div>
+                    <div class="flex overflow-x-auto scrollbar-none gap-2 mb-3 pb-1" id="drive-season-filters"></div>
+                    
+                    <div id="drive-crumb" class="text-xs font-bold text-[#007a4d] mb-3 empty:hidden"></div>
+                    <div id="drive-content"></div>
+                </div>
+
+                <div id="view-tasks" class="hidden">
+                    <div id="task-crumb" class="text-xs font-bold text-[#007a4d] mb-3"></div>
+                    <div id="team-selector" class="hidden mb-4 grid grid-cols-1 gap-3"></div>
+                    <div id="task-tabs-container" class="task-tabs">
+                        <div id="tab-season" class="task-tab active" onclick="setTaskTab('season')">Season Sales Notes</div>
+                        <div id="tab-location" class="task-tab" onclick="setTaskTab('location')">Location Sales Notes</div>
+                    </div>
+                    <div id="task-content"></div>
                 </div>
                 
-                <h2 class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3 pl-1">App Modules</h2>
-                <div class="grid grid-cols-2 gap-3 mb-8">
-                    
-                    <div onclick="switchView('drive')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer">
-                        <i class="ph-bold ph-car text-3xl text-blue-600"></i>
-                        <span class="font-bold text-sm text-gray-800">Drive Mode</span>
-                    </div>
-                    
-                    <div onclick="switchView('tasks')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer rep-hidden csr-hidden">
-                        <i class="ph-bold ph-clipboard-text text-3xl text-[#007a4d]"></i>
-                        <span class="font-bold text-sm text-gray-800">Tasks</span>
-                    </div>
-                    
-                    <div onclick="switchView('docks')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer">
-                        <i class="ph-bold ph-truck text-3xl text-orange-600"></i>
-                        <span class="font-bold text-sm text-gray-800">Docks</span>
-                    </div>
-                    
-                    <div onclick="switchView('request')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer admin-rep-csr-only hidden">
-                        <i class="ph-bold ph-chat-circle-text text-3xl text-blue-600"></i>
-                        <span class="font-bold text-sm text-gray-800">Requests</span>
-                    </div>
-                    
-                    <div onclick="switchView('reserves')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform col-span-2 cursor-pointer admin-rep-csr-only hidden">
-                        <i class="ph-bold ph-bookmark-simple text-3xl text-indigo-600"></i>
-                        <span class="font-bold text-sm text-gray-800">Reserves</span>
-                    </div>
-
-                    <div onclick="switchView('sales-office')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer admin-csr-only hidden">
-                        <i class="ph-bold ph-briefcase text-3xl text-purple-600"></i>
-                        <span class="font-bold text-sm text-gray-800">Sales Office</span>
-                    </div>
-                    
-                    <div onclick="switchView('reports')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer admin-only hidden">
-                        <i class="ph-bold ph-chart-bar text-3xl text-emerald-600"></i>
-                        <span class="font-bold text-sm text-gray-800">Reports</span>
-                    </div>
-                    
-                    <div onclick="switchView('low-stock')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer dylan-only hidden">
-                        <i class="ph-bold ph-trend-down text-3xl text-red-600"></i>
-                        <span class="font-bold text-sm text-gray-800">Low Stock</span>
-                    </div>
-                    
-                    <div onclick="switchView('review')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform col-span-2 cursor-pointer admin-only hidden">
-                        <i class="ph-bold ph-warning-circle text-3xl text-yellow-600"></i>
-                        <span class="font-bold text-sm text-gray-800">Manager Review</span>
-                    </div>
-
-                </div>
-            </div>
-
-            <div id="view-reports" class="hidden">
-                <div id="reports-crumb" class="text-xs font-bold text-[#007a4d] mb-3">Crop Value Summary</div>
-                <div class="detail-tabs mb-4">
-                    <div class="detail-tab report-tab active border-[#007a4d] text-[#007a4d]" onclick="setReportTab('ALL')" id="rtab-ALL">Summary</div>
-                    <div class="detail-tab report-tab" onclick="setReportTab('S1')" id="rtab-S1">S1 Value</div>
-                    <div class="detail-tab report-tab" onclick="setReportTab('F1')" id="rtab-F1">F1 Value</div>
-                    <div class="detail-tab report-tab" onclick="setReportTab('U1')" id="rtab-U1">U1 Value</div>
-                    <div class="detail-tab report-tab" onclick="setReportTab('U2')" id="rtab-U2">U2 Value</div>
-                    <div class="detail-tab report-tab" onclick="setReportTab('U3')" id="rtab-U3">U3 Value</div>
-                    <div class="detail-tab report-tab" onclick="setReportTab('X')" id="rtab-X">X Value</div>
-                    <div class="detail-tab report-tab" onclick="setReportTab('Y')" id="rtab-Y">Y Value</div>
-                    <div class="detail-tab report-tab" onclick="setReportTab('Z')" id="rtab-Z">Z Value</div>
-                </div>
-                <div id="reports-content"></div>
-            </div>
-
-            <div id="view-request" class="hidden">
-                <div id="request-crumb" class="text-xs font-bold text-[#007a4d] mb-3 empty:hidden"></div>
-                <div id="request-content"></div>
-            </div>
-
-            <div id="view-reserves" class="hidden">
-                <div id="reserves-search-container" class="relative mb-2">
-                    <input type="text" id="reserves-search" class="input-field w-full pr-10 !mb-0" placeholder="Search..." onkeyup="handleReservesSearch()">
-                    <i id="reserves-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearReservesSearch()"></i>
-                </div>
-                <div id="reserves-crumb" class="text-xs font-bold text-[#007a4d] mb-3 mt-3 empty:hidden"></div>
-                <div id="reserves-content"></div>
-            </div>
-
-            <div id="view-docks" class="hidden">
-                <input type="text" id="docks-search" class="input-field mb-2" placeholder="Search Plants..." onkeyup="handleDocksSearch()">
-                <div id="docks-crumb" class="text-xs font-bold text-[#007a4d] mb-3">Select a Dock</div>
-                <div id="docks-content"></div>
-            </div>
-
-            <div id="view-low-stock" class="hidden">
-                <div id="low-stock-crumb" class="text-xs font-bold text-[#007a4d] mb-3">Action Required</div>
-                <div id="low-stock-content"></div>
-            </div>
-
-            <div id="view-sales-office" class="hidden">
-                <div class="text-xs font-bold text-[#007a4d] mb-3">Completed Season Items</div>
-                <div id="sales-office-content"></div>
-            </div>
-
-            <div id="view-drive" class="hidden">
-                <div id="drive-search-container" class="relative mb-2">
-                    <input type="text" id="drive-search" class="input-field w-full pr-10 !mb-0" placeholder="Search Names or Locs..." onkeyup="handleDriveSearch()">
-                    <i id="drive-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearDriveSearch()"></i>
-                </div>
-                <div class="flex overflow-x-auto scrollbar-none gap-2 mb-3 pb-1" id="drive-season-filters"></div>
-                
-                <div id="drive-crumb" class="text-xs font-bold text-[#007a4d] mb-3 empty:hidden"></div>
-                <div id="drive-content"></div>
-            </div>
-
-            <div id="view-tasks" class="hidden">
-                <div id="task-crumb" class="text-xs font-bold text-[#007a4d] mb-3"></div>
-                <div id="team-selector" class="hidden mb-4 grid grid-cols-1 gap-3"></div>
-                <div id="task-tabs-container" class="task-tabs">
-                    <div id="tab-season" class="task-tab active" onclick="setTaskTab('season')">Season Sales Notes</div>
-                    <div id="tab-location" class="task-tab" onclick="setTaskTab('location')">Location Sales Notes</div>
-                </div>
-                <div id="task-content"></div>
-            </div>
-            
-            <div id="view-review" class="hidden">
-                <div id="review-crumb" class="text-xs font-bold text-[#007a4d] mb-3"></div>
-                <div id="review-content"></div>
-            </div>
-            
-            <div id="view-detail" class="hidden">
-                <div class="back-btn" onclick="goBackFromDetail()"><i class="ph-bold ph-arrow-left"></i> Back</div>
-                <h1 id="det-common" class="text-2xl font-bold text-[#007a4d]">--</h1>
-                <p id="det-size" class="text-gray-500 font-bold mb-4">--</p>
-                
-                <div class="detail-tabs">
-                    <div class="detail-tab active" onclick="switchDetailTab('overview')" id="dtab-overview">Overview</div>
-                    <div class="detail-tab hidden" onclick="switchDetailTab('season')" id="dtab-season">Season Notes</div>
-                    <div class="detail-tab hidden" onclick="switchDetailTab('location')" id="dtab-location">Location Notes</div>
-                    <div class="detail-tab hidden" onclick="switchDetailTab('request')" id="dtab-request">Request</div>
-                    <div class="detail-tab hidden" onclick="switchDetailTab('notes')" id="dtab-notes">Notes & Actions</div>
-                    <div class="detail-tab hidden" onclick="switchDetailTab('docks')" id="dtab-docks">Docks</div>
+                <div id="view-review" class="hidden">
+                    <div id="review-crumb" class="text-xs font-bold text-[#007a4d] mb-3"></div>
+                    <div id="review-content"></div>
                 </div>
                 
-                <div id="det-overview-content" class="py-4">
-                    <div class="overview-grid">
-                        <div class="overview-card"><div class="overview-label">Location</div><div id="ov-loc" class="overview-val">--</div></div>
-                        <div class="overview-card"><div class="overview-label">Qty Avail</div><div id="ov-avail" class="overview-val">--</div></div>
-                        <div class="overview-card"><div class="overview-label">Item Code</div><div id="ov-item" class="overview-val">--</div></div>
-                        <div class="overview-card"><div class="overview-label">Lot</div><div id="ov-lot" class="overview-val">--</div></div>
-                        <div class="overview-card"><div class="overview-label">Quality Code</div><div id="ov-qual" class="overview-val">--</div></div>
-                        <div class="overview-card"><div class="overview-label">Priority</div><div id="ov-prior" class="overview-val">--</div></div>
-                        <div class="overview-card"><div class="overview-label">Tag Color</div><div id="ov-tag" class="overview-val">--</div></div>
-                        <div class="overview-card"><div class="overview-label">Season Supply</div><div id="ov-season" class="overview-val">--</div></div>
+                <div id="view-detail" class="hidden">
+                    <div class="back-btn" onclick="goBackFromDetail()"><i class="ph-bold ph-arrow-left"></i> Back</div>
+                    <h1 id="det-common" class="text-2xl font-bold text-[#007a4d]">--</h1>
+                    <p id="det-size" class="text-gray-500 font-bold mb-4">--</p>
+                    
+                    <div class="detail-tabs">
+                        <div class="detail-tab active" onclick="switchDetailTab('overview')" id="dtab-overview">Overview</div>
+                        <div class="detail-tab hidden" onclick="switchDetailTab('season')" id="dtab-season">Season Notes</div>
+                        <div class="detail-tab hidden" onclick="switchDetailTab('location')" id="dtab-location">Location Notes</div>
+                        <div class="detail-tab hidden" onclick="switchDetailTab('request')" id="dtab-request">Request</div>
+                        <div class="detail-tab hidden" onclick="switchDetailTab('notes')" id="dtab-notes">Notes & Actions</div>
+                        <div class="detail-tab hidden" onclick="switchDetailTab('docks')" id="dtab-docks">Docks</div>
                     </div>
                     
-                    <div id="ov-large-photo" class="mt-4 hidden mb-4"></div>
-
-                    <div id="expand-section" class="mt-6">
-                        <div class="expand-trigger" onclick="toggleExpand()">
-                            <span>View All Excel Columns</span><i class="ph-bold ph-caret-down"></i>
-                        </div>
-                        <div id="expand-content" class="expand-content"></div>
-                    </div>
-                </div>
-                
-                <div id="det-season-content" class="hidden py-4">
-                    <div id="ssn-photo-preview" class="mb-4 hidden">
-                        <p class="text-[10px] font-bold text-blue-600 mb-2 uppercase">Photos on file</p>
-                        <div id="ssn-photo-list-container" class="space-y-2"></div>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-2 mb-4">
-                        <label class="bg-green-50 border-2 border-dashed border-green-500 text-green-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer">
-                            <i class="ph-fill ph-camera text-3xl mb-1"></i>
-                            <span class="text-[10px] font-bold">CAMERA</span>
-                            <input type="file" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoUpload(this, 'ssn-')">
-                        </label>
-                        <label class="bg-blue-50 border-2 border-dashed border-blue-500 text-blue-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer">
-                            <i class="ph-fill ph-image text-3xl mb-1"></i>
-                            <span class="text-[10px] font-bold">LIBRARY</span>
-                            <input type="file" accept="image/*" class="hidden" onchange="handlePhotoUpload(this, 'ssn-')">
-                        </label>
-                    </div>
-
-                    <div id="ssn-input-container">
-                        <div>
-                            <label class="text-[10px] font-bold text-gray-500 uppercase">Match %</label>
-                            <input type="number" id="ssn-match" class="input-field" placeholder="e.g. 95" onchange="saveData(false, 'ssn-', true)">
-                        </div>
-                        <div>
-                            <label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label>
-                            <input type="text" id="ssn-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'ssn-', true)">
-                        </div>
-                        <div id="ssn-container-caliper" class="hidden">
-                            <label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label>
-                            <input type="text" id="ssn-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'ssn-', true)">
+                    <div id="det-overview-content" class="py-4">
+                        <div class="overview-grid">
+                            <div class="overview-card"><div class="overview-label">Location</div><div id="ov-loc" class="overview-val">--</div></div>
+                            <div class="overview-card"><div class="overview-label">Qty Avail</div><div id="ov-avail" class="overview-val">--</div></div>
+                            <div class="overview-card"><div class="overview-label">Item Code</div><div id="ov-item" class="overview-val">--</div></div>
+                            <div class="overview-card"><div class="overview-label">Lot</div><div id="ov-lot" class="overview-val">--</div></div>
+                            <div class="overview-card"><div class="overview-label">Quality Code</div><div id="ov-qual" class="overview-val">--</div></div>
+                            <div class="overview-card"><div class="overview-label">Priority</div><div id="ov-prior" class="overview-val">--</div></div>
+                            <div class="overview-card"><div class="overview-label">Tag Color</div><div id="ov-tag" class="overview-val">--</div></div>
+                            <div class="overview-card"><div class="overview-label">Season Supply</div><div id="ov-season" class="overview-val">--</div></div>
                         </div>
                         
-                        <div class="relative w-full mt-2 mb-2">
-                            <label class="text-[10px] font-bold text-green-700 uppercase flex justify-between">
-                                <span>Season Sales Description</span>
-                            </label>
-                            <div class="flex gap-2">
-                                <input type="text" id="ssn-sales-desc" class="input-field border-green-500 bg-green-50 uppercase flex-grow !mb-0" 
-                                    oninput="this.value = this.value.toUpperCase(); filterDropdown('ssn-sales-desc', 'ssn-dropdown-list')"
-                                    onfocus="filterDropdown('ssn-sales-desc', 'ssn-dropdown-list')"
-                                    onblur="setTimeout(()=> { document.getElementById('ssn-dropdown-list').classList.add('hidden'); saveData(false, 'ssn-', true); }, 200)"
-                                    placeholder="TYPE NOTES OR SEARCH...">
-                                <button type="button" class="bg-green-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('ssn-')">+ SPEC</button>
+                        <div id="ov-large-photo" class="mt-4 hidden mb-4"></div>
+
+                        <div id="expand-section" class="mt-6">
+                            <div class="expand-trigger" onclick="toggleExpand()">
+                                <span>View All Excel Columns</span><i class="ph-bold ph-caret-down"></i>
                             </div>
-                            <div id="ssn-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div>
-                        </div>
-
-                        <div>
-                            <label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label>
-                            <input type="text" id="ssn-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'ssn-', true)">
+                            <div id="expand-content" class="expand-content"></div>
                         </div>
                     </div>
-
-                    <div class="flex gap-2 mt-4">
-                        <button id="ssn-btn-save-draft" class="w-1/3 bg-gray-200 text-gray-700 font-bold py-4 rounded-xl shadow-md" onclick="saveData(false, 'ssn-')">SAVE DRAFT</button>
-                        <button id="ssn-btn-save-complete" class="w-2/3 bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg" onclick="saveData(true, 'ssn-')">MARK COMPLETE</button>
-                    </div>
-                </div>
-
-                <div id="det-location-content" class="hidden py-4">
-                    <div id="lsn-photo-preview" class="mb-4 hidden">
-                        <p class="text-[10px] font-bold text-blue-600 mb-2 uppercase">Photos on file</p>
-                        <div id="lsn-photo-list-container" class="space-y-2"></div>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-2 mb-4">
-                        <label class="bg-green-50 border-2 border-dashed border-green-500 text-green-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer">
-                            <i class="ph-fill ph-camera text-3xl mb-1"></i>
-                            <span class="text-[10px] font-bold">CAMERA</span>
-                            <input type="file" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoUpload(this, 'lsn-')">
-                        </label>
-                        <label class="bg-blue-50 border-2 border-dashed border-blue-500 text-blue-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer">
-                            <i class="ph-fill ph-image text-3xl mb-1"></i>
-                            <span class="text-[10px] font-bold">LIBRARY</span>
-                            <input type="file" accept="image/*" class="hidden" onchange="handlePhotoUpload(this, 'lsn-')">
-                        </label>
-                    </div>
-
-                    <div id="lsn-input-container">
-                        <div>
-                            <label class="text-[10px] font-bold text-gray-500 uppercase">Match %</label>
-                            <input type="number" id="lsn-match" class="input-field" placeholder="e.g. 95" onchange="saveData(false, 'lsn-', true)">
+                    
+                    <div id="det-season-content" class="hidden py-4">
+                        <div id="ssn-photo-preview" class="mb-4 hidden">
+                            <p class="text-[10px] font-bold text-blue-600 mb-2 uppercase">Photos on file</p>
+                            <div id="ssn-photo-list-container" class="space-y-2"></div>
                         </div>
-                        <div>
-                            <label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label>
-                            <input type="text" id="lsn-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'lsn-', true)">
-                        </div>
-                        <div id="lsn-container-caliper" class="hidden">
-                            <label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label>
-                            <input type="text" id="lsn-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'lsn-', true)">
-                        </div>
-                        
-                        <div class="relative w-full mt-2 mb-2">
-                            <label class="text-[10px] font-bold text-green-700 uppercase flex justify-between">
-                                <span>Location Sales Description</span>
+
+                        <div class="grid grid-cols-2 gap-2 mb-4">
+                            <label class="bg-green-50 border-2 border-dashed border-green-500 text-green-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer">
+                                <i class="ph-fill ph-camera text-3xl mb-1"></i>
+                                <span class="text-[10px] font-bold">CAMERA</span>
+                                <input type="file" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoUpload(this, 'ssn-')">
                             </label>
-                            <div class="flex gap-2">
-                                <input type="text" id="lsn-sales-desc" class="input-field border-green-500 bg-green-50 uppercase flex-grow !mb-0" 
-                                    oninput="this.value = this.value.toUpperCase(); filterDropdown('lsn-sales-desc', 'lsn-dropdown-list')"
-                                    onfocus="filterDropdown('lsn-sales-desc', 'lsn-dropdown-list')"
-                                    onblur="setTimeout(()=> { document.getElementById('lsn-dropdown-list').classList.add('hidden'); saveData(false, 'lsn-', true); }, 200)"
-                                    placeholder="TYPE NOTES OR SEARCH...">
-                                <button type="button" class="bg-green-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('lsn-')">+ SPEC</button>
-                            </div>
-                            <div id="lsn-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div>
-                        </div>
-                        
-                        <div>
-                            <label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label>
-                            <input type="text" id="lsn-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'lsn-', true)">
-                        </div>
-                    </div>
-
-                    <div class="flex gap-2 mt-4">
-                        <button id="lsn-btn-save-draft" class="w-1/3 bg-gray-200 text-gray-700 font-bold py-4 rounded-xl shadow-md" onclick="saveData(false, 'lsn-')">SAVE DRAFT</button>
-                        <button id="lsn-btn-save-complete" class="w-2/3 bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg" onclick="saveData(true, 'lsn-')">MARK COMPLETE</button>
-                    </div>
-                </div>
-
-                <div id="det-notes-content" class="hidden py-4">
-                    <div id="na-photo-preview" class="mb-4 hidden">
-                        <p class="text-[10px] font-bold text-blue-600 mb-2 uppercase">Photos on file</p>
-                        <div id="na-photo-list-container" class="space-y-2"></div>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-2 mb-4">
-                        <label class="bg-green-50 border-2 border-dashed border-green-500 text-green-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer">
-                            <i class="ph-fill ph-camera text-3xl mb-1"></i>
-                            <span class="text-[10px] font-bold">CAMERA</span>
-                            <input type="file" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoUpload(this, 'na-')">
-                        </label>
-                        <label class="bg-blue-50 border-2 border-dashed border-blue-500 text-blue-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer">
-                            <i class="ph-fill ph-image text-3xl mb-1"></i>
-                            <span class="text-[10px] font-bold">LIBRARY</span>
-                            <input type="file" accept="image/*" class="hidden" onchange="handlePhotoUpload(this, 'na-')">
-                        </label>
-                    </div>
-
-                    <div id="na-input-container">
-                        <div>
-                            <label class="text-[10px] font-bold text-gray-500 uppercase">Match %</label>
-                            <input type="number" id="na-match" class="input-field" placeholder="e.g. 95" onchange="saveData(false, 'na-', true)">
-                        </div>
-                        <div>
-                            <label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label>
-                            <input type="text" id="na-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'na-', true)">
-                        </div>
-                        <div id="na-container-caliper" class="hidden">
-                            <label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label>
-                            <input type="text" id="na-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'na-', true)">
-                        </div>
-                        
-                        <div class="relative w-full mt-2 mb-2">
-                            <label class="text-[10px] font-bold text-green-700 uppercase flex justify-between">
-                                <span>Sales Description</span>
+                            <label class="bg-blue-50 border-2 border-dashed border-blue-500 text-blue-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer">
+                                <i class="ph-fill ph-image text-3xl mb-1"></i>
+                                <span class="text-[10px] font-bold">LIBRARY</span>
+                                <input type="file" accept="image/*" class="hidden" onchange="handlePhotoUpload(this, 'ssn-')">
                             </label>
-                            <div class="flex gap-2">
-                                <input type="text" id="na-sales-desc" class="input-field border-green-500 bg-green-50 uppercase flex-grow !mb-0" 
-                                    oninput="this.value = this.value.toUpperCase(); filterDropdown('na-sales-desc', 'na-dropdown-list')"
-                                    onfocus="filterDropdown('na-sales-desc', 'na-dropdown-list')"
-                                    onblur="setTimeout(()=> { document.getElementById('na-dropdown-list').classList.add('hidden'); saveData(false, 'na-', true); }, 200)"
-                                    placeholder="TYPE NOTES OR SEARCH...">
-                                <button type="button" class="bg-green-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('na-')">+ SPEC</button>
+                        </div>
+
+                        <div id="ssn-input-container">
+                            <div>
+                                <label class="text-[10px] font-bold text-gray-500 uppercase">Match %</label>
+                                <input type="number" id="ssn-match" class="input-field" placeholder="e.g. 95" onchange="saveData(false, 'ssn-', true)">
                             </div>
-                            <div id="na-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div>
+                            <div>
+                                <label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label>
+                                <input type="text" id="ssn-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'ssn-', true)">
+                            </div>
+                            <div id="ssn-container-caliper" class="hidden">
+                                <label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label>
+                                <input type="text" id="ssn-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'ssn-', true)">
+                            </div>
+                            
+                            <div class="relative w-full mt-2 mb-2">
+                                <label class="text-[10px] font-bold text-green-700 uppercase flex justify-between">
+                                    <span>Season Sales Description</span>
+                                </label>
+                                <div class="flex gap-2">
+                                    <input type="text" id="ssn-sales-desc" class="input-field border-green-500 bg-green-50 uppercase flex-grow !mb-0" 
+                                        oninput="this.value = this.value.toUpperCase(); filterDropdown('ssn-sales-desc', 'ssn-dropdown-list')"
+                                        onfocus="filterDropdown('ssn-sales-desc', 'ssn-dropdown-list')"
+                                        onblur="setTimeout(()=> { document.getElementById('ssn-dropdown-list').classList.add('hidden'); saveData(false, 'ssn-', true); }, 200)"
+                                        placeholder="TYPE NOTES OR SEARCH...">
+                                    <button type="button" class="bg-green-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('ssn-')">+ SPEC</button>
+                                </div>
+                                <div id="ssn-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div>
+                            </div>
+
+                            <div>
+                                <label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label>
+                                <input type="text" id="ssn-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'ssn-', true)">
+                            </div>
                         </div>
-                        
-                        <div>
-                            <label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label>
-                            <input type="text" id="na-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'na-', true)">
+
+                        <div class="flex gap-2 mt-4">
+                            <button id="ssn-btn-save-draft" class="w-1/3 bg-gray-200 text-gray-700 font-bold py-4 rounded-xl shadow-md" onclick="saveData(false, 'ssn-')">SAVE DRAFT</button>
+                            <button id="ssn-btn-save-complete" class="w-2/3 bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg" onclick="saveData(true, 'ssn-')">MARK COMPLETE</button>
                         </div>
                     </div>
 
-                    <div class="flex gap-2 mt-4">
-                        <button id="na-btn-save-draft" class="w-1/3 bg-gray-200 text-gray-700 font-bold py-4 rounded-xl shadow-md" onclick="saveData(false, 'na-')">SAVE DRAFT</button>
-                        <button id="na-btn-save-complete" class="w-2/3 bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg" onclick="saveData(true, 'na-')">MARK COMPLETE</button>
-                    </div>
-                </div>
-
-                <div id="det-request-content" class="hidden py-4">
-                    <div id="req-photo-preview" class="mb-4 hidden">
-                        <p class="text-[10px] font-bold text-purple-600 mb-2 uppercase">Request Photos</p>
-                        <div id="req-photo-list-container" class="space-y-2"></div>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-2 mb-4">
-                        <label class="bg-purple-50 border-2 border-dashed border-purple-500 text-purple-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer">
-                            <i class="ph-fill ph-camera text-3xl mb-1"></i>
-                            <span class="text-[10px] font-bold">CAMERA</span>
-                            <input type="file" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoUpload(this, 'req-')">
-                        </label>
-                        <label class="bg-blue-50 border-2 border-dashed border-blue-500 text-blue-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer">
-                            <i class="ph-fill ph-image text-3xl mb-1"></i>
-                            <span class="text-[10px] font-bold">LIBRARY</span>
-                            <input type="file" accept="image/*" class="hidden" onchange="handlePhotoUpload(this, 'req-')">
-                        </label>
-                    </div>
-
-                    <div id="req-input-container">
-                        <div>
-                            <label class="text-[10px] font-bold text-gray-500 uppercase">Match %</label>
-                            <input type="number" id="req-match" class="input-field" placeholder="e.g. 95" onchange="saveData(false, 'req-', true)">
-                        </div>
-                        <div>
-                            <label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label>
-                            <input type="text" id="req-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'req-', true)">
-                        </div>
-                        <div id="req-container-caliper" class="hidden">
-                            <label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label>
-                            <input type="text" id="req-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'req-', true)">
+                    <div id="det-location-content" class="hidden py-4">
+                        <div id="lsn-photo-preview" class="mb-4 hidden">
+                            <p class="text-[10px] font-bold text-blue-600 mb-2 uppercase">Photos on file</p>
+                            <div id="lsn-photo-list-container" class="space-y-2"></div>
                         </div>
 
-                        <div class="relative w-full mt-2 mb-2">
-                            <label class="text-[10px] font-bold text-purple-700 uppercase flex justify-between">
-                                <span>Request Sales Description</span>
+                        <div class="grid grid-cols-2 gap-2 mb-4">
+                            <label class="bg-green-50 border-2 border-dashed border-green-500 text-green-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer">
+                                <i class="ph-fill ph-camera text-3xl mb-1"></i>
+                                <span class="text-[10px] font-bold">CAMERA</span>
+                                <input type="file" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoUpload(this, 'lsn-')">
                             </label>
-                            <div class="flex gap-2">
-                                <input type="text" id="req-sales-desc" class="input-field border-purple-500 bg-purple-50 uppercase flex-grow !mb-0" 
-                                    oninput="this.value = this.value.toUpperCase(); filterDropdown('req-sales-desc', 'req-dropdown-list')"
-                                    onfocus="filterDropdown('req-sales-desc', 'req-dropdown-list')"
-                                    onblur="setTimeout(()=>{ document.getElementById('req-dropdown-list').classList.add('hidden'); saveData(false, 'req-', true); }, 200)"
-                                    placeholder="TYPE NOTES OR SEARCH...">
-                                <button type="button" class="bg-purple-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('req-')">+ SPEC</button>
-                            </div>
-                            <div id="req-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div>
-                        </div>
-
-                        <div>
-                            <label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label>
-                            <input type="text" id="req-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'req-', true)">
-                        </div>
-                        <div>
-                            <label class="text-[10px] font-bold text-gray-500 uppercase">Comments</label>
-                            <input type="text" id="req-comments" class="input-field" placeholder="Any additional comments..." onchange="saveData(false, 'req-', true)">
-                        </div>
-                    </div>
-
-                    <div class="flex flex-col gap-3 mt-4">
-                        <button id="req-btn-save-draft" class="w-full bg-purple-600 text-white font-bold py-4 rounded-xl shadow-lg" onclick="saveData(false, 'req-')">SAVE REQUEST DATA</button>
-                        
-                        <button class="w-full bg-orange-50 text-orange-700 border border-orange-200 font-bold py-4 rounded-xl shadow-sm flex justify-center items-center gap-2 admin-csr-only hidden" onclick="removeFromRequest()"><i class="ph-bold ph-minus-circle text-xl"></i> REMOVE FROM REQUEST (KEEP ITEM)</button>
-                    </div>
-                </div>
-
-                <div id="det-docks-content" class="hidden py-4">
-                    <div id="dock-photo-preview" class="mb-4 hidden">
-                        <p class="text-[10px] font-bold text-orange-600 mb-2 uppercase">Photos on file</p>
-                        <div id="dock-photo-list-container" class="space-y-2"></div>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-2 mb-4">
-                        <label class="bg-orange-50 border-2 border-dashed border-orange-500 text-orange-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer">
-                            <i class="ph-fill ph-camera text-3xl mb-1"></i>
-                            <span class="text-[10px] font-bold">CAMERA</span>
-                            <input type="file" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoUpload(this, 'dock-')">
-                        </label>
-                        <label class="bg-blue-50 border-2 border-dashed border-blue-500 text-blue-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer">
-                            <i class="ph-fill ph-image text-3xl mb-1"></i>
-                            <span class="text-[10px] font-bold">LIBRARY</span>
-                            <input type="file" accept="image/*" class="hidden" onchange="handlePhotoUpload(this, 'dock-')">
-                        </label>
-                    </div>
-
-                    <div id="dock-input-container">
-                        <div>
-                            <label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label>
-                            <input type="text" id="dock-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'dock-', true)">
-                        </div>
-                        <div id="dock-container-caliper" class="hidden">
-                            <label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label>
-                            <input type="text" id="dock-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'dock-', true)">
-                        </div>
-                        
-                        <div class="relative w-full mt-2 mb-2">
-                            <label class="text-[10px] font-bold text-orange-700 uppercase flex justify-between">
-                                <span>Dock Note</span>
+                            <label class="bg-blue-50 border-2 border-dashed border-blue-500 text-blue-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer">
+                                <i class="ph-fill ph-image text-3xl mb-1"></i>
+                                <span class="text-[10px] font-bold">LIBRARY</span>
+                                <input type="file" accept="image/*" class="hidden" onchange="handlePhotoUpload(this, 'lsn-')">
                             </label>
-                            <div class="flex gap-2">
-                                <input type="text" id="dock-sales-desc" class="input-field border-orange-500 bg-orange-50 uppercase flex-grow !mb-0" 
-                                    oninput="this.value = this.value.toUpperCase(); filterDropdown('dock-sales-desc', 'dock-dropdown-list')"
-                                    onfocus="filterDropdown('dock-sales-desc', 'dock-dropdown-list')"
-                                    onblur="setTimeout(()=> { document.getElementById('dock-dropdown-list').classList.add('hidden'); saveData(false, 'dock-', true); }, 200)"
-                                    placeholder="TYPE NOTES OR SEARCH...">
-                                <button type="button" class="bg-orange-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('dock-')">+ SPEC</button>
+                        </div>
+
+                        <div id="lsn-input-container">
+                            <div>
+                                <label class="text-[10px] font-bold text-gray-500 uppercase">Match %</label>
+                                <input type="number" id="lsn-match" class="input-field" placeholder="e.g. 95" onchange="saveData(false, 'lsn-', true)">
                             </div>
-                            <div id="dock-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div>
+                            <div>
+                                <label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label>
+                                <input type="text" id="lsn-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'lsn-', true)">
+                            </div>
+                            <div id="lsn-container-caliper" class="hidden">
+                                <label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label>
+                                <input type="text" id="lsn-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'lsn-', true)">
+                            </div>
+                            
+                            <div class="relative w-full mt-2 mb-2">
+                                <label class="text-[10px] font-bold text-green-700 uppercase flex justify-between">
+                                    <span>Location Sales Description</span>
+                                </label>
+                                <div class="flex gap-2">
+                                    <input type="text" id="lsn-sales-desc" class="input-field border-green-500 bg-green-50 uppercase flex-grow !mb-0" 
+                                        oninput="this.value = this.value.toUpperCase(); filterDropdown('lsn-sales-desc', 'lsn-dropdown-list')"
+                                        onfocus="filterDropdown('lsn-sales-desc', 'lsn-dropdown-list')"
+                                        onblur="setTimeout(()=> { document.getElementById('lsn-dropdown-list').classList.add('hidden'); saveData(false, 'lsn-', true); }, 200)"
+                                        placeholder="TYPE NOTES OR SEARCH...">
+                                    <button type="button" class="bg-green-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('lsn-')">+ SPEC</button>
+                                </div>
+                                <div id="lsn-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div>
+                            </div>
+                            
+                            <div>
+                                <label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label>
+                                <input type="text" id="lsn-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'lsn-', true)">
+                            </div>
+                        </div>
+
+                        <div class="flex gap-2 mt-4">
+                            <button id="lsn-btn-save-draft" class="w-1/3 bg-gray-200 text-gray-700 font-bold py-4 rounded-xl shadow-md" onclick="saveData(false, 'lsn-')">SAVE DRAFT</button>
+                            <button id="lsn-btn-save-complete" class="w-2/3 bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg" onclick="saveData(true, 'lsn-')">MARK COMPLETE</button>
                         </div>
                     </div>
 
-                    <div class="flex gap-2 mt-4">
-                        <button id="dock-btn-save-draft" class="w-full bg-orange-600 text-white font-bold py-4 rounded-xl shadow-lg" onclick="saveData(false, 'dock-')">SAVE DOCK DATA</button>
+                    <div id="det-notes-content" class="hidden py-4">
+                        <div id="na-photo-preview" class="mb-4 hidden">
+                            <p class="text-[10px] font-bold text-blue-600 mb-2 uppercase">Photos on file</p>
+                            <div id="na-photo-list-container" class="space-y-2"></div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2 mb-4">
+                            <label class="bg-green-50 border-2 border-dashed border-green-500 text-green-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer">
+                                <i class="ph-fill ph-camera text-3xl mb-1"></i>
+                                <span class="text-[10px] font-bold">CAMERA</span>
+                                <input type="file" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoUpload(this, 'na-')">
+                            </label>
+                            <label class="bg-blue-50 border-2 border-dashed border-blue-500 text-blue-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer">
+                                <i class="ph-fill ph-image text-3xl mb-1"></i>
+                                <span class="text-[10px] font-bold">LIBRARY</span>
+                                <input type="file" accept="image/*" class="hidden" onchange="handlePhotoUpload(this, 'na-')">
+                            </label>
+                        </div>
+
+                        <div id="na-input-container">
+                            <div>
+                                <label class="text-[10px] font-bold text-gray-500 uppercase">Match %</label>
+                                <input type="number" id="na-match" class="input-field" placeholder="e.g. 95" onchange="saveData(false, 'na-', true)">
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label>
+                                <input type="text" id="na-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'na-', true)">
+                            </div>
+                            <div id="na-container-caliper" class="hidden">
+                                <label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label>
+                                <input type="text" id="na-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'na-', true)">
+                            </div>
+                            
+                            <div class="relative w-full mt-2 mb-2">
+                                <label class="text-[10px] font-bold text-green-700 uppercase flex justify-between">
+                                    <span>Sales Description</span>
+                                </label>
+                                <div class="flex gap-2">
+                                    <input type="text" id="na-sales-desc" class="input-field border-green-500 bg-green-50 uppercase flex-grow !mb-0" 
+                                        oninput="this.value = this.value.toUpperCase(); filterDropdown('na-sales-desc', 'na-dropdown-list')"
+                                        onfocus="filterDropdown('na-sales-desc', 'na-dropdown-list')"
+                                        onblur="setTimeout(()=> { document.getElementById('na-dropdown-list').classList.add('hidden'); saveData(false, 'na-', true); }, 200)"
+                                        placeholder="TYPE NOTES OR SEARCH...">
+                                    <button type="button" class="bg-green-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('na-')">+ SPEC</button>
+                                </div>
+                                <div id="na-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div>
+                            </div>
+                            
+                            <div>
+                                <label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label>
+                                <input type="text" id="na-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'na-', true)">
+                            </div>
+                        </div>
+
+                        <div class="flex gap-2 mt-4">
+                            <button id="na-btn-save-draft" class="w-1/3 bg-gray-200 text-gray-700 font-bold py-4 rounded-xl shadow-md" onclick="saveData(false, 'na-')">SAVE DRAFT</button>
+                            <button id="na-btn-save-complete" class="w-2/3 bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg" onclick="saveData(true, 'na-')">MARK COMPLETE</button>
+                        </div>
                     </div>
+
+                    <div id="det-request-content" class="hidden py-4">
+                        <div id="req-photo-preview" class="mb-4 hidden">
+                            <p class="text-[10px] font-bold text-purple-600 mb-2 uppercase">Request Photos</p>
+                            <div id="req-photo-list-container" class="space-y-2"></div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2 mb-4">
+                            <label class="bg-purple-50 border-2 border-dashed border-purple-500 text-purple-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer">
+                                <i class="ph-fill ph-camera text-3xl mb-1"></i>
+                                <span class="text-[10px] font-bold">CAMERA</span>
+                                <input type="file" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoUpload(this, 'req-')">
+                            </label>
+                            <label class="bg-blue-50 border-2 border-dashed border-blue-500 text-blue-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer">
+                                <i class="ph-fill ph-image text-3xl mb-1"></i>
+                                <span class="text-[10px] font-bold">LIBRARY</span>
+                                <input type="file" accept="image/*" class="hidden" onchange="handlePhotoUpload(this, 'req-')">
+                            </label>
+                        </div>
+
+                        <div id="req-input-container">
+                            <div>
+                                <label class="text-[10px] font-bold text-gray-500 uppercase">Match %</label>
+                                <input type="number" id="req-match" class="input-field" placeholder="e.g. 95" onchange="saveData(false, 'req-', true)">
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label>
+                                <input type="text" id="req-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'req-', true)">
+                            </div>
+                            <div id="req-container-caliper" class="hidden">
+                                <label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label>
+                                <input type="text" id="req-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'req-', true)">
+                            </div>
+
+                            <div class="relative w-full mt-2 mb-2">
+                                <label class="text-[10px] font-bold text-purple-700 uppercase flex justify-between">
+                                    <span>Request Sales Description</span>
+                                </label>
+                                <div class="flex gap-2">
+                                    <input type="text" id="req-sales-desc" class="input-field border-purple-500 bg-purple-50 uppercase flex-grow !mb-0" 
+                                        oninput="this.value = this.value.toUpperCase(); filterDropdown('req-sales-desc', 'req-dropdown-list')"
+                                        onfocus="filterDropdown('req-sales-desc', 'req-dropdown-list')"
+                                        onblur="setTimeout(()=>{ document.getElementById('req-dropdown-list').classList.add('hidden'); saveData(false, 'req-', true); }, 200)"
+                                        placeholder="TYPE NOTES OR SEARCH...">
+                                    <button type="button" class="bg-purple-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('req-')">+ SPEC</button>
+                                </div>
+                                <div id="req-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div>
+                            </div>
+
+                            <div>
+                                <label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label>
+                                <input type="text" id="req-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'req-', true)">
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-bold text-gray-500 uppercase">Comments</label>
+                                <input type="text" id="req-comments" class="input-field" placeholder="Any additional comments..." onchange="saveData(false, 'req-', true)">
+                            </div>
+                        </div>
+
+                        <div class="flex flex-col gap-3 mt-4">
+                            <button id="req-btn-save-draft" class="w-full bg-purple-600 text-white font-bold py-4 rounded-xl shadow-lg" onclick="saveData(false, 'req-')">SAVE REQUEST DATA</button>
+                            
+                            <button class="w-full bg-orange-50 text-orange-700 border border-orange-200 font-bold py-4 rounded-xl shadow-sm flex justify-center items-center gap-2 admin-csr-only hidden" onclick="removeFromRequest()"><i class="ph-bold ph-minus-circle text-xl"></i> REMOVE FROM REQUEST (KEEP ITEM)</button>
+                        </div>
+                    </div>
+
+                    <div id="det-docks-content" class="hidden py-4">
+                        <div id="dock-photo-preview" class="mb-4 hidden">
+                            <p class="text-[10px] font-bold text-orange-600 mb-2 uppercase">Photos on file</p>
+                            <div id="dock-photo-list-container" class="space-y-2"></div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2 mb-4">
+                            <label class="bg-orange-50 border-2 border-dashed border-orange-500 text-orange-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer">
+                                <i class="ph-fill ph-camera text-3xl mb-1"></i>
+                                <span class="text-[10px] font-bold">CAMERA</span>
+                                <input type="file" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoUpload(this, 'dock-')">
+                            </label>
+                            <label class="bg-blue-50 border-2 border-dashed border-blue-500 text-blue-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer">
+                                <i class="ph-fill ph-image text-3xl mb-1"></i>
+                                <span class="text-[10px] font-bold">LIBRARY</span>
+                                <input type="file" accept="image/*" class="hidden" onchange="handlePhotoUpload(this, 'dock-')">
+                            </label>
+                        </div>
+
+                        <div id="dock-input-container">
+                            <div>
+                                <label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label>
+                                <input type="text" id="dock-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'dock-', true)">
+                            </div>
+                            <div id="dock-container-caliper" class="hidden">
+                                <label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label>
+                                <input type="text" id="dock-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'dock-', true)">
+                            </div>
+                            
+                            <div class="relative w-full mt-2 mb-2">
+                                <label class="text-[10px] font-bold text-orange-700 uppercase flex justify-between">
+                                    <span>Dock Note</span>
+                                </label>
+                                <div class="flex gap-2">
+                                    <input type="text" id="dock-sales-desc" class="input-field border-orange-500 bg-orange-50 uppercase flex-grow !mb-0" 
+                                        oninput="this.value = this.value.toUpperCase(); filterDropdown('dock-sales-desc', 'dock-dropdown-list')"
+                                        onfocus="filterDropdown('dock-sales-desc', 'dock-dropdown-list')"
+                                        onblur="setTimeout(()=> { document.getElementById('dock-dropdown-list').classList.add('hidden'); saveData(false, 'dock-', true); }, 200)"
+                                        placeholder="TYPE NOTES OR SEARCH...">
+                                    <button type="button" class="bg-orange-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('dock-')">+ SPEC</button>
+                                </div>
+                                <div id="dock-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-2 mt-4">
+                            <button id="dock-btn-save-draft" class="w-full bg-orange-600 text-white font-bold py-4 rounded-xl shadow-lg" onclick="saveData(false, 'dock-')">SAVE DOCK DATA</button>
+                        </div>
+                    </div>
+
                 </div>
-
-            </div>
-
-        </div>
+            </div> </div>
 
         <div id="global-action-bar" class="hidden fixed bottom-[60px] left-0 w-full bg-white p-3 shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.15)] z-[45] border-t border-gray-200">
             <div class="flex justify-between items-center mb-2 px-1">
@@ -937,7 +953,7 @@
             try {
                 const publicKey = {
                     challenge: new Uint8Array(32),
-                    rp: { name: "GNC 01" },
+                    rp: { name: "GNC" },
                     user: { id: new Uint8Array(16), name: user, displayName: user },
                     pubKeyCredParams: [{ type: "public-key", alg: -7 }],
                     authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required" },
@@ -996,7 +1012,7 @@
         }
 
         // =========================================================
-        // 🚀 LOGIN (Directly hitting Supabase app_users table) 
+        // 🚀 LOGIN & FORCED PASSWORD CHANGE LOGIC
         // =========================================================
         function handleLogin(isBiometricLogin = false) {
             const inputUser = document.getElementById('username-input').value.trim().toLowerCase();
@@ -1008,7 +1024,6 @@
             document.getElementById('loading-spinner').classList.remove('hidden');
             document.getElementById('loading-text').innerText = "Authenticating...";
 
-            // 🚨 We use `ilike.*` to make the login completely case-insensitive
             supabaseFetch('app_users', 'GET', null, `username=ilike.*${encodeURIComponent(inputUser)}*&password=eq.${encodeURIComponent(inputPass)}&select=*`)
                 .then(data => {
                     if (data && data.length > 0) {
@@ -1017,17 +1032,17 @@
                         currentRole = userRecord.role || 'User';
                         safeRole = String(currentRole).toUpperCase().replace(/\s+/g, '');
                         
-                        localStorage.setItem('gnc_user_v3', inputUser);
-                        localStorage.setItem('gnc_pin_v3', inputPass);
-                        localStorage.setItem('gnc_role_v3', currentRole);
-                        document.getElementById('header-user').innerText = currentUser.toUpperCase();
+                        // 🚨 Check if it is their first time logging in / using a default password
+                        const isDefaultPassword = ['1234', '12345', 'welcome', 'password', inputUser].includes(inputPass);
+                        const hasChangedLocally = localStorage.getItem('gnc_pw_changed_' + currentUser) === 'true';
+                        const needsPasswordChange = isDefaultPassword && !hasChangedLocally;
 
-                        setRepPermutations(currentUser);
-
-                        if (!isBiometricLogin && window.PublicKeyCredential) promptToEnableBiometrics(inputUser, inputPass);
-
-                        applyRolePermissions();
-                        fetchBackgroundData();
+                        if (needsPasswordChange && !isBiometricLogin) {
+                            document.getElementById('view-login').style.display = 'none';
+                            document.getElementById('view-change-password').style.display = 'flex';
+                        } else {
+                            finalizeLogin(inputUser, inputPass, isBiometricLogin);
+                        }
                     } else {
                         alert("MISMATCH DETECTED!\n\nIncorrect Username or Password.");
                         document.getElementById('pin-code').value = "";
@@ -1042,12 +1057,62 @@
                 });
         }
 
+        async function submitNewPassword() {
+            const newPass = document.getElementById('new-password').value.trim();
+            const confirmPass = document.getElementById('confirm-password').value.trim();
+            
+            if (!newPass || newPass.length < 4) { alert("Password must be at least 4 characters!"); return; }
+            if (newPass !== confirmPass) { alert("Passwords do not match!"); return; }
+            
+            document.getElementById('view-change-password').style.display = 'none';
+            document.getElementById('view-login').style.display = 'flex';
+            document.getElementById('login-inputs').classList.add('hidden');
+            document.getElementById('loading-spinner').classList.remove('hidden');
+            document.getElementById('loading-text').innerText = "Updating...";
+
+            try {
+                const payload = { password: newPass };
+                await supabaseFetch('app_users', 'PATCH', payload, `username=ilike.*${encodeURIComponent(currentUser)}*`);
+            } catch (e) {
+                console.log("Could not push password to Supabase DB:", e);
+            }
+
+            localStorage.setItem('gnc_pw_changed_' + currentUser, 'true'); 
+            document.getElementById('new-password').value = "";
+            document.getElementById('confirm-password').value = "";
+            finalizeLogin(currentUser, newPass, false);
+        }
+
+        function finalizeLogin(user, pass, isBiometricLogin) {
+            localStorage.setItem('gnc_user_v3', user);
+            localStorage.setItem('gnc_pin_v3', pass);
+            localStorage.setItem('gnc_role_v3', currentRole);
+            document.getElementById('header-user').innerText = currentUser.toUpperCase();
+
+            setRepPermutations(currentUser);
+
+            // Trigger biometric prompt right after login / password change
+            if (!isBiometricLogin && window.PublicKeyCredential && localStorage.getItem('gnc_bio_enabled') !== 'true') {
+                promptToEnableBiometrics(user, pass);
+            }
+
+            applyRolePermissions();
+            fetchBackgroundData();
+        }
+
         // =========================================================
         // 🚀 HIGH-SPEED DATA SYNC (Directly hitting Supabase Tables)
         // =========================================================
         async function fetchBackgroundData() {
             const ptrIndicator = document.getElementById('ptr-indicator');
-            if (ptrIndicator && ptrIndicator.style.height !== '40px') ptrIndicator.style.height = '40px'; 
+            const ptrSpinner = document.getElementById('ptr-spinner');
+            const viewWrapper = document.getElementById('view-wrapper');
+
+            if (ptrIndicator && ptrIndicator.style.height !== '60px') {
+                ptrIndicator.style.height = '60px'; 
+                if(ptrSpinner) ptrSpinner.classList.add('active');
+                if(viewWrapper) viewWrapper.style.transform = `translateY(60px)`;
+            }
 
             const cachedRes = await loadFromCache();
             if (cachedRes) {
@@ -1107,11 +1172,15 @@
                     processAndLoadData(resObj); 
                     saveToCache(resObj);        
                     if (ptrIndicator) ptrIndicator.style.height = '0px'; 
-                }, 100);
+                    if (ptrSpinner) ptrSpinner.classList.remove('active');
+                    if (viewWrapper) viewWrapper.style.transform = `translateY(0px)`;
+                }, 400); // 400ms delay just to make the refresh animation feel smooth
 
             } catch (err) {
                 console.error("Background sync failed:", err);
                 if (ptrIndicator) ptrIndicator.style.height = '0px'; 
+                if (ptrSpinner) ptrSpinner.classList.remove('active');
+                if (viewWrapper) viewWrapper.style.transform = `translateY(0px)`;
                 if (!cachedRes) showToast("Sync Error", "Could not download data. Check connection.", true);
             }
         }
