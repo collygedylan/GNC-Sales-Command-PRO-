@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GNC</title>
+    <title>GNC SALES PRO</title>
     
     <meta name="theme-color" content="#007a4d">
     <link rel="manifest" href="manifest.json">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="application-name" content="GNC">
+    <meta name="application-name" content="GNC SALES PRO">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-title" content="GNC">
+    <meta name="apple-mobile-web-app-title" content="GNC SALES PRO">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="icon" type="image/png" href="Ag Metric App.png">
     <link rel="apple-touch-icon" href="Ag Metric App.png">
@@ -79,11 +79,6 @@
 
         .spinner { border: 4px solid rgba(255,255,255,0.3); border-top: 4px solid white; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-        /* PTR CSS */
-        #ptr-container { position: absolute; top: 0; left: 0; width: 100%; display: flex; justify-content: center; align-items: flex-end; z-index: 10; pointer-events: none; }
-        .ptr-spinner { border: 3px solid rgba(0,122,77,0.2); border-top: 3px solid var(--brand-green); border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; margin-bottom: 10px; opacity: 0; transition: opacity 0.2s; }
-        .ptr-spinner.active { opacity: 1; }
         
         .scrollbar-none::-webkit-scrollbar { display: none; }
         .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
@@ -105,7 +100,7 @@
         <div class="login-card">
             <div class="flex flex-col items-center mb-8 w-full relative">
                 <img src="Greenleaf%20Logo.png" alt="Greenleaf Logo" class="h-20 mb-4 object-contain drop-shadow-md" onerror="this.style.display='none'">
-                <div class="text-3xl text-[#007a4d] font-black tracking-tighter mb-1">GNC</div>
+                <div class="text-3xl text-[#007a4d] font-black tracking-tighter mb-1">GNC SALES PRO</div>
                 
                 <div class="flex flex-col items-center gap-0.5 mt-5">
                     <span class="text-[9px] font-bold text-gray-400 uppercase tracking-[0.3em]">Powered By</span>
@@ -210,7 +205,7 @@
                 <i class="ph-bold ph-list menu-btn text-2xl cursor-pointer" onclick="toggleMenu()"></i>
                 <div class="flex flex-col">
                     <div class="font-bold text-lg leading-tight"><span id="header-user">User</span></div>
-                    <div class="text-[10px] opacity-80 leading-tight">GNC</div>
+                    <div class="text-[10px] opacity-80 leading-tight">GNC SALES PRO</div>
                 </div>
             </div>
         </header>
@@ -254,7 +249,7 @@
                             <img src="Greenleaf%20Logo.png" alt="Greenleaf Logo" class="h-11 object-contain" onerror="this.style.display='none'">
                         </div>
                         
-                        <h1 class="text-2xl font-black tracking-tight mb-1 z-10 relative">GNC</h1>
+                        <h1 class="text-2xl font-black tracking-tight mb-1 z-10 relative">GNC SALES PRO</h1>
                         <p class="text-green-100 text-[10px] font-bold mb-5 uppercase tracking-[0.2em] z-10 relative">Dashboard</p>
                         
                         <div class="flex flex-col items-center pt-4 border-t border-white/20 w-full mt-1 z-10 relative">
@@ -948,7 +943,7 @@
             try {
                 const publicKey = {
                     challenge: new Uint8Array(32),
-                    rp: { name: "GNC" },
+                    rp: { name: "GNC SALES PRO" },
                     user: { id: new Uint8Array(16), name: user, displayName: user },
                     pubKeyCredParams: [{ type: "public-key", alg: -7 }],
                     authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required" },
@@ -1099,16 +1094,6 @@
         // 🚀 HIGH-SPEED DATA SYNC (Directly hitting Supabase Tables)
         // =========================================================
         async function fetchBackgroundData() {
-            const ptrIndicator = document.getElementById('ptr-indicator');
-            const ptrSpinner = document.getElementById('ptr-spinner');
-            const viewWrapper = document.getElementById('view-wrapper');
-
-            if (ptrIndicator && ptrIndicator.style.height !== '60px') {
-                ptrIndicator.style.height = '60px'; 
-                if(ptrSpinner) ptrSpinner.classList.add('active');
-                if(viewWrapper) viewWrapper.style.transform = `translateY(60px)`;
-            }
-
             const cachedRes = await loadFromCache();
             if (cachedRes) {
                 setTimeout(() => {
@@ -1166,16 +1151,10 @@
                 setTimeout(() => {
                     processAndLoadData(resObj); 
                     saveToCache(resObj);        
-                    if (ptrIndicator) ptrIndicator.style.height = '0px'; 
-                    if (ptrSpinner) ptrSpinner.classList.remove('active');
-                    if (viewWrapper) viewWrapper.style.transform = `translateY(0px)`;
-                }, 400); // 400ms delay just to make the refresh animation feel smooth
+                }, 100);
 
             } catch (err) {
                 console.error("Background sync failed:", err);
-                if (ptrIndicator) ptrIndicator.style.height = '0px'; 
-                if (ptrSpinner) ptrSpinner.classList.remove('active');
-                if (viewWrapper) viewWrapper.style.transform = `translateY(0px)`;
                 if (!cachedRes) showToast("Sync Error", "Could not download data. Check connection.", true);
             }
         }
@@ -1764,7 +1743,7 @@
                 
                 Object.keys(stopsMap).sort((a,b) => String(a).localeCompare(String(b), undefined, {numeric:true})).forEach(groupKey => {
                     let s = stopsMap[groupKey]; let custDisplay = s.customer; if (s.consignee && s.consignee.trim() !== "" && s.consignee !== s.customer) custDisplay += ` - ${s.consignee}`;
-                    html += `<div class="bg-gray-100 border border-gray-200 rounded-xl shadow-sm mb-6 overflow-hidden"><div class="bg-orange-100 p-3 border-b border-orange-200"><div class="flex justify-between items-start mb-1"><div class="font-black text-lg text-orange-800">Trip ${s.trip} &bull; Stop ${s.stop}</div><div class="text-[10px] font-bold text-orange-600 bg-white px-2 py-1 rounded uppercase shadow-sm"><i class="ph-bold ph-user mr-1"></i>${s.salesRep}</div></div><div class="text-sm font-bold text-gray-800 leading-tight">${custDisplay}</div></div><div class="p-3 flex flex-col">`;
+                    html += `<div class="bg-gray-100 border border-gray-200 rounded-xl shadow-sm mb-6 overflow-hidden"><div class="bg-orange-100 p-3 border-b border-orange-200"><div class="flex justify-between items-start mb-1"><div class="font-bold text-lg text-orange-800">Trip ${s.trip} &bull; Stop ${s.stop}</div><div class="text-[10px] font-bold text-orange-600 bg-white px-2 py-1 rounded uppercase shadow-sm"><i class="ph-bold ph-user mr-1"></i>${s.salesRep}</div></div><div class="text-sm font-bold text-gray-800 leading-tight">${custDisplay}</div></div><div class="p-3 flex flex-col">`;
                     
                     s.items.sort((a, b) => { let priA = parseFloat(a.PRIORITY); let priB = parseFloat(b.PRIORITY); if (isNaN(priA)) priA = Infinity; if (isNaN(priB)) priB = Infinity; if (priA !== priB) return priA - priB; return (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}); });
                     
@@ -2322,8 +2301,11 @@
             try {
                 const blob = base64ToBlob(base64Data, 'image/jpeg');
                 
+                // FIX: Encode the filename so '#' and spaces don't break the URL string
+                const safeFilename = encodeURIComponent(filename);
+                
                 // Direct Supabase Storage Upload
-                const uploadUrl = `${SUPABASE_URL}/storage/v1/object/photos/${filename}`;
+                const uploadUrl = `${SUPABASE_URL}/storage/v1/object/photos/${safeFilename}`;
                 const response = await fetch(uploadUrl, {
                     method: 'POST',
                     headers: {
@@ -2336,8 +2318,8 @@
                 
                 if (!response.ok) throw new Error("Upload failed");
                 
-                // Get the public URL from Supabase
-                const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/photos/${filename}`;
+                // Get the public URL from Supabase using the safe filename
+                const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/photos/${safeFilename}`;
 
                 if (prefix === 'req-') { 
                     let links = targetItem.REQ_PHOTO_LINK ? targetItem.REQ_PHOTO_LINK.split(',') : []; 
@@ -2377,7 +2359,7 @@
                         else btn.innerText = "MARK COMPLETE"; 
                         btn.disabled = false; 
                     }
-                    showToast("Error", "Upload failed. Did you create the 'photos' bucket in Supabase?", true); 
+                    showToast("Error", "Upload failed. Please check network connection.", true); 
                 }
             }
         }
