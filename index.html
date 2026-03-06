@@ -79,11 +79,6 @@
 
         .spinner { border: 4px solid rgba(255,255,255,0.3); border-top: 4px solid white; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-        /* PTR CSS */
-        #ptr-container { position: absolute; top: 0; left: 0; width: 100%; display: flex; justify-content: center; align-items: flex-end; z-index: 10; pointer-events: none; }
-        .ptr-spinner { border: 3px solid rgba(0,122,77,0.2); border-top: 3px solid var(--brand-green); border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; margin-bottom: 10px; opacity: 0; transition: opacity 0.2s; }
-        .ptr-spinner.active { opacity: 1; }
         
         .scrollbar-none::-webkit-scrollbar { display: none; }
         .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
@@ -243,8 +238,6 @@
         </div>
 
         <div id="main-scroll-area" class="flex-grow overflow-y-auto p-4 pb-40 relative">
-            
-            <div id="ptr-container"><div class="ptr-spinner" id="ptr-spinner"></div></div>
 
             <div id="view-wrapper" style="position:relative; z-index:20;">
                 <div id="view-home" class="hidden">
@@ -750,9 +743,6 @@
         // =========================================================
         const SUPABASE_URL = "https://gmkmsjvzzujjxfmcpyud.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdta21zanZ6enVqanhmbWNweXVkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjYwMTE1MywiZXhwIjoyMDg4MTc3MTUzfQ.E6UDlfJrdftcyPFKPcyCDfuLw5TGfqoVVoNx9N139As";
-        
-        // Google Script URL is ONLY kept alive to handle Photo Uploads to Google Drive folders
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzhJ_tytv5Rm2ag44liZAU6nsp0lQ7-9PLmjxrcuT1WA1WARubi7NyolYoTZ_qvZmzo/exec";
 
         // 🚨 NEW BULLETPROOF FETCH ENGINE 🚨
         async function supabaseFetch(table, method = 'GET', body = null, query = '') {
@@ -1104,16 +1094,6 @@
         // 🚀 HIGH-SPEED DATA SYNC (Directly hitting Supabase Tables)
         // =========================================================
         async function fetchBackgroundData() {
-            const ptrIndicator = document.getElementById('ptr-indicator');
-            const ptrSpinner = document.getElementById('ptr-spinner');
-            const viewWrapper = document.getElementById('view-wrapper');
-
-            if (ptrIndicator && ptrIndicator.style.height !== '60px') {
-                ptrIndicator.style.height = '60px'; 
-                if(ptrSpinner) ptrSpinner.classList.add('active');
-                if(viewWrapper) viewWrapper.style.transform = `translateY(60px)`;
-            }
-
             const cachedRes = await loadFromCache();
             if (cachedRes) {
                 setTimeout(() => {
@@ -1171,16 +1151,10 @@
                 setTimeout(() => {
                     processAndLoadData(resObj); 
                     saveToCache(resObj);        
-                    if (ptrIndicator) ptrIndicator.style.height = '0px'; 
-                    if (ptrSpinner) ptrSpinner.classList.remove('active');
-                    if (viewWrapper) viewWrapper.style.transform = `translateY(0px)`;
-                }, 400); // 400ms delay just to make the refresh animation feel smooth
+                }, 100);
 
             } catch (err) {
                 console.error("Background sync failed:", err);
-                if (ptrIndicator) ptrIndicator.style.height = '0px'; 
-                if (ptrSpinner) ptrSpinner.classList.remove('active');
-                if (viewWrapper) viewWrapper.style.transform = `translateY(0px)`;
                 if (!cachedRes) showToast("Sync Error", "Could not download data. Check connection.", true);
             }
         }
@@ -1652,22 +1626,44 @@
 
         function getSelectedItemsText(tabType) {
             let items = []; selectedItems.forEach(domId => { let found = fullInventory.find(i => i.DOM_ID === domId) || lowStockInventory.find(i => i.DOM_ID === domId) || reservesInventory.find(i => i.DOM_ID === domId) || requestsInventory.find(i => i.DOM_ID === domId); if (found) items.push(found); });
-            let headerTitle = "SALES NOTES"; if (tabType === 'request') headerTitle = "REQUEST DATA"; if (tabType === 'docks') headerTitle = "DOCK NOTES";
-            let returnText = `${headerTitle}\n\n`;
+            let returnText = "";
+            if (tabType !== 'request') {
+                returnText = (tabType === 'docks') ? "DOCK NOTES\n\n" : "SALES NOTES\n\n";
+            }
+            
             items.forEach(i => {
-                returnText += `▪ ${i.COMMONNAME || 'Unknown'} (${i.CONTSIZE || '-'}) | Loc: ${i.LOCATIONCODE || 'No Loc'}\n`;
-                if (tabType === 'docks') {
+                if (tabType === 'request') {
+                    returnText += `${i.REQUEST_FOLDER || 'No Folder'}\n`;
+                    returnText += `ID: ${i.UNIQUE_ID} | ${i.REQ_CUSTOMER || 'N/A'}\n`;
+                    returnText += `${i.COMMONNAME || 'Unknown'} ${i.CONTSIZE || '-'} Loc: ${i.LOCATIONCODE || 'No Loc'}\n`;
+                    returnText += `${i.ITEMCODE || '-'} | Lot: ${i.LOTCODE || '-'}\n`;
+                    
+                    if (i.REQ_QTY) returnText += `  Requested Qty: ${i.REQ_QTY}\n`;
+                    if (i.REQ_DESIRED_SPEC) returnText += `  Desired Spec: ${i.REQ_DESIRED_SPEC}\n`;
+                    if (i.REQ_DESIRED_CALIPER) returnText += `  Desired Caliper: ${i.REQ_DESIRED_CALIPER}\n`;
+                    if (i.REQ_EST_SHIP) returnText += `  Est Ship: ${i.REQ_EST_SHIP}\n`;
+                    if (i.REQ_MATCH) returnText += `  Match: ${i.REQ_MATCH}%\n`;
+                    if (i.REQ_SPEC) returnText += `  Spec: ${i.REQ_SPEC}\n`;
+                    if (i.REQ_CALIPER) returnText += `  Caliper: ${i.REQ_CALIPER}\n`;
+                    if (i.REQ_PICK) returnText += `  Pick Note: ${i.REQ_PICK}\n`;
+                    if (i.REQ_SALES_NOTE) returnText += `  Sales Note: ${i.REQ_SALES_NOTE}\n`;
+                    if (i.REQ_COMMENTS) returnText += `  Comments: ${i.REQ_COMMENTS}\n`;
+                    
+                    let photo = i.REQ_PHOTO_LINK || i.SAVED_PHOTO_LINK || i['PHOTO LINK'] || i.PHOTOLINK;
+                    if (photo && String(photo).trim() !== "") { let urls = String(photo).split(','); let counter = 1; urls.forEach(url => { let cleanUrl = url.trim(); let match = cleanUrl.match(/(https?:\/\/[^"\s>]+)/); if (match) cleanUrl = match[1]; if (cleanUrl.startsWith('http')) { returnText += `  Photo ${counter}: ${cleanUrl}\n`; counter++; } }); }
+                } else if (tabType === 'docks') {
+                    returnText += `▪ ${i.COMMONNAME || 'Unknown'} (${i.CONTSIZE || '-'}) | Loc: ${i.LOCATIONCODE || 'No Loc'}\n`;
                     if (i.DOCK_SPEC) returnText += `  Spec: ${i.DOCK_SPEC}\n`; if (i.DOCK_CALIPER) returnText += `  Caliper: ${i.DOCK_CALIPER}\n`; if (i.DOCK_NOTE) returnText += `  Dock Note: ${i.DOCK_NOTE}\n`;
                     let photo = i.DOCK_PHOTO_LINK || i.SAVED_PHOTO_LINK || i['PHOTO LINK'] || i.PHOTOLINK;
                     if (photo && String(photo).trim() !== "") { let urls = String(photo).split(','); let counter = 1; urls.forEach(url => { let cleanUrl = url.trim(); let match = cleanUrl.match(/(https?:\/\/[^"\s>]+)/); if (match) cleanUrl = match[1]; if (cleanUrl.startsWith('http')) { returnText += `  Photo ${counter}: ${cleanUrl}\n`; counter++; } }); }
                 } else {
-                    let match = tabType === 'request' ? i.REQ_MATCH : (i.MATCH || i.MATCHPCT); if (match) returnText += `  Match: ${match}%\n`;
-                    let spec = tabType === 'request' ? i.REQ_SPEC : i.SPEC; if (spec) returnText += `  Spec: ${spec}\n`;
-                    let caliper = tabType === 'request' ? i.REQ_CALIPER : i.CALIPER; if (caliper) returnText += `  Caliper: ${caliper}\n`;
-                    let pick = tabType === 'request' ? i.REQ_PICK : (i.PIC_NOTE || i.PICKNOTE || i.PICK); if (pick) returnText += `  Pick Note: ${pick}\n`;
-                    let sales = tabType === 'request' ? i.REQ_SALES_NOTE : (i.SALES_NOTE || i.SALESNOTE || i.SALESDESC); if (sales) returnText += `  Sales Note: ${sales}\n`;
-                    if (tabType === 'request' && i.REQ_COMMENTS) returnText += `  Comments: ${i.REQ_COMMENTS}\n`; if (tabType === 'request' && i.REQ_DESIRED_SPEC) returnText += `  Desired Spec: ${i.REQ_DESIRED_SPEC}\n`; if (tabType === 'request' && i.REQ_DESIRED_CALIPER) returnText += `  Desired Caliper: ${i.REQ_DESIRED_CALIPER}\n`; if (tabType === 'request' && i.REQ_EST_SHIP) returnText += `  Est Ship: ${i.REQ_EST_SHIP}\n`;
-                    let photo = tabType === 'request' ? i.REQ_PHOTO_LINK : (i.SAVED_PHOTO_LINK || i['PHOTO LINK'] || i.PHOTOLINK);
+                    returnText += `▪ ${i.COMMONNAME || 'Unknown'} (${i.CONTSIZE || '-'}) | Loc: ${i.LOCATIONCODE || 'No Loc'}\n`;
+                    let match = i.MATCH || i.MATCHPCT; if (match) returnText += `  Match: ${match}%\n`;
+                    let spec = i.SPEC; if (spec) returnText += `  Spec: ${spec}\n`;
+                    let caliper = i.CALIPER; if (caliper) returnText += `  Caliper: ${caliper}\n`;
+                    let pick = i.PIC_NOTE || i.PICKNOTE || i.PICK; if (pick) returnText += `  Pick Note: ${pick}\n`;
+                    let sales = i.SALES_NOTE || i.SALESNOTE || i.SALESDESC; if (sales) returnText += `  Sales Note: ${sales}\n`;
+                    let photo = i.SAVED_PHOTO_LINK || i['PHOTO LINK'] || i.PHOTOLINK;
                     if (photo && String(photo).trim() !== "") { let urls = String(photo).split(','); let counter = 1; urls.forEach(url => { let cleanUrl = url.trim(); let match = cleanUrl.match(/(https?:\/\/[^"\s>]+)/); if (match) cleanUrl = match[1]; if (cleanUrl.startsWith('http')) { returnText += `  Photo ${counter}: ${cleanUrl}\n`; counter++; } }); }
                 }
                 returnText += `\n`;
@@ -1887,10 +1883,22 @@
         function copyFolderData(folderId) {
             let items = requestsInventory.filter(i => i.REQUEST_FOLDER === folderId); items = items.filter((v,i,a) => a.findIndex(t => (t.DOM_ID === v.DOM_ID)) === i); let returnText = `REQUEST FOLDER: ${folderId}\n\n`;
             items.forEach(i => {
-                returnText += `▪ ${i.COMMONNAME || 'Unknown'} (${i.CONTSIZE || '-'}) | Loc: ${i.LOCATIONCODE || 'No Loc'}\n`; returnText += `  Requested Qty: ${i.REQ_QTY || 'N/A'}\n  Customer: ${i.REQ_CUSTOMER || 'N/A'}\n`;
-                if (i.REQ_DESIRED_SPEC) returnText += `  Desired Spec: ${i.REQ_DESIRED_SPEC}\n`; if (i.REQ_DESIRED_CALIPER) returnText += `  Desired Caliper: ${i.REQ_DESIRED_CALIPER}\n`; if (i.REQ_EST_SHIP) returnText += `  Est Ship: ${i.REQ_EST_SHIP}\n`;
-                if (i.REQ_MATCH) returnText += `  Match: ${i.REQ_MATCH}%\n`; if (i.REQ_SPEC) returnText += `  Spec: ${i.REQ_SPEC}\n`; if (i.REQ_CALIPER) returnText += `  Caliper: ${i.REQ_CALIPER}\n`;
-                if (i.REQ_PICK) returnText += `  Pick Note: ${i.REQ_PICK}\n`; if (i.REQ_SALES_NOTE) returnText += `  Sales Note: ${i.REQ_SALES_NOTE}\n`; if (i.REQ_COMMENTS) returnText += `  Comments: ${i.REQ_COMMENTS}\n`;
+                returnText += `${i.REQUEST_FOLDER || 'No Folder'}\n`;
+                returnText += `ID: ${i.UNIQUE_ID} | ${i.REQ_CUSTOMER || 'N/A'}\n`;
+                returnText += `${i.COMMONNAME || 'Unknown'} ${i.CONTSIZE || '-'} Loc: ${i.LOCATIONCODE || 'No Loc'}\n`;
+                returnText += `${i.ITEMCODE || '-'} | Lot: ${i.LOTCODE || '-'}\n`;
+                
+                if (i.REQ_QTY) returnText += `  Requested Qty: ${i.REQ_QTY}\n`;
+                if (i.REQ_DESIRED_SPEC) returnText += `  Desired Spec: ${i.REQ_DESIRED_SPEC}\n`;
+                if (i.REQ_DESIRED_CALIPER) returnText += `  Desired Caliper: ${i.REQ_DESIRED_CALIPER}\n`;
+                if (i.REQ_EST_SHIP) returnText += `  Est Ship: ${i.REQ_EST_SHIP}\n`;
+                if (i.REQ_MATCH) returnText += `  Match: ${i.REQ_MATCH}%\n`;
+                if (i.REQ_SPEC) returnText += `  Spec: ${i.REQ_SPEC}\n`;
+                if (i.REQ_CALIPER) returnText += `  Caliper: ${i.REQ_CALIPER}\n`;
+                if (i.REQ_PICK) returnText += `  Pick Note: ${i.REQ_PICK}\n`;
+                if (i.REQ_SALES_NOTE) returnText += `  Sales Note: ${i.REQ_SALES_NOTE}\n`;
+                if (i.REQ_COMMENTS) returnText += `  Comments: ${i.REQ_COMMENTS}\n`;
+                
                 let photo = i.REQ_PHOTO_LINK || i.SAVED_PHOTO_LINK || i['PHOTO LINK'] || i.PHOTOLINK;
                 if (photo && String(photo).trim() !== "") { let urls = String(photo).split(','); let counter = 1; urls.forEach(url => { let cleanUrl = url.trim(); let match = cleanUrl.match(/(https?:\/\/[^"\s>]+)/); if (match) cleanUrl = match[1]; if (cleanUrl.startsWith('http')) { returnText += `  Photo ${counter}: ${cleanUrl}\n`; counter++; } }); }
                 returnText += `\n`;
@@ -2232,8 +2240,23 @@
         }
 
         // =========================================================
-        // 📸 IMAGE UPLOADS (Still sent to Google Script for Drive Storage)
+        // 📸 FAST IMAGE UPLOADS (Direct to Supabase Storage!)
         // =========================================================
+        function base64ToBlob(base64, mimeType) {
+            const byteCharacters = atob(base64);
+            const byteArrays = [];
+            for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+                const slice = byteCharacters.slice(offset, offset + 512);
+                const byteNumbers = new Array(slice.length);
+                for (let i = 0; i < slice.length; i++) {
+                    byteNumbers[i] = slice.charCodeAt(i);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                byteArrays.push(byteArray);
+            }
+            return new Blob(byteArrays, { type: mimeType });
+        }
+
         function handlePhotoUpload(input, prefix) {
             if(!input.files || input.files.length === 0) return; const file = input.files[0]; const reader = new FileReader();
             reader.onload = function(e) {
@@ -2241,8 +2264,8 @@
                     const canvas = document.createElement('canvas'); const MAX_WIDTH = 800; const scale = img.width > MAX_WIDTH ? (MAX_WIDTH / img.width) : 1;
                     canvas.width = img.width * scale; canvas.height = img.height * scale; const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
                     const dataUrl = canvas.toDataURL('image/jpeg', 0.6); const base64Data = dataUrl.split(',')[1]; const dateStr = new Date().toISOString().split('T')[0];
-                    let filename = `${activeItem.COMMONNAME}_${activeItem.CONTSIZE}_${dateStr}.jpg`.replace(/[\/\s,]/g, '_');
-                    if (prefix === 'dock-') { let locStr = activeItem.LOCATIONCODE || "NoLoc"; let lotStr = activeItem.LOTCODE || "NoLot"; let dockStr = "DOCK" + selectedDockNum; let tripStr = selectedDockTrip !== "Unassigned" && selectedDockTrip !== "" ? "TRIP" + selectedDockTrip : "NoTrip"; filename = `${tripStr}-${activeItem.COMMONNAME}-${activeItem.CONTSIZE}-${locStr}-${lotStr}-${dockStr}-${dateStr}.jpg`.replace(/[\/\s,]/g, '_'); }
+                    let filename = `${activeItem.COMMONNAME}_${activeItem.CONTSIZE}_${dateStr}_${Date.now()}.jpg`.replace(/[\/\s,]/g, '_');
+                    if (prefix === 'dock-') { let locStr = activeItem.LOCATIONCODE || "NoLoc"; let lotStr = activeItem.LOTCODE || "NoLot"; let dockStr = "DOCK" + selectedDockNum; let tripStr = selectedDockTrip !== "Unassigned" && selectedDockTrip !== "" ? "TRIP" + selectedDockTrip : "NoTrip"; filename = `${tripStr}-${activeItem.COMMONNAME}-${activeItem.CONTSIZE}-${locStr}-${lotStr}-${dockStr}-${dateStr}_${Date.now()}.jpg`.replace(/[\/\s,]/g, '_'); }
                     showTemporaryPhotoPreview(prefix, dataUrl); uploadPhotoToDrive(base64Data, filename, prefix);
                 };
                 img.src = e.target.result;
@@ -2257,28 +2280,75 @@
             }
         }
 
-        function uploadPhotoToDrive(base64Data, filename, prefix) {
-            let targetItem = activeItem; if (!targetItem) return; showToast("Uploading...", "Sending to Google Drive...", false);
-            let btn = prefix === 'req-' ? document.getElementById('req-btn-save-draft') : document.getElementById(prefix + 'btn-save-draft'); if (prefix !== 'req-' && prefix !== 'dock-') btn = document.getElementById(prefix + 'btn-save-complete');
-            let isCurrentView = (activeItem && activeItem.UNIQUE_ID === targetItem.UNIQUE_ID); if (btn && isCurrentView) { btn.innerText = "UPLOADING..."; btn.disabled = true; }
-            let context = "drive"; if (prefix === 'req-') context = "request"; else if (prefix === 'ssn-') context = "season"; else if (prefix === 'lsn-') context = "location"; else if (prefix === 'dock-') context = "docks";
-            let payload = { type: "image", image: base64Data, mimeType: "image/jpeg", filename: filename, folderContext: context };
-            if (context === "docks") { payload.dockNum = selectedDockNum; const dateStr = new Date().toISOString().split('T')[0]; let tripFormat = selectedDockTrip !== "Unassigned" && selectedDockTrip !== "" ? "TRIP " + selectedDockTrip : "NoTrip"; payload.customFolderName = `${selectedDockRep} ${selectedDockCustomer} ${tripFormat} ${dateStr}`.trim(); }
+        async function uploadPhotoToDrive(base64Data, filename, prefix) {
+            let targetItem = activeItem; if (!targetItem) return; 
+            showToast("Uploading...", "Sending directly to Supabase...", false);
+            let btn = prefix === 'req-' ? document.getElementById('req-btn-save-draft') : document.getElementById(prefix + 'btn-save-draft'); 
+            if (prefix !== 'req-' && prefix !== 'dock-') btn = document.getElementById(prefix + 'btn-save-complete');
+            let isCurrentView = (activeItem && activeItem.UNIQUE_ID === targetItem.UNIQUE_ID); 
+            if (btn && isCurrentView) { btn.innerText = "UPLOADING..."; btn.disabled = true; }
             
-            fetch(GOOGLE_SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) }).then(res => res.json()).then(data => {
-                isCurrentView = (activeItem && activeItem.UNIQUE_ID === targetItem.UNIQUE_ID);
-                if (btn && isCurrentView) { if (prefix === 'req-') btn.innerText = "SAVE REQUEST DATA"; else if (prefix === 'dock-') btn.innerText = "SAVE DOCK DATA"; else btn.innerText = "MARK COMPLETE"; btn.disabled = false; }
-                if(data.status === 'success') {
-                    if (prefix === 'req-') { let links = targetItem.REQ_PHOTO_LINK ? targetItem.REQ_PHOTO_LINK.split(',') : []; let names = targetItem.REQ_PHOTO_NAME ? targetItem.REQ_PHOTO_NAME.split(',') : []; links.push(data.url); names.push(filename); targetItem.REQ_PHOTO_LINK = links.join(','); targetItem.REQ_PHOTO_NAME = names.join(','); } 
-                    else if (prefix === 'dock-') { let links = targetItem.DOCK_PHOTO_LINK ? targetItem.DOCK_PHOTO_LINK.split(',') : []; let names = targetItem.DOCK_PHOTO_NAME ? targetItem.DOCK_PHOTO_NAME.split(',') : []; links.push(data.url); names.push(filename); targetItem.DOCK_PHOTO_LINK = links.join(','); targetItem.DOCK_PHOTO_NAME = names.join(','); } 
-                    else { let links = targetItem.SAVED_PHOTO_LINK ? targetItem.SAVED_PHOTO_LINK.split(',') : []; let names = targetItem.SAVED_PHOTO_NAME ? targetItem.SAVED_PHOTO_NAME.split(',') : []; links.push(data.url); names.push(filename); targetItem.SAVED_PHOTO_LINK = links.join(','); targetItem.SAVED_PHOTO_NAME = names.join(','); }
-                    if (isCurrentView) { renderPhotoPreview(); } saveData(false, prefix, true, targetItem); 
-                } else { if (isCurrentView) showToast("Error", "Upload failed.", true); }
-            }).catch(err => {
-                isCurrentView = (activeItem && activeItem.UNIQUE_ID === targetItem.UNIQUE_ID);
-                if (btn && isCurrentView) { if (prefix === 'req-') btn.innerText = "SAVE REQUEST DATA"; else if (prefix === 'dock-') btn.innerText = "SAVE DOCK DATA"; else btn.innerText = "MARK COMPLETE"; btn.disabled = false; }
-                if (isCurrentView) showToast("Error", "Network connection failed.", true);
-            });
+            try {
+                const blob = base64ToBlob(base64Data, 'image/jpeg');
+                
+                // Direct Supabase Storage Upload
+                const uploadUrl = `${SUPABASE_URL}/storage/v1/object/photos/${filename}`;
+                const response = await fetch(uploadUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + SUPABASE_KEY,
+                        'apikey': SUPABASE_KEY,
+                        'Content-Type': 'image/jpeg'
+                    },
+                    body: blob
+                });
+                
+                if (!response.ok) throw new Error("Upload failed");
+                
+                // Get the public URL from Supabase
+                const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/photos/${filename}`;
+
+                if (prefix === 'req-') { 
+                    let links = targetItem.REQ_PHOTO_LINK ? targetItem.REQ_PHOTO_LINK.split(',') : []; 
+                    let names = targetItem.REQ_PHOTO_NAME ? targetItem.REQ_PHOTO_NAME.split(',') : []; 
+                    links.push(publicUrl); names.push(filename); 
+                    targetItem.REQ_PHOTO_LINK = links.join(','); targetItem.REQ_PHOTO_NAME = names.join(','); 
+                } else if (prefix === 'dock-') { 
+                    let links = targetItem.DOCK_PHOTO_LINK ? targetItem.DOCK_PHOTO_LINK.split(',') : []; 
+                    let names = targetItem.DOCK_PHOTO_NAME ? targetItem.DOCK_PHOTO_NAME.split(',') : []; 
+                    links.push(publicUrl); names.push(filename); 
+                    targetItem.DOCK_PHOTO_LINK = links.join(','); targetItem.DOCK_PHOTO_NAME = names.join(','); 
+                } else { 
+                    let links = targetItem.SAVED_PHOTO_LINK ? targetItem.SAVED_PHOTO_LINK.split(',') : []; 
+                    let names = targetItem.SAVED_PHOTO_NAME ? targetItem.SAVED_PHOTO_NAME.split(',') : []; 
+                    links.push(publicUrl); names.push(filename); 
+                    targetItem.SAVED_PHOTO_LINK = links.join(','); targetItem.SAVED_PHOTO_NAME = names.join(','); 
+                }
+                
+                if (isCurrentView) { 
+                    if (btn) { 
+                        if (prefix === 'req-') btn.innerText = "SAVE REQUEST DATA"; 
+                        else if (prefix === 'dock-') btn.innerText = "SAVE DOCK DATA"; 
+                        else btn.innerText = "MARK COMPLETE"; 
+                        btn.disabled = false; 
+                    }
+                    renderPhotoPreview(); 
+                } 
+                saveData(false, prefix, true, targetItem);
+                showToast("Success", "Photo uploaded instantly!", false);
+
+            } catch (err) {
+                console.error(err);
+                if (isCurrentView) { 
+                    if (btn) { 
+                        if (prefix === 'req-') btn.innerText = "SAVE REQUEST DATA"; 
+                        else if (prefix === 'dock-') btn.innerText = "SAVE DOCK DATA"; 
+                        else btn.innerText = "MARK COMPLETE"; 
+                        btn.disabled = false; 
+                    }
+                    showToast("Error", "Upload failed. Did you create the 'photos' bucket in Supabase?", true); 
+                }
+            }
         }
 
         function renderPhotoPreview() {
@@ -2348,59 +2418,6 @@
             };
             if (isSilentAutoSave && !isComplete && !specificItem) { autoSaveTimer = setTimeout(() => { executeSave(); }, 1000); } else { executeSave(); }
         }
-
-        // =========================================================
-        // 🚀 PULL-TO-REFRESH LOGIC
-        // =========================================================
-        let ptrStartY = 0;
-        let ptrCurrentY = 0;
-        let isPulling = false;
-        
-        window.addEventListener('DOMContentLoaded', () => {
-            const scrollArea = document.getElementById('main-scroll-area');
-            const ptrIndicator = document.getElementById('ptr-indicator');
-
-            scrollArea.addEventListener('touchstart', (e) => {
-                // Only allow pull-to-refresh if we are at the very top of the scroll area
-                if (scrollArea.scrollTop <= 0) {
-                    ptrStartY = e.touches[0].clientY;
-                    isPulling = true;
-                }
-            }, { passive: true });
-
-            scrollArea.addEventListener('touchmove', (e) => {
-                if (!isPulling) return;
-                ptrCurrentY = e.touches[0].clientY;
-                let pullDistance = ptrCurrentY - ptrStartY;
-
-                // If pulling down
-                if (pullDistance > 0 && scrollArea.scrollTop <= 0) {
-                    ptrIndicator.style.transition = 'none'; // Disable transition for a 1:1 smooth pull
-                    ptrIndicator.style.height = Math.min(pullDistance * 0.4, 60) + 'px'; // Max pull height of 60px
-                } else {
-                    isPulling = false;
-                }
-            }, { passive: true });
-
-            scrollArea.addEventListener('touchend', () => {
-                if (!isPulling) return;
-                isPulling = false;
-                let pullDistance = ptrCurrentY - ptrStartY;
-                
-                ptrIndicator.style.transition = 'height 0.3s ease'; // Turn transition back on to snap
-                
-                if (pullDistance > 50) { // If pulled past 50 pixels, trigger refresh
-                    if (navigator.vibrate) navigator.vibrate(50); // Haptic feedback
-                    ptrIndicator.style.height = '40px'; // Hold open at 40px while loading
-                    fetchBackgroundData(); // Trigger the API Sync
-                } else {
-                    ptrIndicator.style.height = '0px'; // Snap closed if not pulled far enough
-                }
-                
-                ptrStartY = 0;
-                ptrCurrentY = 0;
-            });
-        });
     </script>
 </body>
 </html>
