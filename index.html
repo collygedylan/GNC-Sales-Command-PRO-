@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GNC SALES PRO</title>
+    <title>GNC</title>
     
     <meta name="theme-color" content="#007a4d">
     <link rel="manifest" href="manifest.json">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="application-name" content="GNC SALES PRO">
+    <meta name="application-name" content="GNC">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-title" content="GNC SALES PRO">
+    <meta name="apple-mobile-web-app-title" content="GNC">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="icon" type="image/png" href="Ag%20Metric%20App.png">
     <link rel="apple-touch-icon" href="Ag%20Metric%20App.png">
@@ -100,7 +100,7 @@
         <div class="login-card">
             <div class="flex flex-col items-center mb-8 w-full relative">
                 <img src="Greenleaf%20Logo.png" alt="Greenleaf Logo" class="h-20 mb-4 object-contain drop-shadow-md" onerror="this.style.display='none'">
-                <div class="text-3xl text-[#007a4d] font-black tracking-tighter mb-1">GNC SALES PRO</div>
+                <div class="text-3xl text-[#007a4d] font-black tracking-tighter mb-1">GNC</div>
                 
                 <div class="flex flex-col items-center gap-0.5 mt-5">
                     <span class="text-[9px] font-bold text-gray-400 uppercase tracking-[0.3em]">Powered By</span>
@@ -196,13 +196,10 @@
 
     <div id="request-rep-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center flex flex-col max-h-[90vh]">
-            
             <div id="step-1-rep" class="flex flex-col">
                 <h3 class="font-bold text-lg mb-2 text-orange-600">Who requested this?</h3>
                 <input type="text" id="rep-search-input" class="input-field mb-3 border-orange-200 focus:border-orange-500" placeholder="Search or type name..." onkeyup="filterRepList()">
-                
                 <div id="rep-list-container" class="grid grid-cols-1 gap-2 mb-4 max-h-[40vh] overflow-y-auto px-2 py-1"></div>
-
                 <button id="custom-rep-btn" class="hidden w-full bg-orange-600 text-white font-bold p-3 rounded-lg mb-4 shadow-sm" onclick="selectRepForRequest(document.getElementById('rep-search-input').value.trim())">Assign to: <span></span></button>
             </div>
 
@@ -240,7 +237,7 @@
                 <i class="ph-bold ph-list menu-btn text-2xl cursor-pointer" onclick="toggleMenu()"></i>
                 <div class="flex flex-col">
                     <div class="font-bold text-lg leading-tight"><span id="header-user">User</span></div>
-                    <div class="text-[10px] opacity-80 leading-tight">GNC SALES PRO</div>
+                    <div class="text-[10px] opacity-80 leading-tight">GNC</div>
                 </div>
             </div>
         </header>
@@ -284,7 +281,7 @@
                             <img src="Greenleaf%20Logo.png" alt="Greenleaf Logo" class="h-11 object-contain" onerror="this.style.display='none'">
                         </div>
                         
-                        <h1 class="text-2xl font-black tracking-tight mb-1 z-10 relative">GNC SALES PRO</h1>
+                        <h1 class="text-2xl font-black tracking-tight mb-1 z-10 relative">GNC</h1>
                         <p class="text-green-100 text-[10px] font-bold mb-5 uppercase tracking-[0.2em] z-10 relative">Dashboard</p>
                         
                         <div class="flex flex-col items-center pt-4 border-t border-white/20 w-full mt-1 z-10 relative">
@@ -295,52 +292,42 @@
                     
                     <h2 class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3 pl-1">App Modules</h2>
                     <div class="grid grid-cols-2 gap-3 mb-8">
-                        
                         <div onclick="switchView('drive')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer">
                             <i class="ph-bold ph-car text-3xl text-blue-600"></i>
                             <span class="font-bold text-sm text-gray-800">Drive Mode</span>
                         </div>
-                        
                         <div onclick="switchView('tasks')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer rep-hidden csr-hidden">
                             <i class="ph-bold ph-clipboard-text text-3xl text-[#007a4d]"></i>
                             <span class="font-bold text-sm text-gray-800">Tasks</span>
                         </div>
-                        
                         <div onclick="switchView('docks')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer">
                             <i class="ph-bold ph-truck text-3xl text-orange-600"></i>
                             <span class="font-bold text-sm text-gray-800">Docks</span>
                         </div>
-                        
                         <div onclick="switchView('request')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer admin-rep-csr-only hidden">
                             <i class="ph-bold ph-chat-circle-text text-3xl text-blue-600"></i>
                             <span class="font-bold text-sm text-gray-800">Requests</span>
                         </div>
-                        
                         <div onclick="switchView('reserves')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform col-span-2 cursor-pointer admin-rep-csr-only hidden">
                             <i class="ph-bold ph-bookmark-simple text-3xl text-indigo-600"></i>
                             <span class="font-bold text-sm text-gray-800">Reserves</span>
                         </div>
-
                         <div onclick="switchView('sales-office')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer admin-csr-only hidden">
                             <i class="ph-bold ph-briefcase text-3xl text-purple-600"></i>
                             <span class="font-bold text-sm text-gray-800">Sales Office</span>
                         </div>
-                        
                         <div onclick="switchView('reports')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer admin-only hidden">
                             <i class="ph-bold ph-chart-bar text-3xl text-emerald-600"></i>
                             <span class="font-bold text-sm text-gray-800">Reports</span>
                         </div>
-                        
                         <div onclick="switchView('low-stock')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer dylan-only hidden">
                             <i class="ph-bold ph-trend-down text-3xl text-red-600"></i>
                             <span class="font-bold text-sm text-gray-800">Low Stock</span>
                         </div>
-                        
                         <div onclick="switchView('review')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform col-span-2 cursor-pointer admin-only hidden">
                             <i class="ph-bold ph-warning-circle text-3xl text-yellow-600"></i>
                             <span class="font-bold text-sm text-gray-800">Manager Review</span>
                         </div>
-
                     </div>
                 </div>
 
@@ -748,7 +735,8 @@
                     </div>
 
                 </div>
-            </div> </div>
+            </div> 
+        </div>
 
         <div id="global-action-bar" class="hidden fixed bottom-[60px] left-0 w-full bg-white p-3 shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.15)] z-[45] border-t border-gray-200">
             <div class="flex justify-between items-center mb-2 px-1">
@@ -764,11 +752,19 @@
             </div>
         </div>
 
-        <nav class="fixed bottom-0 w-full bg-white border-t flex justify-around py-3 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-50">
-            <div onclick="switchView('home')"><i class="ph-bold ph-house text-2xl text-gray-400"></i></div>
-            <div onclick="switchView('drive')"><i class="ph-bold ph-car text-2xl text-gray-400"></i></div>
-            <div onclick="switchView('tasks')" class="rep-hidden csr-hidden"><i class="ph-bold ph-clipboard-text text-2xl text-gray-400"></i></div>
-            <div onclick="switchView('docks')"><i class="ph-bold ph-truck text-2xl text-gray-400"></i></div>
+        <nav class="fixed bottom-0 w-full bg-white border-t flex justify-between shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-50">
+            <button class="flex-1 py-4 text-center cursor-pointer hover:bg-gray-50 active:bg-gray-100 transition-colors outline-none" onclick="switchView('home')">
+                <i class="ph-bold ph-house text-2xl text-gray-500 pointer-events-none"></i>
+            </button>
+            <button class="flex-1 py-4 text-center cursor-pointer hover:bg-gray-50 active:bg-gray-100 transition-colors outline-none" onclick="switchView('drive')">
+                <i class="ph-bold ph-car text-2xl text-gray-500 pointer-events-none"></i>
+            </button>
+            <button class="flex-1 py-4 text-center cursor-pointer hover:bg-gray-50 active:bg-gray-100 transition-colors outline-none rep-hidden csr-hidden" onclick="switchView('tasks')">
+                <i class="ph-bold ph-clipboard-text text-2xl text-gray-500 pointer-events-none"></i>
+            </button>
+            <button class="flex-1 py-4 text-center cursor-pointer hover:bg-gray-50 active:bg-gray-100 transition-colors outline-none" onclick="switchView('docks')">
+                <i class="ph-bold ph-truck text-2xl text-gray-500 pointer-events-none"></i>
+            </button>
         </nav>
     </div>
 
@@ -794,25 +790,44 @@
                 if (method === 'GET') {
                     while (hasMore) {
                         const url = `${SUPABASE_URL}/rest/v1/${table}?${query}&limit=${limit}&offset=${offset}`;
-                        const options = { method: 'GET', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' } };
+                        const options = { 
+                            method: 'GET', 
+                            headers: { 
+                                'apikey': SUPABASE_KEY, 
+                                'Authorization': 'Bearer ' + SUPABASE_KEY, 
+                                'Content-Type': 'application/json' 
+                            } 
+                        };
                         const response = await fetch(url, options);
                         if (!response.ok) { console.error(`Supabase error on ${table}:`, response.statusText); break; }
                         const text = await response.text();
                         const data = text ? JSON.parse(text) : [];
                         if (Array.isArray(data) && data.length > 0) {
-                            allData = allData.concat(data); offset += limit; if (data.length < limit) hasMore = false;
-                        } else { hasMore = false; }
+                            allData = allData.concat(data); 
+                            offset += limit; 
+                            if (data.length < limit) hasMore = false;
+                        } else { 
+                            hasMore = false; 
+                        }
                     }
                     return allData;
                 } else {
                     // Standard PATCH/POST requests don't need limits
                     const url = `${SUPABASE_URL}/rest/v1/${table}${query ? '?' + query : ''}`;
-                    const options = { method: method, headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' } };
+                    const options = { 
+                        method: method, 
+                        headers: { 
+                            'apikey': SUPABASE_KEY, 
+                            'Authorization': 'Bearer ' + SUPABASE_KEY, 
+                            'Content-Type': 'application/json' 
+                        } 
+                    };
                     options.headers['Prefer'] = method === 'POST' ? 'return=representation,resolution=merge-duplicates' : 'return=representation';
                     if(body) options.body = JSON.stringify(body);
                     const response = await fetch(url, options);
                     if (!response.ok) throw new Error('Supabase error: ' + response.statusText);
-                    const text = await response.text(); return text ? JSON.parse(text) : {};
+                    const text = await response.text(); 
+                    return text ? JSON.parse(text) : {};
                 }
             } catch (e) {
                 console.error(`Fetch failed for table ${table}:`, e);
@@ -958,6 +973,8 @@
         let selectedReservesName = null;
         let selectedReservesSize = null;
         let selectedReservesCustomer = null;
+        
+        let masterInventoryDict = {}; // 🚨 NEW: FAST LOOKUP DIRECTORY
 
         const salesRepList = ["Abbey Burka", "Annette Hancock", "Ben Brown", "Ben Harveson", "Ben Machino", "Brian Hatfield", "Casey Rufener", "Chris Farrow", "Chris Gaydos", "David Brandt", "Ellen Deely", "Jessica Robertson", "Josh Ringleb", "Kevin Effinger", "Nate Douglas", "Toby Brown", "Traci Earle", "Tracey Tapscott", "Troy Lee", "Wes Lugas"];
 
@@ -983,7 +1000,7 @@
             try {
                 const publicKey = {
                     challenge: new Uint8Array(32),
-                    rp: { name: "GNC SALES PRO" },
+                    rp: { name: "GNC" },
                     user: { id: new Uint8Array(16), name: user, displayName: user },
                     pubKeyCredParams: [{ type: "public-key", alg: -7 }],
                     authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required" },
@@ -1189,7 +1206,17 @@
         }
 
         function processAndLoadData(res) {
+            // 🚨 HASH MAP BUILD: Eliminates the O(N^2) Loop Freeze 🚨
             fullInventory = res.data.map((item, idx) => { item.DOM_ID = 'fi_' + idx; return item; });
+            
+            masterInventoryDict = {};
+            fullInventory.forEach(item => {
+                let code = String(item.ITEMCODE || "").trim().toUpperCase();
+                if (code && !masterInventoryDict[code]) {
+                    masterInventoryDict[code] = item;
+                }
+            });
+
             lowStockInventory = res.lowStock.map((item, idx) => { item.DOM_ID = 'ls_' + idx; return item; });
             managerReviewInventory = res.managerReviewData ? res.managerReviewData.map((item, idx) => { item.DOM_ID = 'mr_' + idx; return item; }) : [];
             requestsInventory = res.requestsData ? res.requestsData.map((item, idx) => { item.DOM_ID = 'req_' + item.UNIQUE_ID; return item; }) : [];
@@ -1207,16 +1234,16 @@
                 item.CONSIGNEENAME = item.CONSIGNEENAME || item.CONSIGNEE || '';
             });
 
-            reservesInventory = res.reservesData;
             let exactSeasonIds = new Set((res.seasonIds || []).map(id => String(id)));
             fullInventory.forEach(item => { 
                 item.APP_TAB_ASSIGNMENT = exactSeasonIds.has(String(item.UNIQUE_ID)) ? 'season' : 'location'; 
             });
             
-            reservesInventory = reservesInventory.map((item, idx) => {
+            reservesInventory = res.reservesData.map((item, idx) => {
                 item.DOM_ID = 'res_' + idx; item.UNIQUE_ID = item.UNIQUE_ID || 'res_uid_' + idx; 
                 let resCode = String(item.ITEMCODE || item.ITEM || "").trim().toUpperCase(); 
-                let masterItem = fullInventory.find(f => String(f.ITEMCODE || "").trim().toUpperCase() === resCode);
+                let masterItem = masterInventoryDict[resCode]; // 🚨 FAST HASH LOOKUP
+                
                 item.COMMONNAME = masterItem ? masterItem.COMMONNAME : (item.COMMONNAME || item['PLANT_NAME'] || item.DESCRIPTION || item.DESC || 'Unknown Plant'); 
                 item.CONTSIZE = masterItem ? masterItem.CONTSIZE : (item.CONTSIZE || item.SIZE || item.CONTAINER || '-'); 
                 item.CUSTOMERNAME = item.CUSTOMERNAME || item.CUSTOMER || 'Unknown Customer'; 
@@ -1225,6 +1252,7 @@
                 if (masterItem) { item.LOCATIONCODE = masterItem.LOCATIONCODE; item.PTRAVAILABLE = masterItem.PTRAVAILABLE; item.SEASONSUPPLY = masterItem.SEASONSUPPLY; item.PRIORITY = masterItem.PRIORITY; item.QUALITYCODE = masterItem.QUALITYCODE; item.FIELDTAGCOLOR = masterItem.FIELDTAGCOLOR; item.LOTCODE = masterItem.LOTCODE; }
                 return item;
             });
+            
             applyLocalEdits(); 
             reRenderCurrentView();
         }
@@ -1295,6 +1323,11 @@
         function selectRequestFolder(folderId) { selectedReqFolder = folderId; requestViewLevel = 4; renderRequest(); }
         function clearReservesSearch() { document.getElementById('reserves-search').value = ""; document.getElementById('reserves-search-clear').classList.add('hidden'); renderReserves(); }
         function handleReservesSearch() { const term = document.getElementById('reserves-search').value.toLowerCase(); const clearBtn = document.getElementById('reserves-search-clear'); if (term.length > 0) clearBtn.classList.remove('hidden'); else clearBtn.classList.add('hidden'); renderReserves(); }
+
+        function getLocPrefix(loc) {
+            if(!loc) return "Unassigned";
+            const match = loc.match(/^[A-Za-z]+/); return match ? match[0] : loc.substring(0,2);
+        }
 
         function startPress(e, domId) {
             if (isMultiSelectMode) return; isLongPress = false;
@@ -1569,7 +1602,7 @@
                 let stopsMap = {};
                 dockItems.forEach(i => { let stopNum = i.STOPNUMBER || i.STOP || "Unassigned"; let tripNum = i.TRIPNUMBER || i.TRIP || "Unassigned"; let groupKey = tripNum + "|" + stopNum;
                     if (!stopsMap[groupKey]) { stopsMap[groupKey] = { trip: tripNum, stop: stopNum, salesRep: i.SALESREPNAME || i.SALESREP || "Unknown Rep", customer: i.CUSTOMERNAME || i.CUSTOMER || "Unknown Customer", consignee: i.CONSIGNEENAME || i.CONSIGNEE || "", items: [] }; }
-                    let targetCode = String(i.ITEMCODE || i.ITEM || "").trim().toUpperCase(); let masterItem = fullInventory.find(fi => String(fi.ITEMCODE || "").trim().toUpperCase() === targetCode);
+                    let targetCode = String(i.ITEMCODE || i.ITEM || "").trim().toUpperCase(); let masterItem = masterInventoryDict[targetCode];
                     if (masterItem) { if (!stopsMap[groupKey].items.includes(masterItem)) { stopsMap[groupKey].items.push(masterItem); } } else { let fakeItem = { DOM_ID: 'fake_' + Math.random().toString(36).substr(2, 9), UNIQUE_ID: 'fake_' + Math.random().toString(36).substr(2, 9), COMMONNAME: i.COMMONNAME || i['PLANT_NAME'] || i.DESC || 'Unknown', CONTSIZE: i.CONTSIZE || i.SIZE || i.CONTAINER || '-', ITEMCODE: i.ITEMCODE || i.ITEM || 'No Item', LOCATIONCODE: "Not in Master", PTRAVAILABLE: 0, PRIORITY: '-', FIELDTAGCOLOR: '-', LOTCODE: '-' }; stopsMap[groupKey].items.push(fakeItem); }
                 });
                 let dockInfoStr = localStorage.getItem('dock_info_' + selectedDockNum); let dockInfo = dockInfoStr ? JSON.parse(dockInfoStr) : {checker: '', inspector: '', mistake: '', status: 'Loading'};
@@ -1630,7 +1663,6 @@
             }
         }
 
-        // 🚨 SALES OFFICE RENDER PULLS DIRECTLY FROM salesOfficeInventory 🚨
         function renderSalesOffice() {
             const container = document.getElementById('sales-office-content');
             if (salesOfficeInventory.length === 0) { container.innerHTML = `<div class="p-8 text-center text-gray-400">No completed Sales Notes at this time.</div>`; return; }
@@ -1755,181 +1787,6 @@
             }
         }
 
-        function clearDriveSearch() { document.getElementById('drive-search').value = ""; document.getElementById('drive-search-clear').classList.add('hidden'); driveViewLevel = 0; selectedDriveName = null; selectedDriveSize = null; renderDrive(); }
-        function handleDriveSearch() { const term = document.getElementById('drive-search').value.toLowerCase(); const clearBtn = document.getElementById('drive-search-clear'); if (term.length > 0) clearBtn.classList.remove('hidden'); else clearBtn.classList.add('hidden'); if (term.length > 0 && driveViewLevel > 0) { driveViewLevel = 0; selectedDriveName = null; selectedDriveSize = null; } renderDrive(); }
-        function selectDriveName(name) { selectedDriveName = name; driveViewLevel = 1; renderDrive(); }
-        function selectDriveSize(size) { selectedDriveSize = size; driveViewLevel = 2; renderDrive(); }
-        function backToDriveSizes() { driveViewLevel = 1; selectedDriveSize = null; renderDrive(); }
-        function resetDriveView() { driveViewLevel = 0; selectedDriveName = null; selectedDriveSize = null; driveSelectedSeasons.clear(); driveSelectedSeasons.add('ALL'); renderDriveSeasonFilters(); clearDriveSearch(); }
-
-        function renderDriveSeasonFilters() {
-            const container = document.getElementById('drive-season-filters'); let html = "";
-            availableSeasons.forEach(s => {
-                const isActive = driveSelectedSeasons.has(s); const bgClass = isActive ? "bg-[#007a4d] text-white border-[#007a4d]" : "bg-white text-gray-600 border-gray-300";
-                html += `<button class="px-4 py-1.5 rounded-full border text-[11px] font-bold whitespace-nowrap flex-shrink-0 transition-colors ${bgClass}" onclick="toggleDriveSeason('${s}')">${s}</button>`;
-            });
-            container.innerHTML = html;
-        }
-
-        function toggleDriveSeason(season) {
-            if (season === 'ALL') { driveSelectedSeasons.clear(); driveSelectedSeasons.add('ALL'); } 
-            else { driveSelectedSeasons.delete('ALL'); if (driveSelectedSeasons.has(season)) { driveSelectedSeasons.delete(season); if (driveSelectedSeasons.size === 0) driveSelectedSeasons.add('ALL'); } else { driveSelectedSeasons.add(season); } }
-            driveViewLevel = 0; selectedDriveName = null; selectedDriveSize = null; renderDriveSeasonFilters(); renderDrive();
-        }
-
-        function renderDrive() {
-            const container = document.getElementById('drive-content'); const crumb = document.getElementById('drive-crumb'); const term = document.getElementById('drive-search').value.toLowerCase();
-            let filteredItems = fullInventory;
-            if (!driveSelectedSeasons.has('ALL')) { filteredItems = filteredItems.filter(i => { let sVal = String(i.SEASON || "").toUpperCase(); return driveSelectedSeasons.has(sVal); }); }
-            if (term) { filteredItems = filteredItems.filter(i => (i.COMMONNAME||"").toLowerCase().includes(term) || (i.LOCATIONCODE||"").toLowerCase().includes(term) || (i.ITEMCODE||"").toLowerCase().includes(term) ); }
-            
-            if (filteredItems.length === 0) { container.innerHTML = `<div class="p-8 text-center text-gray-400">No items found.</div>`; crumb.innerText = "No Results"; return; }
-
-            if (driveViewLevel === 0) {
-                crumb.innerText = `Select Plant (${filteredItems.length} items)`; const names = [...new Set(filteredItems.map(i => i.COMMONNAME))].sort();
-                container.innerHTML = names.map(n => `<div class="drill-item" onclick="selectDriveName('${n.replace(/'/g, "\\'")}')"><span class="font-bold text-lg">${n}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
-            } 
-            else if (driveViewLevel === 1) {
-                crumb.innerText = selectedDriveName; const namedItems = filteredItems.filter(i => i.COMMONNAME === selectedDriveName); const sizes = [...new Set(namedItems.map(i => i.CONTSIZE))].sort();
-                let html = `<div class="back-btn" onclick="driveViewLevel=0; renderDrive()"><i class="ph-bold ph-arrow-left"></i> Back to Names</div><div class="font-bold text-[#007a4d] mb-4 px-2 text-xl border-b pb-2">${selectedDriveName}</div>`;
-                html += sizes.map(s => { const count = namedItems.filter(i => i.CONTSIZE === s).length; return `<div class="drill-item" onclick="selectDriveSize('${s}')"><span class="font-bold text-lg">${s} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`; }).join('');
-                container.innerHTML = html;
-            } 
-            else if (driveViewLevel === 2) {
-                crumb.innerText = `${selectedDriveName} / ${selectedDriveSize}`; let finalItems = filteredItems.filter(i => i.COMMONNAME === selectedDriveName && i.CONTSIZE === selectedDriveSize);
-                finalItems.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
-                container.innerHTML = `<div class="back-btn" onclick="backToDriveSizes()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>` + finalItems.map(i => generateCard(i, 'drive')).join('');
-            }
-        }
-
-        function renderTeamSelector() {
-            document.getElementById('team-selector').classList.remove('hidden'); document.getElementById('task-tabs-container').classList.add('hidden'); document.getElementById('task-content').innerHTML = `<div class="p-8 text-center text-gray-400">Select a team member to view their assigned rows.</div>`; document.getElementById('task-crumb').innerText = "Admin Team View";
-            const targetNames = ["Dylan", "Morgan", "Kayla"]; let teamHtml = ""; targetNames.forEach(name => { teamHtml += `<div class="p-5 border border-blue-200 bg-blue-50 text-blue-800 rounded-lg text-center font-bold text-lg cursor-pointer" onclick="setTaskUser('${name}')">${name}</div>`; }); document.getElementById('team-selector').innerHTML = teamHtml;
-        }
-
-        function setTaskUser(username) { taskViewTargetUser = username; document.getElementById('team-selector').classList.add('hidden'); document.getElementById('task-tabs-container').classList.remove('hidden'); taskViewLevel = 0; renderTasks(); }
-        function selectTaskBlock(b) { selectedTaskBlock = b; taskViewLevel = 1; renderTasks(); }
-        function selectTaskLoc(l) { selectedTaskLoc = l; taskViewLevel = 2; renderTasks(); }
-
-        function renderTasks() {
-            const container = document.getElementById('task-content'); const crumb = document.getElementById('task-crumb'); let userToView = (safeRole === 'ADMIN') ? taskViewTargetUser : currentUser; let searchName = userToView === 'dylan_collyge' ? 'Dylan' : userToView; let myItems = fullInventory.filter(i => String(i.ASSIGNEDTO || "").toLowerCase().includes(searchName.toLowerCase()));
-            myItems = myItems.filter(i => { if (i.DATE_COMPLETED && i.DATE_COMPLETED !== "") return false; const pri = parseFloat(i.PRIORITY); if (isNaN(pri) || pri <= 0) return false; if (activeTaskTab === 'season') return i.APP_TAB_ASSIGNMENT === 'season'; if (activeTaskTab === 'location') return i.APP_TAB_ASSIGNMENT === 'location'; return true; });
-            const displayUser = searchName.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()); const tabLabel = (activeTaskTab === 'season') ? 'Season Notes' : 'Location Notes';
-            if (myItems.length === 0) { container.innerHTML = `<div class="back-btn" onclick="if(safeRole==='ADMIN'){taskViewTargetUser=null; renderTeamSelector();}"><i class="ph-bold ph-arrow-left"></i> Change User</div><div class="p-8 text-center text-gray-400">No tasks assigned here.</div>`; crumb.innerText = `${displayUser} / ${tabLabel}`; return; }
-
-            if (taskViewLevel === 0) {
-                crumb.innerText = `${displayUser} / ${tabLabel} / Blocks`; const blocks = [...new Set(myItems.map(i => i.BLOCKALPHA || "Unassigned"))].sort(); let html = "";
-                if(safeRole === 'ADMIN') html += `<div class="back-btn" onclick="taskViewTargetUser=null; renderTeamSelector();"><i class="ph-bold ph-arrow-left"></i> Change User</div>`;
-                html += blocks.map(b => { const count = myItems.filter(i => (i.BLOCKALPHA || "Unassigned") === b).length; return `<div class="drill-item" onclick="selectTaskBlock('${b}')"><span class="font-bold text-lg">${b} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`; }).join(''); container.innerHTML = html;
-            } 
-            else if (taskViewLevel === 1) {
-                crumb.innerText = `${displayUser} / ${selectedTaskBlock}`; const blockItems = myItems.filter(i => (i.BLOCKALPHA || "Unassigned") === selectedTaskBlock); const locs = [...new Set(blockItems.map(i => i.LOCATIONCODE || "No Loc"))].sort((a,b) => a.localeCompare(b, undefined, {numeric: true}));
-                container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=0; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Blocks</div>` + locs.map(l => { const count = blockItems.filter(i => (i.LOCATIONCODE || "No Loc") === l).length; return `<div class="drill-item" onclick="selectTaskLoc('${l.replace(/'/g, "\\'")}')"><span class="font-bold text-lg">${l} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`; }).join('');
-            } 
-            else if (taskViewLevel === 2) {
-                crumb.innerText = `${displayUser} / ${selectedTaskBlock} / ${selectedTaskLoc}`; let items = myItems.filter(i => (i.BLOCKALPHA || "Unassigned") === selectedTaskBlock && (i.LOCATIONCODE || "No Loc") === selectedTaskLoc); items.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
-                container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=1; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Locations</div>` + items.map(i => generateCard(i, 'tasks')).join('');
-            }
-        }
-
-        function filterDropdown(inputId, listId) {
-            const val = document.getElementById(inputId).value.toLowerCase().trim(); const list = document.getElementById(listId); const plantName = activeItem ? activeItem.COMMONNAME.toUpperCase() : ""; const suggestedNotes = salesNotesDict[plantName] || []; let html = "";
-            if (suggestedNotes.length > 0) { html += `<div class="px-3 py-1 bg-green-100 text-green-800 text-[10px] font-bold uppercase tracking-wider border-b border-green-200">Recommended for ${plantName}</div>`; suggestedNotes.forEach(note => { if (note.toLowerCase().includes(val) || val === "") { html += `<div class="px-3 py-3 border-b border-gray-100 hover:bg-green-50 active:bg-green-100 cursor-pointer text-sm font-semibold text-green-700" onmousedown="applyQuickNote('${note.replace(/'/g, "\\'")}', '${inputId}', '${listId}')">${note}</div>`; } }); }
-            const genericNotes = ["Needs weeded", "Needs pruned", "Yellowing leaves", "Too small", "Ready to ship", "Hold for next season", "Poor structure", "Needs spacing"]; html += `<div class="px-3 py-1 bg-gray-100 text-gray-600 text-[10px] font-bold uppercase tracking-wider border-b border-gray-200">Common Notes</div>`;
-            genericNotes.forEach(note => { if (note.toLowerCase().includes(val) || val === "") { html += `<div class="px-3 py-3 border-b border-gray-100 hover:bg-gray-50 active:bg-gray-200 cursor-pointer text-sm font-medium text-gray-700" onmousedown="applyQuickNote('${note.replace(/'/g, "\\'")}', '${inputId}', '${listId}')">${note}</div>`; } });
-            list.innerHTML = html; list.classList.remove('hidden');
-        }
-
-        function applyQuickNote(val, targetInputId, selectId) { if (!val) return; const targetInput = document.getElementById(targetInputId); if (targetInput.value.trim() !== "") targetInput.value = (targetInput.value + " " + val).toUpperCase(); else targetInput.value = val.toUpperCase(); document.getElementById(selectId).value = ""; }
-
-        function appendSpecToDesc(prefix) { const specVal = document.getElementById(prefix + 'spec').value; const caliperVal = document.getElementById(prefix + 'caliper').value; const descInput = document.getElementById(prefix + 'sales-desc'); let appendStr = ""; if (specVal && caliperVal) appendStr = ` (${specVal} / ${caliperVal})`; else if (specVal) appendStr = ` (${specVal})`; else if (caliperVal) appendStr = ` (${caliperVal})`; if (appendStr !== "") { descInput.value = (descInput.value + appendStr).toUpperCase(); saveData(false, prefix, true); } }
-
-        function openDetail(uniqueId, sourceView) {
-            lastView = sourceView; activeItem = fullInventory.find(i => i.UNIQUE_ID === uniqueId);
-            if (!activeItem) activeItem = lowStockInventory.find(i => i.UNIQUE_ID === uniqueId); if (!activeItem) activeItem = managerReviewInventory.find(i => i.UNIQUE_ID === uniqueId); if (!activeItem) activeItem = reservesInventory.find(i => i.UNIQUE_ID === uniqueId); if (!activeItem) activeItem = requestsInventory.find(i => i.UNIQUE_ID === uniqueId);
-            if (!activeItem) return;
-
-            ['view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-docks','view-request','view-reserves'].forEach(v => document.getElementById(v).classList.add('hidden')); document.getElementById('view-detail').classList.remove('hidden');
-
-            activeItem.SAVED_PHOTO_LINK = activeItem['PHOTO_LINK'] || activeItem.PHOTOLINK || activeItem.SAVED_PHOTO_LINK || ""; activeItem.SAVED_PHOTO_NAME = activeItem['PHOTO_NAME'] || activeItem.PHOTONAME || activeItem.SAVED_PHOTO_NAME || "";
-            document.getElementById('det-common').innerText = activeItem.COMMONNAME || "--"; document.getElementById('det-size').innerText = activeItem.CONTSIZE || "--"; document.getElementById('ov-loc').innerText = activeItem.LOCATIONCODE || "--"; document.getElementById('ov-avail').innerText = activeItem.PTRAVAILABLE || "0"; document.getElementById('ov-item').innerText = activeItem.ITEMCODE || "--"; document.getElementById('ov-lot').innerText = activeItem.LOTCODE || "--"; document.getElementById('ov-qual').innerText = activeItem.QUALITYCODE || "--"; document.getElementById('ov-tag').innerText = activeItem.FIELDTAGCOLOR || activeItem['FIELD_TAG_COLOR'] || "--"; document.getElementById('ov-season').innerText = activeItem.SEASONSUPPLY || "--"; document.getElementById('ov-prior').innerText = activeItem.PRIORITY || "--";
-
-            const standardPrefixes = ['ssn-', 'lsn-', 'na-'];
-            standardPrefixes.forEach(p => { document.getElementById(p + 'match').value = activeItem.MATCH || activeItem.MATCHPCT || ""; document.getElementById(p + 'spec').value = activeItem.SPEC || ""; document.getElementById(p + 'pick').value = activeItem.PIC_NOTE || activeItem.PICKNOTE || activeItem.PICK || ""; document.getElementById(p + 'sales-desc').value = activeItem.SALES_NOTE || activeItem.SALESNOTE || activeItem.SALESDESC || ""; document.getElementById(p + 'caliper').value = activeItem.CALIPER || ""; });
-            
-            document.getElementById('req-match').value = activeItem.REQ_MATCH || ""; document.getElementById('req-spec').value = activeItem.REQ_SPEC || ""; document.getElementById('req-pick').value = activeItem.REQ_PICK || ""; document.getElementById('req-sales-desc').value = activeItem.REQ_SALES_NOTE || ""; document.getElementById('req-comments').value = activeItem.REQ_COMMENTS || ""; document.getElementById('req-caliper').value = activeItem.REQ_CALIPER || "";
-            document.getElementById('dock-spec').value = activeItem.DOCK_SPEC || activeItem.SPEC || ""; document.getElementById('dock-caliper').value = activeItem.DOCK_CALIPER || activeItem.CALIPER || ""; document.getElementById('dock-sales-desc').value = activeItem.DOCK_NOTE || "";
-
-            const caliperSizes = ["7DP", "#7", "#10", "#15", "#25", "#45"];
-            if (caliperSizes.includes(activeItem.CONTSIZE)) { ['ssn-', 'lsn-', 'na-', 'req-'].forEach(p => { document.getElementById(p + 'container-caliper').classList.remove('hidden'); }); } 
-            else { ['ssn-', 'lsn-', 'na-', 'req-'].forEach(p => { document.getElementById(p + 'container-caliper').classList.add('hidden'); }); }
-            const isTree = activeItem.PLANTGROUPCODE && activeItem.PLANTGROUPCODE.includes('330_TREES');
-            if (isTree && caliperSizes.includes(activeItem.CONTSIZE)) { document.getElementById('dock-container-caliper').classList.remove('hidden'); } 
-            else { document.getElementById('dock-container-caliper').classList.add('hidden'); }
-
-            document.getElementById('expand-section').classList.remove('expanded'); document.getElementById('expand-content').innerHTML = '';
-            
-            const lgPhotoBox = document.getElementById('ov-large-photo');
-            if (safeRole === 'SALESREP') {
-                let pLink = activeItem.SAVED_PHOTO_LINK || activeItem['PHOTO_LINK'] || activeItem.PHOTOLINK || activeItem.REQ_PHOTO_LINK || activeItem.DOCK_PHOTO_LINK || "";
-                if (pLink) { let urls = pLink.split(','); let urlMatch = urls[0].match(/(https?:\/\/[^"\s>]+)/); let cleanUrl = urlMatch ? urlMatch[1] : urls[0].trim(); lgPhotoBox.innerHTML = `<img src="${cleanUrl}" class="w-full rounded-xl shadow-md border border-gray-200 object-cover mt-4 mb-2">`; lgPhotoBox.classList.remove('hidden'); } 
-                else { lgPhotoBox.classList.add('hidden'); lgPhotoBox.innerHTML = ''; }
-            } else { lgPhotoBox.classList.add('hidden'); }
-
-            renderPhotoPreview();
-
-            ['season', 'location', 'request', 'notes', 'docks'].forEach(t => { let el = document.getElementById('dtab-' + t); if (el) el.classList.add('hidden'); });
-
-            let defaultTab = 'overview';
-            if (safeRole === 'SALESREP') { document.querySelectorAll('.detail-tab').forEach(t => t.classList.add('hidden')); document.getElementById('dtab-overview').classList.remove('hidden'); } 
-            else if (sourceView === 'tasks') { if (activeTaskTab === 'season') { document.getElementById('dtab-season').classList.remove('hidden'); defaultTab = 'season'; } else if (activeTaskTab === 'location') { document.getElementById('dtab-location').classList.remove('hidden'); defaultTab = 'location'; } } 
-            else if (sourceView === 'request') { document.getElementById('dtab-request').classList.remove('hidden'); defaultTab = 'request'; } 
-            else if (sourceView === 'docks') { document.getElementById('dtab-docks').classList.remove('hidden'); defaultTab = 'docks'; }
-            else { 
-                if (safeRole === 'ADMIN') { ['season', 'location', 'request', 'notes'].forEach(t => { let el = document.getElementById('dtab-' + t); if (el) el.classList.remove('hidden'); }); } 
-                else if (safeRole === 'CSR') { document.getElementById('dtab-notes').classList.remove('hidden'); document.getElementById('dtab-request').classList.remove('hidden'); } 
-                else { document.getElementById('dtab-notes').classList.remove('hidden'); }
-                defaultTab = 'overview';
-            }
-            switchDetailTab(defaultTab);
-        }
-
-        function switchDetailTab(tab) {
-            ['overview', 'season', 'location', 'request', 'notes', 'docks'].forEach(t => {
-                const dtab = document.getElementById('dtab-' + t); const content = document.getElementById('det-' + t + '-content');
-                if (dtab) { if (t === tab) dtab.classList.add('active'); else dtab.classList.remove('active'); }
-                if (content) { if (t === tab) content.classList.remove('hidden'); else content.classList.add('hidden'); }
-            }); activeDetailTab = tab; 
-        }
-
-        function goBackFromDetail() { document.getElementById('view-detail').classList.add('hidden'); document.getElementById('view-' + lastView).classList.remove('hidden'); reRenderCurrentView(); activeItem = null; }
-        function toggleExpand() { const section = document.getElementById('expand-section'); if (!section.classList.contains('expanded')) { renderAllFields(); } section.classList.toggle('expanded'); }
-
-        function renderAllFields() {
-            if(!activeItem) return;
-            const hiddenKeys = ['UNIQUE_ID', 'UNIQUEID', 'ASSIGNEDTO', 'DOM_ID', 'IS_REQUEST', 'REQUESTED_BY', 'REQUEST_FOLDER']; 
-            let html = '<div class="grid grid-cols-1 gap-2">';
-            for (const [key, value] of Object.entries(activeItem)) { 
-                if(hiddenKeys.includes(key)) continue; 
-                html += `<div class="flex justify-between border-b border-gray-200 py-2"><span class="text-xs font-bold text-gray-500 uppercase w-1/3 break-words">${key}</span><span class="text-xs text-gray-800 font-semibold w-2/3 text-right break-words">${value || '-'}</span></div>`; 
-            }
-            html += '</div>'; document.getElementById('expand-content').innerHTML = html;
-        }
-
-        function backupLocalItem(item) {
-            if (!item) return; let pendingEdits = JSON.parse(localStorage.getItem('gnc_pending_edits') || '{}'); pendingEdits[item.UNIQUE_ID] = { timestamp: new Date().getTime(), data: item }; localStorage.setItem('gnc_pending_edits', JSON.stringify(pendingEdits));
-        }
-
-        function applyLocalEdits() {
-            let pendingEdits = JSON.parse(localStorage.getItem('gnc_pending_edits') || '{}'); let now = new Date().getTime(); let changed = false;
-            for (let uid in pendingEdits) {
-                if (now - pendingEdits[uid].timestamp > 900000) { delete pendingEdits[uid]; changed = true; continue; }
-                let item = fullInventory.find(i => i.UNIQUE_ID === uid) || lowStockInventory.find(i => i.UNIQUE_ID === uid) || reservesInventory.find(i => i.UNIQUE_ID === uid) || requestsInventory.find(i => i.UNIQUE_ID === uid) || managerReviewInventory.find(i => i.UNIQUE_ID === uid);
-                if (item) { Object.assign(item, pendingEdits[uid].data); saveData(false, 'ssn-', true, item); }
-            }
-            if (changed) localStorage.setItem('gnc_pending_edits', JSON.stringify(pendingEdits));
-        }
-
         function base64ToBlob(base64, mimeType) {
             const byteCharacters = atob(base64); const byteArrays = [];
             for (let offset = 0; offset < byteCharacters.length; offset += 512) {
@@ -1963,10 +1820,13 @@
 
         async function uploadPhotoToDrive(base64Data, originalFilename, prefix) {
             let targetItem = activeItem; if (!targetItem) return; 
+            
             let btn = prefix === 'req-' ? document.getElementById('req-btn-save-draft') : document.getElementById(prefix + 'btn-save-draft'); 
             if (prefix !== 'req-' && prefix !== 'dock-') btn = document.getElementById(prefix + 'btn-save-complete');
             let isCurrentView = (activeItem && activeItem.UNIQUE_ID === targetItem.UNIQUE_ID); 
             if (btn && isCurrentView) { btn.innerText = "UPLOADING..."; btn.disabled = true; }
+
+            // 🚨 FIX: Scrub the filename of ALL special characters (like #) that break URLs
             let safeFilename = originalFilename.replace(/[^a-zA-Z0-9.\-_]/g, '_');
             
             try {
