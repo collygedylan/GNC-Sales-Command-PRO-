@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GNC 01</title>
+    <title>GNC</title>
     
     <meta name="theme-color" content="#007a4d">
     <link rel="manifest" href="manifest.json">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="application-name" content="GNC 01">
+    <meta name="application-name" content="GNC">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-title" content="GNC 01">
+    <meta name="apple-mobile-web-app-title" content="GNC">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="icon" type="image/png" href="Ag Metric App.png">
     <link rel="apple-touch-icon" href="Ag Metric App.png">
@@ -24,6 +24,8 @@
         .nav-header { background: var(--brand-green); color: white; padding-top: max(10px, env(safe-area-inset-top)); }
         
         #view-login { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: var(--brand-green); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
+        #view-change-password { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: var(--brand-green); z-index: 10000; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
+        
         .login-card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); width: 100%; max-width: 360px; text-align: center; }
         .input-field { width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 15px; margin-bottom: 12px; }
 
@@ -101,7 +103,7 @@
         <div class="login-card">
             <div class="flex flex-col items-center mb-8 w-full relative">
                 <img src="Greenleaf%20Logo.png" alt="Greenleaf Logo" class="h-20 mb-4 object-contain drop-shadow-md" onerror="this.style.display='none'">
-                <div class="text-3xl text-[#007a4d] font-black tracking-tighter mb-1">GNC 01</div>
+                <div class="text-3xl text-[#007a4d] font-black tracking-tighter mb-1">GNC</div>
                 
                 <div class="flex flex-col items-center gap-0.5 mt-5">
                     <span class="text-[9px] font-bold text-gray-400 uppercase tracking-[0.3em]">Powered By</span>
@@ -122,6 +124,18 @@
                 <div class="spinner"></div>
                 <div id="loading-text" class="text-white font-bold text-sm mt-3 text-center">Authenticating...</div>
             </div>
+        </div>
+    </div>
+
+    <div id="view-change-password" class="hidden fixed inset-0 bg-[#007a4d] z-[10000] flex flex-col items-center justify-center p-4">
+        <div class="login-card">
+            <h2 class="text-2xl font-black text-[#007a4d] mb-2">Change Password</h2>
+            <p class="text-xs text-gray-500 font-bold mb-6">For security, please set a new password for your account to continue.</p>
+            
+            <input type="password" id="new-password" class="input-field mb-3 text-center border-2 tracking-widest" placeholder="NEW PASSWORD">
+            <input type="password" id="confirm-password" class="input-field mb-6 text-center border-2 tracking-widest" placeholder="CONFIRM PASSWORD">
+            
+            <button class="w-full bg-[#007a4d] text-white font-bold py-3 rounded-lg shadow-md active:scale-95 transition-transform" onclick="submitNewPassword()">SAVE & CONTINUE</button>
         </div>
     </div>
 
@@ -194,7 +208,7 @@
                 <i class="ph-bold ph-list menu-btn text-2xl cursor-pointer" onclick="toggleMenu()"></i>
                 <div class="flex flex-col">
                     <div class="font-bold text-lg leading-tight"><span id="header-user">User</span></div>
-                    <div class="text-[10px] opacity-80 leading-tight">GNC 01</div>
+                    <div class="text-[10px] opacity-80 leading-tight">GNC</div>
                 </div>
             </div>
         </header>
@@ -239,7 +253,7 @@
                         <img src="Greenleaf%20Logo.png" alt="Greenleaf Logo" class="h-11 object-contain" onerror="this.style.display='none'">
                     </div>
                     
-                    <h1 class="text-2xl font-black tracking-tight mb-1 z-10 relative">GNC 01</h1>
+                    <h1 class="text-2xl font-black tracking-tight mb-1 z-10 relative">GNC</h1>
                     <p class="text-green-100 text-[10px] font-bold mb-5 uppercase tracking-[0.2em] z-10 relative">Dashboard</p>
                     
                     <div class="flex flex-col items-center pt-4 border-t border-white/20 w-full mt-1 z-10 relative">
@@ -937,7 +951,7 @@
             try {
                 const publicKey = {
                     challenge: new Uint8Array(32),
-                    rp: { name: "GNC 01" },
+                    rp: { name: "GNC" },
                     user: { id: new Uint8Array(16), name: user, displayName: user },
                     pubKeyCredParams: [{ type: "public-key", alg: -7 }],
                     authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required" },
@@ -996,7 +1010,7 @@
         }
 
         // =========================================================
-        // 🚀 LOGIN (Directly hitting Supabase app_users table) 
+        // 🚀 LOGIN & FORCED PASSWORD CHANGE LOGIC
         // =========================================================
         function handleLogin(isBiometricLogin = false) {
             const inputUser = document.getElementById('username-input').value.trim().toLowerCase();
@@ -1008,7 +1022,6 @@
             document.getElementById('loading-spinner').classList.remove('hidden');
             document.getElementById('loading-text').innerText = "Authenticating...";
 
-            // 🚨 We use `ilike.*` to make the login completely case-insensitive
             supabaseFetch('app_users', 'GET', null, `username=ilike.*${encodeURIComponent(inputUser)}*&password=eq.${encodeURIComponent(inputPass)}&select=*`)
                 .then(data => {
                     if (data && data.length > 0) {
@@ -1017,17 +1030,17 @@
                         currentRole = userRecord.role || 'User';
                         safeRole = String(currentRole).toUpperCase().replace(/\s+/g, '');
                         
-                        localStorage.setItem('gnc_user_v3', inputUser);
-                        localStorage.setItem('gnc_pin_v3', inputPass);
-                        localStorage.setItem('gnc_role_v3', currentRole);
-                        document.getElementById('header-user').innerText = currentUser.toUpperCase();
+                        // 🚨 Check if it is their first time logging in / using a default password
+                        const isDefaultPassword = ['1234', '12345', 'welcome', 'password', inputUser].includes(inputPass);
+                        const hasChangedLocally = localStorage.getItem('gnc_pw_changed_' + currentUser) === 'true';
+                        const needsPasswordChange = isDefaultPassword && !hasChangedLocally;
 
-                        setRepPermutations(currentUser);
-
-                        if (!isBiometricLogin && window.PublicKeyCredential) promptToEnableBiometrics(inputUser, inputPass);
-
-                        applyRolePermissions();
-                        fetchBackgroundData();
+                        if (needsPasswordChange && !isBiometricLogin) {
+                            document.getElementById('view-login').classList.add('hidden');
+                            document.getElementById('view-change-password').classList.remove('hidden');
+                        } else {
+                            finalizeLogin(inputUser, inputPass, isBiometricLogin);
+                        }
                     } else {
                         alert("MISMATCH DETECTED!\n\nIncorrect Username or Password.");
                         document.getElementById('pin-code').value = "";
@@ -1040,6 +1053,51 @@
                     document.getElementById('login-inputs').classList.remove('hidden');
                     document.getElementById('loading-spinner').classList.add('hidden');
                 });
+        }
+
+        function submitNewPassword() {
+            const newPass = document.getElementById('new-password').value.trim();
+            const confirmPass = document.getElementById('confirm-password').value.trim();
+            
+            if (!newPass || newPass.length < 4) { showToast("Error", "Password must be at least 4 characters", true); return; }
+            if (newPass !== confirmPass) { showToast("Error", "Passwords do not match!", true); return; }
+            
+            document.getElementById('view-change-password').classList.add('hidden');
+            document.getElementById('view-login').classList.remove('hidden');
+            document.getElementById('login-inputs').classList.add('hidden');
+            document.getElementById('loading-spinner').classList.remove('hidden');
+            document.getElementById('loading-text').innerText = "Updating Password...";
+
+            // Push new password securely to the app_users table in Supabase
+            const payload = { password: newPass };
+            
+            supabaseFetch('app_users', 'PATCH', payload, `username=eq.${currentUser}`)
+                .then(() => {
+                    localStorage.setItem('gnc_pw_changed_' + currentUser, 'true'); // Lock it locally so it doesn't prompt again
+                    finalizeLogin(currentUser, newPass, false);
+                })
+                .catch(err => {
+                    showToast("Error", "Failed to update password.", true);
+                    document.getElementById('view-change-password').classList.remove('hidden');
+                    document.getElementById('view-login').classList.add('hidden');
+                });
+        }
+
+        function finalizeLogin(user, pass, isBiometricLogin) {
+            localStorage.setItem('gnc_user_v3', user);
+            localStorage.setItem('gnc_pin_v3', pass);
+            localStorage.setItem('gnc_role_v3', currentRole);
+            document.getElementById('header-user').innerText = currentUser.toUpperCase();
+
+            setRepPermutations(currentUser);
+
+            // Trigger biometric prompt right after login / password change
+            if (!isBiometricLogin && window.PublicKeyCredential && localStorage.getItem('gnc_bio_enabled') !== 'true') {
+                promptToEnableBiometrics(user, pass);
+            }
+
+            applyRolePermissions();
+            fetchBackgroundData();
         }
 
         // =========================================================
