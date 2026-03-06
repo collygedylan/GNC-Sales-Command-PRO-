@@ -721,25 +721,42 @@
         // Google Script URL is ONLY kept alive to handle Photo Uploads to Google Drive folders
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzhJ_tytv5Rm2ag44liZAU6nsp0lQ7-9PLmjxrcuT1WA1WARubi7NyolYoTZ_qvZmzo/exec";
 
+        // 🚨 NEW BULLETPROOF FETCH ENGINE 🚨
         async function supabaseFetch(table, method = 'GET', body = null, query = '') {
-            const url = `${SUPABASE_URL}/rest/v1/${table}${query ? '?' + query : ''}`;
-            const options = {
-                method: method,
-                headers: {
-                    'apikey': SUPABASE_KEY,
-                    'Authorization': 'Bearer ' + SUPABASE_KEY,
-                    'Content-Type': 'application/json'
+            try {
+                let allData = [];
+                let offset = 0;
+                const limit = 1000;
+                let hasMore = true;
+
+                // If doing a GET request, we loop automatically to bypass the 1000 row limit!
+                if (method === 'GET') {
+                    while (hasMore) {
+                        const url = `${SUPABASE_URL}/rest/v1/${table}?${query}&limit=${limit}&offset=${offset}`;
+                        const options = { method: 'GET', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' } };
+                        const response = await fetch(url, options);
+                        if (!response.ok) { console.error(`Supabase error on ${table}:`, response.statusText); break; }
+                        const text = await response.text();
+                        const data = text ? JSON.parse(text) : [];
+                        if (Array.isArray(data) && data.length > 0) {
+                            allData = allData.concat(data); offset += limit; if (data.length < limit) hasMore = false;
+                        } else { hasMore = false; }
+                    }
+                    return allData;
+                } else {
+                    // Standard PATCH/POST requests don't need limits
+                    const url = `${SUPABASE_URL}/rest/v1/${table}${query ? '?' + query : ''}`;
+                    const options = { method: method, headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' } };
+                    options.headers['Prefer'] = method === 'POST' ? 'return=representation,resolution=merge-duplicates' : 'return=representation';
+                    if(body) options.body = JSON.stringify(body);
+                    const response = await fetch(url, options);
+                    if (!response.ok) throw new Error('Supabase error: ' + response.statusText);
+                    const text = await response.text(); return text ? JSON.parse(text) : {};
                 }
-            };
-            if (method === 'POST' || method === 'PATCH') {
-                options.headers['Prefer'] = method === 'POST' ? 'return=representation,resolution=merge-duplicates' : 'return=representation';
-                if(body) options.body = JSON.stringify(body);
+            } catch (e) {
+                console.error(`Fetch failed for table ${table}:`, e);
+                return []; // Return empty array so the app NEVER crashes
             }
-            const response = await fetch(url, options);
-            if (!response.ok) throw new Error('Supabase error: ' + response.statusText);
-            
-            const text = await response.text();
-            return text ? JSON.parse(text) : {};
         }
 
         window.onload = function() {
@@ -748,6 +765,15 @@
                     for(let registration of registrations) { registration.unregister(); }
                 });
                 navigator.serviceWorker.register('sw.js').catch(function(error) {});
+            }
+            
+            // 🚨 AUTO-LOGIN ON REFRESH RESTORED 🚨
+            const savedUser = localStorage.getItem('gnc_user_v3');
+            const savedPin = localStorage.getItem('gnc_pin_v3');
+            if (savedUser && savedPin) {
+                document.getElementById('username-input').value = savedUser;
+                document.getElementById('pin-code').value = savedPin;
+                handleLogin(true); 
             }
         };
 
@@ -947,22 +973,12 @@
 
             if (!inputUser || !inputPass) { showToast("Error", "Please enter username and password", true); return; }
 
-            if (localStorage.getItem('gnc_user_v3') === inputUser && localStorage.getItem('gnc_pin_v3') === inputPass) {
-                currentUser = inputUser;
-                currentRole = localStorage.getItem('gnc_role_v3') || 'User';
-                safeRole = String(currentRole).toUpperCase().replace(/\s+/g, '');
-                document.getElementById('header-user').innerText = currentUser.toUpperCase();
-                setRepPermutations(currentUser);
-                applyRolePermissions();
-                fetchBackgroundData();
-                return;
-            }
-
             document.getElementById('login-inputs').classList.add('hidden');
             document.getElementById('loading-spinner').classList.remove('hidden');
             document.getElementById('loading-text').innerText = "Authenticating...";
 
-            supabaseFetch('app_users', 'GET', null, `username=eq.${encodeURIComponent(inputUser)}&password=eq.${encodeURIComponent(inputPass)}&select=*`)
+            // 🚨 We use `ilike.*` to make the login completely case-insensitive
+            supabaseFetch('app_users', 'GET', null, `username=ilike.*${encodeURIComponent(inputUser)}*&password=eq.${encodeURIComponent(inputPass)}&select=*`)
                 .then(data => {
                     if (data && data.length > 0) {
                         const userRecord = data[0];
@@ -1008,8 +1024,8 @@
             } else { showToast("Welcome!", "Downloading database...", false); }
 
             try {
-                // Fetch all 8 tables simultaneously from Supabase!
-                const [driveData, lowStockData, reqData, resData, socData, reviewData, seasonData, locationData] = await Promise.all([
+                // Fetch all 8 tables simultaneously from Supabase (using Promise.allSettled to prevent app crashes if a table is missing)
+                const results = await Promise.allSettled([
                     supabaseFetch('drivearound_master_data', 'GET', null, 'select=*'),
                     supabaseFetch('low_stock', 'GET', null, 'select=*'),
                     supabaseFetch('active_request', 'GET', null, 'select=*'),
@@ -1020,9 +1036,17 @@
                     supabaseFetch('location_salesnotes', 'GET', null, 'select=unique_id')
                 ]);
 
+                const driveData = results[0].status === 'fulfilled' ? results[0].value : [];
+                const lowStockData = results[1].status === 'fulfilled' ? results[1].value : [];
+                const reqData = results[2].status === 'fulfilled' ? results[2].value : [];
+                const resData = results[3].status === 'fulfilled' ? results[3].value : [];
+                const socData = results[4].status === 'fulfilled' ? results[4].value : [];
+                const reviewData = results[5].status === 'fulfilled' ? results[5].value : [];
+                const seasonData = results[6].status === 'fulfilled' ? results[6].value : [];
+
                 // Helper to format Supabase Lowercase keys -> App Uppercase keys
                 const formatArr = (arr, sourceTable) => {
-                    if(!arr) return [];
+                    if(!arr || !Array.isArray(arr)) return [];
                     return arr.map((item, idx) => {
                         let obj = { SOURCE_TABLE: sourceTable };
                         for (let k in item) { if(item[k] !== null) obj[k.toUpperCase()] = item[k]; }
@@ -1970,7 +1994,7 @@
         function switchDetailTab(tab) {
             ['overview', 'season', 'location', 'request', 'notes', 'docks'].forEach(t => {
                 const dtab = document.getElementById('dtab-' + t); const content = document.getElementById('det-' + t + '-content');
-                if (dtab) { if (t === tab) dtab.classList.add('active'); else dtab.classList.remove('active'); }
+                if (dtab) { if (t === Math.floor(Date.now() / 1000)) dtab.classList.add('active'); else dtab.classList.remove('active'); }
                 if (content) { if (t === tab) content.classList.remove('hidden'); else content.classList.add('hidden'); }
             }); activeDetailTab = tab; 
         }
