@@ -79,7 +79,7 @@
 
         .spinner { border: 4px solid rgba(255,255,255,0.3); border-top: 4px solid white; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        
+
         .scrollbar-none::-webkit-scrollbar { display: none; }
         .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
@@ -156,6 +156,41 @@
                 <button class="bg-blue-50 text-blue-700 font-bold p-4 rounded-lg border border-blue-200 shadow-sm" onclick="confirmAssign('Morgan')">Morgan</button>
             </div>
             <button class="text-gray-500 font-bold py-2 px-4" onclick="closeAssignModal()">Cancel</button>
+        </div>
+    </div>
+
+    <div id="dock-info-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center relative overflow-hidden">
+            <h3 class="font-black text-2xl mb-2 text-orange-600">DOCK <span id="modal-dock-num"></span></h3>
+            <p class="text-[10px] text-gray-500 font-bold mb-4 uppercase tracking-wider">Set Dock Team & Status</p>
+            
+            <div class="text-left mb-3">
+                <label class="text-[10px] font-bold text-gray-500 uppercase ml-1">Checker</label>
+                <input type="text" id="dock-checker" class="input-field border-orange-200 focus:border-orange-500 !mb-0" placeholder="e.g. John D.">
+            </div>
+            <div class="text-left mb-3">
+                <label class="text-[10px] font-bold text-gray-500 uppercase ml-1">Inspector</label>
+                <input type="text" id="dock-inspector" class="input-field border-orange-200 focus:border-orange-500 !mb-0" placeholder="e.g. Jane S.">
+            </div>
+            <div class="text-left mb-4">
+                <label class="text-[10px] font-bold text-gray-500 uppercase ml-1">Mistake Guy</label>
+                <input type="text" id="dock-mistake" class="input-field border-orange-200 focus:border-orange-500 !mb-0" placeholder="e.g. Mike T.">
+            </div>
+            
+            <div class="text-left mb-6">
+                <label class="text-[10px] font-bold text-gray-500 uppercase ml-1">Dock Status</label>
+                <select id="dock-status" class="input-field border-orange-200 focus:border-orange-500 font-bold text-orange-700 bg-orange-50 !mb-0">
+                    <option value="Loading">Loading</option>
+                    <option value="Paused">Paused</option>
+                    <option value="Waiting">Waiting on Plant</option>
+                    <option value="Complete">Complete</option>
+                </select>
+            </div>
+            
+            <div class="flex gap-2">
+                <button class="w-1/3 bg-gray-100 text-gray-600 font-bold p-3 rounded-lg shadow-sm active:scale-95 transition-transform" onclick="document.getElementById('dock-info-modal').classList.add('hidden')">CANCEL</button>
+                <button class="w-2/3 bg-orange-600 text-white font-bold p-3 rounded-lg shadow-md active:scale-95 transition-transform" onclick="saveDockInfoModal()">SAVE & CONTINUE</button>
+            </div>
         </div>
     </div>
 
@@ -905,6 +940,7 @@
         
         let dockViewLevel = 0;
         let selectedDockNum = null;
+        let pendingDockNum = null; // Used for the modal
         let selectedDockName = null;
         let selectedDockSize = null;
         let selectedDockItemCode = null;
@@ -1688,10 +1724,64 @@
         }
 
         function resetDockView() {
-            dockViewLevel = 0; selectedDockNum = null; selectedDockName = null; selectedDockSize = null; selectedDockItemCode = null; selectedDockCustomer = ""; selectedDockTrip = ""; selectedDockRep = ""; document.getElementById('docks-search').value = ""; renderDocks();
+            dockViewLevel = 0; selectedDockNum = null; pendingDockNum = null; selectedDockName = null; selectedDockSize = null; selectedDockItemCode = null; selectedDockCustomer = ""; selectedDockTrip = ""; selectedDockRep = ""; document.getElementById('docks-search').value = ""; renderDocks();
         }
 
-        function selectDockNum(num) { selectedDockNum = num; dockViewLevel = 1; renderDocks(); }
+        function selectDockNum(num) { 
+            let info = localStorage.getItem('dock_info_' + num);
+            if (!info) {
+                pendingDockNum = num;
+                document.getElementById('modal-dock-num').innerText = num;
+                document.getElementById('dock-checker').value = '';
+                document.getElementById('dock-inspector').value = '';
+                document.getElementById('dock-mistake').value = '';
+                document.getElementById('dock-status').value = 'Loading';
+                document.getElementById('dock-info-modal').classList.remove('hidden');
+            } else {
+                selectedDockNum = num;
+                dockViewLevel = 1;
+                renderDocks();
+            }
+        }
+        
+        function saveDockInfoModal() {
+            let info = {
+                checker: document.getElementById('dock-checker').value.trim(),
+                inspector: document.getElementById('dock-inspector').value.trim(),
+                mistake: document.getElementById('dock-mistake').value.trim(),
+                status: document.getElementById('dock-status').value
+            };
+            localStorage.setItem('dock_info_' + pendingDockNum, JSON.stringify(info));
+            document.getElementById('dock-info-modal').classList.add('hidden');
+            selectedDockNum = pendingDockNum;
+            dockViewLevel = 1;
+            renderDocks();
+        }
+        
+        function updateDockStatusFast(val) {
+            let infoStr = localStorage.getItem('dock_info_' + selectedDockNum);
+            if(infoStr) {
+                let info = JSON.parse(infoStr);
+                info.status = val;
+                localStorage.setItem('dock_info_' + selectedDockNum, JSON.stringify(info));
+                showToast("Updated", "Dock Status changed to " + val, false);
+            }
+        }
+        
+        function editDockInfo() {
+            let infoStr = localStorage.getItem('dock_info_' + selectedDockNum);
+            if(infoStr) {
+                let info = JSON.parse(infoStr);
+                document.getElementById('modal-dock-num').innerText = selectedDockNum;
+                document.getElementById('dock-checker').value = info.checker || "";
+                document.getElementById('dock-inspector').value = info.inspector || "";
+                document.getElementById('dock-mistake').value = info.mistake || "";
+                document.getElementById('dock-status').value = info.status || "Loading";
+                pendingDockNum = selectedDockNum;
+                document.getElementById('dock-info-modal').classList.remove('hidden');
+            }
+        }
+
         function selectDockPlant(itemCode, name, size, customerStr, tripStr, repStr) { selectedDockItemCode = itemCode; selectedDockName = name; selectedDockSize = size; selectedDockCustomer = customerStr; selectedDockTrip = tripStr; selectedDockRep = repStr; dockViewLevel = 2; renderDocks(); }
 
         function renderDocks() {
@@ -1710,9 +1800,9 @@
                         else { activeDocks.add(String(i.DOCK_NUM).trim()); }
                     }
                 });
-                let html = '<div class="grid grid-cols-4 gap-2">';
+                let html = '<div class="grid grid-cols-2 gap-4">';
                 let sortedDocks = Array.from(activeDocks).sort((a, b) => a.localeCompare(b, undefined, {numeric: true}));
-                sortedDocks.forEach(i => { html += `<div class="bg-white border border-gray-200 p-3 rounded-xl shadow-sm text-center cursor-pointer hover:bg-gray-50 active:scale-95 transition-transform" onclick="selectDockNum('${i.replace(/'/g, "\\'")}')"><i class="ph-bold ph-truck text-2xl text-orange-500 mb-1"></i><div class="font-bold text-[10px] text-gray-700">DOCK ${i}</div></div>`; });
+                sortedDocks.forEach(i => { html += `<div class="bg-white border border-gray-200 p-6 rounded-2xl shadow-sm text-center cursor-pointer hover:bg-gray-50 active:scale-95 transition-transform flex flex-col items-center justify-center gap-2" onclick="selectDockNum('${i.replace(/'/g, "\\'")}')"><i class="ph-bold ph-truck text-5xl text-orange-500"></i><div class="font-black text-lg text-gray-800">DOCK ${i}</div></div>`; });
                 html += '</div>';
                 if (activeDocks.size === 0) container.innerHTML = `<div class="p-8 text-center text-gray-400">No docks ${term ? `contain items matching "${term}"` : 'have data currently'}.</div>`;
                 else container.innerHTML = html;
@@ -1740,7 +1830,29 @@
                     }
                 });
 
+                let dockInfoStr = localStorage.getItem('dock_info_' + selectedDockNum);
+                let dockInfo = dockInfoStr ? JSON.parse(dockInfoStr) : {checker: '', inspector: '', mistake: '', status: 'Loading'};
+
                 let html = `<div class="back-btn" onclick="dockViewLevel=0; document.getElementById('docks-search').value=''; renderDocks()"><i class="ph-bold ph-arrow-left"></i> Back to Docks</div>`;
+                
+                // Add Dock Team / Status Sticky Header
+                html += `<div class="bg-gradient-to-br from-orange-50 to-white border border-orange-200 rounded-xl p-4 mb-4 shadow-sm relative overflow-hidden">
+                    <div class="flex justify-between items-center mb-3 relative z-10">
+                        <div class="font-black text-2xl text-orange-800 tracking-tight">DOCK ${selectedDockNum}</div>
+                        <select class="bg-white border border-orange-300 p-2 rounded-lg font-bold text-xs text-orange-700 focus:outline-none shadow-sm" onchange="updateDockStatusFast(this.value)">
+                            <option value="Loading" ${dockInfo.status === 'Loading' ? 'selected' : ''}>Loading</option>
+                            <option value="Paused" ${dockInfo.status === 'Paused' ? 'selected' : ''}>Paused</option>
+                            <option value="Waiting" ${dockInfo.status === 'Waiting' ? 'selected' : ''}>Waiting on Plant</option>
+                            <option value="Complete" ${dockInfo.status === 'Complete' ? 'selected' : ''}>Complete</option>
+                        </select>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2 text-center text-[10px] font-bold relative z-10">
+                        <div class="bg-white p-2 rounded-lg border border-orange-100 shadow-sm"><span class="block text-gray-400 uppercase mb-0.5 tracking-wider text-[8px]">Checker</span><span class="text-gray-800 truncate block text-xs">${dockInfo.checker || '-'}</span></div>
+                        <div class="bg-white p-2 rounded-lg border border-orange-100 shadow-sm"><span class="block text-gray-400 uppercase mb-0.5 tracking-wider text-[8px]">Inspector</span><span class="text-gray-800 truncate block text-xs">${dockInfo.inspector || '-'}</span></div>
+                        <div class="bg-white p-2 rounded-lg border border-orange-100 shadow-sm"><span class="block text-gray-400 uppercase mb-0.5 tracking-wider text-[8px]">Mistake Guy</span><span class="text-gray-800 truncate block text-xs">${dockInfo.mistake || '-'}</span></div>
+                    </div>
+                    <div class="text-center mt-3 relative z-10"><span class="text-[10px] text-orange-600 font-bold cursor-pointer bg-orange-100 px-3 py-1 rounded-full uppercase tracking-wider shadow-sm active:scale-95 transition-transform" onclick="editDockInfo()">Edit Team</span></div>
+                </div>`;
                 
                 Object.keys(stopsMap).sort((a,b) => String(a).localeCompare(String(b), undefined, {numeric:true})).forEach(groupKey => {
                     let s = stopsMap[groupKey]; let custDisplay = s.customer; if (s.consignee && s.consignee.trim() !== "" && s.consignee !== s.customer) custDisplay += ` - ${s.consignee}`;
