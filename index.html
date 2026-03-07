@@ -75,7 +75,11 @@
         .card-checkbox-container { width: 0; overflow: hidden; opacity: 0; transition: width 0.3s, opacity 0.3s, margin 0.3s; }
         body.multi-select-mode .card-checkbox-container { width: 24px; opacity: 1; margin-right: 12px; }
         
-        .item-row { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: manipulation; }
+        /* 🔥 TURBO OPTIMIZATION: content-visibility skips rendering offscreen items */
+        .item-row { 
+            user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: manipulation; 
+            content-visibility: auto; contain-intrinsic-size: 120px;
+        }
 
         .spinner { border: 4px solid rgba(255,255,255,0.3); border-top: 4px solid white; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
@@ -203,7 +207,7 @@
             
             <div id="step-1-rep" class="flex flex-col">
                 <h3 class="font-bold text-lg mb-2 text-orange-600">Who requested this?</h3>
-                <input type="text" id="rep-search-input" class="input-field mb-3 border-orange-200 focus:border-orange-500" placeholder="Search or type name..." onkeyup="filterRepList()">
+                <input type="text" id="rep-search-input" class="input-field mb-3 border-orange-200 focus:border-orange-500" placeholder="Search or type name..." oninput="debouncedFilterRepList()">
                 
                 <div id="rep-list-container" class="grid grid-cols-1 gap-2 mb-4 max-h-[40vh] overflow-y-auto px-2 py-1"></div>
 
@@ -220,7 +224,7 @@
                     <h3 class="font-bold text-lg text-orange-600">Customer</h3>
                 </div>
                 <label class="text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Customer / Consignee</label>
-                <input type="text" id="cust-search-input" class="input-field mb-2 border-orange-200" placeholder="Search or type customer..." onkeyup="populateCustomerList()">
+                <input type="text" id="cust-search-input" class="input-field mb-2 border-orange-200" placeholder="Search or type customer..." oninput="debouncedPopulateCustomerList()">
                 <div id="cust-list-container" class="grid grid-cols-1 gap-2 mb-6 max-h-[30vh] overflow-y-auto px-1 py-1"></div>
                 <button class="w-full bg-orange-600 text-white font-bold p-4 rounded-xl shadow-lg mt-auto" onclick="processCustStep()">NEXT: ITEM DETAILS</button>
             </div>
@@ -371,7 +375,7 @@
 
                 <div id="view-reserves" class="hidden">
                     <div id="reserves-search-container" class="relative mb-2">
-                        <input type="text" id="reserves-search" class="input-field w-full pr-10 !mb-0" placeholder="Search..." onkeyup="handleReservesSearch()">
+                        <input type="text" id="reserves-search" class="input-field w-full pr-10 !mb-0" placeholder="Search..." oninput="debouncedReservesSearch()">
                         <i id="reserves-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearReservesSearch()"></i>
                     </div>
                     <div id="reserves-crumb" class="text-xs font-bold text-[#007a4d] mb-3 mt-3 empty:hidden"></div>
@@ -379,7 +383,7 @@
                 </div>
 
                 <div id="view-docks" class="hidden">
-                    <input type="text" id="docks-search" class="input-field mb-2" placeholder="Search Plants..." onkeyup="handleDocksSearch()">
+                    <input type="text" id="docks-search" class="input-field mb-2" placeholder="Search Plants..." oninput="debouncedDocksSearch()">
                     <div id="docks-crumb" class="text-xs font-bold text-[#007a4d] mb-3">Select a Dock</div>
                     <div id="docks-content"></div>
                 </div>
@@ -396,7 +400,7 @@
 
                 <div id="view-drive" class="hidden">
                     <div id="drive-search-container" class="relative mb-2">
-                        <input type="text" id="drive-search" class="input-field w-full pr-10 !mb-0" placeholder="Search Names or Locs..." onkeyup="handleDriveSearch()">
+                        <input type="text" id="drive-search" class="input-field w-full pr-10 !mb-0" placeholder="Search Names or Locs..." oninput="debouncedDriveSearch()">
                         <i id="drive-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearDriveSearch()"></i>
                     </div>
                     <div class="flex overflow-x-auto scrollbar-none gap-2 mb-3 pb-1" id="drive-season-filters"></div>
@@ -495,7 +499,7 @@
                                 </label>
                                 <div class="flex gap-2">
                                     <input type="text" id="ssn-sales-desc" class="input-field border-green-500 bg-green-50 uppercase flex-grow !mb-0" 
-                                        oninput="this.value = this.value.toUpperCase(); filterDropdown('ssn-sales-desc', 'ssn-dropdown-list')"
+                                        oninput="this.value = this.value.toUpperCase(); debouncedFilterDropdown('ssn-sales-desc', 'ssn-dropdown-list')"
                                         onfocus="filterDropdown('ssn-sales-desc', 'ssn-dropdown-list')"
                                         onblur="setTimeout(()=> { document.getElementById('ssn-dropdown-list').classList.add('hidden'); saveData(false, 'ssn-', true); }, 200)"
                                         placeholder="TYPE NOTES OR SEARCH...">
@@ -555,7 +559,7 @@
                                 </label>
                                 <div class="flex gap-2">
                                     <input type="text" id="lsn-sales-desc" class="input-field border-green-500 bg-green-50 uppercase flex-grow !mb-0" 
-                                        oninput="this.value = this.value.toUpperCase(); filterDropdown('lsn-sales-desc', 'lsn-dropdown-list')"
+                                        oninput="this.value = this.value.toUpperCase(); debouncedFilterDropdown('lsn-sales-desc', 'lsn-dropdown-list')"
                                         onfocus="filterDropdown('lsn-sales-desc', 'lsn-dropdown-list')"
                                         onblur="setTimeout(()=> { document.getElementById('lsn-dropdown-list').classList.add('hidden'); saveData(false, 'lsn-', true); }, 200)"
                                         placeholder="TYPE NOTES OR SEARCH...">
@@ -615,7 +619,7 @@
                                 </label>
                                 <div class="flex gap-2">
                                     <input type="text" id="na-sales-desc" class="input-field border-green-500 bg-green-50 uppercase flex-grow !mb-0" 
-                                        oninput="this.value = this.value.toUpperCase(); filterDropdown('na-sales-desc', 'na-dropdown-list')"
+                                        oninput="this.value = this.value.toUpperCase(); debouncedFilterDropdown('na-sales-desc', 'na-dropdown-list')"
                                         onfocus="filterDropdown('na-sales-desc', 'na-dropdown-list')"
                                         onblur="setTimeout(()=> { document.getElementById('na-dropdown-list').classList.add('hidden'); saveData(false, 'na-', true); }, 200)"
                                         placeholder="TYPE NOTES OR SEARCH...">
@@ -675,7 +679,7 @@
                                 </label>
                                 <div class="flex gap-2">
                                     <input type="text" id="req-sales-desc" class="input-field border-purple-500 bg-purple-50 uppercase flex-grow !mb-0" 
-                                        oninput="this.value = this.value.toUpperCase(); filterDropdown('req-sales-desc', 'req-dropdown-list')"
+                                        oninput="this.value = this.value.toUpperCase(); debouncedFilterDropdown('req-sales-desc', 'req-dropdown-list')"
                                         onfocus="filterDropdown('req-sales-desc', 'req-dropdown-list')"
                                         onblur="setTimeout(()=>{ document.getElementById('req-dropdown-list').classList.add('hidden'); saveData(false, 'req-', true); }, 200)"
                                         placeholder="TYPE NOTES OR SEARCH...">
@@ -736,7 +740,7 @@
                                 </label>
                                 <div class="flex gap-2">
                                     <input type="text" id="dock-sales-desc" class="input-field border-orange-500 bg-orange-50 uppercase flex-grow !mb-0" 
-                                        oninput="this.value = this.value.toUpperCase(); filterDropdown('dock-sales-desc', 'dock-dropdown-list')"
+                                        oninput="this.value = this.value.toUpperCase(); debouncedFilterDropdown('dock-sales-desc', 'dock-dropdown-list')"
                                         onfocus="filterDropdown('dock-sales-desc', 'dock-dropdown-list')"
                                         onblur="setTimeout(()=> { document.getElementById('dock-dropdown-list').classList.add('hidden'); saveData(false, 'dock-', true); }, 200)"
                                         placeholder="TYPE NOTES OR SEARCH...">
@@ -783,8 +787,13 @@
         const SUPABASE_URL = "https://gmkmsjvzzujjxfmcpyud.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdta21zanZ6enVqanhmbWNweXVkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjYwMTE1MywiZXhwIjoyMDg4MTc3MTUzfQ.E6UDlfJrdftcyPFKPcyCDfuLw5TGfqoVVoNx9N139As";
 
-        // Google Script URL is ONLY kept alive to handle Photo Uploads to Google Drive folders (Fallback)
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzhJ_tytv5Rm2ag44liZAU6nsp0lQ7-9PLmjxrcuT1WA1WARubi7NyolYoTZ_qvZmzo/exec";
+
+        // 🔥 TURBO OPTIMIZATION: Debounce utility stops rendering logic from firing 100x a second while typing
+        function debounce(func, wait) {
+            let timeout;
+            return function(...args) { clearTimeout(timeout); timeout = setTimeout(() => func.apply(this, args), wait); };
+        }
 
         // 🚨 GLOBAL PROGRESS BAR LOGIC 🚨
         let activeFetches = 0;
@@ -828,7 +837,6 @@
                 const limit = 1000;
                 let hasMore = true;
 
-                // If doing a GET request, we loop automatically to bypass the 1000 row limit!
                 if (method === 'GET') {
                     while (hasMore) {
                         const url = `${SUPABASE_URL}/rest/v1/${table}?${query}&limit=${limit}&offset=${offset}`;
@@ -843,7 +851,6 @@
                     }
                     return allData;
                 } else {
-                    // Standard PATCH/POST requests don't need limits
                     const url = `${SUPABASE_URL}/rest/v1/${table}${query ? '?' + query : ''}`;
                     const options = { method: method, headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' } };
                     options.headers['Prefer'] = method === 'POST' ? 'return=representation,resolution=merge-duplicates' : 'return=representation';
@@ -854,7 +861,7 @@
                 }
             } catch (e) {
                 console.error(`Fetch failed for table ${table}:`, e);
-                return []; // Return empty array so the app NEVER crashes
+                return []; 
             } finally {
                 stopGlobalProgress();
             }
@@ -868,7 +875,6 @@
                 navigator.serviceWorker.register('sw.js').catch(function(error) {});
             }
             
-            // 🚨 AUTO-LOGIN ON REFRESH RESTORED 🚨
             const savedUser = localStorage.getItem('gnc_user_v3');
             const savedPin = localStorage.getItem('gnc_pin_v3');
             if (savedUser && savedPin) {
@@ -998,9 +1004,7 @@
             if (!url) return "";
             let match = url.match(/id=([a-zA-Z0-9_-]+)/);
             if (!match) match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
-            if (match && match[1]) {
-                return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w100`;
-            }
+            if (match && match[1]) { return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w100`; }
             return url;
         }
 
@@ -1047,8 +1051,7 @@
         function setRepPermutations(user) {
             let parts = user.split('_');
             if (parts.length >= 2) {
-                let first = parts[0];
-                let last = parts[parts.length - 1];
+                let first = parts[0]; let last = parts[parts.length - 1];
                 repPermutations = [`${first} ${last}`.toLowerCase(), `${last}, ${first}`.toLowerCase(), `${last},${first}`.toLowerCase()];
             } else { repPermutations = [user.toLowerCase()]; }
         }
@@ -1129,9 +1132,7 @@
             try {
                 const payload = { password: newPass };
                 await supabaseFetch('app_users', 'PATCH', payload, `username=ilike.*${encodeURIComponent(currentUser)}*`);
-            } catch (e) {
-                console.log("Could not push password to Supabase DB:", e);
-            }
+            } catch (e) { console.log("Could not push password to Supabase DB:", e); }
 
             localStorage.setItem('gnc_pw_changed_' + currentUser, 'true'); 
             document.getElementById('new-password').value = "";
@@ -1194,6 +1195,8 @@
                         obj.SEASONSUPPLY = obj.SEASON_SUPPLY || obj.SEASONSUPPLY || 0;
                         obj.FIELDTAGCOLOR = obj.FIELD_TAG_COLOR || obj.FIELDTAGCOLOR || "-";
                         obj.PTRAVAILABLE = obj.PTRAVAILABLE || 0;
+                        // 🔥 TURBO OPTIMIZATION: Pre-calculate the search index once upon loading data 
+                        obj._search = `${obj.COMMONNAME||''} ${obj.LOCATIONCODE||''} ${obj.ITEMCODE||''} ${obj.CONTSIZE||''} ${obj.CUSTOMERNAME||''} ${obj.SALESREPNAME||''}`.toLowerCase();
                         return obj;
                     });
                 };
@@ -1238,6 +1241,8 @@
                 item.SALESREPNAME = item.SALESREPNAME || item.SALESREP || item['SALES_REP'] || 'Unknown Rep';
                 item.CUSTOMERNAME = item.CUSTOMERNAME || item.CUSTOMER || 'Unknown Customer';
                 item.CONSIGNEENAME = item.CONSIGNEENAME || item.CONSIGNEE || '';
+                // Turbo search index
+                item._search = `${item.COMMONNAME||''} ${item['PLANT_NAME']||''} ${item.CUSTOMERNAME||''} ${item.SALESREPNAME||''}`.toLowerCase();
             });
 
             reservesInventory = res.reservesData;
@@ -1256,6 +1261,9 @@
                 item.CONSIGNEENAME = item.CONSIGNEENAME || item.CONSIGNEE || ''; 
                 item.SALESREPNAME = item.SALESREPNAME || item.SALESREP || item['SALES_REP'] || 'Unknown Rep';
                 if (masterItem) { item.LOCATIONCODE = masterItem.LOCATIONCODE; item.PTRAVAILABLE = masterItem.PTRAVAILABLE; item.SEASONSUPPLY = masterItem.SEASONSUPPLY; item.PRIORITY = masterItem.PRIORITY; item.QUALITYCODE = masterItem.QUALITYCODE; item.FIELDTAGCOLOR = masterItem.FIELDTAGCOLOR; item.LOTCODE = masterItem.LOTCODE; }
+                
+                // Turbo search index
+                item._search = `${item.COMMONNAME||''} ${item.CUSTOMERNAME||''} ${item.ITEMCODE||''}`.toLowerCase();
                 return item;
             });
             applyLocalEdits(); 
@@ -1289,18 +1297,24 @@
             toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 3000);
         }
 
+        // 🔥 TURBO OPTIMIZATION: requestAnimationFrame unblocks UI so clicking feels instant
         function switchView(viewId) {
             ['view-home','view-drive','view-tasks','view-review','view-reports','view-sales-office','view-low-stock','view-detail','view-docks','view-request','view-reserves'].forEach(id => { document.getElementById(id).classList.add('hidden'); });
             document.getElementById('view-' + viewId).classList.remove('hidden');
-            if(viewId === 'drive') resetDriveView(); 
-            if(viewId === 'tasks') { if (safeRole === 'ADMIN' && !taskViewTargetUser) renderTeamSelector(); else renderTasks(); }
-            if(viewId === 'reports') resetReportsView();
-            if(viewId === 'review') resetReviewView(); 
-            if(viewId === 'request') { requestViewLevel = 0; renderRequest(); }
-            if(viewId === 'reserves') resetReservesView();
-            if(viewId === 'sales-office') renderSalesOffice(); 
-            if(viewId === 'low-stock') resetLowStockView(); 
-            if(viewId === 'docks') resetDockView(); 
+            
+            requestAnimationFrame(() => {
+                setTimeout(() => {
+                    if(viewId === 'drive') resetDriveView(); 
+                    if(viewId === 'tasks') { if (safeRole === 'ADMIN' && !taskViewTargetUser) renderTeamSelector(); else renderTasks(); }
+                    if(viewId === 'reports') resetReportsView();
+                    if(viewId === 'review') resetReviewView(); 
+                    if(viewId === 'request') { requestViewLevel = 0; renderRequest(); }
+                    if(viewId === 'reserves') resetReservesView();
+                    if(viewId === 'sales-office') renderSalesOffice(); 
+                    if(viewId === 'low-stock') resetLowStockView(); 
+                    if(viewId === 'docks') resetDockView(); 
+                }, 0);
+            });
         }
 
         function reRenderCurrentView() {
@@ -1327,7 +1341,17 @@
         function selectRepStatus(status) { selectedReqRepStatus = status; requestViewLevel = 3; renderRequest(); }
         function selectRequestFolder(folderId) { selectedReqFolder = folderId; requestViewLevel = 4; renderRequest(); }
         function clearReservesSearch() { document.getElementById('reserves-search').value = ""; document.getElementById('reserves-search-clear').classList.add('hidden'); renderReserves(); }
-        function handleReservesSearch() { const term = document.getElementById('reserves-search').value.toLowerCase(); const clearBtn = document.getElementById('reserves-search-clear'); if (term.length > 0) clearBtn.classList.remove('hidden'); else clearBtn.classList.add('hidden'); renderReserves(); }
+        
+        // 🔥 TURBO OPTIMIZATION: Instant UI update, delayed rendering for typing speed
+        const debouncedReservesSearch = debounce(() => {
+            requestAnimationFrame(() => renderReserves());
+        }, 150);
+        function handleReservesSearch() {
+            const term = document.getElementById('reserves-search').value.toLowerCase(); 
+            const clearBtn = document.getElementById('reserves-search-clear'); 
+            if (term.length > 0) clearBtn.classList.remove('hidden'); else clearBtn.classList.add('hidden'); 
+            debouncedReservesSearch();
+        }
 
         function startPress(e, domId) {
             if (isMultiSelectMode) return; isLongPress = false;
@@ -1430,6 +1454,8 @@
             document.getElementById('step-1-rep').classList.remove('hidden'); document.getElementById('step-1.5-folder').classList.add('hidden'); document.getElementById('step-2-cust').classList.add('hidden'); document.getElementById('step-3-qty').classList.add('hidden'); document.getElementById('request-rep-modal').classList.remove('hidden'); document.getElementById('rep-search-input').value = ""; filterRepList();
         }
 
+        // 🔥 TURBO OPTIMIZATION: Debounced modal filters
+        const debouncedFilterRepList = debounce(() => requestAnimationFrame(filterRepList), 150);
         function filterRepList() {
             const val = document.getElementById('rep-search-input').value.toLowerCase().trim(); const container = document.getElementById('rep-list-container'); const customBtn = document.getElementById('custom-rep-btn'); let html = ""; let exactMatch = false;
             salesRepList.forEach(rep => { if (rep.toLowerCase().includes(val)) { if (rep.toLowerCase() === val) exactMatch = true; html += `<button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm text-left" onclick="selectRepForRequest('${rep}')">${rep}</button>`; } });
@@ -1452,6 +1478,8 @@
             } else { document.getElementById('step-2-cust').classList.remove('hidden'); document.getElementById('cust-search-input').value = ""; populateCustomerList(); }
         }
 
+        // 🔥 TURBO OPTIMIZATION: Debounced modal filters
+        const debouncedPopulateCustomerList = debounce(() => requestAnimationFrame(populateCustomerList), 150);
         function populateCustomerList() {
             const val = document.getElementById('cust-search-input').value.toLowerCase().trim(); const container = document.getElementById('cust-list-container'); let custSet = new Set();
             let parts = tempSelectedReqRep.split(' '); let firstName = parts[0] || ""; let lastName = parts[parts.length - 1] || ""; let flippedName = `${lastName}, ${firstName}`.toUpperCase(); let standardName = tempSelectedReqRep.toUpperCase();
@@ -1563,7 +1591,14 @@
         function openAssignModal() { document.getElementById('assign-modal').classList.remove('hidden'); }
         function closeAssignModal() { document.getElementById('assign-modal').classList.add('hidden'); }
 
-        function handleDocksSearch() { const term = document.getElementById('docks-search').value; if (term.length > 0 && dockViewLevel > 1) { dockViewLevel = 1; selectedDockName = null; selectedDockSize = null; selectedDockItemCode = null; } renderDocks(); }
+        // 🔥 TURBO OPTIMIZATION: Instant UI update, delayed rendering for typing speed
+        const debouncedDocksSearch = debounce(() => {
+            const term = document.getElementById('docks-search').value.toLowerCase();
+            if (term.length > 0 && dockViewLevel > 1) { dockViewLevel = 1; selectedDockName = null; selectedDockSize = null; selectedDockItemCode = null; } 
+            requestAnimationFrame(() => renderDocks());
+        }, 150);
+        function handleDocksSearch() { debouncedDocksSearch(); }
+        
         function resetDockView() { dockViewLevel = 0; selectedDockNum = null; pendingDockNum = null; selectedDockName = null; selectedDockSize = null; selectedDockItemCode = null; selectedDockCustomer = ""; selectedDockTrip = ""; selectedDockRep = ""; document.getElementById('docks-search').value = ""; renderDocks(); }
 
         function selectDockNum(num) { 
@@ -1590,14 +1625,14 @@
             const container = document.getElementById('docks-content'); const crumb = document.getElementById('docks-crumb'); const term = document.getElementById('docks-search').value.toLowerCase();
             if (dockViewLevel === 0) {
                 crumb.innerText = "Select a Dock"; let activeDocks = new Set();
-                socInventory.forEach(i => { if (!isMyRep(i.SALESREPNAME)) return; if (i.DOCK_NUM && String(i.DOCK_NUM).trim() !== "") { if (term) { let searchStr = (i.COMMONNAME || i['PLANT_NAME'] || i.CUSTOMERNAME || i.SALESREPNAME || 'Unknown').toLowerCase(); if (searchStr.includes(term)) activeDocks.add(String(i.DOCK_NUM).trim()); } else { activeDocks.add(String(i.DOCK_NUM).trim()); } } });
+                socInventory.forEach(i => { if (!isMyRep(i.SALESREPNAME)) return; if (i.DOCK_NUM && String(i.DOCK_NUM).trim() !== "") { if (term) { if ((i._search||"").includes(term)) activeDocks.add(String(i.DOCK_NUM).trim()); } else { activeDocks.add(String(i.DOCK_NUM).trim()); } } });
                 let html = '<div class="grid grid-cols-2 gap-4">'; let sortedDocks = Array.from(activeDocks).sort((a, b) => a.localeCompare(b, undefined, {numeric: true}));
                 sortedDocks.forEach(i => { html += `<div class="bg-white border border-gray-200 p-6 rounded-2xl shadow-sm text-center cursor-pointer hover:bg-gray-50 active:scale-95 transition-transform flex flex-col items-center justify-center gap-2" onclick="selectDockNum('${i.replace(/'/g, "\\'")}')"><i class="ph-bold ph-truck text-5xl text-orange-500"></i><div class="font-black text-lg text-gray-800">DOCK ${i}</div></div>`; }); html += '</div>';
                 if (activeDocks.size === 0) container.innerHTML = `<div class="p-8 text-center text-gray-400">No docks ${term ? `contain items matching "${term}"` : 'have data currently'}.</div>`; else container.innerHTML = html;
             } 
             else if (dockViewLevel === 1) {
                 crumb.innerText = `Dock ${selectedDockNum} > Stops & Plants`; let dockItems = socInventory.filter(i => String(i.DOCK_NUM).trim() === String(selectedDockNum) && isMyRep(i.SALESREPNAME));
-                if (term) { dockItems = dockItems.filter(i => { let searchStr = (i.COMMONNAME || i['PLANT_NAME'] || i.CUSTOMERNAME || i.SALESREPNAME || 'Unknown').toLowerCase(); return searchStr.includes(term); }); }
+                if (term) { dockItems = dockItems.filter(i => (i._search||"").includes(term)); }
                 if (dockItems.length === 0) { container.innerHTML = `<div class="back-btn" onclick="dockViewLevel=0; renderDocks()"><i class="ph-bold ph-arrow-left"></i> Back to Docks</div><div class="p-8 text-center text-gray-400">No matching stops found.</div>`; return; }
                 let stopsMap = {};
                 dockItems.forEach(i => { let stopNum = i.STOPNUMBER || i.STOP || "Unassigned"; let tripNum = i.TRIPNUMBER || i.TRIP || "Unassigned"; let groupKey = tripNum + "|" + stopNum;
@@ -1630,7 +1665,7 @@
         function renderReserves() {
             const container = document.getElementById('reserves-content'); const crumb = document.getElementById('reserves-crumb'); const term = document.getElementById('reserves-search').value.toLowerCase();
             let items = reservesInventory; if (safeRole === 'SALESREP') items = items.filter(i => isMyRep(i.SALESREPNAME));
-            if (term) { items = items.filter(i => (i.COMMONNAME||"").toLowerCase().includes(term) || (i.CUSTOMERNAME||"").toLowerCase().includes(term) || (i.ITEMCODE||"").toLowerCase().includes(term)); }
+            if (term) { items = items.filter(i => (i._search||"").includes(term)); }
             if (items.length === 0) { container.innerHTML = `<div class="p-8 text-center text-gray-400">No active reserves found.</div>`; crumb.innerText = "No Results"; return; }
             if (reservesViewLevel === 0) {
                 crumb.innerText = "Reserves > Customers"; const customers = [...new Set(items.map(i => i.CUSTOMERNAME || "Unknown Customer"))].sort();
@@ -1663,7 +1698,6 @@
             }
         }
 
-        // 🚨 SALES OFFICE RENDER PULLS DIRECTLY FROM salesOfficeInventory 🚨
         function renderSalesOffice() {
             const container = document.getElementById('sales-office-content');
             if (salesOfficeInventory.length === 0) { container.innerHTML = `<div class="p-8 text-center text-gray-400">No completed Sales Notes at this time.</div>`; return; }
@@ -1788,8 +1822,20 @@
             }
         }
 
+        // 🔥 TURBO OPTIMIZATION: Instant UI update, delayed rendering for typing speed
+        const debouncedDriveSearch = debounce(() => {
+            const term = document.getElementById('drive-search').value.toLowerCase();
+            if (term.length > 0 && driveViewLevel > 0) { driveViewLevel = 0; selectedDriveName = null; selectedDriveSize = null; } 
+            requestAnimationFrame(() => renderDrive());
+        }, 150);
         function clearDriveSearch() { document.getElementById('drive-search').value = ""; document.getElementById('drive-search-clear').classList.add('hidden'); driveViewLevel = 0; selectedDriveName = null; selectedDriveSize = null; renderDrive(); }
-        function handleDriveSearch() { const term = document.getElementById('drive-search').value.toLowerCase(); const clearBtn = document.getElementById('drive-search-clear'); if (term.length > 0) clearBtn.classList.remove('hidden'); else clearBtn.classList.add('hidden'); if (term.length > 0 && driveViewLevel > 0) { driveViewLevel = 0; selectedDriveName = null; selectedDriveSize = null; } renderDrive(); }
+        function handleDriveSearch() {
+            const term = document.getElementById('drive-search').value.toLowerCase();
+            const clearBtn = document.getElementById('drive-search-clear');
+            if (term.length > 0) clearBtn.classList.remove('hidden'); else clearBtn.classList.add('hidden');
+            debouncedDriveSearch();
+        }
+        
         function selectDriveName(name) { selectedDriveName = name; driveViewLevel = 1; renderDrive(); }
         function selectDriveSize(size) { selectedDriveSize = size; driveViewLevel = 2; renderDrive(); }
         function backToDriveSizes() { driveViewLevel = 1; selectedDriveSize = null; renderDrive(); }
@@ -1814,7 +1860,7 @@
             const container = document.getElementById('drive-content'); const crumb = document.getElementById('drive-crumb'); const term = document.getElementById('drive-search').value.toLowerCase();
             let filteredItems = fullInventory;
             if (!driveSelectedSeasons.has('ALL')) { filteredItems = filteredItems.filter(i => { let sVal = String(i.SEASON || "").toUpperCase(); return driveSelectedSeasons.has(sVal); }); }
-            if (term) { filteredItems = filteredItems.filter(i => (i.COMMONNAME||"").toLowerCase().includes(term) || (i.LOCATIONCODE||"").toLowerCase().includes(term) || (i.ITEMCODE||"").toLowerCase().includes(term) ); }
+            if (term) { filteredItems = filteredItems.filter(i => (i._search||"").includes(term) ); }
             
             if (filteredItems.length === 0) { container.innerHTML = `<div class="p-8 text-center text-gray-400">No items found.</div>`; crumb.innerText = "No Results"; return; }
 
@@ -1865,6 +1911,8 @@
             }
         }
 
+        // 🔥 TURBO OPTIMIZATION: Debounced dropdown rendering
+        const debouncedFilterDropdown = debounce((inputId, listId) => requestAnimationFrame(() => filterDropdown(inputId, listId)), 100);
         function filterDropdown(inputId, listId) {
             const val = document.getElementById(inputId).value.toLowerCase().trim(); const list = document.getElementById(listId); const plantName = activeItem ? activeItem.COMMONNAME.toUpperCase() : ""; const suggestedNotes = salesNotesDict[plantName] || []; let html = "";
             if (suggestedNotes.length > 0) { html += `<div class="px-3 py-1 bg-green-100 text-green-800 text-[10px] font-bold uppercase tracking-wider border-b border-green-200">Recommended for ${plantName}</div>`; suggestedNotes.forEach(note => { if (note.toLowerCase().includes(val) || val === "") { html += `<div class="px-3 py-3 border-b border-gray-100 hover:bg-green-50 active:bg-green-100 cursor-pointer text-sm font-semibold text-green-700" onmousedown="applyQuickNote('${note.replace(/'/g, "\\'")}', '${inputId}', '${listId}')">${note}</div>`; } }); }
@@ -1940,7 +1988,7 @@
 
         function renderAllFields() {
             if(!activeItem) return;
-            const hiddenKeys = ['UNIQUE_ID', 'UNIQUEID', 'ASSIGNEDTO', 'DOM_ID', 'IS_REQUEST', 'REQUESTED_BY', 'REQUEST_FOLDER']; 
+            const hiddenKeys = ['UNIQUE_ID', 'UNIQUEID', 'ASSIGNEDTO', 'DOM_ID', 'IS_REQUEST', 'REQUESTED_BY', 'REQUEST_FOLDER', '_search']; 
             let html = '<div class="grid grid-cols-1 gap-2">';
             for (const [key, value] of Object.entries(activeItem)) { 
                 if(hiddenKeys.includes(key)) continue; 
