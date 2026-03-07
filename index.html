@@ -247,7 +247,11 @@
                         <input type="text" id="av-search" class="input-field w-full pr-10 !mb-0" placeholder="Search AV Notes..." oninput="debouncedAVSearch()">
                         <i id="av-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearAVSearch()"></i>
                     </div>
-                    <div id="av-crumb" class="text-xs font-bold text-[#007a4d] mb-3 empty:hidden">AV Notes</div>
+                    <div class="task-tabs mt-2">
+                        <div id="tab-av-open" class="task-tab active" onclick="setAVTab('open')">Open Stock</div>
+                        <div id="tab-av-reserves" class="task-tab" onclick="setAVTab('reserves')">My Reserves</div>
+                    </div>
+                    <div id="av-crumb" class="text-xs font-bold text-[#007a4d] mb-3 mt-2 empty:hidden">AV Notes</div>
                     <div id="av-content"></div>
                 </div>
 
@@ -670,6 +674,9 @@
         let pendingAction = null; let pendingTabType = null;
         let driveViewLevel = 0; let selectedDriveName = null; let selectedDriveSize = null; let driveSelectedSeasons = new Set(['ALL']); const availableSeasons = ["ALL", "S1", "F1", "U1", "U2", "U3", "X", "Y", "Z"];
         let activeTaskTab = "season"; let taskViewTargetUser = null; let taskViewLevel = 0; let selectedTaskBlock = null; let selectedTaskLoc = null;
+        
+        let activeAVTab = 'open'; // 🔥 Added state for AV Tabs
+        
         let lowStockViewLevel = 0; let selectedLowStockName = null; let selectedLowStockSize = null;
         let reviewViewLevel = 0; let selectedReviewItemCode = null; let selectedReviewCommonName = null; let selectedReviewContSize = null;
         let reportViewLevel = 0; let activeReportTab = "ALL"; let selectedReportItemCode = null;
@@ -763,10 +770,12 @@
             socInventory.forEach(item => { item.DOCK_NUM = item.DOCK_NUM || item.DOCK || item.dock; item.SALESREPNAME = item.SALESREPNAME || item.SALESREP || item['SALES_REP'] || 'Unknown Rep'; item.CUSTOMERNAME = item.CUSTOMERNAME || item.CUSTOMER || 'Unknown Customer'; item.CONSIGNEENAME = item.CONSIGNEENAME || item.CONSIGNEE || ''; item._search = `${item.COMMONNAME||''} ${item['PLANT_NAME']||''} ${item.CUSTOMERNAME||''} ${item.SALESREPNAME||''}`.toLowerCase(); });
             reservesInventory = res.reservesData; let exactSeasonIds = new Set((res.seasonIds || []).map(id => String(id)));
             fullInventory.forEach(item => { item.APP_TAB_ASSIGNMENT = exactSeasonIds.has(String(item.UNIQUE_ID)) ? 'season' : 'location'; });
+            
             reservesInventory = reservesInventory.map((item, idx) => {
                 item.DOM_ID = 'res_' + idx; item.UNIQUE_ID = item.UNIQUE_ID || 'res_uid_' + idx; let resCode = String(item.ITEMCODE || item.ITEM || "").trim().toUpperCase(); let masterItem = fullInventory.find(f => String(f.ITEMCODE || "").trim().toUpperCase() === resCode);
                 item.COMMONNAME = masterItem ? masterItem.COMMONNAME : (item.COMMONNAME || item['PLANT_NAME'] || item.DESCRIPTION || item.DESC || 'Unknown Plant'); item.CONTSIZE = masterItem ? masterItem.CONTSIZE : (item.CONTSIZE || item.SIZE || item.CONTAINER || '-'); item.CUSTOMERNAME = item.CUSTOMERNAME || item.CUSTOMER || 'Unknown Customer'; item.CONSIGNEENAME = item.CONSIGNEENAME || item.CONSIGNEE || ''; item.SALESREPNAME = item.SALESREPNAME || item.SALESREP || item['SALES_REP'] || 'Unknown Rep';
-                if (masterItem) { item.LOCATIONCODE = masterItem.LOCATIONCODE; item.PTRAVAILABLE = masterItem.PTRAVAILABLE; item.SEASONSUPPLY = masterItem.SEASONSUPPLY; item.PRIORITY = masterItem.PRIORITY; item.QUALITYCODE = masterItem.QUALITYCODE; item.FIELDTAGCOLOR = masterItem.FIELDTAGCOLOR; item.LOTCODE = masterItem.LOTCODE; } item._search = `${item.COMMONNAME||''} ${item.CUSTOMERNAME||''} ${item.ITEMCODE||''}`.toLowerCase(); return item;
+                if (masterItem) { item.LOCATIONCODE = masterItem.LOCATIONCODE; item.PTRAVAILABLE = masterItem.PTRAVAILABLE; item.SEASONSUPPLY = masterItem.SEASONSUPPLY; item.PRIORITY = masterItem.PRIORITY; item.QUALITYCODE = masterItem.QUALITYCODE; item.FIELDTAGCOLOR = masterItem.FIELDTAGCOLOR; item.LOTCODE = masterItem.LOTCODE; item.AV_NOTE = masterItem.AV_NOTE; item.SALES_NOTE = masterItem.SALES_NOTE; } 
+                item._search = `${item.COMMONNAME||''} ${item.CUSTOMERNAME||''} ${item.ITEMCODE||''}`.toLowerCase(); return item;
             });
             applyLocalEdits(); reRenderCurrentView();
         }
@@ -807,28 +816,53 @@
         }
 
         function setTaskTab(tab) { activeTaskTab = tab; document.getElementById('tab-season').classList.toggle('active', tab === 'season'); document.getElementById('tab-location').classList.toggle('active', tab === 'location'); taskViewLevel = 0; renderTasks(); }
+        
+        // 🔥 NEW: AV Tabs Function
+        function setAVTab(tab) { 
+            activeAVTab = tab; 
+            document.getElementById('tab-av-open').classList.toggle('active', tab === 'open'); 
+            document.getElementById('tab-av-reserves').classList.toggle('active', tab === 'reserves'); 
+            renderAV(); 
+        }
+
         function selectRequestCategory(cat) { requestFilterMode = cat; requestViewLevel = 1; renderRequest(); } function selectRequestRep(rep) { selectedReqRep = rep; requestViewLevel = 2; renderRequest(); } function selectRepStatus(status) { selectedReqRepStatus = status; requestViewLevel = 3; renderRequest(); } function selectRequestFolder(folderId) { selectedReqFolder = folderId; requestViewLevel = 4; renderRequest(); } function clearReservesSearch() { document.getElementById('reserves-search').value = ""; document.getElementById('reserves-search-clear').classList.add('hidden'); renderReserves(); }
         
         const debouncedReservesSearch = debounce(() => { requestAnimationFrame(() => renderReserves()); }, 150);
         function handleReservesSearch() { const term = document.getElementById('reserves-search').value.toLowerCase(); const clearBtn = document.getElementById('reserves-search-clear'); if (term.length > 0) clearBtn.classList.remove('hidden'); else clearBtn.classList.add('hidden'); debouncedReservesSearch(); }
 
         const debouncedAVSearch = debounce(() => { requestAnimationFrame(() => renderAV()); }, 150);
-        function clearAVSearch() { document.getElementById('av-search').value = ""; document.getElementById('av-search-clear').classList.add('hidden'); avViewLevel = 0; renderAV(); }
+        function clearAVSearch() { document.getElementById('av-search').value = ""; document.getElementById('av-search-clear').classList.add('hidden'); renderAV(); }
         function handleAVSearch() { const term = document.getElementById('av-search').value.toLowerCase(); const clearBtn = document.getElementById('av-search-clear'); if (term.length > 0) clearBtn.classList.remove('hidden'); else clearBtn.classList.add('hidden'); debouncedAVSearch(); }
-        function resetAVView() { avViewLevel = 0; document.getElementById('av-search').value = ""; renderAV(); }
+        
+        function resetAVView() { 
+            activeAVTab = 'open'; 
+            document.getElementById('tab-av-open').classList.add('active'); 
+            document.getElementById('tab-av-reserves').classList.remove('active'); 
+            document.getElementById('av-search').value = ""; 
+            document.getElementById('av-search-clear').classList.add('hidden');
+            renderAV(); 
+        }
 
+        // 🔥 NEW: Render AV View with Open Stock / Reserves Split
         function renderAV() {
             const container = document.getElementById('av-content'); 
             const crumb = document.getElementById('av-crumb'); 
             const term = document.getElementById('av-search').value.toLowerCase();
             
-            let items = fullInventory.filter(i => i.AV_NOTE && i.AV_NOTE.trim() !== "");
+            let items = [];
+            if (activeAVTab === 'open') {
+                items = fullInventory.filter(i => i.AV_NOTE && i.AV_NOTE.trim() !== "");
+            } else {
+                items = reservesInventory.filter(i => i.AV_NOTE && i.AV_NOTE.trim() !== "");
+                if (safeRole === 'SALESREP') items = items.filter(i => isMyRep(i.SALESREPNAME));
+            }
+
             if (term) { items = items.filter(i => (i._search||"").includes(term) || (i.AV_NOTE||"").toLowerCase().includes(term)); }
-            if (items.length === 0) { container.innerHTML = `<div class="p-8 text-center text-gray-400">No AV notes found.</div>`; crumb.innerText = "No Results"; return; }
+            if (items.length === 0) { container.innerHTML = `<div class="p-8 text-center text-gray-400">No AV notes found in ${activeAVTab === 'open' ? 'Open Stock' : 'My Reserves'}.</div>`; crumb.innerText = "No Results"; return; }
             
-            crumb.innerText = `AV Notes (${items.length})`;
+            crumb.innerText = `${activeAVTab === 'open' ? 'Open Stock' : 'My Reserves'} (${items.length})`;
             items.sort((a,b) => (a.COMMONNAME||"").localeCompare(b.COMMONNAME||""));
-            container.innerHTML = items.map(i => generateCard(i, 'av')).join('');
+            container.innerHTML = items.map(i => generateCard(i, 'av', activeAVTab === 'open' ? 'status-green' : 'status-indigo')).join('');
         }
 
         function startPress(e, domId) { if (isMultiSelectMode) return; isLongPress = false; if(e.type === 'touchstart') { touchStartX = e.touches[0].clientX; touchStartY = e.touches[0].clientY; } if (pressTimer) clearTimeout(pressTimer); pressTimer = setTimeout(() => { isLongPress = true; if (navigator.vibrate) navigator.vibrate(50); enableMultiSelect(domId); }, 1000); }
@@ -1445,7 +1479,6 @@
             else if (caliperVal) appendStr = ` (${caliperVal})`; 
             if (appendStr !== "") { 
                 descInput.value = (descInput.value + appendStr).toUpperCase(); 
-                saveData(false, prefix, true); 
             } 
         }
 
