@@ -242,6 +242,18 @@
                 </div>
             </div>
         </header>
+        
+        <div id="sync-banner" class="hidden bg-blue-50 border-b border-blue-200 px-4 py-3 flex flex-col gap-2 z-40 transition-all duration-300">
+            <div class="flex justify-between items-center">
+                <span class="text-[10px] font-bold text-blue-700 uppercase tracking-wider flex items-center gap-2">
+                    <i class="ph-bold ph-spinner animate-spin text-sm"></i> <span id="sync-banner-text">Connecting...</span>
+                </span>
+                <span id="sync-banner-pct" class="text-[10px] font-black text-blue-700">0%</span>
+            </div>
+            <div class="w-full bg-blue-200 rounded-full h-1.5 overflow-hidden">
+                <div id="sync-banner-bar" class="bg-blue-600 h-1.5 rounded-full transition-all duration-300 ease-out" style="width: 0%"></div>
+            </div>
+        </div>
 
         <div id="drawer-overlay" onclick="toggleMenu()"></div>
         <div id="side-drawer">
@@ -778,6 +790,31 @@
 
     <script>
         // =========================================================
+        // UI SYNC PROGRESS BANNER
+        // =========================================================
+        function showSyncBanner() {
+            const banner = document.getElementById('sync-banner');
+            if (banner) { 
+                banner.classList.remove('hidden'); 
+                updateSyncProgress(5, "Connecting to database..."); 
+            }
+        }
+        
+        function hideSyncBanner() {
+            const banner = document.getElementById('sync-banner');
+            if (banner) { banner.classList.add('hidden'); }
+        }
+        
+        function updateSyncProgress(pct, text) {
+            const bar = document.getElementById('sync-banner-bar');
+            const pctText = document.getElementById('sync-banner-pct');
+            const statusText = document.getElementById('sync-banner-text');
+            if (bar) bar.style.width = pct + '%';
+            if (pctText) pctText.innerText = pct + '%';
+            if (statusText && text) statusText.innerText = text;
+        }
+
+        // =========================================================
         // PULL TO REFRESH ENGINE
         // =========================================================
         let ptrStartY = 0;
@@ -1311,10 +1348,11 @@
             }
 
             applyRolePermissions();
-            initializeRealtime(); // 🚨 Start listening for Realtime Updates
+            initializeRealtime(); 
             fetchBackgroundData();
         }
 
+        // 🚨 ADDED SYNC PROGRESS INDICATORS HERE 🚨
         async function fetchBackgroundData(isRealtimeSync = false) {
             if (!isRealtimeSync) await requestWakeLock(); 
 
@@ -1322,15 +1360,33 @@
             if (cachedRes && !isRealtimeSync) {
                 setTimeout(() => { processAndLoadData(cachedRes); }, 50);
             } 
+            
+            // Show Banner Only if Not Background Realtime Sync
+            if (!isRealtimeSync) showSyncBanner();
 
             try {
+                updateSyncProgress(10, "Fetching Master Inventory...");
                 const driveData = await supabaseFetch('drivearound_master_data', 'GET', null, 'select=*');
+                
+                updateSyncProgress(30, "Fetching Low Stock...");
                 const lowStockData = await supabaseFetch('low_stock', 'GET', null, 'select=*');
+                
+                updateSyncProgress(40, "Fetching Requests...");
                 const reqData = await supabaseFetch('active_request', 'GET', null, 'select=*');
+                
+                updateSyncProgress(50, "Fetching Reserves...");
                 const resData = await supabaseFetch('reserves', 'GET', null, 'select=*');
+                
+                updateSyncProgress(65, "Fetching Docks...");
                 const socData = await supabaseFetch('soc_master', 'GET', null, 'select=*');
+                
+                updateSyncProgress(75, "Fetching Reviews...");
                 const reviewData = await supabaseFetch('manager_review', 'GET', null, 'select=*');
+                
+                updateSyncProgress(85, "Fetching Seasons...");
                 const seasonData = await supabaseFetch('season_sales_notes', 'GET', null, 'select=*');
+                
+                updateSyncProgress(95, "Fetching Sales Office...");
                 const salesOfficeData = await supabaseFetch('sales_office', 'GET', null, 'select=*'); 
 
                 const formatArr = (arr, sourceTable) => {
@@ -1347,6 +1403,8 @@
                         return obj;
                     });
                 };
+
+                updateSyncProgress(100, "Processing Data...");
 
                 let resObj = {
                     status: 'success',
@@ -1366,6 +1424,7 @@
                     if (!isRealtimeSync) {
                         closePTR(); 
                         releaseWakeLock(); 
+                        setTimeout(hideSyncBanner, 500); 
                     }
                 }, 100);
 
@@ -1375,6 +1434,7 @@
                 if (!isRealtimeSync) {
                     closePTR(); 
                     releaseWakeLock(); 
+                    setTimeout(hideSyncBanner, 500); 
                 }
             }
         }
@@ -1602,7 +1662,6 @@
                 </div>`;
             }
             
-            // NEW CUSTOM CARD LAYOUT FOR REQUEST TAB
             if (sourceView === 'request') {
                 return `<div class="flex items-center w-full mb-3 item-row relative" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')">
                     <div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm pointer-events-none" ${isChecked}></div>
@@ -2401,6 +2460,7 @@
                 if (itemToSave.DOCK_PHOTO_LINK) payload.dock_photo_link = itemToSave.DOCK_PHOTO_LINK; 
                 if (itemToSave.DOCK_PHOTO_NAME) payload.dock_photo_name = itemToSave.DOCK_PHOTO_NAME;
 
+                // 🚨 IF COMPLETE, IT PUSHES TO THE SALES OFFICE VAULT 🚨
                 if (isComplete) { 
                     payload.date_completed = new Date().toISOString(); 
                     
