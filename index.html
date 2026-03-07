@@ -1066,12 +1066,53 @@
 
         function renderDocks() {
             const container = document.getElementById('docks-content'); const crumb = document.getElementById('docks-crumb'); const term = document.getElementById('docks-search').value.toLowerCase();
+            
             if (dockViewLevel === 0) {
-                crumb.innerText = "Select a Dock"; let activeDocks = new Set();
-                socInventory.forEach(i => { if (!isMyRep(i.SALESREPNAME)) return; if (i.DOCK_NUM && String(i.DOCK_NUM).trim() !== "") { if (term) { if ((i._search||"").includes(term)) activeDocks.add(String(i.DOCK_NUM).trim()); } else { activeDocks.add(String(i.DOCK_NUM).trim()); } } });
-                let html = '<div class="grid grid-cols-2 gap-4">'; let sortedDocks = Array.from(activeDocks).sort((a, b) => a.localeCompare(b, undefined, {numeric: true}));
-                sortedDocks.forEach(i => { html += `<div class="bg-white border border-gray-200 p-6 rounded-2xl shadow-sm text-center cursor-pointer hover:bg-gray-50 active:scale-95 transition-transform flex flex-col items-center justify-center gap-2" onclick="selectDockNum('${i.replace(/'/g, "\\'")}')"><i class="ph-bold ph-truck text-5xl text-orange-500"></i><div class="font-black text-lg text-gray-800">DOCK ${i}</div></div>`; }); html += '</div>';
-                if (activeDocks.size === 0) container.innerHTML = `<div class="p-8 text-center text-gray-400">No docks ${term ? `contain items matching "${term}"` : 'have data currently'}.</div>`; else container.innerHTML = html;
+                crumb.innerText = "Select a Dock"; 
+                let activeDocks = new Set();
+                socInventory.forEach(i => { 
+                    if (!isMyRep(i.SALESREPNAME)) return; 
+                    if (i.DOCK_NUM && String(i.DOCK_NUM).trim() !== "") { 
+                        if (term) { 
+                            if ((i._search||"").includes(term)) activeDocks.add(String(i.DOCK_NUM).trim()); 
+                        } else { 
+                            activeDocks.add(String(i.DOCK_NUM).trim()); 
+                        } 
+                    } 
+                });
+                
+                let html = '<div class="grid grid-cols-1 gap-3">'; 
+                let sortedDocks = Array.from(activeDocks).sort((a, b) => a.localeCompare(b, undefined, {numeric: true}));
+                
+                sortedDocks.forEach(i => { 
+                    let dockInfoStr = localStorage.getItem('dock_info_' + i); 
+                    let dockInfo = dockInfoStr ? JSON.parse(dockInfoStr) : {checker: '', inspector: '', mistake: '', status: 'Loading'};
+                    
+                    let statusColor = "bg-gray-100 text-gray-600 border-gray-200";
+                    if (dockInfo.status === 'Loading') statusColor = "bg-blue-100 text-blue-700 border-blue-200";
+                    if (dockInfo.status === 'Paused') statusColor = "bg-red-100 text-red-700 border-red-200";
+                    if (dockInfo.status === 'Waiting') statusColor = "bg-yellow-100 text-yellow-700 border-yellow-200";
+                    if (dockInfo.status === 'Complete') statusColor = "bg-green-100 text-green-700 border-green-200";
+
+                    html += `<div class="bg-white border border-gray-200 p-4 rounded-xl shadow-sm cursor-pointer hover:bg-gray-50 active:scale-95 transition-transform flex flex-col gap-2" onclick="selectDockNum('${i.replace(/'/g, "\\'")}')">
+                        <div class="flex justify-between items-center border-b border-gray-100 pb-3 mb-1">
+                            <div class="flex items-center gap-3">
+                                <div class="bg-orange-50 p-2 rounded-lg"><i class="ph-bold ph-truck text-2xl text-orange-500"></i></div>
+                                <span class="font-black text-xl text-gray-800">DOCK ${i}</span>
+                            </div>
+                            <span class="text-[10px] font-bold px-2 py-1 rounded-md border uppercase ${statusColor}">${dockInfo.status}</span>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2 text-center text-[10px]">
+                            <div class="flex flex-col"><span class="text-gray-400 uppercase tracking-widest text-[8px] mb-0.5">Checker</span><span class="font-bold text-gray-800 truncate">${dockInfo.checker || '-'}</span></div>
+                            <div class="flex flex-col border-l border-r border-gray-100"><span class="text-gray-400 uppercase tracking-widest text-[8px] mb-0.5">Inspector</span><span class="font-bold text-gray-800 truncate">${dockInfo.inspector || '-'}</span></div>
+                            <div class="flex flex-col"><span class="text-gray-400 uppercase tracking-widest text-[8px] mb-0.5">Mistake Guy</span><span class="font-bold text-gray-800 truncate">${dockInfo.mistake || '-'}</span></div>
+                        </div>
+                    </div>`; 
+                }); 
+                html += '</div>';
+                
+                if (activeDocks.size === 0) container.innerHTML = `<div class="p-8 text-center text-gray-400">No docks ${term ? `contain items matching "${term}"` : 'have data currently'}.</div>`; 
+                else container.innerHTML = html;
             } 
             else if (dockViewLevel === 1) {
                 crumb.innerText = `Dock ${selectedDockNum} > Stops & Plants`; let dockItems = socInventory.filter(i => String(i.DOCK_NUM).trim() === String(selectedDockNum) && isMyRep(i.SALESREPNAME));
@@ -1337,7 +1378,7 @@
         function renderTasks() {
             const container = document.getElementById('task-content'); const crumb = document.getElementById('task-crumb'); let userToView = (safeRole === 'ADMIN') ? taskViewTargetUser : currentUser; let searchName = userToView === 'dylan_collyge' ? 'Dylan' : userToView; let myItems = fullInventory.filter(i => String(i.ASSIGNEDTO || "").toLowerCase().includes(searchName.toLowerCase()));
             myItems = myItems.filter(i => { 
-                if (i.DATE_COMPLETED && i.DATE_COMPLETED !== "") return false;
+                if (i.DATE_COMPLETED && i.DATE_COMPLETED !== "") return false; // 🚨 THIS INSTANTLY HIDES TASKS IN TASK VIEW
                 const pri = parseFloat(i.PRIORITY); 
                 if (isNaN(pri) || pri <= 0) return false; 
                 if (activeTaskTab === 'season') return i.APP_TAB_ASSIGNMENT === 'season'; 
@@ -1404,6 +1445,7 @@
             else if (caliperVal) appendStr = ` (${caliperVal})`; 
             if (appendStr !== "") { 
                 descInput.value = (descInput.value + appendStr).toUpperCase(); 
+                saveData(false, prefix, true); 
             } 
         }
 
