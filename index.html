@@ -201,7 +201,7 @@
             <div class="drawer-item" onclick="switchView('drive'); toggleMenu();"><i class="ph-bold ph-car"></i> Drive Mode</div>
             <div class="drawer-item rep-hidden csr-hidden" onclick="switchView('tasks'); toggleMenu();"><i class="ph-bold ph-clipboard-text"></i> My Tasks</div>
             <div class="drawer-item text-orange-600 font-bold" onclick="switchView('docks'); toggleMenu();"><i class="ph-bold ph-truck"></i> Docks</div>
-            <div class="drawer-item text-teal-600 font-bold" onclick="switchView('av'); toggleMenu();"><i class="ph-bold ph-notebook"></i> Open Stock</div>
+            <div class="drawer-item text-teal-600 font-bold" onclick="switchView('av'); toggleMenu();"><i class="ph-bold ph-notebook"></i> AV</div>
             <hr class="my-2">
             <div class="drawer-item text-blue-600 font-bold admin-rep-csr-only hidden" onclick="switchView('request'); toggleMenu();"><i class="ph-bold ph-chat-circle-text"></i> Requests</div>
             <div class="drawer-item text-indigo-600 font-bold admin-rep-csr-only hidden" onclick="switchView('reserves'); toggleMenu();"><i class="ph-bold ph-bookmark-simple"></i> Reserves</div>
@@ -232,7 +232,7 @@
                         <div onclick="switchView('drive')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-car text-3xl text-blue-600"></i><span class="font-bold text-sm text-gray-800">Drive Mode</span></div>
                         <div onclick="switchView('tasks')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer rep-hidden csr-hidden"><i class="ph-bold ph-clipboard-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-gray-800">Tasks</span></div>
                         <div onclick="switchView('docks')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-truck text-3xl text-orange-600"></i><span class="font-bold text-sm text-gray-800">Docks</span></div>
-                        <div onclick="switchView('av')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-notebook text-3xl text-teal-600"></i><span class="font-bold text-sm text-gray-800">Open Stock</span></div>
+                        <div onclick="switchView('av')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-notebook text-3xl text-teal-600"></i><span class="font-bold text-sm text-gray-800">AV</span></div>
                         <div onclick="switchView('request')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform col-span-2 cursor-pointer admin-rep-csr-only hidden"><i class="ph-bold ph-chat-circle-text text-3xl text-blue-600"></i><span class="font-bold text-sm text-gray-800">Requests</span></div>
                         <div onclick="switchView('reserves')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform col-span-2 cursor-pointer admin-rep-csr-only hidden"><i class="ph-bold ph-bookmark-simple text-3xl text-indigo-600"></i><span class="font-bold text-sm text-gray-800">Reserves</span></div>
                         <div onclick="switchView('sales-office')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer admin-csr-only hidden"><i class="ph-bold ph-briefcase text-3xl text-purple-600"></i><span class="font-bold text-sm text-gray-800">Sales Office</span></div>
@@ -244,10 +244,14 @@
 
                 <div id="view-av" class="hidden">
                     <div id="av-search-container" class="relative mb-2">
-                        <input type="text" id="av-search" class="input-field w-full pr-10 !mb-0" placeholder="Search Open Stock..." oninput="debouncedAVSearch()">
+                        <input type="text" id="av-search" class="input-field w-full pr-10 !mb-0" placeholder="Search..." oninput="debouncedAVSearch()">
                         <i id="av-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearAVSearch()"></i>
                     </div>
-                    <div id="av-crumb" class="text-xs font-bold text-[#007a4d] mb-3 mt-2 empty:hidden">Open Stock</div>
+                    <div class="task-tabs mt-2">
+                        <div id="tab-av-open" class="task-tab active" onclick="setAVTab('open')">Open Stock</div>
+                        <div id="tab-av-reserves" class="task-tab" onclick="setAVTab('reserves')">My Reserves</div>
+                    </div>
+                    <div id="av-crumb" class="text-xs font-bold text-[#007a4d] mb-3 mt-2 empty:hidden">AV</div>
                     <div id="av-content"></div>
                 </div>
 
@@ -461,7 +465,7 @@
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="na-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'na-', true)"></div>
                             <div id="na-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="na-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'na-', true)"></div>
                             
-                            <div class="relative w-full mt-2 mb-2 hidden">
+                            <div class="relative w-full mt-2 mb-2">
                                 <label class="text-[10px] font-bold text-green-700 uppercase flex justify-between"><span>Sales Description</span></label>
                                 <div class="flex gap-2">
                                     <input type="text" id="na-sales-desc" class="input-field border-green-500 bg-green-50 uppercase flex-grow !mb-0" 
@@ -487,7 +491,7 @@
                                 <div id="na-av-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div>
                             </div>
                             
-                            <div class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="na-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'na-', true)"></div>
+                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="na-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'na-', true)"></div>
                         </div>
                         <div class="flex gap-2 mt-4">
                             <button id="na-btn-save-complete" class="w-full bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform" onclick="saveData(true, 'na-')">MARK DONE</button>
@@ -696,6 +700,9 @@
         let pendingAction = null; let pendingTabType = null;
         let driveViewLevel = 0; let selectedDriveName = null; let selectedDriveSize = null; let driveSelectedSeasons = new Set(['ALL']); const availableSeasons = ["ALL", "S1", "F1", "U1", "U2", "U3", "X", "Y", "Z"];
         let activeTaskTab = "season"; let taskViewTargetUser = null; let taskViewLevel = 0; let selectedTaskBlock = null; let selectedTaskLoc = null;
+        
+        let activeAVTab = 'open'; 
+        
         let lowStockViewLevel = 0; let selectedLowStockName = null; let selectedLowStockSize = null;
         let reviewViewLevel = 0; let selectedReviewItemCode = null; let selectedReviewCommonName = null; let selectedReviewContSize = null;
         let reportViewLevel = 0; let activeReportTab = "ALL"; let selectedReportItemCode = null;
@@ -834,6 +841,14 @@
         }
 
         function setTaskTab(tab) { activeTaskTab = tab; document.getElementById('tab-season').classList.toggle('active', tab === 'season'); document.getElementById('tab-location').classList.toggle('active', tab === 'location'); taskViewLevel = 0; renderTasks(); }
+        
+        function setAVTab(tab) { 
+            activeAVTab = tab; 
+            document.getElementById('tab-av-open').classList.toggle('active', tab === 'open'); 
+            document.getElementById('tab-av-reserves').classList.toggle('active', tab === 'reserves'); 
+            renderAV(); 
+        }
+
         function selectRequestCategory(cat) { requestFilterMode = cat; requestViewLevel = 1; renderRequest(); } function selectRequestRep(rep) { selectedReqRep = rep; requestViewLevel = 2; renderRequest(); } function selectRepStatus(status) { selectedReqRepStatus = status; requestViewLevel = 3; renderRequest(); } function selectRequestFolder(folderId) { selectedReqFolder = folderId; requestViewLevel = 4; renderRequest(); } function clearReservesSearch() { document.getElementById('reserves-search').value = ""; document.getElementById('reserves-search-clear').classList.add('hidden'); renderReserves(); }
         
         const debouncedReservesSearch = debounce(() => { requestAnimationFrame(() => renderReserves()); }, 150);
@@ -842,25 +857,39 @@
         const debouncedAVSearch = debounce(() => { requestAnimationFrame(() => renderAV()); }, 150);
         function clearAVSearch() { document.getElementById('av-search').value = ""; document.getElementById('av-search-clear').classList.add('hidden'); renderAV(); }
         function handleAVSearch() { const term = document.getElementById('av-search').value.toLowerCase(); const clearBtn = document.getElementById('av-search-clear'); if (term.length > 0) clearBtn.classList.remove('hidden'); else clearBtn.classList.add('hidden'); debouncedAVSearch(); }
-        function resetAVView() { document.getElementById('av-search').value = ""; renderAV(); }
+        
+        function resetAVView() { 
+            activeAVTab = 'open'; 
+            document.getElementById('tab-av-open').classList.add('active'); 
+            document.getElementById('tab-av-reserves').classList.remove('active'); 
+            document.getElementById('av-search').value = ""; 
+            document.getElementById('av-search-clear').classList.add('hidden');
+            renderAV(); 
+        }
 
         function renderAV() {
             const container = document.getElementById('av-content'); 
             const crumb = document.getElementById('av-crumb'); 
             const term = document.getElementById('av-search').value.toLowerCase();
             
-            let items = fullInventory.filter(i => {
-                let lts = Number(String(i.S_LTS || '0').replace(/,/g, ''));
-                let season = String(i.SEASON || '').toUpperCase();
-                return lts > 0 && !season.includes('Y') && !season.includes('Z');
-            });
+            let items = [];
+            if (activeAVTab === 'open') {
+                items = fullInventory.filter(i => {
+                    let lts = Number(String(i.S_LTS || '0').replace(/,/g, ''));
+                    let season = String(i.SEASON || '').toUpperCase();
+                    return lts > 0 && !season.includes('Y') && !season.includes('Z');
+                });
+            } else {
+                items = reservesInventory;
+                if (safeRole === 'SALESREP') items = items.filter(i => isMyRep(i.SALESREPNAME));
+            }
 
             if (term) { items = items.filter(i => (i._search||"").includes(term)); }
-            if (items.length === 0) { container.innerHTML = `<div class="p-8 text-center text-gray-400">No open stock found.</div>`; crumb.innerText = "No Results"; return; }
+            if (items.length === 0) { container.innerHTML = `<div class="p-8 text-center text-gray-400">No ${activeAVTab === 'open' ? 'open stock' : 'reserves'} found.</div>`; crumb.innerText = "No Results"; return; }
             
-            crumb.innerText = `Open Stock (${items.length})`;
+            crumb.innerText = `${activeAVTab === 'open' ? 'Open Stock' : 'My Reserves'} (${items.length})`;
             items.sort((a,b) => (a.COMMONNAME||"").localeCompare(b.COMMONNAME||""));
-            container.innerHTML = items.map(i => generateCard(i, 'av', 'status-teal')).join('');
+            container.innerHTML = items.map(i => generateCard(i, 'av', activeAVTab === 'open' ? 'status-teal' : 'status-indigo')).join('');
         }
 
         function calculateMatchQty(prefix) {
@@ -878,7 +907,6 @@
             } else {
                 if(displayEl) displayEl.classList.add('hidden');
             }
-            saveData(false, prefix, true);
         }
 
         function startPress(e, domId) { if (isMultiSelectMode) return; isLongPress = false; if(e.type === 'touchstart') { touchStartX = e.touches[0].clientX; touchStartY = e.touches[0].clientY; } if (pressTimer) clearTimeout(pressTimer); pressTimer = setTimeout(() => { isLongPress = true; if (navigator.vibrate) navigator.vibrate(50); enableMultiSelect(domId); }, 1000); }
@@ -1454,6 +1482,8 @@
                 container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=1; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Locations</div>` + items.map(i => generateCard(i, 'tasks')).join('');
             }
         }
+
+        const debouncedFilterDropdown = debounce((inputId, listId) => requestAnimationFrame(() => filterDropdown(inputId, listId)), 100);
         
         function filterDropdown(inputId, listId) {
             const val = document.getElementById(inputId).value.toLowerCase().trim(); 
@@ -1714,13 +1744,8 @@
                         let matchEl = document.getElementById(prefix + 'match'); if(matchEl) itemToSave.MATCH = matchEl.value; 
                         let specEl = document.getElementById(prefix + 'spec'); if(specEl) itemToSave.SPEC = specEl.value; 
                         let calEl = document.getElementById(prefix + 'caliper'); if(calEl) itemToSave.CALIPER = calEl.value; 
-                        
-                        let pickEl = document.getElementById(prefix + 'pick'); 
-                        if(pickEl) itemToSave.PICK = pickEl.value; 
-                        
-                        let avEl = document.getElementById(prefix + 'av-note'); 
-                        if(avEl) itemToSave.AV_NOTE = avEl.value.toUpperCase(); 
-                        
+                        let pickEl = document.getElementById(prefix + 'pick'); if(pickEl) itemToSave.PICK = pickEl.value; 
+                        let avEl = document.getElementById(prefix + 'av-note'); if(avEl) itemToSave.AV_NOTE = avEl.value.toUpperCase(); 
                         let descEl = document.getElementById(prefix + 'sales-desc');
                         if (descEl) {
                             let textBoxVal = descEl.value.toUpperCase();
