@@ -201,7 +201,7 @@
             <div class="drawer-item" onclick="switchView('drive'); toggleMenu();"><i class="ph-bold ph-car"></i> Drive Mode</div>
             <div class="drawer-item rep-hidden csr-hidden" onclick="switchView('tasks'); toggleMenu();"><i class="ph-bold ph-clipboard-text"></i> My Tasks</div>
             <div class="drawer-item text-orange-600 font-bold" onclick="switchView('docks'); toggleMenu();"><i class="ph-bold ph-truck"></i> Docks</div>
-            <div class="drawer-item text-teal-600 font-bold" onclick="switchView('av'); toggleMenu();"><i class="ph-bold ph-notebook"></i> Availability</div>
+            <div class="drawer-item text-teal-600 font-bold" onclick="switchView('av'); toggleMenu();"><i class="ph-bold ph-notebook"></i> Open Stock</div>
             <hr class="my-2">
             <div class="drawer-item text-blue-600 font-bold admin-rep-csr-only hidden" onclick="switchView('request'); toggleMenu();"><i class="ph-bold ph-chat-circle-text"></i> Requests</div>
             <div class="drawer-item text-indigo-600 font-bold admin-rep-csr-only hidden" onclick="switchView('reserves'); toggleMenu();"><i class="ph-bold ph-bookmark-simple"></i> Reserves</div>
@@ -232,7 +232,7 @@
                         <div onclick="switchView('drive')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-car text-3xl text-blue-600"></i><span class="font-bold text-sm text-gray-800">Drive Mode</span></div>
                         <div onclick="switchView('tasks')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer rep-hidden csr-hidden"><i class="ph-bold ph-clipboard-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-gray-800">Tasks</span></div>
                         <div onclick="switchView('docks')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-truck text-3xl text-orange-600"></i><span class="font-bold text-sm text-gray-800">Docks</span></div>
-                        <div onclick="switchView('av')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-notebook text-3xl text-teal-600"></i><span class="font-bold text-sm text-gray-800">Availability</span></div>
+                        <div onclick="switchView('av')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-notebook text-3xl text-teal-600"></i><span class="font-bold text-sm text-gray-800">Open Stock</span></div>
                         <div onclick="switchView('request')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform col-span-2 cursor-pointer admin-rep-csr-only hidden"><i class="ph-bold ph-chat-circle-text text-3xl text-blue-600"></i><span class="font-bold text-sm text-gray-800">Requests</span></div>
                         <div onclick="switchView('reserves')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform col-span-2 cursor-pointer admin-rep-csr-only hidden"><i class="ph-bold ph-bookmark-simple text-3xl text-indigo-600"></i><span class="font-bold text-sm text-gray-800">Reserves</span></div>
                         <div onclick="switchView('sales-office')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer admin-csr-only hidden"><i class="ph-bold ph-briefcase text-3xl text-purple-600"></i><span class="font-bold text-sm text-gray-800">Sales Office</span></div>
@@ -365,9 +365,18 @@
                             </label>
                         </div>
                         <div id="ssn-input-container">
-                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Match %</label><input type="number" id="ssn-match" class="input-field" placeholder="e.g. 95" onchange="saveData(false, 'ssn-', true)"></div>
+                            <div class="mb-3">
+                                <label class="text-[10px] font-bold text-gray-500 uppercase">Match %</label>
+                                <input type="number" id="ssn-match" class="input-field !mb-1" placeholder="e.g. 40" oninput="calculateMatchQty('ssn-')">
+                                <div id="ssn-match-display" class="text-[10px] font-bold text-[#007a4d] text-right mb-2 hidden">LOC Match QTY: <span id="ssn-match-qty-val">0</span></div>
+                            </div>
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="ssn-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'ssn-', true)"></div>
                             <div id="ssn-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="ssn-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'ssn-', true)"></div>
+                            
+                            <div class="relative w-full mt-2 mb-2 hidden">
+                                <label class="text-[10px] font-bold text-green-700 uppercase flex justify-between"><span>Sales Note</span></label>
+                                <input type="text" id="ssn-sales-desc" class="input-field border-green-500 bg-green-50 uppercase flex-grow !mb-0" placeholder="Sales Note..." onchange="saveData(false, 'ssn-', true)">
+                            </div>
                             
                             <div class="relative w-full mt-2 mb-2">
                                 <label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label>
@@ -381,6 +390,8 @@
                                 </div>
                                 <div id="ssn-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div>
                             </div>
+
+                            <div class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="ssn-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'ssn-', true)"></div>
                         </div>
                         <div class="flex gap-2 mt-4">
                             <button id="ssn-btn-save-complete" class="w-full bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform" onclick="saveData(true, 'ssn-')">MARK DONE</button>
@@ -398,10 +409,19 @@
                             </label>
                         </div>
                         <div id="lsn-input-container">
-                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Match %</label><input type="number" id="lsn-match" class="input-field" placeholder="e.g. 95" onchange="saveData(false, 'lsn-', true)"></div>
+                            <div class="mb-3">
+                                <label class="text-[10px] font-bold text-gray-500 uppercase">Match %</label>
+                                <input type="number" id="lsn-match" class="input-field !mb-1" placeholder="e.g. 95" oninput="calculateMatchQty('lsn-')">
+                                <div id="lsn-match-display" class="text-[10px] font-bold text-[#007a4d] text-right mb-2 hidden">LOC Match QTY: <span id="lsn-match-qty-val">0</span></div>
+                            </div>
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="lsn-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'lsn-', true)"></div>
                             <div id="lsn-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="lsn-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'lsn-', true)"></div>
                             
+                            <div class="relative w-full mt-2 mb-2 hidden">
+                                <label class="text-[10px] font-bold text-green-700 uppercase flex justify-between"><span>Sales Note</span></label>
+                                <input type="text" id="lsn-sales-desc" class="input-field border-green-500 bg-green-50 uppercase flex-grow !mb-0" placeholder="Sales Note..." onchange="saveData(false, 'lsn-', true)">
+                            </div>
+
                             <div class="relative w-full mt-2 mb-2">
                                 <label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label>
                                 <div class="flex gap-2">
@@ -414,6 +434,8 @@
                                 </div>
                                 <div id="lsn-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div>
                             </div>
+                            
+                            <div class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="lsn-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'lsn-', true)"></div>
                         </div>
                         <div class="flex gap-2 mt-4">
                             <button id="lsn-btn-save-complete" class="w-full bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform" onclick="saveData(true, 'lsn-')">MARK DONE</button>
@@ -431,11 +453,15 @@
                             </label>
                         </div>
                         <div id="na-input-container">
-                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Match %</label><input type="number" id="na-match" class="input-field" placeholder="e.g. 95" onchange="saveData(false, 'na-', true)"></div>
+                            <div class="mb-3">
+                                <label class="text-[10px] font-bold text-gray-500 uppercase">Match %</label>
+                                <input type="number" id="na-match" class="input-field !mb-1" placeholder="e.g. 95" oninput="calculateMatchQty('na-')">
+                                <div id="na-match-display" class="text-[10px] font-bold text-[#007a4d] text-right mb-2 hidden">LOC Match QTY: <span id="na-match-qty-val">0</span></div>
+                            </div>
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="na-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'na-', true)"></div>
                             <div id="na-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="na-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'na-', true)"></div>
                             
-                            <div class="relative w-full mt-2 mb-2">
+                            <div class="relative w-full mt-2 mb-2 hidden">
                                 <label class="text-[10px] font-bold text-green-700 uppercase flex justify-between"><span>Sales Description</span></label>
                                 <div class="flex gap-2">
                                     <input type="text" id="na-sales-desc" class="input-field border-green-500 bg-green-50 uppercase flex-grow !mb-0" 
@@ -461,7 +487,7 @@
                                 <div id="na-av-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div>
                             </div>
                             
-                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="na-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'na-', true)"></div>
+                            <div class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="na-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'na-', true)"></div>
                         </div>
                         <div class="flex gap-2 mt-4">
                             <button id="na-btn-save-complete" class="w-full bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform" onclick="saveData(true, 'na-')">MARK DONE</button>
@@ -766,7 +792,7 @@
             reservesInventory = reservesInventory.map((item, idx) => {
                 item.DOM_ID = 'res_' + idx; item.UNIQUE_ID = item.UNIQUE_ID || 'res_uid_' + idx; let resCode = String(item.ITEMCODE || item.ITEM || "").trim().toUpperCase(); let masterItem = fullInventory.find(f => String(f.ITEMCODE || "").trim().toUpperCase() === resCode);
                 item.COMMONNAME = masterItem ? masterItem.COMMONNAME : (item.COMMONNAME || item['PLANT_NAME'] || item.DESCRIPTION || item.DESC || 'Unknown Plant'); item.CONTSIZE = masterItem ? masterItem.CONTSIZE : (item.CONTSIZE || item.SIZE || item.CONTAINER || '-'); item.CUSTOMERNAME = item.CUSTOMERNAME || item.CUSTOMER || 'Unknown Customer'; item.CONSIGNEENAME = item.CONSIGNEENAME || item.CONSIGNEE || ''; item.SALESREPNAME = item.SALESREPNAME || item.SALESREP || item['SALES_REP'] || 'Unknown Rep';
-                if (masterItem) { item.LOCATIONCODE = masterItem.LOCATIONCODE; item.PTRAVAILABLE = masterItem.PTRAVAILABLE; item.SEASONSUPPLY = masterItem.SEASONSUPPLY; item.PRIORITY = masterItem.PRIORITY; item.QUALITYCODE = masterItem.QUALITYCODE; item.FIELDTAGCOLOR = masterItem.FIELDTAGCOLOR; item.LOTCODE = masterItem.LOTCODE; item.AV_NOTE = masterItem.AV_NOTE; item.SALES_NOTE = masterItem.SALES_NOTE; } 
+                if (masterItem) { item.LOCATIONCODE = masterItem.LOCATIONCODE; item.PTRAVAILABLE = masterItem.PTRAVAILABLE; item.SEASONSUPPLY = masterItem.SEASONSUPPLY; item.PRIORITY = masterItem.PRIORITY; item.QUALITYCODE = masterItem.QUALITYCODE; item.FIELDTAGCOLOR = masterItem.FIELDTAGCOLOR; item.LOTCODE = masterItem.LOTCODE; item.AV_NOTE = masterItem.AV_NOTE; item.SALES_NOTE = masterItem.SALES_NOTE; item.LOC_MATCH_QTY = masterItem.LOC_MATCH_QTY; item.INITIAL_PTR = masterItem.INITIAL_PTR; } 
                 item._search = `${item.COMMONNAME||''} ${item.CUSTOMERNAME||''} ${item.ITEMCODE||''}`.toLowerCase(); return item;
             });
             applyLocalEdits(); reRenderCurrentView();
@@ -837,6 +863,24 @@
             container.innerHTML = items.map(i => generateCard(i, 'av', 'status-teal')).join('');
         }
 
+        function calculateMatchQty(prefix) {
+            if (!activeItem) return;
+            let matchEl = document.getElementById(prefix + 'match');
+            let displayEl = document.getElementById(prefix + 'match-display');
+            let valEl = document.getElementById(prefix + 'match-qty-val');
+            
+            if (matchEl && matchEl.value !== "") {
+                let matchVal = parseFloat(matchEl.value);
+                let ptr = parseInt(String(activeItem.PTRAVAILABLE).replace(/,/g, '')) || 0;
+                let qty = Math.round(ptr * (matchVal / 100));
+                if(valEl) valEl.innerText = qty;
+                if(displayEl) displayEl.classList.remove('hidden');
+            } else {
+                if(displayEl) displayEl.classList.add('hidden');
+            }
+            saveData(false, prefix, true);
+        }
+
         function startPress(e, domId) { if (isMultiSelectMode) return; isLongPress = false; if(e.type === 'touchstart') { touchStartX = e.touches[0].clientX; touchStartY = e.touches[0].clientY; } if (pressTimer) clearTimeout(pressTimer); pressTimer = setTimeout(() => { isLongPress = true; if (navigator.vibrate) navigator.vibrate(50); enableMultiSelect(domId); }, 1000); }
         function checkMove(e) { if(e.type === 'touchmove') { let dx = Math.abs(e.touches[0].clientX - touchStartX); let dy = Math.abs(e.touches[0].clientY - touchStartY); if (dx > 20 || dy > 20) cancelPress(); } }
         function cancelPress() { if (pressTimer) clearTimeout(pressTimer); }
@@ -887,8 +931,10 @@
             
             if (sourceView === 'drive' || sourceView === 'av') {
                 let noteHtml = "";
+                if (item.LOC_MATCH_QTY && String(item.LOC_MATCH_QTY).trim() !== "" && Number(item.LOC_MATCH_QTY) > 0) { noteHtml += `<div class="mt-2 text-[12px] text-green-800 bg-green-100 p-2 rounded border border-green-200 shadow-sm whitespace-pre-wrap"><span class="font-black">MATCH QTY:</span> ${item.LOC_MATCH_QTY}</div>`; }
                 if (item.AV_NOTE && item.AV_NOTE.trim() !== "") { noteHtml += `<div class="mt-2 text-[12px] text-blue-800 bg-blue-100 p-2 rounded border border-blue-200 shadow-sm whitespace-pre-wrap"><span class="font-black">AV NOTE:</span> ${item.AV_NOTE}</div>`; }
                 if (item.SALES_NOTE && item.SALES_NOTE.trim() !== "") { noteHtml += `<div class="mt-2 text-[12px] text-green-800 bg-green-100 p-2 rounded border border-green-200 shadow-sm whitespace-pre-wrap"><span class="font-black">SALES NOTE:</span> ${item.SALES_NOTE}</div>`; }
+                
                 return `<div class="flex items-center w-full mb-3 item-row relative bg-white p-4 rounded-xl border border-gray-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm pointer-events-none" ${isChecked}></div><div class="flex flex-grow items-start justify-between min-w-0"><div class="flex-grow min-w-0 pr-2"><div class="font-black text-gray-800 text-[16px] leading-tight truncate mb-0.5">${item.COMMONNAME || 'Unknown'}</div><div class="font-bold text-[#007a4d] text-sm mb-2">${item.CONTSIZE || '-'}</div><div class="text-[11px] font-mono text-gray-500 mb-2 flex items-center bg-gray-100 px-2 py-0.5 rounded w-max"><i class="ph-bold ph-barcode mr-1.5 text-gray-400"></i>${item.ITEMCODE || '-'}</div><div class="flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600"><span class="bg-gray-100 px-1.5 py-0.5 rounded">LOC AVA: <span class="text-gray-900">${item.PTRAVAILABLE || '0'}</span></span><span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">Loc: ${item.LOCATIONCODE || 'No Loc'}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded">Lot: ${item.LOTCODE || '-'}</span><span class="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-100">s_LTS: ${item.S_LTS || '0'}</span><span class="bg-orange-50 text-orange-700 px-1.5 py-0.5 rounded border border-orange-100">Pri: ${item.PRIORITY || '-'}</span></div>${noteHtml}</div>${thumbHtml}</div></div>`;
             }
             return `<div class="flex items-center w-full mb-2 item-row" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm pointer-events-none" ${isChecked}></div><div class="inv-card ${colorClass} flex items-center justify-between flex-grow !mb-0 transition-transform active:scale-[0.99]"><div class="flex-grow min-w-0 text-[#007a4d]"><div class="flex justify-between font-bold text-sm mb-1"><span class="truncate pr-2">${item.COMMONNAME || 'Unknown'} • ${item.CONTSIZE || '-'} • Loc: ${item.LOCATIONCODE || 'No Loc'}</span><span class="whitespace-nowrap bg-[#007a4d]/10 px-1.5 py-0.5 rounded text-xs border border-[#007a4d]/20">Pri: ${item.PRIORITY || '-'}</span></div><div class="text-[11px] font-semibold truncate mt-0.5">Tag: ${tagColor} | Lot: ${item.LOTCODE || '-'} | PTR-Ava: ${item.PTRAVAILABLE || '0'} | s_LTS: ${item.S_LTS || '0'} | Supply: ${item.SEASONSUPPLY || '0'}</div><div class="text-[11px] font-semibold truncate mt-0.5">Item: ${item.ITEMCODE || '-'}</div></div>${thumbHtml}</div></div>`;
@@ -1072,13 +1118,28 @@
 
         function renderDocks() {
             const container = document.getElementById('docks-content'); const crumb = document.getElementById('docks-crumb'); const term = document.getElementById('docks-search').value.toLowerCase();
+            
             if (dockViewLevel === 0) {
-                crumb.innerText = "Select a Dock"; let activeDocks = new Set();
-                socInventory.forEach(i => { if (!isMyRep(i.SALESREPNAME)) return; if (i.DOCK_NUM && String(i.DOCK_NUM).trim() !== "") { if (term) { if ((i._search||"").includes(term)) activeDocks.add(String(i.DOCK_NUM).trim()); } else { activeDocks.add(String(i.DOCK_NUM).trim()); } } });
-                let html = '<div class="grid grid-cols-1 gap-3">'; let sortedDocks = Array.from(activeDocks).sort((a, b) => a.localeCompare(b, undefined, {numeric: true}));
+                crumb.innerText = "Select a Dock"; 
+                let activeDocks = new Set();
+                socInventory.forEach(i => { 
+                    if (!isMyRep(i.SALESREPNAME)) return; 
+                    if (i.DOCK_NUM && String(i.DOCK_NUM).trim() !== "") { 
+                        if (term) { 
+                            if ((i._search||"").includes(term)) activeDocks.add(String(i.DOCK_NUM).trim()); 
+                        } else { 
+                            activeDocks.add(String(i.DOCK_NUM).trim()); 
+                        } 
+                    } 
+                });
+                
+                let html = '<div class="grid grid-cols-1 gap-3">'; 
+                let sortedDocks = Array.from(activeDocks).sort((a, b) => a.localeCompare(b, undefined, {numeric: true}));
+                
                 sortedDocks.forEach(i => { 
                     let dockInfoStr = localStorage.getItem('dock_info_' + i); 
                     let dockInfo = dockInfoStr ? JSON.parse(dockInfoStr) : {checker: '', inspector: '', mistake: '', status: 'Loading'};
+                    
                     let statusColor = "bg-gray-100 text-gray-600 border-gray-200";
                     if (dockInfo.status === 'Loading') statusColor = "bg-blue-100 text-blue-700 border-blue-200";
                     if (dockInfo.status === 'Paused') statusColor = "bg-red-100 text-red-700 border-red-200";
@@ -1099,8 +1160,11 @@
                             <div class="flex flex-col"><span class="text-gray-400 uppercase tracking-widest text-[8px] mb-0.5">Mistake Guy</span><span class="font-bold text-gray-800 truncate">${dockInfo.mistake || '-'}</span></div>
                         </div>
                     </div>`; 
-                }); html += '</div>';
-                if (activeDocks.size === 0) container.innerHTML = `<div class="p-8 text-center text-gray-400">No docks ${term ? `contain items matching "${term}"` : 'have data currently'}.</div>`; else container.innerHTML = html;
+                }); 
+                html += '</div>';
+                
+                if (activeDocks.size === 0) container.innerHTML = `<div class="p-8 text-center text-gray-400">No docks ${term ? `contain items matching "${term}"` : 'have data currently'}.</div>`; 
+                else container.innerHTML = html;
             } 
             else if (dockViewLevel === 1) {
                 crumb.innerText = `Dock ${selectedDockNum} > Stops & Plants`; let dockItems = socInventory.filter(i => String(i.DOCK_NUM).trim() === String(selectedDockNum) && isMyRep(i.SALESREPNAME));
@@ -1390,8 +1454,6 @@
                 container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=1; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Locations</div>` + items.map(i => generateCard(i, 'tasks')).join('');
             }
         }
-
-        const debouncedFilterDropdown = debounce((inputId, listId) => requestAnimationFrame(() => filterDropdown(inputId, listId)), 100);
         
         function filterDropdown(inputId, listId) {
             const val = document.getElementById(inputId).value.toLowerCase().trim(); 
@@ -1427,6 +1489,7 @@
             const specVal = document.getElementById(prefix + 'spec').value; 
             const caliperVal = document.getElementById(prefix + 'caliper').value; 
             const descInput = document.getElementById(prefix + fieldName); 
+            if (!descInput) return;
             let appendStr = ""; 
             if (specVal && caliperVal) appendStr = ` (${specVal} / ${caliperVal})`; 
             else if (specVal) appendStr = ` (${specVal})`; 
@@ -1467,6 +1530,8 @@
 
                 let avEl = document.getElementById(p + 'av-note'); if(avEl) avEl.value = activeItem.AV_NOTE || ""; 
                 let calEl = document.getElementById(p + 'caliper'); if(calEl) calEl.value = activeItem.CALIPER || ""; 
+                
+                calculateMatchQty(p);
             });
             
             document.getElementById('req-match').value = activeItem.REQ_MATCH || ""; document.getElementById('req-spec').value = activeItem.REQ_SPEC || ""; document.getElementById('req-pick').value = activeItem.REQ_PICK || ""; document.getElementById('req-sales-desc').value = activeItem.REQ_SALES_NOTE || ""; document.getElementById('req-comments').value = activeItem.REQ_COMMENTS || ""; document.getElementById('req-caliper').value = activeItem.REQ_CALIPER || "";
@@ -1649,8 +1714,13 @@
                         let matchEl = document.getElementById(prefix + 'match'); if(matchEl) itemToSave.MATCH = matchEl.value; 
                         let specEl = document.getElementById(prefix + 'spec'); if(specEl) itemToSave.SPEC = specEl.value; 
                         let calEl = document.getElementById(prefix + 'caliper'); if(calEl) itemToSave.CALIPER = calEl.value; 
-                        let pickEl = document.getElementById(prefix + 'pick'); if(pickEl) itemToSave.PICK = pickEl.value; 
-                        let avEl = document.getElementById(prefix + 'av-note'); if(avEl) itemToSave.AV_NOTE = avEl.value.toUpperCase(); 
+                        
+                        let pickEl = document.getElementById(prefix + 'pick'); 
+                        if(pickEl) itemToSave.PICK = pickEl.value; 
+                        
+                        let avEl = document.getElementById(prefix + 'av-note'); 
+                        if(avEl) itemToSave.AV_NOTE = avEl.value.toUpperCase(); 
+                        
                         let descEl = document.getElementById(prefix + 'sales-desc');
                         if (descEl) {
                             let textBoxVal = descEl.value.toUpperCase();
@@ -1671,8 +1741,7 @@
                         itemToSave.DOCK_NOTE = document.getElementById('dock-sales-desc').value.toUpperCase(); 
                     }
                 }
-                backupLocalItem(itemToSave);
-
+                
                 const payload = {};
                 if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-') { 
                     payload.match = itemToSave.MATCH || ""; payload.spec = itemToSave.SPEC || ""; payload.caliper = itemToSave.CALIPER || ""; 
@@ -1683,6 +1752,20 @@
                 } else if (prefix === 'dock-') { 
                     payload.dock_spec = itemToSave.DOCK_SPEC || ""; payload.dock_caliper = itemToSave.DOCK_CALIPER || ""; payload.dock_note = itemToSave.DOCK_NOTE || ""; 
                 }
+
+                // 🔥 BURN-DOWN LOGIC: Capture initial values when marked done
+                if (isComplete && (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-')) {
+                    let matchVal = parseFloat(itemToSave.MATCH);
+                    if (!isNaN(matchVal) && matchVal >= 0) {
+                        let ptr = parseInt(String(itemToSave.PTRAVAILABLE).replace(/,/g, '')) || 0;
+                        itemToSave.INITIAL_PTR = ptr;
+                        itemToSave.LOC_MATCH_QTY = Math.round(ptr * (matchVal / 100));
+                        payload.initial_ptr = itemToSave.INITIAL_PTR;
+                        payload.loc_match_qty = itemToSave.LOC_MATCH_QTY;
+                    }
+                }
+
+                backupLocalItem(itemToSave);
 
                 if (itemToSave.SAVED_PHOTO_LINK) payload.photo_link = itemToSave.SAVED_PHOTO_LINK; if (itemToSave.SAVED_PHOTO_NAME) payload.photo_name = itemToSave.SAVED_PHOTO_NAME;
                 if (itemToSave.REQ_PHOTO_LINK) payload.req_photo_link = itemToSave.REQ_PHOTO_LINK; if (itemToSave.REQ_PHOTO_NAME) payload.req_photo_name = itemToSave.REQ_PHOTO_NAME;
