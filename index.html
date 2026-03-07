@@ -359,11 +359,6 @@
                             <div id="ssn-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="ssn-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'ssn-', true)"></div>
                             
                             <div class="relative w-full mt-2 mb-2">
-                                <label class="text-[10px] font-bold text-green-700 uppercase flex justify-between"><span>Sales Note</span></label>
-                                <input type="text" id="ssn-sales-desc" class="input-field border-green-500 bg-green-50 uppercase flex-grow !mb-0" placeholder="Sales Note..." onchange="saveData(false, 'ssn-', true)">
-                            </div>
-                            
-                            <div class="relative w-full mt-2 mb-2">
                                 <label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label>
                                 <div class="flex gap-2">
                                     <input type="text" id="ssn-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" 
@@ -375,8 +370,6 @@
                                 </div>
                                 <div id="ssn-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div>
                             </div>
-
-                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="ssn-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'ssn-', true)"></div>
                         </div>
                         <div class="flex gap-2 mt-4">
                             <button id="ssn-btn-save-draft" class="w-1/3 bg-gray-200 text-gray-700 font-bold py-4 rounded-xl shadow-md" onclick="saveData(false, 'ssn-')">SAVE DRAFT</button>
@@ -400,11 +393,6 @@
                             <div id="lsn-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="lsn-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'lsn-', true)"></div>
                             
                             <div class="relative w-full mt-2 mb-2">
-                                <label class="text-[10px] font-bold text-green-700 uppercase flex justify-between"><span>Sales Note</span></label>
-                                <input type="text" id="lsn-sales-desc" class="input-field border-green-500 bg-green-50 uppercase flex-grow !mb-0" placeholder="Sales Note..." onchange="saveData(false, 'lsn-', true)">
-                            </div>
-
-                            <div class="relative w-full mt-2 mb-2">
                                 <label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label>
                                 <div class="flex gap-2">
                                     <input type="text" id="lsn-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" 
@@ -416,8 +404,6 @@
                                 </div>
                                 <div id="lsn-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div>
                             </div>
-                            
-                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="lsn-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'lsn-', true)"></div>
                         </div>
                         <div class="flex gap-2 mt-4">
                             <button id="lsn-btn-save-draft" class="w-1/3 bg-gray-200 text-gray-700 font-bold py-4 rounded-xl shadow-md" onclick="saveData(false, 'lsn-')">SAVE DRAFT</button>
@@ -441,21 +427,29 @@
                             <div id="na-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="na-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'na-', true)"></div>
                             
                             <div class="relative w-full mt-2 mb-2">
-                                <label class="text-[10px] font-bold text-green-700 uppercase flex justify-between"><span>Sales Note</span></label>
-                                <input type="text" id="na-sales-desc" class="input-field border-green-500 bg-green-50 uppercase flex-grow !mb-0" placeholder="Sales Note..." onchange="saveData(false, 'na-', true)">
+                                <label class="text-[10px] font-bold text-green-700 uppercase flex justify-between"><span>Sales Description</span></label>
+                                <div class="flex gap-2">
+                                    <input type="text" id="na-sales-desc" class="input-field border-green-500 bg-green-50 uppercase flex-grow !mb-0" 
+                                        oninput="this.value = this.value.toUpperCase(); debouncedFilterDropdown('na-sales-desc', 'na-dropdown-list')"
+                                        onfocus="filterDropdown('na-sales-desc', 'na-dropdown-list')"
+                                        onblur="setTimeout(()=> { document.getElementById('na-dropdown-list').classList.add('hidden'); saveData(false, 'na-', true); }, 200)"
+                                        placeholder="TYPE NOTES OR SEARCH...">
+                                    <button type="button" class="bg-green-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('na-')">+ SPEC</button>
+                                </div>
+                                <div id="na-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div>
                             </div>
                             
                             <div class="relative w-full mt-2 mb-2">
                                 <label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label>
                                 <div class="flex gap-2">
                                     <input type="text" id="na-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" 
-                                        oninput="this.value = this.value.toUpperCase(); debouncedFilterDropdown('na-av-note', 'na-dropdown-list')"
-                                        onfocus="filterDropdown('na-av-note', 'na-dropdown-list')"
-                                        onblur="setTimeout(()=> { document.getElementById('na-dropdown-list').classList.add('hidden'); saveData(false, 'na-', true); }, 200)"
+                                        oninput="this.value = this.value.toUpperCase(); debouncedFilterDropdown('na-av-note', 'na-av-dropdown-list')"
+                                        onfocus="filterDropdown('na-av-note', 'na-av-dropdown-list')"
+                                        onblur="setTimeout(()=> { document.getElementById('na-av-dropdown-list').classList.add('hidden'); saveData(false, 'na-', true); }, 200)"
                                         placeholder="TYPE AV NOTE OR SEARCH...">
                                     <button type="button" class="bg-blue-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('na-', 'av-note')">+ SPEC</button>
                                 </div>
-                                <div id="na-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div>
+                                <div id="na-av-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div>
                             </div>
                             
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="na-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'na-', true)"></div>
@@ -480,23 +474,31 @@
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Match %</label><input type="number" id="req-match" class="input-field" placeholder="e.g. 95" onchange="saveData(false, 'req-', true)"></div>
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="req-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'req-', true)"></div>
                             <div id="req-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="req-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'req-', true)"></div>
-                            
+
                             <div class="relative w-full mt-2 mb-2">
                                 <label class="text-[10px] font-bold text-purple-700 uppercase flex justify-between"><span>Request Sales Description</span></label>
-                                <input type="text" id="req-sales-desc" class="input-field border-purple-500 bg-purple-50 uppercase flex-grow !mb-0" placeholder="Sales Note..." onchange="saveData(false, 'req-', true)">
+                                <div class="flex gap-2">
+                                    <input type="text" id="req-sales-desc" class="input-field border-purple-500 bg-purple-50 uppercase flex-grow !mb-0" 
+                                        oninput="this.value = this.value.toUpperCase(); debouncedFilterDropdown('req-sales-desc', 'req-dropdown-list')"
+                                        onfocus="filterDropdown('req-sales-desc', 'req-dropdown-list')"
+                                        onblur="setTimeout(()=>{ document.getElementById('req-dropdown-list').classList.add('hidden'); saveData(false, 'req-', true); }, 200)"
+                                        placeholder="TYPE NOTES OR SEARCH...">
+                                    <button type="button" class="bg-purple-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('req-', 'sales-desc')">+ SPEC</button>
+                                </div>
+                                <div id="req-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div>
                             </div>
                             
                             <div class="relative w-full mt-2 mb-2">
                                 <label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>Request AV Note</span></label>
                                 <div class="flex gap-2">
                                     <input type="text" id="req-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" 
-                                        oninput="this.value = this.value.toUpperCase(); debouncedFilterDropdown('req-av-note', 'req-dropdown-list')"
-                                        onfocus="filterDropdown('req-av-note', 'req-dropdown-list')"
-                                        onblur="setTimeout(()=>{ document.getElementById('req-dropdown-list').classList.add('hidden'); saveData(false, 'req-', true); }, 200)"
+                                        oninput="this.value = this.value.toUpperCase(); debouncedFilterDropdown('req-av-note', 'req-av-dropdown-list')"
+                                        onfocus="filterDropdown('req-av-note', 'req-av-dropdown-list')"
+                                        onblur="setTimeout(()=>{ document.getElementById('req-av-dropdown-list').classList.add('hidden'); saveData(false, 'req-', true); }, 200)"
                                         placeholder="TYPE AV NOTE OR SEARCH...">
                                     <button type="button" class="bg-blue-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('req-', 'av-note')">+ SPEC</button>
                                 </div>
-                                <div id="req-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div>
+                                <div id="req-av-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div>
                             </div>
 
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="req-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'req-', true)"></div>
@@ -772,6 +774,7 @@
         }
 
         function toggleMenu() { document.getElementById('side-drawer').classList.toggle('open'); document.getElementById('drawer-overlay').classList.toggle('open'); }
+        function showToast(title, message, isAlert = false) { const toast = document.getElementById('toast-notification'); toast.style.background = isAlert ? '#ef4444' : '#16a34a'; toast.innerHTML = `<div class="font-bold text-sm">${title}</div><div class="text-xs">${message}</div>`; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 3000); }
 
         function switchView(viewId) {
             ['view-home','view-drive','view-tasks','view-review','view-reports','view-sales-office','view-low-stock','view-detail','view-docks','view-request','view-reserves'].forEach(id => { document.getElementById(id).classList.add('hidden'); });
@@ -1309,7 +1312,6 @@
         function renderTasks() {
             const container = document.getElementById('task-content'); const crumb = document.getElementById('task-crumb'); let userToView = (safeRole === 'ADMIN') ? taskViewTargetUser : currentUser; let searchName = userToView === 'dylan_collyge' ? 'Dylan' : userToView; let myItems = fullInventory.filter(i => String(i.ASSIGNEDTO || "").toLowerCase().includes(searchName.toLowerCase()));
             myItems = myItems.filter(i => { 
-                if (i.DATE_COMPLETED && i.DATE_COMPLETED !== "") return false; // 🚨 THIS INSTANTLY HIDES TASKS IN TASK VIEW
                 const pri = parseFloat(i.PRIORITY); 
                 if (isNaN(pri) || pri <= 0) return false; 
                 if (activeTaskTab === 'season') return i.APP_TAB_ASSIGNMENT === 'season'; 
@@ -1392,21 +1394,21 @@
 
             const standardPrefixes = ['ssn-', 'lsn-', 'na-'];
             standardPrefixes.forEach(p => { 
-                document.getElementById(p + 'match').value = activeItem.MATCH || activeItem.MATCHPCT || ""; 
-                document.getElementById(p + 'spec').value = activeItem.SPEC || ""; 
-                document.getElementById(p + 'pick').value = activeItem.PIC_NOTE || activeItem.PICKNOTE || activeItem.PICK || ""; 
+                let matchEl = document.getElementById(p + 'match'); if(matchEl) matchEl.value = activeItem.MATCH || activeItem.MATCHPCT || ""; 
+                let specEl = document.getElementById(p + 'spec'); if(specEl) specEl.value = activeItem.SPEC || ""; 
+                let pickEl = document.getElementById(p + 'pick'); if(pickEl) pickEl.value = activeItem.PIC_NOTE || activeItem.PICKNOTE || activeItem.PICK || ""; 
+                let avEl = document.getElementById(p + 'av-note'); if(avEl) avEl.value = activeItem.AV_NOTE || ""; 
                 
-                if (document.getElementById(p + 'av-note')) {
-                    document.getElementById(p + 'av-note').value = activeItem.AV_NOTE || ""; 
+                let descEl = document.getElementById(p + 'sales-desc');
+                if(descEl) {
+                    if (sourceView === 'tasks') {
+                        descEl.value = activeItem._NEW_SALES_NOTE || ""; 
+                    } else {
+                        descEl.value = activeItem.SALES_NOTE || activeItem.SALESNOTE || activeItem._NEW_SALES_NOTE || ""; 
+                    }
                 }
                 
-                if (sourceView === 'tasks') {
-                    document.getElementById(p + 'sales-desc').value = activeItem._NEW_SALES_NOTE || ""; 
-                } else {
-                    document.getElementById(p + 'sales-desc').value = activeItem.SALES_NOTE || activeItem.SALESNOTE || activeItem._NEW_SALES_NOTE || ""; 
-                }
-                
-                document.getElementById(p + 'caliper').value = activeItem.CALIPER || ""; 
+                let calEl = document.getElementById(p + 'caliper'); if(calEl) calEl.value = activeItem.CALIPER || ""; 
             });
             
             document.getElementById('req-match').value = activeItem.REQ_MATCH || ""; document.getElementById('req-spec').value = activeItem.REQ_SPEC || ""; document.getElementById('req-pick').value = activeItem.REQ_PICK || ""; document.getElementById('req-sales-desc').value = activeItem.REQ_SALES_NOTE || ""; document.getElementById('req-comments').value = activeItem.REQ_COMMENTS || ""; document.getElementById('req-caliper').value = activeItem.REQ_CALIPER || "";
@@ -1414,10 +1416,17 @@
             
             document.getElementById('dock-spec').value = activeItem.DOCK_SPEC || activeItem.SPEC || ""; document.getElementById('dock-caliper').value = activeItem.DOCK_CALIPER || activeItem.CALIPER || ""; document.getElementById('dock-sales-desc').value = activeItem.DOCK_NOTE || "";
 
-            const caliperSizes = ["7DP", "#7", "#10", "#15", "#25", "#45"];
-            if (caliperSizes.includes(activeItem.CONTSIZE)) { ['ssn-', 'lsn-', 'na-', 'req-'].forEach(p => { document.getElementById(p + 'container-caliper').classList.remove('hidden'); }); } else { ['ssn-', 'lsn-', 'na-', 'req-'].forEach(p => { document.getElementById(p + 'container-caliper').classList.add('hidden'); }); }
-            const isTree = activeItem.PLANTGROUPCODE && activeItem.PLANTGROUPCODE.includes('330_TREES');
-            if (isTree && caliperSizes.includes(activeItem.CONTSIZE)) { document.getElementById('dock-container-caliper').classList.remove('hidden'); } else { document.getElementById('dock-container-caliper').classList.add('hidden'); }
+            const isTree = activeItem.PLANTGROUPCODE && String(activeItem.PLANTGROUPCODE).includes('330_TREES');
+            const caliperSizes = ["#7", "#10", "#15", "#25", "#45"];
+            const showCaliper = isTree && caliperSizes.includes(activeItem.CONTSIZE);
+
+            ['ssn-', 'lsn-', 'na-', 'req-', 'dock-'].forEach(p => { 
+                let calContainer = document.getElementById(p + 'container-caliper');
+                if(calContainer) {
+                    if(showCaliper) calContainer.classList.remove('hidden'); 
+                    else calContainer.classList.add('hidden'); 
+                }
+            });
 
             document.getElementById('expand-section').classList.remove('expanded'); document.getElementById('expand-content').innerHTML = '';
             
@@ -1579,21 +1588,21 @@
             const executeSave = () => {
                 if (!specificItem) {
                     if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-') { 
-                        itemToSave.MATCH = document.getElementById(prefix + 'match').value; 
-                        itemToSave.SPEC = document.getElementById(prefix + 'spec').value; 
-                        itemToSave.CALIPER = document.getElementById(prefix + 'caliper').value; 
-                        itemToSave.PICK = document.getElementById(prefix + 'pick').value; 
+                        let matchEl = document.getElementById(prefix + 'match'); if(matchEl) itemToSave.MATCH = matchEl.value; 
+                        let specEl = document.getElementById(prefix + 'spec'); if(specEl) itemToSave.SPEC = specEl.value; 
+                        let calEl = document.getElementById(prefix + 'caliper'); if(calEl) itemToSave.CALIPER = calEl.value; 
+                        let pickEl = document.getElementById(prefix + 'pick'); if(pickEl) itemToSave.PICK = pickEl.value; 
+                        let avEl = document.getElementById(prefix + 'av-note'); if(avEl) itemToSave.AV_NOTE = avEl.value.toUpperCase(); 
                         
-                        if (document.getElementById(prefix + 'av-note')) {
-                            itemToSave.AV_NOTE = document.getElementById(prefix + 'av-note').value.toUpperCase(); 
-                        }
-                        
-                        let textBoxVal = document.getElementById(prefix + 'sales-desc').value.toUpperCase();
-                        if (lastView === 'tasks') {
-                            itemToSave._NEW_SALES_NOTE = textBoxVal;
-                            if (isComplete) itemToSave.SALES_NOTE = textBoxVal; 
-                        } else {
-                            itemToSave.SALES_NOTE = textBoxVal; 
+                        let descEl = document.getElementById(prefix + 'sales-desc');
+                        if (descEl) {
+                            let textBoxVal = descEl.value.toUpperCase();
+                            if (lastView === 'tasks') {
+                                itemToSave._NEW_SALES_NOTE = textBoxVal;
+                                if (isComplete) itemToSave.SALES_NOTE = textBoxVal; 
+                            } else {
+                                itemToSave.SALES_NOTE = textBoxVal; 
+                            }
                         }
                     } else if (prefix === 'req-') { 
                         itemToSave.REQ_MATCH = document.getElementById('req-match').value; 
