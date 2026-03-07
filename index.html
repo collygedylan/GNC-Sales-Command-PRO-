@@ -372,8 +372,7 @@
                             </div>
                         </div>
                         <div class="flex gap-2 mt-4">
-                            <button id="ssn-btn-save-draft" class="w-1/3 bg-gray-200 text-gray-700 font-bold py-4 rounded-xl shadow-md" onclick="saveData(false, 'ssn-')">SAVE DRAFT</button>
-                            <button id="ssn-btn-save-complete" class="w-2/3 bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg" onclick="saveData(true, 'ssn-')">MARK DONE</button>
+                            <button id="ssn-btn-save-complete" class="w-full bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform" onclick="saveData(true, 'ssn-')">MARK DONE</button>
                         </div>
                     </div>
 
@@ -406,8 +405,7 @@
                             </div>
                         </div>
                         <div class="flex gap-2 mt-4">
-                            <button id="lsn-btn-save-draft" class="w-1/3 bg-gray-200 text-gray-700 font-bold py-4 rounded-xl shadow-md" onclick="saveData(false, 'lsn-')">SAVE DRAFT</button>
-                            <button id="lsn-btn-save-complete" class="w-2/3 bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg" onclick="saveData(true, 'lsn-')">MARK DONE</button>
+                            <button id="lsn-btn-save-complete" class="w-full bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform" onclick="saveData(true, 'lsn-')">MARK DONE</button>
                         </div>
                     </div>
 
@@ -427,19 +425,6 @@
                             <div id="na-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="na-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'na-', true)"></div>
                             
                             <div class="relative w-full mt-2 mb-2">
-                                <label class="text-[10px] font-bold text-green-700 uppercase flex justify-between"><span>Sales Description</span></label>
-                                <div class="flex gap-2">
-                                    <input type="text" id="na-sales-desc" class="input-field border-green-500 bg-green-50 uppercase flex-grow !mb-0" 
-                                        oninput="this.value = this.value.toUpperCase(); debouncedFilterDropdown('na-sales-desc', 'na-dropdown-list')"
-                                        onfocus="filterDropdown('na-sales-desc', 'na-dropdown-list')"
-                                        onblur="setTimeout(()=> { document.getElementById('na-dropdown-list').classList.add('hidden'); saveData(false, 'na-', true); }, 200)"
-                                        placeholder="TYPE NOTES OR SEARCH...">
-                                    <button type="button" class="bg-green-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('na-')">+ SPEC</button>
-                                </div>
-                                <div id="na-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div>
-                            </div>
-                            
-                            <div class="relative w-full mt-2 mb-2">
                                 <label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label>
                                 <div class="flex gap-2">
                                     <input type="text" id="na-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" 
@@ -451,12 +436,9 @@
                                 </div>
                                 <div id="na-av-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div>
                             </div>
-                            
-                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="na-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'na-', true)"></div>
                         </div>
                         <div class="flex gap-2 mt-4">
-                            <button id="na-btn-save-draft" class="w-1/3 bg-gray-200 text-gray-700 font-bold py-4 rounded-xl shadow-md" onclick="saveData(false, 'na-')">SAVE DRAFT</button>
-                            <button id="na-btn-save-complete" class="w-2/3 bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg" onclick="saveData(true, 'na-')">MARK DONE</button>
+                            <button id="na-btn-save-complete" class="w-full bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform" onclick="saveData(true, 'na-')">MARK DONE</button>
                         </div>
                     </div>
 
@@ -852,12 +834,8 @@
             
             if (sourceView === 'drive') {
                 let noteHtml = "";
-                if (item.AV_NOTE && item.AV_NOTE.trim() !== "") {
-                    noteHtml += `<div class="mt-2 text-[12px] text-blue-800 bg-blue-100 p-2 rounded border border-blue-200 shadow-sm whitespace-pre-wrap"><span class="font-black">AV NOTE:</span> ${item.AV_NOTE}</div>`;
-                }
-                if (item.SALES_NOTE && item.SALES_NOTE.trim() !== "") {
-                    noteHtml += `<div class="mt-2 text-[12px] text-green-800 bg-green-100 p-2 rounded border border-green-200 shadow-sm whitespace-pre-wrap"><span class="font-black">SALES NOTE:</span> ${item.SALES_NOTE}</div>`;
-                }
+                if (item.AV_NOTE && item.AV_NOTE.trim() !== "") { noteHtml += `<div class="mt-2 text-[12px] text-blue-800 bg-blue-100 p-2 rounded border border-blue-200 shadow-sm whitespace-pre-wrap"><span class="font-black">AV NOTE:</span> ${item.AV_NOTE}</div>`; }
+                if (item.SALES_NOTE && item.SALES_NOTE.trim() !== "") { noteHtml += `<div class="mt-2 text-[12px] text-green-800 bg-green-100 p-2 rounded border border-green-200 shadow-sm whitespace-pre-wrap"><span class="font-black">SALES NOTE:</span> ${item.SALES_NOTE}</div>`; }
                 return `<div class="flex items-center w-full mb-3 item-row relative bg-white p-4 rounded-xl border border-gray-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm pointer-events-none" ${isChecked}></div><div class="flex flex-grow items-start justify-between min-w-0"><div class="flex-grow min-w-0 pr-2"><div class="font-black text-gray-800 text-[16px] leading-tight truncate mb-0.5">${item.COMMONNAME || 'Unknown'}</div><div class="font-bold text-[#007a4d] text-sm mb-2">${item.CONTSIZE || '-'}</div><div class="text-[11px] font-mono text-gray-500 mb-2 flex items-center bg-gray-100 px-2 py-0.5 rounded w-max"><i class="ph-bold ph-barcode mr-1.5 text-gray-400"></i>${item.ITEMCODE || '-'}</div><div class="flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600"><span class="bg-gray-100 px-1.5 py-0.5 rounded">LOC AVA: <span class="text-gray-900">${item.PTRAVAILABLE || '0'}</span></span><span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">Loc: ${item.LOCATIONCODE || 'No Loc'}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded">Lot: ${item.LOTCODE || '-'}</span><span class="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-100">s_LTS: ${item.S_LTS || '0'}</span><span class="bg-orange-50 text-orange-700 px-1.5 py-0.5 rounded border border-orange-100">Pri: ${item.PRIORITY || '-'}</span></div>${noteHtml}</div>${thumbHtml}</div></div>`;
             }
             return `<div class="flex items-center w-full mb-2 item-row" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm pointer-events-none" ${isChecked}></div><div class="inv-card ${colorClass} flex items-center justify-between flex-grow !mb-0 transition-transform active:scale-[0.99]"><div class="flex-grow min-w-0 text-[#007a4d]"><div class="flex justify-between font-bold text-sm mb-1"><span class="truncate pr-2">${item.COMMONNAME || 'Unknown'} • ${item.CONTSIZE || '-'} • Loc: ${item.LOCATIONCODE || 'No Loc'}</span><span class="whitespace-nowrap bg-[#007a4d]/10 px-1.5 py-0.5 rounded text-xs border border-[#007a4d]/20">Pri: ${item.PRIORITY || '-'}</span></div><div class="text-[11px] font-semibold truncate mt-0.5">Tag: ${tagColor} | Lot: ${item.LOTCODE || '-'} | PTR-Ava: ${item.PTRAVAILABLE || '0'} | s_LTS: ${item.S_LTS || '0'} | Supply: ${item.SEASONSUPPLY || '0'}</div><div class="text-[11px] font-semibold truncate mt-0.5">Item: ${item.ITEMCODE || '-'}</div></div>${thumbHtml}</div></div>`;
@@ -1312,6 +1290,7 @@
         function renderTasks() {
             const container = document.getElementById('task-content'); const crumb = document.getElementById('task-crumb'); let userToView = (safeRole === 'ADMIN') ? taskViewTargetUser : currentUser; let searchName = userToView === 'dylan_collyge' ? 'Dylan' : userToView; let myItems = fullInventory.filter(i => String(i.ASSIGNEDTO || "").toLowerCase().includes(searchName.toLowerCase()));
             myItems = myItems.filter(i => { 
+                if (i.DATE_COMPLETED && i.DATE_COMPLETED !== "") return false; // 🚨 THIS INSTANTLY HIDES TASKS IN TASK VIEW
                 const pri = parseFloat(i.PRIORITY); 
                 if (isNaN(pri) || pri <= 0) return false; 
                 if (activeTaskTab === 'season') return i.APP_TAB_ASSIGNMENT === 'season'; 
@@ -1531,8 +1510,7 @@
 
         async function uploadPhotoToDrive(base64Data, originalFilename, prefix) {
             let targetItem = activeItem; if (!targetItem) return; 
-            let btn = prefix === 'req-' ? document.getElementById('req-btn-save-draft') : document.getElementById(prefix + 'btn-save-draft'); 
-            if (prefix !== 'req-' && prefix !== 'dock-') btn = document.getElementById(prefix + 'btn-save-complete');
+            let btn = document.getElementById(prefix + 'btn-save-complete');
             let isCurrentView = (activeItem && activeItem.UNIQUE_ID === targetItem.UNIQUE_ID); 
             if (btn && isCurrentView) { btn.innerText = "UPLOADING..."; btn.disabled = true; }
             let safeFilename = originalFilename.replace(/[^a-zA-Z0-9.\-_]/g, '_');
@@ -1581,9 +1559,9 @@
         function saveData(isComplete = false, prefix, isSilentAutoSave = false, specificItem = null) {
             if (autoSaveTimer) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
             let itemToSave = specificItem || activeItem; if (!itemToSave) return;
-            let btnDraft = document.getElementById(prefix + 'btn-save-draft'); let btnComp = document.getElementById(prefix + 'btn-save-complete'); let isCurrentView = (activeItem && activeItem.UNIQUE_ID === itemToSave.UNIQUE_ID);
+            let btnComp = document.getElementById(prefix + 'btn-save-complete'); let isCurrentView = (activeItem && activeItem.UNIQUE_ID === itemToSave.UNIQUE_ID);
             
-            if (isCurrentView) { if (isComplete) { if(btnComp) btnComp.innerText = "SAVING..."; } else { if(btnDraft) btnDraft.innerText = isSilentAutoSave ? "AUTO-SAVING..." : "SAVING..."; } }
+            if (isCurrentView) { if (isComplete) { if(btnComp) btnComp.innerText = "SAVING..."; } }
             
             const executeSave = () => {
                 if (!specificItem) {
@@ -1668,11 +1646,11 @@
                 const targetTable = itemToSave.SOURCE_TABLE || 'drivearound_master_data';
 
                 supabaseFetch(targetTable, 'PATCH', payload, `unique_id=eq.${itemToSave.UNIQUE_ID}`).then(data => {
-                    if (isCurrentView) { if(btnDraft) { if(prefix === 'req-') btnDraft.innerText = "SAVE REQUEST DATA"; else if(prefix === 'dock-') btnDraft.innerText = "SAVE DOCK DATA"; else btnDraft.innerText = "SAVE DRAFT"; } if(btnComp) btnComp.innerText = "MARK DONE"; }
+                    if (isCurrentView) { if(btnComp) btnComp.innerText = "MARK DONE"; }
                     if (!isSilentAutoSave && isCurrentView) showToast("Success", isComplete ? "Task Completed & Sent to Sales Office!" : "Draft saved to Database."); 
                     if (isComplete && isCurrentView) { itemToSave.DATE_COMPLETED = new Date().toISOString(); goBackFromDetail(); } else if (isComplete && !isCurrentView) { itemToSave.DATE_COMPLETED = new Date().toISOString(); }
                 }).catch(err => { 
-                    if (isCurrentView) { if(btnDraft) { if(prefix === 'req-') btnDraft.innerText = "SAVE REQUEST DATA"; else if(prefix === 'dock-') btnDraft.innerText = "SAVE DOCK DATA"; else btnDraft.innerText = "SAVE DRAFT"; } if(btnComp) btnComp.innerText = "MARK DONE"; if (!isSilentAutoSave) showToast("Network Error", "Could not reach database.", true); } 
+                    if (isCurrentView) { if(btnComp) btnComp.innerText = "MARK DONE"; if (!isSilentAutoSave) showToast("Network Error", "Could not reach database.", true); } 
                 });
             };
             if (isSilentAutoSave && !isComplete && !specificItem) { autoSaveTimer = setTimeout(() => { executeSave(); }, 1000); } else { executeSave(); }
