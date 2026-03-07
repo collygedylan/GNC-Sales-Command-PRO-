@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GNC SALES PRO</title>
+    <title>GNC 01</title>
     
     <meta name="theme-color" content="#007a4d">
     <link rel="manifest" href="manifest.json">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="application-name" content="GNC SALES PRO">
+    <meta name="application-name" content="GNC 01">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-title" content="GNC SALES PRO">
+    <meta name="apple-mobile-web-app-title" content="GNC 01">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="icon" type="image/png" href="Ag%20Metric%20App.png">
     <link rel="apple-touch-icon" href="Ag%20Metric%20App.png">
@@ -101,7 +101,7 @@
         <div class="login-card">
             <div class="flex flex-col items-center mb-8 w-full relative">
                 <img src="Greenleaf%20Logo.png" alt="Greenleaf Logo" class="h-20 mb-4 object-contain drop-shadow-md" onerror="this.style.display='none'">
-                <div class="text-3xl text-[#007a4d] font-black tracking-tighter mb-1">GNC SALES PRO</div>
+                <div class="text-3xl text-[#007a4d] font-black tracking-tighter mb-1">GNC 01</div>
                 
                 <div class="flex flex-col items-center gap-0.5 mt-5">
                     <span class="text-[9px] font-bold text-gray-400 uppercase tracking-[0.3em]">Powered By</span>
@@ -238,7 +238,7 @@
                 <i class="ph-bold ph-list menu-btn text-2xl cursor-pointer" onclick="toggleMenu()"></i>
                 <div class="flex flex-col">
                     <div class="font-bold text-lg leading-tight"><span id="header-user">User</span></div>
-                    <div class="text-[10px] opacity-80 leading-tight">GNC SALES PRO</div>
+                    <div class="text-[10px] opacity-80 leading-tight">GNC 01</div>
                 </div>
             </div>
         </header>
@@ -301,7 +301,7 @@
                             <img src="Greenleaf%20Logo.png" alt="Greenleaf Logo" class="h-11 object-contain" onerror="this.style.display='none'">
                         </div>
                         
-                        <h1 class="text-2xl font-black tracking-tight mb-1 z-10 relative">GNC SALES PRO</h1>
+                        <h1 class="text-2xl font-black tracking-tight mb-1 z-10 relative">GNC 01</h1>
                         <p class="text-green-100 text-[10px] font-bold mb-5 uppercase tracking-[0.2em] z-10 relative">Dashboard</p>
                         
                         <div class="flex flex-col items-center pt-4 border-t border-white/20 w-full mt-1 z-10 relative">
@@ -773,10 +773,10 @@
         </div>
 
         <nav class="fixed bottom-0 w-full bg-white border-t flex justify-around py-3 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-50">
-            <div onclick="switchView('home')"><i class="ph-bold ph-house text-2xl text-gray-400"></i></div>
-            <div onclick="switchView('drive')"><i class="ph-bold ph-car text-2xl text-gray-400"></i></div>
-            <div onclick="switchView('tasks')" class="rep-hidden csr-hidden"><i class="ph-bold ph-clipboard-text text-2xl text-gray-400"></i></div>
-            <div onclick="switchView('docks')"><i class="ph-bold ph-truck text-2xl text-gray-400"></i></div>
+            <div onclick="switchView('home')" class="cursor-pointer"><i class="ph-bold ph-house text-2xl text-gray-400"></i></div>
+            <div onclick="switchView('drive')" class="cursor-pointer"><i class="ph-bold ph-car text-2xl text-gray-400"></i></div>
+            <div onclick="switchView('tasks')" class="rep-hidden csr-hidden cursor-pointer"><i class="ph-bold ph-clipboard-text text-2xl text-gray-400"></i></div>
+            <div onclick="switchView('docks')" class="cursor-pointer"><i class="ph-bold ph-truck text-2xl text-gray-400"></i></div>
         </nav>
     </div>
 
@@ -955,7 +955,7 @@
               });
         }
 
-        // 🚨 NEW BULLETPROOF FETCH ENGINE WITH TIMEOUTS 🚨
+        // 🚨 NEW BULLETPROOF FETCH ENGINE WITH TIMEOUTS & INFINITE LOOP GUARDS 🚨
         async function supabaseFetch(table, method = 'GET', body = null, query = '') {
             try {
                 let allData = [];
@@ -964,8 +964,10 @@
                 let hasMore = true;
 
                 if (method === 'GET') {
-                    while (hasMore) {
-                        const url = `${SUPABASE_URL}/rest/v1/${table}?${query}&limit=${limit}&offset=${offset}`;
+                    let loopGuard = 0;
+                    while (hasMore && loopGuard < 50) { // Safety loop guard (max 50,000 rows per table)
+                        loopGuard++;
+                        const url = `${SUPABASE_URL}/rest/v1/${table}?${query ? query + '&' : ''}limit=${limit}&offset=${offset}`;
                         
                         const controller = new AbortController();
                         const timeoutId = setTimeout(() => controller.abort(), 15000);
@@ -1344,16 +1346,17 @@
             fetchBackgroundData();
         }
 
-        // 🚨 ADDED SYNC PROGRESS INDICATORS HERE 🚨
+        // 🚨 ADDED TRY/CATCH FAIL-SAFE AROUND DATA PROCESSING 🚨
         async function fetchBackgroundData(isRealtimeSync = false) {
             if (!isRealtimeSync) await requestWakeLock(); 
 
             const cachedRes = await loadFromCache();
             if (cachedRes && !isRealtimeSync) {
-                setTimeout(() => { processAndLoadData(cachedRes); }, 50);
+                setTimeout(() => { 
+                    try { processAndLoadData(cachedRes); } catch(e) { console.error(e); } 
+                }, 50);
             } 
             
-            // Show Banner Only if Not Background Realtime Sync
             if (!isRealtimeSync) showSyncBanner();
 
             try {
@@ -1406,17 +1409,23 @@
                     reservesData: formatArr(resData, 'reserves'),
                     socData: formatArr(socData, 'soc_master'),
                     managerReviewData: formatArr(reviewData, 'manager_review'),
-                    seasonIds: (seasonData || []).map(i => i.unique_id || i.UNIQUE_ID || i['UNIQUE ID']).filter(Boolean),
+                    seasonIds: Array.isArray(seasonData) ? seasonData.map(i => i.unique_id || i.UNIQUE_ID || i['UNIQUE ID']).filter(Boolean) : [],
                     salesOfficeData: formatArr(salesOfficeData, 'sales_office') 
                 };
 
                 setTimeout(() => {
-                    processAndLoadData(resObj); 
-                    saveToCache(resObj);        
-                    if (!isRealtimeSync) {
-                        closePTR(); 
-                        releaseWakeLock(); 
-                        setTimeout(hideSyncBanner, 500); 
+                    try {
+                        processAndLoadData(resObj); 
+                        saveToCache(resObj);        
+                    } catch(e) {
+                        console.error("Critical Processing Error:", e);
+                        showToast("Data Error", "Unable to map visual data.", true);
+                    } finally {
+                        if (!isRealtimeSync) {
+                            closePTR(); 
+                            releaseWakeLock(); 
+                            setTimeout(hideSyncBanner, 500); 
+                        }
                     }
                 }, 100);
 
@@ -1432,7 +1441,7 @@
         }
 
         function processAndLoadData(res) {
-            fullInventory = res.data.map((item, idx) => { item.DOM_ID = 'fi_' + idx; return item; });
+            fullInventory = Array.isArray(res.data) ? res.data.map((item, idx) => { item.DOM_ID = 'fi_' + idx; return item; }) : [];
             
             masterInventoryDict = {};
             fullInventory.forEach(item => {
@@ -1442,16 +1451,16 @@
                 }
             });
 
-            lowStockInventory = res.lowStock.map((item, idx) => { item.DOM_ID = 'ls_' + idx; return item; });
-            managerReviewInventory = res.managerReviewData ? res.managerReviewData.map((item, idx) => { item.DOM_ID = 'mr_' + idx; return item; }) : [];
-            requestsInventory = res.requestsData ? res.requestsData.map((item, idx) => { item.DOM_ID = 'req_' + item.UNIQUE_ID; return item; }) : [];
+            lowStockInventory = Array.isArray(res.lowStock) ? res.lowStock.map((item, idx) => { item.DOM_ID = 'ls_' + idx; return item; }) : [];
+            managerReviewInventory = Array.isArray(res.managerReviewData) ? res.managerReviewData.map((item, idx) => { item.DOM_ID = 'mr_' + idx; return item; }) : [];
+            requestsInventory = Array.isArray(res.requestsData) ? res.requestsData.map((item, idx) => { item.DOM_ID = 'req_' + item.UNIQUE_ID; return item; }) : [];
             
-            salesOfficeInventory = res.salesOfficeData ? res.salesOfficeData.map((item, idx) => {
+            salesOfficeInventory = Array.isArray(res.salesOfficeData) ? res.salesOfficeData.map((item, idx) => {
                 item.DOM_ID = 'so_' + item.UNIQUE_ID; 
                 return item;
             }) : [];
 
-            socInventory = res.socData;
+            socInventory = Array.isArray(res.socData) ? res.socData : [];
             socInventory.forEach(item => {
                 item.DOCK_NUM = item.DOCK_NUM || item.DOCK || item.dock; 
                 item.SALESREPNAME = item.SALESREPNAME || item.SALESREP || item['SALES_REP'] || 'Unknown Rep';
@@ -1464,7 +1473,8 @@
                 item.APP_TAB_ASSIGNMENT = exactSeasonIds.has(String(item.UNIQUE_ID)) ? 'season' : 'location'; 
             });
             
-            reservesInventory = res.reservesData.map((item, idx) => {
+            let tempResData = Array.isArray(res.reservesData) ? res.reservesData : [];
+            reservesInventory = tempResData.map((item, idx) => {
                 item.DOM_ID = 'res_' + idx; item.UNIQUE_ID = item.UNIQUE_ID || 'res_uid_' + idx; 
                 let resCode = String(item.ITEMCODE || item.ITEM || "").trim().toUpperCase(); 
                 let masterItem = masterInventoryDict[resCode]; 
@@ -2422,7 +2432,7 @@
                         itemToSave.DOCK_NOTE = document.getElementById('dock-sales-desc').value.toUpperCase(); 
                     }
                 }
-                backupLocalItem(itemToSave);
+                try { backupLocalItem(itemToSave); } catch(e) {}
 
                 const payload = {};
                 if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-') { 
