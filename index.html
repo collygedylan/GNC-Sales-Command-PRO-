@@ -782,20 +782,41 @@
 
     <script>
         // =========================================================
-        // 🚀 SUPABASE API CONFIGURATION 🚀
+        // 🚀 SUPABASE API & GOOGLE SHEETS CONFIGURATION 🚀
         // =========================================================
         const SUPABASE_URL = "https://gmkmsjvzzujjxfmcpyud.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdta21zanZ6enVqanhmbWNweXVkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjYwMTE1MywiZXhwIjoyMDg4MTc3MTUzfQ.E6UDlfJrdftcyPFKPcyCDfuLw5TGfqoVVoNx9N139As";
-
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzhJ_tytv5Rm2ag44liZAU6nsp0lQ7-9PLmjxrcuT1WA1WARubi7NyolYoTZ_qvZmzo/exec";
+        
+        // 🔥 ADD YOUR PUBLISHED CSV LINK HERE 
+        // Instructions: In Google Sheets go to File -> Share -> Publish to Web -> Change 'Web Page' to 'Comma-separated values (.csv)' -> Copy the link.
+        const GOOGLE_SHEET_NOTES_CSV_URL = ""; 
 
-        // 🔥 TURBO OPTIMIZATION: Debounce utility stops rendering logic from firing 100x a second while typing
+        // Base array for approved notes
+        let approvedNotesList = ["Ready to ship", "Needs weeded", "Needs pruned", "Yellowing leaves", "Too small", "Hold for next season", "Poor structure", "Needs spacing"];
+
+        // Asynchronously pulls data from the provided Google Sheet CSV
+        async function fetchApprovedNotes() {
+            if (!GOOGLE_SHEET_NOTES_CSV_URL || GOOGLE_SHEET_NOTES_CSV_URL === "") return;
+            try {
+                let res = await fetch(GOOGLE_SHEET_NOTES_CSV_URL);
+                if (res.ok) {
+                    let text = await res.text();
+                    let lines = text.split(/\r?\n/).map(l => l.trim().replace(/^"|"$/g, '')).filter(l => l.length > 0);
+                    if (lines.length > 0) {
+                        // Assuming row 1 is a header, we remove it. Remove the next line if there is no header!
+                        if(lines[0].toLowerCase().includes('note')) lines.shift();
+                        approvedNotesList = lines;
+                    }
+                }
+            } catch(e) { console.log("Failed to fetch notes from Google Sheets", e); }
+        }
+
         function debounce(func, wait) {
             let timeout;
             return function(...args) { clearTimeout(timeout); timeout = setTimeout(() => func.apply(this, args), wait); };
         }
 
-        // 🚨 GLOBAL PROGRESS BAR LOGIC 🚨
         let activeFetches = 0;
         let fetchProgressInterval;
         let currentProgress = 0;
@@ -828,7 +849,6 @@
             }
         }
 
-        // 🚨 NEW BULLETPROOF FETCH ENGINE 🚨
         async function supabaseFetch(table, method = 'GET', body = null, query = '') {
             startGlobalProgress();
             try {
@@ -1154,6 +1174,7 @@
 
             applyRolePermissions();
             fetchBackgroundData();
+            fetchApprovedNotes();
         }
 
         async function fetchBackgroundData() {
@@ -1195,7 +1216,6 @@
                         obj.SEASONSUPPLY = obj.SEASON_SUPPLY || obj.SEASONSUPPLY || 0;
                         obj.FIELDTAGCOLOR = obj.FIELD_TAG_COLOR || obj.FIELDTAGCOLOR || "-";
                         obj.PTRAVAILABLE = obj.PTRAVAILABLE || 0;
-                        // 🔥 TURBO OPTIMIZATION: Pre-calculate the search index once upon loading data 
                         obj._search = `${obj.COMMONNAME||''} ${obj.LOCATIONCODE||''} ${obj.ITEMCODE||''} ${obj.CONTSIZE||''} ${obj.CUSTOMERNAME||''} ${obj.SALESREPNAME||''}`.toLowerCase();
                         return obj;
                     });
@@ -1241,7 +1261,6 @@
                 item.SALESREPNAME = item.SALESREPNAME || item.SALESREP || item['SALES_REP'] || 'Unknown Rep';
                 item.CUSTOMERNAME = item.CUSTOMERNAME || item.CUSTOMER || 'Unknown Customer';
                 item.CONSIGNEENAME = item.CONSIGNEENAME || item.CONSIGNEE || '';
-                // Turbo search index
                 item._search = `${item.COMMONNAME||''} ${item['PLANT_NAME']||''} ${item.CUSTOMERNAME||''} ${item.SALESREPNAME||''}`.toLowerCase();
             });
 
@@ -1261,8 +1280,6 @@
                 item.CONSIGNEENAME = item.CONSIGNEENAME || item.CONSIGNEE || ''; 
                 item.SALESREPNAME = item.SALESREPNAME || item.SALESREP || item['SALES_REP'] || 'Unknown Rep';
                 if (masterItem) { item.LOCATIONCODE = masterItem.LOCATIONCODE; item.PTRAVAILABLE = masterItem.PTRAVAILABLE; item.SEASONSUPPLY = masterItem.SEASONSUPPLY; item.PRIORITY = masterItem.PRIORITY; item.QUALITYCODE = masterItem.QUALITYCODE; item.FIELDTAGCOLOR = masterItem.FIELDTAGCOLOR; item.LOTCODE = masterItem.LOTCODE; }
-                
-                // Turbo search index
                 item._search = `${item.COMMONNAME||''} ${item.CUSTOMERNAME||''} ${item.ITEMCODE||''}`.toLowerCase();
                 return item;
             });
@@ -1297,7 +1314,6 @@
             toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 3000);
         }
 
-        // 🔥 TURBO OPTIMIZATION: requestAnimationFrame unblocks UI so clicking feels instant
         function switchView(viewId) {
             ['view-home','view-drive','view-tasks','view-review','view-reports','view-sales-office','view-low-stock','view-detail','view-docks','view-request','view-reserves'].forEach(id => { document.getElementById(id).classList.add('hidden'); });
             document.getElementById('view-' + viewId).classList.remove('hidden');
@@ -1342,10 +1358,7 @@
         function selectRequestFolder(folderId) { selectedReqFolder = folderId; requestViewLevel = 4; renderRequest(); }
         function clearReservesSearch() { document.getElementById('reserves-search').value = ""; document.getElementById('reserves-search-clear').classList.add('hidden'); renderReserves(); }
         
-        // 🔥 TURBO OPTIMIZATION: Instant UI update, delayed rendering for typing speed
-        const debouncedReservesSearch = debounce(() => {
-            requestAnimationFrame(() => renderReserves());
-        }, 150);
+        const debouncedReservesSearch = debounce(() => { requestAnimationFrame(() => renderReserves()); }, 150);
         function handleReservesSearch() {
             const term = document.getElementById('reserves-search').value.toLowerCase(); 
             const clearBtn = document.getElementById('reserves-search-clear'); 
@@ -1454,7 +1467,6 @@
             document.getElementById('step-1-rep').classList.remove('hidden'); document.getElementById('step-1.5-folder').classList.add('hidden'); document.getElementById('step-2-cust').classList.add('hidden'); document.getElementById('step-3-qty').classList.add('hidden'); document.getElementById('request-rep-modal').classList.remove('hidden'); document.getElementById('rep-search-input').value = ""; filterRepList();
         }
 
-        // 🔥 TURBO OPTIMIZATION: Debounced modal filters
         const debouncedFilterRepList = debounce(() => requestAnimationFrame(filterRepList), 150);
         function filterRepList() {
             const val = document.getElementById('rep-search-input').value.toLowerCase().trim(); const container = document.getElementById('rep-list-container'); const customBtn = document.getElementById('custom-rep-btn'); let html = ""; let exactMatch = false;
@@ -1478,7 +1490,6 @@
             } else { document.getElementById('step-2-cust').classList.remove('hidden'); document.getElementById('cust-search-input').value = ""; populateCustomerList(); }
         }
 
-        // 🔥 TURBO OPTIMIZATION: Debounced modal filters
         const debouncedPopulateCustomerList = debounce(() => requestAnimationFrame(populateCustomerList), 150);
         function populateCustomerList() {
             const val = document.getElementById('cust-search-input').value.toLowerCase().trim(); const container = document.getElementById('cust-list-container'); let custSet = new Set();
@@ -1591,7 +1602,6 @@
         function openAssignModal() { document.getElementById('assign-modal').classList.remove('hidden'); }
         function closeAssignModal() { document.getElementById('assign-modal').classList.add('hidden'); }
 
-        // 🔥 TURBO OPTIMIZATION: Instant UI update, delayed rendering for typing speed
         const debouncedDocksSearch = debounce(() => {
             const term = document.getElementById('docks-search').value.toLowerCase();
             if (term.length > 0 && dockViewLevel > 1) { dockViewLevel = 1; selectedDockName = null; selectedDockSize = null; selectedDockItemCode = null; } 
@@ -1822,7 +1832,6 @@
             }
         }
 
-        // 🔥 TURBO OPTIMIZATION: Instant UI update, delayed rendering for typing speed
         const debouncedDriveSearch = debounce(() => {
             const term = document.getElementById('drive-search').value.toLowerCase();
             if (term.length > 0 && driveViewLevel > 0) { driveViewLevel = 0; selectedDriveName = null; selectedDriveSize = null; } 
@@ -1911,14 +1920,21 @@
             }
         }
 
-        // 🔥 TURBO OPTIMIZATION: Debounced dropdown rendering
         const debouncedFilterDropdown = debounce((inputId, listId) => requestAnimationFrame(() => filterDropdown(inputId, listId)), 100);
         function filterDropdown(inputId, listId) {
-            const val = document.getElementById(inputId).value.toLowerCase().trim(); const list = document.getElementById(listId); const plantName = activeItem ? activeItem.COMMONNAME.toUpperCase() : ""; const suggestedNotes = salesNotesDict[plantName] || []; let html = "";
-            if (suggestedNotes.length > 0) { html += `<div class="px-3 py-1 bg-green-100 text-green-800 text-[10px] font-bold uppercase tracking-wider border-b border-green-200">Recommended for ${plantName}</div>`; suggestedNotes.forEach(note => { if (note.toLowerCase().includes(val) || val === "") { html += `<div class="px-3 py-3 border-b border-gray-100 hover:bg-green-50 active:bg-green-100 cursor-pointer text-sm font-semibold text-green-700" onmousedown="applyQuickNote('${note.replace(/'/g, "\\'")}', '${inputId}', '${listId}')">${note}</div>`; } }); }
-            const genericNotes = ["Needs weeded", "Needs pruned", "Yellowing leaves", "Too small", "Ready to ship", "Hold for next season", "Poor structure", "Needs spacing"]; html += `<div class="px-3 py-1 bg-gray-100 text-gray-600 text-[10px] font-bold uppercase tracking-wider border-b border-gray-200">Common Notes</div>`;
-            genericNotes.forEach(note => { if (note.toLowerCase().includes(val) || val === "") { html += `<div class="px-3 py-3 border-b border-gray-100 hover:bg-gray-50 active:bg-gray-200 cursor-pointer text-sm font-medium text-gray-700" onmousedown="applyQuickNote('${note.replace(/'/g, "\\'")}', '${inputId}', '${listId}')">${note}</div>`; } });
-            list.innerHTML = html; list.classList.remove('hidden');
+            const val = document.getElementById(inputId).value.toLowerCase().trim(); 
+            const list = document.getElementById(listId); 
+            let html = "";
+            
+            // Loop through the notes fetched dynamically from Google Sheets
+            html += `<div class="px-3 py-1 bg-gray-100 text-gray-600 text-[10px] font-bold uppercase tracking-wider border-b border-gray-200">Approved Notes</div>`;
+            approvedNotesList.forEach(note => { 
+                if (note.toLowerCase().includes(val) || val === "") { 
+                    html += `<div class="px-3 py-3 border-b border-gray-100 hover:bg-gray-50 active:bg-gray-200 cursor-pointer text-sm font-medium text-gray-700" onmousedown="applyQuickNote('${note.replace(/'/g, "\\'")}', '${inputId}', '${listId}')">${note}</div>`; 
+                } 
+            });
+            list.innerHTML = html; 
+            list.classList.remove('hidden');
         }
 
         function applyQuickNote(val, targetInputId, selectId) { if (!val) return; const targetInput = document.getElementById(targetInputId); if (targetInput.value.trim() !== "") targetInput.value = (targetInput.value + " " + val).toUpperCase(); else targetInput.value = val.toUpperCase(); document.getElementById(selectId).value = ""; }
@@ -1936,8 +1952,19 @@
             document.getElementById('det-common').innerText = activeItem.COMMONNAME || "--"; document.getElementById('det-size').innerText = activeItem.CONTSIZE || "--"; document.getElementById('ov-loc').innerText = activeItem.LOCATIONCODE || "--"; document.getElementById('ov-avail').innerText = activeItem.PTRAVAILABLE || "0"; document.getElementById('ov-item').innerText = activeItem.ITEMCODE || "--"; document.getElementById('ov-lot').innerText = activeItem.LOTCODE || "--"; document.getElementById('ov-qual').innerText = activeItem.QUALITYCODE || "--"; document.getElementById('ov-tag').innerText = activeItem.FIELDTAGCOLOR || activeItem['FIELD_TAG_COLOR'] || "--"; document.getElementById('ov-season').innerText = activeItem.SEASONSUPPLY || "--"; document.getElementById('ov-prior').innerText = activeItem.PRIORITY || "--";
 
             const standardPrefixes = ['ssn-', 'lsn-', 'na-'];
-            standardPrefixes.forEach(p => { document.getElementById(p + 'match').value = activeItem.MATCH || activeItem.MATCHPCT || ""; document.getElementById(p + 'spec').value = activeItem.SPEC || ""; document.getElementById(p + 'pick').value = activeItem.PIC_NOTE || activeItem.PICKNOTE || activeItem.PICK || ""; document.getElementById(p + 'sales-desc').value = activeItem.SALES_NOTE || activeItem.SALESNOTE || activeItem.SALESDESC || ""; document.getElementById(p + 'caliper').value = activeItem.CALIPER || ""; });
+            standardPrefixes.forEach(p => { 
+                document.getElementById(p + 'match').value = activeItem.MATCH || activeItem.MATCHPCT || ""; 
+                document.getElementById(p + 'spec').value = activeItem.SPEC || ""; 
+                document.getElementById(p + 'pick').value = activeItem.PIC_NOTE || activeItem.PICKNOTE || activeItem.PICK || ""; 
+                
+                // 🔥 NEW: This field starts completely blank so reps don't see the old database note!
+                // It will only populate if they've typed a draft recently.
+                document.getElementById(p + 'sales-desc').value = activeItem._NEW_SALES_NOTE || ""; 
+                
+                document.getElementById(p + 'caliper').value = activeItem.CALIPER || ""; 
+            });
             
+            // Other modules keep original functionality 
             document.getElementById('req-match').value = activeItem.REQ_MATCH || ""; document.getElementById('req-spec').value = activeItem.REQ_SPEC || ""; document.getElementById('req-pick').value = activeItem.REQ_PICK || ""; document.getElementById('req-sales-desc').value = activeItem.REQ_SALES_NOTE || ""; document.getElementById('req-comments').value = activeItem.REQ_COMMENTS || ""; document.getElementById('req-caliper').value = activeItem.REQ_CALIPER || "";
             document.getElementById('dock-spec').value = activeItem.DOCK_SPEC || activeItem.SPEC || ""; document.getElementById('dock-caliper').value = activeItem.DOCK_CALIPER || activeItem.CALIPER || ""; document.getElementById('dock-sales-desc').value = activeItem.DOCK_NOTE || "";
 
@@ -1988,7 +2015,7 @@
 
         function renderAllFields() {
             if(!activeItem) return;
-            const hiddenKeys = ['UNIQUE_ID', 'UNIQUEID', 'ASSIGNEDTO', 'DOM_ID', 'IS_REQUEST', 'REQUESTED_BY', 'REQUEST_FOLDER', '_search']; 
+            const hiddenKeys = ['UNIQUE_ID', 'UNIQUEID', 'ASSIGNEDTO', 'DOM_ID', 'IS_REQUEST', 'REQUESTED_BY', 'REQUEST_FOLDER', '_search', '_NEW_SALES_NOTE']; 
             let html = '<div class="grid grid-cols-1 gap-2">';
             for (const [key, value] of Object.entries(activeItem)) { 
                 if(hiddenKeys.includes(key)) continue; 
@@ -2101,14 +2128,26 @@
             
             const executeSave = () => {
                 if (!specificItem) {
-                    if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-') { itemToSave.MATCH = document.getElementById(prefix + 'match').value; itemToSave.SPEC = document.getElementById(prefix + 'spec').value; itemToSave.CALIPER = document.getElementById(prefix + 'caliper').value; itemToSave.PICK = document.getElementById(prefix + 'pick').value; itemToSave.SALES_NOTE = document.getElementById(prefix + 'sales-desc').value.toUpperCase(); } 
+                    if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-') { 
+                        itemToSave.MATCH = document.getElementById(prefix + 'match').value; 
+                        itemToSave.SPEC = document.getElementById(prefix + 'spec').value; 
+                        itemToSave.CALIPER = document.getElementById(prefix + 'caliper').value; 
+                        itemToSave.PICK = document.getElementById(prefix + 'pick').value; 
+                        itemToSave._NEW_SALES_NOTE = document.getElementById(prefix + 'sales-desc').value.toUpperCase(); 
+                    } 
                     else if (prefix === 'req-') { itemToSave.REQ_MATCH = document.getElementById('req-match').value; itemToSave.REQ_SPEC = document.getElementById('req-spec').value; itemToSave.REQ_CALIPER = document.getElementById('req-caliper').value; itemToSave.REQ_PICK = document.getElementById('req-pick').value; itemToSave.REQ_SALES_NOTE = document.getElementById('req-sales-desc').value.toUpperCase(); itemToSave.REQ_COMMENTS = document.getElementById('req-comments').value; } 
                     else if (prefix === 'dock-') { itemToSave.DOCK_SPEC = document.getElementById('dock-spec').value; itemToSave.DOCK_CALIPER = document.getElementById('dock-caliper').value; itemToSave.DOCK_NOTE = document.getElementById('dock-sales-desc').value.toUpperCase(); }
                 }
                 backupLocalItem(itemToSave);
 
                 const payload = {};
-                if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-') { payload.match = itemToSave.MATCH || ""; payload.spec = itemToSave.SPEC || ""; payload.caliper = itemToSave.CALIPER || ""; payload.pic_note = itemToSave.PICK || ""; payload.sales_note = itemToSave.SALES_NOTE || ""; } 
+                if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-') { 
+                    payload.match = itemToSave.MATCH || ""; 
+                    payload.spec = itemToSave.SPEC || ""; 
+                    payload.caliper = itemToSave.CALIPER || ""; 
+                    payload.pic_note = itemToSave.PICK || ""; 
+                    payload.sales_note = itemToSave._NEW_SALES_NOTE || ""; 
+                } 
                 else if (prefix === 'req-') { payload.req_match = itemToSave.REQ_MATCH || ""; payload.req_spec = itemToSave.REQ_SPEC || ""; payload.req_caliper = itemToSave.REQ_CALIPER || ""; payload.req_pic_note = itemToSave.REQ_PICK || ""; payload.req_sales_note = itemToSave.REQ_SALES_NOTE || ""; payload.req_comments = itemToSave.REQ_COMMENTS || ""; } 
                 else if (prefix === 'dock-') { payload.dock_spec = itemToSave.DOCK_SPEC || ""; payload.dock_caliper = itemToSave.DOCK_CALIPER || ""; payload.dock_note = itemToSave.DOCK_NOTE || ""; }
 
@@ -2129,7 +2168,7 @@
                         lotcode: itemToSave.LOTCODE || "",
                         ptravailable: String(itemToSave.PTRAVAILABLE || ""),
                         priority: String(itemToSave.PRIORITY || ""),
-                        sales_note: payload.sales_note || itemToSave.SALES_NOTE || "",
+                        sales_note: payload.sales_note || itemToSave._NEW_SALES_NOTE || "",
                         photo_link: payload.photo_link || itemToSave.SAVED_PHOTO_LINK || "",
                         completed_by: currentUser,
                         completed_at: payload.date_completed
