@@ -234,7 +234,6 @@
 
         <div id="main-scroll-area" class="flex-grow overflow-y-auto p-4 pb-40 relative">
             <div id="view-wrapper" style="position:relative; z-index:20;">
-                
                 <div id="view-home" class="hidden">
                     <div class="bg-[#007a4d] text-white p-6 rounded-2xl mb-6 shadow-lg flex flex-col items-center text-center relative overflow-hidden">
                         <div class="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-white opacity-5 rounded-full pointer-events-none"></div>
@@ -355,7 +354,6 @@
                         <div class="detail-tab hidden" onclick="switchDetailTab('request')" id="dtab-request">Request</div>
                         <div class="detail-tab hidden" onclick="switchDetailTab('notes')" id="dtab-notes">Notes & Actions</div>
                         <div class="detail-tab hidden" onclick="switchDetailTab('docks')" id="dtab-docks">Docks</div>
-                        <div class="detail-tab hidden" onclick="switchDetailTab('flyer')" id="dtab-flyer">Flyer</div>
                     </div>
                     
                     <div id="det-overview-content" class="py-4">
@@ -379,269 +377,85 @@
                     <div id="det-season-content" class="hidden py-4">
                         <div id="ssn-photo-preview" class="mb-4 hidden"><p class="text-[10px] font-bold text-blue-600 mb-2 uppercase">Photos on file</p><div id="ssn-photo-list-container" class="space-y-2"></div></div>
                         <div class="grid grid-cols-2 gap-2 mb-4">
-                            <label class="bg-green-50 border-2 border-dashed border-green-500 text-green-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer">
-                                <i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoUpload(this, 'ssn-')">
-                            </label>
-                            <label class="bg-blue-50 border-2 border-dashed border-blue-500 text-blue-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer">
-                                <i class="ph-fill ph-image text-3xl mb-1"></i><span class="text-[10px] font-bold">LIBRARY</span><input type="file" accept="image/*" class="hidden" onchange="handlePhotoUpload(this, 'ssn-')">
-                            </label>
+                            <label class="bg-green-50 border-2 border-dashed border-green-500 text-green-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoUpload(this, 'ssn-')"></label>
+                            <label class="bg-blue-50 border-2 border-dashed border-blue-500 text-blue-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer"><i class="ph-fill ph-image text-3xl mb-1"></i><span class="text-[10px] font-bold">LIBRARY</span><input type="file" accept="image/*" class="hidden" onchange="handlePhotoUpload(this, 'ssn-')"></label>
                         </div>
                         <div id="ssn-input-container">
-                            <div class="mb-3">
-                                <label class="text-[10px] font-bold text-gray-500 uppercase">Loc Match %</label>
-                                <input type="number" id="ssn-match" class="input-field !mb-1" placeholder="e.g. 40" oninput="calculateMatchQty('ssn-')">
-                                <div id="ssn-match-display" class="text-[10px] font-bold text-[#007a4d] text-right mb-2 hidden">LOC Match QTY: <span id="ssn-match-qty-val">0</span></div>
-                            </div>
-                            <div>
-                                <label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label>
-                                <input type="text" id="ssn-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'ssn-', true)">
-                            </div>
-                            <div id="ssn-container-caliper" class="hidden">
-                                <label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label>
-                                <input type="text" id="ssn-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'ssn-', true)">
-                            </div>
-                            
-                            <div class="relative w-full mt-2 mb-2 hidden">
-                                <label class="text-[10px] font-bold text-green-700 uppercase flex justify-between"><span>Sales Note</span></label>
-                                <input type="text" id="ssn-sales-desc" class="input-field border-green-500 bg-green-50 uppercase flex-grow !mb-0" placeholder="Sales Note..." onchange="saveData(false, 'ssn-', true)">
-                            </div>
-                            
-                            <div class="relative w-full mt-2 mb-2">
-                                <label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label>
-                                <div class="flex gap-2">
-                                    <input type="text" id="ssn-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" 
-                                        oninput="this.value = this.value.toUpperCase(); debouncedFilterDropdown('ssn-av-note', 'ssn-dropdown-list')"
-                                        onfocus="filterDropdown('ssn-av-note', 'ssn-dropdown-list')"
-                                        onblur="setTimeout(()=> { document.getElementById('ssn-dropdown-list').classList.add('hidden'); saveData(false, 'ssn-', true); }, 200)"
-                                        placeholder="TYPE AV NOTE OR SEARCH...">
-                                    <button type="button" class="bg-blue-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('ssn-', 'av-note')">+ SPEC</button>
-                                </div>
-                                <div id="ssn-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div>
-                            </div>
-
-                            <div class="hidden">
-                                <label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label>
-                                <input type="text" id="ssn-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'ssn-', true)">
-                            </div>
+                            <div class="mb-3"><label class="text-[10px] font-bold text-gray-500 uppercase">Match %</label><input type="number" id="ssn-match" class="input-field !mb-1" placeholder="e.g. 40" oninput="calculateMatchQty('ssn-')"><div id="ssn-match-display" class="text-[10px] font-bold text-[#007a4d] text-right mb-2 hidden">LOC Match QTY: <span id="ssn-match-qty-val">0</span></div></div>
+                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="ssn-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'ssn-', true)"></div>
+                            <div id="ssn-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="ssn-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'ssn-', true)"></div>
+                            <div class="relative w-full mt-2 mb-2 hidden"><label class="text-[10px] font-bold text-green-700 uppercase flex justify-between"><span>Sales Note</span></label><input type="text" id="ssn-sales-desc" class="input-field border-green-500 bg-green-50 uppercase flex-grow !mb-0" placeholder="Sales Note..." onchange="saveData(false, 'ssn-', true)"></div>
+                            <div class="relative w-full mt-2 mb-2"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2"><input type="text" id="ssn-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value = this.value.toUpperCase(); debouncedFilterDropdown('ssn-av-note', 'ssn-dropdown-list')" onfocus="filterDropdown('ssn-av-note', 'ssn-dropdown-list')" onblur="setTimeout(()=> { document.getElementById('ssn-dropdown-list').classList.add('hidden'); saveData(false, 'ssn-', true); }, 200)" placeholder="TYPE AV NOTE OR SEARCH..."><button type="button" class="bg-blue-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('ssn-', 'av-note')">+ SPEC</button></div><div id="ssn-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div></div>
+                            <div class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="ssn-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'ssn-', true)"></div>
                         </div>
-                        <div class="flex gap-2 mt-4">
-                            <button id="ssn-btn-save-complete" class="w-full bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform" onclick="saveData(true, 'ssn-')">MARK DONE</button>
-                        </div>
+                        <div class="flex gap-2 mt-4"><button id="ssn-btn-save-complete" class="w-full bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform" onclick="saveData(true, 'ssn-')">MARK DONE</button></div>
                     </div>
 
                     <div id="det-location-content" class="hidden py-4">
                         <div id="lsn-photo-preview" class="mb-4 hidden"><p class="text-[10px] font-bold text-blue-600 mb-2 uppercase">Photos on file</p><div id="lsn-photo-list-container" class="space-y-2"></div></div>
                         <div class="grid grid-cols-2 gap-2 mb-4">
-                            <label class="bg-green-50 border-2 border-dashed border-green-500 text-green-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer">
-                                <i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoUpload(this, 'lsn-')">
-                            </label>
-                            <label class="bg-blue-50 border-2 border-dashed border-blue-500 text-blue-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer">
-                                <i class="ph-fill ph-image text-3xl mb-1"></i><span class="text-[10px] font-bold">LIBRARY</span><input type="file" accept="image/*" class="hidden" onchange="handlePhotoUpload(this, 'lsn-')">
-                            </label>
+                            <label class="bg-green-50 border-2 border-dashed border-green-500 text-green-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoUpload(this, 'lsn-')"></label>
+                            <label class="bg-blue-50 border-2 border-dashed border-blue-500 text-blue-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer"><i class="ph-fill ph-image text-3xl mb-1"></i><span class="text-[10px] font-bold">LIBRARY</span><input type="file" accept="image/*" class="hidden" onchange="handlePhotoUpload(this, 'lsn-')"></label>
                         </div>
                         <div id="lsn-input-container">
-                            <div class="mb-3">
-                                <label class="text-[10px] font-bold text-gray-500 uppercase">Loc Match %</label>
-                                <input type="number" id="lsn-match" class="input-field !mb-1" placeholder="e.g. 95" oninput="calculateMatchQty('lsn-')">
-                                <div id="lsn-match-display" class="text-[10px] font-bold text-[#007a4d] text-right mb-2 hidden">LOC Match QTY: <span id="lsn-match-qty-val">0</span></div>
-                            </div>
-                            <div>
-                                <label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label>
-                                <input type="text" id="lsn-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'lsn-', true)">
-                            </div>
-                            <div id="lsn-container-caliper" class="hidden">
-                                <label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label>
-                                <input type="text" id="lsn-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'lsn-', true)">
-                            </div>
-                            
-                            <div class="relative w-full mt-2 mb-2 hidden">
-                                <label class="text-[10px] font-bold text-green-700 uppercase flex justify-between"><span>Sales Note</span></label>
-                                <input type="text" id="lsn-sales-desc" class="input-field border-green-500 bg-green-50 uppercase flex-grow !mb-0" placeholder="Sales Note..." onchange="saveData(false, 'lsn-', true)">
-                            </div>
-
-                            <div class="relative w-full mt-2 mb-2">
-                                <label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label>
-                                <div class="flex gap-2">
-                                    <input type="text" id="lsn-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" 
-                                        oninput="this.value = this.value.toUpperCase(); debouncedFilterDropdown('lsn-av-note', 'lsn-dropdown-list')"
-                                        onfocus="filterDropdown('lsn-av-note', 'lsn-dropdown-list')"
-                                        onblur="setTimeout(()=> { document.getElementById('lsn-dropdown-list').classList.add('hidden'); saveData(false, 'lsn-', true); }, 200)"
-                                        placeholder="TYPE AV NOTE OR SEARCH...">
-                                    <button type="button" class="bg-blue-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('lsn-', 'av-note')">+ SPEC</button>
-                                </div>
-                                <div id="lsn-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div>
-                            </div>
-                            
-                            <div class="hidden">
-                                <label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label>
-                                <input type="text" id="lsn-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'lsn-', true)">
-                            </div>
+                            <div class="mb-3"><label class="text-[10px] font-bold text-gray-500 uppercase">Match %</label><input type="number" id="lsn-match" class="input-field !mb-1" placeholder="e.g. 95" oninput="calculateMatchQty('lsn-')"><div id="lsn-match-display" class="text-[10px] font-bold text-[#007a4d] text-right mb-2 hidden">LOC Match QTY: <span id="lsn-match-qty-val">0</span></div></div>
+                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="lsn-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'lsn-', true)"></div>
+                            <div id="lsn-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="lsn-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'lsn-', true)"></div>
+                            <div class="relative w-full mt-2 mb-2 hidden"><label class="text-[10px] font-bold text-green-700 uppercase flex justify-between"><span>Sales Note</span></label><input type="text" id="lsn-sales-desc" class="input-field border-green-500 bg-green-50 uppercase flex-grow !mb-0" placeholder="Sales Note..." onchange="saveData(false, 'lsn-', true)"></div>
+                            <div class="relative w-full mt-2 mb-2"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2"><input type="text" id="lsn-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value = this.value.toUpperCase(); debouncedFilterDropdown('lsn-av-note', 'lsn-dropdown-list')" onfocus="filterDropdown('lsn-av-note', 'lsn-dropdown-list')" onblur="setTimeout(()=> { document.getElementById('lsn-dropdown-list').classList.add('hidden'); saveData(false, 'lsn-', true); }, 200)" placeholder="TYPE AV NOTE OR SEARCH..."><button type="button" class="bg-blue-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('lsn-', 'av-note')">+ SPEC</button></div><div id="lsn-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div></div>
+                            <div class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="lsn-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'lsn-', true)"></div>
                         </div>
-                        <div class="flex gap-2 mt-4">
-                            <button id="lsn-btn-save-complete" class="w-full bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform" onclick="saveData(true, 'lsn-')">MARK DONE</button>
-                        </div>
+                        <div class="flex gap-2 mt-4"><button id="lsn-btn-save-complete" class="w-full bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform" onclick="saveData(true, 'lsn-')">MARK DONE</button></div>
                     </div>
 
                     <div id="det-notes-content" class="hidden py-4">
                         <div id="na-photo-preview" class="mb-4 hidden"><p class="text-[10px] font-bold text-blue-600 mb-2 uppercase">Photos on file</p><div id="na-photo-list-container" class="space-y-2"></div></div>
                         <div class="grid grid-cols-2 gap-2 mb-4">
-                            <label class="bg-green-50 border-2 border-dashed border-green-500 text-green-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer">
-                                <i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoUpload(this, 'na-')">
-                            </label>
-                            <label class="bg-blue-50 border-2 border-dashed border-blue-500 text-blue-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer">
-                                <i class="ph-fill ph-image text-3xl mb-1"></i><span class="text-[10px] font-bold">LIBRARY</span><input type="file" accept="image/*" class="hidden" onchange="handlePhotoUpload(this, 'na-')">
-                            </label>
+                            <label class="bg-green-50 border-2 border-dashed border-green-500 text-green-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoUpload(this, 'na-')"></label>
+                            <label class="bg-blue-50 border-2 border-dashed border-blue-500 text-blue-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer"><i class="ph-fill ph-image text-3xl mb-1"></i><span class="text-[10px] font-bold">LIBRARY</span><input type="file" accept="image/*" class="hidden" onchange="handlePhotoUpload(this, 'na-')"></label>
                         </div>
                         <div id="na-input-container">
-                            <div class="mb-3">
-                                <label class="text-[10px] font-bold text-gray-500 uppercase">Loc Match %</label>
-                                <input type="number" id="na-match" class="input-field !mb-1" placeholder="e.g. 95" oninput="calculateMatchQty('na-')">
-                                <div id="na-match-display" class="text-[10px] font-bold text-[#007a4d] text-right mb-2 hidden">LOC Match QTY: <span id="na-match-qty-val">0</span></div>
-                            </div>
-                            <div>
-                                <label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label>
-                                <input type="text" id="na-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'na-', true)">
-                            </div>
-                            <div id="na-container-caliper" class="hidden">
-                                <label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label>
-                                <input type="text" id="na-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'na-', true)">
-                            </div>
-                            
-                            <div class="relative w-full mt-2 mb-2">
-                                <label class="text-[10px] font-bold text-green-700 uppercase flex justify-between"><span>Sales Description</span></label>
-                                <div class="flex gap-2">
-                                    <input type="text" id="na-sales-desc" class="input-field border-green-500 bg-green-50 uppercase flex-grow !mb-0" 
-                                        oninput="this.value = this.value.toUpperCase(); debouncedFilterDropdown('na-sales-desc', 'na-dropdown-list')"
-                                        onfocus="filterDropdown('na-sales-desc', 'na-dropdown-list')"
-                                        onblur="setTimeout(()=> { document.getElementById('na-dropdown-list').classList.add('hidden'); saveData(false, 'na-', true); }, 200)"
-                                        placeholder="TYPE NOTES OR SEARCH...">
-                                    <button type="button" class="bg-green-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('na-')">+ SPEC</button>
-                                </div>
-                                <div id="na-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div>
-                            </div>
-                            
-                            <div class="relative w-full mt-2 mb-2">
-                                <label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label>
-                                <div class="flex gap-2">
-                                    <input type="text" id="na-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" 
-                                        oninput="this.value = this.value.toUpperCase(); debouncedFilterDropdown('na-av-note', 'na-av-dropdown-list')"
-                                        onfocus="filterDropdown('na-av-note', 'na-av-dropdown-list')"
-                                        onblur="setTimeout(()=> { document.getElementById('na-av-dropdown-list').classList.add('hidden'); saveData(false, 'na-', true); }, 200)"
-                                        placeholder="TYPE AV NOTE OR SEARCH...">
-                                    <button type="button" class="bg-blue-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('na-', 'av-note')">+ SPEC</button>
-                                </div>
-                                <div id="na-av-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div>
-                            </div>
-                            
+                            <div class="mb-3"><label class="text-[10px] font-bold text-gray-500 uppercase">Match %</label><input type="number" id="na-match" class="input-field !mb-1" placeholder="e.g. 95" oninput="calculateMatchQty('na-')"><div id="na-match-display" class="text-[10px] font-bold text-[#007a4d] text-right mb-2 hidden">LOC Match QTY: <span id="na-match-qty-val">0</span></div></div>
+                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="na-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'na-', true)"></div>
+                            <div id="na-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="na-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'na-', true)"></div>
+                            <div class="relative w-full mt-2 mb-2"><label class="text-[10px] font-bold text-green-700 uppercase flex justify-between"><span>Sales Description</span></label><div class="flex gap-2"><input type="text" id="na-sales-desc" class="input-field border-green-500 bg-green-50 uppercase flex-grow !mb-0" oninput="this.value = this.value.toUpperCase(); debouncedFilterDropdown('na-sales-desc', 'na-dropdown-list')" onfocus="filterDropdown('na-sales-desc', 'na-dropdown-list')" onblur="setTimeout(()=> { document.getElementById('na-dropdown-list').classList.add('hidden'); saveData(false, 'na-', true); }, 200)" placeholder="TYPE NOTES OR SEARCH..."><button type="button" class="bg-green-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('na-')">+ SPEC</button></div><div id="na-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div></div>
+                            <div class="relative w-full mt-2 mb-2"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2"><input type="text" id="na-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value = this.value.toUpperCase(); debouncedFilterDropdown('na-av-note', 'na-av-dropdown-list')" onfocus="filterDropdown('na-av-note', 'na-av-dropdown-list')" onblur="setTimeout(()=> { document.getElementById('na-av-dropdown-list').classList.add('hidden'); saveData(false, 'na-', true); }, 200)" placeholder="TYPE AV NOTE OR SEARCH..."><button type="button" class="bg-blue-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('na-', 'av-note')">+ SPEC</button></div><div id="na-av-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div></div>
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="na-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'na-', true)"></div>
                         </div>
-                        <div class="flex gap-2 mt-4">
-                            <button id="na-btn-save-draft" class="w-1/3 bg-gray-200 text-gray-700 font-bold py-4 rounded-xl shadow-md" onclick="saveData(false, 'na-')">SAVE DRAFT</button>
-                            <button id="na-btn-save-complete" class="w-2/3 bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform" onclick="saveData(true, 'na-')">MARK DONE</button>
-                        </div>
+                        <div class="flex gap-2 mt-4"><button id="na-btn-save-draft" class="w-1/3 bg-gray-200 text-gray-700 font-bold py-4 rounded-xl shadow-md" onclick="saveData(false, 'na-')">SAVE DRAFT</button><button id="na-btn-save-complete" class="w-2/3 bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform" onclick="saveData(true, 'na-')">MARK DONE</button></div>
                     </div>
 
                     <div id="det-request-content" class="hidden py-4">
                         <div id="req-photo-preview" class="mb-4 hidden"><p class="text-[10px] font-bold text-purple-600 mb-2 uppercase">Request Photos</p><div id="req-photo-list-container" class="space-y-2"></div></div>
                         <div class="grid grid-cols-2 gap-2 mb-4">
-                            <label class="bg-purple-50 border-2 border-dashed border-purple-500 text-purple-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer">
-                                <i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoUpload(this, 'req-')">
-                            </label>
-                            <label class="bg-blue-50 border-2 border-dashed border-blue-500 text-blue-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer">
-                                <i class="ph-fill ph-image text-3xl mb-1"></i><span class="text-[10px] font-bold">LIBRARY</span><input type="file" accept="image/*" class="hidden" onchange="handlePhotoUpload(this, 'req-')">
-                            </label>
+                            <label class="bg-purple-50 border-2 border-dashed border-purple-500 text-purple-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoUpload(this, 'req-')"></label>
+                            <label class="bg-blue-50 border-2 border-dashed border-blue-500 text-blue-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer"><i class="ph-fill ph-image text-3xl mb-1"></i><span class="text-[10px] font-bold">LIBRARY</span><input type="file" accept="image/*" class="hidden" onchange="handlePhotoUpload(this, 'req-')"></label>
                         </div>
                         <div id="req-input-container">
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Match %</label><input type="number" id="req-match" class="input-field" placeholder="e.g. 95" onchange="saveData(false, 'req-', true)"></div>
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="req-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'req-', true)"></div>
                             <div id="req-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="req-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'req-', true)"></div>
-
-                            <div class="relative w-full mt-2 mb-2">
-                                <label class="text-[10px] font-bold text-purple-700 uppercase flex justify-between"><span>Request Sales Description</span></label>
-                                <div class="flex gap-2">
-                                    <input type="text" id="req-sales-desc" class="input-field border-purple-500 bg-purple-50 uppercase flex-grow !mb-0" 
-                                        oninput="this.value = this.value.toUpperCase(); debouncedFilterDropdown('req-sales-desc', 'req-dropdown-list')"
-                                        onfocus="filterDropdown('req-sales-desc', 'req-dropdown-list')"
-                                        onblur="setTimeout(()=>{ document.getElementById('req-dropdown-list').classList.add('hidden'); saveData(false, 'req-', true); }, 200)"
-                                        placeholder="TYPE NOTES OR SEARCH...">
-                                    <button type="button" class="bg-purple-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('req-', 'sales-desc')">+ SPEC</button>
-                                </div>
-                                <div id="req-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div>
-                            </div>
-                            
-                            <div class="relative w-full mt-2 mb-2">
-                                <label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>Request AV Note</span></label>
-                                <div class="flex gap-2">
-                                    <input type="text" id="req-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" 
-                                        oninput="this.value = this.value.toUpperCase(); debouncedFilterDropdown('req-av-note', 'req-av-dropdown-list')"
-                                        onfocus="filterDropdown('req-av-note', 'req-av-dropdown-list')"
-                                        onblur="setTimeout(()=>{ document.getElementById('req-av-dropdown-list').classList.add('hidden'); saveData(false, 'req-', true); }, 200)"
-                                        placeholder="TYPE AV NOTE OR SEARCH...">
-                                    <button type="button" class="bg-blue-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('req-', 'av-note')">+ SPEC</button>
-                                </div>
-                                <div id="req-av-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div>
-                            </div>
-
+                            <div class="relative w-full mt-2 mb-2"><label class="text-[10px] font-bold text-purple-700 uppercase flex justify-between"><span>Request Sales Description</span></label><div class="flex gap-2"><input type="text" id="req-sales-desc" class="input-field border-purple-500 bg-purple-50 uppercase flex-grow !mb-0" oninput="this.value = this.value.toUpperCase(); debouncedFilterDropdown('req-sales-desc', 'req-dropdown-list')" onfocus="filterDropdown('req-sales-desc', 'req-dropdown-list')" onblur="setTimeout(()=>{ document.getElementById('req-dropdown-list').classList.add('hidden'); saveData(false, 'req-', true); }, 200)" placeholder="TYPE NOTES OR SEARCH..."><button type="button" class="bg-purple-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('req-', 'sales-desc')">+ SPEC</button></div><div id="req-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div></div>
+                            <div class="relative w-full mt-2 mb-2"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>Request AV Note</span></label><div class="flex gap-2"><input type="text" id="req-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value = this.value.toUpperCase(); debouncedFilterDropdown('req-av-note', 'req-av-dropdown-list')" onfocus="filterDropdown('req-av-note', 'req-av-dropdown-list')" onblur="setTimeout(()=>{ document.getElementById('req-av-dropdown-list').classList.add('hidden'); saveData(false, 'req-', true); }, 200)" placeholder="TYPE AV NOTE OR SEARCH..."><button type="button" class="bg-blue-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('req-', 'av-note')">+ SPEC</button></div><div id="req-av-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div></div>
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="req-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'req-', true)"></div>
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Comments</label><input type="text" id="req-comments" class="input-field" placeholder="Any additional comments..." onchange="saveData(false, 'req-', true)"></div>
                         </div>
-                        <div class="flex flex-col gap-3 mt-4">
-                            <button id="req-btn-save-draft" class="w-full bg-purple-600 text-white font-bold py-4 rounded-xl shadow-lg" onclick="saveData(false, 'req-')">SAVE REQUEST DATA</button>
-                            <button class="w-full bg-orange-50 text-orange-700 border border-orange-200 font-bold py-4 rounded-xl shadow-sm flex justify-center items-center gap-2 admin-csr-only hidden" onclick="removeFromRequest()"><i class="ph-bold ph-minus-circle text-xl"></i> REMOVE FROM REQUEST (KEEP ITEM)</button>
-                        </div>
+                        <div class="flex flex-col gap-3 mt-4"><button id="req-btn-save-draft" class="w-full bg-purple-600 text-white font-bold py-4 rounded-xl shadow-lg" onclick="saveData(false, 'req-')">SAVE REQUEST DATA</button><button class="w-full bg-orange-50 text-orange-700 border border-orange-200 font-bold py-4 rounded-xl shadow-sm flex justify-center items-center gap-2 admin-csr-only hidden" onclick="removeFromRequest()"><i class="ph-bold ph-minus-circle text-xl"></i> REMOVE FROM REQUEST (KEEP ITEM)</button></div>
                     </div>
 
                     <div id="det-docks-content" class="hidden py-4">
                         <div id="dock-photo-preview" class="mb-4 hidden"><p class="text-[10px] font-bold text-orange-600 mb-2 uppercase">Photos on file</p><div id="dock-photo-list-container" class="space-y-2"></div></div>
                         <div class="grid grid-cols-2 gap-2 mb-4">
-                            <label class="bg-orange-50 border-2 border-dashed border-orange-500 text-orange-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer">
-                                <i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoUpload(this, 'dock-')">
-                            </label>
-                            <label class="bg-blue-50 border-2 border-dashed border-blue-500 text-blue-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer">
-                                <i class="ph-fill ph-image text-3xl mb-1"></i><span class="text-[10px] font-bold">LIBRARY</span><input type="file" accept="image/*" class="hidden" onchange="handlePhotoUpload(this, 'dock-')">
-                            </label>
+                            <label class="bg-orange-50 border-2 border-dashed border-orange-500 text-orange-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoUpload(this, 'dock-')"></label>
+                            <label class="bg-blue-50 border-2 border-dashed border-blue-500 text-blue-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer"><i class="ph-fill ph-image text-3xl mb-1"></i><span class="text-[10px] font-bold">LIBRARY</span><input type="file" accept="image/*" class="hidden" onchange="handlePhotoUpload(this, 'dock-')"></label>
                         </div>
                         <div id="dock-input-container">
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="dock-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'dock-', true)"></div>
                             <div id="dock-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="dock-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'dock-', true)"></div>
-                            <div class="relative w-full mt-2 mb-2">
-                                <label class="text-[10px] font-bold text-orange-700 uppercase flex justify-between"><span>Dock Note</span></label>
-                                <div class="flex gap-2">
-                                    <input type="text" id="dock-sales-desc" class="input-field border-orange-500 bg-orange-50 uppercase flex-grow !mb-0" 
-                                        oninput="this.value = this.value.toUpperCase(); debouncedFilterDropdown('dock-sales-desc', 'dock-dropdown-list')"
-                                        onfocus="filterDropdown('dock-sales-desc', 'dock-dropdown-list')"
-                                        onblur="setTimeout(()=> { document.getElementById('dock-dropdown-list').classList.add('hidden'); saveData(false, 'dock-', true); }, 200)"
-                                        placeholder="TYPE NOTES OR SEARCH...">
-                                    <button type="button" class="bg-orange-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('dock-', 'sales-desc')">+ SPEC</button>
-                                </div>
-                                <div id="dock-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div>
-                            </div>
+                            <div class="relative w-full mt-2 mb-2"><label class="text-[10px] font-bold text-orange-700 uppercase flex justify-between"><span>Dock Note</span></label><div class="flex gap-2"><input type="text" id="dock-sales-desc" class="input-field border-orange-500 bg-orange-50 uppercase flex-grow !mb-0" oninput="this.value = this.value.toUpperCase(); debouncedFilterDropdown('dock-sales-desc', 'dock-dropdown-list')" onfocus="filterDropdown('dock-sales-desc', 'dock-dropdown-list')" onblur="setTimeout(()=> { document.getElementById('dock-dropdown-list').classList.add('hidden'); saveData(false, 'dock-', true); }, 200)" placeholder="TYPE NOTES OR SEARCH..."><button type="button" class="bg-orange-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('dock-', 'sales-desc')">+ SPEC</button></div><div id="dock-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div></div>
                         </div>
                         <div class="flex gap-2 mt-4"><button id="dock-btn-save-draft" class="w-full bg-orange-600 text-white font-bold py-4 rounded-xl shadow-lg" onclick="saveData(false, 'dock-')">SAVE DOCK DATA</button></div>
                     </div>
-                    
-                    <div id="det-flyer-content" class="hidden py-4">
-                        <div id="flyer-photo-preview" class="mb-4 hidden"><p class="text-[10px] font-bold text-indigo-600 mb-2 uppercase">Photos on file</p><div id="flyer-photo-list-container" class="space-y-2"></div></div>
-                        <div class="grid grid-cols-2 gap-2 mb-4">
-                            <label class="bg-indigo-50 border-2 border-dashed border-indigo-500 text-indigo-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer">
-                                <i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoUpload(this, 'flyer-')">
-                            </label>
-                            <label class="bg-blue-50 border-2 border-dashed border-blue-500 text-blue-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer">
-                                <i class="ph-fill ph-image text-3xl mb-1"></i><span class="text-[10px] font-bold">LIBRARY</span><input type="file" accept="image/*" class="hidden" onchange="handlePhotoUpload(this, 'flyer-')">
-                            </label>
-                        </div>
-                        <div id="flyer-input-container">
-                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Flyer Category</label><input type="text" id="flyer-cat" class="input-field" placeholder="e.g. Spring Sale" onchange="saveData(false, 'flyer-', true)"></div>
-                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Flyer Title</label><input type="text" id="flyer-title" class="input-field" placeholder="e.g. Featured Trees" onchange="saveData(false, 'flyer-', true)"></div>
-                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Instructions</label><input type="text" id="flyer-inst" class="input-field" placeholder="e.g. Needs front cover" onchange="saveData(false, 'flyer-', true)"></div>
-                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Assigned To</label><input type="text" id="flyer-assigned" class="input-field" placeholder="e.g. Kayla" onchange="saveData(false, 'flyer-', true)"></div>
-                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Notes</label><input type="text" id="flyer-notes" class="input-field" placeholder="Any additional notes..." onchange="saveData(false, 'flyer-', true)"></div>
-                        </div>
-                        <div class="flex gap-2 mt-4">
-                            <button id="flyer-btn-save-complete" class="w-full bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform" onclick="saveData(true, 'flyer-')">MARK DONE</button>
-                        </div>
-                    </div>
-                    
                 </div>
             </div> 
         </div>
@@ -680,9 +494,11 @@
             try {
                 let data = await supabaseFetch('approved_notes', 'GET', null, 'select=commonname,salesnotes');
                 if (data && data.length > 0) {
-                    salesNotesDict = {}; let generalNotes = [];
+                    salesNotesDict = {};
+                    let generalNotes = [];
                     data.forEach(item => {
-                        let cName = String(item.commonname || "").toUpperCase().trim(); let sNote = String(item.salesnotes || "").trim();
+                        let cName = String(item.commonname || "").toUpperCase().trim();
+                        let sNote = String(item.salesnotes || "").trim();
                         if (sNote) { if (cName && cName !== "GENERAL" && cName !== "ALL") { if (!salesNotesDict[cName]) salesNotesDict[cName] = []; salesNotesDict[cName].push(sNote); } else { generalNotes.push(sNote); } }
                     });
                     if (generalNotes.length > 0) { approvedNotesList = generalNotes; }
@@ -753,7 +569,9 @@
         let selectedItems = new Set(); let isMultiSelectMode = false; let pressTimer = null; let isLongPress = false; let touchStartX = 0; let touchStartY = 0;
         let pendingAction = null; let pendingTabType = null;
         let driveViewLevel = 0; let selectedDriveName = null; let selectedDriveSize = null; let driveSelectedSeasons = new Set(['ALL']); const availableSeasons = ["ALL", "S1", "F1", "U1", "U2", "U3", "X", "Y", "Z"];
+        
         let activeTaskTab = "season"; let taskViewTargetUser = null; let taskViewLevel = 0; let selectedTaskBlock = null; let selectedTaskLoc = null; let selectedEndCapFolder = null;
+        
         let activeAVTab = 'open'; 
         let lowStockViewLevel = 0; let selectedLowStockName = null; let selectedLowStockSize = null;
         let reviewViewLevel = 0; let selectedReviewItemCode = null; let selectedReviewCommonName = null; let selectedReviewContSize = null;
@@ -761,9 +579,6 @@
         let requestViewLevel = 0; let requestFilterMode = null; let selectedReqRep = null; let selectedReqRepStatus = null; let selectedReqFolder = null; let tempSelectedReqRep = ""; 
         let tempReqFolder = null; let tempReqCust = null; let previousReqStep = "";
         let dockViewLevel = 0; let selectedDockNum = null; let pendingDockNum = null; let selectedDockName = null; let selectedDockSize = null; let selectedDockItemCode = null; let selectedDockCustomer = ""; let selectedDockTrip = ""; let selectedDockRep = ""; 
-        
-        // 🔥 DELTA SYNC TRACKER
-        let lastSyncTime = new Date().toISOString(); 
 
         const salesRepList = ["Abbey Burka", "Annette Hancock", "Ben Brown", "Ben Harveson", "Ben Machino", "Brian Hatfield", "Casey Rufener", "Chris Farrow", "Chris Gaydos", "David Brandt", "Ellen Deely", "Jessica Robertson", "Josh Ringleb", "Kevin Effinger", "Nate Douglas", "Toby Brown", "Traci Earle", "Tracey Tapscott", "Troy Lee", "Wes Lugas"];
 
@@ -822,62 +637,11 @@
             setRepPermutations(currentUser);
             if (!isBiometricLogin && window.PublicKeyCredential && localStorage.getItem('gnc_bio_enabled') !== 'true') { promptToEnableBiometrics(user, pass); }
             applyRolePermissions(); fetchBackgroundData(); fetchApprovedNotes();
-            
-            // 🔥 START SILENT BACKGROUND DELTA SYNC EVERY 10 SECONDS
-            setInterval(silentBackgroundSync, 10000); 
-        }
-
-        // 🔥 SILENT BACKGROUND DELTA SYNC FUNCTION
-        async function silentBackgroundSync() {
-            if (!currentUser) return;
-            const checkTime = new Date().toISOString();
-            try {
-                const url = `${SUPABASE_URL}/rest/v1/drivearound_master_data?select=*&last_updated=gt.${lastSyncTime}`;
-                const options = { method: 'GET', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } };
-                const response = await fetch(url, options);
-                if (!response.ok) return; 
-                const data = await response.json();
-                
-                if (data && data.length > 0) {
-                    let updated = false;
-                    data.forEach(updatedRow => {
-                        let idx = fullInventory.findIndex(i => i.UNIQUE_ID === updatedRow.unique_id);
-                        if (idx > -1) {
-                            for (let k in updatedRow) {
-                                if(updatedRow[k] !== null) fullInventory[idx][k.toUpperCase()] = updatedRow[k];
-                            }
-                            fullInventory[idx].SAVED_PHOTO_LINK = fullInventory[idx].PHOTO_LINK || fullInventory[idx].PHOTOLINK || ""; 
-                            fullInventory[idx].SAVED_PHOTO_NAME = fullInventory[idx].PHOTO_NAME || fullInventory[idx].PHOTONAME || ""; 
-                            
-                            // Recalculate computed properties
-                            let exactSeasonIds = new Set((fullInventory.map(i => i.UNIQUE_ID)).filter(Boolean)); 
-                            if (fullInventory[idx].END_CAP_FOLDER && String(fullInventory[idx].END_CAP_FOLDER).trim() !== "") fullInventory[idx].APP_TAB_ASSIGNMENT = 'endcap';
-                            else if (exactSeasonIds.has(String(fullInventory[idx].UNIQUE_ID))) fullInventory[idx].APP_TAB_ASSIGNMENT = 'season';
-                            else fullInventory[idx].APP_TAB_ASSIGNMENT = 'location';
-                            
-                            updated = true;
-                            
-                            // If user is currently looking at this item's detail view, inject new data live
-                            if (activeItem && activeItem.UNIQUE_ID === updatedRow.unique_id) {
-                                Object.assign(activeItem, fullInventory[idx]);
-                            }
-                        }
-                    });
-                    if (updated) {
-                        reRenderCurrentView();
-                        if (activeItem && !document.getElementById('view-detail').classList.contains('hidden')) {
-                            openDetail(activeItem.UNIQUE_ID, lastView); 
-                        }
-                    }
-                }
-                lastSyncTime = checkTime;
-            } catch(e) {}
         }
 
         async function fetchBackgroundData() {
             const cachedRes = await loadFromCache(); if (cachedRes) { setTimeout(() => { processAndLoadData(cachedRes); }, 50); } 
             try {
-                lastSyncTime = new Date().toISOString(); // Reset sync clock right before heavy download
                 const results = await Promise.allSettled([
                     supabaseFetch('drivearound_master_data', 'GET', null, 'select=*'), supabaseFetch('low_stock', 'GET', null, 'select=*'), supabaseFetch('active_request', 'GET', null, 'select=*'), supabaseFetch('reserves', 'GET', null, 'select=*'), supabaseFetch('soc_master', 'GET', null, 'select=*'), supabaseFetch('manager_review', 'GET', null, 'select=*'), supabaseFetch('season_sales_notes', 'GET', null, 'select=*'), supabaseFetch('location_sales_notes', 'GET', null, 'select=*'), supabaseFetch('sales_office', 'GET', null, 'select=*') 
                 ]);
@@ -952,7 +716,13 @@
             if(!document.getElementById('view-av').classList.contains('hidden')) renderAV();
         }
 
-        function setTaskTab(tab) { activeTaskTab = tab; document.getElementById('tab-season').classList.toggle('active', tab === 'season'); document.getElementById('tab-location').classList.toggle('active', tab === 'location'); document.getElementById('tab-endcap').classList.toggle('active', tab === 'endcap'); taskViewLevel = 0; renderTasks(); }
+        function setTaskTab(tab) { 
+            activeTaskTab = tab; 
+            document.getElementById('tab-season').classList.toggle('active', tab === 'season'); 
+            document.getElementById('tab-location').classList.toggle('active', tab === 'location'); 
+            document.getElementById('tab-endcap').classList.toggle('active', tab === 'endcap'); 
+            taskViewLevel = 0; renderTasks(); 
+        }
         
         function setAVTab(tab) { activeAVTab = tab; document.getElementById('tab-av-open').classList.toggle('active', tab === 'open'); document.getElementById('tab-av-reserves').classList.toggle('active', tab === 'reserves'); renderAV(); }
 
@@ -1040,18 +810,8 @@
                 if (item.LOC_MATCH_QTY && String(item.LOC_MATCH_QTY).trim() !== "" && Number(item.LOC_MATCH_QTY) > 0) { noteHtml += `<div class="mt-2 text-[12px] text-green-800 bg-green-100 p-2 rounded border border-green-200 shadow-sm whitespace-pre-wrap"><span class="font-black">MATCH QTY:</span> ${item.LOC_MATCH_QTY}</div>`; }
                 if (item.AV_NOTE && item.AV_NOTE.trim() !== "") { noteHtml += `<div class="mt-2 text-[12px] text-blue-800 bg-blue-100 p-2 rounded border border-blue-200 shadow-sm whitespace-pre-wrap"><span class="font-black">AV NOTE:</span> ${item.AV_NOTE}</div>`; }
                 if (item.SALES_NOTE && item.SALES_NOTE.trim() !== "") { noteHtml += `<div class="mt-2 text-[12px] text-green-800 bg-green-100 p-2 rounded border border-green-200 shadow-sm whitespace-pre-wrap"><span class="font-black">SALES NOTE:</span> ${item.SALES_NOTE}</div>`; }
-                if (item.FLYER_TITLE && item.FLYER_TITLE.trim() !== "") { noteHtml += `<div class="mt-2 text-[12px] text-indigo-800 bg-indigo-100 p-2 rounded border border-indigo-200 shadow-sm whitespace-pre-wrap"><span class="font-black">FLYER:</span> ${item.FLYER_TITLE}</div>`; }
                 
-                let extraData = "";
-                if (sourceView === 'tasks') {
-                    extraData = `<div class="mt-2 flex gap-2 text-[10px] font-bold text-gray-500 uppercase">
-                        ${item.SPEC ? `<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Spec: ${item.SPEC}</span>` : ''}
-                        ${item.CALIPER ? `<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Cal: ${item.CALIPER}</span>` : ''}
-                        ${item.MATCH ? `<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Match: ${item.MATCH}%</span>` : ''}
-                    </div>`;
-                }
-
-                return `<div class="flex items-center w-full mb-3 item-row relative bg-white p-4 rounded-xl border border-gray-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm pointer-events-none" ${isChecked}></div><div class="flex flex-grow items-start justify-between min-w-0"><div class="flex-grow min-w-0 pr-2"><div class="font-black text-gray-800 text-[16px] leading-tight truncate mb-0.5">${item.COMMONNAME || 'Unknown'}</div><div class="font-bold text-[#007a4d] text-sm mb-2">${item.CONTSIZE || '-'}</div><div class="text-[11px] font-mono text-gray-500 mb-2 flex items-center bg-gray-100 px-2 py-0.5 rounded w-max"><i class="ph-bold ph-barcode mr-1.5 text-gray-400"></i>${item.ITEMCODE || '-'}</div><div class="flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600"><span class="bg-gray-100 px-1.5 py-0.5 rounded">LOC AVA: <span class="text-gray-900">${item.PTRAVAILABLE || '0'}</span></span><span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">Loc: ${item.LOCATIONCODE || 'No Loc'}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded">Lot: ${item.LOTCODE || '-'}</span><span class="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-100">s_LTS: ${item.S_LTS || '0'}</span><span class="bg-orange-50 text-orange-700 px-1.5 py-0.5 rounded border border-orange-100">Pri: ${item.PRIORITY || '-'}</span></div>${extraData}${noteHtml}</div>${thumbHtml}</div></div>`;
+                return `<div class="flex items-center w-full mb-3 item-row relative bg-white p-4 rounded-xl border border-gray-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm pointer-events-none" ${isChecked}></div><div class="flex flex-grow items-start justify-between min-w-0"><div class="flex-grow min-w-0 pr-2"><div class="font-black text-gray-800 text-[16px] leading-tight truncate mb-0.5">${item.COMMONNAME || 'Unknown'}</div><div class="font-bold text-[#007a4d] text-sm mb-2">${item.CONTSIZE || '-'}</div><div class="text-[11px] font-mono text-gray-500 mb-2 flex items-center bg-gray-100 px-2 py-0.5 rounded w-max"><i class="ph-bold ph-barcode mr-1.5 text-gray-400"></i>${item.ITEMCODE || '-'}</div><div class="flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600"><span class="bg-gray-100 px-1.5 py-0.5 rounded">LOC AVA: <span class="text-gray-900">${item.PTRAVAILABLE || '0'}</span></span><span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">Loc: ${item.LOCATIONCODE || 'No Loc'}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded">Lot: ${item.LOTCODE || '-'}</span><span class="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-100">s_LTS: ${item.S_LTS || '0'}</span><span class="bg-orange-50 text-orange-700 px-1.5 py-0.5 rounded border border-orange-100">Pri: ${item.PRIORITY || '-'}</span></div>${noteHtml}</div>${thumbHtml}</div></div>`;
             }
             return `<div class="flex items-center w-full mb-2 item-row" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm pointer-events-none" ${isChecked}></div><div class="inv-card ${colorClass} flex items-center justify-between flex-grow !mb-0 transition-transform active:scale-[0.99]"><div class="flex-grow min-w-0 text-[#007a4d]"><div class="flex justify-between font-bold text-sm mb-1"><span class="truncate pr-2">${item.COMMONNAME || 'Unknown'} • ${item.CONTSIZE || '-'} • Loc: ${item.LOCATIONCODE || 'No Loc'}</span><span class="whitespace-nowrap bg-[#007a4d]/10 px-1.5 py-0.5 rounded text-xs border border-[#007a4d]/20">Pri: ${item.PRIORITY || '-'}</span></div><div class="text-[11px] font-semibold truncate mt-0.5">Tag: ${tagColor} | Lot: ${item.LOTCODE || '-'} | PTR-Ava: ${item.PTRAVAILABLE || '0'} | s_LTS: ${item.S_LTS || '0'} | Supply: ${item.SEASONSUPPLY || '0'}</div><div class="text-[11px] font-semibold truncate mt-0.5">Item: ${item.ITEMCODE || '-'}</div></div>${thumbHtml}</div></div>`;
         }
@@ -1695,8 +1455,6 @@
             
             document.getElementById('dock-spec').value = activeItem.DOCK_SPEC || activeItem.SPEC || ""; document.getElementById('dock-caliper').value = activeItem.DOCK_CALIPER || activeItem.CALIPER || ""; document.getElementById('dock-sales-desc').value = activeItem.DOCK_NOTE || "";
 
-            document.getElementById('flyer-cat').value = activeItem.FLYER_CAT || ""; document.getElementById('flyer-title').value = activeItem.FLYER_TITLE || ""; document.getElementById('flyer-inst').value = activeItem.FLYER_INST || ""; document.getElementById('flyer-assigned').value = activeItem.FLYER_ASSIGNED || ""; document.getElementById('flyer-notes').value = activeItem.FLYER_NOTES || "";
-
             const isTree = activeItem.PLANTGROUPCODE && String(activeItem.PLANTGROUPCODE).includes('330_TREES');
             const caliperSizes = ["#7", "#10", "#15", "#25", "#45"];
             const showCaliper = isTree && caliperSizes.includes(activeItem.CONTSIZE);
@@ -1716,7 +1474,7 @@
 
             renderPhotoPreview();
 
-            ['season', 'location', 'request', 'notes', 'docks', 'flyer'].forEach(t => { let el = document.getElementById('dtab-' + t); if (el) el.classList.add('hidden'); });
+            ['season', 'location', 'request', 'notes', 'docks'].forEach(t => { let el = document.getElementById('dtab-' + t); if (el) el.classList.add('hidden'); });
 
             let defaultTab = 'overview';
             if (safeRole === 'SALESREP') { document.querySelectorAll('.detail-tab').forEach(t => t.classList.add('hidden')); document.getElementById('dtab-overview').classList.remove('hidden'); } 
@@ -1724,15 +1482,15 @@
             else if (sourceView === 'request') { document.getElementById('dtab-request').classList.remove('hidden'); defaultTab = 'request'; } 
             else if (sourceView === 'docks') { document.getElementById('dtab-docks').classList.remove('hidden'); defaultTab = 'docks'; }
             else { 
-                if (safeRole === 'ADMIN') { ['season', 'location', 'request', 'notes', 'flyer'].forEach(t => { let el = document.getElementById('dtab-' + t); if (el) el.classList.remove('hidden'); }); } 
-                else if (safeRole === 'CSR') { document.getElementById('dtab-notes').classList.remove('hidden'); document.getElementById('dtab-request').classList.remove('hidden'); document.getElementById('dtab-flyer').classList.remove('hidden'); } 
+                if (safeRole === 'ADMIN') { ['season', 'location', 'request', 'notes'].forEach(t => { let el = document.getElementById('dtab-' + t); if (el) el.classList.remove('hidden'); }); } 
+                else if (safeRole === 'CSR') { document.getElementById('dtab-notes').classList.remove('hidden'); document.getElementById('dtab-request').classList.remove('hidden'); } 
                 else { document.getElementById('dtab-notes').classList.remove('hidden'); } defaultTab = 'overview';
             }
             switchDetailTab(defaultTab);
         }
 
         function switchDetailTab(tab) {
-            ['overview', 'season', 'location', 'request', 'notes', 'docks', 'flyer'].forEach(t => {
+            ['overview', 'season', 'location', 'request', 'notes', 'docks'].forEach(t => {
                 const dtab = document.getElementById('dtab-' + t); const content = document.getElementById('det-' + t + '-content');
                 if (dtab) { if (t === tab) dtab.classList.add('active'); else dtab.classList.remove('active'); }
                 if (content) { if (t === tab) content.classList.remove('hidden'); else content.classList.add('hidden'); }
@@ -1808,7 +1566,7 @@
             } catch (err) {
                 console.warn("Supabase failed, falling back to Google Drive...", err);
                 showToast("Uploading...", "Routing to Google Drive fallback...", false);
-                let context = "drive"; if (prefix === 'req-') context = "request"; else if (prefix === 'ssn-') context = "season"; else if (prefix === 'lsn-') context = "location"; else if (prefix === 'dock-') context = "docks"; else if (prefix === 'flyer-') context = "season";
+                let context = "drive"; if (prefix === 'req-') context = "request"; else if (prefix === 'ssn-') context = "season"; else if (prefix === 'lsn-') context = "location"; else if (prefix === 'dock-') context = "docks";
                 let payload = { type: "image", image: base64Data, mimeType: "image/jpeg", filename: safeFilename, folderContext: context };
                 if (context === "docks") { payload.dockNum = selectedDockNum; const dateStr = new Date().toISOString().split('T')[0]; let tripFormat = selectedDockTrip !== "Unassigned" && selectedDockTrip !== "" ? "TRIP " + selectedDockTrip : "NoTrip"; payload.customFolderName = `${selectedDockRep} ${selectedDockCustomer} ${tripFormat} ${dateStr}`.trim(); }
                 fetch(GOOGLE_SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) }).then(res => res.json()).then(data => { if(data.status === 'success') { finishUpload(data.url, safeFilename, prefix, targetItem, btn, isCurrentView, "Photo saved to Google Drive!"); } else { if (isCurrentView) { resetUploadBtn(btn, prefix); showToast("Error", "Upload failed completely.", true); } } }).catch(e => { if (isCurrentView) { resetUploadBtn(btn, prefix); showToast("Error", "Network connection failed.", true); } });
@@ -1818,7 +1576,6 @@
         function finishUpload(url, filename, prefix, targetItem, btn, isCurrentView, successMsg) {
             if (prefix === 'req-') { let links = targetItem.REQ_PHOTO_LINK ? targetItem.REQ_PHOTO_LINK.split(',') : []; let names = targetItem.REQ_PHOTO_NAME ? targetItem.REQ_PHOTO_NAME.split(',') : []; links.push(url); names.push(filename); targetItem.REQ_PHOTO_LINK = links.join(','); targetItem.REQ_PHOTO_NAME = names.join(','); } 
             else if (prefix === 'dock-') { let links = targetItem.DOCK_PHOTO_LINK ? targetItem.DOCK_PHOTO_LINK.split(',') : []; let names = targetItem.DOCK_PHOTO_NAME ? targetItem.DOCK_PHOTO_NAME.split(',') : []; links.push(url); names.push(filename); targetItem.DOCK_PHOTO_LINK = links.join(','); targetItem.DOCK_PHOTO_NAME = names.join(','); } 
-            else if (prefix === 'flyer-') { let links = targetItem.FLYER_PHOTO_LINK ? targetItem.FLYER_PHOTO_LINK.split(',') : []; let names = targetItem.FLYER_PHOTO_NAME ? targetItem.FLYER_PHOTO_NAME.split(',') : []; links.push(url); names.push(filename); targetItem.FLYER_PHOTO_LINK = links.join(','); targetItem.FLYER_PHOTO_NAME = names.join(','); } 
             else { let links = targetItem.SAVED_PHOTO_LINK ? targetItem.SAVED_PHOTO_LINK.split(',') : []; let names = targetItem.SAVED_PHOTO_NAME ? targetItem.SAVED_PHOTO_NAME.split(',') : []; links.push(url); names.push(filename); targetItem.SAVED_PHOTO_LINK = links.join(','); targetItem.SAVED_PHOTO_NAME = names.join(','); }
             if (isCurrentView) { resetUploadBtn(btn, prefix); renderPhotoPreview(); } 
             saveData(false, prefix, true, targetItem); showToast("Success", successMsg, false);
@@ -1830,4 +1587,86 @@
             const buildPhotoHtml = (linkString, nameString, type) => {
                 if (!linkString) return ""; const urls = linkString.split(','); const names = nameString ? nameString.split(',') : []; let html = "";
                 urls.forEach((url, i) => { let cleanUrl = url.trim(); let match = cleanUrl.match(/(https?:\/\/[^"\s>]+)/); if (match) cleanUrl = match[1]; const dispName = names[i] || `Photo ${i+1}`; let bgClass = 'bg-white'; let borderClass = 'border-gray-200'; let iconColor = 'text-blue-500'; let titleColor = 'text-blue-600'; let arrowColor = 'text-gray-300';
-                    if (type === 'req') { bgClass = 'bg-purple-50'; borderClass = 'border-purple-200'; iconColor = 'text-purple-600'; titleColor = 'text-purple-700'; arrowColor = 'text-purple-400'; } else if (type === 'dock') { bgClass = 'bg-orange-50'; borderClass
+                    if (type === 'req') { bgClass = 'bg-purple-50'; borderClass = 'border-purple-200'; iconColor = 'text-purple-600'; titleColor = 'text-purple-700'; arrowColor = 'text-purple-400'; } else if (type === 'dock') { bgClass = 'bg-orange-50'; borderClass = 'border-orange-200'; iconColor = 'text-orange-500'; titleColor = 'text-orange-700'; arrowColor = 'text-orange-400'; }
+                    if(cleanUrl.startsWith('http')) { html += `<div class="flex items-center gap-3 p-2 ${bgClass} rounded-lg border ${borderClass} shadow-sm"><a href="${cleanUrl}" target="_blank" class="flex-grow flex items-center gap-3"><i class="ph-fill ph-image text-2xl ${iconColor}"></i><div class="flex-grow min-w-0"><div class="text-xs font-bold ${titleColor} truncate">${dispName}</div><div class="text-[10px] text-gray-500">Tap to view</div></div><i class="ph-bold ph-arrow-square-out ${arrowColor}"></i></a></div>`; }
+                }); return html;
+            };
+            const stdHtml = buildPhotoHtml(activeItem.SAVED_PHOTO_LINK, activeItem.SAVED_PHOTO_NAME, 'std'); ['ssn-', 'lsn-', 'na-'].forEach(p => { const div = document.getElementById(p + 'photo-preview'); const list = document.getElementById(p + 'photo-list-container'); if (div && list) { if (stdHtml) { div.classList.remove('hidden'); list.innerHTML = stdHtml; } else { div.classList.add('hidden'); list.innerHTML = ""; } } });
+            const reqHtml = buildPhotoHtml(activeItem.REQ_PHOTO_LINK, activeItem.REQ_PHOTO_NAME, 'req'); const reqDiv = document.getElementById('req-photo-preview'); const reqList = document.getElementById('req-photo-list-container'); if (reqDiv && reqList) { if (reqHtml) { reqDiv.classList.remove('hidden'); reqList.innerHTML = reqHtml; } else { reqDiv.classList.add('hidden'); reqList.innerHTML = ""; } }
+            const dockHtml = buildPhotoHtml(activeItem.DOCK_PHOTO_LINK, activeItem.DOCK_PHOTO_NAME, 'dock'); const dockDiv = document.getElementById('dock-photo-preview'); const dockList = document.getElementById('dock-photo-list-container'); if (dockDiv && dockList) { if (dockHtml) { dockDiv.classList.remove('hidden'); dockList.innerHTML = dockHtml; } else { dockDiv.classList.add('hidden'); dockList.innerHTML = ""; } }
+        }
+
+        let autoSaveTimer = null;
+
+        function saveData(isComplete = false, prefix, isSilentAutoSave = false, specificItem = null) {
+            if (autoSaveTimer) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
+            let itemToSave = specificItem || activeItem; if (!itemToSave) return;
+            let btnComp = document.getElementById(prefix + 'btn-save-complete'); let isCurrentView = (activeItem && activeItem.UNIQUE_ID === itemToSave.UNIQUE_ID);
+            
+            if (isCurrentView && isComplete) { if(btnComp) btnComp.innerText = "SAVING..."; }
+            
+            const executeSave = () => {
+                if (!specificItem) {
+                    if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-') { 
+                        let matchEl = document.getElementById(prefix + 'match'); if(matchEl) itemToSave.MATCH = matchEl.value; 
+                        let specEl = document.getElementById(prefix + 'spec'); if(specEl) itemToSave.SPEC = specEl.value; 
+                        let calEl = document.getElementById(prefix + 'caliper'); if(calEl) itemToSave.CALIPER = calEl.value; 
+                        let pickEl = document.getElementById(prefix + 'pick'); if(pickEl) itemToSave.PICK = pickEl.value; 
+                        let avEl = document.getElementById(prefix + 'av-note'); if(avEl) itemToSave.AV_NOTE = avEl.value.toUpperCase(); 
+                        let descEl = document.getElementById(prefix + 'sales-desc');
+                        if (descEl) { let textBoxVal = descEl.value.toUpperCase(); if (lastView === 'tasks') { itemToSave._NEW_SALES_NOTE = textBoxVal; if (isComplete) itemToSave.SALES_NOTE = textBoxVal; } else { itemToSave.SALES_NOTE = textBoxVal; } }
+                    } else if (prefix === 'req-') { 
+                        itemToSave.REQ_MATCH = document.getElementById('req-match').value; itemToSave.REQ_SPEC = document.getElementById('req-spec').value; itemToSave.REQ_CALIPER = document.getElementById('req-caliper').value; itemToSave.REQ_PICK = document.getElementById('req-pick').value; itemToSave.REQ_SALES_NOTE = document.getElementById('req-sales-desc').value.toUpperCase(); itemToSave.REQ_COMMENTS = document.getElementById('req-comments').value; 
+                        if (document.getElementById('req-av-note')) itemToSave.AV_NOTE = document.getElementById('req-av-note').value.toUpperCase();
+                    } else if (prefix === 'dock-') { 
+                        itemToSave.DOCK_SPEC = document.getElementById('dock-spec').value; itemToSave.DOCK_CALIPER = document.getElementById('dock-caliper').value; itemToSave.DOCK_NOTE = document.getElementById('dock-sales-desc').value.toUpperCase(); 
+                    }
+                }
+                
+                const payload = {};
+                if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-') { 
+                    payload.match = itemToSave.MATCH || ""; payload.spec = itemToSave.SPEC || ""; payload.caliper = itemToSave.CALIPER || ""; 
+                    payload.pic_note = itemToSave.PICK || ""; payload.sales_note = itemToSave.SALES_NOTE || itemToSave._NEW_SALES_NOTE || ""; payload.av_note = itemToSave.AV_NOTE || "";
+                } else if (prefix === 'req-') { 
+                    payload.req_match = itemToSave.REQ_MATCH || ""; payload.req_spec = itemToSave.REQ_SPEC || ""; payload.req_caliper = itemToSave.REQ_CALIPER || ""; 
+                    payload.req_pic_note = itemToSave.REQ_PICK || ""; payload.req_sales_note = itemToSave.REQ_SALES_NOTE || ""; payload.req_comments = itemToSave.REQ_COMMENTS || ""; payload.av_note = itemToSave.AV_NOTE || "";
+                } else if (prefix === 'dock-') { 
+                    payload.dock_spec = itemToSave.DOCK_SPEC || ""; payload.dock_caliper = itemToSave.DOCK_CALIPER || ""; payload.dock_note = itemToSave.DOCK_NOTE || ""; 
+                }
+
+                if (isComplete && (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-')) {
+                    let matchVal = parseFloat(itemToSave.MATCH);
+                    if (!isNaN(matchVal) && matchVal >= 0) {
+                        let ptr = parseInt(String(itemToSave.PTRAVAILABLE).replace(/,/g, '')) || 0;
+                        itemToSave.INITIAL_PTR = ptr; itemToSave.LOC_MATCH_QTY = Math.round(ptr * (matchVal / 100));
+                        payload.initial_ptr = itemToSave.INITIAL_PTR; payload.loc_match_qty = itemToSave.LOC_MATCH_QTY;
+                    }
+                }
+
+                backupLocalItem(itemToSave);
+
+                if (itemToSave.SAVED_PHOTO_LINK) payload.photo_link = itemToSave.SAVED_PHOTO_LINK; if (itemToSave.SAVED_PHOTO_NAME) payload.photo_name = itemToSave.SAVED_PHOTO_NAME;
+                if (itemToSave.REQ_PHOTO_LINK) payload.req_photo_link = itemToSave.REQ_PHOTO_LINK; if (itemToSave.REQ_PHOTO_NAME) payload.req_photo_name = itemToSave.REQ_PHOTO_NAME;
+                if (itemToSave.DOCK_PHOTO_LINK) payload.dock_photo_link = itemToSave.DOCK_PHOTO_LINK; if (itemToSave.DOCK_PHOTO_NAME) payload.dock_photo_name = itemToSave.DOCK_PHOTO_NAME;
+
+                if (isComplete) { 
+                    payload.date_completed = new Date().toISOString(); 
+                    let soPayload = { unique_id: itemToSave.UNIQUE_ID, itemcode: itemToSave.ITEMCODE || "", commonname: itemToSave.COMMONNAME || "", contsize: itemToSave.CONTSIZE || "", locationcode: itemToSave.LOCATIONCODE || "", lotcode: itemToSave.LOTCODE || "", ptravailable: String(itemToSave.PTRAVAILABLE || ""), priority: String(itemToSave.PRIORITY || ""), sales_note: payload.sales_note || itemToSave.SALES_NOTE || itemToSave._NEW_SALES_NOTE || "", photo_link: payload.photo_link || itemToSave.SAVED_PHOTO_LINK || "", completed_by: currentUser, completed_at: payload.date_completed };
+                    supabaseFetch('sales_office', 'POST', soPayload).catch(e => console.log(e));
+                }
+
+                const targetTable = itemToSave.SOURCE_TABLE || 'drivearound_master_data';
+
+                supabaseFetch(targetTable, 'PATCH', payload, `unique_id=eq.${itemToSave.UNIQUE_ID}`).then(data => {
+                    if (isCurrentView && isComplete) { if(btnComp) btnComp.innerText = "MARK DONE"; }
+                    if (!isSilentAutoSave && isCurrentView && isComplete) showToast("Success", "Task Completed & Sent to Sales Office!"); 
+                    if (isComplete && isCurrentView) { itemToSave.DATE_COMPLETED = new Date().toISOString(); goBackFromDetail(); } else if (isComplete && !isCurrentView) { itemToSave.DATE_COMPLETED = new Date().toISOString(); }
+                }).catch(err => { 
+                    if (isCurrentView && isComplete) { if(btnComp) btnComp.innerText = "MARK DONE"; if (!isSilentAutoSave) showToast("Network Error", "Could not reach database.", true); } 
+                });
+            };
+            if (isSilentAutoSave && !isComplete && !specificItem) { autoSaveTimer = setTimeout(() => { executeSave(); }, 1000); } else { executeSave(); }
+        }
+    </script>
+</body>
+</html>
