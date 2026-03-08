@@ -530,6 +530,7 @@
     <script>
         const SUPABASE_URL = "https://gmkmsjvzzujjxfmcpyud.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdta21zanZ6enVqanhmbWNweXVkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjYwMTE1MywiZXhwIjoyMDg4MTc3MTUzfQ.E6UDlfJrdftcyPFKPcyCDfuLw5TGfqoVVoNx9N139As";
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzhJ_tytv5Rm2ag44liZAU6nsp0lQ7-9PLmjxrcuT1WA1WARubi7NyolYoTZ_qvZmzo/exec"; 
         
         let approvedNotesList = ["Ready to ship", "Needs weeded", "Needs pruned", "Yellowing leaves", "Too small", "Hold for next season", "Poor structure", "Needs spacing"];
         let salesNotesDict = {}; 
@@ -1631,8 +1632,7 @@
             else if (sourceView === 'docks') { document.getElementById('dtab-docks').classList.remove('hidden'); defaultTab = 'docks'; }
             else { 
                 if (safeRole === 'ADMIN') { ['season', 'location', 'request', 'notes', 'flyer'].forEach(t => { let el = document.getElementById('dtab-' + t); if (el) el.classList.remove('hidden'); }); } 
-                else if (safeRole === 'CSR') { document.getElementById('dtab-notes').classList.remove('hidden');
-document.getElementById('dtab-request').classList.remove('hidden'); document.getElementById('dtab-flyer').classList.remove('hidden'); } 
+                else if (safeRole === 'CSR') { document.getElementById('dtab-notes').classList.remove('hidden'); document.getElementById('dtab-request').classList.remove('hidden'); document.getElementById('dtab-flyer').classList.remove('hidden'); } 
                 else { document.getElementById('dtab-notes').classList.remove('hidden'); } defaultTab = 'overview';
             }
             switchDetailTab(defaultTab);
