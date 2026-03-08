@@ -1,20 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GNC DC</title>
-    <meta name="theme-color" content="#007a4d">
-    <link rel="manifest" href="manifest.json">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="application-name" content="GNC DC">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-title" content="GNC DC">
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>GNC DC</title><meta name="theme-color" content="#007a4d"><link rel="manifest" href="manifest.json">
+    <meta name="mobile-web-app-capable" content="yes"><meta name="application-name" content="GNC DC">
+    <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="GNC DC">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="icon" type="image/png" href="Ag%20Metric%20App.png">
-    <link rel="apple-touch-icon" href="Ag%20Metric%20App.png">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="icon" type="image/png" href="Ag%20Metric%20App.png"><link rel="apple-touch-icon" href="Ag%20Metric%20App.png">
+    <script src="https://cdn.tailwindcss.com"></script><script src="https://unpkg.com/@phosphor-icons/web"></script>
     <style>
         :root { --brand-green: #007a4d; --text-main: #111827; }
         body { font-family: "Amazon Ember", Arial, sans-serif; background-color: white; color: var(--text-main); overscroll-behavior-y: contain; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
@@ -62,10 +55,9 @@
     </style>
 </head>
 <body class="bg-gray-50 h-screen overflow-hidden">
-    <div id="top-loading-bar-container" class="hidden fixed top-0 left-0 w-full h-1 z-[99999] pointer-events-none">
-        <div id="top-loading-bar" class="h-full bg-[#22c55e] w-0 transition-all duration-300 ease-out shadow-[0_0_10px_#22c55e]"></div>
-    </div>
+    <div id="top-loading-bar-container" class="hidden fixed top-0 left-0 w-full h-1 z-[99999] pointer-events-none"><div id="top-loading-bar" class="h-full bg-[#22c55e] w-0 transition-all duration-300 ease-out shadow-[0_0_10px_#22c55e]"></div></div>
     <div id="toast-notification"></div>
+
     <div id="photo-modal" class="hidden fixed inset-0 bg-black bg-opacity-95 z-[15000] flex flex-col items-center justify-center p-4">
         <div class="absolute top-0 left-0 w-full p-6 flex justify-between items-start bg-gradient-to-b from-black/80 to-transparent z-50">
             <div id="photo-modal-caption" class="text-white font-bold text-sm leading-tight drop-shadow-md pr-4 uppercase tracking-wide"></div>
@@ -73,132 +65,24 @@
         </div>
         <img id="photo-modal-img" src="" class="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl z-40 mt-10">
     </div>
-    <div id="view-login">
-        <div class="login-card">
-            <div class="flex flex-col items-center mb-8 w-full relative">
-                <img src="Greenleaf%20Logo.png" alt="Greenleaf Logo" class="h-20 mb-4 object-contain drop-shadow-md" onerror="this.style.display='none'">
-                <div class="text-3xl text-[#007a4d] font-black tracking-tighter mb-1">GNC DC</div>
-                <div class="flex flex-col items-center gap-0.5 mt-5">
-                    <span class="text-[9px] font-bold text-gray-400 uppercase tracking-[0.3em]">Powered By</span>
-                    <span class="text-[17px] font-black text-gray-800 tracking-[0.2em] uppercase border-b-[3px] border-[#007a4d] pb-0.5">Ag Metric</span>
-                </div>
-            </div>
-            <div id="login-inputs">
-                <input type="text" id="username-input" class="input-field mb-4 text-center border-2" placeholder="USERNAME">
-                <input type="password" id="pin-code" class="input-field mb-4 text-center border-2 tracking-widest" placeholder="PASSWORD">
-                <button class="w-full bg-[#007a4d] text-white font-bold py-3 rounded-lg shadow-md" onclick="handleLogin()">LOGIN</button>
-                <button id="btn-fingerprint" class="hidden w-full bg-gray-50 text-[#007a4d] border-2 border-[#007a4d] font-bold py-3 rounded-lg shadow-md mt-4 flex items-center justify-center gap-2" onclick="loginWithBiometric()"><i class="ph-bold ph-fingerprint text-2xl"></i> LOGIN WITH FINGERPRINT</button>
-            </div>
-            <div id="loading-spinner" class="hidden mt-6 flex flex-col items-center"><div class="spinner"></div><div id="loading-text" class="text-white font-bold text-sm mt-3 text-center">Authenticating...</div></div>
-        </div>
-    </div>
-    <div id="view-change-password">
-        <div class="login-card">
-            <h2 class="text-2xl font-black text-[#007a4d] mb-2">Change Password</h2>
-            <p class="text-xs text-gray-500 font-bold mb-6">For security, please set a new password for your account to continue.</p>
-            <input type="password" id="new-password" class="input-field mb-3 text-center border-2 tracking-widest" placeholder="NEW PASSWORD">
-            <input type="password" id="confirm-password" class="input-field mb-6 text-center border-2 tracking-widest" placeholder="CONFIRM PASSWORD">
-            <button class="w-full bg-[#007a4d] text-white font-bold py-3 rounded-lg shadow-md active:scale-95 transition-transform" onclick="submitNewPassword()">SAVE & CONTINUE</button>
-        </div>
-    </div>
-    <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
-        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
-            <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
-            <div class="grid grid-cols-1 gap-3 mb-4">
-                <button class="bg-green-50 text-green-700 font-bold p-4 rounded-lg border border-green-200 shadow-sm" onclick="processTabSelection('notes')">NOTES & ACTIONS</button>
-                <button class="bg-purple-50 text-purple-700 font-bold p-4 rounded-lg border border-purple-200 shadow-sm" onclick="processTabSelection('request')">REQUEST DATA</button>
-            </div>
-            <button class="text-gray-500 font-bold py-2 px-4" onclick="document.getElementById('tab-select-modal').classList.add('hidden')">Cancel</button>
-        </div>
-    </div>
-    <div id="assign-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
-        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
-            <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Assign Selected Items To:</h3>
-            <div class="grid grid-cols-1 gap-3 mb-4">
-                <button class="bg-blue-50 text-blue-700 font-bold p-4 rounded-lg border border-blue-200 shadow-sm" onclick="confirmAssign('Dylan')">Dylan</button>
-                <button class="bg-blue-50 text-blue-700 font-bold p-4 rounded-lg border border-blue-200 shadow-sm" onclick="confirmAssign('Kayla')">Kayla</button>
-                <button class="bg-blue-50 text-blue-700 font-bold p-4 rounded-lg border border-blue-200 shadow-sm" onclick="confirmAssign('Morgan')">Morgan</button>
-            </div>
-            <button class="text-gray-500 font-bold py-2 px-4" onclick="closeAssignModal()">Cancel</button>
-        </div>
-    </div>
-    <div id="endcap-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
-        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center flex flex-col max-h-[90vh]">
-            <div id="ec-step-1" class="flex flex-col">
-                <h3 class="font-bold text-lg mb-2 text-yellow-600">Create End Cap Folder</h3>
-                <input type="text" id="ec-folder-input" class="input-field mb-4 border-yellow-200 focus:border-yellow-500" placeholder="e.g. Front Entrance Display">
-                <button class="w-full bg-yellow-500 text-white font-bold p-4 rounded-xl shadow-lg mt-auto" onclick="processECStep1()">NEXT: ITEM DETAILS</button>
-            </div>
-            <div id="ec-step-2" class="hidden flex flex-col text-left h-full">
-                <div class="flex items-center mb-4 border-b border-gray-100 pb-2">
-                    <i class="ph-bold ph-arrow-left text-gray-400 text-2xl mr-2 cursor-pointer p-1" onclick="document.getElementById('ec-step-2').classList.add('hidden'); document.getElementById('ec-step-1').classList.remove('hidden');"></i>
-                    <h3 class="font-bold text-lg text-yellow-600">End Cap Details</h3>
-                </div>
-                <div id="ec-list-container" class="flex flex-col gap-3 overflow-y-auto max-h-[50vh] mb-4 p-1"></div>
-                <button class="w-full bg-yellow-500 text-white font-bold p-4 rounded-xl shadow-lg mt-auto" onclick="submitEndCap()">CREATE END CAP</button>
-            </div>
-            <button class="text-gray-500 font-bold py-2 px-4 mt-2" onclick="document.getElementById('endcap-modal').classList.add('hidden')">Cancel</button>
-        </div>
-    </div>
-    <div id="dock-info-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
-        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center relative overflow-hidden">
-            <h3 class="font-black text-2xl mb-2 text-orange-600">DOCK <span id="modal-dock-num"></span></h3>
-            <p class="text-[10px] text-gray-500 font-bold mb-4 uppercase tracking-wider">Set Dock Team & Status</p>
-            <div class="text-left mb-3"><label class="text-[10px] font-bold text-gray-500 uppercase ml-1">Checker</label><input type="text" id="dock-checker" class="input-field border-orange-200 focus:border-orange-500 !mb-0" placeholder="e.g. John D."></div>
-            <div class="text-left mb-3"><label class="text-[10px] font-bold text-gray-500 uppercase ml-1">Inspector</label><input type="text" id="dock-inspector" class="input-field border-orange-200 focus:border-orange-500 !mb-0" placeholder="e.g. Jane S."></div>
-            <div class="text-left mb-4"><label class="text-[10px] font-bold text-gray-500 uppercase ml-1">Mistake Guy</label><input type="text" id="dock-mistake" class="input-field border-orange-200 focus:border-orange-500 !mb-0" placeholder="e.g. Mike T."></div>
-            <div class="text-left mb-6">
-                <label class="text-[10px] font-bold text-gray-500 uppercase ml-1">Dock Status</label>
-                <select id="dock-status" class="input-field border-orange-200 focus:border-orange-500 font-bold text-orange-700 bg-orange-50 !mb-0">
-                    <option value="Loading">Loading</option><option value="Paused">Paused</option><option value="Waiting">Waiting on Plant</option><option value="Complete">Complete</option>
-                </select>
-            </div>
-            <div class="flex gap-2">
-                <button class="w-1/3 bg-gray-100 text-gray-600 font-bold p-3 rounded-lg shadow-sm active:scale-95 transition-transform" onclick="document.getElementById('dock-info-modal').classList.add('hidden')">CANCEL</button>
-                <button class="w-2/3 bg-orange-600 text-white font-bold p-3 rounded-lg shadow-md active:scale-95 transition-transform" onclick="saveDockInfoModal()">SAVE & CONTINUE</button>
-            </div>
-        </div>
-    </div>
-    <div id="request-rep-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
-        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center flex flex-col max-h-[90vh]">
-            <div id="step-1-rep" class="flex flex-col">
-                <h3 class="font-bold text-lg mb-2 text-orange-600">Who requested this?</h3>
-                <input type="text" id="rep-search-input" class="input-field mb-3 border-orange-200 focus:border-orange-500" placeholder="Search or type name..." oninput="debouncedFilterRepList()">
-                <div id="rep-list-container" class="grid grid-cols-1 gap-2 mb-4 max-h-[40vh] overflow-y-auto px-2 py-1"></div>
-                <button id="custom-rep-btn" class="hidden w-full bg-orange-600 text-white font-bold p-3 rounded-lg mb-4 shadow-sm" onclick="selectRepForRequest(document.getElementById('rep-search-input').value.trim())">Assign to: <span></span></button>
-            </div>
-            <div id="step-1.5-folder" class="hidden flex flex-col text-left"><div id="existing-folder-container"></div></div>
-            <div id="step-2-cust" class="hidden flex flex-col text-left">
-                <div class="flex items-center mb-4 border-b border-gray-100 pb-2">
-                    <i class="ph-bold ph-arrow-left text-gray-400 text-2xl mr-2 cursor-pointer p-1" onclick="document.getElementById('step-2-cust').classList.add('hidden'); document.getElementById('step-1-rep').classList.remove('hidden');"></i>
-                    <h3 class="font-bold text-lg text-orange-600">Customer</h3>
-                </div>
-                <label class="text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Customer / Consignee</label>
-                <input type="text" id="cust-search-input" class="input-field mb-2 border-orange-200" placeholder="Search or type customer..." oninput="debouncedPopulateCustomerList()">
-                <div id="cust-list-container" class="grid grid-cols-1 gap-2 mb-6 max-h-[30vh] overflow-y-auto px-1 py-1"></div>
-                <button class="w-full bg-orange-600 text-white font-bold p-4 rounded-xl shadow-lg mt-auto" onclick="processCustStep()">NEXT: ITEM DETAILS</button>
-            </div>
-            <div id="step-3-qty" class="hidden flex flex-col text-left h-full">
-                <div class="flex items-center mb-4 border-b border-gray-100 pb-2">
-                    <i class="ph-bold ph-arrow-left text-gray-400 text-2xl mr-2 cursor-pointer p-1" onclick="goBackFromQty()"></i>
-                    <h3 class="font-bold text-lg text-orange-600">Request Details</h3>
-                </div>
-                <div id="qty-list-container" class="flex flex-col gap-3 overflow-y-auto max-h-[50vh] mb-4 p-1"></div>
-                <button class="w-full bg-[#007a4d] text-white font-bold p-4 rounded-xl shadow-lg mt-auto" onclick="submitRequestWithQtys()">SUBMIT REQUEST</button>
-            </div>
-            <button class="text-gray-500 font-bold py-2 px-4 mt-2" onclick="document.getElementById('request-rep-modal').classList.add('hidden')">Cancel</button>
-        </div>
-    </div>
+
+    <div id="view-login"><div class="login-card"><div class="flex flex-col items-center mb-8 w-full relative"><img src="Greenleaf%20Logo.png" alt="Greenleaf Logo" class="h-20 mb-4 object-contain drop-shadow-md" onerror="this.style.display='none'"><div class="text-3xl text-[#007a4d] font-black tracking-tighter mb-1">GNC DC</div><div class="flex flex-col items-center gap-0.5 mt-5"><span class="text-[9px] font-bold text-gray-400 uppercase tracking-[0.3em]">Powered By</span><span class="text-[17px] font-black text-gray-800 tracking-[0.2em] uppercase border-b-[3px] border-[#007a4d] pb-0.5">Ag Metric</span></div></div><div id="login-inputs"><input type="text" id="username-input" class="input-field mb-4 text-center border-2" placeholder="USERNAME"><input type="password" id="pin-code" class="input-field mb-4 text-center border-2 tracking-widest" placeholder="PASSWORD"><button class="w-full bg-[#007a4d] text-white font-bold py-3 rounded-lg shadow-md" onclick="handleLogin()">LOGIN</button><button id="btn-fingerprint" class="hidden w-full bg-gray-50 text-[#007a4d] border-2 border-[#007a4d] font-bold py-3 rounded-lg shadow-md mt-4 flex items-center justify-center gap-2" onclick="loginWithBiometric()"><i class="ph-bold ph-fingerprint text-2xl"></i> LOGIN WITH FINGERPRINT</button></div><div id="loading-spinner" class="hidden mt-6 flex flex-col items-center"><div class="spinner"></div><div id="loading-text" class="text-white font-bold text-sm mt-3 text-center">Authenticating...</div></div></div></div>
+    <div id="view-change-password"><div class="login-card"><h2 class="text-2xl font-black text-[#007a4d] mb-2">Change Password</h2><p class="text-xs text-gray-500 font-bold mb-6">For security, please set a new password for your account to continue.</p><input type="password" id="new-password" class="input-field mb-3 text-center border-2 tracking-widest" placeholder="NEW PASSWORD"><input type="password" id="confirm-password" class="input-field mb-6 text-center border-2 tracking-widest" placeholder="CONFIRM PASSWORD"><button class="w-full bg-[#007a4d] text-white font-bold py-3 rounded-lg shadow-md active:scale-95 transition-transform" onclick="submitNewPassword()">SAVE & CONTINUE</button></div></div>
+    
+    <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4"><div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center"><h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3><div class="grid grid-cols-1 gap-3 mb-4"><button class="bg-green-50 text-green-700 font-bold p-4 rounded-lg border border-green-200 shadow-sm" onclick="processTabSelection('notes')">NOTES & ACTIONS</button><button class="bg-purple-50 text-purple-700 font-bold p-4 rounded-lg border border-purple-200 shadow-sm" onclick="processTabSelection('request')">REQUEST DATA</button></div><button class="text-gray-500 font-bold py-2 px-4" onclick="document.getElementById('tab-select-modal').classList.add('hidden')">Cancel</button></div></div>
+    <div id="assign-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4"><div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center"><h3 class="font-bold text-lg mb-4 text-[#007a4d]">Assign Selected Items To:</h3><div class="grid grid-cols-1 gap-3 mb-4"><button class="bg-blue-50 text-blue-700 font-bold p-4 rounded-lg border border-blue-200 shadow-sm" onclick="confirmAssign('Dylan')">Dylan</button><button class="bg-blue-50 text-blue-700 font-bold p-4 rounded-lg border border-blue-200 shadow-sm" onclick="confirmAssign('Kayla')">Kayla</button><button class="bg-blue-50 text-blue-700 font-bold p-4 rounded-lg border border-blue-200 shadow-sm" onclick="confirmAssign('Morgan')">Morgan</button></div><button class="text-gray-500 font-bold py-2 px-4" onclick="closeAssignModal()">Cancel</button></div></div>
+    <div id="endcap-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4"><div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center flex flex-col max-h-[90vh]"><div id="ec-step-1" class="flex flex-col"><h3 class="font-bold text-lg mb-2 text-yellow-600">Create End Cap Folder</h3><input type="text" id="ec-folder-input" class="input-field mb-4 border-yellow-200 focus:border-yellow-500" placeholder="e.g. Front Entrance Display"><button class="w-full bg-yellow-500 text-white font-bold p-4 rounded-xl shadow-lg mt-auto" onclick="processECStep1()">NEXT: ITEM DETAILS</button></div><div id="ec-step-2" class="hidden flex flex-col text-left h-full"><div class="flex items-center mb-4 border-b border-gray-100 pb-2"><i class="ph-bold ph-arrow-left text-gray-400 text-2xl mr-2 cursor-pointer p-1" onclick="document.getElementById('ec-step-2').classList.add('hidden'); document.getElementById('ec-step-1').classList.remove('hidden');"></i><h3 class="font-bold text-lg text-yellow-600">End Cap Details</h3></div><div id="ec-list-container" class="flex flex-col gap-3 overflow-y-auto max-h-[50vh] mb-4 p-1"></div><button class="w-full bg-yellow-500 text-white font-bold p-4 rounded-xl shadow-lg mt-auto" onclick="submitEndCap()">CREATE END CAP</button></div><button class="text-gray-500 font-bold py-2 px-4 mt-2" onclick="document.getElementById('endcap-modal').classList.add('hidden')">Cancel</button></div></div>
+    <div id="dock-info-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4"><div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center relative overflow-hidden"><h3 class="font-black text-2xl mb-2 text-orange-600">DOCK <span id="modal-dock-num"></span></h3><p class="text-[10px] text-gray-500 font-bold mb-4 uppercase tracking-wider">Set Dock Team & Status</p><div class="text-left mb-3"><label class="text-[10px] font-bold text-gray-500 uppercase ml-1">Checker</label><input type="text" id="dock-checker" class="input-field border-orange-200 focus:border-orange-500 !mb-0" placeholder="e.g. John D."></div><div class="text-left mb-3"><label class="text-[10px] font-bold text-gray-500 uppercase ml-1">Inspector</label><input type="text" id="dock-inspector" class="input-field border-orange-200 focus:border-orange-500 !mb-0" placeholder="e.g. Jane S."></div><div class="text-left mb-4"><label class="text-[10px] font-bold text-gray-500 uppercase ml-1">Mistake Guy</label><input type="text" id="dock-mistake" class="input-field border-orange-200 focus:border-orange-500 !mb-0" placeholder="e.g. Mike T."></div><div class="text-left mb-6"><label class="text-[10px] font-bold text-gray-500 uppercase ml-1">Dock Status</label><select id="dock-status" class="input-field border-orange-200 focus:border-orange-500 font-bold text-orange-700 bg-orange-50 !mb-0"><option value="Loading">Loading</option><option value="Paused">Paused</option><option value="Waiting">Waiting on Plant</option><option value="Complete">Complete</option></select></div><div class="flex gap-2"><button class="w-1/3 bg-gray-100 text-gray-600 font-bold p-3 rounded-lg shadow-sm active:scale-95 transition-transform" onclick="document.getElementById('dock-info-modal').classList.add('hidden')">CANCEL</button><button class="w-2/3 bg-orange-600 text-white font-bold p-3 rounded-lg shadow-md active:scale-95 transition-transform" onclick="saveDockInfoModal()">SAVE & CONTINUE</button></div></div></div>
+    <div id="request-rep-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4"><div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center flex flex-col max-h-[90vh]"><div id="step-1-rep" class="flex flex-col"><h3 class="font-bold text-lg mb-2 text-orange-600">Who requested this?</h3><input type="text" id="rep-search-input" class="input-field mb-3 border-orange-200 focus:border-orange-500" placeholder="Search or type name..." oninput="debouncedFilterRepList()"><div id="rep-list-container" class="grid grid-cols-1 gap-2 mb-4 max-h-[40vh] overflow-y-auto px-2 py-1"></div><button id="custom-rep-btn" class="hidden w-full bg-orange-600 text-white font-bold p-3 rounded-lg mb-4 shadow-sm" onclick="selectRepForRequest(document.getElementById('rep-search-input').value.trim())">Assign to: <span></span></button></div><div id="step-1.5-folder" class="hidden flex flex-col text-left"><div id="existing-folder-container"></div></div><div id="step-2-cust" class="hidden flex flex-col text-left"><div class="flex items-center mb-4 border-b border-gray-100 pb-2"><i class="ph-bold ph-arrow-left text-gray-400 text-2xl mr-2 cursor-pointer p-1" onclick="document.getElementById('step-2-cust').classList.add('hidden'); document.getElementById('step-1-rep').classList.remove('hidden');"></i><h3 class="font-bold text-lg text-orange-600">Customer</h3></div><label class="text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Customer / Consignee</label><input type="text" id="cust-search-input" class="input-field mb-2 border-orange-200" placeholder="Search or type customer..." oninput="debouncedPopulateCustomerList()"><div id="cust-list-container" class="grid grid-cols-1 gap-2 mb-6 max-h-[30vh] overflow-y-auto px-1 py-1"></div><button class="w-full bg-orange-600 text-white font-bold p-4 rounded-xl shadow-lg mt-auto" onclick="processCustStep()">NEXT: ITEM DETAILS</button></div><div id="step-3-qty" class="hidden flex flex-col text-left h-full"><div class="flex items-center mb-4 border-b border-gray-100 pb-2"><i class="ph-bold ph-arrow-left text-gray-400 text-2xl mr-2 cursor-pointer p-1" onclick="goBackFromQty()"></i><h3 class="font-bold text-lg text-orange-600">Request Details</h3></div><div id="qty-list-container" class="flex flex-col gap-3 overflow-y-auto max-h-[50vh] mb-4 p-1"></div><button class="w-full bg-[#007a4d] text-white font-bold p-4 rounded-xl shadow-lg mt-auto" onclick="submitRequestWithQtys()">SUBMIT REQUEST</button></div><button class="text-gray-500 font-bold py-2 px-4 mt-2" onclick="document.getElementById('request-rep-modal').classList.add('hidden')">Cancel</button></div></div>
+
     <div id="app-wrapper" class="hidden h-full flex flex-col">
         <header class="nav-header sticky top-0 z-50 p-4 flex justify-between items-center shadow-md">
             <div class="flex items-center gap-3">
                 <i class="ph-bold ph-list menu-btn text-2xl cursor-pointer" onclick="toggleMenu()"></i>
-                <div class="flex flex-col">
-                    <div class="font-bold text-lg leading-tight"><span id="header-user">User</span></div>
-                    <div class="text-[10px] opacity-80 leading-tight">GNC DC</div>
-                </div>
+                <div class="flex flex-col"><div class="font-bold text-lg leading-tight"><span id="header-user">User</span></div><div class="text-[10px] opacity-80 leading-tight">GNC DC</div></div>
             </div>
         </header>
+
         <div id="drawer-overlay" onclick="toggleMenu()"></div>
         <div id="side-drawer">
             <div class="drawer-header">Menu</div>
@@ -222,6 +106,7 @@
 
         <div id="main-scroll-area" class="flex-grow overflow-y-auto p-4 pb-40 relative">
             <div id="view-wrapper" style="position:relative; z-index:20;">
+                
                 <div id="view-home" class="hidden">
                     <div class="bg-[#007a4d] text-white p-6 rounded-2xl mb-6 shadow-lg flex flex-col items-center text-center relative overflow-hidden">
                         <div class="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-white opacity-5 rounded-full pointer-events-none"></div>
@@ -229,10 +114,7 @@
                         <div class="bg-white p-3.5 rounded-2xl mb-3 shadow-md z-10 relative"><img src="Greenleaf%20Logo.png" alt="Greenleaf Logo" class="h-11 object-contain" onerror="this.style.display='none'"></div>
                         <h1 class="text-2xl font-black tracking-tight mb-1 z-10 relative">GNC DC</h1>
                         <p class="text-green-100 text-[10px] font-bold mb-5 uppercase tracking-[0.2em] z-10 relative">Dashboard</p>
-                        <div class="flex flex-col items-center pt-4 border-t border-white/20 w-full mt-1 z-10 relative">
-                            <span class="text-[9px] font-bold text-white/70 uppercase tracking-[0.3em] mb-1">Powered By</span>
-                            <div class="text-[15px] font-black tracking-[0.2em] text-white uppercase drop-shadow-sm">Ag Metric</div>
-                        </div>
+                        <div class="flex flex-col items-center pt-4 border-t border-white/20 w-full mt-1 z-10 relative"><span class="text-[9px] font-bold text-white/70 uppercase tracking-[0.3em] mb-1">Powered By</span><div class="text-[15px] font-black tracking-[0.2em] text-white uppercase drop-shadow-sm">Ag Metric</div></div>
                     </div>
                     <h2 class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3 pl-1">App Modules</h2>
                     <div class="grid grid-cols-2 gap-3 mb-8">
@@ -250,10 +132,7 @@
                 </div>
 
                 <div id="view-av" class="hidden">
-                    <div id="av-search-container" class="relative mb-2">
-                        <input type="text" id="av-search" class="input-field w-full pr-10 !mb-0" placeholder="Search Open Stock..." oninput="debouncedAVSearch()">
-                        <i id="av-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearAVSearch()"></i>
-                    </div>
+                    <div id="av-search-container" class="relative mb-2"><input type="text" id="av-search" class="input-field w-full pr-10 !mb-0" placeholder="Search Open Stock..." oninput="debouncedAVSearch()"><i id="av-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearAVSearch()"></i></div>
                     <div id="av-crumb" class="text-xs font-bold text-[#007a4d] mb-3 mt-2 empty:hidden">Open Stock</div>
                     <div id="av-content"></div>
                 </div>
@@ -262,73 +141,36 @@
                     <div id="reports-crumb" class="text-xs font-bold text-[#007a4d] mb-3">Crop Value Summary</div>
                     <div class="detail-tabs mb-4">
                         <div class="detail-tab report-tab active border-[#007a4d] text-[#007a4d]" onclick="setReportTab('ALL')" id="rtab-ALL">Summary</div>
-                        <div class="detail-tab report-tab" onclick="setReportTab('S1')" id="rtab-S1">S1 Value</div>
-                        <div class="detail-tab report-tab" onclick="setReportTab('F1')" id="rtab-F1">F1 Value</div>
-                        <div class="detail-tab report-tab" onclick="setReportTab('U1')" id="rtab-U1">U1 Value</div>
-                        <div class="detail-tab report-tab" onclick="setReportTab('U2')" id="rtab-U2">U2 Value</div>
-                        <div class="detail-tab report-tab" onclick="setReportTab('U3')" id="rtab-U3">U3 Value</div>
-                        <div class="detail-tab report-tab" onclick="setReportTab('X')" id="rtab-X">X Value</div>
-                        <div class="detail-tab report-tab" onclick="setReportTab('Y')" id="rtab-Y">Y Value</div>
-                        <div class="detail-tab report-tab" onclick="setReportTab('Z')" id="rtab-Z">Z Value</div>
+                        <div class="detail-tab report-tab" onclick="setReportTab('S1')" id="rtab-S1">S1 Value</div><div class="detail-tab report-tab" onclick="setReportTab('F1')" id="rtab-F1">F1 Value</div><div class="detail-tab report-tab" onclick="setReportTab('U1')" id="rtab-U1">U1 Value</div><div class="detail-tab report-tab" onclick="setReportTab('U2')" id="rtab-U2">U2 Value</div><div class="detail-tab report-tab" onclick="setReportTab('U3')" id="rtab-U3">U3 Value</div><div class="detail-tab report-tab" onclick="setReportTab('X')" id="rtab-X">X Value</div><div class="detail-tab report-tab" onclick="setReportTab('Y')" id="rtab-Y">Y Value</div><div class="detail-tab report-tab" onclick="setReportTab('Z')" id="rtab-Z">Z Value</div>
                     </div>
                     <div id="reports-content"></div>
                 </div>
 
-                <div id="view-request" class="hidden">
-                    <div id="request-crumb" class="text-xs font-bold text-[#007a4d] mb-3 empty:hidden"></div>
-                    <div id="request-content"></div>
-                </div>
+                <div id="view-request" class="hidden"><div id="request-crumb" class="text-xs font-bold text-[#007a4d] mb-3 empty:hidden"></div><div id="request-content"></div></div>
 
                 <div id="view-reserves" class="hidden">
-                    <div id="reserves-search-container" class="relative mb-2">
-                        <input type="text" id="reserves-search" class="input-field w-full pr-10 !mb-0" placeholder="Search..." oninput="debouncedReservesSearch()">
-                        <i id="reserves-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearReservesSearch()"></i>
-                    </div>
-                    <div id="reserves-crumb" class="text-xs font-bold text-[#007a4d] mb-3 mt-3 empty:hidden"></div>
-                    <div id="reserves-content"></div>
+                    <div id="reserves-search-container" class="relative mb-2"><input type="text" id="reserves-search" class="input-field w-full pr-10 !mb-0" placeholder="Search..." oninput="debouncedReservesSearch()"><i id="reserves-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearReservesSearch()"></i></div>
+                    <div id="reserves-crumb" class="text-xs font-bold text-[#007a4d] mb-3 mt-3 empty:hidden"></div><div id="reserves-content"></div>
                 </div>
 
-                <div id="view-docks" class="hidden">
-                    <input type="text" id="docks-search" class="input-field mb-2" placeholder="Search Plants..." oninput="debouncedDocksSearch()">
-                    <div id="docks-crumb" class="text-xs font-bold text-[#007a4d] mb-3">Select a Dock</div>
-                    <div id="docks-content"></div>
-                </div>
+                <div id="view-docks" class="hidden"><input type="text" id="docks-search" class="input-field mb-2" placeholder="Search Plants..." oninput="debouncedDocksSearch()"><div id="docks-crumb" class="text-xs font-bold text-[#007a4d] mb-3">Select a Dock</div><div id="docks-content"></div></div>
 
-                <div id="view-low-stock" class="hidden">
-                    <div id="low-stock-crumb" class="text-xs font-bold text-[#007a4d] mb-3">Action Required</div>
-                    <div id="low-stock-content"></div>
-                </div>
+                <div id="view-low-stock" class="hidden"><div id="low-stock-crumb" class="text-xs font-bold text-[#007a4d] mb-3">Action Required</div><div id="low-stock-content"></div></div>
 
-                <div id="view-sales-office" class="hidden">
-                    <div class="text-xs font-bold text-[#007a4d] mb-3">Completed Sales Notes</div>
-                    <div id="sales-office-content"></div>
-                </div>
+                <div id="view-sales-office" class="hidden"><div class="text-xs font-bold text-[#007a4d] mb-3">Completed Sales Notes</div><div id="sales-office-content"></div></div>
 
                 <div id="view-drive" class="hidden">
-                    <div id="drive-search-container" class="relative mb-2">
-                        <input type="text" id="drive-search" class="input-field w-full pr-10 !mb-0" placeholder="Search Names or Locs..." oninput="debouncedDriveSearch()">
-                        <i id="drive-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearDriveSearch()"></i>
-                    </div>
-                    <div class="flex overflow-x-auto scrollbar-none gap-2 mb-3 pb-1" id="drive-season-filters"></div>
-                    <div id="drive-crumb" class="text-xs font-bold text-[#007a4d] mb-3 empty:hidden"></div>
-                    <div id="drive-content"></div>
+                    <div id="drive-search-container" class="relative mb-2"><input type="text" id="drive-search" class="input-field w-full pr-10 !mb-0" placeholder="Search Names or Locs..." oninput="debouncedDriveSearch()"><i id="drive-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearDriveSearch()"></i></div>
+                    <div class="flex overflow-x-auto scrollbar-none gap-2 mb-3 pb-1" id="drive-season-filters"></div><div id="drive-crumb" class="text-xs font-bold text-[#007a4d] mb-3 empty:hidden"></div><div id="drive-content"></div>
                 </div>
 
                 <div id="view-tasks" class="hidden">
-                    <div id="task-crumb" class="text-xs font-bold text-[#007a4d] mb-3"></div>
-                    <div id="team-selector" class="hidden mb-4 grid grid-cols-1 gap-3"></div>
-                    <div id="task-tabs-container" class="task-tabs">
-                        <div id="tab-season" class="task-tab active" onclick="setTaskTab('season')">Season Notes</div>
-                        <div id="tab-location" class="task-tab" onclick="setTaskTab('location')">Location Notes</div>
-                        <div id="tab-endcap" class="task-tab" onclick="setTaskTab('endcap')">End Cap</div>
-                    </div>
+                    <div id="task-crumb" class="text-xs font-bold text-[#007a4d] mb-3"></div><div id="team-selector" class="hidden mb-4 grid grid-cols-1 gap-3"></div>
+                    <div id="task-tabs-container" class="task-tabs"><div id="tab-season" class="task-tab active" onclick="setTaskTab('season')">Season Notes</div><div id="tab-location" class="task-tab" onclick="setTaskTab('location')">Location Notes</div><div id="tab-endcap" class="task-tab" onclick="setTaskTab('endcap')">End Cap</div></div>
                     <div id="task-content"></div>
                 </div>
                 
-                <div id="view-review" class="hidden">
-                    <div id="review-crumb" class="text-xs font-bold text-[#007a4d] mb-3"></div>
-                    <div id="review-content"></div>
-                </div>
+                <div id="view-review" class="hidden"><div id="review-crumb" class="text-xs font-bold text-[#007a4d] mb-3"></div><div id="review-content"></div></div>
                 
                 <div id="view-detail" class="hidden">
                     <div class="back-btn" onclick="goBackFromDetail()"><i class="ph-bold ph-arrow-left"></i> Back</div>
@@ -357,10 +199,7 @@
                             <div class="overview-card"><div class="overview-label">Season Supply</div><div id="ov-season" class="overview-val">--</div></div>
                         </div>
                         <div id="ov-large-photo" class="mt-4 hidden mb-4"></div>
-                        <div id="expand-section" class="mt-6">
-                            <div class="expand-trigger" onclick="toggleExpand()"><span>View All Excel Columns</span><i class="ph-bold ph-caret-down"></i></div>
-                            <div id="expand-content" class="expand-content"></div>
-                        </div>
+                        <div id="expand-section" class="mt-6"><div class="expand-trigger" onclick="toggleExpand()"><span>View All Excel Columns</span><i class="ph-bold ph-caret-down"></i></div><div id="expand-content" class="expand-content"></div></div>
                     </div>
                     
                     <div id="det-season-content" class="hidden py-4">
@@ -371,7 +210,7 @@
                         </div>
                         <div id="ssn-input-container">
                             <div class="mb-3"><label class="text-[10px] font-bold text-gray-500 uppercase">Loc Match %</label><input type="number" id="ssn-match" class="input-field !mb-1" placeholder="e.g. 40" oninput="calculateMatchQty('ssn-')"><div id="ssn-match-display" class="text-[10px] font-bold text-[#007a4d] text-right mb-2 hidden">LOC Match QTY: <span id="ssn-match-qty-val">0</span></div></div>
-                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="ssn-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'ssn-', true)"></div>
+                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec</label><input type="text" id="ssn-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'ssn-', true)"></div>
                             <div id="ssn-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="ssn-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'ssn-', true)"></div>
                             <div class="relative w-full mt-2 mb-2 hidden"><label class="text-[10px] font-bold text-green-700 uppercase flex justify-between"><span>Sales Note</span></label><input type="text" id="ssn-sales-desc" class="input-field border-green-500 bg-green-50 uppercase flex-grow !mb-0" placeholder="Sales Note..." onchange="saveData(false, 'ssn-', true)"></div>
                             <div class="relative w-full mt-2 mb-2"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2"><input type="text" id="ssn-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value = this.value.toUpperCase(); debouncedFilterDropdown('ssn-av-note', 'ssn-dropdown-list')" onfocus="filterDropdown('ssn-av-note', 'ssn-dropdown-list')" onblur="setTimeout(()=> { document.getElementById('ssn-dropdown-list').classList.add('hidden'); saveData(false, 'ssn-', true); }, 200)" placeholder="TYPE AV NOTE OR SEARCH..."><button type="button" class="bg-blue-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('ssn-', 'av-note')">+ SPEC</button></div><div id="ssn-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div></div>
@@ -388,7 +227,7 @@
                         </div>
                         <div id="lsn-input-container">
                             <div class="mb-3"><label class="text-[10px] font-bold text-gray-500 uppercase">Loc Match %</label><input type="number" id="lsn-match" class="input-field !mb-1" placeholder="e.g. 95" oninput="calculateMatchQty('lsn-')"><div id="lsn-match-display" class="text-[10px] font-bold text-[#007a4d] text-right mb-2 hidden">LOC Match QTY: <span id="lsn-match-qty-val">0</span></div></div>
-                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="lsn-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'lsn-', true)"></div>
+                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec</label><input type="text" id="lsn-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'lsn-', true)"></div>
                             <div id="lsn-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="lsn-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'lsn-', true)"></div>
                             <div class="relative w-full mt-2 mb-2 hidden"><label class="text-[10px] font-bold text-green-700 uppercase flex justify-between"><span>Sales Note</span></label><input type="text" id="lsn-sales-desc" class="input-field border-green-500 bg-green-50 uppercase flex-grow !mb-0" placeholder="Sales Note..." onchange="saveData(false, 'lsn-', true)"></div>
                             <div class="relative w-full mt-2 mb-2"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2"><input type="text" id="lsn-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value = this.value.toUpperCase(); debouncedFilterDropdown('lsn-av-note', 'lsn-dropdown-list')" onfocus="filterDropdown('lsn-av-note', 'lsn-dropdown-list')" onblur="setTimeout(()=> { document.getElementById('lsn-dropdown-list').classList.add('hidden'); saveData(false, 'lsn-', true); }, 200)" placeholder="TYPE AV NOTE OR SEARCH..."><button type="button" class="bg-blue-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('lsn-', 'av-note')">+ SPEC</button></div><div id="lsn-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div></div>
@@ -405,7 +244,7 @@
                         </div>
                         <div id="na-input-container">
                             <div class="mb-3"><label class="text-[10px] font-bold text-gray-500 uppercase">Loc Match %</label><input type="number" id="na-match" class="input-field !mb-1" placeholder="e.g. 95" oninput="calculateMatchQty('na-')"><div id="na-match-display" class="text-[10px] font-bold text-[#007a4d] text-right mb-2 hidden">LOC Match QTY: <span id="na-match-qty-val">0</span></div></div>
-                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="na-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'na-', true)"></div>
+                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec</label><input type="text" id="na-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'na-', true)"></div>
                             <div id="na-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="na-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'na-', true)"></div>
                             <div class="relative w-full mt-2 mb-2"><label class="text-[10px] font-bold text-green-700 uppercase flex justify-between"><span>Sales Description</span></label><div class="flex gap-2"><input type="text" id="na-sales-desc" class="input-field border-green-500 bg-green-50 uppercase flex-grow !mb-0" oninput="this.value = this.value.toUpperCase(); debouncedFilterDropdown('na-sales-desc', 'na-dropdown-list')" onfocus="filterDropdown('na-sales-desc', 'na-dropdown-list')" onblur="setTimeout(()=> { document.getElementById('na-dropdown-list').classList.add('hidden'); saveData(false, 'na-', true); }, 200)" placeholder="TYPE NOTES OR SEARCH..."><button type="button" class="bg-green-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('na-')">+ SPEC</button></div><div id="na-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div></div>
                             <div class="relative w-full mt-2 mb-2"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2"><input type="text" id="na-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value = this.value.toUpperCase(); debouncedFilterDropdown('na-av-note', 'na-av-dropdown-list')" onfocus="filterDropdown('na-av-note', 'na-av-dropdown-list')" onblur="setTimeout(()=> { document.getElementById('na-av-dropdown-list').classList.add('hidden'); saveData(false, 'na-', true); }, 200)" placeholder="TYPE AV NOTE OR SEARCH..."><button type="button" class="bg-blue-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('na-', 'av-note')">+ SPEC</button></div><div id="na-av-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div></div>
@@ -422,7 +261,7 @@
                         </div>
                         <div id="req-input-container">
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Match %</label><input type="number" id="req-match" class="input-field" placeholder="e.g. 95" onchange="saveData(false, 'req-', true)"></div>
-                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="req-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'req-', true)"></div>
+                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec</label><input type="text" id="req-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'req-', true)"></div>
                             <div id="req-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="req-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'req-', true)"></div>
                             <div class="relative w-full mt-2 mb-2"><label class="text-[10px] font-bold text-purple-700 uppercase flex justify-between"><span>Request Sales Description</span></label><div class="flex gap-2"><input type="text" id="req-sales-desc" class="input-field border-purple-500 bg-purple-50 uppercase flex-grow !mb-0" oninput="this.value = this.value.toUpperCase(); debouncedFilterDropdown('req-sales-desc', 'req-dropdown-list')" onfocus="filterDropdown('req-sales-desc', 'req-dropdown-list')" onblur="setTimeout(()=>{ document.getElementById('req-dropdown-list').classList.add('hidden'); saveData(false, 'req-', true); }, 200)" placeholder="TYPE NOTES OR SEARCH..."><button type="button" class="bg-purple-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('req-', 'sales-desc')">+ SPEC</button></div><div id="req-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div></div>
                             <div class="relative w-full mt-2 mb-2"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>Request AV Note</span></label><div class="flex gap-2"><input type="text" id="req-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value = this.value.toUpperCase(); debouncedFilterDropdown('req-av-note', 'req-av-dropdown-list')" onfocus="filterDropdown('req-av-note', 'req-av-dropdown-list')" onblur="setTimeout(()=>{ document.getElementById('req-av-dropdown-list').classList.add('hidden'); saveData(false, 'req-', true); }, 200)" placeholder="TYPE AV NOTE OR SEARCH..."><button type="button" class="bg-blue-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('req-', 'av-note')">+ SPEC</button></div><div id="req-av-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div></div>
@@ -439,7 +278,7 @@
                             <label class="bg-blue-50 border-2 border-dashed border-blue-500 text-blue-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer"><i class="ph-fill ph-image text-3xl mb-1"></i><span class="text-[10px] font-bold">LIBRARY</span><input type="file" accept="image/*" class="hidden" onchange="handlePhotoUpload(this, 'dock-')"></label>
                         </div>
                         <div id="dock-input-container">
-                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="dock-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'dock-', true)"></div>
+                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec</label><input type="text" id="dock-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'dock-', true)"></div>
                             <div id="dock-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="dock-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'dock-', true)"></div>
                             <div class="relative w-full mt-2 mb-2"><label class="text-[10px] font-bold text-orange-700 uppercase flex justify-between"><span>Dock Note</span></label><div class="flex gap-2"><input type="text" id="dock-sales-desc" class="input-field border-orange-500 bg-orange-50 uppercase flex-grow !mb-0" oninput="this.value = this.value.toUpperCase(); debouncedFilterDropdown('dock-sales-desc', 'dock-dropdown-list')" onfocus="filterDropdown('dock-sales-desc', 'dock-dropdown-list')" onblur="setTimeout(()=> { document.getElementById('dock-dropdown-list').classList.add('hidden'); saveData(false, 'dock-', true); }, 200)" placeholder="TYPE NOTES OR SEARCH..."><button type="button" class="bg-orange-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('dock-', 'sales-desc')">+ SPEC</button></div><div id="dock-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div></div>
                         </div>
@@ -580,6 +419,9 @@
         let requestViewLevel = 0; let requestFilterMode = null; let selectedReqRep = null; let selectedReqRepStatus = null; let selectedReqFolder = null; let tempSelectedReqRep = ""; 
         let tempReqFolder = null; let tempReqCust = null; let previousReqStep = "";
         let dockViewLevel = 0; let selectedDockNum = null; let pendingDockNum = null; let selectedDockName = null; let selectedDockSize = null; let selectedDockItemCode = null; let selectedDockCustomer = ""; let selectedDockTrip = ""; let selectedDockRep = ""; 
+        
+        // 🔥 DELTA SYNC TRACKER
+        let lastSyncTime = new Date().toISOString(); 
 
         const salesRepList = ["Abbey Burka", "Annette Hancock", "Ben Brown", "Ben Harveson", "Ben Machino", "Brian Hatfield", "Casey Rufener", "Chris Farrow", "Chris Gaydos", "David Brandt", "Ellen Deely", "Jessica Robertson", "Josh Ringleb", "Kevin Effinger", "Nate Douglas", "Toby Brown", "Traci Earle", "Tracey Tapscott", "Troy Lee", "Wes Lugas"];
 
@@ -638,11 +480,60 @@
             setRepPermutations(currentUser);
             if (!isBiometricLogin && window.PublicKeyCredential && localStorage.getItem('gnc_bio_enabled') !== 'true') { promptToEnableBiometrics(user, pass); }
             applyRolePermissions(); fetchBackgroundData(); fetchApprovedNotes();
+            
+            // 🔥 START SILENT BACKGROUND DELTA SYNC EVERY 10 SECONDS
+            setInterval(silentBackgroundSync, 10000); 
+        }
+
+        // 🔥 SILENT BACKGROUND DELTA SYNC FUNCTION
+        async function silentBackgroundSync() {
+            if (!currentUser) return;
+            const checkTime = new Date().toISOString();
+            try {
+                const url = `${SUPABASE_URL}/rest/v1/drivearound_master_data?select=*&last_updated=gt.${lastSyncTime}`;
+                const options = { method: 'GET', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } };
+                const response = await fetch(url, options);
+                if (!response.ok) return; 
+                const data = await response.json();
+                
+                if (data && data.length > 0) {
+                    let updated = false;
+                    data.forEach(updatedRow => {
+                        let idx = fullInventory.findIndex(i => i.UNIQUE_ID === updatedRow.unique_id);
+                        if (idx > -1) {
+                            for (let k in updatedRow) {
+                                if(updatedRow[k] !== null) fullInventory[idx][k.toUpperCase()] = updatedRow[k];
+                            }
+                            fullInventory[idx].SAVED_PHOTO_LINK = fullInventory[idx].PHOTO_LINK || fullInventory[idx].PHOTOLINK || ""; 
+                            fullInventory[idx].SAVED_PHOTO_NAME = fullInventory[idx].PHOTO_NAME || fullInventory[idx].PHOTONAME || ""; 
+                            
+                            let exactSeasonIds = new Set((fullInventory.map(i => i.UNIQUE_ID)).filter(Boolean)); 
+                            if (fullInventory[idx].END_CAP_FOLDER && String(fullInventory[idx].END_CAP_FOLDER).trim() !== "") fullInventory[idx].APP_TAB_ASSIGNMENT = 'endcap';
+                            else if (exactSeasonIds.has(String(fullInventory[idx].UNIQUE_ID))) fullInventory[idx].APP_TAB_ASSIGNMENT = 'season';
+                            else fullInventory[idx].APP_TAB_ASSIGNMENT = 'location';
+                            
+                            updated = true;
+                            
+                            if (activeItem && activeItem.UNIQUE_ID === updatedRow.unique_id) {
+                                Object.assign(activeItem, fullInventory[idx]);
+                            }
+                        }
+                    });
+                    if (updated) {
+                        reRenderCurrentView();
+                        if (activeItem && !document.getElementById('view-detail').classList.contains('hidden')) {
+                            openDetail(activeItem.UNIQUE_ID, lastView); 
+                        }
+                    }
+                }
+                lastSyncTime = checkTime;
+            } catch(e) {}
         }
 
         async function fetchBackgroundData() {
             const cachedRes = await loadFromCache(); if (cachedRes) { setTimeout(() => { processAndLoadData(cachedRes); }, 50); } 
             try {
+                lastSyncTime = new Date().toISOString(); // Reset sync clock right before heavy download
                 const results = await Promise.allSettled([
                     supabaseFetch('drivearound_master_data', 'GET', null, 'select=*'), supabaseFetch('low_stock', 'GET', null, 'select=*'), supabaseFetch('active_request', 'GET', null, 'select=*'), supabaseFetch('reserves', 'GET', null, 'select=*'), supabaseFetch('soc_master', 'GET', null, 'select=*'), supabaseFetch('manager_review', 'GET', null, 'select=*'), supabaseFetch('season_sales_notes', 'GET', null, 'select=*'), supabaseFetch('location_sales_notes', 'GET', null, 'select=*'), supabaseFetch('sales_office', 'GET', null, 'select=*') 
                 ]);
@@ -663,20 +554,59 @@
         function processAndLoadData(res) {
             fullInventory = res.data.map((item, idx) => { item.DOM_ID = 'fi_' + idx; return item; }); lowStockInventory = res.lowStock.map((item, idx) => { item.DOM_ID = 'ls_' + idx; return item; }); managerReviewInventory = res.managerReviewData ? res.managerReviewData.map((item, idx) => { item.DOM_ID = 'mr_' + idx; return item; }) : []; requestsInventory = res.requestsData ? res.requestsData.map((item, idx) => { item.DOM_ID = 'req_' + item.UNIQUE_ID; return item; }) : [];
             salesOfficeInventory = res.salesOfficeData ? res.salesOfficeData.map((item, idx) => { item.DOM_ID = 'so_' + item.UNIQUE_ID; return item; }) : [];
-            socInventory = res.socData;
-            socInventory.forEach(item => { item.DOCK_NUM = item.DOCK_NUM || item.DOCK || item.dock; item.SALESREPNAME = item.SALESREPNAME || item.SALESREP || item['SALES_REP'] || 'Unknown Rep'; item.CUSTOMERNAME = item.CUSTOMERNAME || item.CUSTOMER || 'Unknown Customer'; item.CONSIGNEENAME = item.CONSIGNEENAME || item.CONSIGNEE || ''; item._search = `${item.COMMONNAME||''} ${item['PLANT_NAME']||''} ${item.CUSTOMERNAME||''} ${item.SALESREPNAME||''}`.toLowerCase(); });
-            reservesInventory = res.reservesData; let exactSeasonIds = new Set((res.seasonIds || []).map(id => String(id)));
             
+            let exactSeasonIds = new Set((res.seasonIds || []).map(id => String(id)));
             fullInventory.forEach(item => { 
                 if (item.END_CAP_FOLDER && String(item.END_CAP_FOLDER).trim() !== "") item.APP_TAB_ASSIGNMENT = 'endcap';
                 else if (exactSeasonIds.has(String(item.UNIQUE_ID))) item.APP_TAB_ASSIGNMENT = 'season';
                 else item.APP_TAB_ASSIGNMENT = 'location'; 
             });
+
+            // 🔥 TRIPLE-MATCH LINKING FOR SOC INVENTORY
+            socInventory = res.socData.map(item => { 
+                item.DOCK_NUM = item.DOCK_NUM || item.DOCK || item.dock; 
+                item.SALESREPNAME = item.SALESREPNAME || item.SALESREP || item['SALES_REP'] || 'Unknown Rep'; 
+                item.CUSTOMERNAME = item.CUSTOMERNAME || item.CUSTOMER || 'Unknown Customer'; 
+                item.CONSIGNEENAME = item.CONSIGNEENAME || item.CONSIGNEE || ''; 
+                
+                let tCode = String(item.ITEMCODE || item.ITEM || "").trim().toUpperCase();
+                let tLoc = String(item.LOCATIONCODE || item.LOCATION || "").trim().toUpperCase();
+                let tLot = String(item.LOTCODE || item.LOT || "").trim().toUpperCase();
+                
+                let masterItem = fullInventory.find(f => String(f.ITEMCODE || "").trim().toUpperCase() === tCode && String(f.LOCATIONCODE || "").trim().toUpperCase() === tLoc && String(f.LOTCODE || "").trim().toUpperCase() === tLot);
+                if (!masterItem) masterItem = fullInventory.find(f => String(f.ITEMCODE || "").trim().toUpperCase() === tCode && String(f.LOCATIONCODE || "").trim().toUpperCase() === tLoc);
+                if (!masterItem) masterItem = fullInventory.find(f => String(f.ITEMCODE || "").trim().toUpperCase() === tCode);
+
+                if (masterItem) {
+                    item.SAVED_PHOTO_LINK = masterItem.SAVED_PHOTO_LINK || item.SAVED_PHOTO_LINK;
+                    item.SAVED_PHOTO_NAME = masterItem.SAVED_PHOTO_NAME || item.SAVED_PHOTO_NAME;
+                    item.DOCK_PHOTO_LINK = masterItem.DOCK_PHOTO_LINK || item.DOCK_PHOTO_LINK;
+                    item.AV_NOTE = masterItem.AV_NOTE; item.SALES_NOTE = masterItem.SALES_NOTE; item.DOCK_NOTE = masterItem.DOCK_NOTE;
+                    item.MASTER_UNIQUE_ID = masterItem.UNIQUE_ID;
+                }
+                item._search = `${item.COMMONNAME||''} ${item['PLANT_NAME']||''} ${item.CUSTOMERNAME||''} ${item.SALESREPNAME||''}`.toLowerCase(); 
+                return item;
+            });
             
-            reservesInventory = reservesInventory.map((item, idx) => {
-                item.DOM_ID = 'res_' + idx; item.UNIQUE_ID = item.UNIQUE_ID || 'res_uid_' + idx; let resCode = String(item.ITEMCODE || item.ITEM || "").trim().toUpperCase(); let masterItem = fullInventory.find(f => String(f.ITEMCODE || "").trim().toUpperCase() === resCode);
+            // 🔥 TRIPLE-MATCH LINKING FOR RESERVES
+            reservesInventory = res.reservesData.map((item, idx) => {
+                item.DOM_ID = 'res_' + idx; item.UNIQUE_ID = item.UNIQUE_ID || 'res_uid_' + idx; 
+                
+                let rCode = String(item.ITEMCODE || item.ITEM || "").trim().toUpperCase();
+                let rLoc = String(item.LOCATIONCODE || item.LOCATION || "").trim().toUpperCase();
+                let rLot = String(item.LOTCODE || item.LOT || "").trim().toUpperCase();
+                
+                let masterItem = fullInventory.find(f => String(f.ITEMCODE || "").trim().toUpperCase() === rCode && String(f.LOCATIONCODE || "").trim().toUpperCase() === rLoc && String(f.LOTCODE || "").trim().toUpperCase() === rLot);
+                if (!masterItem) masterItem = fullInventory.find(f => String(f.ITEMCODE || "").trim().toUpperCase() === rCode && String(f.LOCATIONCODE || "").trim().toUpperCase() === rLoc);
+                if (!masterItem) masterItem = fullInventory.find(f => String(f.ITEMCODE || "").trim().toUpperCase() === rCode);
+                
                 item.COMMONNAME = masterItem ? masterItem.COMMONNAME : (item.COMMONNAME || item['PLANT_NAME'] || item.DESCRIPTION || item.DESC || 'Unknown Plant'); item.CONTSIZE = masterItem ? masterItem.CONTSIZE : (item.CONTSIZE || item.SIZE || item.CONTAINER || '-'); item.CUSTOMERNAME = item.CUSTOMERNAME || item.CUSTOMER || 'Unknown Customer'; item.CONSIGNEENAME = item.CONSIGNEENAME || item.CONSIGNEE || ''; item.SALESREPNAME = item.SALESREPNAME || item.SALESREP || item['SALES_REP'] || 'Unknown Rep';
-                if (masterItem) { item.LOCATIONCODE = masterItem.LOCATIONCODE; item.PTRAVAILABLE = masterItem.PTRAVAILABLE; item.SEASONSUPPLY = masterItem.SEASONSUPPLY; item.PRIORITY = masterItem.PRIORITY; item.QUALITYCODE = masterItem.QUALITYCODE; item.FIELDTAGCOLOR = masterItem.FIELDTAGCOLOR; item.LOTCODE = masterItem.LOTCODE; item.AV_NOTE = masterItem.AV_NOTE; item.SALES_NOTE = masterItem.SALES_NOTE; item.LOC_MATCH_QTY = masterItem.LOC_MATCH_QTY; item.INITIAL_PTR = masterItem.INITIAL_PTR; } 
+                
+                if (masterItem) { 
+                    item.LOCATIONCODE = masterItem.LOCATIONCODE; item.PTRAVAILABLE = masterItem.PTRAVAILABLE; item.SEASONSUPPLY = masterItem.SEASONSUPPLY; item.PRIORITY = masterItem.PRIORITY; item.QUALITYCODE = masterItem.QUALITYCODE; item.FIELDTAGCOLOR = masterItem.FIELDTAGCOLOR; item.LOTCODE = masterItem.LOTCODE; item.AV_NOTE = masterItem.AV_NOTE; item.SALES_NOTE = masterItem.SALES_NOTE; item.LOC_MATCH_QTY = masterItem.LOC_MATCH_QTY; item.INITIAL_PTR = masterItem.INITIAL_PTR; 
+                    item.SAVED_PHOTO_LINK = masterItem.SAVED_PHOTO_LINK || item.SAVED_PHOTO_LINK; item.SAVED_PHOTO_NAME = masterItem.SAVED_PHOTO_NAME || item.SAVED_PHOTO_NAME;
+                    item.MASTER_UNIQUE_ID = masterItem.UNIQUE_ID;
+                } 
                 item._search = `${item.COMMONNAME||''} ${item.CUSTOMERNAME||''} ${item.ITEMCODE||''}`.toLowerCase(); return item;
             });
             applyLocalEdits(); reRenderCurrentView();
@@ -1102,7 +1032,15 @@
                 let stopsMap = {};
                 dockItems.forEach(i => { let stopNum = i.STOPNUMBER || i.STOP || "Unassigned"; let tripNum = i.TRIPNUMBER || i.TRIP || "Unassigned"; let groupKey = tripNum + "|" + stopNum;
                     if (!stopsMap[groupKey]) { stopsMap[groupKey] = { trip: tripNum, stop: stopNum, salesRep: i.SALESREPNAME || i.SALESREP || "Unknown Rep", customer: i.CUSTOMERNAME || i.CUSTOMER || "Unknown Customer", consignee: i.CONSIGNEENAME || i.CONSIGNEE || "", items: [] }; }
-                    let targetCode = String(i.ITEMCODE || i.ITEM || "").trim().toUpperCase(); let masterItem = fullInventory.find(fi => String(fi.ITEMCODE || "").trim().toUpperCase() === targetCode);
+                    
+                    let targetCode = String(i.ITEMCODE || i.ITEM || "").trim().toUpperCase(); 
+                    let targetLoc = String(i.LOCATIONCODE || i.LOCATION || "").trim().toUpperCase();
+                    let targetLot = String(i.LOTCODE || i.LOT || "").trim().toUpperCase();
+                    
+                    let masterItem = fullInventory.find(fi => String(fi.ITEMCODE || "").trim().toUpperCase() === targetCode && String(fi.LOCATIONCODE || "").trim().toUpperCase() === targetLoc && String(fi.LOTCODE || "").trim().toUpperCase() === targetLot);
+                    if (!masterItem) masterItem = fullInventory.find(fi => String(fi.ITEMCODE || "").trim().toUpperCase() === targetCode && String(fi.LOCATIONCODE || "").trim().toUpperCase() === targetLoc);
+                    if (!masterItem) masterItem = fullInventory.find(fi => String(fi.ITEMCODE || "").trim().toUpperCase() === targetCode);
+
                     if (masterItem) { if (!stopsMap[groupKey].items.includes(masterItem)) { stopsMap[groupKey].items.push(masterItem); } } else { let fakeItem = { DOM_ID: 'fake_' + Math.random().toString(36).substr(2, 9), UNIQUE_ID: 'fake_' + Math.random().toString(36).substr(2, 9), COMMONNAME: i.COMMONNAME || i['PLANT_NAME'] || i.DESC || 'Unknown', CONTSIZE: i.CONTSIZE || i.SIZE || i.CONTAINER || '-', ITEMCODE: i.ITEMCODE || i.ITEM || 'No Item', LOCATIONCODE: "Not in Master", PTRAVAILABLE: 0, PRIORITY: '-', FIELDTAGCOLOR: '-', LOTCODE: '-' }; stopsMap[groupKey].items.push(fakeItem); }
                 });
                 let dockInfoStr = localStorage.getItem('dock_info_' + selectedDockNum); let dockInfo = dockInfoStr ? JSON.parse(dockInfoStr) : {checker: '', inspector: '', mistake: '', status: 'Loading'};
@@ -1397,23 +1335,10 @@
         }
         
         function filterDropdown(inputId, listId) {
-            const val = document.getElementById(inputId).value.toLowerCase().trim(); 
-            const list = document.getElementById(listId); 
-            let html = "";
-            let plantName = activeItem ? String(activeItem.COMMONNAME).toUpperCase().trim() : "";
-            let suggestedNotes = salesNotesDict[plantName] || [];
-            
-            if (suggestedNotes.length > 0) {
-                html += `<div class="px-3 py-1 bg-green-100 text-green-800 text-[10px] font-bold uppercase tracking-wider border-b border-green-200">Specific to ${plantName}</div>`;
-                suggestedNotes.forEach(note => {
-                    if (note.toLowerCase().includes(val) || val === "") { html += `<div class="px-3 py-3 border-b border-gray-100 hover:bg-green-50 active:bg-green-100 cursor-pointer text-sm font-semibold text-green-700" onmousedown="applyQuickNote('${note.replace(/'/g, "\\'")}', '${inputId}', '${listId}')">${note}</div>`; }
-                });
-            }
-            
+            const val = document.getElementById(inputId).value.toLowerCase().trim(); const list = document.getElementById(listId); let html = ""; let plantName = activeItem ? String(activeItem.COMMONNAME).toUpperCase().trim() : ""; let suggestedNotes = salesNotesDict[plantName] || [];
+            if (suggestedNotes.length > 0) { html += `<div class="px-3 py-1 bg-green-100 text-green-800 text-[10px] font-bold uppercase tracking-wider border-b border-green-200">Specific to ${plantName}</div>`; suggestedNotes.forEach(note => { if (note.toLowerCase().includes(val) || val === "") { html += `<div class="px-3 py-3 border-b border-gray-100 hover:bg-green-50 active:bg-green-100 cursor-pointer text-sm font-semibold text-green-700" onmousedown="applyQuickNote('${note.replace(/'/g, "\\'")}', '${inputId}', '${listId}')">${note}</div>`; } }); }
             html += `<div class="px-3 py-1 bg-gray-100 text-gray-600 text-[10px] font-bold uppercase tracking-wider border-b border-gray-200">General Notes</div>`;
-            approvedNotesList.forEach(note => { 
-                if (note.toLowerCase().includes(val) || val === "") { html += `<div class="px-3 py-3 border-b border-gray-100 hover:bg-gray-50 active:bg-gray-200 cursor-pointer text-sm font-medium text-gray-700" onmousedown="applyQuickNote('${note.replace(/'/g, "\\'")}', '${inputId}', '${listId}')">${note}</div>`; } 
-            });
+            approvedNotesList.forEach(note => { if (note.toLowerCase().includes(val) || val === "") { html += `<div class="px-3 py-3 border-b border-gray-100 hover:bg-gray-50 active:bg-gray-200 cursor-pointer text-sm font-medium text-gray-700" onmousedown="applyQuickNote('${note.replace(/'/g, "\\'")}', '${inputId}', '${listId}')">${note}</div>`; } });
             list.innerHTML = html; list.classList.remove('hidden');
         }
 
@@ -1510,7 +1435,7 @@
 
         function renderAllFields() {
             if(!activeItem) return;
-            const hiddenKeys = ['UNIQUE_ID', 'UNIQUEID', 'ASSIGNEDTO', 'DOM_ID', 'IS_REQUEST', 'REQUESTED_BY', 'REQUEST_FOLDER', '_search', '_NEW_SALES_NOTE']; 
+            const hiddenKeys = ['UNIQUE_ID', 'UNIQUEID', 'ASSIGNEDTO', 'DOM_ID', 'IS_REQUEST', 'REQUESTED_BY', 'REQUEST_FOLDER', '_search', '_NEW_SALES_NOTE', 'MASTER_UNIQUE_ID']; 
             let html = '<div class="grid grid-cols-1 gap-2">';
             for (const [key, value] of Object.entries(activeItem)) { if(hiddenKeys.includes(key)) continue; html += `<div class="flex justify-between border-b border-gray-200 py-2"><span class="text-xs font-bold text-gray-500 uppercase w-1/3 break-words">${key}</span><span class="text-xs text-gray-800 font-semibold w-2/3 text-right break-words">${value || '-'}</span></div>`; }
             html += '</div>'; document.getElementById('expand-content').innerHTML = html;
@@ -1658,6 +1583,7 @@
 
                 backupLocalItem(itemToSave);
 
+                // Universal Image Linking
                 if (itemToSave.SAVED_PHOTO_LINK) payload.photo_link = itemToSave.SAVED_PHOTO_LINK; if (itemToSave.SAVED_PHOTO_NAME) payload.photo_name = itemToSave.SAVED_PHOTO_NAME;
                 if (itemToSave.REQ_PHOTO_LINK) payload.req_photo_link = itemToSave.REQ_PHOTO_LINK; if (itemToSave.REQ_PHOTO_NAME) payload.req_photo_name = itemToSave.REQ_PHOTO_NAME;
                 if (itemToSave.DOCK_PHOTO_LINK) payload.dock_photo_link = itemToSave.DOCK_PHOTO_LINK; if (itemToSave.DOCK_PHOTO_NAME) payload.dock_photo_name = itemToSave.DOCK_PHOTO_NAME;
@@ -1672,8 +1598,15 @@
                 }
 
                 const targetTable = itemToSave.SOURCE_TABLE || 'drivearound_master_data';
+                const targetId = itemToSave.MASTER_UNIQUE_ID || itemToSave.UNIQUE_ID; // Push data to Master if applicable
 
-                supabaseFetch(targetTable, 'PATCH', payload, `unique_id=eq.${itemToSave.UNIQUE_ID}`).then(data => {
+                // Update the original Sub-table (Request, Reserve, etc.)
+                if (targetTable !== 'drivearound_master_data') {
+                    supabaseFetch(targetTable, 'PATCH', payload, `unique_id=eq.${itemToSave.UNIQUE_ID}`);
+                }
+
+                // Update the Master Table universally
+                supabaseFetch('drivearound_master_data', 'PATCH', payload, `unique_id=eq.${targetId}`).then(data => {
                     if (isCurrentView && isComplete) { if(btnComp) btnComp.innerText = "MARK DONE"; }
                     if (!isSilentAutoSave && isCurrentView && isComplete) showToast("Success", "Task Completed!"); 
                     if (isComplete && isCurrentView) { itemToSave.DATE_COMPLETED = new Date().toISOString(); goBackFromDetail(); } else if (isComplete && !isCurrentView) { itemToSave.DATE_COMPLETED = new Date().toISOString(); }
