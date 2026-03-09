@@ -88,7 +88,7 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
                 </div>
             </div>
             <div id="view-av" class="hidden">
-                <div id="av-search-container" class="relative mb-2"><input type="text" id="av-search" class="input-field w-full pr-10 !mb-0" placeholder="Search Open Stock..." oninput="debouncedAVSearch()"><i id="av-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearAVSearch()"></i></div>
+                <div id="av-search-container" class="relative mb-2"><input type="text" id="av-search" class="input-field w-full pr-10 !mb-0" placeholder="Search Open Stock..." oninput="handleAVSearch()"><i id="av-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearAVSearch()"></i></div>
                 <div class="task-tabs mt-2"><div id="tab-av-open" class="task-tab active" onclick="setAVTab('open')">Open Stock</div><div id="tab-av-reserves" class="task-tab" onclick="setAVTab('reserves')">My Reserves</div></div>
                 <div id="av-crumb" class="text-xs font-bold text-[#007a4d] mb-3 mt-2 empty:hidden">Open Stock</div><div id="av-content"></div>
             </div>
@@ -97,12 +97,12 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
                 <div class="detail-tabs mb-4"><div class="detail-tab report-tab active border-[#007a4d] text-[#007a4d]" onclick="setReportTab('ALL')" id="rtab-ALL">Summary</div><div class="detail-tab report-tab" onclick="setReportTab('S1')" id="rtab-S1">S1</div><div class="detail-tab report-tab" onclick="setReportTab('F1')" id="rtab-F1">F1</div><div class="detail-tab report-tab" onclick="setReportTab('U1')" id="rtab-U1">U1</div><div class="detail-tab report-tab" onclick="setReportTab('U2')" id="rtab-U2">U2</div><div class="detail-tab report-tab" onclick="setReportTab('U3')" id="rtab-U3">U3</div><div class="detail-tab report-tab" onclick="setReportTab('X')" id="rtab-X">X</div><div class="detail-tab report-tab" onclick="setReportTab('Y')" id="rtab-Y">Y</div><div class="detail-tab report-tab" onclick="setReportTab('Z')" id="rtab-Z">Z</div></div><div id="reports-content"></div>
             </div>
             <div id="view-request" class="hidden"><div id="request-crumb" class="text-xs font-bold text-[#007a4d] mb-3 empty:hidden"></div><div id="request-content"></div></div>
-            <div id="view-reserves" class="hidden"><div id="reserves-search-container" class="relative mb-2"><input type="text" id="reserves-search" class="input-field w-full pr-10 !mb-0" placeholder="Search..." oninput="debouncedReservesSearch()"><i id="reserves-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearReservesSearch()"></i></div><div id="reserves-crumb" class="text-xs font-bold text-[#007a4d] mb-3 mt-3 empty:hidden"></div><div id="reserves-content"></div></div>
-            <div id="view-docks" class="hidden"><input type="text" id="docks-search" class="input-field mb-2" placeholder="Search Plants..." oninput="debouncedDocksSearch()"><div id="docks-crumb" class="text-xs font-bold text-[#007a4d] mb-3">Select a Dock</div><div id="docks-content"></div></div>
+            <div id="view-reserves" class="hidden"><div id="reserves-search-container" class="relative mb-2"><input type="text" id="reserves-search" class="input-field w-full pr-10 !mb-0" placeholder="Search..." oninput="handleReservesSearch()"><i id="reserves-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearReservesSearch()"></i></div><div id="reserves-crumb" class="text-xs font-bold text-[#007a4d] mb-3 mt-3 empty:hidden"></div><div id="reserves-content"></div></div>
+            <div id="view-docks" class="hidden"><input type="text" id="docks-search" class="input-field mb-2" placeholder="Search Plants..." oninput="handleDocksSearch()"><div id="docks-crumb" class="text-xs font-bold text-[#007a4d] mb-3">Select a Dock</div><div id="docks-content"></div></div>
             <div id="view-low-stock" class="hidden"><div id="low-stock-crumb" class="text-xs font-bold text-[#007a4d] mb-3">Action Required</div><div id="low-stock-content"></div></div>
             <div id="view-sales-office" class="hidden"><div class="text-xs font-bold text-[#007a4d] mb-3">Completed Sales Notes</div><div id="sales-office-content"></div></div>
             <div id="view-drive" class="hidden">
-                <div id="drive-search-container" class="relative mb-2"><input type="text" id="drive-search" class="input-field w-full pr-10 !mb-0" placeholder="Search Names or Locs..." oninput="debouncedDriveSearch()"><i id="drive-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearDriveSearch()"></i></div>
+                <div id="drive-search-container" class="relative mb-2"><input type="text" id="drive-search" class="input-field w-full pr-10 !mb-0" placeholder="Search Names or Locs..." oninput="handleDriveSearch()"><i id="drive-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearDriveSearch()"></i></div>
                 <div class="flex overflow-x-auto scrollbar-none gap-2 mb-3 pb-1" id="drive-season-filters"></div><div id="drive-crumb" class="text-xs font-bold text-[#007a4d] mb-3 empty:hidden"></div><div id="drive-content"></div>
             </div>
             <div id="view-tasks" class="hidden"><div id="task-crumb" class="text-xs font-bold text-[#007a4d] mb-3"></div><div id="team-selector" class="hidden mb-4 grid grid-cols-1 gap-3"></div><div id="task-tabs-container" class="task-tabs"><div id="tab-season" class="task-tab active" onclick="setTaskTab('season')">Season Notes</div><div id="tab-location" class="task-tab" onclick="setTaskTab('location')">Location Notes</div><div id="tab-endcap" class="task-tab" onclick="setTaskTab('endcap')">End Cap</div><div id="tab-flyer" class="task-tab" onclick="setTaskTab('flyer')">Flyer</div></div><div id="task-content"></div></div>
@@ -201,7 +201,7 @@ const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6cm55anNvc3J5ZWpqZWpsaWlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwMjczNTcsImV4cCI6MjA4ODYwMzM1N30.5AFOVE9X-PEdTuQac-jjteF4N6GejdZuDtKBRsw4YB0";
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwhH-eB5Py3xCwhmWReOAcAfl9Zu6mkw0hZYnAbIP9lLANoE4iebK1hXa6-ogU4_1AURA/exec"; 
 
-const DB_NAME = "DDC_GNC_V4_LIVE"; const STORE_NAME = "inventory_cache";
+const DB_NAME="DDC_GNC_V4_LIVE";const STORE_NAME="inventory_cache";
 function performLogout(){localStorage.clear();sessionStorage.clear();try{indexedDB.deleteDatabase(DB_NAME);indexedDB.deleteDatabase('DDC_GNC_V3_MASTER');indexedDB.deleteDatabase('DDC_GNC_V2_FINAL_SYNC')}catch(e){}window.location.href=window.location.href.split('?')[0]}
 let approvedNotesList=["Ready to ship","Needs weeded","Needs pruned","Yellowing leaves","Too small","Hold for next season","Poor structure","Needs spacing"];let salesNotesDict={}; 
 async function fetchApprovedNotes(){try{let data=await supabaseFetch('v2_approved_notes','GET',null,'select=commonname,salesnotes');if(data&&data.length>0){salesNotesDict={};let generalNotes=[];data.forEach(item=>{let cName=String(item.commonname||"").toUpperCase().trim();let sNote=String(item.salesnotes||"").trim();if(sNote){if(cName&&cName!=="GENERAL"&&cName!=="ALL"){if(!salesNotesDict[cName])salesNotesDict[cName]=[];salesNotesDict[cName].push(sNote)}else{generalNotes.push(sNote)}}});if(generalNotes.length>0){approvedNotesList=generalNotes}}}catch(e){}}
@@ -310,7 +310,10 @@ async function fetchBackgroundData(){
                 let obj={SOURCE_TABLE:sourceTable};for(let k in item){if(item[k]!==null)obj[k.toUpperCase()]=item[k]}
                 if(!obj.UNIQUE_ID)obj.UNIQUE_ID=obj.ID||`${sourceTable}_${idx}`; 
                 obj.COMMONNAME=obj.COMMONNAME||obj.commonname||obj.Common_Name||obj.PLANT_NAME||obj.DESCRIPTION||"Unknown";
-                obj.CONTSIZE=obj.CONTSIZE||obj.contsize||obj.Cont_Size||obj.SIZE||obj.CONTAINER||"-";
+                
+                // FIX FOR SIZE BUG: PRIORITIZE ITEMSPEC OVER CONTSIZE
+                obj.CONTSIZE=obj.ITEMSPEC||obj.PRINTEDCONTAINERCODE||obj.CONTSIZE||obj.contsize||obj.Cont_Size||obj.SIZE||obj.CONTAINER||"-";
+                
                 obj.LOCATIONCODE=obj.LOCATIONCODE||obj.LOCATION||"No Loc";obj.PTRAVAILABLE=obj.PTRAVAILABLE||0;
                 obj.SAVED_PHOTO_LINK=obj.PHOTO_LINK||obj.PHOTOLINK||"";obj.SAVED_PHOTO_NAME=obj.PHOTO_NAME||obj.PHOTONAME||"";obj.SEASONSUPPLY=obj.SEASON_SUPPLY||obj.SEASONSUPPLY||0;obj.FIELDTAGCOLOR=obj.FIELD_TAG_COLOR||obj.FIELDTAGCOLOR||"-"; 
                 obj._search=`${obj.COMMONNAME||''} ${obj.LOCATIONCODE||''} ${obj.ITEMCODE||''} ${obj.CONTSIZE||''} ${obj.CUSTOMERNAME||''} ${obj.SALESREPNAME||''}`.toLowerCase();return obj;
@@ -324,7 +327,6 @@ async function fetchBackgroundData(){
 
 function processAndLoadData(res){
     fullInventory=res.data.map((item,idx)=>{item.DOM_ID='fi_'+idx;return item});lowStockInventory=res.lowStock.map((item,idx)=>{item.DOM_ID='ls_'+idx;return item});managerReviewInventory=res.managerReviewData?res.managerReviewData.map((item,idx)=>{item.DOM_ID='mr_'+idx;return item}):[];requestsInventory=res.requestsData?res.requestsData.map((item,idx)=>{item.DOM_ID='req_'+item.UNIQUE_ID;return item}):[];salesOfficeInventory=res.salesOfficeData?res.salesOfficeData.map((item,idx)=>{item.DOM_ID='so_'+item.UNIQUE_ID;return item}):[];socInventory=res.socData;
-    if(fullInventory.length===0){setTimeout(()=>{showToast("Data Warning","Master Inventory is empty. Make sure you pushed the DriveAround file!",true)},2500)}
     let exactSeasonIds=new Set((res.seasonIds||[]).map(id=>String(id)));let map1=new Map();
     fullInventory.forEach(item=>{if(item.END_CAP_FOLDER&&String(item.END_CAP_FOLDER).trim()!=="")item.APP_TAB_ASSIGNMENT='endcap';else if(exactSeasonIds.has(String(item.UNIQUE_ID)))item.APP_TAB_ASSIGNMENT='season';else item.APP_TAB_ASSIGNMENT='location';let c=String(item.ITEMCODE||"").trim().toUpperCase();if(c){if(!map1.has(c))map1.set(c,item)}});
     socInventory.forEach(item=>{item.DOCK_NUM=item.DOCK_NUM||item.DOCK||item.dock;item.SALESREPNAME=item.SALESREPNAME||item.SALESREP||item['SALES_REP']||'Unknown Rep';item.CUSTOMERNAME=item.CUSTOMERNAME||item.CUSTOMER||'Unknown Customer';item.CONSIGNEENAME=item.CONSIGNEENAME||item.CONSIGNEE||'';item._search=`${item.COMMONNAME||''} ${item['PLANT_NAME']||''} ${item.CUSTOMERNAME||''} ${item.SALESREPNAME||''}`.toLowerCase();let tCode=String(item.ITEMCODE||item.ITEM||"").trim().toUpperCase();let masterItem=map1.get(tCode);if(masterItem){item.SAVED_PHOTO_LINK=masterItem.SAVED_PHOTO_LINK;item.SAVED_PHOTO_NAME=masterItem.SAVED_PHOTO_NAME;item.DOCK_PHOTO_LINK=masterItem.DOCK_PHOTO_LINK;item.AV_NOTE=masterItem.AV_NOTE;item.SALES_NOTE=masterItem.SALES_NOTE;item.DOCK_NOTE=masterItem.DOCK_NOTE;item.MASTER_UNIQUE_ID=masterItem.UNIQUE_ID}});
@@ -344,13 +346,16 @@ function switchView(viewId){['view-home','view-drive','view-tasks','view-review'
 function reRenderCurrentView(){if(!document.getElementById('view-drive').classList.contains('hidden'))renderDrive();if(!document.getElementById('view-tasks').classList.contains('hidden'))renderTasks();if(!document.getElementById('view-sales-office').classList.contains('hidden'))renderSalesOffice();if(!document.getElementById('view-low-stock').classList.contains('hidden'))renderLowStock();if(!document.getElementById('view-docks').classList.contains('hidden'))renderDocks();if(!document.getElementById('view-review').classList.contains('hidden'))renderReview();if(!document.getElementById('view-reports').classList.contains('hidden'))renderReports();if(!document.getElementById('view-request').classList.contains('hidden'))renderRequest();if(!document.getElementById('view-reserves').classList.contains('hidden'))renderReserves();if(!document.getElementById('view-av').classList.contains('hidden'))renderAV()}
 function setTaskTab(tab){activeTaskTab=tab;document.getElementById('tab-season').classList.toggle('active',tab==='season');document.getElementById('tab-location').classList.toggle('active',tab==='location');document.getElementById('tab-endcap').classList.toggle('active',tab==='endcap');document.getElementById('tab-flyer').classList.toggle('active',tab==='flyer');taskViewLevel=0;renderTasks()}
 function setAVTab(tab){activeAVTab=tab;avResLevel=0;selectedAvResName=null;selectedAvResSize=null;document.getElementById('tab-av-open').classList.toggle('active',tab==='open');document.getElementById('tab-av-reserves').classList.toggle('active',tab==='reserves');renderAV()}
-function selectRequestCategory(cat){requestFilterMode=cat;requestViewLevel=1;renderRequest()}function selectRequestRep(rep){selectedReqRep=rep;requestViewLevel=2;renderRequest()}function selectRepStatus(status){selectedReqRepStatus=status;requestViewLevel=3;renderRequest()}function selectRequestFolder(folderId){selectedReqFolder=folderId;requestViewLevel=4;renderRequest()}function clearReservesSearch(){document.getElementById('reserves-search').value="";document.getElementById('reserves-search-clear').classList.add('hidden');renderReserves()}
+function selectRequestCategory(cat){requestFilterMode=cat;requestViewLevel=1;renderRequest()}function selectRequestRep(rep){selectedReqRep=rep;requestViewLevel=2;renderRequest()}function selectRepStatus(status){selectedReqRepStatus=status;requestViewLevel=3;renderRequest()}function selectRequestFolder(folderId){selectedReqFolder=folderId;requestViewLevel=4;renderRequest()}
 
+// INSTANT SEARCH FIXES
 const debouncedReservesSearch=debounce(()=>{requestAnimationFrame(()=>renderReserves())},150);
-function handleReservesSearch(){const term=document.getElementById('reserves-search').value.toLowerCase();const clearBtn=document.getElementById('reserves-search-clear');if(term.length>0)clearBtn.classList.remove('hidden');else clearBtn.classList.add('hidden');debouncedReservesSearch()}
+function clearReservesSearch(){document.getElementById('reserves-search').value="";document.getElementById('reserves-search-clear').classList.add('hidden');reservesViewLevel=0;renderReserves()}
+function handleReservesSearch(){const term=document.getElementById('reserves-search').value.toLowerCase();const clearBtn=document.getElementById('reserves-search-clear');if(term.length>0){clearBtn.classList.remove('hidden');reservesViewLevel=0;}else{clearBtn.classList.add('hidden');reservesViewLevel=0;}debouncedReservesSearch()}
+
 const debouncedAVSearch=debounce(()=>{requestAnimationFrame(()=>renderAV())},150);
-function clearAVSearch(){document.getElementById('av-search').value="";document.getElementById('av-search-clear').classList.add('hidden');renderAV()}
-function handleAVSearch(){const term=document.getElementById('av-search').value.toLowerCase();const clearBtn=document.getElementById('av-search-clear');if(term.length>0)clearBtn.classList.remove('hidden');else clearBtn.classList.add('hidden');debouncedAVSearch()}
+function clearAVSearch(){document.getElementById('av-search').value="";document.getElementById('av-search-clear').classList.add('hidden');avResLevel=0;renderAV()}
+function handleAVSearch(){const term=document.getElementById('av-search').value.toLowerCase();const clearBtn=document.getElementById('av-search-clear');if(term.length>0){clearBtn.classList.remove('hidden');avResLevel=0;}else{clearBtn.classList.add('hidden');avResLevel=0;}debouncedAVSearch()}
 function resetAVView(){activeAVTab='open';avResLevel=0;selectedAvResName=null;selectedAvResSize=null;document.getElementById('tab-av-open').classList.add('active');document.getElementById('tab-av-reserves').classList.remove('active');document.getElementById('av-search').value="";document.getElementById('av-search-clear').classList.add('hidden');renderAV()}
 function selectAvResName(name){selectedAvResName=name;avResLevel=1;renderAV()}
 function selectAvResSize(size){selectedAvResSize=size;avResLevel=2;renderAV()}
@@ -360,6 +365,14 @@ function renderAV(){
     if(activeAVTab==='open'){items=fullInventory.filter(i=>{let lts=Number(String(i.S_LTS||'0').replace(/,/g,''));let season=String(i.SEASON||'').toUpperCase();return lts>0&&!season.includes('Y')&&!season.includes('Z')})}else{items=reservesInventory;if(safeRole==='SALESREP')items=items.filter(i=>isMyRep(i.SALESREPNAME))}
     if(term){items=items.filter(i=>(i._search||"").includes(term))}
     if(items.length===0){container.innerHTML=`<div class="p-8 text-center text-gray-400">No ${activeAVTab==='open'?'open stock':'reserves'} found.</div>`;crumb.innerText="No Results";return}
+    
+    if(term.length > 0) {
+        crumb.innerText=`Search Results (${items.length})`;
+        items.sort((a,b)=>{let priA=parseFloat(a.PRIORITY);let priB=parseFloat(b.PRIORITY);if(isNaN(priA))priA=Infinity;if(isNaN(priB))priB=Infinity;if(priA!==priB)return priA-priB;return String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""),undefined,{numeric:true})});
+        container.innerHTML=items.map(i=>generateCard(i, activeAVTab === 'open' ? 'av' : 'reserves_drill', activeAVTab === 'open' ? 'status-teal' : 'status-indigo')).join('');
+        return;
+    }
+
     if(activeAVTab==='open'){crumb.innerText=`Open Stock (${items.length})`;items.sort((a,b)=>(String(a.COMMONNAME)||"").localeCompare(String(b.COMMONNAME)||""));container.innerHTML=items.map(i=>generateCard(i,'av','status-teal')).join('')}else{
         if(avResLevel===0){crumb.innerText="My Reserves > Plants";const names=[...new Set(items.map(i=>i.COMMONNAME))].sort();container.innerHTML=names.map(n=>`<div class="drill-item" onclick="selectAvResName('${String(n).replace(/'/g,"\\'")}')"><span class="font-bold text-lg">${n}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('')} 
         else if(avResLevel===1){crumb.innerText=`My Reserves > ${selectedAvResName}`;const namedItems=items.filter(i=>i.COMMONNAME===selectedAvResName);const sizes=[...new Set(namedItems.map(i=>i.CONTSIZE))].sort();let html=`<div class="back-btn" onclick="avResLevel=0; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Plants</div>`;html+=sizes.map(s=>{const count=namedItems.filter(i=>i.CONTSIZE===s).length;return `<div class="drill-item" onclick="selectAvResSize('${String(s)}')"><span class="font-bold text-lg">${s} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`}).join('');container.innerHTML=html} 
@@ -434,57 +447,15 @@ function getSelectedItemsText(tabType){let items=[];selectedItems.forEach(domId=
 function executeBatchAction(action,tabType){const text=getSelectedItemsText(tabType);if(action==='copy'){navigator.clipboard.writeText(text).then(()=>{showToast("Success","Copied to clipboard!");clearSelection()})}else if(action==='email'){let sub='Sales Notes';if(tabType==='request')sub='Request Data';if(tabType==='docks')sub='Dock Notes';window.location.href=`mailto:?subject=${sub}&body=${encodeURIComponent(text)}`;clearSelection()}else if(action==='text'){window.location.href=`sms:?&body=${encodeURIComponent(text)}`;clearSelection()}}
 function openAssignModal(){document.getElementById('assign-modal').classList.remove('hidden')}function closeAssignModal(){document.getElementById('assign-modal').classList.add('hidden')}
 
-const debouncedDocksSearch=debounce(()=>{const term=document.getElementById('docks-search').value.toLowerCase();if(term.length>0&&dockViewLevel>1){dockViewLevel=1;selectedDockName=null;selectedDockSize=null;selectedDockItemCode=null}requestAnimationFrame(()=>renderDocks())},150);
-function handleDocksSearch(){debouncedDocksSearch()}
-function resetDockView(){dockViewLevel=0;selectedDockNum=null;pendingDockNum=null;selectedDockName=null;selectedDockSize=null;selectedDockItemCode=null;selectedDockCustomer="";selectedDockTrip="";selectedDockRep="";document.getElementById('docks-search').value="";renderDocks()}
-function selectDockNum(num){let info=localStorage.getItem('dock_info_'+num);if(!info){pendingDockNum=num;document.getElementById('modal-dock-num').innerText=num;document.getElementById('dock-checker').value='';document.getElementById('dock-inspector').value='';document.getElementById('dock-mistake').value='';document.getElementById('dock-status').value='Loading';document.getElementById('dock-info-modal').classList.remove('hidden')}else{selectedDockNum=num;dockViewLevel=1;renderDocks()}}
-function saveDockInfoModal(){let info={checker:document.getElementById('dock-checker').value.trim(),inspector:document.getElementById('dock-inspector').value.trim(),mistake:document.getElementById('dock-mistake').value.trim(),status:document.getElementById('dock-status').value};localStorage.setItem('dock_info_'+pendingDockNum,JSON.stringify(info));document.getElementById('dock-info-modal').classList.add('hidden');selectedDockNum=pendingDockNum;dockViewLevel=1;renderDocks()}
-function updateDockStatusFast(val){let infoStr=localStorage.getItem('dock_info_'+selectedDockNum);if(infoStr){let info=JSON.parse(infoStr);info.status=val;localStorage.setItem('dock_info_'+selectedDockNum,JSON.stringify(info));showToast("Updated","Dock Status changed to "+val,false)}}
-function editDockInfo(){let infoStr=localStorage.getItem('dock_info_'+selectedDockNum);if(infoStr){let info=JSON.parse(infoStr);document.getElementById('modal-dock-num').innerText=selectedDockNum;document.getElementById('dock-checker').value=info.checker||"";document.getElementById('dock-inspector').value=info.inspector||"";document.getElementById('dock-mistake').value=info.mistake||"";document.getElementById('dock-status').value=info.status||"Loading";pendingDockNum=selectedDockNum;document.getElementById('dock-info-modal').classList.remove('hidden')}}
-function selectDockPlant(itemCode,name,size,customerStr,tripStr,repStr){selectedDockItemCode=itemCode;selectedDockName=name;selectedDockSize=size;selectedDockCustomer=customerStr;selectedDockTrip=tripStr;selectedDockRep=repStr;dockViewLevel=2;renderDocks()}
-
-function renderDocks(){
-    const container=document.getElementById('docks-content');const crumb=document.getElementById('docks-crumb');const term=document.getElementById('docks-search').value.toLowerCase();
-    if(dockViewLevel===0){
-        crumb.innerText="Select a Dock";let activeDocks=new Set();
-        socInventory.forEach(i=>{if(!isMyRep(i.SALESREPNAME))return;if(i.DOCK_NUM&&String(i.DOCK_NUM).trim()!==""){if(term){if((i._search||"").includes(term))activeDocks.add(String(i.DOCK_NUM).trim())}else{activeDocks.add(String(i.DOCK_NUM).trim())}}});
-        let html='<div class="grid grid-cols-1 gap-3">';let sortedDocks=Array.from(activeDocks).sort((a,b)=>String(a).localeCompare(String(b),undefined,{numeric:true}));
-        sortedDocks.forEach(i=>{ 
-            let dockInfoStr=localStorage.getItem('dock_info_'+i);let dockInfo=dockInfoStr?JSON.parse(dockInfoStr):{checker:'',inspector:'',mistake:'',status:'Loading'};
-            let statusColor="bg-gray-100 text-gray-600 border-gray-200";if(dockInfo.status==='Loading')statusColor="bg-blue-100 text-blue-700 border-blue-200";if(dockInfo.status==='Paused')statusColor="bg-red-100 text-red-700 border-red-200";if(dockInfo.status==='Waiting')statusColor="bg-yellow-100 text-yellow-700 border-yellow-200";if(dockInfo.status==='Complete')statusColor="bg-green-100 text-green-700 border-green-200";
-            html+=`<div class="bg-white border border-gray-200 p-4 rounded-xl shadow-sm cursor-pointer hover:bg-gray-50 active:scale-95 transition-transform flex flex-col gap-2" onclick="selectDockNum('${String(i).replace(/'/g,"\\'")}')"><div class="flex justify-between items-center border-b border-gray-100 pb-3 mb-1"><div class="flex items-center gap-3"><div class="bg-orange-50 p-2 rounded-lg"><i class="ph-bold ph-truck text-2xl text-orange-500"></i></div><span class="font-black text-xl text-gray-800">DOCK ${i}</span></div><span class="text-[10px] font-bold px-2 py-1 rounded-md border uppercase ${statusColor}">${dockInfo.status}</span></div><div class="grid grid-cols-3 gap-2 text-center text-[10px]"><div class="flex flex-col"><span class="text-gray-400 uppercase tracking-widest text-[8px] mb-0.5">Checker</span><span class="font-bold text-gray-800 truncate">${dockInfo.checker||'-'}</span></div><div class="flex flex-col border-l border-r border-gray-100"><span class="text-gray-400 uppercase tracking-widest text-[8px] mb-0.5">Inspector</span><span class="font-bold text-gray-800 truncate">${dockInfo.inspector||'-'}</span></div><div class="flex flex-col"><span class="text-gray-400 uppercase tracking-widest text-[8px] mb-0.5">Mistake Guy</span><span class="font-bold text-gray-800 truncate">${dockInfo.mistake||'-'}</span></div></div></div>`; 
-        });html+='</div>';
-        if(activeDocks.size===0)container.innerHTML=`<div class="p-8 text-center text-gray-400">No docks ${term?`contain items matching "${term}"`:'have data currently'}.</div>`;else container.innerHTML=html;
-    }else if(dockViewLevel===1){
-        crumb.innerText=`Dock ${selectedDockNum} > Stops & Plants`;let dockItems=socInventory.filter(i=>String(i.DOCK_NUM).trim()===String(selectedDockNum)&&isMyRep(i.SALESREPNAME));
-        if(term){dockItems=dockItems.filter(i=>(i._search||"").includes(term))}
-        if(dockItems.length===0){container.innerHTML=`<div class="back-btn" onclick="dockViewLevel=0; renderDocks()"><i class="ph-bold ph-arrow-left"></i> Back to Docks</div><div class="p-8 text-center text-gray-400">No matching stops found.</div>`;return}
-        let stopsMap={};
-        dockItems.forEach(i=>{let stopNum=i.STOPNUMBER||i.STOP||"Unassigned";let tripNum=i.TRIPNUMBER||i.TRIP||"Unassigned";let groupKey=tripNum+"|"+stopNum;
-            if(!stopsMap[groupKey]){stopsMap[groupKey]={trip:tripNum,stop:stopNum,salesRep:i.SALESREPNAME||i.SALESREP||"Unknown Rep",customer:i.CUSTOMERNAME||i.CUSTOMER||"Unknown Customer",consignee:i.CONSIGNEENAME||i.CONSIGNEE||"",items:[]}}
-            let targetCode=String(i.ITEMCODE||i.ITEM||"").trim().toUpperCase();let masterItem=fullInventory.find(fi=>String(fi.ITEMCODE||"").trim().toUpperCase()===targetCode);
-            if(masterItem){if(!stopsMap[groupKey].items.includes(masterItem)){stopsMap[groupKey].items.push(masterItem)}}else{let fakeItem={DOM_ID:'fake_'+Math.random().toString(36).substr(2,9),UNIQUE_ID:'fake_'+Math.random().toString(36).substr(2,9),COMMONNAME:i.COMMONNAME||i['PLANT_NAME']||i.DESC||'Unknown',CONTSIZE:i.CONTSIZE||i.SIZE||i.CONTAINER||'-',ITEMCODE:i.ITEMCODE||i.ITEM||'No Item',LOCATIONCODE:"Not in Master",PTRAVAILABLE:0,PRIORITY:'-',FIELDTAGCOLOR:'-',LOTCODE:'-'};stopsMap[groupKey].items.push(fakeItem)}
-        });
-        let dockInfoStr=localStorage.getItem('dock_info_'+selectedDockNum);let dockInfo=dockInfoStr?JSON.parse(dockInfoStr):{checker:'',inspector:'',mistake:'',status:'Loading'};
-        let html=`<div class="back-btn" onclick="dockViewLevel=0; document.getElementById('docks-search').value=''; renderDocks()"><i class="ph-bold ph-arrow-left"></i> Back to Docks</div>`;
-        html+=`<div class="bg-gradient-to-br from-orange-50 to-white border border-orange-200 rounded-xl p-4 mb-4 shadow-sm relative overflow-hidden"><div class="flex justify-between items-center mb-3 relative z-10"><div class="font-black text-2xl text-orange-800 tracking-tight">DOCK ${selectedDockNum}</div><select class="bg-white border border-orange-300 p-2 rounded-lg font-bold text-xs text-orange-700 focus:outline-none shadow-sm" onchange="updateDockStatusFast(this.value)"><option value="Loading" ${dockInfo.status==='Loading'?'selected':''}>Loading</option><option value="Paused" ${dockInfo.status==='Paused'?'selected':''}>Paused</option><option value="Waiting" ${dockInfo.status==='Waiting'?'selected':''}>Waiting on Plant</option><option value="Complete" ${dockInfo.status==='Complete'?'selected':''}>Complete</option></select></div><div class="grid grid-cols-3 gap-2 text-center text-[10px] font-bold relative z-10"><div class="bg-white p-2 rounded-lg border border-orange-100 shadow-sm"><span class="block text-gray-400 uppercase mb-0.5 tracking-wider text-[8px]">Checker</span><span class="text-gray-800 truncate block text-xs">${dockInfo.checker||'-'}</span></div><div class="bg-white p-2 rounded-lg border border-orange-100 shadow-sm"><span class="block text-gray-400 uppercase mb-0.5 tracking-wider text-[8px]">Inspector</span><span class="text-gray-800 truncate block text-xs">${dockInfo.inspector||'-'}</span></div><div class="bg-white p-2 rounded-lg border border-orange-100 shadow-sm"><span class="block text-gray-400 uppercase mb-0.5 tracking-wider text-[8px]">Mistake Guy</span><span class="text-gray-800 truncate block text-xs">${dockInfo.mistake||'-'}</span></div></div><div class="text-center mt-3 relative z-10"><span class="text-[10px] text-orange-600 font-bold cursor-pointer bg-orange-100 px-3 py-1 rounded-full uppercase tracking-wider shadow-sm active:scale-95 transition-transform" onclick="editDockInfo()">Edit Team</span></div></div>`;
-        Object.keys(stopsMap).sort((a,b)=>String(a).localeCompare(String(b),undefined,{numeric:true})).forEach(groupKey=>{
-            let s=stopsMap[groupKey];let custDisplay=s.customer;if(s.consignee&&String(s.consignee).trim()!==""&&s.consignee!==s.customer)custDisplay+=` - ${s.consignee}`;
-            html+=`<div class="bg-gray-100 border border-gray-200 rounded-xl shadow-sm mb-6 overflow-hidden"><div class="bg-orange-100 p-3 border-b border-orange-200"><div class="flex justify-between items-start mb-1"><div class="font-black text-lg text-orange-800">Trip ${s.trip} &bull; Stop ${s.stop}</div><div class="text-[10px] font-bold text-orange-600 bg-white px-2 py-1 rounded uppercase shadow-sm"><i class="ph-bold ph-user mr-1"></i>${s.salesRep}</div></div><div class="text-sm font-bold text-gray-800 leading-tight">${custDisplay}</div></div><div class="p-3 flex flex-col">`;
-            s.items.sort((a,b)=>{let priA=parseFloat(a.PRIORITY);let priB=parseFloat(b.PRIORITY);if(isNaN(priA))priA=Infinity;if(isNaN(priB))priB=Infinity;if(priA!==priB)return priA-priB;return String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""),undefined,{numeric:true})});
-            s.items.forEach(item=>{html+=generateCard(item,'docks','status-orange')});html+=`</div></div>`;
-        });
-        container.innerHTML=html;
-    }else if(dockViewLevel===2){
-        crumb.innerText=`Dock ${selectedDockNum} > ${selectedDockName} (${selectedDockSize})`;let targetCode=String(selectedDockItemCode||"").trim().toUpperCase();let finalItems=fullInventory.filter(i=>{let iCode=String(i.ITEMCODE||"").trim().toUpperCase();if(targetCode&&targetCode!=="NO ITEM")return iCode===targetCode;else return i.COMMONNAME===selectedDockName&&i.CONTSIZE===selectedDockSize});
-        finalItems.sort((a,b)=>{let priA=parseFloat(a.PRIORITY);let priB=parseFloat(b.PRIORITY);if(isNaN(priA))priA=Infinity;if(isNaN(priB))priB=Infinity;if(priA!==priB)return priA-priB;return String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""),undefined,{numeric:true})});
-        if(finalItems.length===0){container.innerHTML=`<div class="back-btn" onclick="dockViewLevel=1; renderDocks()"><i class="ph-bold ph-arrow-left"></i> Back to Stop</div><div class="p-8 text-center text-gray-400">This plant was requested for the Dock, but no matching records exist in the Master Inventory.</div>`;return}
-        container.innerHTML=`<div class="back-btn" onclick="dockViewLevel=1; renderDocks()"><i class="ph-bold ph-arrow-left"></i> Back to Stop</div>`+finalItems.map(i=>generateCard(i,'docks','status-orange')).join('');
-    }
+const debouncedDriveSearch=debounce(()=>{requestAnimationFrame(()=>renderDrive())},150);
+function clearDriveSearch(){document.getElementById('drive-search').value="";document.getElementById('drive-search-clear').classList.add('hidden');driveViewLevel=0;renderDrive()}
+function handleDriveSearch(){
+    const term=document.getElementById('drive-search').value.toLowerCase();
+    const clearBtn=document.getElementById('drive-search-clear');
+    if(term.length>0){clearBtn.classList.remove('hidden');}else{clearBtn.classList.add('hidden');}
+    driveViewLevel=0;selectedDriveName=null;selectedDriveSize=null;
+    debouncedDriveSearch();
 }
-
-function resetDriveView(){driveViewLevel=0;selectedDriveName=null;selectedDriveSize=null;document.getElementById('drive-search').value="";document.getElementById('drive-search-clear').classList.add('hidden');renderDrive()}
-function toggleDriveSeason(s){if(s==='ALL'){driveSelectedSeasons.clear();driveSelectedSeasons.add('ALL')}else{driveSelectedSeasons.delete('ALL');if(driveSelectedSeasons.has(s)){driveSelectedSeasons.delete(s);if(driveSelectedSeasons.size===0)driveSelectedSeasons.add('ALL')}else{driveSelectedSeasons.add(s)}}renderDrive()}
 function selectDriveName(name){selectedDriveName=name;driveViewLevel=1;renderDrive()}
 function selectDriveSize(size){selectedDriveSize=size;driveViewLevel=2;renderDrive()}
 
@@ -495,8 +466,16 @@ function renderDrive(){
     if(!driveSelectedSeasons.has('ALL')){items=items.filter(i=>{let s=String(i.SEASON||'').toUpperCase();return driveSelectedSeasons.has(s)})}
     if(term){items=items.filter(i=>(i._search||"").includes(term))}
     if(items.length===0){container.innerHTML=`<div class="p-8 text-center text-gray-400">No items found matching criteria.</div>`;crumb.innerText="No Results";return}
+    
+    if(term.length > 0) {
+        crumb.innerText=`Search Results (${items.length})`;
+        items.sort((a,b)=>{let priA=parseFloat(a.PRIORITY);let priB=parseFloat(b.PRIORITY);if(isNaN(priA))priA=Infinity;if(isNaN(priB))priB=Infinity;if(priA!==priB)return priA-priB;return String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""),undefined,{numeric:true})});
+        container.innerHTML=items.map(i=>generateCard(i,'drive','status-blue')).join('');
+        return;
+    }
+
     if(driveViewLevel===0){
-        crumb.innerText="Drive Mode > Plants";const names=[...new Set(items.map(i=>i.COMMONNAME))].sort();
+        crumb.innerText=`Select Plant (${items.length} items)`;const names=[...new Set(items.map(i=>i.COMMONNAME))].sort();
         container.innerHTML=names.map(n=>`<div class="drill-item" onclick="selectDriveName('${String(n).replace(/'/g,"\\'")}')"><span class="font-bold text-lg">${n}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
     }else if(driveViewLevel===1){
         crumb.innerText=`Drive Mode > ${selectedDriveName}`;const namedItems=items.filter(i=>i.COMMONNAME===selectedDriveName);const sizes=[...new Set(namedItems.map(i=>i.CONTSIZE))].sort();
@@ -504,11 +483,14 @@ function renderDrive(){
         html+=sizes.map(s=>{const count=namedItems.filter(i=>i.CONTSIZE===s).length;return `<div class="drill-item" onclick="selectDriveSize('${String(s)}')"><span class="font-bold text-lg">${s} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`}).join('');
         container.innerHTML=html;
     }else if(driveViewLevel===2){
-        crumb.innerText=`${selectedDriveName} / ${selectedDriveSize}`;let finalItems=items.filter(i=>i.COMMONNAME===selectedDriveName&&i.CONTSIZE===selectedDriveSize);
-        finalItems.sort((a,b)=>String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""),undefined,{numeric:true}));
+        crumb.innerText=`${selectedDriveName||'Search Results'} / ${selectedDriveSize||''}`;
+        let finalItems=items.filter(i=>i.COMMONNAME===selectedDriveName&&i.CONTSIZE===selectedDriveSize);
+        finalItems.sort((a,b)=>{let priA=parseFloat(a.PRIORITY);let priB=parseFloat(b.PRIORITY);if(isNaN(priA))priA=Infinity;if(isNaN(priB))priB=Infinity;if(priA!==priB)return priA-priB;return String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""),undefined,{numeric:true})});
         container.innerHTML=`<div class="back-btn" onclick="driveViewLevel=1; renderDrive()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>`+finalItems.map(i=>generateCard(i,'drive','status-blue')).join('');
     }
 }
+function resetDriveView(){driveViewLevel=0;selectedDriveName=null;selectedDriveSize=null;document.getElementById('drive-search').value="";document.getElementById('drive-search-clear').classList.add('hidden');driveSelectedSeasons.clear();driveSelectedSeasons.add('ALL');renderDrive()}
+function toggleDriveSeason(s){if(s==='ALL'){driveSelectedSeasons.clear();driveSelectedSeasons.add('ALL')}else{driveSelectedSeasons.delete('ALL');if(driveSelectedSeasons.has(s)){driveSelectedSeasons.delete(s);if(driveSelectedSeasons.size===0)driveSelectedSeasons.add('ALL')}else{driveSelectedSeasons.add(s)}}driveViewLevel=0;selectedDriveName=null;selectedDriveSize=null;renderDrive()}
 
 function renderTeamSelector(){
     let uSet=new Set();fullInventory.forEach(i=>{if(i.ASSIGNEDTO&&!i.DATE_COMPLETED)uSet.add(i.ASSIGNEDTO)});
@@ -627,6 +609,42 @@ function removeFromRequest(){
         .then(()=>{showToast("Removed","Item removed from request list.")})
         .catch(err=>{showToast("Error","Network error.",true)});
     activeItem=null;
+}
+
+async function uploadPhotoToDrive(base64Data, originalFilename, prefix) {
+    let targetItem = activeItem; if (!targetItem) return; 
+    let btn = document.getElementById(prefix + 'btn-save-complete'); let isCurrentView = (activeItem && activeItem.UNIQUE_ID === targetItem.UNIQUE_ID); 
+    if (btn && isCurrentView) { btn.innerText = "UPLOADING..."; btn.disabled = true; } 
+    let safeFilename = originalFilename.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+    
+    showToast("Uploading...", "Saving photo to Google Drive...", false);
+    
+    let context = "drive"; 
+    if (prefix === 'req-') context = "request"; 
+    else if (prefix === 'ssn-') context = "season"; 
+    else if (prefix === 'lsn-') context = "location"; 
+    else if (prefix === 'dock-') context = "docks"; 
+    else if (prefix === 'flyer-') context = "season";
+    else if (prefix === 'na-') context = "drive";
+    
+    let payload = { type: "image", image: base64Data, mimeType: "image/jpeg", filename: safeFilename, folderContext: context };
+    if (context === "docks") { 
+        payload.dockNum = selectedDockNum; const dateStr = new Date().toISOString().split('T')[0]; 
+        let tripFormat = selectedDockTrip !== "Unassigned" && selectedDockTrip !== "" ? "TRIP " + selectedDockTrip : "NoTrip"; 
+        payload.customFolderName = `${selectedDockRep} ${selectedDockCustomer} ${tripFormat} ${dateStr}`.trim(); 
+    }
+    
+    fetch(GOOGLE_SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) })
+    .then(res => res.json())
+    .then(data => { 
+        if(data.status === 'success') { 
+            finishUpload(data.url, safeFilename, prefix, targetItem, btn, isCurrentView, "Photo saved to Google Drive!"); 
+        } else { 
+            if (isCurrentView) { resetUploadBtn(btn, prefix); showToast("Error", "Upload failed.", true); } 
+        } 
+    }).catch(e => { 
+        if (isCurrentView) { resetUploadBtn(btn, prefix); showToast("Error", "Network connection failed.", true); } 
+    });
 }
 </script>
 </body>
