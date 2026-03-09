@@ -623,7 +623,7 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
         function toggleMenu(){ document.getElementById('side-drawer').classList.toggle('open'); document.getElementById('drawer-overlay').classList.toggle('open'); }
         function showToast(title, message, isAlert = false) { const toast = document.getElementById('toast-notification'); toast.style.background = isAlert ? '#ef4444' : '#16a34a'; toast.innerHTML = `<div class="font-bold text-sm">${title}</div><div class="text-xs">${message}</div>`; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 3000); }
 
-        function switchView(viewId){ ['view-home','view-drive','view-tasks','view-review','view-reports','view-sales-office','view-low-stock','view-detail','view-docks','view-request','view-reserves','view-av'].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.add('hidden');}); document.getElementById('view-'+viewId).classList.remove('hidden'); requestAnimationFrame(()=>{setTimeout(()=>{if(viewId==='drive')resetDriveView();if(viewId==='tasks'){if(safeRole==='ADMIN'&&!taskViewTargetUser)renderTeamSelector();else renderTasks();}if(viewId==='reports')resetReportsView();if(viewId==='review')resetReviewView();if(viewId==='request'){requestViewLevel=0;renderRequest();}if(viewId==='reserves')resetReservesView();if(viewId==='sales-office')renderSalesOffice();if(viewId==='low-stock')resetLowStockView();if(viewId==='docks')resetDockView();if(viewId==='av')resetAVView();},0)}); }
+        function switchView(viewId){ ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-detail','view-docks','view-request','view-reserves','view-av'].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.add('hidden');}); document.getElementById('view-'+viewId).classList.remove('hidden'); requestAnimationFrame(()=>{setTimeout(()=>{if(viewId==='drive')resetDriveView();if(viewId==='tasks'){if(safeRole==='ADMIN'&&!taskViewTargetUser)renderTeamSelector();else renderTasks();}if(viewId==='reports')resetReportsView();if(viewId==='review')resetReviewView();if(viewId==='request'){requestViewLevel=0;renderRequest();}if(viewId==='reserves')resetReservesView();if(viewId==='sales-office')renderSalesOffice();if(viewId==='low-stock')resetLowStockView();if(viewId==='docks')resetDockView();if(viewId==='av')resetAVView();},0)}); }
         function reRenderCurrentView(){ if(!document.getElementById('view-drive').classList.contains('hidden'))renderDrive(); if(!document.getElementById('view-tasks').classList.contains('hidden'))renderTasks(); if(!document.getElementById('view-sales-office').classList.contains('hidden'))renderSalesOffice(); if(!document.getElementById('view-low-stock').classList.contains('hidden'))renderLowStock(); if(!document.getElementById('view-docks').classList.contains('hidden'))renderDocks(); if(!document.getElementById('view-review').classList.contains('hidden'))renderReview(); if(!document.getElementById('view-reports').classList.contains('hidden'))renderReports(); if(!document.getElementById('view-request').classList.contains('hidden'))renderRequest(); if(!document.getElementById('view-reserves').classList.contains('hidden'))renderReserves(); if(!document.getElementById('view-av').classList.contains('hidden'))renderAV(); }
         function setTaskTab(tab){ activeTaskTab=tab; document.getElementById('tab-season').classList.toggle('active',tab==='season'); document.getElementById('tab-location').classList.toggle('active',tab==='location'); document.getElementById('tab-endcap').classList.toggle('active',tab==='endcap'); document.getElementById('tab-flyer').classList.toggle('active',tab==='flyer'); taskViewLevel=0; renderTasks(); }
         function setAVTab(tab){ activeAVTab=tab; avResLevel=0; selectedAvResName=null; selectedAvResSize=null; document.getElementById('tab-av-open').classList.toggle('active',tab==='open'); document.getElementById('tab-av-reserves').classList.toggle('active',tab==='reserves'); renderAV(); }
@@ -868,6 +868,48 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
                 crumb.innerText=`${selectedReviewCommonName} / ${selectedReviewContSize}`;
                 let items=managerReviewInventory.filter(i=>i.ITEMCODE===selectedReviewItemCode);items.sort((a,b)=>String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""),undefined,{numeric:true}));
                 container.innerHTML=`<div class="back-btn" onclick="resetReviewView()"><i class="ph-bold ph-arrow-left"></i> Back to List</div>`+items.map(i=>generateCard(i,'review','status-yellow')).join('');
+            }
+        }
+
+        function renderRequest() {
+            const container = document.getElementById('request-content');
+            const crumb = document.getElementById('request-crumb');
+            
+            // Filter out archived items
+            let items = requestsInventory.filter(i => !i.REQ_ARCHIVED);
+
+            if (items.length === 0) {
+                container.innerHTML = `<div class="p-8 text-center text-gray-400">No active requests found.</div>`;
+                crumb.innerText = "Requests";
+                return;
+            }
+
+            // Folder View (Level 0)
+            if (requestViewLevel === 0) {
+                crumb.innerText = "Request Folders";
+                let folders = [...new Set(items.map(i => i.REQUEST_FOLDER || 'Unassigned'))].sort();
+                
+                container.innerHTML = folders.map(f => {
+                    let count = items.filter(i => (i.REQUEST_FOLDER || 'Unassigned') === f).length;
+                    return `<div class="bg-white border border-purple-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectRequestFolder('${esc(f)}')">
+                        <div class="flex items-center gap-3">
+                            <div class="bg-purple-50 p-2 rounded-lg"><i class="ph-fill ph-folder text-2xl text-purple-500"></i></div>
+                            <span class="font-bold text-lg text-purple-800">${f}</span>
+                        </div>
+                        <span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${count} Items</span>
+                    </div>`;
+                }).join('');
+            } 
+            // Items View (Level 4)
+            else if (requestViewLevel === 4) {
+                crumb.innerText = `Folder: ${selectedReqFolder}`;
+                let fItems = items.filter(i => (i.REQUEST_FOLDER || 'Unassigned') === selectedReqFolder);
+                
+                // Sort alphabetically by plant name
+                fItems.sort((a,b) => String(a.COMMONNAME||"").localeCompare(String(b.COMMONNAME||"")));
+                
+                container.innerHTML = `<div class="back-btn" onclick="requestViewLevel=0; renderRequest()"><i class="ph-bold ph-arrow-left"></i> Back to Folders</div>` 
+                    + fItems.map(i => generateCard(i, 'request', 'status-purple')).join('');
             }
         }
 
