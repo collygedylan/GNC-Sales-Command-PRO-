@@ -1,221 +1,79 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GNC 003</title>
-    
-    <meta name="theme-color" content="#007a4d">
-    <link rel="manifest" href="manifest.json">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="application-name" content="GNC 003">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="icon" type="image/png" href="Ag Metric App.png">
-    <link rel="apple-touch-icon" href="Ag Metric App.png">
-    
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    
-    <style>
-        :root { --brand-green: #007a4d; --text-main: #111827; }
-        body { font-family: "Amazon Ember", Arial, sans-serif; background-color: white; color: var(--text-main); overscroll-behavior-y: contain; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
-        .nav-header { background: var(--brand-green); color: white; padding-top: max(10px, env(safe-area-inset-top)); }
-        #view-login, #view-change-password { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: var(--brand-green); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
-        #view-change-password { display: none; z-index: 10000; }
-        .login-card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); width: 100%; max-width: 360px; text-align: center; }
-        .input-field { width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 15px; margin-bottom: 12px; }
-        #toast-notification { position: fixed; top: -100px; left: 50%; transform: translateX(-50%); background: #16a34a; color: white; padding: 16px 24px; border-radius: 50px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3); z-index: 11000; transition: top 0.5s; display: flex; align-items: center; gap: 12px; pointer-events: none; }
-        #toast-notification.show { top: 20px; }
-        #side-drawer { position: fixed; top: 0; left: -280px; width: 280px; height: 100%; background: white; z-index: 2000; box-shadow: 2px 0 10px rgba(0,0,0,0.2); transition: left 0.3s; overflow-y: auto; padding-bottom: 100px; }
-        #side-drawer.open { left: 0; }
-        #drawer-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1999; display: none; }
-        #drawer-overlay.open { display: block; }
-        .drawer-header { background: var(--brand-green); color: white; padding: 20px; font-weight: bold; font-size: 18px; }
-        .drawer-item { padding: 16px 20px; border-bottom: 1px solid #f3f4f6; cursor: pointer; display: flex; align-items: center; gap: 12px; color: #374151; font-weight: 500; }
-        .drill-item { border-bottom: 1px solid #e5e7eb; padding: 16px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; background: white; transition: background 0.1s; user-select: none; }
-        .drill-item:active { background: #f3f4f6; }
-        .back-btn { display: flex; align-items: center; gap: 5px; color: #6b7280; font-size: 14px; font-weight: 600; margin-bottom: 20px; cursor: pointer; padding: 10px 0; }
-        .inv-card { border: 1px solid #e5e7eb; border-left-width: 6px; border-radius: 8px; padding: 12px; background: white; cursor: pointer; flex-grow: 1; }
-        .status-green { border-left-color: #22c55e; } .status-purple { border-left-color: #9333ea; } .status-orange { border-left-color: #f97316; } .status-blue { border-left-color: #3b82f6; } .status-indigo { border-left-color: #4f46e5; } .status-teal { border-left-color: #0d9488; } .status-yellow { border-left-color: #eab308; }
-        .task-tabs, .detail-tabs { display: flex; border-bottom: 1px solid #e5e7eb; background: #f9fafb; margin-bottom: 10px; }
-        .detail-tabs { overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none; }
-        .detail-tabs::-webkit-scrollbar { display: none; }
-        .task-tab, .detail-tab { flex: 1; text-align: center; padding: 12px; font-size: 11px; font-weight: 700; color: #6b7280; cursor: pointer; border-bottom: 3px solid transparent; text-transform: uppercase; }
-        .detail-tab { flex: 0 0 auto; padding: 10px 16px; }
-        .task-tab.active, .detail-tab.active { color: var(--brand-green); border-bottom-color: var(--brand-green); background: white; }
-        .overview-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
-        .overview-card { background: #f8fafc; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0; }
-        .overview-label { font-size: 9px; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 2px; }
-        .overview-val { font-size: 13px; font-weight: 600; color: #0f172a; word-break: break-all; }
-        .expand-trigger { display: flex; align-items: center; justify-content: space-between; padding: 12px; background: #f9fafb; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 14px; border: 1px solid #e5e7eb; }
-        .expand-content { display: none; margin-top: 12px; padding: 12px; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb; }
-        .expanded .expand-content { display: block; }
-        .card-checkbox-container { width: 0; overflow: hidden; opacity: 0; transition: width 0.3s, opacity 0.3s, margin 0.3s; }
-        body.multi-select-mode .card-checkbox-container { width: 24px; opacity: 1; margin-right: 12px; }
-        .item-row { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: manipulation; content-visibility: auto; contain-intrinsic-size: 120px; }
-        .spinner { border: 4px solid rgba(255,255,255,0.3); border-top: 4px solid white; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .scrollbar-none::-webkit-scrollbar { display: none; }
-        .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
-        .skeleton { background: #e5e7eb; background-image: linear-gradient(90deg, #e5e7eb 0px, #f3f4f6 40px, #e5e7eb 80px); background-size: 200vw 100%; animation: shimmer 1.5s infinite linear; border-radius: 12px; }
-        @keyframes shimmer { 0% { background-position: -100vw 0; } 100% { background-position: 100vw 0; } }
-    </style>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>GNC 500</title><meta name="theme-color" content="#007a4d"><link rel="manifest" href="manifest.json">
+<meta name="mobile-web-app-capable" content="yes"><meta name="application-name" content="GNC 500"><meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><script src="https://cdn.tailwindcss.com"></script><script src="https://unpkg.com/@phosphor-icons/web"></script>
+<style>
+:root{--brand-green:#007a4d;--text-main:#111827}body{font-family:"Amazon Ember",Arial,sans-serif;background-color:white;color:var(--text-main);overscroll-behavior-y:contain;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.nav-header{background:var(--brand-green);color:white;padding-top:max(10px,env(safe-area-inset-top))}
+#view-login,#view-change-password{position:fixed;top:0;left:0;width:100%;height:100%;background-color:var(--brand-green);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px}
+#view-change-password{display:none;z-index:10000}
+.login-card{background:white;padding:30px;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,0.2);width:100%;max-width:360px;text-align:center}
+.input-field{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:8px;font-size:15px;margin-bottom:12px}
+#toast-notification{position:fixed;top:-100px;left:50%;transform:translateX(-50%);background:#16a34a;color:white;padding:16px 24px;border-radius:50px;box-shadow:0 10px 15px -3px rgba(0,0,0,0.3);z-index:11000;transition:top 0.5s;display:flex;align-items:center;gap:12px;pointer-events:none}
+#toast-notification.show{top:20px}
+#side-drawer{position:fixed;top:0;left:-280px;width:280px;height:100%;background:white;z-index:2000;box-shadow:2px 0 10px rgba(0,0,0,0.2);transition:left 0.3s;overflow-y:auto;padding-bottom:100px}
+#side-drawer.open{left:0}#drawer-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1999;display:none}
+#drawer-overlay.open{display:block}.drawer-header{background:var(--brand-green);color:white;padding:20px;font-weight:bold;font-size:18px}
+.drawer-item{padding:16px 20px;border-bottom:1px solid #f3f4f6;cursor:pointer;display:flex;align-items:center;gap:12px;color:#374151;font-weight:500}
+.drill-item{border-bottom:1px solid #e5e7eb;padding:16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:white;transition:background 0.1s;user-select:none}
+.drill-item:active{background:#f3f4f6}.back-btn{display:flex;align-items:center;gap:5px;color:#6b7280;font-size:14px;font-weight:600;margin-bottom:20px;cursor:pointer;padding:10px 0}
+.inv-card{border:1px solid #e5e7eb;border-left-width:6px;border-radius:8px;padding:12px;background:white;cursor:pointer;flex-grow:1}
+.status-green{border-left-color:#22c55e}.status-purple{border-left-color:#9333ea}.status-orange{border-left-color:#f97316}.status-blue{border-left-color:#3b82f6}.status-indigo{border-left-color:#4f46e5}.status-teal{border-left-color:#0d9488}.status-yellow{border-left-color:#eab308}
+.task-tabs,.detail-tabs{display:flex;border-bottom:1px solid #e5e7eb;background:#f9fafb;margin-bottom:10px}
+.detail-tabs{overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none}.detail-tabs::-webkit-scrollbar{display:none}
+.task-tab,.detail-tab{flex:1;text-align:center;padding:12px;font-size:11px;font-weight:700;color:#6b7280;cursor:pointer;border-bottom:3px solid transparent;text-transform:uppercase}
+.detail-tab{flex:0 0 auto;padding:10px 16px}.task-tab.active,.detail-tab.active{color:var(--brand-green);border-bottom-color:var(--brand-green);background:white}
+.overview-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
+.overview-card{background:#f8fafc;padding:10px;border-radius:6px;border:1px solid #e2e8f0}
+.overview-label{font-size:9px;font-weight:800;color:#64748b;text-transform:uppercase;margin-bottom:2px}
+.overview-val{font-size:13px;font-weight:600;color:#0f172a;word-break:break-all}
+.expand-trigger{display:flex;align-items:center;justify-content:space-between;padding:12px;background:#f9fafb;border-radius:6px;cursor:pointer;font-weight:600;font-size:14px;border:1px solid #e5e7eb}
+.expand-content{display:none;margin-top:12px;padding:12px;background:#f9fafb;border-radius:6px;border:1px solid #e5e7eb}
+.expanded .expand-content{display:block}.card-checkbox-container{width:0;overflow:hidden;opacity:0;transition:width 0.3s,opacity 0.3s,margin 0.3s}
+body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-right:12px}
+/* Removed content-visibility to fix distorted cards! */
+.item-row{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:manipulation;}
+.spinner{border:4px solid rgba(255,255,255,0.3);border-top:4px solid white;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:0 auto}
+@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+.scrollbar-none::-webkit-scrollbar{display:none}.scrollbar-none{-ms-overflow-style:none;scrollbar-width:none}
+.skeleton{background:#e5e7eb;background-image:linear-gradient(90deg,#e5e7eb 0px,#f3f4f6 40px,#e5e7eb 80px);background-size:200vw 100%;animation:shimmer 1.5s infinite linear;border-radius:12px}
+@keyframes shimmer{0%{background-position:-100vw 0}100%{background-position:100vw 0}}
+</style>
 </head>
 <body class="bg-gray-50 h-screen overflow-hidden">
 <div id="top-loading-bar-container" class="hidden fixed top-0 left-0 w-full h-1 z-[99999] pointer-events-none"><div id="top-loading-bar" class="h-full bg-[#22c55e] w-0 transition-all duration-300 ease-out shadow-[0_0_10px_#22c55e]"></div></div>
 <div id="toast-notification"></div>
 <div id="photo-modal" class="hidden fixed inset-0 bg-black bg-opacity-95 z-[15000] flex flex-col items-center justify-center p-4">
-    <div class="absolute top-0 left-0 w-full p-6 flex justify-between items-start bg-gradient-to-b from-black/80 to-transparent z-50">
-        <div id="photo-modal-caption" class="text-white font-bold text-sm leading-tight drop-shadow-md pr-4 uppercase tracking-wide"></div>
-        <i class="ph-bold ph-x text-white text-3xl cursor-pointer bg-black/50 p-2 rounded-full active:scale-95 transition-transform" onclick="closePhotoModal()"></i>
-    </div>
+    <div class="absolute top-0 left-0 w-full p-6 flex justify-between items-start bg-gradient-to-b from-black/80 to-transparent z-50"><div id="photo-modal-caption" class="text-white font-bold text-sm leading-tight drop-shadow-md pr-4 uppercase tracking-wide"></div><i class="ph-bold ph-x text-white text-3xl cursor-pointer bg-black/50 p-2 rounded-full active:scale-95 transition-transform" onclick="closePhotoModal()"></i></div>
     <img id="photo-modal-img" src="" class="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl z-40 mt-10">
 </div>
 
-<div id="view-login">
-    <div class="login-card">
-        <div class="flex flex-col items-center mb-8 w-full relative">
-            <div class="text-3xl text-[#007a4d] font-black tracking-tighter mb-1">GNC 003</div>
-            <div class="flex flex-col items-center gap-0.5 mt-5">
-                <span class="text-[9px] font-bold text-gray-400 uppercase tracking-[0.3em]">Powered By</span>
-                <span class="text-[17px] font-black text-gray-800 tracking-[0.2em] uppercase border-b-[3px] border-[#007a4d] pb-0.5">Ag Metric</span>
-            </div>
-        </div>
-        <div id="login-inputs">
-            <input type="text" id="username-input" class="input-field mb-4 text-center border-2" placeholder="USERNAME">
-            <input type="password" id="pin-code" class="input-field mb-4 text-center border-2 tracking-widest" placeholder="PASSWORD">
-            <button class="w-full bg-[#007a4d] text-white font-bold py-3 rounded-lg shadow-md" onclick="handleLogin()">LOGIN</button>
-            <button id="btn-fingerprint" class="hidden w-full bg-gray-50 text-[#007a4d] border-2 border-[#007a4d] font-bold py-3 rounded-lg shadow-md mt-4 flex items-center justify-center gap-2" onclick="loginWithBiometric()"><i class="ph-bold ph-fingerprint text-2xl"></i> LOGIN WITH FINGERPRINT</button>
-        </div>
-        <div id="loading-spinner" class="hidden mt-6 flex flex-col items-center">
-            <div class="spinner"></div>
-            <div id="loading-text" class="text-gray-500 font-bold text-sm mt-3 text-center">Syncing Database...</div>
-        </div>
-    </div>
-</div>
+<div id="view-login"><div class="login-card"><div class="flex flex-col items-center mb-8 w-full relative"><div class="text-3xl text-[#007a4d] font-black tracking-tighter mb-1">GNC 500</div><div class="flex flex-col items-center gap-0.5 mt-5"><span class="text-[9px] font-bold text-gray-400 uppercase tracking-[0.3em]">Powered By</span><span class="text-[17px] font-black text-gray-800 tracking-[0.2em] uppercase border-b-[3px] border-[#007a4d] pb-0.5">Ag Metric</span></div></div><div id="login-inputs"><input type="text" id="username-input" class="input-field mb-4 text-center border-2" placeholder="USERNAME"><input type="password" id="pin-code" class="input-field mb-4 text-center border-2 tracking-widest" placeholder="PASSWORD"><button class="w-full bg-[#007a4d] text-white font-bold py-3 rounded-lg shadow-md" onclick="handleLogin()">LOGIN</button><button id="btn-fingerprint" class="hidden w-full bg-gray-50 text-[#007a4d] border-2 border-[#007a4d] font-bold py-3 rounded-lg shadow-md mt-4 flex items-center justify-center gap-2" onclick="loginWithBiometric()"><i class="ph-bold ph-fingerprint text-2xl"></i> LOGIN WITH FINGERPRINT</button></div><div id="loading-spinner" class="hidden mt-6 flex flex-col items-center"><div class="spinner"></div><div id="loading-text" class="text-gray-500 font-bold text-sm mt-3 text-center">Syncing Database...</div></div></div></div>
 
-<div id="view-change-password">
-    <div class="login-card">
-        <h2 class="text-2xl font-black text-[#007a4d] mb-2">Change Password</h2>
-        <p class="text-xs text-gray-500 font-bold mb-6">Set a new password for your account to continue.</p>
-        <input type="password" id="new-password" class="input-field mb-3 text-center border-2 tracking-widest" placeholder="NEW PASSWORD">
-        <input type="password" id="confirm-password" class="input-field mb-6 text-center border-2 tracking-widest" placeholder="CONFIRM PASSWORD">
-        <button class="w-full bg-[#007a4d] text-white font-bold py-3 rounded-lg shadow-md active:scale-95 transition-transform" onclick="submitNewPassword()">SAVE & CONTINUE</button>
-    </div>
-</div>
-
-<div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
-    <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
-        <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
-        <div class="grid grid-cols-1 gap-3 mb-4">
-            <button class="bg-green-50 text-green-700 font-bold p-4 rounded-lg border border-green-200 shadow-sm" onclick="processTabSelection('notes')">NOTES & ACTIONS</button>
-            <button class="bg-purple-50 text-purple-700 font-bold p-4 rounded-lg border border-purple-200 shadow-sm" onclick="processTabSelection('request')">REQUEST DATA</button>
-        </div>
-        <button class="text-gray-500 font-bold py-2 px-4" onclick="document.getElementById('tab-select-modal').classList.add('hidden')">Cancel</button>
-    </div>
-</div>
-
-<div id="assign-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
-    <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
-        <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Assign Selected Items To:</h3>
-        <div class="grid grid-cols-1 gap-3 mb-4">
-            <button class="bg-blue-50 text-blue-700 font-bold p-4 rounded-lg border border-blue-200 shadow-sm" onclick="confirmAssign('Dylan')">Dylan</button>
-            <button class="bg-blue-50 text-blue-700 font-bold p-4 rounded-lg border border-blue-200 shadow-sm" onclick="confirmAssign('Kayla')">Kayla</button>
-            <button class="bg-blue-50 text-blue-700 font-bold p-4 rounded-lg border border-blue-200 shadow-sm" onclick="confirmAssign('Morgan')">Morgan</button>
-        </div>
-        <button class="text-gray-500 font-bold py-2 px-4" onclick="closeAssignModal()">Cancel</button>
-    </div>
-</div>
-
-<div id="endcap-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
-    <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center flex flex-col max-h-[90vh]">
-        <div id="ec-step-1" class="flex flex-col">
-            <h3 class="font-bold text-lg mb-2 text-yellow-600">Create End Cap Folder</h3>
-            <input type="text" id="ec-folder-input" class="input-field mb-4 border-yellow-200 focus:border-yellow-500" placeholder="e.g. Front Entrance Display">
-            <button class="w-full bg-yellow-500 text-white font-bold p-4 rounded-xl shadow-lg mt-auto" onclick="processECStep1()">NEXT: ITEM DETAILS</button>
-        </div>
-        <div id="ec-step-2" class="hidden flex flex-col text-left h-full">
-            <div class="flex items-center mb-4 border-b border-gray-100 pb-2"><i class="ph-bold ph-arrow-left text-gray-400 text-2xl mr-2 cursor-pointer p-1" onclick="document.getElementById('ec-step-2').classList.add('hidden'); document.getElementById('ec-step-1').classList.remove('hidden');"></i><h3 class="font-bold text-lg text-yellow-600">End Cap Details</h3></div>
-            <div id="ec-list-container" class="flex flex-col gap-3 overflow-y-auto max-h-[50vh] mb-4 p-1"></div>
-            <button class="w-full bg-yellow-500 text-white font-bold p-4 rounded-xl shadow-lg mt-auto" onclick="submitEndCap()">CREATE END CAP</button>
-        </div>
-        <button class="text-gray-500 font-bold py-2 px-4 mt-2" onclick="document.getElementById('endcap-modal').classList.add('hidden')">Cancel</button>
-    </div>
-</div>
-
-<div id="request-rep-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
-    <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center flex flex-col max-h-[90vh]">
-        <div id="step-1-rep" class="flex flex-col">
-            <h3 class="font-bold text-lg mb-2 text-orange-600">Who requested this?</h3>
-            <input type="text" id="rep-search-input" class="input-field mb-3 border-orange-200 focus:border-orange-500" placeholder="Search or type name..." oninput="debouncedFilterRepList()">
-            <div id="rep-list-container" class="grid grid-cols-1 gap-2 mb-4 max-h-[40vh] overflow-y-auto px-2 py-1"></div>
-            <button id="custom-rep-btn" class="hidden w-full bg-orange-600 text-white font-bold p-3 rounded-lg mb-4 shadow-sm" onclick="selectRepForRequest(document.getElementById('rep-search-input').value.trim())">Assign to: <span></span></button>
-        </div>
-        <div id="step-1.5-folder" class="hidden flex flex-col text-left"><div id="existing-folder-container"></div></div>
-        <div id="step-2-cust" class="hidden flex flex-col text-left">
-            <div class="flex items-center mb-4 border-b border-gray-100 pb-2"><i class="ph-bold ph-arrow-left text-gray-400 text-2xl mr-2 cursor-pointer p-1" onclick="document.getElementById('step-2-cust').classList.add('hidden'); document.getElementById('step-1-rep').classList.remove('hidden');"></i><h3 class="font-bold text-lg text-orange-600">Customer</h3></div>
-            <label class="text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Customer / Consignee</label>
-            <input type="text" id="cust-search-input" class="input-field mb-2 border-orange-200" placeholder="Search or type customer..." oninput="debouncedPopulateCustomerList()">
-            <div id="cust-list-container" class="grid grid-cols-1 gap-2 mb-6 max-h-[30vh] overflow-y-auto px-1 py-1"></div>
-            <button class="w-full bg-orange-600 text-white font-bold p-4 rounded-xl shadow-lg mt-auto" onclick="processCustStep()">NEXT: ITEM DETAILS</button>
-        </div>
-        <div id="step-3-qty" class="hidden flex flex-col text-left h-full">
-            <div class="flex items-center mb-4 border-b border-gray-100 pb-2"><i class="ph-bold ph-arrow-left text-gray-400 text-2xl mr-2 cursor-pointer p-1" onclick="goBackFromQty()"></i><h3 class="font-bold text-lg text-orange-600">Request Details</h3></div>
-            <div id="qty-list-container" class="flex flex-col gap-3 overflow-y-auto max-h-[50vh] mb-4 p-1"></div>
-            <button class="w-full bg-[#007a4d] text-white font-bold p-4 rounded-xl shadow-lg mt-auto" onclick="submitRequestWithQtys()">SUBMIT REQUEST</button>
-        </div>
-        <button class="text-gray-500 font-bold py-2 px-4 mt-2" onclick="document.getElementById('request-rep-modal').classList.add('hidden')">Cancel</button>
-    </div>
-</div>
+<div id="view-change-password"><div class="login-card"><h2 class="text-2xl font-black text-[#007a4d] mb-2">Change Password</h2><p class="text-xs text-gray-500 font-bold mb-6">Set a new password for your account to continue.</p><input type="password" id="new-password" class="input-field mb-3 text-center border-2 tracking-widest" placeholder="NEW PASSWORD"><input type="password" id="confirm-password" class="input-field mb-6 text-center border-2 tracking-widest" placeholder="CONFIRM PASSWORD"><button class="w-full bg-[#007a4d] text-white font-bold py-3 rounded-lg shadow-md active:scale-95 transition-transform" onclick="submitNewPassword()">SAVE & CONTINUE</button></div></div>
+<div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4"><div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center"><h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3><div class="grid grid-cols-1 gap-3 mb-4"><button class="bg-green-50 text-green-700 font-bold p-4 rounded-lg border border-green-200 shadow-sm" onclick="processTabSelection('notes')">NOTES & ACTIONS</button><button class="bg-purple-50 text-purple-700 font-bold p-4 rounded-lg border border-purple-200 shadow-sm" onclick="processTabSelection('request')">REQUEST DATA</button></div><button class="text-gray-500 font-bold py-2 px-4" onclick="document.getElementById('tab-select-modal').classList.add('hidden')">Cancel</button></div></div>
+<div id="assign-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4"><div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center"><h3 class="font-bold text-lg mb-4 text-[#007a4d]">Assign Selected Items To:</h3><div class="grid grid-cols-1 gap-3 mb-4"><button class="bg-blue-50 text-blue-700 font-bold p-4 rounded-lg border border-blue-200 shadow-sm" onclick="confirmAssign('Dylan')">Dylan</button><button class="bg-blue-50 text-blue-700 font-bold p-4 rounded-lg border border-blue-200 shadow-sm" onclick="confirmAssign('Kayla')">Kayla</button><button class="bg-blue-50 text-blue-700 font-bold p-4 rounded-lg border border-blue-200 shadow-sm" onclick="confirmAssign('Morgan')">Morgan</button></div><button class="text-gray-500 font-bold py-2 px-4" onclick="closeAssignModal()">Cancel</button></div></div>
+<div id="endcap-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4"><div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center flex flex-col max-h-[90vh]"><div id="ec-step-1" class="flex flex-col"><h3 class="font-bold text-lg mb-2 text-yellow-600">Create End Cap Folder</h3><input type="text" id="ec-folder-input" class="input-field mb-4 border-yellow-200 focus:border-yellow-500" placeholder="e.g. Front Entrance Display"><button class="w-full bg-yellow-500 text-white font-bold p-4 rounded-xl shadow-lg mt-auto" onclick="processECStep1()">NEXT: ITEM DETAILS</button></div><div id="ec-step-2" class="hidden flex flex-col text-left h-full"><div class="flex items-center mb-4 border-b border-gray-100 pb-2"><i class="ph-bold ph-arrow-left text-gray-400 text-2xl mr-2 cursor-pointer p-1" onclick="document.getElementById('ec-step-2').classList.add('hidden'); document.getElementById('ec-step-1').classList.remove('hidden');"></i><h3 class="font-bold text-lg text-yellow-600">End Cap Details</h3></div><div id="ec-list-container" class="flex flex-col gap-3 overflow-y-auto max-h-[50vh] mb-4 p-1"></div><button class="w-full bg-yellow-500 text-white font-bold p-4 rounded-xl shadow-lg mt-auto" onclick="submitEndCap()">CREATE END CAP</button></div><button class="text-gray-500 font-bold py-2 px-4 mt-2" onclick="document.getElementById('endcap-modal').classList.add('hidden')">Cancel</button></div></div>
+<div id="dock-info-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4"><div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center relative overflow-hidden"><h3 class="font-black text-2xl mb-2 text-orange-600">DOCK <span id="modal-dock-num"></span></h3><p class="text-[10px] text-gray-500 font-bold mb-4 uppercase tracking-wider">Set Dock Team & Status</p><div class="text-left mb-3"><label class="text-[10px] font-bold text-gray-500 uppercase ml-1">Checker</label><input type="text" id="dock-checker" class="input-field border-orange-200 focus:border-orange-500 !mb-0" placeholder="e.g. John D."></div><div class="text-left mb-3"><label class="text-[10px] font-bold text-gray-500 uppercase ml-1">Inspector</label><input type="text" id="dock-inspector" class="input-field border-orange-200 focus:border-orange-500 !mb-0" placeholder="e.g. Jane S."></div><div class="text-left mb-4"><label class="text-[10px] font-bold text-gray-500 uppercase ml-1">Mistake Guy</label><input type="text" id="dock-mistake" class="input-field border-orange-200 focus:border-orange-500 !mb-0" placeholder="e.g. Mike T."></div><div class="text-left mb-6"><label class="text-[10px] font-bold text-gray-500 uppercase ml-1">Dock Status</label><select id="dock-status" class="input-field border-orange-200 focus:border-orange-500 font-bold text-orange-700 bg-orange-50 !mb-0"><option value="Loading">Loading</option><option value="Paused">Paused</option><option value="Waiting">Waiting on Plant</option><option value="Complete">Complete</option></select></div><div class="flex gap-2"><button class="w-1/3 bg-gray-100 text-gray-600 font-bold p-3 rounded-lg shadow-sm active:scale-95 transition-transform" onclick="document.getElementById('dock-info-modal').classList.add('hidden')">CANCEL</button><button class="w-2/3 bg-orange-600 text-white font-bold p-3 rounded-lg shadow-md active:scale-95 transition-transform" onclick="saveDockInfoModal()">SAVE & CONTINUE</button></div></div></div>
+<div id="request-rep-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4"><div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center flex flex-col max-h-[90vh]"><div id="step-1-rep" class="flex flex-col"><h3 class="font-bold text-lg mb-2 text-orange-600">Who requested this?</h3><input type="text" id="rep-search-input" class="input-field mb-3 border-orange-200 focus:border-orange-500" placeholder="Search or type name..." oninput="debouncedFilterRepList()"><div id="rep-list-container" class="grid grid-cols-1 gap-2 mb-4 max-h-[40vh] overflow-y-auto px-2 py-1"></div><button id="custom-rep-btn" class="hidden w-full bg-orange-600 text-white font-bold p-3 rounded-lg mb-4 shadow-sm" onclick="selectRepForRequest(document.getElementById('rep-search-input').value.trim())">Assign to: <span></span></button></div><div id="step-1.5-folder" class="hidden flex flex-col text-left"><div id="existing-folder-container"></div></div><div id="step-2-cust" class="hidden flex flex-col text-left"><div class="flex items-center mb-4 border-b border-gray-100 pb-2"><i class="ph-bold ph-arrow-left text-gray-400 text-2xl mr-2 cursor-pointer p-1" onclick="document.getElementById('step-2-cust').classList.add('hidden'); document.getElementById('step-1-rep').classList.remove('hidden');"></i><h3 class="font-bold text-lg text-orange-600">Customer</h3></div><label class="text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Customer / Consignee</label><input type="text" id="cust-search-input" class="input-field mb-2 border-orange-200" placeholder="Search or type customer..." oninput="debouncedPopulateCustomerList()"><div id="cust-list-container" class="grid grid-cols-1 gap-2 mb-6 max-h-[30vh] overflow-y-auto px-1 py-1"></div><button class="w-full bg-orange-600 text-white font-bold p-4 rounded-xl shadow-lg mt-auto" onclick="processCustStep()">NEXT: ITEM DETAILS</button></div><div id="step-3-qty" class="hidden flex flex-col text-left h-full"><div class="flex items-center mb-4 border-b border-gray-100 pb-2"><i class="ph-bold ph-arrow-left text-gray-400 text-2xl mr-2 cursor-pointer p-1" onclick="goBackFromQty()"></i><h3 class="font-bold text-lg text-orange-600">Request Details</h3></div><div id="qty-list-container" class="flex flex-col gap-3 overflow-y-auto max-h-[50vh] mb-4 p-1"></div><button class="w-full bg-[#007a4d] text-white font-bold p-4 rounded-xl shadow-lg mt-auto" onclick="submitRequestWithQtys()">SUBMIT REQUEST</button></div><button class="text-gray-500 font-bold py-2 px-4 mt-2" onclick="document.getElementById('request-rep-modal').classList.add('hidden')">Cancel</button></div></div>
 
 <div id="app-wrapper" class="hidden h-full flex flex-col">
-    <header class="nav-header sticky top-0 z-50 p-4 flex justify-between items-center shadow-md">
-        <div class="flex items-center gap-3">
-            <i class="ph-bold ph-list menu-btn text-2xl cursor-pointer" onclick="toggleMenu()"></i>
-            <div class="flex flex-col">
-                <div class="font-bold text-lg leading-tight"><span id="header-user">User</span></div>
-                <div class="text-[10px] opacity-80 leading-tight">GNC 003</div>
-            </div>
-        </div>
-        <div class="bg-white/20 p-2 rounded-lg cursor-pointer" onclick="fetchBackgroundData()"><i class="ph-bold ph-arrows-clockwise text-white"></i></div>
-    </header>
-    
+    <header class="nav-header sticky top-0 z-50 p-4 flex justify-between items-center shadow-md"><div class="flex items-center gap-3"><i class="ph-bold ph-list menu-btn text-2xl cursor-pointer" onclick="toggleMenu()"></i><div class="flex flex-col"><div class="font-bold text-lg leading-tight"><span id="header-user">User</span></div><div class="text-[10px] opacity-80 leading-tight">GNC 500</div></div></div><div class="bg-white/20 p-2 rounded-lg cursor-pointer" onclick="fetchBackgroundData()"><i class="ph-bold ph-arrows-clockwise text-white"></i></div></header>
     <div id="drawer-overlay" onclick="toggleMenu()"></div>
     <div id="side-drawer">
         <div class="drawer-header">Menu</div>
-        <div class="drawer-item" onclick="switchView('home'); toggleMenu();"><i class="ph-bold ph-house"></i> Home</div>
-        <div class="drawer-item text-green-600 font-bold" onclick="fetchBackgroundData(); toggleMenu();"><i class="ph-bold ph-arrows-clockwise"></i> Force Data Sync</div>
-        <hr class="my-2">
-        <div class="drawer-item" onclick="switchView('drive'); toggleMenu();"><i class="ph-bold ph-car"></i> Drive Mode</div>
-        <div class="drawer-item rep-hidden csr-hidden" onclick="switchView('tasks'); toggleMenu();"><i class="ph-bold ph-clipboard-text"></i> My Tasks</div>
-        <div class="drawer-item text-orange-600 font-bold" onclick="switchView('docks'); toggleMenu();"><i class="ph-bold ph-truck"></i> Docks</div>
-        <div class="drawer-item text-teal-600 font-bold" onclick="switchView('av'); toggleMenu();"><i class="ph-bold ph-notebook"></i> Open Stock</div>
-        <hr class="my-2">
-        <div class="drawer-item text-blue-600 font-bold admin-rep-csr-only hidden" onclick="switchView('request'); toggleMenu();"><i class="ph-bold ph-chat-circle-text"></i> Requests</div>
-        <div class="drawer-item text-indigo-600 font-bold admin-rep-csr-only hidden" onclick="switchView('reserves'); toggleMenu();"><i class="ph-bold ph-bookmark-simple"></i> Reserves</div>
-        <div class="drawer-item text-purple-600 font-bold admin-csr-only hidden" onclick="switchView('sales-office'); toggleMenu();"><i class="ph-bold ph-briefcase"></i> Sales Office</div>
-        <div class="drawer-item text-emerald-600 font-bold admin-only hidden" onclick="switchView('reports'); toggleMenu();"><i class="ph-bold ph-chart-bar"></i> Reports</div>
-        <div class="drawer-item text-red-600 font-bold dylan-only hidden" onclick="switchView('low-stock'); toggleMenu();"><i class="ph-bold ph-trend-down"></i> Low Stock List</div>
-        <div class="drawer-item text-yellow-600 font-bold admin-only hidden" onclick="switchView('review'); toggleMenu();"><i class="ph-bold ph-warning-circle"></i> Manager Review</div>
-        <hr class="my-3 border-gray-200">
-        <div class="drawer-item text-red-600 bg-red-50 font-bold justify-center rounded-lg mx-4 mt-2 mb-8" onclick="performLogout()"><i class="ph-bold ph-sign-out text-xl"></i> Log Out</div>
+        <div class="drawer-item" onclick="switchView('home'); toggleMenu();"><i class="ph-bold ph-house"></i> Home</div><div class="drawer-item text-green-600 font-bold" onclick="fetchBackgroundData(); toggleMenu();"><i class="ph-bold ph-arrows-clockwise"></i> Force Data Sync</div><hr class="my-2">
+        <div class="drawer-item" onclick="switchView('drive'); toggleMenu();"><i class="ph-bold ph-car"></i> Drive Mode</div><div class="drawer-item rep-hidden csr-hidden" onclick="switchView('tasks'); toggleMenu();"><i class="ph-bold ph-clipboard-text"></i> My Tasks</div><div class="drawer-item text-orange-600 font-bold" onclick="switchView('docks'); toggleMenu();"><i class="ph-bold ph-truck"></i> Docks</div><div class="drawer-item text-teal-600 font-bold" onclick="switchView('av'); toggleMenu();"><i class="ph-bold ph-notebook"></i> Open Stock</div><hr class="my-2">
+        <div class="drawer-item text-blue-600 font-bold admin-rep-csr-only hidden" onclick="switchView('request'); toggleMenu();"><i class="ph-bold ph-chat-circle-text"></i> Requests</div><div class="drawer-item text-indigo-600 font-bold admin-rep-csr-only hidden" onclick="switchView('reserves'); toggleMenu();"><i class="ph-bold ph-bookmark-simple"></i> Reserves</div><div class="drawer-item text-purple-600 font-bold admin-csr-only hidden" onclick="switchView('sales-office'); toggleMenu();"><i class="ph-bold ph-briefcase"></i> Sales Office</div><div class="drawer-item text-emerald-600 font-bold admin-only hidden" onclick="switchView('reports'); toggleMenu();"><i class="ph-bold ph-chart-bar"></i> Reports</div><div class="drawer-item text-red-600 font-bold dylan-only hidden" onclick="switchView('low-stock'); toggleMenu();"><i class="ph-bold ph-trend-down"></i> Low Stock List</div><div class="drawer-item text-yellow-600 font-bold admin-only hidden" onclick="switchView('review'); toggleMenu();"><i class="ph-bold ph-warning-circle"></i> Manager Review</div>
+        <hr class="my-3 border-gray-200"><div class="drawer-item text-red-600 bg-red-50 font-bold justify-center rounded-lg mx-4 mt-2 mb-8" onclick="performLogout()"><i class="ph-bold ph-sign-out text-xl"></i> Log Out</div>
     </div>
-    
     <div id="main-scroll-area" class="flex-grow overflow-y-auto p-4 pb-40 relative">
         <div id="view-wrapper" style="position:relative; z-index:20;">
-            
             <div id="view-home" class="hidden">
-                <div class="bg-[#007a4d] text-white p-6 rounded-2xl mb-6 shadow-lg flex flex-col items-center text-center relative overflow-hidden">
-                    <div class="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-white opacity-5 rounded-full pointer-events-none"></div>
-                    <div class="absolute bottom-0 left-0 -mb-10 -ml-10 w-32 h-32 bg-black opacity-10 rounded-full pointer-events-none"></div>
-                    <h1 class="text-2xl font-black tracking-tight mb-1 z-10 relative mt-4">GNC 003</h1>
-                    <p class="text-green-100 text-[10px] font-bold mb-5 uppercase tracking-[0.2em] z-10 relative">Dashboard V2</p>
-                    <div class="flex flex-col items-center pt-4 border-t border-white/20 w-full mt-1 z-10 relative">
-                        <span class="text-[9px] font-bold text-white/70 uppercase tracking-[0.3em] mb-1">Powered By</span>
-                        <div class="text-[15px] font-black tracking-[0.2em] text-white uppercase drop-shadow-sm">Ag Metric</div>
-                    </div>
-                </div>
+                <div class="bg-[#007a4d] text-white p-6 rounded-2xl mb-6 shadow-lg flex flex-col items-center text-center relative overflow-hidden"><div class="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-white opacity-5 rounded-full pointer-events-none"></div><div class="absolute bottom-0 left-0 -mb-10 -ml-10 w-32 h-32 bg-black opacity-10 rounded-full pointer-events-none"></div><h1 class="text-2xl font-black tracking-tight mb-1 z-10 relative mt-4">GNC 500</h1><p class="text-green-100 text-[10px] font-bold mb-5 uppercase tracking-[0.2em] z-10 relative">Dashboard V2</p><div class="flex flex-col items-center pt-4 border-t border-white/20 w-full mt-1 z-10 relative"><span class="text-[9px] font-bold text-white/70 uppercase tracking-[0.3em] mb-1">Powered By</span><div class="text-[15px] font-black tracking-[0.2em] text-white uppercase drop-shadow-sm">Ag Metric</div></div></div>
                 <h2 class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3 pl-1">App Modules</h2>
                 <div class="grid grid-cols-2 gap-3 mb-8">
                     <div onclick="switchView('drive')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-car text-3xl text-blue-600"></i><span class="font-bold text-sm text-gray-800">Drive Mode</span></div>
@@ -230,37 +88,26 @@
                     <div onclick="switchView('review')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform col-span-2 cursor-pointer admin-only hidden"><i class="ph-bold ph-warning-circle text-3xl text-yellow-600"></i><span class="font-bold text-sm text-gray-800">Manager Review</span></div>
                 </div>
             </div>
-            
             <div id="view-av" class="hidden">
                 <div id="av-search-container" class="relative mb-2"><input type="text" id="av-search" class="input-field w-full pr-10 !mb-0" placeholder="Search Open Stock..." oninput="handleAVSearch()"><i id="av-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearAVSearch()"></i></div>
                 <div class="task-tabs mt-2"><div id="tab-av-open" class="task-tab active" onclick="setAVTab('open')">Open Stock</div><div id="tab-av-reserves" class="task-tab" onclick="setAVTab('reserves')">My Reserves</div></div>
                 <div id="av-crumb" class="text-xs font-bold text-[#007a4d] mb-3 mt-2 empty:hidden">Open Stock</div><div id="av-content"></div>
             </div>
-            
             <div id="view-reports" class="hidden">
                 <div id="reports-crumb" class="text-xs font-bold text-[#007a4d] mb-3">Crop Value Summary</div>
                 <div class="detail-tabs mb-4"><div class="detail-tab report-tab active border-[#007a4d] text-[#007a4d]" onclick="setReportTab('ALL')" id="rtab-ALL">Summary</div><div class="detail-tab report-tab" onclick="setReportTab('S1')" id="rtab-S1">S1</div><div class="detail-tab report-tab" onclick="setReportTab('F1')" id="rtab-F1">F1</div><div class="detail-tab report-tab" onclick="setReportTab('U1')" id="rtab-U1">U1</div><div class="detail-tab report-tab" onclick="setReportTab('U2')" id="rtab-U2">U2</div><div class="detail-tab report-tab" onclick="setReportTab('U3')" id="rtab-U3">U3</div><div class="detail-tab report-tab" onclick="setReportTab('X')" id="rtab-X">X</div><div class="detail-tab report-tab" onclick="setReportTab('Y')" id="rtab-Y">Y</div><div class="detail-tab report-tab" onclick="setReportTab('Z')" id="rtab-Z">Z</div></div><div id="reports-content"></div>
             </div>
-            
             <div id="view-request" class="hidden"><div id="request-crumb" class="text-xs font-bold text-[#007a4d] mb-3 empty:hidden"></div><div id="request-content"></div></div>
-            
             <div id="view-reserves" class="hidden"><div id="reserves-search-container" class="relative mb-2"><input type="text" id="reserves-search" class="input-field w-full pr-10 !mb-0" placeholder="Search..." oninput="handleReservesSearch()"><i id="reserves-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearReservesSearch()"></i></div><div id="reserves-crumb" class="text-xs font-bold text-[#007a4d] mb-3 mt-3 empty:hidden"></div><div id="reserves-content"></div></div>
-            
             <div id="view-docks" class="hidden"><input type="text" id="docks-search" class="input-field mb-2" placeholder="Search Plants..." oninput="handleDocksSearch()"><div id="docks-crumb" class="text-xs font-bold text-[#007a4d] mb-3">Select a Dock</div><div id="docks-content"></div></div>
-            
             <div id="view-low-stock" class="hidden"><div id="low-stock-crumb" class="text-xs font-bold text-[#007a4d] mb-3">Action Required</div><div id="low-stock-content"></div></div>
-            
             <div id="view-sales-office" class="hidden"><div class="text-xs font-bold text-[#007a4d] mb-3">Completed Sales Notes</div><div id="sales-office-content"></div></div>
-            
             <div id="view-drive" class="hidden">
                 <div id="drive-search-container" class="relative mb-2"><input type="text" id="drive-search" class="input-field w-full pr-10 !mb-0" placeholder="Search Names or Locs..." oninput="handleDriveSearch()"><i id="drive-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearDriveSearch()"></i></div>
                 <div class="flex overflow-x-auto scrollbar-none gap-2 mb-3 pb-1" id="drive-season-filters"></div><div id="drive-crumb" class="text-xs font-bold text-[#007a4d] mb-3 empty:hidden"></div><div id="drive-content"></div>
             </div>
-            
             <div id="view-tasks" class="hidden"><div id="task-crumb" class="text-xs font-bold text-[#007a4d] mb-3"></div><div id="team-selector" class="hidden mb-4 grid grid-cols-1 gap-3"></div><div id="task-tabs-container" class="task-tabs"><div id="tab-season" class="task-tab active" onclick="setTaskTab('season')">Season Notes</div><div id="tab-location" class="task-tab" onclick="setTaskTab('location')">Location Notes</div><div id="tab-endcap" class="task-tab" onclick="setTaskTab('endcap')">End Cap</div><div id="tab-flyer" class="task-tab" onclick="setTaskTab('flyer')">Flyer</div></div><div id="task-content"></div></div>
-            
             <div id="view-review" class="hidden"><div id="review-crumb" class="text-xs font-bold text-[#007a4d] mb-3"></div><div id="review-content"></div></div>
-            
             <div id="view-detail" class="hidden">
                 <div class="back-btn" onclick="goBackFromDetail()"><i class="ph-bold ph-arrow-left"></i> Back</div><h1 id="det-common" class="text-2xl font-bold text-[#007a4d]">--</h1><p id="det-size" class="text-gray-500 font-bold mb-4">--</p>
                 <div class="detail-tabs"><div class="detail-tab active" onclick="switchDetailTab('overview')" id="dtab-overview">Overview</div><div class="detail-tab hidden" onclick="switchDetailTab('season')" id="dtab-season">Season Notes</div><div class="detail-tab hidden" onclick="switchDetailTab('location')" id="dtab-location">Location Notes</div><div class="detail-tab hidden" onclick="switchDetailTab('request')" id="dtab-request">Request</div><div class="detail-tab hidden" onclick="switchDetailTab('notes')" id="dtab-notes">Notes & Actions</div><div class="detail-tab hidden" onclick="switchDetailTab('docks')" id="dtab-docks">Docks</div><div class="detail-tab hidden" onclick="switchDetailTab('flyer')" id="dtab-flyer">Flyer</div></div>
@@ -268,33 +115,30 @@
                     <div class="overview-grid"><div class="overview-card"><div class="overview-label">Location</div><div id="ov-loc" class="overview-val">--</div></div><div class="overview-card"><div class="overview-label">Qty Avail</div><div id="ov-avail" class="overview-val">--</div></div><div class="overview-card"><div class="overview-label">Item Code</div><div id="ov-item" class="overview-val">--</div></div><div class="overview-card"><div class="overview-label">Lot</div><div id="ov-lot" class="overview-val">--</div></div><div class="overview-card"><div class="overview-label">Quality Code</div><div id="ov-qual" class="overview-val">--</div></div><div class="overview-card"><div class="overview-label">Priority</div><div id="ov-prior" class="overview-val">--</div></div><div class="overview-card"><div class="overview-label">Tag Color</div><div id="ov-tag" class="overview-val">--</div></div><div class="overview-card"><div class="overview-label">Season Supply</div><div id="ov-season" class="overview-val">--</div></div></div>
                     <div id="ov-large-photo" class="mt-4 hidden mb-4"></div><div id="expand-section" class="mt-6"><div class="expand-trigger" onclick="toggleExpand()"><span>All Data</span><i class="ph-bold ph-caret-down"></i></div><div id="expand-content" class="expand-content"></div></div>
                 </div>
-                
                 <div id="det-season-content" class="hidden py-4">
                     <div id="ssn-photo-preview" class="mb-4 hidden"><p class="text-[10px] font-bold text-blue-600 mb-2 uppercase">Photos on file</p><div id="ssn-photo-list-container" class="space-y-2"></div></div>
                     <div class="grid grid-cols-2 gap-2 mb-4"><label class="bg-green-50 border-2 border-dashed border-green-500 text-green-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoUpload(this, 'ssn-')"></label><label class="bg-blue-50 border-2 border-dashed border-blue-500 text-blue-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer"><i class="ph-fill ph-image text-3xl mb-1"></i><span class="text-[10px] font-bold">LIBRARY</span><input type="file" accept="image/*" class="hidden" onchange="handlePhotoUpload(this, 'ssn-')"></label></div>
                     <div id="ssn-input-container">
                         <div class="mb-3"><label class="text-[10px] font-bold text-gray-500 uppercase">Loc Match %</label><input type="number" id="ssn-match" class="input-field !mb-1" placeholder="e.g. 40" oninput="calculateMatchQty('ssn-')"><div id="ssn-match-display" class="text-[10px] font-bold text-[#007a4d] text-right mb-2 hidden">LOC Match QTY: <span id="ssn-match-qty-val">0</span></div></div>
                         <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="ssn-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'ssn-', true)"></div><div id="ssn-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="ssn-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'ssn-', true)"></div>
-                        <div class="relative w-full mt-2 mb-2 hidden"><label class="text-[10px] font-bold text-green-700 uppercase flex justify-between"><span>Sales Note</span></label><input type="text" id="ssn-sales-desc" class="input-field border-green-500 bg-green-50 uppercase flex-grow !mb-0" placeholder="Sales Note..." onchange="saveData(false, 'ssn-', true)"></div>
+                        <div class="relative w-full mt-2 mb-2"><label class="text-[10px] font-bold text-green-700 uppercase flex justify-between"><span>Sales Note</span></label><input type="text" id="ssn-sales-desc" class="input-field border-green-500 bg-green-50 uppercase flex-grow !mb-0" placeholder="Sales Note..." onchange="saveData(false, 'ssn-', true)"></div>
                         <div class="relative w-full mt-2 mb-2"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2"><input type="text" id="ssn-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); debouncedFilterDropdown('ssn-av-note', 'ssn-av-dropdown-list')" onfocus="filterDropdown('ssn-av-note', 'ssn-av-dropdown-list')" onblur="setTimeout(()=>{document.getElementById('ssn-av-dropdown-list').classList.add('hidden'); saveData(false, 'ssn-', true);}, 200)" placeholder="TYPE AV NOTE OR SEARCH..."><button type="button" class="bg-blue-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('ssn-', 'av-note')">+ SPEC</button></div><div id="ssn-av-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div></div>
-                        <div class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="ssn-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'ssn-', true)"></div>
+                        <div><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="ssn-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'ssn-', true)"></div>
                     </div>
                     <div class="flex gap-2 mt-4"><button id="ssn-btn-save-complete" class="w-full bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform" onclick="saveData(true, 'ssn-')">MARK DONE</button></div>
                 </div>
-                
                 <div id="det-location-content" class="hidden py-4">
                     <div id="lsn-photo-preview" class="mb-4 hidden"><p class="text-[10px] font-bold text-blue-600 mb-2 uppercase">Photos on file</p><div id="lsn-photo-list-container" class="space-y-2"></div></div>
                     <div class="grid grid-cols-2 gap-2 mb-4"><label class="bg-green-50 border-2 border-dashed border-green-500 text-green-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoUpload(this, 'lsn-')"></label><label class="bg-blue-50 border-2 border-dashed border-blue-500 text-blue-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer"><i class="ph-fill ph-image text-3xl mb-1"></i><span class="text-[10px] font-bold">LIBRARY</span><input type="file" accept="image/*" class="hidden" onchange="handlePhotoUpload(this, 'lsn-')"></label></div>
                     <div id="lsn-input-container">
                         <div class="mb-3"><label class="text-[10px] font-bold text-gray-500 uppercase">Loc Match %</label><input type="number" id="lsn-match" class="input-field !mb-1" placeholder="e.g. 95" oninput="calculateMatchQty('lsn-')"><div id="lsn-match-display" class="text-[10px] font-bold text-[#007a4d] text-right mb-2 hidden">LOC Match QTY: <span id="lsn-match-qty-val">0</span></div></div>
                         <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="lsn-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'lsn-', true)"></div><div id="lsn-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="lsn-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'lsn-', true)"></div>
-                        <div class="relative w-full mt-2 mb-2 hidden"><label class="text-[10px] font-bold text-green-700 uppercase flex justify-between"><span>Sales Note</span></label><input type="text" id="lsn-sales-desc" class="input-field border-green-500 bg-green-50 uppercase flex-grow !mb-0" placeholder="Sales Note..." onchange="saveData(false, 'lsn-', true)"></div>
+                        <div class="relative w-full mt-2 mb-2"><label class="text-[10px] font-bold text-green-700 uppercase flex justify-between"><span>Sales Note</span></label><input type="text" id="lsn-sales-desc" class="input-field border-green-500 bg-green-50 uppercase flex-grow !mb-0" placeholder="Sales Note..." onchange="saveData(false, 'lsn-', true)"></div>
                         <div class="relative w-full mt-2 mb-2"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2"><input type="text" id="lsn-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); debouncedFilterDropdown('lsn-av-note', 'lsn-av-dropdown-list')" onfocus="filterDropdown('lsn-av-note', 'lsn-av-dropdown-list')" onblur="setTimeout(()=>{document.getElementById('lsn-av-dropdown-list').classList.add('hidden'); saveData(false, 'lsn-', true);}, 200)" placeholder="TYPE AV NOTE OR SEARCH..."><button type="button" class="bg-blue-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('lsn-', 'av-note')">+ SPEC</button></div><div id="lsn-av-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div></div>
-                        <div class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="lsn-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'lsn-', true)"></div>
+                        <div><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="lsn-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'lsn-', true)"></div>
                     </div>
                     <div class="flex gap-2 mt-4"><button id="lsn-btn-save-complete" class="w-full bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform" onclick="saveData(true, 'lsn-')">MARK DONE</button></div>
                 </div>
-                
                 <div id="det-notes-content" class="hidden py-4">
                     <div id="na-photo-preview" class="mb-4 hidden"><p class="text-[10px] font-bold text-blue-600 mb-2 uppercase">Photos on file</p><div id="na-photo-list-container" class="space-y-2"></div></div>
                     <div class="grid grid-cols-2 gap-2 mb-4"><label class="bg-green-50 border-2 border-dashed border-green-500 text-green-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoUpload(this, 'na-')"></label><label class="bg-blue-50 border-2 border-dashed border-blue-500 text-blue-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer"><i class="ph-fill ph-image text-3xl mb-1"></i><span class="text-[10px] font-bold">LIBRARY</span><input type="file" accept="image/*" class="hidden" onchange="handlePhotoUpload(this, 'na-')"></label></div>
@@ -307,7 +151,6 @@
                     </div>
                     <div class="flex gap-2 mt-4"><button id="na-btn-save-draft" class="w-1/3 bg-gray-200 text-gray-700 font-bold py-4 rounded-xl shadow-md" onclick="saveData(false, 'na-')">SAVE DRAFT</button><button id="na-btn-save-complete" class="w-2/3 bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform" onclick="saveData(true, 'na-')">MARK DONE</button></div>
                 </div>
-                
                 <div id="det-request-content" class="hidden py-4">
                     <div id="req-photo-preview" class="mb-4 hidden"><p class="text-[10px] font-bold text-purple-600 mb-2 uppercase">Request Photos</p><div id="req-photo-list-container" class="space-y-2"></div></div>
                     <div class="grid grid-cols-2 gap-2 mb-4"><label class="bg-purple-50 border-2 border-dashed border-purple-500 text-purple-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoUpload(this, 'req-')"></label><label class="bg-blue-50 border-2 border-dashed border-blue-500 text-blue-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer"><i class="ph-fill ph-image text-3xl mb-1"></i><span class="text-[10px] font-bold">LIBRARY</span><input type="file" accept="image/*" class="hidden" onchange="handlePhotoUpload(this, 'req-')"></label></div>
@@ -321,7 +164,6 @@
                     </div>
                     <div class="flex flex-col gap-3 mt-4"><button id="req-btn-save-draft" class="w-full bg-purple-600 text-white font-bold py-4 rounded-xl shadow-lg" onclick="saveData(false, 'req-')">SAVE REQUEST DATA</button><button class="w-full bg-orange-50 text-orange-700 border border-orange-200 font-bold py-4 rounded-xl shadow-sm flex justify-center items-center gap-2 admin-csr-only hidden" onclick="removeFromRequest()"><i class="ph-bold ph-minus-circle text-xl"></i> REMOVE FROM REQUEST (KEEP ITEM)</button></div>
                 </div>
-                
                 <div id="det-docks-content" class="hidden py-4">
                     <div id="dock-photo-preview" class="mb-4 hidden"><p class="text-[10px] font-bold text-orange-600 mb-2 uppercase">Photos on file</p><div id="dock-photo-list-container" class="space-y-2"></div></div>
                     <div class="grid grid-cols-2 gap-2 mb-4"><label class="bg-orange-50 border-2 border-dashed border-orange-500 text-orange-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoUpload(this, 'dock-')"></label><label class="bg-blue-50 border-2 border-dashed border-blue-500 text-blue-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer"><i class="ph-fill ph-image text-3xl mb-1"></i><span class="text-[10px] font-bold">LIBRARY</span><input type="file" accept="image/*" class="hidden" onchange="handlePhotoUpload(this, 'dock-')"></label></div>
@@ -331,7 +173,6 @@
                     </div>
                     <div class="flex gap-2 mt-4"><button id="dock-btn-save-draft" class="w-full bg-orange-600 text-white font-bold py-4 rounded-xl shadow-lg" onclick="saveData(false, 'dock-')">SAVE DOCK DATA</button></div>
                 </div>
-                
                 <div id="det-flyer-content" class="hidden py-4">
                     <div id="flyer-photo-preview" class="mb-4 hidden"><p class="text-[10px] font-bold text-indigo-600 mb-2 uppercase">Photos on file</p><div id="flyer-photo-list-container" class="space-y-2"></div></div>
                     <div class="grid grid-cols-2 gap-2 mb-4"><label class="bg-indigo-50 border-2 border-dashed border-indigo-500 text-indigo-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoUpload(this, 'flyer-')"></label><label class="bg-blue-50 border-2 border-dashed border-blue-500 text-blue-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer"><i class="ph-fill ph-image text-3xl mb-1"></i><span class="text-[10px] font-bold">LIBRARY</span><input type="file" accept="image/*" class="hidden" onchange="handlePhotoUpload(this, 'flyer-')"></label></div>
@@ -344,7 +185,6 @@
                     </div>
                     <div class="flex gap-2 mt-4"><button id="flyer-btn-save-complete" class="w-full bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform" onclick="saveData(true, 'flyer-')">MARK DONE</button></div>
                 </div>
-                
             </div>
         </div> 
     </div>
@@ -413,7 +253,7 @@ window.onload=async function(){if('serviceWorker' in navigator){navigator.servic
 
 function getDirectImageUrl(url){if(!url)return"";let match=url.match(/id=([a-zA-Z0-9_-]+)/);if(!match)match=url.match(/\/d\/([a-zA-Z0-9_-]+)/);if(match&&match[1]){return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w100`}return url}
 window.addEventListener('DOMContentLoaded',()=>{if(localStorage.getItem('gnc_bio_enabled')==='true'&&window.PublicKeyCredential){const bioBtn=document.getElementById('btn-fingerprint');if(bioBtn)bioBtn.classList.remove('hidden')}});
-async function promptToEnableBiometrics(user,pin){if(!confirm("Would you like to enable Fingerprint/FaceID login for future use?"))return;try{const publicKey={challenge:new Uint8Array(32),rp:{name:"GNC 003"},user:{id:new Uint8Array(16),name:user,displayName:user},pubKeyCredParams:[{type:"public-key",alg:-7}],authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required"},timeout:60000};await navigator.credentials.create({publicKey});localStorage.setItem('gnc_bio_enabled','true');localStorage.setItem('gnc_bio_user',user);localStorage.setItem('gnc_bio_pin',pin);showToast("Success","Fingerprint login enabled!")}catch(err){}}
+async function promptToEnableBiometrics(user,pin){if(!confirm("Would you like to enable Fingerprint/FaceID login for future use?"))return;try{const publicKey={challenge:new Uint8Array(32),rp:{name:"GNC 500"},user:{id:new Uint8Array(16),name:user,displayName:user},pubKeyCredParams:[{type:"public-key",alg:-7}],authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required"},timeout:60000};await navigator.credentials.create({publicKey});localStorage.setItem('gnc_bio_enabled','true');localStorage.setItem('gnc_bio_user',user);localStorage.setItem('gnc_bio_pin',pin);showToast("Success","Fingerprint login enabled!")}catch(err){}}
 async function loginWithBiometric(){try{const publicKey={challenge:new Uint8Array(32),timeout:60000,userVerification:"required"};await navigator.credentials.get({publicKey});const savedUser=localStorage.getItem('gnc_bio_user');const savedPin=localStorage.getItem('gnc_bio_pin');if(savedUser&&savedPin){document.getElementById('username-input').value=savedUser;document.getElementById('pin-code').value=savedPin;handleLogin(true)}else{showToast("Error","Credentials lost.",true)}}catch(err){showToast("Error","Fingerprint cancelled.",true)}}
 
 function setRepPermutations(user){let parts=user.split('_');if(parts.length>=2){let first=parts[0];let last=parts[parts.length-1];repPermutations=[`${first} ${last}`.toLowerCase(),`${last}, ${first}`.toLowerCase(),`${last},${first}`.toLowerCase()]}else{repPermutations=[user.toLowerCase()]}}
@@ -479,8 +319,10 @@ async function fetchBackgroundData(){
             return resObj.value.map((item,idx)=>{
                 let obj={SOURCE_TABLE:sourceTable};for(let k in item){if(item[k]!==null)obj[k.toUpperCase()]=item[k]}
                 if(!obj.UNIQUE_ID)obj.UNIQUE_ID=obj.ID||`${sourceTable}_${idx}`; 
+                
                 obj.COMMONNAME=obj.COMMONNAME||obj.commonname||obj.description||obj.plant_name||"Unknown";
                 obj.CONTSIZE=obj.CONTSIZE||obj.contsize||obj.itemspec||obj.printedcontainercode||obj.size||obj.container||"-";
+                
                 obj.LOCATIONCODE=obj.LOCATIONCODE||obj.LOCATION||"No Loc";obj.PTRAVAILABLE=obj.PTRAVAILABLE||0;
                 obj.SAVED_PHOTO_LINK=obj.PHOTO_LINK||obj.PHOTOLINK||"";obj.SAVED_PHOTO_NAME=obj.PHOTO_NAME||obj.PHOTONAME||"";obj.SEASONSUPPLY=obj.SEASON_SUPPLY||obj.SEASONSUPPLY||0;obj.FIELDTAGCOLOR=obj.FIELD_TAG_COLOR||obj.FIELDTAGCOLOR||"-"; 
                 obj._search=`${obj.COMMONNAME||''} ${obj.LOCATIONCODE||''} ${obj.ITEMCODE||''} ${obj.CONTSIZE||''} ${obj.CUSTOMERNAME||''} ${obj.SALESREPNAME||''}`.toLowerCase();return obj;
@@ -497,6 +339,7 @@ async function fetchBackgroundData(){
             seasonIds:(results[6].status==='fulfilled'?results[6].value:[]).map(i=>i.unique_id||i.UNIQUE_ID||i['UNIQUE ID']).filter(Boolean),
             salesOfficeData:formatArr(results[7],'v2_sales_office') 
         };
+        
         setTimeout(()=>{processAndLoadData(resObj);saveToCache(resObj)},100);
     }catch(err){if(!cachedRes)showToast("Sync Error","Could not download data. Check connection.",true)}
 }
@@ -816,24 +659,10 @@ function openDetail(uniqueId, sourceView) {
     standardPrefixes.forEach(p => { 
         let matchEl = document.getElementById(p + 'match'); if(matchEl) matchEl.value = activeItem.MATCH || activeItem.MATCHPCT || ""; 
         let specEl = document.getElementById(p + 'spec'); if(specEl) specEl.value = activeItem.SPEC || ""; 
-        
-        let pickContainer = document.getElementById(p + 'pick') ? document.getElementById(p + 'pick').parentElement : null;
-        let salesContainer = document.getElementById(p + 'sales-desc') ? document.getElementById(p + 'sales-desc').parentElement.parentElement : null;
-        
-        if (sourceView === 'tasks' && (p === 'ssn-' || p === 'lsn-')) {
-            if (pickContainer) pickContainer.classList.add('hidden');
-            if (salesContainer) salesContainer.classList.add('hidden');
-        } else {
-            if (pickContainer) pickContainer.classList.remove('hidden');
-            if (salesContainer) salesContainer.classList.remove('hidden');
-            let pickEl = document.getElementById(p + 'pick'); if(pickEl) pickEl.value = activeItem.PIC_NOTE || activeItem.PICKNOTE || activeItem.PICK || ""; 
-            let descEl = document.getElementById(p + 'sales-desc');
-            if(descEl) descEl.value = activeItem.SALES_NOTE || activeItem.SALESNOTE || ""; 
-        }
-
+        let pickEl = document.getElementById(p + 'pick'); if(pickEl) pickEl.value = activeItem.PIC_NOTE || activeItem.PICKNOTE || activeItem.PICK || ""; 
+        let descEl = document.getElementById(p + 'sales-desc'); if(descEl) descEl.value = activeItem.SALES_NOTE || activeItem.SALESNOTE || ""; 
         let avEl = document.getElementById(p + 'av-note'); if(avEl) avEl.value = activeItem.AV_NOTE || ""; 
         let calEl = document.getElementById(p + 'caliper'); if(calEl) calEl.value = activeItem.CALIPER || ""; 
-        
         calculateMatchQty(p);
     });
     
@@ -944,30 +773,30 @@ function saveData(isComplete = false, prefix, isSilentAutoSave = false, specific
 
         const payload = {};
         if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-') { 
-            payload.match = setVal(itemToSave.MATCH); 
-            payload.spec = setVal(itemToSave.SPEC); 
-            payload.caliper = setVal(itemToSave.CALIPER); 
-            payload.pic_note = setVal(itemToSave.PICK); 
-            payload.sales_note = setVal(itemToSave.SALES_NOTE || itemToSave._NEW_SALES_NOTE); 
-            payload.av_note = setVal(itemToSave.AV_NOTE);
+            payload.match = (itemToSave.MATCH === "" || itemToSave.MATCH == null) ? null : parseFloat(itemToSave.MATCH); 
+            payload.spec = itemToSave.SPEC || ""; 
+            payload.caliper = itemToSave.CALIPER || ""; 
+            payload.pic_note = itemToSave.PICK || ""; 
+            payload.sales_note = itemToSave.SALES_NOTE || itemToSave._NEW_SALES_NOTE || ""; 
+            payload.av_note = itemToSave.AV_NOTE || "";
         } else if (prefix === 'req-') { 
-            payload.req_match = setVal(itemToSave.REQ_MATCH); 
-            payload.req_spec = setVal(itemToSave.REQ_SPEC); 
-            payload.req_caliper = setVal(itemToSave.REQ_CALIPER); 
-            payload.req_pic_note = setVal(itemToSave.REQ_PICK); 
-            payload.req_sales_note = setVal(itemToSave.REQ_SALES_NOTE); 
-            payload.req_comments = setVal(itemToSave.REQ_COMMENTS); 
-            payload.av_note = setVal(itemToSave.AV_NOTE);
+            payload.req_match = (itemToSave.REQ_MATCH === "" || itemToSave.REQ_MATCH == null) ? null : parseFloat(itemToSave.REQ_MATCH); 
+            payload.req_spec = itemToSave.REQ_SPEC || ""; 
+            payload.req_caliper = itemToSave.REQ_CALIPER || ""; 
+            payload.req_pic_note = itemToSave.REQ_PICK || ""; 
+            payload.req_sales_note = itemToSave.REQ_SALES_NOTE || ""; 
+            payload.req_comments = itemToSave.REQ_COMMENTS || ""; 
+            payload.av_note = itemToSave.AV_NOTE || "";
         } else if (prefix === 'dock-') { 
-            payload.dock_spec = setVal(itemToSave.DOCK_SPEC); 
-            payload.dock_caliper = setVal(itemToSave.DOCK_CALIPER); 
-            payload.dock_note = setVal(itemToSave.DOCK_NOTE); 
+            payload.dock_spec = itemToSave.DOCK_SPEC || ""; 
+            payload.dock_caliper = itemToSave.DOCK_CALIPER || ""; 
+            payload.dock_note = itemToSave.DOCK_NOTE || ""; 
         } else if (prefix === 'flyer-') {
-            payload.flyer_cat = setVal(itemToSave.FLYER_CAT); 
-            payload.flyer_title = setVal(itemToSave.FLYER_TITLE); 
-            payload.flyer_inst = setVal(itemToSave.FLYER_INST); 
-            payload.flyer_assigned = setVal(itemToSave.FLYER_ASSIGNED); 
-            payload.flyer_notes = setVal(itemToSave.FLYER_NOTES);
+            payload.flyer_cat = itemToSave.FLYER_CAT || ""; 
+            payload.flyer_title = itemToSave.FLYER_TITLE || ""; 
+            payload.flyer_inst = itemToSave.FLYER_INST || ""; 
+            payload.flyer_assigned = itemToSave.FLYER_ASSIGNED || ""; 
+            payload.flyer_notes = itemToSave.FLYER_NOTES || "";
         }
 
         if (isComplete && (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-')) {
