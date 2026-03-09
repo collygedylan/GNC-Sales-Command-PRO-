@@ -97,7 +97,7 @@
             </div>
             <div id="loading-spinner" class="hidden mt-6 flex flex-col items-center">
                 <div class="spinner"></div>
-                <div id="loading-text" class="text-white font-bold text-sm mt-3 text-center">Authenticating...</div>
+                <div id="loading-text" class="text-gray-500 font-bold text-sm mt-3 text-center">Syncing V2 Database...</div>
             </div>
         </div>
     </div>
@@ -214,6 +214,7 @@
                     <div class="text-[10px] opacity-80 leading-tight">DDC GNC V2</div>
                 </div>
             </div>
+            <div class="bg-white/20 p-2 rounded-lg cursor-pointer" onclick="fetchBackgroundData()"><i class="ph-bold ph-arrows-clockwise text-white"></i></div>
         </header>
 
         <div id="drawer-overlay" onclick="toggleMenu()"></div>
@@ -526,7 +527,6 @@
             <div onclick="switchView('docks')"><i class="ph-bold ph-truck text-2xl text-gray-400"></i></div>
         </nav>
     </div>
-
     <script>
         const SUPABASE_URL = "https://gmkmsjvzzujjxfmcpyud.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdta21zanZ6enVqanhmbWNweXVkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjYwMTE1MywiZXhwIjoyMDg4MTc3MTUzfQ.E6UDlfJrdftcyPFKPcyCDfuLw5TGfqoVVoNx9N139As";
@@ -536,20 +536,6 @@
         
         let approvedNotesList = ["Ready to ship", "Needs weeded", "Needs pruned", "Yellowing leaves", "Too small", "Hold for next season", "Poor structure", "Needs spacing"];
         let salesNotesDict = {}; 
-
-        async function fetchApprovedNotes() {
-            try {
-                let data = await supabaseFetch('v2_approved_notes', 'GET', null, 'select=commonname,salesnotes');
-                if (data && data.length > 0) {
-                    salesNotesDict = {}; let generalNotes = [];
-                    data.forEach(item => {
-                        let cName = String(item.commonname || "").toUpperCase().trim(); let sNote = String(item.salesnotes || "").trim();
-                        if (sNote) { if (cName && cName !== "GENERAL" && cName !== "ALL") { if (!salesNotesDict[cName]) salesNotesDict[cName] = []; salesNotesDict[cName].push(sNote); } else { generalNotes.push(sNote); } }
-                    });
-                    if (generalNotes.length > 0) { approvedNotesList = generalNotes; }
-                }
-            } catch(e) {}
-        }
 
         function debounce(func, wait) { let timeout; return function(...args) { clearTimeout(timeout); timeout = setTimeout(() => func.apply(this, args), wait); }; }
 
@@ -571,7 +557,7 @@
             }
         }
 
-        async function supabaseFetch(table, method = 'GET', body = null, query = '') {
+        async function supabaseFetch(table, method = 'GET', body = null, query = 'select=*') {
             startGlobalProgress();
             try {
                 let allData = []; let offset = 0; const limit = 1000; let hasMore = true;
@@ -580,7 +566,7 @@
                         const url = `${SUPABASE_URL}/rest/v1/${table}?${query}&limit=${limit}&offset=${offset}`;
                         const options = { method: 'GET', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' } };
                         const response = await fetch(url, options);
-                        if (!response.ok) break;
+                        if (!response.ok) throw new Error(`Supabase Error: ${response.status}`);
                         const text = await response.text(); const data = text ? JSON.parse(text) : [];
                         if (Array.isArray(data) && data.length > 0) { allData = allData.concat(data); offset += limit; if (data.length < limit) hasMore = false; } else { hasMore = false; }
                     } return allData;
@@ -730,6 +716,7 @@
         async function fetchBackgroundData() {
             const cachedRes = await loadFromCache(); if (cachedRes && fullInventory.length === 0) { setTimeout(() => { processAndLoadData(cachedRes); }, 50); } 
             try {
+                // 🔥 BULLETPROOF FETCH ENGINE (Using Promise.allSettled)
                 const results = await Promise.allSettled([
                     supabaseFetch('v2_master_inventory', 'GET', null, 'select=*'), 
                     supabaseFetch('v2_view_low_stock', 'GET', null, 'select=*'), 
@@ -741,24 +728,38 @@
                     supabaseFetch('v2_sales_office', 'GET', null, 'select=*') 
                 ]);
                 
-                const formatArr = (arr, sourceTable) => {
-                    if(!arr || !Array.isArray(arr)) return [];
-                    return arr.map((item, idx) => {
-                        let obj = { SOURCE_TABLE: sourceTable }; for (let k in item) { if(item[k] !== null) obj[k.toUpperCase()] = item[k]; }
-                        if(!obj.UNIQUE_ID) obj.UNIQUE_ID = obj.ID || `${sourceTable}_${idx}`; obj.SAVED_PHOTO_LINK = obj.PHOTO_LINK || obj.PHOTOLINK || ""; obj.SAVED_PHOTO_NAME = obj.PHOTO_NAME || obj.PHOTONAME || ""; obj.SEASONSUPPLY = obj.SEASON_SUPPLY || obj.SEASONSUPPLY || 0; obj.FIELDTAGCOLOR = obj.FIELD_TAG_COLOR || obj.FIELDTAGCOLOR || "-"; obj.PTRAVAILABLE = obj.PTRAVAILABLE || 0; obj._search = `${obj.COMMONNAME||''} ${obj.LOCATIONCODE||''} ${obj.ITEMCODE||''} ${obj.CONTSIZE||''} ${obj.CUSTOMERNAME||''} ${obj.SALESREPNAME||''}`.toLowerCase(); return obj;
+                // 🔥 CASE-BLIND FORMATTER
+                const formatArr = (resObj, sourceTable) => {
+                    if(resObj.status !== 'fulfilled' || !Array.isArray(resObj.value)) return [];
+                    return resObj.value.map((item, idx) => {
+                        let obj = { SOURCE_TABLE: sourceTable }; 
+                        for (let k in item) { if(item[k] !== null) obj[k.toUpperCase()] = item[k]; }
+                        if(!obj.UNIQUE_ID) obj.UNIQUE_ID = obj.ID || `${sourceTable}_${idx}`; 
+                        
+                        obj.COMMONNAME = obj.COMMONNAME || obj.PLANT_NAME || obj.DESCRIPTION || "Unknown";
+                        obj.CONTSIZE = obj.CONTSIZE || obj.SIZE || obj.CONTAINER || "-";
+                        obj.LOCATIONCODE = obj.LOCATIONCODE || obj.LOCATION || "No Loc";
+                        obj.PTRAVAILABLE = obj.PTRAVAILABLE || 0;
+                        
+                        obj.SAVED_PHOTO_LINK = obj.PHOTO_LINK || obj.PHOTOLINK || ""; 
+                        obj.SAVED_PHOTO_NAME = obj.PHOTO_NAME || obj.PHOTONAME || ""; 
+                        obj.SEASONSUPPLY = obj.SEASON_SUPPLY || obj.SEASONSUPPLY || 0; 
+                        obj.FIELDTAGCOLOR = obj.FIELD_TAG_COLOR || obj.FIELDTAGCOLOR || "-"; 
+                        obj._search = `${obj.COMMONNAME||''} ${obj.LOCATIONCODE||''} ${obj.ITEMCODE||''} ${obj.CONTSIZE||''} ${obj.CUSTOMERNAME||''} ${obj.SALESREPNAME||''}`.toLowerCase(); 
+                        return obj;
                     });
                 };
                 
                 let resObj = {
                     status: 'success', 
-                    data: formatArr(results[0].value, 'v2_master_inventory'), 
-                    lowStock: formatArr(results[1].value, 'v2_master_inventory'), 
-                    requestsData: formatArr(results[2].value, 'v2_active_request'), 
-                    reservesData: formatArr(results[3].value, 'v2_reserves'), 
-                    socData: formatArr(results[4].value, 'v2_soc_master'), 
-                    managerReviewData: formatArr(results[5].value, 'v2_master_inventory'), 
-                    seasonIds: (results[6].value || []).map(i => i.unique_id || i.UNIQUE_ID || i['UNIQUE ID']).filter(Boolean), 
-                    salesOfficeData: formatArr(results[7].value, 'v2_sales_office') 
+                    data: formatArr(results[0], 'v2_master_inventory'), 
+                    lowStock: formatArr(results[1], 'v2_master_inventory'), 
+                    requestsData: formatArr(results[2], 'v2_active_request'), 
+                    reservesData: formatArr(results[3], 'v2_reserves'), 
+                    socData: formatArr(results[4], 'v2_soc_master'), 
+                    managerReviewData: formatArr(results[5], 'v2_master_inventory'), 
+                    seasonIds: (results[6].status === 'fulfilled' ? results[6].value : []).map(i => i.unique_id || i.UNIQUE_ID || i['UNIQUE ID']).filter(Boolean), 
+                    salesOfficeData: formatArr(results[7], 'v2_sales_office') 
                 };
                 setTimeout(() => { processAndLoadData(resObj); saveToCache(resObj); }, 100);
             } catch (err) { if (!cachedRes) showToast("Sync Error", "Could not download data. Check connection.", true); }
@@ -787,8 +788,7 @@
                 if (masterItem) { item.SAVED_PHOTO_LINK = masterItem.SAVED_PHOTO_LINK || item.SAVED_PHOTO_LINK; item.SAVED_PHOTO_NAME = masterItem.SAVED_PHOTO_NAME || item.SAVED_PHOTO_NAME; item.DOCK_PHOTO_LINK = masterItem.DOCK_PHOTO_LINK || item.DOCK_PHOTO_LINK; item.AV_NOTE = masterItem.AV_NOTE; item.SALES_NOTE = masterItem.SALES_NOTE; item.DOCK_NOTE = masterItem.DOCK_NOTE; item.MASTER_UNIQUE_ID = masterItem.UNIQUE_ID; }
             });
             
-            reservesInventory = res.reservesData; 
-            reservesInventory = reservesInventory.map((item, idx) => {
+            reservesInventory = res.reservesData.map((item, idx) => {
                 item.DOM_ID = 'res_' + idx; item.UNIQUE_ID = item.UNIQUE_ID || 'res_uid_' + idx; let resCode = String(item.ITEMCODE || item.ITEM || "").trim().toUpperCase(); let masterItem = map1.get(resCode);
                 item.COMMONNAME = masterItem ? masterItem.COMMONNAME : (item.COMMONNAME || item['PLANT_NAME'] || item.DESCRIPTION || item.DESC || 'Unknown Plant'); item.CONTSIZE = masterItem ? masterItem.CONTSIZE : (item.CONTSIZE || item.SIZE || item.CONTAINER || '-'); item.CUSTOMERNAME = item.CUSTOMERNAME || item.CUSTOMER || 'Unknown Customer'; item.CONSIGNEENAME = item.CONSIGNEENAME || item.CONSIGNEE || ''; item.SALESREPNAME = item.SALESREPNAME || item.SALESREP || item['SALES_REP'] || 'Unknown Rep';
                 if (masterItem) { item.LOCATIONCODE = masterItem.LOCATIONCODE; item.PTRAVAILABLE = masterItem.PTRAVAILABLE; item.SEASONSUPPLY = masterItem.SEASONSUPPLY; item.PRIORITY = masterItem.PRIORITY; item.QUALITYCODE = masterItem.QUALITYCODE; item.FIELDTAGCOLOR = masterItem.FIELDTAGCOLOR; item.LOTCODE = masterItem.LOTCODE; item.AV_NOTE = masterItem.AV_NOTE; item.SALES_NOTE = masterItem.SALES_NOTE; item.LOC_MATCH_QTY = masterItem.LOC_MATCH_QTY; item.INITIAL_PTR = masterItem.INITIAL_PTR; item.SAVED_PHOTO_LINK = masterItem.SAVED_PHOTO_LINK; item.SAVED_PHOTO_NAME = masterItem.SAVED_PHOTO_NAME; item.MASTER_UNIQUE_ID = masterItem.UNIQUE_ID; } 
@@ -812,10 +812,8 @@
         }
 
         function toggleMenu() { document.getElementById('side-drawer').classList.toggle('open'); document.getElementById('drawer-overlay').classList.toggle('open'); }
-        function showToast(title, message, isAlert = false) { const toast = document.getElementById('toast-notification'); toast.style.background = isAlert ? '#ef4444' : '#16a34a'; toast.innerHTML = `<div class="font-bold text-sm">${title}</div><div class="text-xs">${message}</div>`; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 3000); }
-
         function switchView(viewId) {
-            ['view-home','view-drive','view-tasks','view-review','view-reports','view-sales-office','view-low-stock','view-detail','view-docks','view-request','view-reserves', 'view-av'].forEach(id => { document.getElementById(id).classList.add('hidden'); });
+            ['view-home','view-drive','view-tasks','view-review','view-reports','view-sales-office','view-low-stock','view-detail','view-docks','view-request','view-reserves', 'view-av'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); });
             document.getElementById('view-' + viewId).classList.remove('hidden');
             requestAnimationFrame(() => {
                 setTimeout(() => {
@@ -837,7 +835,6 @@
         }
 
         function setTaskTab(tab) { activeTaskTab = tab; document.getElementById('tab-season').classList.toggle('active', tab === 'season'); document.getElementById('tab-location').classList.toggle('active', tab === 'location'); document.getElementById('tab-endcap').classList.toggle('active', tab === 'endcap'); document.getElementById('tab-flyer').classList.toggle('active', tab === 'flyer'); taskViewLevel = 0; renderTasks(); }
-        
         function setAVTab(tab) { activeAVTab = tab; avResLevel = 0; selectedAvResName = null; selectedAvResSize = null; document.getElementById('tab-av-open').classList.toggle('active', tab === 'open'); document.getElementById('tab-av-reserves').classList.toggle('active', tab === 'reserves'); renderAV(); }
 
         function selectRequestCategory(cat) { requestFilterMode = cat; requestViewLevel = 1; renderRequest(); } function selectRequestRep(rep) { selectedReqRep = rep; requestViewLevel = 2; renderRequest(); } function selectRepStatus(status) { selectedReqRepStatus = status; requestViewLevel = 3; renderRequest(); } function selectRequestFolder(folderId) { selectedReqFolder = folderId; requestViewLevel = 4; renderRequest(); } function clearReservesSearch() { document.getElementById('reserves-search').value = ""; document.getElementById('reserves-search-clear').classList.add('hidden'); renderReserves(); }
@@ -1571,7 +1568,7 @@
             if (!activeItem) activeItem = lowStockInventory.find(i => i.UNIQUE_ID === uniqueId); if (!activeItem) activeItem = managerReviewInventory.find(i => i.UNIQUE_ID === uniqueId); if (!activeItem) activeItem = reservesInventory.find(i => i.UNIQUE_ID === uniqueId); if (!activeItem) activeItem = requestsInventory.find(i => i.UNIQUE_ID === uniqueId);
             if (!activeItem) return;
 
-            ['view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-docks','view-request','view-reserves', 'view-av'].forEach(v => document.getElementById(v).classList.add('hidden')); document.getElementById('view-detail').classList.remove('hidden');
+            ['view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-docks','view-request','view-reserves', 'view-av'].forEach(v => {let el = document.getElementById(v); if(el) el.classList.add('hidden');}); document.getElementById('view-detail').classList.remove('hidden');
 
             activeItem.SAVED_PHOTO_LINK = activeItem['PHOTO_LINK'] || activeItem.PHOTOLINK || activeItem.SAVED_PHOTO_LINK || ""; activeItem.SAVED_PHOTO_NAME = activeItem['PHOTO_NAME'] || activeItem.PHOTONAME || activeItem.SAVED_PHOTO_NAME || "";
             document.getElementById('det-common').innerText = activeItem.COMMONNAME || "--"; document.getElementById('det-size').innerText = activeItem.CONTSIZE || "--"; document.getElementById('ov-loc').innerText = activeItem.LOCATIONCODE || "--"; document.getElementById('ov-avail').innerText = activeItem.PTRAVAILABLE || "0"; document.getElementById('ov-item').innerText = activeItem.ITEMCODE || "--"; document.getElementById('ov-lot').innerText = activeItem.LOTCODE || "--"; document.getElementById('ov-qual').innerText = activeItem.QUALITYCODE || "--"; document.getElementById('ov-tag').innerText = activeItem.FIELDTAGCOLOR || activeItem['FIELD_TAG_COLOR'] || "--"; document.getElementById('ov-season').innerText = activeItem.SEASONSUPPLY || "--"; document.getElementById('ov-prior').innerText = activeItem.PRIORITY || "--";
@@ -1596,12 +1593,23 @@
                 calculateMatchQty(p);
             });
             
-            document.getElementById('req-match').value = activeItem.REQ_MATCH || ""; document.getElementById('req-spec').value = activeItem.REQ_SPEC || ""; document.getElementById('req-pick').value = activeItem.REQ_PICK || ""; document.getElementById('req-sales-desc').value = activeItem.REQ_SALES_NOTE || ""; document.getElementById('req-comments').value = activeItem.REQ_COMMENTS || ""; document.getElementById('req-caliper').value = activeItem.REQ_CALIPER || "";
+            let rMatch = document.getElementById('req-match'); if(rMatch) rMatch.value = activeItem.REQ_MATCH || ""; 
+            let rSpec = document.getElementById('req-spec'); if(rSpec) rSpec.value = activeItem.REQ_SPEC || ""; 
+            let rPick = document.getElementById('req-pick'); if(rPick) rPick.value = activeItem.REQ_PICK || ""; 
+            let rSales = document.getElementById('req-sales-desc'); if(rSales) rSales.value = activeItem.REQ_SALES_NOTE || ""; 
+            let rCom = document.getElementById('req-comments'); if(rCom) rCom.value = activeItem.REQ_COMMENTS || ""; 
+            let rCal = document.getElementById('req-caliper'); if(rCal) rCal.value = activeItem.REQ_CALIPER || "";
             if (document.getElementById('req-av-note')) document.getElementById('req-av-note').value = activeItem.AV_NOTE || "";
             
-            document.getElementById('dock-spec').value = activeItem.DOCK_SPEC || activeItem.SPEC || ""; document.getElementById('dock-caliper').value = activeItem.DOCK_CALIPER || activeItem.CALIPER || ""; document.getElementById('dock-sales-desc').value = activeItem.DOCK_NOTE || "";
+            let dSpec = document.getElementById('dock-spec'); if(dSpec) dSpec.value = activeItem.DOCK_SPEC || activeItem.SPEC || ""; 
+            let dCal = document.getElementById('dock-caliper'); if(dCal) dCal.value = activeItem.DOCK_CALIPER || activeItem.CALIPER || ""; 
+            let dSales = document.getElementById('dock-sales-desc'); if(dSales) dSales.value = activeItem.DOCK_NOTE || "";
 
-            document.getElementById('flyer-cat').value = activeItem.FLYER_CAT || ""; document.getElementById('flyer-title').value = activeItem.FLYER_TITLE || ""; document.getElementById('flyer-inst').value = activeItem.FLYER_INST || ""; document.getElementById('flyer-assigned').value = activeItem.FLYER_ASSIGNED || ""; document.getElementById('flyer-notes').value = activeItem.FLYER_NOTES || "";
+            let fCat = document.getElementById('flyer-cat'); if(fCat) fCat.value = activeItem.FLYER_CAT || ""; 
+            let fTit = document.getElementById('flyer-title'); if(fTit) fTit.value = activeItem.FLYER_TITLE || ""; 
+            let fInst = document.getElementById('flyer-inst'); if(fInst) fInst.value = activeItem.FLYER_INST || ""; 
+            let fAss = document.getElementById('flyer-assigned'); if(fAss) fAss.value = activeItem.FLYER_ASSIGNED || ""; 
+            let fNote = document.getElementById('flyer-notes'); if(fNote) fNote.value = activeItem.FLYER_NOTES || "";
 
             const isTree = activeItem.PLANTGROUPCODE && String(activeItem.PLANTGROUPCODE).includes('330_TREES');
             const caliperSizes = ["#7", "#10", "#15", "#25", "#45"];
@@ -1699,7 +1707,7 @@
         function showTemporaryPhotoPreview(prefix, dataUrl) {
             let div = document.getElementById(prefix + 'photo-preview'); let list = document.getElementById(prefix + 'photo-list-container');
             if (div && list) { div.classList.remove('hidden'); let html = `<div class="flex items-center gap-3 p-2 bg-gray-50 rounded-lg border border-gray-200 shadow-sm opacity-75"><div class="w-10 h-10 rounded overflow-hidden relative border border-gray-300 flex-shrink-0"><img src="${dataUrl}" class="w-full h-full object-cover"><div class="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center"><div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div></div></div><div class="flex-grow min-w-0"><div class="text-xs font-bold text-gray-700 truncate">Uploading to Server...</div><div class="text-[10px] text-gray-500">Working in background</div></div></div>`; list.insertAdjacentHTML('afterbegin', html); }
-            }
+        }
 
         async function uploadPhotoToDrive(base64Data, originalFilename, prefix) {
             let targetItem = activeItem; if (!targetItem) return; 
@@ -1744,10 +1752,10 @@
                     if(cleanUrl.startsWith('http')) { html += `<div class="flex items-center gap-3 p-2 ${bgClass} rounded-lg border ${borderClass} shadow-sm"><a href="${cleanUrl}" target="_blank" class="flex-grow flex items-center gap-3"><i class="ph-fill ph-image text-2xl ${iconColor}"></i><div class="flex-grow min-w-0"><div class="text-xs font-bold ${titleColor} truncate">${dispName}</div><div class="text-[10px] text-gray-500">Tap to view</div></div><i class="ph-bold ph-arrow-square-out ${arrowColor}"></i></a></div>`; }
                 }); return html;
             };
-            const stdHtml = buildPhotoHtml(activeItem.SAVED_PHOTO_LINK, activeItem.SAVED_PHOTO_NAME, 'std'); ['ssn-', 'lsn-', 'na-'].forEach(p => { const div = document.getElementById(p + 'photo-preview'); const list = document.getElementById(p + 'photo-list-container'); if (div && list) { if (stdHtml) { div.classList.remove('hidden'); list.innerHTML = stdHtml; } else { div.classList.add('hidden'); list.innerHTML = ""; } } });
-            const reqHtml = buildPhotoHtml(activeItem.REQ_PHOTO_LINK, activeItem.REQ_PHOTO_NAME, 'req'); const reqDiv = document.getElementById('req-photo-preview'); const reqList = document.getElementById('req-photo-list-container'); if (reqDiv && reqList) { if (reqHtml) { reqDiv.classList.remove('hidden'); reqList.innerHTML = reqHtml; } else { reqDiv.classList.add('hidden'); reqList.innerHTML = ""; } }
-            const dockHtml = buildPhotoHtml(activeItem.DOCK_PHOTO_LINK, activeItem.DOCK_PHOTO_NAME, 'dock'); const dockDiv = document.getElementById('dock-photo-preview'); const dockList = document.getElementById('dock-photo-list-container'); if (dockDiv && dockList) { if (dockHtml) { dockDiv.classList.remove('hidden'); dockList.innerHTML = dockHtml; } else { dockDiv.classList.add('hidden'); dockList.innerHTML = ""; } }
-            const flyerHtml = buildPhotoHtml(activeItem.FLYER_PHOTO_LINK, activeItem.FLYER_PHOTO_NAME, 'flyer'); const flyerDiv = document.getElementById('flyer-photo-preview'); const flyerList = document.getElementById('flyer-photo-list-container'); if (flyerDiv && flyerList) { if (flyerHtml) { flyerDiv.classList.remove('hidden'); flyerList.innerHTML = flyerHtml; } else { flyerDiv.classList.add('hidden'); flyerList.innerHTML = ""; } }
+            let stdHtml = buildPhotoHtml(activeItem.SAVED_PHOTO_LINK, activeItem.SAVED_PHOTO_NAME, 'std'); ['ssn-', 'lsn-', 'na-'].forEach(p => { let div = document.getElementById(p + 'photo-preview'); let list = document.getElementById(p + 'photo-list-container'); if (div && list) { if (stdHtml) { div.classList.remove('hidden'); list.innerHTML = stdHtml; } else { div.classList.add('hidden'); list.innerHTML = ""; } } });
+            let reqHtml = buildPhotoHtml(activeItem.REQ_PHOTO_LINK, activeItem.REQ_PHOTO_NAME, 'req'); let reqDiv = document.getElementById('req-photo-preview'); let reqList = document.getElementById('req-photo-list-container'); if (reqDiv && reqList) { if (reqHtml) { reqDiv.classList.remove('hidden'); reqList.innerHTML = reqHtml; } else { reqDiv.classList.add('hidden'); reqList.innerHTML = ""; } }
+            let dockHtml = buildPhotoHtml(activeItem.DOCK_PHOTO_LINK, activeItem.DOCK_PHOTO_NAME, 'dock'); let dockDiv = document.getElementById('dock-photo-preview'); let dockList = document.getElementById('dock-photo-list-container'); if (dockDiv && dockList) { if (dockHtml) { dockDiv.classList.remove('hidden'); dockList.innerHTML = dockHtml; } else { dockDiv.classList.add('hidden'); dockList.innerHTML = ""; } }
+            let flyerHtml = buildPhotoHtml(activeItem.FLYER_PHOTO_LINK, activeItem.FLYER_PHOTO_NAME, 'flyer'); let flyerDiv = document.getElementById('flyer-photo-preview'); let flyerList = document.getElementById('flyer-photo-list-container'); if (flyerDiv && flyerList) { if (flyerHtml) { flyerDiv.classList.remove('hidden'); flyerList.innerHTML = flyerHtml; } else { flyerDiv.classList.add('hidden'); flyerList.innerHTML = ""; } }
         }
 
         let autoSaveTimer = null;
@@ -1770,12 +1778,23 @@
                         let descEl = document.getElementById(prefix + 'sales-desc');
                         if (descEl) { let textBoxVal = descEl.value.toUpperCase(); if (lastView === 'tasks') { itemToSave._NEW_SALES_NOTE = textBoxVal; if (isComplete) itemToSave.SALES_NOTE = textBoxVal; } else { itemToSave.SALES_NOTE = textBoxVal; } }
                     } else if (prefix === 'req-') { 
-                        itemToSave.REQ_MATCH = document.getElementById('req-match').value; itemToSave.REQ_SPEC = document.getElementById('req-spec').value; itemToSave.REQ_CALIPER = document.getElementById('req-caliper').value; itemToSave.REQ_PICK = document.getElementById('req-pick').value; itemToSave.REQ_SALES_NOTE = document.getElementById('req-sales-desc').value.toUpperCase(); itemToSave.REQ_COMMENTS = document.getElementById('req-comments').value; 
-                        if (document.getElementById('req-av-note')) itemToSave.AV_NOTE = document.getElementById('req-av-note').value.toUpperCase();
+                        let reqMatchEl = document.getElementById('req-match'); if(reqMatchEl) itemToSave.REQ_MATCH = reqMatchEl.value; 
+                        let reqSpecEl = document.getElementById('req-spec'); if(reqSpecEl) itemToSave.REQ_SPEC = reqSpecEl.value; 
+                        let reqCaliperEl = document.getElementById('req-caliper'); if(reqCaliperEl) itemToSave.REQ_CALIPER = reqCaliperEl.value; 
+                        let reqPickEl = document.getElementById('req-pick'); if(reqPickEl) itemToSave.REQ_PICK = reqPickEl.value; 
+                        let reqSalesDescEl = document.getElementById('req-sales-desc'); if(reqSalesDescEl) itemToSave.REQ_SALES_NOTE = reqSalesDescEl.value.toUpperCase(); 
+                        let reqCommentsEl = document.getElementById('req-comments'); if(reqCommentsEl) itemToSave.REQ_COMMENTS = reqCommentsEl.value; 
+                        let reqAvEl = document.getElementById('req-av-note'); if (reqAvEl) itemToSave.AV_NOTE = reqAvEl.value.toUpperCase();
                     } else if (prefix === 'dock-') { 
-                        itemToSave.DOCK_SPEC = document.getElementById('dock-spec').value; itemToSave.DOCK_CALIPER = document.getElementById('dock-caliper').value; itemToSave.DOCK_NOTE = document.getElementById('dock-sales-desc').value.toUpperCase(); 
+                        let dockSpecEl = document.getElementById('dock-spec'); if(dockSpecEl) itemToSave.DOCK_SPEC = dockSpecEl.value; 
+                        let dockCaliperEl = document.getElementById('dock-caliper'); if(dockCaliperEl) itemToSave.DOCK_CALIPER = dockCaliperEl.value; 
+                        let dockSalesDescEl = document.getElementById('dock-sales-desc'); if(dockSalesDescEl) itemToSave.DOCK_NOTE = dockSalesDescEl.value.toUpperCase(); 
                     } else if (prefix === 'flyer-') {
-                        itemToSave.FLYER_CAT = document.getElementById('flyer-cat').value; itemToSave.FLYER_TITLE = document.getElementById('flyer-title').value; itemToSave.FLYER_INST = document.getElementById('flyer-inst').value; itemToSave.FLYER_ASSIGNED = document.getElementById('flyer-assigned').value; itemToSave.FLYER_NOTES = document.getElementById('flyer-notes').value;
+                        let flyerCatEl = document.getElementById('flyer-cat'); if(flyerCatEl) itemToSave.FLYER_CAT = flyerCatEl.value; 
+                        let flyerTitleEl = document.getElementById('flyer-title'); if(flyerTitleEl) itemToSave.FLYER_TITLE = flyerTitleEl.value; 
+                        let flyerInstEl = document.getElementById('flyer-inst'); if(flyerInstEl) itemToSave.FLYER_INST = flyerInstEl.value; 
+                        let flyerAssignedEl = document.getElementById('flyer-assigned'); if(flyerAssignedEl) itemToSave.FLYER_ASSIGNED = flyerAssignedEl.value; 
+                        let flyerNotesEl = document.getElementById('flyer-notes'); if(flyerNotesEl) itemToSave.FLYER_NOTES = flyerNotesEl.value;
                     }
                 }
                 
