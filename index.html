@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>GNC 000</title>
+<title>GNC DDC01</title>
 <meta name="theme-color" content="#007a4d">
 <link rel="manifest" href="manifest.json">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="application-name" content="GNC 000">
+<meta name="application-name" content="GNC DDC01">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <script src="https://cdn.tailwindcss.com"></script>
@@ -64,7 +64,7 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
 <div id="view-login">
     <div class="login-card">
         <div class="flex flex-col items-center mb-8 w-full relative">
-            <div class="text-3xl text-[#007a4d] font-black tracking-tighter mb-1">GNC 000</div>
+            <div class="text-3xl text-[#007a4d] font-black tracking-tighter mb-1">GNC DDC01</div>
             <div class="flex flex-col items-center gap-0.5 mt-5">
                 <span class="text-[9px] font-bold text-gray-400 uppercase tracking-[0.3em]">Powered By</span>
                 <span class="text-[17px] font-black text-gray-800 tracking-[0.2em] uppercase border-b-[3px] border-[#007a4d] pb-0.5">Ag Metric</span>
@@ -186,7 +186,7 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
             <i class="ph-bold ph-list menu-btn text-2xl cursor-pointer" onclick="toggleMenu()"></i>
             <div class="flex flex-col">
                 <div class="font-bold text-lg leading-tight"><span id="header-user">User</span></div>
-                <div class="text-[10px] opacity-80 leading-tight">GNC 000</div>
+                <div class="text-[10px] opacity-80 leading-tight">GNC DDC01</div>
             </div>
         </div>
         <div class="bg-white/20 p-2 rounded-lg cursor-pointer" onclick="fetchBackgroundData()"><i class="ph-bold ph-arrows-clockwise text-white"></i></div>
@@ -216,7 +216,7 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
     <div id="main-scroll-area" class="flex-grow overflow-y-auto p-4 pb-40 relative">
         <div id="view-wrapper" style="position:relative; z-index:20;">
             <div id="view-home" class="hidden">
-                <div class="bg-[#007a4d] text-white p-6 rounded-2xl mb-6 shadow-lg flex flex-col items-center text-center relative overflow-hidden"><div class="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-white opacity-5 rounded-full pointer-events-none"></div><div class="absolute bottom-0 left-0 -mb-10 -ml-10 w-32 h-32 bg-black opacity-10 rounded-full pointer-events-none"></div><h1 class="text-2xl font-black tracking-tight mb-1 z-10 relative mt-4">GNC 000</h1><p class="text-green-100 text-[10px] font-bold mb-5 uppercase tracking-[0.2em] z-10 relative">Dashboard</p><div class="flex flex-col items-center pt-4 border-t border-white/20 w-full mt-1 z-10 relative"><span class="text-[9px] font-bold text-white/70 uppercase tracking-[0.3em] mb-1">Powered By</span><div class="text-[15px] font-black tracking-[0.2em] text-white uppercase drop-shadow-sm">Ag Metric</div></div></div>
+                <div class="bg-[#007a4d] text-white p-6 rounded-2xl mb-6 shadow-lg flex flex-col items-center text-center relative overflow-hidden"><div class="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-white opacity-5 rounded-full pointer-events-none"></div><div class="absolute bottom-0 left-0 -mb-10 -ml-10 w-32 h-32 bg-black opacity-10 rounded-full pointer-events-none"></div><h1 class="text-2xl font-black tracking-tight mb-1 z-10 relative mt-4">GNC DDC01</h1><p class="text-green-100 text-[10px] font-bold mb-5 uppercase tracking-[0.2em] z-10 relative">Dashboard</p><div class="flex flex-col items-center pt-4 border-t border-white/20 w-full mt-1 z-10 relative"><span class="text-[9px] font-bold text-white/70 uppercase tracking-[0.3em] mb-1">Powered By</span><div class="text-[15px] font-black tracking-[0.2em] text-white uppercase drop-shadow-sm">Ag Metric</div></div></div>
                 <h2 class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3 pl-1">App Modules</h2>
                 <div class="grid grid-cols-2 gap-3 mb-8">
                     <div onclick="switchView('drive')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-car text-3xl text-blue-600"></i><span class="font-bold text-sm text-gray-800">Drive Mode</span></div>
@@ -243,7 +243,14 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
                 <div class="detail-tabs mb-4"><div class="detail-tab report-tab active border-[#007a4d] text-[#007a4d]" onclick="setReportTab('ALL')" id="rtab-ALL">Summary</div><div class="detail-tab report-tab" onclick="setReportTab('S1')" id="rtab-S1">S1</div><div class="detail-tab report-tab" onclick="setReportTab('F1')" id="rtab-F1">F1</div><div class="detail-tab report-tab" onclick="setReportTab('U1')" id="rtab-U1">U1</div><div class="detail-tab report-tab" onclick="setReportTab('U2')" id="rtab-U2">U2</div><div class="detail-tab report-tab" onclick="setReportTab('U3')" id="rtab-U3">U3</div><div class="detail-tab report-tab" onclick="setReportTab('X')" id="rtab-X">X</div><div class="detail-tab report-tab" onclick="setReportTab('Y')" id="rtab-Y">Y</div><div class="detail-tab report-tab" onclick="setReportTab('Z')" id="rtab-Z">Z</div></div><div id="reports-content"></div>
             </div>
             
-            <div id="view-request" class="hidden"><div id="request-crumb" class="text-xs font-bold text-[#007a4d] mb-3 empty:hidden"></div><div id="request-content"></div></div>
+            <div id="view-request" class="hidden">
+                <div class="task-tabs mb-2 mt-2">
+                    <div id="tab-req-pending" class="task-tab active" onclick="setReqTab('pending')">Pending</div>
+                    <div id="tab-req-complete" class="task-tab" onclick="setReqTab('complete')">Complete</div>
+                </div>
+                <div id="request-crumb" class="text-xs font-bold text-[#007a4d] mb-3 empty:hidden"></div>
+                <div id="request-content"></div>
+            </div>
             
             <div id="view-reserves" class="hidden"><div id="reserves-search-container" class="relative mb-2"><input type="text" id="reserves-search" class="input-field w-full pr-10 !mb-0" placeholder="Search..." oninput="handleReservesSearch()"><i id="reserves-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearReservesSearch()"></i></div><div id="reserves-crumb" class="text-xs font-bold text-[#007a4d] mb-3 mt-3 empty:hidden"></div><div id="reserves-content"></div></div>
             
@@ -357,7 +364,11 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
                         <div><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="req-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'req-', true)"></div>
                         <div><label class="text-[10px] font-bold text-gray-500 uppercase">Comments</label><input type="text" id="req-comments" class="input-field" placeholder="Any additional comments..." onchange="saveData(false, 'req-', true)"></div>
                     </div>
-                    <div class="flex flex-col gap-3 mt-4"><button id="req-btn-save-draft" class="w-full bg-purple-600 text-white font-bold py-4 rounded-xl shadow-lg" onclick="saveData(false, 'req-')">SAVE REQUEST DATA</button><button class="w-full bg-orange-50 text-orange-700 border border-orange-200 font-bold py-4 rounded-xl shadow-sm flex justify-center items-center gap-2 admin-csr-only hidden" onclick="removeFromRequest()"><i class="ph-bold ph-minus-circle text-xl"></i> REMOVE FROM REQUEST (KEEP ITEM)</button></div>
+                    <div class="flex flex-col gap-3 mt-4">
+                        <button id="req-btn-save-draft" class="w-full bg-purple-600 text-white font-bold py-4 rounded-xl shadow-lg" onclick="saveData(false, 'req-')">SAVE REQUEST DATA</button>
+                        <button id="req-btn-save-complete" class="w-full bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform" onclick="saveData(true, 'req-')">MARK DONE</button>
+                        <button class="w-full bg-orange-50 text-orange-700 border border-orange-200 font-bold py-4 rounded-xl shadow-sm flex justify-center items-center gap-2 admin-csr-only hidden" onclick="removeFromRequest()"><i class="ph-bold ph-minus-circle text-xl"></i> REMOVE FROM REQUEST (KEEP ITEM)</button>
+                    </div>
                 </div>
 
                 <div id="det-docks-content" class="hidden py-4">
@@ -425,7 +436,9 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
 
         const esc = (s) => String(s || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
 
-        const DB_NAME="GNC_Sales_DB"; const STORE_NAME="inventory_cache";
+        // 🚨 DB RENAME: THIS FORCES A HARD CACHE CLEAR FOR ALL USERS 🚨
+        const DB_NAME="GNC_DDC_DB_V1"; const STORE_NAME="inventory_cache";
+        
         function performLogout(){ localStorage.clear(); sessionStorage.clear(); try{ indexedDB.deleteDatabase(DB_NAME); }catch(e){} location.reload(); }
         
         function debounce(func,wait){ let timeout; return function(...args){ clearTimeout(timeout); timeout=setTimeout(()=>func.apply(this,args),wait) } }
@@ -468,17 +481,15 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
         let driveViewLevel=0; let selectedDriveName=null; let selectedDriveSize=null; let driveSelectedSeasons=new Set(['ALL']); const availableSeasons=["ALL","S1","F1","U1","U2","U3","X","Y","Z"];
         let activeTaskTab="season"; let taskViewTargetUser=null; let taskViewLevel=0; let selectedTaskBlock=null; let selectedTaskLoc=null; let selectedEndCapFolder=null;
         let activeAVTab='open'; let avResLevel=0; let selectedAvResName=null; let selectedAvResSize=null; let lowStockViewLevel=0; let selectedLowStockName=null; let selectedLowStockSize=null; let reviewViewLevel=0; let selectedReviewItemCode=null; let selectedReviewCommonName=null; let selectedReviewContSize=null;
-        let reportViewLevel=0; let activeReportTab="ALL"; let selectedReportItemCode=null; let requestViewLevel=0; let requestFilterMode=null; let selectedReqRep=null; let selectedReqRepStatus=null; let selectedReqFolder=null; let tempSelectedReqRep=""; let tempReqFolder=null; let tempReqCust=null; let previousReqStep="";
+        let reportViewLevel=0; let activeReqTab="pending"; let selectedReqRep=null; let selectedReqRepStatus=null; let selectedReqFolder=null; let tempSelectedReqRep=""; let tempReqFolder=null; let tempReqCust=null; let previousReqStep="";
         let dockViewLevel=0; let selectedDockNum=null; let pendingDockNum=null; let selectedDockName=null; let selectedDockSize=null; let selectedDockItemCode=null; let selectedDockCustomer=""; let selectedDockTrip=""; let selectedDockRep=""; let lastSyncTime=new Date().toISOString();
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Machino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
 
         window.onload=async function(){
-            // 🚨 1. NUKE ALL SERVICE WORKERS 🚨
             if ('serviceWorker' in navigator) {
                 const registrations = await navigator.serviceWorker.getRegistrations();
                 for(let registration of registrations) { await registration.unregister(); }
             }
-            // 🚨 2. NUKE ALL BROWSER CACHES 🚨
             if ('caches' in window) {
                 const keys = await caches.keys();
                 for (let key of keys) { await caches.delete(key); }
@@ -490,7 +501,7 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
 
         function getDirectImageUrl(url){ if(!url)return""; let match=url.match(/id=([a-zA-Z0-9_-]+)/); if(!match)match=url.match(/\/d\/([a-zA-Z0-9_-]+)/); if(match&&match[1]){ return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w100`; } return url; }
         window.addEventListener('DOMContentLoaded',()=>{ if(localStorage.getItem('gnc_bio_enabled')==='true'&&window.PublicKeyCredential){ const bioBtn=document.getElementById('btn-fingerprint'); if(bioBtn)bioBtn.classList.remove('hidden'); } });
-        async function promptToEnableBiometrics(user,pin){ if(!confirm("Would you like to enable Fingerprint/FaceID login for future use?"))return; try{ const publicKey={challenge:new Uint8Array(32),rp:{name:"GNC 000"},user:{id:new Uint8Array(16),name:user,displayName:user},pubKeyCredParams:[{type:"public-key",alg:-7}],authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required"},timeout:60000}; await navigator.credentials.create({publicKey}); localStorage.setItem('gnc_bio_enabled','true'); localStorage.setItem('gnc_bio_user',user); localStorage.setItem('gnc_bio_pin',pin); showToast("Success","Fingerprint login enabled!"); }catch(err){} }
+        async function promptToEnableBiometrics(user,pin){ if(!confirm("Would you like to enable Fingerprint/FaceID login for future use?"))return; try{ const publicKey={challenge:new Uint8Array(32),rp:{name:"GNC DDC01"},user:{id:new Uint8Array(16),name:user,displayName:user},pubKeyCredParams:[{type:"public-key",alg:-7}],authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required"},timeout:60000}; await navigator.credentials.create({publicKey}); localStorage.setItem('gnc_bio_enabled','true'); localStorage.setItem('gnc_bio_user',user); localStorage.setItem('gnc_bio_pin',pin); showToast("Success","Fingerprint login enabled!"); }catch(err){} }
         async function loginWithBiometric(){ try{ const publicKey={challenge:new Uint8Array(32),timeout:60000,userVerification:"required"}; await navigator.credentials.get({publicKey}); const savedUser=localStorage.getItem('gnc_bio_user'); const savedPin=localStorage.getItem('gnc_bio_pin'); if(savedUser&&savedPin){ document.getElementById('username-input').value=savedUser; document.getElementById('pin-code').value=savedPin; handleLogin(true); }else{ showToast("Error","Credentials lost.",true); } }catch(err){ showToast("Error","Fingerprint cancelled.",true); } }
 
         function setRepPermutations(user){ let parts=user.split('_'); if(parts.length>=2){ let first=parts[0]; let last=parts[parts.length-1]; repPermutations=[`${first} ${last}`.toLowerCase(),`${last}, ${first}`.toLowerCase(),`${last},${first}`.toLowerCase()]; }else{ repPermutations=[user.toLowerCase()]; } }
@@ -542,7 +553,6 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
         async function fetchBackgroundData(){
             const cachedRes=await loadFromCache(); if(cachedRes&&fullInventory.length===0){ setTimeout(()=>{ processAndLoadData(cachedRes); },50); } 
             try{
-                // ALL STRICT V2 TABLES, NO SQL VIEWS NEEDED
                 const results=await Promise.allSettled([
                     supabaseFetch('v2_master_inventory','GET',null,'select=*'),
                     supabaseFetch('v2_active_request','GET',null,'select=*'),
@@ -559,7 +569,10 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
                         if(!obj.UNIQUE_ID)obj.UNIQUE_ID=obj.ID||`${sourceTable}_${idx}`; 
                         
                         obj.COMMONNAME=obj.COMMONNAME||obj.DESCRIPTION||obj.PLANT_NAME||"Unknown";
-                        obj.CONTSIZE=obj.CONTSIZE||"-";
+                        
+                        // 🚨 STRICT CONTSIZE OVERRIDE: We force it to map the contsize column. 🚨
+                        obj.CONTSIZE=item.contsize || obj.CONTSIZE || item.itemspec || obj.ITEMSPEC || item.size || "-";
+                        
                         obj.LOCATIONCODE=obj.LOCATIONCODE||obj.LOCATION||"No Loc"; 
                         obj.PTRAVAILABLE=obj.PTRAVAILABLE||0;
                         
@@ -587,7 +600,6 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
         function processAndLoadData(res){
             fullInventory=res.data.map((item,idx)=>{item.DOM_ID='fi_'+idx;return item}); 
             
-            // Rebuild views dynamically from Master Inventory so we don't need SQL Views
             lowStockInventory=fullInventory.filter(i=>{
                 let ptr=parseInt(String(i.PTRAVAILABLE).replace(/,/g,''))||0; 
                 let slts=parseInt(String(i.S_LTS).replace(/,/g,''))||0; 
@@ -627,7 +639,14 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
         function reRenderCurrentView(){ if(!document.getElementById('view-drive').classList.contains('hidden'))renderDrive(); if(!document.getElementById('view-tasks').classList.contains('hidden'))renderTasks(); if(!document.getElementById('view-sales-office').classList.contains('hidden'))renderSalesOffice(); if(!document.getElementById('view-low-stock').classList.contains('hidden'))renderLowStock(); if(!document.getElementById('view-docks').classList.contains('hidden'))renderDocks(); if(!document.getElementById('view-review').classList.contains('hidden'))renderReview(); if(!document.getElementById('view-reports').classList.contains('hidden'))renderReports(); if(!document.getElementById('view-request').classList.contains('hidden'))renderRequest(); if(!document.getElementById('view-reserves').classList.contains('hidden'))renderReserves(); if(!document.getElementById('view-av').classList.contains('hidden'))renderAV(); }
         function setTaskTab(tab){ activeTaskTab=tab; document.getElementById('tab-season').classList.toggle('active',tab==='season'); document.getElementById('tab-location').classList.toggle('active',tab==='location'); document.getElementById('tab-endcap').classList.toggle('active',tab==='endcap'); document.getElementById('tab-flyer').classList.toggle('active',tab==='flyer'); taskViewLevel=0; renderTasks(); }
         function setAVTab(tab){ activeAVTab=tab; avResLevel=0; selectedAvResName=null; selectedAvResSize=null; document.getElementById('tab-av-open').classList.toggle('active',tab==='open'); document.getElementById('tab-av-reserves').classList.toggle('active',tab==='reserves'); renderAV(); }
-        function selectRequestCategory(cat){ requestFilterMode=cat; requestViewLevel=1; renderRequest(); } function selectRequestRep(rep){ selectedReqRep=rep; requestViewLevel=2; renderRequest(); } function selectRepStatus(status){ selectedReqRepStatus=status; requestViewLevel=3; renderRequest(); } function selectRequestFolder(folderId){ selectedReqFolder=folderId; requestViewLevel=4; renderRequest(); }
+        
+        function setReqTab(tab) {
+            activeReqTab = tab;
+            document.getElementById('tab-req-pending').classList.toggle('active', tab === 'pending');
+            document.getElementById('tab-req-complete').classList.toggle('active', tab === 'complete');
+            requestViewLevel = 0; selectedReqFolder = null; clearSelection();
+            renderRequest();
+        }
 
         const debouncedReservesSearch=debounce(()=>{requestAnimationFrame(()=>renderReserves())},150);
         function clearReservesSearch(){ document.getElementById('reserves-search').value=""; document.getElementById('reserves-search-clear').classList.add('hidden'); reservesViewLevel=0; renderReserves(); }
@@ -714,7 +733,7 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
         function goBackFromQty(){document.getElementById('step-3-qty').classList.add('hidden');document.getElementById(previousReqStep).classList.remove('hidden')}
         function confirmAssign(user){closeAssignModal();showToast("Assigning...","Updating Database...",false);const domIds=Array.from(selectedItems);let promises=[];domIds.forEach(dId=>{let item=fullInventory.find(i=>i.DOM_ID===dId)||lowStockInventory.find(i=>i.DOM_ID===dId);if(item){item.ASSIGNEDTO=user;item.DATE_COMPLETED="";const table=item.SOURCE_TABLE||'v2_master_inventory';promises.push(supabaseFetch(table,'PATCH',{assignedto:user,date_completed:null},`unique_id=eq.${item.UNIQUE_ID}`))}});Promise.all(promises).then(()=>{showToast("Success",`Assigned to ${user}!`);clearSelection();reRenderCurrentView()}).catch(err=>{showToast("Error","Assignment failed",true)})}
         function submitRequestWithQtys(){let itemsData={};document.querySelectorAll('.item-qty-input').forEach(input=>{let uid=input.getAttribute('data-uid');if(!itemsData[uid])itemsData[uid]={};itemsData[uid].qty=input.value.trim()});document.querySelectorAll('.item-spec-input').forEach(input=>{let uid=input.getAttribute('data-uid');if(itemsData[uid])itemsData[uid].spec=input.value.trim()});document.querySelectorAll('.item-caliper-input').forEach(input=>{let uid=input.getAttribute('data-uid');if(itemsData[uid])itemsData[uid].caliper=input.value.trim()});document.querySelectorAll('.item-est-ship-input').forEach(input=>{let uid=input.getAttribute('data-uid');if(itemsData[uid])itemsData[uid].estShip=input.value.trim()});finalizeRequestAction(tempReqFolder,tempReqCust,itemsData)}
-        function finalizeRequestAction(existingFolderId,existingCust,itemsDataObj){let cust=existingCust;let folderId=existingFolderId;if(!existingFolderId){const dateStr=new Date().toISOString().split('T')[0];const shortTime=new Date().toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'}).replace(/:/g,'');let safeCustName=cust.replace(/[^a-zA-Z0-9 ]/g,"").trim().replace(/\s+/g,'-');folderId=`REQ-${dateStr}-${shortTime}-${safeCustName}`}document.getElementById('request-rep-modal').classList.add('hidden');const domIds=Array.from(selectedItems);const uuidGen=()=>Date.now().toString(36)+Math.random().toString(36).substring(2);let insertPayloads=[];domIds.forEach(dId=>{let item=fullInventory.find(i=>i.DOM_ID===dId)||lowStockInventory.find(i=>i.DOM_ID===dId)||reservesInventory.find(i=>i.DOM_ID===dId);if(item){let dataObj=itemsDataObj[item.UNIQUE_ID]||{};let newReqId='REQ-'+uuidGen();let newReq={unique_id:newReqId,master_id:item.UNIQUE_ID,commonname:item.COMMONNAME,contsize:item.CONTSIZE,locationcode:item.LOCATIONCODE,lotcode:item.LOTCODE,itemcode:item.ITEMCODE,ptravailable:item.PTRAVAILABLE,season_supply:item.SEASONSUPPLY,priority:item.PRIORITY,qualitycode:item.QUALITYCODE,field_tag_color:item.FIELDTAGCOLOR,plantgroupcode:item.PLANTGROUPCODE,requested_by:tempSelectedReqRep,request_folder:folderId,req_customer:cust,req_qty:dataObj.qty||"",desired_spec:dataObj.spec||"",desired_caliper:dataObj.caliper||"",est_ship:dataObj.estShip||"",req_photo_link:item.SAVED_PHOTO_LINK||item.REQ_PHOTO_LINK||"",req_photo_name:item.SAVED_PHOTO_NAME||item.REQ_PHOTO_NAME||"",req_archived:false};insertPayloads.push(newReq);let clone=JSON.parse(JSON.stringify(item));clone.UNIQUE_ID=newReqId;clone.DOM_ID='req_'+newReqId;clone.REQUESTED_BY=tempSelectedReqRep;clone.REQUEST_FOLDER=folderId;clone.REQ_CUSTOMER=cust;clone.REQ_QTY=dataObj.qty||"";clone.REQ_DESIRED_SPEC=dataObj.spec||"";clone.REQ_DESIRED_CALIPER=dataObj.caliper||"";clone.REQ_EST_SHIP=dataObj.estShip||"";clone.REQ_ARCHIVED=false;clone.REQ_PHOTO_LINK=newReq.req_photo_link;clone.REQ_PHOTO_NAME=newReq.req_photo_name;requestsInventory.push(clone)}});showToast("Processing...",`Creating Clone Tickets...`,false);clearSelection();switchView('request');supabaseFetch('v2_active_request','POST',insertPayloads).then(()=>{showToast("Success","Request tickets cloned!",false)}).catch(err=>showToast("Error","Network error.",true))}
+        function finalizeRequestAction(existingFolderId,existingCust,itemsDataObj){let cust=existingCust;let folderId=existingFolderId;if(!existingFolderId){const dateStr=new Date().toISOString().split('T')[0];const shortTime=new Date().toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'}).replace(/:/g,'');let safeCustName=cust.replace(/[^a-zA-Z0-9 ]/g,"").trim().replace(/\s+/g,'-');folderId=`REQ-${dateStr}-${shortTime}-${safeCustName}`}document.getElementById('request-rep-modal').classList.add('hidden');const domIds=Array.from(selectedItems);const uuidGen=()=>Date.now().toString(36)+Math.random().toString(36).substring(2);let insertPayloads=[];domIds.forEach(dId=>{let item=fullInventory.find(i=>i.DOM_ID===dId)||lowStockInventory.find(i=>i.DOM_ID===dId)||reservesInventory.find(i=>i.DOM_ID===dId);if(item){let dataObj=itemsDataObj[item.UNIQUE_ID]||{};let newReqId='REQ-'+uuidGen();let newReq={unique_id:newReqId,master_id:item.UNIQUE_ID,commonname:item.COMMONNAME,contsize:item.CONTSIZE,locationcode:item.LOCATIONCODE,lotcode:item.LOTCODE,itemcode:item.ITEMCODE,ptravailable:item.PTRAVAILABLE,season_supply:item.SEASONSUPPLY,priority:item.PRIORITY,qualitycode:item.QUALITYCODE,field_tag_color:item.FIELDTAGCOLOR,plantgroupcode:item.PLANTGROUPCODE,requested_by:tempSelectedReqRep,request_folder:folderId,req_customer:cust,req_qty:dataObj.qty||"",desired_spec:dataObj.spec||"",desired_caliper:dataObj.caliper||"",est_ship:dataObj.estShip||"",req_photo_link:item.SAVED_PHOTO_LINK||item.REQ_PHOTO_LINK||"",req_photo_name:item.SAVED_PHOTO_NAME||item.REQ_PHOTO_NAME||"",req_archived:false,req_status:'Pending'};insertPayloads.push(newReq);let clone=JSON.parse(JSON.stringify(item));clone.UNIQUE_ID=newReqId;clone.DOM_ID='req_'+newReqId;clone.REQUESTED_BY=tempSelectedReqRep;clone.REQUEST_FOLDER=folderId;clone.REQ_CUSTOMER=cust;clone.REQ_QTY=dataObj.qty||"";clone.REQ_DESIRED_SPEC=dataObj.spec||"";clone.REQ_DESIRED_CALIPER=dataObj.caliper||"";clone.REQ_EST_SHIP=dataObj.estShip||"";clone.REQ_ARCHIVED=false;clone.REQ_STATUS='Pending';clone.REQ_PHOTO_LINK=newReq.req_photo_link;clone.REQ_PHOTO_NAME=newReq.req_photo_name;requestsInventory.push(clone)}});showToast("Processing...",`Creating Clone Tickets...`,false);clearSelection();switchView('request');supabaseFetch('v2_active_request','POST',insertPayloads).then(()=>{showToast("Success","Request tickets cloned!",false)}).catch(err=>showToast("Error","Network error.",true))}
         function processTabSelection(tab){pendingTabType=tab;document.getElementById('tab-select-modal').classList.add('hidden');if(pendingAction==='assign'){openAssignModal()}else{executeBatchAction(pendingAction,pendingTabType)}}
         function getSelectedItemsText(tabType){let items=[];selectedItems.forEach(domId=>{let found=fullInventory.find(i=>i.DOM_ID===domId)||lowStockInventory.find(i=>i.DOM_ID===domId)||reservesInventory.find(i=>i.DOM_ID===domId)||requestsInventory.find(i=>i.DOM_ID===domId);if(found)items.push(found)});let returnText="";if(tabType!=='request'){returnText=(tabType==='docks')?"DOCK NOTES\n\n":"SALES NOTES\n\n"}items.forEach(i=>{if(tabType==='request'){returnText+=`${i.REQUEST_FOLDER||'No Folder'}\nID: ${i.UNIQUE_ID} | ${i.REQ_CUSTOMER||'N/A'}\n${i.COMMONNAME||'Unknown'} ${i.CONTSIZE||'-'} Loc: ${i.LOCATIONCODE||'No Loc'}\n${i.ITEMCODE||'-'} | Lot: ${i.LOTCODE||'-'}\n`;if(i.REQ_QTY)returnText+=`  Requested Qty: ${i.REQ_QTY}\n`;if(i.REQ_DESIRED_SPEC)returnText+=`  Desired Spec: ${i.REQ_DESIRED_SPEC}\n`;if(i.REQ_DESIRED_CALIPER)returnText+=`  Desired Caliper: ${i.REQ_DESIRED_CALIPER}\n`;if(i.REQ_EST_SHIP)returnText+=`  Est Ship: ${i.REQ_EST_SHIP}\n`;if(i.REQ_MATCH)returnText+=`  Match: ${i.REQ_MATCH}%\n`;if(i.REQ_SPEC)returnText+=`  Spec: ${i.REQ_SPEC}\n`;if(i.REQ_CALIPER)returnText+=`  Caliper: ${i.REQ_CALIPER}\n`;if(i.REQ_PICK)returnText+=`  Pick Note: ${i.REQ_PICK}\n`;if(i.REQ_SALES_NOTE)returnText+=`  Sales Note: ${i.REQ_SALES_NOTE}\n`;if(i.REQ_COMMENTS)returnText+=`  Comments: ${i.REQ_COMMENTS}\n`;let photo=i.REQ_PHOTO_LINK||i.SAVED_PHOTO_LINK||i['PHOTO LINK']||i.PHOTOLINK;if(photo&&String(photo).trim()!==""){let urls=String(photo).split(',');let counter=1;urls.forEach(url=>{let cleanUrl=url.trim();let match=cleanUrl.match(/(https?:\/\/[^"\s>]+)/);if(match)cleanUrl=match[1];if(cleanUrl.startsWith('http')){returnText+=`  Photo ${counter}: ${cleanUrl}\n`;counter++}})}}else if(tabType==='docks'){returnText+=`▪ ${i.COMMONNAME||'Unknown'} (${i.CONTSIZE||'-'}) | Loc: ${i.LOCATIONCODE||'No Loc'}\n`;if(i.DOCK_SPEC)returnText+=`  Spec: ${i.DOCK_SPEC}\n`;if(i.DOCK_CALIPER)returnText+=`  Caliper: ${i.DOCK_CALIPER}\n`;if(i.DOCK_NOTE)returnText+=`  Dock Note: ${i.DOCK_NOTE}\n`;let photo=i.DOCK_PHOTO_LINK||i.SAVED_PHOTO_LINK||i['PHOTO LINK']||i.PHOTOLINK;if(photo&&String(photo).trim()!==""){let urls=String(photo).split(',');let counter=1;urls.forEach(url=>{let cleanUrl=url.trim();let match=cleanUrl.match(/(https?:\/\/[^"\s>]+)/);if(match)cleanUrl=match[1];if(cleanUrl.startsWith('http')){returnText+=`  Photo ${counter}: ${cleanUrl}\n`;counter++}})}}else{returnText+=`▪ ${i.COMMONNAME||'Unknown'} (${i.CONTSIZE||'-'}) | Loc: ${i.LOCATIONCODE||'No Loc'}\n`;let match=i.MATCH||i.MATCHPCT;if(match)returnText+=`  Match: ${match}%\n`;let spec=i.SPEC;if(spec)returnText+=`  Spec: ${spec}\n`;let caliper=i.CALIPER;if(caliper)returnText+=`  Caliper: ${caliper}\n`;let pick=i.PIC_NOTE||i.PICKNOTE||i.PICK;if(pick)returnText+=`  Pick Note: ${pick}\n`;let sales=i.SALES_NOTE||i.SALESNOTE||i.SALESDESC;if(sales)returnText+=`  Sales Note: ${sales}\n`;let photo=i.SAVED_PHOTO_LINK||i['PHOTO LINK']||i.PHOTOLINK;if(photo&&String(photo).trim()!==""){let urls=String(photo).split(',');let counter=1;urls.forEach(url=>{let cleanUrl=url.trim();let match=cleanUrl.match(/(https?:\/\/[^"\s>]+)/);if(match)cleanUrl=match[1];if(cleanUrl.startsWith('http')){returnText+=`  Photo ${counter}: ${cleanUrl}\n`;counter++}})}}returnText+=`\n`});return returnText}
         function executeBatchAction(action,tabType){const text=getSelectedItemsText(tabType);if(action==='copy'){navigator.clipboard.writeText(text).then(()=>{showToast("Success","Copied to clipboard!");clearSelection()})}else if(action==='email'){let sub='Sales Notes';if(tabType==='request')sub='Request Data';if(tabType==='docks')sub='Dock Notes';window.location.href=`mailto:?subject=${sub}&body=${encodeURIComponent(text)}`;clearSelection()}else if(action==='text'){window.location.href=`sms:?&body=${encodeURIComponent(text)}`;clearSelection()}}
@@ -875,12 +894,18 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
             const container = document.getElementById('request-content');
             const crumb = document.getElementById('request-crumb');
             
-            // Filter out archived items
+            // First, filter out archived items, then check Pending vs Complete status
             let items = requestsInventory.filter(i => !i.REQ_ARCHIVED);
+            
+            if (activeReqTab === 'pending') {
+                items = items.filter(i => i.REQ_STATUS !== 'Complete');
+            } else {
+                items = items.filter(i => i.REQ_STATUS === 'Complete');
+            }
 
             if (items.length === 0) {
-                container.innerHTML = `<div class="p-8 text-center text-gray-400">No active requests found.</div>`;
-                crumb.innerText = "Requests";
+                container.innerHTML = `<div class="p-8 text-center text-gray-400">No ${activeReqTab} requests found.</div>`;
+                crumb.innerText = activeReqTab === 'pending' ? "Pending Requests" : "Completed Requests";
                 return;
             }
 
@@ -1150,6 +1175,10 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
                     payload.req_sales_note = setVal(itemToSave.REQ_SALES_NOTE); 
                     payload.req_comments = setVal(itemToSave.REQ_COMMENTS); 
                     payload.av_note = setVal(itemToSave.AV_NOTE);
+                    if (isComplete) {
+                        payload.req_status = 'Complete';
+                        itemToSave.REQ_STATUS = 'Complete';
+                    }
                 } else if (prefix === 'dock-') { 
                     payload.dock_spec = setVal(itemToSave.DOCK_SPEC); 
                     payload.dock_caliper = setVal(itemToSave.DOCK_CALIPER); 
@@ -1187,7 +1216,7 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
                     if (prefix === 'flyer-') payload.flyer_completed = payload.date_completed;
                     
                     let soPayload = { unique_id: itemToSave.UNIQUE_ID, itemcode: itemToSave.ITEMCODE || "", commonname: itemToSave.COMMONNAME || "", contsize: itemToSave.CONTSIZE || "", locationcode: itemToSave.LOCATIONCODE || "", lotcode: itemToSave.LOTCODE || "", ptravailable: String(itemToSave.PTRAVAILABLE || ""), priority: String(itemToSave.PRIORITY || ""), sales_note: payload.sales_note || itemToSave.SALES_NOTE || itemToSave._NEW_SALES_NOTE || "", photo_link: payload.photo_link || itemToSave.SAVED_PHOTO_LINK || "", completed_by: currentUser, completed_at: payload.date_completed };
-                    if (prefix !== 'flyer-') supabaseFetch('v2_sales_office', 'POST', soPayload).catch(e => console.log(e));
+                    if (prefix !== 'flyer-' && prefix !== 'req-') supabaseFetch('v2_sales_office', 'POST', soPayload).catch(e => console.log(e));
                 }
 
                 const targetTable = (prefix === 'req-') ? 'v2_active_request' : (itemToSave.SOURCE_TABLE || 'v2_master_inventory');
