@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DYLAN</title>
+    <title>DDC GNC</title>
     <meta name="theme-color" content="#007a4d">
     <link rel="manifest" href="manifest.json">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="application-name" content="DYLAN">
+    <meta name="application-name" content="DDC GNC">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-title" content="DYLAN">
+    <meta name="apple-mobile-web-app-title" content="DDC GNC">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="icon" type="image/png" href="Ag%20Metric%20App.png">
     <link rel="apple-touch-icon" href="Ag%20Metric%20App.png">
@@ -81,7 +81,7 @@
         <div class="login-card">
             <div class="flex flex-col items-center mb-8 w-full relative">
                 <img src="Greenleaf%20Logo.png" alt="Greenleaf Logo" class="h-20 mb-4 object-contain drop-shadow-md" onerror="this.style.display='none'">
-                <div class="text-3xl text-[#007a4d] font-black tracking-tighter mb-1">DYLAN</div>
+                <div class="text-3xl text-[#007a4d] font-black tracking-tighter mb-1">DDC GNC</div>
                 <div class="flex flex-col items-center gap-0.5 mt-5">
                     <span class="text-[9px] font-bold text-gray-400 uppercase tracking-[0.3em]">Powered By</span>
                     <span class="text-[17px] font-black text-gray-800 tracking-[0.2em] uppercase border-b-[3px] border-[#007a4d] pb-0.5">Ag Metric</span>
@@ -211,7 +211,7 @@
                 <i class="ph-bold ph-list menu-btn text-2xl cursor-pointer" onclick="toggleMenu()"></i>
                 <div class="flex flex-col">
                     <div class="font-bold text-lg leading-tight"><span id="header-user">User</span></div>
-                    <div class="text-[10px] opacity-80 leading-tight">DYLAN V2</div>
+                    <div class="text-[10px] opacity-80 leading-tight">DDC GNC V2</div>
                 </div>
             </div>
         </header>
@@ -247,7 +247,7 @@
                         <div class="bg-white p-3.5 rounded-2xl mb-3 shadow-md z-10 relative">
                             <img src="Greenleaf%20Logo.png" alt="Greenleaf Logo" class="h-11 object-contain" onerror="this.style.display='none'">
                         </div>
-                        <h1 class="text-2xl font-black tracking-tight mb-1 z-10 relative">DYLAN</h1>
+                        <h1 class="text-2xl font-black tracking-tight mb-1 z-10 relative">DDC GNC</h1>
                         <p class="text-green-100 text-[10px] font-bold mb-5 uppercase tracking-[0.2em] z-10 relative">Dashboard V2</p>
                         <div class="flex flex-col items-center pt-4 border-t border-white/20 w-full mt-1 z-10 relative">
                             <span class="text-[9px] font-bold text-white/70 uppercase tracking-[0.3em] mb-1">Powered By</span>
@@ -530,7 +530,9 @@
     <script>
         const SUPABASE_URL = "https://gmkmsjvzzujjxfmcpyud.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdta21zanZ6enVqanhmbWNweXVkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjYwMTE1MywiZXhwIjoyMDg4MTc3MTUzfQ.E6UDlfJrdftcyPFKPcyCDfuLw5TGfqoVVoNx9N139As";
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzhJ_tytv5Rm2ag44liZAU6nsp0lQ7-9PLmjxrcuT1WA1WARubi7NyolYoTZ_qvZmzo/exec"; 
+        
+        // ⚠️ DEPLOY YOUR NEW APPS SCRIPT AS A WEB APP AND PASTE THE URL HERE ⚠️
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwhH-eB5Py3xCwhmWReOAcAfl9Zu6mkw0hZYnAbIP9lLANoE4iebK1hXa6-ogU4_1AURA/exec"; 
         
         let approvedNotesList = ["Ready to ship", "Needs weeded", "Needs pruned", "Yellowing leaves", "Too small", "Hold for next season", "Poor structure", "Needs spacing"];
         let salesNotesDict = {}; 
@@ -636,7 +638,7 @@
         async function promptToEnableBiometrics(user, pin) {
             if (!confirm("Would you like to enable Fingerprint/FaceID login for future use?")) return;
             try {
-                const publicKey = { challenge: new Uint8Array(32), rp: { name: "DYLAN" }, user: { id: new Uint8Array(16), name: user, displayName: user }, pubKeyCredParams: [{ type: "public-key", alg: -7 }], authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required" }, timeout: 60000 };
+                const publicKey = { challenge: new Uint8Array(32), rp: { name: "DDC GNC" }, user: { id: new Uint8Array(16), name: user, displayName: user }, pubKeyCredParams: [{ type: "public-key", alg: -7 }], authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required" }, timeout: 60000 };
                 await navigator.credentials.create({ publicKey });
                 localStorage.setItem('gnc_bio_enabled', 'true'); localStorage.setItem('gnc_bio_user', user); localStorage.setItem('gnc_bio_pin', pin); showToast("Success", "Fingerprint login enabled!");
             } catch (err) {}
@@ -728,7 +730,6 @@
         async function fetchBackgroundData() {
             const cachedRes = await loadFromCache(); if (cachedRes && fullInventory.length === 0) { setTimeout(() => { processAndLoadData(cachedRes); }, 50); } 
             try {
-                // Fetching the V2 endpoints and views
                 const results = await Promise.allSettled([
                     supabaseFetch('v2_master_inventory', 'GET', null, 'select=*'), 
                     supabaseFetch('v2_view_low_stock', 'GET', null, 'select=*'), 
@@ -736,7 +737,7 @@
                     supabaseFetch('v2_reserves', 'GET', null, 'select=*'), 
                     supabaseFetch('v2_soc_master', 'GET', null, 'select=*'), 
                     supabaseFetch('v2_view_manager_review', 'GET', null, 'select=*'), 
-                    supabaseFetch('v2_view_season_notes', 'GET', null, 'select=unique_id'), // Only need IDs to assign app tabs
+                    supabaseFetch('v2_view_season_notes', 'GET', null, 'select=unique_id'),
                     supabaseFetch('v2_sales_office', 'GET', null, 'select=*') 
                 ]);
                 
@@ -751,7 +752,6 @@
                 let resObj = {
                     status: 'success', 
                     data: formatArr(results[0].value, 'v2_master_inventory'), 
-                    // Any edits made to low stock or manager review will route directly to v2_master_inventory
                     lowStock: formatArr(results[1].value, 'v2_master_inventory'), 
                     requestsData: formatArr(results[2].value, 'v2_active_request'), 
                     reservesData: formatArr(results[3].value, 'v2_reserves'), 
@@ -1008,7 +1008,6 @@
                 if(item) {
                     let dataObj = itemsData[item.UNIQUE_ID] || {};
                     item.END_CAP_FOLDER = folder; item.END_CAP_QTY = dataObj.qty; item.END_CAP_LEVEL = dataObj.level; item.ASSIGNEDTO = currentUser; item.APP_TAB_ASSIGNMENT = 'endcap';
-                    // End Caps go to master table
                     updates.push(supabaseFetch('v2_master_inventory', 'PATCH', { end_cap_folder: folder, end_cap_qty: dataObj.qty, end_cap_level: dataObj.level, assignedto: currentUser }, `unique_id=eq.${item.UNIQUE_ID}`));
                 }
             });
@@ -1655,7 +1654,6 @@
             const hiddenKeys = ['UNIQUE_ID', 'UNIQUEID', 'ASSIGNEDTO', 'DOM_ID', 'IS_REQUEST', 'REQUESTED_BY', 'REQUEST_FOLDER', '_search', '_NEW_SALES_NOTE', 'MASTER_UNIQUE_ID']; 
             let html = '<div class="grid grid-cols-1 gap-2">';
             
-            // 🔥 DOCUMENT NAME BANNER AT THE TOP OF ALL DATA
             let docName = activeItem.SOURCE_TABLE || "Unknown Document";
             html += `<div class="bg-blue-50 border border-blue-200 text-blue-800 text-xs font-bold p-3 rounded-lg mb-2 text-center uppercase shadow-sm">DOCUMENT NAME: ${docName}</div>`;
             
@@ -1701,7 +1699,7 @@
         function showTemporaryPhotoPreview(prefix, dataUrl) {
             let div = document.getElementById(prefix + 'photo-preview'); let list = document.getElementById(prefix + 'photo-list-container');
             if (div && list) { div.classList.remove('hidden'); let html = `<div class="flex items-center gap-3 p-2 bg-gray-50 rounded-lg border border-gray-200 shadow-sm opacity-75"><div class="w-10 h-10 rounded overflow-hidden relative border border-gray-300 flex-shrink-0"><img src="${dataUrl}" class="w-full h-full object-cover"><div class="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center"><div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div></div></div><div class="flex-grow min-w-0"><div class="text-xs font-bold text-gray-700 truncate">Uploading to Server...</div><div class="text-[10px] text-gray-500">Working in background</div></div></div>`; list.insertAdjacentHTML('afterbegin', html); }
-        }
+            }
 
         async function uploadPhotoToDrive(base64Data, originalFilename, prefix) {
             let targetItem = activeItem; if (!targetItem) return; 
