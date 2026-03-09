@@ -553,13 +553,23 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
                 const formatArr=(resObj,sourceTable)=>{
                     if(resObj.status!=='fulfilled'||!Array.isArray(resObj.value))return[];
                     return resObj.value.map((item,idx)=>{
-                        let obj={SOURCE_TABLE:sourceTable}; for(let k in item){ if(item[k]!==null)obj[k.toUpperCase()]=item[k]; }
+                        let obj={SOURCE_TABLE:sourceTable}; 
+                        for(let k in item){ if(item[k]!==null)obj[k.toUpperCase()]=item[k]; }
+                        
                         if(!obj.UNIQUE_ID)obj.UNIQUE_ID=obj.ID||`${sourceTable}_${idx}`; 
-                        obj.COMMONNAME=obj.COMMONNAME||obj.commonname||obj.description||obj.plant_name||"Unknown";
-                        obj.CONTSIZE=obj.CONTSIZE||obj.contsize||obj.itemspec||obj.printedcontainercode||obj.size||obj.container||"-";
-                        obj.LOCATIONCODE=obj.LOCATIONCODE||obj.LOCATION||"No Loc"; obj.PTRAVAILABLE=obj.PTRAVAILABLE||0;
-                        obj.SAVED_PHOTO_LINK=obj.PHOTO_LINK||obj.PHOTOLINK||""; obj.SAVED_PHOTO_NAME=obj.PHOTO_NAME||obj.PHOTONAME||""; obj.SEASONSUPPLY=obj.SEASON_SUPPLY||obj.SEASONSUPPLY||0; obj.FIELDTAGCOLOR=obj.FIELD_TAG_COLOR||obj.FIELDTAGCOLOR||"-"; 
-                        obj._search=`${obj.COMMONNAME||''} ${obj.LOCATIONCODE||''} ${obj.ITEMCODE||''} ${obj.CONTSIZE||''} ${obj.CUSTOMERNAME||''} ${obj.SALESREPNAME||''}`.toLowerCase(); return obj;
+                        
+                        obj.COMMONNAME=obj.COMMONNAME||obj.DESCRIPTION||obj.PLANT_NAME||"Unknown";
+                        obj.CONTSIZE=obj.CONTSIZE||"-";
+                        obj.LOCATIONCODE=obj.LOCATIONCODE||obj.LOCATION||"No Loc"; 
+                        obj.PTRAVAILABLE=obj.PTRAVAILABLE||0;
+                        
+                        obj.SAVED_PHOTO_LINK=obj.PHOTO_LINK||obj.PHOTOLINK||""; 
+                        obj.SAVED_PHOTO_NAME=obj.PHOTO_NAME||obj.PHOTONAME||""; 
+                        obj.SEASONSUPPLY=obj.SEASON_SUPPLY||obj.SEASONSUPPLY||0; 
+                        obj.FIELDTAGCOLOR=obj.FIELD_TAG_COLOR||obj.FIELDTAGCOLOR||"-"; 
+                        
+                        obj._search=`${obj.COMMONNAME||''} ${obj.LOCATIONCODE||''} ${obj.ITEMCODE||''} ${obj.CONTSIZE||''} ${obj.CUSTOMERNAME||''} ${obj.SALESREPNAME||''}`.toLowerCase(); 
+                        return obj;
                     });
                 };
                 let resObj={
@@ -728,26 +738,61 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
         function backToDriveSizes(){driveViewLevel=1;selectedDriveSize=null;renderDrive()}
 
         function renderDrive(){
-            const container=document.getElementById('drive-content');const filtersDiv=document.getElementById('drive-season-filters');const crumb=document.getElementById('drive-crumb');const term=document.getElementById('drive-search').value.toLowerCase();
-            filtersDiv.innerHTML=availableSeasons.map(s=>{const active=driveSelectedSeasons.has(s);return `<div class="px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap cursor-pointer transition-colors ${active?'bg-[#007a4d] text-white shadow-md':'bg-white border border-gray-300 text-gray-600'}" onclick="toggleDriveSeason('${s}')">${s}</div>`}).join('');
+            const container=document.getElementById('drive-content');
+            const filtersDiv=document.getElementById('drive-season-filters');
+            const crumb=document.getElementById('drive-crumb');
+            const term=document.getElementById('drive-search').value.toLowerCase().trim();
             
-            let filteredItems=fullInventory;
-            if(!driveSelectedSeasons.has('ALL')){filteredItems=filteredItems.filter(i=>{let s=String(i.SEASON||'').toUpperCase();return driveSelectedSeasons.has(s)})}
-            if(term){filteredItems=filteredItems.filter(i=>(i._search||"").includes(term))}
+            filtersDiv.innerHTML=availableSeasons.map(s=>{
+                const active=driveSelectedSeasons.has(s);
+                return `<div class="px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap cursor-pointer transition-colors ${active?'bg-[#007a4d] text-white shadow-md':'bg-white border border-gray-300 text-gray-600'}" onclick="toggleDriveSeason('${s}')">${s}</div>`
+            }).join('');
             
-            if(filteredItems.length===0){container.innerHTML=`<div class="p-8 text-center text-gray-400">No items found matching criteria.</div>`;crumb.innerText="No Results";return}
-
+            let baseItems=fullInventory;
+            if(!driveSelectedSeasons.has('ALL')){
+                baseItems=baseItems.filter(i=>{
+                    let s=String(i.SEASON||'').toUpperCase();
+                    return driveSelectedSeasons.has(s);
+                });
+            }
+            
+            let searchFilteredItems=baseItems;
+            if(term){
+                const searchTerms = term.split(/\s+/);
+                searchFilteredItems=searchFilteredItems.filter(i=>{
+                    const searchStr = (i._search||"");
+                    return searchTerms.every(t => searchStr.includes(t));
+                });
+            }
+            
             if(driveViewLevel===0){
-                crumb.innerText=`Select Plant (${filteredItems.length} items)`;const names=[...new Set(filteredItems.map(i=>i.COMMONNAME))].sort();
+                if(searchFilteredItems.length===0){
+                    container.innerHTML=`<div class="p-8 text-center text-gray-400">No items found matching criteria.</div>`;
+                    crumb.innerText="No Results";
+                    return;
+                }
+                crumb.innerText=`Select Plant (${searchFilteredItems.length} items)`;
+                const names=[...new Set(searchFilteredItems.map(i=>i.COMMONNAME))].sort();
                 container.innerHTML=names.map(n=>`<div class="drill-item" onclick="selectDriveName('${esc(n)}')"><span class="font-bold text-lg">${n}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
+                
             }else if(driveViewLevel===1){
-                crumb.innerText=selectedDriveName;const namedItems=filteredItems.filter(i=>i.COMMONNAME===selectedDriveName);const sizes=[...new Set(namedItems.map(i=>i.CONTSIZE))].sort();
+                crumb.innerText=selectedDriveName;
+                const namedItems=baseItems.filter(i=>i.COMMONNAME===selectedDriveName);
+                if(namedItems.length===0){
+                    container.innerHTML=`<div class="p-8 text-center text-gray-400">No items found.</div>`;
+                    return;
+                }
+                const sizes=[...new Set(namedItems.map(i=>i.CONTSIZE))].sort();
                 let html=`<div class="back-btn" onclick="driveViewLevel=0; renderDrive()"><i class="ph-bold ph-arrow-left"></i> Back to Names</div><div class="font-bold text-[#007a4d] mb-4 px-2 text-xl border-b pb-2">${selectedDriveName}</div>`;
-                html+=sizes.map(s=>{const count=namedItems.filter(i=>i.CONTSIZE===s).length;return `<div class="drill-item" onclick="selectDriveSize('${esc(s)}')"><span class="font-bold text-lg">${s} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`}).join('');
+                html+=sizes.map(s=>{
+                    const count=namedItems.filter(i=>i.CONTSIZE===s).length;
+                    return `<div class="drill-item" onclick="selectDriveSize('${esc(s)}')"><span class="font-bold text-lg">${s} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`
+                }).join('');
                 container.innerHTML=html;
+                
             }else if(driveViewLevel===2){
                 crumb.innerText=`${selectedDriveName} / ${selectedDriveSize}`;
-                let finalItems=filteredItems.filter(i=>i.COMMONNAME===selectedDriveName&&i.CONTSIZE===selectedDriveSize);
+                let finalItems=baseItems.filter(i=>i.COMMONNAME===selectedDriveName&&i.CONTSIZE===selectedDriveSize);
                 finalItems.sort((a,b)=>{
                     let priA=parseFloat(a.PRIORITY);let priB=parseFloat(b.PRIORITY);
                     if(isNaN(priA))priA=Infinity;if(isNaN(priB))priB=Infinity;
@@ -757,6 +802,7 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
                 container.innerHTML=`<div class="back-btn" onclick="backToDriveSizes()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>`+finalItems.map(i=>generateCard(i,'drive','status-blue')).join('');
             }
         }
+
         function resetDriveView(){driveViewLevel=0;selectedDriveName=null;selectedDriveSize=null;document.getElementById('drive-search').value="";document.getElementById('drive-search-clear').classList.add('hidden');driveSelectedSeasons.clear();driveSelectedSeasons.add('ALL');renderDriveSeasonFilters();renderDrive()}
         function toggleDriveSeason(s){if(s==='ALL'){driveSelectedSeasons.clear();driveSelectedSeasons.add('ALL')}else{driveSelectedSeasons.delete('ALL');if(driveSelectedSeasons.has(s)){driveSelectedSeasons.delete(s);if(driveSelectedSeasons.size===0)driveSelectedSeasons.add('ALL')}else{driveSelectedSeasons.add(s)}}driveViewLevel=0;selectedDriveName=null;selectedDriveSize=null;renderDriveSeasonFilters();renderDrive()}
 
