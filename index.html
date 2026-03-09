@@ -894,7 +894,6 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
             const container = document.getElementById('request-content');
             const crumb = document.getElementById('request-crumb');
             
-            // First, filter out archived items, then check Pending vs Complete status
             let items = requestsInventory.filter(i => !i.REQ_ARCHIVED);
             
             if (activeReqTab === 'pending') {
@@ -909,7 +908,6 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
                 return;
             }
 
-            // Folder View (Level 0)
             if (requestViewLevel === 0) {
                 crumb.innerText = "Request Folders";
                 let folders = [...new Set(items.map(i => i.REQUEST_FOLDER || 'Unassigned'))].sort();
@@ -925,13 +923,12 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
                     </div>`;
                 }).join('');
             } 
-            // Items View (Level 4)
             else if (requestViewLevel === 4) {
                 crumb.innerText = `Folder: ${selectedReqFolder}`;
                 let fItems = items.filter(i => (i.REQUEST_FOLDER || 'Unassigned') === selectedReqFolder);
                 
-                // Sort alphabetically by plant name
-                fItems.sort((a,b) => String(a.COMMONNAME||"").localeCompare(String(b.COMMONNAME||"")));
+                // Sort alphabetically then numerically by LOCATIONCODE
+                fItems.sort((a,b) => String(a.LOCATIONCODE||"ZZZ").localeCompare(String(b.LOCATIONCODE||"ZZZ"), undefined, {numeric: true}));
                 
                 container.innerHTML = `<div class="back-btn" onclick="requestViewLevel=0; renderRequest()"><i class="ph-bold ph-arrow-left"></i> Back to Folders</div>` 
                     + fItems.map(i => generateCard(i, 'request', 'status-purple')).join('');
