@@ -10,8 +10,6 @@
     <meta name="application-name" content="DDC GNC">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="icon" type="image/png" href="Ag%20Metric%20App.png">
-    <link rel="apple-touch-icon" href="Ag%20Metric%20App.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <style>
@@ -70,8 +68,8 @@
 
     <div id="view-login">
         <div class="login-card">
-            <div class="flex flex-col items-center mb-8 w-full relative"><img src="Greenleaf%20Logo.png" alt="Greenleaf Logo" class="h-20 mb-4 object-contain drop-shadow-md" onerror="this.style.display='none'"><div class="text-3xl text-[#007a4d] font-black tracking-tighter mb-1">DDC GNC</div><div class="flex flex-col items-center gap-0.5 mt-5"><span class="text-[9px] font-bold text-gray-400 uppercase tracking-[0.3em]">Powered By</span><span class="text-[17px] font-black text-gray-800 tracking-[0.2em] uppercase border-b-[3px] border-[#007a4d] pb-0.5">Ag Metric</span></div></div>
-            <div id="login-inputs"><input type="text" id="username-input" class="input-field mb-4 text-center border-2" placeholder="USERNAME"><input type="password" id="pin-code" class="input-field mb-4 text-center border-2 tracking-widest" placeholder="PASSWORD"><button class="w-full bg-[#007a4d] text-white font-bold py-3 rounded-lg shadow-md" onclick="handleLogin()">LOGIN</button><button id="btn-fingerprint" class="hidden w-full bg-gray-50 text-[#007a4d] border-2 border-[#007a4d] font-bold py-3 rounded-lg shadow-md mt-4 flex items-center justify-center gap-2" onclick="loginWithBiometric()"><i class="ph-bold ph-fingerprint text-2xl"></i> LOGIN WITH FINGERPRINT</button></div>
+            <div class="flex flex-col items-center mb-8 w-full relative"><div class="text-3xl text-[#007a4d] font-black tracking-tighter mb-1">DDC GNC</div><div class="flex flex-col items-center gap-0.5 mt-5"><span class="text-[9px] font-bold text-gray-400 uppercase tracking-[0.3em]">Powered By</span><span class="text-[17px] font-black text-gray-800 tracking-[0.2em] uppercase border-b-[3px] border-[#007a4d] pb-0.5">Ag Metric</span></div></div>
+            <div id="login-inputs"><input type="text" id="username-input" class="input-field mb-4 text-center border-2" placeholder="USERNAME"><input type="password" id="pin-code" class="input-field mb-4 text-center border-2 tracking-widest" placeholder="PASSWORD"><button class="w-full bg-[#007a4d] text-white font-bold py-3 rounded-lg shadow-md" onclick="handleLogin()">LOGIN</button></div>
             <div id="loading-spinner" class="hidden mt-6 flex flex-col items-center"><div class="spinner"></div><div id="loading-text" class="text-gray-500 font-bold text-sm mt-3 text-center">Syncing Database...</div></div>
         </div>
     </div>
@@ -100,7 +98,7 @@
             <div id="view-wrapper" style="position:relative; z-index:20;">
                 
                 <div id="view-home" class="hidden">
-                    <div class="bg-[#007a4d] text-white p-6 rounded-2xl mb-6 shadow-lg flex flex-col items-center text-center relative overflow-hidden"><div class="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-white opacity-5 rounded-full pointer-events-none"></div><div class="absolute bottom-0 left-0 -mb-10 -ml-10 w-32 h-32 bg-black opacity-10 rounded-full pointer-events-none"></div><div class="bg-white p-3.5 rounded-2xl mb-3 shadow-md z-10 relative"><img src="Greenleaf%20Logo.png" alt="Greenleaf Logo" class="h-11 object-contain" onerror="this.style.display='none'"></div><h1 class="text-2xl font-black tracking-tight mb-1 z-10 relative">DDC GNC</h1><p class="text-green-100 text-[10px] font-bold mb-5 uppercase tracking-[0.2em] z-10 relative">Dashboard V2</p><div class="flex flex-col items-center pt-4 border-t border-white/20 w-full mt-1 z-10 relative"><span class="text-[9px] font-bold text-white/70 uppercase tracking-[0.3em] mb-1">Powered By</span><div class="text-[15px] font-black tracking-[0.2em] text-white uppercase drop-shadow-sm">Ag Metric</div></div></div>
+                    <div class="bg-[#007a4d] text-white p-6 rounded-2xl mb-6 shadow-lg flex flex-col items-center text-center relative overflow-hidden"><div class="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-white opacity-5 rounded-full pointer-events-none"></div><div class="absolute bottom-0 left-0 -mb-10 -ml-10 w-32 h-32 bg-black opacity-10 rounded-full pointer-events-none"></div><h1 class="text-2xl font-black tracking-tight mb-1 z-10 relative mt-4">DDC GNC</h1><p class="text-green-100 text-[10px] font-bold mb-5 uppercase tracking-[0.2em] z-10 relative">Dashboard V2</p><div class="flex flex-col items-center pt-4 border-t border-white/20 w-full mt-1 z-10 relative"><span class="text-[9px] font-bold text-white/70 uppercase tracking-[0.3em] mb-1">Powered By</span><div class="text-[15px] font-black tracking-[0.2em] text-white uppercase drop-shadow-sm">Ag Metric</div></div></div>
                     <h2 class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3 pl-1">App Modules</h2>
                     <div class="grid grid-cols-2 gap-3 mb-8">
                         <div onclick="switchView('drive')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-car text-3xl text-blue-600"></i><span class="font-bold text-sm text-gray-800">Drive Mode</span></div>
@@ -813,151 +811,6 @@
             if (isSilentAutoSave && !isComplete && !specificItem) { autoSaveTimer = setTimeout(() => { executeSave(); }, 1000); } else { executeSave(); }
         }
 
-        // ==========================================
-        // TOAST NOTIFICATIONS
-        // ==========================================
-        function showToast(title, msg, isError = false) {
-            const toast = document.getElementById('toast-notification');
-            toast.style.background = isError ? '#ef4444' : '#16a34a';
-            toast.innerHTML = `<i class="ph-bold ${isError ? 'ph-warning-circle' : 'ph-check-circle'} text-2xl"></i><div><div class="font-bold text-sm leading-tight">${title}</div><div class="text-[10px] opacity-90">${msg}</div></div>`;
-            toast.classList.add('show');
-            setTimeout(() => { toast.classList.remove('show'); }, 3000);
-        }
-
-        // ==========================================
-        // DRIVE VIEW
-        // ==========================================
-        const debouncedDriveSearch = debounce(() => {
-            const term = document.getElementById('drive-search').value.toLowerCase();
-            if (term.length > 0 && driveViewLevel > 0) { driveViewLevel = 0; selectedDriveName = null; selectedDriveSize = null; }
-            requestAnimationFrame(() => renderDrive());
-        }, 150);
-        
-        function handleDriveSearch() {
-            const term = document.getElementById('drive-search').value.toLowerCase();
-            const clearBtn = document.getElementById('drive-search-clear');
-            if (term.length > 0) clearBtn.classList.remove('hidden'); else clearBtn.classList.add('hidden');
-            debouncedDriveSearch();
-        }
-
-        function clearDriveSearch() { document.getElementById('drive-search').value = ""; document.getElementById('drive-search-clear').classList.add('hidden'); renderDrive(); }
-        function resetDriveView() { driveViewLevel = 0; selectedDriveName = null; selectedDriveSize = null; document.getElementById('drive-search').value = ""; document.getElementById('drive-search-clear').classList.add('hidden'); renderDrive(); }
-        function toggleDriveSeason(s) { if (s === 'ALL') { driveSelectedSeasons.clear(); driveSelectedSeasons.add('ALL'); } else { driveSelectedSeasons.delete('ALL'); if (driveSelectedSeasons.has(s)) { driveSelectedSeasons.delete(s); if (driveSelectedSeasons.size === 0) driveSelectedSeasons.add('ALL'); } else { driveSelectedSeasons.add(s); } } renderDrive(); }
-        function selectDriveName(name) { selectedDriveName = name; driveViewLevel = 1; renderDrive(); }
-        function selectDriveSize(size) { selectedDriveSize = size; driveViewLevel = 2; renderDrive(); }
-
-        function renderDrive() {
-            const container = document.getElementById('drive-content'); const filtersDiv = document.getElementById('drive-season-filters'); const crumb = document.getElementById('drive-crumb'); const term = document.getElementById('drive-search').value.toLowerCase();
-            
-            filtersDiv.innerHTML = availableSeasons.map(s => { const active = driveSelectedSeasons.has(s); return `<div class="px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap cursor-pointer transition-colors ${active ? 'bg-[#007a4d] text-white shadow-md' : 'bg-white border border-gray-300 text-gray-600'}" onclick="toggleDriveSeason('${s}')">${s}</div>`; }).join('');
-
-            let items = fullInventory;
-            if (!driveSelectedSeasons.has('ALL')) { items = items.filter(i => { let s = String(i.SEASON || '').toUpperCase(); return driveSelectedSeasons.has(s); }); }
-            if (term) { items = items.filter(i => (i._search||"").includes(term)); }
-            
-            if (items.length === 0) { container.innerHTML = `<div class="p-8 text-center text-gray-400">No items found matching criteria.</div>`; crumb.innerText = "No Results"; return; }
-
-            if (driveViewLevel === 0) {
-                crumb.innerText = "Drive Mode > Plants"; const names = [...new Set(items.map(i => i.COMMONNAME))].sort();
-                container.innerHTML = names.map(n => `<div class="drill-item" onclick="selectDriveName('${n.replace(/'/g, "\\'")}')"><span class="font-bold text-lg">${n}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
-            } else if (driveViewLevel === 1) {
-                crumb.innerText = `Drive Mode > ${selectedDriveName}`; const namedItems = items.filter(i => i.COMMONNAME === selectedDriveName); const sizes = [...new Set(namedItems.map(i => i.CONTSIZE))].sort();
-                let html = `<div class="back-btn" onclick="driveViewLevel=0; renderDrive()"><i class="ph-bold ph-arrow-left"></i> Back to Plants</div>`;
-                html += sizes.map(s => { const count = namedItems.filter(i => i.CONTSIZE === s).length; return `<div class="drill-item" onclick="selectDriveSize('${s}')"><span class="font-bold text-lg">${s} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`; }).join('');
-                container.innerHTML = html;
-            } else if (driveViewLevel === 2) {
-                crumb.innerText = `${selectedDriveName} / ${selectedDriveSize}`; let finalItems = items.filter(i => i.COMMONNAME === selectedDriveName && i.CONTSIZE === selectedDriveSize);
-                finalItems.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
-                container.innerHTML = `<div class="back-btn" onclick="driveViewLevel=1; renderDrive()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>` + finalItems.map(i => generateCard(i, 'drive', 'status-blue')).join('');
-            }
-        }
-
-        // ==========================================
-        // TASKS VIEW
-        // ==========================================
-        function renderTeamSelector() {
-            let uSet = new Set();
-            fullInventory.forEach(i => { if (i.ASSIGNEDTO && !i.DATE_COMPLETED) uSet.add(i.ASSIGNEDTO); });
-            if (uSet.size === 0) { document.getElementById('task-content').innerHTML = `<div class="p-8 text-center text-gray-400">No active tasks for any team member.</div>`; return; }
-            let sorted = Array.from(uSet).sort();
-            let html = `<h2 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Select Team Member</h2>`;
-            sorted.forEach(u => {
-                let userTasks = fullInventory.filter(i => i.ASSIGNEDTO === u && !i.DATE_COMPLETED);
-                let htmlCounts = `<div class="flex gap-2 mt-2">`;
-                ['season', 'location', 'endcap', 'flyer'].forEach(t => { let c = userTasks.filter(i => i.APP_TAB_ASSIGNMENT === t).length; if (c > 0) htmlCounts += `<span class="text-[10px] font-bold px-2 py-1 rounded bg-gray-100 text-gray-600 uppercase">${t}: ${c}</span>`; });
-                htmlCounts += `</div>`;
-                html += `<div class="bg-white border border-gray-200 p-4 rounded-xl shadow-sm mb-3 cursor-pointer active:scale-95 transition-transform" onclick="selectTaskUser('${u}')"><div class="flex justify-between items-center"><span class="font-black text-xl text-[#007a4d]">${u}</span><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${userTasks.length} Total</span></div>${htmlCounts}</div>`;
-            });
-            document.getElementById('task-tabs-container').classList.add('hidden'); document.getElementById('task-crumb').innerText = "Team Tasks Overview"; document.getElementById('task-content').innerHTML = html;
-        }
-
-        function selectTaskUser(u) { taskViewTargetUser = u; document.getElementById('task-tabs-container').classList.remove('hidden'); renderTasks(); }
-
-        function renderTasks() {
-            let targetUser = safeRole === 'ADMIN' ? taskViewTargetUser : currentUser; if (!targetUser) return;
-            const container = document.getElementById('task-content'); const crumb = document.getElementById('task-crumb');
-            crumb.innerHTML = safeRole === 'ADMIN' ? `<span class="cursor-pointer text-gray-400 hover:text-gray-800" onclick="taskViewTargetUser=null; renderTeamSelector()"><i class="ph-bold ph-arrow-left"></i> Back to Team</span> &bull; <span class="text-[#007a4d]">${targetUser}'s Tasks</span>` : "My Tasks";
-
-            let userItems = fullInventory.filter(i => i.ASSIGNEDTO === targetUser && !i.DATE_COMPLETED);
-            let tabItems = userItems.filter(i => i.APP_TAB_ASSIGNMENT === activeTaskTab);
-
-            if (tabItems.length === 0) { container.innerHTML = `<div class="p-8 text-center text-gray-400">No active ${activeTaskTab} tasks.</div>`; return; }
-
-            if (activeTaskTab === 'endcap') {
-                if (taskViewLevel === 0) {
-                    let folders = [...new Set(tabItems.map(i => i.END_CAP_FOLDER || 'Unassigned'))].sort();
-                    container.innerHTML = folders.map(f => { let count = tabItems.filter(i => (i.END_CAP_FOLDER || 'Unassigned') === f).length; return `<div class="bg-white border border-yellow-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectedEndCapFolder='${f.replace(/'/g, "\\'")}'; taskViewLevel=1; renderTasks()"><div class="flex items-center gap-3"><div class="bg-yellow-50 p-2 rounded-lg"><i class="ph-fill ph-storefront text-2xl text-yellow-500"></i></div><span class="font-bold text-lg text-yellow-800">${f}</span></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${count} Items</span></div>`; }).join('');
-                } else if (taskViewLevel === 1) {
-                    let fItems = tabItems.filter(i => (i.END_CAP_FOLDER || 'Unassigned') === selectedEndCapFolder); fItems.sort((a,b) => (a.COMMONNAME||"").localeCompare(b.COMMONNAME||""));
-                    container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=0; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to End Caps</div>` + fItems.map(i => generateCard(i, 'tasks', 'status-yellow')).join('');
-                }
-            } else if (activeTaskTab === 'flyer') {
-                tabItems.sort((a,b) => (a.COMMONNAME||"").localeCompare(b.COMMONNAME||""));
-                container.innerHTML = tabItems.map(i => generateCard(i, 'tasks', 'status-indigo')).join('');
-            } else {
-                if (taskViewLevel === 0) {
-                    let blocks = {};
-                    tabItems.forEach(i => { let loc = String(i.LOCATIONCODE || "NoLoc"); let block = loc.split(' ')[0] || "Unknown"; if (!blocks[block]) blocks[block] = { count: 0, items: [] }; blocks[block].count++; blocks[block].items.push(i); });
-                    let html = Object.keys(blocks).sort().map(b => `<div class="bg-white border border-green-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectedTaskBlock='${b}'; taskViewLevel=1; renderTasks()"><div class="flex items-center gap-3"><div class="bg-green-50 p-2 rounded-lg text-green-600 font-black text-xl w-12 text-center">${b}</div><span class="font-bold text-lg text-gray-700">Block ${b}</span></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${blocks[b].count} Items</span></div>`).join('');
-                    container.innerHTML = html;
-                } else if (taskViewLevel === 1) {
-                    let bItems = tabItems.filter(i => String(i.LOCATIONCODE || "NoLoc").startsWith(selectedTaskBlock));
-                    let locs = [...new Set(bItems.map(i => i.LOCATIONCODE || "NoLoc"))].sort((a, b) => a.localeCompare(b, undefined, {numeric: true}));
-                    let html = `<div class="back-btn" onclick="taskViewLevel=0; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Blocks</div>`;
-                    html += locs.map(l => { let count = bItems.filter(i => (i.LOCATIONCODE || "NoLoc") === l).length; return `<div class="drill-item" onclick="selectedTaskLoc='${l.replace(/'/g, "\\'")}'; taskViewLevel=2; renderTasks()"><span class="font-bold text-lg text-gray-800">${l} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`; }).join('');
-                    container.innerHTML = html;
-                } else if (taskViewLevel === 2) {
-                    let fItems = tabItems.filter(i => (i.LOCATIONCODE || "NoLoc") === selectedTaskLoc); fItems.sort((a,b) => (a.COMMONNAME||"").localeCompare(b.COMMONNAME||""));
-                    container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=1; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Locations</div>` + fItems.map(i => generateCard(i, 'tasks', activeTaskTab === 'season' ? 'status-green' : 'status-blue')).join('');
-                }
-            }
-        }
-
-        // ==========================================
-        // REVIEW VIEW
-        // ==========================================
-        function resetReviewView() { reviewViewLevel = 0; selectedReviewItemCode = null; selectedReviewCommonName = null; selectedReviewContSize = null; renderReview(); }
-        function selectReviewItem(code, name, size) { selectedReviewItemCode = code; selectedReviewCommonName = name; selectedReviewContSize = size; reviewViewLevel = 1; renderReview(); }
-
-        function renderReview() {
-            const container = document.getElementById('review-content'); const crumb = document.getElementById('review-crumb');
-            if (managerReviewInventory.length === 0) { container.innerHTML = `<div class="p-8 text-center text-gray-400">No items require manager review.</div>`; crumb.innerText = "All Clear"; return; }
-            if (reviewViewLevel === 0) {
-                crumb.innerText = "Needs Location Priority Review"; let groups = {};
-                managerReviewInventory.forEach(i => { let code = i.ITEMCODE || "UNKNOWN"; if (!groups[code]) { groups[code] = { code: code, name: i.COMMONNAME || "Unknown", size: i.CONTSIZE || "-", count: 0 }; } groups[code].count++; });
-                let sorted = Object.values(groups).sort((a,b) => a.name.localeCompare(b.name));
-                let html = sorted.map(g => `<div class="bg-yellow-50 border border-yellow-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectReviewItem('${g.code.replace(/'/g, "\\'")}', '${g.name.replace(/'/g, "\\'")}', '${g.size}')"><div class="flex-grow min-w-0 pr-3"><div class="font-bold text-[15px] text-yellow-800 truncate">${g.name}</div><div class="text-xs font-semibold text-yellow-600 mt-1">${g.size} <span class="mx-2 text-yellow-300">|</span> <span class="font-mono text-yellow-700">${g.code}</span></div></div><div class="bg-white px-3 py-1 rounded-lg shadow-sm border border-yellow-100 text-yellow-600 font-bold text-xs whitespace-nowrap">${g.count} Locs</div></div>`).join('');
-                container.innerHTML = html;
-            } else if (reviewViewLevel === 1) {
-                crumb.innerText = `${selectedReviewCommonName} / ${selectedReviewContSize}`;
-                let items = managerReviewInventory.filter(i => i.ITEMCODE === selectedReviewItemCode); items.sort((a,b) => (a.LOCATIONCODE||"").localeCompare((b.LOCATIONCODE||""), undefined, {numeric: true}));
-                container.innerHTML = `<div class="back-btn" onclick="resetReviewView()"><i class="ph-bold ph-arrow-left"></i> Back to List</div>` + items.map(i => generateCard(i, 'review', 'status-yellow')).join('');
-            }
-        }
-
-        // ==========================================
-        // REQUEST VIEW
-        // ==========================================
         function renderRequest() {
             const container = document.getElementById('request-content'); const crumb = document.getElementById('request-crumb');
             let items = requestsInventory.filter(i => !i.REQ_ARCHIVED); if (safeRole === 'SALESREP') items = items.filter(i => i.REQUESTED_BY === currentUser);
@@ -975,35 +828,7 @@
                 crumb.innerText = "Team Requests > Reps"; let isActioned = requestFilterMode === 'team_actioned'; let repGroups = {};
                 items.filter(i => i.REQUESTED_BY !== currentUser && (isActioned ? i.DATE_COMPLETED : !i.DATE_COMPLETED)).forEach(i => { let r = i.REQUESTED_BY || "Unknown"; if (!repGroups[r]) repGroups[r] = 0; repGroups[r]++; });
                 let sorted = Object.keys(repGroups).sort();
-                container.innerHTML = `<div class="back-btn" onclick="requestViewLevel=0; renderRequest()"><i class="ph-bold ph-arrow-left"></i> Back to Dashboard</div>` + sorted.map(r => `<div class="drill-item" onclick="selectedReqRep='${r.replace(/'/g, "\\'")}'; selectedReqRepStatus='${isActioned?'actioned':'pending'}'; requestViewLevel=3; renderRequest()"><span class="font-bold text-lg">${r} <span class="text-gray-400 text-sm font-normal">(${repGroups[r]})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
-            } else if (requestViewLevel === 3) {
-                let isActioned = selectedReqRepStatus === 'actioned'; crumb.innerText = `${selectedReqRep} > ${isActioned ? 'Actioned' : 'Pending'} > Folders`;
-                let repItems = items.filter(i => i.REQUESTED_BY === selectedReqRep && (isActioned ? i.DATE_COMPLETED : !i.DATE_COMPLETED));
-                let folderGroups = {}; repItems.forEach(i => { let f = i.REQUEST_FOLDER || "Unassigned"; if (!folderGroups[f]) folderGroups[f] = { count: 0, cust: i.REQ_CUSTOMER || "Unknown" }; folderGroups[f].count++; });
-                let sortedFolders = Object.keys(folderGroups).sort();
-                let html = `<div class="back-btn" onclick="requestViewLevel=${selectedReqRep===currentUser?0:1}; renderRequest()"><i class="ph-bold ph-arrow-left"></i> Back</div>`;
-                html += sortedFolders.map(f => {
-                    let displayTitle = f; let subtitle = folderGroups[f].cust;
-                    if (f.startsWith("REQ-")) { let parts = f.split('-'); if (parts.length >= 4) { displayTitle = `${parts[1]}/${parts[2]}/${parts[3]}`; subtitle = folderGroups[f].cust; } }
-                    return `<div class="bg-white border border-orange-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectRequestFolder('${f.replace(/'/g, "\\'")}')"><div class="flex items-center gap-3"><div class="bg-orange-50 p-2
-function renderRequest() {
-            const container = document.getElementById('request-content'); const crumb = document.getElementById('request-crumb');
-            let items = requestsInventory.filter(i => !i.REQ_ARCHIVED); if (safeRole === 'SALESREP') items = items.filter(i => i.REQUESTED_BY === currentUser);
-            if (items.length === 0) { container.innerHTML = `<div class="p-8 text-center text-gray-400">No active requests.</div>`; crumb.innerText = ""; return; }
-
-            if (requestViewLevel === 0) {
-                crumb.innerText = "Requests > Dashboard"; let myItems = items.filter(i => i.REQUESTED_BY === currentUser); let allOtherItems = items.filter(i => i.REQUESTED_BY !== currentUser);
-                let myAct = myItems.filter(i => i.DATE_COMPLETED).length; let myPend = myItems.length - myAct;
-                let othAct = allOtherItems.filter(i => i.DATE_COMPLETED).length; let othPend = allOtherItems.length - othAct;
-                let html = `<div class="grid grid-cols-2 gap-3 mb-6"><div class="bg-orange-50 border border-orange-200 rounded-xl p-4 shadow-sm cursor-pointer active:scale-95 transition-transform" onclick="selectRequestCategory('my_pending')"><div class="text-[10px] font-bold text-orange-600 uppercase tracking-widest mb-1">My Requests</div><div class="text-3xl font-black text-orange-800 mb-1">${myPend}</div><div class="text-xs font-bold text-orange-500">Pending Action</div></div><div class="bg-green-50 border border-green-200 rounded-xl p-4 shadow-sm cursor-pointer active:scale-95 transition-transform" onclick="selectRequestCategory('my_actioned')"><div class="text-[10px] font-bold text-green-600 uppercase tracking-widest mb-1">My Requests</div><div class="text-3xl font-black text-green-800 mb-1">${myAct}</div><div class="text-xs font-bold text-green-500">Actioned</div></div></div>`;
-                if (safeRole !== 'SALESREP') { html += `<h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 pl-1">Team Requests</h3><div class="grid grid-cols-2 gap-3"><div class="bg-gray-50 border border-gray-200 rounded-xl p-4 shadow-sm cursor-pointer active:scale-95 transition-transform" onclick="selectRequestCategory('team_pending')"><div class="text-3xl font-black text-gray-700 mb-1">${othPend}</div><div class="text-xs font-bold text-gray-500">Pending Action</div></div><div class="bg-gray-50 border border-gray-200 rounded-xl p-4 shadow-sm cursor-pointer active:scale-95 transition-transform" onclick="selectRequestCategory('team_actioned')"><div class="text-3xl font-black text-gray-700 mb-1">${othAct}</div><div class="text-xs font-bold text-gray-500">Actioned</div></div></div>`; }
-                container.innerHTML = html;
-            } else if (requestViewLevel === 1) {
-                if (requestFilterMode === 'my_pending' || requestFilterMode === 'my_actioned') { selectedReqRep = currentUser; selectedReqRepStatus = requestFilterMode === 'my_pending' ? 'pending' : 'actioned'; requestViewLevel = 3; renderRequest(); return; }
-                crumb.innerText = "Team Requests > Reps"; let isActioned = requestFilterMode === 'team_actioned'; let repGroups = {};
-                items.filter(i => i.REQUESTED_BY !== currentUser && (isActioned ? i.DATE_COMPLETED : !i.DATE_COMPLETED)).forEach(i => { let r = i.REQUESTED_BY || "Unknown"; if (!repGroups[r]) repGroups[r] = 0; repGroups[r]++; });
-                let sorted = Object.keys(repGroups).sort();
-                container.innerHTML = `<div class="back-btn" onclick="requestViewLevel=0; renderRequest()"><i class="ph-bold ph-arrow-left"></i> Back to Dashboard</div>` + sorted.map(r => `<div class="drill-item" onclick="selectedReqRep='${r.replace(/'/g, "\\'")}'; selectedReqRepStatus='${isActioned?'actioned':'pending'}'; requestViewLevel=3; renderRequest()"><span class="font-bold text-lg">${r} <span class="text-gray-400 text-sm font-normal">(${repGroups[r]})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
+                container.innerHTML = `<div class="back-btn" onclick="requestViewLevel=0; renderRequest()"><i class="ph-bold ph-arrow-left"></i> Back to Dashboard</div>` + sorted.map(r => `<div class="drill-item" onclick="selectedReqRep='${r.replace(/'/g, "\\'")}' ; selectedReqRepStatus='${isActioned?'actioned':'pending'}'; requestViewLevel=3; renderRequest()"><span class="font-bold text-lg">${r} <span class="text-gray-400 text-sm font-normal">(${repGroups[r]})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
             } else if (requestViewLevel === 3) {
                 let isActioned = selectedReqRepStatus === 'actioned'; crumb.innerText = `${selectedReqRep} > ${isActioned ? 'Actioned' : 'Pending'} > Folders`;
                 let repItems = items.filter(i => i.REQUESTED_BY === selectedReqRep && (isActioned ? i.DATE_COMPLETED : !i.DATE_COMPLETED));
