@@ -209,6 +209,7 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
         <div class="drawer-item text-emerald-600 font-bold admin-only hidden" onclick="switchView('reports'); toggleMenu();"><i class="ph-bold ph-chart-bar"></i> Reports</div>
         <div class="drawer-item text-red-600 font-bold dylan-only hidden" onclick="switchView('low-stock'); toggleMenu();"><i class="ph-bold ph-trend-down"></i> Low Stock List</div>
         <div class="drawer-item text-yellow-600 font-bold admin-only hidden" onclick="switchView('review'); toggleMenu();"><i class="ph-bold ph-warning-circle"></i> Manager Review</div>
+        <div class="drawer-item text-emerald-600 font-bold" onclick="switchView('hours'); toggleMenu();"><i class="ph-bold ph-clock"></i> Labor Hours</div>
         <hr class="my-3 border-gray-200">
         <div class="drawer-item text-red-600 bg-red-50 font-bold justify-center rounded-lg mx-4 mt-2 mb-8" onclick="performLogout()"><i class="ph-bold ph-sign-out text-xl"></i> Log Out</div>
     </div>
@@ -227,11 +228,39 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
                     <div onclick="switchView('reserves')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform col-span-2 cursor-pointer admin-rep-csr-only hidden"><i class="ph-bold ph-bookmark-simple text-3xl text-indigo-600"></i><span class="font-bold text-sm text-gray-800">Reserves</span></div>
                     <div onclick="switchView('sales-office')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer admin-csr-only hidden"><i class="ph-bold ph-briefcase text-3xl text-purple-600"></i><span class="font-bold text-sm text-gray-800">Sales Office</span></div>
                     <div onclick="switchView('reports')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer admin-only hidden"><i class="ph-bold ph-chart-bar text-3xl text-emerald-600"></i><span class="font-bold text-sm text-gray-800">Reports</span></div>
+                    <div onclick="switchView('hours')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform col-span-2 cursor-pointer"><i class="ph-bold ph-clock text-3xl text-emerald-600"></i><span class="font-bold text-sm text-gray-800">Labor Hours</span></div>
                     <div onclick="switchView('low-stock')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer dylan-only hidden"><i class="ph-bold ph-trend-down text-3xl text-red-600"></i><span class="font-bold text-sm text-gray-800">Low Stock</span></div>
                     <div onclick="switchView('review')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform col-span-2 cursor-pointer admin-only hidden"><i class="ph-bold ph-warning-circle text-3xl text-yellow-600"></i><span class="font-bold text-sm text-gray-800">Manager Review</span></div>
                 </div>
             </div>
             
+            <div id="view-hours" class="hidden">
+                <div class="bg-white rounded-xl shadow-md p-6 mb-6">
+                    <h2 class="text-xl font-black text-[#007a4d] mb-2">Report Labor Hours</h2>
+                    <p class="text-xs text-gray-500 font-bold mb-6">Submit man-hours for your department.</p>
+                    
+                    <label class="text-[10px] font-bold text-gray-500 uppercase ml-1">Date</label>
+                    <input type="date" id="hours-date" class="input-field mb-4">
+                    
+                    <label class="text-[10px] font-bold text-gray-500 uppercase ml-1">Department</label>
+                    <select id="hours-dept" class="input-field bg-white mb-4">
+                        <option value="" disabled selected>Select Department...</option>
+                        <option value="Shipping">Shipping</option>
+                        <option value="Production">Production</option>
+                        <option value="Maintenance">Maintenance</option>
+                        <option value="Sales">Sales</option>
+                        <option value="Admin">Admin</option>
+                        <option value="Driving">Driving</option>
+                        <option value="Quality Control">Quality Control</option>
+                    </select>
+                    
+                    <label class="text-[10px] font-bold text-gray-500 uppercase ml-1">Total Man Hours</label>
+                    <input type="number" id="hours-amount" class="input-field mb-6" placeholder="e.g. 120" step="0.5" min="0">
+                    
+                    <button class="w-full bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform" onclick="submitLaborHours()">SUBMIT HOURS</button>
+                </div>
+            </div>
+
             <div id="view-av" class="hidden">
                 <div id="av-search-container" class="relative mb-2"><input type="text" id="av-search" class="input-field w-full pr-10 !mb-0" placeholder="Search Open Stock..." oninput="handleAVSearch()"><i id="av-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearAVSearch()"></i></div>
                 <div class="task-tabs mt-2"><div id="tab-av-open" class="task-tab active" onclick="setAVTab('open')">Open Stock</div><div id="tab-av-reserves" class="task-tab" onclick="setAVTab('reserves')">My Reserves</div></div>
@@ -653,7 +682,7 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
         function toggleMenu(){ document.getElementById('side-drawer').classList.toggle('open'); document.getElementById('drawer-overlay').classList.toggle('open'); }
         function showToast(title, message, isAlert = false) { const toast = document.getElementById('toast-notification'); toast.style.background = isAlert ? '#ef4444' : '#16a34a'; toast.innerHTML = `<div class="font-bold text-sm">${title}</div><div class="text-xs">${message}</div>`; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 3000); }
 
-        function switchView(viewId){ ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-detail','view-docks','view-request','view-reserves','view-av'].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.add('hidden');}); document.getElementById('view-'+viewId).classList.remove('hidden'); requestAnimationFrame(()=>{setTimeout(()=>{if(viewId==='drive')resetDriveView();if(viewId==='tasks'){if(safeRole==='ADMIN'&&!taskViewTargetUser)renderTeamSelector();else renderTasks();}if(viewId==='reports')resetReportsView();if(viewId==='review')resetReviewView();if(viewId==='request'){requestViewLevel=0;renderRequest();}if(viewId==='reserves')resetReservesView();if(viewId==='sales-office')renderSalesOffice();if(viewId==='low-stock')resetLowStockView();if(viewId==='docks')resetDockView();if(viewId==='av')resetAVView();},0)}); }
+        function switchView(viewId){ ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-detail','view-docks','view-request','view-reserves','view-av', 'view-hours'].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.add('hidden');}); document.getElementById('view-'+viewId).classList.remove('hidden'); requestAnimationFrame(()=>{setTimeout(()=>{if(viewId==='drive')resetDriveView();if(viewId==='tasks'){if(safeRole==='ADMIN'&&!taskViewTargetUser)renderTeamSelector();else renderTasks();}if(viewId==='reports')resetReportsView();if(viewId==='review')resetReviewView();if(viewId==='request'){requestViewLevel=0;renderRequest();}if(viewId==='reserves')resetReservesView();if(viewId==='sales-office')renderSalesOffice();if(viewId==='low-stock')resetLowStockView();if(viewId==='docks')resetDockView();if(viewId==='av')resetAVView();if(viewId==='hours')resetHoursView();},0)}); }
         function reRenderCurrentView(){ if(!document.getElementById('view-drive').classList.contains('hidden'))renderDrive(); if(!document.getElementById('view-tasks').classList.contains('hidden'))renderTasks(); if(!document.getElementById('view-sales-office').classList.contains('hidden'))renderSalesOffice(); if(!document.getElementById('view-low-stock').classList.contains('hidden'))renderLowStock(); if(!document.getElementById('view-docks').classList.contains('hidden'))renderDocks(); if(!document.getElementById('view-review').classList.contains('hidden'))renderReview(); if(!document.getElementById('view-reports').classList.contains('hidden'))renderReports(); if(!document.getElementById('view-request').classList.contains('hidden'))renderRequest(); if(!document.getElementById('view-reserves').classList.contains('hidden'))renderReserves(); if(!document.getElementById('view-av').classList.contains('hidden'))renderAV(); }
         function setTaskTab(tab){ activeTaskTab=tab; document.getElementById('tab-season').classList.toggle('active',tab==='season'); document.getElementById('tab-location').classList.toggle('active',tab==='location'); document.getElementById('tab-endcap').classList.toggle('active',tab==='endcap'); document.getElementById('tab-flyer').classList.toggle('active',tab==='flyer'); taskViewLevel=0; renderTasks(); }
         function setAVTab(tab){ activeAVTab=tab; avResLevel=0; selectedAvResName=null; selectedAvResSize=null; document.getElementById('tab-av-open').classList.toggle('active',tab==='open'); document.getElementById('tab-av-reserves').classList.toggle('active',tab==='reserves'); renderAV(); }
@@ -664,6 +693,44 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
             document.getElementById('tab-req-complete').classList.toggle('active', tab === 'complete');
             requestViewLevel = 0; selectedReqFolder = null; clearSelection();
             renderRequest();
+        }
+
+        function resetHoursView() {
+            let yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            document.getElementById('hours-date').value = yesterday.toISOString().split('T')[0];
+            document.getElementById('hours-dept').value = "";
+            document.getElementById('hours-amount').value = "";
+        }
+
+        function submitLaborHours() {
+            const dateVal = document.getElementById('hours-date').value;
+            const deptVal = document.getElementById('hours-dept').value;
+            const hoursVal = document.getElementById('hours-amount').value;
+            
+            if(!dateVal || !deptVal || !hoursVal) {
+                showToast("Required", "Please fill out all fields.", true);
+                return;
+            }
+            
+            showToast("Submitting...", "Saving labor hours...", false);
+            
+            const payload = {
+                date_reported: dateVal,
+                department: deptVal,
+                man_hours: parseFloat(hoursVal),
+                submitted_by: currentUser,
+                submitted_at: new Date().toISOString()
+            };
+            
+            supabaseFetch('v2_labor_hours', 'POST', payload)
+                .then(() => {
+                    showToast("Success", "Hours submitted successfully!");
+                    document.getElementById('hours-amount').value = "";
+                })
+                .catch(err => {
+                    showToast("Error", "Failed to submit hours. Network error.", true);
+                });
         }
 
         const debouncedReservesSearch=debounce(()=>{requestAnimationFrame(()=>renderReserves())},150);
@@ -1222,7 +1289,7 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
             if (!activeItem) activeItem = lowStockInventory.find(i => i.UNIQUE_ID === uniqueId); if (!activeItem) activeItem = managerReviewInventory.find(i => i.UNIQUE_ID === uniqueId); if (!activeItem) activeItem = reservesInventory.find(i => i.UNIQUE_ID === uniqueId); if (!activeItem) activeItem = requestsInventory.find(i => i.UNIQUE_ID === uniqueId); if (!activeItem) activeItem = socInventory.find(i => i.UNIQUE_ID === uniqueId);
             if (!activeItem) return;
 
-            ['view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-docks','view-request','view-reserves', 'view-av'].forEach(v => document.getElementById(v).classList.add('hidden')); document.getElementById('view-detail').classList.remove('hidden');
+            ['view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-docks','view-request','view-reserves', 'view-av', 'view-hours'].forEach(v => document.getElementById(v).classList.add('hidden')); document.getElementById('view-detail').classList.remove('hidden');
 
             activeItem.SAVED_PHOTO_LINK = activeItem['PHOTO_LINK'] || activeItem.PHOTOLINK || activeItem.SAVED_PHOTO_LINK || ""; activeItem.SAVED_PHOTO_NAME = activeItem['PHOTO_NAME'] || activeItem.PHOTONAME || activeItem.SAVED_PHOTO_NAME || "";
             document.getElementById('det-common').innerText = activeItem.COMMONNAME || "--"; document.getElementById('det-size').innerText = activeItem.CONTSIZE || "--"; document.getElementById('ov-loc').innerText = activeItem.LOCATIONCODE || "--"; document.getElementById('ov-avail').innerText = activeItem.PTRAVAILABLE || "0"; document.getElementById('ov-item').innerText = activeItem.ITEMCODE || "--"; document.getElementById('ov-lot').innerText = activeItem.LOTCODE || "--"; document.getElementById('ov-qual').innerText = activeItem.QUALITYCODE || "--"; document.getElementById('ov-tag').innerText = activeItem.FIELDTAGCOLOR || activeItem['FIELD_TAG_COLOR'] || "--"; document.getElementById('ov-season').innerText = activeItem.SEASONSUPPLY || "--"; document.getElementById('ov-prior').innerText = activeItem.PRIORITY || "--";
