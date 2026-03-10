@@ -143,9 +143,9 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
             <label class="text-[10px] font-bold text-gray-500 uppercase ml-1">Dock Status</label>
             <select id="dock-status" class="input-field border-orange-200 focus:border-orange-500 font-bold text-orange-700 bg-orange-50 !mb-0">
                 <option value="Loading">Loading</option>
-                <option value="Paused">Paused</option>
-                <option value="Waiting">Waiting on Plant</option>
-                <option value="Complete">Complete</option>
+                <option value="Missing > 10">Missing more than 10</option>
+                <option value="Missing < 5">Missing less than 5</option>
+                <option value="Palletize">Palletize</option>
             </select>
         </div>
         <div class="flex gap-2">
@@ -207,9 +207,9 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
         <div class="drawer-item text-indigo-600 font-bold admin-rep-csr-only hidden" onclick="switchView('reserves'); toggleMenu();"><i class="ph-bold ph-bookmark-simple"></i> Reserves</div>
         <div class="drawer-item text-purple-600 font-bold admin-csr-only hidden" onclick="switchView('sales-office'); toggleMenu();"><i class="ph-bold ph-briefcase"></i> Sales Office</div>
         <div class="drawer-item text-emerald-600 font-bold admin-only hidden" onclick="switchView('reports'); toggleMenu();"><i class="ph-bold ph-chart-bar"></i> Reports</div>
+        <div class="drawer-item text-emerald-600 font-bold" onclick="switchView('hours'); toggleMenu();"><i class="ph-bold ph-clock"></i> Labor Hours</div>
         <div class="drawer-item text-red-600 font-bold dylan-only hidden" onclick="switchView('low-stock'); toggleMenu();"><i class="ph-bold ph-trend-down"></i> Low Stock List</div>
         <div class="drawer-item text-yellow-600 font-bold admin-only hidden" onclick="switchView('review'); toggleMenu();"><i class="ph-bold ph-warning-circle"></i> Manager Review</div>
-        <div class="drawer-item text-emerald-600 font-bold" onclick="switchView('hours'); toggleMenu();"><i class="ph-bold ph-clock"></i> Labor Hours</div>
         <hr class="my-3 border-gray-200">
         <div class="drawer-item text-red-600 bg-red-50 font-bold justify-center rounded-lg mx-4 mt-2 mb-8" onclick="performLogout()"><i class="ph-bold ph-sign-out text-xl"></i> Log Out</div>
     </div>
@@ -763,6 +763,40 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
         function resetDockView() { dockViewLevel = 0; selectedDockNum = null; document.getElementById('docks-search').value = ""; document.getElementById('docks-search-clear').classList.add('hidden'); renderDocks(); }
         function selectDock(dock) { selectedDockNum = dock; dockViewLevel = 1; renderDocks(); }
 
+        function openDockInfoModal(dockNum) {
+            pendingDockNum = dockNum;
+            document.getElementById('modal-dock-num').innerText = dockNum;
+            
+            // Fetch cached info or use defaults
+            let savedInfo = JSON.parse(localStorage.getItem('gnc_dock_team_' + dockNum) || '{"checker":"","inspector":"","mistake":"","status":"Loading"}');
+            
+            document.getElementById('dock-checker').value = savedInfo.checker || "";
+            document.getElementById('dock-inspector').value = savedInfo.inspector || "";
+            document.getElementById('dock-mistake').value = savedInfo.mistake || "";
+            document.getElementById('dock-status').value = savedInfo.status || "Loading";
+            
+            document.getElementById('dock-info-modal').classList.remove('hidden');
+        }
+
+        function saveDockInfoModal() {
+            if(!pendingDockNum) return;
+            
+            let info = {
+                checker: document.getElementById('dock-checker').value.trim(),
+                inspector: document.getElementById('dock-inspector').value.trim(),
+                mistake: document.getElementById('dock-mistake').value.trim(),
+                status: document.getElementById('dock-status').value
+            };
+            
+            localStorage.setItem('gnc_dock_team_' + pendingDockNum, JSON.stringify(info));
+            document.getElementById('dock-info-modal').classList.add('hidden');
+            showToast("Saved", "Dock team and status updated.");
+            
+            if (dockViewLevel === 0) {
+                renderDocks();
+            }
+        }
+
         function renderDocks() {
             const container = document.getElementById('docks-content');
             const crumb = document.getElementById('docks-crumb');
@@ -795,14 +829,50 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
                 
                 container.innerHTML = docks.map(d => {
                     let count = items.filter(i => (i.DOCK_NUM || 'Unassigned') === d).length;
-                    return `<div class="bg-white border border-orange-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectDock('${esc(d)}')">
-                        <div class="flex items-center gap-3">
-                            <div class="bg-orange-50 p-2 rounded-lg"><i class="ph-fill ph-truck text-2xl text-orange-500"></i></div>
-                            <span class="font-bold text-lg text-orange-800">Dock ${d}</span>
+                    
+                    let savedInfo = JSON.parse(localStorage.getItem('gnc_dock_team_' + d) || '{"checker":"","inspector":"","mistake":"","status":"Loading"}');
+                    
+                    let statusColor = "text-blue-600 bg-blue-50";
+                    if(savedInfo.status.includes('Missing')) statusColor = "text-red-600 bg-red-50";
+                    else if(savedInfo.status === 'Palletize') statusColor = "text-purple-600 bg-purple-50";
+                    else if(savedInfo.status === 'Complete') statusColor = "text-green-600 bg-green-50";
+
+                    return `<div class="bg-white border border-orange-200 rounded-xl shadow-sm mb-4 overflow-hidden">
+                        <div class="p-4 flex justify-between items-center cursor-pointer active:bg-orange-50 transition-colors" onclick="selectDock('${esc(d)}')">
+                            <div class="flex items-center gap-3">
+                                <div class="bg-orange-50 p-2 rounded-lg"><i class="ph-fill ph-truck text-2xl text-orange-500"></i></div>
+                                <div>
+                                    <div class="font-black text-lg text-orange-800 leading-tight">Dock ${d}</div>
+                                    <div class="text-[10px] font-bold text-gray-500 uppercase mt-0.5">${count} Items</div>
+                                </div>
+                            </div>
+                            <i class="ph-bold ph-caret-right text-gray-300 text-xl"></i>
                         </div>
-                        <span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${count} Items</span>
+                        
+                        <div class="bg-gray-50 p-3 border-t border-gray-100">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Dock Status</span>
+                                <span class="text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider ${statusColor}">${savedInfo.status}</span>
+                            </div>
+                            <div class="grid grid-cols-3 gap-2 mb-3">
+                                <div class="bg-white p-2 rounded border border-gray-200 text-center">
+                                    <div class="text-[8px] font-bold text-gray-400 uppercase mb-0.5">Checker</div>
+                                    <div class="text-xs font-bold text-gray-700 truncate">${savedInfo.checker || '-'}</div>
+                                </div>
+                                <div class="bg-white p-2 rounded border border-gray-200 text-center">
+                                    <div class="text-[8px] font-bold text-gray-400 uppercase mb-0.5">Inspector</div>
+                                    <div class="text-xs font-bold text-gray-700 truncate">${savedInfo.inspector || '-'}</div>
+                                </div>
+                                <div class="bg-white p-2 rounded border border-gray-200 text-center">
+                                    <div class="text-[8px] font-bold text-gray-400 uppercase mb-0.5">Mistake Guy</div>
+                                    <div class="text-xs font-bold text-gray-700 truncate">${savedInfo.mistake || '-'}</div>
+                                </div>
+                            </div>
+                            <button class="w-full bg-white border border-orange-200 text-orange-600 font-bold py-2 rounded-lg text-xs shadow-sm active:bg-orange-50 transition-colors" onclick="openDockInfoModal('${esc(d)}')"><i class="ph-bold ph-pencil-simple mr-1"></i> Edit Team & Status</button>
+                        </div>
                     </div>`;
                 }).join('');
+                
             } else if (dockViewLevel === 1) {
                 crumb.innerText = `Dock: ${selectedDockNum}`;
                 let dItems = items.filter(i => (i.DOCK_NUM || 'Unassigned') === selectedDockNum);
@@ -815,8 +885,33 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
                     return String(a.CONTSIZE || "").localeCompare(String(b.CONTSIZE || ""));
                 });
                 
-                container.innerHTML = `<div class="back-btn" onclick="dockViewLevel=0; renderDocks()"><i class="ph-bold ph-arrow-left"></i> Back to Docks</div>` 
-                    + dItems.map(i => generateCard(i, 'docks', 'status-orange')).join('');
+                let currentStop = null;
+                let html = `<div class="back-btn" onclick="dockViewLevel=0; renderDocks()"><i class="ph-bold ph-arrow-left"></i> Back to Docks</div>`;
+                
+                dItems.forEach(item => {
+                    let stopNum = item.STOPNUMBER || 'Unassigned';
+                    if (stopNum !== currentStop) {
+                        currentStop = stopNum;
+                        let rep = item.SALESREPNAME || item.SALESREPID || 'Unknown Rep';
+                        let cust = item.CUSTOMERNAME || 'Unknown Customer';
+                        let cons = item.CONSIGNEENAME || item.CONSIGNEE || '';
+                        let state = item.CONSIGNEESTATE || item.STATE || 'N/A';
+                        
+                        html += `
+                        <div class="bg-gray-800 text-white rounded-xl shadow-md mb-3 p-4 mt-6 border-l-4 border-orange-500">
+                            <div class="flex justify-between items-center mb-2 border-b border-gray-600 pb-2">
+                                <div class="font-black text-xl text-orange-400 tracking-wider">STOP ${stopNum}</div>
+                                <div class="text-[10px] font-bold bg-gray-700 px-2 py-1 rounded text-gray-300 uppercase"><i class="ph-bold ph-user mr-1"></i>${rep}</div>
+                            </div>
+                            <div class="font-bold text-[15px] leading-tight mb-0.5">${cust}</div>
+                            ${cons && cons !== cust ? `<div class="text-[12px] text-gray-300 font-semibold mb-2 flex items-center gap-1"><i class="ph-bold ph-arrow-bend-down-right"></i> ${cons}</div>` : '<div class="mb-2"></div>'}
+                            <div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1"><i class="ph-bold ph-map-pin"></i> State: <span class="text-gray-200">${state}</span></div>
+                        </div>`;
+                    }
+                    html += generateCard(item, 'docks', 'status-orange');
+                });
+                
+                container.innerHTML = html;
             }
         }
 
