@@ -701,6 +701,48 @@
             }
         }
         // -----------------------------------------------
+        
+        // -----------------------------------------------
+        // MISSING RENDER FUNCTIONS (ADDED)
+        // -----------------------------------------------
+        function renderSalesOffice() {
+            const container = document.getElementById('sales-office-content');
+            if (!container) return;
+            if (salesOfficeInventory.length === 0) {
+                container.innerHTML = `<div class="p-8 text-center text-gray-400">No completed sales notes found.</div>`;
+                return;
+            }
+            
+            let items = [...salesOfficeInventory];
+            items.sort((a, b) => {
+                let dateA = new Date(a.COMPLETED_AT || 0).getTime();
+                let dateB = new Date(b.COMPLETED_AT || 0).getTime();
+                return dateB - dateA; // Newest first
+            });
+            
+            container.innerHTML = items.map(i => generateCard(i, 'sales-office')).join('');
+        }
+
+        function resetLowStockView() {
+            lowStockViewLevel = 0;
+            renderLowStock();
+        }
+
+        function renderLowStock() {
+            const container = document.getElementById('low-stock-content');
+            const crumb = document.getElementById('low-stock-crumb');
+            if (!container) return;
+            if (lowStockInventory.length === 0) {
+                container.innerHTML = `<div class="p-8 text-center text-gray-400">No low stock items found.</div>`;
+                if (crumb) crumb.innerText = "All Clear";
+                return;
+            }
+            if (crumb) crumb.innerText = "Action Required";
+            let items = [...lowStockInventory];
+            items.sort((a, b) => String(a.COMMONNAME || "").localeCompare(String(b.COMMONNAME || "")));
+            container.innerHTML = items.map(i => generateCard(i, 'low-stock', 'status-red')).join('');
+        }
+        // -----------------------------------------------
 
         function updateGlobalActionBar(){ const bar=document.getElementById('global-action-bar'); if(selectedItems.size>0){ bar.classList.remove('hidden'); document.getElementById('sel-count').innerText=selectedItems.size; const isDocksView=!document.getElementById('view-docks').classList.contains('hidden'); const btnAssign=document.getElementById('batch-btn-assign'); const btnRequest=document.getElementById('batch-btn-request'); if(isDocksView){ if(btnAssign)btnAssign.classList.add('hidden'); if(btnRequest)btnRequest.classList.add('hidden'); }else{ if(btnAssign)btnAssign.classList.remove('hidden'); if(btnRequest)btnRequest.classList.remove('hidden'); } }else{ bar.classList.add('hidden'); } }
         function copyTextToClipboard(text,label){ navigator.clipboard.writeText(text).then(()=>{ showToast("Copied!",`${label} copied to clipboard.`); }).catch(err=>{ showToast("Error","Could not copy text.",true); }); }
@@ -1083,7 +1125,13 @@
                 supabaseFetch(targetTable, 'PATCH', payload, `unique_id=eq.${encodeURIComponent(itemToSave.UNIQUE_ID)}`).then(data => {
                     if (isCurrentView && isComplete) { if(btnComp) btnComp.innerText = "MARK DONE"; }
                     if (!isSilentAutoSave && isCurrentView && isComplete) showToast("Success", "Task Completed!"); 
-                    if (isComplete && isCurrentView) { itemToSave.DATE_COMPLETED = payload.date_completed; goBackFromDetail(); } else if (isComplete && !isCurrentView) { itemToSave.DATE_COMPLETED = payload.date_completed; }
+                    if (isComplete && isCurrentView) { 
+                        itemToSave.DATE_COMPLETED = payload.date_completed; 
+                        goBackFromDetail(); 
+                        reRenderCurrentView();
+                    } else if (isComplete && !isCurrentView) { 
+                        itemToSave.DATE_COMPLETED = payload.date_completed; 
+                    }
 
                     if (prefix === 'req-' && isComplete && !wasAlreadyComplete) {
                         let folderItems = requestsInventory.filter(i => i.REQUEST_FOLDER === itemToSave.REQUEST_FOLDER);
