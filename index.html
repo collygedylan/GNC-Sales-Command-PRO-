@@ -2650,3 +2650,176 @@
                 let soPayload = { unique_id: itemToSave.UNIQUE_ID, itemcode: itemToSave.ITEMCODE || "", commonname: itemToSave.COMMONNAME || "", contsize: itemToSave.CONTSIZE || "", locationcode: itemToSave.LOCATIONCODE || "", lotcode: itemToSave.LOTCODE || "", ptravailable: String(itemToSave.PTRAVAILABLE || ""), priority: String(itemToSave.PRIORITY || ""), sales_note: payload.sales_note || itemToSave.SALES_NOTE || itemToSave._NEW_SALES_NOTE || "", photo_link: itemToSave.NA_PHOTO_LINK || itemToSave.SAVED_PHOTO_LINK || "", completed_by: currentUser, completed_at: payload.date_completed };
                 if (prefix !== 'flyer-' && prefix !== 'req-') {
                     supabaseFetch('v2_sales_office', 'POST', soPayload).catch(
+                        e => console.log(e));
+                            let cloneSO = { ...soPayload };
+                            for(let key in soPayload) { cloneSO[key.toUpperCase()] = soPayload[key]; }
+                            cloneSO.DOM_ID = 'so_' + cloneSO.UNIQUE_ID;
+                            cloneSO.AV_NOTE = itemToSave.AV_NOTE;
+                            cloneSO.SAVED_PHOTO_LINK = soPayload.photo_link; 
+                            let existingIdx = salesOfficeInventory.findIndex(s => s.UNIQUE_ID === cloneSO.UNIQUE_ID);
+                            if (existingIdx > -1) salesOfficeInventory[existingIdx] = cloneSO;
+                            else salesOfficeInventory.push(cloneSO);
+                        }
+                    }
+
+                    const targetTable = (prefix === 'req-') ? 'v2_active_request' : (itemToSave.SOURCE_TABLE || 'v2_master_inventory');
+
+                    supabaseFetch(targetTable, 'PATCH', payload, `unique_id=eq.${encodeURIComponent(itemToSave.UNIQUE_ID)}`).then(data => {
+                        if (isCurrentView && isComplete) { if(btnComp) btnComp.innerText = "MARK DONE"; }
+                        if (!isSilentAutoSave && isCurrentView && isComplete) showToast("Success", "Task Completed!"); 
+                        if (isComplete && isCurrentView) { 
+                            itemToSave.DATE_COMPLETED = payload.date_completed; 
+                            goBackFromDetail(); 
+                            reRenderCurrentView();
+                        } else if (isComplete && !isCurrentView) { 
+                            itemToSave.DATE_COMPLETED = payload.date_completed; 
+                        }
+
+                        if (prefix === 'req-' && isComplete && !wasAlreadyComplete) {
+                            let folderItems = requestsInventory.filter(i => i.REQUEST_FOLDER === itemToSave.REQUEST_FOLDER);
+                            let allComplete = folderItems.every(i => i.REQ_STATUS === 'Complete' || i.UNIQUE_ID === itemToSave.UNIQUE_ID);
+                            if (allComplete) { sendEmailNotification('request_complete', itemToSave.REQUEST_FOLDER, itemToSave.REQUESTED_BY, itemToSave.REQ_CUSTOMER, folderItems.length); }
+                        }
+                    }).catch(err => { if (isCurrentView && isComplete) { if(btnComp) btnComp.innerText = "MARK DONE"; if (!isSilentAutoSave) showToast("Network Error", "Could not reach database.", true); } });
+                };
+                if (isSilentAutoSave && !isComplete && !specificItem) { autoSaveTimer = setTimeout(() => { executeSave(); }, 1000); } else { executeSave(); }
+            }
+
+            function backupLocalItem(item) {
+                if (!item) return;
+                let pendingEdits = JSON.parse(localStorage.getItem('gnc_pending_edits') || '{}');
+                pendingEdits[item.UNIQUE_ID] = { timestamp: new Date().getTime(), data: item };
+                localStorage.setItem('gnc_pending_edits', JSON.stringify(pendingEdits));
+            }
+
+            function applyLocalEdits() {
+                let pendingEdits = JSON.parse(localStorage.getItem('gnc_pending_edits') || '{}');
+                let now = new Date().getTime();
+                let changed = false;
+
+                for (let uid in pendingEdits) {
+                    if (now - pendingEdits[uid].timestamp > 900000) { delete pendingEdits[uid]; changed = true; continue; }
+                    let item = fullInventory.find(i => i.UNIQUE_ID === uid) || lowStockInventory.find(i => i.UNIQUE_ID === uid) || reservesInventory.find(i => i.UNIQUE_ID === uid) || requestsInventory.find(i => i.UNIQUE_ID === uid) || managerReviewInventory.find(i => i.UNIQUE_ID === uid) || socInventory.find(i => i.UNIQUE_ID === uid);
+                    if (item) { Object.assign(item, pendingEdits[uid].data); }
+                }
+                if (changed) { localStorage.setItem('gnc_pending_edits', JSON.stringify(pendingEdits)); }
+            }
+
+            function filterAvNotes(prefix) {
+                if (!activeItem) return;
+                const inputEl = document.getElementById(prefix + 'av-note');
+                if (!inputEl) return;
+                const inputVal = inputEl.value.toUpperCase();
+                const list = document.getElementById(prefix + 'av-dropdown-list');
+                let matchingNotes = avNotesDb.filter(n => String(n.COMMONNAME).toUpperCase() === String(activeItem.COMMONNAME).toUpperCase()).map(n => n.SALESNOTE || n.SALES_NOTE);
+                if (inputVal) { matchingNotes = matchingNotes.filter(n => String(n).toUpperCase().includes(inputVal)); }
+                matchingNotes = [...new Set(matchingNotes)];
+                if (matchingNotes.length === 0) { list.classList.add('hidden'); return; }
+                list.innerHTML = matchingNotes.map(n => `<div class="p-3 border-b border-gray-100 text-sm font-bold text-blue-800 cursor-pointer hover:bg-blue-50 active:bg-blue-100" onclick="selectAvNote('${esc(n)}', '${prefix}')">${n}</div>`).join('');
+                list.classList.remove('hidden');
+            }
+
+            function selectAvNote(note, prefix) {
+                document.getElementById(prefix + 'av-note').value = note;
+                document.getElementById(prefix + 'av-dropdown-list').classList.add('hidden');
+                saveData(false, prefix, true);
+            }
+
+            async function handlePhotoUpload(input, prefix) {
+                if (!input.files || input.files.length === 0) return;
+                const file = input.files[0];
+                
+                if (!file.type.startsWith('image/')) {
+                    showToast('Error', 'Please select an image file.', true);
+                    return;
+                }
+
+                showToast('Processing', 'Compressing image...', false);
+
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = function(event) {
+                    const img = new Image();
+                    img.src = event.target.result;
+                    img.onload = async function() {
+                        const canvas = document.createElement('canvas');
+                        const MAX_WIDTH = 1080;
+                        let scaleSize = 1;
+                        
+                        if (img.width > MAX_WIDTH) {
+                            scaleSize = MAX_WIDTH / img.width;
+                        }
+                        
+                        canvas.width = img.width * scaleSize;
+                        canvas.height = img.height * scaleSize;
+
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                        const base64Data = dataUrl.split(',')[1];
+
+                        showToast('Uploading', 'Sending photo to server...', false);
+
+                        let context = 'drive';
+                        if (prefix === 'ssn-') context = 'season';
+                        else if (prefix === 'lsn-') context = 'location';
+                        else if (prefix === 'req-') context = 'request';
+                        else if (prefix === 'dock-') context = 'docks';
+
+                        let dockNum = pendingDockNum || selectedDockNum || "0";
+
+                        let dateStr = new Date().toISOString().split('T')[0];
+                        let cName = String(activeItem.COMMONNAME || 'Unknown').replace(/[\/\\?%*:|"<>]/g, '-');
+                        let cSize = String(activeItem.CONTSIZE || 'NoSize').replace(/[\/\\?%*:|"<>]/g, '-');
+                        let cLot = String(activeItem.LOTCODE || 'NoLot').replace(/[\/\\?%*:|"<>]/g, '-');
+                        let cLoc = String(activeItem.LOCATIONCODE || 'NoLoc').replace(/[\/\\?%*:|"<>]/g, '-');
+                        let customFileName = `${cName}-${cSize}-${cLot}-${cLoc}-${dateStr}.jpg`;
+
+                        const payload = {
+                            type: 'image',
+                            image: base64Data,
+                            filename: customFileName,
+                            mimeType: 'image/jpeg',
+                            folderContext: context,
+                            dockNum: dockNum
+                        };
+
+                        try {
+                            const response = await fetch(GOOGLE_SCRIPT_URL, {
+                                method: 'POST',
+                                body: JSON.stringify(payload)
+                            });
+                            const result = await response.json();
+
+                            if (result.status === 'success') {
+                                showToast('Success', 'Photo uploaded successfully!');
+                                if (activeItem) {
+                                    let url = result.url;
+                                    if (prefix === 'req-') {
+                                        activeItem.REQ_PHOTO_LINK = activeItem.REQ_PHOTO_LINK ? activeItem.REQ_PHOTO_LINK + ',' + url : url;
+                                    } else if (prefix === 'dock-') {
+                                        activeItem.DOCK_PHOTO_LINK = activeItem.DOCK_PHOTO_LINK ? activeItem.DOCK_PHOTO_LINK + ',' + url : url;
+                                    } else if (prefix === 'flyer-') {
+                                        activeItem.FLYER_PHOTO_LINK = activeItem.FLYER_PHOTO_LINK ? activeItem.FLYER_PHOTO_LINK + ',' + url : url;
+                                    } else {
+                                        activeItem.SAVED_PHOTO_LINK = activeItem.SAVED_PHOTO_LINK ? activeItem.SAVED_PHOTO_LINK + ',' + url : url;
+                                    }
+                                    saveData(false, prefix, true);
+                                    renderSavedPhotos();
+                                }
+                            } else {
+                                showToast('Error', 'Upload failed: ' + result.message, true);
+                            }
+                        } catch (err) {
+                            showToast('Error', 'Network error during upload.', true);
+                        } finally {
+                            input.value = "";
+                        }
+                    };
+                };
+            }
+        </script>
+    </body>
+</html>
+
