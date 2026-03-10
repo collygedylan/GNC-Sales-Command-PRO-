@@ -990,12 +990,21 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
                 
                 container.innerHTML = folders.map(f => {
                     let count = items.filter(i => (i.REQUEST_FOLDER || 'Unassigned') === f).length;
-                    return `<div class="bg-white border border-purple-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectRequestFolder('${esc(f)}')">
-                        <div class="flex items-center gap-3">
-                            <div class="bg-purple-50 p-2 rounded-lg"><i class="ph-fill ph-folder text-2xl text-purple-500"></i></div>
-                            <span class="font-bold text-lg text-purple-800">${f}</span>
+                    
+                    // Only show the delete button if we are on the Pending tab
+                    let deleteBtnHtml = activeReqTab === 'pending' 
+                        ? `<div class="bg-red-50 p-2 rounded-lg ml-2 hover:bg-red-100 transition-colors" onclick="event.stopPropagation(); deleteRequestFolder('${esc(f)}')"><i class="ph-bold ph-trash text-xl text-red-500"></i></div>` 
+                        : '';
+
+                    return `<div class="bg-white border border-purple-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-[0.98] transition-transform" onclick="selectRequestFolder('${esc(f)}')">
+                        <div class="flex items-center gap-3 flex-grow min-w-0">
+                            <div class="bg-purple-50 p-2 rounded-lg flex-shrink-0"><i class="ph-fill ph-folder text-2xl text-purple-500"></i></div>
+                            <span class="font-bold text-lg text-purple-800 truncate pr-2">${f}</span>
                         </div>
-                        <span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${count} Items</span>
+                        <div class="flex items-center flex-shrink-0">
+                            <span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg whitespace-nowrap">${count} Items</span>
+                            ${deleteBtnHtml}
+                        </div>
                     </div>`;
                 }).join('');
             } 
@@ -1009,6 +1018,34 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
                 container.innerHTML = `<div class="back-btn" onclick="requestViewLevel=0; renderRequest()"><i class="ph-bold ph-arrow-left"></i> Back to Folders</div>` 
                     + fItems.map(i => generateCard(i, 'request', 'status-purple')).join('');
             }
+        }
+
+        function selectRequestFolder(folder) {
+            selectedReqFolder = folder;
+            requestViewLevel = 4;
+            renderRequest();
+        }
+
+        function deleteRequestFolder(folderName) {
+            if (!confirm(`Are you sure you want to completely delete the folder "${folderName}" and all the items inside it?`)) return;
+            
+            showToast("Deleting...", `Removing folder ${folderName}...`, false);
+            
+            // 1. Find all items inside this folder
+            let itemsToDelete = requestsInventory.filter(i => (i.REQUEST_FOLDER || 'Unassigned') === folderName);
+            
+            // 2. Remove them from the local array immediately so the UI updates instantly
+            requestsInventory = requestsInventory.filter(i => (i.REQUEST_FOLDER || 'Unassigned') !== folderName);
+            renderRequest();
+            
+            // 3. Delete them permanently from Supabase
+            let deletePromises = itemsToDelete.map(item => 
+                supabaseFetch('v2_active_request', 'DELETE', null, `unique_id=eq.${item.UNIQUE_ID}`)
+            );
+            
+            Promise.all(deletePromises)
+                .then(() => showToast("Deleted", "Folder and items removed successfully."))
+                .catch(err => showToast("Error", "Network error while deleting some items.", true));
         }
 
         function removeFromRequest(){
