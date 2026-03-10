@@ -276,17 +276,16 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
                     <div class="relative w-full mb-3">
                         <label class="text-[10px] font-bold text-green-700 uppercase flex justify-between"><span>Sales Description</span></label>
                         <div class="flex gap-2">
-                            <input type="text" id="global-sales-desc" class="input-field border-green-500 bg-green-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); debouncedFilterDropdown('global-sales-desc', 'global-dropdown-list')" onfocus="filterDropdown('global-sales-desc', 'global-dropdown-list')" onblur="setTimeout(()=>{if(document.getElementById('global-dropdown-list'))document.getElementById('global-dropdown-list').classList.add('hidden'); saveData(false, 'global-', true);}, 200)" placeholder="TYPE NOTES OR SEARCH...">
+                            <input type="text" id="global-sales-desc" class="input-field border-green-500 bg-green-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase();" onblur="setTimeout(()=>{saveData(false, 'global-', true);}, 200)" placeholder="TYPE NOTES...">
                         </div>
-                        <div id="global-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div>
                     </div>
 
                     <div id="global-av-container" class="relative w-full mb-3 hidden">
                         <label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label>
-                        <div class="flex gap-2">
-                            <input type="text" id="global-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); debouncedFilterDropdown('global-av-note', 'global-av-dropdown-list')" onfocus="filterDropdown('global-av-note', 'global-av-dropdown-list')" onblur="setTimeout(()=>{if(document.getElementById('global-av-dropdown-list'))document.getElementById('global-av-dropdown-list').classList.add('hidden'); saveData(false, 'global-', true);}, 200)" placeholder="TYPE AV NOTE OR SEARCH...">
+                        <div class="flex gap-2 relative">
+                            <input type="text" id="global-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); filterAvNotes()" onfocus="filterAvNotes()" onblur="setTimeout(()=>{if(document.getElementById('global-av-dropdown-list'))document.getElementById('global-av-dropdown-list').classList.add('hidden'); saveData(false, 'global-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT...">
                         </div>
-                        <div id="global-av-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div>
+                        <div id="global-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div>
                     </div>
                 </div>
                 <div class="detail-tabs"><div class="detail-tab active" onclick="switchDetailTab('overview')" id="dtab-overview">Overview</div><div class="detail-tab hidden" onclick="switchDetailTab('season')" id="dtab-season">Season Notes</div><div class="detail-tab hidden" onclick="switchDetailTab('location')" id="dtab-location">Location Notes</div><div class="detail-tab hidden" onclick="switchDetailTab('request')" id="dtab-request">Request</div><div class="detail-tab hidden" onclick="switchDetailTab('notes')" id="dtab-notes">Notes & Actions</div><div class="detail-tab hidden" onclick="switchDetailTab('docks')" id="dtab-docks">Docks</div><div class="detail-tab hidden" onclick="switchDetailTab('flyer')" id="dtab-flyer">Flyer</div></div>
@@ -310,8 +309,6 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
                     <div id="ssn-input-container">
                         <div class="mb-3"><label class="text-[10px] font-bold text-gray-500 uppercase">Loc Match %</label><input type="number" id="ssn-match" class="input-field !mb-1" placeholder="e.g. 40" oninput="calculateMatchQty('ssn-')"><div id="ssn-match-display" class="text-[10px] font-bold text-[#007a4d] text-right mb-2 hidden">LOC Match QTY: <span id="ssn-match-qty-val">0</span></div></div>
                         <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="ssn-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'ssn-', true)"></div><div id="ssn-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="ssn-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'ssn-', true)"></div>
-                        <div class="hidden relative w-full mt-2 mb-2"><label class="text-[10px] font-bold text-green-700 uppercase flex justify-between"><span>Sales Note</span></label><input type="text" id="ssn-sales-desc" class="input-field border-green-500 bg-green-50 uppercase flex-grow !mb-0" placeholder="Sales Note..." onchange="saveData(false, 'ssn-', true)"></div>
-                        <div class="hidden relative w-full mt-2 mb-2"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2"><input type="text" id="ssn-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); debouncedFilterDropdown('ssn-av-note', 'ssn-av-dropdown-list')" onfocus="filterDropdown('ssn-av-note', 'ssn-av-dropdown-list')" onblur="setTimeout(()=>{if(document.getElementById('ssn-av-dropdown-list'))document.getElementById('ssn-av-dropdown-list').classList.add('hidden'); saveData(false, 'ssn-', true);}, 200)" placeholder="TYPE AV NOTE OR SEARCH..."><button type="button" class="bg-blue-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('ssn-', 'av-note')">+ SPEC</button></div><div id="ssn-av-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div></div>
                         <div class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="ssn-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'ssn-', true)"></div>
                     </div>
                     <div class="flex gap-2 mt-4"><button id="ssn-btn-save-draft" class="w-1/3 bg-gray-200 text-gray-700 font-bold py-4 rounded-xl shadow-md" onclick="saveData(false, 'ssn-')">SAVE DRAFT</button><button id="ssn-btn-save-complete" class="w-2/3 bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform" onclick="saveData(true, 'ssn-')">MARK DONE</button></div>
@@ -332,8 +329,6 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
                     <div id="lsn-input-container">
                         <div class="mb-3"><label class="text-[10px] font-bold text-gray-500 uppercase">Loc Match %</label><input type="number" id="lsn-match" class="input-field !mb-1" placeholder="e.g. 95" oninput="calculateMatchQty('lsn-')"><div id="lsn-match-display" class="text-[10px] font-bold text-[#007a4d] text-right mb-2 hidden">LOC Match QTY: <span id="lsn-match-qty-val">0</span></div></div>
                         <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="lsn-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'lsn-', true)"></div><div id="lsn-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="lsn-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'lsn-', true)"></div>
-                        <div class="hidden relative w-full mt-2 mb-2"><label class="text-[10px] font-bold text-green-700 uppercase flex justify-between"><span>Sales Note</span></label><input type="text" id="lsn-sales-desc" class="input-field border-green-500 bg-green-50 uppercase flex-grow !mb-0" placeholder="Sales Note..." onchange="saveData(false, 'lsn-', true)"></div>
-                        <div class="hidden relative w-full mt-2 mb-2"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2"><input type="text" id="lsn-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); debouncedFilterDropdown('lsn-av-note', 'lsn-av-dropdown-list')" onfocus="filterDropdown('lsn-av-note', 'lsn-av-dropdown-list')" onblur="setTimeout(()=>{if(document.getElementById('lsn-av-dropdown-list'))document.getElementById('lsn-av-dropdown-list').classList.add('hidden'); saveData(false, 'lsn-', true);}, 200)" placeholder="TYPE AV NOTE OR SEARCH..."><button type="button" class="bg-blue-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('lsn-', 'av-note')">+ SPEC</button></div><div id="lsn-av-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div></div>
                         <div class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="lsn-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'lsn-', true)"></div>
                     </div>
                     <div class="flex gap-2 mt-4"><button id="lsn-btn-save-draft" class="w-1/3 bg-gray-200 text-gray-700 font-bold py-4 rounded-xl shadow-md" onclick="saveData(false, 'lsn-')">SAVE DRAFT</button><button id="lsn-btn-save-complete" class="w-2/3 bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform" onclick="saveData(true, 'lsn-')">MARK DONE</button></div>
@@ -354,8 +349,6 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
                     <div id="na-input-container">
                         <div class="mb-3"><label class="text-[10px] font-bold text-gray-500 uppercase">Loc Match %</label><input type="number" id="na-match" class="input-field !mb-1" placeholder="e.g. 95" oninput="calculateMatchQty('na-')"><div id="na-match-display" class="text-[10px] font-bold text-[#007a4d] text-right mb-2 hidden">LOC Match QTY: <span id="na-match-qty-val">0</span></div></div>
                         <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="na-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'na-', true)"></div><div id="na-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="na-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'na-', true)"></div>
-                        <div class="hidden relative w-full mt-2 mb-2"><label class="text-[10px] font-bold text-green-700 uppercase flex justify-between"><span>Sales Description</span></label><div class="flex gap-2"><input type="text" id="na-sales-desc" class="input-field border-green-500 bg-green-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); debouncedFilterDropdown('na-sales-desc', 'na-dropdown-list')" onfocus="filterDropdown('na-sales-desc', 'na-dropdown-list')" onblur="setTimeout(()=>{if(document.getElementById('na-dropdown-list'))document.getElementById('na-dropdown-list').classList.add('hidden'); saveData(false, 'na-', true);}, 200)" placeholder="TYPE NOTES OR SEARCH..."><button type="button" class="bg-green-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('na-')">+ SPEC</button></div><div id="na-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div></div>
-                        <div class="hidden relative w-full mt-2 mb-2"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2"><input type="text" id="na-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); debouncedFilterDropdown('na-av-note', 'na-av-dropdown-list')" onfocus="filterDropdown('na-av-note', 'na-av-dropdown-list')" onblur="setTimeout(()=>{if(document.getElementById('na-av-dropdown-list'))document.getElementById('na-av-dropdown-list').classList.add('hidden'); saveData(false, 'na-', true);}, 200)" placeholder="TYPE AV NOTE OR SEARCH..."><button type="button" class="bg-blue-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('na-', 'av-note')">+ SPEC</button></div><div id="na-av-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div></div>
                         <div class="mb-2"><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="na-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'na-', true)"></div>
                     </div>
                     <div class="flex gap-2 mt-4"><button id="na-btn-save-draft" class="w-1/3 bg-gray-200 text-gray-700 font-bold py-4 rounded-xl shadow-md" onclick="saveData(false, 'na-')">SAVE DRAFT</button><button id="na-btn-save-complete" class="w-2/3 bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform" onclick="saveData(true, 'na-')">MARK DONE</button></div>
@@ -378,8 +371,6 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
                         <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="req-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'req-', true)"></div>
                         <div id="req-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="req-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'req-', true)"></div>
                         <div><label class="text-[10px] font-bold text-gray-500 uppercase">Reserve</label><select id="req-reserve" class="input-field bg-white" onchange="saveData(false, 'req-', true)"><option value="NO">NO</option><option value="YES">YES</option></select></div>
-                        <div class="hidden relative w-full mt-2 mb-2"><label class="text-[10px] font-bold text-purple-700 uppercase flex justify-between"><span>Request Sales Description</span></label><div class="flex gap-2"><input type="text" id="req-sales-desc" class="input-field border-purple-500 bg-purple-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); debouncedFilterDropdown('req-sales-desc', 'req-dropdown-list')" onfocus="filterDropdown('req-sales-desc', 'req-dropdown-list')" onblur="setTimeout(()=>{if(document.getElementById('req-dropdown-list'))document.getElementById('req-dropdown-list').classList.add('hidden'); saveData(false, 'req-', true);}, 200)" placeholder="TYPE NOTES OR SEARCH..."><button type="button" class="bg-purple-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('req-', 'sales-desc')">+ SPEC</button></div><div id="req-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div></div>
-                        <div class="hidden relative w-full mt-2 mb-2"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>Request AV Note</span></label><div class="flex gap-2"><input type="text" id="req-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); debouncedFilterDropdown('req-av-note', 'req-av-dropdown-list')" onfocus="filterDropdown('req-av-note', 'req-av-dropdown-list')" onblur="setTimeout(()=>{if(document.getElementById('req-av-dropdown-list'))document.getElementById('req-av-dropdown-list').classList.add('hidden'); saveData(false, 'req-', true);}, 200)" placeholder="TYPE AV NOTE OR SEARCH..."><button type="button" class="bg-blue-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('req-', 'av-note')">+ SPEC</button></div><div id="req-av-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div></div>
                         <div><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="req-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'req-', true)"></div>
                         <div><label class="text-[10px] font-bold text-gray-500 uppercase">Comments</label><input type="text" id="req-comments" class="input-field" placeholder="Any additional comments..." onchange="saveData(false, 'req-', true)"></div>
                     </div>
@@ -405,7 +396,7 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
                     <div id="dock-input-container">
                         <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="dock-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'dock-', true)"></div>
                         <div id="dock-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="dock-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'dock-', true)"></div>
-                        <div class="relative w-full mt-2 mb-2"><label class="text-[10px] font-bold text-orange-700 uppercase flex justify-between"><span>Dock Note</span></label><div class="flex gap-2"><input type="text" id="dock-sales-desc" class="input-field border-orange-500 bg-orange-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); debouncedFilterDropdown('dock-sales-desc', 'dock-dropdown-list')" onfocus="filterDropdown('dock-sales-desc', 'dock-dropdown-list')" onblur="setTimeout(()=>{if(document.getElementById('dock-dropdown-list'))document.getElementById('dock-dropdown-list').classList.add('hidden'); saveData(false, 'dock-', true);}, 200)" placeholder="TYPE NOTES OR SEARCH..."><button type="button" class="bg-orange-600 text-white font-bold px-3 rounded-lg text-xs flex-shrink-0 shadow-sm" onclick="appendSpecToDesc('dock-')">+ SPEC</button></div><div id="dock-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div></div>
+                        <div class="relative w-full mt-2 mb-2"><label class="text-[10px] font-bold text-orange-700 uppercase flex justify-between"><span>Dock Note</span></label><div class="flex gap-2"><input type="text" id="dock-sales-desc" class="input-field border-orange-500 bg-orange-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase();" onblur="setTimeout(()=>{saveData(false, 'dock-', true);}, 200)" placeholder="TYPE NOTES..."></div></div>
                     </div>
                     <div class="flex gap-2 mt-4"><button id="dock-btn-save-draft" class="w-full bg-orange-600 text-white font-bold py-4 rounded-xl shadow-lg" onclick="saveData(false, 'dock-')">SAVE DOCK DATA</button></div>
                 </div>
@@ -495,7 +486,7 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
         async function saveToCache(data){ try{ const db=await openDB(); const tx=db.transaction(STORE_NAME,"readwrite"); tx.objectStore(STORE_NAME).put(data,"latest_data"); return new Promise((resolve)=>{ tx.oncomplete=()=>resolve(true); tx.onerror=()=>resolve(false); }); }catch(e){} }
         async function loadFromCache(){ try{ const db=await openDB(); return new Promise((resolve,reject)=>{ const tx=db.transaction(STORE_NAME,"readonly"); const request=tx.objectStore(STORE_NAME).get("latest_data"); request.onsuccess=()=>resolve(request.result); request.onerror=()=>resolve(null); }); }catch(e){ return null; } }
 
-        let fullInventory=[]; let lowStockInventory=[]; let socInventory=[]; let reservesInventory=[]; let requestsInventory=[]; let managerReviewInventory=[]; let salesOfficeInventory=[]; 
+        let fullInventory=[]; let lowStockInventory=[]; let socInventory=[]; let reservesInventory=[]; let requestsInventory=[]; let managerReviewInventory=[]; let salesOfficeInventory=[]; let avNotesDb=[];
         let currentUser=""; let currentRole=""; let safeRole=""; let repPermutations=[]; let activeItem=null; let lastView=""; let activeDetailTab="overview"; let selectedItems=new Set(); let isMultiSelectMode=false; let pressTimer=null; let isLongPress=false; let touchStartX=0; let touchStartY=0; let pendingAction=null; let pendingTabType=null;
         let driveViewLevel=0; let selectedDriveName=null; let selectedDriveSize=null; let driveSelectedSeasons=new Set(['ALL']); const availableSeasons=["ALL","S1","F1","U1","U2","U3","X","Y","Z"];
         let activeTaskTab="season"; let taskViewTargetUser=null; let taskViewLevel=0; let selectedTaskBlock=null; let selectedTaskLoc=null; let selectedEndCapFolder=null;
@@ -577,7 +568,8 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
                     supabaseFetch('v2_active_request','GET',null,'select=*'),
                     supabaseFetch('v2_reserves','GET',null,'select=*'),
                     supabaseFetch('v2_soc_master','GET',null,'select=*'),
-                    supabaseFetch('v2_sales_office','GET',null,'select=*') 
+                    supabaseFetch('v2_sales_office','GET',null,'select=*'),
+                    supabaseFetch('v2_av_notes','GET',null,'select=*')
                 ]);
                 const formatArr=(resObj,sourceTable)=>{
                     if(resObj.status!=='fulfilled'||!Array.isArray(resObj.value))return[];
@@ -609,13 +601,15 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
                     requestsData:formatArr(results[1],'v2_active_request'),
                     reservesData:formatArr(results[2],'v2_reserves'),
                     socData:formatArr(results[3],'v2_soc_master'),
-                    salesOfficeData:formatArr(results[4],'v2_sales_office') 
+                    salesOfficeData:formatArr(results[4],'v2_sales_office'),
+                    avNotesData:formatArr(results[5],'v2_av_notes')
                 };
                 setTimeout(()=>{ processAndLoadData(resObj); saveToCache(resObj); },100);
             }catch(err){ if(!cachedRes)showToast("Sync Error","Could not download data. Check connection.",true); }
         }
 
         function processAndLoadData(res){
+            avNotesDb = res.avNotesData || [];
             fullInventory=res.data.map((item,idx)=>{item.DOM_ID='fi_'+idx;return item}); 
             requestsInventory=res.requestsData?res.requestsData.map((item,idx)=>{item.DOM_ID='req_'+item.UNIQUE_ID;return item}):[]; 
             salesOfficeInventory=res.salesOfficeData?res.salesOfficeData.map((item,idx)=>{item.DOM_ID='so_'+item.UNIQUE_ID;return item}):[]; 
@@ -1096,8 +1090,8 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
             document.getElementById('global-sales-desc').value = activeItem.SALES_NOTE || activeItem.SALESNOTE || activeItem.SALESDESC || "";
             document.getElementById('global-av-note').value = activeItem.AV_NOTE || "";
 
-            // Show AV Note globally ONLY if it's a Season task
-            if (activeItem.APP_TAB_ASSIGNMENT === 'season') {
+            // Show AV Note globally ONLY if it's a Season or Location task
+            if (activeItem.APP_TAB_ASSIGNMENT === 'season' || activeItem.APP_TAB_ASSIGNMENT === 'location') {
                 document.getElementById('global-av-container').classList.remove('hidden');
             } else {
                 document.getElementById('global-av-container').classList.add('hidden');
@@ -1370,6 +1364,45 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
                 if (item) { Object.assign(item, pendingEdits[uid].data); }
             }
             if (changed) { localStorage.setItem('gnc_pending_edits', JSON.stringify(pendingEdits)); }
+        }
+
+        // =========================================================
+        // 🚀 NEW: AV NOTES FILTER & SELECT LOGIC 🚀
+        // =========================================================
+        function filterAvNotes() {
+            if (!activeItem) return;
+            const inputVal = document.getElementById('global-av-note').value.toUpperCase();
+            const list = document.getElementById('global-av-dropdown-list');
+            
+            // Find all notes in the DB that match the active item's COMMONNAME
+            let matchingNotes = avNotesDb.filter(n => 
+                String(n.COMMONNAME).toUpperCase() === String(activeItem.COMMONNAME).toUpperCase()
+            ).map(n => n.SALESNOTE || n.SALES_NOTE);
+
+            // If user is typing, narrow down the list
+            if (inputVal) {
+                matchingNotes = matchingNotes.filter(n => String(n).toUpperCase().includes(inputVal));
+            }
+
+            // Remove duplicates just in case the CSV had repeating notes
+            matchingNotes = [...new Set(matchingNotes)];
+
+            if (matchingNotes.length === 0) {
+                list.classList.add('hidden');
+                return;
+            }
+
+            list.innerHTML = matchingNotes.map(n => 
+                `<div class="p-3 border-b border-gray-100 text-sm font-bold text-blue-800 cursor-pointer hover:bg-blue-50 active:bg-blue-100" onclick="selectAvNote('${esc(n)}')">${n}</div>`
+            ).join('');
+            
+            list.classList.remove('hidden');
+        }
+
+        function selectAvNote(note) {
+            document.getElementById('global-av-note').value = note;
+            document.getElementById('global-av-dropdown-list').classList.add('hidden');
+            saveData(false, 'global-', true); // Trigger an auto-save immediately
         }
     </script>
 </body>
