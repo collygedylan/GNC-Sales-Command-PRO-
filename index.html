@@ -2554,7 +2554,7 @@
                         folderContext: context,
                         dockNum: dockNum
                     };
-try {
+                    try {
                         const response = await fetch(GOOGLE_SCRIPT_URL, {
                             method: 'POST',
                             body: JSON.stringify(payload)
