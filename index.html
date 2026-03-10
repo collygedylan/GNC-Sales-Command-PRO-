@@ -134,14 +134,23 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
 
 <div id="dock-info-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
     <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center relative overflow-hidden">
-        <h3 class="font-black text-2xl mb-2 text-orange-600">DOCK <span id="modal-dock-num"></span></h3>
+        <h3 class="font-black text-2xl mb-2 text-[#007a4d]">DOCK <span id="modal-dock-num"></span></h3>
         <p class="text-[10px] text-gray-500 font-bold mb-4 uppercase tracking-wider">Set Dock Team & Status</p>
-        <div class="text-left mb-3"><label class="text-[10px] font-bold text-gray-500 uppercase ml-1">Checker</label><input type="text" id="dock-checker" class="input-field border-orange-200 focus:border-orange-500 !mb-0" placeholder="e.g. John D."></div>
-        <div class="text-left mb-3"><label class="text-[10px] font-bold text-gray-500 uppercase ml-1">Inspector</label><input type="text" id="dock-inspector" class="input-field border-orange-200 focus:border-orange-500 !mb-0" placeholder="e.g. Jane S."></div>
-        <div class="text-left mb-4"><label class="text-[10px] font-bold text-gray-500 uppercase ml-1">Mistake Guy</label><input type="text" id="dock-mistake" class="input-field border-orange-200 focus:border-orange-500 !mb-0" placeholder="e.g. Mike T."></div>
+        <div class="text-left mb-3">
+            <label class="text-[10px] font-bold text-gray-500 uppercase ml-1">Checker</label>
+            <select id="dock-checker" class="input-field border-green-200 focus:border-[#007a4d] !mb-0 bg-white"></select>
+        </div>
+        <div class="text-left mb-3">
+            <label class="text-[10px] font-bold text-gray-500 uppercase ml-1">Inspector</label>
+            <select id="dock-inspector" class="input-field border-green-200 focus:border-[#007a4d] !mb-0 bg-white"></select>
+        </div>
+        <div class="text-left mb-4">
+            <label class="text-[10px] font-bold text-gray-500 uppercase ml-1">Mistake Guy</label>
+            <select id="dock-mistake" class="input-field border-green-200 focus:border-[#007a4d] !mb-0 bg-white"></select>
+        </div>
         <div class="text-left mb-6">
             <label class="text-[10px] font-bold text-gray-500 uppercase ml-1">Dock Status</label>
-            <select id="dock-status" class="input-field border-orange-200 focus:border-orange-500 font-bold text-orange-700 bg-orange-50 !mb-0">
+            <select id="dock-status" class="input-field border-green-200 focus:border-[#007a4d] font-bold text-[#007a4d] bg-green-50 !mb-0">
                 <option value="Loading">Loading</option>
                 <option value="Missing > 10">Missing more than 10</option>
                 <option value="Missing < 5">Missing less than 5</option>
@@ -150,7 +159,7 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
         </div>
         <div class="flex gap-2">
             <button class="w-1/3 bg-gray-100 text-gray-600 font-bold p-3 rounded-lg shadow-sm active:scale-95 transition-transform" onclick="document.getElementById('dock-info-modal').classList.add('hidden')">CANCEL</button>
-            <button class="w-2/3 bg-orange-600 text-white font-bold p-3 rounded-lg shadow-md active:scale-95 transition-transform" onclick="saveDockInfoModal()">SAVE & CONTINUE</button>
+            <button class="w-2/3 bg-[#007a4d] text-white font-bold p-3 rounded-lg shadow-md active:scale-95 transition-transform" onclick="saveDockInfoModal()">SAVE & CONTINUE</button>
         </div>
     </div>
 </div>
@@ -220,22 +229,22 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
                 <div class="bg-[#007a4d] text-white p-6 rounded-2xl mb-6 shadow-lg flex flex-col items-center text-center relative overflow-hidden"><div class="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-white opacity-5 rounded-full pointer-events-none"></div><div class="absolute bottom-0 left-0 -mb-10 -ml-10 w-32 h-32 bg-black opacity-10 rounded-full pointer-events-none"></div><h1 class="text-2xl font-black tracking-tight mb-1 z-10 relative mt-4">GNC 1945</h1><p class="text-green-100 text-[10px] font-bold mb-5 uppercase tracking-[0.2em] z-10 relative">Dashboard</p><div class="flex flex-col items-center pt-4 border-t border-white/20 w-full mt-1 z-10 relative"><span class="text-[9px] font-bold text-white/70 uppercase tracking-[0.3em] mb-1">Powered By</span><div class="text-[15px] font-black tracking-[0.2em] text-white uppercase drop-shadow-sm">Ag Metric</div></div></div>
                 <h2 class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3 pl-1">App Modules</h2>
                 <div class="grid grid-cols-2 gap-3 mb-8">
-                    <div onclick="switchView('drive')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-car text-3xl text-blue-600"></i><span class="font-bold text-sm text-gray-800">Drive Mode</span></div>
-                    <div onclick="switchView('tasks')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer rep-hidden csr-hidden"><i class="ph-bold ph-clipboard-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-gray-800">Tasks</span></div>
-                    <div onclick="switchView('docks')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-truck text-3xl text-orange-600"></i><span class="font-bold text-sm text-gray-800">Docks</span></div>
-                    <div onclick="switchView('av')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-notebook text-3xl text-teal-600"></i><span class="font-bold text-sm text-gray-800">Open Stock</span></div>
-                    <div onclick="switchView('request')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform col-span-2 cursor-pointer admin-rep-csr-only hidden"><i class="ph-bold ph-chat-circle-text text-3xl text-blue-600"></i><span class="font-bold text-sm text-gray-800">Requests</span></div>
-                    <div onclick="switchView('reserves')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform col-span-2 cursor-pointer admin-rep-csr-only hidden"><i class="ph-bold ph-bookmark-simple text-3xl text-indigo-600"></i><span class="font-bold text-sm text-gray-800">Reserves</span></div>
-                    <div onclick="switchView('sales-office')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer admin-csr-only hidden"><i class="ph-bold ph-briefcase text-3xl text-purple-600"></i><span class="font-bold text-sm text-gray-800">Sales Office</span></div>
-                    <div onclick="switchView('reports')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer admin-only hidden"><i class="ph-bold ph-chart-bar text-3xl text-emerald-600"></i><span class="font-bold text-sm text-gray-800">Reports</span></div>
-                    <div onclick="switchView('hours')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform col-span-2 cursor-pointer"><i class="ph-bold ph-clock text-3xl text-emerald-600"></i><span class="font-bold text-sm text-gray-800">Labor Hours</span></div>
-                    <div onclick="switchView('low-stock')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer dylan-only hidden"><i class="ph-bold ph-trend-down text-3xl text-red-600"></i><span class="font-bold text-sm text-gray-800">Low Stock</span></div>
-                    <div onclick="switchView('review')" class="bg-white border border-gray-200 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform col-span-2 cursor-pointer admin-only hidden"><i class="ph-bold ph-warning-circle text-3xl text-yellow-600"></i><span class="font-bold text-sm text-gray-800">Manager Review</span></div>
+                    <div onclick="switchView('drive')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-car text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Drive Mode</span></div>
+                    <div onclick="switchView('tasks')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer rep-hidden csr-hidden"><i class="ph-bold ph-clipboard-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Tasks</span></div>
+                    <div onclick="switchView('docks')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-truck text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Docks</span></div>
+                    <div onclick="switchView('av')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-notebook text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Open Stock</span></div>
+                    <div onclick="switchView('request')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform col-span-2 cursor-pointer admin-rep-csr-only hidden"><i class="ph-bold ph-chat-circle-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Requests</span></div>
+                    <div onclick="switchView('reserves')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform col-span-2 cursor-pointer admin-rep-csr-only hidden"><i class="ph-bold ph-bookmark-simple text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Reserves</span></div>
+                    <div onclick="switchView('sales-office')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer admin-csr-only hidden"><i class="ph-bold ph-briefcase text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Sales Office</span></div>
+                    <div onclick="switchView('reports')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer admin-only hidden"><i class="ph-bold ph-chart-bar text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Reports</span></div>
+                    <div onclick="switchView('hours')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform col-span-2 cursor-pointer"><i class="ph-bold ph-clock text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Labor Hours</span></div>
+                    <div onclick="switchView('low-stock')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer dylan-only hidden"><i class="ph-bold ph-trend-down text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Low Stock</span></div>
+                    <div onclick="switchView('review')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform col-span-2 cursor-pointer admin-only hidden"><i class="ph-bold ph-warning-circle text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Manager Review</span></div>
                 </div>
             </div>
             
             <div id="view-hours" class="hidden">
-                <div class="bg-white rounded-xl shadow-md p-6 mb-6">
+                <div class="bg-white rounded-xl shadow-md p-6 mb-6 border-2 border-[#007a4d]">
                     <h2 class="text-xl font-black text-[#007a4d] mb-2">Report Labor Hours</h2>
                     <p class="text-xs text-gray-500 font-bold mb-6">Submit man-hours for your department.</p>
                     
@@ -535,8 +544,22 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
             if(savedUser&&savedPin){ document.getElementById('username-input').value=savedUser; document.getElementById('pin-code').value=savedPin; const cachedRes=await loadFromCache(); if(cachedRes&&fullInventory.length===0){ processAndLoadData(cachedRes); } handleLogin(true); }
         };
 
+        window.addEventListener('DOMContentLoaded', () => {
+            if (localStorage.getItem('gnc_bio_enabled')==='true' && window.PublicKeyCredential) {
+                const bioBtn=document.getElementById('btn-fingerprint');
+                if (bioBtn) bioBtn.classList.remove('hidden');
+            }
+            
+            // Populate Dock Dropdowns
+            const teamOptions = ["", "Dylan", "Kayla", "Morgan", ...salesRepList].map(n => `<option value="${n}">${n || "Unassigned"}</option>`).join('');
+            ['dock-checker', 'dock-inspector', 'dock-mistake'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.innerHTML = teamOptions;
+            });
+        });
+
         function getDirectImageUrl(url){ if(!url)return""; let match=url.match(/id=([a-zA-Z0-9_-]+)/); if(!match)match=url.match(/\/d\/([a-zA-Z0-9_-]+)/); if(match&&match[1]){ return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w100`; } return url; }
-        window.addEventListener('DOMContentLoaded',()=>{ if(localStorage.getItem('gnc_bio_enabled')==='true'&&window.PublicKeyCredential){ const bioBtn=document.getElementById('btn-fingerprint'); if(bioBtn)bioBtn.classList.remove('hidden'); } });
+        
         async function promptToEnableBiometrics(user,pin){ if(!confirm("Would you like to enable Fingerprint/FaceID login for future use?"))return; try{ const publicKey={challenge:new Uint8Array(32),rp:{name:"GNC 1945"},user:{id:new Uint8Array(16),name:user,displayName:user},pubKeyCredParams:[{type:"public-key",alg:-7}],authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required"},timeout:60000}; await navigator.credentials.create({publicKey}); localStorage.setItem('gnc_bio_enabled','true'); localStorage.setItem('gnc_bio_user',user); localStorage.setItem('gnc_bio_pin',pin); showToast("Success","Fingerprint login enabled!"); }catch(err){} }
         async function loginWithBiometric(){ try{ const publicKey={challenge:new Uint8Array(32),timeout:60000,userVerification:"required"}; await navigator.credentials.get({publicKey}); const savedUser=localStorage.getItem('gnc_bio_user'); const savedPin=localStorage.getItem('gnc_bio_pin'); if(savedUser&&savedPin){ document.getElementById('username-input').value=savedUser; document.getElementById('pin-code').value=savedPin; handleLogin(true); }else{ showToast("Error","Credentials lost.",true); } }catch(err){ showToast("Error","Fingerprint cancelled.",true); } }
 
@@ -772,9 +795,9 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
             if(!pendingDockNum) return;
             
             let info = {
-                checker: document.getElementById('dock-checker').value.trim(),
-                inspector: document.getElementById('dock-inspector').value.trim(),
-                mistake: document.getElementById('dock-mistake').value.trim(),
+                checker: document.getElementById('dock-checker').value,
+                inspector: document.getElementById('dock-inspector').value,
+                mistake: document.getElementById('dock-mistake').value,
                 status: document.getElementById('dock-status').value
             };
             
@@ -785,6 +808,14 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
             if (dockViewLevel === 0) {
                 renderDocks();
             }
+        }
+
+        function toggleDockItemState(uid, type) {
+            let key = 'gnc_dock_item_' + uid;
+            let state = JSON.parse(localStorage.getItem(key) || '{"checker":false,"inspector":false}');
+            state[type] = !state[type];
+            localStorage.setItem(key, JSON.stringify(state));
+            renderDocks(); // Refresh the view instantly
         }
 
         function renderDocks() {
@@ -818,7 +849,8 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
                 });
                 
                 container.innerHTML = docks.map(d => {
-                    let count = items.filter(i => (i.DOCK_NUM || 'Unassigned') === d).length;
+                    let dItems = items.filter(i => (i.DOCK_NUM || 'Unassigned') === d);
+                    let count = dItems.length;
                     
                     let savedInfo = JSON.parse(localStorage.getItem('gnc_dock_team_' + d) || '{"checker":"","inspector":"","mistake":"","status":"Loading"}');
                     
@@ -827,12 +859,24 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
                     else if(savedInfo.status === 'Palletize') statusColor = "text-purple-600 bg-purple-50";
                     else if(savedInfo.status === 'Complete') statusColor = "text-green-600 bg-green-50";
 
-                    return `<div class="bg-white border border-orange-200 rounded-xl shadow-sm mb-4 overflow-hidden">
-                        <div class="p-4 flex justify-between items-center cursor-pointer active:bg-orange-50 transition-colors" onclick="selectDock('${esc(d)}')">
+                    // Check for CO or UT in the state
+                    let hasCoUt = dItems.some(i => {
+                        let state = String(i.CONSIGNEESTATE || i.STATE || "").toUpperCase().trim();
+                        let city = String(i.CONSIGNEECITY || "").toUpperCase().trim();
+                        return state === "CO" || state === "UT" || state === "COLORADO" || state === "UTAH" || city.includes(" CO") || city.includes(" UT") || city.endsWith("CO") || city.endsWith("UT");
+                    });
+                    
+                    let borderCls = hasCoUt ? "border-red-500" : "border-[#007a4d]";
+                    let bgCls = hasCoUt ? "bg-red-50" : "bg-green-50";
+                    let textCls = hasCoUt ? "text-red-700" : "text-[#007a4d]";
+                    let lightBgCls = hasCoUt ? "bg-red-100" : "bg-green-100";
+
+                    return `<div class="bg-white border-2 ${borderCls} rounded-xl shadow-sm mb-4 overflow-hidden">
+                        <div class="p-4 flex justify-between items-center cursor-pointer active:${bgCls} transition-colors" onclick="selectDock('${esc(d)}')">
                             <div class="flex items-center gap-3">
-                                <div class="bg-orange-50 p-2 rounded-lg"><i class="ph-fill ph-truck text-2xl text-orange-500"></i></div>
+                                <div class="${bgCls} p-2 rounded-lg"><i class="ph-fill ph-truck text-2xl ${textCls}"></i></div>
                                 <div>
-                                    <div class="font-black text-lg text-orange-800 leading-tight">Dock ${d}</div>
+                                    <div class="font-black text-lg ${textCls} leading-tight">Dock ${d}</div>
                                     <div class="text-[10px] font-bold text-gray-500 uppercase mt-0.5">${count} Items</div>
                                 </div>
                             </div>
@@ -858,7 +902,7 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
                                     <div class="text-xs font-bold text-gray-700 truncate">${savedInfo.mistake || '-'}</div>
                                 </div>
                             </div>
-                            <button class="w-full bg-white border border-orange-200 text-orange-600 font-bold py-2 rounded-lg text-xs shadow-sm active:bg-orange-50 transition-colors" onclick="openDockInfoModal('${esc(d)}')"><i class="ph-bold ph-pencil-simple mr-1"></i> Edit Team & Status</button>
+                            <button class="w-full bg-white border border-gray-200 text-gray-600 hover:text-[#007a4d] hover:border-[#007a4d] font-bold py-2 rounded-lg text-xs shadow-sm transition-colors" onclick="openDockInfoModal('${esc(d)}')"><i class="ph-bold ph-pencil-simple mr-1"></i> Edit Team & Status</button>
                         </div>
                     </div>`;
                 }).join('');
@@ -888,9 +932,9 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
                         let state = item.CONSIGNEESTATE || item.STATE || 'N/A';
                         
                         html += `
-                        <div class="bg-gray-800 text-white rounded-xl shadow-md mb-3 p-4 mt-6 border-l-4 border-orange-500">
+                        <div class="bg-gray-800 text-white rounded-xl shadow-md mb-3 p-4 mt-6 border-l-4 border-[#007a4d]">
                             <div class="flex justify-between items-center mb-2 border-b border-gray-600 pb-2">
-                                <div class="font-black text-xl text-orange-400 tracking-wider">STOP ${stopNum}</div>
+                                <div class="font-black text-xl text-green-400 tracking-wider">STOP ${stopNum}</div>
                                 <div class="text-[10px] font-bold bg-gray-700 px-2 py-1 rounded text-gray-300 uppercase"><i class="ph-bold ph-user mr-1"></i>${rep}</div>
                             </div>
                             <div class="font-bold text-[15px] leading-tight mb-0.5">${cust}</div>
@@ -898,7 +942,7 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
                             <div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1"><i class="ph-bold ph-map-pin"></i> State: <span class="text-gray-200">${state}</span></div>
                         </div>`;
                     }
-                    html += generateCard(item, 'docks', 'status-orange');
+                    html += generateCard(item, 'docks', 'status-green');
                 });
                 
                 container.innerHTML = html;
@@ -948,25 +992,46 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
                     noteHtml += `<div class="mt-2 text-[12px] text-orange-800 bg-orange-100 p-2 rounded border border-orange-200 shadow-sm whitespace-pre-wrap"><span class="font-black">DOCK NOTE:</span> ${item.DOCK_NOTE}</div>`;
                 }
 
-                return `<div class="flex items-center w-full mb-3 item-row relative bg-white p-4 rounded-xl border border-orange-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')">
+                // Check LocalStorage for dimmed state
+                let checkState = JSON.parse(localStorage.getItem('gnc_dock_item_' + item.UNIQUE_ID) || '{"checker":false,"inspector":false}');
+                let isDimmed = checkState.checker && checkState.inspector;
+                let cardOpacity = isDimmed ? "opacity-40 grayscale" : "opacity-100";
+
+                let chkClass = checkState.checker ? "bg-[#007a4d] text-white border-[#007a4d]" : "bg-gray-50 text-gray-500 border-gray-200";
+                let inspClass = checkState.inspector ? "bg-[#007a4d] text-white border-[#007a4d]" : "bg-gray-50 text-gray-500 border-gray-200";
+
+                let actionBtns = `
+                    <div class="flex gap-2 mt-3 pt-3 border-t border-gray-100">
+                        <button class="flex-1 py-2.5 rounded-lg text-[10px] uppercase font-black border shadow-sm transition-colors ${chkClass} active:scale-95" onclick="event.stopPropagation(); toggleDockItemState('${safeUidJs}', 'checker')">
+                            <i class="ph-bold ph-check-square mr-1 text-lg align-middle"></i> Checker
+                        </button>
+                        <button class="flex-1 py-2.5 rounded-lg text-[10px] uppercase font-black border shadow-sm transition-colors ${inspClass} active:scale-95" onclick="event.stopPropagation(); toggleDockItemState('${safeUidJs}', 'inspector')">
+                            <i class="ph-bold ph-magnifying-glass mr-1 text-lg align-middle"></i> Inspector
+                        </button>
+                    </div>
+                `;
+
+                return `<div class="flex items-center w-full mb-3 item-row relative bg-white p-4 rounded-xl border border-gray-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${cardOpacity}" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')">
                     <div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm pointer-events-none" ${isChecked}></div>
-                    <div class="flex flex-grow items-start justify-between min-w-0">
-                        <div class="flex-grow min-w-0 pr-2">
-                            <div class="font-black text-gray-800 text-[16px] leading-tight break-words mb-0.5">${item.COMMONNAME||'Unknown'}</div>
-                            <div class="font-bold text-orange-600 text-sm mb-2">${item.CONTSIZE||'-'}</div>
-                            <div class="text-[11px] font-mono text-gray-500 mb-2 flex items-center bg-gray-100 px-2 py-0.5 rounded w-max"><i class="ph-bold ph-barcode mr-1.5 text-gray-400"></i>${item.ITEMCODE||'-'}</div>
-                            <div class="flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600">
-                                <span class="bg-orange-50 text-orange-700 px-1.5 py-0.5 rounded border border-orange-100">Stop: ${stopNum}</span>
-                                <span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Trip: ${tripNum}</span>
-                                <span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">Loc: ${item.LOCATIONCODE||'No Loc'}</span>
-                                <span class="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-100">Rep: ${salesRep}</span>
-                                <span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Tag: ${tagColor}</span>
-                                <span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Lot: ${item.LOTCODE||'-'}</span>
-                                <span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Src: ${sourceStr}</span>
+                    <div class="flex flex-col w-full min-w-0">
+                        <div class="flex items-start justify-between w-full">
+                            <div class="flex-grow min-w-0 pr-2">
+                                <div class="font-black text-gray-800 text-[16px] leading-tight break-words mb-0.5">${item.COMMONNAME||'Unknown'}</div>
+                                <div class="font-bold text-[#007a4d] text-sm mb-2">${item.CONTSIZE||'-'}</div>
+                                <div class="text-[11px] font-mono text-gray-500 mb-2 flex items-center bg-gray-100 px-2 py-0.5 rounded w-max"><i class="ph-bold ph-barcode mr-1.5 text-gray-400"></i>${item.ITEMCODE||'-'}</div>
+                                <div class="flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600">
+                                    <span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Trip: ${tripNum}</span>
+                                    <span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">Loc: ${item.LOCATIONCODE||'No Loc'}</span>
+                                    <span class="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-100">Rep: ${salesRep}</span>
+                                    <span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Tag: ${tagColor}</span>
+                                    <span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Lot: ${item.LOTCODE||'-'}</span>
+                                    <span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Src: ${sourceStr}</span>
+                                </div>
+                                ${noteHtml}
                             </div>
-                            ${noteHtml}
+                            ${thumbHtml}
                         </div>
-                        ${thumbHtml}
+                        ${actionBtns}
                     </div>
                 </div>`;
             }
