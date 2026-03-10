@@ -3,62 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-    <title>GNC 1945V005</title>
+    <title>GNC</title>
     <meta name="theme-color" content="#007a4d">
     <link rel="manifest" href="manifest.json">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="application-name" content="GNC 1945V005">
+    <meta name="application-name" content="GNC">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <style>
-        :root { --bg: #007a4d; --tx: #111827; }
-        body { font-family: "Amazon Ember", Arial, sans-serif; background: white; color: var(--tx); user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; overscroll-behavior-y: contain; }
-        .nav-header { background: var(--bg); color: white; padding-top: max(10px, env(safe-area-inset-top)); }
-        #view-login, #view-change-password { position: fixed; inset: 0; background: var(--bg); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
-        #view-change-password { display: none; z-index: 10000; }
-        .login-card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,.2); width: 100%; max-width: 360px; text-align: center; }
-        .input-field { width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 15px; margin-bottom: 12px; }
-        #toast-notification { position: fixed; top: -100px; left: 50%; transform: translateX(-50%); background: #16a34a; color: white; padding: 16px 24px; border-radius: 50px; box-shadow: 0 10px 15px -3px rgba(0,0,0,.3); z-index: 11000; transition: top .5s; display: flex; align-items: center; gap: 12px; pointer-events: none; }
-        #toast-notification.show { top: 20px; }
-        #side-drawer { position: fixed; top: 0; left: -280px; width: 280px; height: 100%; background: white; z-index: 2000; box-shadow: 2px 0 10px rgba(0,0,0,.2); transition: left .3s; overflow-y: auto; padding-bottom: 100px; }
-        #side-drawer.open { left: 0; }
-        #drawer-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 1999; display: none; }
-        #drawer-overlay.open { display: block; }
-        .drawer-header { background: var(--bg); color: white; padding: 20px; font-weight: bold; font-size: 18px; }
-        .drawer-item { padding: 16px 20px; border-bottom: 1px solid #f3f4f6; cursor: pointer; display: flex; align-items: center; gap: 12px; color: #374151; font-weight: 500; }
-        .drill-item { border-bottom: 1px solid #e5e7eb; padding: 16px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; background: white; transition: background .1s; }
-        .drill-item:active { background: #f3f4f6; }
-        .back-btn { display: flex; align-items: center; gap: 5px; color: #6b7280; font-size: 14px; font-weight: 600; margin-bottom: 20px; cursor: pointer; padding: 10px 0; }
-        .inv-card { border: 1px solid #e5e7eb; border-left-width: 6px; border-radius: 8px; padding: 12px; background: white; cursor: pointer; flex-grow: 1; }
-        .status-green { border-left-color: #22c55e; }
-        .status-purple { border-left-color: #9333ea; }
-        .status-orange { border-left-color: #f97316; }
-        .status-blue { border-left-color: #3b82f6; }
-        .status-indigo { border-left-color: #4f46e5; }
-        .status-teal { border-left-color: #0d9488; }
-        .status-yellow { border-left-color: #eab308; }
-        .task-tabs, .detail-tabs { display: flex; border-bottom: 1px solid #e5e7eb; background: #f9fafb; margin-bottom: 10px; }
-        .detail-tabs { overflow-x: auto; scrollbar-width: none; }
-        .detail-tabs::-webkit-scrollbar { display: none; }
-        .task-tab, .detail-tab { flex: 1; text-align: center; padding: 12px; font-size: 11px; font-weight: 700; color: #6b7280; cursor: pointer; border-bottom: 3px solid transparent; text-transform: uppercase; }
-        .detail-tab { flex: 0 0 auto; padding: 10px 16px; }
-        .task-tab.active, .detail-tab.active { color: var(--bg); border-bottom-color: var(--bg); background: white; }
-        .overview-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
-        .overview-card { background: #f8fafc; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0; }
-        .overview-label { font-size: 9px; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 2px; }
-        .overview-val { font-size: 13px; font-weight: 600; color: #0f172a; word-break: break-all; }
-        .expand-trigger { display: flex; align-items: center; justify-content: space-between; padding: 12px; background: #f9fafb; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 14px; border: 1px solid #e5e7eb; }
-        .expand-content { display: none; margin-top: 12px; padding: 12px; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb; }
-        .expanded .expand-content { display: block; }
-        .card-checkbox-container { width: 0; overflow: hidden; opacity: 0; transition: width .3s, opacity .3s, margin .3s; }
-        body.multi-select-mode .card-checkbox-container { width: 24px; opacity: 1; margin-right: 12px; }
-        .item-row { touch-action: manipulation; }
-        .spinner { border: 4px solid rgba(255,255,255,.3); border-top: 4px solid white; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .scrollbar-none::-webkit-scrollbar { display: none; }
-        .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
+        :root{--bg:#007a4d;--tx:#111827}
+        body{font-family:"Amazon Ember",Arial,sans-serif;background:white;color:var(--tx);user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior-y:contain}
+        .nav-header{background:var(--bg);color:white;padding-top:max(10px,env(safe-area-inset-top))}
+        #view-login,#view-change-password{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px}
+        #view-change-password{display:none;z-index:10000}
+        .login-card{background:white;padding:30px;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,.2);width:100%;max-width:360px;text-align:center}
+        .input-field{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:8px;font-size:15px;margin-bottom:12px}
+        #toast-notification{position:fixed;top:-100px;left:50%;transform:translateX(-50%);background:#16a34a;color:white;padding:16px 24px;border-radius:50px;box-shadow:0 10px 15px -3px rgba(0,0,0,.3);z-index:11000;transition:top .5s;display:flex;align-items:center;gap:12px;pointer-events:none}
+        #toast-notification.show{top:20px}
+        #side-drawer{position:fixed;top:0;left:-280px;width:280px;height:100%;background:white;z-index:2000;box-shadow:2px 0 10px rgba(0,0,0,.2);transition:left .3s;overflow-y:auto;padding-bottom:100px}
+        #side-drawer.open{left:0}
+        #drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1999;display:none}
+        #drawer-overlay.open{display:block}
+        .drawer-header{background:var(--bg);color:white;padding:20px;font-weight:bold;font-size:18px}
+        .drawer-item{padding:16px 20px;border-bottom:1px solid #f3f4f6;cursor:pointer;display:flex;align-items:center;gap:12px;color:#374151;font-weight:500}
+        .drill-item{border-bottom:1px solid #e5e7eb;padding:16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:white;transition:background .1s}
+        .drill-item:active{background:#f3f4f6}
+        .back-btn{display:flex;align-items:center;gap:5px;color:#6b7280;font-size:14px;font-weight:600;margin-bottom:20px;cursor:pointer;padding:10px 0}
+        .inv-card{border:1px solid #e5e7eb;border-left-width:6px;border-radius:8px;padding:12px;background:white;cursor:pointer;flex-grow:1}
+        .status-green{border-left-color:#22c55e}
+        .status-purple{border-left-color:#9333ea}
+        .status-orange{border-left-color:#f97316}
+        .status-blue{border-left-color:#3b82f6}
+        .status-indigo{border-left-color:#4f46e5}
+        .status-teal{border-left-color:#0d9488}
+        .status-yellow{border-left-color:#eab308}
+        .status-red{border-left-color:#ef4444}
+        .task-tabs,.detail-tabs{display:flex;border-bottom:1px solid #e5e7eb;background:#f9fafb;margin-bottom:10px}
+        .detail-tabs{overflow-x:auto;scrollbar-width:none}
+        .detail-tabs::-webkit-scrollbar{display:none}
+        .task-tab,.detail-tab{flex:1;text-align:center;padding:12px;font-size:11px;font-weight:700;color:#6b7280;cursor:pointer;border-bottom:3px solid transparent;text-transform:uppercase}
+        .detail-tab{flex:0 0 auto;padding:10px 16px}
+        .task-tab.active,.detail-tab.active{color:var(--bg);border-bottom-color:var(--bg);background:white}
+        .overview-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
+        .overview-card{background:#f8fafc;padding:10px;border-radius:6px;border:1px solid #e2e8f0}
+        .overview-label{font-size:9px;font-weight:800;color:#64748b;text-transform:uppercase;margin-bottom:2px}
+        .overview-val{font-size:13px;font-weight:600;color:#0f172a;word-break:break-all}
+        .expand-trigger{display:flex;align-items:center;justify-content:space-between;padding:12px;background:#f9fafb;border-radius:6px;cursor:pointer;font-weight:600;font-size:14px;border:1px solid #e5e7eb}
+        .expand-content{display:none;margin-top:12px;padding:12px;background:#f9fafb;border-radius:6px;border:1px solid #e5e7eb}
+        .expanded .expand-content{display:block}
+        .card-checkbox-container{width:0;overflow:hidden;opacity:0;transition:width .3s,opacity .3s,margin .3s}
+        body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-right:12px}
+        .item-row{touch-action:manipulation}
+        .spinner{border:4px solid rgba(255,255,255,.3);border-top:4px solid white;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:0 auto}
+        @keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+        .scrollbar-none::-webkit-scrollbar{display:none}
+        .scrollbar-none{-ms-overflow-style:none;scrollbar-width:none}
     </style>
 </head>
 <body class="bg-gray-50 h-screen overflow-hidden">
@@ -79,7 +80,7 @@
     <div id="view-login">
         <div class="login-card">
             <div class="flex flex-col items-center mb-8 w-full relative">
-                <div class="text-3xl text-[#007a4d] font-black tracking-tighter mb-1">GNC 1945V005</div>
+                <div class="text-3xl text-[#007a4d] font-black tracking-tighter mb-1">GNC</div>
                 <div class="flex flex-col items-center gap-0.5 mt-5">
                     <span class="text-[9px] font-bold text-gray-400 uppercase tracking-[0.3em]">Powered By</span>
                     <span class="text-[17px] font-black text-gray-800 tracking-[0.2em] uppercase border-b-[3px] border-[#007a4d] pb-0.5">Ag Metric</span>
@@ -235,7 +236,7 @@
                 <i class="ph-bold ph-list menu-btn text-2xl cursor-pointer" onclick="toggleMenu()"></i>
                 <div class="flex flex-col">
                     <div class="font-bold text-lg leading-tight"><span id="header-user">User</span></div>
-                    <div class="text-[10px] opacity-80 leading-tight">GNC 1945V005</div>
+                    <div class="text-[10px] opacity-80 leading-tight">GNC</div>
                 </div>
             </div>
             <div class="bg-white/20 p-2 rounded-lg cursor-pointer" onclick="fetchBackgroundData()">
@@ -272,7 +273,7 @@
                     <div class="bg-[#007a4d] text-white p-6 rounded-2xl mb-6 shadow-lg flex flex-col items-center text-center relative overflow-hidden">
                         <div class="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-white opacity-5 rounded-full pointer-events-none"></div>
                         <div class="absolute bottom-0 left-0 -mb-10 -ml-10 w-32 h-32 bg-black opacity-10 rounded-full pointer-events-none"></div>
-                        <h1 class="text-2xl font-black tracking-tight mb-1 z-10 relative mt-4">GNC 1945V005</h1>
+                        <h1 class="text-2xl font-black tracking-tight mb-1 z-10 relative mt-4">GNC</h1>
                         <p class="text-green-100 text-[10px] font-bold mb-5 uppercase tracking-[0.2em] z-10 relative">Dashboard</p>
                         <div class="flex flex-col items-center pt-4 border-t border-white/20 w-full mt-1 z-10 relative">
                             <span class="text-[9px] font-bold text-white/70 uppercase tracking-[0.3em] mb-1">Powered By</span>
@@ -705,7 +706,7 @@
             async function promptToEnableBiometrics(user,pin) { 
                 if(!confirm("Would you like to enable Fingerprint/FaceID login for future use?"))return; 
                 try{ 
-                    const publicKey={challenge:new Uint8Array(32),rp:{name:"GNC 1945V005"},user:{id:new Uint8Array(16),name:user,displayName:user},pubKeyCredParams:[{type:"public-key",alg:-7}],authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required"},timeout:60000}; 
+                    const publicKey={challenge:new Uint8Array(32),rp:{name:"GNC"},user:{id:new Uint8Array(16),name:user,displayName:user},pubKeyCredParams:[{type:"public-key",alg:-7}],authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required"},timeout:60000}; 
                     await navigator.credentials.create({publicKey}); 
                     localStorage.setItem('gnc_bio_enabled','true'); 
                     localStorage.setItem('gnc_bio_user',user); 
@@ -901,25 +902,39 @@
             }
 
             function processAndLoadData(res) {
-                avNotesDb = res.avNotesData || [];
-                fullInventory=res.data.map((item,idx)=>{item.DOM_ID='fi_'+idx;return item}); 
-                requestsInventory=res.requestsData?res.requestsData.map((item,idx)=>{item.DOM_ID='req_'+item.UNIQUE_ID;return item}):[]; 
+                if (!res) return;
                 
-                salesOfficeInventory = res.salesOfficeData ? res.salesOfficeData.map((item, idx) => {
+                avNotesDb = res.avNotesData || [];
+                
+                fullInventory = (res.data || []).map((item,idx)=>{
+                    item.DOM_ID='fi_'+idx;
+                    return item;
+                }); 
+                
+                requestsInventory = (res.requestsData || []).map((item,idx)=>{
+                    item.DOM_ID='req_'+item.UNIQUE_ID;
+                    return item;
+                }); 
+                
+                salesOfficeInventory = (res.salesOfficeData || []).map((item, idx) => {
                     item.DOM_ID = 'so_' + item.UNIQUE_ID;
                     let masterItem = fullInventory.find(i => i.UNIQUE_ID === item.UNIQUE_ID);
                     if (masterItem) { item.AV_NOTE = masterItem.AV_NOTE; }
                     return item;
-                }) : [];
+                });
                 
-                socInventory=res.socData;
+                socInventory = res.socData || [];
                 
-                lowStockInventory=fullInventory.filter(i=>{
+                lowStockInventory = fullInventory.filter(i=>{
                     let ptr=parseInt(String(i.PTRAVAILABLE).replace(/,/g,''))||0; 
                     let slts=parseInt(String(i.S_LTS).replace(/,/g,''))||0; 
                     return ptr>0 && ptr<=slts;
                 }).map((item,idx)=>{item.DOM_ID='ls_'+idx;return item}); 
-                managerReviewInventory=fullInventory.map((item,idx)=>{item.DOM_ID='mr_'+idx;return item}); 
+                
+                managerReviewInventory = fullInventory.map((item,idx)=>{
+                    item.DOM_ID='mr_'+idx;
+                    return item;
+                }); 
 
                 let map1 = new Map();
                 let icGroups = {};
@@ -989,7 +1004,7 @@
                     } 
                 });
                 
-                reservesInventory=res.reservesData.map((item,idx)=>{ 
+                reservesInventory = (res.reservesData || []).map((item,idx)=>{ 
                     item.DOM_ID='res_'+idx; 
                     item.UNIQUE_ID=item.UNIQUE_ID||'res_uid_'+idx; 
                     let resCode=String(item.ITEMCODE||item.ITEM||"").trim().toUpperCase(); 
@@ -1207,12 +1222,14 @@
                 }
                 if(term){ items=items.filter(i=>(i._search||"").includes(term)); }
                 if(items.length===0){ container.innerHTML=`<div class="p-8 text-center text-gray-400">No ${activeAVTab==='open'?'open stock':'reserves'} found.</div>`; crumb.innerText="No Results"; return; }
+                
                 if(term.length > 0) { 
                     crumb.innerText=`Search Results (${items.length})`; 
                     items.sort((a,b)=>{let priA=parseFloat(a.PRIORITY);let priB=parseFloat(b.PRIORITY);if(isNaN(priA))priA=Infinity;if(isNaN(priB))priB=Infinity;if(priA!==priB)return priA-priB;return String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""),undefined,{numeric:true});}); 
                     container.innerHTML=items.map(i=>generateCard(i, activeAVTab === 'open' ? 'av' : 'reserves_drill', activeAVTab === 'open' ? 'status-teal' : 'status-indigo')).join(''); 
                     return; 
                 }
+                
                 if(activeAVTab==='open'){ 
                     crumb.innerText=`Open Stock (${items.length})`; 
                     items.sort((a,b)=>(String(a.COMMONNAME)||"").localeCompare(String(b.COMMONNAME)||"")); 
@@ -2325,158 +2342,368 @@
         function selectDriveSize(size) { selectedDriveSize=size; driveViewLevel=2; renderDrive() }
         function backToDriveSizes() { driveViewLevel=1; selectedDriveSize=null; renderDrive() }
 
-        function renderDrive() {
-            const container=document.getElementById('drive-content'); 
-            const filtersDiv=document.getElementById('drive-season-filters'); 
-            const crumb=document.getElementById('drive-crumb'); 
-            const term=document.getElementById('drive-search').value.toLowerCase().trim();
-            filtersDiv.innerHTML=availableSeasons.map(s=>{ const active=driveSelectedSeasons.has(s); return `<div class="px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap cursor-pointer transition-colors ${active?'bg-[#007a4d] text-white shadow-md':'bg-white border border-gray-300 text-gray-600'}" onclick="toggleDriveSeason('${s}')">${s}</div>` }).join('');
+       function renderDrive() {
+            const container = document.getElementById('drive-content'); 
+            const filtersDiv = document.getElementById('drive-season-filters'); 
+            const crumb = document.getElementById('drive-crumb'); 
+            const term = document.getElementById('drive-search').value.toLowerCase().trim();
             
-            let baseItems=fullInventory;
-            if(!driveSelectedSeasons.has('ALL')){ baseItems=baseItems.filter(i=>{ let s=String(i.SEASON||'').toUpperCase(); return driveSelectedSeasons.has(s); }); }
-            let searchFilteredItems=baseItems;
-            if(term){ const searchTerms = term.split(/\s+/); searchFilteredItems=searchFilteredItems.filter(i=>{ const searchStr = (i._search||""); return searchTerms.every(t => searchStr.includes(t)); }); }
+            filtersDiv.innerHTML = availableSeasons.map(s => { 
+                const active = driveSelectedSeasons.has(s); 
+                return `<div class="px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap cursor-pointer transition-colors ${active ? 'bg-[#007a4d] text-white shadow-md' : 'bg-white border border-gray-300 text-gray-600'}" onclick="toggleDriveSeason('${s}')">${s}</div>` 
+            }).join('');
             
-            if(driveViewLevel===0){
-                if(searchFilteredItems.length===0){ container.innerHTML=`<div class="p-8 text-center text-gray-400">No items found matching criteria.</div>`; crumb.innerText="No Results"; return; }
-                crumb.innerText=`Select Plant (${searchFilteredItems.length} items)`;
-                const names=[...new Set(searchFilteredItems.map(i=>i.COMMONNAME))].sort();
-                container.innerHTML=names.map(n=>`<div class="drill-item" onclick="selectDriveName('${esc(n)}')"><span class="font-bold text-lg">${n}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
-            }else if(driveViewLevel===1){
-                crumb.innerText=selectedDriveName;
-                const namedItems=baseItems.filter(i=>i.COMMONNAME===selectedDriveName);
-                if(namedItems.length===0){ container.innerHTML=`<div class="p-8 text-center text-gray-400">No items found.</div>`; return; }
-                const sizes=[...new Set(namedItems.map(i=>i.CONTSIZE))].sort();
-                let html=`<div class="back-btn" onclick="driveViewLevel=0; renderDrive()"><i class="ph-bold ph-arrow-left"></i> Back to Names</div><div class="font-bold text-[#007a4d] mb-4 px-2 text-xl border-b pb-2">${selectedDriveName}</div>`;
-                html+=sizes.map(s=>{ const count=namedItems.filter(i=>i.CONTSIZE===s).length; return `<div class="drill-item" onclick="selectDriveSize('${esc(s)}')"><span class="font-bold text-lg">${s} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>` }).join('');
-                container.innerHTML=html;
-            }else if(driveViewLevel===2){
-                crumb.innerText=`${selectedDriveName} / ${selectedDriveSize}`;
-                let finalItems=baseItems.filter(i=>i.COMMONNAME===selectedDriveName&&i.CONTSIZE===selectedDriveSize);
+            let baseItems = fullInventory;
+            if(!driveSelectedSeasons.has('ALL')){ 
+                baseItems = baseItems.filter(i => { let s = String(i.SEASON || '').toUpperCase(); return driveSelectedSeasons.has(s); }); 
+            }
+            let searchFilteredItems = baseItems;
+            
+            if(term){ 
+                const searchTerms = term.split(/\s+/); 
+                searchFilteredItems = searchFilteredItems.filter(i => { 
+                    const searchStr = (i._search || ""); 
+                    return searchTerms.every(t => searchStr.includes(t)); 
+                }); 
+            }
+            
+            // SEARCH OVERRIDE: Instant flat list if typing in search bar
+            if(term.length > 0) {
+                crumb.innerText = `Search Results (${searchFilteredItems.length})`;
+                if(searchFilteredItems.length === 0){ 
+                    container.innerHTML = `<div class="p-8 text-center text-gray-400">No items found matching criteria.</div>`; 
+                    return; 
+                }
+                searchFilteredItems.sort((a,b)=>{ let priA=parseFloat(a.PRIORITY);let priB=parseFloat(b.PRIORITY); if(isNaN(priA))priA=Infinity;if(isNaN(priB))priB=Infinity; return priA-priB; });
+                container.innerHTML = searchFilteredItems.map(i=>generateCard(i,'drive','status-blue')).join('');
+                return;
+            }
+
+            // NORMAL FOLDER VIEW
+            if(driveViewLevel === 0){
+                if(searchFilteredItems.length === 0){ 
+                    container.innerHTML = `<div class="p-8 text-center text-gray-400">No items found matching criteria.</div>`; 
+                    crumb.innerText = "No Results"; 
+                    return; 
+                }
+                crumb.innerText = `Select Plant (${searchFilteredItems.length} items)`;
+                const names = [...new Set(searchFilteredItems.map(i=>i.COMMONNAME))].sort();
+                container.innerHTML = names.map(n=>`<div class="drill-item" onclick="selectDriveName('${esc(n)}')"><span class="font-bold text-lg">${n}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
+            } else if (driveViewLevel === 1) {
+                crumb.innerText = selectedDriveName;
+                const namedItems = baseItems.filter(i=>i.COMMONNAME === selectedDriveName);
+                if(namedItems.length === 0){ 
+                    container.innerHTML = `<div class="p-8 text-center text-gray-400">No items found.</div>`; 
+                    return; 
+                }
+                const sizes = [...new Set(namedItems.map(i=>i.CONTSIZE))].sort();
+                let html = `<div class="back-btn" onclick="driveViewLevel=0; renderDrive()"><i class="ph-bold ph-arrow-left"></i> Back to Names</div><div class="font-bold text-[#007a4d] mb-4 px-2 text-xl border-b pb-2">${selectedDriveName}</div>`;
+                html += sizes.map(s => { 
+                    const count = namedItems.filter(i=>i.CONTSIZE===s).length; 
+                    return `<div class="drill-item" onclick="selectDriveSize('${esc(s)}')"><span class="font-bold text-lg">${s} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>` 
+                }).join('');
+                container.innerHTML = html;
+            } else if (driveViewLevel === 2) {
+                crumb.innerText = `${selectedDriveName} / ${selectedDriveSize}`;
+                let finalItems = baseItems.filter(i=>i.COMMONNAME === selectedDriveName && i.CONTSIZE === selectedDriveSize);
                 finalItems.sort((a,b)=>{ let priA=parseFloat(a.PRIORITY);let priB=parseFloat(b.PRIORITY); if(isNaN(priA))priA=Infinity;if(isNaN(priB))priB=Infinity; return priA-priB; });
-                container.innerHTML=`<div class="back-btn" onclick="backToDriveSizes()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>`+finalItems.map(i=>generateCard(i,'drive','status-blue')).join('');
+                container.innerHTML = `<div class="back-btn" onclick="backToDriveSizes()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>` + finalItems.map(i=>generateCard(i,'drive','status-blue')).join('');
             }
         }
 
         function resetDriveView() {
-            driveViewLevel=0;
-            selectedDriveName=null;
-            selectedDriveSize=null;
-            document.getElementById('drive-search').value="";
+            driveViewLevel = 0;
+            selectedDriveName = null;
+            selectedDriveSize = null;
+            document.getElementById('drive-search').value = "";
             document.getElementById('drive-search-clear').classList.add('hidden');
             driveSelectedSeasons.clear();
             driveSelectedSeasons.add('ALL');
-            renderDrive()
+            renderDrive();
         }
 
         function toggleDriveSeason(s) {
-            if(s==='ALL'){driveSelectedSeasons.clear();driveSelectedSeasons.add('ALL')}
-            else{
+            if(s === 'ALL'){
+                driveSelectedSeasons.clear();
+                driveSelectedSeasons.add('ALL');
+            } else {
                 driveSelectedSeasons.delete('ALL');
                 if(driveSelectedSeasons.has(s)){
                     driveSelectedSeasons.delete(s);
-                    if(driveSelectedSeasons.size===0)driveSelectedSeasons.add('ALL')
-                }else{
-                    driveSelectedSeasons.add(s)
+                    if(driveSelectedSeasons.size === 0) driveSelectedSeasons.add('ALL');
+                } else {
+                    driveSelectedSeasons.add(s);
                 }
             }
-            driveViewLevel=0;
-            selectedDriveName=null;
-            selectedDriveSize=null;
-            renderDrive()
+            driveViewLevel = 0;
+            selectedDriveName = null;
+            selectedDriveSize = null;
+            renderDrive();
         }
 
         function renderTeamSelector() {
-            let uSet=new Set();
-            fullInventory.forEach(i=>{if(i.ASSIGNEDTO&&!i.DATE_COMPLETED)uSet.add(i.ASSIGNEDTO)});
-            if(uSet.size===0){document.getElementById('task-content').innerHTML=`<div class="p-8 text-center text-gray-400">No active tasks for any team member.</div>`;return}
-            let sorted=Array.from(uSet).sort();
-            let html=`<h2 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Select Team Member</h2>`;
-            sorted.forEach(u=>{
-                let userTasks=fullInventory.filter(i=>i.ASSIGNEDTO===u&&!i.DATE_COMPLETED);
-                let htmlCounts=`<div class="flex gap-2 mt-2">`;
-                ['season','location','endcap','flyer'].forEach(t=>{let c=userTasks.filter(i=>i.APP_TAB_ASSIGNMENT===t).length;if(c>0)htmlCounts+=`<span class="text-[10px] font-bold px-2 py-1 rounded bg-gray-100 text-gray-600 uppercase">${t}: ${c}</span>`});
-                htmlCounts+=`</div>`;
-                html+=`<div class="bg-white border border-gray-200 p-4 rounded-xl shadow-sm mb-3 cursor-pointer active:scale-95 transition-transform" onclick="selectTaskUser('${esc(u)}')"><div class="flex justify-between items-center"><span class="font-black text-xl text-[#007a4d]">${u}</span><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${userTasks.length} Total</span></div>${htmlCounts}</div>`;
+            let uSet = new Set();
+            fullInventory.forEach(i => { if(i.ASSIGNEDTO && !i.DATE_COMPLETED) uSet.add(i.ASSIGNEDTO) });
+            if(uSet.size === 0) { 
+                document.getElementById('task-content').innerHTML = `<div class="p-8 text-center text-gray-400">No active tasks for any team member.</div>`; 
+                return; 
+            }
+            let sorted = Array.from(uSet).sort();
+            let html = `<h2 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Select Team Member</h2>`;
+            sorted.forEach(u => {
+                let userTasks = fullInventory.filter(i => i.ASSIGNEDTO === u && !i.DATE_COMPLETED);
+                let htmlCounts = `<div class="flex gap-2 mt-2">`;
+                ['season','location','endcap','flyer'].forEach(t => {
+                    let c = userTasks.filter(i => i.APP_TAB_ASSIGNMENT === t).length;
+                    if(c > 0) htmlCounts += `<span class="text-[10px] font-bold px-2 py-1 rounded bg-gray-100 text-gray-600 uppercase">${t}: ${c}</span>`;
+                });
+                htmlCounts += `</div>`;
+                html += `<div class="bg-white border border-gray-200 p-4 rounded-xl shadow-sm mb-3 cursor-pointer active:scale-95 transition-transform" onclick="selectTaskUser('${esc(u)}')"><div class="flex justify-between items-center"><span class="font-black text-xl text-[#007a4d]">${u}</span><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${userTasks.length} Total</span></div>${htmlCounts}</div>`;
             });
             document.getElementById('task-tabs-container').classList.add('hidden');
-            document.getElementById('task-crumb').innerText="Team Tasks Overview";
-            document.getElementById('task-content').innerHTML=html;
+            document.getElementById('task-crumb').innerText = "Team Tasks Overview";
+            document.getElementById('task-content').innerHTML = html;
         }
 
         function selectTaskUser(u) {
-            taskViewTargetUser=u;
+            taskViewTargetUser = u;
             document.getElementById('task-tabs-container').classList.remove('hidden');
-            renderTasks()
+            renderTasks();
         }
 
         function renderTasks() {
-            let targetUser=safeRole==='ADMIN'?taskViewTargetUser:currentUser;if(!targetUser)return;
-            const container=document.getElementById('task-content');const crumb=document.getElementById('task-crumb');
-            crumb.innerHTML=safeRole==='ADMIN'?`<span class="cursor-pointer text-gray-400 hover:text-gray-800" onclick="taskViewTargetUser=null; renderTeamSelector()"><i class="ph-bold ph-arrow-left"></i> Back to Team</span> &bull; <span class="text-[#007a4d]">${targetUser}'s Tasks</span>`:"My Tasks";
-            let userItems=fullInventory.filter(i=>i.ASSIGNEDTO===targetUser&&!i.DATE_COMPLETED);let tabItems=userItems.filter(i=>i.APP_TAB_ASSIGNMENT===activeTaskTab);
-            if(tabItems.length===0){container.innerHTML=`<div class="p-8 text-center text-gray-400">No active ${activeTaskTab} tasks.</div>`;return}
+            let targetUser = safeRole === 'ADMIN' ? taskViewTargetUser : currentUser;
+            if(!targetUser) return;
+            const container = document.getElementById('task-content');
+            const crumb = document.getElementById('task-crumb');
+            crumb.innerHTML = safeRole === 'ADMIN' ? `<span class="cursor-pointer text-gray-400 hover:text-gray-800" onclick="taskViewTargetUser=null; renderTeamSelector()"><i class="ph-bold ph-arrow-left"></i> Back to Team</span> &bull; <span class="text-[#007a4d]">${targetUser}'s Tasks</span>` : "My Tasks";
             
-            if(activeTaskTab==='endcap'){
-                if(taskViewLevel===0){
-                    let folders=[...new Set(tabItems.map(i=>i.END_CAP_FOLDER||'Unassigned'))].sort();
-                    container.innerHTML=folders.map(f=>{let count=tabItems.filter(i=>(i.END_CAP_FOLDER||'Unassigned')===f).length;return `<div class="bg-white border border-yellow-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectedEndCapFolder='${esc(f)}'; taskViewLevel=1; renderTasks()"><div class="flex items-center gap-3"><div class="bg-yellow-50 p-2 rounded-lg"><i class="ph-fill ph-storefront text-2xl text-yellow-500"></i></div><span class="font-bold text-lg text-yellow-800">${f}</span></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${count} Items</span></div>`}).join('');
-                }else if(taskViewLevel===1){
-                    let fItems=tabItems.filter(i=>(i.END_CAP_FOLDER||'Unassigned')===selectedEndCapFolder);fItems.sort((a,b)=>String(a.COMMONNAME||"").localeCompare(String(b.COMMONNAME||"")));
-                    container.innerHTML=`<div class="back-btn" onclick="taskViewLevel=0; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to End Caps</div>`+fItems.map(i=>generateCard(i,'tasks','status-yellow')).join('');
+            let userItems = fullInventory.filter(i => i.ASSIGNEDTO === targetUser && !i.DATE_COMPLETED);
+            let tabItems = userItems.filter(i => i.APP_TAB_ASSIGNMENT === activeTaskTab);
+            
+            if(tabItems.length === 0){
+                container.innerHTML = `<div class="p-8 text-center text-gray-400">No active ${activeTaskTab} tasks.</div>`;
+                return;
+            }
+            
+            if(activeTaskTab === 'endcap') {
+                if(taskViewLevel === 0) {
+                    let folders = [...new Set(tabItems.map(i => i.END_CAP_FOLDER || 'Unassigned'))].sort();
+                    container.innerHTML = folders.map(f => {
+                        let count = tabItems.filter(i => (i.END_CAP_FOLDER || 'Unassigned') === f).length;
+                        return `<div class="bg-white border border-yellow-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectedEndCapFolder='${esc(f)}'; taskViewLevel=1; renderTasks()"><div class="flex items-center gap-3"><div class="bg-yellow-50 p-2 rounded-lg"><i class="ph-fill ph-storefront text-2xl text-yellow-500"></i></div><span class="font-bold text-lg text-yellow-800">${f}</span></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${count} Items</span></div>`;
+                    }).join('');
+                } else if(taskViewLevel === 1) {
+                    let fItems = tabItems.filter(i => (i.END_CAP_FOLDER || 'Unassigned') === selectedEndCapFolder);
+                    fItems.sort((a,b) => String(a.COMMONNAME || "").localeCompare(String(b.COMMONNAME || "")));
+                    container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=0; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to End Caps</div>` + fItems.map(i => generateCard(i, 'tasks', 'status-yellow')).join('');
                 }
-            }else if(activeTaskTab==='flyer'){
-                tabItems.sort((a,b)=>String(a.COMMONNAME||"").localeCompare(String(b.COMMONNAME||"")));
-                container.innerHTML=tabItems.map(i=>generateCard(i,'tasks','status-indigo')).join('');
-            }else{
-                if(taskViewLevel===0){
-                    let blocks={};
-                    tabItems.forEach(i=>{
-                        let loc=String(i.LOCATIONCODE||"NoLoc").trim();
+            } else if(activeTaskTab === 'flyer') {
+                tabItems.sort((a,b) => String(a.COMMONNAME || "").localeCompare(String(b.COMMONNAME || "")));
+                container.innerHTML = tabItems.map(i => generateCard(i, 'tasks', 'status-indigo')).join('');
+            } else {
+                if(taskViewLevel === 0) {
+                    let blocks = {};
+                    tabItems.forEach(i => {
+                        let loc = String(i.LOCATIONCODE || "NoLoc").trim();
                         let blockAlpha = loc.charAt(0).toUpperCase();
                         if(!/[A-Z]/.test(blockAlpha)) blockAlpha = "Other";
-                        if(!blocks[blockAlpha]) blocks[blockAlpha]={count:0};
+                        if(!blocks[blockAlpha]) blocks[blockAlpha] = {count:0};
                         blocks[blockAlpha].count++;
                     });
-                    let html=Object.keys(blocks).sort().map(b=>`<div class="bg-white border border-green-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectedTaskBlock='${esc(b)}'; taskViewLevel=1; renderTasks()"><div class="flex items-center gap-3"><div class="bg-green-100 text-[#007a4d] px-3 py-1.5 rounded-lg font-black text-lg">${b}</div><span class="font-bold text-lg text-gray-700">Block ${b}</span></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${blocks[b].count} Items</span></div>`).join('');
-                    container.innerHTML=html;
-                }else if(taskViewLevel===1){
-                    let bItems=tabItems.filter(i=>{
-                        let loc=String(i.LOCATIONCODE||"NoLoc").trim();
+                    let html = Object.keys(blocks).sort().map(b => `<div class="bg-white border border-green-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectedTaskBlock='${esc(b)}'; taskViewLevel=1; renderTasks()"><div class="flex items-center gap-3"><div class="bg-green-100 text-[#007a4d] px-3 py-1.5 rounded-lg font-black text-lg">${b}</div><span class="font-bold text-lg text-gray-700">Block ${b}</span></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${blocks[b].count} Items</span></div>`).join('');
+                    container.innerHTML = html;
+                } else if(taskViewLevel === 1) {
+                    let bItems = tabItems.filter(i => {
+                        let loc = String(i.LOCATIONCODE || "NoLoc").trim();
                         let alpha = loc.charAt(0).toUpperCase();
                         if(!/[A-Z]/.test(alpha)) alpha = "Other";
                         return alpha === selectedTaskBlock;
                     });
-                    let locs=[...new Set(bItems.map(i=>i.LOCATIONCODE||"NoLoc"))].sort((a,b)=>String(a).localeCompare(String(b),undefined,{numeric:true}));
-                    let html=`<div class="back-btn" onclick="taskViewLevel=0; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Blocks</div>`;
-                    html+=locs.map(l=>{let count=bItems.filter(i=>(i.LOCATIONCODE||"NoLoc")===l).length;return `<div class="drill-item" onclick="selectedTaskLoc='${esc(l)}'; taskViewLevel=2; renderTasks()"><span class="font-bold text-lg text-gray-800">${l} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`}).join('');
-                    container.innerHTML=html;
-                }else if(taskViewLevel===2){
-                    let fItems=tabItems.filter(i=>(i.LOCATIONCODE||"NoLoc")===selectedTaskLoc);fItems.sort((a,b)=>String(a.COMMONNAME||"").localeCompare(String(b.COMMONNAME||"")));
-                    container.innerHTML=`<div class="back-btn" onclick="taskViewLevel=1; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Locations</div>`+fItems.map(i=>generateCard(i,'tasks',activeTaskTab==='season'?'status-green':'status-blue')).join('');
+                    let locs = [...new Set(bItems.map(i => i.LOCATIONCODE || "NoLoc"))].sort((a,b) => String(a).localeCompare(String(b), undefined, {numeric: true}));
+                    let html = `<div class="back-btn" onclick="taskViewLevel=0; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Blocks</div>`;
+                    html += locs.map(l => {
+                        let count = bItems.filter(i => (i.LOCATIONCODE || "NoLoc") === l).length;
+                        return `<div class="drill-item" onclick="selectedTaskLoc='${esc(l)}'; taskViewLevel=2; renderTasks()"><span class="font-bold text-lg text-gray-800">${l} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
+                    }).join('');
+                    container.innerHTML = html;
+                } else if(taskViewLevel === 2) {
+                    let fItems = tabItems.filter(i => (i.LOCATIONCODE || "NoLoc") === selectedTaskLoc);
+                    fItems.sort((a,b) => String(a.COMMONNAME || "").localeCompare(String(b.COMMONNAME || "")));
+                    container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=1; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Locations</div>` + fItems.map(i => generateCard(i, 'tasks', activeTaskTab === 'season' ? 'status-green' : 'status-blue')).join('');
                 }
             }
         }
 
         function renderReview() {
-            const container=document.getElementById('review-content');
-            const crumb=document.getElementById('review-crumb');
-            if(managerReviewInventory.length===0){
-                container.innerHTML=`<div class="p-8 text-center text-gray-400">No items require manager review.</div>`;
-                crumb.innerText="All Clear";
+            const container = document.getElementById('review-content');
+            const crumb = document.getElementById('review-crumb');
+            if(managerReviewInventory.length === 0){
+                container.innerHTML = `<div class="p-8 text-center text-gray-400">No items require manager review.</div>`;
+                crumb.innerText = "All Clear";
                 return;
             }
-            if(reviewViewLevel===0){
-                crumb.innerText="Needs Location Priority Review";let groups={};
-                managerReviewInventory.forEach(i=>{let code=i.ITEMCODE||"UNKNOWN";if(!groups[code]){groups[code]={code:code,name:i.COMMONNAME||"Unknown",size:i.CONTSIZE||"-",count:0}}groups[code].count++});
-                let sorted=Object.values(groups).sort((a,b)=>String(a.name).localeCompare(String(b.name)));
-                let html=sorted.map(g=>`<div class="bg-yellow-50 border border-yellow-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectReviewItem('${esc(g.code)}', '${esc(g.name)}', '${esc(g.size)}')"><div class="flex-grow min-w-0 pr-3"><div class="font-bold text-[15px] text-yellow-800 truncate">${g.name}</div><div class="text-xs font-semibold text-yellow-600 mt-1">${g.size} <span class="mx-2 text-yellow-300">|</span> <span class="font-mono text-yellow-700">${g.code}</span></div></div><div class="bg-white px-3 py-1 rounded-lg shadow-sm border border-yellow-100 text-yellow-600 font-bold text-xs whitespace-nowrap">${g.count} Locs</div></div>`).join('');
-                container.innerHTML=html;
-            }else if(reviewViewLevel===1){
-                crumb.innerText=`${selectedReviewCommonName} / ${selectedReviewContSize}`;
-                let items=managerReviewInventory.filter(i=>i.ITEMCODE===selectedReviewItemCode);items.sort((a,b)=>String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""),undefined,{numeric:true}));
-                container.innerHTML=`<div class="back-btn" onclick="resetReviewView()"><i class="ph-bold ph-arrow-left"></i> Back to List</div>`+items.map(i=>generateCard(i,'review','status-yellow')).join('');
+            if(reviewViewLevel === 0){
+                crumb.innerText = "Needs Location Priority Review";
+                let groups = {};
+                managerReviewInventory.forEach(i => {
+                    let code = i.ITEMCODE || "UNKNOWN";
+                    if(!groups[code]) {
+                        groups[code] = {code: code, name: i.COMMONNAME || "Unknown", size: i.CONTSIZE || "-", count: 0};
+                    }
+                    groups[code].count++;
+                });
+                let sorted = Object.values(groups).sort((a,b) => String(a.name).localeCompare(String(b.name)));
+                let html = sorted.map(g => `<div class="bg-yellow-50 border border-yellow-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectReviewItem('${esc(g.code)}', '${esc(g.name)}', '${esc(g.size)}')"><div class="flex-grow min-w-0 pr-3"><div class="font-bold text-[15px] text-yellow-800 truncate">${g.name}</div><div class="text-xs font-semibold text-yellow-600 mt-1">${g.size} <span class="mx-2 text-yellow-300">|</span> <span class="font-mono text-yellow-700">${g.code}</span></div></div><div class="bg-white px-3 py-1 rounded-lg shadow-sm border border-yellow-100 text-yellow-600 font-bold text-xs whitespace-nowrap">${g.count} Locs</div></div>`).join('');
+                container.innerHTML = html;
+            } else if(reviewViewLevel === 1){
+                crumb.innerText = `${selectedReviewCommonName} / ${selectedReviewContSize}`;
+                let items = managerReviewInventory.filter(i => i.ITEMCODE === selectedReviewItemCode);
+                items.sort((a,b) => String(a.LOCATIONCODE || "").localeCompare(String(b.LOCATIONCODE || ""), undefined, {numeric: true}));
+                container.innerHTML = `<div class="back-btn" onclick="resetReviewView()"><i class="ph-bold ph-arrow-left"></i> Back to List</div>` + items.map(i => generateCard(i, 'review', 'status-yellow')).join('');
             }
+        }
+        
+        let autoSaveTimer = null;
+
+        function saveData(isComplete = false, prefix, isSilentAutoSave = false, specificItem = null) {
+            if (autoSaveTimer) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
+            let itemToSave = specificItem || activeItem; if (!itemToSave) return;
+            let btnDraft = document.getElementById(prefix + 'btn-save-draft'); 
+            let btnComp = document.getElementById(prefix + 'btn-save-complete'); 
+            let isCurrentView = (activeItem && activeItem.UNIQUE_ID === itemToSave.UNIQUE_ID);
+            
+            if (isCurrentView && isComplete) { if(btnComp) btnComp.innerText = "SAVING..."; }
+            
+            const executeSave = () => {
+                let wasAlreadyComplete = itemToSave.REQ_STATUS === 'Complete';
+
+                if (!specificItem) {
+                    let avEl = document.getElementById(prefix + 'av-note');
+                    if (avEl) { itemToSave.AV_NOTE = avEl.value.toUpperCase(); }
+                    
+                    let descEl = document.getElementById(prefix + 'sales-desc');
+                    if (descEl) { let textBoxVal = descEl.value.toUpperCase(); itemToSave.SALES_NOTE = textBoxVal; if (lastView === 'tasks') itemToSave._NEW_SALES_NOTE = textBoxVal; }
+
+                    if (isComplete && isCurrentView && itemToSave.APP_TAB_ASSIGNMENT === 'season') {
+                        const noteVal = (itemToSave.SALES_NOTE || "").trim();
+                        if (!noteVal) { showToast("Required", "A Sales Description is required to complete this Season task.", true); if (btnComp) btnComp.innerText = "MARK DONE"; return; }
+                    }
+
+                    if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-') { 
+                        let matchEl = document.getElementById(prefix + 'match'); if(matchEl) itemToSave.MATCH = matchEl.value; 
+                        let specEl = document.getElementById(prefix + 'spec'); if(specEl) itemToSave.SPEC = specEl.value; 
+                        let calEl = document.getElementById(prefix + 'caliper'); if(calEl) itemToSave.CALIPER = calEl.value; 
+                        let pickEl = document.getElementById(prefix + 'pick'); if(pickEl) itemToSave.PICK = pickEl.value; 
+                    } else if (prefix === 'req-') { 
+                        itemToSave.REQ_MATCH = document.getElementById('req-match').value; itemToSave.REQ_SPEC = document.getElementById('req-spec').value; itemToSave.REQ_CALIPER = document.getElementById('req-caliper').value; itemToSave.REQ_PICK = document.getElementById('req-pick').value; itemToSave.REQ_COMMENTS = document.getElementById('req-comments').value; let reserveEl = document.getElementById('req-reserve'); if (reserveEl) itemToSave.REQ_RESERVE = reserveEl.value;
+                    } else if (prefix === 'dock-') { 
+                        itemToSave.DOCK_SPEC = document.getElementById('dock-spec').value; itemToSave.DOCK_CALIPER = document.getElementById('dock-caliper').value; itemToSave.DOCK_NOTE = document.getElementById('dock-sales-desc').value.toUpperCase(); 
+                    } else if (prefix === 'flyer-') {
+                        itemToSave.FLYER_CAT = document.getElementById('flyer-cat').value; itemToSave.FLYER_TITLE = document.getElementById('flyer-title').value; itemToSave.FLYER_INST = document.getElementById('flyer-inst').value; itemToSave.FLYER_ASSIGNED = document.getElementById('flyer-assigned').value; itemToSave.FLYER_NOTES = document.getElementById('flyer-notes').value;
+                    }
+                }
+                
+                const setVal = (val) => (val === "" || val === undefined) ? null : val;
+                const payload = {};
+                
+                if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-') { 
+                    payload.match = (itemToSave.MATCH === "" || itemToSave.MATCH == null) ? null : parseFloat(itemToSave.MATCH); 
+                    payload.spec = setVal(itemToSave.SPEC); payload.caliper = setVal(itemToSave.CALIPER); payload.pic_note = setVal(itemToSave.PICK); 
+                    payload.sales_note = setVal(itemToSave.SALES_NOTE || itemToSave._NEW_SALES_NOTE); payload.av_note = setVal(itemToSave.AV_NOTE);
+                } else if (prefix === 'req-') { 
+                    payload.req_match = (itemToSave.REQ_MATCH === "" || itemToSave.REQ_MATCH == null) ? null : parseFloat(itemToSave.REQ_MATCH); 
+                    payload.req_spec = setVal(itemToSave.REQ_SPEC); payload.req_caliper = setVal(itemToSave.REQ_CALIPER); payload.req_pic_note = setVal(itemToSave.REQ_PICK); 
+                    payload.req_sales_note = setVal(itemToSave.REQ_SALES_NOTE); payload.req_comments = setVal(itemToSave.REQ_COMMENTS); 
+                    payload.req_reserve = setVal(itemToSave.REQ_RESERVE); payload.av_note = setVal(itemToSave.AV_NOTE);
+                    if (isComplete) { payload.req_status = 'Complete'; itemToSave.REQ_STATUS = 'Complete'; }
+                } else if (prefix === 'dock-') { 
+                    payload.dock_spec = setVal(itemToSave.DOCK_SPEC); payload.dock_caliper = setVal(itemToSave.DOCK_CALIPER); payload.dock_note = setVal(itemToSave.DOCK_NOTE); 
+                } else if (prefix === 'flyer-') {
+                    payload.flyer_cat = setVal(itemToSave.FLYER_CAT); payload.flyer_title = setVal(itemToSave.FLYER_TITLE); payload.flyer_inst = setVal(itemToSave.FLYER_INST); 
+                    payload.flyer_assigned = setVal(itemToSave.FLYER_ASSIGNED); payload.flyer_notes = setVal(itemToSave.FLYER_NOTES);
+                }
+
+                if (isComplete && (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-')) {
+                    let matchVal = parseFloat(itemToSave.MATCH);
+                    if (!isNaN(matchVal) && matchVal >= 0) {
+                        let ptr = parseInt(String(itemToSave.PTRAVAILABLE).replace(/,/g, '')) || 0;
+                        itemToSave.INITIAL_PTR = ptr; itemToSave.LOC_MATCH_QTY = Math.round(ptr * (matchVal / 100));
+                        payload.initial_ptr = itemToSave.INITIAL_PTR; payload.loc_match_qty = itemToSave.LOC_MATCH_QTY;
+                    }
+                }
+
+                backupLocalItem(itemToSave);
+
+                if (itemToSave.SAVED_PHOTO_LINK) payload.photo_link = itemToSave.SAVED_PHOTO_LINK; 
+                if (itemToSave.SAVED_PHOTO_NAME) payload.photo_name = itemToSave.SAVED_PHOTO_NAME;
+                if (itemToSave.REQ_PHOTO_LINK) payload.req_photo_link = itemToSave.REQ_PHOTO_LINK; 
+                if (itemToSave.REQ_PHOTO_NAME) payload.req_photo_name = itemToSave.REQ_PHOTO_NAME;
+                if (itemToSave.DOCK_PHOTO_LINK) payload.dock_photo_link = itemToSave.DOCK_PHOTO_LINK; 
+                if (itemToSave.DOCK_PHOTO_NAME) payload.dock_photo_name = itemToSave.DOCK_PHOTO_NAME;
+                if (itemToSave.FLYER_PHOTO_LINK) payload.flyer_photo_link = itemToSave.FLYER_PHOTO_LINK; 
+                if (itemToSave.FLYER_PHOTO_NAME) payload.flyer_photo_name = itemToSave.FLYER_PHOTO_NAME;
+
+                if (isComplete) { 
+                    payload.date_completed = new Date().toISOString(); 
+                    if (prefix === 'flyer-') payload.flyer_completed = payload.date_completed;
+                    
+                    let soPayload = { unique_id: itemToSave.UNIQUE_ID, itemcode: itemToSave.ITEMCODE || "", commonname: itemToSave.COMMONNAME || "", contsize: itemToSave.CONTSIZE || "", locationcode: itemToSave.LOCATIONCODE || "", lotcode: itemToSave.LOTCODE || "", ptravailable: String(itemToSave.PTRAVAILABLE || ""), priority: String(itemToSave.PRIORITY || ""), sales_note: payload.sales_note || itemToSave.SALES_NOTE || itemToSave._NEW_SALES_NOTE || "", photo_link: itemToSave.NA_PHOTO_LINK || itemToSave.SAVED_PHOTO_LINK || "", completed_by: currentUser, completed_at: payload.date_completed };
+                    if (prefix !== 'flyer-' && prefix !== 'req-') {
+                        supabaseFetch('v2_sales_office', 'POST', soPayload).catch(e => console.log(e));
+                        // Add to local state immediately so it shows up in Sales Office without refresh
+                        let cloneSO = { ...soPayload };
+                        for(let key in soPayload) { cloneSO[key.toUpperCase()] = soPayload[key]; }
+                        cloneSO.DOM_ID = 'so_' + cloneSO.UNIQUE_ID;
+                        cloneSO.AV_NOTE = itemToSave.AV_NOTE;
+                        cloneSO.SAVED_PHOTO_LINK = soPayload.photo_link; 
+                        let existingIdx = salesOfficeInventory.findIndex(s => s.UNIQUE_ID === cloneSO.UNIQUE_ID);
+                        if (existingIdx > -1) salesOfficeInventory[existingIdx] = cloneSO;
+                        else salesOfficeInventory.push(cloneSO);
+                    }
+                }
+
+                const targetTable = (prefix === 'req-') ? 'v2_active_request' : (itemToSave.SOURCE_TABLE || 'v2_master_inventory');
+
+                supabaseFetch(targetTable, 'PATCH', payload, `unique_id=eq.${encodeURIComponent(itemToSave.UNIQUE_ID)}`).then(data => {
+                    if (isCurrentView && isComplete) { if(btnComp) btnComp.innerText = "MARK DONE"; }
+                    if (!isSilentAutoSave && isCurrentView && isComplete) showToast("Success", "Task Completed!"); 
+                    if (isComplete && isCurrentView) { 
+                        itemToSave.DATE_COMPLETED = payload.date_completed; 
+                        goBackFromDetail(); 
+                        reRenderCurrentView();
+                    } else if (isComplete && !isCurrentView) { 
+                        itemToSave.DATE_COMPLETED = payload.date_completed; 
+                    }
+
+                    if (prefix === 'req-' && isComplete && !wasAlreadyComplete) {
+                        let folderItems = requestsInventory.filter(i => i.REQUEST_FOLDER === itemToSave.REQUEST_FOLDER);
+                        let allComplete = folderItems.every(i => i.REQ_STATUS === 'Complete' || i.UNIQUE_ID === itemToSave.UNIQUE_ID);
+                        if (allComplete) { sendEmailNotification('request_complete', itemToSave.REQUEST_FOLDER, itemToSave.REQUESTED_BY, itemToSave.REQ_CUSTOMER, folderItems.length); }
+                    }
+                }).catch(err => { if (isCurrentView && isComplete) { if(btnComp) btnComp.innerText = "MARK DONE"; if (!isSilentAutoSave) showToast("Network Error", "Could not reach database.", true); } });
+            };
+            if (isSilentAutoSave && !isComplete && !specificItem) { autoSaveTimer = setTimeout(() => { executeSave(); }, 1000); } else { executeSave(); }
+        }
+
+        function backupLocalItem(item) {
+            if (!item) return;
+            let pendingEdits = JSON.parse(localStorage.getItem('gnc_pending_edits') || '{}');
+            pendingEdits[item.UNIQUE_ID] = { timestamp: new Date().getTime(), data: item };
+            localStorage.setItem('gnc_pending_edits', JSON.stringify(pendingEdits));
+        }
+
+        function applyLocalEdits() {
+            let pendingEdits = JSON.parse(localStorage.getItem('gnc_pending_edits') || '{}');
+            let now = new Date().getTime();
+            let changed = false;
+
+            for (let uid in pendingEdits) {
+                if (now - pendingEdits[uid].timestamp > 900000) { delete pendingEdits[uid]; changed = true; continue; }
+                let item = fullInventory.find(i => i.UNIQUE_ID === uid) || lowStockInventory.find(i => i.UNIQUE_ID === uid) || reservesInventory.find(i => i.UNIQUE_ID === uid) || requestsInventory.find(i => i.UNIQUE_ID === uid) || managerReviewInventory.find(i => i.UNIQUE_ID === uid) || socInventory.find(i => i.UNIQUE_ID === uid);
+                if (item) { Object.assign(item, pendingEdits[uid].data); }
+            }
+            if (changed) { localStorage.setItem('gnc_pending_edits', JSON.stringify(pendingEdits)); }
         }
 
         function filterAvNotes(prefix) {
@@ -2546,14 +2773,23 @@
 
                     let dockNum = pendingDockNum || selectedDockNum || "0";
 
+                    // Dynamic naming scheme
+                    let dateStr = new Date().toISOString().split('T')[0];
+                    let cName = String(activeItem.COMMONNAME || 'Unknown').replace(/[\/\\?%*:|"<>]/g, '-');
+                    let cSize = String(activeItem.CONTSIZE || 'NoSize').replace(/[\/\\?%*:|"<>]/g, '-');
+                    let cLot = String(activeItem.LOTCODE || 'NoLot').replace(/[\/\\?%*:|"<>]/g, '-');
+                    let cLoc = String(activeItem.LOCATIONCODE || 'NoLoc').replace(/[\/\\?%*:|"<>]/g, '-');
+                    let customFileName = `${cName}-${cSize}-${cLot}-${cLoc}-${dateStr}.jpg`;
+
                     const payload = {
                         type: 'image',
                         image: base64Data,
-                        filename: file.name,
+                        filename: customFileName,
                         mimeType: 'image/jpeg',
                         folderContext: context,
                         dockNum: dockNum
                     };
+
                     try {
                         const response = await fetch(GOOGLE_SCRIPT_URL, {
                             method: 'POST',
@@ -2565,7 +2801,7 @@
                             showToast('Success', 'Photo uploaded successfully!');
                             if (activeItem) {
                                 let url = result.url;
-                                // Save to correct property based on workflow
+                                // Save to correct property based on workflow, append if exists
                                 if (prefix === 'req-') {
                                     activeItem.REQ_PHOTO_LINK = activeItem.REQ_PHOTO_LINK ? activeItem.REQ_PHOTO_LINK + ',' + url : url;
                                 } else if (prefix === 'dock-') {
@@ -2591,4 +2827,5 @@
             };
         }
     </script>
-</body></html>
+</body>
+</html>
