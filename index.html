@@ -132,6 +132,19 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
     </div>
 </div>
 
+<div id="dock-mistake-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
+        <h3 class="font-black text-2xl mb-2 text-red-600">Report Mistake</h3>
+        <p class="text-[10px] text-gray-500 font-bold mb-4 uppercase tracking-wider">Enter mistake details for this row</p>
+        <input type="hidden" id="dock-mistake-uid">
+        <textarea id="dock-mistake-text" class="input-field border-red-200 focus:border-red-500 h-24 text-left resize-none" placeholder="E.g. Missing 3 plants..."></textarea>
+        <div class="flex gap-2 mt-2">
+            <button class="w-1/3 bg-gray-100 text-gray-600 font-bold p-3 rounded-lg shadow-sm active:scale-95 transition-transform" onclick="document.getElementById('dock-mistake-modal').classList.add('hidden')">CANCEL</button>
+            <button class="w-2/3 bg-red-600 text-white font-bold p-3 rounded-lg shadow-md active:scale-95 transition-transform" onclick="submitDockItemMistake()">SAVE NOTE</button>
+        </div>
+    </div>
+</div>
+
 <div id="dock-info-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
     <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center relative overflow-hidden">
         <h3 class="font-black text-2xl mb-2 text-[#007a4d]">DOCK <span id="modal-dock-num"></span></h3>
@@ -210,7 +223,7 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
         <div class="drawer-item" onclick="switchView('drive'); toggleMenu();"><i class="ph-bold ph-car"></i> Drive Mode</div>
         <div class="drawer-item rep-hidden csr-hidden" onclick="switchView('tasks'); toggleMenu();"><i class="ph-bold ph-clipboard-text"></i> My Tasks</div>
         <div class="drawer-item text-orange-600 font-bold" onclick="switchView('docks'); toggleMenu();"><i class="ph-bold ph-truck"></i> Docks</div>
-        <div class="drawer-item text-teal-600 font-bold" onclick="switchView('av'); toggleMenu();"><i class="ph-bold ph-notebook"></i> Open Stock</div>
+        <div class="drawer-item text-teal-600 font-bold" onclick="switchView('av'); toggleMenu();"><i class="ph-bold ph-notebook"></i> AV</div>
         <hr class="my-2">
         <div class="drawer-item text-blue-600 font-bold admin-rep-csr-only hidden" onclick="switchView('request'); toggleMenu();"><i class="ph-bold ph-chat-circle-text"></i> Requests</div>
         <div class="drawer-item text-indigo-600 font-bold admin-rep-csr-only hidden" onclick="switchView('reserves'); toggleMenu();"><i class="ph-bold ph-bookmark-simple"></i> Reserves</div>
@@ -232,12 +245,12 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
                     <div onclick="switchView('drive')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-car text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Drive Mode</span></div>
                     <div onclick="switchView('tasks')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer rep-hidden csr-hidden"><i class="ph-bold ph-clipboard-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Tasks</span></div>
                     <div onclick="switchView('docks')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-truck text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Docks</span></div>
-                    <div onclick="switchView('av')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-notebook text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Open Stock</span></div>
-                    <div onclick="switchView('request')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform col-span-2 cursor-pointer admin-rep-csr-only hidden"><i class="ph-bold ph-chat-circle-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Requests</span></div>
-                    <div onclick="switchView('reserves')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform col-span-2 cursor-pointer admin-rep-csr-only hidden"><i class="ph-bold ph-bookmark-simple text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Reserves</span></div>
+                    <div onclick="switchView('av')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-notebook text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">AV</span></div>
+                    <div onclick="switchView('request')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer admin-rep-csr-only hidden"><i class="ph-bold ph-chat-circle-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Requests</span></div>
+                    <div onclick="switchView('reserves')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer admin-rep-csr-only hidden"><i class="ph-bold ph-bookmark-simple text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Reserves</span></div>
                     <div onclick="switchView('sales-office')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer admin-csr-only hidden"><i class="ph-bold ph-briefcase text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Sales Office</span></div>
                     <div onclick="switchView('reports')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer admin-only hidden"><i class="ph-bold ph-chart-bar text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Reports</span></div>
-                    <div onclick="switchView('hours')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform col-span-2 cursor-pointer"><i class="ph-bold ph-clock text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Labor Hours</span></div>
+                    <div onclick="switchView('hours')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-clock text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Labor Hours</span></div>
                     <div onclick="switchView('low-stock')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer dylan-only hidden"><i class="ph-bold ph-trend-down text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Low Stock</span></div>
                     <div onclick="switchView('review')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform col-span-2 cursor-pointer admin-only hidden"><i class="ph-bold ph-warning-circle text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Manager Review</span></div>
                 </div>
@@ -271,7 +284,7 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
             </div>
 
             <div id="view-av" class="hidden">
-                <div id="av-search-container" class="relative mb-2"><input type="text" id="av-search" class="input-field w-full pr-10 !mb-0" placeholder="Search Open Stock..." oninput="handleAVSearch()"><i id="av-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearAVSearch()"></i></div>
+                <div id="av-search-container" class="relative mb-2"><input type="text" id="av-search" class="input-field w-full pr-10 !mb-0" placeholder="Search AV Stock..." oninput="handleAVSearch()"><i id="av-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearAVSearch()"></i></div>
                 <div class="task-tabs mt-2"><div id="tab-av-open" class="task-tab active" onclick="setAVTab('open')">Open Stock</div><div id="tab-av-reserves" class="task-tab" onclick="setAVTab('reserves')">My Reserves</div></div>
                 <div id="av-crumb" class="text-xs font-bold text-[#007a4d] mb-3 mt-2 empty:hidden">Open Stock</div><div id="av-content"></div>
             </div>
@@ -390,8 +403,6 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
                     <div id="na-input-container">
                         <div class="mb-3"><label class="text-[10px] font-bold text-gray-500 uppercase">Loc Match %</label><input type="number" id="na-match" class="input-field !mb-1" placeholder="e.g. 95" oninput="calculateMatchQty('na-')"><div id="na-match-display" class="text-[10px] font-bold text-[#007a4d] text-right mb-2 hidden">LOC Match QTY: <span id="na-match-qty-val">0</span></div></div>
                         <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="na-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'na-', true)"></div><div id="na-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="na-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'na-', true)"></div>
-                        
-                        <div class="relative w-full mt-2 mb-2"><label class="text-[10px] font-bold text-green-700 uppercase flex justify-between"><span>Sales Description</span></label><div class="flex gap-2"><input type="text" id="na-sales-desc" class="input-field border-green-500 bg-green-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); debouncedFilterDropdown('na-sales-desc', 'na-dropdown-list')" onfocus="filterDropdown('na-sales-desc', 'na-dropdown-list')" onblur="setTimeout(()=>{if(document.getElementById('na-dropdown-list'))document.getElementById('na-dropdown-list').classList.add('hidden'); saveData(false, 'na-', true);}, 200)" placeholder="TYPE NOTES OR SEARCH..."></div><div id="na-dropdown-list" class="absolute z-50 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden mt-1 flex flex-col"></div></div>
                         
                         <div class="mb-2"><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="na-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'na-', true)"></div>
                     </div>
@@ -662,7 +673,15 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
             avNotesDb = res.avNotesData || [];
             fullInventory=res.data.map((item,idx)=>{item.DOM_ID='fi_'+idx;return item}); 
             requestsInventory=res.requestsData?res.requestsData.map((item,idx)=>{item.DOM_ID='req_'+item.UNIQUE_ID;return item}):[]; 
-            salesOfficeInventory=res.salesOfficeData?res.salesOfficeData.map((item,idx)=>{item.DOM_ID='so_'+item.UNIQUE_ID;return item}):[]; 
+            
+            // Link Sales Office AV Notes to Master Inventory
+            salesOfficeInventory = res.salesOfficeData ? res.salesOfficeData.map((item, idx) => {
+                item.DOM_ID = 'so_' + item.UNIQUE_ID;
+                let masterItem = fullInventory.find(i => i.UNIQUE_ID === item.UNIQUE_ID);
+                if (masterItem) { item.AV_NOTE = masterItem.AV_NOTE; }
+                return item;
+            }) : [];
+            
             socInventory=res.socData;
             
             lowStockInventory=fullInventory.filter(i=>{
@@ -781,9 +800,7 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
             pendingDockNum = dockNum;
             document.getElementById('modal-dock-num').innerText = dockNum;
             
-            // Fetch cached info or use defaults
             let savedInfo = JSON.parse(localStorage.getItem('gnc_dock_team_' + dockNum) || '{"checker":"","inspector":"","mistake":"","status":"Loading"}');
-            
             document.getElementById('dock-checker').value = savedInfo.checker || "";
             document.getElementById('dock-inspector').value = savedInfo.inspector || "";
             document.getElementById('dock-mistake').value = savedInfo.mistake || "";
@@ -806,8 +823,34 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
             document.getElementById('dock-info-modal').classList.add('hidden');
             showToast("Saved", "Dock team and status updated.");
             
-            if (dockViewLevel === 0) {
-                renderDocks();
+            if (dockViewLevel === 0) { renderDocks(); }
+        }
+
+        function openDockItemMistakeModal(uid) {
+            document.getElementById('dock-mistake-uid').value = uid;
+            let item = socInventory.find(i => i.UNIQUE_ID === uid);
+            document.getElementById('dock-mistake-text').value = item && item.DOCK_NOTE ? item.DOCK_NOTE : "";
+            document.getElementById('dock-mistake-modal').classList.remove('hidden');
+        }
+
+        function submitDockItemMistake() {
+            let uid = document.getElementById('dock-mistake-uid').value;
+            let text = document.getElementById('dock-mistake-text').value.toUpperCase().trim();
+            let item = socInventory.find(i => i.UNIQUE_ID === uid);
+            
+            if (item && item.MASTER_UNIQUE_ID) {
+                item.DOCK_NOTE = text;
+                showToast("Saving...", "Updating mistake...", false);
+                
+                supabaseFetch('v2_master_inventory', 'PATCH', { dock_note: text }, `unique_id=eq.${item.MASTER_UNIQUE_ID}`)
+                    .then(() => {
+                        showToast("Success", "Mistake saved!");
+                        document.getElementById('dock-mistake-modal').classList.add('hidden');
+                        renderDocks();
+                    })
+                    .catch(err => {
+                        showToast("Error", "Failed to save mistake", true);
+                    });
             }
         }
 
@@ -816,7 +859,7 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
             let state = JSON.parse(localStorage.getItem(key) || '{"checker":false,"inspector":false}');
             state[type] = !state[type];
             localStorage.setItem(key, JSON.stringify(state));
-            renderDocks(); // Refresh the view instantly
+            renderDocks(); 
         }
 
         function renderDocks() {
@@ -841,7 +884,6 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
             
             if (dockViewLevel === 0) {
                 crumb.innerText = "Select a Dock";
-                // Get unique dock numbers
                 let docks = [...new Set(items.map(i => i.DOCK_NUM || 'Unassigned'))].sort((a,b) => {
                     let numA = parseFloat(String(a).replace(/[^0-9.]/g, ''));
                     let numB = parseFloat(String(b).replace(/[^0-9.]/g, ''));
@@ -860,7 +902,6 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
                     else if(savedInfo.status === 'Palletize') statusColor = "text-purple-600 bg-purple-50";
                     else if(savedInfo.status === 'Complete') statusColor = "text-green-600 bg-green-50";
 
-                    // Check for CO or UT in the state
                     let hasCoUt = dItems.some(i => {
                         let state = String(i.CONSIGNEESTATE || i.STATE || "").toUpperCase().trim();
                         let city = String(i.CONSIGNEECITY || "").toUpperCase().trim();
@@ -870,7 +911,6 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
                     let borderCls = hasCoUt ? "border-red-500" : "border-[#007a4d]";
                     let bgCls = hasCoUt ? "bg-red-50" : "bg-green-50";
                     let textCls = hasCoUt ? "text-red-700" : "text-[#007a4d]";
-                    let lightBgCls = hasCoUt ? "bg-red-100" : "bg-green-100";
 
                     return `<div class="bg-white border-2 ${borderCls} rounded-xl shadow-sm mb-4 overflow-hidden">
                         <div class="p-4 flex justify-between items-center cursor-pointer active:${bgCls} transition-colors" onclick="selectDock('${esc(d)}')">
@@ -912,7 +952,6 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
                 crumb.innerText = `Dock: ${selectedDockNum}`;
                 let dItems = items.filter(i => (i.DOCK_NUM || 'Unassigned') === selectedDockNum);
                 
-                // Sort by STOPNUMBER then CONTSIZE
                 dItems.sort((a,b) => {
                     let stopA = parseFloat(a.STOPNUMBER); if(isNaN(stopA)) stopA = 9999;
                     let stopB = parseFloat(b.STOPNUMBER); if(isNaN(stopB)) stopB = 9999;
@@ -1040,10 +1079,13 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
                 let actionBtns = `
                     <div class="flex gap-2 mt-3 pt-3 border-t border-gray-100">
                         <button class="flex-1 py-2.5 rounded-lg text-[10px] uppercase font-black border shadow-sm transition-colors ${chkClass} active:scale-95" onclick="event.stopPropagation(); toggleDockItemState('${safeUidJs}', 'checker')">
-                            <i class="ph-bold ph-check-square mr-1 text-lg align-middle"></i> Checker
+                            <i class="ph-bold ph-check-square mr-1 text-lg align-middle"></i> Check
                         </button>
                         <button class="flex-1 py-2.5 rounded-lg text-[10px] uppercase font-black border shadow-sm transition-colors ${inspClass} active:scale-95" onclick="event.stopPropagation(); toggleDockItemState('${safeUidJs}', 'inspector')">
-                            <i class="ph-bold ph-magnifying-glass mr-1 text-lg align-middle"></i> Inspector
+                            <i class="ph-bold ph-magnifying-glass mr-1 text-lg align-middle"></i> Inspect
+                        </button>
+                        <button class="flex-1 py-2.5 rounded-lg text-[10px] uppercase font-black border border-red-200 bg-red-50 text-red-600 shadow-sm transition-colors hover:bg-red-100 active:scale-95" onclick="event.stopPropagation(); openDockItemMistakeModal('${safeUidJs}')">
+                            <i class="ph-bold ph-warning-circle mr-1 text-lg align-middle"></i> Mistake
                         </button>
                     </div>
                 `;
@@ -1074,8 +1116,8 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
             }
 
             if(sourceView==='sales-office'){
-                let noteText=String(item.SALES_NOTE||item.SALESNOTE||item.SALESDESC||'No Note Provided'); let itemCode=item.ITEMCODE||'-'; let locCode=item.LOCATIONCODE||'-'; let lotCode=item.LOTCODE||'-'; let safeNote=noteText.replace(/'/g,"\\'").replace(/"/g,"&quot;");
-                return `<div class="flex items-center w-full mb-3 item-row relative" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm pointer-events-none" ${isChecked}></div><div class="inv-card status-purple flex-grow !mb-0 bg-purple-50/40 border border-purple-200 transition-transform active:scale-[0.99]"><div class="flex justify-between items-start mb-3"><div class="font-bold text-lg text-[#007a4d] leading-tight pr-2 select-text" style="-webkit-user-select: text; user-select: text;">${item.COMMONNAME||'Unknown'}<br><span class="text-sm text-gray-500 font-semibold">${item.CONTSIZE||'-'}</span></div>${thumbHtml}</div><div class="bg-white p-3 rounded-lg border border-purple-200 shadow-sm mb-3 select-text cursor-text" style="-webkit-user-select: text; user-select: text;" onclick="event.stopPropagation();"><div class="flex justify-between items-center mb-1"><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Item Code</span><span class="font-black text-purple-700 font-mono tracking-wide text-sm">${itemCode}</span></div><div class="flex justify-between items-center mb-1 border-b border-gray-100 pb-1"><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Location / Lot</span><span class="font-bold text-gray-600 text-xs">${locCode} / ${lotCode}</span></div><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5 mt-2">New Sales Note</div><div class="text-[15px] font-bold text-gray-800 leading-snug">${noteText}</div></div><div class="flex gap-2"><button class="flex-1 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-700 text-[10px] font-bold py-2.5 rounded-lg transition-colors flex flex-col items-center justify-center gap-1 active:bg-indigo-200" onclick="event.stopPropagation(); copyTextToClipboard('${itemCode}', 'ITEM CODE')"><i class="ph-bold ph-barcode text-xl"></i> COPY ITEMCODE</button><button class="flex-1 bg-purple-50 border border-purple-200 hover:bg-purple-100 text-purple-700 text-[10px] font-bold py-2.5 rounded-lg transition-colors flex flex-col items-center justify-center gap-1 active:bg-purple-200" onclick="event.stopPropagation(); copyTextToClipboard('${safeNote}', 'SALES NOTE')"><i class="ph-bold ph-chat-text text-xl"></i> COPY SALESNOTE</button><button class="flex-1 bg-[#007a4d] hover:bg-green-700 text-white text-[10px] font-bold py-2.5 rounded-lg transition-colors flex flex-col items-center justify-center gap-1 shadow-md active:scale-95" onclick="event.stopPropagation(); markSalesOfficeComplete('${safeUidJs}', '${item.DOM_ID}')"><i class="ph-bold ph-check-circle text-xl"></i> DONE</button></div></div></div>`;
+                let noteText=String(item.AV_NOTE||'No AV Note Provided'); let itemCode=item.ITEMCODE||'-'; let locCode=item.LOCATIONCODE||'-'; let lotCode=item.LOTCODE||'-'; let safeNote=noteText.replace(/'/g,"\\'").replace(/"/g,"&quot;");
+                return `<div class="flex items-center w-full mb-3 item-row relative" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm pointer-events-none" ${isChecked}></div><div class="inv-card status-purple flex-grow !mb-0 bg-purple-50/40 border border-purple-200 transition-transform active:scale-[0.99]"><div class="flex justify-between items-start mb-3"><div class="font-bold text-lg text-[#007a4d] leading-tight pr-2 select-text" style="-webkit-user-select: text; user-select: text;">${item.COMMONNAME||'Unknown'}<br><span class="text-sm text-gray-500 font-semibold">${item.CONTSIZE||'-'}</span></div>${thumbHtml}</div><div class="bg-white p-3 rounded-lg border border-purple-200 shadow-sm mb-3 select-text cursor-text" style="-webkit-user-select: text; user-select: text;" onclick="event.stopPropagation();"><div class="flex justify-between items-center mb-1"><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Item Code</span><span class="font-black text-purple-700 font-mono tracking-wide text-sm">${itemCode}</span></div><div class="flex justify-between items-center mb-1 border-b border-gray-100 pb-1"><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Location / Lot</span><span class="font-bold text-gray-600 text-xs">${locCode} / ${lotCode}</span></div><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5 mt-2">AV Note</div><div class="text-[15px] font-bold text-gray-800 leading-snug">${noteText}</div></div><div class="flex gap-2"><button class="flex-1 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-700 text-[10px] font-bold py-2.5 rounded-lg transition-colors flex flex-col items-center justify-center gap-1 active:bg-indigo-200" onclick="event.stopPropagation(); copyTextToClipboard('${itemCode}', 'ITEM CODE')"><i class="ph-bold ph-barcode text-xl"></i> COPY ITEMCODE</button><button class="flex-1 bg-purple-50 border border-purple-200 hover:bg-purple-100 text-purple-700 text-[10px] font-bold py-2.5 rounded-lg transition-colors flex flex-col items-center justify-center gap-1 active:bg-purple-200" onclick="event.stopPropagation(); copyTextToClipboard('${safeNote}', 'AV NOTE')"><i class="ph-bold ph-chat-text text-xl"></i> COPY AV NOTE</button><button class="flex-1 bg-[#007a4d] hover:bg-green-700 text-white text-[10px] font-bold py-2.5 rounded-lg transition-colors flex flex-col items-center justify-center gap-1 shadow-md active:scale-95" onclick="event.stopPropagation(); markSalesOfficeComplete('${safeUidJs}', '${item.DOM_ID}')"><i class="ph-bold ph-check-circle text-xl"></i> DONE</button></div></div></div>`;
             }
             if(sourceView==='reserves_drill'){
                 let custStr=item.CUSTOMERNAME||'Unknown Customer';if(item.CONSIGNEENAME&&String(item.CONSIGNEENAME).trim()!=='')custStr+=` - ${item.CONSIGNEENAME}`;let qtyOrd=item.QTY_ORDERED||item.QUANTITYORDERED||'0';let qtyShip=item.QTY_SHIPPED||item.QUANTITYSHIPPED||'0';let repStr=item.SALESREPNAME||item.SALESREP||'Unknown Rep';
@@ -1293,7 +1335,7 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
             }else{
                 if(taskViewLevel===0){
                     let blocks={};tabItems.forEach(i=>{let loc=String(i.LOCATIONCODE||"NoLoc");let block=loc.split(' ')[0]||"Unknown";if(!blocks[block])blocks[block]={count:0,items:[]};blocks[block].count++;blocks[block].items.push(i)});
-                    let html=Object.keys(blocks).sort().map(b=>`<div class="bg-white border border-green-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectedTaskBlock='${esc(b)}'; taskViewLevel=1; renderTasks()"><div class="flex items-center gap-3"><div class="bg-green-50 p-2 rounded-lg text-green-600 font-black text-xl w-12 text-center">${b}</div><span class="font-bold text-lg text-gray-700">Block ${b}</span></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${blocks[b].count} Items</span></div>`).join('');
+                    let html=Object.keys(blocks).sort().map(b=>`<div class="bg-white border border-green-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectedTaskBlock='${esc(b)}'; taskViewLevel=1; renderTasks()"><div class="flex items-center gap-3"><div class="bg-green-100 text-[#007a4d] px-3 py-1.5 rounded-lg font-black text-lg">${b}</div><span class="font-bold text-lg text-gray-700">Block ${b}</span></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${blocks[b].count} Items</span></div>`).join('');
                     container.innerHTML=html;
                 }else if(taskViewLevel===1){
                     let bItems=tabItems.filter(i=>String(i.LOCATIONCODE||"NoLoc").startsWith(selectedTaskBlock));
@@ -1752,7 +1794,8 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
                         itemToSave.REQ_MATCH = document.getElementById('req-match').value; itemToSave.REQ_SPEC = document.getElementById('req-spec').value; itemToSave.REQ_CALIPER = document.getElementById('req-caliper').value; itemToSave.REQ_PICK = document.getElementById('req-pick').value; itemToSave.REQ_COMMENTS = document.getElementById('req-comments').value;
                         let reserveEl = document.getElementById('req-reserve'); if (reserveEl) itemToSave.REQ_RESERVE = reserveEl.value;
                     } else if (prefix === 'dock-') { 
-                        itemToSave.DOCK_SPEC = document.getElementById('dock-spec').value; itemToSave.DOCK_CALIPER = document.getElementById('dock-caliper').value; itemToSave.DOCK_NOTE = document.getElementById('dock-sales-desc').value.toUpperCase(); 
+                        itemToSave.DOCK_SPEC = document.getElementById('dock-spec').value; itemToSave.DOCK_CALIPER
+                        = document.getElementById('dock-caliper').value; itemToSave.DOCK_NOTE = document.getElementById('dock-sales-desc').value.toUpperCase(); 
                     } else if (prefix === 'flyer-') {
                         itemToSave.FLYER_CAT = document.getElementById('flyer-cat').value; itemToSave.FLYER_TITLE = document.getElementById('flyer-title').value; itemToSave.FLYER_INST = document.getElementById('flyer-inst').value; itemToSave.FLYER_ASSIGNED = document.getElementById('flyer-assigned').value; itemToSave.FLYER_NOTES = document.getElementById('flyer-notes').value;
                     }
