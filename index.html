@@ -254,7 +254,14 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
             
             <div id="view-reserves" class="hidden"><div id="reserves-search-container" class="relative mb-2"><input type="text" id="reserves-search" class="input-field w-full pr-10 !mb-0" placeholder="Search..." oninput="handleReservesSearch()"><i id="reserves-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearReservesSearch()"></i></div><div id="reserves-crumb" class="text-xs font-bold text-[#007a4d] mb-3 mt-3 empty:hidden"></div><div id="reserves-content"></div></div>
             
-            <div id="view-docks" class="hidden"><input type="text" id="docks-search" class="input-field mb-2" placeholder="Search Plants..." oninput="handleDocksSearch()"><div id="docks-crumb" class="text-xs font-bold text-[#007a4d] mb-3">Select a Dock</div><div id="docks-content"></div></div>
+            <div id="view-docks" class="hidden">
+                <div id="docks-search-container" class="relative mb-2">
+                    <input type="text" id="docks-search" class="input-field w-full pr-10 !mb-0" placeholder="Search Docks or Items..." oninput="handleDocksSearch()">
+                    <i id="docks-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearDocksSearch()"></i>
+                </div>
+                <div id="docks-crumb" class="text-xs font-bold text-orange-600 mb-3 mt-3">Select a Dock</div>
+                <div id="docks-content"></div>
+            </div>
             
             <div id="view-low-stock" class="hidden"><div id="low-stock-crumb" class="text-xs font-bold text-[#007a4d] mb-3">Action Required</div><div id="low-stock-content"></div></div>
             
@@ -591,7 +598,7 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
                         obj.SEASONSUPPLY=obj.SEASON_SUPPLY||obj.SEASONSUPPLY||0; 
                         obj.FIELDTAGCOLOR=obj.FIELD_TAG_COLOR||obj.FIELDTAGCOLOR||"-"; 
                         
-                        obj._search=`${obj.COMMONNAME||''} ${obj.LOCATIONCODE||''} ${obj.ITEMCODE||''} ${obj.CONTSIZE||''} ${obj.CUSTOMERNAME||''} ${obj.SALESREPNAME||''}`.toLowerCase(); 
+                        obj._search=`${obj.COMMONNAME||''} ${obj.LOCATIONCODE||''} ${obj.ITEMCODE||''} ${obj.CONTSIZE||''} ${obj.CUSTOMERNAME||''} ${obj.SALESREPNAME||''} ${obj.STOPNUMBER||''} ${obj.TRIPNUMBER||''}`.toLowerCase(); 
                         return obj;
                     });
                 };
@@ -631,7 +638,7 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
                 let c=String(item.ITEMCODE||"").trim().toUpperCase(); if(c){if(!map1.has(c))map1.set(c,item);} 
             });
             
-            socInventory.forEach(item=>{ item.DOCK_NUM=item.DOCK_NUM||item.DOCK||item.dock; item.SALESREPNAME=item.SALESREPNAME||item.SALESREP||item['SALES_REP']||'Unknown Rep'; item.CUSTOMERNAME=item.CUSTOMERNAME||item.CUSTOMER||'Unknown Customer'; item.CONSIGNEENAME=item.CONSIGNEENAME||item.CONSIGNEE||''; item._search=`${item.COMMONNAME||''} ${item['PLANT_NAME']||''} ${item.CUSTOMERNAME||''} ${item.SALESREPNAME||''}`.toLowerCase(); let tCode=String(item.ITEMCODE||item.ITEM||"").trim().toUpperCase(); let masterItem=map1.get(tCode); if(masterItem){item.SAVED_PHOTO_LINK=masterItem.SAVED_PHOTO_LINK;item.SAVED_PHOTO_NAME=masterItem.SAVED_PHOTO_NAME;item.DOCK_PHOTO_LINK=masterItem.DOCK_PHOTO_LINK;item.AV_NOTE=masterItem.AV_NOTE;item.SALES_NOTE=masterItem.SALES_NOTE;item.DOCK_NOTE=masterItem.DOCK_NOTE;item.MASTER_UNIQUE_ID=masterItem.UNIQUE_ID;} });
+            socInventory.forEach(item=>{ item.DOCK_NUM=item.DOCK_NUM||item.DOCK||item.dock; item.SALESREPNAME=item.SALESREPNAME||item.SALESREP||item['SALES_REP']||'Unknown Rep'; item.CUSTOMERNAME=item.CUSTOMERNAME||item.CUSTOMER||'Unknown Customer'; item.CONSIGNEENAME=item.CONSIGNEENAME||item.CONSIGNEE||''; item._search=`${item.COMMONNAME||''} ${item['PLANT_NAME']||''} ${item.CUSTOMERNAME||''} ${item.SALESREPNAME||''} ${item.STOPNUMBER||''} ${item.TRIPNUMBER||''}`.toLowerCase(); let tCode=String(item.ITEMCODE||item.ITEM||"").trim().toUpperCase(); let masterItem=map1.get(tCode); if(masterItem){item.SAVED_PHOTO_LINK=masterItem.SAVED_PHOTO_LINK;item.SAVED_PHOTO_NAME=masterItem.SAVED_PHOTO_NAME;item.DOCK_PHOTO_LINK=masterItem.DOCK_PHOTO_LINK;item.AV_NOTE=masterItem.AV_NOTE;item.SALES_NOTE=masterItem.SALES_NOTE;item.DOCK_NOTE=masterItem.DOCK_NOTE;item.MASTER_UNIQUE_ID=masterItem.UNIQUE_ID;} });
             reservesInventory=res.reservesData.map((item,idx)=>{ item.DOM_ID='res_'+idx; item.UNIQUE_ID=item.UNIQUE_ID||'res_uid_'+idx; let resCode=String(item.ITEMCODE||item.ITEM||"").trim().toUpperCase(); let masterItem=map1.get(resCode); item.CUSTOMERNAME=item.CUSTOMERNAME||item.CUSTOMER||'Unknown Customer'; item.CONSIGNEENAME=item.CONSIGNEENAME||item.CONSIGNEE||''; item.SALESREPNAME=item.SALESREPNAME||item.SALESREP||item['SALES_REP']||'Unknown Rep'; if(masterItem){item.COMMONNAME=masterItem.COMMONNAME;item.CONTSIZE=masterItem.CONTSIZE;item.LOCATIONCODE=masterItem.LOCATIONCODE;item.PTRAVAILABLE=masterItem.PTRAVAILABLE;item.SEASONSUPPLY=masterItem.SEASONSUPPLY;item.PRIORITY=masterItem.PRIORITY;item.QUALITYCODE=masterItem.QUALITYCODE;item.FIELDTAGCOLOR=masterItem.FIELDTAGCOLOR;item.LOTCODE=masterItem.LOTCODE;item.AV_NOTE=masterItem.AV_NOTE;item.SALES_NOTE=masterItem.SALES_NOTE;item.LOC_MATCH_QTY=masterItem.LOC_MATCH_QTY;item.INITIAL_PTR=masterItem.INITIAL_PTR;item.SAVED_PHOTO_LINK=masterItem.SAVED_PHOTO_LINK;item.SAVED_PHOTO_NAME=masterItem.SAVED_PHOTO_NAME;item.MASTER_UNIQUE_ID=masterItem.UNIQUE_ID;} item._search=`${item.COMMONNAME||''} ${item.CUSTOMERNAME||''} ${item.ITEMCODE||''}`.toLowerCase(); return item; });
             applyLocalEdits(); reRenderCurrentView();
         }
@@ -683,6 +690,69 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
             }
         }
 
+        const debouncedDocksSearch=debounce(()=>{requestAnimationFrame(()=>renderDocks())},150);
+        function clearDocksSearch(){ document.getElementById('docks-search').value=""; document.getElementById('docks-search-clear').classList.add('hidden'); dockViewLevel=0; renderDocks(); }
+        function handleDocksSearch(){ const term=document.getElementById('docks-search').value.toLowerCase(); const clearBtn=document.getElementById('docks-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden');dockViewLevel=0;}else{clearBtn.classList.add('hidden');dockViewLevel=0;} debouncedDocksSearch(); }
+        function resetDockView() { dockViewLevel = 0; selectedDockNum = null; document.getElementById('docks-search').value = ""; document.getElementById('docks-search-clear').classList.add('hidden'); renderDocks(); }
+        function selectDock(dock) { selectedDockNum = dock; dockViewLevel = 1; renderDocks(); }
+
+        function renderDocks() {
+            const container = document.getElementById('docks-content');
+            const crumb = document.getElementById('docks-crumb');
+            const term = document.getElementById('docks-search').value.toLowerCase().trim();
+            
+            let items = socInventory;
+            if(term) {
+                const searchTerms = term.split(/\s+/);
+                items = items.filter(i => {
+                    const searchStr = (i._search || "").toLowerCase();
+                    return searchTerms.every(t => searchStr.includes(t));
+                });
+            }
+            
+            if (items.length === 0) {
+                container.innerHTML = `<div class="p-8 text-center text-gray-400">No dock items found.</div>`;
+                crumb.innerText = "No Results";
+                return;
+            }
+            
+            if (dockViewLevel === 0) {
+                crumb.innerText = "Select a Dock";
+                // Get unique dock numbers
+                let docks = [...new Set(items.map(i => i.DOCK_NUM || 'Unassigned'))].sort((a,b) => {
+                    let numA = parseFloat(String(a).replace(/[^0-9.]/g, ''));
+                    let numB = parseFloat(String(b).replace(/[^0-9.]/g, ''));
+                    if(!isNaN(numA) && !isNaN(numB)) return numA - numB;
+                    return String(a).localeCompare(String(b));
+                });
+                
+                container.innerHTML = docks.map(d => {
+                    let count = items.filter(i => (i.DOCK_NUM || 'Unassigned') === d).length;
+                    return `<div class="bg-white border border-orange-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectDock('${esc(d)}')">
+                        <div class="flex items-center gap-3">
+                            <div class="bg-orange-50 p-2 rounded-lg"><i class="ph-fill ph-truck text-2xl text-orange-500"></i></div>
+                            <span class="font-bold text-lg text-orange-800">Dock ${d}</span>
+                        </div>
+                        <span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${count} Items</span>
+                    </div>`;
+                }).join('');
+            } else if (dockViewLevel === 1) {
+                crumb.innerText = `Dock: ${selectedDockNum}`;
+                let dItems = items.filter(i => (i.DOCK_NUM || 'Unassigned') === selectedDockNum);
+                
+                // Sort by STOPNUMBER then CONTSIZE
+                dItems.sort((a,b) => {
+                    let stopA = parseFloat(a.STOPNUMBER); if(isNaN(stopA)) stopA = 9999;
+                    let stopB = parseFloat(b.STOPNUMBER); if(isNaN(stopB)) stopB = 9999;
+                    if(stopA !== stopB) return stopA - stopB;
+                    return String(a.CONTSIZE || "").localeCompare(String(b.CONTSIZE || ""));
+                });
+                
+                container.innerHTML = `<div class="back-btn" onclick="dockViewLevel=0; renderDocks()"><i class="ph-bold ph-arrow-left"></i> Back to Docks</div>` 
+                    + dItems.map(i => generateCard(i, 'docks', 'status-orange')).join('');
+            }
+        }
+
         function calculateMatchQty(prefix){ if(!activeItem)return; let matchEl=document.getElementById(prefix+'match'); let displayEl=document.getElementById(prefix+'match-display'); let valEl=document.getElementById(prefix+'match-qty-val'); if(matchEl&&matchEl.value!==""){ let matchVal=parseFloat(matchEl.value); let ptr=parseInt(String(activeItem.PTRAVAILABLE).replace(/,/g,''))||0; let qty=Math.round(ptr*(matchVal/100)); if(valEl)valEl.innerText=qty; if(displayEl)displayEl.classList.remove('hidden'); }else{ if(displayEl)displayEl.classList.add('hidden'); } }
 
         function startPress(e,domId){ if(isMultiSelectMode)return; isLongPress=false; if(e.type==='touchstart'){ touchStartX=e.touches[0].clientX; touchStartY=e.touches[0].clientY; } if(pressTimer)clearTimeout(pressTimer); pressTimer=setTimeout(()=>{ isLongPress=true; if(navigator.vibrate)navigator.vibrate(50); enableMultiSelect(domId); },1000); }
@@ -714,6 +784,40 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
             
             if(photoLink){ let firstUrl=String(photoLink).split(',')[0]; let cleanUrl=firstUrl.trim(); let urlMatch=firstUrl.match(/(https?:\/\/[^"\s>]+)/); if(urlMatch)cleanUrl=urlMatch[1]; let thumbUrl=getDirectImageUrl(cleanUrl); if(thumbUrl.startsWith('http')){ thumbHtml=`<div class="ml-3 flex-shrink-0"><img src="${thumbUrl}" class="w-16 h-16 rounded-md object-cover border border-gray-300 shadow-sm" loading="lazy"></div>`; } }
             const isChecked=selectedItems.has(item.DOM_ID)?'checked':''; const tagColor=item.FIELDTAGCOLOR||'-'; const safeUidJs=esc(item.UNIQUE_ID);
+
+            if(sourceView === 'docks'){
+                let stopNum = item.STOPNUMBER || '-';
+                let tripNum = item.TRIPNUMBER || '-';
+                let salesRep = item.SALESREPNAME || item.SALESREPID || '-';
+                let sourceStr = item.SOURCE || '-';
+                
+                let noteHtml = "";
+                if(item.DOCK_NOTE && String(item.DOCK_NOTE).trim() !== "") {
+                    noteHtml += `<div class="mt-2 text-[12px] text-orange-800 bg-orange-100 p-2 rounded border border-orange-200 shadow-sm whitespace-pre-wrap"><span class="font-black">DOCK NOTE:</span> ${item.DOCK_NOTE}</div>`;
+                }
+
+                return `<div class="flex items-center w-full mb-3 item-row relative bg-white p-4 rounded-xl border border-orange-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')">
+                    <div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm pointer-events-none" ${isChecked}></div>
+                    <div class="flex flex-grow items-start justify-between min-w-0">
+                        <div class="flex-grow min-w-0 pr-2">
+                            <div class="font-black text-gray-800 text-[16px] leading-tight break-words mb-0.5">${item.COMMONNAME||'Unknown'}</div>
+                            <div class="font-bold text-orange-600 text-sm mb-2">${item.CONTSIZE||'-'}</div>
+                            <div class="text-[11px] font-mono text-gray-500 mb-2 flex items-center bg-gray-100 px-2 py-0.5 rounded w-max"><i class="ph-bold ph-barcode mr-1.5 text-gray-400"></i>${item.ITEMCODE||'-'}</div>
+                            <div class="flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600">
+                                <span class="bg-orange-50 text-orange-700 px-1.5 py-0.5 rounded border border-orange-100">Stop: ${stopNum}</span>
+                                <span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Trip: ${tripNum}</span>
+                                <span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">Loc: ${item.LOCATIONCODE||'No Loc'}</span>
+                                <span class="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-100">Rep: ${salesRep}</span>
+                                <span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Tag: ${tagColor}</span>
+                                <span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Lot: ${item.LOTCODE||'-'}</span>
+                                <span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Src: ${sourceStr}</span>
+                            </div>
+                            ${noteHtml}
+                        </div>
+                        ${thumbHtml}
+                    </div>
+                </div>`;
+            }
 
             if(sourceView==='sales-office'){
                 let noteText=String(item.SALES_NOTE||item.SALESNOTE||item.SALESDESC||'No Note Provided'); let itemCode=item.ITEMCODE||'-'; let locCode=item.LOCATIONCODE||'-'; let lotCode=item.LOTCODE||'-'; let safeNote=noteText.replace(/'/g,"\\'").replace(/"/g,"&quot;");
@@ -1115,7 +1219,7 @@ body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-righ
 
         function openDetail(uniqueId, sourceView) {
             lastView = sourceView; activeItem = fullInventory.find(i => i.UNIQUE_ID === uniqueId);
-            if (!activeItem) activeItem = lowStockInventory.find(i => i.UNIQUE_ID === uniqueId); if (!activeItem) activeItem = managerReviewInventory.find(i => i.UNIQUE_ID === uniqueId); if (!activeItem) activeItem = reservesInventory.find(i => i.UNIQUE_ID === uniqueId); if (!activeItem) activeItem = requestsInventory.find(i => i.UNIQUE_ID === uniqueId);
+            if (!activeItem) activeItem = lowStockInventory.find(i => i.UNIQUE_ID === uniqueId); if (!activeItem) activeItem = managerReviewInventory.find(i => i.UNIQUE_ID === uniqueId); if (!activeItem) activeItem = reservesInventory.find(i => i.UNIQUE_ID === uniqueId); if (!activeItem) activeItem = requestsInventory.find(i => i.UNIQUE_ID === uniqueId); if (!activeItem) activeItem = socInventory.find(i => i.UNIQUE_ID === uniqueId);
             if (!activeItem) return;
 
             ['view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-docks','view-request','view-reserves', 'view-av'].forEach(v => document.getElementById(v).classList.add('hidden')); document.getElementById('view-detail').classList.remove('hidden');
