@@ -393,6 +393,10 @@
                         <input type="text" id="drive-search" class="input-field w-full pr-10 !mb-0" placeholder="Search Names or Locs..." oninput="handleDriveSearch()">
                         <i id="drive-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearDriveSearch()"></i>
                     </div>
+                    <div class="task-tabs mb-2">
+                        <div id="tab-drive-name" class="task-tab active" onclick="setDriveTab('name')">By Name</div>
+                        <div id="tab-drive-loc" class="task-tab" onclick="setDriveTab('loc')">By Location</div>
+                    </div>
                     <div class="flex overflow-x-auto scrollbar-none gap-2 mb-3 pb-1" id="drive-season-filters"></div>
                     <div id="drive-crumb" class="text-xs font-bold text-[#007a4d] mb-3 empty:hidden"></div>
                     <div id="drive-content"></div>
@@ -674,7 +678,10 @@
 
         let fullInventory=[]; let lowStockInventory=[]; let socInventory=[]; let reservesInventory=[]; let requestsInventory=[]; let managerReviewInventory=[]; let salesOfficeInventory=[]; let avNotesDb=[];
         let currentUser=""; let currentRole=""; let safeRole=""; let repPermutations=[]; let activeItem=null; let lastView=""; let activeDetailTab="overview"; let selectedItems=new Set(); let isMultiSelectMode=false; let pressTimer=null; let isLongPress=false; let touchStartX=0; let touchStartY=0; let pendingAction=null; let pendingTabType=null;
+        
+        let activeDriveTab = 'name'; let selectedDriveBlock = null; let selectedDriveLoc = null;
         let driveViewLevel=0; let selectedDriveName=null; let selectedDriveSize=null; let driveSelectedSeasons=new Set(['ALL']); const availableSeasons=["ALL","S1","F1","U1","U2","U3","X","Y","Z"];
+        
         let activeTaskTab="season"; let taskViewTargetUser=null; let taskViewLevel=0; let selectedTaskBlock=null; let selectedTaskLoc=null; let selectedEndCapFolder=null;
         let activeAVTab='open'; let avResLevel=0; let selectedAvResName=null; let selectedAvResSize=null; let lowStockViewLevel=0; let selectedLowStockName=null; let selectedLowStockSize=null; let reviewViewLevel=0; let selectedReviewItemCode=null; let selectedReviewCommonName=null; let selectedReviewContSize=null;
         let reportViewLevel=0; let activeReqTab="pending"; let selectedReqRep=null; let selectedReqRepStatus=null; let selectedReqFolder=null; let tempSelectedReqRep=""; let tempReqFolder=null; let tempReqCust=null; let previousReqStep="";
@@ -753,7 +760,6 @@
             return repPermutations.some(p=>str.includes(p)); 
         }
 
-        // NEW MULTI-IMAGE GALLERY MODAL
         function openPhotoModal(urlStr, caption) { 
             const gallery = document.getElementById('photo-modal-gallery');
             gallery.innerHTML = '';
@@ -1183,6 +1189,33 @@
             renderTasks(); 
         }
 
+        function setDriveTab(tab) {
+            activeDriveTab = tab;
+            document.getElementById('tab-drive-name').classList.toggle('active', tab === 'name');
+            document.getElementById('tab-drive-loc').classList.toggle('active', tab === 'loc');
+            driveViewLevel = 0;
+            renderDrive();
+        }
+
+        function selectDriveBlock(block) { selectedDriveBlock = block; driveViewLevel = 1; renderDrive(); }
+        function selectDriveLoc(loc) { selectedDriveLoc = loc; driveViewLevel = 2; renderDrive(); }
+
+        function resetDriveView() {
+            activeDriveTab = 'name';
+            document.getElementById('tab-drive-name').classList.add('active');
+            document.getElementById('tab-drive-loc').classList.remove('active');
+            driveViewLevel = 0;
+            selectedDriveName = null;
+            selectedDriveSize = null;
+            selectedDriveBlock = null;
+            selectedDriveLoc = null;
+            document.getElementById('drive-search').value = "";
+            document.getElementById('drive-search-clear').classList.add('hidden');
+            driveSelectedSeasons.clear();
+            driveSelectedSeasons.add('ALL');
+            renderDrive();
+        }
+
         function setAVTab(tab) { 
             activeAVTab=tab; 
             avResLevel=0; 
@@ -1199,7 +1232,7 @@
             document.getElementById('tab-req-reps').classList.toggle('active', tab === 'reps');
             requestViewLevel = 0; selectedReqFolder = null; selectedReqRepView = null; selectedReqCustView = null; selectedReqFolderView = null; clearSelection(); renderRequest();
         }
-            function sendEmailNotification(type, folderId, repName, customer, itemsCount) {
+        function sendEmailNotification(type, folderId, repName, customer, itemsCount) {
             let payload = { type: "email", emailType: type, folderId: folderId, repName: repName, customer: customer, itemsCount: itemsCount, dylanEmail: "dylan_collyge@greenleafnursery.com" };
             if (type === 'request_complete') {
                 let cleanRep = repName.trim().toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, '_');
@@ -1497,7 +1530,7 @@
                 }
             }
         }
-            function handleCardClick(domId,uniqueId,sourceView) {
+        function handleCardClick(domId,uniqueId,sourceView) {
             if(isLongPress){ isLongPress=false; return; }
             if(isMultiSelectMode){ 
                 const row=document.querySelector(`[data-dom-id="${domId}"]`); 
@@ -2466,40 +2499,72 @@
                     return searchTerms.every(t => searchStr.includes(t)); 
                 }); 
             }
-            
-            if(driveViewLevel === 0) {
-                if(searchFilteredItems.length === 0){ container.innerHTML = `<div class="p-8 text-center text-gray-400">No items found matching criteria.</div>`; crumb.innerText = "No Results"; return; }
-                crumb.innerText = `Select Plant (${searchFilteredItems.length} items)`;
-                const names = [...new Set(searchFilteredItems.map(i => i.COMMONNAME))].sort();
-                container.innerHTML = names.map(n => `<div class="drill-item" onclick="selectDriveName('${esc(n)}')"><span class="font-bold text-lg">${n}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
-            } else if(driveViewLevel === 1) {
-                crumb.innerText = selectedDriveName;
-                const namedItems = searchFilteredItems.filter(i => i.COMMONNAME === selectedDriveName);
-                if(namedItems.length === 0){ container.innerHTML = `<div class="p-8 text-center text-gray-400">No items found.</div>`; return; }
-                const sizes = [...new Set(namedItems.map(i => i.CONTSIZE))].sort();
-                let html = `<div class="back-btn" onclick="driveViewLevel=0; renderDrive()"><i class="ph-bold ph-arrow-left"></i> Back to Names</div><div class="font-bold text-[#007a4d] mb-4 px-2 text-xl border-b pb-2">${selectedDriveName}</div>`;
-                html += sizes.map(s => { 
-                    const count = namedItems.filter(i => i.CONTSIZE === s).length; 
-                    return `<div class="drill-item" onclick="selectDriveSize('${esc(s)}')"><span class="font-bold text-lg">${s} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>` 
-                }).join('');
-                container.innerHTML = html;
-            } else if(driveViewLevel === 2) {
-                crumb.innerText = `${selectedDriveName} / ${selectedDriveSize}`;
-                let finalItems = searchFilteredItems.filter(i => i.COMMONNAME === selectedDriveName && i.CONTSIZE === selectedDriveSize);
-                finalItems.sort((a,b) => { let priA = parseFloat(a.PRIORITY); let priB = parseFloat(b.PRIORITY); if(isNaN(priA)) priA = Infinity; if(isNaN(priB)) priB = Infinity; return priA - priB; });
-                container.innerHTML = `<div class="back-btn" onclick="backToDriveSizes()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>` + finalItems.map(i => generateCard(i, 'drive', 'status-blue')).join('');
-            }
-        }
 
-        function resetDriveView() {
-            driveViewLevel = 0;
-            selectedDriveName = null;
-            selectedDriveSize = null;
-            document.getElementById('drive-search').value = "";
-            document.getElementById('drive-search-clear').classList.add('hidden');
-            driveSelectedSeasons.clear();
-            driveSelectedSeasons.add('ALL');
-            renderDrive();
+            if (searchFilteredItems.length === 0) { 
+                container.innerHTML = `<div class="p-8 text-center text-gray-400">No items found matching criteria.</div>`; 
+                crumb.innerText = "No Results"; 
+                return; 
+            }
+            
+            // LOGIC SPLIT: BY NAME OR BY LOCATION
+            if (activeDriveTab === 'name') {
+                if(driveViewLevel === 0) {
+                    crumb.innerText = `Select Plant (${searchFilteredItems.length} items)`;
+                    const names = [...new Set(searchFilteredItems.map(i => i.COMMONNAME))].sort();
+                    container.innerHTML = names.map(n => `<div class="drill-item" onclick="selectDriveName('${esc(n)}')"><span class="font-bold text-lg">${n}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
+                } else if(driveViewLevel === 1) {
+                    crumb.innerText = selectedDriveName;
+                    const namedItems = searchFilteredItems.filter(i => i.COMMONNAME === selectedDriveName);
+                    if(namedItems.length === 0){ container.innerHTML = `<div class="p-8 text-center text-gray-400">No items found.</div>`; return; }
+                    const sizes = [...new Set(namedItems.map(i => i.CONTSIZE))].sort();
+                    let html = `<div class="back-btn" onclick="driveViewLevel=0; renderDrive()"><i class="ph-bold ph-arrow-left"></i> Back to Names</div><div class="font-bold text-[#007a4d] mb-4 px-2 text-xl border-b pb-2">${selectedDriveName}</div>`;
+                    html += sizes.map(s => { 
+                        const count = namedItems.filter(i => i.CONTSIZE === s).length; 
+                        return `<div class="drill-item" onclick="selectDriveSize('${esc(s)}')"><span class="font-bold text-lg">${s} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>` 
+                    }).join('');
+                    container.innerHTML = html;
+                } else if(driveViewLevel === 2) {
+                    crumb.innerText = `${selectedDriveName} / ${selectedDriveSize}`;
+                    let finalItems = searchFilteredItems.filter(i => i.COMMONNAME === selectedDriveName && i.CONTSIZE === selectedDriveSize);
+                    finalItems.sort((a,b) => { let priA = parseFloat(a.PRIORITY); let priB = parseFloat(b.PRIORITY); if(isNaN(priA)) priA = Infinity; if(isNaN(priB)) priB = Infinity; return priA - priB; });
+                    container.innerHTML = `<div class="back-btn" onclick="backToDriveSizes()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>` + finalItems.map(i => generateCard(i, 'drive', 'status-blue')).join('');
+                }
+
+            } else if (activeDriveTab === 'loc') {
+                if(driveViewLevel === 0) {
+                    crumb.innerText = `Select Block (${searchFilteredItems.length} items)`;
+                    let blocks = {};
+                    searchFilteredItems.forEach(i => {
+                        let loc = String(i.LOCATIONCODE || "NoLoc").trim();
+                        let blockAlpha = loc.charAt(0).toUpperCase();
+                        if(!/[A-Z]/.test(blockAlpha)) blockAlpha = "Other";
+                        if(!blocks[blockAlpha]) blocks[blockAlpha] = {count:0};
+                        blocks[blockAlpha].count++;
+                    });
+                    let html = Object.keys(blocks).sort().map(b => `<div class="bg-white border border-green-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectDriveBlock('${esc(b)}')"><div class="flex items-center gap-3"><div class="bg-green-100 text-[#007a4d] px-3 py-1.5 rounded-lg font-black text-lg">${b}</div><span class="font-bold text-lg text-gray-700">Block ${b}</span></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${blocks[b].count} Items</span></div>`).join('');
+                    container.innerHTML = html;
+                } else if(driveViewLevel === 1) {
+                    crumb.innerText = `Block ${selectedDriveBlock}`;
+                    let bItems = searchFilteredItems.filter(i => {
+                        let loc = String(i.LOCATIONCODE || "NoLoc").trim();
+                        let alpha = loc.charAt(0).toUpperCase();
+                        if(!/[A-Z]/.test(alpha)) alpha = "Other";
+                        return alpha === selectedDriveBlock;
+                    });
+                    let locs = [...new Set(bItems.map(i => i.LOCATIONCODE || "NoLoc"))].sort((a,b) => String(a).localeCompare(String(b), undefined, {numeric: true}));
+                    let html = `<div class="back-btn" onclick="driveViewLevel=0; renderDrive()"><i class="ph-bold ph-arrow-left"></i> Back to Blocks</div>`;
+                    html += locs.map(l => {
+                        let count = bItems.filter(i => (i.LOCATIONCODE || "NoLoc") === l).length;
+                        return `<div class="drill-item" onclick="selectDriveLoc('${esc(l)}')"><span class="font-bold text-lg text-gray-800">${l} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
+                    }).join('');
+                    container.innerHTML = html;
+                } else if(driveViewLevel === 2) {
+                    crumb.innerText = `Block ${selectedDriveBlock} / Loc ${selectedDriveLoc}`;
+                    let fItems = searchFilteredItems.filter(i => (i.LOCATIONCODE || "NoLoc") === selectedDriveLoc);
+                    fItems.sort((a,b) => String(a.COMMONNAME || "").localeCompare(String(b.COMMONNAME || "")));
+                    container.innerHTML = `<div class="back-btn" onclick="driveViewLevel=1; renderDrive()"><i class="ph-bold ph-arrow-left"></i> Back to Locations</div>` + fItems.map(i => generateCard(i, 'drive', 'status-blue')).join('');
+                }
+            }
         }
 
         function toggleDriveSeason(s) {
@@ -2551,7 +2616,7 @@
             renderTasks();
         }
 
-        function renderTasks() {
+       function renderTasks() {
             let targetUser = safeRole === 'ADMIN' ? taskViewTargetUser : currentUser;
             if(!targetUser) return;
             const container = document.getElementById('task-content');
@@ -2902,5 +2967,3 @@
     </script>
 </body>
 </html>
-
-
