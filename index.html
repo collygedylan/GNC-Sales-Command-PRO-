@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-    <title>GNC PRO</title>
+    <title>Greenleaf</title>
     <meta name="theme-color" content="#007a4d">
     <link rel="manifest" href="manifest.json">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="application-name" content="GNC PRO">
+    <meta name="application-name" content="Greenleaf">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -84,14 +84,14 @@
     <div id="view-login">
         <div class="login-card">
             <div class="flex flex-col items-center mb-8 w-full relative">
-                <div class="text-3xl text-[#007a4d] font-black tracking-tighter mb-1">GNC PRO</div>
+                <div class="text-3xl text-[#007a4d] font-black tracking-tighter mb-1">Greenleaf</div>
                 <div class="flex flex-col items-center gap-0.5 mt-5">
                     <span class="text-[9px] font-bold text-gray-400 uppercase tracking-[0.3em]">Powered By</span>
                     <span class="text-[17px] font-black text-gray-800 tracking-[0.2em] uppercase border-b-[3px] border-[#007a4d] pb-0.5">Ag Metric</span>
                 </div>
             </div>
             <div id="login-inputs">
-                <input type="text" id="username-input" class="input-field mb-4 text-center border-2" placeholder="USERNAME" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                <input type="text" id="username-input" class="input-field mb-4 text-center border-2" placeholder="USERNAME">
                 <input type="password" id="pin-code" class="input-field mb-4 text-center border-2 tracking-widest" placeholder="PASSWORD">
                 <button class="w-full bg-[#007a4d] text-white font-bold py-3 rounded-lg shadow-md" onclick="handleLogin()">LOGIN</button>
                 <button id="btn-fingerprint" class="hidden w-full bg-gray-50 text-[#007a4d] border-2 border-[#007a4d] font-bold py-3 rounded-lg shadow-md mt-4 flex items-center justify-center gap-2" onclick="loginWithBiometric()">
@@ -114,6 +114,7 @@
             <button class="w-full bg-[#007a4d] text-white font-bold py-3 rounded-lg shadow-md active:scale-95" onclick="submitNewPassword()">SAVE & CONTINUE</button>
         </div>
     </div>
+    
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -141,7 +142,7 @@
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center flex flex-col max-h-[90vh]">
             <div id="ec-step-1" class="flex flex-col">
                 <h3 class="font-bold text-lg mb-2 text-yellow-600">Create End Cap Folder</h3>
-                <input type="text" id="ec-folder-input" class="input-field mb-4 border-yellow-200 focus:border-yellow-500" placeholder="e.g. Front Entrance" autocomplete="off" autocorrect="off" spellcheck="false">
+                <input type="text" id="ec-folder-input" class="input-field mb-4 border-yellow-200 focus:border-yellow-500" placeholder="e.g. Front Entrance">
                 <button class="w-full bg-yellow-500 text-white font-bold p-4 rounded-xl shadow-lg mt-auto" onclick="processECStep1()">NEXT: ITEM DETAILS</button>
             </div>
             <div id="ec-step-2" class="hidden flex flex-col text-left h-full">
@@ -160,7 +161,7 @@
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-black text-2xl mb-2 text-red-600">Report Mistake</h3>
             <input type="hidden" id="dock-mistake-uid">
-            <textarea id="dock-mistake-text" class="input-field border-red-200 focus:border-red-500 h-24 text-left resize-none" placeholder="E.g. Missing 3 plants..." autocomplete="off" autocorrect="off" spellcheck="false"></textarea>
+            <textarea id="dock-mistake-text" class="input-field border-red-200 focus:border-red-500 h-24 text-left resize-none" placeholder="E.g. Missing 3 plants..."></textarea>
             <div class="flex gap-2 mt-2">
                 <button class="w-1/3 bg-gray-100 text-gray-600 font-bold p-3 rounded-lg shadow-sm active:scale-95" onclick="document.getElementById('dock-mistake-modal').classList.add('hidden')">CANCEL</button>
                 <button class="w-2/3 bg-red-600 text-white font-bold p-3 rounded-lg shadow-md active:scale-95" onclick="submitDockItemMistake()">SAVE NOTE</button>
@@ -204,7 +205,7 @@
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center flex flex-col max-h-[90vh]">
             <div id="step-1-rep" class="flex flex-col">
                 <h3 class="font-bold text-lg mb-2 text-orange-600">Who requested this?</h3>
-                <input type="text" id="rep-search-input" class="input-field mb-3 border-orange-200 focus:border-orange-500" placeholder="Search name..." oninput="debouncedFilterRepList()" autocomplete="off" autocorrect="off" spellcheck="false">
+                <input type="text" id="rep-search-input" class="input-field mb-3 border-orange-200 focus:border-orange-500" placeholder="Search name..." oninput="debouncedFilterRepList()">
                 <div id="rep-list-container" class="grid grid-cols-1 gap-2 mb-4 max-h-[40vh] overflow-y-auto px-2 py-1"></div>
                 <button id="custom-rep-btn" class="hidden w-full bg-orange-600 text-white font-bold p-3 rounded-lg mb-4 shadow-sm" onclick="selectRepForRequest(document.getElementById('rep-search-input').value.trim())">Assign to: <span></span></button>
             </div>
@@ -217,7 +218,7 @@
                     <h3 class="font-bold text-lg text-orange-600">Customer</h3>
                 </div>
                 <label class="text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Customer / Consignee</label>
-                <input type="text" id="cust-search-input" class="input-field mb-2 border-orange-200" placeholder="Search customer..." oninput="debouncedPopulateCustomerList()" autocomplete="off" autocorrect="off" spellcheck="false">
+                <input type="text" id="cust-search-input" class="input-field mb-2 border-orange-200" placeholder="Search customer..." oninput="debouncedPopulateCustomerList()">
                 <div id="cust-list-container" class="grid grid-cols-1 gap-2 mb-6 max-h-[30vh] overflow-y-auto px-1 py-1"></div>
                 <button class="w-full bg-orange-600 text-white font-bold p-4 rounded-xl shadow-lg mt-auto" onclick="processCustStep()">NEXT: ITEM DETAILS</button>
             </div>
@@ -238,7 +239,7 @@
                 <i class="ph-bold ph-list menu-btn text-2xl cursor-pointer" onclick="toggleMenu()"></i>
                 <div class="flex flex-col">
                     <div class="font-bold text-lg leading-tight"><span id="header-user">User</span></div>
-                    <div class="text-[10px] opacity-80 leading-tight">GNC PRO</div>
+                    <div class="text-[10px] opacity-80 leading-tight">Greenleaf</div>
                 </div>
             </div>
             <div class="bg-white/20 p-2 rounded-lg cursor-pointer" onclick="fetchBackgroundData()">
@@ -275,7 +276,7 @@
                     <div class="bg-[#007a4d] text-white p-6 rounded-2xl mb-6 shadow-lg flex flex-col items-center text-center relative overflow-hidden">
                         <div class="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-white opacity-5 rounded-full pointer-events-none"></div>
                         <div class="absolute bottom-0 left-0 -mb-10 -ml-10 w-32 h-32 bg-black opacity-10 rounded-full pointer-events-none"></div>
-                        <h1 class="text-2xl font-black tracking-tight mb-1 z-10 relative mt-4">GNC PRO</h1>
+                        <h1 class="text-2xl font-black tracking-tight mb-1 z-10 relative mt-4">Greenleaf</h1>
                         <p class="text-green-100 text-[10px] font-bold mb-5 uppercase tracking-[0.2em] z-10 relative">Dashboard</p>
                         <div class="flex flex-col items-center pt-4 border-t border-white/20 w-full mt-1 z-10 relative">
                             <span class="text-[9px] font-bold text-white/70 uppercase tracking-[0.3em] mb-1">Powered By</span>
@@ -323,7 +324,7 @@
 
                 <div id="view-av" class="hidden">
                     <div id="av-search-container" class="relative mb-2">
-                        <input type="text" id="av-search" class="input-field w-full pr-10 !mb-0" placeholder="Search AV Stock..." oninput="handleAVSearch()" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                        <input type="text" id="av-search" class="input-field w-full pr-10 !mb-0" placeholder="Search AV Stock..." oninput="handleAVSearch()">
                         <i id="av-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearAVSearch()"></i>
                     </div>
                     <div class="task-tabs mt-2">
@@ -361,7 +362,7 @@
                 
                 <div id="view-reserves" class="hidden">
                     <div id="reserves-search-container" class="relative mb-2">
-                        <input type="text" id="reserves-search" class="input-field w-full pr-10 !mb-0" placeholder="Search..." oninput="handleReservesSearch()" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                        <input type="text" id="reserves-search" class="input-field w-full pr-10 !mb-0" placeholder="Search..." oninput="handleReservesSearch()">
                         <i id="reserves-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearReservesSearch()"></i>
                     </div>
                     <div id="reserves-crumb" class="text-xs font-bold text-[#007a4d] mb-3 mt-3 empty:hidden"></div>
@@ -370,7 +371,7 @@
                 
                 <div id="view-docks" class="hidden">
                     <div id="docks-search-container" class="relative mb-2">
-                        <input type="text" id="docks-search" class="input-field w-full pr-10 !mb-0" placeholder="Search Docks or Items..." oninput="handleDocksSearch()" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                        <input type="text" id="docks-search" class="input-field w-full pr-10 !mb-0" placeholder="Search Docks or Items..." oninput="handleDocksSearch()">
                         <i id="docks-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearDocksSearch()"></i>
                     </div>
                     <div id="docks-crumb" class="text-xs font-bold text-orange-600 mb-3 mt-3">Select a Dock</div>
@@ -389,7 +390,7 @@
                 
                 <div id="view-drive" class="hidden">
                     <div id="drive-search-container" class="relative mb-2">
-                        <input type="text" id="drive-search" class="input-field w-full pr-10 !mb-0" placeholder="Search Names or Locs..." oninput="handleDriveSearch()" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                        <input type="text" id="drive-search" class="input-field w-full pr-10 !mb-0" placeholder="Search Names or Locs..." oninput="handleDriveSearch()">
                         <i id="drive-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearDriveSearch()"></i>
                     </div>
                     <div class="flex overflow-x-auto scrollbar-none gap-2 mb-3 pb-1" id="drive-season-filters"></div>
@@ -413,6 +414,7 @@
                     <div id="review-crumb" class="text-xs font-bold text-[#007a4d] mb-3"></div>
                     <div id="review-content"></div>
                 </div>
+                
                 <div id="view-detail" class="hidden">
                     <div class="back-btn" onclick="goBackFromDetail()"><i class="ph-bold ph-arrow-left"></i> Back</div>
                     <div class="mb-4">
@@ -424,7 +426,7 @@
                         <div id="global-av-container" class="relative w-full mb-3 hidden">
                             <label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label>
                             <div class="flex gap-2 relative">
-                                <input type="text" id="global-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="debouncedFilterAvNotes('global-')" onfocus="filterAvNotes('global-')" onblur="setTimeout(()=>{if(document.getElementById('global-av-dropdown-list'))document.getElementById('global-av-dropdown-list').classList.add('hidden'); saveData(false, 'global-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT..." autocomplete="off" autocorrect="off" spellcheck="false">
+                                <input type="text" id="global-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); filterAvNotes()" onfocus="filterAvNotes()" onblur="setTimeout(()=>{if(document.getElementById('global-av-dropdown-list'))document.getElementById('global-av-dropdown-list').classList.add('hidden'); saveData(false, 'global-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT...">
                             </div>
                             <div id="global-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div>
                         </div>
@@ -458,39 +460,39 @@
                     <div id="det-season-content" class="hidden py-4">
                         <div id="ssn-photo-preview" class="mb-4 hidden"><p class="text-[10px] font-bold text-blue-600 mb-2 uppercase">Photos on file</p><div id="ssn-photo-list-container" class="space-y-2"></div></div>
                         <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-ssn" class="bg-green-50 border-2 border-dashed border-green-500 text-green-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="handlePhotoUpload(this, 'ssn-')"></label></div>
-                        <div class="relative w-full mb-3"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2 relative"><input type="text" id="ssn-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="debouncedFilterAvNotes('ssn-')" onfocus="filterAvNotes('ssn-')" onblur="setTimeout(()=>{if(document.getElementById('ssn-av-dropdown-list'))document.getElementById('ssn-av-dropdown-list').classList.add('hidden'); saveData(false, 'ssn-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT..." autocomplete="off" autocorrect="off" spellcheck="false"></div><div id="ssn-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div></div>
+                        <div class="relative w-full mb-3"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2 relative"><input type="text" id="ssn-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); filterAvNotes('ssn-')" onfocus="filterAvNotes('ssn-')" onblur="setTimeout(()=>{if(document.getElementById('ssn-av-dropdown-list'))document.getElementById('ssn-av-dropdown-list').classList.add('hidden'); saveData(false, 'ssn-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT..."></div><div id="ssn-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div></div>
                         <div id="ssn-input-container">
                             <div class="mb-3"><label class="text-[10px] font-bold text-gray-500 uppercase">Loc Match %</label><input type="number" id="ssn-match" class="input-field !mb-1" placeholder="e.g. 40" oninput="calculateMatchQty('ssn-')"><div id="ssn-match-display" class="text-[10px] font-bold text-[#007a4d] text-right mb-2 hidden">LOC Match QTY: <span id="ssn-match-qty-val">0</span></div></div>
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="ssn-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'ssn-', true)"></div>
                             <div id="ssn-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="ssn-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'ssn-', true)"></div>
-                            <div class="relative w-full mt-2 mb-2"><label class="text-[10px] font-bold text-green-700 uppercase flex justify-between"><span>Sales Note</span></label><input type="text" id="ssn-sales-desc" class="input-field border-green-500 bg-green-50 uppercase flex-grow !mb-0" placeholder="Sales Note..." onchange="saveData(false, 'ssn-', true)" autocomplete="off" autocorrect="off" spellcheck="false"></div>
-                            <div class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="ssn-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'ssn-', true)" autocomplete="off" autocorrect="off" spellcheck="false"></div>
+                            <div class="relative w-full mt-2 mb-2"><label class="text-[10px] font-bold text-green-700 uppercase flex justify-between"><span>Sales Note</span></label><input type="text" id="ssn-sales-desc" class="input-field border-green-500 bg-green-50 uppercase flex-grow !mb-0" placeholder="Sales Note..." onchange="saveData(false, 'ssn-', true)"></div>
+                            <div class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="ssn-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'ssn-', true)"></div>
                         </div>
                         <div class="flex gap-2 mt-4"><button id="ssn-btn-save-complete" class="w-full bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform" onclick="saveData(true, 'ssn-')">MARK DONE</button></div>
                     </div>
                     <div id="det-location-content" class="hidden py-4">
                         <div id="lsn-photo-preview" class="mb-4 hidden"><p class="text-[10px] font-bold text-blue-600 mb-2 uppercase">Photos on file</p><div id="lsn-photo-list-container" class="space-y-2"></div></div>
                         <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-lsn" class="bg-green-50 border-2 border-dashed border-green-500 text-green-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="handlePhotoUpload(this, 'lsn-')"></label></div>
-                        <div class="relative w-full mb-3"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2 relative"><input type="text" id="lsn-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="debouncedFilterAvNotes('lsn-')" onfocus="filterAvNotes('lsn-')" onblur="setTimeout(()=>{if(document.getElementById('lsn-av-dropdown-list'))document.getElementById('lsn-av-dropdown-list').classList.add('hidden'); saveData(false, 'lsn-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT..." autocomplete="off" autocorrect="off" spellcheck="false"></div><div id="lsn-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div></div>
+                        <div class="relative w-full mb-3"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2 relative"><input type="text" id="lsn-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); filterAvNotes('lsn-')" onfocus="filterAvNotes('lsn-')" onblur="setTimeout(()=>{if(document.getElementById('lsn-av-dropdown-list'))document.getElementById('lsn-av-dropdown-list').classList.add('hidden'); saveData(false, 'lsn-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT..."></div><div id="lsn-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div></div>
                         <div id="lsn-input-container">
                             <div class="mb-3"><label class="text-[10px] font-bold text-gray-500 uppercase">Loc Match %</label><input type="number" id="lsn-match" class="input-field !mb-1" placeholder="e.g. 95" oninput="calculateMatchQty('lsn-')"><div id="lsn-match-display" class="text-[10px] font-bold text-[#007a4d] text-right mb-2 hidden">LOC Match QTY: <span id="lsn-match-qty-val">0</span></div></div>
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="lsn-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'lsn-', true)"></div>
                             <div id="lsn-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="lsn-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'lsn-', true)"></div>
-                            <div class="relative w-full mt-2 mb-2"><label class="text-[10px] font-bold text-green-700 uppercase flex justify-between"><span>Sales Note</span></label><input type="text" id="lsn-sales-desc" class="input-field border-green-500 bg-green-50 uppercase flex-grow !mb-0" placeholder="Sales Note..." onchange="saveData(false, 'lsn-', true)" autocomplete="off" autocorrect="off" spellcheck="false"></div>
-                            <div class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="lsn-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'lsn-', true)" autocomplete="off" autocorrect="off" spellcheck="false"></div>
+                            <div class="relative w-full mt-2 mb-2"><label class="text-[10px] font-bold text-green-700 uppercase flex justify-between"><span>Sales Note</span></label><input type="text" id="lsn-sales-desc" class="input-field border-green-500 bg-green-50 uppercase flex-grow !mb-0" placeholder="Sales Note..." onchange="saveData(false, 'lsn-', true)"></div>
+                            <div class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="lsn-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'lsn-', true)"></div>
                         </div>
                         <div class="flex gap-2 mt-4"><button id="lsn-btn-save-complete" class="w-full bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform" onclick="saveData(true, 'lsn-')">MARK DONE</button></div>
                     </div>
                     <div id="det-notes-content" class="hidden py-4">
                         <div id="na-photo-preview" class="mb-4 hidden"><p class="text-[10px] font-bold text-blue-600 mb-2 uppercase">Photos on file</p><div id="na-photo-list-container" class="space-y-2"></div></div>
                         <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-na" class="bg-green-50 border-2 border-dashed border-green-500 text-green-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="handlePhotoUpload(this, 'na-')"></label></div>
-                        <div class="relative w-full mb-3"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2 relative"><input type="text" id="na-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="debouncedFilterAvNotes('na-')" onfocus="filterAvNotes('na-')" onblur="setTimeout(()=>{if(document.getElementById('na-av-dropdown-list'))document.getElementById('na-av-dropdown-list').classList.add('hidden'); saveData(false, 'na-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT..." autocomplete="off" autocorrect="off" spellcheck="false"></div><div id="na-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div></div>
+                        <div class="relative w-full mb-3"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2 relative"><input type="text" id="na-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); filterAvNotes('na-')" onfocus="filterAvNotes('na-')" onblur="setTimeout(()=>{if(document.getElementById('na-av-dropdown-list'))document.getElementById('na-av-dropdown-list').classList.add('hidden'); saveData(false, 'na-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT..."></div><div id="na-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div></div>
                         <div id="na-input-container">
                             <div class="mb-3"><label class="text-[10px] font-bold text-gray-500 uppercase">Loc Match %</label><input type="number" id="na-match" class="input-field !mb-1" placeholder="e.g. 95" oninput="calculateMatchQty('na-')"><div id="na-match-display" class="text-[10px] font-bold text-[#007a4d] text-right mb-2 hidden">LOC Match QTY: <span id="na-match-qty-val">0</span></div></div>
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="na-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'na-', true)"></div>
                             <div id="na-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="na-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'na-', true)"></div>
-                            <div class="relative w-full mt-2 mb-2"><label class="text-[10px] font-bold text-green-700 uppercase flex justify-between"><span>Sales Description</span></label><div class="flex gap-2"><input type="text" id="na-sales-desc" class="input-field border-green-500 bg-green-50 uppercase flex-grow !mb-0" placeholder="TYPE NOTES OR SEARCH..." onchange="saveData(false, 'na-', true)" autocomplete="off" autocorrect="off" spellcheck="false"></div></div>
-                            <div class="mb-2"><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="na-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'na-', true)" autocomplete="off" autocorrect="off" spellcheck="false"></div>
+                            <div class="relative w-full mt-2 mb-2"><label class="text-[10px] font-bold text-green-700 uppercase flex justify-between"><span>Sales Description</span></label><div class="flex gap-2"><input type="text" id="na-sales-desc" class="input-field border-green-500 bg-green-50 uppercase flex-grow !mb-0" placeholder="TYPE NOTES OR SEARCH..." onchange="saveData(false, 'na-', true)"></div></div>
+                            <div class="mb-2"><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="na-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'na-', true)"></div>
                         </div>
                         <div class="flex gap-2 mt-4">
                             <button id="na-btn-save-draft" class="w-1/3 bg-gray-200 text-gray-700 font-bold py-4 rounded-xl shadow-md" onclick="saveData(false, 'na-')">SAVE DRAFT</button>
@@ -505,9 +507,9 @@
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="req-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'req-', true)"></div>
                             <div id="req-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="req-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'req-', true)"></div>
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Reserve</label><select id="req-reserve" class="input-field bg-white" onchange="saveData(false, 'req-', true)"><option value="NO">NO</option><option value="YES">YES</option></select></div>
-                            <div class="relative w-full mt-2 mb-2"><label class="text-[10px] font-bold text-purple-700 uppercase flex justify-between"><span>Request Sales Description</span></label><div class="flex gap-2"><input type="text" id="req-sales-desc" class="input-field border-purple-500 bg-purple-50 uppercase flex-grow !mb-0" placeholder="TYPE NOTES OR SEARCH..." onchange="saveData(false, 'req-', true)" autocomplete="off" autocorrect="off" spellcheck="false"></div></div>
-                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="req-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'req-', true)" autocomplete="off" autocorrect="off" spellcheck="false"></div>
-                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Comments</label><input type="text" id="req-comments" class="input-field" placeholder="Any additional comments..." onchange="saveData(false, 'req-', true)" autocomplete="off" autocorrect="off" spellcheck="false"></div>
+                            <div class="relative w-full mt-2 mb-2"><label class="text-[10px] font-bold text-purple-700 uppercase flex justify-between"><span>Request Sales Description</span></label><div class="flex gap-2"><input type="text" id="req-sales-desc" class="input-field border-purple-500 bg-purple-50 uppercase flex-grow !mb-0" placeholder="TYPE NOTES OR SEARCH..." onchange="saveData(false, 'req-', true)"></div></div>
+                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="req-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'req-', true)"></div>
+                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Comments</label><input type="text" id="req-comments" class="input-field" placeholder="Any additional comments..." onchange="saveData(false, 'req-', true)"></div>
                         </div>
                         <div class="flex flex-col gap-3 mt-4">
                             <button id="req-btn-save-draft" class="w-full bg-purple-600 text-white font-bold py-4 rounded-xl shadow-lg" onclick="saveData(false, 'req-')">SAVE REQUEST DATA</button>
@@ -522,7 +524,7 @@
                         <div id="dock-input-container">
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="dock-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'dock-', true)"></div>
                             <div id="dock-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="dock-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'dock-', true)"></div>
-                            <div class="relative w-full mt-2 mb-2"><label class="text-[10px] font-bold text-orange-700 uppercase flex justify-between"><span>Dock Note</span></label><div class="flex gap-2"><input type="text" id="dock-sales-desc" class="input-field border-orange-500 bg-orange-50 uppercase flex-grow !mb-0" onblur="setTimeout(()=>{saveData(false, 'dock-', true);}, 200)" placeholder="TYPE NOTES..." autocomplete="off" autocorrect="off" spellcheck="false"></div></div>
+                            <div class="relative w-full mt-2 mb-2"><label class="text-[10px] font-bold text-orange-700 uppercase flex justify-between"><span>Dock Note</span></label><div class="flex gap-2"><input type="text" id="dock-sales-desc" class="input-field border-orange-500 bg-orange-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase();" onblur="setTimeout(()=>{saveData(false, 'dock-', true);}, 200)" placeholder="TYPE NOTES..."></div></div>
                         </div>
                         <div class="flex gap-2 mt-4"><button id="dock-btn-save-draft" class="w-full bg-orange-600 text-white font-bold py-4 rounded-xl shadow-lg" onclick="saveData(false, 'dock-')">SAVE DOCK DATA</button></div>
                     </div>
@@ -540,6 +542,7 @@
                     </div>
                 </div> 
             </div>
+
             <div id="global-action-bar" class="hidden fixed bottom-[60px] left-0 w-full bg-white p-3 shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.15)] z-[45] border-t border-gray-200">
                 <div class="flex justify-between items-center mb-2 px-1"><span class="text-xs font-bold text-[#007a4d]"><span id="sel-count">0</span> Items Selected</span><span class="text-[10px] font-bold text-red-500 cursor-pointer bg-red-50 px-3 py-1 rounded-md uppercase" onclick="clearSelection()">Clear Selection</span></div>
                 <div class="flex gap-1 overflow-x-auto scrollbar-none pb-1">
@@ -617,9 +620,9 @@
                 let allData=[]; let offset=0; const limit=1000; let hasMore=true;
                 if(method==='GET'){
                     while(hasMore){
-                        let queryString = query ? `${query}&limit=${limit}&offset=${offset}&_ts=${new Date().getTime()}` : `limit=${limit}&offset=${offset}&_ts=${new Date().getTime()}`;
+                        let queryString = query ? `${query}&limit=${limit}&offset=${offset}` : `limit=${limit}&offset=${offset}`;
                         const url=`${SUPABASE_URL}/rest/v1/${table}?${queryString}`;
-                        const response=await fetch(url,{method:'GET',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json'}, cache: 'no-store'});
+                        const response=await fetch(url,{method:'GET',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json'}});
                         if(!response.ok) throw new Error(`Supabase Error`);
                         const text=await response.text(); const data=text?JSON.parse(text):[];
                         if(Array.isArray(data)&&data.length>0){ allData=allData.concat(data); offset+=limit; if(data.length<limit) hasMore=false; }
@@ -750,6 +753,7 @@
             return repPermutations.some(p=>str.includes(p)); 
         }
 
+        // NEW MULTI-IMAGE GALLERY MODAL
         function openPhotoModal(urlStr, caption) { 
             const gallery = document.getElementById('photo-modal-gallery');
             gallery.innerHTML = '';
@@ -850,10 +854,9 @@
         async function silentBackgroundSync() {
             if(!currentUser)return; 
             const checkTime=new Date().toISOString();
-            const ts = new Date().getTime();
             try {
                 // 1. Sync Master Inventory
-                const response=await fetch(`${SUPABASE_URL}/rest/v1/v2_master_inventory?select=*&last_updated=gt.${lastSyncTime}&_ts=${ts}`,{method:'GET',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}, cache: 'no-store'});
+                const response=await fetch(`${SUPABASE_URL}/rest/v1/v2_master_inventory?select=*&last_updated=gt.${lastSyncTime}`,{method:'GET',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
                 if(response.ok) {
                     const data=await response.json();
                     if(data&&data.length>0){
@@ -876,7 +879,7 @@
                 }
                 
                 // 2. Sync Requests (Instantly pull changes)
-                const reqRes = await fetch(`${SUPABASE_URL}/rest/v1/v2_active_request?select=*&_ts=${ts}`, {method:'GET', headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}, cache: 'no-store'});
+                const reqRes = await fetch(`${SUPABASE_URL}/rest/v1/v2_active_request?select=*`, {method:'GET', headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
                 if(reqRes.ok) {
                     const reqData = await reqRes.json();
                     let hash = JSON.stringify(reqData);
@@ -887,8 +890,8 @@
                             obj.DOM_ID = 'req_' + obj.UNIQUE_ID;
                             obj.SAVED_PHOTO_LINK = obj.REQ_PHOTO_LINK || obj.SAVED_PHOTO_LINK || ""; 
                             obj.SAVED_PHOTO_NAME = obj.REQ_PHOTO_NAME || obj.SAVED_PHOTO_NAME || "";
-                            obj.CONTSIZE = item.contsize || obj.CONTSIZE || item.itemspec || obj.ITEMSPEC || item.size || "-";
-                            obj.LOCATIONCODE = obj.LOCATIONCODE||obj.LOCATION||"No Loc"; 
+                            obj.CONTSIZE=item.contsize || obj.CONTSIZE || item.itemspec || obj.ITEMSPEC || item.size || "-";
+                            obj.LOCATIONCODE=obj.LOCATIONCODE||obj.LOCATION||"No Loc"; 
                             return obj;
                         });
                         localStorage.setItem('last_req_hash', hash);
@@ -897,7 +900,7 @@
                 }
 
                 // 3. Sync Sales Office (Instantly pull changes)
-                const soRes = await fetch(`${SUPABASE_URL}/rest/v1/v2_sales_office?select=*&_ts=${ts}`, {method:'GET', headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}, cache: 'no-store'});
+                const soRes = await fetch(`${SUPABASE_URL}/rest/v1/v2_sales_office?select=*`, {method:'GET', headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
                 if(soRes.ok) {
                     const soData = await soRes.json();
                     let soHash = JSON.stringify(soData);
@@ -964,22 +967,38 @@
 
         function processAndLoadData(res) {
             if (!res) return;
+            
             avNotesDb = res.avNotesData || [];
-            fullInventory = (res.data || []).map((item,idx)=>{ item.DOM_ID='fi_'+idx; return item; }); 
-            requestsInventory = (res.requestsData || []).map((item,idx)=>{ item.DOM_ID='req_'+item.UNIQUE_ID; return item; }); 
+            
+            fullInventory = (res.data || []).map((item,idx)=>{
+                item.DOM_ID='fi_'+idx;
+                return item;
+            }); 
+            
+            requestsInventory = (res.requestsData || []).map((item,idx)=>{
+                item.DOM_ID='req_'+item.UNIQUE_ID;
+                return item;
+            }); 
+            
             salesOfficeInventory = (res.salesOfficeData || []).map((item, idx) => {
                 item.DOM_ID = 'so_' + item.UNIQUE_ID;
                 let masterItem = fullInventory.find(i => i.UNIQUE_ID === item.UNIQUE_ID);
                 if (masterItem) { item.AV_NOTE = masterItem.AV_NOTE; }
                 return item;
             });
+            
             socInventory = res.socData || [];
+            
             lowStockInventory = fullInventory.filter(i=>{
                 let ptr=parseInt(String(i.PTRAVAILABLE).replace(/,/g,''))||0; 
                 let slts=parseInt(String(i.S_LTS).replace(/,/g,''))||0; 
                 return ptr>0 && ptr<=slts;
             }).map((item,idx)=>{item.DOM_ID='ls_'+idx;return item}); 
-            managerReviewInventory = fullInventory.map((item,idx)=>{ item.DOM_ID='mr_'+idx; return item; }); 
+            
+            managerReviewInventory = fullInventory.map((item,idx)=>{
+                item.DOM_ID='mr_'+idx;
+                return item;
+            }); 
 
             let map1 = new Map();
             let icGroups = {};
@@ -1012,6 +1031,7 @@
                     let ss = parseFloat(String(r.SEASONSUPPLY || r.SEASON_SUPPLY).replace(/,/g,'')) || 0;
                     return ptr > (0.10 * ss);
                 });
+                
                 let pool = eligible.length > 0 ? eligible : rows;
                 pool.sort((a,b) => {
                     let pa = parseFloat(a.PRIORITY); if(isNaN(pa)) pa = 999;
@@ -1021,6 +1041,7 @@
                     let ptrb = parseFloat(String(b.PTRAVAILABLE).replace(/,/g,'')) || 0;
                     return ptrb - ptra; 
                 });
+                
                 let winner = pool[0];
                 rows.forEach(r => {
                     if(r.UNIQUE_ID === winner.UNIQUE_ID) r.APP_TAB_ASSIGNMENT = 'season';
@@ -1122,7 +1143,10 @@
             requestAnimationFrame(()=>{
                 setTimeout(()=>{
                     if(viewId==='drive')resetDriveView();
-                    if(viewId==='tasks'){ if(safeRole==='ADMIN'&&!taskViewTargetUser)renderTeamSelector(); else renderTasks(); }
+                    if(viewId==='tasks'){
+                        if(safeRole==='ADMIN'&&!taskViewTargetUser)renderTeamSelector();
+                        else renderTasks();
+                    }
                     if(viewId==='reports')resetReportsView();
                     if(viewId==='review')resetReviewView();
                     if(viewId==='request'){requestViewLevel=0;renderRequest();}
@@ -1155,11 +1179,15 @@
             document.getElementById('tab-location').classList.toggle('active',tab==='location'); 
             document.getElementById('tab-endcap').classList.toggle('active',tab==='endcap'); 
             document.getElementById('tab-flyer').classList.toggle('active',tab==='flyer'); 
-            taskViewLevel=0; renderTasks(); 
+            taskViewLevel=0; 
+            renderTasks(); 
         }
 
         function setAVTab(tab) { 
-            activeAVTab=tab; avResLevel=0; selectedAvResName=null; selectedAvResSize=null; 
+            activeAVTab=tab; 
+            avResLevel=0; 
+            selectedAvResName=null; 
+            selectedAvResSize=null; 
             document.getElementById('tab-av-open').classList.toggle('active',tab==='open'); 
             document.getElementById('tab-av-reserves').classList.toggle('active',tab==='reserves'); 
             renderAV(); 
@@ -1171,8 +1199,7 @@
             document.getElementById('tab-req-reps').classList.toggle('active', tab === 'reps');
             requestViewLevel = 0; selectedReqFolder = null; selectedReqRepView = null; selectedReqCustView = null; selectedReqFolderView = null; clearSelection(); renderRequest();
         }
-        
-        function sendEmailNotification(type, folderId, repName, customer, itemsCount) {
+            function sendEmailNotification(type, folderId, repName, customer, itemsCount) {
             let payload = { type: "email", emailType: type, folderId: folderId, repName: repName, customer: customer, itemsCount: itemsCount, dylanEmail: "dylan_collyge@greenleafnursery.com" };
             if (type === 'request_complete') {
                 let cleanRep = repName.trim().toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, '_');
@@ -1197,36 +1224,65 @@
             supabaseFetch('v2_labor_hours', 'POST', payload).then(() => { showToast("Success", "Hours submitted successfully!"); document.getElementById('hours-amount').value = ""; }).catch(err => { showToast("Error", "Failed to submit hours.", true); });
         }
 
-        const debouncedReservesSearch=debounce(()=>{requestAnimationFrame(()=>renderReserves())},350);
-        function clearReservesSearch() { document.getElementById('reserves-search').value=""; document.getElementById('reserves-search-clear').classList.add('hidden'); reservesViewLevel=0; renderReserves(); }
-        function handleReservesSearch() { const term=document.getElementById('reserves-search').value.toLowerCase(); const clearBtn=document.getElementById('reserves-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden');reservesViewLevel=0;} else{clearBtn.classList.add('hidden');reservesViewLevel=0;} debouncedReservesSearch(); }
+        const debouncedReservesSearch=debounce(()=>{requestAnimationFrame(()=>renderReserves())},150);
+        
+        function clearReservesSearch() { 
+            document.getElementById('reserves-search').value=""; 
+            document.getElementById('reserves-search-clear').classList.add('hidden'); 
+            reservesViewLevel=0; 
+            renderReserves(); 
+        }
 
-        const debouncedAVSearch=debounce(()=>{requestAnimationFrame(()=>renderAV())},350);
-        function clearAVSearch() { document.getElementById('av-search').value=""; document.getElementById('av-search-clear').classList.add('hidden'); avResLevel=0; renderAV(); }
-        function handleAVSearch() { const term=document.getElementById('av-search').value.toLowerCase(); const clearBtn=document.getElementById('av-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden');avResLevel=0;} else{clearBtn.classList.add('hidden');avResLevel=0;} debouncedAVSearch(); }
+        function handleReservesSearch() { 
+            const term=document.getElementById('reserves-search').value.toLowerCase(); 
+            const clearBtn=document.getElementById('reserves-search-clear'); 
+            if(term.length>0){clearBtn.classList.remove('hidden');reservesViewLevel=0;}
+            else{clearBtn.classList.add('hidden');reservesViewLevel=0;} 
+            debouncedReservesSearch(); 
+        }
 
-        function resetAVView() { activeAVTab='open'; avResLevel=0; selectedAvResName=null; selectedAvResSize=null; document.getElementById('tab-av-open').classList.add('active'); document.getElementById('tab-av-reserves').classList.remove('active'); document.getElementById('av-search').value=""; document.getElementById('av-search-clear').classList.add('hidden'); renderAV(); }
+        const debouncedAVSearch=debounce(()=>{requestAnimationFrame(()=>renderAV())},150);
+
+        function clearAVSearch() { 
+            document.getElementById('av-search').value=""; 
+            document.getElementById('av-search-clear').classList.add('hidden'); 
+            avResLevel=0; 
+            renderAV(); 
+        }
+
+        function handleAVSearch() { 
+            const term=document.getElementById('av-search').value.toLowerCase(); 
+            const clearBtn=document.getElementById('av-search-clear'); 
+            if(term.length>0){clearBtn.classList.remove('hidden');avResLevel=0;}
+            else{clearBtn.classList.add('hidden');avResLevel=0;} 
+            debouncedAVSearch(); 
+        }
+
+        function resetAVView() { 
+            activeAVTab='open'; 
+            avResLevel=0; 
+            selectedAvResName=null; 
+            selectedAvResSize=null; 
+            document.getElementById('tab-av-open').classList.add('active'); 
+            document.getElementById('tab-av-reserves').classList.remove('active'); 
+            document.getElementById('av-search').value=""; 
+            document.getElementById('av-search-clear').classList.add('hidden'); 
+            renderAV(); 
+        }
+
         function selectAvResName(name) { selectedAvResName=name; avResLevel=1; renderAV(); }
         function selectAvResSize(size) { selectedAvResSize=size; avResLevel=2; renderAV(); }
 
-        const debouncedDocksSearch=debounce(()=>{requestAnimationFrame(()=>renderDocks())},350);
-        function clearDocksSearch(){ document.getElementById('docks-search').value=""; document.getElementById('docks-search-clear').classList.add('hidden'); dockViewLevel=0; renderDocks(); }
-        function handleDocksSearch(){ const term=document.getElementById('docks-search').value.toLowerCase(); const clearBtn=document.getElementById('docks-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden');dockViewLevel=0;}else{clearBtn.classList.add('hidden');dockViewLevel=0;} debouncedDocksSearch(); }
-        function resetDockView() { dockViewLevel = 0; selectedDockNum = null; document.getElementById('docks-search').value = ""; document.getElementById('docks-search-clear').classList.add('hidden'); renderDocks(); }
-        function selectDock(dock) { selectedDockNum = dock; dockViewLevel = 1; renderDocks(); }
-
-        const debouncedDriveSearch = debounce(() => { requestAnimationFrame(() => renderDrive()); }, 350);
-        function clearDriveSearch() { document.getElementById('drive-search').value = ""; document.getElementById('drive-search-clear').classList.add('hidden'); driveViewLevel = 0; renderDrive(); }
-        function handleDriveSearch() { const term = document.getElementById('drive-search').value.toLowerCase(); const clearBtn = document.getElementById('drive-search-clear'); if(term.length > 0) { clearBtn.classList.remove('hidden'); driveViewLevel = 0; } else { clearBtn.classList.add('hidden'); driveViewLevel = 0; } debouncedDriveSearch(); }
-
-        const debouncedFilterRepList=debounce(()=>requestAnimationFrame(filterRepList),350);
-        const debouncedPopulateCustomerList=debounce(()=>requestAnimationFrame(populateCustomerList),350);
-        const debouncedFilterAvNotes=debounce((prefix)=>{requestAnimationFrame(()=>filterAvNotes(prefix))},300);
-            function renderAV() {
-            const container=document.getElementById('av-content'); const crumb=document.getElementById('av-crumb'); const term=document.getElementById('av-search').value.toLowerCase(); 
+        function renderAV() {
+            const container=document.getElementById('av-content'); 
+            const crumb=document.getElementById('av-crumb'); 
+            const term=document.getElementById('av-search').value.toLowerCase(); 
             let items=[];
-            if(activeAVTab==='open'){ items=fullInventory.filter(i=>{let lts=Number(String(i.S_LTS||'0').replace(/,/g,''));let season=String(i.SEASON||'').toUpperCase();return lts>0&&!season.includes('Y')&&!season.includes('Z');}); }
-            else{ items=reservesInventory; if(safeRole==='SALESREP')items=items.filter(i=>isMyRep(i.SALESREPNAME)); }
+            if(activeAVTab==='open'){ 
+                items=fullInventory.filter(i=>{let lts=Number(String(i.S_LTS||'0').replace(/,/g,''));let season=String(i.SEASON||'').toUpperCase();return lts>0&&!season.includes('Y')&&!season.includes('Z');}); 
+            }else{ 
+                items=reservesInventory; if(safeRole==='SALESREP')items=items.filter(i=>isMyRep(i.SALESREPNAME)); 
+            }
             if(term){ items=items.filter(i=>(i._search||"").includes(term)); }
             if(items.length===0){ container.innerHTML=`<div class="p-8 text-center text-gray-400">No ${activeAVTab==='open'?'open stock':'reserves'} found.</div>`; crumb.innerText="No Results"; return; }
             
@@ -1238,58 +1294,37 @@
             }
             
             if(activeAVTab==='open'){ 
-                crumb.innerText=`Open Stock (${items.length})`; items.sort((a,b)=>(String(a.COMMONNAME)||"").localeCompare(String(b.COMMONNAME)||"")); 
+                crumb.innerText=`Open Stock (${items.length})`; 
+                items.sort((a,b)=>(String(a.COMMONNAME)||"").localeCompare(String(b.COMMONNAME)||"")); 
                 container.innerHTML=items.map(i=>generateCard(i,'av','status-teal')).join(''); 
             }else{
                 if(avResLevel===0){ 
-                    crumb.innerText="My Reserves > Plants"; const names=[...new Set(items.map(i=>i.COMMONNAME))].sort(); 
+                    crumb.innerText="My Reserves > Plants"; 
+                    const names=[...new Set(items.map(i=>i.COMMONNAME))].sort(); 
                     container.innerHTML=names.map(n=>`<div class="drill-item" onclick="selectAvResName('${esc(n)}')"><span class="font-bold text-lg">${n}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join(''); 
                 } 
                 else if(avResLevel===1){ 
-                    crumb.innerText=`My Reserves > ${selectedAvResName}`; const namedItems=items.filter(i=>i.COMMONNAME===selectedAvResName); const sizes=[...new Set(namedItems.map(i=>i.CONTSIZE))].sort(); 
+                    crumb.innerText=`My Reserves > ${selectedAvResName}`; 
+                    const namedItems=items.filter(i=>i.COMMONNAME===selectedAvResName); 
+                    const sizes=[...new Set(namedItems.map(i=>i.CONTSIZE))].sort(); 
                     let html=`<div class="back-btn" onclick="avResLevel=0; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Plants</div>`; 
-                    html+=sizes.map(s=>{const count=namedItems.filter(i=>i.CONTSIZE===s).length;return `<div class="drill-item" onclick="selectAvResSize('${esc(s)}')"><span class="font-bold text-lg">${s} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;}).join(''); container.innerHTML=html; 
+                    html+=sizes.map(s=>{const count=namedItems.filter(i=>i.CONTSIZE===s).length;return `<div class="drill-item" onclick="selectAvResSize('${esc(s)}')"><span class="font-bold text-lg">${s} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;}).join(''); 
+                    container.innerHTML=html; 
                 } 
                 else if(avResLevel===2){ 
-                    crumb.innerText=`${selectedAvResName} / ${selectedAvResSize}`; let finalItems=items.filter(i=>i.COMMONNAME===selectedAvResName&&i.CONTSIZE===selectedAvResSize); finalItems.sort((a,b)=>(String(a.CUSTOMERNAME)||"").localeCompare(String(b.CUSTOMERNAME)||"")); 
+                    crumb.innerText=`${selectedAvResName} / ${selectedAvResSize}`; 
+                    let finalItems=items.filter(i=>i.COMMONNAME===selectedAvResName&&i.CONTSIZE===selectedAvResSize); 
+                    finalItems.sort((a,b)=>(String(a.CUSTOMERNAME)||"").localeCompare(String(b.CUSTOMERNAME)||"")); 
                     container.innerHTML=`<div class="back-btn" onclick="avResLevel=1; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>`+finalItems.map(i=>generateCard(i,'reserves_drill','status-indigo')).join(''); 
                 }
             }
         }
 
-        function renderDocks() {
-            const container = document.getElementById('docks-content'); const crumb = document.getElementById('docks-crumb'); const term = document.getElementById('docks-search').value.toLowerCase().trim();
-            let items = socInventory;
-            if(term) { const searchTerms = term.split(/\s+/); items = items.filter(i => { const searchStr = (i._search || "").toLowerCase(); return searchTerms.every(t => searchStr.includes(t)); }); }
-            if (items.length === 0) { container.innerHTML = `<div class="p-8 text-center text-gray-400">No dock items found.</div>`; crumb.innerText = "No Results"; return; }
-            if (dockViewLevel === 0) {
-                crumb.innerText = "Select a Dock";
-                let docks = [...new Set(items.map(i => i.DOCK_NUM || 'Unassigned'))].sort((a,b) => { let numA = parseFloat(String(a).replace(/[^0-9.]/g, '')); let numB = parseFloat(String(b).replace(/[^0-9.]/g, '')); if(!isNaN(numA) && !isNaN(numB)) return numA - numB; return String(a).localeCompare(String(b)); });
-                container.innerHTML = docks.map(d => {
-                    let dItems = items.filter(i => (i.DOCK_NUM || 'Unassigned') === d); let count = dItems.length;
-                    let savedInfo = JSON.parse(localStorage.getItem('gnc_dock_team_' + d) || '{"checker":"","inspector":"","mistake":"","status":"Loading"}');
-                    let statusColor = "text-blue-600 bg-blue-50";
-                    if(savedInfo.status.includes('Missing')) statusColor = "text-red-600 bg-red-50"; else if(savedInfo.status === 'Palletize') statusColor = "text-purple-600 bg-purple-50"; else if(savedInfo.status === 'Complete') statusColor = "text-green-600 bg-green-50";
-                    let hasCoUt = dItems.some(i => { let state = String(i.CONSIGNEESTATE || i.STATE || "").toUpperCase().trim(); let city = String(i.CONSIGNEECITY || "").toUpperCase().trim(); return state === "CO" || state === "UT" || state === "COLORADO" || state === "UTAH" || city.includes(" CO") || city.includes(" UT") || city.endsWith("CO") || city.endsWith("UT"); });
-                    let borderCls = hasCoUt ? "border-red-500" : "border-[#007a4d]"; let bgCls = hasCoUt ? "bg-red-50" : "bg-green-50"; let textCls = hasCoUt ? "text-red-700" : "text-[#007a4d]";
-                    return `<div class="bg-white border-2 ${borderCls} rounded-xl shadow-sm mb-4 overflow-hidden"><div class="p-4 flex justify-between items-center cursor-pointer active:${bgCls} transition-colors" onclick="selectDock('${esc(d)}')"><div class="flex items-center gap-3"><div class="${bgCls} p-2 rounded-lg"><i class="ph-fill ph-truck text-2xl ${textCls}"></i></div><div><div class="font-black text-lg ${textCls} leading-tight">Dock ${d}</div><div class="text-[10px] font-bold text-gray-500 uppercase mt-0.5">${count} Items</div></div></div><i class="ph-bold ph-caret-right text-gray-300 text-xl"></i></div><div class="bg-gray-50 p-3 border-t border-gray-100"><div class="flex justify-between items-center mb-2"><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Dock Status</span><span class="text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider ${statusColor}">${savedInfo.status}</span></div><div class="grid grid-cols-3 gap-2 mb-3"><div class="bg-white p-2 rounded border border-gray-200 text-center"><div class="text-[8px] font-bold text-gray-400 uppercase mb-0.5">Checker</div><div class="text-xs font-bold text-gray-700 truncate">${savedInfo.checker || '-'}</div></div><div class="bg-white p-2 rounded border border-gray-200 text-center"><div class="text-[8px] font-bold text-gray-400 uppercase mb-0.5">Inspector</div><div class="text-xs font-bold text-gray-700 truncate">${savedInfo.inspector || '-'}</div></div><div class="bg-white p-2 rounded border border-gray-200 text-center"><div class="text-[8px] font-bold text-gray-400 uppercase mb-0.5">Mistake Guy</div><div class="text-xs font-bold text-gray-700 truncate">${savedInfo.mistake || '-'}</div></div></div><button class="w-full bg-white border border-gray-200 text-gray-600 hover:text-[#007a4d] hover:border-[#007a4d] font-bold py-2 rounded-lg text-xs shadow-sm transition-colors" onclick="openDockInfoModal('${esc(d)}')"><i class="ph-bold ph-pencil-simple mr-1"></i> Edit Team & Status</button></div></div>`;
-                }).join('');
-            } else if (dockViewLevel === 1) {
-                crumb.innerText = `Dock: ${selectedDockNum}`;
-                let dItems = items.filter(i => (i.DOCK_NUM || 'Unassigned') === selectedDockNum);
-                dItems.sort((a,b) => { let stopA = parseFloat(a.STOPNUMBER); if(isNaN(stopA)) stopA = 9999; let stopB = parseFloat(b.STOPNUMBER); if(isNaN(stopB)) stopB = 9999; if(stopA !== stopB) return stopA - stopB; return String(a.CONTSIZE || "").localeCompare(String(b.CONTSIZE || "")); });
-                let currentStop = null; let html = `<div class="back-btn" onclick="dockViewLevel=0; renderDocks()"><i class="ph-bold ph-arrow-left"></i> Back to Docks</div>`;
-                dItems.forEach(item => {
-                    let stopNum = item.STOPNUMBER || 'Unassigned';
-                    if (stopNum !== currentStop) {
-                        currentStop = stopNum; let rep = item.SALESREPNAME || item.SALESREPID || 'Unknown Rep'; let cust = item.CUSTOMERNAME || 'Unknown Customer'; let cons = item.CONSIGNEENAME || item.CONSIGNEE || ''; let state = item.CONSIGNEESTATE || item.STATE || 'N/A';
-                        html += `<div class="bg-gray-800 text-white rounded-xl shadow-md mb-3 p-4 mt-6 border-l-4 border-[#007a4d]"><div class="flex justify-between items-center mb-2 border-b border-gray-600 pb-2"><div class="font-black text-xl text-green-400 tracking-wider">STOP ${stopNum}</div><div class="text-[10px] font-bold bg-gray-700 px-2 py-1 rounded text-gray-300 uppercase"><i class="ph-bold ph-user mr-1"></i>${rep}</div></div><div class="font-bold text-[15px] leading-tight mb-0.5">${cust}</div>${cons && cons !== cust ? `<div class="text-[12px] text-gray-300 font-semibold mb-2 flex items-center gap-1"><i class="ph-bold ph-arrow-bend-down-right"></i> ${cons}</div>` : '<div class="mb-2"></div>'}<div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1"><i class="ph-bold ph-map-pin"></i> State: <span class="text-gray-200">${state}</span></div></div>`;
-                    }
-                    html += generateCard(item, 'docks', 'status-orange');
-                });
-                container.innerHTML = html;
-            }
-        }
+        const debouncedDocksSearch=debounce(()=>{requestAnimationFrame(()=>renderDocks())},150);
+        function clearDocksSearch(){ document.getElementById('docks-search').value=""; document.getElementById('docks-search-clear').classList.add('hidden'); dockViewLevel=0; renderDocks(); }
+        function handleDocksSearch(){ const term=document.getElementById('docks-search').value.toLowerCase(); const clearBtn=document.getElementById('docks-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden');dockViewLevel=0;}else{clearBtn.classList.add('hidden');dockViewLevel=0;} debouncedDocksSearch(); }
+        function resetDockView() { dockViewLevel = 0; selectedDockNum = null; document.getElementById('docks-search').value = ""; document.getElementById('docks-search-clear').classList.add('hidden'); renderDocks(); }
+        function selectDock(dock) { selectedDockNum = dock; dockViewLevel = 1; renderDocks(); }
 
         function openDockInfoModal(dockNum) {
             pendingDockNum = dockNum; document.getElementById('modal-dock-num').innerText = dockNum;
@@ -1332,370 +1367,353 @@
             state[type] = !state[type]; localStorage.setItem(key, JSON.stringify(state)); renderDocks(); 
         }
 
-        function renderDrive() {
-            const container = document.getElementById('drive-content'); const filtersDiv = document.getElementById('drive-season-filters'); const crumb = document.getElementById('drive-crumb'); const term = document.getElementById('drive-search').value.toLowerCase().trim();
-            
-            filtersDiv.innerHTML = availableSeasons.map(s => { 
-                const active = driveSelectedSeasons.has(s); 
-                return `<div class="px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap cursor-pointer transition-colors ${active ? 'bg-[#007a4d] text-white shadow-md' : 'bg-white border border-gray-300 text-gray-600'}" onclick="toggleDriveSeason('${s}')">${s}</div>` 
-            }).join('');
-            
-            let baseItems = fullInventory;
-            if(!driveSelectedSeasons.has('ALL')) { baseItems = baseItems.filter(i => { let s = String(i.SEASON || '').toUpperCase(); return driveSelectedSeasons.has(s); }); }
-            
-            let searchFilteredItems = baseItems;
-            if(term) { const searchTerms = term.split(/\s+/); searchFilteredItems = searchFilteredItems.filter(i => { const searchStr = (i._search || ""); return searchTerms.every(t => searchStr.includes(t)); }); }
-            
-            if(driveViewLevel === 0) {
-                if(searchFilteredItems.length === 0){ container.innerHTML = `<div class="p-8 text-center text-gray-400">No items found matching criteria.</div>`; crumb.innerText = "No Results"; return; }
-                crumb.innerText = `Select Plant (${searchFilteredItems.length} items)`;
-                const names = [...new Set(searchFilteredItems.map(i => i.COMMONNAME))].sort();
-                container.innerHTML = names.map(n => `<div class="drill-item" onclick="selectDriveName('${esc(n)}')"><span class="font-bold text-lg">${n}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
-            } else if(driveViewLevel === 1) {
-                crumb.innerText = selectedDriveName;
-                const namedItems = searchFilteredItems.filter(i => i.COMMONNAME === selectedDriveName);
-                if(namedItems.length === 0){ container.innerHTML = `<div class="p-8 text-center text-gray-400">No items found.</div>`; return; }
-                const sizes = [...new Set(namedItems.map(i => i.CONTSIZE))].sort();
-                let html = `<div class="back-btn" onclick="driveViewLevel=0; renderDrive()"><i class="ph-bold ph-arrow-left"></i> Back to Names</div><div class="font-bold text-[#007a4d] mb-4 px-2 text-xl border-b pb-2">${selectedDriveName}</div>`;
-                html += sizes.map(s => { const count = namedItems.filter(i => i.CONTSIZE === s).length; return `<div class="drill-item" onclick="selectDriveSize('${esc(s)}')"><span class="font-bold text-lg">${s} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>` }).join('');
+        function renderDocks() {
+            const container = document.getElementById('docks-content'); const crumb = document.getElementById('docks-crumb'); const term = document.getElementById('docks-search').value.toLowerCase().trim();
+            let items = socInventory;
+            if(term) { const searchTerms = term.split(/\s+/); items = items.filter(i => { const searchStr = (i._search || "").toLowerCase(); return searchTerms.every(t => searchStr.includes(t)); }); }
+            if (items.length === 0) { container.innerHTML = `<div class="p-8 text-center text-gray-400">No dock items found.</div>`; crumb.innerText = "No Results"; return; }
+            if (dockViewLevel === 0) {
+                crumb.innerText = "Select a Dock";
+                let docks = [...new Set(items.map(i => i.DOCK_NUM || 'Unassigned'))].sort((a,b) => { let numA = parseFloat(String(a).replace(/[^0-9.]/g, '')); let numB = parseFloat(String(b).replace(/[^0-9.]/g, '')); if(!isNaN(numA) && !isNaN(numB)) return numA - numB; return String(a).localeCompare(String(b)); });
+                container.innerHTML = docks.map(d => {
+                    let dItems = items.filter(i => (i.DOCK_NUM || 'Unassigned') === d); let count = dItems.length;
+                    let savedInfo = JSON.parse(localStorage.getItem('gnc_dock_team_' + d) || '{"checker":"","inspector":"","mistake":"","status":"Loading"}');
+                    let statusColor = "text-blue-600 bg-blue-50";
+                    if(savedInfo.status.includes('Missing')) statusColor = "text-red-600 bg-red-50"; else if(savedInfo.status === 'Palletize') statusColor = "text-purple-600 bg-purple-50"; else if(savedInfo.status === 'Complete') statusColor = "text-green-600 bg-green-50";
+                    let hasCoUt = dItems.some(i => { let state = String(i.CONSIGNEESTATE || i.STATE || "").toUpperCase().trim(); let city = String(i.CONSIGNEECITY || "").toUpperCase().trim(); return state === "CO" || state === "UT" || state === "COLORADO" || state === "UTAH" || city.includes(" CO") || city.includes(" UT") || city.endsWith("CO") || city.endsWith("UT"); });
+                    let borderCls = hasCoUt ? "border-red-500" : "border-[#007a4d]"; let bgCls = hasCoUt ? "bg-red-50" : "bg-green-50"; let textCls = hasCoUt ? "text-red-700" : "text-[#007a4d]";
+                    return `<div class="bg-white border-2 ${borderCls} rounded-xl shadow-sm mb-4 overflow-hidden"><div class="p-4 flex justify-between items-center cursor-pointer active:${bgCls} transition-colors" onclick="selectDock('${esc(d)}')"><div class="flex items-center gap-3"><div class="${bgCls} p-2 rounded-lg"><i class="ph-fill ph-truck text-2xl ${textCls}"></i></div><div><div class="font-black text-lg ${textCls} leading-tight">Dock ${d}</div><div class="text-[10px] font-bold text-gray-500 uppercase mt-0.5">${count} Items</div></div></div><i class="ph-bold ph-caret-right text-gray-300 text-xl"></i></div><div class="bg-gray-50 p-3 border-t border-gray-100"><div class="flex justify-between items-center mb-2"><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Dock Status</span><span class="text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider ${statusColor}">${savedInfo.status}</span></div><div class="grid grid-cols-3 gap-2 mb-3"><div class="bg-white p-2 rounded border border-gray-200 text-center"><div class="text-[8px] font-bold text-gray-400 uppercase mb-0.5">Checker</div><div class="text-xs font-bold text-gray-700 truncate">${savedInfo.checker || '-'}</div></div><div class="bg-white p-2 rounded border border-gray-200 text-center"><div class="text-[8px] font-bold text-gray-400 uppercase mb-0.5">Inspector</div><div class="text-xs font-bold text-gray-700 truncate">${savedInfo.inspector || '-'}</div></div><div class="bg-white p-2 rounded border border-gray-200 text-center"><div class="text-[8px] font-bold text-gray-400 uppercase mb-0.5">Mistake Guy</div><div class="text-xs font-bold text-gray-700 truncate">${savedInfo.mistake || '-'}</div></div></div><button class="w-full bg-white border border-gray-200 text-gray-600 hover:text-[#007a4d] hover:border-[#007a4d] font-bold py-2 rounded-lg text-xs shadow-sm transition-colors" onclick="openDockInfoModal('${esc(d)}')"><i class="ph-bold ph-pencil-simple mr-1"></i> Edit Team & Status</button></div></div>`;
+                }).join('');
+            } else if (dockViewLevel === 1) {
+                crumb.innerText = `Dock: ${selectedDockNum}`;
+                let dItems = items.filter(i => (i.DOCK_NUM || 'Unassigned') === selectedDockNum);
+                dItems.sort((a,b) => { let stopA = parseFloat(a.STOPNUMBER); if(isNaN(stopA)) stopA = 9999; let stopB = parseFloat(b.STOPNUMBER); if(isNaN(stopB)) stopB = 9999; if(stopA !== stopB) return stopA - stopB; return String(a.CONTSIZE || "").localeCompare(String(b.CONTSIZE || "")); });
+                let currentStop = null; let html = `<div class="back-btn" onclick="dockViewLevel=0; renderDocks()"><i class="ph-bold ph-arrow-left"></i> Back to Docks</div>`;
+                dItems.forEach(item => {
+                    let stopNum = item.STOPNUMBER || 'Unassigned';
+                    if (stopNum !== currentStop) {
+                        currentStop = stopNum; let rep = item.SALESREPNAME || item.SALESREPID || 'Unknown Rep'; let cust = item.CUSTOMERNAME || 'Unknown Customer'; let cons = item.CONSIGNEENAME || item.CONSIGNEE || ''; let state = item.CONSIGNEESTATE || item.STATE || 'N/A';
+                        html += `<div class="bg-gray-800 text-white rounded-xl shadow-md mb-3 p-4 mt-6 border-l-4 border-[#007a4d]"><div class="flex justify-between items-center mb-2 border-b border-gray-600 pb-2"><div class="font-black text-xl text-green-400 tracking-wider">STOP ${stopNum}</div><div class="text-[10px] font-bold bg-gray-700 px-2 py-1 rounded text-gray-300 uppercase"><i class="ph-bold ph-user mr-1"></i>${rep}</div></div><div class="font-bold text-[15px] leading-tight mb-0.5">${cust}</div>${cons && cons !== cust ? `<div class="text-[12px] text-gray-300 font-semibold mb-2 flex items-center gap-1"><i class="ph-bold ph-arrow-bend-down-right"></i> ${cons}</div>` : '<div class="mb-2"></div>'}<div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1"><i class="ph-bold ph-map-pin"></i> State: <span class="text-gray-200">${state}</span></div></div>`;
+                    }
+                    html += generateCard(item, 'docks', 'status-orange');
+                });
                 container.innerHTML = html;
-            } else if(driveViewLevel === 2) {
-                crumb.innerText = `${selectedDriveName} / ${selectedDriveSize}`;
-                let finalItems = searchFilteredItems.filter(i => i.COMMONNAME === selectedDriveName && i.CONTSIZE === selectedDriveSize);
-                finalItems.sort((a,b) => { let priA = parseFloat(a.PRIORITY); let priB = parseFloat(b.PRIORITY); if(isNaN(priA)) priA = Infinity; if(isNaN(priB)) priB = Infinity; return priA - priB; });
-                container.innerHTML = `<div class="back-btn" onclick="backToDriveSizes()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>` + finalItems.map(i => generateCard(i, 'drive', 'status-blue')).join('');
             }
         }
-
-        function toggleDriveSeason(s) {
-            if(s === 'ALL'){ driveSelectedSeasons.clear(); driveSelectedSeasons.add('ALL'); } else { driveSelectedSeasons.delete('ALL'); if(driveSelectedSeasons.has(s)){ driveSelectedSeasons.delete(s); if(driveSelectedSeasons.size === 0) driveSelectedSeasons.add('ALL'); } else { driveSelectedSeasons.add(s); } }
-            driveViewLevel = 0; selectedDriveName = null; selectedDriveSize = null; renderDrive();
-        }
-
-        function renderTeamSelector() {
-            let uSet = new Set(); fullInventory.forEach(i => { if(i.ASSIGNEDTO && !i.DATE_COMPLETED) uSet.add(i.ASSIGNEDTO) });
-            if(uSet.size === 0) { document.getElementById('task-content').innerHTML = `<div class="p-8 text-center text-gray-400">No active tasks for any team member.</div>`; return; }
-            let sorted = Array.from(uSet).sort();
-            let html = `<h2 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Select Team Member</h2>`;
-            sorted.forEach(u => {
-                let userTasks = fullInventory.filter(i => i.ASSIGNEDTO === u && !i.DATE_COMPLETED);
-                let htmlCounts = `<div class="flex gap-2 mt-2">`;
-                ['season','location','endcap','flyer'].forEach(t => { let c = userTasks.filter(i => i.APP_TAB_ASSIGNMENT === t).length; if(c > 0) htmlCounts += `<span class="text-[10px] font-bold px-2 py-1 rounded bg-gray-100 text-gray-600 uppercase">${t}: ${c}</span>`; });
-                htmlCounts += `</div>`;
-                html += `<div class="bg-white border border-gray-200 p-4 rounded-xl shadow-sm mb-3 cursor-pointer active:scale-95 transition-transform" onclick="selectTaskUser('${esc(u)}')"><div class="flex justify-between items-center"><span class="font-black text-xl text-[#007a4d]">${u}</span><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${userTasks.length} Total</span></div>${htmlCounts}</div>`;
-            });
-            document.getElementById('task-tabs-container').classList.add('hidden');
-            document.getElementById('task-crumb').innerText = "Team Tasks Overview";
-            document.getElementById('task-content').innerHTML = html;
-        }
-
-        function selectTaskUser(u) { taskViewTargetUser = u; document.getElementById('task-tabs-container').classList.remove('hidden'); renderTasks(); }
-
-        function renderTasks() {
-            let targetUser = safeRole === 'ADMIN' ? taskViewTargetUser : currentUser;
-            if(!targetUser) return;
-            const container = document.getElementById('task-content'); const crumb = document.getElementById('task-crumb');
-            crumb.innerHTML = safeRole === 'ADMIN' ? `<span class="cursor-pointer text-gray-400 hover:text-gray-800" onclick="taskViewTargetUser=null; renderTeamSelector()"><i class="ph-bold ph-arrow-left"></i> Back to Team</span> &bull; <span class="text-[#007a4d]">${targetUser}'s Tasks</span>` : "My Tasks";
-            
-            let userItems = fullInventory.filter(i => i.ASSIGNEDTO === targetUser && !i.DATE_COMPLETED);
-            let tabItems = userItems.filter(i => i.APP_TAB_ASSIGNMENT === activeTaskTab);
-            
-            if(tabItems.length === 0){ container.innerHTML = `<div class="p-8 text-center text-gray-400">No active ${activeTaskTab} tasks.</div>`; return; }
-            
-            if(activeTaskTab === 'endcap') {
-                if(taskViewLevel === 0) {
-                    let folders = [...new Set(tabItems.map(i => i.END_CAP_FOLDER || 'Unassigned'))].sort();
-                    container.innerHTML = folders.map(f => {
-                        let count = tabItems.filter(i => (i.END_CAP_FOLDER || 'Unassigned') === f).length;
-                        return `<div class="bg-white border border-yellow-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectedEndCapFolder='${esc(f)}'; taskViewLevel=1; renderTasks()"><div class="flex items-center gap-3"><div class="bg-yellow-50 p-2 rounded-lg"><i class="ph-fill ph-storefront text-2xl text-yellow-500"></i></div><span class="font-bold text-lg text-yellow-800">${f}</span></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${count} Items</span></div>`;
-                    }).join('');
-                } else if(taskViewLevel === 1) {
-                    let fItems = tabItems.filter(i => (i.END_CAP_FOLDER || 'Unassigned') === selectedEndCapFolder);
-                    fItems.sort((a,b) => String(a.COMMONNAME || "").localeCompare(String(b.COMMONNAME || "")));
-                    container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=0; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to End Caps</div>` + fItems.map(i => generateCard(i, 'tasks', 'status-yellow')).join('');
-                }
-            } else if(activeTaskTab === 'flyer') {
-                tabItems.sort((a,b) => String(a.COMMONNAME || "").localeCompare(String(b.COMMONNAME || "")));
-                container.innerHTML = tabItems.map(i => generateCard(i, 'tasks', 'status-indigo')).join('');
-            } else {
-                if(taskViewLevel === 0) {
-                    let blocks = {};
-                    tabItems.forEach(i => { let loc = String(i.LOCATIONCODE || "NoLoc").trim(); let blockAlpha = loc.charAt(0).toUpperCase(); if(!/[A-Z]/.test(blockAlpha)) blockAlpha = "Other"; if(!blocks[blockAlpha]) blocks[blockAlpha] = {count:0}; blocks[blockAlpha].count++; });
-                    let html = Object.keys(blocks).sort().map(b => `<div class="bg-white border border-green-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectedTaskBlock='${esc(b)}'; taskViewLevel=1; renderTasks()"><div class="flex items-center gap-3"><div class="bg-green-100 text-[#007a4d] px-3 py-1.5 rounded-lg font-black text-lg">${b}</div><span class="font-bold text-lg text-gray-700">Block ${b}</span></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${blocks[b].count} Items</span></div>`).join('');
-                    container.innerHTML = html;
-                } else if(taskViewLevel === 1) {
-                    let bItems = tabItems.filter(i => { let loc = String(i.LOCATIONCODE || "NoLoc").trim(); let alpha = loc.charAt(0).toUpperCase(); if(!/[A-Z]/.test(alpha)) alpha = "Other"; return alpha === selectedTaskBlock; });
-                    let locs = [...new Set(bItems.map(i => i.LOCATIONCODE || "NoLoc"))].sort((a,b) => String(a).localeCompare(String(b), undefined, {numeric: true}));
-                    let html = `<div class="back-btn" onclick="taskViewLevel=0; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Blocks</div>`;
-                    html += locs.map(l => { let count = bItems.filter(i => (i.LOCATIONCODE || "NoLoc") === l).length; return `<div class="drill-item" onclick="selectedTaskLoc='${esc(l)}'; taskViewLevel=2; renderTasks()"><span class="font-bold text-lg text-gray-800">${l} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`; }).join('');
-                    container.innerHTML = html;
-                } else if(taskViewLevel === 2) {
-                    let fItems = tabItems.filter(i => (i.LOCATIONCODE || "NoLoc") === selectedTaskLoc);
-                    fItems.sort((a,b) => String(a.COMMONNAME || "").localeCompare(String(b.COMMONNAME || "")));
-                    container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=1; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Locations</div>` + fItems.map(i => generateCard(i, 'tasks', activeTaskTab === 'season' ? 'status-green' : 'status-blue')).join('');
-                }
-            }
-        }
-
-        function renderReview() {
-            const container = document.getElementById('review-content'); const crumb = document.getElementById('review-crumb');
-            if(managerReviewInventory.length === 0){ container.innerHTML = `<div class="p-8 text-center text-gray-400">No items require manager review.</div>`; crumb.innerText = "All Clear"; return; }
-            if(reviewViewLevel === 0){
-                crumb.innerText = "Needs Location Priority Review"; let groups = {};
-                managerReviewInventory.forEach(i => { let code = i.ITEMCODE || "UNKNOWN"; if(!groups[code]) { groups[code] = {code: code, name: i.COMMONNAME || "Unknown", size: i.CONTSIZE || "-", count: 0}; } groups[code].count++; });
-                let sorted = Object.values(groups).sort((a,b) => String(a.name).localeCompare(String(b.name)));
-                let html = sorted.map(g => `<div class="bg-yellow-50 border border-yellow-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectReviewItem('${esc(g.code)}', '${esc(g.name)}', '${esc(g.size)}')"><div class="flex-grow min-w-0 pr-3"><div class="font-bold text-[15px] text-yellow-800 truncate">${g.name}</div><div class="text-xs font-semibold text-yellow-600 mt-1">${g.size} <span class="mx-2 text-yellow-300">|</span> <span class="font-mono text-yellow-700">${g.code}</span></div></div><div class="bg-white px-3 py-1 rounded-lg shadow-sm border border-yellow-100 text-yellow-600 font-bold text-xs whitespace-nowrap">${g.count} Locs</div></div>`).join('');
-                container.innerHTML = html;
-            } else if(reviewViewLevel === 1){
-                crumb.innerText = `${selectedReviewCommonName} / ${selectedReviewContSize}`;
-                let items = managerReviewInventory.filter(i => i.ITEMCODE === selectedReviewItemCode); items.sort((a,b) => String(a.LOCATIONCODE || "").localeCompare(String(b.LOCATIONCODE || ""), undefined, {numeric: true}));
-                container.innerHTML = `<div class="back-btn" onclick="resetReviewView()"><i class="ph-bold ph-arrow-left"></i> Back to List</div>` + items.map(i => generateCard(i, 'review', 'status-yellow')).join('');
-            }
-        }
-        
-        let autoSaveTimer = null;
-
-        function saveData(isComplete = false, prefix, isSilentAutoSave = false, specificItem = null) {
-            if (autoSaveTimer) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
-            let itemToSave = specificItem || activeItem; if (!itemToSave) return;
-            let btnComp = document.getElementById(prefix + 'btn-save-complete'); 
-            let isCurrentView = (activeItem && activeItem.UNIQUE_ID === itemToSave.UNIQUE_ID);
-            
-            if (isCurrentView && isComplete) { if(btnComp) btnComp.innerText = "SAVING..."; }
-            
-            const executeSave = () => {
-                let wasAlreadyComplete = itemToSave.REQ_STATUS === 'Complete';
-
-                if (!specificItem) {
-                    let avEl = document.getElementById(prefix + 'av-note'); if (avEl) { itemToSave.AV_NOTE = avEl.value.toUpperCase(); }
-                    let descEl = document.getElementById(prefix + 'sales-desc'); if (descEl) { let textBoxVal = descEl.value.toUpperCase(); itemToSave.SALES_NOTE = textBoxVal; if (lastView === 'tasks') itemToSave._NEW_SALES_NOTE = textBoxVal; }
-
-                    if (isComplete && isCurrentView && itemToSave.APP_TAB_ASSIGNMENT === 'season') {
-                        const noteVal = (itemToSave.SALES_NOTE || "").trim();
-                        if (!noteVal) { showToast("Required", "A Sales Description is required to complete this Season task.", true); if (btnComp) btnComp.innerText = "MARK DONE"; return; }
-                    }
-
-                    if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-') { 
-                        let matchEl = document.getElementById(prefix + 'match'); if(matchEl) itemToSave.MATCH = matchEl.value; 
-                        let specEl = document.getElementById(prefix + 'spec'); if(specEl) itemToSave.SPEC = specEl.value; 
-                        let calEl = document.getElementById(prefix + 'caliper'); if(calEl) itemToSave.CALIPER = calEl.value; 
-                        let pickEl = document.getElementById(prefix + 'pick'); if(pickEl) itemToSave.PICK = pickEl.value; 
-                    } else if (prefix === 'req-') { 
-                        itemToSave.REQ_MATCH = document.getElementById('req-match').value; itemToSave.REQ_SPEC = document.getElementById('req-spec').value; itemToSave.REQ_CALIPER = document.getElementById('req-caliper').value; itemToSave.REQ_PICK = document.getElementById('req-pick').value; itemToSave.REQ_COMMENTS = document.getElementById('req-comments').value; let reserveEl = document.getElementById('req-reserve'); if (reserveEl) itemToSave.REQ_RESERVE = reserveEl.value;
-                    } else if (prefix === 'dock-') { 
-                        itemToSave.DOCK_SPEC = document.getElementById('dock-spec').value; itemToSave.DOCK_CALIPER = document.getElementById('dock-caliper').value; itemToSave.DOCK_NOTE = document.getElementById('dock-sales-desc').value.toUpperCase(); 
-                    } else if (prefix === 'flyer-') {
-                        itemToSave.FLYER_CAT = document.getElementById('flyer-cat').value; itemToSave.FLYER_TITLE = document.getElementById('flyer-title').value; itemToSave.FLYER_INST = document.getElementById('flyer-inst').value; itemToSave.FLYER_ASSIGNED = document.getElementById('flyer-assigned').value; itemToSave.FLYER_NOTES = document.getElementById('flyer-notes').value;
-                    }
-                }
-                
-                const setVal = (val) => (val === "" || val === undefined) ? null : val;
-                const payload = {};
-                
-                if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-') { 
-                    payload.match = (itemToSave.MATCH === "" || itemToSave.MATCH == null) ? null : parseFloat(itemToSave.MATCH); 
-                    payload.spec = setVal(itemToSave.SPEC); payload.caliper = setVal(itemToSave.CALIPER); payload.pic_note = setVal(itemToSave.PICK); 
-                    payload.sales_note = setVal(itemToSave.SALES_NOTE || itemToSave._NEW_SALES_NOTE); payload.av_note = setVal(itemToSave.AV_NOTE);
-                } else if (prefix === 'req-') { 
-                    payload.req_match = (itemToSave.REQ_MATCH === "" || itemToSave.REQ_MATCH == null) ? null : parseFloat(itemToSave.REQ_MATCH); 
-                    payload.req_spec = setVal(itemToSave.REQ_SPEC); payload.req_caliper = setVal(itemToSave.REQ_CALIPER); payload.req_pic_note = setVal(itemToSave.REQ_PICK); 
-                    payload.req_sales_note = setVal(itemToSave.REQ_SALES_NOTE); payload.req_comments = setVal(itemToSave.REQ_COMMENTS); 
-                    payload.req_reserve = setVal(itemToSave.REQ_RESERVE); payload.av_note = setVal(itemToSave.AV_NOTE);
-                    if (isComplete) { payload.req_status = 'Complete'; itemToSave.REQ_STATUS = 'Complete'; }
-                } else if (prefix === 'dock-') { 
-                    payload.dock_spec = setVal(itemToSave.DOCK_SPEC); payload.dock_caliper = setVal(itemToSave.DOCK_CALIPER); payload.dock_note = setVal(itemToSave.DOCK_NOTE); 
-                } else if (prefix === 'flyer-') {
-                    payload.flyer_cat = setVal(itemToSave.FLYER_CAT); payload.flyer_title = setVal(itemToSave.FLYER_TITLE); payload.flyer_inst = setVal(itemToSave.FLYER_INST); 
-                    payload.flyer_assigned = setVal(itemToSave.FLYER_ASSIGNED); payload.flyer_notes = setVal(itemToSave.FLYER_NOTES);
-                }
-
-                if (isComplete && (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-')) {
-                    let matchVal = parseFloat(itemToSave.MATCH);
-                    if (!isNaN(matchVal) && matchVal >= 0) {
-                        let ptr = parseInt(String(itemToSave.PTRAVAILABLE).replace(/,/g, '')) || 0;
-                        itemToSave.INITIAL_PTR = ptr; itemToSave.LOC_MATCH_QTY = Math.round(ptr * (matchVal / 100));
-                        payload.initial_ptr = itemToSave.INITIAL_PTR; payload.loc_match_qty = itemToSave.LOC_MATCH_QTY;
-                    }
-                }
-
-                backupLocalItem(itemToSave);
-
-                if (itemToSave.SAVED_PHOTO_LINK) payload.photo_link = itemToSave.SAVED_PHOTO_LINK; if (itemToSave.SAVED_PHOTO_NAME) payload.photo_name = itemToSave.SAVED_PHOTO_NAME;
-                if (itemToSave.REQ_PHOTO_LINK) payload.req_photo_link = itemToSave.REQ_PHOTO_LINK; if (itemToSave.REQ_PHOTO_NAME) payload.req_photo_name = itemToSave.REQ_PHOTO_NAME;
-                if (itemToSave.DOCK_PHOTO_LINK) payload.dock_photo_link = itemToSave.DOCK_PHOTO_LINK; if (itemToSave.DOCK_PHOTO_NAME) payload.dock_photo_name = itemToSave.DOCK_PHOTO_NAME;
-                if (itemToSave.FLYER_PHOTO_LINK) payload.flyer_photo_link = itemToSave.FLYER_PHOTO_LINK; if (itemToSave.FLYER_PHOTO_NAME) payload.flyer_photo_name = itemToSave.FLYER_PHOTO_NAME;
-
-                if (isComplete) { 
-                    payload.date_completed = new Date().toISOString(); 
-                    if (prefix === 'flyer-') payload.flyer_completed = payload.date_completed;
-                    
-                    let soPayload = { unique_id: itemToSave.UNIQUE_ID, itemcode: itemToSave.ITEMCODE || "", commonname: itemToSave.COMMONNAME || "", contsize: itemToSave.CONTSIZE || "", locationcode: itemToSave.LOCATIONCODE || "", lotcode: itemToSave.LOTCODE || "", ptravailable: String(itemToSave.PTRAVAILABLE || ""), priority: String(itemToSave.PRIORITY || ""), sales_note: payload.sales_note || itemToSave.SALES_NOTE || itemToSave._NEW_SALES_NOTE || "", photo_link: itemToSave.NA_PHOTO_LINK || itemToSave.SAVED_PHOTO_LINK || "", completed_by: currentUser, completed_at: payload.date_completed };
-                    if (prefix !== 'flyer-' && prefix !== 'req-') {
-                        supabaseFetch('v2_sales_office', 'POST', soPayload).catch(e => console.log(e));
-                        let cloneSO = { ...soPayload };
-                        for(let key in soPayload) { cloneSO[key.toUpperCase()] = soPayload[key]; }
-                        cloneSO.DOM_ID = 'so_' + cloneSO.UNIQUE_ID; cloneSO.AV_NOTE = itemToSave.AV_NOTE; cloneSO.SAVED_PHOTO_LINK = soPayload.photo_link; 
-                        let existingIdx = salesOfficeInventory.findIndex(s => s.UNIQUE_ID === cloneSO.UNIQUE_ID);
-                        if (existingIdx > -1) salesOfficeInventory[existingIdx] = cloneSO; else salesOfficeInventory.push(cloneSO);
-                    }
-                }
-
-                const targetTable = (prefix === 'req-') ? 'v2_active_request' : (itemToSave.SOURCE_TABLE || 'v2_master_inventory');
-
-                supabaseFetch(targetTable, 'PATCH', payload, `unique_id=eq.${encodeURIComponent(itemToSave.UNIQUE_ID)}`).then(data => {
-                    if (isCurrentView && isComplete) { if(btnComp) btnComp.innerText = "MARK DONE"; }
-                    if (!isSilentAutoSave && isCurrentView && isComplete) showToast("Success", "Task Completed!"); 
-                    if (isComplete && isCurrentView) { itemToSave.DATE_COMPLETED = payload.date_completed; goBackFromDetail(); reRenderCurrentView(); } else if (isComplete && !isCurrentView) { itemToSave.DATE_COMPLETED = payload.date_completed; }
-
-                    if (prefix === 'req-' && isComplete && !wasAlreadyComplete) {
-                        let folderItems = requestsInventory.filter(i => i.REQUEST_FOLDER === itemToSave.REQUEST_FOLDER);
-                        let allComplete = folderItems.every(i => i.REQ_STATUS === 'Complete' || i.UNIQUE_ID === itemToSave.UNIQUE_ID);
-                        if (allComplete) { sendEmailNotification('request_complete', itemToSave.REQUEST_FOLDER, itemToSave.REQUESTED_BY, itemToSave.REQ_CUSTOMER, folderItems.length); }
-                    }
-                }).catch(err => { if (isCurrentView && isComplete) { if(btnComp) btnComp.innerText = "MARK DONE"; if (!isSilentAutoSave) showToast("Network Error", "Could not reach database.", true); } });
-            };
-            if (isSilentAutoSave && !isComplete && !specificItem) { autoSaveTimer = setTimeout(() => { executeSave(); }, 1000); } else { executeSave(); }
-        }
-
-        function backupLocalItem(item) {
-            if (!item) return;
-            let pendingEdits = JSON.parse(localStorage.getItem('gnc_pending_edits') || '{}');
-            pendingEdits[item.UNIQUE_ID] = { timestamp: new Date().getTime(), data: item };
-            localStorage.setItem('gnc_pending_edits', JSON.stringify(pendingEdits));
-        }
-
-        function applyLocalEdits() {
-            let pendingEdits = JSON.parse(localStorage.getItem('gnc_pending_edits') || '{}');
-            let now = new Date().getTime(); let changed = false;
-            for (let uid in pendingEdits) {
-                if (now - pendingEdits[uid].timestamp > 900000) { delete pendingEdits[uid]; changed = true; continue; }
-                let item = fullInventory.find(i => i.UNIQUE_ID === uid) || lowStockInventory.find(i => i.UNIQUE_ID === uid) || reservesInventory.find(i => i.UNIQUE_ID === uid) || requestsInventory.find(i => i.UNIQUE_ID === uid) || managerReviewInventory.find(i => i.UNIQUE_ID === uid) || socInventory.find(i => i.UNIQUE_ID === uid);
-                if (item) { Object.assign(item, pendingEdits[uid].data); }
-            }
-            if (changed) { localStorage.setItem('gnc_pending_edits', JSON.stringify(pendingEdits)); }
-        }
-
-        function filterAvNotes(prefix) {
-            if (!activeItem) return;
-            const inputEl = document.getElementById(prefix + 'av-note'); if (!inputEl) return;
-            const inputVal = inputEl.value.toUpperCase();
-            const list = document.getElementById(prefix + 'av-dropdown-list');
-            let matchingNotes = avNotesDb.filter(n => String(n.COMMONNAME).toUpperCase() === String(activeItem.COMMONNAME).toUpperCase()).map(n => n.SALESNOTE || n.SALES_NOTE);
-            if (inputVal) { matchingNotes = matchingNotes.filter(n => String(n).toUpperCase().includes(inputVal)); }
-            matchingNotes = [...new Set(matchingNotes)];
-            if (matchingNotes.length === 0) { list.classList.add('hidden'); return; }
-            list.innerHTML = matchingNotes.map(n => `<div class="p-3 border-b border-gray-100 text-sm font-bold text-blue-800 cursor-pointer hover:bg-blue-50 active:bg-blue-100" onclick="selectAvNote('${esc(n)}', '${prefix}')">${n}</div>`).join('');
-            list.classList.remove('hidden');
-        }
-
-        function selectAvNote(note, prefix) { document.getElementById(prefix + 'av-note').value = note; document.getElementById(prefix + 'av-dropdown-list').classList.add('hidden'); saveData(false, prefix, true); }
 
         function calculateMatchQty(prefix) { 
             if(!activeItem)return; 
-            let matchEl=document.getElementById(prefix+'match'); let displayEl=document.getElementById(prefix+'match-display'); let valEl=document.getElementById(prefix+'match-qty-val'); 
+            let matchEl=document.getElementById(prefix+'match'); 
+            let displayEl=document.getElementById(prefix+'match-display'); 
+            let valEl=document.getElementById(prefix+'match-qty-val'); 
             if(matchEl&&matchEl.value!==""){ 
-                let matchVal=parseFloat(matchEl.value); let ptr=parseInt(String(activeItem.PTRAVAILABLE).replace(/,/g,''))||0; let qty=Math.round(ptr*(matchVal/100)); 
-                if(valEl)valEl.innerText=qty; if(displayEl)displayEl.classList.remove('hidden'); 
-            }else{ if(displayEl)displayEl.classList.add('hidden'); } 
+                let matchVal=parseFloat(matchEl.value); 
+                let ptr=parseInt(String(activeItem.PTRAVAILABLE).replace(/,/g,''))||0; 
+                let qty=Math.round(ptr*(matchVal/100)); 
+                if(valEl)valEl.innerText=qty; 
+                if(displayEl)displayEl.classList.remove('hidden'); 
+            }else{ 
+                if(displayEl)displayEl.classList.add('hidden'); 
+            } 
         }
 
         function startPress(e,domId) { 
-            if(isMultiSelectMode)return; isLongPress=false; 
-            if(e.type==='touchstart'){ touchStartX=e.touches[0].clientX; touchStartY=e.touches[0].clientY; } 
+            if(isMultiSelectMode)return; 
+            isLongPress=false; 
+            if(e.type==='touchstart'){ 
+                touchStartX=e.touches[0].clientX; 
+                touchStartY=e.touches[0].clientY; 
+            } 
             if(pressTimer)clearTimeout(pressTimer); 
-            pressTimer=setTimeout(()=>{ isLongPress=true; if(navigator.vibrate)navigator.vibrate(50); enableMultiSelect(domId); },1000); 
+            pressTimer=setTimeout(()=>{ 
+                isLongPress=true; 
+                if(navigator.vibrate)navigator.vibrate(50); 
+                enableMultiSelect(domId); 
+            },1000); 
         }
-        function checkMove(e) { if(e.type==='touchmove'){ let dx=Math.abs(e.touches[0].clientX-touchStartX); let dy=Math.abs(e.touches[0].clientY-touchStartY); if(dx>20||dy>20)cancelPress(); } }
+
+        function checkMove(e) { 
+            if(e.type==='touchmove'){ 
+                let dx=Math.abs(e.touches[0].clientX-touchStartX); 
+                let dy=Math.abs(e.touches[0].clientY-touchStartY); 
+                if(dx>20||dy>20)cancelPress(); 
+            } 
+        }
+
         function cancelPress() { if(pressTimer)clearTimeout(pressTimer); }
 
         function enableMultiSelect(firstDomId) { 
-            isMultiSelectMode=true; document.body.classList.add('multi-select-mode'); selectedItems.add(firstDomId); updateGlobalActionBar(); 
-            const rows=document.querySelectorAll('.item-row'); rows.forEach(row=>{ const domId=row.getAttribute('data-dom-id'); const cb=row.querySelector('.card-checkbox'); if(cb)cb.checked=selectedItems.has(domId); }); 
+            isMultiSelectMode=true; 
+            document.body.classList.add('multi-select-mode'); 
+            selectedItems.add(firstDomId); 
+            updateGlobalActionBar(); 
+            const rows=document.querySelectorAll('.item-row'); 
+            rows.forEach(row=>{
+                const domId=row.getAttribute('data-dom-id');
+                const cb=row.querySelector('.card-checkbox');
+                if(cb)cb.checked=selectedItems.has(domId);
+            }); 
         }
-        function clearSelection() { isMultiSelectMode=false; document.body.classList.remove('multi-select-mode'); selectedItems.clear(); updateGlobalActionBar(); document.querySelectorAll('.card-checkbox').forEach(cb=>{cb.checked=false;}); }
-        function toggleGlobalItem(domId,isChecked) { if(isChecked)selectedItems.add(domId); else selectedItems.delete(domId); updateGlobalActionBar(); }
+
+        function clearSelection() { 
+            isMultiSelectMode=false; 
+            document.body.classList.remove('multi-select-mode'); 
+            selectedItems.clear(); 
+            updateGlobalActionBar(); 
+            document.querySelectorAll('.card-checkbox').forEach(cb=>{cb.checked=false;}); 
+        }
+
+        function toggleGlobalItem(domId,isChecked) { 
+            if(isChecked)selectedItems.add(domId); 
+            else selectedItems.delete(domId); 
+            updateGlobalActionBar(); 
+        }
 
         function applyCameraPermissions(sourceView) {
-            const camSsn = document.getElementById('camera-btn-ssn'); const camLsn = document.getElementById('camera-btn-lsn'); const camNa = document.getElementById('camera-btn-na'); const camReq = document.getElementById('camera-btn-req');
-            if(camSsn) camSsn.style.display = 'flex'; if(camLsn) camLsn.style.display = 'flex'; if(camNa) camNa.style.display = 'flex'; if(camReq) camReq.style.display = 'flex';
+            const camSsn = document.getElementById('camera-btn-ssn');
+            const camLsn = document.getElementById('camera-btn-lsn');
+            const camNa = document.getElementById('camera-btn-na');
+            const camReq = document.getElementById('camera-btn-req');
+
+            if(camSsn) camSsn.style.display = 'flex';
+            if(camLsn) camLsn.style.display = 'flex';
+            if(camNa) camNa.style.display = 'flex';
+            if(camReq) camReq.style.display = 'flex';
+
             if (sourceView === 'tasks') {
-                if (activeTaskTab === 'season') { if(camLsn) camLsn.style.display = 'none'; if(camNa) camNa.style.display = 'none'; if(camReq) camReq.style.display = 'none'; } 
-                else if (activeTaskTab === 'location') { if(camSsn) camSsn.style.display = 'none'; if(camNa) camNa.style.display = 'none'; if(camReq) camReq.style.display = 'none'; } 
-                else { if(camSsn) camSsn.style.display = 'none'; if(camLsn) camLsn.style.display = 'none'; if(camNa) camNa.style.display = 'none'; if(camReq) camReq.style.display = 'none'; }
+                if (activeTaskTab === 'season') {
+                    if(camLsn) camLsn.style.display = 'none';
+                    if(camNa) camNa.style.display = 'none';
+                    if(camReq) camReq.style.display = 'none';
+                } else if (activeTaskTab === 'location') {
+                    if(camSsn) camSsn.style.display = 'none';
+                    if(camNa) camNa.style.display = 'none';
+                    if(camReq) camReq.style.display = 'none';
+                } else {
+                    if(camSsn) camSsn.style.display = 'none';
+                    if(camLsn) camLsn.style.display = 'none';
+                    if(camNa) camNa.style.display = 'none';
+                    if(camReq) camReq.style.display = 'none';
+                }
             }
         }
-        
-        function handleCardClick(domId,uniqueId,sourceView) {
+            function handleCardClick(domId,uniqueId,sourceView) {
             if(isLongPress){ isLongPress=false; return; }
-            if(isMultiSelectMode){ const row=document.querySelector(`[data-dom-id="${domId}"]`); if(row){ const cb=row.querySelector('.card-checkbox'); if(cb){ cb.checked=!cb.checked; toggleGlobalItem(domId,cb.checked); } } 
+            if(isMultiSelectMode){ 
+                const row=document.querySelector(`[data-dom-id="${domId}"]`); 
+                if(row){ 
+                    const cb=row.querySelector('.card-checkbox'); 
+                    if(cb){ cb.checked=!cb.checked; toggleGlobalItem(domId,cb.checked); } 
+                } 
             }else{ 
                 if(safeRole==='SALESREP'&&(sourceView==='drive'||sourceView==='av')){ 
                     let item=fullInventory.find(i=>i.UNIQUE_ID===uniqueId)||lowStockInventory.find(i=>i.UNIQUE_ID===uniqueId)||reservesInventory.find(i=>i.UNIQUE_ID===uniqueId); 
-                    if(item){ let pLink=item.SAVED_PHOTO_LINK||item['PHOTO_LINK']||item.PHOTOLINK||""; if(pLink){ openPhotoModal(pLink, `${esc(item.COMMONNAME)} (${esc(item.CONTSIZE)}) - Loc: ${item.LOCATIONCODE||'N/A'}`); }else{ showToast("No Photo","There is no photo on file for this item.",true); } } 
-                }else{ applyCameraPermissions(sourceView); openDetail(uniqueId,sourceView); }
+                    if(item){ 
+                        let pLink=item.SAVED_PHOTO_LINK||item['PHOTO_LINK']||item.PHOTOLINK||""; 
+                        if(pLink){ 
+                            openPhotoModal(pLink, `${esc(item.COMMONNAME)} (${esc(item.CONTSIZE)}) - Loc: ${item.LOCATIONCODE||'N/A'}`); 
+                        }else{ 
+                            showToast("No Photo","There is no photo on file for this item.",true); 
+                        } 
+                    } 
+                }else{ 
+                    applyCameraPermissions(sourceView); 
+                    openDetail(uniqueId,sourceView); 
+                }
             }
         }
 
         function openDetail(uid, sourceView) {
-            lastView = sourceView; activeItem = fullInventory.find(i=>i.UNIQUE_ID===uid) || lowStockInventory.find(i=>i.UNIQUE_ID===uid) || reservesInventory.find(i=>i.UNIQUE_ID===uid) || requestsInventory.find(i=>i.UNIQUE_ID===uid) || socInventory.find(i=>i.UNIQUE_ID===uid);
+            lastView = sourceView;
+            activeItem = fullInventory.find(i=>i.UNIQUE_ID===uid) || lowStockInventory.find(i=>i.UNIQUE_ID===uid) || reservesInventory.find(i=>i.UNIQUE_ID===uid) || requestsInventory.find(i=>i.UNIQUE_ID===uid) || socInventory.find(i=>i.UNIQUE_ID===uid);
             if(!activeItem) return;
-            ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-docks','view-request','view-reserves','view-av', 'view-hours'].forEach(id=>{ const el = document.getElementById(id); if(el) el.classList.add('hidden'); });
+
+            ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-docks','view-request','view-reserves','view-av', 'view-hours'].forEach(id=>{
+                const el = document.getElementById(id);
+                if(el) el.classList.add('hidden');
+            });
             document.getElementById('view-detail').classList.remove('hidden');
-            document.getElementById('det-common').innerText = activeItem.COMMONNAME || '--'; document.getElementById('det-size').innerText = activeItem.CONTSIZE || '--'; document.getElementById('det-extra-info').innerHTML = `Loc: ${activeItem.LOCATIONCODE||'No Loc'} &bull; PTR: ${activeItem.PTRAVAILABLE||0} &bull; s_LTS: ${activeItem.S_LTS||0}`;
-            document.getElementById('ov-loc').innerText = activeItem.LOCATIONCODE || '--'; document.getElementById('ov-avail').innerText = activeItem.PTRAVAILABLE || '0'; document.getElementById('ov-item').innerText = activeItem.ITEMCODE || '--'; document.getElementById('ov-lot').innerText = activeItem.LOTCODE || '--'; document.getElementById('ov-qual').innerText = activeItem.QUALITYCODE || '--'; document.getElementById('ov-prior').innerText = activeItem.PRIORITY || '--'; document.getElementById('ov-tag').innerText = activeItem.FIELDTAGCOLOR || '--'; document.getElementById('ov-season').innerText = activeItem.SEASONSUPPLY || '0';
-            const detTabsContainer = document.getElementById('det-tabs-container'); if (detTabsContainer) { detTabsContainer.classList.remove('hidden'); detTabsContainer.querySelectorAll('.detail-tab').forEach(el => el.classList.add('hidden')); }
+
+            document.getElementById('det-common').innerText = activeItem.COMMONNAME || '--';
+            document.getElementById('det-size').innerText = activeItem.CONTSIZE || '--';
+            document.getElementById('det-extra-info').innerHTML = `Loc: ${activeItem.LOCATIONCODE||'No Loc'} &bull; PTR: ${activeItem.PTRAVAILABLE||0} &bull; s_LTS: ${activeItem.S_LTS||0}`;
+
+            document.getElementById('ov-loc').innerText = activeItem.LOCATIONCODE || '--';
+            document.getElementById('ov-avail').innerText = activeItem.PTRAVAILABLE || '0';
+            document.getElementById('ov-item').innerText = activeItem.ITEMCODE || '--';
+            document.getElementById('ov-lot').innerText = activeItem.LOTCODE || '--';
+            document.getElementById('ov-qual').innerText = activeItem.QUALITYCODE || '--';
+            document.getElementById('ov-prior').innerText = activeItem.PRIORITY || '--';
+            document.getElementById('ov-tag').innerText = activeItem.FIELDTAGCOLOR || '--';
+            document.getElementById('ov-season').innerText = activeItem.SEASONSUPPLY || '0';
+
+            const detTabsContainer = document.getElementById('det-tabs-container');
+            if (detTabsContainer) {
+                detTabsContainer.classList.remove('hidden');
+                detTabsContainer.querySelectorAll('.detail-tab').forEach(el => el.classList.add('hidden'));
+            }
+
             document.getElementById('dtab-overview').classList.remove('hidden');
-            if (sourceView === 'drive' || sourceView === 'av' || sourceView === 'low-stock') { document.getElementById('dtab-season').classList.remove('hidden'); document.getElementById('dtab-location').classList.remove('hidden'); document.getElementById('dtab-request').classList.remove('hidden'); document.getElementById('dtab-notes').classList.remove('hidden'); } else if (sourceView === 'tasks') { let t = document.getElementById('dtab-' + activeTaskTab); if(t) t.classList.remove('hidden'); } else if (sourceView === 'docks') { document.getElementById('dtab-docks').classList.remove('hidden'); } else if (sourceView === 'request') { document.getElementById('dtab-request').classList.remove('hidden'); }
-            const globalAvContainer = document.getElementById('global-av-container'); if (globalAvContainer) globalAvContainer.classList.remove('hidden'); const globalAvNote = document.getElementById('global-av-note'); if (globalAvNote) globalAvNote.value = activeItem.AV_NOTE || "";
+            if (sourceView === 'drive' || sourceView === 'av' || sourceView === 'low-stock') {
+                document.getElementById('dtab-season').classList.remove('hidden');
+                document.getElementById('dtab-location').classList.remove('hidden');
+                document.getElementById('dtab-request').classList.remove('hidden');
+                document.getElementById('dtab-notes').classList.remove('hidden');
+            } else if (sourceView === 'tasks') {
+                let t = document.getElementById('dtab-' + activeTaskTab);
+                if(t) t.classList.remove('hidden');
+            } else if (sourceView === 'docks') {
+                document.getElementById('dtab-docks').classList.remove('hidden');
+            } else if (sourceView === 'request') {
+                document.getElementById('dtab-request').classList.remove('hidden');
+            }
+
+            const globalAvContainer = document.getElementById('global-av-container');
+            if (globalAvContainer) globalAvContainer.classList.remove('hidden');
+            const globalAvNote = document.getElementById('global-av-note');
+            if (globalAvNote) globalAvNote.value = activeItem.AV_NOTE || "";
+
             ['ssn-', 'lsn-', 'na-', 'req-', 'dock-', 'flyer-'].forEach(p => {
-                let match = document.getElementById(p + 'match'); let spec = document.getElementById(p + 'spec'); let caliper = document.getElementById(p + 'caliper'); let pick = document.getElementById(p + 'pick'); let desc = document.getElementById(p + 'sales-desc'); let avNote = document.getElementById(p + 'av-note');
+                let match = document.getElementById(p + 'match');
+                let spec = document.getElementById(p + 'spec');
+                let caliper = document.getElementById(p + 'caliper');
+                let pick = document.getElementById(p + 'pick');
+                let desc = document.getElementById(p + 'sales-desc');
+                let avNote = document.getElementById(p + 'av-note');
+
                 if(match) match.value = p === 'req-' ? (activeItem.REQ_MATCH || "") : (activeItem.MATCH || "");
                 if(spec) spec.value = p === 'req-' ? (activeItem.REQ_SPEC || "") : (p === 'dock-' ? (activeItem.DOCK_SPEC || "") : (activeItem.SPEC || ""));
                 if(caliper) caliper.value = p === 'req-' ? (activeItem.REQ_CALIPER || "") : (p === 'dock-' ? (activeItem.DOCK_CALIPER || "") : (activeItem.CALIPER || ""));
                 if(pick) pick.value = p === 'req-' ? (activeItem.REQ_PICK || "") : (activeItem.PICK || "");
                 if(desc) desc.value = p === 'req-' ? (activeItem.REQ_SALES_NOTE || "") : (p === 'dock-' ? (activeItem.DOCK_NOTE || "") : (activeItem.SALES_NOTE || ""));
                 if(avNote) avNote.value = activeItem.AV_NOTE || "";
-                if (p === 'req-') { let res = document.getElementById('req-reserve'); if(res) res.value = activeItem.REQ_RESERVE || "NO"; let comments = document.getElementById('req-comments'); if(comments) comments.value = activeItem.REQ_COMMENTS || ""; }
-                if (p === 'flyer-') { let fcat = document.getElementById('flyer-cat'); if(fcat) fcat.value = activeItem.FLYER_CAT || ""; let ftitle = document.getElementById('flyer-title'); if(ftitle) ftitle.value = activeItem.FLYER_TITLE || ""; let finst = document.getElementById('flyer-inst'); if(finst) finst.value = activeItem.FLYER_INST || ""; let fass = document.getElementById('flyer-assigned'); if(fass) fass.value = activeItem.FLYER_ASSIGNED || ""; let fnotes = document.getElementById('flyer-notes'); if(fnotes) fnotes.value = activeItem.FLYER_NOTES || ""; }
-                let isTree = activeItem.PLANTGROUPCODE && String(activeItem.PLANTGROUPCODE).includes('330_TREES'); let isCaliperSize = ["#7","#10","#15","#25","#45"].includes(activeItem.CONTSIZE);
-                let calContainer = document.getElementById(p + 'container-caliper'); if (calContainer) { if(isTree && isCaliperSize) calContainer.classList.remove('hidden'); else calContainer.classList.add('hidden'); }
+
+                if (p === 'req-') {
+                    let res = document.getElementById('req-reserve'); if(res) res.value = activeItem.REQ_RESERVE || "NO";
+                    let comments = document.getElementById('req-comments'); if(comments) comments.value = activeItem.REQ_COMMENTS || "";
+                }
+                if (p === 'flyer-') {
+                    let fcat = document.getElementById('flyer-cat'); if(fcat) fcat.value = activeItem.FLYER_CAT || "";
+                    let ftitle = document.getElementById('flyer-title'); if(ftitle) ftitle.value = activeItem.FLYER_TITLE || "";
+                    let finst = document.getElementById('flyer-inst'); if(finst) finst.value = activeItem.FLYER_INST || "";
+                    let fass = document.getElementById('flyer-assigned'); if(fass) fass.value = activeItem.FLYER_ASSIGNED || "";
+                    let fnotes = document.getElementById('flyer-notes'); if(fnotes) fnotes.value = activeItem.FLYER_NOTES || "";
+                }
+
+                let isTree = activeItem.PLANTGROUPCODE && String(activeItem.PLANTGROUPCODE).includes('330_TREES');
+                let isCaliperSize = ["#7","#10","#15","#25","#45"].includes(activeItem.CONTSIZE);
+                let calContainer = document.getElementById(p + 'container-caliper');
+                if (calContainer) {
+                    if(isTree && isCaliperSize) calContainer.classList.remove('hidden');
+                    else calContainer.classList.add('hidden');
+                }
                 if(match) calculateMatchQty(p);
             });
+
             renderSavedPhotos();
-            if (sourceView === 'tasks' && activeTaskTab) { switchDetailTab(activeTaskTab); } else { switchDetailTab('overview'); }
+
+            if (sourceView === 'tasks' && activeTaskTab) {
+                switchDetailTab(activeTaskTab);
+            } else {
+                switchDetailTab('overview');
+            }
         }
 
         function renderSavedPhotos() {
-            let sLink = activeItem.SAVED_PHOTO_LINK || ""; let rLink = activeItem.REQ_PHOTO_LINK || ""; let dLink = activeItem.DOCK_PHOTO_LINK || ""; let fLink = activeItem.FLYER_PHOTO_LINK || "";
+            let sLink = activeItem.SAVED_PHOTO_LINK || "";
+            let rLink = activeItem.REQ_PHOTO_LINK || "";
+            let dLink = activeItem.DOCK_PHOTO_LINK || "";
+            let fLink = activeItem.FLYER_PHOTO_LINK || "";
+
             const makeThumbs = (link, containerId, wrapperId) => {
-                let el = document.getElementById(containerId); let wrap = document.getElementById(wrapperId); if(!el || !wrap) return;
+                let el = document.getElementById(containerId);
+                let wrap = document.getElementById(wrapperId);
+                if(!el || !wrap) return;
                 if(link && String(link).trim() !== "") {
-                    let urls = String(link).split(','); let html = `<div class="flex gap-2 overflow-x-auto pb-2">`;
-                    urls.forEach(u => { let c = u.trim(); let m = c.match(/(https?:\/\/[^"\s>]+)/); if(m) c = m[1]; if(c.startsWith('http')) { let thumb = getDirectImageUrl(c); html += `<img src="${thumb}" class="w-20 h-20 object-cover rounded-lg border border-gray-300 cursor-pointer shadow-sm active:scale-95" onclick="openPhotoModal('${link}', 'Saved Photo')">`; } });
-                    html += `</div>`; el.innerHTML = html; wrap.classList.remove('hidden');
-                } else { el.innerHTML = ""; wrap.classList.add('hidden'); }
+                    let urls = String(link).split(',');
+                    let html = `<div class="flex gap-2 overflow-x-auto pb-2">`;
+                    urls.forEach(u => {
+                        let c = u.trim();
+                        let m = c.match(/(https?:\/\/[^"\s>]+)/);
+                        if(m) c = m[1];
+                        if(c.startsWith('http')) {
+                            let thumb = getDirectImageUrl(c);
+                            html += `<img src="${thumb}" class="w-20 h-20 object-cover rounded-lg border border-gray-300 cursor-pointer shadow-sm active:scale-95" onclick="openPhotoModal('${link}', 'Saved Photo')">`;
+                        }
+                    });
+                    html += `</div>`;
+                    el.innerHTML = html;
+                    wrap.classList.remove('hidden');
+                } else {
+                    el.innerHTML = "";
+                    wrap.classList.add('hidden');
+                }
             };
-            makeThumbs(sLink, 'ssn-photo-list-container', 'ssn-photo-preview'); makeThumbs(sLink, 'lsn-photo-list-container', 'lsn-photo-preview'); makeThumbs(sLink, 'na-photo-list-container', 'na-photo-preview'); makeThumbs(rLink || sLink, 'req-photo-list-container', 'req-photo-preview'); makeThumbs(dLink || sLink, 'dock-photo-list-container', 'dock-photo-preview'); makeThumbs(fLink || sLink, 'flyer-photo-list-container', 'flyer-photo-preview');
+
+            makeThumbs(sLink, 'ssn-photo-list-container', 'ssn-photo-preview');
+            makeThumbs(sLink, 'lsn-photo-list-container', 'lsn-photo-preview');
+            makeThumbs(sLink, 'na-photo-list-container', 'na-photo-preview');
+            makeThumbs(rLink || sLink, 'req-photo-list-container', 'req-photo-preview');
+            makeThumbs(dLink || sLink, 'dock-photo-list-container', 'dock-photo-preview');
+            makeThumbs(fLink || sLink, 'flyer-photo-list-container', 'flyer-photo-preview');
         }
 
         function switchDetailTab(tab) {
-            activeDetailTab = tab; const detTabsContainer = document.getElementById('det-tabs-container');
-            if (detTabsContainer) { detTabsContainer.querySelectorAll('.detail-tab').forEach(el => { el.classList.remove('active'); el.style.borderBottomColor = 'transparent'; el.style.color = '#6b7280'; }); }
-            let activeEl = document.getElementById('dtab-' + tab); if(activeEl) { activeEl.classList.add('active'); activeEl.style.borderBottomColor = 'var(--bg)'; activeEl.style.color = 'var(--bg)'; }
-            document.getElementById('det-overview-content').classList.add('hidden'); document.getElementById('det-season-content').classList.add('hidden'); document.getElementById('det-location-content').classList.add('hidden'); document.getElementById('det-request-content').classList.add('hidden'); document.getElementById('det-notes-content').classList.add('hidden'); document.getElementById('det-docks-content').classList.add('hidden'); document.getElementById('det-flyer-content').classList.add('hidden');
-            const contentEl = document.getElementById('det-' + tab + '-content'); if(contentEl) contentEl.classList.remove('hidden');
+            activeDetailTab = tab;
+            const detTabsContainer = document.getElementById('det-tabs-container');
+            if (detTabsContainer) {
+                detTabsContainer.querySelectorAll('.detail-tab').forEach(el => {
+                    el.classList.remove('active');
+                    el.style.borderBottomColor = 'transparent';
+                    el.style.color = '#6b7280';
+                });
+            }
+            let activeEl = document.getElementById('dtab-' + tab);
+            if(activeEl) {
+                activeEl.classList.add('active');
+                activeEl.style.borderBottomColor = 'var(--bg)';
+                activeEl.style.color = 'var(--bg)';
+            }
+
+            document.getElementById('det-overview-content').classList.add('hidden');
+            document.getElementById('det-season-content').classList.add('hidden');
+            document.getElementById('det-location-content').classList.add('hidden');
+            document.getElementById('det-request-content').classList.add('hidden');
+            document.getElementById('det-notes-content').classList.add('hidden');
+            document.getElementById('det-docks-content').classList.add('hidden');
+            document.getElementById('det-flyer-content').classList.add('hidden');
+
+            const contentEl = document.getElementById('det-' + tab + '-content');
+            if(contentEl) contentEl.classList.remove('hidden');
         }
 
-        function goBackFromDetail() { activeItem = null; document.getElementById('view-detail').classList.add('hidden'); document.getElementById('view-' + lastView).classList.remove('hidden'); }
+        function goBackFromDetail() {
+            activeItem = null;
+            document.getElementById('view-detail').classList.add('hidden');
+            document.getElementById('view-' + lastView).classList.remove('hidden');
+        }
 
         function toggleExpand() {
             const section = document.getElementById('expand-section');
             if(section) {
-                section.classList.toggle('expanded'); const content = document.getElementById('expand-content'); const icon = section.querySelector('i');
+                section.classList.toggle('expanded');
+                const content = document.getElementById('expand-content');
+                const icon = section.querySelector('i');
                 if(section.classList.contains('expanded')) {
                     if(icon) { icon.classList.remove('ph-caret-down'); icon.classList.add('ph-caret-up'); }
-                    if(activeItem && content) { let html = '<div class="space-y-2 text-xs">'; for(let key in activeItem) { if(!['DOM_ID', 'SOURCE_TABLE', '_search', 'SAVED_PHOTO_LINK', 'SAVED_PHOTO_NAME'].includes(key)) { html += `<div class="flex border-b border-gray-200 pb-1"><span class="font-bold text-gray-500 w-1/3 break-all">${key}</span><span class="text-gray-800 w-2/3 break-all">${activeItem[key]}</span></div>`; } } html += '</div>'; content.innerHTML = html; }
-                } else { if(icon) { icon.classList.remove('ph-caret-up'); icon.classList.add('ph-caret-down'); } }
+                    if(activeItem && content) {
+                        let html = '<div class="space-y-2 text-xs">';
+                        for(let key in activeItem) {
+                            if(!['DOM_ID', 'SOURCE_TABLE', '_search', 'SAVED_PHOTO_LINK', 'SAVED_PHOTO_NAME'].includes(key)) {
+                                html += `<div class="flex border-b border-gray-200 pb-1"><span class="font-bold text-gray-500 w-1/3 break-all">${key}</span><span class="text-gray-800 w-2/3 break-all">${activeItem[key]}</span></div>`;
+                            }
+                        }
+                        html += '</div>';
+                        content.innerHTML = html;
+                    }
+                } else {
+                    if(icon) { icon.classList.remove('ph-caret-up'); icon.classList.add('ph-caret-down'); }
+                }
             }
         }
 
@@ -1857,6 +1875,7 @@
             const tagColor=item.FIELDTAGCOLOR||'-'; 
             const safeUidJs=esc(item.UNIQUE_ID);
 
+            // SPECIFIC AV TAB CARD
             if(sourceView === 'av') {
                 let holdHtml = "";
                 let holdCode = item.HOLDSTOPCODE || item.HOLD_STOP_CODE || item.HOLDSTOP || "";
@@ -1885,6 +1904,7 @@
 
                 return `<div class="flex items-start w-full mb-3 item-row relative bg-white p-4 rounded-xl border-2 border-teal-100 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-teal-600 focus:ring-teal-600 shadow-sm pointer-events-none" ${isChecked}></div><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full"><div class="flex-grow min-w-0 pr-2"><div class="font-black text-gray-800 text-[18px] leading-tight break-words mb-1">${item.COMMONNAME||'Unknown'}</div><div class="font-black text-teal-700 text-[15px] mb-2">${item.CONTSIZE||'-'}</div><div class="grid grid-cols-2 gap-2 mb-2"><div class="text-[11px] font-bold text-gray-500 uppercase"><span class="block text-[8px] text-gray-400 mb-0.5">LOT CODE</span>${item.LOTCODE||'-'}</div><div class="text-[11px] font-bold text-gray-500 uppercase"><span class="block text-[8px] text-gray-400 mb-0.5">LOCATION</span>${item.LOCATIONCODE||'-'}</div></div><div class="flex flex-wrap gap-2 text-[11px] font-bold uppercase tracking-wider mt-1"><span class="bg-gray-100 text-gray-800 px-2 py-1 rounded border border-gray-200">LOC AVA: <span class="font-black">${item.PTRAVAILABLE||'0'}</span></span><span class="bg-purple-50 text-purple-700 px-2 py-1 rounded border border-purple-200">s_LTS: <span class="font-black">${item.S_LTS||'0'}</span></span></div>${holdHtml}${avNoteHtml}</div>${clickThumbHtml}</div></div></div>`;
             }
+            // Standard thumbnail build for other cards
             if(photoLink){ 
                 let firstUrl=String(photoLink).split(',')[0]; 
                 let cleanUrl=firstUrl.trim(); 
@@ -2064,6 +2084,8 @@
             filterRepList()
         }
 
+        const debouncedFilterRepList=debounce(()=>requestAnimationFrame(filterRepList),150);
+
         function filterRepList() {
             const val=document.getElementById('rep-search-input').value.toLowerCase().trim();
             const container=document.getElementById('rep-list-container');
@@ -2112,6 +2134,8 @@
                 populateCustomerList()
             }
         }
+
+        const debouncedPopulateCustomerList=debounce(()=>requestAnimationFrame(populateCustomerList),150);
 
         function populateCustomerList() {
             const val=document.getElementById('cust-search-input').value.toLowerCase().trim();
@@ -2392,46 +2416,491 @@
         function openAssignModal() { document.getElementById('assign-modal').classList.remove('hidden') }
         function closeAssignModal() { document.getElementById('assign-modal').classList.add('hidden') }
 
+        const debouncedDriveSearch = debounce(() => { requestAnimationFrame(() => renderDrive()); }, 150);
+        
+        function clearDriveSearch() {
+            document.getElementById('drive-search').value = "";
+            document.getElementById('drive-search-clear').classList.add('hidden');
+            driveViewLevel = 0;
+            renderDrive();
+        }
+
+        function handleDriveSearch() {
+            const term = document.getElementById('drive-search').value.toLowerCase();
+            const clearBtn = document.getElementById('drive-search-clear');
+            if(term.length > 0) {
+                clearBtn.classList.remove('hidden');
+                driveViewLevel = 0; 
+            } else {
+                clearBtn.classList.add('hidden');
+                driveViewLevel = 0;
+            }
+            debouncedDriveSearch();
+        }
+
+        function selectDriveName(name) { selectedDriveName = name; driveViewLevel = 1; renderDrive() }
+        function selectDriveSize(size) { selectedDriveSize = size; driveViewLevel = 2; renderDrive() }
+        function backToDriveSizes() { driveViewLevel = 1; selectedDriveSize = null; renderDrive() }
+
+        function renderDrive() {
+            const container = document.getElementById('drive-content'); 
+            const filtersDiv = document.getElementById('drive-season-filters'); 
+            const crumb = document.getElementById('drive-crumb'); 
+            const term = document.getElementById('drive-search').value.toLowerCase().trim();
+            
+            filtersDiv.innerHTML = availableSeasons.map(s => { 
+                const active = driveSelectedSeasons.has(s); 
+                return `<div class="px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap cursor-pointer transition-colors ${active ? 'bg-[#007a4d] text-white shadow-md' : 'bg-white border border-gray-300 text-gray-600'}" onclick="toggleDriveSeason('${s}')">${s}</div>` 
+            }).join('');
+            
+            let baseItems = fullInventory;
+            if(!driveSelectedSeasons.has('ALL')) { 
+                baseItems = baseItems.filter(i => { let s = String(i.SEASON || '').toUpperCase(); return driveSelectedSeasons.has(s); }); 
+            }
+            
+            let searchFilteredItems = baseItems;
+            if(term) { 
+                const searchTerms = term.split(/\s+/); 
+                searchFilteredItems = searchFilteredItems.filter(i => { 
+                    const searchStr = (i._search || ""); 
+                    return searchTerms.every(t => searchStr.includes(t)); 
+                }); 
+            }
+            
+            if(driveViewLevel === 0) {
+                if(searchFilteredItems.length === 0){ container.innerHTML = `<div class="p-8 text-center text-gray-400">No items found matching criteria.</div>`; crumb.innerText = "No Results"; return; }
+                crumb.innerText = `Select Plant (${searchFilteredItems.length} items)`;
+                const names = [...new Set(searchFilteredItems.map(i => i.COMMONNAME))].sort();
+                container.innerHTML = names.map(n => `<div class="drill-item" onclick="selectDriveName('${esc(n)}')"><span class="font-bold text-lg">${n}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
+            } else if(driveViewLevel === 1) {
+                crumb.innerText = selectedDriveName;
+                const namedItems = searchFilteredItems.filter(i => i.COMMONNAME === selectedDriveName);
+                if(namedItems.length === 0){ container.innerHTML = `<div class="p-8 text-center text-gray-400">No items found.</div>`; return; }
+                const sizes = [...new Set(namedItems.map(i => i.CONTSIZE))].sort();
+                let html = `<div class="back-btn" onclick="driveViewLevel=0; renderDrive()"><i class="ph-bold ph-arrow-left"></i> Back to Names</div><div class="font-bold text-[#007a4d] mb-4 px-2 text-xl border-b pb-2">${selectedDriveName}</div>`;
+                html += sizes.map(s => { 
+                    const count = namedItems.filter(i => i.CONTSIZE === s).length; 
+                    return `<div class="drill-item" onclick="selectDriveSize('${esc(s)}')"><span class="font-bold text-lg">${s} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>` 
+                }).join('');
+                container.innerHTML = html;
+            } else if(driveViewLevel === 2) {
+                crumb.innerText = `${selectedDriveName} / ${selectedDriveSize}`;
+                let finalItems = searchFilteredItems.filter(i => i.COMMONNAME === selectedDriveName && i.CONTSIZE === selectedDriveSize);
+                finalItems.sort((a,b) => { let priA = parseFloat(a.PRIORITY); let priB = parseFloat(b.PRIORITY); if(isNaN(priA)) priA = Infinity; if(isNaN(priB)) priB = Infinity; return priA - priB; });
+                container.innerHTML = `<div class="back-btn" onclick="backToDriveSizes()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>` + finalItems.map(i => generateCard(i, 'drive', 'status-blue')).join('');
+            }
+        }
+
+        function resetDriveView() {
+            driveViewLevel = 0;
+            selectedDriveName = null;
+            selectedDriveSize = null;
+            document.getElementById('drive-search').value = "";
+            document.getElementById('drive-search-clear').classList.add('hidden');
+            driveSelectedSeasons.clear();
+            driveSelectedSeasons.add('ALL');
+            renderDrive();
+        }
+
+        function toggleDriveSeason(s) {
+            if(s === 'ALL'){
+                driveSelectedSeasons.clear();
+                driveSelectedSeasons.add('ALL');
+            } else {
+                driveSelectedSeasons.delete('ALL');
+                if(driveSelectedSeasons.has(s)){
+                    driveSelectedSeasons.delete(s);
+                    if(driveSelectedSeasons.size === 0) driveSelectedSeasons.add('ALL');
+                } else {
+                    driveSelectedSeasons.add(s);
+                }
+            }
+            driveViewLevel = 0;
+            selectedDriveName = null;
+            selectedDriveSize = null;
+            renderDrive();
+        }
+
+        function renderTeamSelector() {
+            let uSet = new Set();
+            fullInventory.forEach(i => { if(i.ASSIGNEDTO && !i.DATE_COMPLETED) uSet.add(i.ASSIGNEDTO) });
+            if(uSet.size === 0) { 
+                document.getElementById('task-content').innerHTML = `<div class="p-8 text-center text-gray-400">No active tasks for any team member.</div>`; 
+                return; 
+            }
+            let sorted = Array.from(uSet).sort();
+            let html = `<h2 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Select Team Member</h2>`;
+            sorted.forEach(u => {
+                let userTasks = fullInventory.filter(i => i.ASSIGNEDTO === u && !i.DATE_COMPLETED);
+                let htmlCounts = `<div class="flex gap-2 mt-2">`;
+                ['season','location','endcap','flyer'].forEach(t => {
+                    let c = userTasks.filter(i => i.APP_TAB_ASSIGNMENT === t).length;
+                    if(c > 0) htmlCounts += `<span class="text-[10px] font-bold px-2 py-1 rounded bg-gray-100 text-gray-600 uppercase">${t}: ${c}</span>`;
+                });
+                htmlCounts += `</div>`;
+                html += `<div class="bg-white border border-gray-200 p-4 rounded-xl shadow-sm mb-3 cursor-pointer active:scale-95 transition-transform" onclick="selectTaskUser('${esc(u)}')"><div class="flex justify-between items-center"><span class="font-black text-xl text-[#007a4d]">${u}</span><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${userTasks.length} Total</span></div>${htmlCounts}</div>`;
+            });
+            document.getElementById('task-tabs-container').classList.add('hidden');
+            document.getElementById('task-crumb').innerText = "Team Tasks Overview";
+            document.getElementById('task-content').innerHTML = html;
+        }
+
+        function selectTaskUser(u) {
+            taskViewTargetUser = u;
+            document.getElementById('task-tabs-container').classList.remove('hidden');
+            renderTasks();
+        }
+
+        function renderTasks() {
+            let targetUser = safeRole === 'ADMIN' ? taskViewTargetUser : currentUser;
+            if(!targetUser) return;
+            const container = document.getElementById('task-content');
+            const crumb = document.getElementById('task-crumb');
+            crumb.innerHTML = safeRole === 'ADMIN' ? `<span class="cursor-pointer text-gray-400 hover:text-gray-800" onclick="taskViewTargetUser=null; renderTeamSelector()"><i class="ph-bold ph-arrow-left"></i> Back to Team</span> &bull; <span class="text-[#007a4d]">${targetUser}'s Tasks</span>` : "My Tasks";
+            
+            let userItems = fullInventory.filter(i => i.ASSIGNEDTO === targetUser && !i.DATE_COMPLETED);
+            let tabItems = userItems.filter(i => i.APP_TAB_ASSIGNMENT === activeTaskTab);
+            
+            if(tabItems.length === 0){
+                container.innerHTML = `<div class="p-8 text-center text-gray-400">No active ${activeTaskTab} tasks.</div>`;
+                return;
+            }
+            
+            if(activeTaskTab === 'endcap') {
+                if(taskViewLevel === 0) {
+                    let folders = [...new Set(tabItems.map(i => i.END_CAP_FOLDER || 'Unassigned'))].sort();
+                    container.innerHTML = folders.map(f => {
+                        let count = tabItems.filter(i => (i.END_CAP_FOLDER || 'Unassigned') === f).length;
+                        return `<div class="bg-white border border-yellow-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectedEndCapFolder='${esc(f)}'; taskViewLevel=1; renderTasks()"><div class="flex items-center gap-3"><div class="bg-yellow-50 p-2 rounded-lg"><i class="ph-fill ph-storefront text-2xl text-yellow-500"></i></div><span class="font-bold text-lg text-yellow-800">${f}</span></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${count} Items</span></div>`;
+                    }).join('');
+                } else if(taskViewLevel === 1) {
+                    let fItems = tabItems.filter(i => (i.END_CAP_FOLDER || 'Unassigned') === selectedEndCapFolder);
+                    fItems.sort((a,b) => String(a.COMMONNAME || "").localeCompare(String(b.COMMONNAME || "")));
+                    container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=0; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to End Caps</div>` + fItems.map(i => generateCard(i, 'tasks', 'status-yellow')).join('');
+                }
+            } else if(activeTaskTab === 'flyer') {
+                tabItems.sort((a,b) => String(a.COMMONNAME || "").localeCompare(String(b.COMMONNAME || "")));
+                container.innerHTML = tabItems.map(i => generateCard(i, 'tasks', 'status-indigo')).join('');
+            } else {
+                if(taskViewLevel === 0) {
+                    let blocks = {};
+                    tabItems.forEach(i => {
+                        let loc = String(i.LOCATIONCODE || "NoLoc").trim();
+                        let blockAlpha = loc.charAt(0).toUpperCase();
+                        if(!/[A-Z]/.test(blockAlpha)) blockAlpha = "Other";
+                        if(!blocks[blockAlpha]) blocks[blockAlpha] = {count:0};
+                        blocks[blockAlpha].count++;
+                    });
+                    let html = Object.keys(blocks).sort().map(b => `<div class="bg-white border border-green-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectedTaskBlock='${esc(b)}'; taskViewLevel=1; renderTasks()"><div class="flex items-center gap-3"><div class="bg-green-100 text-[#007a4d] px-3 py-1.5 rounded-lg font-black text-lg">${b}</div><span class="font-bold text-lg text-gray-700">Block ${b}</span></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${blocks[b].count} Items</span></div>`).join('');
+                    container.innerHTML = html;
+                } else if(taskViewLevel === 1) {
+                    let bItems = tabItems.filter(i => {
+                        let loc = String(i.LOCATIONCODE || "NoLoc").trim();
+                        let alpha = loc.charAt(0).toUpperCase();
+                        if(!/[A-Z]/.test(alpha)) alpha = "Other";
+                        return alpha === selectedTaskBlock;
+                    });
+                    let locs = [...new Set(bItems.map(i => i.LOCATIONCODE || "NoLoc"))].sort((a,b) => String(a).localeCompare(String(b), undefined, {numeric: true}));
+                    let html = `<div class="back-btn" onclick="taskViewLevel=0; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Blocks</div>`;
+                    html += locs.map(l => {
+                        let count = bItems.filter(i => (i.LOCATIONCODE || "NoLoc") === l).length;
+                        return `<div class="drill-item" onclick="selectedTaskLoc='${esc(l)}'; taskViewLevel=2; renderTasks()"><span class="font-bold text-lg text-gray-800">${l} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
+                    }).join('');
+                    container.innerHTML = html;
+                } else if(taskViewLevel === 2) {
+                    let fItems = tabItems.filter(i => (i.LOCATIONCODE || "NoLoc") === selectedTaskLoc);
+                    fItems.sort((a,b) => String(a.COMMONNAME || "").localeCompare(String(b.COMMONNAME || "")));
+                    container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=1; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Locations</div>` + fItems.map(i => generateCard(i, 'tasks', activeTaskTab === 'season' ? 'status-green' : 'status-blue')).join('');
+                }
+            }
+        }
+
+        function renderReview() {
+            const container = document.getElementById('review-content');
+            const crumb = document.getElementById('review-crumb');
+            if(managerReviewInventory.length === 0){
+                container.innerHTML = `<div class="p-8 text-center text-gray-400">No items require manager review.</div>`;
+                crumb.innerText = "All Clear";
+                return;
+            }
+            if(reviewViewLevel === 0){
+                crumb.innerText = "Needs Location Priority Review";
+                let groups = {};
+                managerReviewInventory.forEach(i => {
+                    let code = i.ITEMCODE || "UNKNOWN";
+                    if(!groups[code]) {
+                        groups[code] = {code: code, name: i.COMMONNAME || "Unknown", size: i.CONTSIZE || "-", count: 0};
+                    }
+                    groups[code].count++;
+                });
+                let sorted = Object.values(groups).sort((a,b) => String(a.name).localeCompare(String(b.name)));
+                let html = sorted.map(g => `<div class="bg-yellow-50 border border-yellow-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectReviewItem('${esc(g.code)}', '${esc(g.name)}', '${esc(g.size)}')"><div class="flex-grow min-w-0 pr-3"><div class="font-bold text-[15px] text-yellow-800 truncate">${g.name}</div><div class="text-xs font-semibold text-yellow-600 mt-1">${g.size} <span class="mx-2 text-yellow-300">|</span> <span class="font-mono text-yellow-700">${g.code}</span></div></div><div class="bg-white px-3 py-1 rounded-lg shadow-sm border border-yellow-100 text-yellow-600 font-bold text-xs whitespace-nowrap">${g.count} Locs</div></div>`).join('');
+                container.innerHTML = html;
+            } else if(reviewViewLevel === 1){
+                crumb.innerText = `${selectedReviewCommonName} / ${selectedReviewContSize}`;
+                let items = managerReviewInventory.filter(i => i.ITEMCODE === selectedReviewItemCode);
+                items.sort((a,b) => String(a.LOCATIONCODE || "").localeCompare(String(b.LOCATIONCODE || ""), undefined, {numeric: true}));
+                container.innerHTML = `<div class="back-btn" onclick="resetReviewView()"><i class="ph-bold ph-arrow-left"></i> Back to List</div>` + items.map(i => generateCard(i, 'review', 'status-yellow')).join('');
+            }
+        }
+        
+        let autoSaveTimer = null;
+
+        function saveData(isComplete = false, prefix, isSilentAutoSave = false, specificItem = null) {
+            if (autoSaveTimer) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
+            let itemToSave = specificItem || activeItem; if (!itemToSave) return;
+            let btnDraft = document.getElementById(prefix + 'btn-save-draft'); 
+            let btnComp = document.getElementById(prefix + 'btn-save-complete'); 
+            let isCurrentView = (activeItem && activeItem.UNIQUE_ID === itemToSave.UNIQUE_ID);
+            
+            if (isCurrentView && isComplete) { if(btnComp) btnComp.innerText = "SAVING..."; }
+            
+            const executeSave = () => {
+                let wasAlreadyComplete = itemToSave.REQ_STATUS === 'Complete';
+
+                if (!specificItem) {
+                    let avEl = document.getElementById(prefix + 'av-note');
+                    if (avEl) { itemToSave.AV_NOTE = avEl.value.toUpperCase(); }
+                    
+                    let descEl = document.getElementById(prefix + 'sales-desc');
+                    if (descEl) { let textBoxVal = descEl.value.toUpperCase(); itemToSave.SALES_NOTE = textBoxVal; if (lastView === 'tasks') itemToSave._NEW_SALES_NOTE = textBoxVal; }
+
+                    if (isComplete && isCurrentView && itemToSave.APP_TAB_ASSIGNMENT === 'season') {
+                        const noteVal = (itemToSave.SALES_NOTE || "").trim();
+                        if (!noteVal) { showToast("Required", "A Sales Description is required to complete this Season task.", true); if (btnComp) btnComp.innerText = "MARK DONE"; return; }
+                    }
+
+                    if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-') { 
+                        let matchEl = document.getElementById(prefix + 'match'); if(matchEl) itemToSave.MATCH = matchEl.value; 
+                        let specEl = document.getElementById(prefix + 'spec'); if(specEl) itemToSave.SPEC = specEl.value; 
+                        let calEl = document.getElementById(prefix + 'caliper'); if(calEl) itemToSave.CALIPER = calEl.value; 
+                        let pickEl = document.getElementById(prefix + 'pick'); if(pickEl) itemToSave.PICK = pickEl.value; 
+                    } else if (prefix === 'req-') { 
+                        itemToSave.REQ_MATCH = document.getElementById('req-match').value; itemToSave.REQ_SPEC = document.getElementById('req-spec').value; itemToSave.REQ_CALIPER = document.getElementById('req-caliper').value; itemToSave.REQ_PICK = document.getElementById('req-pick').value; itemToSave.REQ_COMMENTS = document.getElementById('req-comments').value; let reserveEl = document.getElementById('req-reserve'); if (reserveEl) itemToSave.REQ_RESERVE = reserveEl.value;
+                    } else if (prefix === 'dock-') { 
+                        itemToSave.DOCK_SPEC = document.getElementById('dock-spec').value; itemToSave.DOCK_CALIPER = document.getElementById('dock-caliper').value; itemToSave.DOCK_NOTE = document.getElementById('dock-sales-desc').value.toUpperCase(); 
+                    } else if (prefix === 'flyer-') {
+                        itemToSave.FLYER_CAT = document.getElementById('flyer-cat').value; itemToSave.FLYER_TITLE = document.getElementById('flyer-title').value; itemToSave.FLYER_INST = document.getElementById('flyer-inst').value; itemToSave.FLYER_ASSIGNED = document.getElementById('flyer-assigned').value; itemToSave.FLYER_NOTES = document.getElementById('flyer-notes').value;
+                    }
+                }
+                
+                const setVal = (val) => (val === "" || val === undefined) ? null : val;
+                const payload = {};
+                
+                if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-') { 
+                    payload.match = (itemToSave.MATCH === "" || itemToSave.MATCH == null) ? null : parseFloat(itemToSave.MATCH); 
+                    payload.spec = setVal(itemToSave.SPEC); payload.caliper = setVal(itemToSave.CALIPER); payload.pic_note = setVal(itemToSave.PICK); 
+                    payload.sales_note = setVal(itemToSave.SALES_NOTE || itemToSave._NEW_SALES_NOTE); payload.av_note = setVal(itemToSave.AV_NOTE);
+                } else if (prefix === 'req-') { 
+                    payload.req_match = (itemToSave.REQ_MATCH === "" || itemToSave.REQ_MATCH == null) ? null : parseFloat(itemToSave.REQ_MATCH); 
+                    payload.req_spec = setVal(itemToSave.REQ_SPEC); payload.req_caliper = setVal(itemToSave.REQ_CALIPER); payload.req_pic_note = setVal(itemToSave.REQ_PICK); 
+                    payload.req_sales_note = setVal(itemToSave.REQ_SALES_NOTE); payload.req_comments = setVal(itemToSave.REQ_COMMENTS); 
+                    payload.req_reserve = setVal(itemToSave.REQ_RESERVE); payload.av_note = setVal(itemToSave.AV_NOTE);
+                    if (isComplete) { payload.req_status = 'Complete'; itemToSave.REQ_STATUS = 'Complete'; }
+                } else if (prefix === 'dock-') { 
+                    payload.dock_spec = setVal(itemToSave.DOCK_SPEC); payload.dock_caliper = setVal(itemToSave.DOCK_CALIPER); payload.dock_note = setVal(itemToSave.DOCK_NOTE); 
+                } else if (prefix === 'flyer-') {
+                    payload.flyer_cat = setVal(itemToSave.FLYER_CAT); payload.flyer_title = setVal(itemToSave.FLYER_TITLE); payload.flyer_inst = setVal(itemToSave.FLYER_INST); 
+                    payload.flyer_assigned = setVal(itemToSave.FLYER_ASSIGNED); payload.flyer_notes = setVal(itemToSave.FLYER_NOTES);
+                }
+
+                if (isComplete && (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-')) {
+                    let matchVal = parseFloat(itemToSave.MATCH);
+                    if (!isNaN(matchVal) && matchVal >= 0) {
+                        let ptr = parseInt(String(itemToSave.PTRAVAILABLE).replace(/,/g, '')) || 0;
+                        itemToSave.INITIAL_PTR = ptr; itemToSave.LOC_MATCH_QTY = Math.round(ptr * (matchVal / 100));
+                        payload.initial_ptr = itemToSave.INITIAL_PTR; payload.loc_match_qty = itemToSave.LOC_MATCH_QTY;
+                    }
+                }
+
+                backupLocalItem(itemToSave);
+
+                if (itemToSave.SAVED_PHOTO_LINK) payload.photo_link = itemToSave.SAVED_PHOTO_LINK; 
+                if (itemToSave.SAVED_PHOTO_NAME) payload.photo_name = itemToSave.SAVED_PHOTO_NAME;
+                if (itemToSave.REQ_PHOTO_LINK) payload.req_photo_link = itemToSave.REQ_PHOTO_LINK; 
+                if (itemToSave.REQ_PHOTO_NAME) payload.req_photo_name = itemToSave.REQ_PHOTO_NAME;
+                if (itemToSave.DOCK_PHOTO_LINK) payload.dock_photo_link = itemToSave.DOCK_PHOTO_LINK; 
+                if (itemToSave.DOCK_PHOTO_NAME) payload.dock_photo_name = itemToSave.DOCK_PHOTO_NAME;
+                if (itemToSave.FLYER_PHOTO_LINK) payload.flyer_photo_link = itemToSave.FLYER_PHOTO_LINK; 
+                if (itemToSave.FLYER_PHOTO_NAME) payload.flyer_photo_name = itemToSave.FLYER_PHOTO_NAME;
+
+                if (isComplete) { 
+                    payload.date_completed = new Date().toISOString(); 
+                    if (prefix === 'flyer-') payload.flyer_completed = payload.date_completed;
+                    
+                    let soPayload = { unique_id: itemToSave.UNIQUE_ID, itemcode: itemToSave.ITEMCODE || "", commonname: itemToSave.COMMONNAME || "", contsize: itemToSave.CONTSIZE || "", locationcode: itemToSave.LOCATIONCODE || "", lotcode: itemToSave.LOTCODE || "", ptravailable: String(itemToSave.PTRAVAILABLE || ""), priority: String(itemToSave.PRIORITY || ""), sales_note: payload.sales_note || itemToSave.SALES_NOTE || itemToSave._NEW_SALES_NOTE || "", photo_link: itemToSave.NA_PHOTO_LINK || itemToSave.SAVED_PHOTO_LINK || "", completed_by: currentUser, completed_at: payload.date_completed };
+                    if (prefix !== 'flyer-' && prefix !== 'req-') {
+                        supabaseFetch('v2_sales_office', 'POST', soPayload).catch(e => console.log(e));
+                        let cloneSO = { ...soPayload };
+                        for(let key in soPayload) { cloneSO[key.toUpperCase()] = soPayload[key]; }
+                        cloneSO.DOM_ID = 'so_' + cloneSO.UNIQUE_ID;
+                        cloneSO.AV_NOTE = itemToSave.AV_NOTE;
+                        cloneSO.SAVED_PHOTO_LINK = soPayload.photo_link; 
+                        let existingIdx = salesOfficeInventory.findIndex(s => s.UNIQUE_ID === cloneSO.UNIQUE_ID);
+                        if (existingIdx > -1) salesOfficeInventory[existingIdx] = cloneSO;
+                        else salesOfficeInventory.push(cloneSO);
+                    }
+                }
+
+                const targetTable = (prefix === 'req-') ? 'v2_active_request' : (itemToSave.SOURCE_TABLE || 'v2_master_inventory');
+
+                supabaseFetch(targetTable, 'PATCH', payload, `unique_id=eq.${encodeURIComponent(itemToSave.UNIQUE_ID)}`).then(data => {
+                    if (isCurrentView && isComplete) { if(btnComp) btnComp.innerText = "MARK DONE"; }
+                    if (!isSilentAutoSave && isCurrentView && isComplete) showToast("Success", "Task Completed!"); 
+                    if (isComplete && isCurrentView) { 
+                        itemToSave.DATE_COMPLETED = payload.date_completed; 
+                        goBackFromDetail(); 
+                        reRenderCurrentView();
+                    } else if (isComplete && !isCurrentView) { 
+                        itemToSave.DATE_COMPLETED = payload.date_completed; 
+                    }
+
+                    if (prefix === 'req-' && isComplete && !wasAlreadyComplete) {
+                        let folderItems = requestsInventory.filter(i => i.REQUEST_FOLDER === itemToSave.REQUEST_FOLDER);
+                        let allComplete = folderItems.every(i => i.REQ_STATUS === 'Complete' || i.UNIQUE_ID === itemToSave.UNIQUE_ID);
+                        if (allComplete) { sendEmailNotification('request_complete', itemToSave.REQUEST_FOLDER, itemToSave.REQUESTED_BY, itemToSave.REQ_CUSTOMER, folderItems.length); }
+                    }
+                }).catch(err => { if (isCurrentView && isComplete) { if(btnComp) btnComp.innerText = "MARK DONE"; if (!isSilentAutoSave) showToast("Network Error", "Could not reach database.", true); } });
+            };
+            if (isSilentAutoSave && !isComplete && !specificItem) { autoSaveTimer = setTimeout(() => { executeSave(); }, 1000); } else { executeSave(); }
+        }
+
+        function backupLocalItem(item) {
+            if (!item) return;
+            let pendingEdits = JSON.parse(localStorage.getItem('gnc_pending_edits') || '{}');
+            pendingEdits[item.UNIQUE_ID] = { timestamp: new Date().getTime(), data: item };
+            localStorage.setItem('gnc_pending_edits', JSON.stringify(pendingEdits));
+        }
+
+        function applyLocalEdits() {
+            let pendingEdits = JSON.parse(localStorage.getItem('gnc_pending_edits') || '{}');
+            let now = new Date().getTime();
+            let changed = false;
+
+            for (let uid in pendingEdits) {
+                if (now - pendingEdits[uid].timestamp > 900000) { delete pendingEdits[uid]; changed = true; continue; }
+                let item = fullInventory.find(i => i.UNIQUE_ID === uid) || lowStockInventory.find(i => i.UNIQUE_ID === uid) || reservesInventory.find(i => i.UNIQUE_ID === uid) || requestsInventory.find(i => i.UNIQUE_ID === uid) || managerReviewInventory.find(i => i.UNIQUE_ID === uid) || socInventory.find(i => i.UNIQUE_ID === uid);
+                if (item) { Object.assign(item, pendingEdits[uid].data); }
+            }
+            if (changed) { localStorage.setItem('gnc_pending_edits', JSON.stringify(pendingEdits)); }
+        }
+
+        function filterAvNotes(prefix) {
+            if (!activeItem) return;
+            const inputEl = document.getElementById(prefix + 'av-note');
+            if (!inputEl) return;
+            const inputVal = inputEl.value.toUpperCase();
+            const list = document.getElementById(prefix + 'av-dropdown-list');
+            let matchingNotes = avNotesDb.filter(n => String(n.COMMONNAME).toUpperCase() === String(activeItem.COMMONNAME).toUpperCase()).map(n => n.SALESNOTE || n.SALES_NOTE);
+            if (inputVal) { matchingNotes = matchingNotes.filter(n => String(n).toUpperCase().includes(inputVal)); }
+            matchingNotes = [...new Set(matchingNotes)];
+            if (matchingNotes.length === 0) { list.classList.add('hidden'); return; }
+            list.innerHTML = matchingNotes.map(n => `<div class="p-3 border-b border-gray-100 text-sm font-bold text-blue-800 cursor-pointer hover:bg-blue-50 active:bg-blue-100" onclick="selectAvNote('${esc(n)}', '${prefix}')">${n}</div>`).join('');
+            list.classList.remove('hidden');
+        }
+
+        function selectAvNote(note, prefix) {
+            document.getElementById(prefix + 'av-note').value = note;
+            document.getElementById(prefix + 'av-dropdown-list').classList.add('hidden');
+            saveData(false, prefix, true);
+        }
+
         async function handlePhotoUpload(input, prefix) {
             if (!input.files || input.files.length === 0) return;
             const file = input.files[0];
-            if (!file.type.startsWith('image/')) { showToast('Error', 'Please select an image file.', true); return; }
+            
+            if (!file.type.startsWith('image/')) {
+                showToast('Error', 'Please select an image file.', true);
+                return;
+            }
+
             showToast('Processing', 'Compressing image...', false);
-            const reader = new FileReader(); reader.readAsDataURL(file);
+
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
             reader.onload = function(event) {
-                const img = new Image(); img.src = event.target.result;
+                const img = new Image();
+                img.src = event.target.result;
                 img.onload = async function() {
-                    const canvas = document.createElement('canvas'); const MAX_WIDTH = 1080; let scaleSize = 1;
-                    if (img.width > MAX_WIDTH) { scaleSize = MAX_WIDTH / img.width; }
-                    canvas.width = img.width * scaleSize; canvas.height = img.height * scaleSize;
-                    const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                    const dataUrl = canvas.toDataURL('image/jpeg', 0.8); const base64Data = dataUrl.split(',')[1];
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 1080;
+                    let scaleSize = 1;
+                    
+                    if (img.width > MAX_WIDTH) {
+                        scaleSize = MAX_WIDTH / img.width;
+                    }
+                    
+                    canvas.width = img.width * scaleSize;
+                    canvas.height = img.height * scaleSize;
+
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                    const base64Data = dataUrl.split(',')[1];
+
                     showToast('Uploading', 'Sending photo to server...', false);
+
                     let context = 'drive';
-                    if (prefix === 'ssn-') context = 'season'; else if (prefix === 'lsn-') context = 'location'; else if (prefix === 'req-') context = 'request'; else if (prefix === 'dock-') context = 'docks';
-                    let dockNum = pendingDockNum || selectedDockNum || "0"; let dateStr = new Date().toISOString().split('T')[0];
-                    let cName = String(activeItem.COMMONNAME || 'Unknown').replace(/[\/\\?%*:|"<>]/g, '-'); let cSize = String(activeItem.CONTSIZE || 'NoSize').replace(/[\/\\?%*:|"<>]/g, '-'); let cLot = String(activeItem.LOTCODE || 'NoLot').replace(/[\/\\?%*:|"<>]/g, '-'); let cLoc = String(activeItem.LOCATIONCODE || 'NoLoc').replace(/[\/\\?%*:|"<>]/g, '-');
+                    if (prefix === 'ssn-') context = 'season';
+                    else if (prefix === 'lsn-') context = 'location';
+                    else if (prefix === 'req-') context = 'request';
+                    else if (prefix === 'dock-') context = 'docks';
+
+                    let dockNum = pendingDockNum || selectedDockNum || "0";
+
+                    let dateStr = new Date().toISOString().split('T')[0];
+                    let cName = String(activeItem.COMMONNAME || 'Unknown').replace(/[\/\\?%*:|"<>]/g, '-');
+                    let cSize = String(activeItem.CONTSIZE || 'NoSize').replace(/[\/\\?%*:|"<>]/g, '-');
+                    let cLot = String(activeItem.LOTCODE || 'NoLot').replace(/[\/\\?%*:|"<>]/g, '-');
+                    let cLoc = String(activeItem.LOCATIONCODE || 'NoLoc').replace(/[\/\\?%*:|"<>]/g, '-');
                     let customFileName = `${cName}-${cSize}-${cLot}-${cLoc}-${dateStr}.jpg`;
-                    const payload = { type: 'image', image: base64Data, filename: customFileName, mimeType: 'image/jpeg', folderContext: context, dockNum: dockNum };
+
+                    const payload = {
+                        type: 'image',
+                        image: base64Data,
+                        filename: customFileName,
+                        mimeType: 'image/jpeg',
+                        folderContext: context,
+                        dockNum: dockNum
+                    };
+
                     try {
-                        const response = await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) });
+                        const response = await fetch(GOOGLE_SCRIPT_URL, {
+                            method: 'POST',
+                            body: JSON.stringify(payload)
+                        });
                         const result = await response.json();
+
                         if (result.status === 'success') {
                             showToast('Success', 'Photo uploaded successfully!');
                             if (activeItem) {
                                 let url = result.url;
-                                if (prefix === 'req-') { activeItem.REQ_PHOTO_LINK = activeItem.REQ_PHOTO_LINK ? activeItem.REQ_PHOTO_LINK + ',' + url : url; } 
-                                else if (prefix === 'dock-') { activeItem.DOCK_PHOTO_LINK = activeItem.DOCK_PHOTO_LINK ? activeItem.DOCK_PHOTO_LINK + ',' + url : url; } 
-                                else if (prefix === 'flyer-') { activeItem.FLYER_PHOTO_LINK = activeItem.FLYER_PHOTO_LINK ? activeItem.FLYER_PHOTO_LINK + ',' + url : url; } 
-                                else { activeItem.SAVED_PHOTO_LINK = activeItem.SAVED_PHOTO_LINK ? activeItem.SAVED_PHOTO_LINK + ',' + url : url; }
-                                saveData(false, prefix, true); renderSavedPhotos();
+                                if (prefix === 'req-') {
+                                    activeItem.REQ_PHOTO_LINK = activeItem.REQ_PHOTO_LINK ? activeItem.REQ_PHOTO_LINK + ',' + url : url;
+                                } else if (prefix === 'dock-') {
+                                    activeItem.DOCK_PHOTO_LINK = activeItem.DOCK_PHOTO_LINK ? activeItem.DOCK_PHOTO_LINK + ',' + url : url;
+                                } else if (prefix === 'flyer-') {
+                                    activeItem.FLYER_PHOTO_LINK = activeItem.FLYER_PHOTO_LINK ? activeItem.FLYER_PHOTO_LINK + ',' + url : url;
+                                } else {
+                                    activeItem.SAVED_PHOTO_LINK = activeItem.SAVED_PHOTO_LINK ? activeItem.SAVED_PHOTO_LINK + ',' + url : url;
+                                }
+                                saveData(false, prefix, true);
+                                renderSavedPhotos();
                             }
-                        } else { showToast('Error', 'Upload failed: ' + result.message, true); }
-                    } catch (err) { showToast('Error', 'Network error during upload.', true); } 
-                    finally { input.value = ""; }
+                        } else {
+                            showToast('Error', 'Upload failed: ' + result.message, true);
+                        }
+                    } catch (err) {
+                        showToast('Error', 'Network error during upload.', true);
+                    } finally {
+                        input.value = "";
+                    }
                 };
             };
         }
     </script>
 </body>
 </html>
+
+
