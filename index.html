@@ -12,7 +12,6 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>:root{--bg:#007a4d;--tx:#111827}body{font-family:"Amazon Ember",Arial,sans-serif;background:white;color:var(--tx);user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior-y:contain}.nav-header{background:var(--bg);color:white;padding-top:max(10px,env(safe-area-inset-top))}#view-login,#view-change-password{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px}#view-change-password{display:none;z-index:10000}.login-card{background:white;padding:30px;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,.2);width:100%;max-width:360px;text-align:center}.input-field{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:8px;font-size:15px;margin-bottom:12px}#toast-notification{position:fixed;top:-100px;left:50%;transform:translateX(-50%);background:#16a34a;color:white;padding:16px 24px;border-radius:50px;box-shadow:0 10px 15px -3px rgba(0,0,0,.3);z-index:11000;transition:top .5s;display:flex;align-items:center;gap:12px;pointer-events:none}#toast-notification.show{top:20px}#side-drawer{position:fixed;top:0;left:-280px;width:280px;height:100%;background:white;z-index:2000;box-shadow:2px 0 10px rgba(0,0,0,.2);transition:left .3s;overflow-y:auto;padding-bottom:100px}#side-drawer.open{left:0}#drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1999;display:none}#drawer-overlay.open{display:block}.drawer-header{background:var(--bg);color:white;padding:20px;font-weight:bold;font-size:18px}.drawer-item{padding:16px 20px;border-bottom:1px solid #f3f4f6;cursor:pointer;display:flex;align-items:center;gap:12px;color:#374151;font-weight:500}.drill-item{border-bottom:1px solid #e5e7eb;padding:16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:white;transition:background .1s}.drill-item:active{background:#f3f4f6}.back-btn{display:flex;align-items:center;gap:5px;color:#6b7280;font-size:14px;font-weight:600;margin-bottom:20px;cursor:pointer;padding:10px 0}.inv-card{border:1px solid #e5e7eb;border-left-width:6px;border-radius:8px;padding:12px;background:white;cursor:pointer;flex-grow:1}.status-green{border-left-color:#22c55e}.status-purple{border-left-color:#9333ea}.status-orange{border-left-color:#f97316}.status-blue{border-left-color:#3b82f6}.status-indigo{border-left-color:#4f46e5}.status-teal{border-left-color:#0d9488}.status-yellow{border-left-color:#eab308}.status-red{border-left-color:#ef4444}.task-tabs,.detail-tabs{display:flex;border-bottom:1px solid #e5e7eb;background:#f9fafb;margin-bottom:10px}.detail-tabs{overflow-x:auto;scrollbar-width:none}.detail-tabs::-webkit-scrollbar{display:none}.task-tab,.detail-tab{flex:1;text-align:center;padding:12px;font-size:11px;font-weight:700;color:#6b7280;cursor:pointer;border-bottom:3px solid transparent;text-transform:uppercase}.detail-tab{flex:0 0 auto;padding:10px 16px}.task-tab.active,.detail-tab.active{color:var(--bg);border-bottom-color:var(--bg);background:white}.overview-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}.overview-card{background:#f8fafc;padding:10px;border-radius:6px;border:1px solid #e2e8f0}.overview-label{font-size:9px;font-weight:800;color:#64748b;text-transform:uppercase;margin-bottom:2px}.overview-val{font-size:13px;font-weight:600;color:#0f172a;word-break:break-all}.expand-trigger{display:flex;align-items:center;justify-content:space-between;padding:12px;background:#f9fafb;border-radius:6px;cursor:pointer;font-weight:600;font-size:14px;border:1px solid #e5e7eb}.expand-content{display:none;margin-top:12px;padding:12px;background:#f9fafb;border-radius:6px;border:1px solid #e5e7eb}.expanded .expand-content{display:block}.card-checkbox-container{width:0;overflow:hidden;opacity:0;transition:width .3s,opacity .3s,margin .3s}body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-right:12px}.item-row{touch-action:manipulation}.spinner{border:4px solid rgba(255,255,255,.3);border-top:4px solid white;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:0 auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.scrollbar-none::-webkit-scrollbar{display:none}.scrollbar-none{-ms-overflow-style:none;scrollbar-width:none}</style>
 </head>
 <body class="bg-gray-50 h-screen overflow-hidden">
@@ -26,24 +25,6 @@
         <div id="photo-modal-gallery" class="flex overflow-x-auto snap-x snap-mandatory w-full max-h-[85vh] items-center space-x-4 pb-4 scrollbar-none mt-10"></div>
         <div id="photo-swipe-hint" class="absolute bottom-10 text-white text-xs font-bold uppercase tracking-widest opacity-50 hidden pointer-events-none"><i class="ph-bold ph-arrows-left-right mr-1 text-lg align-middle"></i> Swipe for more</div>
     </div>
-    
-    <div id="new-chat-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex flex-col items-center justify-end md:justify-center p-0 md:p-4">
-        <div class="bg-white rounded-t-2xl md:rounded-xl shadow-2xl w-full max-w-md flex flex-col max-h-[80vh] min-h-[50vh]">
-            <div class="p-4 border-b flex justify-between items-center bg-[#007a4d] text-white rounded-t-2xl md:rounded-t-xl">
-                <h3 class="font-bold text-lg">New Message</h3>
-                <i class="ph-bold ph-x text-2xl cursor-pointer" onclick="document.getElementById('new-chat-modal').classList.add('hidden')"></i>
-            </div>
-            <div class="p-4 border-b bg-gray-50">
-                <input type="text" id="chat-user-search" class="input-field !mb-0 border-gray-300" placeholder="Search team members..." oninput="filterChatUsers()">
-            </div>
-            <div id="chat-user-list" class="overflow-y-auto flex-grow p-2"></div>
-            <div class="p-4 border-t bg-gray-50">
-                <input type="text" id="chat-group-name" class="input-field hidden mb-2 border-gray-300" placeholder="Group Name (Required for groups)">
-                <button class="w-full bg-[#007a4d] text-white font-bold p-3 rounded-lg shadow-md active:scale-95" onclick="submitNewChat()">Start Chat</button>
-            </div>
-        </div>
-    </div>
-
     <div id="view-login">
         <div class="login-card">
             <div class="flex flex-col items-center mb-8 w-full relative">
@@ -62,7 +43,6 @@
             <div id="loading-spinner" class="hidden mt-6 flex flex-col items-center"><div class="spinner"></div><div id="loading-text" class="text-white font-bold text-sm mt-3 text-center">Syncing Database...</div></div>
         </div>
     </div>
-    
     <div id="view-change-password">
         <div class="login-card">
             <h2 class="text-2xl font-black text-[#007a4d] mb-2">Change Password</h2>
@@ -72,7 +52,6 @@
             <button class="w-full bg-[#007a4d] text-white font-bold py-3 rounded-lg shadow-md active:scale-95" onclick="submitNewPassword()">SAVE & CONTINUE</button>
         </div>
     </div>
-
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -83,7 +62,6 @@
             <button class="text-gray-500 font-bold py-2 px-4" onclick="document.getElementById('tab-select-modal').classList.add('hidden')">Cancel</button>
         </div>
     </div>
-    
     <div id="assign-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Assign Selected To:</h3>
@@ -95,7 +73,6 @@
             <button class="text-gray-500 font-bold py-2 px-4" onclick="closeAssignModal()">Cancel</button>
         </div>
     </div>
-    
     <div id="endcap-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center flex flex-col max-h-[90vh]">
             <div id="ec-step-1" class="flex flex-col">
@@ -114,7 +91,6 @@
             <button class="text-gray-500 font-bold py-2 px-4 mt-2" onclick="document.getElementById('endcap-modal').classList.add('hidden')">Cancel</button>
         </div>
     </div>
-    
     <div id="dock-mistake-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-black text-2xl mb-2 text-red-600">Report Mistake</h3>
@@ -126,7 +102,6 @@
             </div>
         </div>
     </div>
-    
     <div id="dock-info-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center relative overflow-hidden">
             <h3 class="font-black text-2xl mb-2 text-[#007a4d]">DOCK <span id="modal-dock-num"></span></h3>
@@ -158,7 +133,6 @@
             </div>
         </div>
     </div>
-    
     <div id="request-rep-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center flex flex-col max-h-[90vh]">
             <div id="step-1-rep" class="flex flex-col">
@@ -191,7 +165,6 @@
             <button class="text-gray-500 font-bold py-2 px-4 mt-2" onclick="document.getElementById('request-rep-modal').classList.add('hidden')">Cancel</button>
         </div>
     </div>
-
     <div id="app-wrapper" class="hidden h-full flex flex-col">
         <header class="nav-header sticky top-0 z-50 p-4 flex justify-between items-center shadow-md">
             <div class="flex items-center gap-3">
@@ -208,10 +181,6 @@
         <div id="side-drawer">
             <div class="drawer-header">Menu</div>
             <div class="drawer-item" onclick="switchView('home'); toggleMenu();"><i class="ph-bold ph-house"></i> Home</div>
-            <div class="drawer-item" onclick="switchView('chat-inbox'); loadChatInbox(); toggleMenu();">
-                <i class="ph-bold ph-chat-circle-dots"></i> Team Messages
-                <span id="drawer-unread-badge" class="ml-auto bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full hidden">New</span>
-            </div>
             <div class="drawer-item text-green-600 font-bold" onclick="fetchBackgroundData(); toggleMenu();"><i class="ph-bold ph-arrows-clockwise"></i> Force Data Sync</div>
             <hr class="my-2">
             <div class="drawer-item" onclick="switchView('drive'); toggleMenu();"><i class="ph-bold ph-car"></i> Drive Mode</div>
@@ -232,7 +201,6 @@
         
         <div id="main-scroll-area" class="flex-grow overflow-y-auto p-4 pb-40 relative">
             <div id="view-wrapper" style="position:relative; z-index:20;">
-                
                 <div id="view-home" class="hidden">
                     <div class="bg-[#007a4d] text-white p-6 rounded-2xl mb-6 shadow-lg flex flex-col items-center text-center relative overflow-hidden">
                         <div class="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-white opacity-5 rounded-full pointer-events-none"></div>
@@ -246,11 +214,6 @@
                     </div>
                     <h2 class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3 pl-1">App Modules</h2>
                     <div class="grid grid-cols-2 gap-3 mb-8">
-                        <div onclick="switchView('chat-inbox'); loadChatInbox();" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer col-span-2 relative">
-                            <i class="ph-bold ph-chat-circle-dots text-3xl text-[#007a4d]"></i>
-                            <span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Team Messages</span>
-                            <div id="home-unread-badge" class="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full hidden">0</div>
-                        </div>
                         <div onclick="switchView('drive')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-car text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Drive Mode</span></div>
                         <div onclick="switchView('tasks')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer rep-hidden csr-hidden"><i class="ph-bold ph-clipboard-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Tasks</span></div>
                         <div onclick="switchView('docks')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-truck text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Docks</span></div>
@@ -262,32 +225,6 @@
                         <div onclick="switchView('hours')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-clock text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Labor Hours</span></div>
                         <div onclick="switchView('low-stock')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer dylan-only hidden"><i class="ph-bold ph-trend-down text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Low Stock</span></div>
                         <div onclick="switchView('review')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform col-span-2 cursor-pointer admin-only hidden"><i class="ph-bold ph-warning-circle text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Manager Review</span></div>
-                    </div>
-                </div>
-
-                <div id="view-chat-inbox" class="hidden flex flex-col h-full bg-gray-50 absolute inset-0 z-[40]">
-                    <div class="bg-[#007a4d] text-white p-4 shadow-md flex items-center justify-between z-10 sticky top-0">
-                        <div class="font-black text-lg tracking-wide">Messages</div>
-                        <button onclick="openNewChatModal()" class="bg-white text-[#007a4d] px-3 py-1.5 rounded-lg text-sm font-bold shadow-sm flex items-center gap-1 active:scale-95"><i class="ph-bold ph-plus"></i> New Chat</button>
-                    </div>
-                    <div id="inbox-list" class="flex-grow overflow-y-auto p-3 space-y-2 pb-[100px]">
-                        </div>
-                </div>
-
-                <div id="view-chat-room" class="hidden flex flex-col h-full bg-gray-50 absolute inset-0 z-[50]">
-                    <div class="bg-[#007a4d] text-white p-4 shadow-md flex items-center gap-3 z-10 sticky top-0">
-                        <i class="ph-bold ph-arrow-left text-2xl cursor-pointer active:scale-90" onclick="switchView('chat-inbox'); loadChatInbox();"></i>
-                        <div class="flex flex-col min-w-0">
-                            <div id="chat-room-title" class="font-black text-lg tracking-wide truncate">Chat</div>
-                        </div>
-                    </div>
-                    <div id="chat-messages" class="flex-grow overflow-y-auto p-4 space-y-3 pb-[80px] bg-gray-100">
-                        </div>
-                    <div class="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 p-3 flex gap-2 z-50 pb-[max(15px,env(safe-area-inset-bottom))] shadow-[0_-5px_15px_rgba(0,0,0,0.05)]">
-                        <input type="text" id="chat-input" class="input-field !mb-0 flex-grow border-gray-300 focus:border-[#007a4d] rounded-full px-4" placeholder="Message..." onkeypress="if(event.key === 'Enter') sendTargetedChatMessage()">
-                        <button class="bg-[#007a4d] text-white w-12 h-12 rounded-full flex items-center justify-center shadow-md active:scale-95 transition-transform flex-shrink-0" onclick="sendTargetedChatMessage()">
-                            <i class="ph-bold ph-paper-plane-right text-xl ml-1"></i>
-                        </button>
                     </div>
                 </div>
                 
@@ -561,13 +498,8 @@
                 <div onclick="switchView('drive')"><i class="ph-bold ph-car text-2xl text-gray-400"></i></div>
                 <div onclick="switchView('tasks')" class="rep-hidden csr-hidden"><i class="ph-bold ph-clipboard-text text-2xl text-gray-400"></i></div>
                 <div onclick="switchView('docks')"><i class="ph-bold ph-truck text-2xl text-gray-400"></i></div>
-                <div onclick="switchView('chat-inbox'); loadChatInbox();" class="relative">
-                    <i class="ph-bold ph-chat-circle-dots text-2xl text-gray-400"></i>
-                    <div id="nav-unread-badge" class="absolute -top-1 -right-1 bg-red-500 w-3 h-3 rounded-full border-2 border-white hidden"></div>
-                </div>
             </nav>
         </div>
-
         <script>
         const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6cm55anNvc3J5ZWpqZWpsaWlpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzAyNzM1NywiZXhwIjoyMDg4NjAzMzU3fQ.Bc46UfJ1N4AgAS1PgfhFg6S4BEyybR6g_TUnPZsE2t0";
@@ -575,15 +507,6 @@
         const esc = (s) => String(s || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
         const DB_NAME="GNC_DDC_DB_V2"; const STORE_NAME="inventory_cache";
         
-        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-        // -- CHAT SYSTEM VARIABLES --
-        let chatThreads = [];
-        let chatUsers = []; 
-        let currentThreadId = null;
-        let selectedNewChatUsers = new Set();
-        let unreadCount = 0;
-
         function performLogout() { 
             localStorage.clear(); 
             sessionStorage.clear(); 
@@ -866,116 +789,39 @@
             document.getElementById('header-user').innerText=currentUser.toUpperCase(); 
             setRepPermutations(currentUser); 
             if(!isBiometricLogin&&window.PublicKeyCredential&&localStorage.getItem('gnc_bio_enabled')!=='true'){ promptToEnableBiometrics(user,pass); } 
-            
-            // ASK FOR PUSH NOTIFICATION PERMISSION
-            requestPushPermission();
-
             applyRolePermissions(); 
             fetchBackgroundData(); 
-            loadChatInbox(); // Pre-load chat state
-            setupRealtimeSubscriptions();
+            setInterval(silentBackgroundSync, 1000); 
         }
 
-        // --- PUSH NOTIFICATION LOGIC ---
-        function requestPushPermission() {
-            if (!("Notification" in window)) {
-                console.log("This browser does not support desktop notification");
-                return;
-            }
-            if (Notification.permission !== "denied" && Notification.permission !== "granted") {
-                Notification.requestPermission().then(permission => {
-                    if (permission === "granted") {
-                        console.log("Notification permission granted.");
-                    }
-                });
-            }
-        }
-
-        function triggerLocalNotification(title, body) {
-            if (Notification.permission === "granted") {
-                new Notification(title, {
-                    body: body,
-                    icon: '/icon.png' 
-                });
-            }
-        }
-
-        function setupRealtimeSubscriptions() {
-            // Listen for Inventory, Requests, and Sales Office changes
-            supabaseClient.channel('schema-db-changes')
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'v2_master_inventory' }, payload => {
-                    silentBackgroundSync('v2_master_inventory');
-                })
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'v2_active_request' }, payload => {
-                    silentBackgroundSync('v2_active_request');
-                })
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'v2_sales_office' }, payload => {
-                    silentBackgroundSync('v2_sales_office');
-                })
-                .subscribe();
-
-            // Listen for Chat Messages instantly
-            supabaseClient.channel('chat-messages-channel')
-                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'v2_chat_messages' }, payload => {
-                    handleIncomingMessage(payload.new);
-                })
-                .subscribe();
-                
-            // Chat Thread Updates (For Inbox Sorting)
-            supabaseClient.channel('chat-threads-channel')
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'v2_chat_threads' }, payload => {
-                    loadChatInbox(); // Refresh inbox to re-sort
-                })
-                .subscribe();
-        }
-        
-        function handleIncomingMessage(msg) {
-            // Check if user is a member of this thread
-            let isMember = chatThreads.some(t => t.thread_id === msg.thread_id);
-            if (!isMember) return; // Ignore messages in rooms they aren't in
-
-            if (currentThreadId === msg.thread_id && !document.getElementById('view-chat-room').classList.contains('hidden')) {
-                // User is currently looking at this chat, render it instantly and mark as read
-                renderSingleChatMessage(msg);
-                updateLastRead(msg.thread_id);
-            } else {
-                // User is not looking at it. Show notification and badge!
-                if (msg.sender_name.toLowerCase() !== currentUser.toLowerCase()) {
-                    triggerLocalNotification(`New Message from ${msg.sender_name}`, msg.message_text);
-                    loadChatInbox(); // Recalculate unread badges
-                }
-            }
-        }
-
-        async function silentBackgroundSync(triggeredTable = null) {
+        async function silentBackgroundSync() {
             if(!currentUser)return; 
             const checkTime=new Date().toISOString();
             try {
-                if (triggeredTable === 'v2_master_inventory' || !triggeredTable) {
-                    const response=await fetch(`${SUPABASE_URL}/rest/v1/v2_master_inventory?select=*&last_updated=gt.${lastSyncTime}`,{method:'GET',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
-                    if(response.ok) {
-                        const data=await response.json();
-                        if(data&&data.length>0){
-                            let updated=false;
-                            data.forEach(updatedRow=>{
-                                let idx=fullInventory.findIndex(i=>i.UNIQUE_ID===updatedRow.unique_id);
-                                if(idx>-1){
-                                    for(let k in updatedRow){ if(updatedRow[k]!==null) fullInventory[idx][k.toUpperCase()]=updatedRow[k]; }
-                                    fullInventory[idx].SAVED_PHOTO_LINK=fullInventory[idx].PHOTO_LINK||fullInventory[idx].PHOTOLINK||""; 
-                                    fullInventory[idx].SAVED_PHOTO_NAME=fullInventory[idx].PHOTO_NAME||fullInventory[idx].PHOTONAME||""; 
-                                    updated=true; 
-                                    if(activeItem&&activeItem.UNIQUE_ID===updatedRow.unique_id){ Object.assign(activeItem,fullInventory[idx]); }
-                                }
-                            });
-                            if(updated){ reRenderCurrentView(); if(activeItem&&!document.getElementById('view-detail').classList.contains('hidden')){ openDetail(activeItem.UNIQUE_ID,lastView); } }
-                        } 
-                    }
+                const response=await fetch(`${SUPABASE_URL}/rest/v1/v2_master_inventory?select=*&last_updated=gt.${lastSyncTime}`,{method:'GET',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+                if(response.ok) {
+                    const data=await response.json();
+                    if(data&&data.length>0){
+                        let updated=false;
+                        data.forEach(updatedRow=>{
+                            let idx=fullInventory.findIndex(i=>i.UNIQUE_ID===updatedRow.unique_id);
+                            if(idx>-1){
+                                for(let k in updatedRow){ if(updatedRow[k]!==null) fullInventory[idx][k.toUpperCase()]=updatedRow[k]; }
+                                fullInventory[idx].SAVED_PHOTO_LINK=fullInventory[idx].PHOTO_LINK||fullInventory[idx].PHOTOLINK||""; 
+                                fullInventory[idx].SAVED_PHOTO_NAME=fullInventory[idx].PHOTO_NAME||fullInventory[idx].PHOTONAME||""; 
+                                updated=true; 
+                                if(activeItem&&activeItem.UNIQUE_ID===updatedRow.unique_id){ Object.assign(activeItem,fullInventory[idx]); }
+                            }
+                        });
+                        if(updated){ reRenderCurrentView(); if(activeItem&&!document.getElementById('view-detail').classList.contains('hidden')){ openDetail(activeItem.UNIQUE_ID,lastView); } }
+                    } 
                 }
                 
-                if (triggeredTable === 'v2_active_request' || !triggeredTable) {
-                    const reqRes = await fetch(`${SUPABASE_URL}/rest/v1/v2_active_request?select=*`, {method:'GET', headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
-                    if(reqRes.ok) {
-                        const reqData = await reqRes.json();
+                const reqRes = await fetch(`${SUPABASE_URL}/rest/v1/v2_active_request?select=*`, {method:'GET', headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+                if(reqRes.ok) {
+                    const reqData = await reqRes.json();
+                    let hash = JSON.stringify(reqData);
+                    if(hash !== localStorage.getItem('last_req_hash')) {
                         requestsInventory = reqData.map(item => {
                             let obj = {SOURCE_TABLE: 'v2_active_request'};
                             for(let k in item) { if(item[k]!==null) obj[k.toUpperCase()] = item[k]; }
@@ -986,14 +832,16 @@
                             obj.LOCATIONCODE=obj.LOCATIONCODE||obj.LOCATION||"No Loc"; 
                             return obj;
                         });
+                        localStorage.setItem('last_req_hash', hash);
                         if(!document.getElementById('view-request').classList.contains('hidden')) renderRequest();
                     }
                 }
 
-                if (triggeredTable === 'v2_sales_office' || !triggeredTable) {
-                    const soRes = await fetch(`${SUPABASE_URL}/rest/v1/v2_sales_office?select=*`, {method:'GET', headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
-                    if(soRes.ok) {
-                        const soData = await soRes.json();
+                const soRes = await fetch(`${SUPABASE_URL}/rest/v1/v2_sales_office?select=*`, {method:'GET', headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+                if(soRes.ok) {
+                    const soData = await soRes.json();
+                    let soHash = JSON.stringify(soData);
+                    if(soHash !== localStorage.getItem('last_so_hash')) {
                         salesOfficeInventory = soData.map((item, idx) => {
                             let obj = {SOURCE_TABLE: 'v2_sales_office'};
                             for(let k in item) { if(item[k]!==null) obj[k.toUpperCase()] = item[k]; }
@@ -1002,6 +850,7 @@
                             if (masterItem) { obj.AV_NOTE = masterItem.AV_NOTE; }
                             return obj;
                         });
+                        localStorage.setItem('last_so_hash', soHash);
                         if(!document.getElementById('view-sales-office').classList.contains('hidden')) renderSalesOffice();
                     }
                 }
@@ -1200,7 +1049,7 @@
         }
 
         function switchView(viewId) { 
-            ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-detail','view-docks','view-request','view-reserves','view-av', 'view-hours', 'view-chat-inbox', 'view-chat-room'].forEach(id=>{
+            ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-detail','view-docks','view-request','view-reserves','view-av', 'view-hours'].forEach(id=>{
                 const el=document.getElementById(id);
                 if(el)el.classList.add('hidden');
             }); 
@@ -1220,249 +1069,6 @@
                     if(viewId==='hours')resetHoursView();
                 },0)
             }); 
-        }
-
-        // --- RELATIONAL CHAT LOGIC ---
-
-        async function loadChatInbox() {
-            try {
-                // Get threads this user belongs to
-                const memberData = await supabaseFetch('v2_chat_members', 'GET', null, `username=ilike.${encodeURIComponent(currentUser)}`);
-                if (!memberData || memberData.length === 0) {
-                    document.getElementById('inbox-list').innerHTML = `<div class="p-8 text-center text-gray-400">No active conversations. Click New Chat to start.</div>`;
-                    updateBadges(0);
-                    return;
-                }
-
-                let threadIds = memberData.map(m => m.thread_id).join(',');
-                const threadsData = await supabaseFetch('v2_chat_threads', 'GET', null, `id=in.(${threadIds})&order=last_message_at.desc`);
-                
-                chatThreads = [];
-                let totalUnread = 0;
-                let html = "";
-
-                // Get other members to name the 1-on-1s properly
-                const allMembers = await supabaseFetch('v2_chat_members', 'GET', null, `thread_id=in.(${threadIds})`);
-
-                for (let t of threadsData) {
-                    let myMembership = memberData.find(m => m.thread_id === t.id);
-                    let otherMembers = allMembers.filter(m => m.thread_id === t.id && m.username.toLowerCase() !== currentUser.toLowerCase());
-                    
-                    let displayTitle = t.thread_name;
-                    if (!t.is_group || !displayTitle) {
-                        displayTitle = otherMembers.map(m => m.username).join(', ') || "Empty Chat";
-                    }
-
-                    // Simple unread logic: if last message > my last read
-                    let isUnread = new Date(t.last_message_at) > new Date(myMembership.last_read_at);
-                    if (isUnread) totalUnread++;
-
-                    chatThreads.push({ thread_id: t.id, title: displayTitle });
-
-                    let icon = t.is_group ? "ph-users" : "ph-user";
-                    let bg = isUnread ? "bg-green-50 border-green-200" : "bg-white border-gray-200";
-                    let text = isUnread ? "font-black text-gray-900" : "font-bold text-gray-700";
-
-                    html += `
-                    <div class="${bg} border rounded-xl p-4 shadow-sm flex items-center justify-between cursor-pointer active:scale-95 transition-transform" onclick="openChatThread('${t.id}', '${esc(displayTitle)}')">
-                        <div class="flex items-center gap-3 min-w-0">
-                            <div class="bg-gray-100 p-3 rounded-full flex-shrink-0 text-gray-500"><i class="ph-fill ${icon} text-xl"></i></div>
-                            <div class="truncate">
-                                <div class="${text} text-[15px] truncate">${displayTitle}</div>
-                                <div class="text-[11px] text-gray-400 mt-0.5 flex items-center gap-1"><i class="ph-bold ph-clock"></i> ${new Date(t.last_message_at).toLocaleDateString()}</div>
-                            </div>
-                        </div>
-                        ${isUnread ? '<div class="w-3 h-3 bg-red-500 rounded-full flex-shrink-0"></div>' : '<i class="ph-bold ph-caret-right text-gray-300"></i>'}
-                    </div>`;
-                }
-
-                document.getElementById('inbox-list').innerHTML = html;
-                updateBadges(totalUnread);
-
-            } catch (e) {
-                console.log(e);
-            }
-        }
-
-        function updateBadges(count) {
-            unreadCount = count;
-            const homeBadge = document.getElementById('home-unread-badge');
-            const navBadge = document.getElementById('nav-unread-badge');
-            const drawerBadge = document.getElementById('drawer-unread-badge');
-
-            if (count > 0) {
-                if(homeBadge) { homeBadge.innerText = count; homeBadge.classList.remove('hidden'); }
-                if(navBadge) navBadge.classList.remove('hidden');
-                if(drawerBadge) drawerBadge.classList.remove('hidden');
-            } else {
-                if(homeBadge) homeBadge.classList.add('hidden');
-                if(navBadge) navBadge.classList.add('hidden');
-                if(drawerBadge) drawerBadge.classList.add('hidden');
-            }
-        }
-
-        async function openChatThread(threadId, title) {
-            currentThreadId = threadId;
-            document.getElementById('chat-room-title').innerText = title;
-            switchView('chat-room');
-            
-            const container = document.getElementById('chat-messages');
-            container.innerHTML = `<div class="text-center text-gray-400 text-sm mt-10">Loading messages...</div>`;
-
-            try {
-                const msgs = await supabaseFetch('v2_chat_messages', 'GET', null, `thread_id=eq.${threadId}&order=created_at.asc&limit=50`);
-                container.innerHTML = '';
-                if(msgs && msgs.length > 0) {
-                    msgs.forEach(msg => renderSingleChatMessage(msg, false));
-                } else {
-                    container.innerHTML = `<div class="text-center text-gray-400 text-sm mt-10">No messages yet.</div>`;
-                }
-                scrollToBottomChat();
-                updateLastRead(threadId); // Mark as read!
-            } catch(e) {}
-        }
-
-        async function updateLastRead(threadId) {
-            await supabaseFetch('v2_chat_members', 'PATCH', { last_read_at: new Date().toISOString() }, `thread_id=eq.${threadId}&username=ilike.${encodeURIComponent(currentUser)}`);
-            loadChatInbox(); // update badges silently
-        }
-
-        function renderSingleChatMessage(msg, autoScroll = true) {
-            const container = document.getElementById('chat-messages');
-            if (container.innerHTML.includes('No messages yet') || container.innerHTML.includes('Loading')) container.innerHTML = '';
-
-            const isMe = msg.sender_name.toLowerCase() === currentUser.toLowerCase();
-            const alignClass = isMe ? 'self-end bg-[#007a4d] text-white rounded-br-none' : 'self-start bg-white border border-gray-200 text-gray-800 rounded-bl-none';
-            const nameClass = isMe ? 'hidden' : 'text-[10px] font-bold text-gray-500 ml-1 mb-1 uppercase';
-            const timeString = new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-
-            const html = `
-                <div class="flex flex-col w-full mb-3">
-                    <div class="${nameClass}">${msg.sender_name}</div>
-                    <div class="max-w-[80%] ${alignClass} p-3 rounded-2xl shadow-sm relative">
-                        <div class="text-[14px] font-medium leading-snug break-words">${msg.message_text}</div>
-                        <div class="text-[9px] ${isMe ? 'text-green-200' : 'text-gray-400'} mt-1 text-right">${timeString}</div>
-                    </div>
-                </div>
-            `;
-            container.insertAdjacentHTML('beforeend', html);
-            if(autoScroll) scrollToBottomChat();
-        }
-
-        function scrollToBottomChat() {
-            const container = document.getElementById('chat-messages');
-            container.scrollTop = container.scrollHeight;
-        }
-
-        async function sendTargetedChatMessage() {
-            if(!currentThreadId) return;
-            const input = document.getElementById('chat-input');
-            const text = input.value.trim();
-            if(!text) return;
-            
-            input.value = ''; 
-            
-            const payload = {
-                thread_id: currentThreadId,
-                sender_name: currentUser.toUpperCase(),
-                message_text: text
-            };
-            
-            try {
-                // Insert message
-                await supabaseFetch('v2_chat_messages', 'POST', payload);
-                // Update thread last_message_at
-                await supabaseFetch('v2_chat_threads', 'PATCH', { last_message_at: new Date().toISOString() }, `id=eq.${currentThreadId}`);
-            } catch(err) {
-                showToast('Error', 'Message failed to send', true);
-                input.value = text; 
-            }
-        }
-
-        // --- NEW CHAT MODAL LOGIC ---
-        
-        async function openNewChatModal() {
-            document.getElementById('new-chat-modal').classList.remove('hidden');
-            selectedNewChatUsers.clear();
-            document.getElementById('chat-group-name').classList.add('hidden');
-            document.getElementById('chat-group-name').value = "";
-            document.getElementById('chat-user-search').value = "";
-            
-            // Load all users to select from
-            if(chatUsers.length === 0) {
-                const users = await supabaseFetch('v2_app_users', 'GET', null, 'select=username');
-                chatUsers = users.map(u => u.username).filter(u => u.toLowerCase() !== currentUser.toLowerCase());
-            }
-            renderChatUserList();
-        }
-
-        function filterChatUsers() { renderChatUserList(); }
-
-        function renderChatUserList() {
-            const term = document.getElementById('chat-user-search').value.toLowerCase();
-            let filtered = chatUsers.filter(u => u.toLowerCase().includes(term));
-            
-            let html = filtered.map(u => {
-                const isSelected = selectedNewChatUsers.has(u);
-                const bg = isSelected ? 'bg-green-100 border-green-500' : 'bg-white border-gray-200';
-                const check = isSelected ? '<i class="ph-bold ph-check-circle text-green-600 text-xl"></i>' : '<div class="w-5 h-5 rounded-full border-2 border-gray-300"></div>';
-                return `<div class="${bg} border p-3 rounded-lg mb-2 flex justify-between items-center cursor-pointer transition-colors" onclick="toggleNewChatUser('${esc(u)}')"><span class="font-bold text-gray-700">${u}</span>${check}</div>`;
-            }).join('');
-            
-            document.getElementById('chat-user-list').innerHTML = html;
-        }
-
-        function toggleNewChatUser(u) {
-            if(selectedNewChatUsers.has(u)) selectedNewChatUsers.delete(u);
-            else selectedNewChatUsers.add(u);
-            
-            if(selectedNewChatUsers.size > 1) {
-                document.getElementById('chat-group-name').classList.remove('hidden');
-            } else {
-                document.getElementById('chat-group-name').classList.add('hidden');
-            }
-            renderChatUserList();
-        }
-
-        async function submitNewChat() {
-            if(selectedNewChatUsers.size === 0) { showToast("Error", "Select at least one user.", true); return; }
-            
-            const isGroup = selectedNewChatUsers.size > 1;
-            const groupName = document.getElementById('chat-group-name').value.trim();
-            if(isGroup && !groupName) { showToast("Error", "Please name your group.", true); return; }
-
-            document.getElementById('new-chat-modal').classList.add('hidden');
-            showToast("Creating...", "Setting up secure chat room...", false);
-
-            try {
-                // 1. Create Thread
-                const threadPayload = {
-                    thread_name: isGroup ? groupName : null,
-                    is_group: isGroup
-                };
-                const newThreadRes = await supabaseFetch('v2_chat_threads', 'POST', threadPayload);
-                const newThreadId = newThreadRes[0].id;
-
-                // 2. Add Members (Me + Selected)
-                let members = Array.from(selectedNewChatUsers);
-                members.push(currentUser); // Add myself
-                
-                const memberPayloads = members.map(m => ({
-                    thread_id: newThreadId,
-                    username: m
-                }));
-                
-                await supabaseFetch('v2_chat_members', 'POST', memberPayloads);
-
-                // 3. Open it
-                showToast("Success", "Chat created!");
-                let displayTitle = isGroup ? groupName : Array.from(selectedNewChatUsers)[0];
-                openChatThread(newThreadId, displayTitle);
-                loadChatInbox(); // refresh list behind the scenes
-                
-            } catch (e) {
-                showToast("Error", "Failed to create chat.", true);
-            }
         }
 
         function reRenderCurrentView() { 
@@ -2715,7 +2321,7 @@
             else{executeBatchAction(pendingAction,pendingTabType)}
         }
 
-      function getSelectedItemsText(tabType) {
+        function getSelectedItemsText(tabType) {
             let items=[];
             selectedItems.forEach(domId=>{
                 let found=fullInventory.find(i=>i.DOM_ID===domId)||lowStockInventory.find(i=>i.DOM_ID===domId)||reservesInventory.find(i=>i.DOM_ID===domId)||requestsInventory.find(i=>i.DOM_ID===domId);
@@ -2803,6 +2409,528 @@
                 clearSelection()
             }
         }
+
+        function openAssignModal() { document.getElementById('assign-modal').classList.remove('hidden') }
+        function closeAssignModal() { document.getElementById('assign-modal').classList.add('hidden') }
+
+        const debouncedDriveSearch = debounce(() => { requestAnimationFrame(() => renderDrive()); }, 150);
+        
+        function clearDriveSearch() {
+            document.getElementById('drive-search').value = "";
+            document.getElementById('drive-search-clear').classList.add('hidden');
+            driveViewLevel = 0;
+            renderDrive();
+        }
+
+        function handleDriveSearch() {
+            const term = document.getElementById('drive-search').value.toLowerCase();
+            const clearBtn = document.getElementById('drive-search-clear');
+            if(term.length > 0) {
+                clearBtn.classList.remove('hidden');
+                driveViewLevel = 0; 
+            } else {
+                clearBtn.classList.add('hidden');
+                driveViewLevel = 0;
+            }
+            debouncedDriveSearch();
+        }
+
+        function selectDriveName(name) { selectedDriveName = name; driveViewLevel = 1; renderDrive() }
+        function selectDriveSize(size) { selectedDriveSize = size; driveViewLevel = 2; renderDrive() }
+        function backToDriveSizes() { driveViewLevel = 1; selectedDriveSize = null; renderDrive() }
+
+       function renderDrive() {
+            const container = document.getElementById('drive-content'); 
+            const filtersDiv = document.getElementById('drive-season-filters'); 
+            const crumb = document.getElementById('drive-crumb'); 
+            const term = document.getElementById('drive-search').value.toLowerCase().trim();
+            
+            filtersDiv.innerHTML = availableSeasons.map(s => { 
+                const active = driveSelectedSeasons.has(s); 
+                return `<div class="px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap cursor-pointer transition-colors ${active ? 'bg-[#007a4d] text-white shadow-md' : 'bg-white border border-gray-300 text-gray-600'}" onclick="toggleDriveSeason('${s}')">${s}</div>` 
+            }).join('');
+            
+            let baseItems = fullInventory;
+            if(!driveSelectedSeasons.has('ALL')) { 
+                baseItems = baseItems.filter(i => { let s = String(i.SEASON || '').toUpperCase(); return driveSelectedSeasons.has(s); }); 
+            }
+            
+            let searchFilteredItems = baseItems;
+            if(term) { 
+                const searchTerms = term.split(/\s+/); 
+                searchFilteredItems = searchFilteredItems.filter(i => { 
+                    const searchStr = (i._search || ""); 
+                    return searchTerms.every(t => searchStr.includes(t)); 
+                }); 
+            }
+
+            if (searchFilteredItems.length === 0) { 
+                container.innerHTML = `<div class="p-8 text-center text-gray-400">No items found matching criteria.</div>`; 
+                crumb.innerText = "No Results"; 
+                return; 
+            }
+            
+            if (activeDriveTab === 'name') {
+                if(driveViewLevel === 0) {
+                    crumb.innerText = `Select Plant (${searchFilteredItems.length} items)`;
+                    const names = [...new Set(searchFilteredItems.map(i => i.COMMONNAME))].sort();
+                    container.innerHTML = names.map(n => `<div class="drill-item" onclick="selectDriveName('${esc(n)}')"><span class="font-bold text-lg">${n}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
+                } else if(driveViewLevel === 1) {
+                    crumb.innerText = selectedDriveName;
+                    const namedItems = searchFilteredItems.filter(i => i.COMMONNAME === selectedDriveName);
+                    if(namedItems.length === 0){ container.innerHTML = `<div class="p-8 text-center text-gray-400">No items found.</div>`; return; }
+                    const sizes = [...new Set(namedItems.map(i => i.CONTSIZE))].sort();
+                    let html = `<div class="back-btn" onclick="driveViewLevel=0; renderDrive()"><i class="ph-bold ph-arrow-left"></i> Back to Names</div><div class="font-bold text-[#007a4d] mb-4 px-2 text-xl border-b pb-2">${selectedDriveName}</div>`;
+                    html += sizes.map(s => { 
+                        const count = namedItems.filter(i => i.CONTSIZE === s).length; 
+                        return `<div class="drill-item" onclick="selectDriveSize('${esc(s)}')"><span class="font-bold text-lg">${s} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>` 
+                    }).join('');
+                    container.innerHTML = html;
+                } else if(driveViewLevel === 2) {
+                    crumb.innerText = `${selectedDriveName} / ${selectedDriveSize}`;
+                    let finalItems = searchFilteredItems.filter(i => i.COMMONNAME === selectedDriveName && i.CONTSIZE === selectedDriveSize);
+                    finalItems.sort((a,b) => { let priA = parseFloat(a.PRIORITY); let priB = parseFloat(b.PRIORITY); if(isNaN(priA)) priA = Infinity; if(isNaN(priB)) priB = Infinity; return priA - priB; });
+                    container.innerHTML = `<div class="back-btn" onclick="backToDriveSizes()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>` + finalItems.map(i => generateCard(i, 'drive', 'status-blue')).join('');
+                }
+
+            } else if (activeDriveTab === 'loc') {
+                if(driveViewLevel === 0) {
+                    crumb.innerText = `Select Block (${searchFilteredItems.length} items)`;
+                    let blocks = {};
+                    searchFilteredItems.forEach(i => {
+                        let loc = String(i.LOCATIONCODE || "NoLoc").trim();
+                        let blockAlpha = loc.charAt(0).toUpperCase();
+                        if(!/[A-Z]/.test(blockAlpha)) blockAlpha = "Other";
+                        if(!blocks[blockAlpha]) blocks[blockAlpha] = {count:0};
+                        blocks[blockAlpha].count++;
+                    });
+                    let html = Object.keys(blocks).sort().map(b => `<div class="bg-white border border-green-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectDriveBlock('${esc(b)}')"><div class="flex items-center gap-3"><div class="bg-green-100 text-[#007a4d] px-3 py-1.5 rounded-lg font-black text-lg">${b}</div><span class="font-bold text-lg text-gray-700">Block ${b}</span></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${blocks[b].count} Items</span></div>`).join('');
+                    container.innerHTML = html;
+                } else if(driveViewLevel === 1) {
+                    crumb.innerText = `Block ${selectedDriveBlock}`;
+                    let bItems = searchFilteredItems.filter(i => {
+                        let loc = String(i.LOCATIONCODE || "NoLoc").trim();
+                        let alpha = loc.charAt(0).toUpperCase();
+                        if(!/[A-Z]/.test(alpha)) alpha = "Other";
+                        return alpha === selectedDriveBlock;
+                    });
+                    let locs = [...new Set(bItems.map(i => i.LOCATIONCODE || "NoLoc"))].sort((a,b) => String(a).localeCompare(String(b), undefined, {numeric: true}));
+                    let html = `<div class="back-btn" onclick="driveViewLevel=0; renderDrive()"><i class="ph-bold ph-arrow-left"></i> Back to Blocks</div>`;
+                    html += locs.map(l => {
+                        let count = bItems.filter(i => (i.LOCATIONCODE || "NoLoc") === l).length;
+                        return `<div class="drill-item" onclick="selectDriveLoc('${esc(l)}')"><span class="font-bold text-lg text-gray-800">${l} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
+                    }).join('');
+                    container.innerHTML = html;
+                } else if(driveViewLevel === 2) {
+                    crumb.innerText = `Block ${selectedDriveBlock} / Loc ${selectedDriveLoc}`;
+                    let fItems = searchFilteredItems.filter(i => (i.LOCATIONCODE || "NoLoc") === selectedDriveLoc);
+                    fItems.sort((a,b) => String(a.COMMONNAME || "").localeCompare(String(b.COMMONNAME || "")));
+                    container.innerHTML = `<div class="back-btn" onclick="driveViewLevel=1; renderDrive()"><i class="ph-bold ph-arrow-left"></i> Back to Locations</div>` + fItems.map(i => generateCard(i, 'drive', 'status-blue')).join('');
+                }
+            }
+        }
+
+        function toggleDriveSeason(s) {
+            if(s === 'ALL'){
+                driveSelectedSeasons.clear();
+                driveSelectedSeasons.add('ALL');
+            } else {
+                driveSelectedSeasons.delete('ALL');
+                if(driveSelectedSeasons.has(s)){
+                    driveSelectedSeasons.delete(s);
+                    if(driveSelectedSeasons.size === 0) driveSelectedSeasons.add('ALL');
+                } else {
+                    driveSelectedSeasons.add(s);
+                }
+            }
+            driveViewLevel = 0;
+            selectedDriveName = null;
+            selectedDriveSize = null;
+            renderDrive();
+        }
+
+        function renderTeamSelector() {
+            let uSet = new Set();
+            fullInventory.forEach(i => { if(i.ASSIGNEDTO && !i.DATE_COMPLETED) uSet.add(i.ASSIGNEDTO) });
+            if(uSet.size === 0) { 
+                document.getElementById('task-content').innerHTML = `<div class="p-8 text-center text-gray-400">No active tasks for any team member.</div>`; 
+                return; 
+            }
+            let sorted = Array.from(uSet).sort();
+            let html = `<h2 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Select Team Member</h2>`;
+            sorted.forEach(u => {
+                let userTasks = fullInventory.filter(i => i.ASSIGNEDTO === u && !i.DATE_COMPLETED);
+                let htmlCounts = `<div class="flex gap-2 mt-2">`;
+                ['season','location','endcap','flyer'].forEach(t => {
+                    let c = userTasks.filter(i => i.APP_TAB_ASSIGNMENT === t).length;
+                    if(c > 0) htmlCounts += `<span class="text-[10px] font-bold px-2 py-1 rounded bg-gray-100 text-gray-600 uppercase">${t}: ${c}</span>`;
+                });
+                htmlCounts += `</div>`;
+                html += `<div class="bg-white border border-gray-200 p-4 rounded-xl shadow-sm mb-3 cursor-pointer active:scale-95 transition-transform" onclick="selectTaskUser('${esc(u)}')"><div class="flex justify-between items-center"><span class="font-black text-xl text-[#007a4d]">${u}</span><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${userTasks.length} Total</span></div>${htmlCounts}</div>`;
+            });
+            document.getElementById('task-tabs-container').classList.add('hidden');
+            document.getElementById('task-crumb').innerText = "Team Tasks Overview";
+            document.getElementById('task-content').innerHTML = html;
+        }
+
+        function selectTaskUser(u) {
+            taskViewTargetUser = u;
+            document.getElementById('task-tabs-container').classList.remove('hidden');
+            renderTasks();
+        }
+
+        function renderTasks() {
+            let targetUser = safeRole === 'ADMIN' ? taskViewTargetUser : currentUser;
+            if(!targetUser) return;
+            const container = document.getElementById('task-content');
+            const crumb = document.getElementById('task-crumb');
+            crumb.innerHTML = safeRole === 'ADMIN' ? `<span class="cursor-pointer text-gray-400 hover:text-gray-800" onclick="taskViewTargetUser=null; renderTeamSelector()"><i class="ph-bold ph-arrow-left"></i> Back to Team</span> &bull; <span class="text-[#007a4d]">${targetUser}'s Tasks</span>` : "My Tasks";
+            
+            let userItems = fullInventory.filter(i => i.ASSIGNEDTO === targetUser && !i.DATE_COMPLETED);
+            let tabItems = userItems.filter(i => i.APP_TAB_ASSIGNMENT === activeTaskTab);
+            
+            if(tabItems.length === 0){
+                container.innerHTML = `<div class="p-8 text-center text-gray-400">No active ${activeTaskTab} tasks.</div>`;
+                return;
+            }
+            
+            if(activeTaskTab === 'endcap') {
+                if(taskViewLevel === 0) {
+                    let folders = [...new Set(tabItems.map(i => i.END_CAP_FOLDER || 'Unassigned'))].sort();
+                    container.innerHTML = folders.map(f => {
+                        let count = tabItems.filter(i => (i.END_CAP_FOLDER || 'Unassigned') === f).length;
+                        return `<div class="bg-white border border-yellow-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectedEndCapFolder='${esc(f)}'; taskViewLevel=1; renderTasks()"><div class="flex items-center gap-3"><div class="bg-yellow-50 p-2 rounded-lg"><i class="ph-fill ph-storefront text-2xl text-yellow-500"></i></div><span class="font-bold text-lg text-yellow-800">${f}</span></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${count} Items</span></div>`;
+                    }).join('');
+                } else if(taskViewLevel === 1) {
+                    let fItems = tabItems.filter(i => (i.END_CAP_FOLDER || 'Unassigned') === selectedEndCapFolder);
+                    fItems.sort((a,b) => String(a.COMMONNAME || "").localeCompare(String(b.COMMONNAME || "")));
+                    container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=0; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to End Caps</div>` + fItems.map(i => generateCard(i, 'tasks', 'status-yellow')).join('');
+                }
+            } else if(activeTaskTab === 'flyer') {
+                tabItems.sort((a,b) => String(a.COMMONNAME || "").localeCompare(String(b.COMMONNAME || "")));
+                container.innerHTML = tabItems.map(i => generateCard(i, 'tasks', 'status-indigo')).join('');
+            } else {
+                if(taskViewLevel === 0) {
+                    let blocks = {};
+                    tabItems.forEach(i => {
+                        let loc = String(i.LOCATIONCODE || "NoLoc").trim();
+                        let blockAlpha = loc.charAt(0).toUpperCase();
+                        if(!/[A-Z]/.test(blockAlpha)) blockAlpha = "Other";
+                        if(!blocks[blockAlpha]) blocks[blockAlpha] = {count:0};
+                        blocks[blockAlpha].count++;
+                    });
+                    let html = Object.keys(blocks).sort().map(b => `<div class="bg-white border border-green-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectedTaskBlock='${esc(b)}'; taskViewLevel=1; renderTasks()"><div class="flex items-center gap-3"><div class="bg-green-100 text-[#007a4d] px-3 py-1.5 rounded-lg font-black text-lg">${b}</div><span class="font-bold text-lg text-gray-700">Block ${b}</span></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${blocks[b].count} Items</span></div>`).join('');
+                    container.innerHTML = html;
+                } else if(taskViewLevel === 1) {
+                    let bItems = tabItems.filter(i => {
+                        let loc = String(i.LOCATIONCODE || "NoLoc").trim();
+                        let alpha = loc.charAt(0).toUpperCase();
+                        if(!/[A-Z]/.test(alpha)) alpha = "Other";
+                        return alpha === selectedTaskBlock;
+                    });
+                    let locs = [...new Set(bItems.map(i => i.LOCATIONCODE || "NoLoc"))].sort((a,b) => String(a).localeCompare(String(b), undefined, {numeric: true}));
+                    let html = `<div class="back-btn" onclick="taskViewLevel=0; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Blocks</div>`;
+                    html += locs.map(l => {
+                        let count = bItems.filter(i => (i.LOCATIONCODE || "NoLoc") === l).length;
+                        return `<div class="drill-item" onclick="selectedTaskLoc='${esc(l)}'; taskViewLevel=2; renderTasks()"><span class="font-bold text-lg text-gray-800">${l} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
+                    }).join('');
+                    container.innerHTML = html;
+                } else if(taskViewLevel === 2) {
+                    let fItems = tabItems.filter(i => (i.LOCATIONCODE || "NoLoc") === selectedTaskLoc);
+                    fItems.sort((a,b) => String(a.COMMONNAME || "").localeCompare(String(b.COMMONNAME || "")));
+                    container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=1; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Locations</div>` + fItems.map(i => generateCard(i, 'tasks', activeTaskTab === 'season' ? 'status-green' : 'status-blue')).join('');
+                }
+            }
+        }
+
+        function renderReview() {
+            const container = document.getElementById('review-content');
+            const crumb = document.getElementById('review-crumb');
+            if(managerReviewInventory.length === 0){
+                container.innerHTML = `<div class="p-8 text-center text-gray-400">No items require manager review.</div>`;
+                crumb.innerText = "All Clear";
+                return;
+            }
+            if(reviewViewLevel === 0){
+                crumb.innerText = "Needs Location Priority Review";
+                let groups = {};
+                managerReviewInventory.forEach(i => {
+                    let code = i.ITEMCODE || "UNKNOWN";
+                    if(!groups[code]) {
+                        groups[code] = {code: code, name: i.COMMONNAME || "Unknown", size: i.CONTSIZE || "-", count: 0};
+                    }
+                    groups[code].count++;
+                });
+                let sorted = Object.values(groups).sort((a,b) => String(a.name).localeCompare(String(b.name)));
+                let html = sorted.map(g => `<div class="bg-yellow-50 border border-yellow-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectReviewItem('${esc(g.code)}', '${esc(g.name)}', '${esc(g.size)}')"><div class="flex-grow min-w-0 pr-3"><div class="font-bold text-[15px] text-yellow-800 truncate">${g.name}</div><div class="text-xs font-semibold text-yellow-600 mt-1">${g.size} <span class="mx-2 text-yellow-300">|</span> <span class="font-mono text-yellow-700">${g.code}</span></div></div><div class="bg-white px-3 py-1 rounded-lg shadow-sm border border-yellow-100 text-yellow-600 font-bold text-xs whitespace-nowrap">${g.count} Locs</div></div>`).join('');
+                container.innerHTML = html;
+            } else if(reviewViewLevel === 1){
+                crumb.innerText = `${selectedReviewCommonName} / ${selectedReviewContSize}`;
+                let items = managerReviewInventory.filter(i => i.ITEMCODE === selectedReviewItemCode);
+                items.sort((a,b) => String(a.LOCATIONCODE || "").localeCompare(String(b.LOCATIONCODE || ""), undefined, {numeric: true}));
+                container.innerHTML = `<div class="back-btn" onclick="resetReviewView()"><i class="ph-bold ph-arrow-left"></i> Back to List</div>` + items.map(i => generateCard(i, 'review', 'status-yellow')).join('');
+            }
+        }
+        
+        let autoSaveTimer = null;
+
+        function saveData(isComplete = false, prefix, isSilentAutoSave = false, specificItem = null) {
+            if (autoSaveTimer) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
+            let itemToSave = specificItem || activeItem; if (!itemToSave) return;
+            let btnDraft = document.getElementById(prefix + 'btn-save-draft'); 
+            let btnComp = document.getElementById(prefix + 'btn-save-complete'); 
+            let isCurrentView = (activeItem && activeItem.UNIQUE_ID === itemToSave.UNIQUE_ID);
+            
+            if (isCurrentView && isComplete) { if(btnComp) btnComp.innerText = "SAVING..."; }
+            
+            const executeSave = () => {
+                let wasAlreadyComplete = itemToSave.REQ_STATUS === 'Complete';
+
+                if (!specificItem) {
+                    let avEl = document.getElementById(prefix + 'av-note');
+                    if (avEl) { itemToSave.AV_NOTE = avEl.value.toUpperCase(); }
+                    
+                    let descEl = document.getElementById(prefix + 'sales-desc');
+                    if (descEl) { let textBoxVal = descEl.value.toUpperCase(); itemToSave.SALES_NOTE = textBoxVal; if (lastView === 'tasks') itemToSave._NEW_SALES_NOTE = textBoxVal; }
+
+                    if (isComplete && isCurrentView && itemToSave.APP_TAB_ASSIGNMENT === 'season') {
+                        const noteVal = (itemToSave.SALES_NOTE || "").trim();
+                        if (!noteVal) { showToast("Required", "A Sales Description is required to complete this Season task.", true); if (btnComp) btnComp.innerText = "MARK DONE"; return; }
+                    }
+
+                    if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-') { 
+                        let matchEl = document.getElementById(prefix + 'match'); if(matchEl) itemToSave.MATCH = matchEl.value; 
+                        let specEl = document.getElementById(prefix + 'spec'); if(specEl) itemToSave.SPEC = specEl.value; 
+                        let calEl = document.getElementById(prefix + 'caliper'); if(calEl) itemToSave.CALIPER = calEl.value; 
+                        let pickEl = document.getElementById(prefix + 'pick'); if(pickEl) itemToSave.PICK = pickEl.value; 
+                    } else if (prefix === 'req-') { 
+                        itemToSave.REQ_MATCH = document.getElementById('req-match').value; itemToSave.REQ_SPEC = document.getElementById('req-spec').value; itemToSave.REQ_CALIPER = document.getElementById('req-caliper').value; itemToSave.REQ_PICK = document.getElementById('req-pick').value; itemToSave.REQ_COMMENTS = document.getElementById('req-comments').value; let reserveEl = document.getElementById('req-reserve'); if (reserveEl) itemToSave.REQ_RESERVE = reserveEl.value;
+                    } else if (prefix === 'dock-') { 
+                        itemToSave.DOCK_SPEC = document.getElementById('dock-spec').value; itemToSave.DOCK_CALIPER = document.getElementById('dock-caliper').value; itemToSave.DOCK_NOTE = document.getElementById('dock-sales-desc').value.toUpperCase(); 
+                    } else if (prefix === 'flyer-') {
+                        itemToSave.FLYER_CAT = document.getElementById('flyer-cat').value; itemToSave.FLYER_TITLE = document.getElementById('flyer-title').value; itemToSave.FLYER_INST = document.getElementById('flyer-inst').value; itemToSave.FLYER_ASSIGNED = document.getElementById('flyer-assigned').value; itemToSave.FLYER_NOTES = document.getElementById('flyer-notes').value;
+                    }
+                }
+                
+                const setVal = (val) => (val === "" || val === undefined) ? null : val;
+                const payload = {};
+                
+                if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-') { 
+                    payload.match = (itemToSave.MATCH === "" || itemToSave.MATCH == null) ? null : parseFloat(itemToSave.MATCH); 
+                    payload.spec = setVal(itemToSave.SPEC); payload.caliper = setVal(itemToSave.CALIPER); payload.pic_note = setVal(itemToSave.PICK); 
+                    payload.sales_note = setVal(itemToSave.SALES_NOTE || itemToSave._NEW_SALES_NOTE); payload.av_note = setVal(itemToSave.AV_NOTE);
+                } else if (prefix === 'req-') { 
+                    payload.req_match = (itemToSave.REQ_MATCH === "" || itemToSave.REQ_MATCH == null) ? null : parseFloat(itemToSave.REQ_MATCH); 
+                    payload.req_spec = setVal(itemToSave.REQ_SPEC); payload.req_caliper = setVal(itemToSave.REQ_CALIPER); payload.req_pic_note = setVal(itemToSave.REQ_PICK); 
+                    payload.req_sales_note = setVal(itemToSave.REQ_SALES_NOTE); payload.req_comments = setVal(itemToSave.REQ_COMMENTS); 
+                    payload.req_reserve = setVal(itemToSave.REQ_RESERVE); payload.av_note = setVal(itemToSave.AV_NOTE);
+                    if (isComplete) { payload.req_status = 'Complete'; itemToSave.REQ_STATUS = 'Complete'; }
+                } else if (prefix === 'dock-') { 
+                    payload.dock_spec = setVal(itemToSave.DOCK_SPEC); payload.dock_caliper = setVal(itemToSave.DOCK_CALIPER); payload.dock_note = setVal(itemToSave.DOCK_NOTE); 
+                } else if (prefix === 'flyer-') {
+                    payload.flyer_cat = setVal(itemToSave.FLYER_CAT); payload.flyer_title = setVal(itemToSave.FLYER_TITLE); payload.flyer_inst = setVal(itemToSave.FLYER_INST); 
+                    payload.flyer_assigned = setVal(itemToSave.FLYER_ASSIGNED); payload.flyer_notes = setVal(itemToSave.FLYER_NOTES);
+                }
+
+                if (isComplete && (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-')) {
+                    let matchVal = parseFloat(itemToSave.MATCH);
+                    if (!isNaN(matchVal) && matchVal >= 0) {
+                        let ptr = parseInt(String(itemToSave.PTRAVAILABLE).replace(/,/g, '')) || 0;
+                        itemToSave.INITIAL_PTR = ptr; itemToSave.LOC_MATCH_QTY = Math.round(ptr * (matchVal / 100));
+                        payload.initial_ptr = itemToSave.INITIAL_PTR; payload.loc_match_qty = itemToSave.LOC_MATCH_QTY;
+                    }
+                }
+
+                backupLocalItem(itemToSave);
+
+                if (itemToSave.SAVED_PHOTO_LINK) payload.photo_link = itemToSave.SAVED_PHOTO_LINK; 
+                if (itemToSave.SAVED_PHOTO_NAME) payload.photo_name = itemToSave.SAVED_PHOTO_NAME;
+                if (itemToSave.REQ_PHOTO_LINK) payload.req_photo_link = itemToSave.REQ_PHOTO_LINK; 
+                if (itemToSave.REQ_PHOTO_NAME) payload.req_photo_name = itemToSave.REQ_PHOTO_NAME;
+                if (itemToSave.DOCK_PHOTO_LINK) payload.dock_photo_link = itemToSave.DOCK_PHOTO_LINK; 
+                if (itemToSave.DOCK_PHOTO_NAME) payload.dock_photo_name = itemToSave.DOCK_PHOTO_NAME;
+                if (itemToSave.FLYER_PHOTO_LINK) payload.flyer_photo_link = itemToSave.FLYER_PHOTO_LINK; 
+                if (itemToSave.FLYER_PHOTO_NAME) payload.flyer_photo_name = itemToSave.FLYER_PHOTO_NAME;
+
+                if (isComplete) { 
+                    payload.date_completed = new Date().toISOString(); 
+                    if (prefix === 'flyer-') payload.flyer_completed = payload.date_completed;
+                    
+                    let soPayload = { unique_id: itemToSave.UNIQUE_ID, itemcode: itemToSave.ITEMCODE || "", commonname: itemToSave.COMMONNAME || "", contsize: itemToSave.CONTSIZE || "", locationcode: itemToSave.LOCATIONCODE || "", lotcode: itemToSave.LOTCODE || "", ptravailable: String(itemToSave.PTRAVAILABLE || ""), priority: String(itemToSave.PRIORITY || ""), sales_note: payload.sales_note || itemToSave.SALES_NOTE || itemToSave._NEW_SALES_NOTE || "", photo_link: itemToSave.NA_PHOTO_LINK || itemToSave.SAVED_PHOTO_LINK || "", completed_by: currentUser, completed_at: payload.date_completed };
+                    if (prefix !== 'flyer-' && prefix !== 'req-') {
+                        supabaseFetch('v2_sales_office', 'POST', soPayload).catch(e => console.log(e));
+                        let cloneSO = { ...soPayload };
+                        for(let key in soPayload) { cloneSO[key.toUpperCase()] = soPayload[key]; }
+                        cloneSO.DOM_ID = 'so_' + cloneSO.UNIQUE_ID;
+                        cloneSO.AV_NOTE = itemToSave.AV_NOTE;
+                        cloneSO.SAVED_PHOTO_LINK = soPayload.photo_link; 
+                        let existingIdx = salesOfficeInventory.findIndex(s => s.UNIQUE_ID === cloneSO.UNIQUE_ID);
+                        if (existingIdx > -1) salesOfficeInventory[existingIdx] = cloneSO;
+                        else salesOfficeInventory.push(cloneSO);
+                    }
+                }
+
+                const targetTable = (prefix === 'req-') ? 'v2_active_request' : (itemToSave.SOURCE_TABLE || 'v2_master_inventory');
+
+                supabaseFetch(targetTable, 'PATCH', payload, `unique_id=eq.${encodeURIComponent(itemToSave.UNIQUE_ID)}`).then(data => {
+                    if (isCurrentView && isComplete) { if(btnComp) btnComp.innerText = "MARK DONE"; }
+                    if (!isSilentAutoSave && isCurrentView && isComplete) showToast("Success", "Task Completed!"); 
+                    if (isComplete && isCurrentView) { 
+                        itemToSave.DATE_COMPLETED = payload.date_completed; 
+                        goBackFromDetail(); 
+                        reRenderCurrentView();
+                    } else if (isComplete && !isCurrentView) { 
+                        itemToSave.DATE_COMPLETED = payload.date_completed; 
+                    }
+
+                    if (prefix === 'req-' && isComplete && !wasAlreadyComplete) {
+                        let folderItems = requestsInventory.filter(i => i.REQUEST_FOLDER === itemToSave.REQUEST_FOLDER);
+                        let allComplete = folderItems.every(i => i.REQ_STATUS === 'Complete' || i.UNIQUE_ID === itemToSave.UNIQUE_ID);
+                        if (allComplete) { sendEmailNotification('request_complete', itemToSave.REQUEST_FOLDER, itemToSave.REQUESTED_BY, itemToSave.REQ_CUSTOMER, folderItems.length); }
+                    }
+                }).catch(err => { if (isCurrentView && isComplete) { if(btnComp) btnComp.innerText = "MARK DONE"; if (!isSilentAutoSave) showToast("Network Error", "Could not reach database.", true); } });
+            };
+            if (isSilentAutoSave && !isComplete && !specificItem) { autoSaveTimer = setTimeout(() => { executeSave(); }, 1000); } else { executeSave(); }
+        }
+
+        function backupLocalItem(item) {
+            if (!item) return;
+            let pendingEdits = JSON.parse(localStorage.getItem('gnc_pending_edits') || '{}');
+            pendingEdits[item.UNIQUE_ID] = { timestamp: new Date().getTime(), data: item };
+            localStorage.setItem('gnc_pending_edits', JSON.stringify(pendingEdits));
+        }
+
+        function applyLocalEdits() {
+            let pendingEdits = JSON.parse(localStorage.getItem('gnc_pending_edits') || '{}');
+            let now = new Date().getTime();
+            let changed = false;
+
+            for (let uid in pendingEdits) {
+                if (now - pendingEdits[uid].timestamp > 900000) { delete pendingEdits[uid]; changed = true; continue; }
+                let item = fullInventory.find(i => i.UNIQUE_ID === uid) || lowStockInventory.find(i => i.UNIQUE_ID === uid) || reservesInventory.find(i => i.UNIQUE_ID === uid) || requestsInventory.find(i => i.UNIQUE_ID === uid) || managerReviewInventory.find(i => i.UNIQUE_ID === uid) || socInventory.find(i => i.UNIQUE_ID === uid);
+                if (item) { Object.assign(item, pendingEdits[uid].data); }
+            }
+            if (changed) { localStorage.setItem('gnc_pending_edits', JSON.stringify(pendingEdits)); }
+        }
+
+        function filterAvNotes(prefix) {
+            if (!activeItem) return;
+            const inputEl = document.getElementById(prefix + 'av-note');
+            if (!inputEl) return;
+            const inputVal = inputEl.value.toUpperCase();
+            const list = document.getElementById(prefix + 'av-dropdown-list');
+            let matchingNotes = avNotesDb.filter(n => String(n.COMMONNAME).toUpperCase() === String(activeItem.COMMONNAME).toUpperCase()).map(n => n.SALESNOTE || n.SALES_NOTE);
+            if (inputVal) { matchingNotes = matchingNotes.filter(n => String(n).toUpperCase().includes(inputVal)); }
+            matchingNotes = [...new Set(matchingNotes)];
+            if (matchingNotes.length === 0) { list.classList.add('hidden'); return; }
+            list.innerHTML = matchingNotes.map(n => `<div class="p-3 border-b border-gray-100 text-sm font-bold text-blue-800 cursor-pointer hover:bg-blue-50 active:bg-blue-100" onclick="selectAvNote('${esc(n)}', '${prefix}')">${n}</div>`).join('');
+            list.classList.remove('hidden');
+        }
+
+        function selectAvNote(note, prefix) {
+            document.getElementById(prefix + 'av-note').value = note;
+            document.getElementById(prefix + 'av-dropdown-list').classList.add('hidden');
+            saveData(false, prefix, true);
+        }
+
+        async function handlePhotoUpload(input, prefix) {
+            if (!input.files || input.files.length === 0) return;
+            const file = input.files[0];
+            
+            if (!file.type.startsWith('image/')) {
+                showToast('Error', 'Please select an image file.', true);
+                return;
+            }
+
+            showToast('Processing', 'Compressing image...', false);
+
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = function(event) {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = async function() {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 1080;
+                    let scaleSize = 1;
+                    
+                    if (img.width > MAX_WIDTH) {
+                        scaleSize = MAX_WIDTH / img.width;
+                    }
+                    
+                    canvas.width = img.width * scaleSize;
+                    canvas.height = img.height * scaleSize;
+
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                    const base64Data = dataUrl.split(',')[1];
+
+                    showToast('Uploading', 'Sending photo to server...', false);
+
+                    let context = 'drive';
+                    if (prefix === 'ssn-') context = 'season';
+                    else if (prefix === 'lsn-') context = 'location';
+                    else if (prefix === 'req-') context = 'request';
+                    else if (prefix === 'dock-') context = 'docks';
+
+                    let dockNum = pendingDockNum || selectedDockNum || "0";
+
+                    let dateStr = new Date().toISOString().split('T')[0];
+                    let cName = String(activeItem.COMMONNAME || 'Unknown').replace(/[\/\\?%*:|"<>]/g, '-');
+                    let cSize = String(activeItem.CONTSIZE || 'NoSize').replace(/[\/\\?%*:|"<>]/g, '-');
+                    let cLot = String(activeItem.LOTCODE || 'NoLot').replace(/[\/\\?%*:|"<>]/g, '-');
+                    let cLoc = String(activeItem.LOCATIONCODE || 'NoLoc').replace(/[\/\\?%*:|"<>]/g, '-');
+                    let customFileName = `${cName}-${cSize}-${cLot}-${cLoc}-${dateStr}.jpg`;
+
+                    const payload = {
+                        type: 'image',
+                        image: base64Data,
+                        filename: customFileName,
+                        mimeType: 'image/jpeg',
+                        folderContext: context,
+                        dockNum: dockNum
+                    };
+
+                    try {
+                        const response = await fetch(GOOGLE_SCRIPT_URL, {
+                            method: 'POST',
+                            body: JSON.stringify(payload)
+                        });
+                        const result = await response.json();
+
+                        if (result.status === 'success') {
+                            showToast('Success', 'Photo uploaded successfully!');
+                            if (activeItem) {
+                                let url = result.url;
+                                if (prefix === 'req-') {
+                                    activeItem.REQ_PHOTO_LINK = activeItem.REQ_PHOTO_LINK ? activeItem.REQ_PHOTO_LINK + ',' + url : url;
+                                } else if (prefix === 'dock-') {
+                                    activeItem.DOCK_PHOTO_LINK = activeItem.DOCK_PHOTO_LINK ? activeItem.DOCK_PHOTO_LINK + ',' + url : url;
+                                } else if (prefix === 'flyer-') {
+                                    activeItem.FLYER_PHOTO_LINK = activeItem.FLYER_PHOTO_LINK ? activeItem.FLYER_PHOTO_LINK + ',' + url : url;
+                                } else {
+                                    activeItem.SAVED_PHOTO_LINK = activeItem.SAVED_PHOTO_LINK ? activeItem.SAVED_PHOTO_LINK + ',' + url : url;
+                                }
+                                saveData(false, prefix, true);
+                                renderSavedPhotos();
+                            }
+                        } else {
+                            showToast('Error', 'Upload failed: ' + result.message, true);
+                        }
+                    } catch (err) {
+                        showToast('Error', 'Network error during upload.', true);
+                    } finally {
+                        input.value = "";
+                    }
+                };
+            };
+        }
     </script>
 </body>
 </html>
+
+
+
+
