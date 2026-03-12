@@ -12,6 +12,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>:root{--bg:#007a4d;--tx:#111827}body{font-family:"Amazon Ember",Arial,sans-serif;background:white;color:var(--tx);user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior-y:contain}.nav-header{background:var(--bg);color:white;padding-top:max(10px,env(safe-area-inset-top))}#view-login,#view-change-password{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px}#view-change-password{display:none;z-index:10000}.login-card{background:white;padding:30px;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,.2);width:100%;max-width:360px;text-align:center}.input-field{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:8px;font-size:15px;margin-bottom:12px}#toast-notification{position:fixed;top:-100px;left:50%;transform:translateX(-50%);background:#16a34a;color:white;padding:16px 24px;border-radius:50px;box-shadow:0 10px 15px -3px rgba(0,0,0,.3);z-index:11000;transition:top .5s;display:flex;align-items:center;gap:12px;pointer-events:none}#toast-notification.show{top:20px}#side-drawer{position:fixed;top:0;left:-280px;width:280px;height:100%;background:white;z-index:2000;box-shadow:2px 0 10px rgba(0,0,0,.2);transition:left .3s;overflow-y:auto;padding-bottom:100px}#side-drawer.open{left:0}#drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1999;display:none}#drawer-overlay.open{display:block}.drawer-header{background:var(--bg);color:white;padding:20px;font-weight:bold;font-size:18px}.drawer-item{padding:16px 20px;border-bottom:1px solid #f3f4f6;cursor:pointer;display:flex;align-items:center;gap:12px;color:#374151;font-weight:500}.drill-item{border-bottom:1px solid #e5e7eb;padding:16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:white;transition:background .1s}.drill-item:active{background:#f3f4f6}.back-btn{display:flex;align-items:center;gap:5px;color:#6b7280;font-size:14px;font-weight:600;margin-bottom:20px;cursor:pointer;padding:10px 0}.inv-card{border:1px solid #e5e7eb;border-left-width:6px;border-radius:8px;padding:12px;background:white;cursor:pointer;flex-grow:1}.status-green{border-left-color:#22c55e}.status-purple{border-left-color:#9333ea}.status-orange{border-left-color:#f97316}.status-blue{border-left-color:#3b82f6}.status-indigo{border-left-color:#4f46e5}.status-teal{border-left-color:#0d9488}.status-yellow{border-left-color:#eab308}.status-red{border-left-color:#ef4444}.task-tabs,.detail-tabs{display:flex;border-bottom:1px solid #e5e7eb;background:#f9fafb;margin-bottom:10px}.detail-tabs{overflow-x:auto;scrollbar-width:none}.detail-tabs::-webkit-scrollbar{display:none}.task-tab,.detail-tab{flex:1;text-align:center;padding:12px;font-size:11px;font-weight:700;color:#6b7280;cursor:pointer;border-bottom:3px solid transparent;text-transform:uppercase}.detail-tab{flex:0 0 auto;padding:10px 16px}.task-tab.active,.detail-tab.active{color:var(--bg);border-bottom-color:var(--bg);background:white}.overview-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}.overview-card{background:#f8fafc;padding:10px;border-radius:6px;border:1px solid #e2e8f0}.overview-label{font-size:9px;font-weight:800;color:#64748b;text-transform:uppercase;margin-bottom:2px}.overview-val{font-size:13px;font-weight:600;color:#0f172a;word-break:break-all}.expand-trigger{display:flex;align-items:center;justify-content:space-between;padding:12px;background:#f9fafb;border-radius:6px;cursor:pointer;font-weight:600;font-size:14px;border:1px solid #e5e7eb}.expand-content{display:none;margin-top:12px;padding:12px;background:#f9fafb;border-radius:6px;border:1px solid #e5e7eb}.expanded .expand-content{display:block}.card-checkbox-container{width:0;overflow:hidden;opacity:0;transition:width .3s,opacity .3s,margin .3s}body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-right:12px}.item-row{touch-action:manipulation}.spinner{border:4px solid rgba(255,255,255,.3);border-top:4px solid white;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:0 auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.scrollbar-none::-webkit-scrollbar{display:none}.scrollbar-none{-ms-overflow-style:none;scrollbar-width:none}</style>
 </head>
 <body class="bg-gray-50 h-screen overflow-hidden">
@@ -181,6 +182,7 @@
         <div id="side-drawer">
             <div class="drawer-header">Menu</div>
             <div class="drawer-item" onclick="switchView('home'); toggleMenu();"><i class="ph-bold ph-house"></i> Home</div>
+            <div class="drawer-item" onclick="switchView('chat'); loadChatMessages(); toggleMenu();"><i class="ph-bold ph-chat-circle-dots"></i> Team Chat</div>
             <div class="drawer-item text-green-600 font-bold" onclick="fetchBackgroundData(); toggleMenu();"><i class="ph-bold ph-arrows-clockwise"></i> Force Data Sync</div>
             <hr class="my-2">
             <div class="drawer-item" onclick="switchView('drive'); toggleMenu();"><i class="ph-bold ph-car"></i> Drive Mode</div>
@@ -214,6 +216,7 @@
                     </div>
                     <h2 class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3 pl-1">App Modules</h2>
                     <div class="grid grid-cols-2 gap-3 mb-8">
+                        <div onclick="switchView('chat'); loadChatMessages();" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer col-span-2"><i class="ph-bold ph-chat-circle-dots text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Team Chat</span></div>
                         <div onclick="switchView('drive')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-car text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Drive Mode</span></div>
                         <div onclick="switchView('tasks')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer rep-hidden csr-hidden"><i class="ph-bold ph-clipboard-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Tasks</span></div>
                         <div onclick="switchView('docks')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-truck text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Docks</span></div>
@@ -225,6 +228,21 @@
                         <div onclick="switchView('hours')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-clock text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Labor Hours</span></div>
                         <div onclick="switchView('low-stock')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer dylan-only hidden"><i class="ph-bold ph-trend-down text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Low Stock</span></div>
                         <div onclick="switchView('review')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform col-span-2 cursor-pointer admin-only hidden"><i class="ph-bold ph-warning-circle text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Manager Review</span></div>
+                    </div>
+                </div>
+
+                <div id="view-chat" class="hidden flex flex-col h-full bg-gray-50 absolute inset-0 z-[40]">
+                    <div class="bg-[#007a4d] text-white p-4 shadow-md flex items-center justify-between z-10 sticky top-0">
+                        <div class="font-black text-lg tracking-wide"><i class="ph-bold ph-chat-circle-dots mr-2"></i> Team Chat</div>
+                        <div class="text-xs font-bold bg-green-700 px-2 py-1 rounded shadow-sm flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-green-300 animate-pulse"></span> Live</div>
+                    </div>
+                    <div id="chat-messages" class="flex-grow overflow-y-auto p-4 space-y-3 pb-[140px]">
+                        </div>
+                    <div class="fixed bottom-[65px] left-0 w-full bg-white border-t border-gray-200 p-3 flex gap-2 z-50 shadow-[0_-5px_15px_rgba(0,0,0,0.05)]">
+                        <input type="text" id="chat-input" class="input-field !mb-0 flex-grow border-gray-300 focus:border-[#007a4d] rounded-full px-4" placeholder="Send a message..." onkeypress="if(event.key === 'Enter') sendChatMessage()">
+                        <button class="bg-[#007a4d] text-white w-12 h-12 rounded-full flex items-center justify-center shadow-md active:scale-95 transition-transform" onclick="sendChatMessage()">
+                            <i class="ph-bold ph-paper-plane-right text-xl"></i>
+                        </button>
                     </div>
                 </div>
                 
@@ -498,6 +516,7 @@
                 <div onclick="switchView('drive')"><i class="ph-bold ph-car text-2xl text-gray-400"></i></div>
                 <div onclick="switchView('tasks')" class="rep-hidden csr-hidden"><i class="ph-bold ph-clipboard-text text-2xl text-gray-400"></i></div>
                 <div onclick="switchView('docks')"><i class="ph-bold ph-truck text-2xl text-gray-400"></i></div>
+                <div onclick="switchView('chat'); loadChatMessages();"><i class="ph-bold ph-chat-circle-dots text-2xl text-gray-400"></i></div>
             </nav>
         </div>
         <script>
@@ -507,6 +526,8 @@
         const esc = (s) => String(s || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
         const DB_NAME="GNC_DDC_DB_V2"; const STORE_NAME="inventory_cache";
         
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
         function performLogout() { 
             localStorage.clear(); 
             sessionStorage.clear(); 
@@ -791,37 +812,62 @@
             if(!isBiometricLogin&&window.PublicKeyCredential&&localStorage.getItem('gnc_bio_enabled')!=='true'){ promptToEnableBiometrics(user,pass); } 
             applyRolePermissions(); 
             fetchBackgroundData(); 
-            setInterval(silentBackgroundSync, 1000); 
+            
+            // Replaced the old setInterval with instantaneous WebSockets
+            setupRealtimeSubscriptions();
         }
 
-        async function silentBackgroundSync() {
+        function setupRealtimeSubscriptions() {
+            // Listen for Inventory, Requests, and Sales Office changes
+            supabaseClient.channel('schema-db-changes')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'v2_master_inventory' }, payload => {
+                    silentBackgroundSync('v2_master_inventory');
+                })
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'v2_active_request' }, payload => {
+                    silentBackgroundSync('v2_active_request');
+                })
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'v2_sales_office' }, payload => {
+                    silentBackgroundSync('v2_sales_office');
+                })
+                .subscribe();
+
+            // Listen for Chat Messages instantly
+            supabaseClient.channel('chat-room')
+                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'v2_chat_messages' }, payload => {
+                    renderSingleChatMessage(payload.new);
+                })
+                .subscribe();
+        }
+
+        async function silentBackgroundSync(triggeredTable = null) {
             if(!currentUser)return; 
             const checkTime=new Date().toISOString();
             try {
-                const response=await fetch(`${SUPABASE_URL}/rest/v1/v2_master_inventory?select=*&last_updated=gt.${lastSyncTime}`,{method:'GET',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
-                if(response.ok) {
-                    const data=await response.json();
-                    if(data&&data.length>0){
-                        let updated=false;
-                        data.forEach(updatedRow=>{
-                            let idx=fullInventory.findIndex(i=>i.UNIQUE_ID===updatedRow.unique_id);
-                            if(idx>-1){
-                                for(let k in updatedRow){ if(updatedRow[k]!==null) fullInventory[idx][k.toUpperCase()]=updatedRow[k]; }
-                                fullInventory[idx].SAVED_PHOTO_LINK=fullInventory[idx].PHOTO_LINK||fullInventory[idx].PHOTOLINK||""; 
-                                fullInventory[idx].SAVED_PHOTO_NAME=fullInventory[idx].PHOTO_NAME||fullInventory[idx].PHOTONAME||""; 
-                                updated=true; 
-                                if(activeItem&&activeItem.UNIQUE_ID===updatedRow.unique_id){ Object.assign(activeItem,fullInventory[idx]); }
-                            }
-                        });
-                        if(updated){ reRenderCurrentView(); if(activeItem&&!document.getElementById('view-detail').classList.contains('hidden')){ openDetail(activeItem.UNIQUE_ID,lastView); } }
-                    } 
+                if (triggeredTable === 'v2_master_inventory' || !triggeredTable) {
+                    const response=await fetch(`${SUPABASE_URL}/rest/v1/v2_master_inventory?select=*&last_updated=gt.${lastSyncTime}`,{method:'GET',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+                    if(response.ok) {
+                        const data=await response.json();
+                        if(data&&data.length>0){
+                            let updated=false;
+                            data.forEach(updatedRow=>{
+                                let idx=fullInventory.findIndex(i=>i.UNIQUE_ID===updatedRow.unique_id);
+                                if(idx>-1){
+                                    for(let k in updatedRow){ if(updatedRow[k]!==null) fullInventory[idx][k.toUpperCase()]=updatedRow[k]; }
+                                    fullInventory[idx].SAVED_PHOTO_LINK=fullInventory[idx].PHOTO_LINK||fullInventory[idx].PHOTOLINK||""; 
+                                    fullInventory[idx].SAVED_PHOTO_NAME=fullInventory[idx].PHOTO_NAME||fullInventory[idx].PHOTONAME||""; 
+                                    updated=true; 
+                                    if(activeItem&&activeItem.UNIQUE_ID===updatedRow.unique_id){ Object.assign(activeItem,fullInventory[idx]); }
+                                }
+                            });
+                            if(updated){ reRenderCurrentView(); if(activeItem&&!document.getElementById('view-detail').classList.contains('hidden')){ openDetail(activeItem.UNIQUE_ID,lastView); } }
+                        } 
+                    }
                 }
                 
-                const reqRes = await fetch(`${SUPABASE_URL}/rest/v1/v2_active_request?select=*`, {method:'GET', headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
-                if(reqRes.ok) {
-                    const reqData = await reqRes.json();
-                    let hash = JSON.stringify(reqData);
-                    if(hash !== localStorage.getItem('last_req_hash')) {
+                if (triggeredTable === 'v2_active_request' || !triggeredTable) {
+                    const reqRes = await fetch(`${SUPABASE_URL}/rest/v1/v2_active_request?select=*`, {method:'GET', headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+                    if(reqRes.ok) {
+                        const reqData = await reqRes.json();
                         requestsInventory = reqData.map(item => {
                             let obj = {SOURCE_TABLE: 'v2_active_request'};
                             for(let k in item) { if(item[k]!==null) obj[k.toUpperCase()] = item[k]; }
@@ -832,16 +878,14 @@
                             obj.LOCATIONCODE=obj.LOCATIONCODE||obj.LOCATION||"No Loc"; 
                             return obj;
                         });
-                        localStorage.setItem('last_req_hash', hash);
                         if(!document.getElementById('view-request').classList.contains('hidden')) renderRequest();
                     }
                 }
 
-                const soRes = await fetch(`${SUPABASE_URL}/rest/v1/v2_sales_office?select=*`, {method:'GET', headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
-                if(soRes.ok) {
-                    const soData = await soRes.json();
-                    let soHash = JSON.stringify(soData);
-                    if(soHash !== localStorage.getItem('last_so_hash')) {
+                if (triggeredTable === 'v2_sales_office' || !triggeredTable) {
+                    const soRes = await fetch(`${SUPABASE_URL}/rest/v1/v2_sales_office?select=*`, {method:'GET', headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+                    if(soRes.ok) {
+                        const soData = await soRes.json();
                         salesOfficeInventory = soData.map((item, idx) => {
                             let obj = {SOURCE_TABLE: 'v2_sales_office'};
                             for(let k in item) { if(item[k]!==null) obj[k.toUpperCase()] = item[k]; }
@@ -850,7 +894,6 @@
                             if (masterItem) { obj.AV_NOTE = masterItem.AV_NOTE; }
                             return obj;
                         });
-                        localStorage.setItem('last_so_hash', soHash);
                         if(!document.getElementById('view-sales-office').classList.contains('hidden')) renderSalesOffice();
                     }
                 }
@@ -1049,7 +1092,7 @@
         }
 
         function switchView(viewId) { 
-            ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-detail','view-docks','view-request','view-reserves','view-av', 'view-hours'].forEach(id=>{
+            ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-detail','view-docks','view-request','view-reserves','view-av', 'view-hours', 'view-chat'].forEach(id=>{
                 const el=document.getElementById(id);
                 if(el)el.classList.add('hidden');
             }); 
@@ -1070,6 +1113,81 @@
                 },0)
             }); 
         }
+
+        // --- NEW CHAT MODULE JAVASCRIPT --- //
+        
+        async function loadChatMessages() {
+            const container = document.getElementById('chat-messages');
+            container.innerHTML = `<div class="text-center text-gray-400 text-sm mt-10">Loading chat...</div>`;
+            
+            try {
+                const data = await supabaseFetch('v2_chat_messages', 'GET', null, 'order=created_at.asc&limit=50');
+                container.innerHTML = '';
+                if(data && data.length > 0) {
+                    data.forEach(msg => renderSingleChatMessage(msg, false));
+                } else {
+                    container.innerHTML = `<div class="text-center text-gray-400 text-sm mt-10">No messages yet. Say hi!</div>`;
+                }
+                scrollToBottomChat();
+            } catch(e) {
+                container.innerHTML = `<div class="text-center text-red-400 text-sm mt-10">Error loading messages.</div>`;
+            }
+        }
+
+        function renderSingleChatMessage(msg, autoScroll = true) {
+            const container = document.getElementById('chat-messages');
+            if (container.innerHTML.includes('No messages yet') || container.innerHTML.includes('Loading chat')) {
+                container.innerHTML = '';
+            }
+
+            const isMe = msg.sender_name.toLowerCase() === currentUser.toLowerCase();
+            const alignClass = isMe ? 'self-end bg-[#007a4d] text-white rounded-br-none' : 'self-start bg-white border border-gray-200 text-gray-800 rounded-bl-none';
+            const nameClass = isMe ? 'hidden' : 'text-[10px] font-bold text-gray-400 ml-1 mb-1 uppercase';
+
+            const timeString = new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+
+            const html = `
+                <div class="flex flex-col w-full">
+                    <div class="${nameClass}">${msg.sender_name}</div>
+                    <div class="max-w-[80%] ${alignClass} p-3 rounded-2xl shadow-sm relative">
+                        <div class="text-sm font-medium leading-snug break-words">${msg.message_text}</div>
+                        <div class="text-[9px] ${isMe ? 'text-green-200' : 'text-gray-400'} mt-1 text-right">${timeString}</div>
+                    </div>
+                </div>
+            `;
+            
+            container.insertAdjacentHTML('beforeend', html);
+            if(autoScroll) scrollToBottomChat();
+        }
+
+        function scrollToBottomChat() {
+            const container = document.getElementById('chat-messages');
+            container.scrollTop = container.scrollHeight;
+        }
+
+        async function sendChatMessage() {
+            const input = document.getElementById('chat-input');
+            const text = input.value.trim();
+            if(!text) return;
+            
+            input.value = ''; // clear instantly for snappy UI
+            
+            const payload = {
+                sender_name: currentUser.toUpperCase(),
+                message_text: text
+            };
+            
+            try {
+                await supabaseFetch('v2_chat_messages', 'POST', payload);
+                // We don't need to manually render here, because our Realtime Subscription 
+                // will instantly detect the INSERT and trigger renderSingleChatMessage!
+            } catch(err) {
+                showToast('Error', 'Message failed to send', true);
+                input.value = text; // restore text if failed
+            }
+        }
+        
+        // --- END CHAT JAVASCRIPT --- //
 
         function reRenderCurrentView() { 
             if(!document.getElementById('view-drive').classList.contains('hidden'))renderDrive(); 
@@ -1527,7 +1645,7 @@
             activeItem = fullInventory.find(i=>i.UNIQUE_ID===uid) || lowStockInventory.find(i=>i.UNIQUE_ID===uid) || reservesInventory.find(i=>i.UNIQUE_ID===uid) || requestsInventory.find(i=>i.UNIQUE_ID===uid) || socInventory.find(i=>i.UNIQUE_ID===uid);
             if(!activeItem) return;
 
-            ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-docks','view-request','view-reserves','view-av', 'view-hours'].forEach(id=>{
+            ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-docks','view-request','view-reserves','view-av', 'view-hours', 'view-chat'].forEach(id=>{
                 const el = document.getElementById(id);
                 if(el) el.classList.add('hidden');
             });
@@ -2549,7 +2667,7 @@
             renderDrive();
         }
 
-        function renderTeamSelector() {
+      function renderTeamSelector() {
             let uSet = new Set();
             fullInventory.forEach(i => { if(i.ASSIGNEDTO && !i.DATE_COMPLETED) uSet.add(i.ASSIGNEDTO) });
             if(uSet.size === 0) { 
@@ -2930,5 +3048,3 @@
     </script>
 </body>
 </html>
-
-
