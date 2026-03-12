@@ -3,23 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-    <title>GNC PARK HILL</title>
+    <title>Greenleaf</title>
     <meta name="theme-color" content="#007a4d">
     <link rel="manifest" href="manifest.json">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="application-name" content="GNC PARK HILL">
+    <meta name="application-name" content="Greenleaf">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>:root{--bg:#007a4d;--tx:#111827}body{font-family:"Amazon Ember",Arial,sans-serif;background:white;color:var(--tx);user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior-y:contain}.nav-header{background:var(--bg);color:white;padding-top:max(10px,env(safe-area-inset-top))}#view-login,#view-change-password{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px}#view-change-password{display:none;z-index:10000}.login-card{background:white;padding:30px;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,.2);width:100%;max-width:360px;text-align:center}.input-field{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:8px;font-size:15px;margin-bottom:12px}#toast-notification{position:fixed;top:-100px;left:50%;transform:translateX(-50%);background:#16a34a;color:white;padding:16px 24px;border-radius:50px;box-shadow:0 10px 15px -3px rgba(0,0,0,.3);z-index:11000;transition:top .5s;display:flex;align-items:center;gap:12px;pointer-events:none}#toast-notification.show{top:20px}#side-drawer{position:fixed;top:0;left:-280px;width:280px;height:100%;background:white;z-index:2000;box-shadow:2px 0 10px rgba(0,0,0,.2);transition:left .3s;overflow-y:auto;padding-bottom:100px}#side-drawer.open{left:0}#drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1999;display:none}#drawer-overlay.open{display:block}.drawer-header{background:var(--bg);color:white;padding:20px;font-weight:bold;font-size:18px}.drawer-item{padding:16px 20px;border-bottom:1px solid #f3f4f6;cursor:pointer;display:flex;align-items:center;gap:12px;color:#374151;font-weight:500}.drill-item{border-bottom:1px solid #e5e7eb;padding:16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:white;transition:background .1s}.drill-item:active{background:#f3f4f6}.back-btn{display:flex;align-items:center;gap:5px;color:#6b7280;font-size:14px;font-weight:600;margin-bottom:20px;cursor:pointer;padding:10px 0}.inv-card{border:1px solid #e5e7eb;border-left-width:6px;border-radius:8px;padding:12px;background:white;cursor:pointer;flex-grow:1}.status-green{border-left-color:#22c55e}.status-purple{border-left-color:#9333ea}.status-orange{border-left-color:#f97316}.status-blue{border-left-color:#3b82f6}.status-indigo{border-left-color:#4f46e5}.status-teal{border-left-color:#0d9488}.status-yellow{border-left-color:#eab308}.status-red{border-left-color:#ef4444}.task-tabs,.detail-tabs{display:flex;border-bottom:1px solid #e5e7eb;background:#f9fafb;margin-bottom:10px}.detail-tabs{overflow-x:auto;scrollbar-width:none}.detail-tabs::-webkit-scrollbar{display:none}.task-tab,.detail-tab{flex:1;text-align:center;padding:12px;font-size:11px;font-weight:700;color:#6b7280;cursor:pointer;border-bottom:3px solid transparent;text-transform:uppercase}.detail-tab{flex:0 0 auto;padding:10px 16px}.task-tab.active,.detail-tab.active{color:var(--bg);border-bottom-color:var(--bg);background:white}.overview-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}.overview-card{background:#f8fafc;padding:10px;border-radius:6px;border:1px solid #e2e8f0}.overview-label{font-size:9px;font-weight:800;color:#64748b;text-transform:uppercase;margin-bottom:2px}.overview-val{font-size:13px;font-weight:600;color:#0f172a;word-break:break-all}.expand-trigger{display:flex;align-items:center;justify-content:space-between;padding:12px;background:#f9fafb;border-radius:6px;cursor:pointer;font-weight:600;font-size:14px;border:1px solid #e5e7eb}.expand-content{display:none;margin-top:12px;padding:12px;background:#f9fafb;border-radius:6px;border:1px solid #e5e7eb}.expanded .expand-content{display:block}.card-checkbox-container{width:0;overflow:hidden;opacity:0;transition:width .3s,opacity .3s,margin .3s}body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-right:12px}.item-row{touch-action:manipulation}.spinner{border:4px solid rgba(255,255,255,.3);border-top:4px solid white;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:0 auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.scrollbar-none::-webkit-scrollbar{display:none}.scrollbar-none{-ms-overflow-style:none;scrollbar-width:none}</style>
 </head>
 <body class="bg-gray-50 h-screen overflow-hidden">
     <div id="top-loading-bar-container" class="hidden fixed top-0 left-0 w-full h-1 z-[99999] pointer-events-none"><div id="top-loading-bar" class="h-full bg-[#22c55e] w-0 transition-all duration-300 ease-out shadow-[0_0_10px_#22c55e]"></div></div>
-    
     <div id="toast-notification"></div>
-    
     <div id="photo-modal" class="hidden fixed inset-0 bg-black bg-opacity-95 z-[15000] flex flex-col items-center justify-center p-4">
         <div class="absolute top-0 left-0 w-full p-6 flex justify-between items-start bg-gradient-to-b from-black/80 to-transparent z-50 pointer-events-none">
             <div id="photo-modal-caption" class="text-white font-bold text-sm leading-tight drop-shadow-md pr-4 uppercase tracking-wide pointer-events-auto"></div>
@@ -28,28 +25,10 @@
         <div id="photo-modal-gallery" class="flex overflow-x-auto snap-x snap-mandatory w-full max-h-[85vh] items-center space-x-4 pb-4 scrollbar-none mt-10"></div>
         <div id="photo-swipe-hint" class="absolute bottom-10 text-white text-xs font-bold uppercase tracking-widest opacity-50 hidden pointer-events-none"><i class="ph-bold ph-arrows-left-right mr-1 text-lg align-middle"></i> Swipe for more</div>
     </div>
-
-    <div id="new-chat-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex flex-col items-center justify-end md:justify-center p-0 md:p-4">
-        <div class="bg-white rounded-t-2xl md:rounded-xl shadow-2xl w-full max-w-md flex flex-col max-h-[80vh] min-h-[50vh]">
-            <div class="p-4 border-b flex justify-between items-center bg-[#007a4d] text-white rounded-t-2xl md:rounded-t-xl">
-                <h3 class="font-bold text-lg">New Message</h3>
-                <i class="ph-bold ph-x text-2xl cursor-pointer" onclick="document.getElementById('new-chat-modal').classList.add('hidden')"></i>
-            </div>
-            <div class="p-4 border-b bg-gray-50">
-                <input type="text" id="chat-user-search" class="input-field !mb-0 border-gray-300" placeholder="Search team members..." oninput="filterChatUsers()">
-            </div>
-            <div id="chat-user-list" class="overflow-y-auto flex-grow p-2"></div>
-            <div class="p-4 border-t bg-gray-50">
-                <input type="text" id="chat-group-name" class="input-field hidden mb-2 border-gray-300" placeholder="Group Name (Required for groups)">
-                <button class="w-full bg-[#007a4d] text-white font-bold p-3 rounded-lg shadow-md active:scale-95" onclick="submitNewChat()">Start Chat</button>
-            </div>
-        </div>
-    </div>
-
     <div id="view-login">
         <div class="login-card">
             <div class="flex flex-col items-center mb-8 w-full relative">
-                <div class="text-3xl text-[#007a4d] font-black tracking-tighter mb-1">GNC PARK HILL</div>
+                <div class="text-3xl text-[#007a4d] font-black tracking-tighter mb-1">Greenleaf</div>
                 <div class="flex flex-col items-center gap-0.5 mt-5">
                     <span class="text-[9px] font-bold text-gray-400 uppercase tracking-[0.3em]">Powered By</span>
                     <span class="text-[17px] font-black text-gray-800 tracking-[0.2em] uppercase border-b-[3px] border-[#007a4d] pb-0.5">Ag Metric</span>
@@ -64,7 +43,6 @@
             <div id="loading-spinner" class="hidden mt-6 flex flex-col items-center"><div class="spinner"></div><div id="loading-text" class="text-white font-bold text-sm mt-3 text-center">Syncing Database...</div></div>
         </div>
     </div>
-
     <div id="view-change-password">
         <div class="login-card">
             <h2 class="text-2xl font-black text-[#007a4d] mb-2">Change Password</h2>
@@ -74,7 +52,6 @@
             <button class="w-full bg-[#007a4d] text-white font-bold py-3 rounded-lg shadow-md active:scale-95" onclick="submitNewPassword()">SAVE & CONTINUE</button>
         </div>
     </div>
-
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -85,7 +62,6 @@
             <button class="text-gray-500 font-bold py-2 px-4" onclick="document.getElementById('tab-select-modal').classList.add('hidden')">Cancel</button>
         </div>
     </div>
-
     <div id="assign-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Assign Selected To:</h3>
@@ -97,7 +73,6 @@
             <button class="text-gray-500 font-bold py-2 px-4" onclick="closeAssignModal()">Cancel</button>
         </div>
     </div>
-
     <div id="endcap-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center flex flex-col max-h-[90vh]">
             <div id="ec-step-1" class="flex flex-col">
@@ -116,7 +91,6 @@
             <button class="text-gray-500 font-bold py-2 px-4 mt-2" onclick="document.getElementById('endcap-modal').classList.add('hidden')">Cancel</button>
         </div>
     </div>
-
     <div id="dock-mistake-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-black text-2xl mb-2 text-red-600">Report Mistake</h3>
@@ -128,7 +102,6 @@
             </div>
         </div>
     </div>
-
     <div id="dock-info-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center relative overflow-hidden">
             <h3 class="font-black text-2xl mb-2 text-[#007a4d]">DOCK <span id="modal-dock-num"></span></h3>
@@ -160,7 +133,6 @@
             </div>
         </div>
     </div>
-
     <div id="request-rep-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center flex flex-col max-h-[90vh]">
             <div id="step-1-rep" class="flex flex-col">
@@ -193,14 +165,13 @@
             <button class="text-gray-500 font-bold py-2 px-4 mt-2" onclick="document.getElementById('request-rep-modal').classList.add('hidden')">Cancel</button>
         </div>
     </div>
-
     <div id="app-wrapper" class="hidden h-full flex flex-col">
         <header class="nav-header sticky top-0 z-50 p-4 flex justify-between items-center shadow-md">
             <div class="flex items-center gap-3">
                 <i class="ph-bold ph-list menu-btn text-2xl cursor-pointer" onclick="toggleMenu()"></i>
                 <div class="flex flex-col">
                     <div class="font-bold text-lg leading-tight"><span id="header-user">User</span></div>
-                    <div class="text-[10px] opacity-80 leading-tight">GNC PARK HILL</div>
+                    <div class="text-[10px] opacity-80 leading-tight">Greenleaf</div>
                 </div>
             </div>
             <div class="bg-white/20 p-2 rounded-lg cursor-pointer" onclick="fetchBackgroundData()"><i class="ph-bold ph-arrows-clockwise text-white"></i></div>
@@ -210,10 +181,6 @@
         <div id="side-drawer">
             <div class="drawer-header">Menu</div>
             <div class="drawer-item" onclick="switchView('home'); toggleMenu();"><i class="ph-bold ph-house"></i> Home</div>
-            <div class="drawer-item" onclick="switchView('chat-inbox'); loadChatInbox(); toggleMenu();">
-                <i class="ph-bold ph-chat-circle-dots"></i> Team Messages
-                <span id="drawer-unread-badge" class="ml-auto bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full hidden">New</span>
-            </div>
             <div class="drawer-item text-green-600 font-bold" onclick="fetchBackgroundData(); toggleMenu();"><i class="ph-bold ph-arrows-clockwise"></i> Force Data Sync</div>
             <hr class="my-2">
             <div class="drawer-item" onclick="switchView('drive'); toggleMenu();"><i class="ph-bold ph-car"></i> Drive Mode</div>
@@ -238,7 +205,7 @@
                     <div class="bg-[#007a4d] text-white p-6 rounded-2xl mb-6 shadow-lg flex flex-col items-center text-center relative overflow-hidden">
                         <div class="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-white opacity-5 rounded-full pointer-events-none"></div>
                         <div class="absolute bottom-0 left-0 -mb-10 -ml-10 w-32 h-32 bg-black opacity-10 rounded-full pointer-events-none"></div>
-                        <h1 class="text-2xl font-black tracking-tight mb-1 z-10 relative mt-4">GNC PARK HILL</h1>
+                        <h1 class="text-2xl font-black tracking-tight mb-1 z-10 relative mt-4">Greenleaf</h1>
                         <p class="text-green-100 text-[10px] font-bold mb-5 uppercase tracking-[0.2em] z-10 relative">Dashboard</p>
                         <div class="flex flex-col items-center pt-4 border-t border-white/20 w-full mt-1 z-10 relative">
                             <span class="text-[9px] font-bold text-white/70 uppercase tracking-[0.3em] mb-1">Powered By</span>
@@ -247,11 +214,6 @@
                     </div>
                     <h2 class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3 pl-1">App Modules</h2>
                     <div class="grid grid-cols-2 gap-3 mb-8">
-                        <div onclick="switchView('chat-inbox'); loadChatInbox();" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer col-span-2 relative">
-                            <i class="ph-bold ph-chat-circle-dots text-3xl text-[#007a4d]"></i>
-                            <span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Team Messages</span>
-                            <div id="home-unread-badge" class="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full hidden">0</div>
-                        </div>
                         <div onclick="switchView('drive')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-car text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Drive Mode</span></div>
                         <div onclick="switchView('tasks')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer rep-hidden csr-hidden"><i class="ph-bold ph-clipboard-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Tasks</span></div>
                         <div onclick="switchView('docks')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-truck text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Docks</span></div>
@@ -263,30 +225,6 @@
                         <div onclick="switchView('hours')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-clock text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Labor Hours</span></div>
                         <div onclick="switchView('low-stock')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer dylan-only hidden"><i class="ph-bold ph-trend-down text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Low Stock</span></div>
                         <div onclick="switchView('review')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform col-span-2 cursor-pointer admin-only hidden"><i class="ph-bold ph-warning-circle text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Manager Review</span></div>
-                    </div>
-                </div>
-
-                <div id="view-chat-inbox" class="hidden flex flex-col h-full bg-gray-50 absolute inset-0 z-[40]">
-                    <div class="bg-[#007a4d] text-white p-4 shadow-md flex items-center justify-between z-10 sticky top-0">
-                        <div class="font-black text-lg tracking-wide">Messages</div>
-                        <button onclick="openNewChatModal()" class="bg-white text-[#007a4d] px-3 py-1.5 rounded-lg text-sm font-bold shadow-sm flex items-center gap-1 active:scale-95"><i class="ph-bold ph-plus"></i> New Chat</button>
-                    </div>
-                    <div id="inbox-list" class="flex-grow overflow-y-auto p-3 space-y-2 pb-[100px]"></div>
-                </div>
-
-                <div id="view-chat-room" class="hidden flex flex-col h-full bg-gray-50 absolute inset-0 z-[50]">
-                    <div class="bg-[#007a4d] text-white p-4 shadow-md flex items-center gap-3 z-10 sticky top-0">
-                        <i class="ph-bold ph-arrow-left text-2xl cursor-pointer active:scale-90" onclick="switchView('chat-inbox'); loadChatInbox();"></i>
-                        <div class="flex flex-col min-w-0">
-                            <div id="chat-room-title" class="font-black text-lg tracking-wide truncate">Chat</div>
-                        </div>
-                    </div>
-                    <div id="chat-messages" class="flex-grow overflow-y-auto p-4 space-y-3 pb-[80px] bg-gray-100"></div>
-                    <div class="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 p-3 flex gap-2 z-50 pb-[max(15px,env(safe-area-inset-bottom))] shadow-[0_-5px_15px_rgba(0,0,0,0.05)]">
-                        <input type="text" id="chat-input" class="input-field !mb-0 flex-grow border-gray-300 focus:border-[#007a4d] rounded-full px-4" placeholder="Message..." onkeypress="if(event.key === 'Enter') sendTargetedChatMessage()">
-                        <button class="bg-[#007a4d] text-white w-12 h-12 rounded-full flex items-center justify-center shadow-md active:scale-95 transition-transform flex-shrink-0" onclick="sendTargetedChatMessage()">
-                            <i class="ph-bold ph-paper-plane-right text-xl ml-1"></i>
-                        </button>
                     </div>
                 </div>
                 
@@ -566,9 +504,6 @@
         const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6cm55anNvc3J5ZWpqZWpsaWlpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzAyNzM1NywiZXhwIjoyMDg4NjAzMzU3fQ.Bc46UfJ1N4AgAS1PgfhFg6S4BEyybR6g_TUnPZsE2t0";
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwhH-eB5Py3xCwhmWReOAcAfl9Zu6mkw0hZYnAbIP9lLANoE4iebK1hXa6-ogU4_1AURA/exec"; 
-        const PUBLIC_VAPID_KEY = "BPqQtqWPZCxKuFzVa4PKX5YyMV1etMkunCm8gs5JwpmkOQ5z2vFmPNpxvNbskY8lcGIzVcLqF0TUNcWr7EMlxsg";
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        
         const esc = (s) => String(s || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
         const DB_NAME="GNC_DDC_DB_V2"; const STORE_NAME="inventory_cache";
         
@@ -588,34 +523,6 @@
         }
         
         let activeFetches=0; let fetchProgressInterval; let currentProgress=0;
-
-        function urlBase64ToUint8Array(base64String) {
-            const padding = '='.repeat((4 - base64String.length % 4) % 4);
-            const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
-            const rawData = window.atob(base64);
-            const outputArray = new Uint8Array(rawData.length);
-            for (let i = 0; i < rawData.length; ++i) {
-                outputArray[i] = rawData.charCodeAt(i);
-            }
-            return outputArray;
-        }
-
-        async function requestPushPermission() {
-            if (!('Notification' in window)) return;
-            const permission = await Notification.requestPermission();
-            if (permission === 'granted' && 'serviceWorker' in navigator) {
-                try {
-                    const reg = await navigator.serviceWorker.ready;
-                    const sub = await reg.pushManager.subscribe({
-                        userVisibleOnly: true,
-                        applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
-                    });
-                    await supabaseFetch('v2_app_users', 'PATCH', { push_subscription: sub }, `username=eq.${encodeURIComponent(currentUser)}`);
-                } catch (err) {
-                    console.error("Push subscription failed:", err);
-                }
-            }
-        }
 
         function startGlobalProgress() { 
             activeFetches++; 
@@ -706,8 +613,6 @@
         let fullInventory=[]; let lowStockInventory=[]; let socInventory=[]; let reservesInventory=[]; let requestsInventory=[]; let managerReviewInventory=[]; let salesOfficeInventory=[]; let avNotesDb=[];
         let currentUser=""; let currentRole=""; let safeRole=""; let repPermutations=[]; let activeItem=null; let lastView=""; let activeDetailTab="overview"; let selectedItems=new Set(); let isMultiSelectMode=false; let pressTimer=null; let isLongPress=false; let touchStartX=0; let touchStartY=0; let pendingAction=null; let pendingTabType=null;
         
-        let chatThreads = []; let currentThreadId = null;
-
         let activeDriveTab='name'; let selectedDriveBlock=null; let selectedDriveLoc=null;
         let driveViewLevel=0; let selectedDriveName=null; let selectedDriveSize=null; let driveSelectedSeasons=new Set(['ALL']); const availableSeasons=["ALL","S1","F1","U1","U2","U3","X","Y","Z"];
         
@@ -722,11 +627,7 @@
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Machino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
 
         window.onload=async function() {
-            if ('serviceWorker' in navigator) { 
-                try { 
-                    await navigator.serviceWorker.register('/sw.js'); 
-                } catch(e) { console.error('SW registration failed:', e); } 
-            }
+            if ('serviceWorker' in navigator) { const registrations = await navigator.serviceWorker.getRegistrations(); for(let registration of registrations) { await registration.unregister(); } }
             if ('caches' in window) { const keys = await caches.keys(); for (let key of keys) { await caches.delete(key); } }
             const savedUser=localStorage.getItem('gnc_user_v3'); const savedPin=localStorage.getItem('gnc_pin_v3');
             if(savedUser&&savedPin){ document.getElementById('username-input').value=savedUser; document.getElementById('pin-code').value=savedPin; const cachedRes=await loadFromCache(); if(cachedRes&&fullInventory.length===0){ processAndLoadData(cachedRes); } handleLogin(true); }
@@ -751,7 +652,7 @@
         async function promptToEnableBiometrics(user,pin) { 
             if(!confirm("Would you like to enable Fingerprint/FaceID login for future use?"))return; 
             try{ 
-                const publicKey={challenge:new Uint8Array(32),rp:{name:"GNC PARK HILL"},user:{id:new Uint8Array(16),name:user,displayName:user},pubKeyCredParams:[{type:"public-key",alg:-7}],authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required"},timeout:60000}; 
+                const publicKey={challenge:new Uint8Array(32),rp:{name:"Greenleaf"},user:{id:new Uint8Array(16),name:user,displayName:user},pubKeyCredParams:[{type:"public-key",alg:-7}],authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required"},timeout:60000}; 
                 await navigator.credentials.create({publicKey}); 
                 localStorage.setItem('gnc_bio_enabled','true'); 
                 localStorage.setItem('gnc_bio_user',user); 
@@ -889,146 +790,8 @@
             setRepPermutations(currentUser); 
             if(!isBiometricLogin&&window.PublicKeyCredential&&localStorage.getItem('gnc_bio_enabled')!=='true'){ promptToEnableBiometrics(user,pass); } 
             applyRolePermissions(); 
-            requestPushPermission();
-            setupRealtime();
-            loadChatInbox();
             fetchBackgroundData(); 
             setInterval(silentBackgroundSync, 1000); 
-        }
-
-        function setupRealtime() {
-            supabase.channel('chat-changes')
-                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'v2_chat_messages' }, payload => {
-                    if (currentThreadId === payload.new.thread_id) {
-                        const container = document.getElementById('chat-messages');
-                        container.innerHTML += formatMessageHtml(payload.new);
-                        container.scrollTop = container.scrollHeight;
-                        markThreadRead(currentThreadId);
-                    } else {
-                        loadChatInbox();
-                    }
-                }).subscribe();
-        }
-
-        async function loadChatInbox() {
-            const threads = await supabaseFetch('v2_chat_threads', 'GET', null, `select=*,v2_chat_members!inner(*)&v2_chat_members.username=eq.${currentUser}&order=updated_at.desc`);
-            chatThreads = threads || [];
-            const list = document.getElementById('inbox-list');
-            let unreadCount = 0;
-            list.innerHTML = chatThreads.map(t => {
-                const isUnread = t.last_message_sender !== currentUser && (new Date(t.updated_at) > new Date(t[`last_read_${currentUser}`] || 0));
-                if(isUnread) unreadCount++;
-                return `<div onclick="openChat('${t.thread_id}', '${esc(t.thread_name)}')" class="bg-white p-4 rounded-xl shadow-sm flex justify-between items-center border-l-4 ${isUnread ? 'border-red-500 font-bold' : 'border-gray-200'} mb-2 cursor-pointer active:scale-95 transition-transform">
-                    <div><div class="text-gray-800">${t.thread_name || 'Group Chat'}</div><div class="text-xs text-gray-400 truncate w-48">${t.last_message_text || 'Start chatting...'}</div></div>
-                    ${isUnread ? '<div class="w-3 h-3 bg-red-500 rounded-full flex-shrink-0"></div>' : '<i class="ph-bold ph-caret-right text-gray-300"></i>'}
-                </div>`;
-            }).join('');
-            
-            const navBadge = document.getElementById('nav-unread-badge');
-            const homeBadge = document.getElementById('home-unread-badge');
-            const drawerBadge = document.getElementById('drawer-unread-badge');
-            if(unreadCount > 0) {
-                if(navBadge) navBadge.classList.remove('hidden');
-                if(homeBadge) { homeBadge.classList.remove('hidden'); homeBadge.innerText = unreadCount; }
-                if(drawerBadge) drawerBadge.classList.remove('hidden');
-            } else {
-                if(navBadge) navBadge.classList.add('hidden');
-                if(homeBadge) homeBadge.classList.add('hidden');
-                if(drawerBadge) drawerBadge.classList.add('hidden');
-            }
-        }
-        
-        async function openChat(id, name) {
-            currentThreadId = id;
-            document.getElementById('chat-room-title').innerText = name;
-            switchView('chat-room');
-            const msgs = await supabaseFetch('v2_chat_messages', 'GET', null, `thread_id=eq.${id}&order=created_at.asc`);
-            const container = document.getElementById('chat-messages');
-            container.innerHTML = (msgs || []).map(m => formatMessageHtml(m)).join('');
-            container.scrollTop = container.scrollHeight;
-            markThreadRead(id);
-        }
-
-        function formatMessageHtml(m) {
-            const isMe = String(m.sender_name).toLowerCase() === String(currentUser).toLowerCase();
-            return `<div class="flex ${isMe ? 'justify-end' : 'justify-start'} mb-2">
-                <div class="${isMe ? 'bg-[#007a4d] text-white rounded-l-lg rounded-tr-lg' : 'bg-white text-gray-800 rounded-r-lg rounded-tl-lg border border-gray-200'} p-3 max-w-[80%] shadow-sm">
-                    <div class="text-[10px] opacity-60 mb-1">${m.sender_name}</div>
-                    <div class="text-sm">${m.message_text}</div>
-                </div>
-            </div>`;
-        }
-
-        async function sendTargetedChatMessage() {
-            const input = document.getElementById('chat-input');
-            const text = input.value.trim();
-            if (!text || !currentThreadId) return;
-            input.value = "";
-            
-            const msgHtml = formatMessageHtml({ sender_name: currentUser, message_text: text });
-            const container = document.getElementById('chat-messages');
-            container.innerHTML += msgHtml;
-            container.scrollTop = container.scrollHeight;
-
-            await supabaseFetch('v2_chat_messages', 'POST', { thread_id: currentThreadId, sender_name: currentUser, message_text: text });
-            await supabaseFetch('v2_chat_threads', 'PATCH', { last_message_text: text, last_message_sender: currentUser, updated_at: new Date().toISOString() }, `thread_id=eq.${currentThreadId}`);
-        }
-
-        async function markThreadRead(id) {
-            const update = {}; update[`last_read_${currentUser}`] = new Date().toISOString();
-            await supabaseFetch('v2_chat_threads', 'PATCH', update, `thread_id=eq.${id}`);
-            setTimeout(loadChatInbox, 500); 
-        }
-
-        function openNewChatModal() {
-            document.getElementById('new-chat-modal').classList.remove('hidden');
-            document.getElementById('chat-user-search').value = "";
-            filterChatUsers();
-        }
-
-        async function filterChatUsers() {
-            const term = document.getElementById('chat-user-search').value.toLowerCase().trim();
-            const list = document.getElementById('chat-user-list');
-            const users = await supabaseFetch('v2_app_users', 'GET', null, 'select=username');
-            let filtered = users.map(u => u.username).filter(u => u !== currentUser);
-            if(term) filtered = filtered.filter(u => u.toLowerCase().includes(term));
-            
-            list.innerHTML = filtered.map(u => `
-                <label class="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg mb-2 shadow-sm cursor-pointer">
-                    <input type="checkbox" class="chat-user-cb w-5 h-5 text-[#007a4d] rounded border-gray-300" value="${u}">
-                    <span class="font-bold text-gray-800">${u}</span>
-                </label>
-            `).join('');
-
-            list.addEventListener('change', () => {
-                const checked = document.querySelectorAll('.chat-user-cb:checked').length;
-                document.getElementById('chat-group-name').classList.toggle('hidden', checked <= 1);
-            });
-        }
-
-        async function submitNewChat() {
-            const selected = Array.from(document.querySelectorAll('.chat-user-cb:checked')).map(cb => cb.value);
-            if(selected.length === 0) { showToast("Error", "Select at least one user", true); return; }
-            
-            let groupName = "";
-            if(selected.length > 1) {
-                groupName = document.getElementById('chat-group-name').value.trim();
-                if(!groupName) { showToast("Error", "Group Name required", true); return; }
-            } else {
-                groupName = `${currentUser} & ${selected[0]}`;
-            }
-
-            document.getElementById('new-chat-modal').classList.add('hidden');
-            showToast("Creating Chat...", "Setting up room...", false);
-
-            const threadId = 'thread_' + Date.now();
-            await supabaseFetch('v2_chat_threads', 'POST', { thread_id: threadId, thread_name: groupName, last_message_text: 'Chat created', last_message_sender: currentUser });
-            
-            const members = [currentUser, ...selected].map(u => ({ thread_id: threadId, username: u }));
-            await supabaseFetch('v2_chat_members', 'POST', members);
-            
-            loadChatInbox();
-            openChat(threadId, groupName);
         }
 
         async function silentBackgroundSync() {
@@ -1286,7 +1049,7 @@
         }
 
         function switchView(viewId) { 
-            ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-detail','view-docks','view-request','view-reserves','view-av', 'view-hours', 'view-chat-inbox', 'view-chat-room'].forEach(id=>{
+            ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-detail','view-docks','view-request','view-reserves','view-av', 'view-hours'].forEach(id=>{
                 const el=document.getElementById(id);
                 if(el)el.classList.add('hidden');
             }); 
@@ -1480,7 +1243,7 @@
                         const namedItems = items.filter(i => i.COMMONNAME === selectedAvOpenName);
                         if(namedItems.length === 0){ container.innerHTML = `<div class="p-8 text-center text-gray-400">No items found.</div>`; return; }
                         const sizes = [...new Set(namedItems.map(i => i.CONTSIZE))].sort();
-                        let html = `<div class="back-btn" onclick="avOpenLevel=0; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Names</div><div class="bg-white border-l-4 border-teal-500 p-3 rounded shadow-sm mb-4"><div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Selected Plant</div><div class="font-black text-teal-700 text-lg leading-tight">${selectedAvOpenName}</div></div>`;
+                        let html = `<div class="back-btn" onclick="avOpenLevel=0; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Names</div><div class="font-bold text-[#007a4d] mb-4 px-2 text-xl border-b pb-2">${selectedAvOpenName}</div>`;
                         html += sizes.map(s => { 
                             const count = namedItems.filter(i => i.CONTSIZE === s).length; 
                             return `<div class="drill-item" onclick="selectedAvOpenSize='${esc(s)}'; avOpenLevel=2; renderAV()"><span class="font-bold text-lg">${s} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>` 
@@ -1508,7 +1271,7 @@
                         crumb.innerText = `${selectedAvOpenSeason} > ${selectedAvOpenName}`;
                         const snItems = items.filter(i => (i.SEASON || 'Unassigned') === selectedAvOpenSeason && i.COMMONNAME === selectedAvOpenName);
                         const sizes = [...new Set(snItems.map(i => i.CONTSIZE))].sort();
-                        let html = `<div class="back-btn" onclick="avOpenLevel=1; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Names</div><div class="bg-white border-l-4 border-teal-500 p-3 rounded shadow-sm mb-4"><div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Selected Plant</div><div class="font-black text-teal-700 text-lg leading-tight">${selectedAvOpenName}</div></div>`;
+                        let html = `<div class="back-btn" onclick="avOpenLevel=1; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Names</div><div class="font-bold text-[#007a4d] mb-4 px-2 text-xl border-b pb-2">${selectedAvOpenName}</div>`;
                         html += sizes.map(s => { 
                             const count = snItems.filter(i => i.CONTSIZE === s).length; 
                             return `<div class="drill-item" onclick="selectedAvOpenSize='${esc(s)}'; avOpenLevel=3; renderAV()"><span class="font-bold text-lg">${s} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>` 
@@ -1543,7 +1306,7 @@
                     crumb.innerText=`My Reserves > ${selectedAvResName}`; 
                     const namedItems=items.filter(i=>i.COMMONNAME===selectedAvResName); 
                     const sizes=[...new Set(namedItems.map(i=>i.CONTSIZE))].sort(); 
-                    let html=`<div class="back-btn" onclick="avResLevel=0; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Plants</div><div class="bg-white border-l-4 border-indigo-500 p-3 rounded shadow-sm mb-4"><div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Selected Plant</div><div class="font-black text-indigo-700 text-lg leading-tight">${selectedAvResName}</div></div>`; 
+                    let html=`<div class="back-btn" onclick="avResLevel=0; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Plants</div>`; 
                     html+=sizes.map(s=>{const count=namedItems.filter(i=>i.CONTSIZE===s).length;return `<div class="drill-item" onclick="selectAvResSize('${esc(s)}')"><span class="font-bold text-lg">${s} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;}).join(''); 
                     container.innerHTML=html; 
                 } 
@@ -1733,7 +1496,6 @@
                 }
             }
         }
-        
         function handleCardClick(domId,uniqueId,sourceView) {
             if(isLongPress){ isLongPress=false; return; }
             if(isMultiSelectMode){ 
@@ -1765,7 +1527,7 @@
             activeItem = fullInventory.find(i=>i.UNIQUE_ID===uid) || lowStockInventory.find(i=>i.UNIQUE_ID===uid) || reservesInventory.find(i=>i.UNIQUE_ID===uid) || requestsInventory.find(i=>i.UNIQUE_ID===uid) || socInventory.find(i=>i.UNIQUE_ID===uid);
             if(!activeItem) return;
 
-            ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-docks','view-request','view-reserves','view-av', 'view-hours', 'view-chat-inbox', 'view-chat-room'].forEach(id=>{
+            ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-docks','view-request','view-reserves','view-av', 'view-hours'].forEach(id=>{
                 const el = document.getElementById(id);
                 if(el) el.classList.add('hidden');
             });
@@ -2573,8 +2335,7 @@
                     if(i.REQ_QTY)returnText+=`  Requested Qty: ${i.REQ_QTY}\n`;
                     if(i.REQ_DESIRED_SPEC)returnText+=`  Desired Spec: ${i.REQ_DESIRED_SPEC}\n`;
                     if(i.REQ_DESIRED_CALIPER)returnText+=`  Desired Caliper: ${i.REQ_DESIRED_CALIPER}\n`;
-                    if(i.REQ_EST_SHIP)returnText+=`  Est Ship: ${
-                        i.REQ_EST_SHIP}\n`;
+                    if(i.REQ_EST_SHIP)returnText+=`  Est Ship: ${i.REQ_EST_SHIP}\n`;
                     if(i.REQ_RESERVE)returnText+=`  Reserve: ${i.REQ_RESERVE}\n`;
                     if(i.REQ_MATCH)returnText+=`  Match: ${i.REQ_MATCH}%\n`;
                     if(i.REQ_SPEC)returnText+=`  Spec: ${i.REQ_SPEC}\n`;
@@ -2719,7 +2480,7 @@
                     const namedItems = searchFilteredItems.filter(i => i.COMMONNAME === selectedDriveName);
                     if(namedItems.length === 0){ container.innerHTML = `<div class="p-8 text-center text-gray-400">No items found.</div>`; return; }
                     const sizes = [...new Set(namedItems.map(i => i.CONTSIZE))].sort();
-                    let html = `<div class="back-btn" onclick="driveViewLevel=0; renderDrive()"><i class="ph-bold ph-arrow-left"></i> Back to Names</div><div class="bg-white border-l-4 border-teal-500 p-3 rounded shadow-sm mb-4"><div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Selected Plant</div><div class="font-black text-teal-700 text-lg leading-tight">${selectedDriveName}</div></div>`;
+                    let html = `<div class="back-btn" onclick="driveViewLevel=0; renderDrive()"><i class="ph-bold ph-arrow-left"></i> Back to Names</div><div class="font-bold text-[#007a4d] mb-4 px-2 text-xl border-b pb-2">${selectedDriveName}</div>`;
                     html += sizes.map(s => { 
                         const count = namedItems.filter(i => i.CONTSIZE === s).length; 
                         return `<div class="drill-item" onclick="selectDriveSize('${esc(s)}')"><span class="font-bold text-lg">${s} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>` 
@@ -3166,71 +2927,12 @@
                 };
             };
         }
-        
-        // --- MATCHING INVENTORY FOR REQUESTS ---
-        function renderRequestMatchingInventory() {
-            const container = document.getElementById('req-matching-inventory-container');
-            if (!container || !activeItem || lastView !== 'request') return;
-            
-            let matches = fullInventory.filter(i => i.ITEMCODE === activeItem.ITEMCODE && i.UNIQUE_ID !== activeItem.MASTER_ID);
-            if (matches.length === 0) {
-                container.innerHTML = "";
-                return;
-            }
-
-            let html = `<div class="mt-8 border-t pt-6">
-                <h3 class="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Other Locations for this Item</h3>`;
-            matches.forEach(m => {
-                html += `<div class="bg-gray-50 p-3 rounded-lg border border-gray-200 mb-2 flex justify-between items-center">
-                    <div>
-                        <div class="text-[10px] font-bold text-gray-400">LOC: ${m.LOCATIONCODE}</div>
-                        <div class="text-sm font-black text-gray-700">AVAIL: ${m.PTRAVAILABLE}</div>
-                    </div>
-                    <button class="bg-white border border-gray-300 text-[10px] font-bold px-3 py-1.5 rounded-lg shadow-sm active:scale-95" onclick="openDetail('${m.UNIQUE_ID}', 'drive')">VIEW</button>
-                </div>`;
-            });
-            container.innerHTML = html + `</div>`;
-        }
-
-        // Hook into the detail view to show matches
-        const originalOpenDetail = openDetail;
-        openDetail = function(uid, sourceView) {
-            originalOpenDetail(uid, sourceView);
-            if (sourceView === 'request') renderRequestMatchingInventory();
-        };
-
-        // Reset functions for search
-        function clearReservesSearch() {
-            document.getElementById('reserves-search').value = "";
-            document.getElementById('reserves-search-clear').classList.add('hidden');
-            renderReserves();
-        }
-
-        function resetReservesView() {
-            document.getElementById('reserves-search').value = "";
-            renderReserves();
-        }
-
-        function renderReserves() {
-            const container = document.getElementById('reserves-content');
-            const term = document.getElementById('reserves-search').value.toLowerCase();
-            let items = reservesInventory;
-            if (term) {
-                items = items.filter(i => i._search.includes(term));
-                document.getElementById('reserves-search-clear').classList.remove('hidden');
-            }
-            container.innerHTML = items.map(i => generateCard(i, 'reserves_drill', 'status-indigo')).join('');
-        }
-
-        async function removeFromRequest() {
-            if (!activeItem || !confirm("Remove this item from the request folder?")) return;
-            showToast("Removing...", "Updating database...", false);
-            await supabaseFetch('v2_active_request', 'DELETE', null, `unique_id=eq.${activeItem.UNIQUE_ID}`);
-            requestsInventory = requestsInventory.filter(i => i.UNIQUE_ID !== activeItem.UNIQUE_ID);
-            showToast("Removed", "Item removed from request.");
-            goBackFromDetail();
-            renderRequest();
-        }
     </script>
 </body>
 </html>
+
+
+
+
+
+
