@@ -12,75 +12,19 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    <style>
-        :root{--bg:#007a4d;--tx:#111827}
-        body{font-family:"Amazon Ember",Arial,sans-serif;background:white;color:var(--tx);user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior-y:contain}
-        .nav-header{background:var(--bg);color:white;padding-top:max(10px,env(safe-area-inset-top))}
-        #view-login,#view-change-password{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px}
-        #view-change-password{display:none;z-index:10000}
-        .login-card{background:white;padding:30px;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,.2);width:100%;max-width:360px;text-align:center}
-        .input-field{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:8px;font-size:15px;margin-bottom:12px}
-        #toast-notification{position:fixed;top:-100px;left:50%;transform:translateX(-50%);background:#16a34a;color:white;padding:16px 24px;border-radius:50px;box-shadow:0 10px 15px -3px rgba(0,0,0,.3);z-index:11000;transition:top .5s;display:flex;align-items:center;gap:12px;pointer-events:none}
-        #toast-notification.show{top:20px}
-        #side-drawer{position:fixed;top:0;left:-280px;width:280px;height:100%;background:white;z-index:2000;box-shadow:2px 0 10px rgba(0,0,0,.2);transition:left .3s;overflow-y:auto;padding-bottom:100px}
-        #side-drawer.open{left:0}
-        #drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1999;display:none}
-        #drawer-overlay.open{display:block}
-        .drawer-header{background:var(--bg);color:white;padding:20px;font-weight:bold;font-size:18px}
-        .drawer-item{padding:16px 20px;border-bottom:1px solid #f3f4f6;cursor:pointer;display:flex;align-items:center;gap:12px;color:#374151;font-weight:500}
-        .drill-item{border-bottom:1px solid #e5e7eb;padding:16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:white;transition:background .1s}
-        .drill-item:active{background:#f3f4f6}
-        .back-btn{display:flex;align-items:center;gap:5px;color:#6b7280;font-size:14px;font-weight:600;margin-bottom:20px;cursor:pointer;padding:10px 0}
-        .inv-card{border:1px solid #e5e7eb;border-left-width:6px;border-radius:8px;padding:12px;background:white;cursor:pointer;flex-grow:1}
-        .status-green{border-left-color:#22c55e}
-        .status-purple{border-left-color:#9333ea}
-        .status-orange{border-left-color:#f97316}
-        .status-blue{border-left-color:#3b82f6}
-        .status-indigo{border-left-color:#4f46e5}
-        .status-teal{border-left-color:#0d9488}
-        .status-yellow{border-left-color:#eab308}
-        .status-red{border-left-color:#ef4444}
-        .task-tabs,.detail-tabs{display:flex;border-bottom:1px solid #e5e7eb;background:#f9fafb;margin-bottom:10px}
-        .detail-tabs{overflow-x:auto;scrollbar-width:none}
-        .detail-tabs::-webkit-scrollbar{display:none}
-        .task-tab,.detail-tab{flex:1;text-align:center;padding:12px;font-size:11px;font-weight:700;color:#6b7280;cursor:pointer;border-bottom:3px solid transparent;text-transform:uppercase}
-        .detail-tab{flex:0 0 auto;padding:10px 16px}
-        .task-tab.active,.detail-tab.active{color:var(--bg);border-bottom-color:var(--bg);background:white}
-        .overview-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
-        .overview-card{background:#f8fafc;padding:10px;border-radius:6px;border:1px solid #e2e8f0}
-        .overview-label{font-size:9px;font-weight:800;color:#64748b;text-transform:uppercase;margin-bottom:2px}
-        .overview-val{font-size:13px;font-weight:600;color:#0f172a;word-break:break-all}
-        .expand-trigger{display:flex;align-items:center;justify-content:space-between;padding:12px;background:#f9fafb;border-radius:6px;cursor:pointer;font-weight:600;font-size:14px;border:1px solid #e5e7eb}
-        .expand-content{display:none;margin-top:12px;padding:12px;background:#f9fafb;border-radius:6px;border:1px solid #e5e7eb}
-        .expanded .expand-content{display:block}
-        .card-checkbox-container{width:0;overflow:hidden;opacity:0;transition:width .3s,opacity .3s,margin .3s}
-        body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-right:12px}
-        .item-row{touch-action:manipulation}
-        .spinner{border:4px solid rgba(255,255,255,.3);border-top:4px solid white;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:0 auto}
-        @keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
-        .scrollbar-none::-webkit-scrollbar{display:none}
-        .scrollbar-none{-ms-overflow-style:none;scrollbar-width:none}
-    </style>
+    <style>:root{--bg:#007a4d;--tx:#111827}body{font-family:"Amazon Ember",Arial,sans-serif;background:white;color:var(--tx);user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior-y:contain}.nav-header{background:var(--bg);color:white;padding-top:max(10px,env(safe-area-inset-top))}#view-login,#view-change-password{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px}#view-change-password{display:none;z-index:10000}.login-card{background:white;padding:30px;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,.2);width:100%;max-width:360px;text-align:center}.input-field{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:8px;font-size:15px;margin-bottom:12px}#toast-notification{position:fixed;top:-100px;left:50%;transform:translateX(-50%);background:#16a34a;color:white;padding:16px 24px;border-radius:50px;box-shadow:0 10px 15px -3px rgba(0,0,0,.3);z-index:11000;transition:top .5s;display:flex;align-items:center;gap:12px;pointer-events:none}#toast-notification.show{top:20px}#side-drawer{position:fixed;top:0;left:-280px;width:280px;height:100%;background:white;z-index:2000;box-shadow:2px 0 10px rgba(0,0,0,.2);transition:left .3s;overflow-y:auto;padding-bottom:100px}#side-drawer.open{left:0}#drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1999;display:none}#drawer-overlay.open{display:block}.drawer-header{background:var(--bg);color:white;padding:20px;font-weight:bold;font-size:18px}.drawer-item{padding:16px 20px;border-bottom:1px solid #f3f4f6;cursor:pointer;display:flex;align-items:center;gap:12px;color:#374151;font-weight:500}.drill-item{border-bottom:1px solid #e5e7eb;padding:16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:white;transition:background .1s}.drill-item:active{background:#f3f4f6}.back-btn{display:flex;align-items:center;gap:5px;color:#6b7280;font-size:14px;font-weight:600;margin-bottom:20px;cursor:pointer;padding:10px 0}.inv-card{border:1px solid #e5e7eb;border-left-width:6px;border-radius:8px;padding:12px;background:white;cursor:pointer;flex-grow:1}.status-green{border-left-color:#22c55e}.status-purple{border-left-color:#9333ea}.status-orange{border-left-color:#f97316}.status-blue{border-left-color:#3b82f6}.status-indigo{border-left-color:#4f46e5}.status-teal{border-left-color:#0d9488}.status-yellow{border-left-color:#eab308}.status-red{border-left-color:#ef4444}.task-tabs,.detail-tabs{display:flex;border-bottom:1px solid #e5e7eb;background:#f9fafb;margin-bottom:10px}.detail-tabs{overflow-x:auto;scrollbar-width:none}.detail-tabs::-webkit-scrollbar{display:none}.task-tab,.detail-tab{flex:1;text-align:center;padding:12px;font-size:11px;font-weight:700;color:#6b7280;cursor:pointer;border-bottom:3px solid transparent;text-transform:uppercase}.detail-tab{flex:0 0 auto;padding:10px 16px}.task-tab.active,.detail-tab.active{color:var(--bg);border-bottom-color:var(--bg);background:white}.overview-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}.overview-card{background:#f8fafc;padding:10px;border-radius:6px;border:1px solid #e2e8f0}.overview-label{font-size:9px;font-weight:800;color:#64748b;text-transform:uppercase;margin-bottom:2px}.overview-val{font-size:13px;font-weight:600;color:#0f172a;word-break:break-all}.expand-trigger{display:flex;align-items:center;justify-content:space-between;padding:12px;background:#f9fafb;border-radius:6px;cursor:pointer;font-weight:600;font-size:14px;border:1px solid #e5e7eb}.expand-content{display:none;margin-top:12px;padding:12px;background:#f9fafb;border-radius:6px;border:1px solid #e5e7eb}.expanded .expand-content{display:block}.card-checkbox-container{width:0;overflow:hidden;opacity:0;transition:width .3s,opacity .3s,margin .3s}body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-right:12px}.item-row{touch-action:manipulation}.spinner{border:4px solid rgba(255,255,255,.3);border-top:4px solid white;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:0 auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.scrollbar-none::-webkit-scrollbar{display:none}.scrollbar-none{-ms-overflow-style:none;scrollbar-width:none}</style>
 </head>
 <body class="bg-gray-50 h-screen overflow-hidden">
-    <div id="top-loading-bar-container" class="hidden fixed top-0 left-0 w-full h-1 z-[99999] pointer-events-none">
-        <div id="top-loading-bar" class="h-full bg-[#22c55e] w-0 transition-all duration-300 ease-out shadow-[0_0_10px_#22c55e]"></div>
-    </div>
-    
+    <div id="top-loading-bar-container" class="hidden fixed top-0 left-0 w-full h-1 z-[99999] pointer-events-none"><div id="top-loading-bar" class="h-full bg-[#22c55e] w-0 transition-all duration-300 ease-out shadow-[0_0_10px_#22c55e]"></div></div>
     <div id="toast-notification"></div>
-    
     <div id="photo-modal" class="hidden fixed inset-0 bg-black bg-opacity-95 z-[15000] flex flex-col items-center justify-center p-4">
         <div class="absolute top-0 left-0 w-full p-6 flex justify-between items-start bg-gradient-to-b from-black/80 to-transparent z-50 pointer-events-none">
             <div id="photo-modal-caption" class="text-white font-bold text-sm leading-tight drop-shadow-md pr-4 uppercase tracking-wide pointer-events-auto"></div>
             <i class="ph-bold ph-x text-white text-3xl cursor-pointer bg-black/50 p-2 rounded-full active:scale-95 pointer-events-auto" onclick="closePhotoModal()"></i>
         </div>
-        <div id="photo-modal-gallery" class="flex overflow-x-auto snap-x snap-mandatory w-full max-h-[85vh] items-center space-x-4 pb-4 scrollbar-none mt-10">
-        </div>
-        <div id="photo-swipe-hint" class="absolute bottom-10 text-white text-xs font-bold uppercase tracking-widest opacity-50 hidden pointer-events-none">
-            <i class="ph-bold ph-arrows-left-right mr-1 text-lg align-middle"></i> Swipe for more
-        </div>
+        <div id="photo-modal-gallery" class="flex overflow-x-auto snap-x snap-mandatory w-full max-h-[85vh] items-center space-x-4 pb-4 scrollbar-none mt-10"></div>
+        <div id="photo-swipe-hint" class="absolute bottom-10 text-white text-xs font-bold uppercase tracking-widest opacity-50 hidden pointer-events-none"><i class="ph-bold ph-arrows-left-right mr-1 text-lg align-middle"></i> Swipe for more</div>
     </div>
-    
     <div id="view-login">
         <div class="login-card">
             <div class="flex flex-col items-center mb-8 w-full relative">
@@ -94,17 +38,11 @@
                 <input type="text" id="username-input" class="input-field mb-4 text-center border-2" placeholder="USERNAME">
                 <input type="password" id="pin-code" class="input-field mb-4 text-center border-2 tracking-widest" placeholder="PASSWORD">
                 <button class="w-full bg-[#007a4d] text-white font-bold py-3 rounded-lg shadow-md" onclick="handleLogin()">LOGIN</button>
-                <button id="btn-fingerprint" class="hidden w-full bg-gray-50 text-[#007a4d] border-2 border-[#007a4d] font-bold py-3 rounded-lg shadow-md mt-4 flex items-center justify-center gap-2" onclick="loginWithBiometric()">
-                    <i class="ph-bold ph-fingerprint text-2xl"></i> LOGIN WITH FINGERPRINT
-                </button>
+                <button id="btn-fingerprint" class="hidden w-full bg-gray-50 text-[#007a4d] border-2 border-[#007a4d] font-bold py-3 rounded-lg shadow-md mt-4 flex items-center justify-center gap-2" onclick="loginWithBiometric()"><i class="ph-bold ph-fingerprint text-2xl"></i> LOGIN WITH FINGERPRINT</button>
             </div>
-            <div id="loading-spinner" class="hidden mt-6 flex flex-col items-center">
-                <div class="spinner"></div>
-                <div id="loading-text" class="text-white font-bold text-sm mt-3 text-center">Syncing Database...</div>
-            </div>
+            <div id="loading-spinner" class="hidden mt-6 flex flex-col items-center"><div class="spinner"></div><div id="loading-text" class="text-white font-bold text-sm mt-3 text-center">Syncing Database...</div></div>
         </div>
     </div>
-    
     <div id="view-change-password">
         <div class="login-card">
             <h2 class="text-2xl font-black text-[#007a4d] mb-2">Change Password</h2>
@@ -114,7 +52,6 @@
             <button class="w-full bg-[#007a4d] text-white font-bold py-3 rounded-lg shadow-md active:scale-95" onclick="submitNewPassword()">SAVE & CONTINUE</button>
         </div>
     </div>
-    
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -125,7 +62,6 @@
             <button class="text-gray-500 font-bold py-2 px-4" onclick="document.getElementById('tab-select-modal').classList.add('hidden')">Cancel</button>
         </div>
     </div>
-    
     <div id="assign-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Assign Selected To:</h3>
@@ -137,7 +73,6 @@
             <button class="text-gray-500 font-bold py-2 px-4" onclick="closeAssignModal()">Cancel</button>
         </div>
     </div>
-    
     <div id="endcap-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center flex flex-col max-h-[90vh]">
             <div id="ec-step-1" class="flex flex-col">
@@ -156,7 +91,6 @@
             <button class="text-gray-500 font-bold py-2 px-4 mt-2" onclick="document.getElementById('endcap-modal').classList.add('hidden')">Cancel</button>
         </div>
     </div>
-    
     <div id="dock-mistake-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-black text-2xl mb-2 text-red-600">Report Mistake</h3>
@@ -168,7 +102,6 @@
             </div>
         </div>
     </div>
-    
     <div id="dock-info-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center relative overflow-hidden">
             <h3 class="font-black text-2xl mb-2 text-[#007a4d]">DOCK <span id="modal-dock-num"></span></h3>
@@ -200,7 +133,6 @@
             </div>
         </div>
     </div>
-    
     <div id="request-rep-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center flex flex-col max-h-[90vh]">
             <div id="step-1-rep" class="flex flex-col">
@@ -242,13 +174,10 @@
                     <div class="text-[10px] opacity-80 leading-tight">Greenleaf</div>
                 </div>
             </div>
-            <div class="bg-white/20 p-2 rounded-lg cursor-pointer" onclick="fetchBackgroundData()">
-                <i class="ph-bold ph-arrows-clockwise text-white"></i>
-            </div>
+            <div class="bg-white/20 p-2 rounded-lg cursor-pointer" onclick="fetchBackgroundData()"><i class="ph-bold ph-arrows-clockwise text-white"></i></div>
         </header>
         
         <div id="drawer-overlay" onclick="toggleMenu()"></div>
-        
         <div id="side-drawer">
             <div class="drawer-header">Menu</div>
             <div class="drawer-item" onclick="switchView('home'); toggleMenu();"><i class="ph-bold ph-house"></i> Home</div>
@@ -327,9 +256,14 @@
                         <input type="text" id="av-search" class="input-field w-full pr-10 !mb-0" placeholder="Search AV Stock..." oninput="handleAVSearch()">
                         <i id="av-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearAVSearch()"></i>
                     </div>
-                    <div class="task-tabs mt-2">
+                    <div class="task-tabs mt-2 mb-2">
                         <div id="tab-av-open" class="task-tab active" onclick="setAVTab('open')">Open Stock</div>
                         <div id="tab-av-reserves" class="task-tab" onclick="setAVTab('reserves')">My Reserves</div>
+                    </div>
+                    <div id="av-open-sub-tabs" class="task-tabs mb-2">
+                        <div id="tab-av-open-name" class="task-tab active" onclick="setAvOpenTab('name')">By Name</div>
+                        <div id="tab-av-open-season" class="task-tab" onclick="setAvOpenTab('season')">By Season</div>
+                        <div id="tab-av-open-lot" class="task-tab" onclick="setAvOpenTab('lot')">By Lot</div>
                     </div>
                     <div id="av-crumb" class="text-xs font-bold text-[#007a4d] mb-3 mt-2 empty:hidden">Open Stock</div>
                     <div id="av-content"></div>
@@ -679,11 +613,14 @@
         let fullInventory=[]; let lowStockInventory=[]; let socInventory=[]; let reservesInventory=[]; let requestsInventory=[]; let managerReviewInventory=[]; let salesOfficeInventory=[]; let avNotesDb=[];
         let currentUser=""; let currentRole=""; let safeRole=""; let repPermutations=[]; let activeItem=null; let lastView=""; let activeDetailTab="overview"; let selectedItems=new Set(); let isMultiSelectMode=false; let pressTimer=null; let isLongPress=false; let touchStartX=0; let touchStartY=0; let pendingAction=null; let pendingTabType=null;
         
-        let activeDriveTab = 'name'; let selectedDriveBlock = null; let selectedDriveLoc = null;
+        let activeDriveTab='name'; let selectedDriveBlock=null; let selectedDriveLoc=null;
         let driveViewLevel=0; let selectedDriveName=null; let selectedDriveSize=null; let driveSelectedSeasons=new Set(['ALL']); const availableSeasons=["ALL","S1","F1","U1","U2","U3","X","Y","Z"];
         
         let activeTaskTab="season"; let taskViewTargetUser=null; let taskViewLevel=0; let selectedTaskBlock=null; let selectedTaskLoc=null; let selectedEndCapFolder=null;
-        let activeAVTab='open'; let avResLevel=0; let selectedAvResName=null; let selectedAvResSize=null; let lowStockViewLevel=0; let selectedLowStockName=null; let selectedLowStockSize=null; let reviewViewLevel=0; let selectedReviewItemCode=null; let selectedReviewCommonName=null; let selectedReviewContSize=null;
+        
+        let activeAVTab='open'; let activeAvOpenTab='name'; let avOpenLevel=0; let selectedAvOpenName=null; let selectedAvOpenSize=null; let selectedAvOpenSeason=null; let selectedAvOpenLot=null; let avResLevel=0; let selectedAvResName=null; let selectedAvResSize=null;
+        
+        let lowStockViewLevel=0; let selectedLowStockName=null; let selectedLowStockSize=null; let reviewViewLevel=0; let selectedReviewItemCode=null; let selectedReviewCommonName=null; let selectedReviewContSize=null;
         let reportViewLevel=0; let activeReqTab="pending"; let selectedReqRep=null; let selectedReqRepStatus=null; let selectedReqFolder=null; let tempSelectedReqRep=""; let tempReqFolder=null; let tempReqCust=null; let previousReqStep="";
         let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqFolderView=null; let selectedReqStatus='Pending';
         let dockViewLevel=0; let selectedDockNum=null; let pendingDockNum=null; let selectedDockName=null; let selectedDockSize=null; let selectedDockItemCode=null; let selectedDockCustomer=""; let selectedDockTrip=""; let selectedDockRep=""; let lastSyncTime=new Date().toISOString();
@@ -861,7 +798,6 @@
             if(!currentUser)return; 
             const checkTime=new Date().toISOString();
             try {
-                // 1. Sync Master Inventory
                 const response=await fetch(`${SUPABASE_URL}/rest/v1/v2_master_inventory?select=*&last_updated=gt.${lastSyncTime}`,{method:'GET',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
                 if(response.ok) {
                     const data=await response.json();
@@ -877,14 +813,10 @@
                                 if(activeItem&&activeItem.UNIQUE_ID===updatedRow.unique_id){ Object.assign(activeItem,fullInventory[idx]); }
                             }
                         });
-                        if(updated){ 
-                            reRenderCurrentView(); 
-                            if(activeItem&&!document.getElementById('view-detail').classList.contains('hidden')){ openDetail(activeItem.UNIQUE_ID,lastView); } 
-                        }
+                        if(updated){ reRenderCurrentView(); if(activeItem&&!document.getElementById('view-detail').classList.contains('hidden')){ openDetail(activeItem.UNIQUE_ID,lastView); } }
                     } 
                 }
                 
-                // 2. Sync Requests (Instantly pull changes)
                 const reqRes = await fetch(`${SUPABASE_URL}/rest/v1/v2_active_request?select=*`, {method:'GET', headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
                 if(reqRes.ok) {
                     const reqData = await reqRes.json();
@@ -905,7 +837,6 @@
                     }
                 }
 
-                // 3. Sync Sales Office (Instantly pull changes)
                 const soRes = await fetch(`${SUPABASE_URL}/rest/v1/v2_sales_office?select=*`, {method:'GET', headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
                 if(soRes.ok) {
                     const soData = await soRes.json();
@@ -973,38 +904,22 @@
 
         function processAndLoadData(res) {
             if (!res) return;
-            
             avNotesDb = res.avNotesData || [];
-            
-            fullInventory = (res.data || []).map((item,idx)=>{
-                item.DOM_ID='fi_'+idx;
-                return item;
-            }); 
-            
-            requestsInventory = (res.requestsData || []).map((item,idx)=>{
-                item.DOM_ID='req_'+item.UNIQUE_ID;
-                return item;
-            }); 
-            
+            fullInventory = (res.data || []).map((item,idx)=>{item.DOM_ID='fi_'+idx;return item;}); 
+            requestsInventory = (res.requestsData || []).map((item,idx)=>{item.DOM_ID='req_'+item.UNIQUE_ID;return item;}); 
             salesOfficeInventory = (res.salesOfficeData || []).map((item, idx) => {
                 item.DOM_ID = 'so_' + item.UNIQUE_ID;
                 let masterItem = fullInventory.find(i => i.UNIQUE_ID === item.UNIQUE_ID);
                 if (masterItem) { item.AV_NOTE = masterItem.AV_NOTE; }
                 return item;
             });
-            
             socInventory = res.socData || [];
-            
             lowStockInventory = fullInventory.filter(i=>{
                 let ptr=parseInt(String(i.PTRAVAILABLE).replace(/,/g,''))||0; 
                 let slts=parseInt(String(i.S_LTS).replace(/,/g,''))||0; 
                 return ptr>0 && ptr<=slts;
             }).map((item,idx)=>{item.DOM_ID='ls_'+idx;return item}); 
-            
-            managerReviewInventory = fullInventory.map((item,idx)=>{
-                item.DOM_ID='mr_'+idx;
-                return item;
-            }); 
+            managerReviewInventory = fullInventory.map((item,idx)=>{item.DOM_ID='mr_'+idx;return item;}); 
 
             let map1 = new Map();
             let icGroups = {};
@@ -1012,10 +927,8 @@
             fullInventory.forEach(item => { 
                 let c = String(item.ITEMCODE || "").trim().toUpperCase(); 
                 if(c && !map1.has(c)) map1.set(c, item);
-
                 let eStr = String(item.END_CAP_FOLDER || "").toUpperCase().trim();
                 let hasEndCap = (eStr !== "" && eStr !== "NULL" && eStr !== "N/A" && eStr !== "-");
-
                 if(hasEndCap) {
                     item.APP_TAB_ASSIGNMENT = 'endcap';
                 } else {
@@ -1037,7 +950,6 @@
                     let ss = parseFloat(String(r.SEASONSUPPLY || r.SEASON_SUPPLY).replace(/,/g,'')) || 0;
                     return ptr > (0.10 * ss);
                 });
-                
                 let pool = eligible.length > 0 ? eligible : rows;
                 pool.sort((a,b) => {
                     let pa = parseFloat(a.PRIORITY); if(isNaN(pa)) pa = 999;
@@ -1047,7 +959,6 @@
                     let ptrb = parseFloat(String(b.PTRAVAILABLE).replace(/,/g,'')) || 0;
                     return ptrb - ptra; 
                 });
-                
                 let winner = pool[0];
                 rows.forEach(r => {
                     if(r.UNIQUE_ID === winner.UNIQUE_ID) r.APP_TAB_ASSIGNMENT = 'season';
@@ -1127,10 +1038,7 @@
             switchView('home');
         }
 
-        function toggleMenu() { 
-            document.getElementById('side-drawer').classList.toggle('open'); 
-            document.getElementById('drawer-overlay').classList.toggle('open'); 
-        }
+        function toggleMenu() { document.getElementById('side-drawer').classList.toggle('open'); document.getElementById('drawer-overlay').classList.toggle('open'); }
 
         function showToast(title, message, isAlert = false) { 
             const toast = document.getElementById('toast-notification'); 
@@ -1149,10 +1057,7 @@
             requestAnimationFrame(()=>{
                 setTimeout(()=>{
                     if(viewId==='drive')resetDriveView();
-                    if(viewId==='tasks'){
-                        if(safeRole==='ADMIN'&&!taskViewTargetUser)renderTeamSelector();
-                        else renderTasks();
-                    }
+                    if(viewId==='tasks'){ if(safeRole==='ADMIN'&&!taskViewTargetUser)renderTeamSelector(); else renderTasks(); }
                     if(viewId==='reports')resetReportsView();
                     if(viewId==='review')resetReviewView();
                     if(viewId==='request'){requestViewLevel=0;renderRequest();}
@@ -1204,26 +1109,43 @@
             activeDriveTab = 'name';
             document.getElementById('tab-drive-name').classList.add('active');
             document.getElementById('tab-drive-loc').classList.remove('active');
-            driveViewLevel = 0;
-            selectedDriveName = null;
-            selectedDriveSize = null;
-            selectedDriveBlock = null;
-            selectedDriveLoc = null;
-            document.getElementById('drive-search').value = "";
-            document.getElementById('drive-search-clear').classList.add('hidden');
-            driveSelectedSeasons.clear();
-            driveSelectedSeasons.add('ALL');
+            driveViewLevel = 0; selectedDriveName = null; selectedDriveSize = null; selectedDriveBlock = null; selectedDriveLoc = null;
+            document.getElementById('drive-search').value = ""; document.getElementById('drive-search-clear').classList.add('hidden');
+            driveSelectedSeasons.clear(); driveSelectedSeasons.add('ALL');
             renderDrive();
+        }
+        
+        function clearAVSearch() { document.getElementById('av-search').value=""; document.getElementById('av-search-clear').classList.add('hidden'); avResLevel=0; avOpenLevel=0; renderAV(); }
+        function handleAVSearch() { const term=document.getElementById('av-search').value.toLowerCase(); const clearBtn=document.getElementById('av-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden'); avResLevel=0; avOpenLevel=0;} else{clearBtn.classList.add('hidden'); avResLevel=0; avOpenLevel=0;} debouncedAVSearch(); }
+
+        function resetAVView() { 
+            activeAVTab='open'; activeAvOpenTab='name';
+            avResLevel=0; selectedAvResName=null; selectedAvResSize=null; 
+            avOpenLevel=0; selectedAvOpenName=null; selectedAvOpenSize=null; selectedAvOpenSeason=null; selectedAvOpenLot=null;
+            document.getElementById('tab-av-open').classList.add('active'); document.getElementById('tab-av-reserves').classList.remove('active'); 
+            document.getElementById('tab-av-open-name').classList.add('active'); document.getElementById('tab-av-open-season').classList.remove('active'); document.getElementById('tab-av-open-lot').classList.remove('active');
+            document.getElementById('av-open-sub-tabs').style.display = 'flex';
+            document.getElementById('av-search').value=""; document.getElementById('av-search-clear').classList.add('hidden'); 
+            renderAV(); 
         }
 
         function setAVTab(tab) { 
             activeAVTab=tab; 
-            avResLevel=0; 
-            selectedAvResName=null; 
-            selectedAvResSize=null; 
-            document.getElementById('tab-av-open').classList.toggle('active',tab==='open'); 
-            document.getElementById('tab-av-reserves').classList.toggle('active',tab==='reserves'); 
+            avResLevel=0; selectedAvResName=null; selectedAvResSize=null; 
+            avOpenLevel=0; selectedAvOpenName=null; selectedAvOpenSize=null; selectedAvOpenSeason=null; selectedAvOpenLot=null;
+            document.getElementById('tab-av-open').classList.toggle('active',tab==='open'); document.getElementById('tab-av-reserves').classList.toggle('active',tab==='reserves'); 
+            const subTabs = document.getElementById('av-open-sub-tabs');
+            if (tab === 'open') { subTabs.style.display = 'flex'; } else { subTabs.style.display = 'none'; }
             renderAV(); 
+        }
+
+        function setAvOpenTab(tab) {
+            activeAvOpenTab = tab;
+            document.getElementById('tab-av-open-name').classList.toggle('active', tab === 'name');
+            document.getElementById('tab-av-open-season').classList.toggle('active', tab === 'season');
+            document.getElementById('tab-av-open-lot').classList.toggle('active', tab === 'lot');
+            avOpenLevel = 0;
+            renderAV();
         }
         
         function setReqTab(tab) {
@@ -1232,6 +1154,7 @@
             document.getElementById('tab-req-reps').classList.toggle('active', tab === 'reps');
             requestViewLevel = 0; selectedReqFolder = null; selectedReqRepView = null; selectedReqCustView = null; selectedReqFolderView = null; clearSelection(); renderRequest();
         }
+
         function sendEmailNotification(type, folderId, repName, customer, itemsCount) {
             let payload = { type: "email", emailType: type, folderId: folderId, repName: repName, customer: customer, itemsCount: itemsCount, dylanEmail: "dylan_collyge@greenleafnursery.com" };
             if (type === 'request_complete') {
@@ -1258,79 +1181,122 @@
         }
 
         const debouncedReservesSearch=debounce(()=>{requestAnimationFrame(()=>renderReserves())},150);
-        
-        function clearReservesSearch() { 
-            document.getElementById('reserves-search').value=""; 
-            document.getElementById('reserves-search-clear').classList.add('hidden'); 
-            reservesViewLevel=0; 
-            renderReserves(); 
-        }
-
-        function handleReservesSearch() { 
-            const term=document.getElementById('reserves-search').value.toLowerCase(); 
-            const clearBtn=document.getElementById('reserves-search-clear'); 
-            if(term.length>0){clearBtn.classList.remove('hidden');reservesViewLevel=0;}
-            else{clearBtn.classList.add('hidden');reservesViewLevel=0;} 
-            debouncedReservesSearch(); 
-        }
+        function clearReservesSearch() { document.getElementById('reserves-search').value=""; document.getElementById('reserves-search-clear').classList.add('hidden'); reservesViewLevel=0; renderReserves(); }
+        function handleReservesSearch() { const term=document.getElementById('reserves-search').value.toLowerCase(); const clearBtn=document.getElementById('reserves-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden');reservesViewLevel=0;} else{clearBtn.classList.add('hidden');reservesViewLevel=0;} debouncedReservesSearch(); }
 
         const debouncedAVSearch=debounce(()=>{requestAnimationFrame(()=>renderAV())},150);
-
-        function clearAVSearch() { 
-            document.getElementById('av-search').value=""; 
-            document.getElementById('av-search-clear').classList.add('hidden'); 
-            avResLevel=0; 
-            renderAV(); 
-        }
-
-        function handleAVSearch() { 
-            const term=document.getElementById('av-search').value.toLowerCase(); 
-            const clearBtn=document.getElementById('av-search-clear'); 
-            if(term.length>0){clearBtn.classList.remove('hidden');avResLevel=0;}
-            else{clearBtn.classList.add('hidden');avResLevel=0;} 
-            debouncedAVSearch(); 
-        }
-
-        function resetAVView() { 
-            activeAVTab='open'; 
-            avResLevel=0; 
-            selectedAvResName=null; 
-            selectedAvResSize=null; 
-            document.getElementById('tab-av-open').classList.add('active'); 
-            document.getElementById('tab-av-reserves').classList.remove('active'); 
-            document.getElementById('av-search').value=""; 
-            document.getElementById('av-search-clear').classList.add('hidden'); 
-            renderAV(); 
-        }
 
         function selectAvResName(name) { selectedAvResName=name; avResLevel=1; renderAV(); }
         function selectAvResSize(size) { selectedAvResSize=size; avResLevel=2; renderAV(); }
 
         function renderAV() {
-            const container=document.getElementById('av-content'); 
-            const crumb=document.getElementById('av-crumb'); 
-            const term=document.getElementById('av-search').value.toLowerCase(); 
-            let items=[];
-            if(activeAVTab==='open'){ 
-                items=fullInventory.filter(i=>{let lts=Number(String(i.S_LTS||'0').replace(/,/g,''));let season=String(i.SEASON||'').toUpperCase();return lts>0&&!season.includes('Y')&&!season.includes('Z');}); 
-            }else{ 
-                items=reservesInventory; if(safeRole==='SALESREP')items=items.filter(i=>isMyRep(i.SALESREPNAME)); 
+            const container = document.getElementById('av-content'); 
+            const crumb = document.getElementById('av-crumb'); 
+            const term = document.getElementById('av-search').value.toLowerCase().trim(); 
+
+            let items = [];
+            if (activeAVTab === 'open') { 
+                items = fullInventory.filter(i => {
+                    let lts = Number(String(i.S_LTS || '0').replace(/,/g, ''));
+                    let season = String(i.SEASON || '').toUpperCase();
+                    return lts > 0 && !season.includes('Y') && !season.includes('Z');
+                }); 
+            } else { 
+                items = reservesInventory; 
+                if(safeRole === 'SALESREP') items = items.filter(i => isMyRep(i.SALESREPNAME)); 
             }
-            if(term){ items=items.filter(i=>(i._search||"").includes(term)); }
-            if(items.length===0){ container.innerHTML=`<div class="p-8 text-center text-gray-400">No ${activeAVTab==='open'?'open stock':'reserves'} found.</div>`; crumb.innerText="No Results"; return; }
             
-            if(term.length > 0) { 
-                crumb.innerText=`Search Results (${items.length})`; 
-                items.sort((a,b)=>{let priA=parseFloat(a.PRIORITY);let priB=parseFloat(b.PRIORITY);if(isNaN(priA))priA=Infinity;if(isNaN(priB))priB=Infinity;if(priA!==priB)return priA-priB;return String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""),undefined,{numeric:true});}); 
-                container.innerHTML=items.map(i=>generateCard(i, activeAVTab === 'open' ? 'av' : 'reserves_drill', activeAVTab === 'open' ? 'status-teal' : 'status-indigo')).join(''); 
+            if (term) { 
+                const searchTerms = term.split(/\s+/); 
+                items = items.filter(i => { 
+                    const searchStr = (i._search || ""); 
+                    return searchTerms.every(t => searchStr.includes(t)); 
+                }); 
+            }
+            
+            if (items.length === 0) { 
+                container.innerHTML = `<div class="p-8 text-center text-gray-400">No ${activeAVTab==='open'?'open stock':'reserves'} found.</div>`; 
+                crumb.innerText = "No Results"; 
                 return; 
             }
             
-            if(activeAVTab==='open'){ 
-                crumb.innerText=`Open Stock (${items.length})`; 
-                items.sort((a,b)=>(String(a.COMMONNAME)||"").localeCompare(String(b.COMMONNAME)||"")); 
-                container.innerHTML=items.map(i=>generateCard(i,'av','status-teal')).join(''); 
-            }else{
+            if(term.length > 0) { 
+                crumb.innerText = `Search Results (${items.length})`; 
+                items.sort((a,b) => {
+                    let priA = parseFloat(a.PRIORITY); let priB = parseFloat(b.PRIORITY);
+                    if(isNaN(priA)) priA = Infinity; if(isNaN(priB)) priB = Infinity;
+                    if(priA !== priB) return priA - priB;
+                    return String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""), undefined, {numeric:true});
+                }); 
+                container.innerHTML = items.map(i => generateCard(i, activeAVTab === 'open' ? 'av' : 'reserves_drill', activeAVTab === 'open' ? 'status-teal' : 'status-indigo')).join(''); 
+                return; 
+            }
+            
+            if (activeAVTab === 'open') { 
+                if (activeAvOpenTab === 'name') {
+                    if(avOpenLevel === 0) {
+                        crumb.innerText = `Open Stock: By Name (${items.length} items)`;
+                        const names = [...new Set(items.map(i => i.COMMONNAME))].sort();
+                        container.innerHTML = names.map(n => `<div class="drill-item" onclick="selectedAvOpenName='${esc(n)}'; avOpenLevel=1; renderAV()"><span class="font-bold text-lg">${n}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
+                    } else if(avOpenLevel === 1) {
+                        crumb.innerText = selectedAvOpenName;
+                        const namedItems = items.filter(i => i.COMMONNAME === selectedAvOpenName);
+                        if(namedItems.length === 0){ container.innerHTML = `<div class="p-8 text-center text-gray-400">No items found.</div>`; return; }
+                        const sizes = [...new Set(namedItems.map(i => i.CONTSIZE))].sort();
+                        let html = `<div class="back-btn" onclick="avOpenLevel=0; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Names</div><div class="font-bold text-[#007a4d] mb-4 px-2 text-xl border-b pb-2">${selectedAvOpenName}</div>`;
+                        html += sizes.map(s => { 
+                            const count = namedItems.filter(i => i.CONTSIZE === s).length; 
+                            return `<div class="drill-item" onclick="selectedAvOpenSize='${esc(s)}'; avOpenLevel=2; renderAV()"><span class="font-bold text-lg">${s} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>` 
+                        }).join('');
+                        container.innerHTML = html;
+                    } else if(avOpenLevel === 2) {
+                        crumb.innerText = `${selectedAvOpenName} / ${selectedAvOpenSize}`;
+                        let finalItems = items.filter(i => i.COMMONNAME === selectedAvOpenName && i.CONTSIZE === selectedAvOpenSize);
+                        finalItems.sort((a,b) => { let priA = parseFloat(a.PRIORITY); let priB = parseFloat(b.PRIORITY); if(isNaN(priA)) priA = Infinity; if(isNaN(priB)) priB = Infinity; return priA - priB; });
+                        container.innerHTML = `<div class="back-btn" onclick="avOpenLevel=1; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>` + finalItems.map(i => generateCard(i, 'av', 'status-teal')).join('');
+                    }
+                } else if (activeAvOpenTab === 'season') {
+                    if(avOpenLevel === 0) {
+                        crumb.innerText = `Open Stock: By Season (${items.length} items)`;
+                        const seasons = [...new Set(items.map(i => i.SEASON || 'Unassigned'))].sort();
+                        container.innerHTML = seasons.map(s => `<div class="drill-item" onclick="selectedAvOpenSeason='${esc(s)}'; avOpenLevel=1; renderAV()"><span class="font-bold text-lg text-[#007a4d]">${s}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
+                    } else if(avOpenLevel === 1) {
+                        crumb.innerText = `Season: ${selectedAvOpenSeason}`;
+                        const sItems = items.filter(i => (i.SEASON || 'Unassigned') === selectedAvOpenSeason);
+                        const names = [...new Set(sItems.map(i => i.COMMONNAME))].sort();
+                        let html = `<div class="back-btn" onclick="avOpenLevel=0; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Seasons</div>`;
+                        html += names.map(n => `<div class="drill-item" onclick="selectedAvOpenName='${esc(n)}'; avOpenLevel=2; renderAV()"><span class="font-bold text-lg">${n}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
+                        container.innerHTML = html;
+                    } else if(avOpenLevel === 2) {
+                        crumb.innerText = `${selectedAvOpenSeason} > ${selectedAvOpenName}`;
+                        const snItems = items.filter(i => (i.SEASON || 'Unassigned') === selectedAvOpenSeason && i.COMMONNAME === selectedAvOpenName);
+                        const sizes = [...new Set(snItems.map(i => i.CONTSIZE))].sort();
+                        let html = `<div class="back-btn" onclick="avOpenLevel=1; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Names</div><div class="font-bold text-[#007a4d] mb-4 px-2 text-xl border-b pb-2">${selectedAvOpenName}</div>`;
+                        html += sizes.map(s => { 
+                            const count = snItems.filter(i => i.CONTSIZE === s).length; 
+                            return `<div class="drill-item" onclick="selectedAvOpenSize='${esc(s)}'; avOpenLevel=3; renderAV()"><span class="font-bold text-lg">${s} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>` 
+                        }).join('');
+                        container.innerHTML = html;
+                    } else if(avOpenLevel === 3) {
+                        crumb.innerText = `${selectedAvOpenName} / ${selectedAvOpenSize}`;
+                        let finalItems = items.filter(i => (i.SEASON || 'Unassigned') === selectedAvOpenSeason && i.COMMONNAME === selectedAvOpenName && i.CONTSIZE === selectedAvOpenSize);
+                        finalItems.sort((a,b) => { let priA = parseFloat(a.PRIORITY); let priB = parseFloat(b.PRIORITY); if(isNaN(priA)) priA = Infinity; if(isNaN(priB)) priB = Infinity; return priA - priB; });
+                        container.innerHTML = `<div class="back-btn" onclick="avOpenLevel=2; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>` + finalItems.map(i => generateCard(i, 'av', 'status-teal')).join('');
+                    }
+                } else if (activeAvOpenTab === 'lot') {
+                    if(avOpenLevel === 0) {
+                        crumb.innerText = `Open Stock: By Lot (${items.length} items)`;
+                        let lots = [...new Set(items.map(i => i.LOTCODE || 'No Lot'))].sort();
+                        container.innerHTML = lots.map(l => `<div class="drill-item" onclick="selectedAvOpenLot='${esc(l)}'; avOpenLevel=1; renderAV()"><span class="font-bold text-lg text-gray-800">${l}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
+                    } else if(avOpenLevel === 1) {
+                        crumb.innerText = `Lot Code: ${selectedAvOpenLot}`;
+                        let lItems = items.filter(i => (i.LOTCODE || 'No Lot') === selectedAvOpenLot);
+                        lItems.sort((a,b) => String(a.COMMONNAME || "").localeCompare(String(b.COMMONNAME || "")));
+                        container.innerHTML = `<div class="back-btn" onclick="avOpenLevel=0; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Lots</div>` + lItems.map(i => generateCard(i, 'av', 'status-teal')).join('');
+                    }
+                }
+                
+            } else {
                 if(avResLevel===0){ 
                     crumb.innerText="My Reserves > Plants"; 
                     const names=[...new Set(items.map(i=>i.COMMONNAME))].sort(); 
@@ -1908,7 +1874,6 @@
             const tagColor=item.FIELDTAGCOLOR||'-'; 
             const safeUidJs=esc(item.UNIQUE_ID);
 
-            // SPECIFIC AV TAB CARD
             if(sourceView === 'av') {
                 let holdHtml = "";
                 let holdCode = item.HOLDSTOPCODE || item.HOLD_STOP_CODE || item.HOLDSTOP || "";
@@ -1937,7 +1902,6 @@
 
                 return `<div class="flex items-start w-full mb-3 item-row relative bg-white p-4 rounded-xl border-2 border-teal-100 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-teal-600 focus:ring-teal-600 shadow-sm pointer-events-none" ${isChecked}></div><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full"><div class="flex-grow min-w-0 pr-2"><div class="font-black text-gray-800 text-[18px] leading-tight break-words mb-1">${item.COMMONNAME||'Unknown'}</div><div class="font-black text-teal-700 text-[15px] mb-2">${item.CONTSIZE||'-'}</div><div class="grid grid-cols-2 gap-2 mb-2"><div class="text-[11px] font-bold text-gray-500 uppercase"><span class="block text-[8px] text-gray-400 mb-0.5">LOT CODE</span>${item.LOTCODE||'-'}</div><div class="text-[11px] font-bold text-gray-500 uppercase"><span class="block text-[8px] text-gray-400 mb-0.5">LOCATION</span>${item.LOCATIONCODE||'-'}</div></div><div class="flex flex-wrap gap-2 text-[11px] font-bold uppercase tracking-wider mt-1"><span class="bg-gray-100 text-gray-800 px-2 py-1 rounded border border-gray-200">LOC AVA: <span class="font-black">${item.PTRAVAILABLE||'0'}</span></span><span class="bg-purple-50 text-purple-700 px-2 py-1 rounded border border-purple-200">s_LTS: <span class="font-black">${item.S_LTS||'0'}</span></span></div>${holdHtml}${avNoteHtml}</div>${clickThumbHtml}</div></div></div>`;
             }
-            // Standard thumbnail build for other cards
             if(photoLink){ 
                 let firstUrl=String(photoLink).split(',')[0]; 
                 let cleanUrl=firstUrl.trim(); 
@@ -2475,7 +2439,7 @@
         function selectDriveSize(size) { selectedDriveSize = size; driveViewLevel = 2; renderDrive() }
         function backToDriveSizes() { driveViewLevel = 1; selectedDriveSize = null; renderDrive() }
 
-        function renderDrive() {
+       function renderDrive() {
             const container = document.getElementById('drive-content'); 
             const filtersDiv = document.getElementById('drive-season-filters'); 
             const crumb = document.getElementById('drive-crumb'); 
@@ -2506,7 +2470,6 @@
                 return; 
             }
             
-            // LOGIC SPLIT: BY NAME OR BY LOCATION
             if (activeDriveTab === 'name') {
                 if(driveViewLevel === 0) {
                     crumb.innerText = `Select Plant (${searchFilteredItems.length} items)`;
@@ -2616,7 +2579,7 @@
             renderTasks();
         }
 
-       function renderTasks() {
+        function renderTasks() {
             let targetUser = safeRole === 'ADMIN' ? taskViewTargetUser : currentUser;
             if(!targetUser) return;
             const container = document.getElementById('task-content');
