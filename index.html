@@ -569,10 +569,10 @@
         </div>
 
         <script>
-        const SUPABASE_URL = "YOUR_URL_HERE";
-        const SUPABASE_KEY = "YOUR_KEY_HERE";
-        const GOOGLE_SCRIPT_URL = "YOUR_G_SCRIPT_HERE"; 
-        const esc = (s) => String(s || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
+        const SUPABASE_URL = "https://supabase.com/dashboard/project/kzrnyjsosryejjejliii/settings/general";
+        const SUPABASE_KEY = "sb_publishable_FpB561OcET7JsjWr2--kOA_9R68Kqxa";
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwhH-eB5Py3xCwhmWReOAcAfl9Zu6mkw0hZYnAbIP9lLANoE4iebK1hXa6-ogU4_1AURA/exec";
+const esc = (s) => String(s || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
         const DB_NAME="GNC_DDC_DB_V2"; const STORE_NAME="inventory_cache";
         
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -2806,8 +2806,7 @@
 
         function openAssignModal() { document.getElementById('assign-modal').classList.remove('hidden') }
         function closeAssignModal() { document.getElementById('assign-modal').classList.add('hidden') }
-
-      const debouncedDriveSearch = debounce(() => { requestAnimationFrame(() => renderDrive()); }, 150);
+const debouncedDriveSearch = debounce(() => { requestAnimationFrame(() => renderDrive()); }, 150);
         
         function clearDriveSearch() {
             document.getElementById('drive-search').value = "";
