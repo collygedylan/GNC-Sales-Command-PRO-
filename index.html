@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-    <title>GNC PARK HILL</title>
+    <title>Greenleaf</title>
     <meta name="theme-color" content="#007a4d">
     <link rel="manifest" href="manifest.json">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="application-name" content="GNC PARK HILL">
+    <meta name="application-name" content="Greenleaf">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -28,7 +28,7 @@
     <div id="view-login">
         <div class="login-card">
             <div class="flex flex-col items-center mb-8 w-full relative">
-                <div class="text-3xl text-[#007a4d] font-black tracking-tighter mb-1">GNC PARK HILL</div>
+                <div class="text-3xl text-[#007a4d] font-black tracking-tighter mb-1">Greenleaf</div>
                 <div class="flex flex-col items-center gap-0.5 mt-5">
                     <span class="text-[9px] font-bold text-gray-400 uppercase tracking-[0.3em]">Powered By</span>
                     <span class="text-[17px] font-black text-gray-800 tracking-[0.2em] uppercase border-b-[3px] border-[#007a4d] pb-0.5">Ag Metric</span>
@@ -171,7 +171,7 @@
                 <i class="ph-bold ph-list menu-btn text-2xl cursor-pointer" onclick="toggleMenu()"></i>
                 <div class="flex flex-col">
                     <div class="font-bold text-lg leading-tight"><span id="header-user">User</span></div>
-                    <div class="text-[10px] opacity-80 leading-tight">GNC PARK HILL</div>
+                    <div class="text-[10px] opacity-80 leading-tight">Greenleaf</div>
                 </div>
             </div>
             <div class="bg-white/20 p-2 rounded-lg cursor-pointer" onclick="fetchBackgroundData()"><i class="ph-bold ph-arrows-clockwise text-white"></i></div>
@@ -205,7 +205,7 @@
                     <div class="bg-[#007a4d] text-white p-6 rounded-2xl mb-6 shadow-lg flex flex-col items-center text-center relative overflow-hidden">
                         <div class="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-white opacity-5 rounded-full pointer-events-none"></div>
                         <div class="absolute bottom-0 left-0 -mb-10 -ml-10 w-32 h-32 bg-black opacity-10 rounded-full pointer-events-none"></div>
-                        <h1 class="text-2xl font-black tracking-tight mb-1 z-10 relative mt-4">GNC PARK HILL</h1>
+                        <h1 class="text-2xl font-black tracking-tight mb-1 z-10 relative mt-4">Greenleaf</h1>
                         <p class="text-green-100 text-[10px] font-bold mb-5 uppercase tracking-[0.2em] z-10 relative">Dashboard</p>
                         <div class="flex flex-col items-center pt-4 border-t border-white/20 w-full mt-1 z-10 relative">
                             <span class="text-[9px] font-bold text-white/70 uppercase tracking-[0.3em] mb-1">Powered By</span>
@@ -504,8 +504,6 @@
         const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6cm55anNvc3J5ZWpqZWpsaWlpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzAyNzM1NywiZXhwIjoyMDg4NjAzMzU3fQ.Bc46UfJ1N4AgAS1PgfhFg6S4BEyybR6g_TUnPZsE2t0";
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwhH-eB5Py3xCwhmWReOAcAfl9Zu6mkw0hZYnAbIP9lLANoE4iebK1hXa6-ogU4_1AURA/exec"; 
-        const PUBLIC_VAPID_KEY = "BPqQtqWPZCxKuFzVa4PKX5YyMV1etMkunCm8gs5JwpmkOQ5z2vFmPNpxvNbskY8lcGIzVcLqF0TUNcWr7EMlxsg";
-        
         const esc = (s) => String(s || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
         const DB_NAME="GNC_DDC_DB_V2"; const STORE_NAME="inventory_cache";
         
@@ -525,34 +523,6 @@
         }
         
         let activeFetches=0; let fetchProgressInterval; let currentProgress=0;
-
-        function urlBase64ToUint8Array(base64String) {
-            const padding = '='.repeat((4 - base64String.length % 4) % 4);
-            const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
-            const rawData = window.atob(base64);
-            const outputArray = new Uint8Array(rawData.length);
-            for (let i = 0; i < rawData.length; ++i) {
-                outputArray[i] = rawData.charCodeAt(i);
-            }
-            return outputArray;
-        }
-
-        async function requestPushPermission() {
-            if (!('Notification' in window)) return;
-            const permission = await Notification.requestPermission();
-            if (permission === 'granted' && 'serviceWorker' in navigator) {
-                try {
-                    const reg = await navigator.serviceWorker.ready;
-                    const sub = await reg.pushManager.subscribe({
-                        userVisibleOnly: true,
-                        applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
-                    });
-                    await supabaseFetch('v2_app_users', 'PATCH', { push_subscription: sub }, `username=eq.${encodeURIComponent(currentUser)}`);
-                } catch (err) {
-                    console.error("Push subscription failed:", err);
-                }
-            }
-        }
 
         function startGlobalProgress() { 
             activeFetches++; 
@@ -657,11 +627,7 @@
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Machino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
 
         window.onload=async function() {
-            if ('serviceWorker' in navigator) { 
-                try { 
-                    await navigator.serviceWorker.register('/sw.js'); 
-                } catch(e) { console.error('SW registration failed:', e); } 
-            }
+            if ('serviceWorker' in navigator) { const registrations = await navigator.serviceWorker.getRegistrations(); for(let registration of registrations) { await registration.unregister(); } }
             if ('caches' in window) { const keys = await caches.keys(); for (let key of keys) { await caches.delete(key); } }
             const savedUser=localStorage.getItem('gnc_user_v3'); const savedPin=localStorage.getItem('gnc_pin_v3');
             if(savedUser&&savedPin){ document.getElementById('username-input').value=savedUser; document.getElementById('pin-code').value=savedPin; const cachedRes=await loadFromCache(); if(cachedRes&&fullInventory.length===0){ processAndLoadData(cachedRes); } handleLogin(true); }
@@ -686,7 +652,7 @@
         async function promptToEnableBiometrics(user,pin) { 
             if(!confirm("Would you like to enable Fingerprint/FaceID login for future use?"))return; 
             try{ 
-                const publicKey={challenge:new Uint8Array(32),rp:{name:"GNC PARK HILL"},user:{id:new Uint8Array(16),name:user,displayName:user},pubKeyCredParams:[{type:"public-key",alg:-7}],authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required"},timeout:60000}; 
+                const publicKey={challenge:new Uint8Array(32),rp:{name:"Greenleaf"},user:{id:new Uint8Array(16),name:user,displayName:user},pubKeyCredParams:[{type:"public-key",alg:-7}],authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required"},timeout:60000}; 
                 await navigator.credentials.create({publicKey}); 
                 localStorage.setItem('gnc_bio_enabled','true'); 
                 localStorage.setItem('gnc_bio_user',user); 
@@ -824,7 +790,6 @@
             setRepPermutations(currentUser); 
             if(!isBiometricLogin&&window.PublicKeyCredential&&localStorage.getItem('gnc_bio_enabled')!=='true'){ promptToEnableBiometrics(user,pass); } 
             applyRolePermissions(); 
-            requestPushPermission();
             fetchBackgroundData(); 
             setInterval(silentBackgroundSync, 1000); 
         }
@@ -2509,8 +2474,7 @@
                 if(driveViewLevel === 0) {
                     crumb.innerText = `Select Plant (${searchFilteredItems.length} items)`;
                     const names = [...new Set(searchFilteredItems.map(i => i.COMMONNAME))].sort();
-                    container.innerHTML = names.map(n => `<div class="drill
-                    -item" onclick="selectDriveName('${esc(n)}')"><span class="font-bold text-lg">${n}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
+                    container.innerHTML = names.map(n => `<div class="drill-item" onclick="selectDriveName('${esc(n)}')"><span class="font-bold text-lg">${n}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
                 } else if(driveViewLevel === 1) {
                     crumb.innerText = selectedDriveName;
                     const namedItems = searchFilteredItems.filter(i => i.COMMONNAME === selectedDriveName);
@@ -2963,71 +2927,11 @@
                 };
             };
         }
-        
-        // --- MATCHING INVENTORY FOR REQUESTS ---
-        function renderRequestMatchingInventory() {
-            const container = document.getElementById('req-matching-inventory-container');
-            if (!container || !activeItem || lastView !== 'request') return;
-            
-            let matches = fullInventory.filter(i => i.ITEMCODE === activeItem.ITEMCODE && i.UNIQUE_ID !== activeItem.MASTER_ID);
-            if (matches.length === 0) {
-                container.innerHTML = "";
-                return;
-            }
-
-            let html = `<div class="mt-8 border-t pt-6">
-                <h3 class="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Other Locations for this Item</h3>`;
-            matches.forEach(m => {
-                html += `<div class="bg-gray-50 p-3 rounded-lg border border-gray-200 mb-2 flex justify-between items-center">
-                    <div>
-                        <div class="text-[10px] font-bold text-gray-400">LOC: ${m.LOCATIONCODE}</div>
-                        <div class="text-sm font-black text-gray-700">AVAIL: ${m.PTRAVAILABLE}</div>
-                    </div>
-                    <button class="bg-white border border-gray-300 text-[10px] font-bold px-3 py-1.5 rounded-lg shadow-sm active:scale-95" onclick="openDetail('${m.UNIQUE_ID}', 'drive')">VIEW</button>
-                </div>`;
-            });
-            container.innerHTML = html + `</div>`;
-        }
-
-        // Hook into the detail view to show matches
-        const originalOpenDetail = openDetail;
-        openDetail = function(uid, sourceView) {
-            originalOpenDetail(uid, sourceView);
-            if (sourceView === 'request') renderRequestMatchingInventory();
-        };
-
-        // Reset functions for search
-        function clearReservesSearch() {
-            document.getElementById('reserves-search').value = "";
-            document.getElementById('reserves-search-clear').classList.add('hidden');
-            renderReserves();
-        }
-
-        function resetReservesView() {
-            document.getElementById('reserves-search').value = "";
-            renderReserves();
-        }
-
-        function renderReserves() {
-            const container = document.getElementById('reserves-content');
-            const term = document.getElementById('reserves-search').value.toLowerCase();
-            let items = reservesInventory;
-            if (term) {
-                items = items.filter(i => i._search.includes(term));
-                document.getElementById('reserves-search-clear').classList.remove('hidden');
-            }
-            container.innerHTML = items.map(i => generateCard(i, 'reserves_drill', 'status-indigo')).join('');
-        }
-
-        async function removeFromRequest() {
-            if (!activeItem || !confirm("Remove this item from the request folder?")) return;
-            showToast("Removing...", "Updating database...", false);
-            await supabaseFetch('v2_active_request', 'DELETE', null, `unique_id=eq.${activeItem.UNIQUE_ID}`);
-            requestsInventory = requestsInventory.filter(i => i.UNIQUE_ID !== activeItem.UNIQUE_ID);
-            showToast("Removed", "Item removed from request.");
-            goBackFromDetail();
-            renderRequest();
-        }
     </script>
 </body>
 </html>
+
+
+
+
+
