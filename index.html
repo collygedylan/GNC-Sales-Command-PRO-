@@ -1077,7 +1077,7 @@ const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
                 item.CUSTOMERNAME=item.CUSTOMERNAME||item.CUSTOMER||'Unknown Customer'; 
                 item.CONSIGNEENAME=item.CONSIGNEENAME||item.CONSIGNEE||''; 
                 item.SALESREPNAME=item.SALESREPNAME||item.SALESREP||item['SALES_REP']||'Unknown Rep'; 
-                if(masterItem){
+              if(masterItem){
                     item.COMMONNAME=masterItem.COMMONNAME;
                     item.CONTSIZE=masterItem.CONTSIZE;
                     item.LOCATIONCODE=masterItem.LOCATIONCODE;
@@ -2760,7 +2760,7 @@ const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
                 return `<div class="px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap cursor-pointer transition-colors ${active ? 'bg-[#007a4d] text-white shadow-md' : 'bg-white border border-gray-300 text-gray-600'}" onclick="toggleDriveSeason('${s}')">${s}</div>` 
             }).join('');
             
-           let baseItems = fullInventory;
+            let baseItems = fullInventory;
             if(!driveSelectedSeasons.has('ALL')) { 
                 baseItems = baseItems.filter(i => { let s = String(i.SEASON || '').toUpperCase(); return driveSelectedSeasons.has(s); }); 
             }
