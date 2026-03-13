@@ -850,18 +850,23 @@
 
             appChannel.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'v2_chat_messages' }, payload => {
                 const msg = payload.new;
-                if (msg.sender_name.toLowerCase() === currentUser.toLowerCase()) return; 
                 
                 if (!document.getElementById('view-chat-thread').classList.contains('hidden') && activeThreadId === msg.thread_id) {
-                    currentChatMessages.push(msg);
-                    renderThreadMessages();
-                    supabaseFetch('v2_chat_members', 'PATCH', { last_read_at: new Date().toISOString() }, `thread_id=eq.${msg.thread_id}&username=eq.${encodeURIComponent(currentUser)}`);
+                    const alreadyExists = currentChatMessages.some(m => m.id === msg.id || (m.sender_name === msg.sender_name && m.message_text === msg.message_text && Math.abs(new Date(m.created_at) - new Date(msg.created_at)) < 2000));
+                    
+                    if (!alreadyExists) {
+                        currentChatMessages.push(msg);
+                        renderThreadMessages();
+                        supabaseFetch('v2_chat_members', 'PATCH', { last_read_at: new Date().toISOString() }, `thread_id=eq.${msg.thread_id}&username=eq.${encodeURIComponent(currentUser)}`);
+                    }
                 } else {
-                    unreadChatCount++;
-                    const badge = document.getElementById('nav-unread-badge');
-                    if (badge) {
-                        badge.innerText = unreadChatCount;
-                        badge.classList.remove('hidden');
+                    if (msg.sender_name.toLowerCase() !== currentUser.toLowerCase()) {
+                        unreadChatCount++;
+                        const badge = document.getElementById('nav-unread-badge');
+                        if (badge) {
+                            badge.innerText = unreadChatCount;
+                            badge.classList.remove('hidden');
+                        }
                     }
                     
                     if (!document.getElementById('view-chat-inbox').classList.contains('hidden')) {
@@ -935,11 +940,7 @@
                 }
             });
 
-            appChannel.subscribe((status) => {
-                if (status === 'SUBSCRIBED') {
-                    console.log('🟢 App is connected to Realtime WebSockets!');
-                }
-            });
+            appChannel.subscribe();
         }
 
         async function fetchBackgroundData() {
@@ -1475,7 +1476,13 @@
             input.value = "";
 
             supabaseFetch('v2_chat_messages', 'POST', payload)
-                .then(() => {
+                .then((data) => {
+                    if (data && data[0]) {
+                        const lastMsgIdx = currentChatMessages.length - 1;
+                        if(currentChatMessages[lastMsgIdx].message_text === text) {
+                            currentChatMessages[lastMsgIdx] = data[0]; 
+                        }
+                    }
                     supabaseFetch('v2_chat_threads', 'PATCH', { last_message_at: payload.created_at }, `id=eq.${activeThreadId}`);
                 })
                 .catch(err => { showToast("Error", "Message failed to send.", true); });
@@ -2634,7 +2641,7 @@
             renderReports();
         }
 
-     function renderReports() {
+      function renderReports() {
             const container = document.getElementById('reports-content');
             let items = fullInventory;
 
