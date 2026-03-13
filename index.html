@@ -658,7 +658,7 @@
         }
 
         let fullInventory=[]; let lowStockInventory=[]; let socInventory=[]; let reservesInventory=[]; let requestsInventory=[]; let managerReviewInventory=[]; let salesOfficeInventory=[]; let avNotesDb=[];
-        let activeThreadId=null; let activeThreadName=""; let currentChatMessages=[]; let chatLoaded=false; let unreadChatCount=0;
+        let activeThreadId=null; let activeThreadName=""; let currentChatMessages=[]; let chatLoaded=false; let unreadChatCount=0; let lastChatSyncTime = new Date().toISOString();
         let currentUser=""; let currentRole=""; let safeRole=""; let repPermutations=[]; let activeItem=null; let lastView=""; let activeDetailTab="overview"; let selectedItems=new Set(); let isMultiSelectMode=false; let pressTimer=null; let isLongPress=false; let touchStartX=0; let touchStartY=0; let pendingAction=null; let pendingTabType=null;
         
         let activeDriveTab='name'; let selectedDriveBlock=null; let selectedDriveLoc=null;
@@ -840,6 +840,7 @@
             applyRolePermissions(); 
             fetchBackgroundData(); 
             initializeRealtime();
+            setInterval(backgroundChatSync, 2000); 
         }
 
         function initializeRealtime() {
@@ -1262,6 +1263,47 @@
             supabaseFetch('v2_labor_hours', 'POST', payload).then(() => { showToast("Success", "Hours submitted successfully!"); document.getElementById('hours-amount').value = ""; }).catch(err => { showToast("Error", "Failed to submit hours.", true); });
         }
         
+        async function backgroundChatSync() {
+            if (!currentUser) return;
+            
+            try {
+                if (!document.getElementById('view-chat-thread').classList.contains('hidden') && activeThreadId) {
+                    const newMsgs = await supabaseFetch('v2_chat_messages', 'GET', null, `thread_id=eq.${activeThreadId}&created_at=gt.${lastChatSyncTime}&order=created_at.asc`);
+                    
+                    if (newMsgs && newMsgs.length > 0) {
+                        const trulyNew = newMsgs.filter(m => m.sender_name.toLowerCase() !== currentUser.toLowerCase());
+                        if (trulyNew.length > 0) {
+                            currentChatMessages = currentChatMessages.concat(trulyNew);
+                            renderThreadMessages();
+                            
+                            supabaseFetch('v2_chat_members', 'PATCH', { last_read_at: new Date().toISOString() }, `thread_id=eq.${activeThreadId}&username=eq.${encodeURIComponent(currentUser)}`);
+                        }
+                    }
+                } 
+                else {
+                    const myMembers = await supabaseFetch('v2_chat_members', 'GET', null, `username=eq.${encodeURIComponent(currentUser)}&select=thread_id`);
+                    if (myMembers && myMembers.length > 0) {
+                        const threadIds = myMembers.map(m => m.thread_id).join(',');
+                        const updatedThreads = await supabaseFetch('v2_chat_threads', 'GET', null, `id=in.(${threadIds})&last_message_at=gt.${lastChatSyncTime}`);
+                        
+                        if (updatedThreads && updatedThreads.length > 0) {
+                            if (!document.getElementById('view-chat-inbox').classList.contains('hidden')) {
+                                loadChatInbox(); 
+                            } else {
+                                unreadChatCount++; 
+                                const badge = document.getElementById('nav-unread-badge');
+                                if (badge) {
+                                    badge.innerText = unreadChatCount;
+                                    badge.classList.remove('hidden');
+                                }
+                            }
+                        }
+                    }
+                }
+                lastChatSyncTime = new Date().toISOString();
+            } catch(e) {}
+        }
+
         async function loadChatInbox() {
             document.getElementById('inbox-loading').classList.remove('hidden');
             document.getElementById('inbox-list').innerHTML = "";
@@ -2573,619 +2615,104 @@
             }).catch(err=>showToast("Error","Network error.",true))
         }
 
-      function processTabSelection(tab) {
-            pendingTabType=tab;
-            document.getElementById('tab-select-modal').classList.add('hidden');
-            if(pendingAction==='assign'){openAssignModal()}
-            else{executeBatchAction(pendingAction,pendingTabType)}
-        }
-
-        function getSelectedItemsText(tabType) {
-            let items=[];
-            selectedItems.forEach(domId=>{
-                let found=fullInventory.find(i=>i.DOM_ID===domId)||lowStockInventory.find(i=>i.DOM_ID===domId)||reservesInventory.find(i=>i.DOM_ID===domId)||requestsInventory.find(i=>i.DOM_ID===domId);
-                if(found)items.push(found)
+        function setReportTab(tab) {
+            document.querySelectorAll('.report-tab').forEach(el => {
+                el.classList.remove('active', 'border-[#007a4d]', 'text-[#007a4d]');
             });
-            let returnText="";
-            if(tabType!=='request'){returnText=(tabType==='docks')?"DOCK NOTES\n\n":"SALES NOTES\n\n"}
-            items.forEach(i=>{
-                if(tabType==='request'){
-                    returnText+=`${i.REQUEST_FOLDER||'No Folder'}\nID: ${i.UNIQUE_ID} | ${i.REQ_CUSTOMER||'N/A'}\n${i.COMMONNAME||'Unknown'} ${i.CONTSIZE||'-'} Loc: ${i.LOCATIONCODE||'No Loc'}\n${i.ITEMCODE||'-'} | Lot: ${i.LOTCODE||'-'}\n`;
-                    if(i.REQ_QTY)returnText+=`  Requested Qty: ${i.REQ_QTY}\n`;
-                    if(i.REQ_DESIRED_SPEC)returnText+=`  Desired Spec: ${i.REQ_DESIRED_SPEC}\n`;
-                    if(i.REQ_DESIRED_CALIPER)returnText+=`  Desired Caliper: ${i.REQ_DESIRED_CALIPER}\n`;
-                    if(i.REQ_EST_SHIP)returnText+=`  Est Ship: ${i.REQ_EST_SHIP}\n`;
-                    if(i.REQ_RESERVE)returnText+=`  Reserve: ${i.REQ_RESERVE}\n`;
-                    if(i.REQ_MATCH)returnText+=`  Match: ${i.REQ_MATCH}%\n`;
-                    if(i.REQ_SPEC)returnText+=`  Spec: ${i.REQ_SPEC}\n`;
-                    if(i.REQ_CALIPER)returnText+=`  Caliper: ${i.REQ_CALIPER}\n`;
-                    if(i.REQ_PICK)returnText+=`  Pick Note: ${i.REQ_PICK}\n`;
-                    if(i.REQ_SALES_NOTE)returnText+=`  Sales Note: ${i.REQ_SALES_NOTE}\n`;
-                    if(i.REQ_COMMENTS)returnText+=`  Comments: ${i.REQ_COMMENTS}\n`;
-                    let photo=i.REQ_PHOTO_LINK||i.SAVED_PHOTO_LINK||i['PHOTO LINK']||i.PHOTOLINK;
-                    if(photo&&String(photo).trim()!==""){
-                        let urls=String(photo).split(',');
-                        let counter=1;
-                        urls.forEach(url=>{
-                            let cleanUrl=url.trim();
-                            let match=cleanUrl.match(/(https?:\/\/[^"\s>]+)/);
-                            if(match)cleanUrl=match[1];
-                            if(cleanUrl.startsWith('http')){returnText+=`  Photo ${counter}: ${cleanUrl}\n`;counter++}
-                        })
-                    }
-                }else if(tabType==='docks'){
-                    returnText+=`▪ ${i.COMMONNAME||'Unknown'} (${i.CONTSIZE||'-'}) | Loc: ${i.LOCATIONCODE||'No Loc'}\n`;
-                    if(i.DOCK_SPEC)returnText+=`  Spec: ${i.DOCK_SPEC}\n`;
-                    if(i.DOCK_CALIPER)returnText+=`  Caliper: ${i.DOCK_CALIPER}\n`;
-                    if(i.DOCK_NOTE)returnText+=`  Dock Note: ${i.DOCK_NOTE}\n`;
-                    let photo=i.DOCK_PHOTO_LINK||i.SAVED_PHOTO_LINK||i['PHOTO LINK']||i.PHOTOLINK;
-                    if(photo&&String(photo).trim()!==""){
-                        let urls=String(photo).split(',');
-                        let counter=1;
-                        urls.forEach(url=>{
-                            let cleanUrl=url.trim();
-                            let match=cleanUrl.match(/(https?:\/\/[^"\s>]+)/);
-                            if(match)cleanUrl=match[1];
-                            if(cleanUrl.startsWith('http')){returnText+=`  Photo ${counter}: ${cleanUrl}\n`;counter++}
-                        })
-                    }
-                }else{
-                    returnText+=`▪ ${i.COMMONNAME||'Unknown'} (${i.CONTSIZE||'-'}) | Loc: ${i.LOCATIONCODE||'No Loc'}\n`;
-                    let match=i.MATCH||i.MATCHPCT;if(match)returnText+=`  Match: ${match}%\n`;
-                    let spec=i.SPEC;if(spec)returnText+=`  Spec: ${spec}\n`;
-                    let caliper=i.CALIPER;if(caliper)returnText+=`  Caliper: ${caliper}\n`;
-                    let pick=i.PIC_NOTE||i.PICKNOTE||i.PICK;if(pick)returnText+=`  Pick Note: ${pick}\n`;
-                    let sales=i.SALES_NOTE||i.SALESNOTE||i.SALESDESC;if(sales)returnText+=`  Sales Note: ${sales}\n`;
-                    let photo=i.NA_PHOTO_LINK||i.SAVED_PHOTO_LINK||i['PHOTO LINK']||i.PHOTOLINK;
-                    if(photo&&String(photo).trim()!==""){
-                        let urls=String(photo).split(',');
-                        let counter=1;
-                        urls.forEach(url=>{
-                            let cleanUrl=url.trim();
-                            let match=cleanUrl.match(/(https?:\/\/[^"\s>]+)/);
-                            if(match)cleanUrl=match[1];
-                            if(cleanUrl.startsWith('http')){returnText+=`  Photo ${counter}: ${cleanUrl}\n`;counter++}
-                        })
+            let activeEl = document.getElementById('rtab-' + tab);
+            if (activeEl) activeEl.classList.add('active', 'border-[#007a4d]', 'text-[#007a4d]');
+            activeReportTab = tab;
+            renderReports();
+        }
+
+        let activeReportTab = 'ALL';
+
+        function resetReportsView() {
+            activeReportTab = 'ALL';
+            document.querySelectorAll('.report-tab').forEach(el => el.classList.remove('active', 'border-[#007a4d]', 'text-[#007a4d]'));
+            document.getElementById('rtab-ALL').classList.add('active', 'border-[#007a4d]', 'text-[#007a4d]');
+            renderReports();
+        }
+
+     function renderReports() {
+            const container = document.getElementById('reports-content');
+            let items = fullInventory;
+
+            if (activeReportTab !== 'ALL') {
+                items = fullInventory.filter(i => String(i.SEASON || '').toUpperCase() === activeReportTab);
+            }
+
+            let seasonTotals = {};
+            let totalValue = 0;
+            let countMissingPrices = 0;
+
+            items.forEach(i => {
+                let season = String(i.SEASON || 'Unassigned').toUpperCase();
+                let ptr = parseInt(String(i.PTRAVAILABLE).replace(/,/g, '')) || 0;
+                let price = parseFloat(String(i.PRICE || '0').replace(/[$+,]/g, '')) || 0;
+
+                if (ptr > 0) {
+                    if (price > 0) {
+                        let lineValue = ptr * price;
+                        totalValue += lineValue;
+                        if (!seasonTotals[season]) seasonTotals[season] = 0;
+                        seasonTotals[season] += lineValue;
+                    } else {
+                        countMissingPrices++;
                     }
                 }
-                returnText+=`\n`
             });
-            return returnText
-        }
 
-        function executeBatchAction(action,tabType) {
-            const text=getSelectedItemsText(tabType);
-            if(action==='copy'){
-                navigator.clipboard.writeText(text).then(()=>{showToast("Success","Copied to clipboard!");clearSelection()})
-            }else if(action==='email'){
-                let sub='Sales Notes';
-                if(tabType==='request')sub='Request Data';
-                if(tabType==='docks')sub='Dock Notes';
-                window.location.href=`mailto:?subject=${sub}&body=${encodeURIComponent(text)}`;
-                clearSelection()
-            }else if(action==='text'){
-                window.location.href=`sms:?&body=${encodeURIComponent(text)}`;
-                clearSelection()
-            }
-        }
+            const formatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
 
-        function openAssignModal() { document.getElementById('assign-modal').classList.remove('hidden') }
-        function closeAssignModal() { document.getElementById('assign-modal').classList.add('hidden') }
+            let html = `<div class="bg-[#007a4d] text-white p-6 rounded-2xl shadow-lg text-center mb-6"><div class="text-[10px] font-bold uppercase tracking-widest text-green-200 mb-1">Total Crop Value</div><div class="text-4xl font-black tracking-tight">${formatter.format(totalValue)}</div></div>`;
 
-        const debouncedDriveSearch = debounce(() => { requestAnimationFrame(() => renderDrive()); }, 150);
-        
-        function clearDriveSearch() {
-            document.getElementById('drive-search').value = "";
-            document.getElementById('drive-search-clear').classList.add('hidden');
-            driveViewLevel = 0;
-            renderDrive();
-        }
-
-        function handleDriveSearch() {
-            const term = document.getElementById('drive-search').value.toLowerCase();
-            const clearBtn = document.getElementById('drive-search-clear');
-            if(term.length > 0) {
-                clearBtn.classList.remove('hidden');
-                driveViewLevel = 0; 
-            } else {
-                clearBtn.classList.add('hidden');
-                driveViewLevel = 0;
-            }
-            debouncedDriveSearch();
-        }
-
-        function selectDriveName(name) { selectedDriveName = name; driveViewLevel = 1; renderDrive() }
-        function selectDriveSize(size) { selectedDriveSize = size; driveViewLevel = 2; renderDrive() }
-        function backToDriveSizes() { driveViewLevel = 1; selectedDriveSize = null; renderDrive() }
-
-       function renderDrive() {
-            const container = document.getElementById('drive-content'); 
-            const filtersDiv = document.getElementById('drive-season-filters'); 
-            const crumb = document.getElementById('drive-crumb'); 
-            const term = document.getElementById('drive-search').value.toLowerCase().trim();
-            
-            filtersDiv.innerHTML = availableSeasons.map(s => { 
-                const active = driveSelectedSeasons.has(s); 
-                return `<div class="px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap cursor-pointer transition-colors ${active ? 'bg-[#007a4d] text-white shadow-md' : 'bg-white border border-gray-300 text-gray-600'}" onclick="toggleDriveSeason('${s}')">${s}</div>` 
-            }).join('');
-            
-            let baseItems = fullInventory;
-            if(!driveSelectedSeasons.has('ALL')) { 
-                baseItems = baseItems.filter(i => { let s = String(i.SEASON || '').toUpperCase(); return driveSelectedSeasons.has(s); }); 
-            }
-            
-            let searchFilteredItems = baseItems;
-            if(term) { 
-                const searchTerms = term.split(/\s+/); 
-                searchFilteredItems = searchFilteredItems.filter(i => { 
-                    const searchStr = (i._search || ""); 
-                    return searchTerms.every(t => searchStr.includes(t)); 
-                }); 
-            }
-
-            if (searchFilteredItems.length === 0) { 
-                container.innerHTML = `<div class="p-8 text-center text-gray-400">No items found matching criteria.</div>`; 
-                crumb.innerText = "No Results"; 
-                return; 
-            }
-            
-            if (activeDriveTab === 'name') {
-                if(driveViewLevel === 0) {
-                    crumb.innerText = `Select Plant (${searchFilteredItems.length} items)`;
-                    const names = [...new Set(searchFilteredItems.map(i => i.COMMONNAME))].sort();
-                    container.innerHTML = names.map(n => `<div class="drill-item" onclick="selectDriveName('${esc(n)}')"><span class="font-bold text-lg">${n}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
-                } else if(driveViewLevel === 1) {
-                    crumb.innerText = selectedDriveName;
-                    const namedItems = searchFilteredItems.filter(i => i.COMMONNAME === selectedDriveName);
-                    if(namedItems.length === 0){ container.innerHTML = `<div class="p-8 text-center text-gray-400">No items found.</div>`; return; }
-                    const sizes = [...new Set(namedItems.map(i => i.CONTSIZE))].sort();
-                    let html = `<div class="back-btn" onclick="driveViewLevel=0; renderDrive()"><i class="ph-bold ph-arrow-left"></i> Back to Names</div><div class="font-bold text-[#007a4d] mb-4 px-2 text-xl border-b pb-2">${selectedDriveName}</div>`;
-                    html += sizes.map(s => { 
-                        const count = namedItems.filter(i => i.CONTSIZE === s).length; 
-                        return `<div class="drill-item" onclick="selectDriveSize('${esc(s)}')"><span class="font-bold text-lg">${s} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>` 
-                    }).join('');
-                    container.innerHTML = html;
-                } else if(driveViewLevel === 2) {
-                    crumb.innerText = `${selectedDriveName} / ${selectedDriveSize}`;
-                    let finalItems = searchFilteredItems.filter(i => i.COMMONNAME === selectedDriveName && i.CONTSIZE === selectedDriveSize);
-                    finalItems.sort((a,b) => { let priA = parseFloat(a.PRIORITY); let priB = parseFloat(b.PRIORITY); if(isNaN(priA)) priA = Infinity; if(isNaN(priB)) priB = Infinity; return priA - priB; });
-                    container.innerHTML = `<div class="back-btn" onclick="backToDriveSizes()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>` + finalItems.map(i => generateCard(i, 'drive', 'status-blue')).join('');
-                }
-
-            } else if (activeDriveTab === 'loc') {
-                if(driveViewLevel === 0) {
-                    crumb.innerText = `Select Block (${searchFilteredItems.length} items)`;
-                    let blocks = {};
-                    searchFilteredItems.forEach(i => {
-                        let loc = String(i.LOCATIONCODE || "NoLoc").trim();
-                        let blockAlpha = loc.charAt(0).toUpperCase();
-                        if(!/[A-Z]/.test(blockAlpha)) blockAlpha = "Other";
-                        if(!blocks[blockAlpha]) blocks[blockAlpha] = {count:0};
-                        blocks[blockAlpha].count++;
+            if (activeReportTab === 'ALL') {
+                let sortedSeasons = Object.keys(seasonTotals).sort((a,b) => {
+                    const sortOrder = {"S1":1, "F1":2, "U1":3, "U2":4, "U3":5, "X":6, "Y":7, "Z":8};
+                    let valA = sortOrder[a] || 99; let valB = sortOrder[b] || 99;
+                    return valA - valB;
+                });
+                
+                if(sortedSeasons.length > 0) {
+                    html += `<h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 ml-1">Breakdown by Season</h3><div class="space-y-3">`;
+                    sortedSeasons.forEach(s => {
+                        html += `<div class="bg-white border border-gray-200 p-4 rounded-xl shadow-sm flex justify-between items-center"><div class="flex items-center gap-3"><div class="bg-green-50 text-[#007a4d] font-black text-lg px-3 py-1.5 rounded-lg">${s}</div><span class="font-bold text-gray-600">Season Target</span></div><span class="font-black text-gray-800 text-lg">${formatter.format(seasonTotals[s])}</span></div>`;
                     });
-                    let html = Object.keys(blocks).sort().map(b => `<div class="bg-white border border-green-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectDriveBlock('${esc(b)}')"><div class="flex items-center gap-3"><div class="bg-green-100 text-[#007a4d] px-3 py-1.5 rounded-lg font-black text-lg">${b}</div><span class="font-bold text-lg text-gray-700">Block ${b}</span></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${blocks[b].count} Items</span></div>`).join('');
-                    container.innerHTML = html;
-                } else if(driveViewLevel === 1) {
-                    crumb.innerText = `Block ${selectedDriveBlock}`;
-                    let bItems = searchFilteredItems.filter(i => {
-                        let loc = String(i.LOCATIONCODE || "NoLoc").trim();
-                        let alpha = loc.charAt(0).toUpperCase();
-                        if(!/[A-Z]/.test(alpha)) alpha = "Other";
-                        return alpha === selectedDriveBlock;
-                    });
-                    let locs = [...new Set(bItems.map(i => i.LOCATIONCODE || "NoLoc"))].sort((a,b) => String(a).localeCompare(String(b), undefined, {numeric: true}));
-                    let html = `<div class="back-btn" onclick="driveViewLevel=0; renderDrive()"><i class="ph-bold ph-arrow-left"></i> Back to Blocks</div>`;
-                    html += locs.map(l => {
-                        let count = bItems.filter(i => (i.LOCATIONCODE || "NoLoc") === l).length;
-                        return `<div class="drill-item" onclick="selectDriveLoc('${esc(l)}')"><span class="font-bold text-lg text-gray-800">${l} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
-                    }).join('');
-                    container.innerHTML = html;
-                } else if(driveViewLevel === 2) {
-                    crumb.innerText = `Block ${selectedDriveBlock} / Loc ${selectedDriveLoc}`;
-                    let fItems = searchFilteredItems.filter(i => (i.LOCATIONCODE || "NoLoc") === selectedDriveLoc);
-                    fItems.sort((a,b) => String(a.COMMONNAME || "").localeCompare(String(b.COMMONNAME || "")));
-                    container.innerHTML = `<div class="back-btn" onclick="driveViewLevel=1; renderDrive()"><i class="ph-bold ph-arrow-left"></i> Back to Locations</div>` + fItems.map(i => generateCard(i, 'drive', 'status-blue')).join('');
-                }
-            }
-        }
-
-        function toggleDriveSeason(s) {
-            if(s === 'ALL'){
-                driveSelectedSeasons.clear();
-                driveSelectedSeasons.add('ALL');
-            } else {
-                driveSelectedSeasons.delete('ALL');
-                if(driveSelectedSeasons.has(s)){
-                    driveSelectedSeasons.delete(s);
-                    if(driveSelectedSeasons.size === 0) driveSelectedSeasons.add('ALL');
+                    html += `</div>`;
                 } else {
-                    driveSelectedSeasons.add(s);
+                    html += `<div class="text-center text-gray-400 p-4">No value data available.</div>`;
                 }
-            }
-            driveViewLevel = 0;
-            selectedDriveName = null;
-            selectedDriveSize = null;
-            renderDrive();
-        }
-
-        function renderTeamSelector() {
-            let uSet = new Set();
-            fullInventory.forEach(i => { if(i.ASSIGNEDTO && !i.DATE_COMPLETED) uSet.add(i.ASSIGNEDTO) });
-            if(uSet.size === 0) { 
-                document.getElementById('task-content').innerHTML = `<div class="p-8 text-center text-gray-400">No active tasks for any team member.</div>`; 
-                return; 
-            }
-            let sorted = Array.from(uSet).sort();
-            let html = `<h2 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Select Team Member</h2>`;
-            sorted.forEach(u => {
-                let userTasks = fullInventory.filter(i => i.ASSIGNEDTO === u && !i.DATE_COMPLETED);
-                let htmlCounts = `<div class="flex gap-2 mt-2">`;
-                ['season','location','endcap','flyer'].forEach(t => {
-                    let c = userTasks.filter(i => i.APP_TAB_ASSIGNMENT === t).length;
-                    if(c > 0) htmlCounts += `<span class="text-[10px] font-bold px-2 py-1 rounded bg-gray-100 text-gray-600 uppercase">${t}: ${c}</span>`;
-                });
-                htmlCounts += `</div>`;
-                html += `<div class="bg-white border border-gray-200 p-4 rounded-xl shadow-sm mb-3 cursor-pointer active:scale-95 transition-transform" onclick="selectTaskUser('${esc(u)}')"><div class="flex justify-between items-center"><span class="font-black text-xl text-[#007a4d]">${u}</span><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${userTasks.length} Total</span></div>${htmlCounts}</div>`;
-            });
-            document.getElementById('task-tabs-container').classList.add('hidden');
-            document.getElementById('task-crumb').innerText = "Team Tasks Overview";
-            document.getElementById('task-content').innerHTML = html;
-        }
-
-        function selectTaskUser(u) {
-            taskViewTargetUser = u;
-            document.getElementById('task-tabs-container').classList.remove('hidden');
-            renderTasks();
-        }
-
-        function renderTasks() {
-            let targetUser = safeRole === 'ADMIN' ? taskViewTargetUser : currentUser;
-            if(!targetUser) return;
-            const container = document.getElementById('task-content');
-            const crumb = document.getElementById('task-crumb');
-            crumb.innerHTML = safeRole === 'ADMIN' ? `<span class="cursor-pointer text-gray-400 hover:text-gray-800" onclick="taskViewTargetUser=null; renderTeamSelector()"><i class="ph-bold ph-arrow-left"></i> Back to Team</span> &bull; <span class="text-[#007a4d]">${targetUser}'s Tasks</span>` : "My Tasks";
-            
-            let userItems = fullInventory.filter(i => i.ASSIGNEDTO === targetUser && !i.DATE_COMPLETED);
-            let tabItems = userItems.filter(i => i.APP_TAB_ASSIGNMENT === activeTaskTab);
-            
-            if(tabItems.length === 0){
-                container.innerHTML = `<div class="p-8 text-center text-gray-400">No active ${activeTaskTab} tasks.</div>`;
-                return;
-            }
-            
-            if(activeTaskTab === 'endcap') {
-                if(taskViewLevel === 0) {
-                    let folders = [...new Set(tabItems.map(i => i.END_CAP_FOLDER || 'Unassigned'))].sort();
-                    container.innerHTML = folders.map(f => {
-                        let count = tabItems.filter(i => (i.END_CAP_FOLDER || 'Unassigned') === f).length;
-                        return `<div class="bg-white border border-yellow-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectedEndCapFolder='${esc(f)}'; taskViewLevel=1; renderTasks()"><div class="flex items-center gap-3"><div class="bg-yellow-50 p-2 rounded-lg"><i class="ph-fill ph-storefront text-2xl text-yellow-500"></i></div><span class="font-bold text-lg text-yellow-800">${f}</span></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${count} Items</span></div>`;
-                    }).join('');
-                } else if(taskViewLevel === 1) {
-                    let fItems = tabItems.filter(i => (i.END_CAP_FOLDER || 'Unassigned') === selectedEndCapFolder);
-                    fItems.sort((a,b) => String(a.COMMONNAME || "").localeCompare(String(b.COMMONNAME || "")));
-                    container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=0; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to End Caps</div>` + fItems.map(i => generateCard(i, 'tasks', 'status-yellow')).join('');
-                }
-            } else if(activeTaskTab === 'flyer') {
-                tabItems.sort((a,b) => String(a.COMMONNAME || "").localeCompare(String(b.COMMONNAME || "")));
-                container.innerHTML = tabItems.map(i => generateCard(i, 'tasks', 'status-indigo')).join('');
             } else {
-                if(taskViewLevel === 0) {
-                    let blocks = {};
-                    tabItems.forEach(i => {
-                        let loc = String(i.LOCATIONCODE || "NoLoc").trim();
-                        let blockAlpha = loc.charAt(0).toUpperCase();
-                        if(!/[A-Z]/.test(blockAlpha)) blockAlpha = "Other";
-                        if(!blocks[blockAlpha]) blocks[blockAlpha] = {count:0};
-                        blocks[blockAlpha].count++;
-                    });
-                    let html = Object.keys(blocks).sort().map(b => `<div class="bg-white border border-green-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectedTaskBlock='${esc(b)}'; taskViewLevel=1; renderTasks()"><div class="flex items-center gap-3"><div class="bg-green-100 text-[#007a4d] px-3 py-1.5 rounded-lg font-black text-lg">${b}</div><span class="font-bold text-lg text-gray-700">Block ${b}</span></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${blocks[b].count} Items</span></div>`).join('');
-                    container.innerHTML = html;
-                } else if(taskViewLevel === 1) {
-                    let bItems = tabItems.filter(i => {
-                        let loc = String(i.LOCATIONCODE || "NoLoc").trim();
-                        let alpha = loc.charAt(0).toUpperCase();
-                        if(!/[A-Z]/.test(alpha)) alpha = "Other";
-                        return alpha === selectedTaskBlock;
-                    });
-                    let locs = [...new Set(bItems.map(i => i.LOCATIONCODE || "NoLoc"))].sort((a,b) => String(a).localeCompare(String(b), undefined, {numeric: true}));
-                    let html = `<div class="back-btn" onclick="taskViewLevel=0; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Blocks</div>`;
-                    html += locs.map(l => {
-                        let count = bItems.filter(i => (i.LOCATIONCODE || "NoLoc") === l).length;
-                        return `<div class="drill-item" onclick="selectedTaskLoc='${esc(l)}'; taskViewLevel=2; renderTasks()"><span class="font-bold text-lg text-gray-800">${l} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
-                    }).join('');
-                    container.innerHTML = html;
-                } else if(taskViewLevel === 2) {
-                    let fItems = tabItems.filter(i => (i.LOCATIONCODE || "NoLoc") === selectedTaskLoc);
-                    fItems.sort((a,b) => String(a.COMMONNAME || "").localeCompare(String(b.COMMONNAME || "")));
-                    container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=1; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Locations</div>` + fItems.map(i => generateCard(i, 'tasks', activeTaskTab === 'season' ? 'status-green' : 'status-blue')).join('');
-                }
-            }
-        }
-
-        function renderReview() {
-            const container = document.getElementById('review-content');
-            const crumb = document.getElementById('review-crumb');
-            if(managerReviewInventory.length === 0){
-                container.innerHTML = `<div class="p-8 text-center text-gray-400">No items require manager review.</div>`;
-                crumb.innerText = "All Clear";
-                return;
-            }
-            if(reviewViewLevel === 0){
-                crumb.innerText = "Needs Location Priority Review";
-                let groups = {};
-                managerReviewInventory.forEach(i => {
-                    let code = i.ITEMCODE || "UNKNOWN";
-                    if(!groups[code]) {
-                        groups[code] = {code: code, name: i.COMMONNAME || "Unknown", size: i.CONTSIZE || "-", count: 0};
-                    }
-                    groups[code].count++;
+                let sItems = items.filter(i => {
+                    let ptr = parseInt(String(i.PTRAVAILABLE).replace(/,/g, '')) || 0;
+                    let price = parseFloat(String(i.PRICE || '0').replace(/[$+,]/g, '')) || 0;
+                    return ptr > 0 && price > 0;
                 });
-                let sorted = Object.values(groups).sort((a,b) => String(a.name).localeCompare(String(b.name)));
-                let html = sorted.map(g => `<div class="bg-yellow-50 border border-yellow-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectReviewItem('${esc(g.code)}', '${esc(g.name)}', '${esc(g.size)}')"><div class="flex-grow min-w-0 pr-3"><div class="font-bold text-[15px] text-yellow-800 truncate">${g.name}</div><div class="text-xs font-semibold text-yellow-600 mt-1">${g.size} <span class="mx-2 text-yellow-300">|</span> <span class="font-mono text-yellow-700">${g.code}</span></div></div><div class="bg-white px-3 py-1 rounded-lg shadow-sm border border-yellow-100 text-yellow-600 font-bold text-xs whitespace-nowrap">${g.count} Locs</div></div>`).join('');
-                container.innerHTML = html;
-            } else if(reviewViewLevel === 1){
-                crumb.innerText = `${selectedReviewCommonName} / ${selectedReviewContSize}`;
-                let items = managerReviewInventory.filter(i => i.ITEMCODE === selectedReviewItemCode);
-                items.sort((a,b) => String(a.LOCATIONCODE || "").localeCompare(String(b.LOCATIONCODE || ""), undefined, {numeric: true}));
-                container.innerHTML = `<div class="back-btn" onclick="resetReviewView()"><i class="ph-bold ph-arrow-left"></i> Back to List</div>` + items.map(i => generateCard(i, 'review', 'status-yellow')).join('');
-            }
-        }
-        
-        let autoSaveTimer = null;
-
-        function saveData(isComplete = false, prefix, isSilentAutoSave = false, specificItem = null) {
-            if (autoSaveTimer) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
-            let itemToSave = specificItem || activeItem; if (!itemToSave) return;
-            let btnDraft = document.getElementById(prefix + 'btn-save-draft'); 
-            let btnComp = document.getElementById(prefix + 'btn-save-complete'); 
-            let isCurrentView = (activeItem && activeItem.UNIQUE_ID === itemToSave.UNIQUE_ID);
-            
-            if (isCurrentView && isComplete) { if(btnComp) btnComp.innerText = "SAVING..."; }
-            
-            const executeSave = () => {
-                let wasAlreadyComplete = itemToSave.REQ_STATUS === 'Complete';
-
-                if (!specificItem) {
-                    let avEl = document.getElementById(prefix + 'av-note');
-                    if (avEl) { itemToSave.AV_NOTE = avEl.value.toUpperCase(); }
-                    
-                    let descEl = document.getElementById(prefix + 'sales-desc');
-                    if (descEl) { let textBoxVal = descEl.value.toUpperCase(); itemToSave.SALES_NOTE = textBoxVal; if (lastView === 'tasks') itemToSave._NEW_SALES_NOTE = textBoxVal; }
-
-                    if (isComplete && isCurrentView && itemToSave.APP_TAB_ASSIGNMENT === 'season') {
-                        const noteVal = (itemToSave.SALES_NOTE || "").trim();
-                        if (!noteVal) { showToast("Required", "A Sales Description is required to complete this Season task.", true); if (btnComp) btnComp.innerText = "MARK DONE"; return; }
-                    }
-
-                    if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-') { 
-                        let matchEl = document.getElementById(prefix + 'match'); if(matchEl) itemToSave.MATCH = matchEl.value; 
-                        let specEl = document.getElementById(prefix + 'spec'); if(specEl) itemToSave.SPEC = specEl.value; 
-                        let calEl = document.getElementById(prefix + 'caliper'); if(calEl) itemToSave.CALIPER = calEl.value; 
-                        let pickEl = document.getElementById(prefix + 'pick'); if(pickEl) itemToSave.PICK = pickEl.value; 
-                    } else if (prefix === 'req-') { 
-                        itemToSave.REQ_MATCH = document.getElementById('req-match').value; itemToSave.REQ_SPEC = document.getElementById('req-spec').value; itemToSave.REQ_CALIPER = document.getElementById('req-caliper').value; itemToSave.REQ_PICK = document.getElementById('req-pick').value; itemToSave.REQ_COMMENTS = document.getElementById('req-comments').value; let reserveEl = document.getElementById('req-reserve'); if (reserveEl) itemToSave.REQ_RESERVE = reserveEl.value;
-                    } else if (prefix === 'dock-') { 
-                        itemToSave.DOCK_SPEC = document.getElementById('dock-spec').value; itemToSave.DOCK_CALIPER = document.getElementById('dock-caliper').value; itemToSave.DOCK_NOTE = document.getElementById('dock-sales-desc').value.toUpperCase(); 
-                    } else if (prefix === 'flyer-') {
-                        itemToSave.FLYER_CAT = document.getElementById('flyer-cat').value; itemToSave.FLYER_TITLE = document.getElementById('flyer-title').value; itemToSave.FLYER_INST = document.getElementById('flyer-inst').value; itemToSave.FLYER_ASSIGNED = document.getElementById('flyer-assigned').value; itemToSave.FLYER_NOTES = document.getElementById('flyer-notes').value;
-                    }
-                }
                 
-                const setVal = (val) => (val === "" || val === undefined) ? null : val;
-                const payload = {};
-                
-                if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-') { 
-                    payload.match = (itemToSave.MATCH === "" || itemToSave.MATCH == null) ? null : parseFloat(itemToSave.MATCH); 
-                    payload.spec = setVal(itemToSave.SPEC); payload.caliper = setVal(itemToSave.CALIPER); payload.pic_note = setVal(itemToSave.PICK); 
-                    payload.sales_note = setVal(itemToSave.SALES_NOTE || itemToSave._NEW_SALES_NOTE); payload.av_note = setVal(itemToSave.AV_NOTE);
-                } else if (prefix === 'req-') { 
-                    payload.req_match = (itemToSave.REQ_MATCH === "" || itemToSave.REQ_MATCH == null) ? null : parseFloat(itemToSave.REQ_MATCH); 
-                    payload.req_spec = setVal(itemToSave.REQ_SPEC); payload.req_caliper = setVal(itemToSave.REQ_CALIPER); payload.req_pic_note = setVal(itemToSave.REQ_PICK); 
-                    payload.req_sales_note = setVal(itemToSave.REQ_SALES_NOTE); payload.req_comments = setVal(itemToSave.REQ_COMMENTS); 
-                    payload.req_reserve = setVal(itemToSave.REQ_RESERVE); payload.av_note = setVal(itemToSave.AV_NOTE);
-                    if (isComplete) { payload.req_status = 'Complete'; itemToSave.REQ_STATUS = 'Complete'; }
-                } else if (prefix === 'dock-') { 
-                    payload.dock_spec = setVal(itemToSave.DOCK_SPEC); payload.dock_caliper = setVal(itemToSave.DOCK_CALIPER); payload.dock_note = setVal(itemToSave.DOCK_NOTE); 
-                } else if (prefix === 'flyer-') {
-                    payload.flyer_cat = setVal(itemToSave.FLYER_CAT); payload.flyer_title = setVal(itemToSave.FLYER_TITLE); payload.flyer_inst = setVal(itemToSave.FLYER_INST); 
-                    payload.flyer_assigned = setVal(itemToSave.FLYER_ASSIGNED); payload.flyer_notes = setVal(itemToSave.FLYER_NOTES);
+                sItems.sort((a,b) => {
+                    let valA = (parseInt(String(a.PTRAVAILABLE).replace(/,/g, '')) || 0) * (parseFloat(String(a.PRICE || '0').replace(/[$+,]/g, '')) || 0);
+                    let valB = (parseInt(String(b.PTRAVAILABLE).replace(/,/g, '')) || 0) * (parseFloat(String(b.PRICE || '0').replace(/[$+,]/g, '')) || 0);
+                    return valB - valA;
+                });
+
+                if(sItems.length > 0) {
+                    html += `<h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 ml-1">Top Valued Items in ${activeReportTab}</h3><div class="space-y-3">`;
+                    sItems.slice(0, 50).forEach((i, idx) => {
+                        let ptr = parseInt(String(i.PTRAVAILABLE).replace(/,/g, '')) || 0;
+                        let price = parseFloat(String(i.PRICE || '0').replace(/[$+,]/g, '')) || 0;
+                        let val = ptr * price;
+                        html += `<div class="bg-white border border-gray-200 p-4 rounded-xl shadow-sm flex flex-col gap-2"><div class="flex justify-between items-start"><span class="font-bold text-gray-800 text-sm pr-2">${idx + 1}. ${i.COMMONNAME || 'Unknown'}</span><span class="font-black text-[#007a4d]">${formatter.format(val)}</span></div><div class="text-xs text-gray-500 font-semibold">${i.CONTSIZE || '-'} | PTR: ${ptr} @ ${formatter.format(price)}/ea</div></div>`;
+                    });
+                    html += `</div>`;
+                } else {
+                    html += `<div class="text-center text-gray-400 p-4">No value data available for this season.</div>`;
                 }
-
-                if (isComplete && (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-')) {
-                    let matchVal = parseFloat(itemToSave.MATCH);
-                    if (!isNaN(matchVal) && matchVal >= 0) {
-                        let ptr = parseInt(String(itemToSave.PTRAVAILABLE).replace(/,/g, '')) || 0;
-                        itemToSave.INITIAL_PTR = ptr; itemToSave.LOC_MATCH_QTY = Math.round(ptr * (matchVal / 100));
-                        payload.initial_ptr = itemToSave.INITIAL_PTR; payload.loc_match_qty = itemToSave.LOC_MATCH_QTY;
-                    }
-                }
-
-                backupLocalItem(itemToSave);
-
-                if (itemToSave.SAVED_PHOTO_LINK) payload.photo_link = itemToSave.SAVED_PHOTO_LINK; 
-                if (itemToSave.SAVED_PHOTO_NAME) payload.photo_name = itemToSave.SAVED_PHOTO_NAME;
-                if (itemToSave.REQ_PHOTO_LINK) payload.req_photo_link = itemToSave.REQ_PHOTO_LINK; 
-                if (itemToSave.REQ_PHOTO_NAME) payload.req_photo_name = itemToSave.REQ_PHOTO_NAME;
-                if (itemToSave.DOCK_PHOTO_LINK) payload.dock_photo_link = itemToSave.DOCK_PHOTO_LINK; 
-                if (itemToSave.DOCK_PHOTO_NAME) payload.dock_photo_name = itemToSave.DOCK_PHOTO_NAME;
-                if (itemToSave.FLYER_PHOTO_LINK) payload.flyer_photo_link = itemToSave.FLYER_PHOTO_LINK; 
-                if (itemToSave.FLYER_PHOTO_NAME) payload.flyer_photo_name = itemToSave.FLYER_PHOTO_NAME;
-
-                if (isComplete) { 
-                    payload.date_completed = new Date().toISOString(); 
-                    if (prefix === 'flyer-') payload.flyer_completed = payload.date_completed;
-                    
-                    let soPayload = { unique_id: itemToSave.UNIQUE_ID, itemcode: itemToSave.ITEMCODE || "", commonname: itemToSave.COMMONNAME || "", contsize: itemToSave.CONTSIZE || "", locationcode: itemToSave.LOCATIONCODE || "", lotcode: itemToSave.LOTCODE || "", ptravailable: String(itemToSave.PTRAVAILABLE || ""), priority: String(itemToSave.PRIORITY || ""), sales_note: payload.sales_note || itemToSave.SALES_NOTE || itemToSave._NEW_SALES_NOTE || "", photo_link: itemToSave.NA_PHOTO_LINK || itemToSave.SAVED_PHOTO_LINK || "", completed_by: currentUser, completed_at: payload.date_completed };
-                    if (prefix !== 'flyer-' && prefix !== 'req-') {
-                        supabaseFetch('v2_sales_office', 'POST', soPayload).catch(e => console.log(e));
-                        let cloneSO = { ...soPayload };
-                        for(let key in soPayload) { cloneSO[key.toUpperCase()] = soPayload[key]; }
-                        cloneSO.DOM_ID = 'so_' + cloneSO.UNIQUE_ID;
-                        cloneSO.AV_NOTE = itemToSave.AV_NOTE;
-                        cloneSO.SAVED_PHOTO_LINK = soPayload.photo_link; 
-                        let existingIdx = salesOfficeInventory.findIndex(s => s.UNIQUE_ID === cloneSO.UNIQUE_ID);
-                        if (existingIdx > -1) salesOfficeInventory[existingIdx] = cloneSO;
-                        else salesOfficeInventory.push(cloneSO);
-                    }
-                }
-
-                const targetTable = (prefix === 'req-') ? 'v2_active_request' : (itemToSave.SOURCE_TABLE || 'v2_master_inventory');
-
-                supabaseFetch(targetTable, 'PATCH', payload, `unique_id=eq.${encodeURIComponent(itemToSave.UNIQUE_ID)}`).then(data => {
-                    if (isCurrentView && isComplete) { if(btnComp) btnComp.innerText = "MARK DONE"; }
-                    if (!isSilentAutoSave && isCurrentView && isComplete) showToast("Success", "Task Completed!"); 
-                    if (isComplete && isCurrentView) { 
-                        itemToSave.DATE_COMPLETED = payload.date_completed; 
-                        goBackFromDetail(); 
-                        reRenderCurrentView();
-                    } else if (isComplete && !isCurrentView) { 
-                        itemToSave.DATE_COMPLETED = payload.date_completed; 
-                    }
-
-                    if (prefix === 'req-' && isComplete && !wasAlreadyComplete) {
-                        let folderItems = requestsInventory.filter(i => i.REQUEST_FOLDER === itemToSave.REQUEST_FOLDER);
-                        let allComplete = folderItems.every(i => i.REQ_STATUS === 'Complete' || i.UNIQUE_ID === itemToSave.UNIQUE_ID);
-                        if (allComplete) { sendEmailNotification('request_complete', itemToSave.REQUEST_FOLDER, itemToSave.REQUESTED_BY, itemToSave.REQ_CUSTOMER, folderItems.length); }
-                    }
-                }).catch(err => { if (isCurrentView && isComplete) { if(btnComp) btnComp.innerText = "MARK DONE"; if (!isSilentAutoSave) showToast("Network Error", "Could not reach database.", true); } });
-            };
-            if (isSilentAutoSave && !isComplete && !specificItem) { autoSaveTimer = setTimeout(() => { executeSave(); }, 1000); } else { executeSave(); }
-        }
-
-        function backupLocalItem(item) {
-            if (!item) return;
-            let pendingEdits = JSON.parse(localStorage.getItem('gnc_pending_edits') || '{}');
-            pendingEdits[item.UNIQUE_ID] = { timestamp: new Date().getTime(), data: item };
-            localStorage.setItem('gnc_pending_edits', JSON.stringify(pendingEdits));
-        }
-
-        function applyLocalEdits() {
-            let pendingEdits = JSON.parse(localStorage.getItem('gnc_pending_edits') || '{}');
-            let now = new Date().getTime();
-            let changed = false;
-
-            for (let uid in pendingEdits) {
-                if (now - pendingEdits[uid].timestamp > 900000) { delete pendingEdits[uid]; changed = true; continue; }
-                let item = fullInventory.find(i => i.UNIQUE_ID === uid) || lowStockInventory.find(i => i.UNIQUE_ID === uid) || reservesInventory.find(i => i.UNIQUE_ID === uid) || requestsInventory.find(i => i.UNIQUE_ID === uid) || managerReviewInventory.find(i => i.UNIQUE_ID === uid) || socInventory.find(i => i.UNIQUE_ID === uid);
-                if (item) { Object.assign(item, pendingEdits[uid].data); }
-            }
-            if (changed) { localStorage.setItem('gnc_pending_edits', JSON.stringify(pendingEdits)); }
-        }
-
-        function filterAvNotes(prefix) {
-            if (!activeItem) return;
-            const inputEl = document.getElementById(prefix + 'av-note');
-            if (!inputEl) return;
-            const inputVal = inputEl.value.toUpperCase();
-            const list = document.getElementById(prefix + 'av-dropdown-list');
-            let matchingNotes = avNotesDb.filter(n => String(n.COMMONNAME).toUpperCase() === String(activeItem.COMMONNAME).toUpperCase()).map(n => n.SALESNOTE || n.SALES_NOTE);
-            if (inputVal) { matchingNotes = matchingNotes.filter(n => String(n).toUpperCase().includes(inputVal)); }
-            matchingNotes = [...new Set(matchingNotes)];
-            if (matchingNotes.length === 0) { list.classList.add('hidden'); return; }
-            list.innerHTML = matchingNotes.map(n => `<div class="p-3 border-b border-gray-100 text-sm font-bold text-blue-800 cursor-pointer hover:bg-blue-50 active:bg-blue-100" onclick="selectAvNote('${esc(n)}', '${prefix}')">${n}</div>`).join('');
-            list.classList.remove('hidden');
-        }
-
-        function selectAvNote(note, prefix) {
-            document.getElementById(prefix + 'av-note').value = note;
-            document.getElementById(prefix + 'av-dropdown-list').classList.add('hidden');
-            saveData(false, prefix, true);
-        }
-
-        async function handlePhotoUpload(input, prefix) {
-            if (!input.files || input.files.length === 0) return;
-            const file = input.files[0];
-            
-            if (!file.type.startsWith('image/')) {
-                showToast('Error', 'Please select an image file.', true);
-                return;
             }
 
-            showToast('Processing', 'Compressing image...', false);
-
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = function(event) {
-                const img = new Image();
-                img.src = event.target.result;
-                img.onload = async function() {
-                    const canvas = document.createElement('canvas');
-                    const MAX_WIDTH = 1080;
-                    let scaleSize = 1;
-                    
-                    if (img.width > MAX_WIDTH) {
-                        scaleSize = MAX_WIDTH / img.width;
-                    }
-                    
-                    canvas.width = img.width * scaleSize;
-                    canvas.height = img.height * scaleSize;
-
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-                    const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-                    const base64Data = dataUrl.split(',')[1];
-
-                    showToast('Uploading', 'Sending photo to server...', false);
-
-                    let context = 'drive';
-                    if (prefix === 'ssn-') context = 'season';
-                    else if (prefix === 'lsn-') context = 'location';
-                    else if (prefix === 'req-') context = 'request';
-                    else if (prefix === 'dock-') context = 'docks';
-
-                    let dockNum = pendingDockNum || selectedDockNum || "0";
-
-                    let dateStr = new Date().toISOString().split('T')[0];
-                    let cName = String(activeItem.COMMONNAME || 'Unknown').replace(/[\/\\?%*:|"<>]/g, '-');
-                    let cSize = String(activeItem.CONTSIZE || 'NoSize').replace(/[\/\\?%*:|"<>]/g, '-');
-                    let cLot = String(activeItem.LOTCODE || 'NoLot').replace(/[\/\\?%*:|"<>]/g, '-');
-                    let cLoc = String(activeItem.LOCATIONCODE || 'NoLoc').replace(/[\/\\?%*:|"<>]/g, '-');
-                    let customFileName = `${cName}-${cSize}-${cLot}-${cLoc}-${dateStr}.jpg`;
-
-                    const payload = {
-                        type: 'image',
-                        image: base64Data,
-                        filename: customFileName,
-                        mimeType: 'image/jpeg',
-                        folderContext: context,
-                        dockNum: dockNum
-                    };
-
-                    try {
-                        const response = await fetch(GOOGLE_SCRIPT_URL, {
-                            method: 'POST',
-                            body: JSON.stringify(payload)
-                        });
-                        const result = await response.json();
-
-                        if (result.status === 'success') {
-                            showToast('Success', 'Photo uploaded successfully!');
-                            if (activeItem) {
-                                let url = result.url;
-                                if (prefix === 'req-') {
-                                    activeItem.REQ_PHOTO_LINK = activeItem.REQ_PHOTO_LINK ? activeItem.REQ_PHOTO_LINK + ',' + url : url;
-                                } else if (prefix === 'dock-') {
-                                    activeItem.DOCK_PHOTO_LINK = activeItem.DOCK_PHOTO_LINK ? activeItem.DOCK_PHOTO_LINK + ',' + url : url;
-                                } else if (prefix === 'flyer-') {
-                                    activeItem.FLYER_PHOTO_LINK = activeItem.FLYER_PHOTO_LINK ? activeItem.FLYER_PHOTO_LINK + ',' + url : url;
-                                } else {
-                                    activeItem.SAVED_PHOTO_LINK = activeItem.SAVED_PHOTO_LINK ? activeItem.SAVED_PHOTO_LINK + ',' + url : url;
-                                }
-                                saveData(false, prefix, true);
-                                renderSavedPhotos();
-                            }
-                        } else {
-                            showToast('Error', 'Upload failed: ' + result.message, true);
-                        }
-                    } catch (err) {
-                        showToast('Error', 'Network error during upload.', true);
-                    } finally {
-                        input.value = "";
-                    }
-                };
-            };
+            container.innerHTML = html;
         }
+
     </script>
 </body>
 </html>
