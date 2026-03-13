@@ -13,7 +13,10 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>:root{--bg:#007a4d;--tx:#111827}body{font-family:"Amazon Ember",Arial,sans-serif;background:white;color:var(--tx);user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior-y:contain}.nav-header{background:var(--bg);color:white;padding-top:max(10px,env(safe-area-inset-top))}#view-login,#view-change-password{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px}#view-change-password{display:none;z-index:10000}.login-card{background:white;padding:30px;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,.2);width:100%;max-width:360px;text-align:center}.input-field{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:8px;font-size:15px;margin-bottom:12px}#toast-notification{position:fixed;top:-100px;left:50%;transform:translateX(-50%);background:#16a34a;color:white;padding:16px 24px;border-radius:50px;box-shadow:0 10px 15px -3px rgba(0,0,0,.3);z-index:11000;transition:top .5s;display:flex;align-items:center;gap:12px;pointer-events:none}#toast-notification.show{top:20px}#side-drawer{position:fixed;top:0;left:-280px;width:280px;height:100%;background:white;z-index:2000;box-shadow:2px 0 10px rgba(0,0,0,.2);transition:left .3s;overflow-y:auto;padding-bottom:100px}#side-drawer.open{left:0}#drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1999;display:none}#drawer-overlay.open{display:block}.drawer-header{background:var(--bg);color:white;padding:20px;font-weight:bold;font-size:18px}.drawer-item{padding:16px 20px;border-bottom:1px solid #f3f4f6;cursor:pointer;display:flex;align-items:center;gap:12px;color:#374151;font-weight:500}.drill-item{border-bottom:1px solid #e5e7eb;padding:16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:white;transition:background .1s}.drill-item:active{background:#f3f4f6}.back-btn{display:flex;align-items:center;gap:5px;color:#6b7280;font-size:14px;font-weight:600;margin-bottom:20px;cursor:pointer;padding:10px 0}.inv-card{border:1px solid #e5e7eb;border-left-width:6px;border-radius:8px;padding:12px;background:white;cursor:pointer;flex-grow:1}.status-green{border-left-color:#22c55e}.status-purple{border-left-color:#9333ea}.status-orange{border-left-color:#f97316}.status-blue{border-left-color:#3b82f6}.status-indigo{border-left-color:#4f46e5}.status-teal{border-left-color:#0d9488}.status-yellow{border-left-color:#eab308}.status-red{border-left-color:#ef4444}.task-tabs,.detail-tabs{display:flex;border-bottom:1px solid #e5e7eb;background:#f9fafb;margin-bottom:10px}.detail-tabs{overflow-x:auto;scrollbar-width:none}.detail-tabs::-webkit-scrollbar{display:none}.task-tab,.detail-tab{flex:1;text-align:center;padding:12px;font-size:11px;font-weight:700;color:#6b7280;cursor:pointer;border-bottom:3px solid transparent;text-transform:uppercase}.detail-tab{flex:0 0 auto;padding:10px 16px}.task-tab.active,.detail-tab.active{color:var(--bg);border-bottom-color:var(--bg);background:white}.overview-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}.overview-card{background:#f8fafc;padding:10px;border-radius:6px;border:1px solid #e2e8f0}.overview-label{font-size:9px;font-weight:800;color:#64748b;text-transform:uppercase;margin-bottom:2px}.overview-val{font-size:13px;font-weight:600;color:#0f172a;word-break:break-all}.expand-trigger{display:flex;align-items:center;justify-content:space-between;padding:12px;background:#f9fafb;border-radius:6px;cursor:pointer;font-weight:600;font-size:14px;border:1px solid #e5e7eb}.expand-content{display:none;margin-top:12px;padding:12px;background:#f9fafb;border-radius:6px;border:1px solid #e5e7eb}.expanded .expand-content{display:block}.card-checkbox-container{width:0;overflow:hidden;opacity:0;transition:width .3s,opacity .3s,margin .3s}body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-right:12px}.item-row{touch-action:manipulation}.spinner{border:4px solid rgba(255,255,255,.3);border-top:4px solid white;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:0 auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.scrollbar-none::-webkit-scrollbar{display:none}.scrollbar-none{-ms-overflow-style:none;scrollbar-width:none}</style>
+    <style>:root{--bg:#007a4d;--tx:#111827}body{font-family:"Amazon Ember",Arial,sans-serif;background:white;color:var(--tx);user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior-y:contain}.nav-header{background:var(--bg);color:white;padding-top:max(10px,env(safe-area-inset-top))}#view-login,#view-change-password{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px}#view-change-password{display:none;z-index:10000}.login-card{background:white;padding:30px;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,.2);width:100%;max-width:360px;text-align:center}.input-field{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:8px;font-size:15px;margin-bottom:12px}#toast-notification{position:fixed;top:-100px;left:50%;transform:translateX(-50%);background:#16a34a;color:white;padding:16px 24px;border-radius:50px;box-shadow:0 10px 15px -3px rgba(0,0,0,.3);z-index:11000;transition:top .5s;display:flex;align-items:center;gap:12px;pointer-events:none}#toast-notification.show{top:20px}#side-drawer{position:fixed;top:0;left:-280px;width:280px;height:100%;background:white;z-index:2000;box-shadow:2px 0 10px rgba(0,0,0,.2);transition:left .3s;overflow-y:auto;padding-bottom:100px}#side-drawer.open{left:0}#drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1999;display:none}#drawer-overlay.open{display:block}.drawer-header{background:var(--bg);color:white;padding:20px;font-weight:bold;font-size:18px}.drawer-item{padding:16px 20px;border-bottom:1px solid #f3f4f6;cursor:pointer;display:flex;align-items:center;gap:12px;color:#374151;font-weight:500}.drill-item{border-bottom:1px solid #e5e7eb;padding:16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:white;transition:background .1s}.drill-item:active{background:#f3f4f6}.back-btn{display:flex;align-items:center;gap:5px;color:#6b7280;font-size:14px;font-weight:600;margin-bottom:20px;cursor:pointer;padding:10px 0}.inv-card{border:1px solid #e5e7eb;border-left-width:6px;border-radius:8px;padding:12px;background:white;cursor:pointer;flex-grow:1}.status-green{border-left-color:#22c55e}.status-purple{border-left-color:#9333ea}.status-orange{border-left-color:#f97316}.status-blue{border-left-color:#3b82f6}.status-indigo{border-left-color:#4f46e5}.status-teal{border-left-color:#0d9488}.status-yellow{border-left-color:#eab308}.status-red{border-left-color:#ef4444}.task-tabs,.detail-tabs{display:flex;border-bottom:1px solid #e5e7eb;background:#f9fafb;margin-bottom:10px}.detail-tabs{overflow-x:auto;scrollbar-width:none}.detail-tabs::-webkit-scrollbar{display:none}.task-tab,.detail-tab{flex:1;text-align:center;padding:12px;font-size:11px;font-weight:700;color:#6b7280;cursor:pointer;border-bottom:3px solid transparent;text-transform:uppercase}.detail-tab{flex:0 0 auto;padding:10px 16px}.task-tab.active,.detail-tab.active{color:var(--bg);border-bottom-color:var(--bg);background:white}.overview-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}.overview-card{background:#f8fafc;padding:10px;border-radius:6px;border:1px solid #e2e8f0}.overview-label{font-size:9px;font-weight:800;color:#64748b;text-transform:uppercase;margin-bottom:2px}.overview-val{font-size:13px;font-weight:600;color:#0f172a;word-break:break-all}.expand-trigger{display:flex;align-items:center;justify-content:space-between;padding:12px;background:#f9fafb;border-radius:6px;cursor:pointer;font-weight:600;font-size:14px;border:1px solid #e5e7eb}.expand-content{display:none;margin-top:12px;padding:12px;background:#f9fafb;border-radius:6px;border:1px solid #e5e7eb}.expanded .expand-content{display:block}.card-checkbox-container{width:0;overflow:hidden;opacity:0;transition:width .3s,opacity .3s,margin .3s}body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-right:12px}.item-row{touch-action:manipulation}.spinner{border:4px solid rgba(255,255,255,.3);border-top:4px solid white;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:0 auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.scrollbar-none::-webkit-scrollbar{display:none}.scrollbar-none{-ms-overflow-style:none;scrollbar-width:none}
+    .animate-fade-in-up { animation: fadeInUp 0.3s ease-out forwards; }
+    @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
 </head>
 <body class="bg-gray-50 h-screen overflow-hidden">
     <div id="top-loading-bar-container" class="hidden fixed top-0 left-0 w-full h-1 z-[99999] pointer-events-none"><div id="top-loading-bar" class="h-full bg-[#22c55e] w-0 transition-all duration-300 ease-out shadow-[0_0_10px_#22c55e]"></div></div>
@@ -179,6 +182,7 @@
             <button class="text-gray-500 font-bold py-2 px-4 mt-2" onclick="document.getElementById('request-rep-modal').classList.add('hidden')">Cancel</button>
         </div>
     </div>
+    
     <div id="app-wrapper" class="hidden h-full flex flex-col">
         <header class="nav-header sticky top-0 z-50 p-4 flex justify-between items-center shadow-md">
             <div class="flex items-center gap-3">
@@ -1271,43 +1275,48 @@
                 }
 
                 const threadIds = myMemberships.map(m => m.thread_id);
-                const idString = threadIds.map(id => `"${id}"`).join(',');
+                const idString = threadIds.join(',');
 
-                const threads = await supabaseFetch('v2_chat_threads', 'GET', null, `id=in.(${encodeURIComponent(idString)})&order=last_message_at.desc`);
-                const allMembers = await supabaseFetch('v2_chat_members', 'GET', null, `thread_id=in.(${encodeURIComponent(idString)})&select=thread_id,username`);
+                const threads = await supabaseFetch('v2_chat_threads', 'GET', null, `id=in.(${idString})&order=last_message_at.desc`);
+                const allMembers = await supabaseFetch('v2_chat_members', 'GET', null, `thread_id=in.(${idString})&select=thread_id,username`);
 
                 let inboxHtml = "";
-                threads.forEach(t => {
-                    let name = t.thread_name;
-                    if (!t.is_group || !name) {
-                        const threadMembers = allMembers.filter(m => m.thread_id === t.id).map(m => m.username);
-                        const others = threadMembers.filter(m => m.toLowerCase() !== currentUser.toLowerCase());
-                        name = others.length > 0 ? others.join(', ') : 'Just Me';
-                    }
+                
+                if (!threads || threads.length === 0) {
+                    inboxHtml = `<div class="text-center text-gray-400 text-sm mt-10">No conversations yet. Start one!</div>`;
+                } else {
+                    threads.forEach(t => {
+                        let name = t.thread_name;
+                        if (!t.is_group || !name) {
+                            const threadMembers = (allMembers || []).filter(m => m.thread_id === t.id).map(m => m.username);
+                            const others = threadMembers.filter(m => m.toLowerCase() !== currentUser.toLowerCase());
+                            name = others.length > 0 ? others.join(', ') : 'Just Me';
+                        }
 
-                    const myReadTime = myMemberships.find(m => m.thread_id === t.id)?.last_read_at;
-                    const isUnread = t.last_message_at && (!myReadTime || new Date(t.last_message_at) > new Date(myReadTime));
-                    
-                    let timeStr = "";
-                    if (t.last_message_at) {
-                        timeStr = new Date(t.last_message_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                    }
+                        const myReadTime = myMemberships.find(m => m.thread_id === t.id)?.last_read_at;
+                        const isUnread = t.last_message_at && (!myReadTime || new Date(t.last_message_at) > new Date(myReadTime));
+                        
+                        let timeStr = "";
+                        if (t.last_message_at) {
+                            timeStr = new Date(t.last_message_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                        }
 
-                    inboxHtml += `
-                        <div class="bg-white border ${isUnread ? 'border-[#007a4d] border-l-4 shadow-md bg-green-50/30' : 'border-gray-200 shadow-sm'} p-4 rounded-xl cursor-pointer active:scale-[0.98] transition-transform flex justify-between items-center" onclick="openThread('${t.id}', '${esc(name)}')">
-                            <div class="flex items-center gap-3">
-                                <div class="bg-gray-100 p-2.5 rounded-full text-[#007a4d]">
-                                    <i class="ph-bold ${t.is_group ? 'ph-users' : 'ph-user'} text-xl"></i>
+                        inboxHtml += `
+                            <div class="bg-white border ${isUnread ? 'border-[#007a4d] border-l-4 shadow-md bg-green-50/30' : 'border-gray-200 shadow-sm'} p-4 rounded-xl cursor-pointer active:scale-[0.98] transition-transform flex justify-between items-center mb-3" onclick="openThread('${t.id}', '${esc(name)}')">
+                                <div class="flex items-center gap-3">
+                                    <div class="bg-gray-100 p-2.5 rounded-full text-[#007a4d]">
+                                        <i class="ph-bold ${t.is_group ? 'ph-users' : 'ph-user'} text-xl"></i>
+                                    </div>
+                                    <div>
+                                        <div class="font-black text-[15px] ${isUnread ? 'text-[#007a4d]' : 'text-gray-800'}">${name.toUpperCase()}</div>
+                                        <div class="text-[10px] font-bold text-gray-400 mt-0.5">${timeStr || 'No messages'}</div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <div class="font-black text-[15px] ${isUnread ? 'text-[#007a4d]' : 'text-gray-800'}">${name.toUpperCase()}</div>
-                                    <div class="text-[10px] font-bold text-gray-400 mt-0.5">${timeStr || 'No messages'}</div>
-                                </div>
+                                <i class="ph-bold ph-caret-right text-gray-300"></i>
                             </div>
-                            <i class="ph-bold ph-caret-right text-gray-300"></i>
-                        </div>
-                    `;
-                });
+                        `;
+                    });
+                }
 
                 document.getElementById('inbox-list').innerHTML = inboxHtml;
 
@@ -1323,19 +1332,38 @@
             if (!targetUser || targetUser === "") { showToast("Required", "Select a user", true); return; }
 
             document.getElementById('new-chat-modal').classList.add('hidden');
-            showToast("Starting...", "Setting up chat...", false);
+            showToast("Loading...", "Opening chat...", false);
 
-            const newThreadRes = await supabaseFetch('v2_chat_threads', 'POST', { is_group: false });
-            if (!newThreadRes || !newThreadRes[0]) { showToast("Error", "Failed to create thread", true); return; }
-            
-            const threadId = newThreadRes[0].id;
+            try {
+                const myMemberships = await supabaseFetch('v2_chat_members', 'GET', null, `username=eq.${encodeURIComponent(currentUser)}&select=thread_id`);
+                
+                if (myMemberships && myMemberships.length > 0) {
+                    const threadIds = myMemberships.map(m => m.thread_id);
+                    const idString = threadIds.join(',');
+                    
+                    const sharedMemberships = await supabaseFetch('v2_chat_members', 'GET', null, `thread_id=in.(${idString})&username=eq.${encodeURIComponent(targetUser)}`);
+                    
+                    if (sharedMemberships && sharedMemberships.length > 0) {
+                        openThread(sharedMemberships[0].thread_id, targetUser);
+                        return;
+                    }
+                }
 
-            await supabaseFetch('v2_chat_members', 'POST', [
-                { thread_id: threadId, username: currentUser },
-                { thread_id: threadId, username: targetUser }
-            ]);
+                const newThreadRes = await supabaseFetch('v2_chat_threads', 'POST', { is_group: false });
+                if (!newThreadRes || !newThreadRes[0]) throw new Error("Failed to create thread");
+                
+                const threadId = newThreadRes[0].id;
 
-            openThread(threadId, targetUser);
+                await supabaseFetch('v2_chat_members', 'POST', [
+                    { thread_id: threadId, username: currentUser },
+                    { thread_id: threadId, username: targetUser }
+                ]);
+
+                openThread(threadId, targetUser);
+
+            } catch (err) {
+                showToast("Error", "Could not start chat.", true);
+            }
         }
 
         function openNewChatModal() {
@@ -2545,7 +2573,7 @@
             }).catch(err=>showToast("Error","Network error.",true))
         }
 
-        function processTabSelection(tab) {
+      function processTabSelection(tab) {
             pendingTabType=tab;
             document.getElementById('tab-select-modal').classList.add('hidden');
             if(pendingAction==='assign'){openAssignModal()}
@@ -2653,7 +2681,7 @@
             renderDrive();
         }
 
-      function handleDriveSearch() {
+        function handleDriveSearch() {
             const term = document.getElementById('drive-search').value.toLowerCase();
             const clearBtn = document.getElementById('drive-search-clear');
             if(term.length > 0) {
