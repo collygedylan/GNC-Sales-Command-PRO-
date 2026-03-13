@@ -547,7 +547,7 @@
                 </div>
             </nav>
         <script>
-        const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
+const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6cm55anNvc3J5ZWpqZWpsaWlpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzAyNzM1NywiZXhwIjoyMDg4NjAzMzU3fQ.Bc46UfJ1N4AgAS1PgfhFg6S4BEyybR6g_TUnPZsE2t0";
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwhH-eB5Py3xCwhmWReOAcAfl9Zu6mkw0hZYnAbIP9lLANoE4iebK1hXa6-ogU4_1AURA/exec"; 
@@ -599,29 +599,29 @@
             } 
         }
 
-        async function supabaseFetch(table, method='GET', body=null, query='select=*') {
-            startGlobalProgress();
+        async function supabaseFetch(table, method='GET', body=null, query='select=*', silent=false) {
+            if(!silent) startGlobalProgress();
             try {
                 let allData=[]; let offset=0; const limit=1000; let hasMore=true;
                 if(method==='GET'){
                     while(hasMore){
                         let queryString = query ? `${query}&limit=${limit}&offset=${offset}` : `limit=${limit}&offset=${offset}`;
                         const url=`${SUPABASE_URL}/rest/v1/${table}?${queryString}`;
-                        const response=await fetch(url,{method:'GET',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json'}});
+                        const response=await fetch(url,{method:'GET',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json', 'Cache-Control': 'no-cache'}, cache: 'no-store'});
                         if(!response.ok) throw new Error(`Supabase Error`);
                         const text=await response.text(); const data=text?JSON.parse(text):[];
                         if(Array.isArray(data)&&data.length>0){ allData=allData.concat(data); offset+=limit; if(data.length<limit) hasMore=false; }
                         else { hasMore=false; }
                     } return allData;
                 } else {
-                    const options={method:method,headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json'}};
+                    const options={method:method,headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json'}, cache: 'no-store'};
                     options.headers['Prefer']=method==='POST'?'return=representation,resolution=merge-duplicates':'return=representation';
                     if(body)options.body=JSON.stringify(body);
                     const response=await fetch(`${SUPABASE_URL}/rest/v1/${table}${query?'?'+query:''}`,options);
                     if(!response.ok) throw new Error('Supabase error');
                     const text=await response.text(); return text?JSON.parse(text):{};
                 }
-            } catch(e){ return []; } finally { stopGlobalProgress(); }
+            } catch(e){ return []; } finally { if(!silent) stopGlobalProgress(); }
         }
 
         function openDB() { 
@@ -786,7 +786,7 @@
             }
             document.getElementById('login-inputs').classList.add('hidden'); 
             document.getElementById('loading-spinner').classList.remove('hidden'); 
-            supabaseFetch('v2_app_users','GET',null,`username=ilike.*${encodeURIComponent(inputUser)}*&password=eq.${encodeURIComponent(inputPass)}&select=*`).then(data=>{
+            supabaseFetch('v2_app_users','GET',null,`username=ilike.*${encodeURIComponent(inputUser)}*&password=eq.${encodeURIComponent(inputPass)}&select=*`, false).then(data=>{
                 if(data&&data.length>0){
                     const userRecord=data[0]; 
                     currentUser=inputUser; 
@@ -823,7 +823,7 @@
             document.getElementById('view-login').style.display='flex'; 
             document.getElementById('login-inputs').classList.add('hidden'); 
             document.getElementById('loading-spinner').classList.remove('hidden'); 
-            try{ await supabaseFetch('v2_app_users','PATCH',{password:newPass},`username=ilike.*${encodeURIComponent(currentUser)}*`); }catch(e){} 
+            try{ await supabaseFetch('v2_app_users','PATCH',{password:newPass},`username=ilike.*${encodeURIComponent(currentUser)}*`, true); }catch(e){} 
             localStorage.setItem('gnc_pw_changed_'+currentUser,'true'); 
             document.getElementById('new-password').value=""; 
             document.getElementById('confirm-password').value=""; 
@@ -852,12 +852,12 @@
                 const msg = payload.new;
                 
                 if (!document.getElementById('view-chat-thread').classList.contains('hidden') && activeThreadId === msg.thread_id) {
-                    const alreadyExists = currentChatMessages.some(m => m.id === msg.id || (m.sender_name === msg.sender_name && m.message_text === msg.message_text && Math.abs(new Date(m.created_at) - new Date(msg.created_at)) < 2000));
+                    const alreadyExists = currentChatMessages.some(m => m.id === msg.id || (m.sender_name === msg.sender_name && m.message_text === msg.message_text && Math.abs(new Date(m.created_at) - new Date(msg.created_at)) < 5000));
                     
                     if (!alreadyExists) {
                         currentChatMessages.push(msg);
                         renderThreadMessages();
-                        supabaseFetch('v2_chat_members', 'PATCH', { last_read_at: new Date().toISOString() }, `thread_id=eq.${msg.thread_id}&username=eq.${encodeURIComponent(currentUser)}`);
+                        supabaseFetch('v2_chat_members', 'PATCH', { last_read_at: new Date().toISOString() }, `thread_id=eq.${msg.thread_id}&username=eq.${encodeURIComponent(currentUser)}`, true);
                     }
                 } else {
                     if (msg.sender_name.toLowerCase() !== currentUser.toLowerCase()) {
@@ -948,12 +948,12 @@
             if(cachedRes&&fullInventory.length===0){ setTimeout(()=>{ processAndLoadData(cachedRes); },50); } 
             try {
                 const results=await Promise.allSettled([
-                    supabaseFetch('v2_master_inventory','GET',null,'select=*'), 
-                    supabaseFetch('v2_active_request','GET',null,'select=*'),
-                    supabaseFetch('v2_reserves','GET',null,'select=*'), 
-                    supabaseFetch('v2_soc_master','GET',null,'select=*'),
-                    supabaseFetch('v2_sales_office','GET',null,'select=*'), 
-                    supabaseFetch('v2_av_notes','GET',null,'select=*')
+                    supabaseFetch('v2_master_inventory','GET',null,'select=*', false), 
+                    supabaseFetch('v2_active_request','GET',null,'select=*', false),
+                    supabaseFetch('v2_reserves','GET',null,'select=*', false), 
+                    supabaseFetch('v2_soc_master','GET',null,'select=*', false),
+                    supabaseFetch('v2_sales_office','GET',null,'select=*', false), 
+                    supabaseFetch('v2_av_notes','GET',null,'select=*', false)
                 ]);
                 const formatArr=(resObj,sourceTable)=>{
                     if(resObj.status!=='fulfilled'||!Array.isArray(resObj.value))return[];
@@ -1261,36 +1261,44 @@
             if(!dateVal || !deptVal || !hoursVal) { showToast("Required", "Please fill out all fields.", true); return; }
             showToast("Submitting...", "Saving labor hours...", false);
             const payload = { date_reported: dateVal, department: deptVal, man_hours: parseFloat(hoursVal), submitted_by: currentUser, submitted_at: new Date().toISOString() };
-            supabaseFetch('v2_labor_hours', 'POST', payload).then(() => { showToast("Success", "Hours submitted successfully!"); document.getElementById('hours-amount').value = ""; }).catch(err => { showToast("Error", "Failed to submit hours.", true); });
+            supabaseFetch('v2_labor_hours', 'POST', payload, '', true).then(() => { showToast("Success", "Hours submitted successfully!"); document.getElementById('hours-amount').value = ""; }).catch(err => { showToast("Error", "Failed to submit hours.", true); });
         }
         
         async function backgroundChatSync() {
             if (!currentUser) return;
             
             try {
+                let checkTime = new Date(Date.now() - 15000).toISOString(); 
+                
                 if (!document.getElementById('view-chat-thread').classList.contains('hidden') && activeThreadId) {
-                    const newMsgs = await supabaseFetch('v2_chat_messages', 'GET', null, `thread_id=eq.${activeThreadId}&created_at=gt.${lastChatSyncTime}&order=created_at.asc`);
+                    const newMsgs = await supabaseFetch('v2_chat_messages', 'GET', null, `thread_id=eq.${activeThreadId}&created_at=gt.${checkTime}&order=created_at.asc`, true);
                     
                     if (newMsgs && newMsgs.length > 0) {
-                        const trulyNew = newMsgs.filter(m => !currentChatMessages.some(existing => existing.id === m.id || (existing.sender_name === m.sender_name && existing.message_text === m.message_text && Math.abs(new Date(existing.created_at) - new Date(m.created_at)) < 2000)));
+                        const trulyNew = newMsgs.filter(m => !currentChatMessages.some(existing => existing.id === m.id || (existing.sender_name === m.sender_name && existing.message_text === m.message_text && Math.abs(new Date(existing.created_at) - new Date(m.created_at)) < 5000)));
                         if (trulyNew.length > 0) {
                             currentChatMessages = currentChatMessages.concat(trulyNew);
                             renderThreadMessages();
-                            supabaseFetch('v2_chat_members', 'PATCH', { last_read_at: new Date().toISOString() }, `thread_id=eq.${activeThreadId}&username=eq.${encodeURIComponent(currentUser)}`);
+                            
+                            supabaseFetch('v2_chat_members', 'PATCH', { last_read_at: new Date().toISOString() }, `thread_id=eq.${activeThreadId}&username=eq.${encodeURIComponent(currentUser)}`, true);
                         }
                     }
-                } else {
-                    const myMembers = await supabaseFetch('v2_chat_members', 'GET', null, `username=eq.${encodeURIComponent(currentUser)}&select=thread_id`);
+                } 
+                else {
+                    const myMembers = await supabaseFetch('v2_chat_members', 'GET', null, `username=eq.${encodeURIComponent(currentUser)}&select=thread_id`, true);
                     if (myMembers && myMembers.length > 0) {
                         const threadIds = myMembers.map(m => m.thread_id).join(',');
-                        const updatedThreads = await supabaseFetch('v2_chat_threads', 'GET', null, `id=in.(${threadIds})&last_message_at=gt.${lastChatSyncTime}`);
+                        const updatedThreads = await supabaseFetch('v2_chat_threads', 'GET', null, `id=in.(${threadIds})&last_message_at=gt.${checkTime}`, true);
+                        
                         if (updatedThreads && updatedThreads.length > 0) {
                             if (!document.getElementById('view-chat-inbox').classList.contains('hidden')) {
                                 loadChatInbox(); 
                             } else {
                                 unreadChatCount++; 
                                 const badge = document.getElementById('nav-unread-badge');
-                                if (badge) { badge.innerText = unreadChatCount; badge.classList.remove('hidden'); }
+                                if (badge) {
+                                    badge.innerText = unreadChatCount;
+                                    badge.classList.remove('hidden');
+                                }
                             }
                         }
                     }
@@ -1304,7 +1312,7 @@
             document.getElementById('inbox-list').innerHTML = "";
             
             try {
-                const myMemberships = await supabaseFetch('v2_chat_members', 'GET', null, `username=eq.${encodeURIComponent(currentUser)}&select=thread_id,last_read_at`);
+                const myMemberships = await supabaseFetch('v2_chat_members', 'GET', null, `username=eq.${encodeURIComponent(currentUser)}&select=thread_id,last_read_at`, true);
                 
                 if (!myMemberships || myMemberships.length === 0) {
                     document.getElementById('inbox-list').innerHTML = `<div class="text-center text-gray-400 text-sm mt-10">No conversations yet. Start one!</div>`;
@@ -1314,8 +1322,8 @@
                 const threadIds = myMemberships.map(m => m.thread_id);
                 const idString = threadIds.join(',');
 
-                const threads = await supabaseFetch('v2_chat_threads', 'GET', null, `id=in.(${idString})&order=last_message_at.desc`);
-                const allMembers = await supabaseFetch('v2_chat_members', 'GET', null, `thread_id=in.(${idString})&select=thread_id,username`);
+                const threads = await supabaseFetch('v2_chat_threads', 'GET', null, `id=in.(${idString})&order=last_message_at.desc`, true);
+                const allMembers = await supabaseFetch('v2_chat_members', 'GET', null, `thread_id=in.(${idString})&select=thread_id,username`, true);
 
                 let inboxHtml = "";
                 
@@ -1372,13 +1380,13 @@
             showToast("Loading...", "Opening chat...", false);
 
             try {
-                const myMemberships = await supabaseFetch('v2_chat_members', 'GET', null, `username=eq.${encodeURIComponent(currentUser)}&select=thread_id`);
+                const myMemberships = await supabaseFetch('v2_chat_members', 'GET', null, `username=eq.${encodeURIComponent(currentUser)}&select=thread_id`, true);
                 
                 if (myMemberships && myMemberships.length > 0) {
                     const threadIds = myMemberships.map(m => m.thread_id);
                     const idString = threadIds.join(',');
                     
-                    const sharedMemberships = await supabaseFetch('v2_chat_members', 'GET', null, `thread_id=in.(${idString})&username=eq.${encodeURIComponent(targetUser)}`);
+                    const sharedMemberships = await supabaseFetch('v2_chat_members', 'GET', null, `thread_id=in.(${idString})&username=eq.${encodeURIComponent(targetUser)}`, true);
                     
                     if (sharedMemberships && sharedMemberships.length > 0) {
                         openThread(sharedMemberships[0].thread_id, targetUser);
@@ -1386,7 +1394,7 @@
                     }
                 }
 
-                const newThreadRes = await supabaseFetch('v2_chat_threads', 'POST', { is_group: false });
+                const newThreadRes = await supabaseFetch('v2_chat_threads', 'POST', { is_group: false }, '', true);
                 if (!newThreadRes || !newThreadRes[0]) throw new Error("Failed to create thread");
                 
                 const threadId = newThreadRes[0].id;
@@ -1394,7 +1402,7 @@
                 await supabaseFetch('v2_chat_members', 'POST', [
                     { thread_id: threadId, username: currentUser },
                     { thread_id: threadId, username: targetUser }
-                ]);
+                ], '', true);
 
                 openThread(threadId, targetUser);
 
@@ -1417,11 +1425,11 @@
             const container = document.getElementById('thread-messages');
             container.innerHTML = `<div class="spinner border-t-[#007a4d] mx-auto mt-10"></div>`;
 
-            supabaseFetch('v2_chat_messages', 'GET', null, `thread_id=eq.${threadId}&order=created_at.asc`)
+            supabaseFetch('v2_chat_messages', 'GET', null, `thread_id=eq.${threadId}&order=created_at.asc`, true)
                 .then(data => {
                     currentChatMessages = data || [];
                     renderThreadMessages();
-                    supabaseFetch('v2_chat_members', 'PATCH', { last_read_at: new Date().toISOString() }, `thread_id=eq.${threadId}&username=eq.${encodeURIComponent(currentUser)}`);
+                    supabaseFetch('v2_chat_members', 'PATCH', { last_read_at: new Date().toISOString() }, `thread_id=eq.${threadId}&username=eq.${encodeURIComponent(currentUser)}`, true);
                 })
                 .catch(e => { container.innerHTML = "Failed to load messages"; });
         }
@@ -1469,7 +1477,7 @@
             renderThreadMessages();
             input.value = "";
 
-            supabaseFetch('v2_chat_messages', 'POST', payload)
+            supabaseFetch('v2_chat_messages', 'POST', payload, '', true)
                 .then((data) => {
                     if (data && data[0]) {
                         const lastMsgIdx = currentChatMessages.length - 1;
@@ -1477,7 +1485,7 @@
                             currentChatMessages[lastMsgIdx] = data[0]; 
                         }
                     }
-                    supabaseFetch('v2_chat_threads', 'PATCH', { last_message_at: payload.created_at }, `id=eq.${activeThreadId}`);
+                    supabaseFetch('v2_chat_threads', 'PATCH', { last_message_at: payload.created_at }, `id=eq.${activeThreadId}`, true);
                 })
                 .catch(err => { showToast("Error", "Message failed to send.", true); });
         }
@@ -1659,7 +1667,7 @@
             if (item && item.MASTER_UNIQUE_ID) {
                 item.DOCK_NOTE = text;
                 showToast("Saving...", "Updating mistake...", false);
-                supabaseFetch('v2_master_inventory', 'PATCH', { dock_note: text }, `unique_id=eq.${item.MASTER_UNIQUE_ID}`).then(() => { showToast("Success", "Mistake saved!"); document.getElementById('dock-mistake-modal').classList.add('hidden'); renderDocks(); }).catch(err => { showToast("Error", "Failed to save mistake", true); });
+                supabaseFetch('v2_master_inventory', 'PATCH', { dock_note: text }, `unique_id=eq.${item.MASTER_UNIQUE_ID}`, true).then(() => { showToast("Success", "Mistake saved!"); document.getElementById('dock-mistake-modal').classList.add('hidden'); renderDocks(); }).catch(err => { showToast("Error", "Failed to save mistake", true); });
             }
         }
 
@@ -2164,7 +2172,7 @@
             if(row)row.remove(); 
             salesOfficeInventory=salesOfficeInventory.filter(i=>i.UNIQUE_ID!==uniqueId); 
             showToast("Complete","Removed from Sales Office."); 
-            supabaseFetch('v2_sales_office','DELETE',null,`unique_id=eq.${uniqueId}`).catch(err=>showToast("Error","Network error.",true)); 
+            supabaseFetch('v2_sales_office','DELETE',null,`unique_id=eq.${uniqueId}`, true).catch(err=>showToast("Error","Network error.",true)); 
         }
 
         function generateCard(item,sourceView,colorClass='status-green') {
@@ -2318,7 +2326,7 @@
                     item.END_CAP_LEVEL=dataObj.level;
                     item.ASSIGNEDTO=currentUser;
                     item.APP_TAB_ASSIGNMENT='endcap';
-                    updates.push(supabaseFetch('v2_master_inventory','PATCH',{end_cap_folder:folder,end_cap_qty:dataObj.qty,end_cap_level:dataObj.level,assignedto:currentUser},`unique_id=eq.${item.UNIQUE_ID}`))
+                    updates.push(supabaseFetch('v2_master_inventory','PATCH',{end_cap_folder:folder,end_cap_qty:dataObj.qty,end_cap_level:dataObj.level,assignedto:currentUser},`unique_id=eq.${item.UNIQUE_ID}`, true))
                 }
             });
             document.getElementById('endcap-modal').classList.add('hidden');
@@ -2337,7 +2345,7 @@
             reRenderCurrentView();
             showToast("Saving...", `Marked as ${action}`, false);
 
-            supabaseFetch('v2_active_request', 'PATCH', { req_rep_action: action, req_archived: true }, `unique_id=eq.${uid}`)
+            supabaseFetch('v2_active_request', 'PATCH', { req_rep_action: action, req_archived: true }, `unique_id=eq.${uid}`, true)
             .then(() => {
                 showToast("Saved", `Item ${action}`);
                 checkFolderCompletion(folderId);
@@ -2524,7 +2532,7 @@
                     item.ASSIGNEDTO=user;
                     item.DATE_COMPLETED="";
                     const table=item.SOURCE_TABLE||'v2_master_inventory';
-                    promises.push(supabaseFetch(table,'PATCH',{assignedto:user,date_completed:null},`unique_id=eq.${item.UNIQUE_ID}`))
+                    promises.push(supabaseFetch(table,'PATCH',{assignedto:user,date_completed:null},`unique_id=eq.${item.UNIQUE_ID}`, true))
                 }
             });
             Promise.all(promises).then(()=>{
@@ -2610,7 +2618,7 @@
             showToast("Processing...",`Creating Clone Tickets...`,false);
             clearSelection();
             switchView('request');
-            supabaseFetch('v2_active_request','POST',insertPayloads).then(()=>{
+            supabaseFetch('v2_active_request','POST',insertPayloads, '', true).then(()=>{
                 showToast("Success","Request tickets cloned!",false);
                 sendEmailNotification('new_request', folderId, tempSelectedReqRep, cust, insertPayloads.length);
             }).catch(err=>showToast("Error","Network error.",true))
@@ -2724,7 +2732,7 @@
             renderDrive();
         }
 
-      function handleDriveSearch() {
+        function handleDriveSearch() {
             const term = document.getElementById('drive-search').value.toLowerCase();
             const clearBtn = document.getElementById('drive-search-clear');
             if(term.length > 0) {
@@ -2752,7 +2760,7 @@
                 return `<div class="px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap cursor-pointer transition-colors ${active ? 'bg-[#007a4d] text-white shadow-md' : 'bg-white border border-gray-300 text-gray-600'}" onclick="toggleDriveSeason('${s}')">${s}</div>` 
             }).join('');
             
-            let baseItems = fullInventory;
+           let baseItems = fullInventory;
             if(!driveSelectedSeasons.has('ALL')) { 
                 baseItems = baseItems.filter(i => { let s = String(i.SEASON || '').toUpperCase(); return driveSelectedSeasons.has(s); }); 
             }
@@ -3232,5 +3240,3 @@
     </script>
 </body>
 </html>
-
-
