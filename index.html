@@ -1896,12 +1896,29 @@ const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
                 detTabsContainer.querySelectorAll('.detail-tab').forEach(el => el.classList.add('hidden'));
             }
 
-            document.getElementById('dtab-overview').classList.remove('hidden');
+           document.getElementById('dtab-overview').classList.remove('hidden');
             if (sourceView === 'drive' || sourceView === 'av' || sourceView === 'low-stock') {
-                document.getElementById('dtab-season').classList.remove('hidden');
-                document.getElementById('dtab-location').classList.remove('hidden');
-                document.getElementById('dtab-request').classList.remove('hidden');
+                // All users get Notes & Actions (and Request)
                 document.getElementById('dtab-notes').classList.remove('hidden');
+                document.getElementById('dtab-request').classList.remove('hidden');
+                
+                // Determine if the current user is an Admin/Manager
+                let roleStr = String(currentRole).toUpperCase(); 
+                let userStr = String(currentUser).toLowerCase(); 
+                let isRep = roleStr.includes('REP'); 
+                let isCsr = roleStr.includes('CSR'); 
+                let isQc = roleStr.includes('QC'); 
+                let isDylan = userStr.includes('dylan'); 
+                let isAdmin = (!isRep && !isCsr && !isQc) || roleStr.includes('ADMIN') || roleStr.includes('MANAGER') || isDylan;
+
+                // If Admin, show Season OR Location based on the item's assignment
+                if (isAdmin) {
+                    if (activeItem.APP_TAB_ASSIGNMENT === 'season') {
+                        document.getElementById('dtab-season').classList.remove('hidden');
+                    } else if (activeItem.APP_TAB_ASSIGNMENT === 'location') {
+                        document.getElementById('dtab-location').classList.remove('hidden');
+                    }
+                }
             } else if (sourceView === 'tasks') {
                 let t = document.getElementById('dtab-' + activeTaskTab);
                 if(t) t.classList.remove('hidden');
