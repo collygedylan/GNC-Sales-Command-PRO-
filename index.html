@@ -399,15 +399,17 @@
                 <div id="view-detail" class="hidden">
                     <div class="back-btn" onclick="goBackFromDetail()"><i class="ph-bold ph-arrow-left"></i> Back</div>
                    <div class="mb-4">
+                       <div class="mb-2 mt-1">
                         <h1 id="det-common" class="text-2xl font-black text-[#007a4d] leading-none mb-1">--</h1>
                         <p id="det-size" class="text-[#007a4d] font-bold text-sm mb-2">--</p>
-                        <div id="det-extra-info" class="text-[13px] text-[#007a4d] font-bold space-y-1 border-b border-gray-200 pb-4 leading-relaxed"></div>
+                        <div id="det-extra-info" class="text-[13px] text-[#007a4d] font-bold space-y-1 pb-1"></div>
                     </div>
+
                     <div id="global-inputs-container" class="mb-4">
-                        <div id="global-av-container" class="relative w-full mb-3 hidden">
+                        <div id="global-av-container" class="relative w-full hidden">
                             <label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label>
                             <div class="flex gap-2 relative">
-                                <input type="text" id="global-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); filterAvNotes()" onfocus="filterAvNotes()" onblur="setTimeout(()=>{if(document.getElementById('global-av-dropdown-list'))document.getElementById('global-av-dropdown-list').classList.add('hidden'); saveData(false, 'global-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT...">
+                                <input type="text" id="global-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); filterAvNotes('global-')" onfocus="filterAvNotes('global-')" onblur="setTimeout(()=>{if(document.getElementById('global-av-dropdown-list'))document.getElementById('global-av-dropdown-list').classList.add('hidden'); saveData(false, 'global-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT...">
                             </div>
                             <div id="global-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div>
                         </div>
@@ -438,34 +440,31 @@
                             <div id="expand-content" class="expand-content"></div>
                         </div>
                     </div>
-                   <div id="det-season-content" class="hidden py-4">
-                        <div id="ssn-item-details" class="mb-4 bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-                            <div class="font-black text-xl text-gray-800 leading-tight mb-1" id="ssn-det-common">--</div>
-                            <div class="font-bold text-[#007a4d] text-sm mb-3" id="ssn-det-size">--</div>
-                            <div class="grid grid-cols-2 gap-2 text-[11px] font-bold text-gray-500 uppercase mb-3">
-                                <div><span class="block text-[8px] text-gray-400 mb-0.5">LOT CODE</span><span id="ssn-det-lot" class="text-gray-800">--</span></div>
-                                <div><span class="block text-[8px] text-gray-400 mb-0.5">LOCATION</span><span id="ssn-det-loc" class="text-gray-800">--</span></div>
-                            </div>
-                            <div class="flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-wider">
-                                <span class="bg-gray-100 text-gray-800 px-2 py-1 rounded border border-gray-200">PTR: <span id="ssn-det-ptr" class="font-black">0</span></span>
-                                <span class="bg-purple-50 text-purple-700 px-2 py-1 rounded border border-purple-200">s_LTS: <span id="ssn-det-slts" class="font-black">0</span></span>
-                                <span class="bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-200">Loc Match: <span id="ssn-det-match-qty" class="font-black">0</span></span>
-                            </div>
-                        </div>
-
+                  <div id="det-season-content" class="hidden py-2">
                         <div id="ssn-photo-preview" class="mb-4 hidden"><p class="text-[10px] font-bold text-blue-600 mb-2 uppercase">Photos on file</p><div id="ssn-photo-list-container" class="space-y-2"></div></div>
                         <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-ssn" class="bg-green-50 border-2 border-dashed border-green-500 text-green-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="handlePhotoUpload(this, 'ssn-')"></label></div>
                         
                         <div id="ssn-input-container">
                             <div class="mb-3"><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="ssn-spec" class="input-field !mb-0" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'ssn-', true)"></div>
-                            
                             <div id="ssn-container-caliper" class="mb-3 hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="ssn-caliper" class="input-field !mb-0" placeholder="e.g. 2 inch" onchange="saveData(false, 'ssn-', true)"></div>
+                            <div class="mb-3"><label class="text-[10px] font-bold text-gray-500 uppercase">Loc Match %</label><input type="number" id="ssn-match" class="input-field !mb-1" placeholder="e.g. 40" oninput="calculateMatchQty('ssn-')"><div id="ssn-match-display" class="text-[10px] font-bold text-[#007a4d] text-right hidden">LOC Match QTY: <span id="ssn-match-qty-val">0</span></div></div>
+                            <div class="relative w-full mt-2 mb-4"><label class="text-[10px] font-bold text-green-700 uppercase flex justify-between"><span>Sales Note</span></label><input type="text" id="ssn-sales-desc" class="input-field border-green-500 bg-green-50 uppercase flex-grow !mb-0" placeholder="Sales Note..." onchange="saveData(false, 'ssn-', true)"></div>
+                        </div>
+                        <div class="flex gap-2 mt-2"><button id="ssn-btn-save-complete" class="w-full bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform" onclick="saveData(true, 'ssn-')">MARK DONE</button></div>
+                    </div>
 
-                            <div class="relative w-full mb-3">
-                                <label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label>
-                                <div class="flex gap-2 relative"><input type="text" id="ssn-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); filterAvNotes('ssn-')" onfocus="filterAvNotes('ssn-')" onblur="setTimeout(()=>{if(document.getElementById('ssn-av-dropdown-list'))document.getElementById('ssn-av-dropdown-list').classList.add('hidden'); saveData(false, 'ssn-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT..."></div>
-                                <div id="ssn-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div>
-                            </div>
+                    <div id="det-location-content" class="hidden py-2">
+                        <div id="lsn-photo-preview" class="mb-4 hidden"><p class="text-[10px] font-bold text-blue-600 mb-2 uppercase">Photos on file</p><div id="lsn-photo-list-container" class="space-y-2"></div></div>
+                        <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-lsn" class="bg-green-50 border-2 border-dashed border-green-500 text-green-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="handlePhotoUpload(this, 'lsn-')"></label></div>
+                        
+                        <div id="lsn-input-container">
+                            <div class="mb-3"><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="lsn-spec" class="input-field !mb-0" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'lsn-', true)"></div>
+                            <div id="lsn-container-caliper" class="mb-3 hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="lsn-caliper" class="input-field !mb-0" placeholder="e.g. 2 inch" onchange="saveData(false, 'lsn-', true)"></div>
+                            <div class="mb-3"><label class="text-[10px] font-bold text-gray-500 uppercase">Loc Match %</label><input type="number" id="lsn-match" class="input-field !mb-1" placeholder="e.g. 95" oninput="calculateMatchQty('lsn-')"><div id="lsn-match-display" class="text-[10px] font-bold text-[#007a4d] text-right hidden">LOC Match QTY: <span id="lsn-match-qty-val">0</span></div></div>
+                            <div class="relative w-full mt-2 mb-4"><label class="text-[10px] font-bold text-green-700 uppercase flex justify-between"><span>Sales Note</span></label><input type="text" id="lsn-sales-desc" class="input-field border-green-500 bg-green-50 uppercase flex-grow !mb-0" placeholder="Sales Note..." onchange="saveData(false, 'lsn-', true)"></div>
+                        </div>
+                        <div class="flex gap-2 mt-2"><button id="lsn-btn-save-complete" class="w-full bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform" onclick="saveData(true, 'lsn-')">MARK DONE</button></div>
+                    </div>
 
                             <div class="mb-3"><label class="text-[10px] font-bold text-gray-500 uppercase">Loc Match %</label><input type="number" id="ssn-match" class="input-field !mb-1" placeholder="e.g. 40" oninput="calculateMatchQty('ssn-')"><div id="ssn-match-display" class="text-[10px] font-bold text-[#007a4d] text-right hidden">LOC Match QTY: <span id="ssn-match-qty-val">0</span></div></div>
 
@@ -1868,7 +1867,7 @@ const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
 
            document.getElementById('det-common').innerText = activeItem.COMMONNAME || '--';
             document.getElementById('det-size').innerText = activeItem.CONTSIZE || '--';
-            document.getElementById('det-extra-info').innerHTML = `Loc: ${activeItem.LOCATIONCODE||'No Loc'} &bull; Lot: ${activeItem.LOTCODE||'--'} &bull; PTR: ${activeItem.PTRAVAILABLE||0} &bull; s_LTS: ${activeItem.S_LTS||0} &bull; Match Qty: ${activeItem.LOC_MATCH_QTY||0}`;
+           document.getElementById('det-extra-info').innerHTML = `Loc: ${activeItem.LOCATIONCODE||'No Loc'} &bull; Lot: ${activeItem.LOTCODE||'--'} &bull; PTR: ${activeItem.PTRAVAILABLE||0} &bull; s_LTS: ${activeItem.S_LTS||0} &bull; Match Qty: ${activeItem.LOC_MATCH_QTY||0}`;
             document.getElementById('ov-loc').innerText = activeItem.LOCATIONCODE || '--';
             document.getElementById('ov-avail').innerText = activeItem.PTRAVAILABLE || '0';
             document.getElementById('ov-item').innerText = activeItem.ITEMCODE || '--';
