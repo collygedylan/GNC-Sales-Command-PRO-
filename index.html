@@ -218,8 +218,13 @@
             <div class="drawer-item text-red-600 bg-red-50 font-bold justify-center rounded-lg mx-4 mt-2 mb-8" onclick="performLogout()"><i class="ph-bold ph-sign-out text-xl"></i> Log Out</div>
         </div>
         
-        <div id="main-scroll-area" class="flex-grow overflow-y-auto p-4 pb-40 relative">
-            <div id="view-wrapper" style="position:relative; z-index:20;">
+       <div id="main-scroll-area" class="flex-grow overflow-y-auto p-4 pb-40 relative">
+            <div id="ptr-indicator" class="absolute w-full flex justify-center left-0 -top-12 z-[15]" style="transition: transform 0.3s ease;">
+                <div class="bg-white rounded-full p-2 shadow-md flex items-center justify-center border border-gray-100">
+                    <i id="ptr-icon" class="ph-bold ph-arrow-down text-[#007a4d] text-xl"></i>
+                </div>
+            </div>
+            <div id="view-wrapper" style="position:relative; z-index:20; transition: transform 0.3s ease;">
                 <div id="view-home" class="hidden">
                     <div class="bg-[#007a4d] text-white p-6 rounded-2xl mb-6 shadow-lg flex flex-col items-center text-center relative overflow-hidden">
                         <div class="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-white opacity-5 rounded-full pointer-events-none"></div>
@@ -440,9 +445,17 @@
                             <div id="expand-content" class="expand-content"></div>
                         </div>
                     </div>
-                  <div id="det-season-content" class="hidden py-2">
-                        <div id="ssn-photo-preview" class="mb-4 hidden"><p class="text-[10px] font-bold text-blue-600 mb-2 uppercase">Photos on file</p><div id="ssn-photo-list-container" class="space-y-2"></div></div>
-                        <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-ssn" class="bg-green-50 border-2 border-dashed border-green-500 text-green-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="handlePhotoUpload(this, 'ssn-')"></label></div>
+                 <div id="det-location-content" class="hidden py-2">
+                        <div id="lsn-photo-preview" class="mb-4 hidden"><p class="text-[10px] font-bold text-blue-600 mb-2 uppercase">Photos on file</p><div id="lsn-photo-list-container" class="space-y-2"></div></div>
+                        <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-lsn" class="bg-green-50 border-2 border-dashed border-green-500 text-green-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="handlePhotoUpload(this, 'lsn-')"></label></div>
+                        
+                        <div id="lsn-input-container">
+                            <div class="mb-3"><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="lsn-spec" class="input-field !mb-0" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'lsn-', true)"></div>
+                            <div id="lsn-container-caliper" class="mb-3 hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="lsn-caliper" class="input-field !mb-0" placeholder="e.g. 2 inch" onchange="saveData(false, 'lsn-', true)"></div>
+                            <div class="mb-3"><label class="text-[10px] font-bold text-gray-500 uppercase">Loc Match %</label><input type="number" id="lsn-match" class="input-field !mb-1" placeholder="e.g. 95" oninput="calculateMatchQty('lsn-')"><div id="lsn-match-display" class="text-[10px] font-bold text-[#007a4d] text-right hidden">LOC Match QTY: <span id="lsn-match-qty-val">0</span></div></div>
+                        </div>
+                        <div class="flex gap-2 mt-4"><button id="lsn-btn-save-complete" class="w-full bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform" onclick="saveData(true, 'lsn-')">COMPLETE</button></div>
+                    </div>
                         
                         <div id="ssn-input-container">
                             <div class="mb-3"><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="ssn-spec" class="input-field !mb-0" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'ssn-', true)"></div>
@@ -3038,10 +3051,6 @@ const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
                     let descEl = document.getElementById(prefix + 'sales-desc');
                     if (descEl) { let textBoxVal = descEl.value.toUpperCase(); itemToSave.SALES_NOTE = textBoxVal; if (lastView === 'tasks') itemToSave._NEW_SALES_NOTE = textBoxVal; }
 
-                    if (isComplete && isCurrentView && itemToSave.APP_TAB_ASSIGNMENT === 'season') {
-                        const noteVal = (itemToSave.SALES_NOTE || "").trim();
-                        if (!noteVal) { showToast("Required", "A Sales Description is required to complete this Season task.", true); if (btnComp) btnComp.innerText = "MARK DONE"; return; }
-                    }
 
                     if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-') { 
                         let matchEl = document.getElementById(prefix + 'match'); if(matchEl) itemToSave.MATCH = matchEl.value; 
@@ -3118,7 +3127,7 @@ const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
                 const targetTable = (prefix === 'req-') ? 'v2_active_request' : (itemToSave.SOURCE_TABLE || 'v2_master_inventory');
 
                 supabaseFetch(targetTable, 'PATCH', payload, `unique_id=eq.${encodeURIComponent(itemToSave.UNIQUE_ID)}`).then(data => {
-                    if (isCurrentView && isComplete) { if(btnComp) btnComp.innerText = "MARK DONE"; }
+                    if (isCurrentView && isComplete) { if(btnComp) btnComp.innerText ="COMPLETE"; }
                     if (!isSilentAutoSave && isCurrentView && isComplete) showToast("Success", "Task Completed!"); 
                     if (isComplete && isCurrentView) { 
                         itemToSave.DATE_COMPLETED = payload.date_completed; 
@@ -3133,7 +3142,7 @@ const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
                         let allComplete = folderItems.every(i => i.REQ_STATUS === 'Complete' || i.UNIQUE_ID === itemToSave.UNIQUE_ID);
                         if (allComplete) { sendEmailNotification('request_complete', itemToSave.REQUEST_FOLDER, itemToSave.REQUESTED_BY, itemToSave.REQ_CUSTOMER, folderItems.length); }
                     }
-                }).catch(err => { if (isCurrentView && isComplete) { if(btnComp) btnComp.innerText = "MARK DONE"; if (!isSilentAutoSave) showToast("Network Error", "Could not reach database.", true); } });
+                }).catch(err => { if (isCurrentView && isComplete) { if(btnComp) btnComp.innerText = "COMPLETE"; if (!isSilentAutoSave) showToast("Network Error", "Could not reach database.", true); } });
             };
             if (isSilentAutoSave && !isComplete && !specificItem) { autoSaveTimer = setTimeout(() => { executeSave(); }, 1000); } else { executeSave(); }
         }
