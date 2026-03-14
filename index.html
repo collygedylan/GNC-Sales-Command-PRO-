@@ -26,8 +26,9 @@
             <div id="photo-modal-caption" class="text-white font-bold text-sm leading-tight drop-shadow-md pr-4 uppercase tracking-wide pointer-events-auto"></div>
             <i class="ph-bold ph-x text-white text-3xl cursor-pointer bg-black/50 p-2 rounded-full active:scale-95 pointer-events-auto" onclick="closePhotoModal()"></i>
         </div>
-        <div id="photo-modal-gallery" class="flex overflow-x-auto snap-x snap-mandatory w-full max-h-[85vh] items-center space-x-4 pb-4 scrollbar-none mt-10"></div>
-        <div id="photo-swipe-hint" class="absolute bottom-10 text-white text-xs font-bold uppercase tracking-widest opacity-50 hidden pointer-events-none"><i class="ph-bold ph-arrows-left-right mr-1 text-lg align-middle"></i> Swipe for more</div>
+      <div id="photo-modal-gallery" class="flex overflow-x-auto snap-x snap-mandatory w-full max-h-[85vh] items-center space-x-4 pb-4 scrollbar-none mt-10"></div>
+        <div id="photo-swipe-hint" class="absolute bottom-14 text-white text-xs font-bold uppercase tracking-widest opacity-50 hidden pointer-events-none"><i class="ph-bold ph-arrows-left-right mr-1 text-lg align-middle"></i> Swipe for more</div>
+        <div id="photo-counter" class="absolute bottom-5 left-1/2 -translate-x-1/2 bg-black/60 text-white text-[11px] font-bold px-3 py-1.5 rounded-full tracking-widest pointer-events-none hidden"></div>
     </div>
     <div id="view-login">
         <div class="login-card">
@@ -747,35 +748,52 @@ const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
 
       function openPhotoModal(urlStr, caption) { 
             const gallery = document.getElementById('photo-modal-gallery');
+            const counter = document.getElementById('photo-counter');
+            const swipeHint = document.getElementById('photo-swipe-hint');
             gallery.innerHTML = '';
             
-            // Apply strict snap container settings, removing spaces to ensure a perfect 100% width snap
             gallery.className = "flex overflow-x-auto snap-x snap-mandatory w-full max-h-[85vh] items-center scrollbar-none mt-10";
             gallery.style.scrollBehavior = "smooth";
 
             let urls = String(urlStr).split(',');
+            let validUrls = [];
             
+            // First, filter out any blank links so our count is accurate
             urls.forEach(u => {
                 let cleanUrl = u.trim();
                 let match = cleanUrl.match(/(https?:\/\/[^"\s>]+)/);
                 if(match) cleanUrl = match[1];
                 if(cleanUrl.startsWith('http')) {
-                    let fullUrl = cleanUrl.replace('&sz=w100', ''); 
-                    // Wrap the image to force it into a 100% screen-width "sticky" frame
-                    gallery.innerHTML += `
-                        <div class="snap-center w-full flex-shrink-0 flex justify-center items-center px-4" style="scroll-snap-stop: always;">
-                            <img src="${fullUrl}" class="max-w-full max-h-[80vh] object-contain rounded-xl shadow-2xl">
-                        </div>`;
+                    validUrls.push(cleanUrl.replace('&sz=w100', ''));
                 }
+            });
+
+            // Add images to the gallery
+            validUrls.forEach(fullUrl => {
+                gallery.innerHTML += `
+                    <div class="snap-center w-full flex-shrink-0 flex justify-center items-center px-4" style="scroll-snap-stop: always;">
+                        <img src="${fullUrl}" class="max-w-full max-h-[80vh] object-contain rounded-xl shadow-2xl">
+                    </div>`;
             });
 
             document.getElementById('photo-modal-caption').innerText = caption; 
             document.getElementById('photo-modal').classList.remove('hidden');
             
-            if(urls.length > 1) {
-                document.getElementById('photo-swipe-hint').classList.remove('hidden');
+            // If there's more than one valid photo, set up the counter and swipe tracking
+            if(validUrls.length > 1) {
+                swipeHint.classList.remove('hidden');
+                counter.classList.remove('hidden');
+                counter.innerText = `1 OF ${validUrls.length}`;
+                
+                // Track the scroll to update the counter in real-time
+                gallery.onscroll = () => {
+                    let currentIndex = Math.round(gallery.scrollLeft / gallery.clientWidth) + 1;
+                    counter.innerText = `${currentIndex} OF ${validUrls.length}`;
+                };
             } else {
-                document.getElementById('photo-swipe-hint').classList.add('hidden');
+                swipeHint.classList.add('hidden');
+                counter.classList.add('hidden');
+                gallery.onscroll = null; // Turn off scroll tracking if only 1 image
             }
             
             // Reset to the first photo instantly when opened
