@@ -398,10 +398,10 @@
                 
                 <div id="view-detail" class="hidden">
                     <div class="back-btn" onclick="goBackFromDetail()"><i class="ph-bold ph-arrow-left"></i> Back</div>
-                    <div class="mb-4">
+                   <div class="mb-4">
                         <h1 id="det-common" class="text-2xl font-black text-[#007a4d] leading-none mb-1">--</h1>
-                        <p id="det-size" class="text-gray-600 font-bold text-sm mb-3">--</p>
-                        <div id="det-extra-info" class="text-[13px] text-gray-700 font-medium space-y-1 border-b border-gray-200 pb-4"></div>
+                        <p id="det-size" class="text-[#007a4d] font-bold text-sm mb-2">--</p>
+                        <div id="det-extra-info" class="text-[13px] text-[#007a4d] font-bold space-y-1 border-b border-gray-200 pb-4 leading-relaxed"></div>
                     </div>
                     <div id="global-inputs-container" class="mb-4">
                         <div id="global-av-container" class="relative w-full mb-3 hidden">
@@ -1866,10 +1866,9 @@ const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
             });
             document.getElementById('view-detail').classList.remove('hidden');
 
-            document.getElementById('det-common').innerText = activeItem.COMMONNAME || '--';
+           document.getElementById('det-common').innerText = activeItem.COMMONNAME || '--';
             document.getElementById('det-size').innerText = activeItem.CONTSIZE || '--';
-            document.getElementById('det-extra-info').innerHTML = `Loc: ${activeItem.LOCATIONCODE||'No Loc'} &bull; PTR: ${activeItem.PTRAVAILABLE||0} &bull; s_LTS: ${activeItem.S_LTS||0}`;
-
+            document.getElementById('det-extra-info').innerHTML = `Loc: ${activeItem.LOCATIONCODE||'No Loc'} &bull; Lot: ${activeItem.LOTCODE||'--'} &bull; PTR: ${activeItem.PTRAVAILABLE||0} &bull; s_LTS: ${activeItem.S_LTS||0} &bull; Match Qty: ${activeItem.LOC_MATCH_QTY||0}`;
             document.getElementById('ov-loc').innerText = activeItem.LOCATIONCODE || '--';
             document.getElementById('ov-avail').innerText = activeItem.PTRAVAILABLE || '0';
             document.getElementById('ov-item').innerText = activeItem.ITEMCODE || '--';
@@ -1941,30 +1940,6 @@ const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
                 }
                 if(match) calculateMatchQty(p);
             });
-
-           // Fill data into the new specific Season Sales Note details header
-            const ssnCommon = document.getElementById('ssn-det-common');
-            if (ssnCommon) {
-                ssnCommon.innerText = activeItem.COMMONNAME || '--';
-                document.getElementById('ssn-det-size').innerText = activeItem.CONTSIZE || '--';
-                document.getElementById('ssn-det-lot').innerText = activeItem.LOTCODE || '--';
-                document.getElementById('ssn-det-loc').innerText = activeItem.LOCATIONCODE || '--';
-                document.getElementById('ssn-det-ptr').innerText = activeItem.PTRAVAILABLE || '0';
-                document.getElementById('ssn-det-slts').innerText = activeItem.S_LTS || '0';
-                document.getElementById('ssn-det-match-qty').innerText = activeItem.LOC_MATCH_QTY || '0';
-            }
-
-            // Fill data into the new specific Location Sales Note details header
-            const lsnCommon = document.getElementById('lsn-det-common');
-            if (lsnCommon) {
-                lsnCommon.innerText = activeItem.COMMONNAME || '--';
-                document.getElementById('lsn-det-size').innerText = activeItem.CONTSIZE || '--';
-                document.getElementById('lsn-det-lot').innerText = activeItem.LOTCODE || '--';
-                document.getElementById('lsn-det-loc').innerText = activeItem.LOCATIONCODE || '--';
-                document.getElementById('lsn-det-ptr').innerText = activeItem.PTRAVAILABLE || '0';
-                document.getElementById('lsn-det-slts').innerText = activeItem.S_LTS || '0';
-                document.getElementById('lsn-det-match-qty').innerText = activeItem.LOC_MATCH_QTY || '0';
-            }
 
             renderSavedPhotos();
             if (sourceView === 'tasks' && activeTaskTab) {
