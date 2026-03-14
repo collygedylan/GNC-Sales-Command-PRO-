@@ -1,3 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+    <title>GNC Park Hill</title>
+    <meta name="theme-color" content="#007a4d">
+    <link rel="manifest" href="manifest.json">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="GNC Park Hill">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>:root{--bg:#007a4d;--tx:#111827}body{font-family:"Amazon Ember",Arial,sans-serif;background:white;color:var(--tx);user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior-y:contain}.nav-header{background:var(--bg);color:white;padding-top:max(10px,env(safe-area-inset-top))}#view-login,#view-change-password{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px}#view-change-password{display:none;z-index:10000}.login-card{background:white;padding:30px;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,.2);width:100%;max-width:360px;text-align:center}.input-field{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:8px;font-size:15px;margin-bottom:12px}#toast-notification{position:fixed;top:-100px;left:50%;transform:translateX(-50%);background:#16a34a;color:white;padding:16px 24px;border-radius:50px;box-shadow:0 10px 15px -3px rgba(0,0,0,.3);z-index:11000;transition:top .5s;display:flex;align-items:center;gap:12px;pointer-events:none}#toast-notification.show{top:20px}#side-drawer{position:fixed;top:0;left:-280px;width:280px;height:100%;background:white;z-index:2000;box-shadow:2px 0 10px rgba(0,0,0,.2);transition:left .3s;overflow-y:auto;padding-bottom:100px}#side-drawer.open{left:0}#drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1999;display:none}#drawer-overlay.open{display:block}.drawer-header{background:var(--bg);color:white;padding:20px;font-weight:bold;font-size:18px}.drawer-item{padding:16px 20px;border-bottom:1px solid #f3f4f6;cursor:pointer;display:flex;align-items:center;gap:12px;color:#374151;font-weight:500}.drill-item{border-bottom:1px solid #e5e7eb;padding:16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:white;transition:background .1s}.drill-item:active{background:#f3f4f6}.back-btn{display:flex;align-items:center;gap:5px;color:#6b7280;font-size:14px;font-weight:600;margin-bottom:20px;cursor:pointer;padding:10px 0}.inv-card{border:1px solid #e5e7eb;border-left-width:6px;border-radius:8px;padding:12px;background:white;cursor:pointer;flex-grow:1}.status-green{border-left-color:#22c55e}.status-purple{border-left-color:#9333ea}.status-orange{border-left-color:#f97316}.status-blue{border-left-color:#3b82f6}.status-indigo{border-left-color:#4f46e5}.status-teal{border-left-color:#0d9488}.status-yellow{border-left-color:#eab308}.status-red{border-left-color:#ef4444}.task-tabs,.detail-tabs{display:flex;border-bottom:1px solid #e5e7eb;background:#f9fafb;margin-bottom:10px}.detail-tabs{overflow-x:auto;scrollbar-width:none}.detail-tabs::-webkit-scrollbar{display:none}.task-tab,.detail-tab{flex:1;text-align:center;padding:12px;font-size:11px;font-weight:700;color:#6b7280;cursor:pointer;border-bottom:3px solid transparent;text-transform:uppercase}.detail-tab{flex:0 0 auto;padding:10px 16px}.task-tab.active,.detail-tab.active{color:var(--bg);border-bottom-color:var(--bg);background:white}.overview-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}.overview-card{background:#f8fafc;padding:10px;border-radius:6px;border:1px solid #e2e8f0}.overview-label{font-size:9px;font-weight:800;color:#64748b;text-transform:uppercase;margin-bottom:2px}.overview-val{font-size:13px;font-weight:600;color:#0f172a;word-break:break-all}.expand-trigger{display:flex;align-items:center;justify-content:space-between;padding:12px;background:#f9fafb;border-radius:6px;cursor:pointer;font-weight:600;font-size:14px;border:1px solid #e5e7eb}.expand-content{display:none;margin-top:12px;padding:12px;background:#f9fafb;border-radius:6px;border:1px solid #e5e7eb}.expanded .expand-content{display:block}.card-checkbox-container{width:0;overflow:hidden;opacity:0;transition:width .3s,opacity .3s,margin .3s}body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-right:12px}.item-row{touch-action:manipulation}.spinner{border:4px solid rgba(255,255,255,.3);border-top:4px solid white;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:0 auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.scrollbar-none::-webkit-scrollbar{display:none}.scrollbar-none{-ms-overflow-style:none;scrollbar-width:none}
+    .animate-fade-in-up { animation: fadeInUp 0.3s ease-out forwards; }
+    @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="bg-gray-50 h-screen overflow-hidden">
+    <div id="top-loading-bar-container" class="hidden fixed top-0 left-0 w-full h-1 z-[99999] pointer-events-none"><div id="top-loading-bar" class="h-full bg-[#22c55e] w-0 transition-all duration-300 ease-out shadow-[0_0_10px_#22c55e]"></div></div>
+    <div id="toast-notification"></div>
+    <div id="photo-modal" class="hidden fixed inset-0 bg-black bg-opacity-95 z-[15000] flex flex-col items-center justify-center p-4">
+        <div class="absolute top-0 left-0 w-full p-6 flex justify-between items-start bg-gradient-to-b from-black/80 to-transparent z-50 pointer-events-none">
+            <div id="photo-modal-caption" class="text-white font-bold text-sm leading-tight drop-shadow-md pr-4 uppercase tracking-wide pointer-events-auto"></div>
+            <i class="ph-bold ph-x text-white text-3xl cursor-pointer bg-black/50 p-2 rounded-full active:scale-95 pointer-events-auto" onclick="closePhotoModal()"></i>
+        </div>
+        <div id="photo-modal-gallery" class="flex overflow-x-auto snap-x snap-mandatory w-full max-h-[85vh] items-center space-x-4 pb-4 scrollbar-none mt-10"></div>
+        <div id="photo-swipe-hint" class="absolute bottom-10 text-white text-xs font-bold uppercase tracking-widest opacity-50 hidden pointer-events-none"><i class="ph-bold ph-arrows-left-right mr-1 text-lg align-middle"></i> Swipe for more</div>
+    </div>
+    <div id="view-login">
+        <div class="login-card">
+            <div class="flex flex-col items-center mb-8 w-full relative">
+                <div class="text-3xl text-[#007a4d] font-black tracking-tighter mb-1">GNC Park Hill</div>
+                <div class="flex flex-col items-center gap-0.5 mt-5">
+                    <span class="text-[9px] font-bold text-gray-400 uppercase tracking-[0.3em]">Powered By</span>
+                    <span class="text-[17px] font-black text-gray-800 tracking-[0.2em] uppercase border-b-[3px] border-[#007a4d] pb-0.5">Ag Metric</span>
+                </div>
+            </div>
+            <div id="login-inputs">
+                <input type="text" id="username-input" class="input-field mb-4 text-center border-2" placeholder="USERNAME">
+                <input type="password" id="pin-code" class="input-field mb-4 text-center border-2 tracking-widest" placeholder="PASSWORD">
+                <button class="w-full bg-[#007a4d] text-white font-bold py-3 rounded-lg shadow-md" onclick="handleLogin()">LOGIN</button>
+                <button id="btn-fingerprint" class="hidden w-full bg-gray-50 text-[#007a4d] border-2 border-[#007a4d] font-bold py-3 rounded-lg shadow-md mt-4 flex items-center justify-center gap-2" onclick="loginWithBiometric()"><i class="ph-bold ph-fingerprint text-2xl"></i> LOGIN WITH FINGERPRINT</button>
+            </div>
+            <div id="loading-spinner" class="hidden mt-6 flex flex-col items-center"><div class="spinner"></div><div id="loading-text" class="text-white font-bold text-sm mt-3 text-center">Syncing Database...</div></div>
+        </div>
+    </div>
+    <div id="view-change-password">
+        <div class="login-card">
+            <h2 class="text-2xl font-black text-[#007a4d] mb-2">Change Password</h2>
+            <p class="text-xs text-gray-500 font-bold mb-6">Set a new password for your account to continue.</p>
+            <input type="password" id="new-password" class="input-field mb-3 text-center border-2 tracking-widest" placeholder="NEW PASSWORD">
+            <input type="password" id="confirm-password" class="input-field mb-6 text-center border-2 tracking-widest" placeholder="CONFIRM PASSWORD">
+            <button class="w-full bg-[#007a4d] text-white font-bold py-3 rounded-lg shadow-md active:scale-95" onclick="submitNewPassword()">SAVE & CONTINUE</button>
+        </div>
+    </div>
+    <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
+            <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
+            <div class="grid grid-cols-1 gap-3 mb-4">
+                <button class="bg-green-50 text-green-700 font-bold p-4 rounded-lg border border-green-200 shadow-sm" onclick="processTabSelection('notes')">NOTES & ACTIONS</button>
+                <button class="bg-purple-50 text-purple-700 font-bold p-4 rounded-lg border border-purple-200 shadow-sm" onclick="processTabSelection('request')">REQUEST DATA</button>
+            </div>
+            <button class="text-gray-500 font-bold py-2 px-4" onclick="document.getElementById('tab-select-modal').classList.add('hidden')">Cancel</button>
+        </div>
+    </div>
+    <div id="assign-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
+            <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Assign Selected To:</h3>
+            <div class="grid grid-cols-1 gap-3 mb-4">
+                <button class="bg-blue-50 text-blue-700 font-bold p-4 rounded-lg border border-blue-200 shadow-sm" onclick="confirmAssign('Dylan')">Dylan</button>
+                <button class="bg-blue-50 text-blue-700 font-bold p-4 rounded-lg border border-blue-200 shadow-sm" onclick="confirmAssign('Kayla')">Kayla</button>
+                <button class="bg-blue-50 text-blue-700 font-bold p-4 rounded-lg border border-blue-200 shadow-sm" onclick="confirmAssign('Morgan')">Morgan</button>
+            </div>
+            <button class="text-gray-500 font-bold py-2 px-4" onclick="closeAssignModal()">Cancel</button>
+        </div>
+    </div>
+    <div id="endcap-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center flex flex-col max-h-[90vh]">
+            <div id="ec-step-1" class="flex flex-col">
+                <h3 class="font-bold text-lg mb-2 text-yellow-600">Create End Cap Folder</h3>
+                <input type="text" id="ec-folder-input" class="input-field mb-4 border-yellow-200 focus:border-yellow-500" placeholder="e.g. Front Entrance">
+                <button class="w-full bg-yellow-500 text-white font-bold p-4 rounded-xl shadow-lg mt-auto" onclick="processECStep1()">NEXT: ITEM DETAILS</button>
+            </div>
+            <div id="ec-step-2" class="hidden flex flex-col text-left h-full">
+                <div class="flex items-center mb-4 border-b border-gray-100 pb-2">
+                    <i class="ph-bold ph-arrow-left text-gray-400 text-2xl mr-2 cursor-pointer p-1" onclick="document.getElementById('ec-step-2').classList.add('hidden'); document.getElementById('ec-step-1').classList.remove('hidden');"></i>
+                    <h3 class="font-bold text-lg text-yellow-600">End Cap Details</h3>
+                </div>
+                <div id="ec-list-container" class="flex flex-col gap-3 overflow-y-auto max-h-[50vh] mb-4 p-1"></div>
+                <button class="w-full bg-yellow-500 text-white font-bold p-4 rounded-xl shadow-lg mt-auto" onclick="submitEndCap()">CREATE END CAP</button>
+            </div>
+            <button class="text-gray-500 font-bold py-2 px-4 mt-2" onclick="document.getElementById('endcap-modal').classList.add('hidden')">Cancel</button>
+        </div>
+    </div>
+    <div id="dock-mistake-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
+            <h3 class="font-black text-2xl mb-2 text-red-600">Report Mistake</h3>
+            <input type="hidden" id="dock-mistake-uid">
+            <textarea id="dock-mistake-text" class="input-field border-red-200 focus:border-red-500 h-24 text-left resize-none" placeholder="E.g. Missing 3 plants..."></textarea>
+            <div class="flex gap-2 mt-2">
+                <button class="w-1/3 bg-gray-100 text-gray-600 font-bold p-3 rounded-lg shadow-sm active:scale-95" onclick="document.getElementById('dock-mistake-modal').classList.add('hidden')">CANCEL</button>
+                <button class="w-2/3 bg-red-600 text-white font-bold p-3 rounded-lg shadow-md active:scale-95" onclick="submitDockItemMistake()">SAVE NOTE</button>
+            </div>
+        </div>
+    </div>
+    <div id="dock-info-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center relative overflow-hidden">
+            <h3 class="font-black text-2xl mb-2 text-[#007a4d]">DOCK <span id="modal-dock-num"></span></h3>
+            <p class="text-[10px] text-gray-500 font-bold mb-4 uppercase tracking-wider">Set Dock Team & Status</p>
+            <div class="text-left mb-3">
+                <label class="text-[10px] font-bold text-gray-500 uppercase ml-1">Checker</label>
+                <select id="dock-checker" class="input-field border-green-200 focus:border-[#007a4d] !mb-0 bg-white"></select>
+            </div>
+            <div class="text-left mb-3">
+                <label class="text-[10px] font-bold text-gray-500 uppercase ml-1">Inspector</label>
+                <select id="dock-inspector" class="input-field border-green-200 focus:border-[#007a4d] !mb-0 bg-white"></select>
+            </div>
+            <div class="text-left mb-4">
+                <label class="text-[10px] font-bold text-gray-500 uppercase ml-1">Mistake Guy</label>
+                <select id="dock-mistake" class="input-field border-green-200 focus:border-[#007a4d] !mb-0 bg-white"></select>
+            </div>
+            <div class="text-left mb-6">
+                <label class="text-[10px] font-bold text-gray-500 uppercase ml-1">Dock Status</label>
+                <select id="dock-status" class="input-field border-green-200 focus:border-[#007a4d] font-bold text-[#007a4d] bg-green-50 !mb-0">
+                    <option value="Loading">Loading</option>
+                    <option value="Missing > 10">Missing more than 10</option>
+                    <option value="Missing < 5">Missing less than 5</option>
+                    <option value="Palletize">Palletize</option>
+                </select>
+            </div>
+            <div class="flex gap-2">
+                <button class="w-1/3 bg-gray-100 text-gray-600 font-bold p-3 rounded-lg shadow-sm active:scale-95" onclick="document.getElementById('dock-info-modal').classList.add('hidden')">CANCEL</button>
+                <button class="w-2/3 bg-[#007a4d] text-white font-bold p-3 rounded-lg shadow-md active:scale-95" onclick="saveDockInfoModal()">SAVE & CONTINUE</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="new-chat-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
+            <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Start Conversation</h3>
+            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 text-left ml-1">Select Team Member</p>
+            <select id="new-chat-user" class="input-field mb-6 border-green-200 focus:border-[#007a4d] bg-white"></select>
+            <div class="flex gap-2 mt-2">
+                <button class="w-1/3 bg-gray-100 text-gray-600 font-bold p-3 rounded-lg shadow-sm active:scale-95" onclick="document.getElementById('new-chat-modal').classList.add('hidden')">Cancel</button>
+                <button class="w-2/3 bg-[#007a4d] text-white font-bold p-3 rounded-lg shadow-md active:scale-95" onclick="startNewChat()">Start Chat</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="request-rep-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center flex flex-col max-h-[90vh]">
+            <div id="step-1-rep" class="flex flex-col">
+                <h3 class="font-bold text-lg mb-2 text-orange-600">Who requested this?</h3>
+                <input type="text" id="rep-search-input" class="input-field mb-3 border-orange-200 focus:border-orange-500" placeholder="Search name..." oninput="debouncedFilterRepList()">
+                <div id="rep-list-container" class="grid grid-cols-1 gap-2 mb-4 max-h-[40vh] overflow-y-auto px-2 py-1"></div>
+                <button id="custom-rep-btn" class="hidden w-full bg-orange-600 text-white font-bold p-3 rounded-lg mb-4 shadow-sm" onclick="selectRepForRequest(document.getElementById('rep-search-input').value.trim())">Assign to: <span></span></button>
+            </div>
+            <div id="step-1.5-folder" class="hidden flex flex-col text-left">
+                <div id="existing-folder-container"></div>
+            </div>
+            <div id="step-2-cust" class="hidden flex flex-col text-left">
+                <div class="flex items-center mb-4 border-b border-gray-100 pb-2">
+                    <i class="ph-bold ph-arrow-left text-gray-400 text-2xl mr-2 cursor-pointer p-1" onclick="document.getElementById('step-2-cust').classList.add('hidden'); document.getElementById('step-1-rep').classList.remove('hidden');"></i>
+                    <h3 class="font-bold text-lg text-orange-600">Customer</h3>
+                </div>
+                <label class="text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Customer / Consignee</label>
+                <input type="text" id="cust-search-input" class="input-field mb-2 border-orange-200" placeholder="Search customer..." oninput="debouncedPopulateCustomerList()">
+                <div id="cust-list-container" class="grid grid-cols-1 gap-2 mb-6 max-h-[30vh] overflow-y-auto px-1 py-1"></div>
+                <button class="w-full bg-orange-600 text-white font-bold p-4 rounded-xl shadow-lg mt-auto" onclick="processCustStep()">NEXT: ITEM DETAILS</button>
+            </div>
+            <div id="step-3-qty" class="hidden flex flex-col text-left h-full">
+                <div class="flex items-center mb-4 border-b border-gray-100 pb-2">
+                    <i class="ph-bold ph-arrow-left text-gray-400 text-2xl mr-2 cursor-pointer p-1" onclick="goBackFromQty()"></i>
+                    <h3 class="font-bold text-lg text-orange-600">Request Details</h3>
+                </div>
+                <div id="qty-list-container" class="flex flex-col gap-3 overflow-y-auto max-h-[50vh] mb-4 p-1"></div>
+                <button class="w-full bg-[#007a4d] text-white font-bold p-4 rounded-xl shadow-lg mt-auto" onclick="submitRequestWithQtys()">SUBMIT REQUEST</button>
+            </div>
+            <button class="text-gray-500 font-bold py-2 px-4 mt-2" onclick="document.getElementById('request-rep-modal').classList.add('hidden')">Cancel</button>
+        </div>
+    </div>
+    
+    <div id="app-wrapper" class="hidden h-full flex flex-col">
+        <header class="nav-header sticky top-0 z-50 p-4 flex justify-between items-center shadow-md">
+            <div class="flex items-center gap-3">
+                <i class="ph-bold ph-list menu-btn text-2xl cursor-pointer" onclick="toggleMenu()"></i>
+                <div class="flex flex-col">
+                    <div class="font-bold text-lg leading-tight"><span id="header-user">User</span></div>
+                    <div class="text-[10px] opacity-80 leading-tight">GNC Park Hill</div>
+                </div>
+            </div>
+            <div class="bg-white/20 p-2 rounded-lg cursor-pointer" onclick="fetchBackgroundData()"><i class="ph-bold ph-arrows-clockwise text-white"></i></div>
+        </header>
+        
+        <div id="drawer-overlay" onclick="toggleMenu()"></div>
+        <div id="side-drawer">
+            <div class="drawer-header">Menu</div>
+            <div class="drawer-item" onclick="switchView('home'); toggleMenu();"><i class="ph-bold ph-house"></i> Home</div>
+            <div class="drawer-item text-green-600 font-bold" onclick="fetchBackgroundData(); toggleMenu();"><i class="ph-bold ph-arrows-clockwise"></i> Force Data Sync</div>
+            <hr class="my-2">
+            <div class="drawer-item" onclick="switchView('drive'); toggleMenu();"><i class="ph-bold ph-car"></i> Drive Mode</div>
+            <div class="drawer-item rep-hidden csr-hidden" onclick="switchView('tasks'); toggleMenu();"><i class="ph-bold ph-clipboard-text"></i> My Tasks</div>
+            <div class="drawer-item text-orange-600 font-bold" onclick="switchView('docks'); toggleMenu();"><i class="ph-bold ph-truck"></i> Docks</div>
+            <div class="drawer-item text-teal-600 font-bold" onclick="switchView('av'); toggleMenu();"><i class="ph-bold ph-notebook"></i> AV</div>
+            <hr class="my-2">
+            <div class="drawer-item text-blue-600 font-bold admin-rep-csr-only hidden" onclick="switchView('request'); toggleMenu();"><i class="ph-bold ph-chat-circle-text"></i> Requests</div>
+            <div class="drawer-item text-indigo-600 font-bold admin-rep-csr-only hidden" onclick="switchView('reserves'); toggleMenu();"><i class="ph-bold ph-bookmark-simple"></i> Reserves</div>
+            <div class="drawer-item text-purple-600 font-bold admin-csr-only hidden" onclick="switchView('sales-office'); toggleMenu();"><i class="ph-bold ph-briefcase"></i> Sales Office</div>
+            <div class="drawer-item text-emerald-600 font-bold admin-only hidden" onclick="switchView('reports'); toggleMenu();"><i class="ph-bold ph-chart-bar"></i> Reports</div>
+            <div class="drawer-item text-emerald-600 font-bold" onclick="switchView('hours'); toggleMenu();"><i class="ph-bold ph-clock"></i> Labor Hours</div>
+            <div class="drawer-item text-red-600 font-bold dylan-only hidden" onclick="switchView('low-stock'); toggleMenu();"><i class="ph-bold ph-trend-down"></i> Low Stock List</div>
+            <div class="drawer-item text-yellow-600 font-bold admin-only hidden" onclick="switchView('review'); toggleMenu();"><i class="ph-bold ph-warning-circle"></i> Manager Review</div>
+            <hr class="my-3 border-gray-200">
+            <div class="drawer-item text-red-600 bg-red-50 font-bold justify-center rounded-lg mx-4 mt-2 mb-8" onclick="performLogout()"><i class="ph-bold ph-sign-out text-xl"></i> Log Out</div>
+        </div>
+        
+        <div id="main-scroll-area" class="flex-grow overflow-y-auto p-4 pb-40 relative">
+            <div id="view-wrapper" style="position:relative; z-index:20;">
+                <div id="view-home" class="hidden">
+                    <div class="bg-[#007a4d] text-white p-6 rounded-2xl mb-6 shadow-lg flex flex-col items-center text-center relative overflow-hidden">
+                        <div class="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-white opacity-5 rounded-full pointer-events-none"></div>
+                        <div class="absolute bottom-0 left-0 -mb-10 -ml-10 w-32 h-32 bg-black opacity-10 rounded-full pointer-events-none"></div>
+                        <h1 class="text-2xl font-black tracking-tight mb-1 z-10 relative mt-4">GNC Park Hill</h1>
+                        <p class="text-green-100 text-[10px] font-bold mb-5 uppercase tracking-[0.2em] z-10 relative">Dashboard</p>
+                        <div class="flex flex-col items-center pt-4 border-t border-white/20 w-full mt-1 z-10 relative">
+                            <span class="text-[9px] font-bold text-white/70 uppercase tracking-[0.3em] mb-1">Powered By</span>
+                            <div class="text-[15px] font-black tracking-[0.2em] text-white uppercase drop-shadow-sm">Ag Metric</div>
+                        </div>
+                    </div>
+                    <h2 class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3 pl-1">App Modules</h2>
+                    <div class="grid grid-cols-2 gap-3 mb-8">
+                        <div onclick="switchView('drive')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-car text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Drive Mode</span></div>
+                        <div onclick="switchView('tasks')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer rep-hidden csr-hidden"><i class="ph-bold ph-clipboard-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Tasks</span></div>
+                        <div onclick="switchView('docks')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-truck text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Docks</span></div>
+                        <div onclick="switchView('av')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-notebook text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">AV</span></div>
+                        <div onclick="switchView('request')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer admin-rep-csr-only hidden"><i class="ph-bold ph-chat-circle-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Requests</span></div>
+                        <div onclick="switchView('reserves')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer admin-rep-csr-only hidden"><i class="ph-bold ph-bookmark-simple text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Reserves</span></div>
+                        <div onclick="switchView('sales-office')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer admin-csr-only hidden"><i class="ph-bold ph-briefcase text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Sales Office</span></div>
+                        <div onclick="switchView('reports')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer admin-only hidden"><i class="ph-bold ph-chart-bar text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Reports</span></div>
+                        <div onclick="switchView('hours')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-clock text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Labor Hours</span></div>
+                        <div onclick="switchView('low-stock')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer dylan-only hidden"><i class="ph-bold ph-trend-down text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Low Stock</span></div>
+                        <div onclick="switchView('review')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform col-span-2 cursor-pointer admin-only hidden"><i class="ph-bold ph-warning-circle text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Manager Review</span></div>
+                    </div>
+                </div>
+                
+                <div id="view-hours" class="hidden">
+                    <div class="bg-white rounded-xl shadow-md p-6 mb-6 border-2 border-[#007a4d]">
+                        <h2 class="text-xl font-black text-[#007a4d] mb-2">Report Labor Hours</h2>
+                        <p class="text-xs text-gray-500 font-bold mb-6">Submit man-hours for your department.</p>
+                        <label class="text-[10px] font-bold text-gray-500 uppercase ml-1">Date</label>
+                        <input type="date" id="hours-date" class="input-field mb-4">
+                        <label class="text-[10px] font-bold text-gray-500 uppercase ml-1">Department</label>
+                        <select id="hours-dept" class="input-field bg-white mb-4">
+                            <option value="" disabled selected>Select Department...</option>
+                            <option value="Shipping">Shipping</option>
+                            <option value="Production">Production</option>
+                            <option value="Maintenance">Maintenance</option>
+                            <option value="Sales">Sales</option>
+                            <option value="Admin">Admin</option>
+                            <option value="Driving">Driving</option>
+                            <option value="Quality Control">Quality Control</option>
+                        </select>
+                        <label class="text-[10px] font-bold text-gray-500 uppercase ml-1">Total Man Hours</label>
+                        <input type="number" id="hours-amount" class="input-field mb-6" placeholder="e.g. 120" step="0.5" min="0">
+                        <button class="w-full bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform" onclick="submitLaborHours()">SUBMIT HOURS</button>
+                    </div>
+                </div>
+
+                <div id="view-chat-inbox" class="hidden h-full flex flex-col pb-6 relative">
+                    <div class="flex justify-between items-center mb-3">
+                        <div class="text-xs font-bold text-[#007a4d]">Direct Messages</div>
+                        <button onclick="openNewChatModal()" class="bg-[#007a4d] text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm active:scale-95 transition-transform">
+                            <i class="ph-bold ph-plus mr-1"></i> New Chat
+                        </button>
+                    </div>
+                    <div id="inbox-loading" class="hidden text-center text-gray-400 mt-4"><div class="spinner border-t-[#007a4d] mb-2"></div>Syncing Inbox...</div>
+                    <div id="inbox-list" class="flex-grow overflow-y-auto space-y-3 pb-10"></div>
+                </div>
+
+                <div id="view-chat-thread" class="hidden h-full flex flex-col pb-6 relative">
+                    <div class="flex items-center mb-3 border-b border-gray-200 pb-3">
+                        <i class="ph-bold ph-arrow-left text-gray-500 text-2xl mr-3 cursor-pointer bg-white p-1 rounded-full shadow-sm active:scale-95" onclick="switchView('chat-inbox'); loadChatInbox();"></i>
+                        <div id="active-thread-name" class="text-lg font-black text-[#007a4d] leading-tight">--</div>
+                    </div>
+                    <div id="thread-messages" class="flex-grow overflow-y-auto mb-4 bg-white rounded-xl shadow-inner p-4 border border-gray-200 flex flex-col min-h-[50vh] max-h-[60vh]">
+                        </div>
+                    <div class="flex gap-2 relative">
+                        <input type="text" id="thread-input" class="input-field !mb-0 flex-grow" placeholder="Type a message..." onkeypress="if(event.key === 'Enter') sendThreadMessage()">
+                        <button onclick="sendThreadMessage()" class="bg-[#007a4d] text-white p-3 rounded-lg font-bold shadow-md active:scale-95 transition-transform"><i class="ph-bold ph-paper-plane-right text-xl"></i></button>
+                    </div>
+                </div>
+
+        <div id="view-av" class="hidden">
+                    <div id="av-search-container" class="relative mb-2 mt-2">
+                        <input type="text" id="av-search" class="input-field w-full pr-10 !mb-0" placeholder="Search Common Name..." oninput="handleAVSearch()">
+                        <i id="av-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearAVSearch()"></i>
+                    </div>
+                    <div class="task-tabs mb-2">
+                        <div id="tab-av-open" class="task-tab active" onclick="setAVTab('open')">Open Stock</div>
+                        <div id="tab-av-reserves" class="task-tab" onclick="setAVTab('reserves')">My Reserves</div>
+                    </div>
+                    <div id="av-filters-container" class="grid grid-cols-2 gap-2 mb-2">
+                        <select id="av-filter-contsize" class="input-field !mb-0 bg-white text-xs font-bold text-gray-600" onchange="handleAVSearch()"><option value="">ALL SIZES</option></select>
+                        <select id="av-filter-plantgroup" class="input-field !mb-0 bg-white text-xs font-bold text-gray-600" onchange="handleAVSearch()"><option value="">ALL GROUPS</option></select>
+                    </div>
+                    <div id="av-crumb" class="text-xs font-bold text-[#007a4d] mb-3 mt-2 empty:hidden">Open Stock</div>
+                    <div id="av-content"></div>
+                </div>
 <div id="view-reports" class="hidden">
                     <div id="reports-crumb" class="text-xs font-bold text-[#007a4d] mb-3">Crop Value Summary</div>
                     <div class="detail-tabs mb-4">
@@ -674,7 +985,7 @@ const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
             } catch(err){ if(!cachedRes)showToast("Sync Error","Could not download data.",true); }
         }
 
-     function processAndLoadData(res) {
+       function processAndLoadData(res) {
             if (!res) return;
             avNotesDb = res.avNotesData || [];
             fullInventory = (res.data || []).map((item,idx)=>{item.DOM_ID='fi_'+idx;return item;}); 
@@ -2146,7 +2457,7 @@ const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
             }).catch(err=>{showToast("Error","Assignment failed",true)})
         }
 
-    function submitRequestWithQtys() {
+        function submitRequestWithQtys() {
             let itemsData={};
             document.querySelectorAll('.item-qty-input').forEach(input=>{let uid=input.getAttribute('data-uid');if(!itemsData[uid])itemsData[uid]={};itemsData[uid].qty=input.value.trim()});
             document.querySelectorAll('.item-spec-input').forEach(input=>{let uid=input.getAttribute('data-uid');if(!itemsData[uid])itemsData[uid]={};itemsData[uid].spec=input.value.trim()});
