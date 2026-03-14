@@ -2859,15 +2859,44 @@ const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
             renderDrive();
         }
 
-        function renderTeamSelector() {
+       function renderTeamSelector() {
             let uSet = new Set();
-            fullInventory.forEach(i => { if(i.ASSIGNEDTO && !i.DATE_COMPLETED) uSet.add(i.ASSIGNEDTO) });
+            let allTasksCount = 0;
+            let allCounts = {season:0, location:0, endcap:0, flyer:0};
+
+            fullInventory.forEach(i => { 
+                if(i.ASSIGNEDTO && !i.DATE_COMPLETED) {
+                    uSet.add(i.ASSIGNEDTO);
+                    allTasksCount++;
+                    if (i.APP_TAB_ASSIGNMENT) {
+                        allCounts[i.APP_TAB_ASSIGNMENT] = (allCounts[i.APP_TAB_ASSIGNMENT] || 0) + 1;
+                    }
+                } 
+            });
+
             if(uSet.size === 0) { 
                 document.getElementById('task-content').innerHTML = `<div class="p-8 text-center text-gray-400">No active tasks for any team member.</div>`; 
                 return; 
             }
+
             let sorted = Array.from(uSet).sort();
             let html = `<h2 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Select Team Member</h2>`;
+
+            // NEW: Render "All" aggregate card at the top
+            let allHtmlCounts = `<div class="flex gap-2 mt-2">`;
+            ['season','location','endcap','flyer'].forEach(t => {
+                if(allCounts[t] > 0) allHtmlCounts += `<span class="text-[10px] font-bold px-2 py-1 rounded bg-green-50 text-green-700 border border-green-200 uppercase">${t}: ${allCounts[t]}</span>`;
+            });
+            allHtmlCounts += `</div>`;
+            html += `<div class="bg-green-50 border-2 border-[#007a4d] p-4 rounded-xl shadow-md mb-4 cursor-pointer active:scale-95 transition-transform" onclick="selectTaskUser('All')">
+                        <div class="flex justify-between items-center">
+                            <div class="flex items-center gap-2"><i class="ph-bold ph-users text-2xl text-[#007a4d]"></i><span class="font-black text-xl text-[#007a4d]">All Team Tasks</span></div>
+                            <span class="text-xs font-bold text-white bg-[#007a4d] px-2 py-1 rounded-lg shadow-sm">${allTasksCount} Total</span>
+                        </div>
+                        ${allHtmlCounts}
+                     </div>`;
+
+            // Render individual users
             sorted.forEach(u => {
                 let userTasks = fullInventory.filter(i => i.ASSIGNEDTO === u && !i.DATE_COMPLETED);
                 let htmlCounts = `<div class="flex gap-2 mt-2">`;
@@ -2876,17 +2905,11 @@ const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
                     if(c > 0) htmlCounts += `<span class="text-[10px] font-bold px-2 py-1 rounded bg-gray-100 text-gray-600 uppercase">${t}: ${c}</span>`;
                 });
                 htmlCounts += `</div>`;
-                html += `<div class="bg-white border border-gray-200 p-4 rounded-xl shadow-sm mb-3 cursor-pointer active:scale-95 transition-transform" onclick="selectTaskUser('${esc(u)}')"><div class="flex justify-between items-center"><span class="font-black text-xl text-[#007a4d]">${u}</span><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${userTasks.length} Total</span></div>${htmlCounts}</div>`;
+                html += `<div class="bg-white border border-gray-200 p-4 rounded-xl shadow-sm mb-3 cursor-pointer active:scale-95 transition-transform" onclick="selectTaskUser('${esc(u)}')"><div class="flex justify-between items-center"><span class="font-black text-xl text-gray-700">${u}</span><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${userTasks.length} Total</span></div>${htmlCounts}</div>`;
             });
             document.getElementById('task-tabs-container').classList.add('hidden');
             document.getElementById('task-crumb').innerText = "Team Tasks Overview";
             document.getElementById('task-content').innerHTML = html;
-        }
-
-        function selectTaskUser(u) {
-            taskViewTargetUser = u;
-            document.getElementById('task-tabs-container').classList.remove('hidden');
-            renderTasks();
         }
 
         function renderTasks() {
@@ -2894,10 +2917,32 @@ const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
             if(!targetUser) return;
             const container = document.getElementById('task-content');
             const crumb = document.getElementById('task-crumb');
-            crumb.innerHTML = safeRole === 'ADMIN' ? `<span class="cursor-pointer text-gray-400 hover:text-gray-800" onclick="taskViewTargetUser=null; renderTeamSelector()"><i class="ph-bold ph-arrow-left"></i> Back to Team</span> &bull; <span class="text-[#007a4d]">${targetUser}'s Tasks</span>` : "My Tasks";
             
-            let userItems = fullInventory.filter(i => i.ASSIGNEDTO === targetUser && !i.DATE_COMPLETED);
+            crumb.innerHTML = safeRole === 'ADMIN' ? `<span class="cursor-pointer text-gray-400 hover:text-gray-800" onclick="taskViewTargetUser=null; renderTeamSelector()"><i class="ph-bold ph-arrow-left"></i> Back to Team</span> &bull; <span class="text-[#007a4d]">${targetUser === 'All' ? 'All Team Tasks' : targetUser + "'s Tasks"}</span>` : "My Tasks";
+            
+            // Filter by user (or "All")
+            let userItems = fullInventory.filter(i => {
+                if (i.DATE_COMPLETED) return false;
+                if (targetUser === 'All') return !!i.ASSIGNEDTO; 
+                return i.ASSIGNEDTO === targetUser;
+            });
+
             let tabItems = userItems.filter(i => i.APP_TAB_ASSIGNMENT === activeTaskTab);
+
+            // Filter out Season 'Y' and 'Z' if the user is looking at Location Notes
+            if (activeTaskTab === 'location') {
+                tabItems = tabItems.filter(i => {
+                    const season = String(i.SEASON || '').trim().toUpperCase();
+                    return season !== 'Y' && season !== 'Z';
+                });
+            }
+
+            // NEW: Parse out the shortened location (e.g. C.07) for grouping
+            tabItems.forEach(i => {
+                let loc = String(i.LOCATIONCODE || "NoLoc").trim();
+                let match = loc.match(/^([A-Za-z]\.\d{2})/);
+                i._SHORT_LOC = match ? match[1].toUpperCase() : loc;
+            });
             
             if(tabItems.length === 0){
                 container.innerHTML = `<div class="p-8 text-center text-gray-400">No active ${activeTaskTab} tasks.</div>`;
@@ -2923,8 +2968,7 @@ const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
                 if(taskViewLevel === 0) {
                     let blocks = {};
                     tabItems.forEach(i => {
-                        let loc = String(i.LOCATIONCODE || "NoLoc").trim();
-                        let blockAlpha = loc.charAt(0).toUpperCase();
+                        let blockAlpha = i._SHORT_LOC.charAt(0).toUpperCase();
                         if(!/[A-Z]/.test(blockAlpha)) blockAlpha = "Other";
                         if(!blocks[blockAlpha]) blocks[blockAlpha] = {count:0};
                         blocks[blockAlpha].count++;
@@ -2933,20 +2977,21 @@ const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
                     container.innerHTML = html;
                 } else if(taskViewLevel === 1) {
                     let bItems = tabItems.filter(i => {
-                        let loc = String(i.LOCATIONCODE || "NoLoc").trim();
-                        let alpha = loc.charAt(0).toUpperCase();
+                        let alpha = i._SHORT_LOC.charAt(0).toUpperCase();
                         if(!/[A-Z]/.test(alpha)) alpha = "Other";
                         return alpha === selectedTaskBlock;
                     });
-                    let locs = [...new Set(bItems.map(i => i.LOCATIONCODE || "NoLoc"))].sort((a,b) => String(a).localeCompare(String(b), undefined, {numeric: true}));
+                    // NEW: Use the shortened location for the drill-down items
+                    let locs = [...new Set(bItems.map(i => i._SHORT_LOC))].sort((a,b) => String(a).localeCompare(String(b), undefined, {numeric: true}));
                     let html = `<div class="back-btn" onclick="taskViewLevel=0; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Blocks</div>`;
                     html += locs.map(l => {
-                        let count = bItems.filter(i => (i.LOCATIONCODE || "NoLoc") === l).length;
+                        let count = bItems.filter(i => i._SHORT_LOC === l).length;
                         return `<div class="drill-item" onclick="selectedTaskLoc='${esc(l)}'; taskViewLevel=2; renderTasks()"><span class="font-bold text-lg text-gray-800">${l} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
                     }).join('');
                     container.innerHTML = html;
                 } else if(taskViewLevel === 2) {
-                    let fItems = tabItems.filter(i => (i.LOCATIONCODE || "NoLoc") === selectedTaskLoc);
+                    // NEW: Render all items that share that shortened location
+                    let fItems = tabItems.filter(i => i._SHORT_LOC === selectedTaskLoc);
                     fItems.sort((a,b) => String(a.COMMONNAME || "").localeCompare(String(b.COMMONNAME || "")));
                     container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=1; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Locations</div>` + fItems.map(i => generateCard(i, 'tasks', activeTaskTab === 'season' ? 'status-green' : 'status-blue')).join('');
                 }
