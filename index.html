@@ -745,9 +745,14 @@ const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
             return repPermutations.some(p=>str.includes(p)); 
         }
 
-        function openPhotoModal(urlStr, caption) { 
+      function openPhotoModal(urlStr, caption) { 
             const gallery = document.getElementById('photo-modal-gallery');
             gallery.innerHTML = '';
+            
+            // Apply strict snap container settings, removing spaces to ensure a perfect 100% width snap
+            gallery.className = "flex overflow-x-auto snap-x snap-mandatory w-full max-h-[85vh] items-center scrollbar-none mt-10";
+            gallery.style.scrollBehavior = "smooth";
+
             let urls = String(urlStr).split(',');
             
             urls.forEach(u => {
@@ -756,7 +761,11 @@ const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
                 if(match) cleanUrl = match[1];
                 if(cleanUrl.startsWith('http')) {
                     let fullUrl = cleanUrl.replace('&sz=w100', ''); 
-                    gallery.innerHTML += `<img src="${fullUrl}" class="snap-center w-full max-h-[80vh] object-contain flex-shrink-0 rounded-xl shadow-2xl">`;
+                    // Wrap the image to force it into a 100% screen-width "sticky" frame
+                    gallery.innerHTML += `
+                        <div class="snap-center w-full flex-shrink-0 flex justify-center items-center px-4" style="scroll-snap-stop: always;">
+                            <img src="${fullUrl}" class="max-w-full max-h-[80vh] object-contain rounded-xl shadow-2xl">
+                        </div>`;
                 }
             });
 
@@ -768,6 +777,9 @@ const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
             } else {
                 document.getElementById('photo-swipe-hint').classList.add('hidden');
             }
+            
+            // Reset to the first photo instantly when opened
+            gallery.scrollLeft = 0;
         }
 
         function closePhotoModal() { 
@@ -1741,7 +1753,7 @@ const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
                 }
             }
         }
-        function handleCardClick(domId,uniqueId,sourceView) {
+       function handleCardClick(domId,uniqueId,sourceView) {
             if(isLongPress){ isLongPress=false; return; }
             if(isMultiSelectMode){ 
                 const row=document.querySelector(`[data-dom-id="${domId}"]`); 
@@ -1750,7 +1762,19 @@ const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
                     if(cb){ cb.checked=!cb.checked; toggleGlobalItem(domId,cb.checked); } 
                 } 
             }else{ 
-                if(safeRole==='SALESREP'&&(sourceView==='drive'||sourceView==='av')){ 
+                if(sourceView === 'av') {
+                    // Bypass detail screen entirely for ALL users in the AV Tab
+                    let item=fullInventory.find(i=>i.UNIQUE_ID===uniqueId)||reservesInventory.find(i=>i.UNIQUE_ID===uniqueId); 
+                    if(item){ 
+                        let pLink=item.SAVED_PHOTO_LINK||item['PHOTO_LINK']||item.PHOTOLINK||""; 
+                        if(pLink){ 
+                            openPhotoModal(pLink, `${esc(item.COMMONNAME)} (${esc(item.CONTSIZE)}) - Loc: ${item.LOCATIONCODE||'N/A'}`); 
+                        }else{ 
+                            showToast("No Photo","There is no photo on file for this item.",true); 
+                        } 
+                    } 
+                } else if(safeRole==='SALESREP' && sourceView==='drive') { 
+                    // Maintain original logic for Sales Reps in Drive Mode
                     let item=fullInventory.find(i=>i.UNIQUE_ID===uniqueId)||lowStockInventory.find(i=>i.UNIQUE_ID===uniqueId)||reservesInventory.find(i=>i.UNIQUE_ID===uniqueId); 
                     if(item){ 
                         let pLink=item.SAVED_PHOTO_LINK||item['PHOTO_LINK']||item.PHOTOLINK||""; 
@@ -1760,7 +1784,7 @@ const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
                             showToast("No Photo","There is no photo on file for this item.",true); 
                         } 
                     } 
-                }else{ 
+                } else { 
                     applyCameraPermissions(sourceView); 
                     openDetail(uniqueId,sourceView); 
                 }
