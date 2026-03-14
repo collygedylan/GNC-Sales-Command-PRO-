@@ -474,14 +474,37 @@
                         </div>
                         <div class="flex gap-2 mt-4"><button id="ssn-btn-save-complete" class="w-full bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform" onclick="saveData(true, 'ssn-')">MARK DONE</button></div>
                     </div>
-                    <div id="det-location-content" class="hidden py-4">
+                   <div id="det-location-content" class="hidden py-4">
+                        <div id="lsn-item-details" class="mb-4 bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                            <div class="font-black text-xl text-gray-800 leading-tight mb-1" id="lsn-det-common">--</div>
+                            <div class="font-bold text-[#007a4d] text-sm mb-3" id="lsn-det-size">--</div>
+                            <div class="grid grid-cols-2 gap-2 text-[11px] font-bold text-gray-500 uppercase mb-3">
+                                <div><span class="block text-[8px] text-gray-400 mb-0.5">LOT CODE</span><span id="lsn-det-lot" class="text-gray-800">--</span></div>
+                                <div><span class="block text-[8px] text-gray-400 mb-0.5">LOCATION</span><span id="lsn-det-loc" class="text-gray-800">--</span></div>
+                            </div>
+                            <div class="flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-wider">
+                                <span class="bg-gray-100 text-gray-800 px-2 py-1 rounded border border-gray-200">PTR: <span id="lsn-det-ptr" class="font-black">0</span></span>
+                                <span class="bg-purple-50 text-purple-700 px-2 py-1 rounded border border-purple-200">s_LTS: <span id="lsn-det-slts" class="font-black">0</span></span>
+                                <span class="bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-200">Loc Match: <span id="lsn-det-match-qty" class="font-black">0</span></span>
+                            </div>
+                        </div>
+
                         <div id="lsn-photo-preview" class="mb-4 hidden"><p class="text-[10px] font-bold text-blue-600 mb-2 uppercase">Photos on file</p><div id="lsn-photo-list-container" class="space-y-2"></div></div>
                         <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-lsn" class="bg-green-50 border-2 border-dashed border-green-500 text-green-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="handlePhotoUpload(this, 'lsn-')"></label></div>
-                        <div class="relative w-full mb-3"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2 relative"><input type="text" id="lsn-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); filterAvNotes('lsn-')" onfocus="filterAvNotes('lsn-')" onblur="setTimeout(()=>{if(document.getElementById('lsn-av-dropdown-list'))document.getElementById('lsn-av-dropdown-list').classList.add('hidden'); saveData(false, 'lsn-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT..."></div><div id="lsn-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div></div>
+                        
                         <div id="lsn-input-container">
-                            <div class="mb-3"><label class="text-[10px] font-bold text-gray-500 uppercase">Loc Match %</label><input type="number" id="lsn-match" class="input-field !mb-1" placeholder="e.g. 95" oninput="calculateMatchQty('lsn-')"><div id="lsn-match-display" class="text-[10px] font-bold text-[#007a4d] text-right mb-2 hidden">LOC Match QTY: <span id="lsn-match-qty-val">0</span></div></div>
-                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="lsn-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'lsn-', true)"></div>
-                            <div id="lsn-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="lsn-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'lsn-', true)"></div>
+                            <div class="mb-3"><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="lsn-spec" class="input-field !mb-0" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'lsn-', true)"></div>
+                            
+                            <div id="lsn-container-caliper" class="mb-3 hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="lsn-caliper" class="input-field !mb-0" placeholder="e.g. 2 inch" onchange="saveData(false, 'lsn-', true)"></div>
+
+                            <div class="relative w-full mb-3">
+                                <label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label>
+                                <div class="flex gap-2 relative"><input type="text" id="lsn-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); filterAvNotes('lsn-')" onfocus="filterAvNotes('lsn-')" onblur="setTimeout(()=>{if(document.getElementById('lsn-av-dropdown-list'))document.getElementById('lsn-av-dropdown-list').classList.add('hidden'); saveData(false, 'lsn-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT..."></div>
+                                <div id="lsn-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div>
+                            </div>
+
+                            <div class="mb-3"><label class="text-[10px] font-bold text-gray-500 uppercase">Loc Match %</label><input type="number" id="lsn-match" class="input-field !mb-1" placeholder="e.g. 95" oninput="calculateMatchQty('lsn-')"><div id="lsn-match-display" class="text-[10px] font-bold text-[#007a4d] text-right hidden">LOC Match QTY: <span id="lsn-match-qty-val">0</span></div></div>
+
                             <div class="relative w-full mt-2 mb-2"><label class="text-[10px] font-bold text-green-700 uppercase flex justify-between"><span>Sales Note</span></label><input type="text" id="lsn-sales-desc" class="input-field border-green-500 bg-green-50 uppercase flex-grow !mb-0" placeholder="Sales Note..." onchange="saveData(false, 'lsn-', true)"></div>
                             <div class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="lsn-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'lsn-', true)"></div>
                         </div>
@@ -1919,7 +1942,7 @@ const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
                 if(match) calculateMatchQty(p);
             });
 
-            // Fill data into the new specific Season Sales Note details header
+           // Fill data into the new specific Season Sales Note details header
             const ssnCommon = document.getElementById('ssn-det-common');
             if (ssnCommon) {
                 ssnCommon.innerText = activeItem.COMMONNAME || '--';
@@ -1931,8 +1954,19 @@ const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
                 document.getElementById('ssn-det-match-qty').innerText = activeItem.LOC_MATCH_QTY || '0';
             }
 
-            renderSavedPhotos();
+            // Fill data into the new specific Location Sales Note details header
+            const lsnCommon = document.getElementById('lsn-det-common');
+            if (lsnCommon) {
+                lsnCommon.innerText = activeItem.COMMONNAME || '--';
+                document.getElementById('lsn-det-size').innerText = activeItem.CONTSIZE || '--';
+                document.getElementById('lsn-det-lot').innerText = activeItem.LOTCODE || '--';
+                document.getElementById('lsn-det-loc').innerText = activeItem.LOCATIONCODE || '--';
+                document.getElementById('lsn-det-ptr').innerText = activeItem.PTRAVAILABLE || '0';
+                document.getElementById('lsn-det-slts').innerText = activeItem.S_LTS || '0';
+                document.getElementById('lsn-det-match-qty').innerText = activeItem.LOC_MATCH_QTY || '0';
+            }
 
+            renderSavedPhotos();
             if (sourceView === 'tasks' && activeTaskTab) {
                 switchDetailTab(activeTaskTab);
             } else {
