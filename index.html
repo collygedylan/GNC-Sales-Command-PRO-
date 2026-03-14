@@ -302,6 +302,11 @@
                         <div id="tab-av-open" class="task-tab active" onclick="setAVTab('open')">Open Stock</div>
                         <div id="tab-av-reserves" class="task-tab" onclick="setAVTab('reserves')">My Reserves</div>
                     </div>
+                    <div id="av-open-sub-tabs" class="task-tabs mb-2">
+                        <div id="tab-av-open-name" class="task-tab active" onclick="setAvOpenTab('name')">By Name</div>
+                        <div id="tab-av-open-season" class="task-tab" onclick="setAvOpenTab('season')">By Season</div>
+                        <div id="tab-av-open-lot" class="task-tab" onclick="setAvOpenTab('lot')">By Lot</div>
+                    </div>
                     <div id="av-crumb" class="text-xs font-bold text-[#007a4d] mb-3 mt-2 empty:hidden">Open Stock</div>
                     <div id="av-content"></div>
                 </div>
@@ -1113,7 +1118,7 @@ const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
             else if(isRep){ document.querySelectorAll('.rep-hidden, .admin-only, .admin-csr-only').forEach(el=>el.classList.add('hidden')); } 
             else if(isCsr){ document.querySelectorAll('.csr-hidden, .admin-only').forEach(el=>el.classList.add('hidden')); } 
             else if(isQc){ document.querySelectorAll('.admin-only, .admin-rep-only, .admin-rep-csr-only, .admin-csr-only').forEach(el=>el.classList.add('hidden')); }
-            if(!isDylan&&isAdmin){ document.querySelectorAll('.dylan-only').forEach(el=>el.classList.add('hidden')); } 
+            if(!isDylan&&!isAdmin){ document.querySelectorAll('.dylan-only').forEach(el=>el.classList.add('hidden')); } 
             switchView('home');
         }
 
@@ -1198,22 +1203,33 @@ const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
         function handleAVSearch() { const term=document.getElementById('av-search').value.toLowerCase(); const clearBtn=document.getElementById('av-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden'); avResLevel=0; avOpenLevel=0;} else{clearBtn.classList.add('hidden'); avResLevel=0; avOpenLevel=0;} debouncedAVSearch(); }
 
         function resetAVView() { 
-            activeAVTab='open'; 
+            activeAVTab='open'; activeAvOpenTab='name';
             avResLevel=0; selectedAvResName=null; selectedAvResSize=null; 
-            document.getElementById('tab-av-open').classList.add('active'); 
-            document.getElementById('tab-av-reserves').classList.remove('active'); 
-            
-            document.getElementById('av-search').value=""; 
-            document.getElementById('av-search-clear').classList.add('hidden'); 
+            avOpenLevel=0; selectedAvOpenName=null; selectedAvOpenSize=null; selectedAvOpenSeason=null; selectedAvOpenLot=null;
+            document.getElementById('tab-av-open').classList.add('active'); document.getElementById('tab-av-reserves').classList.remove('active'); 
+           document.getElementById('tab-av-open-name').classList.add('active'); document.getElementById('tab-av-open-season').classList.remove('active'); document.getElementById('tab-av-open-lot').classList.remove('active');
+            document.getElementById('av-open-sub-tabs').style.display = 'flex';
+            document.getElementById('av-search').value=""; document.getElementById('av-search-clear').classList.add('hidden'); 
             renderAV(); 
         }
 
         function setAVTab(tab) { 
             activeAVTab=tab; 
             avResLevel=0; selectedAvResName=null; selectedAvResSize=null; 
-            document.getElementById('tab-av-open').classList.toggle('active',tab==='open'); 
-            document.getElementById('tab-av-reserves').classList.toggle('active',tab==='reserves'); 
+            avOpenLevel=0; selectedAvOpenName=null; selectedAvOpenSize=null; selectedAvOpenSeason=null; selectedAvOpenLot=null;
+            document.getElementById('tab-av-open').classList.toggle('active',tab==='open'); document.getElementById('tab-av-reserves').classList.toggle('active',tab==='reserves'); 
+            const subTabs = document.getElementById('av-open-sub-tabs');
+            if (tab === 'open') { subTabs.style.display = 'flex'; } else { subTabs.style.display = 'none'; }
             renderAV(); 
+        }
+
+        function setAvOpenTab(tab) {
+            activeAvOpenTab = tab;
+            document.getElementById('tab-av-open-name').classList.toggle('active', tab === 'name');
+            document.getElementById('tab-av-open-season').classList.toggle('active', tab === 'season');
+            document.getElementById('tab-av-open-lot').classList.toggle('active', tab === 'lot');
+            avOpenLevel = 0;
+            renderAV();
         }
         
         function setReqTab(tab) {
@@ -1514,29 +1530,83 @@ const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
                 return; 
             }
             
-            if (activeAVTab === 'open') { 
-                crumb.innerText = term ? `Search Results (${items.length})` : `Open Stock (${items.length} items)`;
+            if(term.length > 0) { 
+                crumb.innerText = `Search Results (${items.length})`; 
                 items.sort((a,b) => {
                     let priA = parseFloat(a.PRIORITY); let priB = parseFloat(b.PRIORITY);
                     if(isNaN(priA)) priA = Infinity; if(isNaN(priB)) priB = Infinity;
                     if(priA !== priB) return priA - priB;
-                    return String(a.COMMONNAME||"").localeCompare(String(b.COMMONNAME||""));
+                    return String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""), undefined, {numeric:true});
                 }); 
-                container.innerHTML = items.map(i => generateCard(i, 'av', 'status-teal')).join('');
-                
-            } else {
-                if(term.length > 0) { 
-                    crumb.innerText = `Search Results (${items.length})`; 
-                    items.sort((a,b) => {
-                        let priA = parseFloat(a.PRIORITY); let priB = parseFloat(b.PRIORITY);
-                        if(isNaN(priA)) priA = Infinity; if(isNaN(priB)) priB = Infinity;
-                        if(priA !== priB) return priA - priB;
-                        return String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""), undefined, {numeric:true});
-                    }); 
-                    container.innerHTML = items.map(i => generateCard(i, 'reserves_drill', 'status-indigo')).join(''); 
-                    return; 
+                container.innerHTML = items.map(i => generateCard(i, activeAVTab === 'open' ? 'av' : 'reserves_drill', activeAVTab === 'open' ? 'status-teal' : 'status-indigo')).join(''); 
+                return; 
+            }
+            
+            if (activeAVTab === 'open') { 
+                if (activeAvOpenTab === 'name') {
+                    if(avOpenLevel === 0) {
+                        crumb.innerText = `Open Stock: By Name (${items.length} items)`;
+                        const names = [...new Set(items.map(i => i.COMMONNAME))].sort();
+                        container.innerHTML = names.map(n => `<div class="drill-item" onclick="selectedAvOpenName='${esc(n)}'; avOpenLevel=1; renderAV()"><span class="font-bold text-lg">${n}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
+                    } else if(avOpenLevel === 1) {
+                        crumb.innerText = selectedAvOpenName;
+                        const namedItems = items.filter(i => i.COMMONNAME === selectedAvOpenName);
+                        if(namedItems.length === 0){ container.innerHTML = `<div class="p-8 text-center text-gray-400">No items found.</div>`; return; }
+                        const sizes = [...new Set(namedItems.map(i => i.CONTSIZE))].sort();
+                        let html = `<div class="back-btn" onclick="avOpenLevel=0; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Names</div><div class="font-bold text-[#007a4d] mb-4 px-2 text-xl border-b pb-2">${selectedAvOpenName}</div>`;
+                        html += sizes.map(s => { 
+                            const count = namedItems.filter(i => i.CONTSIZE === s).length; 
+                            return `<div class="drill-item" onclick="selectedAvOpenSize='${esc(s)}'; avOpenLevel=2; renderAV()"><span class="font-bold text-lg">${s} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>` 
+                        }).join('');
+                        container.innerHTML = html;
+                    } else if(avOpenLevel === 2) {
+                        crumb.innerText = `${selectedAvOpenName} / ${selectedAvOpenSize}`;
+                        let finalItems = items.filter(i => i.COMMONNAME === selectedAvOpenName && i.CONTSIZE === selectedAvOpenSize);
+                        finalItems.sort((a,b) => { let priA = parseFloat(a.PRIORITY); let priB = parseFloat(b.PRIORITY); if(isNaN(priA)) priA = Infinity; if(isNaN(priB)) priB = Infinity; return priA - priB; });
+                        container.innerHTML = `<div class="back-btn" onclick="avOpenLevel=1; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>` + finalItems.map(i => generateCard(i, 'av', 'status-teal')).join('');
+                    }
+                } else if (activeAvOpenTab === 'season') {
+                    if(avOpenLevel === 0) {
+                        crumb.innerText = `Open Stock: By Season (${items.length} items)`;
+                        const seasons = [...new Set(items.map(i => i.SEASON || 'Unassigned'))].sort();
+                        container.innerHTML = seasons.map(s => `<div class="drill-item" onclick="selectedAvOpenSeason='${esc(s)}'; avOpenLevel=1; renderAV()"><span class="font-bold text-lg text-[#007a4d]">${s}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
+                    } else if(avOpenLevel === 1) {
+                        crumb.innerText = `Season: ${selectedAvOpenSeason}`;
+                        const sItems = items.filter(i => (i.SEASON || 'Unassigned') === selectedAvOpenSeason);
+                        const names = [...new Set(sItems.map(i => i.COMMONNAME))].sort();
+                        let html = `<div class="back-btn" onclick="avOpenLevel=0; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Seasons</div>`;
+                        html += names.map(n => `<div class="drill-item" onclick="selectedAvOpenName='${esc(n)}'; avOpenLevel=2; renderAV()"><span class="font-bold text-lg">${n}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
+                        container.innerHTML = html;
+                    } else if(avOpenLevel === 2) {
+                        crumb.innerText = `${selectedAvOpenSeason} > ${selectedAvOpenName}`;
+                        const snItems = items.filter(i => (i.SEASON || 'Unassigned') === selectedAvOpenSeason && i.COMMONNAME === selectedAvOpenName);
+                        const sizes = [...new Set(snItems.map(i => i.CONTSIZE))].sort();
+                        let html = `<div class="back-btn" onclick="avOpenLevel=1; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Names</div><div class="font-bold text-[#007a4d] mb-4 px-2 text-xl border-b pb-2">${selectedAvOpenName}</div>`;
+                        html += sizes.map(s => { 
+                            const count = snItems.filter(i => i.CONTSIZE === s).length; 
+                            return `<div class="drill-item" onclick="selectedAvOpenSize='${esc(s)}'; avOpenLevel=3; renderAV()"><span class="font-bold text-lg">${s} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>` 
+                        }).join('');
+                        container.innerHTML = html;
+                    } else if(avOpenLevel === 3) {
+                        crumb.innerText = `${selectedAvOpenName} / ${selectedAvOpenSize}`;
+                        let finalItems = items.filter(i => (i.SEASON || 'Unassigned') === selectedAvOpenSeason && i.COMMONNAME === selectedAvOpenName && i.CONTSIZE === selectedAvOpenSize);
+                        finalItems.sort((a,b) => { let priA = parseFloat(a.PRIORITY); let priB = parseFloat(b.PRIORITY); if(isNaN(priA)) priA = Infinity; if(isNaN(priB)) priB = Infinity; return priA - priB; });
+                        container.innerHTML = `<div class="back-btn" onclick="avOpenLevel=2; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>` + finalItems.map(i => generateCard(i, 'av', 'status-teal')).join('');
+                    }
+                } else if (activeAvOpenTab === 'lot') {
+                    if(avOpenLevel === 0) {
+                        crumb.innerText = `Open Stock: By Lot (${items.length} items)`;
+                        let lots = [...new Set(items.map(i => i.LOTCODE || 'No Lot'))].sort();
+                        container.innerHTML = lots.map(l => `<div class="drill-item" onclick="selectedAvOpenLot='${esc(l)}'; avOpenLevel=1; renderAV()"><span class="font-bold text-lg text-gray-800">${l}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
+                    } else if(avOpenLevel === 1) {
+                        crumb.innerText = `Lot Code: ${selectedAvOpenLot}`;
+                        let lItems = items.filter(i => (i.LOTCODE || 'No Lot') === selectedAvOpenLot);
+                        lItems.sort((a,b) => String(a.COMMONNAME || "").localeCompare(String(b.COMMONNAME || "")));
+                        container.innerHTML = `<div class="back-btn" onclick="avOpenLevel=0; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Lots</div>` + lItems.map(i => generateCard(i, 'av', 'status-teal')).join('');
+                    }
                 }
                 
+            } else {
                 if(avResLevel===0){ 
                     crumb.innerText="My Reserves > Plants"; 
                     const names=[...new Set(items.map(i=>i.COMMONNAME))].sort(); 
@@ -2469,25 +2539,6 @@ const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
                 showToast("Success",`Assigned to ${user}!`);
                 clearSelection();
                 reRenderCurrentView()
-            }).catch(err=>{showToast("Error","Assignment
-function confirmAssign(user) {
-            closeAssignModal();
-            showToast("Assigning...","Updating Database...",false);
-            const domIds=Array.from(selectedItems);
-            let promises=[];
-            domIds.forEach(dId=>{
-                let item=fullInventory.find(i=>i.DOM_ID===dId)||lowStockInventory.find(i=>i.DOM_ID===dId);
-                if(item){
-                    item.ASSIGNEDTO=user;
-                    item.DATE_COMPLETED="";
-                    const table=item.SOURCE_TABLE||'v2_master_inventory';
-                    promises.push(supabaseFetch(table,'PATCH',{assignedto:user,date_completed:null},`unique_id=eq.${item.UNIQUE_ID}`, true))
-                }
-            });
-            Promise.all(promises).then(()=>{
-                showToast("Success",`Assigned to ${user}!`);
-                clearSelection();
-                reRenderCurrentView()
             }).catch(err=>{showToast("Error","Assignment failed",true)})
         }
 
@@ -2647,13 +2698,10 @@ function confirmAssign(user) {
                             if(cleanUrl.startsWith('http')){returnText+=`  Photo ${counter}: ${cleanUrl}\n`;counter++}
                         })
                     }
-                }
-                returnText+=`\n`
-            });
-            return returnText
-        }
 
-           function executeBatchAction(action,tabType) {
+
+
+        function executeBatchAction(action,tabType) {
             const text=getSelectedItemsText(tabType);
             if(action==='copy'){
                 navigator.clipboard.writeText(text).then(()=>{showToast("Success","Copied to clipboard!");clearSelection()})
