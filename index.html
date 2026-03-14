@@ -302,7 +302,7 @@
                         <div id="tab-av-open" class="task-tab active" onclick="setAVTab('open')">Open Stock</div>
                         <div id="tab-av-reserves" class="task-tab" onclick="setAVTab('reserves')">My Reserves</div>
                     </div>
-                    <div id="av-open-sub-tabs" class="task-tabs mb-2">
+                  <div id="av-open-sub-tabs" class="hidden task-tabs mb-2">
                         <div id="tab-av-open-name" class="task-tab active" onclick="setAvOpenTab('name')">By Name</div>
                         <div id="tab-av-open-season" class="task-tab" onclick="setAvOpenTab('season')">By Season</div>
                         <div id="tab-av-open-lot" class="task-tab" onclick="setAvOpenTab('lot')">By Lot</div>
@@ -1499,7 +1499,7 @@ const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
         function selectAvResName(name) { selectedAvResName=name; avResLevel=1; renderAV(); }
         function selectAvResSize(size) { selectedAvResSize=size; avResLevel=2; renderAV(); }
 
-        function renderAV() {
+      function renderAV() {
             const container = document.getElementById('av-content'); 
             const crumb = document.getElementById('av-crumb'); 
             const term = document.getElementById('av-search').value.toLowerCase().trim(); 
@@ -1530,83 +1530,18 @@ const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
                 return; 
             }
             
-            if(term.length > 0) { 
-                crumb.innerText = `Search Results (${items.length})`; 
+            // Logic for "Open Stock" now shows all cards immediately
+            if (activeAVTab === 'open') {
+                crumb.innerText = `Open Stock (${items.length} items)`;
                 items.sort((a,b) => {
                     let priA = parseFloat(a.PRIORITY); let priB = parseFloat(b.PRIORITY);
                     if(isNaN(priA)) priA = Infinity; if(isNaN(priB)) priB = Infinity;
                     if(priA !== priB) return priA - priB;
-                    return String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""), undefined, {numeric:true});
-                }); 
-                container.innerHTML = items.map(i => generateCard(i, activeAVTab === 'open' ? 'av' : 'reserves_drill', activeAVTab === 'open' ? 'status-teal' : 'status-indigo')).join(''); 
-                return; 
-            }
-            
-            if (activeAVTab === 'open') { 
-                if (activeAvOpenTab === 'name') {
-                    if(avOpenLevel === 0) {
-                        crumb.innerText = `Open Stock: By Name (${items.length} items)`;
-                        const names = [...new Set(items.map(i => i.COMMONNAME))].sort();
-                        container.innerHTML = names.map(n => `<div class="drill-item" onclick="selectedAvOpenName='${esc(n)}'; avOpenLevel=1; renderAV()"><span class="font-bold text-lg">${n}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
-                    } else if(avOpenLevel === 1) {
-                        crumb.innerText = selectedAvOpenName;
-                        const namedItems = items.filter(i => i.COMMONNAME === selectedAvOpenName);
-                        if(namedItems.length === 0){ container.innerHTML = `<div class="p-8 text-center text-gray-400">No items found.</div>`; return; }
-                        const sizes = [...new Set(namedItems.map(i => i.CONTSIZE))].sort();
-                        let html = `<div class="back-btn" onclick="avOpenLevel=0; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Names</div><div class="font-bold text-[#007a4d] mb-4 px-2 text-xl border-b pb-2">${selectedAvOpenName}</div>`;
-                        html += sizes.map(s => { 
-                            const count = namedItems.filter(i => i.CONTSIZE === s).length; 
-                            return `<div class="drill-item" onclick="selectedAvOpenSize='${esc(s)}'; avOpenLevel=2; renderAV()"><span class="font-bold text-lg">${s} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>` 
-                        }).join('');
-                        container.innerHTML = html;
-                    } else if(avOpenLevel === 2) {
-                        crumb.innerText = `${selectedAvOpenName} / ${selectedAvOpenSize}`;
-                        let finalItems = items.filter(i => i.COMMONNAME === selectedAvOpenName && i.CONTSIZE === selectedAvOpenSize);
-                        finalItems.sort((a,b) => { let priA = parseFloat(a.PRIORITY); let priB = parseFloat(b.PRIORITY); if(isNaN(priA)) priA = Infinity; if(isNaN(priB)) priB = Infinity; return priA - priB; });
-                        container.innerHTML = `<div class="back-btn" onclick="avOpenLevel=1; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>` + finalItems.map(i => generateCard(i, 'av', 'status-teal')).join('');
-                    }
-                } else if (activeAvOpenTab === 'season') {
-                    if(avOpenLevel === 0) {
-                        crumb.innerText = `Open Stock: By Season (${items.length} items)`;
-                        const seasons = [...new Set(items.map(i => i.SEASON || 'Unassigned'))].sort();
-                        container.innerHTML = seasons.map(s => `<div class="drill-item" onclick="selectedAvOpenSeason='${esc(s)}'; avOpenLevel=1; renderAV()"><span class="font-bold text-lg text-[#007a4d]">${s}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
-                    } else if(avOpenLevel === 1) {
-                        crumb.innerText = `Season: ${selectedAvOpenSeason}`;
-                        const sItems = items.filter(i => (i.SEASON || 'Unassigned') === selectedAvOpenSeason);
-                        const names = [...new Set(sItems.map(i => i.COMMONNAME))].sort();
-                        let html = `<div class="back-btn" onclick="avOpenLevel=0; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Seasons</div>`;
-                        html += names.map(n => `<div class="drill-item" onclick="selectedAvOpenName='${esc(n)}'; avOpenLevel=2; renderAV()"><span class="font-bold text-lg">${n}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
-                        container.innerHTML = html;
-                    } else if(avOpenLevel === 2) {
-                        crumb.innerText = `${selectedAvOpenSeason} > ${selectedAvOpenName}`;
-                        const snItems = items.filter(i => (i.SEASON || 'Unassigned') === selectedAvOpenSeason && i.COMMONNAME === selectedAvOpenName);
-                        const sizes = [...new Set(snItems.map(i => i.CONTSIZE))].sort();
-                        let html = `<div class="back-btn" onclick="avOpenLevel=1; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Names</div><div class="font-bold text-[#007a4d] mb-4 px-2 text-xl border-b pb-2">${selectedAvOpenName}</div>`;
-                        html += sizes.map(s => { 
-                            const count = snItems.filter(i => i.CONTSIZE === s).length; 
-                            return `<div class="drill-item" onclick="selectedAvOpenSize='${esc(s)}'; avOpenLevel=3; renderAV()"><span class="font-bold text-lg">${s} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>` 
-                        }).join('');
-                        container.innerHTML = html;
-                    } else if(avOpenLevel === 3) {
-                        crumb.innerText = `${selectedAvOpenName} / ${selectedAvOpenSize}`;
-                        let finalItems = items.filter(i => (i.SEASON || 'Unassigned') === selectedAvOpenSeason && i.COMMONNAME === selectedAvOpenName && i.CONTSIZE === selectedAvOpenSize);
-                        finalItems.sort((a,b) => { let priA = parseFloat(a.PRIORITY); let priB = parseFloat(b.PRIORITY); if(isNaN(priA)) priA = Infinity; if(isNaN(priB)) priB = Infinity; return priA - priB; });
-                        container.innerHTML = `<div class="back-btn" onclick="avOpenLevel=2; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>` + finalItems.map(i => generateCard(i, 'av', 'status-teal')).join('');
-                    }
-                } else if (activeAvOpenTab === 'lot') {
-                    if(avOpenLevel === 0) {
-                        crumb.innerText = `Open Stock: By Lot (${items.length} items)`;
-                        let lots = [...new Set(items.map(i => i.LOTCODE || 'No Lot'))].sort();
-                        container.innerHTML = lots.map(l => `<div class="drill-item" onclick="selectedAvOpenLot='${esc(l)}'; avOpenLevel=1; renderAV()"><span class="font-bold text-lg text-gray-800">${l}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
-                    } else if(avOpenLevel === 1) {
-                        crumb.innerText = `Lot Code: ${selectedAvOpenLot}`;
-                        let lItems = items.filter(i => (i.LOTCODE || 'No Lot') === selectedAvOpenLot);
-                        lItems.sort((a,b) => String(a.COMMONNAME || "").localeCompare(String(b.COMMONNAME || "")));
-                        container.innerHTML = `<div class="back-btn" onclick="avOpenLevel=0; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Lots</div>` + lItems.map(i => generateCard(i, 'av', 'status-teal')).join('');
-                    }
-                }
-                
+                    return String(a.COMMONNAME||"").localeCompare(String(b.COMMONNAME||""));
+                });
+                container.innerHTML = items.map(i => generateCard(i, 'av', 'status-teal')).join('');
             } else {
+                // Keep Reserve drilling as is or show all
                 if(avResLevel===0){ 
                     crumb.innerText="My Reserves > Plants"; 
                     const names=[...new Set(items.map(i=>i.COMMONNAME))].sort(); 
@@ -2184,7 +2119,7 @@ const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
             const tagColor=item.FIELDTAGCOLOR||'-'; 
             const safeUidJs=esc(item.UNIQUE_ID);
 
-            if(sourceView === 'av') {
+           if(sourceView === 'av') {
                 let holdHtml = "";
                 let holdCode = item.HOLDSTOPCODE || item.HOLD_STOP_CODE || item.HOLDSTOP || "";
                 let holdReason = item.HOLDSTOPREASON || item.HOLD_STOP_REASON || item.HOLDREASON || "";
@@ -2200,17 +2135,32 @@ const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
                 let clickThumbHtml = "";
                 if(photoLink) {
                     let firstUrl = String(photoLink).split(',')[0]; 
-                    let cleanUrl = firstUrl.trim(); 
-                    let urlMatch = cleanUrl.match(/(https?:\/\/[^"\s>]+)/); 
-                    if(urlMatch) cleanUrl = urlMatch[1]; 
-                    let thumbUrl = getDirectImageUrl(cleanUrl); 
+                    let thumbUrl = getDirectImageUrl(firstUrl.trim()); 
                     if(thumbUrl.startsWith('http')){ 
                         let photoCount = String(photoLink).split(',').length;
+                        // Clicking the photo opens the swipeable gallery
                         clickThumbHtml = `<div class="ml-3 flex-shrink-0 flex flex-col items-center" onclick="event.stopPropagation(); openPhotoModal('${photoLink}', '${esc(item.COMMONNAME)} - ${esc(item.CONTSIZE)}')"><div class="relative"><img src="${thumbUrl}" class="w-24 h-24 rounded-lg object-cover border-2 border-teal-300 shadow-md active:scale-95 transition-transform" loading="lazy">${photoCount > 1 ? `<div class="absolute -top-2 -right-2 bg-teal-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full border-2 border-white shadow-sm">+${photoCount-1}</div>` : ''}</div><div class="text-center text-[9px] font-black text-teal-600 mt-1.5 uppercase tracking-widest bg-teal-50 px-2 py-0.5 rounded-md border border-teal-100 cursor-pointer active:bg-teal-200">VIEW</div></div>`; 
                     } 
                 }
 
-                return `<div class="flex items-start w-full mb-3 item-row relative bg-white p-4 rounded-xl border-2 border-teal-100 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-teal-600 focus:ring-teal-600 shadow-sm pointer-events-none" ${isChecked}></div><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full"><div class="flex-grow min-w-0 pr-2"><div class="font-black text-gray-800 text-[18px] leading-tight break-words mb-1">${item.COMMONNAME||'Unknown'}</div><div class="font-black text-teal-700 text-[15px] mb-2">${item.CONTSIZE||'-'}</div><div class="grid grid-cols-2 gap-2 mb-2"><div class="text-[11px] font-bold text-gray-500 uppercase"><span class="block text-[8px] text-gray-400 mb-0.5">LOT CODE</span>${item.LOTCODE||'-'}</div><div class="text-[11px] font-bold text-gray-500 uppercase"><span class="block text-[8px] text-gray-400 mb-0.5">LOCATION</span>${item.LOCATIONCODE||'-'}</div></div><div class="flex flex-wrap gap-2 text-[11px] font-bold uppercase tracking-wider mt-1"><span class="bg-gray-100 text-gray-800 px-2 py-1 rounded border border-gray-200">LOC AVA: <span class="font-black">${item.PTRAVAILABLE||'0'}</span></span><span class="bg-purple-50 text-purple-700 px-2 py-1 rounded border border-purple-200">s_LTS: <span class="font-black">${item.S_LTS||'0'}</span></span></div>${holdHtml}${avNoteHtml}</div>${clickThumbHtml}</div></div></div>`;
+                return `<div class="flex items-start w-full mb-3 item-row relative bg-white p-4 rounded-xl border-2 border-teal-100 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden" data-dom-id="${item.DOM_ID}" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')">
+                    <div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-teal-600 focus:ring-teal-600 shadow-sm pointer-events-none" ${isChecked}></div>
+                    <div class="flex flex-col w-full min-w-0">
+                        <div class="flex justify-between items-start w-full">
+                            <div class="flex-grow min-w-0 pr-2">
+                                <div class="font-black text-gray-800 text-[18px] leading-tight break-words mb-1">${item.COMMONNAME||'Unknown'}</div>
+                                <div class="font-black text-teal-700 text-[15px] mb-2">${item.CONTSIZE||'-'}</div>
+                                <div class="flex flex-wrap gap-2 text-[11px] font-bold uppercase tracking-wider mt-1">
+                                    <span class="bg-gray-100 text-gray-800 px-2 py-1 rounded border border-gray-200">LOC AVA: <span class="font-black">${item.PTRAVAILABLE||'0'}</span></span>
+                                    <span class="bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-200">LOC: <span class="font-black">${item.LOCATIONCODE||'-'}</span></span>
+                                </div>
+                                ${holdHtml}
+                                ${avNoteHtml}
+                            </div>
+                            ${clickThumbHtml}
+                        </div>
+                    </div>
+                </div>`;
             }
             if(photoLink){ 
                 let firstUrl=String(photoLink).split(',')[0]; 
