@@ -256,10 +256,14 @@
                     <div class="bg-[#007a4d] text-white p-6 rounded-2xl mb-6 shadow-lg flex flex-col items-center text-center relative overflow-hidden">
                         <div class="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-white opacity-5 rounded-full pointer-events-none"></div>
                         <div class="absolute bottom-0 left-0 -mb-10 -ml-10 w-32 h-32 bg-black opacity-10 rounded-full pointer-events-none"></div>
-                        <h1 class="text-xl font-black tracking-tight mb-1 z-10 relative mt-4 px-2 leading-tight">Greenleaf Nursery Company</h1>                        <p class="text-green-100 text-[10px] font-bold mb-5 uppercase tracking-[0.2em] z-10 relative">Dashboard</p>
+                        
+                        <h1 id="dashboard-username-display" class="text-3xl font-black tracking-tight mb-1 z-10 relative mt-4 px-2 uppercase truncate w-full">USER</h1>
+                        <p class="text-green-100 text-[10px] font-bold mb-5 uppercase tracking-[0.2em] z-10 relative">Dashboard</p>
+                        
                         <div class="flex flex-col items-center pt-4 border-t border-white/20 w-full mt-1 z-10 relative">
-                            <span class="text-[9px] font-bold text-white/70 uppercase tracking-[0.3em] mb-1">Powered By</span>
-                            <div class="text-[15px] font-black tracking-[0.2em] text-white uppercase drop-shadow-sm">Ag Metric</div>
+                            <div class="text-[14px] font-black tracking-wide text-white uppercase drop-shadow-sm mb-3 text-center leading-tight">Greenleaf Nursery Company</div>
+                            <span class="text-[8px] font-bold text-white/70 uppercase tracking-[0.3em] mb-1">Powered By</span>
+                            <div class="text-[12px] font-black tracking-[0.2em] text-white uppercase drop-shadow-sm">Ag Metric</div>
                         </div>
                     </div>
                     <h2 class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3 pl-1">App Modules</h2>
@@ -871,13 +875,17 @@
             localStorage.setItem('gnc_pin_v3',pass); 
             localStorage.setItem('gnc_role_v3',currentRole); 
             document.getElementById('header-user').innerText=currentUser.toUpperCase(); 
+            
+            // Set the username on the big Dashboard card
+            let dashUser = document.getElementById('dashboard-username-display');
+            if(dashUser) dashUser.innerText = currentUser.toUpperCase();
+
             setRepPermutations(currentUser); 
             if(!isBiometricLogin&&window.PublicKeyCredential&&localStorage.getItem('gnc_bio_enabled')!=='true'){ promptToEnableBiometrics(user,pass); } 
             applyRolePermissions(); 
             fetchBackgroundData(); 
             setInterval(silentBackgroundSync, 1000); 
         }
-
         async function silentBackgroundSync() {
             if(!currentUser)return; 
             const checkTime=new Date().toISOString();
