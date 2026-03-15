@@ -1737,6 +1737,13 @@
                 document.getElementById('dtab-docks').classList.remove('hidden');
             } else if (sourceView === 'request') {
                 document.getElementById('dtab-request').classList.remove('hidden');
+                
+                // Show Season or Location tabs inside the Request view if applicable
+                if (activeItem.APP_TAB_ASSIGNMENT === 'season') {
+                    document.getElementById('dtab-season').classList.remove('hidden');
+                } else if (activeItem.APP_TAB_ASSIGNMENT === 'location') {
+                    document.getElementById('dtab-location').classList.remove('hidden');
+                }
             }
 
             ['ssn-', 'lsn-', 'na-', 'req-', 'dock-', 'flyer-'].forEach(p => {
@@ -1786,7 +1793,6 @@
 
             if(typeof validateSsnForm === 'function') validateSsnForm();
         }
-
         function renderSavedPhotos() {
             let sLink = activeItem.SAVED_PHOTO_LINK || "";
             let rLink = activeItem.REQ_PHOTO_LINK || "";
@@ -2945,7 +2951,6 @@
                     payload.req_spec = setVal(itemToSave.REQ_SPEC); payload.req_caliper = setVal(itemToSave.REQ_CALIPER); payload.req_pic_note = setVal(itemToSave.REQ_PICK); 
                     payload.req_sales_note = setVal(itemToSave.REQ_SALES_NOTE); payload.req_comments = setVal(itemToSave.REQ_COMMENTS); 
                     payload.req_reserve = setVal(itemToSave.REQ_RESERVE); payload.av_note = setVal(itemToSave.AV_NOTE);
-                    if (isComplete) { payload.req_status = 'Complete'; itemToSave.REQ_STATUS = 'Complete'; }
                 } else if (prefix === 'dock-') { 
                     payload.dock_spec = setVal(itemToSave.DOCK_SPEC); payload.dock_caliper = setVal(itemToSave.DOCK_CALIPER); payload.dock_note = setVal(itemToSave.DOCK_NOTE); 
                 } else if (prefix === 'flyer-') {
@@ -2977,9 +2982,43 @@
                     payload.date_completed = new Date().toISOString(); 
                     if (prefix === 'flyer-') payload.flyer_completed = payload.date_completed;
                     
-                    let soPayload = { unique_id: itemToSave.UNIQUE_ID, itemcode: itemToSave.ITEMCODE || "", commonname: itemToSave.COMMONNAME || "", contsize: itemToSave.CONTSIZE || "", locationcode: itemToSave.LOCATIONCODE || "", lotcode: itemToSave.LOTCODE || "", ptravailable: String(itemToSave.PTRAVAILABLE || ""), priority: String(itemToSave.PRIORITY || ""), sales_note: payload.sales_note || itemToSave.SALES_NOTE || itemToSave._NEW_SALES_NOTE || "", photo_link: itemToSave.NA_PHOTO_LINK || itemToSave.SAVED_PHOTO_LINK || "", completed_by: currentUser, completed_at: payload.date_completed };
+                    // Force complete for Requests, regardless of which tab they clicked Mark Done from
+                    if (itemToSave.SOURCE_TABLE === 'v2_active_request') {
+                        payload.req_status = 'Complete';
+                        itemToSave.REQ_STATUS = 'Complete';
+                    }
+                    
+                    // Logic to Push to Sales Office
+                    let isSeasonNote = (itemToSave.APP_TAB_ASSIGNMENT === 'season');
+                    let shouldPushToSO = false;
+                    
                     if (prefix !== 'flyer-' && prefix !== 'req-') {
+                        shouldPushToSO = true; // Normal flow
+                    } else if (itemToSave.SOURCE_TABLE === 'v2_active_request' && isSeasonNote) {
+                        shouldPushToSO = true; // Request flow that is ALSO a Season Note
+                    }
+
+                    if (shouldPushToSO) {
+                        let masterUid = itemToSave.MASTER_ID || itemToSave.UNIQUE_ID; // Link to master item if Request
+                        let sNote = payload.sales_note || payload.req_sales_note || itemToSave.SALES_NOTE || itemToSave.REQ_SALES_NOTE || itemToSave._NEW_SALES_NOTE || "";
+                        
+                        let soPayload = { 
+                            unique_id: masterUid, 
+                            itemcode: itemToSave.ITEMCODE || "", 
+                            commonname: itemToSave.COMMONNAME || "", 
+                            contsize: itemToSave.CONTSIZE || "", 
+                            locationcode: itemToSave.LOCATIONCODE || "", 
+                            lotcode: itemToSave.LOTCODE || "", 
+                            ptravailable: String(itemToSave.PTRAVAILABLE || ""), 
+                            priority: String(itemToSave.PRIORITY || ""), 
+                            sales_note: sNote, 
+                            photo_link: itemToSave.NA_PHOTO_LINK || itemToSave.SAVED_PHOTO_LINK || itemToSave.REQ_PHOTO_LINK || "", 
+                            completed_by: currentUser, 
+                            completed_at: payload.date_completed 
+                        };
+                        
                         supabaseFetch('v2_sales_office', 'POST', soPayload).catch(e => console.log(e));
+                        
                         let cloneSO = { ...soPayload };
                         for(let key in soPayload) { cloneSO[key.toUpperCase()] = soPayload[key]; }
                         cloneSO.DOM_ID = 'so_' + cloneSO.UNIQUE_ID;
@@ -2991,7 +3030,8 @@
                     }
                 }
 
-                const targetTable = (prefix === 'req-') ? 'v2_active_request' : (itemToSave.SOURCE_TABLE || 'v2_master_inventory');
+                // If editing a request, send back to v2_active_request. Otherwise master DB.
+                const targetTable = (itemToSave.SOURCE_TABLE === 'v2_active_request') ? 'v2_active_request' : (itemToSave.SOURCE_TABLE || 'v2_master_inventory');
 
                 supabaseFetch(targetTable, 'PATCH', payload, `unique_id=eq.${encodeURIComponent(itemToSave.UNIQUE_ID)}`).then(data => {
                     if (isCurrentView && isComplete) { if(btnComp) btnComp.innerText = "MARK DONE"; }
@@ -3004,7 +3044,7 @@
                         itemToSave.DATE_COMPLETED = payload.date_completed; 
                     }
 
-                    if (prefix === 'req-' && isComplete && !wasAlreadyComplete) {
+                    if ((prefix === 'req-' || itemToSave.SOURCE_TABLE === 'v2_active_request') && isComplete && !wasAlreadyComplete) {
                         let folderItems = requestsInventory.filter(i => i.REQUEST_FOLDER === itemToSave.REQUEST_FOLDER);
                         let allComplete = folderItems.every(i => i.REQ_STATUS === 'Complete' || i.UNIQUE_ID === itemToSave.UNIQUE_ID);
                         if (allComplete) { sendEmailNotification('request_complete', itemToSave.REQUEST_FOLDER, itemToSave.REQUESTED_BY, itemToSave.REQ_CUSTOMER, folderItems.length); }
@@ -3013,7 +3053,6 @@
             };
             if (isSilentAutoSave && !isComplete && !specificItem) { autoSaveTimer = setTimeout(() => { executeSave(); }, 1000); } else { executeSave(); }
         }
-
         function backupLocalItem(item) {
             if (!item) return;
             let pendingEdits = JSON.parse(localStorage.getItem('gnc_pending_edits') || '{}');
