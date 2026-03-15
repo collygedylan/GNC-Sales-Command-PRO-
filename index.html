@@ -3,11 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-    <title>DC01</title>
-    <meta name="theme-color" content="#007a4d">
-    <link rel="manifest" href="manifest.json">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="application-name" content="GNC">
+    <title>GNC</title>
     <meta name="theme-color" content="#007a4d">
     <link rel="manifest" href="manifest.json">
     <meta name="mobile-web-app-capable" content="yes">
@@ -32,8 +28,8 @@
     
     <div id="view-login">
         <div class="login-card">
-           <div class="flex flex-col items-center mb-8 w-full relative">
-                <div class="text-3xl text-[#007a4d] font-black tracking-tighter mb-1">DC01</div>
+            <div class="flex flex-col items-center mb-8 w-full relative">
+                <div class="text-3xl text-[#007a4d] font-black tracking-tighter mb-1">GNC</div>
                 <div class="flex flex-col items-center gap-0.5 mt-5">
                     <span class="text-[9px] font-bold text-gray-400 uppercase tracking-[0.3em]">Powered By</span>
                     <span class="text-[17px] font-black text-gray-800 tracking-[0.2em] uppercase border-b-[3px] border-[#007a4d] pb-0.5">Ag Metric</span>
@@ -177,10 +173,11 @@
         <header class="nav-header sticky top-0 z-50 p-4 flex justify-between items-center shadow-md">
             <div class="flex items-center gap-3">
                 <i class="ph-bold ph-list menu-btn text-2xl cursor-pointer" onclick="toggleMenu()"></i>
-               <div class="flex flex-col">
+                <div class="flex flex-col">
                     <div class="font-bold text-lg leading-tight"><span id="header-user">User</span></div>
-                    <div class="text-[10px] opacity-80 leading-tight">DC01</div>
-                </div>            </div>
+                    <div class="text-[10px] opacity-80 leading-tight">GNC</div>
+                </div>
+            </div>
             <div class="bg-white/20 p-2 rounded-lg cursor-pointer" onclick="fetchBackgroundData()"><i class="ph-bold ph-arrows-clockwise text-white"></i></div>
         </header>
         
@@ -213,7 +210,8 @@
                     <div class="bg-[#007a4d] text-white p-6 rounded-2xl mb-6 shadow-lg flex flex-col items-center text-center relative overflow-hidden">
                         <div class="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-white opacity-5 rounded-full pointer-events-none"></div>
                         <div class="absolute bottom-0 left-0 -mb-10 -ml-10 w-32 h-32 bg-black opacity-10 rounded-full pointer-events-none"></div>
-                        <h1 class="text-2xl font-black tracking-tight mb-1 z-10 relative mt-4">DC01</h1>                        <p class="text-green-100 text-[10px] font-bold mb-5 uppercase tracking-[0.2em] z-10 relative">Dashboard</p>
+                        <h1 class="text-2xl font-black tracking-tight mb-1 z-10 relative mt-4">GNC</h1>
+                        <p class="text-green-100 text-[10px] font-bold mb-5 uppercase tracking-[0.2em] z-10 relative">Dashboard</p>
                         <div class="flex flex-col items-center pt-4 border-t border-white/20 w-full mt-1 z-10 relative">
                             <span class="text-[9px] font-bold text-white/70 uppercase tracking-[0.3em] mb-1">Powered By</span>
                             <div class="text-[15px] font-black tracking-[0.2em] text-white uppercase drop-shadow-sm">Ag Metric</div>
@@ -258,15 +256,10 @@
                     </div>
                 </div>
 
-       <div id="view-av" class="hidden">
+                <div id="view-av" class="hidden">
                     <div id="av-search-container" class="relative mb-2">
-                        <input type="text" id="av-search" class="input-field w-full pr-10 !mb-0" placeholder="Search Common Name, Loc..." oninput="handleAVSearch()">
+                        <input type="text" id="av-search" class="input-field w-full pr-10 !mb-0" placeholder="Search AV Stock..." oninput="handleAVSearch()">
                         <i id="av-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearAVSearch()"></i>
-                    </div>
-                    <div id="av-filters-container" class="flex gap-2 mb-2 overflow-x-auto pb-1 scrollbar-none">
-                        <select id="av-filter-group" class="input-field !mb-0 min-w-[120px] text-xs py-2 px-2 bg-white" onchange="handleAvFilterChange()"><option value="">All Groups</option></select>
-                        <select id="av-filter-season" class="input-field !mb-0 min-w-[100px] text-xs py-2 px-2 bg-white" onchange="handleAvFilterChange()"><option value="">All Seasons</option></select>
-                        <select id="av-filter-size" class="input-field !mb-0 min-w-[100px] text-xs py-2 px-2 bg-white" onchange="handleAvFilterChange()"><option value="">All Sizes</option></select>
                     </div>
                     <div class="task-tabs mt-2 mb-2">
                         <div id="tab-av-open" class="task-tab active" onclick="setAVTab('open')">Open Stock</div>
@@ -274,7 +267,9 @@
                     </div>
                     <div id="av-crumb" class="text-xs font-bold text-[#007a4d] mb-3 mt-2 empty:hidden">Open Stock</div>
                     <div id="av-content"></div>
-                </div>                <div id="view-reports" class="hidden">
+                </div>
+                
+                <div id="view-reports" class="hidden">
                     <div id="reports-crumb" class="text-xs font-bold text-[#007a4d] mb-3">Crop Value Summary</div>
                     <div class="detail-tabs mb-4">
                         <div class="detail-tab report-tab active border-[#007a4d] text-[#007a4d]" onclick="setReportTab('ALL')" id="rtab-ALL">Summary</div>
@@ -623,13 +618,14 @@
         let activeDriveTab='name'; let selectedDriveBlock=null; let selectedDriveLoc=null;
         let driveViewLevel=0; let selectedDriveName=null; let selectedDriveSize=null; let driveSelectedSeasons=new Set(['ALL']); const availableSeasons=["ALL","S1","F1","U1","U2","U3","X","Y","Z"];
         
-       let activeTaskTab="season"; let taskViewTargetUser=null; let taskViewLevel=0; let selectedTaskBlock=null; let selectedTaskLoc=null; let selectedEndCapFolder=null;
+        let activeTaskTab="season"; let taskViewTargetUser=null; let taskViewLevel=0; let selectedTaskBlock=null; let selectedTaskLoc=null; let selectedEndCapFolder=null;
         
-let activeAVTab='open'; let avResLevel=0; let selectedAvResName=null; let selectedAvResSize=null; let avFilterGroup=""; let avFilterSeason=""; let avFilterSize="";
+        let activeAVTab='open'; let avOpenLevel=0; let selectedAvGroup=null; let selectedAvItemCode=null; let avResLevel=0; let selectedAvResName=null; let selectedAvResSize=null;; let selectedAvOpenSeason=null; let selectedAvOpenLot=null; 
         
-let lowStockViewLevel=0; let selectedLowStockName=null; let selectedLowStockSize=null; let reviewViewLevel=0; let selectedReviewItemCode=null; let selectedReviewCommonName=null; let selectedReviewContSize=null;
-let reportViewLevel=0; let activeReqTab="pending"; let selectedReqRep=null; let selectedReqRepStatus=null; let selectedReqFolder=null; let tempSelectedReqRep=""; let tempReqFolder=null; let tempReqCust=null; let previousReqStep="";
-let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqFolderView=null; let selectedReqStatus='Pending';        let dockViewLevel=0; let selectedDockNum=null; let pendingDockNum=null; let selectedDockName=null; let selectedDockSize=null; let selectedDockItemCode=null; let selectedDockCustomer=""; let selectedDockTrip=""; let selectedDockRep=""; let lastSyncTime=new Date().toISOString();
+        let lowStockViewLevel=0; let selectedLowStockName=null; let selectedLowStockSize=null; let reviewViewLevel=0; let selectedReviewItemCode=null; let selectedReviewCommonName=null; let selectedReviewContSize=null;
+        let reportViewLevel=0; let activeReqTab="pending"; let selectedReqRep=null; let selectedReqRepStatus=null; let selectedReqFolder=null; let tempSelectedReqRep=""; let tempReqFolder=null; let tempReqCust=null; let previousReqStep="";
+        let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqFolderView=null; let selectedReqStatus='Pending';
+        let dockViewLevel=0; let selectedDockNum=null; let pendingDockNum=null; let selectedDockName=null; let selectedDockSize=null; let selectedDockItemCode=null; let selectedDockCustomer=""; let selectedDockTrip=""; let selectedDockRep=""; let lastSyncTime=new Date().toISOString();
         let activeDocksMainTab = 'all'; let activeDocksSubTab = 'checker'; let expandedDockStops = new Set();
         
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Machino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
@@ -657,58 +653,59 @@ let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqFolder
             return url; 
         }
 
-      async function promptToEnableBiometrics(user,pin) { 
-    if(!confirm("Would you like to enable Fingerprint/FaceID login for future use?"))return; 
-    try{ 
-        const publicKey={challenge:new Uint8Array(32),rp:{name:"DC01"},user:{id:new Uint8Array(16),name:user,displayName:user},pubKeyCredParams:[{type:"public-key",alg:-7}],authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required"},timeout:60000}; 
-        await navigator.credentials.create({publicKey}); 
-        localStorage.setItem('gnc_bio_enabled','true'); 
-        localStorage.setItem('gnc_bio_user',user); 
-        localStorage.setItem('gnc_bio_pin',pin); 
-        showToast("Success","Fingerprint login enabled!"); 
-    }catch(err){} 
-}
+        async function promptToEnableBiometrics(user,pin) { 
+            if(!confirm("Would you like to enable Fingerprint/FaceID login for future use?"))return; 
+            try{ 
+                const publicKey={challenge:new Uint8Array(32),rp:{name:"GNC"},user:{id:new Uint8Array(16),name:user,displayName:user},pubKeyCredParams:[{type:"public-key",alg:-7}],authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required"},timeout:60000}; 
+                await navigator.credentials.create({publicKey}); 
+                localStorage.setItem('gnc_bio_enabled','true'); 
+                localStorage.setItem('gnc_bio_user',user); 
+                localStorage.setItem('gnc_bio_pin',pin); 
+                showToast("Success","Fingerprint login enabled!"); 
+            }catch(err){} 
+        }
 
-async function loginWithBiometric() { 
-    try{ 
-        const publicKey={challenge:new Uint8Array(32),timeout:60000,userVerification:"required"}; 
-        await navigator.credentials.get({publicKey}); 
-        const savedUser=localStorage.getItem('gnc_bio_user'); 
-        const savedPin=localStorage.getItem('gnc_bio_pin'); 
-        if(savedUser&&savedPin){ 
-            document.getElementById('username-input').value=savedUser; 
-            document.getElementById('pin-code').value=savedPin; 
-            handleLogin(true); 
-        }else{ 
-            showToast("Error","Credentials lost.",true); 
-        } 
-    }catch(err){ 
-        showToast("Error","Fingerprint cancelled.",true); 
-    } 
-}
+        async function loginWithBiometric() { 
+            try{ 
+                const publicKey={challenge:new Uint8Array(32),timeout:60000,userVerification:"required"}; 
+                await navigator.credentials.get({publicKey}); 
+                const savedUser=localStorage.getItem('gnc_bio_user'); 
+                const savedPin=localStorage.getItem('gnc_bio_pin'); 
+                if(savedUser&&savedPin){ 
+                    document.getElementById('username-input').value=savedUser; 
+                    document.getElementById('pin-code').value=savedPin; 
+                    handleLogin(true); 
+                }else{ 
+                    showToast("Error","Credentials lost.",true); 
+                } 
+            }catch(err){ 
+                showToast("Error","Fingerprint cancelled.",true); 
+            } 
+        }
 
-function setRepPermutations(user) { 
-    let parts=user.split('_'); 
-    if(parts.length>=2){ 
-        let first=parts[0]; 
-        let last=parts[parts.length-1]; 
-        repPermutations=[`${first} ${last}`.toLowerCase(),`${last}, ${first}`.toLowerCase(),`${last},${first}`.toLowerCase()]; 
-    }else{ 
-        repPermutations=[user.toLowerCase()]; 
-    } 
-}
+        function setRepPermutations(user) { 
+            let parts=user.split('_'); 
+            if(parts.length>=2){ 
+                let first=parts[0]; 
+                let last=parts[parts.length-1]; 
+                repPermutations=[`${first} ${last}`.toLowerCase(),`${last}, ${first}`.toLowerCase(),`${last},${first}`.toLowerCase()]; 
+            }else{ 
+                repPermutations=[user.toLowerCase()]; 
+            } 
+        }
 
-function isMyRep(repNameStr) { 
-    if(safeRole!=='SALESREP')return true; 
-    if(!repNameStr)return false; 
-    let str=String(repNameStr).toLowerCase(); 
-    return repPermutations.some(p=>str.includes(p)); 
-}
+        function isMyRep(repNameStr) { 
+            if(safeRole!=='SALESREP')return true; 
+            if(!repNameStr)return false; 
+            let str=String(repNameStr).toLowerCase(); 
+            return repPermutations.some(p=>str.includes(p)); 
+        }
 
-function openPhotoModal(urlStr, caption) { 
-    const gallery = document.getElementById('photo-modal-gallery');
-    gallery.innerHTML = '';
-    let urls = String(urlStr).split(',');            
+        function openPhotoModal(urlStr, caption) { 
+            const gallery = document.getElementById('photo-modal-gallery');
+            gallery.innerHTML = '';
+            let urls = String(urlStr).split(',');
+            
             urls.forEach(u => {
                 let cleanUrl = u.trim();
                 let match = cleanUrl.match(/(https?:\/\/[^"\s>]+)/);
@@ -1078,398 +1075,302 @@ function openPhotoModal(urlStr, caption) {
             }); 
         }
 
-       function reRenderCurrentView() {
-    if(!document.getElementById('view-drive').classList.contains('hidden')) renderDrive();
-    if(!document.getElementById('view-tasks').classList.contains('hidden')) renderTasks();
-    if(!document.getElementById('view-sales-office').classList.contains('hidden')) renderSalesOffice();
-    if(!document.getElementById('view-low-stock').classList.contains('hidden')) renderLowStock();
-    if(!document.getElementById('view-docks').classList.contains('hidden')) renderDocks();
-    if(!document.getElementById('view-review').classList.contains('hidden')) renderReview();
-    if(!document.getElementById('view-reports').classList.contains('hidden')) renderReports();
-    if(!document.getElementById('view-request').classList.contains('hidden')) renderRequest();
-    if(!document.getElementById('view-reserves').classList.contains('hidden')) renderReserves();
-    if(!document.getElementById('view-av').classList.contains('hidden')) renderAV();
-}
-
-function setTaskTab(tab) {
-    activeTaskTab = tab;
-    document.getElementById('tab-season').classList.toggle('active', tab === 'season');
-    document.getElementById('tab-location').classList.toggle('active', tab === 'location');
-    document.getElementById('tab-endcap').classList.toggle('active', tab === 'endcap');
-    document.getElementById('tab-flyer').classList.toggle('active', tab === 'flyer');
-    taskViewLevel = 0;
-    renderTasks();
-}
-
-function setDriveTab(tab) {
-    activeDriveTab = tab;
-    document.getElementById('tab-drive-name').classList.toggle('active', tab === 'name');
-    document.getElementById('tab-drive-loc').classList.toggle('active', tab === 'loc');
-    driveViewLevel = 0;
-    renderDrive();
-}
-
-function selectDriveBlock(block) { selectedDriveBlock = block; driveViewLevel = 1; renderDrive(); }
-function selectDriveLoc(loc) { selectedDriveLoc = loc; driveViewLevel = 2; renderDrive(); }
-
-function resetDriveView() {
-    activeDriveTab = 'name';
-    document.getElementById('tab-drive-name').classList.add('active');
-    document.getElementById('tab-drive-loc').classList.remove('active');
-    driveViewLevel = 0; selectedDriveName = null; selectedDriveSize = null; selectedDriveBlock = null; selectedDriveLoc = null;
-    document.getElementById('drive-search').value = ""; document.getElementById('drive-search-clear').classList.add('hidden');
-    driveSelectedSeasons.clear(); driveSelectedSeasons.add('ALL');
-    renderDrive();
-}
-
-function clearAVSearch() { 
-    document.getElementById('av-search').value = ""; 
-    document.getElementById('av-search-clear').classList.add('hidden'); 
-    avResLevel = 0; 
-    renderAV(); 
-}
-
-function handleAVSearch() { 
-    const term = document.getElementById('av-search').value.toLowerCase(); 
-    const clearBtn = document.getElementById('av-search-clear'); 
-    if(term.length > 0){
-        clearBtn.classList.remove('hidden'); 
-        avResLevel = 0;
-    } else {
-        clearBtn.classList.add('hidden'); 
-        avResLevel = 0;
-    } 
-    debouncedAVSearch(); 
-}
-
-function populateAvFilters(items) {
-    const groupSelect = document.getElementById('av-filter-group');
-    const seasonSelect = document.getElementById('av-filter-season');
-    const sizeSelect = document.getElementById('av-filter-size');
-    
-    if (groupSelect.options.length <= 1) {
-        const groups = [...new Set(items.map(i => i.PLANTGROUPCODE || 'Unassigned'))].sort();
-        groupSelect.innerHTML = '<option value="">All Groups</option>' + groups.map(g => `<option value="${esc(g)}">${g}</option>`).join('');
-    }
-    if (seasonSelect.options.length <= 1) {
-        const seasons = [...new Set(items.map(i => i.SEASON || 'Unassigned'))].sort();
-        seasonSelect.innerHTML = '<option value="">All Seasons</option>' + seasons.map(s => `<option value="${esc(s)}">${s}</option>`).join('');
-    }
-    if (sizeSelect.options.length <= 1) {
-        const sizes = [...new Set(items.map(i => i.CONTSIZE || 'Unassigned'))].sort();
-        sizeSelect.innerHTML = '<option value="">All Sizes</option>' + sizes.map(s => `<option value="${esc(s)}">${s}</option>`).join('');
-    }
-}
-
-function handleAvFilterChange() {
-    avFilterGroup = document.getElementById('av-filter-group').value;
-    avFilterSeason = document.getElementById('av-filter-season').value;
-    avFilterSize = document.getElementById('av-filter-size').value;
-    renderAV();
-}
-
-function resetAVView() { 
-    activeAVTab = 'open'; 
-    avResLevel = 0; selectedAvResName = null; selectedAvResSize = null; 
-    avFilterGroup = ""; avFilterSeason = ""; avFilterSize = "";
-    document.getElementById('av-filter-group').innerHTML = '<option value="">All Groups</option>';
-    document.getElementById('av-filter-season').innerHTML = '<option value="">All Seasons</option>';
-    document.getElementById('av-filter-size').innerHTML = '<option value="">All Sizes</option>';
-    document.getElementById('tab-av-open').classList.add('active'); document.getElementById('tab-av-reserves').classList.remove('active'); 
-    document.getElementById('av-filters-container').classList.remove('hidden');
-    document.getElementById('av-search').value = ""; document.getElementById('av-search-clear').classList.add('hidden'); 
-    renderAV(); 
-}
-
-function setAVTab(tab) { 
-    activeAVTab = tab; 
-    avResLevel = 0; selectedAvResName = null; selectedAvResSize = null; 
-    document.getElementById('tab-av-open').classList.toggle('active', tab === 'open'); 
-    document.getElementById('tab-av-reserves').classList.toggle('active', tab === 'reserves'); 
-    
-    if(tab === 'open') {
-        document.getElementById('av-filters-container').classList.remove('hidden');
-    } else {
-        document.getElementById('av-filters-container').classList.add('hidden');
-        avFilterGroup = ""; avFilterSeason = ""; avFilterSize = "";
-        document.getElementById('av-filter-group').value = "";
-        document.getElementById('av-filter-season').value = "";
-        document.getElementById('av-filter-size').value = "";
-    }
-    renderAV(); 
-}
-
-function setReqTab(tab) {
-    activeReqTab = tab;
-    document.getElementById('tab-req-pending').classList.toggle('active', tab === 'pending');
-    document.getElementById('tab-req-reps').classList.toggle('active', tab === 'reps');
-    requestViewLevel = 0; selectedReqFolder = null; selectedReqRepView = null; selectedReqCustView = null; selectedReqFolderView = null; 
-    clearSelection(); 
-    renderRequest();
-}
-
-function sendEmailNotification(type, folderId, repName, customer, itemsCount) {
-    let payload = { type: "email", emailType: type, folderId: folderId, repName: repName, customer: customer, itemsCount: itemsCount, dylanEmail: "dylan_collyge@greenleafnursery.com" };
-    if (type === 'request_complete') {
-        let cleanRep = repName.trim().toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, '_');
-        payload.repEmail = cleanRep + "@greenleafnursery.com";
-    }
-    fetch(GOOGLE_SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) }).catch(e => console.log(e));
-}
-
-function resetHoursView() {
-    let yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
-    document.getElementById('hours-date').value = yesterday.toISOString().split('T')[0];
-    document.getElementById('hours-dept').value = ""; document.getElementById('hours-amount').value = "";
-}
-
-function submitLaborHours() {
-    const dateVal = document.getElementById('hours-date').value; 
-    const deptVal = document.getElementById('hours-dept').value; 
-    const hoursVal = document.getElementById('hours-amount').value;
-    if(!dateVal || !deptVal || !hoursVal) { showToast("Required", "Please fill out all fields.", true); return; }
-    showToast("Submitting...", "Saving labor hours...", false);
-    const payload = { date_reported: dateVal, department: deptVal, man_hours: parseFloat(hoursVal), submitted_by: currentUser, submitted_at: new Date().toISOString() };
-    supabaseFetch('v2_labor_hours', 'POST', payload).then(() => { showToast("Success", "Hours submitted successfully!"); document.getElementById('hours-amount').value = ""; }).catch(err => { showToast("Error", "Failed to submit hours.", true); });
-}
-
-const debouncedReservesSearch = debounce(() => { requestAnimationFrame(() => renderReserves()) }, 150);
-
-function clearReservesSearch() { 
-    document.getElementById('reserves-search').value = ""; 
-    document.getElementById('reserves-search-clear').classList.add('hidden'); 
-    reservesViewLevel = 0; 
-    renderReserves(); 
-}
-
-function handleReservesSearch() { 
-    const term = document.getElementById('reserves-search').value.toLowerCase(); 
-    const clearBtn = document.getElementById('reserves-search-clear'); 
-    if(term.length > 0){
-        clearBtn.classList.remove('hidden');
-        reservesViewLevel = 0;
-    } else {
-        clearBtn.classList.add('hidden');
-        reservesViewLevel = 0;
-    } 
-    debouncedReservesSearch(); 
-}
-
-const debouncedAVSearch = debounce(() => { requestAnimationFrame(() => renderAV()) }, 150);
-
-function selectAvResName(name) { selectedAvResName = name; avResLevel = 1; renderAV(); }
-function selectAvResSize(size) { selectedAvResSize = size; avResLevel = 2; renderAV(); }
-
-function renderAV() {
-    const container = document.getElementById('av-content'); 
-    const crumb = document.getElementById('av-crumb'); 
-    const term = document.getElementById('av-search').value.toLowerCase().trim(); 
-
-    let items = [];
-    if (activeAVTab === 'open') { 
-        items = fullInventory.filter(i => {
-            let lts = Number(String(i.S_LTS || '0').replace(/,/g, ''));
-            let season = String(i.SEASON || '').toUpperCase();
-            return lts > 0 && !season.includes('Y') && !season.includes('Z');
-        }); 
-        
-        populateAvFilters(items);
-        
-        if (avFilterGroup) items = items.filter(i => (i.PLANTGROUPCODE || 'Unassigned') === avFilterGroup);
-        if (avFilterSeason) items = items.filter(i => (i.SEASON || 'Unassigned') === avFilterSeason);
-        if (avFilterSize) items = items.filter(i => (i.CONTSIZE || 'Unassigned') === avFilterSize);
-        
-    } else { 
-        items = reservesInventory; 
-        if(safeRole === 'SALESREP') items = items.filter(i => isMyRep(i.SALESREPNAME)); 
-    }
-    
-    if (term) { 
-        const searchTerms = term.split(/\s+/); 
-        items = items.filter(i => { 
-            const searchStr = (i._search || ""); 
-            return searchTerms.every(t => searchStr.includes(t)); 
-        }); 
-    }
-    
-    if (items.length === 0) { 
-        container.innerHTML = `<div class="p-8 text-center text-gray-400">No ${activeAVTab==='open'?'open stock':'reserves'} found.</div>`; 
-        crumb.innerText = "No Results"; 
-        return; 
-    }
-    
-    if (activeAVTab === 'open') {
-        crumb.innerText = `Showing ${items.length} items`;
-        items.sort((a,b) => {
-            let priA = parseFloat(a.PRIORITY); let priB = parseFloat(b.PRIORITY);
-            if(isNaN(priA)) priA = Infinity; if(isNaN(priB)) priB = Infinity;
-            if(priA !== priB) return priA - priB;
-            return String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""), undefined, {numeric:true});
-        }); 
-        container.innerHTML = items.map(i => generateCard(i, 'av', 'status-teal')).join('');
-    } else {
-        if(term.length > 0) { 
-            crumb.innerText = `Search Results (${items.length})`; 
-            items.sort((a,b) => {
-                let priA = parseFloat(a.PRIORITY); let priB = parseFloat(b.PRIORITY);
-                if(isNaN(priA)) priA = Infinity; if(isNaN(priB)) priB = Infinity;
-                if(priA !== priB) return priA - priB;
-                return String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""), undefined, {numeric:true});
-            }); 
-            container.innerHTML = items.map(i => generateCard(i, 'reserves_drill', 'status-indigo')).join(''); 
-            return; 
+        function reRenderCurrentView() { 
+            if(!document.getElementById('view-drive').classList.contains('hidden'))renderDrive(); 
+            if(!document.getElementById('view-tasks').classList.contains('hidden'))renderTasks(); 
+            if(!document.getElementById('view-sales-office').classList.contains('hidden'))renderSalesOffice(); 
+            if(!document.getElementById('view-low-stock').classList.contains('hidden'))renderLowStock(); 
+            if(!document.getElementById('view-docks').classList.contains('hidden'))renderDocks(); 
+            if(!document.getElementById('view-review').classList.contains('hidden'))renderReview(); 
+            if(!document.getElementById('view-reports').classList.contains('hidden'))renderReports(); 
+            if(!document.getElementById('view-request').classList.contains('hidden'))renderRequest(); 
+            if(!document.getElementById('view-reserves').classList.contains('hidden'))renderReserves(); 
+            if(!document.getElementById('view-av').classList.contains('hidden'))renderAV(); 
         }
 
-        if(avResLevel === 0){ 
-            crumb.innerText = "My Reserves > Plants"; 
-            const names = [...new Set(items.map(i=>i.COMMONNAME))].sort(); 
-            container.innerHTML = names.map(n=>`<div class="drill-item" onclick="selectAvResName('${esc(n)}')"><span class="font-bold text-lg">${n}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join(''); 
-        } 
-        else if(avResLevel === 1){ 
-            crumb.innerText = `My Reserves > ${selectedAvResName}`; 
-            const namedItems = items.filter(i=>i.COMMONNAME===selectedAvResName); 
-            const sizes = [...new Set(namedItems.map(i=>i.CONTSIZE))].sort(); 
-            let html = `<div class="back-btn" onclick="avResLevel=0; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Plants</div>`; 
-            html += sizes.map(s => {
-                const count = namedItems.filter(i=>i.CONTSIZE===s).length;
-                return `<div class="drill-item" onclick="selectAvResSize('${esc(s)}')"><span class="font-bold text-lg">${s} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
-            }).join(''); 
-            container.innerHTML = html; 
-        } 
-        else if(avResLevel === 2){ 
-            crumb.innerText = `${selectedAvResName} / ${selectedAvResSize}`; 
-            let finalItems = items.filter(i=>i.COMMONNAME===selectedAvResName && i.CONTSIZE===selectedAvResSize); 
-            finalItems.sort((a,b) => (String(a.CUSTOMERNAME)||"").localeCompare(String(b.CUSTOMERNAME)||"")); 
-            container.innerHTML = `<div class="back-btn" onclick="avResLevel=1; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>` + finalItems.map(i => generateCard(i,'reserves_drill','status-indigo')).join(''); 
+        function setTaskTab(tab) { 
+            activeTaskTab=tab; 
+            document.getElementById('tab-season').classList.toggle('active',tab==='season'); 
+            document.getElementById('tab-location').classList.toggle('active',tab==='location'); 
+            document.getElementById('tab-endcap').classList.toggle('active',tab==='endcap'); 
+            document.getElementById('tab-flyer').classList.toggle('active',tab==='flyer'); 
+            taskViewLevel=0; 
+            renderTasks(); 
         }
-    }
-}
 
-function setDocksMainTab(tab) {
-    activeDocksMainTab = tab;
-    document.getElementById('tab-docks-all').classList.toggle('active', tab === 'all');
-    document.getElementById('tab-docks-my').classList.toggle('active', tab === 'my');
-    
-    const subTabs = document.getElementById('docks-my-sub-tabs');
-    if (tab === 'my') { subTabs.classList.remove('hidden'); } else { subTabs.classList.add('hidden'); }
-    
-    dockViewLevel = 0;
-    renderDocks();
-}
+        function setDriveTab(tab) {
+            activeDriveTab = tab;
+            document.getElementById('tab-drive-name').classList.toggle('active', tab === 'name');
+            document.getElementById('tab-drive-loc').classList.toggle('active', tab === 'loc');
+            driveViewLevel = 0;
+            renderDrive();
+        }
 
-function setDocksSubTab(tab) {
-    activeDocksSubTab = tab;
-    document.getElementById('tab-docks-checker').classList.toggle('active', tab === 'checker');
-    document.getElementById('tab-docks-inspector').classList.toggle('active', tab === 'inspector');
-    document.getElementById('tab-docks-mistake').classList.toggle('active', tab === 'mistake');
-    document.getElementById('tab-docks-loading').classList.toggle('active', tab === 'loading');
-    
-    dockViewLevel = 0;
-    renderDocks();
-}
+        function selectDriveBlock(block) { selectedDriveBlock = block; driveViewLevel = 1; renderDrive(); }
+        function selectDriveLoc(loc) { selectedDriveLoc = loc; driveViewLevel = 2; renderDrive(); }
 
-const debouncedDocksSearch = debounce(() => { requestAnimationFrame(() => renderDocks()) }, 150);
+        function resetDriveView() {
+            activeDriveTab = 'name';
+            document.getElementById('tab-drive-name').classList.add('active');
+            document.getElementById('tab-drive-loc').classList.remove('active');
+            driveViewLevel = 0; selectedDriveName = null; selectedDriveSize = null; selectedDriveBlock = null; selectedDriveLoc = null;
+            document.getElementById('drive-search').value = ""; document.getElementById('drive-search-clear').classList.add('hidden');
+            driveSelectedSeasons.clear(); driveSelectedSeasons.add('ALL');
+            renderDrive();
+        }
+        
+        function clearAVSearch() { document.getElementById('av-search').value=""; document.getElementById('av-search-clear').classList.add('hidden'); avResLevel=0; avOpenLevel=0; renderAV(); }
+        function handleAVSearch() { const term=document.getElementById('av-search').value.toLowerCase(); const clearBtn=document.getElementById('av-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden'); avResLevel=0; avOpenLevel=0;} else{clearBtn.classList.add('hidden'); avResLevel=0; avOpenLevel=0;} debouncedAVSearch(); }
 
-function clearDocksSearch(){ 
-    document.getElementById('docks-search').value = ""; 
-    document.getElementById('docks-search-clear').classList.add('hidden'); 
-    dockViewLevel = 0; 
-    renderDocks(); 
-}
+        function resetAVView() { 
+            activeAVTab='open'; 
+            avResLevel=0; selectedAvResName=null; selectedAvResSize=null; 
+            avOpenLevel=0; selectedAvGroup=null; selectedAvItemCode=null; 
+            document.getElementById('tab-av-open').classList.add('active'); document.getElementById('tab-av-reserves').classList.remove('active'); 
+            document.getElementById('av-search').value=""; document.getElementById('av-search-clear').classList.add('hidden'); 
+            renderAV(); 
+        }
 
-function handleDocksSearch(){ 
-    const term = document.getElementById('docks-search').value.toLowerCase(); 
-    const clearBtn = document.getElementById('docks-search-clear'); 
-    if(term.length > 0){
-        clearBtn.classList.remove('hidden');
-        dockViewLevel = 0;
-    } else {
-        clearBtn.classList.add('hidden');
-        dockViewLevel = 0;
-    } 
-    debouncedDocksSearch(); 
-}
+        function setAVTab(tab) { 
+            activeAVTab=tab; 
+            avResLevel=0; selectedAvResName=null; selectedAvResSize=null; 
+            avOpenLevel=0; selectedAvGroup=null; selectedAvItemCode=null; 
+            document.getElementById('tab-av-open').classList.toggle('active',tab==='open'); document.getElementById('tab-av-reserves').classList.toggle('active',tab==='reserves'); 
+            renderAV(); 
+        }
+        
+        function setReqTab(tab) {
+            activeReqTab = tab;
+            document.getElementById('tab-req-pending').classList.toggle('active', tab === 'pending');
+            document.getElementById('tab-req-reps').classList.toggle('active', tab === 'reps');
+            requestViewLevel = 0; selectedReqFolder = null; selectedReqRepView = null; selectedReqCustView = null; selectedReqFolderView = null; clearSelection(); renderRequest();
+        }
 
-function resetDockView() { 
-    dockViewLevel = 0; selectedDockNum = null; 
-    document.getElementById('docks-search').value = ""; 
-    document.getElementById('docks-search-clear').classList.add('hidden'); 
-    
-    activeDocksMainTab = 'all';
-    activeDocksSubTab = 'checker';
-    expandedDockStops.clear();
-    
-    let tAll = document.getElementById('tab-docks-all'); if(tAll) tAll.classList.add('active');
-    let tMy = document.getElementById('tab-docks-my'); if(tMy) tMy.classList.remove('active');
-    let sTabs = document.getElementById('docks-my-sub-tabs'); if(sTabs) sTabs.classList.add('hidden');
-    
-    let tChk = document.getElementById('tab-docks-checker'); if(tChk) tChk.classList.add('active');
-    let tInsp = document.getElementById('tab-docks-inspector'); if(tInsp) tInsp.classList.remove('active');
-    let tMis = document.getElementById('tab-docks-mistake'); if(tMis) tMis.classList.remove('active');
-    let tLoad = document.getElementById('tab-docks-loading'); if(tLoad) tLoad.classList.remove('active');
-    
-    renderDocks(); 
-}
+        function sendEmailNotification(type, folderId, repName, customer, itemsCount) {
+            let payload = { type: "email", emailType: type, folderId: folderId, repName: repName, customer: customer, itemsCount: itemsCount, dylanEmail: "dylan_collyge@greenleafnursery.com" };
+            if (type === 'request_complete') {
+                let cleanRep = repName.trim().toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, '_');
+                payload.repEmail = cleanRep + "@greenleafnursery.com";
+            }
+            fetch(GOOGLE_SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) }).catch(e => console.log(e));
+        }
+        
+        function resetHoursView() {
+            let yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+            document.getElementById('hours-date').value = yesterday.toISOString().split('T')[0];
+            document.getElementById('hours-dept').value = ""; document.getElementById('hours-amount').value = "";
+        }
 
-function selectDock(dock) { selectedDockNum = dock; dockViewLevel = 1; renderDocks(); }
+        function submitLaborHours() {
+            const dateVal = document.getElementById('hours-date').value; 
+            const deptVal = document.getElementById('hours-dept').value; 
+            const hoursVal = document.getElementById('hours-amount').value;
+            if(!dateVal || !deptVal || !hoursVal) { showToast("Required", "Please fill out all fields.", true); return; }
+            showToast("Submitting...", "Saving labor hours...", false);
+            const payload = { date_reported: dateVal, department: deptVal, man_hours: parseFloat(hoursVal), submitted_by: currentUser, submitted_at: new Date().toISOString() };
+            supabaseFetch('v2_labor_hours', 'POST', payload).then(() => { showToast("Success", "Hours submitted successfully!"); document.getElementById('hours-amount').value = ""; }).catch(err => { showToast("Error", "Failed to submit hours.", true); });
+        }
 
-function openDockInfoModal(dockNum) {
-    pendingDockNum = dockNum; document.getElementById('modal-dock-num').innerText = dockNum;
-    let savedInfo = JSON.parse(localStorage.getItem('gnc_dock_team_' + dockNum) || '{"checker":"","inspector":"","mistake":"","status":"Loading"}');
-    document.getElementById('dock-checker').value = savedInfo.checker || "";
-    document.getElementById('dock-inspector').value = savedInfo.inspector || "";
-    document.getElementById('dock-mistake').value = savedInfo.mistake || "";
-    document.getElementById('dock-status').value = savedInfo.status || "Loading";
-    document.getElementById('dock-info-modal').classList.remove('hidden');
-}
+        const debouncedReservesSearch=debounce(()=>{requestAnimationFrame(()=>renderReserves())},150);
+        function clearReservesSearch() { document.getElementById('reserves-search').value=""; document.getElementById('reserves-search-clear').classList.add('hidden'); reservesViewLevel=0; renderReserves(); }
+        function handleReservesSearch() { const term=document.getElementById('reserves-search').value.toLowerCase(); const clearBtn=document.getElementById('reserves-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden');reservesViewLevel=0;} else{clearBtn.classList.add('hidden');reservesViewLevel=0;} debouncedReservesSearch(); }
 
-function saveDockInfoModal() {
-    if(!pendingDockNum) return;
-    let info = { checker: document.getElementById('dock-checker').value, inspector: document.getElementById('dock-inspector').value, mistake: document.getElementById('dock-mistake').value, status: document.getElementById('dock-status').value };
-    localStorage.setItem('gnc_dock_team_' + pendingDockNum, JSON.stringify(info));
-    document.getElementById('dock-info-modal').classList.add('hidden'); 
-    showToast("Saved", "Dock updated.");
-    if (dockViewLevel === 0) { renderDocks(); }
-}
+        const debouncedAVSearch=debounce(()=>{requestAnimationFrame(()=>renderAV())},150);
 
-function openDockItemMistakeModal(uid) {
-    document.getElementById('dock-mistake-uid').value = uid;
-    let item = socInventory.find(i => i.UNIQUE_ID === uid);
-    document.getElementById('dock-mistake-text').value = item && item.DOCK_NOTE ? item.DOCK_NOTE : "";
-    document.getElementById('dock-mistake-modal').classList.remove('hidden');
-}
+        function selectAvResName(name) { selectedAvResName=name; avResLevel=1; renderAV(); }
+        function selectAvResSize(size) { selectedAvResSize=size; avResLevel=2; renderAV(); }
 
-function submitDockItemMistake() {
-    let uid = document.getElementById('dock-mistake-uid').value;
-    let text = document.getElementById('dock-mistake-text').value.toUpperCase().trim();
-    let item = socInventory.find(i => i.UNIQUE_ID === uid);
-    if (item && item.MASTER_UNIQUE_ID) {
-        item.DOCK_NOTE = text;
-        showToast("Saving...", "Updating mistake...", false);
-        supabaseFetch('v2_master_inventory', 'PATCH', { dock_note: text }, `unique_id=eq.${item.MASTER_UNIQUE_ID}`).then(() => { 
-            showToast("Success", "Mistake saved!"); 
-            document.getElementById('dock-mistake-modal').classList.add('hidden'); 
+        function renderAV() {
+            const container = document.getElementById('av-content'); 
+            const crumb = document.getElementById('av-crumb'); 
+            const term = document.getElementById('av-search').value.toLowerCase().trim(); 
+
+            let items = [];
+           if (activeAVTab === 'open') { 
+                items = fullInventory.filter(i => {
+                    let lts = Number(String(i.S_LTS || '0').replace(/,/g, ''));
+                    let season = String(i.SEASON || '').toUpperCase();
+                    return lts > 0 && !season.includes('Y') && !season.includes('Z');
+                }); 
+            } else { 
+                items = reservesInventory; 
+                if(safeRole === 'SALESREP') items = items.filter(i => isMyRep(i.SALESREPNAME)); 
+            }
+            
+            if (term) { 
+                const searchTerms = term.split(/\s+/); 
+                items = items.filter(i => { 
+                    const searchStr = (i._search || ""); 
+                    return searchTerms.every(t => searchStr.includes(t)); 
+                }); 
+            }
+            
+            if (items.length === 0) { 
+                container.innerHTML = `<div class="p-8 text-center text-gray-400">No ${activeAVTab==='open'?'open stock':'reserves'} found.</div>`; 
+                crumb.innerText = "No Results"; 
+                return; 
+            }
+            
+            if(term.length > 0) { 
+                crumb.innerText = `Search Results (${items.length})`; 
+                items.sort((a,b) => {
+                    let priA = parseFloat(a.PRIORITY); let priB = parseFloat(b.PRIORITY);
+                    if(isNaN(priA)) priA = Infinity; if(isNaN(priB)) priB = Infinity;
+                    if(priA !== priB) return priA - priB;
+                    return String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""), undefined, {numeric:true});
+                }); 
+                container.innerHTML = items.map(i => generateCard(i, activeAVTab === 'open' ? 'av' : 'reserves_drill', activeAVTab === 'open' ? 'status-teal' : 'status-indigo')).join(''); 
+                return; 
+            }
+            
+            if (activeAVTab === 'open') { 
+                if(avOpenLevel === 0) {
+                    crumb.innerText = `Open Stock: By Plant Group (${items.length} items)`;
+                    const groups = [...new Set(items.map(i => i.PLANTGROUPCODE || 'Unassigned'))].sort();
+                    container.innerHTML = groups.map(g => {
+                        let count = items.filter(i => (i.PLANTGROUPCODE || 'Unassigned') === g).length;
+                        return `<div class="drill-item" onclick="selectedAvGroup='${esc(g)}'; avOpenLevel=1; renderAV()"><span class="font-bold text-lg text-teal-800">${g}</span><span class="text-gray-400 text-sm font-bold ml-auto mr-3">${count} items</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
+                    }).join('');
+                } else if(avOpenLevel === 1) {
+                    crumb.innerText = `Group: ${selectedAvGroup}`;
+                    const gItems = items.filter(i => (i.PLANTGROUPCODE || 'Unassigned') === selectedAvGroup);
+                    const codes = [...new Set(gItems.map(i => i.ITEMCODE || 'Unknown'))].sort();
+                    let html = `<div class="back-btn" onclick="avOpenLevel=0; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Groups</div>`;
+                    html += codes.map(c => {
+                        let count = gItems.filter(i => (i.ITEMCODE || 'Unknown') === c).length;
+                        let sample = gItems.find(i => (i.ITEMCODE || 'Unknown') === c);
+                        let nameDisplay = sample ? sample.COMMONNAME : '';
+                        return `<div class="drill-item" onclick="selectedAvItemCode='${esc(c)}'; avOpenLevel=2; renderAV()"><div class="flex flex-col"><span class="font-bold text-lg text-gray-800">${c}</span><span class="text-xs text-gray-500 font-semibold">${nameDisplay}</span></div><div class="flex items-center"><span class="text-gray-400 text-sm font-bold mr-3">${count} locs</span><i class="ph-bold ph-caret-right text-gray-300"></i></div></div>`;
+                    }).join('');
+                    container.innerHTML = html;
+                } else if(avOpenLevel === 2) {
+                    crumb.innerText = `${selectedAvGroup} / ${selectedAvItemCode}`;
+                    let finalItems = items.filter(i => (i.PLANTGROUPCODE || 'Unassigned') === selectedAvGroup && (i.ITEMCODE || 'Unknown') === selectedAvItemCode);
+                    finalItems.sort((a,b) => { let priA = parseFloat(a.PRIORITY); let priB = parseFloat(b.PRIORITY); if(isNaN(priA)) priA = Infinity; if(isNaN(priB)) priB = Infinity; return priA - priB; });
+                    container.innerHTML = `<div class="back-btn" onclick="avOpenLevel=1; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Items</div>` + finalItems.map(i => generateCard(i, 'av', 'status-teal')).join('');
+                }
+            } else {
+                if(avResLevel===0){ 
+                    crumb.innerText="My Reserves > Plants"; 
+                    const names=[...new Set(items.map(i=>i.COMMONNAME))].sort(); 
+                    container.innerHTML=names.map(n=>`<div class="drill-item" onclick="selectAvResName('${esc(n)}')"><span class="font-bold text-lg">${n}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join(''); 
+                } 
+                else if(avResLevel===1){ 
+                    crumb.innerText=`My Reserves > ${selectedAvResName}`; 
+                    const namedItems=items.filter(i=>i.COMMONNAME===selectedAvResName); 
+                    const sizes=[...new Set(namedItems.map(i=>i.CONTSIZE))].sort(); 
+                    let html=`<div class="back-btn" onclick="avResLevel=0; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Plants</div>`; 
+                    html+=sizes.map(s=>{const count=namedItems.filter(i=>i.CONTSIZE===s).length;return `<div class="drill-item" onclick="selectAvResSize('${esc(s)}')"><span class="font-bold text-lg">${s} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;}).join(''); 
+                    container.innerHTML=html; 
+                } 
+                else if(avResLevel===2){ 
+                    crumb.innerText=`${selectedAvResName} / ${selectedAvResSize}`; 
+                    let finalItems=items.filter(i=>i.COMMONNAME===selectedAvResName&&i.CONTSIZE===selectedAvResSize); 
+                    finalItems.sort((a,b)=>(String(a.CUSTOMERNAME)||"").localeCompare(String(b.CUSTOMERNAME)||"")); 
+                    container.innerHTML=`<div class="back-btn" onclick="avResLevel=1; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>`+finalItems.map(i=>generateCard(i,'reserves_drill','status-indigo')).join(''); 
+                }
+            }
+        }
+
+        function setDocksMainTab(tab) {
+            activeDocksMainTab = tab;
+            document.getElementById('tab-docks-all').classList.toggle('active', tab === 'all');
+            document.getElementById('tab-docks-my').classList.toggle('active', tab === 'my');
+            
+            const subTabs = document.getElementById('docks-my-sub-tabs');
+            if (tab === 'my') { subTabs.classList.remove('hidden'); } else { subTabs.classList.add('hidden'); }
+            
+            dockViewLevel = 0;
+            renderDocks();
+        }
+
+        function setDocksSubTab(tab) {
+            activeDocksSubTab = tab;
+            document.getElementById('tab-docks-checker').classList.toggle('active', tab === 'checker');
+            document.getElementById('tab-docks-inspector').classList.toggle('active', tab === 'inspector');
+            document.getElementById('tab-docks-mistake').classList.toggle('active', tab === 'mistake');
+            document.getElementById('tab-docks-loading').classList.toggle('active', tab === 'loading');
+            
+            dockViewLevel = 0;
+            renderDocks();
+        }
+
+        const debouncedDocksSearch=debounce(()=>{requestAnimationFrame(()=>renderDocks())},150);
+        function clearDocksSearch(){ document.getElementById('docks-search').value=""; document.getElementById('docks-search-clear').classList.add('hidden'); dockViewLevel=0; renderDocks(); }
+        function handleDocksSearch(){ const term=document.getElementById('docks-search').value.toLowerCase(); const clearBtn=document.getElementById('docks-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden');dockViewLevel=0;}else{clearBtn.classList.add('hidden');dockViewLevel=0;} debouncedDocksSearch(); }
+        
+        function resetDockView() { 
+            dockViewLevel = 0; selectedDockNum = null; 
+            document.getElementById('docks-search').value = ""; document.getElementById('docks-search-clear').classList.add('hidden'); 
+            
+            activeDocksMainTab = 'all';
+            activeDocksSubTab = 'checker';
+            expandedDockStops.clear();
+            
+            let tAll = document.getElementById('tab-docks-all'); if(tAll) tAll.classList.add('active');
+            let tMy = document.getElementById('tab-docks-my'); if(tMy) tMy.classList.remove('active');
+            let sTabs = document.getElementById('docks-my-sub-tabs'); if(sTabs) sTabs.classList.add('hidden');
+            
+            let tChk = document.getElementById('tab-docks-checker'); if(tChk) tChk.classList.add('active');
+            let tInsp = document.getElementById('tab-docks-inspector'); if(tInsp) tInsp.classList.remove('active');
+            let tMis = document.getElementById('tab-docks-mistake'); if(tMis) tMis.classList.remove('active');
+            let tLoad = document.getElementById('tab-docks-loading'); if(tLoad) tLoad.classList.remove('active');
+            
             renderDocks(); 
-        }).catch(err => { showToast("Error", "Failed to save mistake", true); });
-    }
-}
+        }
+        
+        function selectDock(dock) { selectedDockNum = dock; dockViewLevel = 1; renderDocks(); }
 
-function toggleDockItemState(uid, type) {
-    let key = 'gnc_dock_item_' + uid; 
-    let state = JSON.parse(localStorage.getItem(key) || '{"checker":false,"inspector":false}');
-    state[type] = !state[type]; 
-    localStorage.setItem(key, JSON.stringify(state)); 
-    renderDocks(); 
-}
+        function openDockInfoModal(dockNum) {
+            pendingDockNum = dockNum; document.getElementById('modal-dock-num').innerText = dockNum;
+            let savedInfo = JSON.parse(localStorage.getItem('gnc_dock_team_' + dockNum) || '{"checker":"","inspector":"","mistake":"","status":"Loading"}');
+            document.getElementById('dock-checker').value = savedInfo.checker || "";
+            document.getElementById('dock-inspector').value = savedInfo.inspector || "";
+            document.getElementById('dock-mistake').value = savedInfo.mistake || "";
+            document.getElementById('dock-status').value = savedInfo.status || "Loading";
+            document.getElementById('dock-info-modal').classList.remove('hidden');
+        }
 
-function toggleDockStop(stopNum) {
-    if(expandedDockStops.has(stopNum)) {
-        expandedDockStops.delete(stopNum);
-    } else {
-        expandedDockStops.add(stopNum);
-    }
-    renderDocks();
-}
+        function saveDockInfoModal() {
+            if(!pendingDockNum) return;
+            let info = { checker: document.getElementById('dock-checker').value, inspector: document.getElementById('dock-inspector').value, mistake: document.getElementById('dock-mistake').value, status: document.getElementById('dock-status').value };
+            localStorage.setItem('gnc_dock_team_' + pendingDockNum, JSON.stringify(info));
+            document.getElementById('dock-info-modal').classList.add('hidden'); showToast("Saved", "Dock updated.");
+            if (dockViewLevel === 0) { renderDocks(); }
+        }
+
+        function openDockItemMistakeModal(uid) {
+            document.getElementById('dock-mistake-uid').value = uid;
+            let item = socInventory.find(i => i.UNIQUE_ID === uid);
+            document.getElementById('dock-mistake-text').value = item && item.DOCK_NOTE ? item.DOCK_NOTE : "";
+            document.getElementById('dock-mistake-modal').classList.remove('hidden');
+        }
+
+        function submitDockItemMistake() {
+            let uid = document.getElementById('dock-mistake-uid').value;
+            let text = document.getElementById('dock-mistake-text').value.toUpperCase().trim();
+            let item = socInventory.find(i => i.UNIQUE_ID === uid);
+            if (item && item.MASTER_UNIQUE_ID) {
+                item.DOCK_NOTE = text;
+                showToast("Saving...", "Updating mistake...", false);
+                supabaseFetch('v2_master_inventory', 'PATCH', { dock_note: text }, `unique_id=eq.${item.MASTER_UNIQUE_ID}`).then(() => { showToast("Success", "Mistake saved!"); document.getElementById('dock-mistake-modal').classList.add('hidden'); renderDocks(); }).catch(err => { showToast("Error", "Failed to save mistake", true); });
+            }
+        }
+
+        function toggleDockItemState(uid, type) {
+            let key = 'gnc_dock_item_' + uid; let state = JSON.parse(localStorage.getItem(key) || '{"checker":false,"inspector":false}');
+            state[type] = !state[type]; localStorage.setItem(key, JSON.stringify(state)); renderDocks(); 
+        }
+
+        function toggleDockStop(stopNum) {
+            if(expandedDockStops.has(stopNum)) {
+                expandedDockStops.delete(stopNum);
+            } else {
+                expandedDockStops.add(stopNum);
+            }
+            renderDocks();
+        }
+
         function renderDocks() {
             const container = document.getElementById('docks-content'); const crumb = document.getElementById('docks-crumb'); const term = document.getElementById('docks-search').value.toLowerCase().trim();
             let items = socInventory;
