@@ -3062,22 +3062,25 @@
                         let filePath = `${dateStr}/${customFileName}`;
 
                         try {
-                            // 3. Upload directly to Supabase Storage
-                            const { data, error } = await supabaseClient.storage
-                                .from(bucketName)
-                                .upload(filePath, blob, {
-                                    contentType: 'image/jpeg',
-                                    upsert: false
-                                });
+                            // 3. Upload directly to Supabase Storage using standard fetch
+                            const uploadUrl = `${SUPABASE_URL}/storage/v1/object/${bucketName}/${filePath}`;
+                            const uploadResponse = await fetch(uploadUrl, {
+                                method: 'POST',
+                                headers: {
+                                    'Authorization': 'Bearer ' + SUPABASE_KEY,
+                                    'apikey': SUPABASE_KEY,
+                                    'Content-Type': 'image/jpeg'
+                                },
+                                body: blob
+                            });
 
-                            if (error) throw error;
+                            if (!uploadResponse.ok) {
+                                const errText = await uploadResponse.text();
+                                throw new Error(errText || 'Upload failed');
+                            }
 
-                            // 4. Get the Public URL for the image we just uploaded
-                            const { data: publicUrlData } = supabaseClient.storage
-                                .from(bucketName)
-                                .getPublicUrl(filePath);
-
-                            let url = publicUrlData.publicUrl;
+                            // 4. Construct the Public URL for the image we just uploaded
+                            let url = `${SUPABASE_URL}/storage/v1/object/public/${bucketName}/${filePath}`;
 
                             showToast('Success', 'Photo uploaded successfully!');
                             
@@ -3099,8 +3102,7 @@
                             showToast('Error', 'Upload failed: ' + err.message, true);
                         } finally {
                             input.value = ""; // Clear input so the same file can be selected again
-                        }
-                    }, 'image/jpeg', 0.8);
+                        }                    }, 'image/jpeg', 0.8);
                 };
             };
         }
