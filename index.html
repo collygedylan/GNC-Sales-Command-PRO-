@@ -16,15 +16,20 @@
 <body class="bg-gray-50 h-screen overflow-hidden">
     <div id="top-loading-bar-container" class="hidden fixed top-0 left-0 w-full h-1 z-[99999] pointer-events-none"><div id="top-loading-bar" class="h-full bg-[#22c55e] w-0 transition-all duration-300 ease-out shadow-[0_0_10px_#22c55e]"></div></div>
     <div id="toast-notification"></div>
-    <div id="photo-modal" class="hidden fixed inset-0 bg-black bg-opacity-95 z-[15000] flex flex-col items-center justify-center p-4">
+  <div id="photo-modal" class="hidden fixed inset-0 bg-black bg-opacity-95 z-[15000] flex flex-col items-center justify-center p-4">
         <div class="absolute top-0 left-0 w-full p-6 flex justify-between items-start bg-gradient-to-b from-black/80 to-transparent z-50 pointer-events-none">
-            <div id="photo-modal-caption" class="text-white font-bold text-sm leading-tight drop-shadow-md pr-4 uppercase tracking-wide pointer-events-auto"></div>
-            <i class="ph-bold ph-x text-white text-3xl cursor-pointer bg-black/50 p-2 rounded-full active:scale-95 pointer-events-auto" onclick="closePhotoModal()"></i>
+            <div id="photo-modal-caption" class="text-white font-bold text-sm leading-tight drop-shadow-md pr-4 uppercase tracking-wide pointer-events-auto max-w-[60%]"></div>
+            
+            <div class="flex items-center gap-3 pointer-events-auto">
+                <div id="photo-modal-counter" class="text-white font-black text-sm tracking-widest drop-shadow-md px-3 py-1.5 bg-black/50 rounded-full border border-white/20 hidden"></div>
+                <i class="ph-bold ph-x text-white text-3xl cursor-pointer bg-black/50 p-2 rounded-full active:scale-95" onclick="closePhotoModal()"></i>
+            </div>
         </div>
-        <div id="photo-modal-gallery" class="flex overflow-x-auto snap-x snap-mandatory w-full max-h-[85vh] items-center space-x-4 pb-4 scrollbar-none mt-10"></div>
+        
+        <div id="photo-modal-gallery" class="flex overflow-x-auto snap-x snap-mandatory w-full max-h-[85vh] items-center space-x-4 pb-4 scrollbar-none mt-10" onscroll="updatePhotoCounter()"></div>
+        
         <div id="photo-swipe-hint" class="absolute bottom-10 text-white text-xs font-bold uppercase tracking-widest opacity-50 hidden pointer-events-none"><i class="ph-bold ph-arrows-left-right mr-1 text-lg align-middle"></i> Swipe for more</div>
-    </div>
-    
+    </div>    
     <div id="view-login">
         <div class="login-card">
             <div class="flex flex-col items-center mb-8 w-full relative">
@@ -708,7 +713,9 @@
         function openPhotoModal(urlStr, caption) { 
             const gallery = document.getElementById('photo-modal-gallery');
             gallery.innerHTML = '';
-            let urls = String(urlStr).split(',');
+            
+            // Filter out empty strings just in case
+            let urls = String(urlStr).split(',').filter(u => u.trim() !== '');
             
             urls.forEach(u => {
                 let cleanUrl = u.trim();
@@ -716,24 +723,52 @@
                 if(match) cleanUrl = match[1];
                 if(cleanUrl.startsWith('http')) {
                     let fullUrl = cleanUrl.replace('&sz=w100', ''); 
-                    gallery.innerHTML += `<img src="${fullUrl}" class="snap-center w-full max-h-[80vh] object-contain flex-shrink-0 rounded-xl shadow-2xl">`;
+                    
+                    // The inline style "scroll-snap-stop: always;" forces the sticky swipe
+                    gallery.innerHTML += `<img src="${fullUrl}" class="snap-center w-full max-h-[80vh] object-contain flex-shrink-0 rounded-xl shadow-2xl" style="scroll-snap-stop: always;">`;
                 }
             });
 
             document.getElementById('photo-modal-caption').innerText = caption; 
             document.getElementById('photo-modal').classList.remove('hidden');
             
+            // Manage visibility of the counter and hint
             if(urls.length > 1) {
                 document.getElementById('photo-swipe-hint').classList.remove('hidden');
+                document.getElementById('photo-modal-counter').classList.remove('hidden');
             } else {
                 document.getElementById('photo-swipe-hint').classList.add('hidden');
+                document.getElementById('photo-modal-counter').classList.add('hidden');
             }
+            
+            // Initialize the counter for the first image
+            setTimeout(() => updatePhotoCounter(), 50);
         }
 
         function closePhotoModal() { 
             document.getElementById('photo-modal').classList.add('hidden'); 
         }
 
+        function updatePhotoCounter() {
+            const gallery = document.getElementById('photo-modal-gallery');
+            const counter = document.getElementById('photo-modal-counter');
+            if(!gallery || !counter) return;
+            
+            const images = gallery.querySelectorAll('img');
+            if(images.length <= 1) return;
+            
+            // Calculate active index based on scroll position
+            const scrollLeft = gallery.scrollLeft;
+            const clientWidth = gallery.clientWidth;
+            
+            // Use the container width to find the nearest snapped image
+            const activeIndex = Math.round(scrollLeft / clientWidth);
+            
+            // Keep it bounded safely between 1 and max
+            const displayIndex = Math.min(Math.max(1, activeIndex + 1), images.length);
+            
+            counter.innerText = `${displayIndex} / ${images.length}`;
+        }
         function handleLogin(isBiometricLogin=false) {
             const inputUser=document.getElementById('username-input').value.trim().toLowerCase(); 
             const inputPass=document.getElementById('pin-code').value.trim();
