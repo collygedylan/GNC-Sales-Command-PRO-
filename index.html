@@ -657,59 +657,58 @@ let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqFolder
             return url; 
         }
 
-       async function promptToEnableBiometrics(user,pin) { 
-            if(!confirm("Would you like to enable Fingerprint/FaceID login for future use?"))return; 
-            try{ 
-                const publicKey={challenge:new Uint8Array(32),rp:{name:"DC01"},user:{id:new Uint8Array(16),name:user,displayName:user},pubKeyCredParams:[{type:"public-key",alg:-7}],authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required"},timeout:60000}; Uint8Array(16),name:user,displayName:user},pubKeyCredParams:[{type:"public-key",alg:-7}],authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required"},timeout:60000}; 
-                await navigator.credentials.create({publicKey}); 
-                localStorage.setItem('gnc_bio_enabled','true'); 
-                localStorage.setItem('gnc_bio_user',user); 
-                localStorage.setItem('gnc_bio_pin',pin); 
-                showToast("Success","Fingerprint login enabled!"); 
-            }catch(err){} 
-        }
+      async function promptToEnableBiometrics(user,pin) { 
+    if(!confirm("Would you like to enable Fingerprint/FaceID login for future use?"))return; 
+    try{ 
+        const publicKey={challenge:new Uint8Array(32),rp:{name:"DC01"},user:{id:new Uint8Array(16),name:user,displayName:user},pubKeyCredParams:[{type:"public-key",alg:-7}],authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required"},timeout:60000}; 
+        await navigator.credentials.create({publicKey}); 
+        localStorage.setItem('gnc_bio_enabled','true'); 
+        localStorage.setItem('gnc_bio_user',user); 
+        localStorage.setItem('gnc_bio_pin',pin); 
+        showToast("Success","Fingerprint login enabled!"); 
+    }catch(err){} 
+}
 
-        async function loginWithBiometric() { 
-            try{ 
-                const publicKey={challenge:new Uint8Array(32),timeout:60000,userVerification:"required"}; 
-                await navigator.credentials.get({publicKey}); 
-                const savedUser=localStorage.getItem('gnc_bio_user'); 
-                const savedPin=localStorage.getItem('gnc_bio_pin'); 
-                if(savedUser&&savedPin){ 
-                    document.getElementById('username-input').value=savedUser; 
-                    document.getElementById('pin-code').value=savedPin; 
-                    handleLogin(true); 
-                }else{ 
-                    showToast("Error","Credentials lost.",true); 
-                } 
-            }catch(err){ 
-                showToast("Error","Fingerprint cancelled.",true); 
-            } 
-        }
+async function loginWithBiometric() { 
+    try{ 
+        const publicKey={challenge:new Uint8Array(32),timeout:60000,userVerification:"required"}; 
+        await navigator.credentials.get({publicKey}); 
+        const savedUser=localStorage.getItem('gnc_bio_user'); 
+        const savedPin=localStorage.getItem('gnc_bio_pin'); 
+        if(savedUser&&savedPin){ 
+            document.getElementById('username-input').value=savedUser; 
+            document.getElementById('pin-code').value=savedPin; 
+            handleLogin(true); 
+        }else{ 
+            showToast("Error","Credentials lost.",true); 
+        } 
+    }catch(err){ 
+        showToast("Error","Fingerprint cancelled.",true); 
+    } 
+}
 
-        function setRepPermutations(user) { 
-            let parts=user.split('_'); 
-            if(parts.length>=2){ 
-                let first=parts[0]; 
-                let last=parts[parts.length-1]; 
-                repPermutations=[`${first} ${last}`.toLowerCase(),`${last}, ${first}`.toLowerCase(),`${last},${first}`.toLowerCase()]; 
-            }else{ 
-                repPermutations=[user.toLowerCase()]; 
-            } 
-        }
+function setRepPermutations(user) { 
+    let parts=user.split('_'); 
+    if(parts.length>=2){ 
+        let first=parts[0]; 
+        let last=parts[parts.length-1]; 
+        repPermutations=[`${first} ${last}`.toLowerCase(),`${last}, ${first}`.toLowerCase(),`${last},${first}`.toLowerCase()]; 
+    }else{ 
+        repPermutations=[user.toLowerCase()]; 
+    } 
+}
 
-        function isMyRep(repNameStr) { 
-            if(safeRole!=='SALESREP')return true; 
-            if(!repNameStr)return false; 
-            let str=String(repNameStr).toLowerCase(); 
-            return repPermutations.some(p=>str.includes(p)); 
-        }
+function isMyRep(repNameStr) { 
+    if(safeRole!=='SALESREP')return true; 
+    if(!repNameStr)return false; 
+    let str=String(repNameStr).toLowerCase(); 
+    return repPermutations.some(p=>str.includes(p)); 
+}
 
-        function openPhotoModal(urlStr, caption) { 
-            const gallery = document.getElementById('photo-modal-gallery');
-            gallery.innerHTML = '';
-            let urls = String(urlStr).split(',');
-            
+function openPhotoModal(urlStr, caption) { 
+    const gallery = document.getElementById('photo-modal-gallery');
+    gallery.innerHTML = '';
+    let urls = String(urlStr).split(',');            
             urls.forEach(u => {
                 let cleanUrl = u.trim();
                 let match = cleanUrl.match(/(https?:\/\/[^"\s>]+)/);
