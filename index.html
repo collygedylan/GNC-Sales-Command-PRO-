@@ -3,16 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-   <title>DDC</title>
+   <title>Dylan</title>
     <meta name="theme-color" content="#007a4d">
     <link rel="manifest" href="manifest.json">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="application-name" content="DDC">
-    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="Dylan">    <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    <style>:root{--bg:#007a4d;--tx:#111827}body{font-family:"Amazon Ember",Arial,sans-serif;background:white;color:var(--tx);user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior-y:contain}.nav-header{background:var(--bg);color:white;padding-top:max(10px,env(safe-area-inset-top))}#view-login,#view-change-password{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px}#view-change-password{display:none;z-index:10000}.login-card{background:white;padding:30px;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,.2);width:100%;max-width:360px;text-align:center}.input-field{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:8px;font-size:15px;margin-bottom:12px}#toast-notification{position:fixed;top:-100px;left:50%;transform:translateX(-50%);background:#16a34a;color:white;padding:16px 24px;border-radius:50px;box-shadow:0 10px 15px -3px rgba(0,0,0,.3);z-index:11000;transition:top .5s;display:flex;align-items:center;gap:12px;pointer-events:none}#toast-notification.show{top:20px}#side-drawer{position:fixed;top:0;left:-280px;width:280px;height:100%;background:white;z-index:2000;box-shadow:2px 0 10px rgba(0,0,0,.2);transition:left .3s;overflow-y:auto;padding-bottom:100px}#side-drawer.open{left:0}#drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1999;display:none}#drawer-overlay.open{display:block}.drawer-header{background:var(--bg);color:white;padding:20px;font-weight:bold;font-size:18px}.drawer-item{padding:16px 20px;border-bottom:1px solid #f3f4f6;cursor:pointer;display:flex;align-items:center;gap:12px;color:#374151;font-weight:500}.drill-item{border-bottom:1px solid #e5e7eb;padding:16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:white;transition:background .1s}.drill-item:active{background:#f3f4f6}.back-btn{display:flex;align-items:center;gap:5px;color:#6b7280;font-size:14px;font-weight:600;margin-bottom:20px;cursor:pointer;padding:10px 0}.inv-card{border:1px solid #e5e7eb;border-left-width:6px;border-radius:8px;padding:12px;background:white;cursor:pointer;flex-grow:1}.status-green{border-left-color:#22c55e}.status-purple{border-left-color:#9333ea}.status-orange{border-left-color:#f97316}.status-blue{border-left-color:#3b82f6}.status-indigo{border-left-color:#4f46e5}.status-teal{border-left-color:#0d9488}.status-yellow{border-left-color:#eab308}.status-red{border-left-color:#ef4444}.task-tabs,.detail-tabs{display:flex;border-bottom:1px solid #e5e7eb;background:#f9fafb;margin-bottom:10px}.detail-tabs{overflow-x:auto;scrollbar-width:none}.detail-tabs::-webkit-scrollbar{display:none}.task-tab,.detail-tab{flex:1;text-align:center;padding:12px;font-size:11px;font-weight:700;color:#6b7280;cursor:pointer;border-bottom:3px solid transparent;text-transform:uppercase}.detail-tab{flex:0 0 auto;padding:10px 16px}.task-tab.active,.detail-tab.active{color:var(--bg);border-bottom-color:var(--bg);background:white}.overview-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}.overview-card{background:#f8fafc;padding:10px;border-radius:6px;border:1px solid #e2e8f0}.overview-label{font-size:9px;font-weight:800;color:#64748b;text-transform:uppercase;margin-bottom:2px}.overview-val{font-size:13px;font-weight:600;color:#0f172a;word-break:break-all}.expand-trigger{display:flex;align-items:center;justify-content:space-between;padding:12px;background:#f9fafb;border-radius:6px;cursor:pointer;font-weight:600;font-size:14px;border:1px solid #e5e7eb}.expand-content{display:none;margin-top:12px;padding:12px;background:#f9fafb;border-radius:6px;border:1px solid #e5e7eb}.expanded .expand-content{display:block}.card-checkbox-container{width:0;overflow:hidden;opacity:0;transition:width .3s,opacity .3s,margin .3s}body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-right:12px}.item-row{touch-action:manipulation}.spinner{border:4px solid rgba(255,255,255,.3);border-top:4px solid white;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:0 auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.scrollbar-none::-webkit-scrollbar{display:none}.scrollbar-none{-ms-overflow-style:none;scrollbar-width:none}</style>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>    <style>:root{--bg:#007a4d;--tx:#111827}body{font-family:"Amazon Ember",Arial,sans-serif;background:white;color:var(--tx);user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior-y:contain}.nav-header{background:var(--bg);color:white;padding-top:max(10px,env(safe-area-inset-top))}#view-login,#view-change-password{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px}#view-change-password{display:none;z-index:10000}.login-card{background:white;padding:30px;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,.2);width:100%;max-width:360px;text-align:center}.input-field{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:8px;font-size:15px;margin-bottom:12px}#toast-notification{position:fixed;top:-100px;left:50%;transform:translateX(-50%);background:#16a34a;color:white;padding:16px 24px;border-radius:50px;box-shadow:0 10px 15px -3px rgba(0,0,0,.3);z-index:11000;transition:top .5s;display:flex;align-items:center;gap:12px;pointer-events:none}#toast-notification.show{top:20px}#side-drawer{position:fixed;top:0;left:-280px;width:280px;height:100%;background:white;z-index:2000;box-shadow:2px 0 10px rgba(0,0,0,.2);transition:left .3s;overflow-y:auto;padding-bottom:100px}#side-drawer.open{left:0}#drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1999;display:none}#drawer-overlay.open{display:block}.drawer-header{background:var(--bg);color:white;padding:20px;font-weight:bold;font-size:18px}.drawer-item{padding:16px 20px;border-bottom:1px solid #f3f4f6;cursor:pointer;display:flex;align-items:center;gap:12px;color:#374151;font-weight:500}.drill-item{border-bottom:1px solid #e5e7eb;padding:16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:white;transition:background .1s}.drill-item:active{background:#f3f4f6}.back-btn{display:flex;align-items:center;gap:5px;color:#6b7280;font-size:14px;font-weight:600;margin-bottom:20px;cursor:pointer;padding:10px 0}.inv-card{border:1px solid #e5e7eb;border-left-width:6px;border-radius:8px;padding:12px;background:white;cursor:pointer;flex-grow:1}.status-green{border-left-color:#22c55e}.status-purple{border-left-color:#9333ea}.status-orange{border-left-color:#f97316}.status-blue{border-left-color:#3b82f6}.status-indigo{border-left-color:#4f46e5}.status-teal{border-left-color:#0d9488}.status-yellow{border-left-color:#eab308}.status-red{border-left-color:#ef4444}.task-tabs,.detail-tabs{display:flex;border-bottom:1px solid #e5e7eb;background:#f9fafb;margin-bottom:10px}.detail-tabs{overflow-x:auto;scrollbar-width:none}.detail-tabs::-webkit-scrollbar{display:none}.task-tab,.detail-tab{flex:1;text-align:center;padding:12px;font-size:11px;font-weight:700;color:#6b7280;cursor:pointer;border-bottom:3px solid transparent;text-transform:uppercase}.detail-tab{flex:0 0 auto;padding:10px 16px}.task-tab.active,.detail-tab.active{color:var(--bg);border-bottom-color:var(--bg);background:white}.overview-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}.overview-card{background:#f8fafc;padding:10px;border-radius:6px;border:1px solid #e2e8f0}.overview-label{font-size:9px;font-weight:800;color:#64748b;text-transform:uppercase;margin-bottom:2px}.overview-val{font-size:13px;font-weight:600;color:#0f172a;word-break:break-all}.expand-trigger{display:flex;align-items:center;justify-content:space-between;padding:12px;background:#f9fafb;border-radius:6px;cursor:pointer;font-weight:600;font-size:14px;border:1px solid #e5e7eb}.expand-content{display:none;margin-top:12px;padding:12px;background:#f9fafb;border-radius:6px;border:1px solid #e5e7eb}.expanded .expand-content{display:block}.card-checkbox-container{width:0;overflow:hidden;opacity:0;transition:width .3s,opacity .3s,margin .3s}body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-right:12px}.item-row{touch-action:manipulation}.spinner{border:4px solid rgba(255,255,255,.3);border-top:4px solid white;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:0 auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.scrollbar-none::-webkit-scrollbar{display:none}.scrollbar-none{-ms-overflow-style:none;scrollbar-width:none}</style>
 </head>
 <body class="bg-gray-50 h-screen overflow-hidden">
     <div id="top-loading-bar-container" class="hidden fixed top-0 left-0 w-full h-1 z-[99999] pointer-events-none"><div id="top-loading-bar" class="h-full bg-[#22c55e] w-0 transition-all duration-300 ease-out shadow-[0_0_10px_#22c55e]"></div></div>
@@ -34,7 +33,7 @@
     <div id="view-login">
         <div class="login-card">
             <div class="flex flex-col items-center mb-8 w-full relative">
-               <div class="text-3xl text-[#007a4d] font-black tracking-tighter mb-1 text-center leading-none">DDC</div>                <div class="flex flex-col items-center gap-0.5 mt-5">
+              <div class="text-3xl text-[#007a4d] font-black tracking-tighter mb-1 text-center leading-none">Dylan</div>                <div class="flex flex-col items-center gap-0.5 mt-5">
                     <span class="text-[9px] font-bold text-gray-400 uppercase tracking-[0.3em]">Powered By</span>
                     <span class="text-[17px] font-black text-gray-800 tracking-[0.2em] uppercase border-b-[3px] border-[#007a4d] pb-0.5">Ag Metric</span>
                 </div>
@@ -179,7 +178,7 @@
                 <i class="ph-bold ph-list menu-btn text-2xl cursor-pointer" onclick="toggleMenu()"></i>
                 <div class="flex flex-col">
                     <div class="font-bold text-lg leading-tight"><span id="header-user">User</span></div>
-                    <div class="text-[10px] opacity-80 leading-tight">DDC</div>                </div>
+                    <div class="text-[10px] opacity-80 leading-tight">Dylan</div>                </div>
             </div>
         </header>
         
@@ -225,8 +224,7 @@
                         <p class="text-green-100 text-[10px] font-bold mb-5 uppercase tracking-[0.2em] z-10 relative">Dashboard</p>
                         
                         <div class="flex flex-col items-center pt-4 border-t border-white/20 w-full mt-1 z-10 relative">
-                           <div class="text-[14px] font-black tracking-wide text-white uppercase drop-shadow-sm mb-3 text-center leading-tight">DDC</div>
-                            <span class="text-[8px] font-bold text-white/70 uppercase tracking-[0.3em] mb-1">Powered By</span>
+                           <div class="text-[14px] font-black tracking-wide text-white uppercase drop-shadow-sm mb-3 text-center leading-tight">DYLAN</div>                            <span class="text-[8px] font-bold text-white/70 uppercase tracking-[0.3em] mb-1">Powered By</span>
                             <div class="text-[12px] font-black tracking-[0.2em] text-white uppercase drop-shadow-sm">Ag Metric</div>
                         </div>
                     </div>
@@ -549,7 +547,7 @@
                 <div onclick="switchView('tasks')" class="flex flex-col items-center cursor-pointer rep-hidden csr-hidden"><i class="ph-bold ph-clipboard-text text-2xl text-gray-400"></i></div>
                 <div onclick="switchView('docks')" class="flex flex-col items-center cursor-pointer"><i class="ph-bold ph-truck text-2xl text-gray-400"></i></div>
                 
-                <div onclick="switchView('chat-inbox'); loadChatInbox();" class="flex flex-col items-center relative cursor-pointer">
+                <div onclick="switchView('chat-inbox'); loadChatInbox(); document.getElementById('nav-unread-badge').classList.add('hidden'); document.getElementById('nav-unread-badge').innerText='0';" class="flex flex-col items-center relative cursor-pointer">
                     <i class="ph-bold ph-chat-circle-dots text-2xl text-gray-400"></i>
                     <div id="nav-unread-badge" class="absolute -top-1 -right-2 bg-red-500 text-white text-[9px] font-black w-4 h-4 flex items-center justify-center rounded-full hidden">0</div>
                 </div>
@@ -560,6 +558,7 @@
         const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6cm55anNvc3J5ZWpqZWpsaWlpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzAyNzM1NywiZXhwIjoyMDg4NjAzMzU3fQ.Bc46UfJ1N4AgAS1PgfhFg6S4BEyybR6g_TUnPZsE2t0";
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwhH-eB5Py3xCwhmWReOAcAfl9Zu6mkw0hZYnAbIP9lLANoE4iebK1hXa6-ogU4_1AURA/exec"; 
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY); 
         const esc = (s) => String(s || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
         const DB_NAME="GNC_DDC_DB_V2"; const STORE_NAME="inventory_cache";
         
@@ -710,7 +709,7 @@
         async function promptToEnableBiometrics(user,pin) { 
             if(!confirm("Would you like to enable Fingerprint/FaceID login for future use?"))return; 
             try{ 
-                const publicKey={challenge:new Uint8Array(32),rp:{name:"DDC"},user:{id:new Uint8Array(16),name:user,displayName:user},pubKeyCredParams:[{type:"public-key",alg:-7}],authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required"},timeout:60000}; 
+                const publicKey={challenge:new Uint8Array(32),rp:{name:"Dylan"},user:{id:new Uint8Array(16),name:user,displayName:user},pubKeyCredParams:[{type:"public-key",alg:-7}],authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required"},timeout:60000}; 
                 await navigator.credentials.create({publicKey}); 
                 localStorage.setItem('gnc_bio_enabled','true'); 
                 localStorage.setItem('gnc_bio_user',user); 
@@ -884,78 +883,120 @@
             if(!isBiometricLogin&&window.PublicKeyCredential&&localStorage.getItem('gnc_bio_enabled')!=='true'){ promptToEnableBiometrics(user,pass); } 
             applyRolePermissions(); 
             fetchBackgroundData(); 
-            setInterval(silentBackgroundSync, 1000); 
         }
-        async function silentBackgroundSync() {
-            if(!currentUser)return; 
-            const checkTime=new Date().toISOString();
-            try {
-                const response=await fetch(`${SUPABASE_URL}/rest/v1/v2_master_inventory?select=*&last_updated=gt.${lastSyncTime}`,{method:'GET',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
-                if(response.ok) {
-                    const data=await response.json();
-                    if(data&&data.length>0){
-                        let updated=false;
-                        data.forEach(updatedRow=>{
-                            let idx=fullInventory.findIndex(i=>i.UNIQUE_ID===updatedRow.unique_id);
-                            if(idx>-1){
-                                for(let k in updatedRow){ if(updatedRow[k]!==null) fullInventory[idx][k.toUpperCase()]=updatedRow[k]; }
-                                fullInventory[idx].SAVED_PHOTO_LINK=fullInventory[idx].PHOTO_LINK||fullInventory[idx].PHOTOLINK||""; 
-                                fullInventory[idx].SAVED_PHOTO_NAME=fullInventory[idx].PHOTO_NAME||fullInventory[idx].PHOTONAME||""; 
-                                updated=true; 
-                                if(activeItem&&activeItem.UNIQUE_ID===updatedRow.unique_id){ Object.assign(activeItem,fullInventory[idx]); }
-                            }
-                        });
-                        if(updated){ reRenderCurrentView(); if(activeItem&&!document.getElementById('view-detail').classList.contains('hidden')){ openDetail(activeItem.UNIQUE_ID,lastView); } }
-                    } 
-                }
-                
-                const reqRes = await fetch(`${SUPABASE_URL}/rest/v1/v2_active_request?select=*`, {method:'GET', headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
-                if(reqRes.ok) {
-                    const reqData = await reqRes.json();
-                    let hash = JSON.stringify(reqData);
-                    if(hash !== localStorage.getItem('last_req_hash')) {
-                        requestsInventory = reqData.map(item => {
-                            let obj = {SOURCE_TABLE: 'v2_active_request'};
-                            for(let k in item) { if(item[k]!==null) obj[k.toUpperCase()] = item[k]; }
-                            obj.DOM_ID = 'req_' + obj.UNIQUE_ID;
-                            obj.SAVED_PHOTO_LINK = obj.REQ_PHOTO_LINK || obj.SAVED_PHOTO_LINK || ""; 
-                            obj.SAVED_PHOTO_NAME = obj.REQ_PHOTO_NAME || obj.SAVED_PHOTO_NAME || "";
-                            obj.CONTSIZE=item.contsize || obj.CONTSIZE || item.itemspec || obj.ITEMSPEC || item.size || "-";
-                            obj.LOCATIONCODE=obj.LOCATIONCODE||obj.LOCATION||"No Loc"; 
-                            return obj;
-                        });
-                        localStorage.setItem('last_req_hash', hash);
-                        if(!document.getElementById('view-request').classList.contains('hidden')) renderRequest();
-                    }
-                }
+        
+        // Connect to WebSockets and pass the payload directly to our handler
+        supabase.channel('global-changes')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'v2_master_inventory' }, payload => handleRealtimeSync(payload))
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'v2_active_request' }, payload => handleRealtimeSync(payload))
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'v2_sales_office' }, payload => handleRealtimeSync(payload))
+          // NEW: Listen for new messages globally to trigger notifications and unread badges
+          .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'v2_chat_messages' }, payload => handleRealtimeSync(payload))
+          .subscribe();        // This entirely replaces silentBackgroundSync and all its fetch() calls
+        function handleRealtimeSync(payload) {
+            if (!currentUser) return;
 
-                const soRes = await fetch(`${SUPABASE_URL}/rest/v1/v2_sales_office?select=*`, {method:'GET', headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
-                if(soRes.ok) {
-                    const soData = await soRes.json();
-                    let soHash = JSON.stringify(soData);
-                    if(soHash !== localStorage.getItem('last_so_hash')) {
-                        salesOfficeInventory = soData.map((item, idx) => {
-                            let obj = {SOURCE_TABLE: 'v2_sales_office'};
-                            for(let k in item) { if(item[k]!==null) obj[k.toUpperCase()] = item[k]; }
-                            obj.DOM_ID = 'so_' + obj.UNIQUE_ID;
-                            let masterItem = fullInventory.find(i => i.UNIQUE_ID === obj.UNIQUE_ID);
-                            if (masterItem) { obj.AV_NOTE = masterItem.AV_NOTE; }
-                            return obj;
-                        });
-                        localStorage.setItem('last_so_hash', soHash);
-                        if(!document.getElementById('view-sales-office').classList.contains('hidden')) renderSalesOffice();
+            const table = payload.table;
+            const eventType = payload.eventType;
+            // Handle DELETE events which pass data in payload.old instead of payload.new
+            const updatedRow = eventType === 'DELETE' ? payload.old : payload.new;
+            
+            if (!updatedRow || !updatedRow.unique_id) return;
+
+            let updated = false;
+
+            // 1. Handle Master Inventory Changes
+            if (table === 'v2_master_inventory') {
+                let idx = fullInventory.findIndex(i => i.UNIQUE_ID === updatedRow.unique_id);
+                if (eventType === 'UPDATE' && idx > -1) {
+                    for (let k in updatedRow) { 
+                        if (updatedRow[k] !== null) fullInventory[idx][k.toUpperCase()] = updatedRow[k]; 
+                    }
+                    fullInventory[idx].SAVED_PHOTO_LINK = fullInventory[idx].PHOTO_LINK || fullInventory[idx].PHOTOLINK || ""; 
+                    fullInventory[idx].SAVED_PHOTO_NAME = fullInventory[idx].PHOTO_NAME || fullInventory[idx].PHOTONAME || ""; 
+                    
+                    if (activeItem && activeItem.UNIQUE_ID === updatedRow.unique_id) { 
+                        Object.assign(activeItem, fullInventory[idx]); 
+                    }
+                    updated = true; 
+                }
+            } 
+            // 2. Handle Request Board Changes
+            else if (table === 'v2_active_request') {
+                let idx = requestsInventory.findIndex(i => i.UNIQUE_ID === updatedRow.unique_id);
+                if (eventType === 'DELETE' && idx > -1) {
+                    requestsInventory.splice(idx, 1);
+                    updated = true;
+                } else if (eventType === 'INSERT' || eventType === 'UPDATE') {
+                    let obj = { SOURCE_TABLE: 'v2_active_request' };
+                    for (let k in updatedRow) { if (updatedRow[k] !== null) obj[k.toUpperCase()] = updatedRow[k]; }
+                    obj.DOM_ID = 'req_' + obj.UNIQUE_ID;
+                    obj.SAVED_PHOTO_LINK = obj.REQ_PHOTO_LINK || obj.SAVED_PHOTO_LINK || ""; 
+                    obj.SAVED_PHOTO_NAME = obj.REQ_PHOTO_NAME || obj.SAVED_PHOTO_NAME || "";
+                    obj.CONTSIZE = updatedRow.contsize || obj.CONTSIZE || updatedRow.itemspec || obj.ITEMSPEC || updatedRow.size || "-";
+                    obj.LOCATIONCODE = obj.LOCATIONCODE || obj.LOCATION || "No Loc"; 
+                    
+                    if (idx > -1) requestsInventory[idx] = obj;
+                    else requestsInventory.push(obj);
+                    updated = true;
+                }
+            } 
+            // 3. Handle Sales Office Changes
+            else if (table === 'v2_sales_office') {
+                let idx = salesOfficeInventory.findIndex(i => i.UNIQUE_ID === updatedRow.unique_id);
+                if (eventType === 'DELETE' && idx > -1) {
+                    salesOfficeInventory.splice(idx, 1);
+                    updated = true;
+                } else if (eventType === 'INSERT' || eventType === 'UPDATE') {
+                    let obj = { SOURCE_TABLE: 'v2_sales_office' };
+                    for (let k in updatedRow) { if (updatedRow[k] !== null) obj[k.toUpperCase()] = updatedRow[k]; }
+                    obj.DOM_ID = 'so_' + obj.UNIQUE_ID;
+                    
+                    let masterItem = fullInventory.find(i => i.UNIQUE_ID === obj.UNIQUE_ID);
+                    if (masterItem) obj.AV_NOTE = masterItem.AV_NOTE;
+                    
+                    if (idx > -1) salesOfficeInventory[idx] = obj;
+                    else salesOfficeInventory.push(obj);
+                    updated = true;
+                }
+            }
+            // 4. Handle Global Chat Notifications
+            else if (table === 'v2_chat_messages' && eventType === 'INSERT') {
+                const msg = payload.new;
+                
+                // Only notify if the message is from someone else AND we aren't currently in that room
+                if (msg.sender.toLowerCase() !== currentUser.toLowerCase() && activeChatRoomId !== msg.room_id) {
+                    showToast("New Message", `From ${msg.sender}`);
+
+                    // Update the red unread badge on the bottom nav
+                    const badge = document.getElementById('nav-unread-badge');
+                    if (badge) {
+                        let currentCount = parseInt(badge.innerText) || 0;
+                        badge.innerText = currentCount + 1;
+                        badge.classList.remove('hidden');
+                    }
+
+                    // If looking at the inbox list, refresh it to show the new snippet
+                    if (!document.getElementById('view-chat-inbox').classList.contains('hidden')) {
+                        loadChatInbox();
                     }
                 }
-                
-                lastSyncTime=checkTime;
-            } catch(e){}
+                return; // Chat messages don't require inventory re-renders
+            }
+
+            if (updated) {
+                reRenderCurrentView();
+                if (activeItem && activeItem.UNIQUE_ID === updatedRow.unique_id && !document.getElementById('view-detail').classList.contains('hidden')) {
+                    openDetail(activeItem.UNIQUE_ID, lastView);
+                }
+            }
         }
 
         async function fetchBackgroundData() {
-            const cachedRes=await loadFromCache(); 
-            if(cachedRes&&fullInventory.length===0){ setTimeout(()=>{ processAndLoadData(cachedRes); },50); } 
+            const cachedRes = await loadFromCache(); 
+            if(cachedRes && fullInventory.length === 0){ setTimeout(()=>{ processAndLoadData(cachedRes); }, 50); } 
             try {
-                const results=await Promise.allSettled([
+                const results = await Promise.allSettled([
                     supabaseFetch('v2_master_inventory','GET',null,'select=*'), 
                     supabaseFetch('v2_active_request','GET',null,'select=*'),
                     supabaseFetch('v2_reserves','GET',null,'select=*'), 
@@ -963,42 +1004,42 @@
                     supabaseFetch('v2_sales_office','GET',null,'select=*'), 
                     supabaseFetch('v2_av_notes','GET',null,'select=*')
                 ]);
-                const formatArr=(resObj,sourceTable)=>{
-                    if(resObj.status!=='fulfilled'||!Array.isArray(resObj.value))return[];
-                    return resObj.value.map((item,idx)=>{
-                        let obj={SOURCE_TABLE:sourceTable}; 
-                        for(let k in item){ if(item[k]!==null)obj[k.toUpperCase()]=item[k]; }
-                        if(!obj.UNIQUE_ID)obj.UNIQUE_ID=obj.ID||`${sourceTable}_${idx}`; 
-                        obj.COMMONNAME=obj.COMMONNAME||obj.DESCRIPTION||obj.PLANT_NAME||"Unknown";
-                        obj.CONTSIZE=item.contsize || obj.CONTSIZE || item.itemspec || obj.ITEMSPEC || item.size || "-";
-                        obj.LOCATIONCODE=obj.LOCATIONCODE||obj.LOCATION||"No Loc"; 
-                        obj.PTRAVAILABLE=obj.PTRAVAILABLE||0;
-                        obj.SAVED_PHOTO_LINK=obj.PHOTO_LINK||obj.PHOTOLINK||""; 
-                        obj.SAVED_PHOTO_NAME=obj.PHOTO_NAME||obj.PHOTONAME||""; 
-                        obj.SEASONSUPPLY=obj.SEASON_SUPPLY||obj.SEASONSUPPLY||0; 
-                        obj.FIELDTAGCOLOR=obj.FIELD_TAG_COLOR||obj.FIELDTAGCOLOR||"-"; 
-                        obj._search=`${obj.COMMONNAME||''} ${obj.LOCATIONCODE||''} ${obj.ITEMCODE||''} ${obj.CONTSIZE||''} ${obj.CUSTOMERNAME||''} ${obj.SALESREPNAME||''} ${obj.STOPNUMBER||''} ${obj.TRIPNUMBER||''}`.toLowerCase(); 
+                const formatArr = (resObj, sourceTable) => {
+                    if(resObj.status !== 'fulfilled' || !Array.isArray(resObj.value)) return [];
+                    return resObj.value.map((item, idx) => {
+                        let obj = {SOURCE_TABLE: sourceTable}; 
+                        for(let k in item){ if(item[k] !== null) obj[k.toUpperCase()] = item[k]; }
+                        if(!obj.UNIQUE_ID) obj.UNIQUE_ID = obj.ID || `${sourceTable}_${idx}`; 
+                        obj.COMMONNAME = obj.COMMONNAME || obj.DESCRIPTION || obj.PLANT_NAME || "Unknown";
+                        obj.CONTSIZE = item.contsize || obj.CONTSIZE || item.itemspec || obj.ITEMSPEC || item.size || "-";
+                        obj.LOCATIONCODE = obj.LOCATIONCODE || obj.LOCATION || "No Loc"; 
+                        obj.PTRAVAILABLE = obj.PTRAVAILABLE || 0;
+                        obj.SAVED_PHOTO_LINK = obj.PHOTO_LINK || obj.PHOTOLINK || ""; 
+                        obj.SAVED_PHOTO_NAME = obj.PHOTO_NAME || obj.PHOTONAME || ""; 
+                        obj.SEASONSUPPLY = obj.SEASON_SUPPLY || obj.SEASONSUPPLY || 0; 
+                        obj.FIELDTAGCOLOR = obj.FIELD_TAG_COLOR || obj.FIELDTAGCOLOR || "-"; 
+                        obj._search = `${obj.COMMONNAME||''} ${obj.LOCATIONCODE||''} ${obj.ITEMCODE||''} ${obj.CONTSIZE||''} ${obj.CUSTOMERNAME||''} ${obj.SALESREPNAME||''} ${obj.STOPNUMBER||''} ${obj.TRIPNUMBER||''}`.toLowerCase(); 
                         return obj;
                     });
                 };
-                let resObj={
-                    status:'success', 
-                    data:formatArr(results[0],'v2_master_inventory'), 
-                    requestsData:formatArr(results[1],'v2_active_request'),
-                    reservesData:formatArr(results[2],'v2_reserves'), 
-                    socData:formatArr(results[3],'v2_soc_master'),
-                    salesOfficeData:formatArr(results[4],'v2_sales_office'), 
-                    avNotesData:formatArr(results[5],'v2_av_notes')
+                let resObj = {
+                    status: 'success', 
+                    data: formatArr(results[0], 'v2_master_inventory'), 
+                    requestsData: formatArr(results[1], 'v2_active_request'),
+                    reservesData: formatArr(results[2], 'v2_reserves'), 
+                    socData: formatArr(results[3], 'v2_soc_master'),
+                    salesOfficeData: formatArr(results[4], 'v2_sales_office'), 
+                    avNotesData: formatArr(results[5], 'v2_av_notes')
                 };
-                setTimeout(()=>{ processAndLoadData(resObj); saveToCache(resObj); },100);
-            } catch(err){ if(!cachedRes)showToast("Sync Error","Could not download data.",true); }
+                setTimeout(() => { processAndLoadData(resObj); saveToCache(resObj); }, 100);
+            } catch(err){ if(!cachedRes) showToast("Sync Error", "Could not download data.", true); }
         }
 
         function processAndLoadData(res) {
             if (!res) return;
             avNotesDb = res.avNotesData || [];
-            fullInventory = (res.data || []).map((item,idx)=>{item.DOM_ID='fi_'+idx;return item;}); 
-            requestsInventory = (res.requestsData || []).map((item,idx)=>{item.DOM_ID='req_'+item.UNIQUE_ID;return item;}); 
+            fullInventory = (res.data || []).map((item, idx) => { item.DOM_ID = 'fi_' + idx; return item; }); 
+            requestsInventory = (res.requestsData || []).map((item, idx) => { item.DOM_ID = 'req_' + item.UNIQUE_ID; return item; }); 
             salesOfficeInventory = (res.salesOfficeData || []).map((item, idx) => {
                 item.DOM_ID = 'so_' + item.UNIQUE_ID;
                 let masterItem = fullInventory.find(i => i.UNIQUE_ID === item.UNIQUE_ID);
@@ -1006,12 +1047,12 @@
                 return item;
             });
             socInventory = res.socData || [];
-            lowStockInventory = fullInventory.filter(i=>{
-                let ptr=parseInt(String(i.PTRAVAILABLE).replace(/,/g,''))||0; 
-                let slts=parseInt(String(i.S_LTS).replace(/,/g,''))||0; 
-                return ptr>0 && ptr<=slts;
-            }).map((item,idx)=>{item.DOM_ID='ls_'+idx;return item}); 
-            managerReviewInventory = fullInventory.map((item,idx)=>{item.DOM_ID='mr_'+idx;return item;}); 
+            lowStockInventory = fullInventory.filter(i => {
+                let ptr = parseInt(String(i.PTRAVAILABLE).replace(/,/g, '')) || 0; 
+                let slts = parseInt(String(i.S_LTS).replace(/,/g, '')) || 0; 
+                return ptr > 0 && ptr <= slts;
+            }).map((item, idx) => { item.DOM_ID = 'ls_' + idx; return item }); 
+            managerReviewInventory = fullInventory.map((item, idx) => { item.DOM_ID = 'mr_' + idx; return item; }); 
 
             let map1 = new Map();
             let icGroups = {};
@@ -3289,7 +3330,7 @@
             input.value = ""; // Clear input so the exact same files can be selected again if needed
         }
 
-        // --- CHAT SYSTEM LOGIC ---
+       // --- CHAT SYSTEM LOGIC ---
         // UPDATE THESE TO MATCH YOUR EXACT SUPABASE SETUP
         const CHAT_ROOMS_TABLE = 'v2_chat_rooms';
         const CHAT_PARTICIPANTS_TABLE = 'v2_chat_participants';
@@ -3317,10 +3358,10 @@
                 const rooms = await supabaseFetch(CHAT_ROOMS_TABLE, 'GET', null, `id=in.${roomIdsString}`);
  
                 // 3. Fetch the latest message for each room to show in the preview
-                const latestMessages = await supabaseFetch(CHAT_MESSAGES_TABLE, 'GET', null, `room\_id=in.${roomIdsString}\&order=created\_at.desc`);
+                const latestMessages = await supabaseFetch(CHAT_MESSAGES_TABLE, 'GET', null, `room_id=in.${roomIdsString}&order=created_at.desc`);
 
                 // 4. Fetch all participants so we can name 1-on-1 chats properly
-                const allParticipants = await supabaseFetch(CHAT_PARTICIPANTS_TABLE, 'GET', null, `room\_id=in.${roomIdsString}`);
+                const allParticipants = await supabaseFetch(CHAT_PARTICIPANTS_TABLE, 'GET', null, `room_id=in.${roomIdsString}`);
 
                 userChatList = rooms.map(room => {
                     let roomParts = allParticipants.filter(p => p.room_id === room.id).map(p => p.username);
@@ -3363,10 +3404,10 @@
             container.innerHTML = chats.map(chat => {
                 let timeStr = new Date(chat.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
                 return `
-                    <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm mb-3 cursor-pointer active:bg-gray-50 active:scale-\[0.99] transition-all" onclick="openChatRoom('${chat.id}', '${esc(chat.title)}')">
+                    <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm mb-3 cursor-pointer active:bg-gray-50 active:scale-[0.99] transition-all" onclick="openChatRoom('${chat.id}', '${esc(chat.title)}')">
                         <div class="flex justify-between items-start mb-1">
-                            <h3 class="font-black text-gray-800 text-\[16px] truncate pr-2">${chat.title}</h3>
-                            <span class="text-\[10px] text-gray-400 font-bold whitespace-nowrap mt-1">${timeStr}</span>
+                            <h3 class="font-black text-gray-800 text-[16px] truncate pr-2">${chat.title}</h3>
+                            <span class="text-[10px] text-gray-400 font-bold whitespace-nowrap mt-1">${timeStr}</span>
                         </div>
                         <p class="text-sm text-gray-500 truncate font-medium">${chat.latestMessage}</p>
                     </div>
@@ -3473,26 +3514,36 @@
             activeChatRoomId = roomId;
             document.getElementById('chat-room-title').innerText = title;
             document.getElementById('view-chat-room').classList.remove('hidden');
-            document.getElementById('chat-messages-container').innerHTML = `<div class="flex justify-center py-10"><div class="spinner border-\[#007a4d] border-t-transparent"></div></div>`;
+            document.getElementById('chat-messages-container').innerHTML = `<div class="flex justify-center py-10"><div class="spinner border-[#007a4d] border-t-transparent"></div></div>`;
  
             fetchChatMessages();
  
-            // Poll for new messages every 3 seconds while room is open
-            if(chatPollInterval) clearInterval(chatPollInterval);
-            chatPollInterval = setInterval(fetchChatMessages, 3000);
+            // Listen for new messages via WebSockets instantly
+            if(window.chatSubscription) window.chatSubscription.unsubscribe();
+            window.chatSubscription = supabase.channel('chat-room-' + roomId)
+                .on('postgres_changes', { 
+                    event: 'INSERT', 
+                    schema: 'public', 
+                    table: 'v2_chat_messages', 
+                    filter: `room_id=eq.${activeChatRoomId}` 
+                }, payload => {
+                    // Inject the new message instantly!
+                    handleNewChatMessage(payload.new); 
+                })
+                .subscribe();
         }
 
         function closeChatRoom() {
             activeChatRoomId = null;
             document.getElementById('view-chat-room').classList.add('hidden');
-            if(chatPollInterval) clearInterval(chatPollInterval);
+            if(window.chatSubscription) window.chatSubscription.unsubscribe();
             loadChatInbox(); // Refresh inbox to show latest messages
         }
 
         async function fetchChatMessages() {
             if(!activeChatRoomId) return;
             try {
-                const messages = await supabaseFetch(CHAT_MESSAGES_TABLE, 'GET', null, `room\_id=eq.${activeChatRoomId}\&order=created\_at.asc`);
+                const messages = await supabaseFetch(CHAT_MESSAGES_TABLE, 'GET', null, `room_id=eq.${activeChatRoomId}&order=created_at.asc`);
                 const container = document.getElementById('chat-messages-container');
  
                 // Only auto-scroll to bottom if we are already near the bottom, or if it's the first load
@@ -3515,32 +3566,32 @@
 
                     // Add a date divider if the day changes
                     if (dateStr !== currentDate) {
-                        html += `<div class="flex justify-center my-4"><span class="bg-gray-200 text-gray-500 text-\[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">${dateStr}</span></div>`;
+                        html += `<div class="flex justify-center my-4"><span class="bg-gray-200 text-gray-500 text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">${dateStr}</span></div>`;
                         currentDate = dateStr;
                     }
 
                     if (isMe) {
                         html += `
                             <div class="flex flex-col items-end w-full">
-                                <div class="bg-\[#007a4d] text-white px-4 py-2.5 rounded-2xl rounded-br-none shadow-sm max-w-\[80%] break-words text-\[15px] leading-snug">
+                                <div class="bg-[#007a4d] text-white px-4 py-2.5 rounded-2xl rounded-br-none shadow-sm max-w-[80%] break-words text-[15px] leading-snug">
                                     ${msg.message}
                                 </div>
-                                <span class="text-\[9px] text-gray-400 font-bold mt-1 mr-1">${timeStr}</span>
+                                <span class="text-[9px] text-gray-400 font-bold mt-1 mr-1">${timeStr}</span>
                             </div>
                         `;
                     } else {
                         html += `
                             <div class="flex flex-col items-start w-full">
-                                <span class="text-\[10px] font-bold text-gray-500 ml-2 mb-0.5 uppercase tracking-wide">${msg.sender}</span>
-                                <div class="bg-white border border-gray-200 text-gray-800 px-4 py-2.5 rounded-2xl rounded-bl-none shadow-sm max-w-\[80%] break-words text-\[15px] leading-snug">
+                                <span class="text-[10px] font-bold text-gray-500 ml-2 mb-0.5 uppercase tracking-wide">${msg.sender}</span>
+                                <div class="bg-white border border-gray-200 text-gray-800 px-4 py-2.5 rounded-2xl rounded-bl-none shadow-sm max-w-[80%] break-words text-[15px] leading-snug">
                                     ${msg.message}
                                 </div>
-                                <span class="text-\[9px] text-gray-400 font-bold mt-1 ml-1">${timeStr}</span>
+                                <span class="text-[9px] text-gray-400 font-bold mt-1 ml-1">${timeStr}</span>
                             </div>
                         `;
                     }
                 });
-
+                
                 container.innerHTML = html;
 
                 if (isFirstLoad || isAtBottom) {
@@ -3548,8 +3599,53 @@
                 }
 
             } catch(e) {
-                console.error("Failed to fetch messages");
+                console.error("Failed to fetch messages", e);
             }
+        }
+
+        // This function injects new messages from the WebSocket directly into the DOM
+        function handleNewChatMessage(msg) {
+            const container = document.getElementById('chat-messages-container');
+            
+            // If the message is from us, remove the "Sending..." optimistic UI block
+            let isMe = msg.sender.toLowerCase() === currentUser.toLowerCase();
+            if (isMe) {
+                let optMsg = document.getElementById('optimistic-msg');
+                if (optMsg) optMsg.remove();
+            }
+
+            let msgDate = new Date(msg.created_at);
+            let timeStr = msgDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            let html = '';
+
+            if (isMe) {
+                html = `
+                    <div class="flex flex-col items-end w-full">
+                        <div class="bg-[#007a4d] text-white px-4 py-2.5 rounded-2xl rounded-br-none shadow-sm max-w-[80%] break-words text-[15px] leading-snug">
+                            ${msg.message}
+                        </div>
+                        <span class="text-[9px] text-gray-400 font-bold mt-1 mr-1">${timeStr}</span>
+                    </div>
+                `;
+            } else {
+                html = `
+                    <div class="flex flex-col items-start w-full">
+                        <span class="text-[10px] font-bold text-gray-500 ml-2 mb-0.5 uppercase tracking-wide">${msg.sender}</span>
+                        <div class="bg-white border border-gray-200 text-gray-800 px-4 py-2.5 rounded-2xl rounded-bl-none shadow-sm max-w-[80%] break-words text-[15px] leading-snug">
+                            ${msg.message}
+                        </div>
+                        <span class="text-[9px] text-gray-400 font-bold mt-1 ml-1">${timeStr}</span>
+                    </div>
+                `;
+            }
+            
+            // Remove the "No messages yet" text if this is the first message
+            if(container.innerHTML.includes('No messages yet')) {
+                container.innerHTML = '';
+            }
+
+            container.innerHTML += html;
+            container.scrollTop = container.scrollHeight;
         }
 
         async function sendChatMessage() {
@@ -3562,12 +3658,18 @@
             // Optimistically add the message to the UI
             const container = document.getElementById('chat-messages-container');
             let timeStr = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            
+            // Remove the "No messages yet" text if this is the first message
+            if(container.innerHTML.includes('No messages yet')) {
+                container.innerHTML = '';
+            }
+
             container.innerHTML += `
                 <div class="flex flex-col items-end w-full opacity-70" id="optimistic-msg">
-                    <div class="bg-\[#007a4d] text-white px-4 py-2.5 rounded-2xl rounded-br-none shadow-sm max-w-\[80%] break-words text-\[15px] leading-snug">
+                    <div class="bg-[#007a4d] text-white px-4 py-2.5 rounded-2xl rounded-br-none shadow-sm max-w-[80%] break-words text-[15px] leading-snug">
                         ${text}
                     </div>
-                    <span class="text-\[9px] text-gray-400 font-bold mt-1 mr-1">Sending...</span>
+                    <span class="text-[9px] text-gray-400 font-bold mt-1 mr-1">Sending...</span>
                 </div>
             `;
             container.scrollTop = container.scrollHeight;
@@ -3579,7 +3681,7 @@
                     message: text,
                     created_at: new Date().toISOString()
                 });
-                fetchChatMessages(); // Hard refresh to get confirmed message
+                // The WebSocket subscription will catch this INSERT and render it via handleNewChatMessage
             } catch(e) {
                 showToast("Error", "Message failed to send.", true);
                 let optMsg = document.getElementById('optimistic-msg');
@@ -3591,7 +3693,7 @@
         function showChatParticipants() {
             let room = userChatList.find(r => r.id === activeChatRoomId);
             if(room) {
-                alert(`Chat Participants:\\n\\n${room.participants.join('\\n').toUpperCase()}`);
+                alert(`Chat Participants:\n\n${room.participants.join('\n').toUpperCase()}`);
             }
         }
     </script>
