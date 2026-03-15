@@ -1284,6 +1284,30 @@ function renderAV() {
         if(safeRole === 'SALESREP') items = items.filter(i => isMyRep(i.SALESREPNAME)); 
     }
     
+   function renderAV() {
+    const container = document.getElementById('av-content'); 
+    const crumb = document.getElementById('av-crumb'); 
+    const term = document.getElementById('av-search').value.toLowerCase().trim(); 
+
+    let items = [];
+    if (activeAVTab === 'open') { 
+        items = fullInventory.filter(i => {
+            let lts = Number(String(i.S_LTS || '0').replace(/,/g, ''));
+            let season = String(i.SEASON || '').toUpperCase();
+            return lts > 0 && !season.includes('Y') && !season.includes('Z');
+        }); 
+        
+        populateAvFilters(items);
+        
+        if (avFilterGroup) items = items.filter(i => (i.PLANTGROUPCODE || 'Unassigned') === avFilterGroup);
+        if (avFilterSeason) items = items.filter(i => (i.SEASON || 'Unassigned') === avFilterSeason);
+        if (avFilterSize) items = items.filter(i => (i.CONTSIZE || 'Unassigned') === avFilterSize);
+        
+    } else { 
+        items = reservesInventory; 
+        if(safeRole === 'SALESREP') items = items.filter(i => isMyRep(i.SALESREPNAME)); 
+    }
+    
     if (term) { 
         const searchTerms = term.split(/\s+/); 
         items = items.filter(i => { 
@@ -1292,21 +1316,50 @@ function renderAV() {
         }); 
     }
     
+    // 1. Handle Empty State
     if (items.length === 0) { 
         container.innerHTML = `<div class="p-8 text-center text-gray-400">No ${activeAVTab==='open'?'open stock':'reserves'} found.</div>`; 
         crumb.innerText = "No Results"; 
         return; 
     }
     
+    // 2. Render Open Stock
     if (activeAVTab === 'open') {
         crumb.innerText = `Showing ${items.length} items`;
+        
         items.sort((a,b) => {
+            let icA = String(a.ITEMCODE || "UNKNOWN").toUpperCase();
+            let icB = String(b.ITEMCODE || "UNKNOWN").toUpperCase();
+            let icCmp = icA.localeCompare(icB, undefined, {numeric: true});
+            if (icCmp !== 0) return icCmp;
+            
+            let pgcA = String(a.PLANTGROUPCODE || "UNASSIGNED").toUpperCase();
+            let pgcB = String(b.PLANTGROUPCODE || "UNASSIGNED").toUpperCase();
+            let pgcCmp = pgcA.localeCompare(pgcB, undefined, {numeric: true});
+            if (pgcCmp !== 0) return pgcCmp;
+
             let priA = parseFloat(a.PRIORITY); let priB = parseFloat(b.PRIORITY);
             if(isNaN(priA)) priA = Infinity; if(isNaN(priB)) priB = Infinity;
             if(priA !== priB) return priA - priB;
+            
             return String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""), undefined, {numeric:true});
         }); 
-        container.innerHTML = items.map(i => generateCard(i, 'av', 'status-teal')).join('');
+        
+        let html = '';
+        let lastGroup = null;
+        
+        items.forEach(i => {
+            let groupKey = `${i.ITEMCODE || 'UNKNOWN'} | ${i.PLANTGROUPCODE || 'UNASSIGNED'}`;
+            if (groupKey !== lastGroup) {
+                html += `<div class="bg-teal-50 border border-teal-200 text-teal-800 font-black text-[13px] px-3 py-2 rounded-lg mb-3 mt-4 shadow-sm flex justify-between items-center leading-none"><span class="tracking-wide">${i.ITEMCODE || 'UNKNOWN'}</span><span class="text-[9px] uppercase font-bold text-teal-600 bg-white px-2 py-1 rounded shadow-sm border border-teal-100">${i.PLANTGROUPCODE || 'UNASSIGNED'}</span></div>`;
+                lastGroup = groupKey;
+            }
+            html += generateCard(i, 'av', 'status-teal');
+        });
+        
+        container.innerHTML = html;
+        
+    // 3. Render Reserves
     } else {
         if(term.length > 0) { 
             crumb.innerText = `Search Results (${items.length})`; 
@@ -1344,7 +1397,6 @@ function renderAV() {
         }
     }
 }
-
 function setDocksMainTab(tab) {
     activeDocksMainTab = tab;
     document.getElementById('tab-docks-all').classList.toggle('active', tab === 'all');
