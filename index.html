@@ -3921,69 +3921,77 @@ async function handlePhotoUpload(input, prefix) {
             const ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-            const base64Data = dataUrl.split(',')[1];
+            // Convert canvas directly to a Blob for Supabase (instead of base64)
+            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.8));
 
-            showToast('Uploading', 'Sending photo to server...', false);
+            showToast('Uploading', 'Sending photo to Supabase...', false);
 
-            let context = 'drive';
-            if (prefix === 'ssn-') context = 'season';
-            else if (prefix === 'lsn-') context = 'location';
-            else if (prefix === 'req-') context = 'request';
-            else if (prefix === 'dock-') context = 'docks';
+            // 1. Determine the correct Supabase Bucket based on the prefix
+            let bucketName = 'drive_mode_photos'; // Default fallback
+            if (prefix === 'ssn-') bucketName = 'season_sales_notes_photos';
+            else if (prefix === 'lsn-') bucketName = 'location_sales_notes_photos';
+            else if (prefix === 'req-') bucketName = 'request_photos';
+            else if (prefix === 'dock-') bucketName = 'dock_photos';
 
-            let dockNum = pendingDockNum || selectedDockNum || "0";
-
-            let dateStr = new Date().toISOString().split('T')[0];
-            let cName = String(activeItem.COMMONNAME || 'Unknown').replace(/[\/\\?%*:|"<>]/g, '-');
-            let cSize = String(activeItem.CONTSIZE || 'NoSize').replace(/[\/\\?%*:|"<>]/g, '-');
-            let cLot = String(activeItem.LOTCODE || 'NoLot').replace(/[\/\\?%*:|"<>]/g, '-');
-            let cLoc = String(activeItem.LOCATIONCODE || 'NoLoc').replace(/[\/\\?%*:|"<>]/g, '-');
-            let customFileName = `${cName}-${cSize}-${cLot}-${cLoc}-${dateStr}.jpg`;
-
-            const payload = {
-                type: 'image',
-                image: base64Data,
-                filename: customFileName,
-                mimeType: 'image/jpeg',
-                folderContext: context,
-                dockNum: dockNum
-            };
+            // 2. Generate a clean, unique file name
+            let timestamp = Date.now();
+            let cName = String(activeItem.COMMONNAME || 'Unknown').replace(/[\/\\?%*:|"<>]/g, '').replace(/\s+/g, '_');
+            let cLoc = String(activeItem.LOCATIONCODE || 'NoLoc').replace(/[\/\\?%*:|"<>]/g, '');
+            let customFileName = `${cName}_${cLoc}_${timestamp}.jpg`;
 
             try {
-                const response = await fetch(GOOGLE_SCRIPT_URL, {
-                    method: 'POST',
-                    body: JSON.stringify(payload)
-                });
-                const result = await response.json();
+                // 3. Upload the Blob to Supabase Storage
+                const { data, error } = await supabaseClient
+                    .storage
+                    .from(bucketName)
+                    .upload(customFileName, blob, {
+                        cacheControl: '3600',
+                        upsert: false,
+                        contentType: 'image/jpeg'
+                    });
 
-                if (result.status === 'success') {
-                    showToast('Success', 'Photo uploaded successfully!');
-                    if (activeItem) {
-                        let url = result.url;
-                        if (prefix === 'req-') {
-                            activeItem.REQ_PHOTO_LINK = activeItem.REQ_PHOTO_LINK ? activeItem.REQ_PHOTO_LINK + ',' + url : url;
-                        } else if (prefix === 'dock-') {
-                            activeItem.DOCK_PHOTO_LINK = activeItem.DOCK_PHOTO_LINK ? activeItem.DOCK_PHOTO_LINK + ',' + url : url;
-                        } else if (prefix === 'flyer-') {
-                            activeItem.FLYER_PHOTO_LINK = activeItem.FLYER_PHOTO_LINK ? activeItem.FLYER_PHOTO_LINK + ',' + url : url;
-                        } else {
-                            activeItem.SAVED_PHOTO_LINK = activeItem.SAVED_PHOTO_LINK ? activeItem.SAVED_PHOTO_LINK + ',' + url : url;
-                        }
-                        saveData(false, prefix, true);
-                        renderSavedPhotos();
-                    }
-                } else {
-                    showToast('Error', 'Upload failed: ' + result.message, true);
+                if (error) {
+                    showToast('Error', 'Upload failed: ' + error.message, true);
+                    return;
                 }
+
+                // 4. Get the Public URL for the uploaded file
+                const { data: urlData } = supabaseClient
+                    .storage
+                    .from(bucketName)
+                    .getPublicUrl(customFileName);
+
+                let url = urlData.publicUrl;
+
+                showToast('Success', 'Photo uploaded successfully!');
+
+                // 5. Save the new URL back to the local item state
+                if (activeItem) {
+                    if (prefix === 'req-') {
+                        activeItem.REQ_PHOTO_LINK = activeItem.REQ_PHOTO_LINK ? activeItem.REQ_PHOTO_LINK + ',' + url : url;
+                    } else if (prefix === 'dock-') {
+                        activeItem.DOCK_PHOTO_LINK = activeItem.DOCK_PHOTO_LINK ? activeItem.DOCK_PHOTO_LINK + ',' + url : url;
+                    } else if (prefix === 'flyer-') {
+                        activeItem.FLYER_PHOTO_LINK = activeItem.FLYER_PHOTO_LINK ? activeItem.FLYER_PHOTO_LINK + ',' + url : url;
+                    } else if (prefix === 'na-') {
+                        activeItem.NA_PHOTO_LINK = activeItem.NA_PHOTO_LINK ? activeItem.NA_PHOTO_LINK + ',' + url : url;
+                    } else {
+                        activeItem.SAVED_PHOTO_LINK = activeItem.SAVED_PHOTO_LINK ? activeItem.SAVED_PHOTO_LINK + ',' + url : url;
+                    }
+                    
+                    // Trigger the save to the database
+                    saveData(false, prefix, true);
+                    renderSavedPhotos();
+                }
+                
             } catch (err) {
                 showToast('Error', 'Network error during upload.', true);
+                console.error(err);
             } finally {
-                input.value = "";
+                input.value = ""; // Reset the input
             }
         };
     };
-}
-    </script>
+}    </script>
 </body>
 </html>
