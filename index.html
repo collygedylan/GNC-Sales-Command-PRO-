@@ -1284,30 +1284,6 @@ function renderAV() {
         if(safeRole === 'SALESREP') items = items.filter(i => isMyRep(i.SALESREPNAME)); 
     }
     
-   function renderAV() {
-    const container = document.getElementById('av-content'); 
-    const crumb = document.getElementById('av-crumb'); 
-    const term = document.getElementById('av-search').value.toLowerCase().trim(); 
-
-    let items = [];
-    if (activeAVTab === 'open') { 
-        items = fullInventory.filter(i => {
-            let lts = Number(String(i.S_LTS || '0').replace(/,/g, ''));
-            let season = String(i.SEASON || '').toUpperCase();
-            return lts > 0 && !season.includes('Y') && !season.includes('Z');
-        }); 
-        
-        populateAvFilters(items);
-        
-        if (avFilterGroup) items = items.filter(i => (i.PLANTGROUPCODE || 'Unassigned') === avFilterGroup);
-        if (avFilterSeason) items = items.filter(i => (i.SEASON || 'Unassigned') === avFilterSeason);
-        if (avFilterSize) items = items.filter(i => (i.CONTSIZE || 'Unassigned') === avFilterSize);
-        
-    } else { 
-        items = reservesInventory; 
-        if(safeRole === 'SALESREP') items = items.filter(i => isMyRep(i.SALESREPNAME)); 
-    }
-    
     if (term) { 
         const searchTerms = term.split(/\s+/); 
         items = items.filter(i => { 
