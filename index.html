@@ -3008,103 +3008,117 @@
 
         async function handlePhotoUpload(input, prefix) {
             if (!input.files || input.files.length === 0) return;
-            const file = input.files[0];
             
-            if (!file.type.startsWith('image/')) {
-                showToast('Error', 'Please select an image file.', true);
-                return;
-            }
+            const fileCount = input.files.length;
+            showToast('Processing', `Preparing ${fileCount} photo(s)...`, false);
 
-            showToast('Processing', 'Compressing image...', false);
+            // Loop through all selected files so you can upload multiple at once
+            for (let i = 0; i < fileCount; i++) {
+                const file = input.files[i];
+                
+                if (!file.type.startsWith('image/')) {
+                    showToast('Error', `File ${i + 1} is not an image.`, true);
+                    continue;
+                }
 
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = function(event) {
-                const img = new Image();
-                img.src = event.target.result;
-               img.onload = function() {
-                    const canvas = document.createElement('canvas');
-                    const MAX_WIDTH = 1080;
-                    let scaleSize = 1;
-                    
-                    if (img.width > MAX_WIDTH) {
-                        scaleSize = MAX_WIDTH / img.width;
-                    }
-                    
-                    canvas.width = img.width * scaleSize;
-                    canvas.height = img.height * scaleSize;
-
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-                    // Convert compressed canvas directly to a Blob for Supabase
-                    canvas.toBlob(async (blob) => {
-                        showToast('Uploading', 'Sending photo to Supabase...', false);
-
-                        // 1. Determine the correct Supabase Bucket based on the tab
-                        let bucketName = 'drive_mode_photos'; // Default for Drive / Notes & Actions / Flyer
-                        if (prefix === 'ssn-') bucketName = 'season_sales_notes_photos';
-                        else if (prefix === 'lsn-') bucketName = 'location_sales_notes_photos';
-                        else if (prefix === 'req-') bucketName = 'request_photos';
-                        else if (prefix === 'dock-') bucketName = 'dock_photos';
-
-                        // 2. Format the Subfolder (YYYY-MM-DD) and Filename
-                        let dateStr = new Date().toISOString().split('T')[0];
-                        let cName = String(activeItem.COMMONNAME || 'Unknown').replace(/[\/\\?%*:|"<>]/g, '-');
-                        let cSize = String(activeItem.CONTSIZE || 'NoSize').replace(/[\/\\?%*:|"<>]/g, '-');
-                        let cLot = String(activeItem.LOTCODE || 'NoLot').replace(/[\/\\?%*:|"<>]/g, '-');
-                        let cLoc = String(activeItem.LOCATIONCODE || 'NoLoc').replace(/[\/\\?%*:|"<>]/g, '-');
-                        
-                        // Add a timestamp to the end of the filename to guarantee it's always unique
-                        let customFileName = `${cName}-${cSize}-${cLot}-${cLoc}-${Date.now()}.jpg`;
-                        
-                        // Supabase creates folders automatically when you use a slash in the path
-                        let filePath = `${dateStr}/${customFileName}`;
-
-                        try {
-                            // 3. Upload directly to Supabase Storage using standard fetch
-                            const uploadUrl = `${SUPABASE_URL}/storage/v1/object/${bucketName}/${filePath}`;
-                            const uploadResponse = await fetch(uploadUrl, {
-                                method: 'POST',
-                                headers: {
-                                    'Authorization': 'Bearer ' + SUPABASE_KEY,
-                                    'apikey': SUPABASE_KEY,
-                                    'Content-Type': 'image/jpeg'
-                                },
-                                body: blob
-                            });
-
-                            if (!uploadResponse.ok) {
-                                const errText = await uploadResponse.text();
-                                throw new Error(errText || 'Upload failed');
-                            }
-
-                            // 4. Construct the Public URL for the image we just uploaded
-                            let url = `${SUPABASE_URL}/storage/v1/object/public/${bucketName}/${filePath}`;
-
-                            showToast('Success', 'Photo uploaded successfully!');
+                // Await each upload so they process smoothly and don't overwhelm the device
+                await new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.readAsDataURL(file);
+                    reader.onload = function(event) {
+                        const img = new Image();
+                        img.src = event.target.result;
+                        img.onload = function() {
+                            const canvas = document.createElement('canvas');
+                            const MAX_WIDTH = 1080;
+                            let scaleSize = 1;
                             
-                            // 5. Save the new URL to the item
-                            if (activeItem) {
-                                if (prefix === 'req-') {
-                                    activeItem.REQ_PHOTO_LINK = activeItem.REQ_PHOTO_LINK ? activeItem.REQ_PHOTO_LINK + ',' + url : url;
-                                } else if (prefix === 'dock-') {
-                                    activeItem.DOCK_PHOTO_LINK = activeItem.DOCK_PHOTO_LINK ? activeItem.DOCK_PHOTO_LINK + ',' + url : url;
-                                } else if (prefix === 'flyer-') {
-                                    activeItem.FLYER_PHOTO_LINK = activeItem.FLYER_PHOTO_LINK ? activeItem.FLYER_PHOTO_LINK + ',' + url : url;
-                                } else {
-                                    activeItem.SAVED_PHOTO_LINK = activeItem.SAVED_PHOTO_LINK ? activeItem.SAVED_PHOTO_LINK + ',' + url : url;
-                                }
-                                saveData(false, prefix, true); // Silently save to DB
-                                renderSavedPhotos(); // Update the UI
+                            if (img.width > MAX_WIDTH) {
+                                scaleSize = MAX_WIDTH / img.width;
                             }
-                        } catch (err) {
-                            showToast('Error', 'Upload failed: ' + err.message, true);
-                        } finally {
-                            input.value = ""; // Clear input so the same file can be selected again
-                        }                    }, 'image/jpeg', 0.8);
-                };
-            };
+                            
+                            canvas.width = img.width * scaleSize;
+                            canvas.height = img.height * scaleSize;
+
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                            canvas.toBlob(async (blob) => {
+                                showToast('Uploading', `Sending photo ${i + 1} of ${fileCount}...`, false);
+
+                                let bucketName = 'drive_mode_photos'; 
+                                if (prefix === 'ssn-') bucketName = 'season_sales_notes_photos';
+                                else if (prefix === 'lsn-') bucketName = 'location_sales_notes_photos';
+                                else if (prefix === 'req-') bucketName = 'request_photos';
+                                else if (prefix === 'dock-') bucketName = 'dock_photos';
+
+                                let dateStr = new Date().toISOString().split('T')[0];
+                                let cName = String(activeItem.COMMONNAME || 'Unknown').replace(/[\/\\?%*:|"<>]/g, '-');
+                                let cSize = String(activeItem.CONTSIZE || 'NoSize').replace(/[\/\\?%*:|"<>]/g, '-');
+                                let cLot = String(activeItem.LOTCODE || 'NoLot').replace(/[\/\\?%*:|"<>]/g, '-');
+                                let cLoc = String(activeItem.LOCATIONCODE || 'NoLoc').replace(/[\/\\?%*:|"<>]/g, '-');
+                                
+                                // Figure out how many photos already exist for this row to generate the hidden index number
+                                let existingPhotos = [];
+                                if (prefix === 'req-') existingPhotos = (activeItem.REQ_PHOTO_LINK || "").split(',').filter(Boolean);
+                                else if (prefix === 'dock-') existingPhotos = (activeItem.DOCK_PHOTO_LINK || "").split(',').filter(Boolean);
+                                else if (prefix === 'flyer-') existingPhotos = (activeItem.FLYER_PHOTO_LINK || "").split(',').filter(Boolean);
+                                else existingPhotos = (activeItem.SAVED_PHOTO_LINK || "").split(',').filter(Boolean);
+                                
+                                let photoIndex = existingPhotos.length + 1; 
+                                
+                                // We add both the photoIndex AND the loop integer (i) to guarantee absolute uniqueness 
+                                let customFileName = `${cName}-${cSize}-${cLot}-${cLoc}-Photo${photoIndex}-${Date.now()}_${i}.jpg`;
+                                let filePath = `${dateStr}/${customFileName}`;
+
+                                try {
+                                    const uploadUrl = `${SUPABASE_URL}/storage/v1/object/${bucketName}/${filePath}`;
+                                    const uploadResponse = await fetch(uploadUrl, {
+                                        method: 'POST',
+                                        headers: {
+                                            'Authorization': 'Bearer ' + SUPABASE_KEY,
+                                            'apikey': SUPABASE_KEY,
+                                            'Content-Type': 'image/jpeg'
+                                        },
+                                        body: blob
+                                    });
+
+                                    if (!uploadResponse.ok) {
+                                        const errText = await uploadResponse.text();
+                                        throw new Error(errText || 'Upload failed');
+                                    }
+
+                                    let url = `${SUPABASE_URL}/storage/v1/object/public/${bucketName}/${filePath}`;
+
+                                    if (activeItem) {
+                                        // Append the new URL to the existing comma-separated string
+                                        if (prefix === 'req-') {
+                                            activeItem.REQ_PHOTO_LINK = activeItem.REQ_PHOTO_LINK ? activeItem.REQ_PHOTO_LINK + ',' + url : url;
+                                        } else if (prefix === 'dock-') {
+                                            activeItem.DOCK_PHOTO_LINK = activeItem.DOCK_PHOTO_LINK ? activeItem.DOCK_PHOTO_LINK + ',' + url : url;
+                                        } else if (prefix === 'flyer-') {
+                                            activeItem.FLYER_PHOTO_LINK = activeItem.FLYER_PHOTO_LINK ? activeItem.FLYER_PHOTO_LINK + ',' + url : url;
+                                        } else {
+                                            activeItem.SAVED_PHOTO_LINK = activeItem.SAVED_PHOTO_LINK ? activeItem.SAVED_PHOTO_LINK + ',' + url : url;
+                                        }
+                                        saveData(false, prefix, true); 
+                                        renderSavedPhotos(); 
+                                    }
+                                    resolve();
+                                } catch (err) {
+                                    showToast('Error', `Upload failed for photo ${i + 1}: ` + err.message, true);
+                                    resolve();
+                                }
+                            }, 'image/jpeg', 0.8);
+                        };
+                        img.onerror = () => resolve();
+                    };
+                    reader.onerror = () => resolve();
+                });
+            }
+            
+          showToast('Success', 'Photo(s) uploaded successfully!');
+            input.value = ""; // Clear input so the exact same files can be selected again if needed
         }
     </script>
 </body>
