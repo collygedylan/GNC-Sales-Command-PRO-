@@ -1262,19 +1262,49 @@
                 return; 
             }
             
-            // --- UPDATED SECTION FOR OPEN STOCK ---
             if (activeAVTab === 'open') { 
                 crumb.innerText = `Open Stock (${items.length} items)`;
-                // Optional: Sort by Priority then Location
-                items.sort((a,b) => { 
-                    let priA = parseFloat(a.PRIORITY); let priB = parseFloat(b.PRIORITY); 
-                    if(isNaN(priA)) priA = Infinity; if(isNaN(priB)) priB = Infinity; 
-                    if(priA !== priB) return priA - priB; 
-                    return String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""), undefined, {numeric:true}); 
+                
+                let html = '';
+                
+                // 1. Get unique plant groups and sort them alphabetically
+                const plantGroups = [...new Set(items.map(i => i.PLANTGROUPCODE || 'Unassigned'))].sort();
+                
+                plantGroups.forEach(group => {
+                    // Render Plant Group Header
+                    html += `<div class="font-black text-2xl text-teal-800 mt-6 mb-2 border-b-2 border-teal-200 pb-1">${group}</div>`;
+                    
+                    let groupItems = items.filter(i => (i.PLANTGROUPCODE || 'Unassigned') === group);
+                    
+                    // 2. Get unique item codes within this group and sort them (smallest to largest)
+                    const itemCodes = [...new Set(groupItems.map(i => i.ITEMCODE || 'Unknown'))].sort((a, b) => String(a).localeCompare(String(b), undefined, {numeric: true}));
+                    
+                    itemCodes.forEach(code => {
+                        let codeItems = groupItems.filter(i => (i.ITEMCODE || 'Unknown') === code);
+                        let sampleName = codeItems[0]?.COMMONNAME || 'Unknown Plant';
+                        
+                        // Render Item Code Sub-Header
+                        html += `<div class="font-bold text-lg text-gray-700 mt-4 mb-3 bg-gray-100 px-3 py-2 rounded-lg border border-gray-200 flex justify-between items-center shadow-sm">
+                                    <span>${sampleName}</span>
+                                    <span class="font-mono text-sm text-teal-600 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">${code}</span>
+                                 </div>`;
+                        
+                        // 3. Sort the specific cards by Priority then Location
+                        codeItems.sort((a,b) => { 
+                            let priA = parseFloat(a.PRIORITY); let priB = parseFloat(b.PRIORITY); 
+                            if(isNaN(priA)) priA = Infinity; if(isNaN(priB)) priB = Infinity; 
+                            if(priA !== priB) return priA - priB; 
+                            return String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""), undefined, {numeric:true}); 
+                        });
+                        
+                        // Render the cards
+                        html += codeItems.map(i => generateCard(i, 'av', 'status-teal')).join('');
+                    });
                 });
-                container.innerHTML = items.map(i => generateCard(i, 'av', 'status-teal')).join('');
+                
+                container.innerHTML = html;
+                
             } else {
-                // My Reserves logic remains untouched
                 if(avResLevel===0){ 
                     crumb.innerText="My Reserves > Plants"; 
                     const names=[...new Set(items.map(i=>i.COMMONNAME))].sort(); 
