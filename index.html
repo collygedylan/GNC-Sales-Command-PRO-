@@ -182,7 +182,6 @@
                     <div class="text-[10px] opacity-80 leading-tight">Dylan</div>
                 </div>
             </div>
-            <div class="bg-white/20 p-2 rounded-lg cursor-pointer" onclick="fetchBackgroundData()"><i class="ph-bold ph-arrows-clockwise text-white"></i></div>
         </header>
         
         <div id="drawer-overlay" onclick="toggleMenu()"></div>
@@ -208,6 +207,14 @@
         </div>
         
         <div id="main-scroll-area" class="flex-grow overflow-y-auto p-4 pb-40 relative">
+            
+            <div id="pull-to-refresh" class="w-full flex justify-center items-center overflow-hidden transition-all duration-300 h-0">
+                <div class="flex items-center gap-2 text-[#007a4d] font-bold text-sm bg-green-50 px-4 py-2 rounded-full border border-green-200 shadow-inner">
+                    <i id="ptr-icon" class="ph-bold ph-arrow-down text-lg transition-transform duration-300"></i>
+                    <span id="ptr-text">Pull to sync</span>
+                </div>
+            </div>
+            
             <div id="view-wrapper" style="position:relative; z-index:20;">
                 
                 <div id="view-home" class="hidden">
@@ -3006,7 +3013,7 @@
             if(typeof validateSsnForm === 'function') validateSsnForm();
         }
 
-        async function handlePhotoUpload(input, prefix) {
+                async function handlePhotoUpload(input, prefix) {
             if (!input.files || input.files.length === 0) return;
             
             const fileCount = input.files.length;
@@ -3117,7 +3124,7 @@
                 });
             }
             
-          showToast('Success', 'Photo(s) uploaded successfully!');
+            showToast('Success', 'Photo(s) uploaded successfully!');
             input.value = ""; // Clear input so the exact same files can be selected again if needed
         }
     </script>
