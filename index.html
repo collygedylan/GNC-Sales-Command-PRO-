@@ -493,11 +493,16 @@
                 </div>
             </div>
             
-            <nav class="fixed bottom-0 w-full bg-white border-t flex justify-around py-3 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-50">
-                <div onclick="switchView('home')"><i class="ph-bold ph-house text-2xl text-gray-400"></i></div>
-                <div onclick="switchView('drive')"><i class="ph-bold ph-car text-2xl text-gray-400"></i></div>
-                <div onclick="switchView('tasks')" class="rep-hidden csr-hidden"><i class="ph-bold ph-clipboard-text text-2xl text-gray-400"></i></div>
-                <div onclick="switchView('docks')"><i class="ph-bold ph-truck text-2xl text-gray-400"></i></div>
+           <nav class="fixed bottom-0 w-full bg-white border-t flex justify-around py-3 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-50">
+                <div onclick="switchView('home')" class="flex flex-col items-center cursor-pointer"><i class="ph-bold ph-house text-2xl text-gray-400"></i></div>
+                <div onclick="switchView('drive')" class="flex flex-col items-center cursor-pointer"><i class="ph-bold ph-car text-2xl text-gray-400"></i></div>
+                <div onclick="switchView('tasks')" class="flex flex-col items-center cursor-pointer rep-hidden csr-hidden"><i class="ph-bold ph-clipboard-text text-2xl text-gray-400"></i></div>
+                <div onclick="switchView('docks')" class="flex flex-col items-center cursor-pointer"><i class="ph-bold ph-truck text-2xl text-gray-400"></i></div>
+                
+                <div onclick="switchView('chat-inbox'); loadChatInbox();" class="flex flex-col items-center relative cursor-pointer">
+                    <i class="ph-bold ph-chat-circle-dots text-2xl text-gray-400"></i>
+                    <div id="nav-unread-badge" class="absolute -top-1 -right-2 bg-red-500 text-white text-[9px] font-black w-4 h-4 flex items-center justify-center rounded-full hidden">0</div>
+                </div>
             </nav>
         </div>
         
