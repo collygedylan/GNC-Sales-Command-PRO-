@@ -3013,7 +3013,86 @@
             if(typeof validateSsnForm === 'function') validateSsnForm();
         }
 
-                async function handlePhotoUpload(input, prefix) {
+              // --- PULL TO REFRESH LOGIC ---
+        const scrollArea = document.getElementById('main-scroll-area');
+        const ptrContainer = document.getElementById('pull-to-refresh');
+        const ptrIcon = document.getElementById('ptr-icon');
+        const ptrText = document.getElementById('ptr-text');
+
+        let ptrStartY = 0;
+        let ptrCurrentY = 0;
+        let isPulling = false;
+        const ptrThreshold = 75; // How many pixels they have to pull down
+
+        if(scrollArea && ptrContainer) {
+            scrollArea.addEventListener('touchstart', (e) => {
+                // Only allow pull if they are at the very top of the page
+                if (scrollArea.scrollTop <= 5) { 
+                    ptrStartY = e.touches[0].clientY;
+                    isPulling = true;
+                    ptrContainer.style.transition = 'none'; // Snap to finger instantly
+                }
+            }, { passive: true });
+
+            scrollArea.addEventListener('touchmove', (e) => {
+                if (!isPulling) return;
+                ptrCurrentY = e.touches[0].clientY;
+                const pullDistance = ptrCurrentY - ptrStartY;
+
+                if (pullDistance > 0 && scrollArea.scrollTop <= 5) {
+                    // Multiplier 0.5 adds physical "resistance" so it feels native
+                    let visualHeight = Math.min(pullDistance * 0.5, ptrThreshold + 25);
+                    ptrContainer.style.height = `${visualHeight}px`; 
+                    
+                    if (pullDistance * 0.5 >= ptrThreshold) {
+                        ptrText.innerText = "Release to sync";
+                        ptrIcon.style.transform = "rotate(180deg)";
+                    } else {
+                        ptrText.innerText = "Pull to sync";
+                        ptrIcon.style.transform = "rotate(0deg)";
+                    }
+                }
+            }, { passive: true });
+
+            scrollArea.addEventListener('touchend', () => {
+                if (!isPulling) return;
+                isPulling = false;
+                
+                const pullDistance = ptrCurrentY - ptrStartY;
+                ptrContainer.style.transition = 'height 0.3s ease'; // Smooth snap back
+                ptrIcon.style.transform = "rotate(0deg)";
+
+                if (pullDistance * 0.5 >= ptrThreshold && scrollArea.scrollTop <= 5) {
+                    // Trigger the Sync
+                    ptrContainer.style.height = '50px';
+                    ptrText.innerText = "Syncing...";
+                    ptrIcon.classList.remove('ph-arrow-down');
+                    ptrIcon.classList.add('ph-spinner', 'animate-spin');
+                    
+                    fetchBackgroundData();
+                    
+                    // Hide it after a short delay so they know it worked
+                    setTimeout(() => {
+                        closePtr();
+                    }, 1500);
+                } else {
+                    closePtr();
+                }
+            });
+        }
+
+        function closePtr() {
+            if(!ptrContainer) return;
+            ptrContainer.style.height = '0px';
+            setTimeout(() => {
+                ptrIcon.classList.add('ph-arrow-down');
+                ptrIcon.classList.remove('ph-spinner', 'animate-spin');
+                ptrText.innerText = "Pull to sync";
+            }, 300);
+        }
+
+        // --- PHOTO UPLOAD LOGIC ---
+        async function handlePhotoUpload(input, prefix) {
             if (!input.files || input.files.length === 0) return;
             
             const fileCount = input.files.length;
