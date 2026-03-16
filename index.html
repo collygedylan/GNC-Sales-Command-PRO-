@@ -26,9 +26,13 @@
             </div>
         </div>
         
-        <div id="photo-modal-gallery" class="flex overflow-x-auto snap-x snap-mandatory w-full max-h-[85vh] items-center space-x-4 pb-4 scrollbar-none mt-10" onscroll="updatePhotoCounter()"></div>
+        <button id="photo-nav-left" class="hidden absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/80 text-white p-3 rounded-full z-50 pointer-events-auto transition-colors" onclick="scrollPhotoGallery(-1)"><i class="ph-bold ph-caret-left text-3xl"></i></button>
         
-        <div id="photo-swipe-hint" class="absolute bottom-10 text-white text-xs font-bold uppercase tracking-widest opacity-50 hidden pointer-events-none"><i class="ph-bold ph-arrows-left-right mr-1 text-lg align-middle"></i> Swipe for more</div>
+        <button id="photo-nav-right" class="hidden absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/80 text-white p-3 rounded-full z-50 pointer-events-auto transition-colors" onclick="scrollPhotoGallery(1)"><i class="ph-bold ph-caret-right text-3xl"></i></button>
+
+        <div id="photo-modal-gallery" class="flex overflow-x-auto snap-x snap-mandatory w-full max-h-[85vh] items-center space-x-4 pb-4 scrollbar-none mt-10 scroll-smooth" onscroll="updatePhotoCounter()"></div>
+        
+        <div id="photo-swipe-hint" class="absolute bottom-10 text-white text-xs font-bold uppercase tracking-widest opacity-50 hidden pointer-events-none"><i class="ph-bold ph-arrows-left-right mr-1 text-lg align-middle"></i> Swipe or use arrows</div>
     </div>    
     <div id="view-login">
         <div class="login-card">
@@ -755,6 +759,14 @@
             return repPermutations.some(p=>str.includes(p)); 
         }
 
+        function scrollPhotoGallery(direction) {
+            const gallery = document.getElementById('photo-modal-gallery');
+            if(!gallery) return;
+            // Scroll by exactly the width of the gallery container
+            const scrollAmount = gallery.clientWidth;
+            gallery.scrollBy({ left: direction * scrollAmount, behavior: 'smooth' });
+        }
+
         function openPhotoModal(urlStr, caption) { 
             const gallery = document.getElementById('photo-modal-gallery');
             gallery.innerHTML = '';
@@ -777,19 +789,25 @@
             document.getElementById('photo-modal-caption').innerText = caption; 
             document.getElementById('photo-modal').classList.remove('hidden');
             
-            // Manage visibility of the counter and hint
+            // Manage visibility of the counter, hint, and arrows
+            let navLeft = document.getElementById('photo-nav-left');
+            let navRight = document.getElementById('photo-nav-right');
+
             if(urls.length > 1) {
                 document.getElementById('photo-swipe-hint').classList.remove('hidden');
                 document.getElementById('photo-modal-counter').classList.remove('hidden');
+                if(navLeft) navLeft.classList.remove('hidden');
+                if(navRight) navRight.classList.remove('hidden');
             } else {
                 document.getElementById('photo-swipe-hint').classList.add('hidden');
                 document.getElementById('photo-modal-counter').classList.add('hidden');
+                if(navLeft) navLeft.classList.add('hidden');
+                if(navRight) navRight.classList.add('hidden');
             }
             
             // Initialize the counter for the first image
             setTimeout(() => updatePhotoCounter(), 50);
         }
-
         function closePhotoModal() { 
             document.getElementById('photo-modal').classList.add('hidden'); 
         }
