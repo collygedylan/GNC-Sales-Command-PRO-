@@ -1277,13 +1277,12 @@
             supabaseFetch('v2_labor_hours', 'POST', payload).then(() => { showToast("Success", "Hours submitted successfully!"); document.getElementById('hours-amount').value = ""; }).catch(err => { showToast("Error", "Failed to submit hours.", true); });
         }
 
-        const debouncedReservesSearch=debounce(()=>{requestAnimationFrame(()=>renderReserves())},150);
+        const debouncedReservesSearch=debounce(()=>{requestAnimationFrame(()=>renderReserves())}, 400);
         function clearReservesSearch() { document.getElementById('reserves-search').value=""; document.getElementById('reserves-search-clear').classList.add('hidden'); reservesViewLevel=0; renderReserves(); }
         function handleReservesSearch() { const term=document.getElementById('reserves-search').value.toLowerCase(); const clearBtn=document.getElementById('reserves-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden');reservesViewLevel=0;} else{clearBtn.classList.add('hidden');reservesViewLevel=0;} debouncedReservesSearch(); }
 
-        const debouncedAVSearch=debounce(()=>{requestAnimationFrame(()=>renderAV())},150);
-
-        function selectAvResName(name) { selectedAvResName=name; avResLevel=1; renderAV(); }
+       const debouncedAVSearch=debounce(()=>{requestAnimationFrame(()=>renderAV())}, 400);        
+function selectAvResName(name) { selectedAvResName=name; avResLevel=1; renderAV(); }
         function selectAvResSize(size) { selectedAvResSize=size; avResLevel=2; renderAV(); }
 
         function renderAV() {
@@ -1416,7 +1415,7 @@
             renderDocks();
         }
 
-        const debouncedDocksSearch=debounce(()=>{requestAnimationFrame(()=>renderDocks())},150);
+        const debouncedDocksSearch=debounce(()=>{requestAnimationFrame(()=>renderDocks())}, 400);
         function clearDocksSearch(){ document.getElementById('docks-search').value=""; document.getElementById('docks-search-clear').classList.add('hidden'); dockViewLevel=0; renderDocks(); }
         function handleDocksSearch(){ const term=document.getElementById('docks-search').value.toLowerCase(); const clearBtn=document.getElementById('docks-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden');dockViewLevel=0;}else{clearBtn.classList.add('hidden');dockViewLevel=0;} debouncedDocksSearch(); }
         
@@ -2369,7 +2368,7 @@
             filterRepList()
         }
 
-        const debouncedFilterRepList=debounce(()=>requestAnimationFrame(filterRepList),150);
+        const debouncedFilterRepList=debounce(()=>requestAnimationFrame(filterRepList), 400);
 
         function filterRepList() {
             const val=document.getElementById('rep-search-input').value.toLowerCase().trim();
@@ -2420,8 +2419,7 @@
             }
         }
 
-        const debouncedPopulateCustomerList=debounce(()=>requestAnimationFrame(populateCustomerList),150);
-
+        const debouncedPopulateCustomerList=debounce(()=>requestAnimationFrame(populateCustomerList), 400);
         function populateCustomerList() {
             const val=document.getElementById('cust-search-input').value.toLowerCase().trim();
             const container=document.getElementById('cust-list-container');
@@ -2701,7 +2699,7 @@
         function openAssignModal() { document.getElementById('assign-modal').classList.remove('hidden') }
         function closeAssignModal() { document.getElementById('assign-modal').classList.add('hidden') }
 
-        const debouncedDriveSearch = debounce(() => { requestAnimationFrame(() => renderDrive()); }, 150);
+        const debouncedDriveSearch = debounce(() => { requestAnimationFrame(() => renderDrive()); }, 400);
         
         function clearDriveSearch() {
             document.getElementById('drive-search').value = "";
