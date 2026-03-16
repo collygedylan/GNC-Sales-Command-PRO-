@@ -975,6 +975,24 @@
                                 fullInventory[idx].SAVED_PHOTO_NAME=fullInventory[idx].PHOTO_NAME||fullInventory[idx].PHOTONAME||""; 
                                 updated=true; 
                                 if(activeItem&&activeItem.UNIQUE_ID===updatedRow.unique_id){ Object.assign(activeItem,fullInventory[idx]); }
+// --- NEW: Push updates instantly to the Docks and Reserves tabs ---
+        socInventory.forEach(socItem => {
+            if(socItem.MASTER_UNIQUE_ID === updatedRow.unique_id) {
+                if(updatedRow.photo_link !== undefined) socItem.SAVED_PHOTO_LINK = updatedRow.photo_link || "";
+                if(updatedRow.av_note !== undefined) socItem.AV_NOTE = updatedRow.av_note || "";
+                if(updatedRow.sales_note !== undefined) socItem.SALES_NOTE = updatedRow.sales_note || "";
+                if(updatedRow.dock_note !== undefined) socItem.DOCK_NOTE = updatedRow.dock_note || "";
+            }
+        });
+
+        reservesInventory.forEach(resItem => {
+            if(resItem.MASTER_UNIQUE_ID === updatedRow.unique_id) {
+                if(updatedRow.photo_link !== undefined) resItem.SAVED_PHOTO_LINK = updatedRow.photo_link || "";
+                if(updatedRow.av_note !== undefined) resItem.AV_NOTE = updatedRow.av_note || "";
+                if(updatedRow.sales_note !== undefined) resItem.SALES_NOTE = updatedRow.sales_note || "";
+            }
+        });
+        // ------------------------------------------------------------------
                             }
                         });
                         if(updated){ reRenderCurrentView(); if(activeItem&&!document.getElementById('view-detail').classList.contains('hidden')){ openDetail(activeItem.UNIQUE_ID,lastView); } }
