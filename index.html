@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-    <title>GNC</title>
+    <title>DC</title>
     <meta name="theme-color" content="#007a4d">
     <link rel="manifest" href="manifest.json">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="application-name" content="GNC">
+    <meta name="application-name" content="DC">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -39,7 +39,7 @@
     <div id="view-login">
         <div class="login-card">
             <div class="flex flex-col items-center mb-8 w-full relative">
-                <div class="text-2xl text-[#007a4d] font-black tracking-tighter mb-1 text-center leading-none">GNC</div>                <div class="flex flex-col items-center gap-0.5 mt-5">
+                <div class="text-2xl text-[#007a4d] font-black tracking-tighter mb-1 text-center leading-none">DC</div>                <div class="flex flex-col items-center gap-0.5 mt-5">
                     <span class="text-[9px] font-bold text-gray-400 uppercase tracking-[0.3em]">Powered By</span>
                     <span class="text-[17px] font-black text-gray-800 tracking-[0.2em] uppercase border-b-[3px] border-[#007a4d] pb-0.5">Ag Metric</span>
                 </div>
@@ -184,7 +184,7 @@
                 <i class="ph-bold ph-list menu-btn text-2xl cursor-pointer" onclick="toggleMenu()"></i>
                 <div class="flex flex-col">
                     <div class="font-bold text-lg leading-tight"><span id="header-user">User</span></div>
-                    <div class="text-[10px] opacity-80 leading-tight">GNC</div>
+                    <div class="text-[10px] opacity-80 leading-tight">DC</div>
                 </div>
             </div>
         </header>
@@ -267,7 +267,7 @@
                         <p class="text-green-100 text-[10px] font-bold mb-5 uppercase tracking-[0.2em] z-10 relative">Dashboard</p>
                         
                         <div class="flex flex-col items-center pt-4 border-t border-white/20 w-full mt-1 z-10 relative">
-                            <div class="text-[14px] font-black tracking-wide text-white uppercase drop-shadow-sm mb-3 text-center leading-tight">GNC</div>
+                            <div class="text-[14px] font-black tracking-wide text-white uppercase drop-shadow-sm mb-3 text-center leading-tight">DC</div>
                             <span class="text-[8px] font-bold text-white/70 uppercase tracking-[0.3em] mb-1">Powered By</span>
                             <div class="text-[12px] font-black tracking-[0.2em] text-white uppercase drop-shadow-sm">Ag Metric</div>
                         </div>
@@ -496,8 +496,21 @@
                     <div id="det-request-content" class="hidden py-4">
                         <div id="req-photo-preview" class="mb-4 hidden"><p class="text-[10px] font-bold text-purple-600 mb-2 uppercase">Request Photos</p><div id="req-photo-list-container" class="space-y-2"></div></div>
                         <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-req" class="bg-purple-50 border-2 border-dashed border-purple-500 text-purple-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" multiple capture="environment" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="handlePhotoUpload(this, 'req-')"></label></div>
+                        
+                        <div class="relative w-full mb-3">
+                            <label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label>
+                            <div class="flex gap-2 relative">
+                                <input type="text" id="req-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); filterAvNotes('req-')" onfocus="filterAvNotes('req-')" onblur="setTimeout(()=>{if(document.getElementById('req-av-dropdown-list'))document.getElementById('req-av-dropdown-list').classList.add('hidden'); saveData(false, 'req-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT...">
+                            </div>
+                            <div id="req-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div>
+                        </div>
+
                         <div id="req-input-container">
-                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Match %</label><input type="number" id="req-match" class="input-field" placeholder="e.g. 95" onchange="saveData(false, 'req-', true)"></div>
+                            <div class="mb-3">
+                                <label class="text-[10px] font-bold text-gray-500 uppercase">Match %</label>
+                                <input type="number" id="req-match" class="input-field !mb-1" placeholder="e.g. 95" oninput="calculateMatchQty('req-'); saveData(false, 'req-', true)">
+                                <div id="req-match-display" class="text-[10px] font-bold text-[#007a4d] text-right mb-2 hidden">LOC Match QTY: <span id="req-match-qty-val">0</span></div>
+                            </div>
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="req-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'req-', true)"></div>
                             <div id="req-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="req-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'req-', true)"></div>
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Reserve</label><select id="req-reserve" class="input-field bg-white" onchange="saveData(false, 'req-', true)"><option value="NO">NO</option><option value="YES">YES</option></select></div>
@@ -511,8 +524,7 @@
                             <button class="w-full bg-orange-50 text-orange-700 border border-orange-200 font-bold py-4 rounded-xl shadow-sm flex justify-center items-center gap-2 admin-csr-only hidden" onclick="removeFromRequest()"><i class="ph-bold ph-minus-circle text-xl"></i> REMOVE FROM REQUEST</button>
                         </div>
                         <div id="req-matching-inventory-container"></div>
-                    </div>
-                    <div id="det-docks-content" class="hidden py-4">
+                    </div>                    <div id="det-docks-content" class="hidden py-4">
                         <div id="dock-photo-preview" class="mb-4 hidden"><p class="text-[10px] font-bold text-orange-600 mb-2 uppercase">Photos on file</p><div id="dock-photo-list-container" class="space-y-2"></div></div>
                         <div class="grid grid-cols-1 gap-2 mb-4"><label class="bg-orange-50 border-2 border-dashed border-orange-500 text-orange-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" multiple capture="environment" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="handlePhotoUpload(this, 'dock-')"></label></div>
                         <div id="dock-input-container">
@@ -720,7 +732,7 @@
         async function promptToEnableBiometrics(user,pin) { 
             if(!confirm("Would you like to enable Fingerprint/FaceID login for future use?"))return; 
             try{ 
-                const publicKey={challenge:new Uint8Array(32),rp:{name:"GNC"},user:{id:new Uint8Array(16),name:user,displayName:user},pubKeyCredParams:[{type:"public-key",alg:-7}],authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required"},timeout:60000}; 
+                const publicKey={challenge:new Uint8Array(32),rp:{name:"DC"},user:{id:new Uint8Array(16),name:user,displayName:user},pubKeyCredParams:[{type:"public-key",alg:-7}],authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required"},timeout:60000}; 
                 await navigator.credentials.create({publicKey}); 
                 localStorage.setItem('gnc_bio_enabled','true'); 
                 localStorage.setItem('gnc_bio_user',user); 
@@ -2190,14 +2202,16 @@ function selectAvResName(name) { selectedAvResName=name; avResLevel=1; renderAV(
                         clickThumbHtml = `<div class="ml-3 flex-shrink-0 flex flex-col items-center" onclick="event.stopPropagation(); openPhotoModal('${photoLink}', '${esc(item.COMMONNAME)} - ${esc(item.CONTSIZE)}')"><div class="relative"><img src="${thumbUrl}" class="w-24 h-24 rounded-lg object-cover border-2 border-teal-300 shadow-md active:scale-95 transition-transform" loading="lazy">${photoCount > 1 ? `<div class="absolute -top-2 -right-2 bg-teal-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full border-2 border-white shadow-sm">+${photoCount-1}</div>` : ''}</div><div class="text-center text-[9px] font-black text-teal-600 mt-1.5 uppercase tracking-widest bg-teal-50 px-2 py-0.5 rounded-md border border-teal-100 cursor-pointer active:bg-teal-200">VIEW</div></div>`; 
                     } 
                 }
-
+let specCaliperHtml = "";
+                if (item.SPEC || item.CALIPER) {
+                    specCaliperHtml = `<div class="mt-2 text-[11px] font-bold text-gray-600 bg-gray-50 px-2 py-1 rounded border border-gray-100 w-max">Spec: ${item.SPEC || 'N/A'} | Caliper: ${item.CALIPER || 'N/A'}</div>`;
+                }
                 // --- Calculate dynamic Loc Photo Match ---
                 let ptr = parseInt(String(item.PTRAVAILABLE).replace(/,/g, '')) || 0;
                 let matchPct = parseFloat(item.MATCH || item.MATCHPCT);
                 let locPhotoMatch = !isNaN(matchPct) ? Math.round(ptr * (matchPct / 100)) : 'N/A';
 
-                return `<div class="flex items-start w-full mb-3 item-row relative bg-white p-4 rounded-xl border-2 border-teal-100 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-teal-600 focus:ring-teal-600 shadow-sm pointer-events-none" ${isChecked}></div><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full"><div class="flex-grow min-w-0 pr-2"><div class="font-black text-gray-800 text-[18px] leading-tight break-words mb-1">${item.COMMONNAME||'Unknown'}</div><div class="font-black text-teal-700 text-[15px] mb-2">${item.CONTSIZE||'-'}</div><div class="grid grid-cols-2 gap-2 mb-2"><div class="text-[11px] font-bold text-gray-500 uppercase"><span class="block text-[8px] text-gray-400 mb-0.5">LOT CODE</span>${item.LOTCODE||'-'}</div><div class="text-[11px] font-bold text-gray-500 uppercase"><span class="block text-[8px] text-gray-400 mb-0.5">LOCATION</span>${item.LOCATIONCODE||'-'}</div></div><div class="flex flex-wrap gap-2 text-[11px] font-bold uppercase tracking-wider mt-1"><span class="bg-gray-100 text-gray-800 px-2 py-1 rounded border border-gray-200">LOC AVA: <span class="font-black">${item.PTRAVAILABLE||'0'}</span></span><span class="bg-purple-50 text-purple-700 px-2 py-1 rounded border border-purple-200">s_LTS: <span class="font-black">${item.S_LTS||'0'}</span></span><span class="bg-green-50 text-green-700 px-2 py-1 rounded border border-green-200">LOC PHOTO MATCH: <span class="font-black">${locPhotoMatch}</span></span></div>${holdHtml}${avNoteHtml}</div>${clickThumbHtml}</div></div></div>`;
-            }
+               return `<div class="flex items-start w-full mb-3 item-row relative bg-white p-4 rounded-xl border-2 border-teal-100 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-teal-600 focus:ring-teal-600 shadow-sm pointer-events-none" ${isChecked}></div><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full"><div class="flex-grow min-w-0 pr-2"><div class="font-black text-gray-800 text-[18px] leading-tight break-words mb-1">${item.COMMONNAME||'Unknown'}</div><div class="font-black text-teal-700 text-[15px] mb-2">${item.CONTSIZE||'-'}</div><div class="grid grid-cols-2 gap-2 mb-2"><div class="text-[11px] font-bold text-gray-500 uppercase"><span class="block text-[8px] text-gray-400 mb-0.5">LOT CODE</span>${item.LOTCODE||'-'}</div><div class="text-[11px] font-bold text-gray-500 uppercase"><span class="block text-[8px] text-gray-400 mb-0.5">LOCATION</span>${item.LOCATIONCODE||'-'}</div></div><div class="flex flex-wrap gap-2 text-[11px] font-bold uppercase tracking-wider mt-1"><span class="bg-gray-100 text-gray-800 px-2 py-1 rounded border border-gray-200">LOC AVA: <span class="font-black">${item.PTRAVAILABLE||'0'}</span></span><span class="bg-purple-50 text-purple-700 px-2 py-1 rounded border border-purple-200">s_LTS: <span class="font-black">${item.S_LTS||'0'}</span></span><span class="bg-green-50 text-green-700 px-2 py-1 rounded border border-green-200">LOC PHOTO MATCH: <span class="font-black">${locPhotoMatch}</span></span></div>${specCaliperHtml}${holdHtml}${avNoteHtml}</div>${clickThumbHtml}</div></div></div>`;            }
             
             if(photoLink){ 
                 let firstUrl=String(photoLink).split(',')[0]; 
@@ -3031,10 +3045,15 @@ function selectAvResName(name) { selectedAvResName=name; avResLevel=1; renderAV(
             let btnComp = document.getElementById(prefix + 'btn-save-complete'); 
             let isCurrentView = (activeItem && activeItem.UNIQUE_ID === itemToSave.UNIQUE_ID);
             
-            if (isCurrentView && isComplete) { if(btnComp) btnComp.innerText = "SAVING..."; }
+           if (isCurrentView && isComplete) { if(btnComp) btnComp.innerText = "SAVING..."; }
             
-           const executeSave = () => {
-                let wasAlreadyComplete = itemToSave.REQ_STATUS === 'Complete';
+            // Ask if it should be pushed to AV
+            let pushToAv = false;
+            if (isCurrentView && isComplete && prefix === 'req-' && !isSilentAutoSave) {
+                pushToAv = confirm("Do you want to show in AV?");
+            }
+            
+           const executeSave = () => {                let wasAlreadyComplete = itemToSave.REQ_STATUS === 'Complete';
 
                 if (!specificItem) {
                     let avEl = document.getElementById(prefix + 'av-note');
@@ -3147,7 +3166,26 @@ function selectAvResName(name) { selectedAvResName=name; avResLevel=1; renderAV(
                         else salesOfficeInventory.push(cloneSO);
                     }
                 }
+// Push to AV (Master Inventory) if user selected YES
+                if (pushToAv) {
+                    let masterUid = itemToSave.MASTER_ID || itemToSave.UNIQUE_ID;
+                    let matchVal = parseFloat(itemToSave.REQ_MATCH);
+                    let ptr = parseInt(String(itemToSave.PTRAVAILABLE).replace(/,/g, '')) || 0;
+                    let locMatchQty = (!isNaN(matchVal) && matchVal >= 0) ? Math.round(ptr * (matchVal / 100)) : null;
 
+                    let avPayload = {
+                        av_note: itemToSave.AV_NOTE || null,
+                        spec: itemToSave.REQ_SPEC || null,
+                        caliper: itemToSave.REQ_CALIPER || null,
+                        match: isNaN(matchVal) ? null : matchVal,
+                        loc_match_qty: locMatchQty,
+                        photo_link: itemToSave.REQ_PHOTO_LINK || itemToSave.SAVED_PHOTO_LINK || null,
+                        photo_name: itemToSave.REQ_PHOTO_NAME || itemToSave.SAVED_PHOTO_NAME || null
+                    };
+
+                    // Silently update master inventory in the background
+                    supabaseFetch('v2_master_inventory', 'PATCH', avPayload, `unique_id=eq.${masterUid}`).catch(e => console.log(e));
+                }
                 // If editing a request, send back to v2_active_request. Otherwise master DB.
                 const targetTable = (itemToSave.SOURCE_TABLE === 'v2_active_request') ? 'v2_active_request' : (itemToSave.SOURCE_TABLE || 'v2_master_inventory');
 
