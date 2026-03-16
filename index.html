@@ -2849,92 +2849,104 @@
             reader.onload = function(event) {
                 const img = new Image();
                 img.src = event.target.result;
-               img.onload = async function() {
-    const canvas = document.createElement('canvas');
-    const MAX_WIDTH = 1080;
-    let scaleSize = 1;
-    
-    if (img.width > MAX_WIDTH) {
-        scaleSize = MAX_WIDTH / img.width;
-    }
-    
-    canvas.width = img.width * scaleSize;
-    canvas.height = img.height * scaleSize;
-
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-    // Convert directly to a Blob for Supabase instead of Base64
-    canvas.toBlob(async function(blob) {
-        showToast('Uploading', 'Sending photo to Supabase...', false);
-
-        // 1. Map to your specific Supabase Buckets
-        let bucketName = 'drive_mode_photos'; // Default
-        if (prefix === 'ssn-') bucketName = 'season_sales_notes_photos';
-        else if (prefix === 'lsn-') bucketName = 'location_sales_notes_photos';
-        else if (prefix === 'req-') bucketName = 'request_photos';
-        else if (prefix === 'dock-') bucketName = 'dock_photos';
-
-        let dockNum = pendingDockNum || selectedDockNum || "0";
-        let dateStr = new Date().toISOString().split('T')[0];
-        let cName = String(activeItem.COMMONNAME || 'Unknown').replace(/[\/\\?%*:|"<>]/g, '-');
-        let cSize = String(activeItem.CONTSIZE || 'NoSize').replace(/[\/\\?%*:|"<>]/g, '-');
-        let cLot = String(activeItem.LOTCODE || 'NoLot').replace(/[\/\\?%*:|"<>]/g, '-');
-        let cLoc = String(activeItem.LOCATIONCODE || 'NoLoc').replace(/[\/\\?%*:|"<>]/g, '-');
-        
-        // Added a timestamp to the filename to guarantee uniqueness and prevent overwriting
-        let customFileName = `${cName}-${cSize}-${cLot}-${cLoc}-${Date.now()}.jpg`;
-
-        // 2. Supabase Storage API Endpoint
-        const uploadUrl = `${SUPABASE_URL}/storage/v1/object/${bucketName}/${customFileName}`;
-
-        try {
-            const response = await fetch(uploadUrl, {
-                method: 'POST',
-                headers: {
-                    'apikey': SUPABASE_KEY,
-                    'Authorization': 'Bearer ' + SUPABASE_KEY,
-                    'Content-Type': 'image/jpeg',
-                    'Cache-Control': '3600'
-                },
-                body: blob
-            });
-
-            if (response.ok) {
-                showToast('Success', 'Photo uploaded successfully!');
-                
-                if (activeItem) {
-                    // 3. Generate the public URL to save to the database
-                    const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/${bucketName}/${customFileName}`;
-                    
-                    if (prefix === 'req-') {
-                        activeItem.REQ_PHOTO_LINK = activeItem.REQ_PHOTO_LINK ? activeItem.REQ_PHOTO_LINK + ',' + publicUrl : publicUrl;
-                    } else if (prefix === 'dock-') {
-                        activeItem.DOCK_PHOTO_LINK = activeItem.DOCK_PHOTO_LINK ? activeItem.DOCK_PHOTO_LINK + ',' + publicUrl : publicUrl;
-                    } else if (prefix === 'flyer-') {
-                        activeItem.FLYER_PHOTO_LINK = activeItem.FLYER_PHOTO_LINK ? activeItem.FLYER_PHOTO_LINK + ',' + publicUrl : publicUrl;
-                    } else {
-                        activeItem.SAVED_PHOTO_LINK = activeItem.SAVED_PHOTO_LINK ? activeItem.SAVED_PHOTO_LINK + ',' + publicUrl : publicUrl;
-                    }
-                    saveData(false, prefix, true);
-                    renderSavedPhotos();
-                }
-          } else {
-                const errText = await response.text();
-                showToast('Error', 'Upload failed.', true);
-                console.error('Supabase Upload Error:', errText);
+              async function handlePhotoUpload(input, prefix) {
+            if (!input.files || input.files.length === 0) return;
+            const file = input.files[0];
+            
+            if (!file.type.startsWith('image/')) {
+                showToast('Error', 'Please select an image file.', true);
+                return;
             }
-        } catch (err) {
-            showToast('Error', 'Network error during upload.', true);
-            console.error(err);
-        } finally {
-            input.value = "";
-        }
-    }, 'image/jpeg', 0.8); // Closes the canvas.toBlob callback
-}; // Closes the img.onload function
-}; // Closes the reader.onload function
-} // Closes the handlePhotoUpload function
 
+            showToast('Processing', 'Compressing image...', false);
+
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = function(event) {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = async function() {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 1080;
+                    let scaleSize = 1;
+                    
+                    if (img.width > MAX_WIDTH) {
+                        scaleSize = MAX_WIDTH / img.width;
+                    }
+                    
+                    canvas.width = img.width * scaleSize;
+                    canvas.height = img.height * scaleSize;
+
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                    canvas.toBlob(async function(blob) {
+                        showToast('Uploading', 'Sending photo to Supabase...', false);
+
+                        // 1. Map to your specific Supabase Buckets
+                        let bucketName = 'drive_mode_photos'; // Default
+                        if (prefix === 'ssn-') bucketName = 'season_sales_notes_photos';
+                        else if (prefix === 'lsn-') bucketName = 'location_sales_notes_photos';
+                        else if (prefix === 'req-') bucketName = 'request_photos';
+                        else if (prefix === 'dock-') bucketName = 'dock_photos';
+
+                        // 2. Build a safe filename (stripping out # and other URL-breaking characters)
+                        let cName = activeItem ? String(activeItem.COMMONNAME || 'Unknown').replace(/[\/\\?%*:|"<>#]/g, '-') : 'Unknown';
+                        let cSize = activeItem ? String(activeItem.CONTSIZE || 'NoSize').replace(/[\/\\?%*:|"<>#]/g, '') : 'NoSize';
+                        let cLot = activeItem ? String(activeItem.LOTCODE || 'NoLot').replace(/[\/\\?%*:|"<>#]/g, '-') : 'NoLot';
+                        let cLoc = activeItem ? String(activeItem.LOCATIONCODE || 'NoLoc').replace(/[\/\\?%*:|"<>#]/g, '-') : 'NoLoc';
+                        
+                        let customFileName = `${cName}-${cSize}-${cLot}-${cLoc}-${Date.now()}.jpg`;
+
+                        // 3. ENCODE the filename so it travels perfectly over the network
+                        const uploadUrl = `${SUPABASE_URL}/storage/v1/object/${bucketName}/${encodeURIComponent(customFileName)}`;
+
+                        try {
+                            const response = await fetch(uploadUrl, {
+                                method: 'POST',
+                                headers: {
+                                    'apikey': SUPABASE_KEY,
+                                    'Authorization': 'Bearer ' + SUPABASE_KEY,
+                                    'Content-Type': 'image/jpeg',
+                                    'Cache-Control': '3600'
+                                },
+                                body: blob
+                            });
+
+                            if (response.ok) {
+                                showToast('Success', 'Photo uploaded successfully!');
+                                
+                                if (activeItem) {
+                                    // Generate the public URL to save to the database (also encoded)
+                                    const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/${bucketName}/${encodeURIComponent(customFileName)}`;
+                                    
+                                    if (prefix === 'req-') {
+                                        activeItem.REQ_PHOTO_LINK = activeItem.REQ_PHOTO_LINK ? activeItem.REQ_PHOTO_LINK + ',' + publicUrl : publicUrl;
+                                    } else if (prefix === 'dock-') {
+                                        activeItem.DOCK_PHOTO_LINK = activeItem.DOCK_PHOTO_LINK ? activeItem.DOCK_PHOTO_LINK + ',' + publicUrl : publicUrl;
+                                    } else if (prefix === 'flyer-') {
+                                        activeItem.FLYER_PHOTO_LINK = activeItem.FLYER_PHOTO_LINK ? activeItem.FLYER_PHOTO_LINK + ',' + publicUrl : publicUrl;
+                                    } else {
+                                        activeItem.SAVED_PHOTO_LINK = activeItem.SAVED_PHOTO_LINK ? activeItem.SAVED_PHOTO_LINK + ',' + publicUrl : publicUrl;
+                                    }
+                                    saveData(false, prefix, true);
+                                    renderSavedPhotos();
+                                }
+                            } else {
+                                const errText = await response.text();
+                                showToast('Error', 'Upload failed.', true);
+                                console.error('Supabase Upload Error:', errText);
+                            }
+                        } catch (err) {
+                            showToast('Error', 'Network error during upload.', true);
+                            console.error(err);
+                        } finally {
+                            input.value = "";
+                        }
+                    }, 'image/jpeg', 0.8);
+                };
+            };
+        }
     </script>
 </body>
 </html>
