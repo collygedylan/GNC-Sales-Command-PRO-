@@ -1799,20 +1799,27 @@
             let dLink = activeItem.DOCK_PHOTO_LINK || "";
             let fLink = activeItem.FLYER_PHOTO_LINK || "";
 
-            const makeThumbs = (link, containerId, wrapperId) => {
+            const makeThumbs = (link, containerId, wrapperId, prefix, linkType) => {
                 let el = document.getElementById(containerId);
                 let wrap = document.getElementById(wrapperId);
                 if(!el || !wrap) return;
                 if(link && String(link).trim() !== "") {
                     let urls = String(link).split(',');
-                    let html = `<div class="flex gap-2 overflow-x-auto pb-2">`;
+                    // Added pt-2 so the delete badge doesn't get cut off at the top
+                    let html = `<div class="flex gap-2 overflow-x-auto pb-2 pt-2">`; 
                     urls.forEach(u => {
                         let c = u.trim();
                         let m = c.match(/(https?:\/\/[^"\s>]+)/);
                         if(m) c = m[1];
                         if(c.startsWith('http')) {
                             let thumb = getDirectImageUrl(c);
-                            html += `<img src="${thumb}" class="w-20 h-20 object-cover rounded-lg border border-gray-300 cursor-pointer shadow-sm active:scale-95" onclick="openPhotoModal('${link}', 'Saved Photo')">`;
+                            html += `
+                            <div class="relative flex-shrink-0">
+                                <img src="${thumb}" class="w-20 h-20 object-cover rounded-lg border border-gray-300 cursor-pointer shadow-sm active:scale-95" onclick="openPhotoModal('${link}', 'Saved Photo')">
+                                <div class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center cursor-pointer shadow-md active:scale-95 z-10" onclick="event.stopPropagation(); deletePhoto('${c}', '${linkType}')">
+                                    <i class="ph-bold ph-trash text-xs"></i>
+                                </div>
+                            </div>`;
                         }
                     });
                     html += `</div>`;
@@ -1824,14 +1831,65 @@
                 }
             };
 
-            makeThumbs(sLink, 'ssn-photo-list-container', 'ssn-photo-preview');
-            makeThumbs(sLink, 'lsn-photo-list-container', 'lsn-photo-preview');
-            makeThumbs(sLink, 'na-photo-list-container', 'na-photo-preview');
-            makeThumbs(rLink || sLink, 'req-photo-list-container', 'req-photo-preview');
-            makeThumbs(dLink || sLink, 'dock-photo-list-container', 'dock-photo-preview');
-            makeThumbs(fLink || sLink, 'flyer-photo-list-container', 'flyer-photo-preview');
+            makeThumbs(sLink, 'ssn-photo-list-container', 'ssn-photo-preview', 'ssn-', 'SAVED_PHOTO_LINK');
+            makeThumbs(sLink, 'lsn-photo-list-container', 'lsn-photo-preview', 'lsn-', 'SAVED_PHOTO_LINK');
+            makeThumbs(sLink, 'na-photo-list-container', 'na-photo-preview', 'na-', 'SAVED_PHOTO_LINK');
+            makeThumbs(rLink || sLink, 'req-photo-list-container', 'req-photo-preview', 'req-', rLink ? 'REQ_PHOTO_LINK' : 'SAVED_PHOTO_LINK');
+            makeThumbs(dLink || sLink, 'dock-photo-list-container', 'dock-photo-preview', 'dock-', dLink ? 'DOCK_PHOTO_LINK' : 'SAVED_PHOTO_LINK');
+            makeThumbs(fLink || sLink, 'flyer-photo-list-container', 'flyer-photo-preview', 'flyer-', fLink ? 'FLYER_PHOTO_LINK' : 'SAVED_PHOTO_LINK');
         }
 
+        async function deletePhoto(urlToRemove, linkType) {
+            if(!confirm("Are you sure you want to delete this photo?")) return;
+            if(!activeItem) return;
+            
+            // 1. Remove the URL from the active item's string locally
+            let currentUrls = (activeItem[linkType] || "").split(',').map(u => u.trim()).filter(Boolean);
+            let updatedUrls = currentUrls.filter(u => !u.includes(urlToRemove));
+            let newLinkString = updatedUrls.join(',');
+            
+            activeItem[linkType] = newLinkString;
+            renderSavedPhotos(); // Hide it from the screen immediately
+            
+            // 2. Prep the database payload
+            let targetTable = (activeItem.SOURCE_TABLE === 'v2_active_request') ? 'v2_active_request' : (activeItem.SOURCE_TABLE || 'v2_master_inventory');
+            let payload = {};
+            payload[linkType.toLowerCase()] = newLinkString === "" ? null : newLinkString;
+            
+            showToast("Deleting", "Removing photo...", false);
+            
+            try {
+                // Update the database record
+                await supabaseFetch(targetTable, 'PATCH', payload, `unique_id=eq.${encodeURIComponent(activeItem.UNIQUE_ID)}`);
+                showToast("Success", "Photo removed.");
+                
+                // 3. Delete the actual file from the Supabase Storage Bucket
+                try {
+                    let urlObj = new URL(urlToRemove);
+                    let pathParts = urlObj.pathname.split('/public/')[1]; 
+                    if(pathParts) {
+                        let bucket = pathParts.split('/')[0];
+                        let filePath = pathParts.substring(bucket.length + 1);
+                        
+                        await fetch(`${SUPABASE_URL}/storage/v1/object/${bucket}/${filePath}`, {
+                            method: 'DELETE',
+                            headers: {
+                                'Authorization': 'Bearer ' + SUPABASE_KEY,
+                                'apikey': SUPABASE_KEY
+                            }
+                        });
+                    }
+                } catch(storageErr) {
+                    console.log("Could not delete from storage bucket, but removed from DB.");
+                }
+                
+            } catch(err) {
+                showToast("Error", "Could not remove photo from database.", true);
+                // Revert the UI if it fails
+                activeItem[linkType] = currentUrls.join(',');
+                renderSavedPhotos();
+            }
+        }
         function switchDetailTab(tab) {
             activeDetailTab = tab;
             const detTabsContainer = document.getElementById('det-tabs-container');
