@@ -1122,11 +1122,11 @@
             setTimeout(() => toast.classList.remove('show'), 3000); 
         }
 
-        function switchView(viewId) { 
-            ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-detail','view-docks','view-request','view-reserves','view-av', 'view-hours'].forEach(id=>{
-                const el=document.getElementById(id);
-                if(el)el.classList.add('hidden');
-            }); 
+        function switchView(viewId) { 
+            ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-detail','view-docks','view-request','view-reserves','view-av', 'view-hours', 'view-chat-inbox'].forEach(id=>{
+                const el=document.getElementById(id);
+                if(el)el.classList.add('hidden');
+            }); 
             document.getElementById('view-'+viewId).classList.remove('hidden'); 
             requestAnimationFrame(()=>{
                 setTimeout(()=>{
@@ -1675,7 +1675,7 @@
             activeItem = fullInventory.find(i=>i.UNIQUE_ID===uid) || lowStockInventory.find(i=>i.UNIQUE_ID===uid) || reservesInventory.find(i=>i.UNIQUE_ID===uid) || requestsInventory.find(i=>i.UNIQUE_ID===uid) || socInventory.find(i=>i.UNIQUE_ID===uid);
             if(!activeItem) return;
 
-            ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-docks','view-request','view-reserves','view-av', 'view-hours'].forEach(id=>{
+            ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-docks','view-request','view-reserves','view-av', 'view-hours', 'view-chat-inbox'].forEach(id=>{
                 const el = document.getElementById(id);
                 if(el) el.classList.add('hidden');
             });
