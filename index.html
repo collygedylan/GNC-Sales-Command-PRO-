@@ -3167,25 +3167,40 @@ let specCaliperHtml = "";
                     }
                 }
 // Push to AV (Master Inventory) if user selected YES
-                if (pushToAv) {
-                    let masterUid = itemToSave.MASTER_ID || itemToSave.UNIQUE_ID;
-                    let matchVal = parseFloat(itemToSave.REQ_MATCH);
-                    let ptr = parseInt(String(itemToSave.PTRAVAILABLE).replace(/,/g, '')) || 0;
-                    let locMatchQty = (!isNaN(matchVal) && matchVal >= 0) ? Math.round(ptr * (matchVal / 100)) : null;
+if (pushToAv) {
+    let masterUid = itemToSave.MASTER_ID || itemToSave.UNIQUE_ID;
+    let matchVal = parseFloat(itemToSave.REQ_MATCH);
+    let ptr = parseInt(String(itemToSave.PTRAVAILABLE).replace(/,/g, '')) || 0;
+    let locMatchQty = (!isNaN(matchVal) && matchVal >= 0) ? Math.round(ptr * (matchVal / 100)) : null;
 
-                    let avPayload = {
-                        av_note: itemToSave.AV_NOTE || null,
-                        spec: itemToSave.REQ_SPEC || null,
-                        caliper: itemToSave.REQ_CALIPER || null,
-                        match: isNaN(matchVal) ? null : matchVal,
-                        loc_match_qty: locMatchQty,
-                        photo_link: itemToSave.REQ_PHOTO_LINK || itemToSave.SAVED_PHOTO_LINK || null,
-                        photo_name: itemToSave.REQ_PHOTO_NAME || itemToSave.SAVED_PHOTO_NAME || null
-                    };
+    let avPayload = {
+        av_note: itemToSave.AV_NOTE || null,
+        spec: itemToSave.REQ_SPEC || null,
+        caliper: itemToSave.REQ_CALIPER || null,
+        match: isNaN(matchVal) ? null : matchVal,
+        loc_match_qty: locMatchQty,
+        photo_link: itemToSave.REQ_PHOTO_LINK || itemToSave.SAVED_PHOTO_LINK || null,
+        photo_name: itemToSave.REQ_PHOTO_NAME || itemToSave.SAVED_PHOTO_NAME || null
+    };
 
-                    // Silently update master inventory in the background
-                    supabaseFetch('v2_master_inventory', 'PATCH', avPayload, `unique_id=eq.${masterUid}`).catch(e => console.log(e));
-                }
+    // --- NEW: Optimistically update the local array instantly ---
+    let masterItemIndex = fullInventory.findIndex(i => i.UNIQUE_ID === masterUid);
+    if (masterItemIndex > -1) {
+        fullInventory[masterItemIndex].AV_NOTE = avPayload.av_note;
+        fullInventory[masterItemIndex].SPEC = avPayload.spec;
+        fullInventory[masterItemIndex].CALIPER = avPayload.caliper;
+        fullInventory[masterItemIndex].MATCH = avPayload.match;
+        fullInventory[masterItemIndex].LOC_MATCH_QTY = avPayload.loc_match_qty;
+        
+        // Only overwrite the photo if a new one was actually passed over
+        if (avPayload.photo_link) fullInventory[masterItemIndex].SAVED_PHOTO_LINK = avPayload.photo_link;
+        if (avPayload.photo_name) fullInventory[masterItemIndex].SAVED_PHOTO_NAME = avPayload.photo_name;
+    }
+    // ------------------------------------------------------------
+
+    // Silently update master inventory in the background
+    supabaseFetch('v2_master_inventory', 'PATCH', avPayload, `unique_id=eq.${masterUid}`).catch(e => console.log(e));
+}                }
                 // If editing a request, send back to v2_active_request. Otherwise master DB.
                 const targetTable = (itemToSave.SOURCE_TABLE === 'v2_active_request') ? 'v2_active_request' : (itemToSave.SOURCE_TABLE || 'v2_master_inventory');
 
