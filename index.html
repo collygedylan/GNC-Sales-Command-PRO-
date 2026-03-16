@@ -7,7 +7,7 @@
     <meta name="theme-color" content="#007a4d">
     <link rel="manifest" href="manifest.json">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="application-name"content="DC"
+    <meta name="application-name" content="DC">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -503,7 +503,7 @@
         </div>
         <script>
         const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
-        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."; // (truncated for brevity)
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6cm55anNvc3J5ZWpqZWpsaWlpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzAyNzM1NywiZXhwIjoyMDg4NjAzMzU3fQ.Bc46UfJ1N4AgAS1PgfhFg6S4BEyybR6g_TUnPZsE2t0";
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwhH-eB5Py3xCwhmWReOAcAfl9Zu6mkw0hZYnAbIP9lLANoE4iebK1hXa6-ogU4_1AURA/exec"; 
         const esc = (s) => String(s || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
         const DB_NAME="GNC_DDC_DB_V2"; const STORE_NAME="inventory_cache";
@@ -522,9 +522,6 @@
         }
         // -----------------------------------
 
-        function performLogout() { 
-            localStorage.clear(); 
-// ... the rest of your code continues below        
         function performLogout() { 
             localStorage.clear(); 
             sessionStorage.clear(); 
@@ -809,7 +806,7 @@
             if(!isBiometricLogin&&window.PublicKeyCredential&&localStorage.getItem('gnc_bio_enabled')!=='true'){ promptToEnableBiometrics(user,pass); } 
             applyRolePermissions(); 
             fetchBackgroundData(); 
-           startRealtimeSync(); 
+            startRealtimeSync(); 
         }
 
         async function silentBackgroundSync() {
@@ -2607,7 +2604,7 @@
             let userItems = fullInventory.filter(i => i.ASSIGNEDTO === targetUser && !i.DATE_COMPLETED);
             let tabItems = userItems.filter(i => i.APP_TAB_ASSIGNMENT === activeTaskTab);
             
-            if(tabItems.length === 0){
+             if(tabItems.length === 0){
                 container.innerHTML = `<div class="p-8 text-center text-gray-400">No active ${activeTaskTab} tasks.</div>`;
                 return;
             }
@@ -2968,3 +2965,4 @@
     </script>
 </body>
 </html>
+
