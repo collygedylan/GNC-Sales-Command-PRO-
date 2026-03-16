@@ -215,17 +215,18 @@
                 </div>
             </div>
             <div id="view-chat-inbox" class="hidden h-full flex flex-col pb-20">
-                    <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-2xl font-black text-[#007a4d]">Messages</h2>
-                        <button onclick="openNewChatModal()" class="bg-[#007a4d] text-white w-10 h-10 rounded-full shadow-md flex items-center justify-center active:scale-95 transition-transform"><i class="ph-bold ph-plus text-xl"></i></button>
+                    <div class="sticky top-[-16px] bg-gray-50 z-40 pt-4 pb-2 -mx-4 px-4 shadow-[0_10px_10px_-10px_rgba(0,0,0,0.1)]">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-2xl font-black text-[#007a4d]">Messages</h2>
+                            <button onclick="openNewChatModal()" class="bg-[#007a4d] text-white w-10 h-10 rounded-full shadow-md flex items-center justify-center active:scale-95 transition-transform"><i class="ph-bold ph-plus text-xl"></i></button>
+                        </div>
+                        <div id="chat-search-container" class="relative mb-3">
+                            <input type="text" id="chat-inbox-search" class="input-field w-full pr-10 !mb-0" placeholder="Search conversations..." oninput="filterChatInbox()">
+                        </div>
                     </div>
-                    <div id="chat-search-container" class="relative mb-3">
-                        <input type="text" id="chat-inbox-search" class="input-field w-full pr-10 !mb-0" placeholder="Search conversations..." oninput="filterChatInbox()">
-                    </div>
-                    <div id="chat-inbox-list" class="flex-col gap-2 overflow-y-auto">
-                        </div>
-                </div>
-
+                    <div id="chat-inbox-list" class="flex-col gap-2 overflow-y-auto pt-2">
+                    </div>
+                </div>
                 <div id="view-chat-room" class="hidden fixed inset-0 bg-gray-50 z-[100] flex flex-col">
                     <div class="bg-[#007a4d] text-white p-4 flex items-center shadow-md pt-[max(16px,env(safe-area-inset-top))]">
                         <i class="ph-bold ph-arrow-left text-2xl mr-3 cursor-pointer active:scale-95" onclick="closeChatRoom()"></i>
@@ -307,18 +308,20 @@
                 </div>
 
                 <div id="view-av" class="hidden">
-                    <div id="av-search-container" class="relative mb-2">
-                        <input type="text" id="av-search" class="input-field w-full pr-10 !mb-0" placeholder="Search AV Stock..." oninput="handleAVSearch()">
-                        <i id="av-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearAVSearch()"></i>
+                    <div class="sticky top-[-16px] bg-gray-50 z-40 pt-4 pb-2 -mx-4 px-4 shadow-[0_10px_10px_-10px_rgba(0,0,0,0.1)]">
+                        <div id="av-search-container" class="relative mb-2">
+                            <input type="text" id="av-search" class="input-field w-full pr-10 !mb-0" placeholder="Search AV Stock..." oninput="handleAVSearch()">
+                            <i id="av-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearAVSearch()"></i>
+                        </div>
+                        <div class="task-tabs mt-2 mb-2">
+                            <div id="tab-av-open" class="task-tab active" onclick="setAVTab('open')">Open Stock</div>
+                            <div id="tab-av-reserves" class="task-tab" onclick="setAVTab('reserves')">My Reserves</div>
+                        </div>
+                        <div id="av-crumb" class="text-xs font-bold text-[#007a4d] mt-2 empty:hidden">Open Stock</div>
                     </div>
-                    <div class="task-tabs mt-2 mb-2">
-                        <div id="tab-av-open" class="task-tab active" onclick="setAVTab('open')">Open Stock</div>
-                        <div id="tab-av-reserves" class="task-tab" onclick="setAVTab('reserves')">My Reserves</div>
-                    </div>
-                    <div id="av-crumb" class="text-xs font-bold text-[#007a4d] mb-3 mt-2 empty:hidden">Open Stock</div>
-                    <div id="av-content"></div>
-                </div>
-                
+                    
+                                        <div id="av-content" class="pt-2"></div>
+                </div>                
                 <div id="view-reports" class="hidden">
                     <div id="reports-crumb" class="text-xs font-bold text-[#007a4d] mb-3">Crop Value Summary</div>
                     <div class="detail-tabs mb-4">
@@ -345,33 +348,35 @@
                 </div>
                 
                 <div id="view-reserves" class="hidden">
-                    <div id="reserves-search-container" class="relative mb-2">
-                        <input type="text" id="reserves-search" class="input-field w-full pr-10 !mb-0" placeholder="Search..." oninput="handleReservesSearch()">
-                        <i id="reserves-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearReservesSearch()"></i>
+                    <div class="sticky top-[-16px] bg-gray-50 z-40 pt-4 pb-2 -mx-4 px-4 shadow-[0_10px_10px_-10px_rgba(0,0,0,0.1)]">
+                        <div id="reserves-search-container" class="relative mb-2">
+                            <input type="text" id="reserves-search" class="input-field w-full pr-10 !mb-0" placeholder="Search..." oninput="handleReservesSearch()">
+                            <i id="reserves-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearReservesSearch()"></i>
+                        </div>
+                        <div id="reserves-crumb" class="text-xs font-bold text-[#007a4d] mt-2 empty:hidden"></div>
                     </div>
-                    <div id="reserves-crumb" class="text-xs font-bold text-[#007a4d] mb-3 mt-3 empty:hidden"></div>
-                    <div id="reserves-content"></div>
-                </div>
-                
+                    <div id="reserves-content" class="pt-2"></div>
+                </div>                
                <div id="view-docks" class="hidden">
-                    <div id="docks-search-container" class="relative mb-2">
-                        <input type="text" id="docks-search" class="input-field w-full pr-10 !mb-0" placeholder="Search Docks or Items..." oninput="handleDocksSearch()">
-                        <i id="docks-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearDocksSearch()"></i>
+                    <div class="sticky top-[-16px] bg-gray-50 z-40 pt-4 pb-2 -mx-4 px-4 shadow-[0_10px_10px_-10px_rgba(0,0,0,0.1)]">
+                        <div id="docks-search-container" class="relative mb-2">
+                            <input type="text" id="docks-search" class="input-field w-full pr-10 !mb-0" placeholder="Search Docks or Items..." oninput="handleDocksSearch()">
+                            <i id="docks-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearDocksSearch()"></i>
+                        </div>
+                        <div class="task-tabs mb-2 mt-2">
+                            <div id="tab-docks-all" class="task-tab active" onclick="setDocksMainTab('all')">All Docks</div>
+                            <div id="tab-docks-my" class="task-tab" onclick="setDocksMainTab('my')">My Docks</div>
+                        </div>
+                        <div id="docks-my-sub-tabs" class="task-tabs mb-2 hidden">
+                            <div id="tab-docks-checker" class="task-tab active" onclick="setDocksSubTab('checker')">Checker</div>
+                            <div id="tab-docks-inspector" class="task-tab" onclick="setDocksSubTab('inspector')">Inspector</div>
+                            <div id="tab-docks-mistake" class="task-tab" onclick="setDocksSubTab('mistake')">Mistake Guy</div>
+                            <div id="tab-docks-loading" class="task-tab" onclick="setDocksSubTab('loading')">Loading Crew</div>
+                        </div>
+                        <div id="docks-crumb" class="text-xs font-bold text-orange-600 mt-2">Select a Dock</div>
                     </div>
-                    <div class="task-tabs mb-2 mt-2">
-                        <div id="tab-docks-all" class="task-tab active" onclick="setDocksMainTab('all')">All Docks</div>
-                        <div id="tab-docks-my" class="task-tab" onclick="setDocksMainTab('my')">My Docks</div>
-                    </div>
-                    <div id="docks-my-sub-tabs" class="task-tabs mb-2 hidden">
-                        <div id="tab-docks-checker" class="task-tab active" onclick="setDocksSubTab('checker')">Checker</div>
-                        <div id="tab-docks-inspector" class="task-tab" onclick="setDocksSubTab('inspector')">Inspector</div>
-                        <div id="tab-docks-mistake" class="task-tab" onclick="setDocksSubTab('mistake')">Mistake Guy</div>
-                        <div id="tab-docks-loading" class="task-tab" onclick="setDocksSubTab('loading')">Loading Crew</div>
-                    </div>
-                    <div id="docks-crumb" class="text-xs font-bold text-orange-600 mb-3 mt-3">Select a Dock</div>
-                    <div id="docks-content"></div>
-                </div>
-                
+                    <div id="docks-content" class="pt-2"></div>
+                </div>                
                 <div id="view-low-stock" class="hidden">
                     <div id="low-stock-crumb" class="text-xs font-bold text-[#007a4d] mb-3">Action Required</div>
                     <div id="low-stock-content"></div>
@@ -383,18 +388,20 @@
                 </div>
                 
                 <div id="view-drive" class="hidden">
-                    <div id="drive-search-container" class="relative mb-2">
-                        <input type="text" id="drive-search" class="input-field w-full pr-10 !mb-0" placeholder="Search Names or Locs..." oninput="handleDriveSearch()">
-                        <i id="drive-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearDriveSearch()"></i>
+                    <div class="sticky top-[-16px] bg-gray-50 z-40 pt-4 pb-2 -mx-4 px-4 shadow-[0_10px_10px_-10px_rgba(0,0,0,0.1)]">
+                        <div id="drive-search-container" class="relative mb-2">
+                            <input type="text" id="drive-search" class="input-field w-full pr-10 !mb-0" placeholder="Search Names or Locs..." oninput="handleDriveSearch()">
+                            <i id="drive-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearDriveSearch()"></i>
+                        </div>
+                        <div class="task-tabs mb-2">
+                            <div id="tab-drive-name" class="task-tab active" onclick="setDriveTab('name')">By Name</div>
+                            <div id="tab-drive-loc" class="task-tab" onclick="setDriveTab('loc')">By Location</div>
+                        </div>
+                        <div class="flex overflow-x-auto scrollbar-none gap-2 mb-3 pb-1" id="drive-season-filters"></div>
+                        <div id="drive-crumb" class="text-xs font-bold text-[#007a4d] mt-2 empty:hidden"></div>
                     </div>
-                    <div class="task-tabs mb-2">
-                        <div id="tab-drive-name" class="task-tab active" onclick="setDriveTab('name')">By Name</div>
-                        <div id="tab-drive-loc" class="task-tab" onclick="setDriveTab('loc')">By Location</div>
-                    </div>
-                    <div class="flex overflow-x-auto scrollbar-none gap-2 mb-3 pb-1" id="drive-season-filters"></div>
-                    <div id="drive-crumb" class="text-xs font-bold text-[#007a4d] mb-3 empty:hidden"></div>
-                    <div id="drive-content"></div>
-                </div>                
+                    <div id="drive-content" class="pt-2"></div>
+                </div>               
                 
                 <div id="view-tasks" class="hidden">
                     <div id="task-crumb" class="text-xs font-bold text-[#007a4d] mb-3"></div>
