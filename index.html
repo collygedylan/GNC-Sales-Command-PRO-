@@ -3107,15 +3107,16 @@ if (item.LOC_MATCH_QTY !== undefined && item.LOC_MATCH_QTY !== null && item.LOC_
                     }
                     
                     // Logic to Push to Sales Office
-let isSeasonNote = (itemToSave.APP_TAB_ASSIGNMENT === 'season' || prefix === 'ssn-');
-let shouldPushToSO = false;
+                    let isSeasonNote = (itemToSave.APP_TAB_ASSIGNMENT === 'season');
+                    let shouldPushToSO = false;
+                    
+                    if (prefix !== 'flyer-' && prefix !== 'req-') {
+                        shouldPushToSO = true; // Normal flow
+                    } else if (itemToSave.SOURCE_TABLE === 'v2_active_request' && isSeasonNote) {
+                        shouldPushToSO = true; // Request flow that is ALSO a Season Note
+                    }
 
-// ONLY push to Sales Office if it is a Season Sales Note
-if (isSeasonNote) {
-    shouldPushToSO = true; 
-}
-
-if (shouldPushToSO) {
+                    if (shouldPushToSO) {
                         let masterUid = itemToSave.MASTER_ID || itemToSave.UNIQUE_ID; // Link to master item if Request
                         let sNote = payload.sales_note || payload.req_sales_note || itemToSave.SALES_NOTE || itemToSave.REQ_SALES_NOTE || itemToSave._NEW_SALES_NOTE || "";
                         
