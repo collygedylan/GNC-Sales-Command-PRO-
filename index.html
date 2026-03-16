@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-    <title>GNC Park Hill</title>
+    <title>GNC</title>
     <meta name="theme-color" content="#007a4d">
     <link rel="manifest" href="manifest.json">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="application-name" content="GNC Park Hill">
+    <meta name="application-name" content="GNC">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -39,7 +39,7 @@
     <div id="view-login">
         <div class="login-card">
             <div class="flex flex-col items-center mb-8 w-full relative">
-                <div class="text-2xl text-[#007a4d] font-black tracking-tighter mb-1 text-center leading-none">GNC Park Hill</div>                <div class="flex flex-col items-center gap-0.5 mt-5">
+                <div class="text-2xl text-[#007a4d] font-black tracking-tighter mb-1 text-center leading-none">GNC</div>                <div class="flex flex-col items-center gap-0.5 mt-5">
                     <span class="text-[9px] font-bold text-gray-400 uppercase tracking-[0.3em]">Powered By</span>
                     <span class="text-[17px] font-black text-gray-800 tracking-[0.2em] uppercase border-b-[3px] border-[#007a4d] pb-0.5">Ag Metric</span>
                 </div>
@@ -184,7 +184,7 @@
                 <i class="ph-bold ph-list menu-btn text-2xl cursor-pointer" onclick="toggleMenu()"></i>
                 <div class="flex flex-col">
                     <div class="font-bold text-lg leading-tight"><span id="header-user">User</span></div>
-                    <div class="text-[10px] opacity-80 leading-tight">GNC Park Hill</div>
+                    <div class="text-[10px] opacity-80 leading-tight">GNC</div>
                 </div>
             </div>
         </header>
@@ -267,7 +267,7 @@
                         <p class="text-green-100 text-[10px] font-bold mb-5 uppercase tracking-[0.2em] z-10 relative">Dashboard</p>
                         
                         <div class="flex flex-col items-center pt-4 border-t border-white/20 w-full mt-1 z-10 relative">
-                            <div class="text-[14px] font-black tracking-wide text-white uppercase drop-shadow-sm mb-3 text-center leading-tight">GNC Park Hill</div>
+                            <div class="text-[14px] font-black tracking-wide text-white uppercase drop-shadow-sm mb-3 text-center leading-tight">GNC</div>
                             <span class="text-[8px] font-bold text-white/70 uppercase tracking-[0.3em] mb-1">Powered By</span>
                             <div class="text-[12px] font-black tracking-[0.2em] text-white uppercase drop-shadow-sm">Ag Metric</div>
                         </div>
@@ -618,30 +618,31 @@
             } 
         }
 
-        async function supabaseFetch(table, method='GET', body=null, query='select=*', isSilent=false) {
-    if (!isSilent) startGlobalProgress();
-    try {
-        let allData=[]; let offset=0; const limit=1000; let hasMore=true;
-        if(method==='GET'){
-            while(hasMore){
-                let queryString = query ? `${query}&limit=${limit}&offset=${offset}` : `limit=${limit}&offset=${offset}`;
-                const url=`${SUPABASE_URL}/rest/v1/${table}?${queryString}`;
-                const response=await fetch(url,{method:'GET',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json'}});
-                if(!response.ok) throw new Error(`Supabase Error`);
-                const text=await response.text(); const data=text?JSON.parse(text):[];
-                if(Array.isArray(data)&&data.length>0){ allData=allData.concat(data); offset+=limit; if(data.length<limit) hasMore=false; }
-                else { hasMore=false; }
-            } return allData;
-        } else {
-            const options={method:method,headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json'}};
-            options.headers['Prefer']=method==='POST'?'return=representation,resolution=merge-duplicates':'return=representation';
-            if(body)options.body=JSON.stringify(body);
-            const response=await fetch(`${SUPABASE_URL}/rest/v1/${table}${query?'?'+query:''}`,options);
-            if(!response.ok) throw new Error('Supabase error');
-            const text=await response.text(); return text?JSON.parse(text):{};
+        async function supabaseFetch(table, method='GET', body=null, query='select=*') {
+            startGlobalProgress();
+            try {
+                let allData=[]; let offset=0; const limit=1000; let hasMore=true;
+                if(method==='GET'){
+                    while(hasMore){
+                        let queryString = query ? `${query}&limit=${limit}&offset=${offset}` : `limit=${limit}&offset=${offset}`;
+                        const url=`${SUPABASE_URL}/rest/v1/${table}?${queryString}`;
+                        const response=await fetch(url,{method:'GET',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json'}});
+                        if(!response.ok) throw new Error(`Supabase Error`);
+                        const text=await response.text(); const data=text?JSON.parse(text):[];
+                        if(Array.isArray(data)&&data.length>0){ allData=allData.concat(data); offset+=limit; if(data.length<limit) hasMore=false; }
+                        else { hasMore=false; }
+                    } return allData;
+                } else {
+                    const options={method:method,headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json'}};
+                    options.headers['Prefer']=method==='POST'?'return=representation,resolution=merge-duplicates':'return=representation';
+                    if(body)options.body=JSON.stringify(body);
+                    const response=await fetch(`${SUPABASE_URL}/rest/v1/${table}${query?'?'+query:''}`,options);
+                    if(!response.ok) throw new Error('Supabase error');
+                    const text=await response.text(); return text?JSON.parse(text):{};
+                }
+            } catch(e){ return []; } finally { stopGlobalProgress(); }
         }
-    } catch(e){ return []; } finally { if (!isSilent) stopGlobalProgress(); }
-}
+
         function openDB() { 
             return new Promise((resolve,reject)=>{ 
                 const request=indexedDB.open(DB_NAME,1); 
@@ -719,7 +720,7 @@
         async function promptToEnableBiometrics(user,pin) { 
             if(!confirm("Would you like to enable Fingerprint/FaceID login for future use?"))return; 
             try{ 
-                const publicKey={challenge:new Uint8Array(32),rp:{name:"GNC Park Hill"},user:{id:new Uint8Array(16),name:user,displayName:user},pubKeyCredParams:[{type:"public-key",alg:-7}],authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required"},timeout:60000}; 
+                const publicKey={challenge:new Uint8Array(32),rp:{name:"GNC"},user:{id:new Uint8Array(16),name:user,displayName:user},pubKeyCredParams:[{type:"public-key",alg:-7}],authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required"},timeout:60000}; 
                 await navigator.credentials.create({publicKey}); 
                 localStorage.setItem('gnc_bio_enabled','true'); 
                 localStorage.setItem('gnc_bio_user',user); 
@@ -1199,9 +1200,8 @@
             setTimeout(() => toast.classList.remove('show'), 3000); 
         }
 
-       function switchView(viewId) { 
-            // ADDED: 'view-chat-inbox' to this list so it hides properly
-            ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-detail','view-docks','view-request','view-reserves','view-av', 'view-hours', 'view-chat-inbox'].forEach(id=>{
+        function switchView(viewId) { 
+            ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-detail','view-docks','view-request','view-reserves','view-av', 'view-hours'].forEach(id=>{
                 const el=document.getElementById(id);
                 if(el)el.classList.add('hidden');
             }); 
@@ -2191,11 +2191,11 @@ function selectAvResName(name) { selectedAvResName=name; avResLevel=1; renderAV(
                     } 
                 }
 
-               // --- Fetch backend-calculated Loc Photo Match ---
-let locPhotoMatch = 'N/A';
-if (item.LOC_MATCH_QTY !== undefined && item.LOC_MATCH_QTY !== null && item.LOC_MATCH_QTY !== "") {
-    locPhotoMatch = item.LOC_MATCH_QTY;
-}
+                // --- Calculate dynamic Loc Photo Match ---
+                let ptr = parseInt(String(item.PTRAVAILABLE).replace(/,/g, '')) || 0;
+                let matchPct = parseFloat(item.MATCH || item.MATCHPCT);
+                let locPhotoMatch = !isNaN(matchPct) ? Math.round(ptr * (matchPct / 100)) : 'N/A';
+
                 return `<div class="flex items-start w-full mb-3 item-row relative bg-white p-4 rounded-xl border-2 border-teal-100 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-teal-600 focus:ring-teal-600 shadow-sm pointer-events-none" ${isChecked}></div><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full"><div class="flex-grow min-w-0 pr-2"><div class="font-black text-gray-800 text-[18px] leading-tight break-words mb-1">${item.COMMONNAME||'Unknown'}</div><div class="font-black text-teal-700 text-[15px] mb-2">${item.CONTSIZE||'-'}</div><div class="grid grid-cols-2 gap-2 mb-2"><div class="text-[11px] font-bold text-gray-500 uppercase"><span class="block text-[8px] text-gray-400 mb-0.5">LOT CODE</span>${item.LOTCODE||'-'}</div><div class="text-[11px] font-bold text-gray-500 uppercase"><span class="block text-[8px] text-gray-400 mb-0.5">LOCATION</span>${item.LOCATIONCODE||'-'}</div></div><div class="flex flex-wrap gap-2 text-[11px] font-bold uppercase tracking-wider mt-1"><span class="bg-gray-100 text-gray-800 px-2 py-1 rounded border border-gray-200">LOC AVA: <span class="font-black">${item.PTRAVAILABLE||'0'}</span></span><span class="bg-purple-50 text-purple-700 px-2 py-1 rounded border border-purple-200">s_LTS: <span class="font-black">${item.S_LTS||'0'}</span></span><span class="bg-green-50 text-green-700 px-2 py-1 rounded border border-green-200">LOC PHOTO MATCH: <span class="font-black">${locPhotoMatch}</span></span></div>${holdHtml}${avNoteHtml}</div>${clickThumbHtml}</div></div></div>`;
             }
             
@@ -3135,7 +3135,7 @@ if (item.LOC_MATCH_QTY !== undefined && item.LOC_MATCH_QTY !== null && item.LOC_
                             completed_at: payload.date_completed 
                         };
                         
-                        supabaseFetch('v2_sales_office', 'POST', soPayload, 'select=*', isSilentAutoSave).catch(e => console.log(e));
+                        supabaseFetch('v2_sales_office', 'POST', soPayload).catch(e => console.log(e));
                         
                         let cloneSO = { ...soPayload };
                         for(let key in soPayload) { cloneSO[key.toUpperCase()] = soPayload[key]; }
@@ -3151,7 +3151,7 @@ if (item.LOC_MATCH_QTY !== undefined && item.LOC_MATCH_QTY !== null && item.LOC_
                 // If editing a request, send back to v2_active_request. Otherwise master DB.
                 const targetTable = (itemToSave.SOURCE_TABLE === 'v2_active_request') ? 'v2_active_request' : (itemToSave.SOURCE_TABLE || 'v2_master_inventory');
 
-                supabaseFetch(targetTable, 'PATCH', payload, `unique_id=eq.${encodeURIComponent(itemToSave.UNIQUE_ID)}`, isSilentAutoSave).then(data => {
+                supabaseFetch(targetTable, 'PATCH', payload, `unique_id=eq.${encodeURIComponent(itemToSave.UNIQUE_ID)}`).then(data => {
                     if (isCurrentView && isComplete) { if(btnComp) btnComp.innerText = "MARK DONE"; }
                     if (!isSilentAutoSave && isCurrentView && isComplete) showToast("Success", "Task Completed!"); 
                     if (isComplete && isCurrentView) { 
@@ -3393,6 +3393,7 @@ if (item.LOC_MATCH_QTY !== undefined && item.LOC_MATCH_QTY !== null && item.LOC_
         const CHAT_MESSAGES_TABLE = 'v2_chat_messages';
         
         let activeChatRoomId = null;
+        let chatPollInterval = null;
         let userChatList = [];
         let selectedUsersForNewChat = new Set();
 
@@ -3566,13 +3567,10 @@ if (item.LOC_MATCH_QTY !== undefined && item.LOC_MATCH_QTY !== null && item.LOC_
         }
 
         function openChatRoom(roomId, title) {
-    activeChatRoomId = roomId;
-    document.getElementById('chat-room-title').innerText = title;
-    document.getElementById('view-chat-room').classList.remove('hidden');
-    document.getElementById('chat-messages-container').innerHTML = `<div class="flex justify-center py-10"><div class="spinner border-[#007a4d] border-t-transparent"></div></div>`;
-    
-    fetchChatMessages(); // The initial fetch. WebSockets will handle everything after this!
-}
+            activeChatRoomId = roomId;
+            document.getElementById('chat-room-title').innerText = title;
+            document.getElementById('view-chat-room').classList.remove('hidden');
+            document.getElementById('chat-messages-container').innerHTML = `<div class="flex justify-center py-10"><div class="spinner border-[#007a4d] border-t-transparent"></div></div>`;
             
             fetchChatMessages();
             
@@ -3581,15 +3579,17 @@ if (item.LOC_MATCH_QTY !== undefined && item.LOC_MATCH_QTY !== null && item.LOC_
             chatPollInterval = setInterval(fetchChatMessages, 3000);
         }
 
-       function closeChatRoom() {
-    activeChatRoomId = null;
-    document.getElementById('view-chat-room').classList.add('hidden');
-    loadChatInbox(); // Refresh inbox to show latest messages
-}
+        function closeChatRoom() {
+            activeChatRoomId = null;
+            document.getElementById('view-chat-room').classList.add('hidden');
+            if(chatPollInterval) clearInterval(chatPollInterval);
+            loadChatInbox(); // Refresh inbox to show latest messages
+        }
+
         async function fetchChatMessages() {
             if(!activeChatRoomId) return;
             try {
-                const messages = await supabaseFetch(CHAT_MESSAGES_TABLE, 'GET', null, `room_id=eq.${activeChatRoomId}&order=created_at.asc`, true);
+                const messages = await supabaseFetch(CHAT_MESSAGES_TABLE, 'GET', null, `room_id=eq.${activeChatRoomId}&order=created_at.asc`);
                 const container = document.getElementById('chat-messages-container');
                 
                 // Only auto-scroll to bottom if we are already near the bottom, or if it's the first load
