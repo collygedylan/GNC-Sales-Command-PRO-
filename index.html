@@ -618,31 +618,30 @@
             } 
         }
 
-        async function supabaseFetch(table, method='GET', body=null, query='select=*') {
-            startGlobalProgress();
-            try {
-                let allData=[]; let offset=0; const limit=1000; let hasMore=true;
-                if(method==='GET'){
-                    while(hasMore){
-                        let queryString = query ? `${query}&limit=${limit}&offset=${offset}` : `limit=${limit}&offset=${offset}`;
-                        const url=`${SUPABASE_URL}/rest/v1/${table}?${queryString}`;
-                        const response=await fetch(url,{method:'GET',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json'}});
-                        if(!response.ok) throw new Error(`Supabase Error`);
-                        const text=await response.text(); const data=text?JSON.parse(text):[];
-                        if(Array.isArray(data)&&data.length>0){ allData=allData.concat(data); offset+=limit; if(data.length<limit) hasMore=false; }
-                        else { hasMore=false; }
-                    } return allData;
-                } else {
-                    const options={method:method,headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json'}};
-                    options.headers['Prefer']=method==='POST'?'return=representation,resolution=merge-duplicates':'return=representation';
-                    if(body)options.body=JSON.stringify(body);
-                    const response=await fetch(`${SUPABASE_URL}/rest/v1/${table}${query?'?'+query:''}`,options);
-                    if(!response.ok) throw new Error('Supabase error');
-                    const text=await response.text(); return text?JSON.parse(text):{};
-                }
-            } catch(e){ return []; } finally { stopGlobalProgress(); }
+        async function supabaseFetch(table, method='GET', body=null, query='select=*', isSilent=false) {
+    if (!isSilent) startGlobalProgress();
+    try {
+        let allData=[]; let offset=0; const limit=1000; let hasMore=true;
+        if(method==='GET'){
+            while(hasMore){
+                let queryString = query ? `${query}&limit=${limit}&offset=${offset}` : `limit=${limit}&offset=${offset}`;
+                const url=`${SUPABASE_URL}/rest/v1/${table}?${queryString}`;
+                const response=await fetch(url,{method:'GET',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json'}});
+                if(!response.ok) throw new Error(`Supabase Error`);
+                const text=await response.text(); const data=text?JSON.parse(text):[];
+                if(Array.isArray(data)&&data.length>0){ allData=allData.concat(data); offset+=limit; if(data.length<limit) hasMore=false; }
+                else { hasMore=false; }
+            } return allData;
+        } else {
+            const options={method:method,headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json'}};
+            options.headers['Prefer']=method==='POST'?'return=representation,resolution=merge-duplicates':'return=representation';
+            if(body)options.body=JSON.stringify(body);
+            const response=await fetch(`${SUPABASE_URL}/rest/v1/${table}${query?'?'+query:''}`,options);
+            if(!response.ok) throw new Error('Supabase error');
+            const text=await response.text(); return text?JSON.parse(text):{};
         }
-
+    } catch(e){ return []; } finally { if (!isSilent) stopGlobalProgress(); }
+}
         function openDB() { 
             return new Promise((resolve,reject)=>{ 
                 const request=indexedDB.open(DB_NAME,1); 
@@ -3136,7 +3135,7 @@ if (item.LOC_MATCH_QTY !== undefined && item.LOC_MATCH_QTY !== null && item.LOC_
                             completed_at: payload.date_completed 
                         };
                         
-                        supabaseFetch('v2_sales_office', 'POST', soPayload).catch(e => console.log(e));
+                        supabaseFetch('v2_sales_office', 'POST', soPayload, 'select=*', isSilentAutoSave).catch(e => console.log(e));
                         
                         let cloneSO = { ...soPayload };
                         for(let key in soPayload) { cloneSO[key.toUpperCase()] = soPayload[key]; }
@@ -3152,7 +3151,7 @@ if (item.LOC_MATCH_QTY !== undefined && item.LOC_MATCH_QTY !== null && item.LOC_
                 // If editing a request, send back to v2_active_request. Otherwise master DB.
                 const targetTable = (itemToSave.SOURCE_TABLE === 'v2_active_request') ? 'v2_active_request' : (itemToSave.SOURCE_TABLE || 'v2_master_inventory');
 
-                supabaseFetch(targetTable, 'PATCH', payload, `unique_id=eq.${encodeURIComponent(itemToSave.UNIQUE_ID)}`).then(data => {
+                supabaseFetch(targetTable, 'PATCH', payload, `unique_id=eq.${encodeURIComponent(itemToSave.UNIQUE_ID)}`, isSilentAutoSave).then(data => {
                     if (isCurrentView && isComplete) { if(btnComp) btnComp.innerText = "MARK DONE"; }
                     if (!isSilentAutoSave && isCurrentView && isComplete) showToast("Success", "Task Completed!"); 
                     if (isComplete && isCurrentView) { 
@@ -3394,7 +3393,6 @@ if (item.LOC_MATCH_QTY !== undefined && item.LOC_MATCH_QTY !== null && item.LOC_
         const CHAT_MESSAGES_TABLE = 'v2_chat_messages';
         
         let activeChatRoomId = null;
-        let chatPollInterval = null;
         let userChatList = [];
         let selectedUsersForNewChat = new Set();
 
@@ -3568,10 +3566,13 @@ if (item.LOC_MATCH_QTY !== undefined && item.LOC_MATCH_QTY !== null && item.LOC_
         }
 
         function openChatRoom(roomId, title) {
-            activeChatRoomId = roomId;
-            document.getElementById('chat-room-title').innerText = title;
-            document.getElementById('view-chat-room').classList.remove('hidden');
-            document.getElementById('chat-messages-container').innerHTML = `<div class="flex justify-center py-10"><div class="spinner border-[#007a4d] border-t-transparent"></div></div>`;
+    activeChatRoomId = roomId;
+    document.getElementById('chat-room-title').innerText = title;
+    document.getElementById('view-chat-room').classList.remove('hidden');
+    document.getElementById('chat-messages-container').innerHTML = `<div class="flex justify-center py-10"><div class="spinner border-[#007a4d] border-t-transparent"></div></div>`;
+    
+    fetchChatMessages(); // The initial fetch. WebSockets will handle everything after this!
+}
             
             fetchChatMessages();
             
@@ -3580,17 +3581,15 @@ if (item.LOC_MATCH_QTY !== undefined && item.LOC_MATCH_QTY !== null && item.LOC_
             chatPollInterval = setInterval(fetchChatMessages, 3000);
         }
 
-        function closeChatRoom() {
-            activeChatRoomId = null;
-            document.getElementById('view-chat-room').classList.add('hidden');
-            if(chatPollInterval) clearInterval(chatPollInterval);
-            loadChatInbox(); // Refresh inbox to show latest messages
-        }
-
+       function closeChatRoom() {
+    activeChatRoomId = null;
+    document.getElementById('view-chat-room').classList.add('hidden');
+    loadChatInbox(); // Refresh inbox to show latest messages
+}
         async function fetchChatMessages() {
             if(!activeChatRoomId) return;
             try {
-                const messages = await supabaseFetch(CHAT_MESSAGES_TABLE, 'GET', null, `room_id=eq.${activeChatRoomId}&order=created_at.asc`);
+                const messages = await supabaseFetch(CHAT_MESSAGES_TABLE, 'GET', null, `room_id=eq.${activeChatRoomId}&order=created_at.asc`, true);
                 const container = document.getElementById('chat-messages-container');
                 
                 // Only auto-scroll to bottom if we are already near the bottom, or if it's the first load
