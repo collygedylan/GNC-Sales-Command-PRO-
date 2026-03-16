@@ -3,11 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-    <title>Greenleaf Nursery Company</title>
+  <title>DC</title>
     <meta name="theme-color" content="#007a4d">
     <link rel="manifest" href="manifest.json">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="application-name" content="Greenleaf Nursery Company">    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="application-name"content="DC"
+    <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
@@ -16,24 +17,19 @@
 <body class="bg-gray-50 h-screen overflow-hidden">
     <div id="top-loading-bar-container" class="hidden fixed top-0 left-0 w-full h-1 z-[99999] pointer-events-none"><div id="top-loading-bar" class="h-full bg-[#22c55e] w-0 transition-all duration-300 ease-out shadow-[0_0_10px_#22c55e]"></div></div>
     <div id="toast-notification"></div>
-  <div id="photo-modal" class="hidden fixed inset-0 bg-black bg-opacity-95 z-[15000] flex flex-col items-center justify-center p-4">
+    <div id="photo-modal" class="hidden fixed inset-0 bg-black bg-opacity-95 z-[15000] flex flex-col items-center justify-center p-4">
         <div class="absolute top-0 left-0 w-full p-6 flex justify-between items-start bg-gradient-to-b from-black/80 to-transparent z-50 pointer-events-none">
-            <div id="photo-modal-caption" class="text-white font-bold text-sm leading-tight drop-shadow-md pr-4 uppercase tracking-wide pointer-events-auto max-w-[60%]"></div>
-            
-            <div class="flex items-center gap-3 pointer-events-auto">
-                <div id="photo-modal-counter" class="text-white font-black text-sm tracking-widest drop-shadow-md px-3 py-1.5 bg-black/50 rounded-full border border-white/20 hidden"></div>
-                <i class="ph-bold ph-x text-white text-3xl cursor-pointer bg-black/50 p-2 rounded-full active:scale-95" onclick="closePhotoModal()"></i>
-            </div>
+            <div id="photo-modal-caption" class="text-white font-bold text-sm leading-tight drop-shadow-md pr-4 uppercase tracking-wide pointer-events-auto"></div>
+            <i class="ph-bold ph-x text-white text-3xl cursor-pointer bg-black/50 p-2 rounded-full active:scale-95 pointer-events-auto" onclick="closePhotoModal()"></i>
         </div>
-        
-        <div id="photo-modal-gallery" class="flex overflow-x-auto snap-x snap-mandatory w-full max-h-[85vh] items-center space-x-4 pb-4 scrollbar-none mt-10" onscroll="updatePhotoCounter()"></div>
-        
+        <div id="photo-modal-gallery" class="flex overflow-x-auto snap-x snap-mandatory w-full max-h-[85vh] items-center space-x-4 pb-4 scrollbar-none mt-10"></div>
         <div id="photo-swipe-hint" class="absolute bottom-10 text-white text-xs font-bold uppercase tracking-widest opacity-50 hidden pointer-events-none"><i class="ph-bold ph-arrows-left-right mr-1 text-lg align-middle"></i> Swipe for more</div>
-    </div>    
+    </div>
     <div id="view-login">
         <div class="login-card">
             <div class="flex flex-col items-center mb-8 w-full relative">
-                <div class="text-2xl text-[#007a4d] font-black tracking-tighter mb-1 text-center leading-none">Greenleaf Nursery Company</div>                <div class="flex flex-col items-center gap-0.5 mt-5">
+                <div class="text-3xl text-[#007a4d] font-black tracking-tighter mb-1">DC</div>
+                <div class="flex flex-col items-center gap-0.5 mt-5">
                     <span class="text-[9px] font-bold text-gray-400 uppercase tracking-[0.3em]">Powered By</span>
                     <span class="text-[17px] font-black text-gray-800 tracking-[0.2em] uppercase border-b-[3px] border-[#007a4d] pb-0.5">Ag Metric</span>
                 </div>
@@ -47,7 +43,6 @@
             <div id="loading-spinner" class="hidden mt-6 flex flex-col items-center"><div class="spinner"></div><div id="loading-text" class="text-white font-bold text-sm mt-3 text-center">Syncing Database...</div></div>
         </div>
     </div>
-    
     <div id="view-change-password">
         <div class="login-card">
             <h2 class="text-2xl font-black text-[#007a4d] mb-2">Change Password</h2>
@@ -57,7 +52,6 @@
             <button class="w-full bg-[#007a4d] text-white font-bold py-3 rounded-lg shadow-md active:scale-95" onclick="submitNewPassword()">SAVE & CONTINUE</button>
         </div>
     </div>
-
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -171,16 +165,16 @@
             <button class="text-gray-500 font-bold py-2 px-4 mt-2" onclick="document.getElementById('request-rep-modal').classList.add('hidden')">Cancel</button>
         </div>
     </div>
-
     <div id="app-wrapper" class="hidden h-full flex flex-col">
         <header class="nav-header sticky top-0 z-50 p-4 flex justify-between items-center shadow-md">
             <div class="flex items-center gap-3">
                 <i class="ph-bold ph-list menu-btn text-2xl cursor-pointer" onclick="toggleMenu()"></i>
                 <div class="flex flex-col">
                     <div class="font-bold text-lg leading-tight"><span id="header-user">User</span></div>
-                    <div class="text-[10px] opacity-80 leading-tight">Greenleaf Nursery Company</div>
+                    <div class="text-[10px] opacity-80 leading-tight">DC</div>
                 </div>
             </div>
+            <div class="bg-white/20 p-2 rounded-lg cursor-pointer" onclick="fetchBackgroundData()"><i class="ph-bold ph-arrows-clockwise text-white"></i></div>
         </header>
         
         <div id="drawer-overlay" onclick="toggleMenu()"></div>
@@ -206,64 +200,16 @@
         </div>
         
         <div id="main-scroll-area" class="flex-grow overflow-y-auto p-4 pb-40 relative">
-            
-            <div id="pull-to-refresh" class="w-full flex justify-center items-center overflow-hidden transition-all duration-300 h-0">
-                <div class="flex items-center gap-2 text-[#007a4d] font-bold text-sm bg-green-50 px-4 py-2 rounded-full border border-green-200 shadow-inner">
-                    <i id="ptr-icon" class="ph-bold ph-arrow-down text-lg transition-transform duration-300"></i>
-                    <span id="ptr-text">Pull to sync</span>
-                </div>
-            </div>
-            <div id="view-chat-inbox" class="hidden h-full flex flex-col pb-20">
-                    <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-2xl font-black text-[#007a4d]">Messages</h2>
-                        <button onclick="openNewChatModal()" class="bg-[#007a4d] text-white w-10 h-10 rounded-full shadow-md flex items-center justify-center active:scale-95 transition-transform"><i class="ph-bold ph-plus text-xl"></i></button>
-                    </div>
-                    <div id="chat-search-container" class="relative mb-3">
-                        <input type="text" id="chat-inbox-search" class="input-field w-full pr-10 !mb-0" placeholder="Search conversations..." oninput="filterChatInbox()">
-                    </div>
-                    <div id="chat-inbox-list" class="flex-col gap-2 overflow-y-auto">
-                        </div>
-                </div>
-
-                <div id="view-chat-room" class="hidden fixed inset-0 bg-gray-50 z-[100] flex flex-col">
-                    <div class="bg-[#007a4d] text-white p-4 flex items-center shadow-md pt-[max(16px,env(safe-area-inset-top))]">
-                        <i class="ph-bold ph-arrow-left text-2xl mr-3 cursor-pointer active:scale-95" onclick="closeChatRoom()"></i>
-                        <div id="chat-room-title" class="font-bold text-lg flex-grow truncate">Chat</div>
-                        <i class="ph-bold ph-users text-xl cursor-pointer opacity-80" onclick="showChatParticipants()"></i>
-                    </div>
-                    <div id="chat-messages-container" class="flex-grow overflow-y-auto p-4 space-y-4 bg-gray-100 flex flex-col">
-                        </div>
-                    <div class="bg-white p-3 border-t flex items-center gap-2 pb-[max(12px,env(safe-area-inset-bottom))] shadow-[0_-4px_10px_rgba(0,0,0,0.05)]">
-                        <input type="text" id="chat-message-input" class="flex-grow bg-gray-100 border border-gray-200 rounded-full px-4 py-3 text-sm focus:outline-none focus:border-[#007a4d]" placeholder="Type a message..." onkeypress="if(event.key === 'Enter') sendChatMessage()">
-                        <button onclick="sendChatMessage()" class="bg-[#007a4d] text-white rounded-full w-12 h-12 flex items-center justify-center shadow-md active:scale-95 shrink-0"><i class="ph-fill ph-paper-plane-right text-xl ml-1"></i></button>
-                    </div>
-                </div>
-
-                <div id="new-chat-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[11000] flex items-center justify-center p-4">
-                    <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm flex flex-col max-h-[80vh]">
-                        <h3 class="font-black text-lg text-[#007a4d] mb-4">Start Conversation</h3>
-                        <input type="text" id="new-chat-search" class="input-field border-green-200 focus:border-[#007a4d] !mb-3" placeholder="Search users..." oninput="filterNewChatUsers()">
-                        <div id="new-chat-user-list" class="flex-grow overflow-y-auto mb-4 border border-gray-100 rounded-lg p-1 space-y-1"></div>
-                        <div class="flex gap-2 mt-auto pt-2 border-t border-gray-100">
-                            <button class="w-1/3 bg-gray-100 text-gray-600 font-bold py-3 rounded-lg active:scale-95" onclick="document.getElementById('new-chat-modal').classList.add('hidden')">Cancel</button>
-                            <button class="w-2/3 bg-[#007a4d] text-white font-bold py-3 rounded-lg shadow-md active:scale-95" onclick="startSelectedChat()">Start Chat</button>
-                        </div>
-                    </div>
-                </div>
             <div id="view-wrapper" style="position:relative; z-index:20;">
-                
                 <div id="view-home" class="hidden">
                     <div class="bg-[#007a4d] text-white p-6 rounded-2xl mb-6 shadow-lg flex flex-col items-center text-center relative overflow-hidden">
                         <div class="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-white opacity-5 rounded-full pointer-events-none"></div>
                         <div class="absolute bottom-0 left-0 -mb-10 -ml-10 w-32 h-32 bg-black opacity-10 rounded-full pointer-events-none"></div>
-                        
-                        <h1 id="dashboard-username-display" class="text-3xl font-black tracking-tight mb-1 z-10 relative mt-4 px-2 uppercase truncate w-full">USER</h1>
+                        <h1 class="text-2xl font-black tracking-tight mb-1 z-10 relative mt-4">DC</h1>
                         <p class="text-green-100 text-[10px] font-bold mb-5 uppercase tracking-[0.2em] z-10 relative">Dashboard</p>
-                        
                         <div class="flex flex-col items-center pt-4 border-t border-white/20 w-full mt-1 z-10 relative">
-                            <div class="text-[14px] font-black tracking-wide text-white uppercase drop-shadow-sm mb-3 text-center leading-tight">Greenleaf Nursery Company</div>
-                            <span class="text-[8px] font-bold text-white/70 uppercase tracking-[0.3em] mb-1">Powered By</span>
-                            <div class="text-[12px] font-black tracking-[0.2em] text-white uppercase drop-shadow-sm">Ag Metric</div>
+                            <span class="text-[9px] font-bold text-white/70 uppercase tracking-[0.3em] mb-1">Powered By</span>
+                            <div class="text-[15px] font-black tracking-[0.2em] text-white uppercase drop-shadow-sm">Ag Metric</div>
                         </div>
                     </div>
                     <h2 class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3 pl-1">App Modules</h2>
@@ -314,6 +260,11 @@
                         <div id="tab-av-open" class="task-tab active" onclick="setAVTab('open')">Open Stock</div>
                         <div id="tab-av-reserves" class="task-tab" onclick="setAVTab('reserves')">My Reserves</div>
                     </div>
+                    <div id="av-open-sub-tabs" class="task-tabs mb-2">
+                        <div id="tab-av-open-name" class="task-tab active" onclick="setAvOpenTab('name')">By Name</div>
+                        <div id="tab-av-open-season" class="task-tab" onclick="setAvOpenTab('season')">By Season</div>
+                        <div id="tab-av-open-lot" class="task-tab" onclick="setAvOpenTab('lot')">By Lot</div>
+                    </div>
                     <div id="av-crumb" class="text-xs font-bold text-[#007a4d] mb-3 mt-2 empty:hidden">Open Stock</div>
                     <div id="av-content"></div>
                 </div>
@@ -352,20 +303,10 @@
                     <div id="reserves-content"></div>
                 </div>
                 
-               <div id="view-docks" class="hidden">
+                <div id="view-docks" class="hidden">
                     <div id="docks-search-container" class="relative mb-2">
                         <input type="text" id="docks-search" class="input-field w-full pr-10 !mb-0" placeholder="Search Docks or Items..." oninput="handleDocksSearch()">
                         <i id="docks-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearDocksSearch()"></i>
-                    </div>
-                    <div class="task-tabs mb-2 mt-2">
-                        <div id="tab-docks-all" class="task-tab active" onclick="setDocksMainTab('all')">All Docks</div>
-                        <div id="tab-docks-my" class="task-tab" onclick="setDocksMainTab('my')">My Docks</div>
-                    </div>
-                    <div id="docks-my-sub-tabs" class="task-tabs mb-2 hidden">
-                        <div id="tab-docks-checker" class="task-tab active" onclick="setDocksSubTab('checker')">Checker</div>
-                        <div id="tab-docks-inspector" class="task-tab" onclick="setDocksSubTab('inspector')">Inspector</div>
-                        <div id="tab-docks-mistake" class="task-tab" onclick="setDocksSubTab('mistake')">Mistake Guy</div>
-                        <div id="tab-docks-loading" class="task-tab" onclick="setDocksSubTab('loading')">Loading Crew</div>
                     </div>
                     <div id="docks-crumb" class="text-xs font-bold text-orange-600 mb-3 mt-3">Select a Dock</div>
                     <div id="docks-content"></div>
@@ -393,7 +334,7 @@
                     <div class="flex overflow-x-auto scrollbar-none gap-2 mb-3 pb-1" id="drive-season-filters"></div>
                     <div id="drive-crumb" class="text-xs font-bold text-[#007a4d] mb-3 empty:hidden"></div>
                     <div id="drive-content"></div>
-                </div>                
+                </div>
                 
                 <div id="view-tasks" class="hidden">
                     <div id="task-crumb" class="text-xs font-bold text-[#007a4d] mb-3"></div>
@@ -419,7 +360,15 @@
                         <p id="det-size" class="text-gray-600 font-bold text-sm mb-3">--</p>
                         <div id="det-extra-info" class="text-[13px] text-gray-700 font-medium space-y-1 border-b border-gray-200 pb-4"></div>
                     </div>
-                    <div id="global-inputs-container" class="mb-4"></div>
+                    <div id="global-inputs-container" class="mb-4">
+                        <div id="global-av-container" class="relative w-full mb-3 hidden">
+                            <label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label>
+                            <div class="flex gap-2 relative">
+                                <input type="text" id="global-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); filterAvNotes()" onfocus="filterAvNotes()" onblur="setTimeout(()=>{if(document.getElementById('global-av-dropdown-list'))document.getElementById('global-av-dropdown-list').classList.add('hidden'); saveData(false, 'global-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT...">
+                            </div>
+                            <div id="global-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div>
+                        </div>
+                    </div>
                     <div id="det-tabs-container" class="detail-tabs hidden">
                         <div class="detail-tab active" onclick="switchDetailTab('overview')" id="dtab-overview">Item Details</div>
                         <div class="detail-tab hidden" onclick="switchDetailTab('season')" id="dtab-season">Season Sales Notes</div>
@@ -449,14 +398,15 @@
                     <div id="det-season-content" class="hidden py-4">
                         <div id="ssn-photo-preview" class="mb-4 hidden"><p class="text-[10px] font-bold text-blue-600 mb-2 uppercase">Photos on file</p><div id="ssn-photo-list-container" class="space-y-2"></div></div>
                         <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-ssn" class="bg-green-50 border-2 border-dashed border-green-500 text-green-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="handlePhotoUpload(this, 'ssn-')"></label></div>
-                        <div class="relative w-full mb-3"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2 relative"><input type="text" id="ssn-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); filterAvNotes('ssn-'); validateSsnForm();" onfocus="filterAvNotes('ssn-')" onblur="setTimeout(()=>{if(document.getElementById('ssn-av-dropdown-list'))document.getElementById('ssn-av-dropdown-list').classList.add('hidden'); saveData(false, 'ssn-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT..."></div><div id="ssn-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div></div>
+                        <div class="relative w-full mb-3"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2 relative"><input type="text" id="ssn-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); filterAvNotes('ssn-')" onfocus="filterAvNotes('ssn-')" onblur="setTimeout(()=>{if(document.getElementById('ssn-av-dropdown-list'))document.getElementById('ssn-av-dropdown-list').classList.add('hidden'); saveData(false, 'ssn-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT..."></div><div id="ssn-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div></div>
                         <div id="ssn-input-container">
-                            <div class="mb-3"><label class="text-[10px] font-bold text-gray-500 uppercase">Loc Match %</label><input type="number" id="ssn-match" class="input-field !mb-1" placeholder="e.g. 40" oninput="calculateMatchQty('ssn-'); validateSsnForm();"><div id="ssn-match-display" class="text-[10px] font-bold text-[#007a4d] text-right mb-2 hidden">LOC Match QTY: <span id="ssn-match-qty-val">0</span></div></div>
-                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="ssn-spec" class="input-field" placeholder="e.g. 24-30 inch" oninput="validateSsnForm();" onchange="saveData(false, 'ssn-', true)"></div>
-                            <div id="ssn-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="ssn-caliper" class="input-field" placeholder="e.g. 2 inch" oninput="validateSsnForm();" onchange="saveData(false, 'ssn-', true)"></div>
+                            <div class="mb-3"><label class="text-[10px] font-bold text-gray-500 uppercase">Loc Match %</label><input type="number" id="ssn-match" class="input-field !mb-1" placeholder="e.g. 40" oninput="calculateMatchQty('ssn-')"><div id="ssn-match-display" class="text-[10px] font-bold text-[#007a4d] text-right mb-2 hidden">LOC Match QTY: <span id="ssn-match-qty-val">0</span></div></div>
+                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="ssn-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'ssn-', true)"></div>
+                            <div id="ssn-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="ssn-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'ssn-', true)"></div>
+                            <div class="relative w-full mt-2 mb-2"><label class="text-[10px] font-bold text-green-700 uppercase flex justify-between"><span>Sales Note</span></label><input type="text" id="ssn-sales-desc" class="input-field border-green-500 bg-green-50 uppercase flex-grow !mb-0" placeholder="Sales Note..." onchange="saveData(false, 'ssn-', true)"></div>
                             <div class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="ssn-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'ssn-', true)"></div>
                         </div>
-                        <div class="flex gap-2 mt-4"><button id="ssn-btn-save-complete" class="w-full bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform disabled:opacity-50 disabled:bg-gray-400 disabled:cursor-not-allowed" onclick="saveData(true, 'ssn-')" disabled>MARK DONE</button></div>
+                        <div class="flex gap-2 mt-4"><button id="ssn-btn-save-complete" class="w-full bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform" onclick="saveData(true, 'ssn-')">MARK DONE</button></div>
                     </div>
                     <div id="det-location-content" class="hidden py-4">
                         <div id="lsn-photo-preview" class="mb-4 hidden"><p class="text-[10px] font-bold text-blue-600 mb-2 uppercase">Photos on file</p><div id="lsn-photo-list-container" class="space-y-2"></div></div>
@@ -543,19 +493,13 @@
                 </div>
             </div>
             
-           <nav class="fixed bottom-0 w-full bg-white border-t flex justify-around py-3 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-50">
-                <div onclick="switchView('home')" class="flex flex-col items-center cursor-pointer"><i class="ph-bold ph-house text-2xl text-gray-400"></i></div>
-                <div onclick="switchView('drive')" class="flex flex-col items-center cursor-pointer"><i class="ph-bold ph-car text-2xl text-gray-400"></i></div>
-                <div onclick="switchView('tasks')" class="flex flex-col items-center cursor-pointer rep-hidden csr-hidden"><i class="ph-bold ph-clipboard-text text-2xl text-gray-400"></i></div>
-                <div onclick="switchView('docks')" class="flex flex-col items-center cursor-pointer"><i class="ph-bold ph-truck text-2xl text-gray-400"></i></div>
-                
-                <div onclick="switchView('chat-inbox'); loadChatInbox();" class="flex flex-col items-center relative cursor-pointer">
-                    <i class="ph-bold ph-chat-circle-dots text-2xl text-gray-400"></i>
-                    <div id="nav-unread-badge" class="absolute -top-1 -right-2 bg-red-500 text-white text-[9px] font-black w-4 h-4 flex items-center justify-center rounded-full hidden">0</div>
-                </div>
+            <nav class="fixed bottom-0 w-full bg-white border-t flex justify-around py-3 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-50">
+                <div onclick="switchView('home')"><i class="ph-bold ph-house text-2xl text-gray-400"></i></div>
+                <div onclick="switchView('drive')"><i class="ph-bold ph-car text-2xl text-gray-400"></i></div>
+                <div onclick="switchView('tasks')" class="rep-hidden csr-hidden"><i class="ph-bold ph-clipboard-text text-2xl text-gray-400"></i></div>
+                <div onclick="switchView('docks')"><i class="ph-bold ph-truck text-2xl text-gray-400"></i></div>
             </nav>
         </div>
-        
         <script>
         const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6cm55anNvc3J5ZWpqZWpsaWlpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzAyNzM1NywiZXhwIjoyMDg4NjAzMzU3fQ.Bc46UfJ1N4AgAS1PgfhFg6S4BEyybR6g_TUnPZsE2t0";
@@ -674,14 +618,12 @@
         
         let activeTaskTab="season"; let taskViewTargetUser=null; let taskViewLevel=0; let selectedTaskBlock=null; let selectedTaskLoc=null; let selectedEndCapFolder=null;
         
-        let activeAVTab='open'; let avOpenLevel=0; let selectedAvGroup=null; let selectedAvItemCode=null; let avResLevel=0; let selectedAvResName=null; let selectedAvResSize=null;; let selectedAvOpenSeason=null; let selectedAvOpenLot=null; 
+        let activeAVTab='open'; let activeAvOpenTab='name'; let avOpenLevel=0; let selectedAvOpenName=null; let selectedAvOpenSize=null; let selectedAvOpenSeason=null; let selectedAvOpenLot=null; let avResLevel=0; let selectedAvResName=null; let selectedAvResSize=null;
         
         let lowStockViewLevel=0; let selectedLowStockName=null; let selectedLowStockSize=null; let reviewViewLevel=0; let selectedReviewItemCode=null; let selectedReviewCommonName=null; let selectedReviewContSize=null;
         let reportViewLevel=0; let activeReqTab="pending"; let selectedReqRep=null; let selectedReqRepStatus=null; let selectedReqFolder=null; let tempSelectedReqRep=""; let tempReqFolder=null; let tempReqCust=null; let previousReqStep="";
         let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqFolderView=null; let selectedReqStatus='Pending';
         let dockViewLevel=0; let selectedDockNum=null; let pendingDockNum=null; let selectedDockName=null; let selectedDockSize=null; let selectedDockItemCode=null; let selectedDockCustomer=""; let selectedDockTrip=""; let selectedDockRep=""; let lastSyncTime=new Date().toISOString();
-        let activeDocksMainTab = 'all'; let activeDocksSubTab = 'checker'; let expandedDockStops = new Set();
-        
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Machino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
 
         window.onload=async function() {
@@ -710,7 +652,7 @@
         async function promptToEnableBiometrics(user,pin) { 
             if(!confirm("Would you like to enable Fingerprint/FaceID login for future use?"))return; 
             try{ 
-                const publicKey={challenge:new Uint8Array(32),rp:{name:"Greenleaf Nursery Company"},user:{id:new Uint8Array(16),name:user,displayName:user},pubKeyCredParams:[{type:"public-key",alg:-7}],authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required"},timeout:60000}; 
+                const publicKey={challenge:new Uint8Array(32),rp:{name:"DC"},user:{id:new Uint8Array(16),name:user,displayName:user},pubKeyCredParams:[{type:"public-key",alg:-7}],authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required"},timeout:60000}; 
                 await navigator.credentials.create({publicKey}); 
                 localStorage.setItem('gnc_bio_enabled','true'); 
                 localStorage.setItem('gnc_bio_user',user); 
@@ -758,9 +700,7 @@
         function openPhotoModal(urlStr, caption) { 
             const gallery = document.getElementById('photo-modal-gallery');
             gallery.innerHTML = '';
-            
-            // Filter out empty strings just in case
-            let urls = String(urlStr).split(',').filter(u => u.trim() !== '');
+            let urls = String(urlStr).split(',');
             
             urls.forEach(u => {
                 let cleanUrl = u.trim();
@@ -768,52 +708,24 @@
                 if(match) cleanUrl = match[1];
                 if(cleanUrl.startsWith('http')) {
                     let fullUrl = cleanUrl.replace('&sz=w100', ''); 
-                    
-                    // The inline style "scroll-snap-stop: always;" forces the sticky swipe
-                    gallery.innerHTML += `<img src="${fullUrl}" class="snap-center w-full max-h-[80vh] object-contain flex-shrink-0 rounded-xl shadow-2xl" style="scroll-snap-stop: always;">`;
+                    gallery.innerHTML += `<img src="${fullUrl}" class="snap-center w-full max-h-[80vh] object-contain flex-shrink-0 rounded-xl shadow-2xl">`;
                 }
             });
 
             document.getElementById('photo-modal-caption').innerText = caption; 
             document.getElementById('photo-modal').classList.remove('hidden');
             
-            // Manage visibility of the counter and hint
             if(urls.length > 1) {
                 document.getElementById('photo-swipe-hint').classList.remove('hidden');
-                document.getElementById('photo-modal-counter').classList.remove('hidden');
             } else {
                 document.getElementById('photo-swipe-hint').classList.add('hidden');
-                document.getElementById('photo-modal-counter').classList.add('hidden');
             }
-            
-            // Initialize the counter for the first image
-            setTimeout(() => updatePhotoCounter(), 50);
         }
 
         function closePhotoModal() { 
             document.getElementById('photo-modal').classList.add('hidden'); 
         }
 
-        function updatePhotoCounter() {
-            const gallery = document.getElementById('photo-modal-gallery');
-            const counter = document.getElementById('photo-modal-counter');
-            if(!gallery || !counter) return;
-            
-            const images = gallery.querySelectorAll('img');
-            if(images.length <= 1) return;
-            
-            // Calculate active index based on scroll position
-            const scrollLeft = gallery.scrollLeft;
-            const clientWidth = gallery.clientWidth;
-            
-            // Use the container width to find the nearest snapped image
-            const activeIndex = Math.round(scrollLeft / clientWidth);
-            
-            // Keep it bounded safely between 1 and max
-            const displayIndex = Math.min(Math.max(1, activeIndex + 1), images.length);
-            
-            counter.innerText = `${displayIndex} / ${images.length}`;
-        }
         function handleLogin(isBiometricLogin=false) {
             const inputUser=document.getElementById('username-input').value.trim().toLowerCase(); 
             const inputPass=document.getElementById('pin-code').value.trim();
@@ -875,17 +787,13 @@
             localStorage.setItem('gnc_pin_v3',pass); 
             localStorage.setItem('gnc_role_v3',currentRole); 
             document.getElementById('header-user').innerText=currentUser.toUpperCase(); 
-            
-            // Set the username on the big Dashboard card
-            let dashUser = document.getElementById('dashboard-username-display');
-            if(dashUser) dashUser.innerText = currentUser.toUpperCase();
-
             setRepPermutations(currentUser); 
             if(!isBiometricLogin&&window.PublicKeyCredential&&localStorage.getItem('gnc_bio_enabled')!=='true'){ promptToEnableBiometrics(user,pass); } 
             applyRolePermissions(); 
             fetchBackgroundData(); 
             setInterval(silentBackgroundSync, 1000); 
         }
+
         async function silentBackgroundSync() {
             if(!currentUser)return; 
             const checkTime=new Date().toISOString();
@@ -1211,10 +1119,12 @@
         function handleAVSearch() { const term=document.getElementById('av-search').value.toLowerCase(); const clearBtn=document.getElementById('av-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden'); avResLevel=0; avOpenLevel=0;} else{clearBtn.classList.add('hidden'); avResLevel=0; avOpenLevel=0;} debouncedAVSearch(); }
 
         function resetAVView() { 
-            activeAVTab='open'; 
+            activeAVTab='open'; activeAvOpenTab='name';
             avResLevel=0; selectedAvResName=null; selectedAvResSize=null; 
-            avOpenLevel=0; selectedAvGroup=null; selectedAvItemCode=null; 
+            avOpenLevel=0; selectedAvOpenName=null; selectedAvOpenSize=null; selectedAvOpenSeason=null; selectedAvOpenLot=null;
             document.getElementById('tab-av-open').classList.add('active'); document.getElementById('tab-av-reserves').classList.remove('active'); 
+            document.getElementById('tab-av-open-name').classList.add('active'); document.getElementById('tab-av-open-season').classList.remove('active'); document.getElementById('tab-av-open-lot').classList.remove('active');
+            document.getElementById('av-open-sub-tabs').style.display = 'flex';
             document.getElementById('av-search').value=""; document.getElementById('av-search-clear').classList.add('hidden'); 
             renderAV(); 
         }
@@ -1222,9 +1132,20 @@
         function setAVTab(tab) { 
             activeAVTab=tab; 
             avResLevel=0; selectedAvResName=null; selectedAvResSize=null; 
-            avOpenLevel=0; selectedAvGroup=null; selectedAvItemCode=null; 
+            avOpenLevel=0; selectedAvOpenName=null; selectedAvOpenSize=null; selectedAvOpenSeason=null; selectedAvOpenLot=null;
             document.getElementById('tab-av-open').classList.toggle('active',tab==='open'); document.getElementById('tab-av-reserves').classList.toggle('active',tab==='reserves'); 
+            const subTabs = document.getElementById('av-open-sub-tabs');
+            if (tab === 'open') { subTabs.style.display = 'flex'; } else { subTabs.style.display = 'none'; }
             renderAV(); 
+        }
+
+        function setAvOpenTab(tab) {
+            activeAvOpenTab = tab;
+            document.getElementById('tab-av-open-name').classList.toggle('active', tab === 'name');
+            document.getElementById('tab-av-open-season').classList.toggle('active', tab === 'season');
+            document.getElementById('tab-av-open-lot').classList.toggle('active', tab === 'lot');
+            avOpenLevel = 0;
+            renderAV();
         }
         
         function setReqTab(tab) {
@@ -1242,7 +1163,7 @@
             }
             fetch(GOOGLE_SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) }).catch(e => console.log(e));
         }
-        
+
         function resetHoursView() {
             let yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
             document.getElementById('hours-date').value = yesterday.toISOString().split('T')[0];
@@ -1312,46 +1233,68 @@
             }
             
             if (activeAVTab === 'open') { 
-                crumb.innerText = `Open Stock (${items.length} items)`;
-                
-                let html = '';
-                
-                // 1. Get unique plant groups and sort them alphabetically
-                const plantGroups = [...new Set(items.map(i => i.PLANTGROUPCODE || 'Unassigned'))].sort();
-                
-                plantGroups.forEach(group => {
-                    // Render Plant Group Header
-                    html += `<div class="font-black text-2xl text-teal-800 mt-6 mb-2 border-b-2 border-teal-200 pb-1">${group}</div>`;
-                    
-                    let groupItems = items.filter(i => (i.PLANTGROUPCODE || 'Unassigned') === group);
-                    
-                    // 2. Get unique item codes within this group and sort them (smallest to largest)
-                    const itemCodes = [...new Set(groupItems.map(i => i.ITEMCODE || 'Unknown'))].sort((a, b) => String(a).localeCompare(String(b), undefined, {numeric: true}));
-                    
-                    itemCodes.forEach(code => {
-                        let codeItems = groupItems.filter(i => (i.ITEMCODE || 'Unknown') === code);
-                        let sampleName = codeItems[0]?.COMMONNAME || 'Unknown Plant';
-                        
-                        // Render Item Code Sub-Header
-                        html += `<div class="font-bold text-lg text-gray-700 mt-4 mb-3 bg-gray-100 px-3 py-2 rounded-lg border border-gray-200 flex justify-between items-center shadow-sm">
-                                    <span>${sampleName}</span>
-                                    <span class="font-mono text-sm text-teal-600 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">${code}</span>
-                                 </div>`;
-                        
-                        // 3. Sort the specific cards by Priority then Location
-                        codeItems.sort((a,b) => { 
-                            let priA = parseFloat(a.PRIORITY); let priB = parseFloat(b.PRIORITY); 
-                            if(isNaN(priA)) priA = Infinity; if(isNaN(priB)) priB = Infinity; 
-                            if(priA !== priB) return priA - priB; 
-                            return String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""), undefined, {numeric:true}); 
-                        });
-                        
-                        // Render the cards
-                        html += codeItems.map(i => generateCard(i, 'av', 'status-teal')).join('');
-                    });
-                });
-                
-                container.innerHTML = html;
+                if (activeAvOpenTab === 'name') {
+                    if(avOpenLevel === 0) {
+                        crumb.innerText = `Open Stock: By Name (${items.length} items)`;
+                        const names = [...new Set(items.map(i => i.COMMONNAME))].sort();
+                        container.innerHTML = names.map(n => `<div class="drill-item" onclick="selectedAvOpenName='${esc(n)}'; avOpenLevel=1; renderAV()"><span class="font-bold text-lg">${n}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
+                    } else if(avOpenLevel === 1) {
+                        crumb.innerText = selectedAvOpenName;
+                        const namedItems = items.filter(i => i.COMMONNAME === selectedAvOpenName);
+                        if(namedItems.length === 0){ container.innerHTML = `<div class="p-8 text-center text-gray-400">No items found.</div>`; return; }
+                        const sizes = [...new Set(namedItems.map(i => i.CONTSIZE))].sort();
+                        let html = `<div class="back-btn" onclick="avOpenLevel=0; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Names</div><div class="font-bold text-[#007a4d] mb-4 px-2 text-xl border-b pb-2">${selectedAvOpenName}</div>`;
+                        html += sizes.map(s => { 
+                            const count = namedItems.filter(i => i.CONTSIZE === s).length; 
+                            return `<div class="drill-item" onclick="selectedAvOpenSize='${esc(s)}'; avOpenLevel=2; renderAV()"><span class="font-bold text-lg">${s} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>` 
+                        }).join('');
+                        container.innerHTML = html;
+                    } else if(avOpenLevel === 2) {
+                        crumb.innerText = `${selectedAvOpenName} / ${selectedAvOpenSize}`;
+                        let finalItems = items.filter(i => i.COMMONNAME === selectedAvOpenName && i.CONTSIZE === selectedAvOpenSize);
+                        finalItems.sort((a,b) => { let priA = parseFloat(a.PRIORITY); let priB = parseFloat(b.PRIORITY); if(isNaN(priA)) priA = Infinity; if(isNaN(priB)) priB = Infinity; return priA - priB; });
+                        container.innerHTML = `<div class="back-btn" onclick="avOpenLevel=1; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>` + finalItems.map(i => generateCard(i, 'av', 'status-teal')).join('');
+                    }
+                } else if (activeAvOpenTab === 'season') {
+                    if(avOpenLevel === 0) {
+                        crumb.innerText = `Open Stock: By Season (${items.length} items)`;
+                        const seasons = [...new Set(items.map(i => i.SEASON || 'Unassigned'))].sort();
+                        container.innerHTML = seasons.map(s => `<div class="drill-item" onclick="selectedAvOpenSeason='${esc(s)}'; avOpenLevel=1; renderAV()"><span class="font-bold text-lg text-[#007a4d]">${s}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
+                    } else if(avOpenLevel === 1) {
+                        crumb.innerText = `Season: ${selectedAvOpenSeason}`;
+                        const sItems = items.filter(i => (i.SEASON || 'Unassigned') === selectedAvOpenSeason);
+                        const names = [...new Set(sItems.map(i => i.COMMONNAME))].sort();
+                        let html = `<div class="back-btn" onclick="avOpenLevel=0; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Seasons</div>`;
+                        html += names.map(n => `<div class="drill-item" onclick="selectedAvOpenName='${esc(n)}'; avOpenLevel=2; renderAV()"><span class="font-bold text-lg">${n}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
+                        container.innerHTML = html;
+                    } else if(avOpenLevel === 2) {
+                        crumb.innerText = `${selectedAvOpenSeason} > ${selectedAvOpenName}`;
+                        const snItems = items.filter(i => (i.SEASON || 'Unassigned') === selectedAvOpenSeason && i.COMMONNAME === selectedAvOpenName);
+                        const sizes = [...new Set(snItems.map(i => i.CONTSIZE))].sort();
+                        let html = `<div class="back-btn" onclick="avOpenLevel=1; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Names</div><div class="font-bold text-[#007a4d] mb-4 px-2 text-xl border-b pb-2">${selectedAvOpenName}</div>`;
+                        html += sizes.map(s => { 
+                            const count = snItems.filter(i => i.CONTSIZE === s).length; 
+                            return `<div class="drill-item" onclick="selectedAvOpenSize='${esc(s)}'; avOpenLevel=3; renderAV()"><span class="font-bold text-lg">${s} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>` 
+                        }).join('');
+                        container.innerHTML = html;
+                    } else if(avOpenLevel === 3) {
+                        crumb.innerText = `${selectedAvOpenName} / ${selectedAvOpenSize}`;
+                        let finalItems = items.filter(i => (i.SEASON || 'Unassigned') === selectedAvOpenSeason && i.COMMONNAME === selectedAvOpenName && i.CONTSIZE === selectedAvOpenSize);
+                        finalItems.sort((a,b) => { let priA = parseFloat(a.PRIORITY); let priB = parseFloat(b.PRIORITY); if(isNaN(priA)) priA = Infinity; if(isNaN(priB)) priB = Infinity; return priA - priB; });
+                        container.innerHTML = `<div class="back-btn" onclick="avOpenLevel=2; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>` + finalItems.map(i => generateCard(i, 'av', 'status-teal')).join('');
+                    }
+                } else if (activeAvOpenTab === 'lot') {
+                    if(avOpenLevel === 0) {
+                        crumb.innerText = `Open Stock: By Lot (${items.length} items)`;
+                        let lots = [...new Set(items.map(i => i.LOTCODE || 'No Lot'))].sort();
+                        container.innerHTML = lots.map(l => `<div class="drill-item" onclick="selectedAvOpenLot='${esc(l)}'; avOpenLevel=1; renderAV()"><span class="font-bold text-lg text-gray-800">${l}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
+                    } else if(avOpenLevel === 1) {
+                        crumb.innerText = `Lot Code: ${selectedAvOpenLot}`;
+                        let lItems = items.filter(i => (i.LOTCODE || 'No Lot') === selectedAvOpenLot);
+                        lItems.sort((a,b) => String(a.COMMONNAME || "").localeCompare(String(b.COMMONNAME || "")));
+                        container.innerHTML = `<div class="back-btn" onclick="avOpenLevel=0; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Lots</div>` + lItems.map(i => generateCard(i, 'av', 'status-teal')).join('');
+                    }
+                }
                 
             } else {
                 if(avResLevel===0){ 
@@ -1375,53 +1318,11 @@
                 }
             }
         }
-        function setDocksMainTab(tab) {
-            activeDocksMainTab = tab;
-            document.getElementById('tab-docks-all').classList.toggle('active', tab === 'all');
-            document.getElementById('tab-docks-my').classList.toggle('active', tab === 'my');
-            
-            const subTabs = document.getElementById('docks-my-sub-tabs');
-            if (tab === 'my') { subTabs.classList.remove('hidden'); } else { subTabs.classList.add('hidden'); }
-            
-            dockViewLevel = 0;
-            renderDocks();
-        }
-
-        function setDocksSubTab(tab) {
-            activeDocksSubTab = tab;
-            document.getElementById('tab-docks-checker').classList.toggle('active', tab === 'checker');
-            document.getElementById('tab-docks-inspector').classList.toggle('active', tab === 'inspector');
-            document.getElementById('tab-docks-mistake').classList.toggle('active', tab === 'mistake');
-            document.getElementById('tab-docks-loading').classList.toggle('active', tab === 'loading');
-            
-            dockViewLevel = 0;
-            renderDocks();
-        }
 
         const debouncedDocksSearch=debounce(()=>{requestAnimationFrame(()=>renderDocks())},150);
         function clearDocksSearch(){ document.getElementById('docks-search').value=""; document.getElementById('docks-search-clear').classList.add('hidden'); dockViewLevel=0; renderDocks(); }
         function handleDocksSearch(){ const term=document.getElementById('docks-search').value.toLowerCase(); const clearBtn=document.getElementById('docks-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden');dockViewLevel=0;}else{clearBtn.classList.add('hidden');dockViewLevel=0;} debouncedDocksSearch(); }
-        
-        function resetDockView() { 
-            dockViewLevel = 0; selectedDockNum = null; 
-            document.getElementById('docks-search').value = ""; document.getElementById('docks-search-clear').classList.add('hidden'); 
-            
-            activeDocksMainTab = 'all';
-            activeDocksSubTab = 'checker';
-            expandedDockStops.clear();
-            
-            let tAll = document.getElementById('tab-docks-all'); if(tAll) tAll.classList.add('active');
-            let tMy = document.getElementById('tab-docks-my'); if(tMy) tMy.classList.remove('active');
-            let sTabs = document.getElementById('docks-my-sub-tabs'); if(sTabs) sTabs.classList.add('hidden');
-            
-            let tChk = document.getElementById('tab-docks-checker'); if(tChk) tChk.classList.add('active');
-            let tInsp = document.getElementById('tab-docks-inspector'); if(tInsp) tInsp.classList.remove('active');
-            let tMis = document.getElementById('tab-docks-mistake'); if(tMis) tMis.classList.remove('active');
-            let tLoad = document.getElementById('tab-docks-loading'); if(tLoad) tLoad.classList.remove('active');
-            
-            renderDocks(); 
-        }
-        
+        function resetDockView() { dockViewLevel = 0; selectedDockNum = null; document.getElementById('docks-search').value = ""; document.getElementById('docks-search-clear').classList.add('hidden'); renderDocks(); }
         function selectDock(dock) { selectedDockNum = dock; dockViewLevel = 1; renderDocks(); }
 
         function openDockInfoModal(dockNum) {
@@ -1465,42 +1366,14 @@
             state[type] = !state[type]; localStorage.setItem(key, JSON.stringify(state)); renderDocks(); 
         }
 
-        function toggleDockStop(stopNum) {
-            if(expandedDockStops.has(stopNum)) {
-                expandedDockStops.delete(stopNum);
-            } else {
-                expandedDockStops.add(stopNum);
-            }
-            renderDocks();
-        }
-
         function renderDocks() {
             const container = document.getElementById('docks-content'); const crumb = document.getElementById('docks-crumb'); const term = document.getElementById('docks-search').value.toLowerCase().trim();
             let items = socInventory;
             if(term) { const searchTerms = term.split(/\s+/); items = items.filter(i => { const searchStr = (i._search || "").toLowerCase(); return searchTerms.every(t => searchStr.includes(t)); }); }
             if (items.length === 0) { container.innerHTML = `<div class="p-8 text-center text-gray-400">No dock items found.</div>`; crumb.innerText = "No Results"; return; }
-            
             if (dockViewLevel === 0) {
+                crumb.innerText = "Select a Dock";
                 let docks = [...new Set(items.map(i => i.DOCK_NUM || 'Unassigned'))].sort((a,b) => { let numA = parseFloat(String(a).replace(/[^0-9.]/g, '')); let numB = parseFloat(String(b).replace(/[^0-9.]/g, '')); if(!isNaN(numA) && !isNaN(numB)) return numA - numB; return String(a).localeCompare(String(b)); });
-                
-                if (activeDocksMainTab === 'my') {
-                    crumb.innerText = `My Docks > ${activeDocksSubTab.charAt(0).toUpperCase() + activeDocksSubTab.slice(1)}`;
-                    docks = docks.filter(d => {
-                        let savedInfo = JSON.parse(localStorage.getItem('gnc_dock_team_' + d) || '{"checker":"","inspector":"","mistake":"","status":"Loading"}');
-                        if (activeDocksSubTab === 'checker') return savedInfo.checker && savedInfo.checker.trim() !== "";
-                        if (activeDocksSubTab === 'inspector') return savedInfo.inspector && savedInfo.inspector.trim() !== "";
-                        if (activeDocksSubTab === 'mistake') return savedInfo.mistake && savedInfo.mistake.trim() !== "";
-                        if (activeDocksSubTab === 'loading') return savedInfo.status && savedInfo.status.trim() !== "";
-                        return false;
-                    });
-                    if(docks.length === 0) {
-                        container.innerHTML = `<div class="p-8 text-center text-gray-400">No docks found in this tab.</div>`;
-                        return;
-                    }
-                } else {
-                    crumb.innerText = "All Docks";
-                }
-
                 container.innerHTML = docks.map(d => {
                     let dItems = items.filter(i => (i.DOCK_NUM || 'Unassigned') === d); let count = dItems.length;
                     let savedInfo = JSON.parse(localStorage.getItem('gnc_dock_team_' + d) || '{"checker":"","inspector":"","mistake":"","status":"Loading"}');
@@ -1514,53 +1387,15 @@
                 crumb.innerText = `Dock: ${selectedDockNum}`;
                 let dItems = items.filter(i => (i.DOCK_NUM || 'Unassigned') === selectedDockNum);
                 dItems.sort((a,b) => { let stopA = parseFloat(a.STOPNUMBER); if(isNaN(stopA)) stopA = 9999; let stopB = parseFloat(b.STOPNUMBER); if(isNaN(stopB)) stopB = 9999; if(stopA !== stopB) return stopA - stopB; return String(a.CONTSIZE || "").localeCompare(String(b.CONTSIZE || "")); });
-                
-                let html = `<div class="back-btn" onclick="dockViewLevel=0; renderDocks()"><i class="ph-bold ph-arrow-left"></i> Back to Docks</div>`;
-                
-                let stops = [...new Set(dItems.map(i => i.STOPNUMBER || 'Unassigned'))];
-                
-                stops.forEach(stopNum => {
-                    let sItems = dItems.filter(i => (i.STOPNUMBER || 'Unassigned') === stopNum);
-                    let firstItem = sItems[0];
-                    let rep = firstItem.SALESREPNAME || firstItem.SALESREPID || 'Unknown Rep'; 
-                    let cust = firstItem.CUSTOMERNAME || 'Unknown Customer'; 
-                    let cons = firstItem.CONSIGNEENAME || firstItem.CONSIGNEE || ''; 
-                    let state = firstItem.CONSIGNEESTATE || firstItem.STATE || 'N/A';
-                    let tripNum = firstItem.TRIPNUMBER || '-';
-                    let isExpanded = expandedDockStops.has(stopNum);
-
-                    html += `<div class="bg-white border border-gray-300 rounded-xl shadow-sm mb-4 overflow-hidden">
-                        <div class="p-4 cursor-pointer bg-gray-50 flex justify-between items-center active:bg-gray-100 transition-colors" onclick="toggleDockStop('${esc(stopNum)}')">
-                            <div class="flex flex-col min-w-0 pr-2">
-                                <div class="flex items-center gap-2 mb-1">
-                                    <span class="font-black text-xl text-gray-900 tracking-tight">STOP ${stopNum}</span>
-                                    <span class="bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded text-[10px] uppercase tracking-widest">Dock ${selectedDockNum}</span>
-                                </div>
-                                <div class="font-bold text-[15px] text-[#007a4d] leading-tight truncate">${cust}</div>
-                                ${cons && cons !== cust ? `<div class="text-[11px] text-gray-500 font-semibold truncate mt-0.5"><i class="ph-bold ph-arrow-bend-down-right"></i> ${cons}</div>` : ''}
-                                <div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-1.5 flex flex-wrap gap-2">
-                                    <span>Trip: <span class="text-gray-600">${tripNum}</span></span>
-                                    <span>State: <span class="text-gray-600">${state}</span></span>
-                                    <span><i class="ph-bold ph-user"></i> ${rep}</span>
-                                </div>
-                            </div>
-                            <div class="flex flex-col items-center flex-shrink-0 ml-2 border-l border-gray-200 pl-4">
-                                <div class="font-black text-2xl text-[#007a4d] leading-none">${sItems.length}</div>
-                                <div class="text-[9px] font-bold text-gray-400 uppercase tracking-wider mt-1">Units</div>
-                                <i class="ph-bold ${isExpanded ? 'ph-caret-up' : 'ph-caret-down'} text-lg text-gray-400 mt-1"></i>
-                            </div>
-                        </div>`;
-
-                    if (isExpanded) {
-                        html += `<div class="p-3 bg-gray-200/50 border-t border-gray-300 flex flex-col gap-2">`;
-                        sItems.forEach(item => {
-                            html += generateCard(item, 'docks', 'status-orange');
-                        });
-                        html += `</div>`;
+                let currentStop = null; let html = `<div class="back-btn" onclick="dockViewLevel=0; renderDocks()"><i class="ph-bold ph-arrow-left"></i> Back to Docks</div>`;
+                dItems.forEach(item => {
+                    let stopNum = item.STOPNUMBER || 'Unassigned';
+                    if (stopNum !== currentStop) {
+                        currentStop = stopNum; let rep = item.SALESREPNAME || item.SALESREPID || 'Unknown Rep'; let cust = item.CUSTOMERNAME || 'Unknown Customer'; let cons = item.CONSIGNEENAME || item.CONSIGNEE || ''; let state = item.CONSIGNEESTATE || item.STATE || 'N/A';
+                        html += `<div class="bg-gray-800 text-white rounded-xl shadow-md mb-3 p-4 mt-6 border-l-4 border-[#007a4d]"><div class="flex justify-between items-center mb-2 border-b border-gray-600 pb-2"><div class="font-black text-xl text-green-400 tracking-wider">STOP ${stopNum}</div><div class="text-[10px] font-bold bg-gray-700 px-2 py-1 rounded text-gray-300 uppercase"><i class="ph-bold ph-user mr-1"></i>${rep}</div></div><div class="font-bold text-[15px] leading-tight mb-0.5">${cust}</div>${cons && cons !== cust ? `<div class="text-[12px] text-gray-300 font-semibold mb-2 flex items-center gap-1"><i class="ph-bold ph-arrow-bend-down-right"></i> ${cons}</div>` : '<div class="mb-2"></div>'}<div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1"><i class="ph-bold ph-map-pin"></i> State: <span class="text-gray-200">${state}</span></div></div>`;
                     }
-                    html += `</div>`;
+                    html += generateCard(item, 'docks', 'status-orange');
                 });
-                
                 container.innerHTML = html;
             }
         }
@@ -1661,7 +1496,6 @@
                 }
             }
         }
-
         function handleCardClick(domId,uniqueId,sourceView) {
             if(isLongPress){ isLongPress=false; return; }
             if(isMultiSelectMode){ 
@@ -1671,7 +1505,7 @@
                     if(cb){ cb.checked=!cb.checked; toggleGlobalItem(domId,cb.checked); } 
                 } 
             }else{ 
-                if(sourceView === 'av' || (safeRole === 'SALESREP' && sourceView === 'drive')){ 
+                if(safeRole==='SALESREP'&&(sourceView==='drive'||sourceView==='av')){ 
                     let item=fullInventory.find(i=>i.UNIQUE_ID===uniqueId)||lowStockInventory.find(i=>i.UNIQUE_ID===uniqueId)||reservesInventory.find(i=>i.UNIQUE_ID===uniqueId); 
                     if(item){ 
                         let pLink=item.SAVED_PHOTO_LINK||item['PHOTO_LINK']||item.PHOTOLINK||""; 
@@ -1719,17 +1553,11 @@
             }
 
             document.getElementById('dtab-overview').classList.remove('hidden');
-            
-            if (sourceView === 'drive' || sourceView === 'low-stock') {
-                document.getElementById('dtab-notes').classList.remove('hidden');
+            if (sourceView === 'drive' || sourceView === 'av' || sourceView === 'low-stock') {
+                document.getElementById('dtab-season').classList.remove('hidden');
+                document.getElementById('dtab-location').classList.remove('hidden');
                 document.getElementById('dtab-request').classList.remove('hidden');
-                
-                if (activeItem.APP_TAB_ASSIGNMENT === 'season') {
-                    document.getElementById('dtab-season').classList.remove('hidden');
-                }
-                if (activeItem.APP_TAB_ASSIGNMENT === 'location') {
-                    document.getElementById('dtab-location').classList.remove('hidden');
-                }
+                document.getElementById('dtab-notes').classList.remove('hidden');
             } else if (sourceView === 'tasks') {
                 let t = document.getElementById('dtab-' + activeTaskTab);
                 if(t) t.classList.remove('hidden');
@@ -1737,14 +1565,12 @@
                 document.getElementById('dtab-docks').classList.remove('hidden');
             } else if (sourceView === 'request') {
                 document.getElementById('dtab-request').classList.remove('hidden');
-                
-                // Show Season or Location tabs inside the Request view if applicable
-                if (activeItem.APP_TAB_ASSIGNMENT === 'season') {
-                    document.getElementById('dtab-season').classList.remove('hidden');
-                } else if (activeItem.APP_TAB_ASSIGNMENT === 'location') {
-                    document.getElementById('dtab-location').classList.remove('hidden');
-                }
             }
+
+            const globalAvContainer = document.getElementById('global-av-container');
+            if (globalAvContainer) globalAvContainer.classList.remove('hidden');
+            const globalAvNote = document.getElementById('global-av-note');
+            if (globalAvNote) globalAvNote.value = activeItem.AV_NOTE || "";
 
             ['ssn-', 'lsn-', 'na-', 'req-', 'dock-', 'flyer-'].forEach(p => {
                 let match = document.getElementById(p + 'match');
@@ -1790,9 +1616,8 @@
             } else {
                 switchDetailTab('overview');
             }
-
-            if(typeof validateSsnForm === 'function') validateSsnForm();
         }
+
         function renderSavedPhotos() {
             let sLink = activeItem.SAVED_PHOTO_LINK || "";
             let rLink = activeItem.REQ_PHOTO_LINK || "";
@@ -1963,7 +1788,8 @@
                     crumb.innerText = `${selectedReqRepView} > Status`;
                     let repItems = items.filter(i => (i.REQUESTED_BY || 'Unknown Rep') === selectedReqRepView && !i.REQ_ARCHIVED);
                     let pendingCount = repItems.filter(i => i.REQ_STATUS !== 'Complete').length;
-                    let completeCount = repItems.filter(i => i.REQ_STATUS === 'Complete').length;                  
+                    let completeCount = repItems.filter(i => i.REQ_STATUS === 'Complete').length;
+                    
                     container.innerHTML = `
                         <div class="back-btn" onclick="requestViewLevel=0; renderRequest()"><i class="ph-bold ph-arrow-left"></i> Back to Reps</div>
                         <div class="bg-orange-50 border border-orange-200 rounded-xl shadow-sm mb-4 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectedReqStatus='Pending'; requestViewLevel=2; renderRequest()">
@@ -2039,7 +1865,7 @@
             supabaseFetch('v2_sales_office','DELETE',null,`unique_id=eq.${uniqueId}`).catch(err=>showToast("Error","Network error.",true)); 
         }
 
-      function generateCard(item,sourceView,colorClass='status-green') {
+        function generateCard(item,sourceView,colorClass='status-green') {
             let thumbHtml=''; let photoLink="";
             if(sourceView==='docks') photoLink=item.DOCK_PHOTO_LINK||item.SAVED_PHOTO_LINK||item.PHOTO_LINK||""; 
             else photoLink=item.SAVED_PHOTO_LINK||item.PHOTO_LINK||"";
@@ -2074,14 +1900,8 @@
                     } 
                 }
 
-                // --- Calculate dynamic Loc Photo Match ---
-                let ptr = parseInt(String(item.PTRAVAILABLE).replace(/,/g, '')) || 0;
-                let matchPct = parseFloat(item.MATCH || item.MATCHPCT);
-                let locPhotoMatch = !isNaN(matchPct) ? Math.round(ptr * (matchPct / 100)) : 'N/A';
-
-                return `<div class="flex items-start w-full mb-3 item-row relative bg-white p-4 rounded-xl border-2 border-teal-100 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-teal-600 focus:ring-teal-600 shadow-sm pointer-events-none" ${isChecked}></div><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full"><div class="flex-grow min-w-0 pr-2"><div class="font-black text-gray-800 text-[18px] leading-tight break-words mb-1">${item.COMMONNAME||'Unknown'}</div><div class="font-black text-teal-700 text-[15px] mb-2">${item.CONTSIZE||'-'}</div><div class="grid grid-cols-2 gap-2 mb-2"><div class="text-[11px] font-bold text-gray-500 uppercase"><span class="block text-[8px] text-gray-400 mb-0.5">LOT CODE</span>${item.LOTCODE||'-'}</div><div class="text-[11px] font-bold text-gray-500 uppercase"><span class="block text-[8px] text-gray-400 mb-0.5">LOCATION</span>${item.LOCATIONCODE||'-'}</div></div><div class="flex flex-wrap gap-2 text-[11px] font-bold uppercase tracking-wider mt-1"><span class="bg-gray-100 text-gray-800 px-2 py-1 rounded border border-gray-200">LOC AVA: <span class="font-black">${item.PTRAVAILABLE||'0'}</span></span><span class="bg-purple-50 text-purple-700 px-2 py-1 rounded border border-purple-200">s_LTS: <span class="font-black">${item.S_LTS||'0'}</span></span><span class="bg-green-50 text-green-700 px-2 py-1 rounded border border-green-200">LOC PHOTO MATCH: <span class="font-black">${locPhotoMatch}</span></span></div>${holdHtml}${avNoteHtml}</div>${clickThumbHtml}</div></div></div>`;
+                return `<div class="flex items-start w-full mb-3 item-row relative bg-white p-4 rounded-xl border-2 border-teal-100 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-teal-600 focus:ring-teal-600 shadow-sm pointer-events-none" ${isChecked}></div><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full"><div class="flex-grow min-w-0 pr-2"><div class="font-black text-gray-800 text-[18px] leading-tight break-words mb-1">${item.COMMONNAME||'Unknown'}</div><div class="font-black text-teal-700 text-[15px] mb-2">${item.CONTSIZE||'-'}</div><div class="grid grid-cols-2 gap-2 mb-2"><div class="text-[11px] font-bold text-gray-500 uppercase"><span class="block text-[8px] text-gray-400 mb-0.5">LOT CODE</span>${item.LOTCODE||'-'}</div><div class="text-[11px] font-bold text-gray-500 uppercase"><span class="block text-[8px] text-gray-400 mb-0.5">LOCATION</span>${item.LOCATIONCODE||'-'}</div></div><div class="flex flex-wrap gap-2 text-[11px] font-bold uppercase tracking-wider mt-1"><span class="bg-gray-100 text-gray-800 px-2 py-1 rounded border border-gray-200">LOC AVA: <span class="font-black">${item.PTRAVAILABLE||'0'}</span></span><span class="bg-purple-50 text-purple-700 px-2 py-1 rounded border border-purple-200">s_LTS: <span class="font-black">${item.S_LTS||'0'}</span></span></div>${holdHtml}${avNoteHtml}</div>${clickThumbHtml}</div></div></div>`;
             }
-            
             if(photoLink){ 
                 let firstUrl=String(photoLink).split(',')[0]; 
                 let cleanUrl=firstUrl.trim(); 
@@ -2105,44 +1925,11 @@
             }
 
             if(sourceView === 'docks'){
-                let qty = item.QUANTITYORDERED || item.QTY_ORDERED || item.PTRAVAILABLE || '1';
-                
-                let noteHtml = "";
-                if(item.DOCK_NOTE && String(item.DOCK_NOTE).trim() !== "") noteHtml += `<div class="mt-2 text-[12px] text-orange-800 bg-orange-100 p-2 rounded border border-orange-200 shadow-sm whitespace-pre-wrap"><span class="font-black">MISTAKE / NOTE:</span> ${item.DOCK_NOTE}</div>`;
-                
-                let checkState = JSON.parse(localStorage.getItem('gnc_dock_item_' + item.UNIQUE_ID) || '{"checker":false,"inspector":false}'); 
-                let isDimmed = checkState.checker && checkState.inspector; 
-                let cardOpacity = isDimmed ? "opacity-50" : "opacity-100"; 
-                let chkClass = checkState.checker ? "bg-[#007a4d] text-white border-[#007a4d]" : "bg-gray-50 text-gray-500 border-gray-200"; 
-                let inspClass = checkState.inspector ? "bg-[#007a4d] text-white border-[#007a4d]" : "bg-gray-50 text-gray-500 border-gray-200";
-                
-                let actionBtns = `<div class="flex gap-2 mt-3 pt-3 border-t border-gray-100"><button class="flex-1 py-2.5 rounded-lg text-[10px] uppercase font-black border shadow-sm transition-colors ${chkClass} active:scale-95" onclick="event.stopPropagation(); toggleDockItemState('${safeUidJs}', 'checker')"><i class="ph-bold ph-check-square mr-1 text-lg align-middle"></i> Verified</button><button class="flex-1 py-2.5 rounded-lg text-[10px] uppercase font-black border shadow-sm transition-colors ${inspClass} active:scale-95" onclick="event.stopPropagation(); toggleDockItemState('${safeUidJs}', 'inspector')"><i class="ph-bold ph-magnifying-glass mr-1 text-lg align-middle"></i> Inspect</button><button class="flex-1 py-2.5 rounded-lg text-[10px] uppercase font-black border border-red-200 bg-red-50 text-red-600 shadow-sm transition-colors hover:bg-red-100 active:scale-95" onclick="event.stopPropagation(); openDockItemMistakeModal('${safeUidJs}')"><i class="ph-bold ph-flag mr-1 text-lg align-middle"></i> Flag Issue</button></div>`;
-                
-                return `<div class="flex items-start w-full item-row relative bg-white p-4 rounded-xl border border-gray-300 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${cardOpacity}" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')">
-                    <div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm pointer-events-none" ${isChecked}></div>
-                    <div class="flex flex-col w-full min-w-0">
-                        <div class="flex justify-between items-start border-b border-gray-100 pb-2 mb-2 w-full">
-                            <div class="flex-grow min-w-0 pr-2">
-                                <div class="font-black text-gray-800 text-[18px] leading-tight break-words mb-1">${item.COMMONNAME||'Unknown'}</div>
-                                <div class="text-[10px] font-mono text-gray-400 uppercase tracking-widest bg-gray-50 px-2 py-0.5 rounded border border-gray-200 w-max">ID: ${item.ITEMCODE||'-'}</div>
-                            </div>
-                            ${thumbHtml}
-                        </div>
-                        <div class="grid grid-cols-2 gap-3 mb-2">
-                            <div>
-                                <div class="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Quantity & Specs</div>
-                                <div class="font-bold text-sm text-[#007a4d]">${qty} EA &bull; ${item.CONTSIZE||'-'}</div>
-                            </div>
-                            <div>
-                                <div class="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Location</div>
-                                <div class="font-bold text-sm text-blue-700">${item.LOCATIONCODE||'No Loc'}</div>
-                            </div>
-                        </div>
-                        ${item.DOCK_SPEC || item.DOCK_CALIPER ? `<div class="text-[11px] font-bold text-gray-600 bg-gray-50 px-2 py-1 rounded border border-gray-100 mb-2 w-max">Spec: ${item.DOCK_SPEC||'N/A'} | Caliper: ${item.DOCK_CALIPER||'N/A'}</div>` : ''}
-                        ${noteHtml}
-                        ${actionBtns}
-                    </div>
-                </div>`;
+                let stopNum = item.STOPNUMBER || '-'; let tripNum = item.TRIPNUMBER || '-'; let salesRep = item.SALESREPNAME || item.SALESREPID || '-'; let sourceStr = item.SOURCE || '-'; let noteHtml = "";
+                if(item.DOCK_NOTE && String(item.DOCK_NOTE).trim() !== "") noteHtml += `<div class="mt-2 text-[12px] text-orange-800 bg-orange-100 p-2 rounded border border-orange-200 shadow-sm whitespace-pre-wrap"><span class="font-black">DOCK NOTE:</span> ${item.DOCK_NOTE}</div>`;
+                let checkState = JSON.parse(localStorage.getItem('gnc_dock_item_' + item.UNIQUE_ID) || '{"checker":false,"inspector":false}'); let isDimmed = checkState.checker && checkState.inspector; let cardOpacity = isDimmed ? "opacity-40 grayscale" : "opacity-100"; let chkClass = checkState.checker ? "bg-[#007a4d] text-white border-[#007a4d]" : "bg-gray-50 text-gray-500 border-gray-200"; let inspClass = checkState.inspector ? "bg-[#007a4d] text-white border-[#007a4d]" : "bg-gray-50 text-gray-500 border-gray-200";
+                let actionBtns = `<div class="flex gap-2 mt-3 pt-3 border-t border-gray-100"><button class="flex-1 py-2.5 rounded-lg text-[10px] uppercase font-black border shadow-sm transition-colors ${chkClass} active:scale-95" onclick="event.stopPropagation(); toggleDockItemState('${safeUidJs}', 'checker')"><i class="ph-bold ph-check-square mr-1 text-lg align-middle"></i> Check</button><button class="flex-1 py-2.5 rounded-lg text-[10px] uppercase font-black border shadow-sm transition-colors ${inspClass} active:scale-95" onclick="event.stopPropagation(); toggleDockItemState('${safeUidJs}', 'inspector')"><i class="ph-bold ph-magnifying-glass mr-1 text-lg align-middle"></i> Inspect</button><button class="flex-1 py-2.5 rounded-lg text-[10px] uppercase font-black border border-red-200 bg-red-50 text-red-600 shadow-sm transition-colors hover:bg-red-100 active:scale-95" onclick="event.stopPropagation(); openDockItemMistakeModal('${safeUidJs}')"><i class="ph-bold ph-warning-circle mr-1 text-lg align-middle"></i> Mistake</button></div>`;
+                return `<div class="flex items-center w-full mb-3 item-row relative bg-white p-4 rounded-xl border border-gray-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${cardOpacity}" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm pointer-events-none" ${isChecked}></div><div class="flex flex-col w-full min-w-0"><div class="flex items-start justify-between w-full"><div class="flex-grow min-w-0 pr-2"><div class="font-black text-gray-800 text-[16px] leading-tight break-words mb-0.5">${item.COMMONNAME||'Unknown'}</div><div class="font-bold text-[#007a4d] text-sm mb-2">${item.CONTSIZE||'-'}</div><div class="text-[11px] font-mono text-gray-500 mb-2 flex items-center bg-gray-100 px-2 py-0.5 rounded w-max"><i class="ph-bold ph-barcode mr-1.5 text-gray-400"></i>${item.ITEMCODE||'-'}</div><div class="flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600"><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Trip: ${tripNum}</span><span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">Loc: ${item.LOCATIONCODE||'No Loc'}</span><span class="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-100">Rep: ${salesRep}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Tag: ${tagColor}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Lot: ${item.LOTCODE||'-'}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Src: ${sourceStr}</span></div>${noteHtml}</div>${thumbHtml}</div>${actionBtns}</div></div>`;
             }
 
             if(sourceView==='sales-office'){
@@ -2170,6 +1957,7 @@
             
             return `<div class="flex items-center w-full mb-2 item-row overflow-hidden" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm pointer-events-none" ${isChecked}></div><div class="inv-card ${colorClass} flex items-start justify-between flex-grow !mb-0 transition-transform active:scale-[0.99]"><div class="flex-grow min-w-0 text-[#007a4d]"><div class="flex justify-between font-bold text-sm mb-1"><span class="truncate pr-2">${item.COMMONNAME||'Unknown'} • ${item.CONTSIZE||'-'} • Loc: ${item.LOCATIONCODE||'No Loc'}</span><span class="whitespace-nowrap bg-[#007a4d]/10 px-1.5 py-0.5 rounded text-xs border border-[#007a4d]/20 h-max">Pri: ${item.PRIORITY||'-'}</span></div><div class="text-[11px] font-semibold truncate mt-0.5">Tag: ${tagColor} | Lot: ${item.LOTCODE||'-'} | PTR-Ava: ${item.PTRAVAILABLE||'0'} | s_LTS: ${item.S_LTS||'0'} | Supply: ${item.SEASONSUPPLY||'0'}</div><div class="text-[11px] font-semibold truncate mt-0.5">Item: ${item.ITEMCODE||'-'}</div></div>${thumbHtml}</div></div>`;
         }
+
         function initiateBatchAction(action) {
             if(action==='request_action'){openRequestModal();return}
             if(action==='endcap'){openEndCapModal();return}
@@ -2742,7 +2530,7 @@
             }
         }
 
-       function toggleDriveSeason(s) {
+        function toggleDriveSeason(s) {
             if(s === 'ALL'){
                 driveSelectedSeasons.clear();
                 driveSelectedSeasons.add('ALL');
@@ -2886,26 +2674,6 @@
         
         let autoSaveTimer = null;
 
-        function validateSsnForm() {
-            const btn = document.getElementById('ssn-btn-save-complete');
-            if (!btn) return;
-
-            const avNote = (document.getElementById('ssn-av-note').value || '').trim();
-            const match = (document.getElementById('ssn-match').value || '').trim();
-            const spec = (document.getElementById('ssn-spec').value || '').trim();
-            const caliperContainer = document.getElementById('ssn-container-caliper');
-            const caliper = (document.getElementById('ssn-caliper').value || '').trim();
-
-            let isValid = avNote !== '' && match !== '' && spec !== '';
-            
-            // Only require caliper if the caliper container is visible (applicable size/tree)
-            if (caliperContainer && !caliperContainer.classList.contains('hidden')) {
-                if (caliper === '') isValid = false;
-            }
-
-            btn.disabled = !isValid;
-        }
-
         function saveData(isComplete = false, prefix, isSilentAutoSave = false, specificItem = null) {
             if (autoSaveTimer) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
             let itemToSave = specificItem || activeItem; if (!itemToSave) return;
@@ -2915,7 +2683,7 @@
             
             if (isCurrentView && isComplete) { if(btnComp) btnComp.innerText = "SAVING..."; }
             
-           const executeSave = () => {
+            const executeSave = () => {
                 let wasAlreadyComplete = itemToSave.REQ_STATUS === 'Complete';
 
                 if (!specificItem) {
@@ -2924,6 +2692,11 @@
                     
                     let descEl = document.getElementById(prefix + 'sales-desc');
                     if (descEl) { let textBoxVal = descEl.value.toUpperCase(); itemToSave.SALES_NOTE = textBoxVal; if (lastView === 'tasks') itemToSave._NEW_SALES_NOTE = textBoxVal; }
+
+                    if (isComplete && isCurrentView && itemToSave.APP_TAB_ASSIGNMENT === 'season') {
+                        const noteVal = (itemToSave.SALES_NOTE || "").trim();
+                        if (!noteVal) { showToast("Required", "A Sales Description is required to complete this Season task.", true); if (btnComp) btnComp.innerText = "MARK DONE"; return; }
+                    }
 
                     if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-') { 
                         let matchEl = document.getElementById(prefix + 'match'); if(matchEl) itemToSave.MATCH = matchEl.value; 
@@ -2951,6 +2724,7 @@
                     payload.req_spec = setVal(itemToSave.REQ_SPEC); payload.req_caliper = setVal(itemToSave.REQ_CALIPER); payload.req_pic_note = setVal(itemToSave.REQ_PICK); 
                     payload.req_sales_note = setVal(itemToSave.REQ_SALES_NOTE); payload.req_comments = setVal(itemToSave.REQ_COMMENTS); 
                     payload.req_reserve = setVal(itemToSave.REQ_RESERVE); payload.av_note = setVal(itemToSave.AV_NOTE);
+                    if (isComplete) { payload.req_status = 'Complete'; itemToSave.REQ_STATUS = 'Complete'; }
                 } else if (prefix === 'dock-') { 
                     payload.dock_spec = setVal(itemToSave.DOCK_SPEC); payload.dock_caliper = setVal(itemToSave.DOCK_CALIPER); payload.dock_note = setVal(itemToSave.DOCK_NOTE); 
                 } else if (prefix === 'flyer-') {
@@ -2982,43 +2756,9 @@
                     payload.date_completed = new Date().toISOString(); 
                     if (prefix === 'flyer-') payload.flyer_completed = payload.date_completed;
                     
-                    // Force complete for Requests, regardless of which tab they clicked Mark Done from
-                    if (itemToSave.SOURCE_TABLE === 'v2_active_request') {
-                        payload.req_status = 'Complete';
-                        itemToSave.REQ_STATUS = 'Complete';
-                    }
-                    
-                    // Logic to Push to Sales Office
-                    let isSeasonNote = (itemToSave.APP_TAB_ASSIGNMENT === 'season');
-                    let shouldPushToSO = false;
-                    
+                    let soPayload = { unique_id: itemToSave.UNIQUE_ID, itemcode: itemToSave.ITEMCODE || "", commonname: itemToSave.COMMONNAME || "", contsize: itemToSave.CONTSIZE || "", locationcode: itemToSave.LOCATIONCODE || "", lotcode: itemToSave.LOTCODE || "", ptravailable: String(itemToSave.PTRAVAILABLE || ""), priority: String(itemToSave.PRIORITY || ""), sales_note: payload.sales_note || itemToSave.SALES_NOTE || itemToSave._NEW_SALES_NOTE || "", photo_link: itemToSave.NA_PHOTO_LINK || itemToSave.SAVED_PHOTO_LINK || "", completed_by: currentUser, completed_at: payload.date_completed };
                     if (prefix !== 'flyer-' && prefix !== 'req-') {
-                        shouldPushToSO = true; // Normal flow
-                    } else if (itemToSave.SOURCE_TABLE === 'v2_active_request' && isSeasonNote) {
-                        shouldPushToSO = true; // Request flow that is ALSO a Season Note
-                    }
-
-                    if (shouldPushToSO) {
-                        let masterUid = itemToSave.MASTER_ID || itemToSave.UNIQUE_ID; // Link to master item if Request
-                        let sNote = payload.sales_note || payload.req_sales_note || itemToSave.SALES_NOTE || itemToSave.REQ_SALES_NOTE || itemToSave._NEW_SALES_NOTE || "";
-                        
-                        let soPayload = { 
-                            unique_id: masterUid, 
-                            itemcode: itemToSave.ITEMCODE || "", 
-                            commonname: itemToSave.COMMONNAME || "", 
-                            contsize: itemToSave.CONTSIZE || "", 
-                            locationcode: itemToSave.LOCATIONCODE || "", 
-                            lotcode: itemToSave.LOTCODE || "", 
-                            ptravailable: String(itemToSave.PTRAVAILABLE || ""), 
-                            priority: String(itemToSave.PRIORITY || ""), 
-                            sales_note: sNote, 
-                            photo_link: itemToSave.NA_PHOTO_LINK || itemToSave.SAVED_PHOTO_LINK || itemToSave.REQ_PHOTO_LINK || "", 
-                            completed_by: currentUser, 
-                            completed_at: payload.date_completed 
-                        };
-                        
                         supabaseFetch('v2_sales_office', 'POST', soPayload).catch(e => console.log(e));
-                        
                         let cloneSO = { ...soPayload };
                         for(let key in soPayload) { cloneSO[key.toUpperCase()] = soPayload[key]; }
                         cloneSO.DOM_ID = 'so_' + cloneSO.UNIQUE_ID;
@@ -3030,8 +2770,7 @@
                     }
                 }
 
-                // If editing a request, send back to v2_active_request. Otherwise master DB.
-                const targetTable = (itemToSave.SOURCE_TABLE === 'v2_active_request') ? 'v2_active_request' : (itemToSave.SOURCE_TABLE || 'v2_master_inventory');
+                const targetTable = (prefix === 'req-') ? 'v2_active_request' : (itemToSave.SOURCE_TABLE || 'v2_master_inventory');
 
                 supabaseFetch(targetTable, 'PATCH', payload, `unique_id=eq.${encodeURIComponent(itemToSave.UNIQUE_ID)}`).then(data => {
                     if (isCurrentView && isComplete) { if(btnComp) btnComp.innerText = "MARK DONE"; }
@@ -3044,7 +2783,7 @@
                         itemToSave.DATE_COMPLETED = payload.date_completed; 
                     }
 
-                    if ((prefix === 'req-' || itemToSave.SOURCE_TABLE === 'v2_active_request') && isComplete && !wasAlreadyComplete) {
+                    if (prefix === 'req-' && isComplete && !wasAlreadyComplete) {
                         let folderItems = requestsInventory.filter(i => i.REQUEST_FOLDER === itemToSave.REQUEST_FOLDER);
                         let allComplete = folderItems.every(i => i.REQ_STATUS === 'Complete' || i.UNIQUE_ID === itemToSave.UNIQUE_ID);
                         if (allComplete) { sendEmailNotification('request_complete', itemToSave.REQUEST_FOLDER, itemToSave.REQUESTED_BY, itemToSave.REQ_CUSTOMER, folderItems.length); }
@@ -3053,6 +2792,7 @@
             };
             if (isSilentAutoSave && !isComplete && !specificItem) { autoSaveTimer = setTimeout(() => { executeSave(); }, 1000); } else { executeSave(); }
         }
+
         function backupLocalItem(item) {
             if (!item) return;
             let pendingEdits = JSON.parse(localStorage.getItem('gnc_pending_edits') || '{}');
@@ -3091,508 +2831,104 @@
             document.getElementById(prefix + 'av-note').value = note;
             document.getElementById(prefix + 'av-dropdown-list').classList.add('hidden');
             saveData(false, prefix, true);
-            if(typeof validateSsnForm === 'function') validateSsnForm();
         }
 
-              // --- PULL TO REFRESH LOGIC ---
-        const scrollArea = document.getElementById('main-scroll-area');
-        const ptrContainer = document.getElementById('pull-to-refresh');
-        const ptrIcon = document.getElementById('ptr-icon');
-        const ptrText = document.getElementById('ptr-text');
-
-        let ptrStartY = 0;
-        let ptrCurrentY = 0;
-        let isPulling = false;
-        const ptrThreshold = 75; // How many pixels they have to pull down
-
-        if(scrollArea && ptrContainer) {
-            scrollArea.addEventListener('touchstart', (e) => {
-                // Only allow pull if they are at the very top of the page
-                if (scrollArea.scrollTop <= 5) { 
-                    ptrStartY = e.touches[0].clientY;
-                    isPulling = true;
-                    ptrContainer.style.transition = 'none'; // Snap to finger instantly
-                }
-            }, { passive: true });
-
-            scrollArea.addEventListener('touchmove', (e) => {
-                if (!isPulling) return;
-                ptrCurrentY = e.touches[0].clientY;
-                const pullDistance = ptrCurrentY - ptrStartY;
-
-                if (pullDistance > 0 && scrollArea.scrollTop <= 5) {
-                    // Multiplier 0.5 adds physical "resistance" so it feels native
-                    let visualHeight = Math.min(pullDistance * 0.5, ptrThreshold + 25);
-                    ptrContainer.style.height = `${visualHeight}px`; 
-                    
-                    if (pullDistance * 0.5 >= ptrThreshold) {
-                        ptrText.innerText = "Release to sync";
-                        ptrIcon.style.transform = "rotate(180deg)";
-                    } else {
-                        ptrText.innerText = "Pull to sync";
-                        ptrIcon.style.transform = "rotate(0deg)";
-                    }
-                }
-            }, { passive: true });
-
-            scrollArea.addEventListener('touchend', () => {
-                if (!isPulling) return;
-                isPulling = false;
-                
-                const pullDistance = ptrCurrentY - ptrStartY;
-                ptrContainer.style.transition = 'height 0.3s ease'; // Smooth snap back
-                ptrIcon.style.transform = "rotate(0deg)";
-
-                if (pullDistance * 0.5 >= ptrThreshold && scrollArea.scrollTop <= 5) {
-                    // Trigger the Sync
-                    ptrContainer.style.height = '50px';
-                    ptrText.innerText = "Syncing...";
-                    ptrIcon.classList.remove('ph-arrow-down');
-                    ptrIcon.classList.add('ph-spinner', 'animate-spin');
-                    
-                    fetchBackgroundData();
-                    
-                    // Hide it after a short delay so they know it worked
-                    setTimeout(() => {
-                        closePtr();
-                    }, 1500);
-                } else {
-                    closePtr();
-                }
-            });
-        }
-
-        function closePtr() {
-            if(!ptrContainer) return;
-            ptrContainer.style.height = '0px';
-            setTimeout(() => {
-                ptrIcon.classList.add('ph-arrow-down');
-                ptrIcon.classList.remove('ph-spinner', 'animate-spin');
-                ptrText.innerText = "Pull to sync";
-            }, 300);
-        }
-
-        // --- PHOTO UPLOAD LOGIC ---
-       async function handlePhotoUpload(input, prefix) {
+        async function handlePhotoUpload(input, prefix) {
             if (!input.files || input.files.length === 0) return;
+            const file = input.files[0];
             
-            const fileCount = input.files.length;
-            showToast('Processing', `Preparing ${fileCount} photo(s)...`, false);
-
-            // Loop through all selected files so you can upload multiple at once
-            for (let i = 0; i < fileCount; i++) {
-                const file = input.files[i];
-                
-                if (!file.type.startsWith('image/')) {
-                    showToast('Error', `File ${i + 1} is not an image.`, true);
-                    continue;
-                }
-
-                // Await each upload so they process smoothly and don't overwhelm the device
-                await new Promise((resolve) => {
-                    const reader = new FileReader();
-                    reader.readAsDataURL(file);
-                    reader.onload = function(event) {
-                        const img = new Image();
-                        img.src = event.target.result;
-                        img.onload = function() {
-                            const canvas = document.createElement('canvas');
-                            const MAX_WIDTH = 1080;
-                            let scaleSize = 1;
-                            
-                            if (img.width > MAX_WIDTH) {
-                                scaleSize = MAX_WIDTH / img.width;
-                            }
-                            
-                            canvas.width = img.width * scaleSize;
-                            canvas.height = img.height * scaleSize;
-
-                            const ctx = canvas.getContext('2d');
-                            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-                            canvas.toBlob(async (blob) => {
-                                showToast('Uploading', `Sending photo ${i + 1} of ${fileCount}...`, false);
-
-                                let bucketName = 'drive_mode_photos'; 
-                                if (prefix === 'ssn-') bucketName = 'season_sales_notes_photos';
-                                else if (prefix === 'lsn-') bucketName = 'location_sales_notes_photos';
-                                else if (prefix === 'req-') bucketName = 'request_photos';
-                                else if (prefix === 'dock-') bucketName = 'dock_photos';
-
-                                let dateStr = new Date().toISOString().split('T')[0];
-                                let cName = String(activeItem.COMMONNAME || 'Unknown').replace(/[\/\\?%*:|"<>]/g, '-');
-                                let cSize = String(activeItem.CONTSIZE || 'NoSize').replace(/[\/\\?%*:|"<>]/g, '-');
-                                let cLot = String(activeItem.LOTCODE || 'NoLot').replace(/[\/\\?%*:|"<>]/g, '-');
-                                let cLoc = String(activeItem.LOCATIONCODE || 'NoLoc').replace(/[\/\\?%*:|"<>]/g, '-');
-                                
-                                // Figure out how many photos already exist for this row to generate the hidden index number
-                                let existingPhotos = [];
-                                if (prefix === 'req-') existingPhotos = (activeItem.REQ_PHOTO_LINK || "").split(',').filter(Boolean);
-                                else if (prefix === 'dock-') existingPhotos = (activeItem.DOCK_PHOTO_LINK || "").split(',').filter(Boolean);
-                                else if (prefix === 'flyer-') existingPhotos = (activeItem.FLYER_PHOTO_LINK || "").split(',').filter(Boolean);
-                                else existingPhotos = (activeItem.SAVED_PHOTO_LINK || "").split(',').filter(Boolean);
-                                
-                                let photoIndex = existingPhotos.length + 1; 
-                                
-                                // We add both the photoIndex AND the loop integer (i) to guarantee absolute uniqueness 
-                                let customFileName = `${cName}-${cSize}-${cLot}-${cLoc}-Photo${photoIndex}-${Date.now()}_${i}.jpg`;
-                                let filePath = `${dateStr}/${customFileName}`;
-
-                                try {
-                                    const uploadUrl = `${SUPABASE_URL}/storage/v1/object/${bucketName}/${filePath}`;
-                                    const uploadResponse = await fetch(uploadUrl, {
-                                        method: 'POST',
-                                        headers: {
-                                            'Authorization': 'Bearer ' + SUPABASE_KEY,
-                                            'apikey': SUPABASE_KEY,
-                                            'Content-Type': 'image/jpeg'
-                                        },
-                                        body: blob
-                                    });
-
-                                    if (!uploadResponse.ok) {
-                                        const errText = await uploadResponse.text();
-                                        throw new Error(errText || 'Upload failed');
-                                    }
-
-                                    let url = `${SUPABASE_URL}/storage/v1/object/public/${bucketName}/${filePath}`;
-
-                                    if (activeItem) {
-                                        // Append the new URL to the existing comma-separated string
-                                        if (prefix === 'req-') {
-                                            activeItem.REQ_PHOTO_LINK = activeItem.REQ_PHOTO_LINK ? activeItem.REQ_PHOTO_LINK + ',' + url : url;
-                                        } else if (prefix === 'dock-') {
-                                            activeItem.DOCK_PHOTO_LINK = activeItem.DOCK_PHOTO_LINK ? activeItem.DOCK_PHOTO_LINK + ',' + url : url;
-                                        } else if (prefix === 'flyer-') {
-                                            activeItem.FLYER_PHOTO_LINK = activeItem.FLYER_PHOTO_LINK ? activeItem.FLYER_PHOTO_LINK + ',' + url : url;
-                                        } else {
-                                            activeItem.SAVED_PHOTO_LINK = activeItem.SAVED_PHOTO_LINK ? activeItem.SAVED_PHOTO_LINK + ',' + url : url;
-                                        }
-                                        saveData(false, prefix, true); 
-                                        renderSavedPhotos(); 
-                                    }
-                                    resolve();
-                                } catch (err) {
-                                    showToast('Error', `Upload failed for photo ${i + 1}: ` + err.message, true);
-                                    resolve();
-                                }
-                            }, 'image/jpeg', 0.8);
-                        };
-                        img.onerror = () => resolve();
-                    };
-                    reader.onerror = () => resolve();
-                });
-            }
-            
-            showToast('Success', 'Photo(s) uploaded successfully!');
-            input.value = ""; // Clear input so the exact same files can be selected again if needed
-        }
-
-        // --- CHAT SYSTEM LOGIC ---
-        // UPDATE THESE TO MATCH YOUR EXACT SUPABASE SETUP
-        const CHAT_ROOMS_TABLE = 'v2_chat_rooms'; 
-        const CHAT_PARTICIPANTS_TABLE = 'v2_chat_participants'; 
-        const CHAT_MESSAGES_TABLE = 'v2_chat_messages';
-        
-        let activeChatRoomId = null;
-        let chatPollInterval = null;
-        let userChatList = [];
-        let selectedUsersForNewChat = new Set();
-
-        async function loadChatInbox() {
-            showToast("Loading", "Fetching messages...", false);
-            try {
-                // 1. Get all rooms the current user is in
-                const myParticipants = await supabaseFetch(CHAT_PARTICIPANTS_TABLE, 'GET', null, `username=eq.${encodeURIComponent(currentUser)}`);
-                if (!myParticipants || myParticipants.length === 0) {
-                    renderChatInbox([]);
-                    return;
-                }
-                
-                const roomIds = myParticipants.map(p => p.room_id);
-                const roomIdsString = `(${roomIds.join(',')})`;
-
-                // 2. Fetch the room details
-                const rooms = await supabaseFetch(CHAT_ROOMS_TABLE, 'GET', null, `id=in.${roomIdsString}`);
-                
-                // 3. Fetch the latest message for each room to show in the preview
-                const latestMessages = await supabaseFetch(CHAT_MESSAGES_TABLE, 'GET', null, `room_id=in.${roomIdsString}&order=created_at.desc`);
-
-                // 4. Fetch all participants so we can name 1-on-1 chats properly
-                const allParticipants = await supabaseFetch(CHAT_PARTICIPANTS_TABLE, 'GET', null, `room_id=in.${roomIdsString}`);
-
-                userChatList = rooms.map(room => {
-                    let roomParts = allParticipants.filter(p => p.room_id === room.id).map(p => p.username);
-                    let otherUsers = roomParts.filter(u => u.toLowerCase() !== currentUser.toLowerCase());
-                    
-                    // If it's a direct message, name the room after the other person
-                    let displayTitle = room.name;
-                    if (room.type === 'direct' || !displayTitle) {
-                        displayTitle = otherUsers.join(', ') || 'Just You';
-                    }
-
-                    let roomMsgs = latestMessages.filter(m => m.room_id === room.id);
-                    let latestMsg = roomMsgs.length > 0 ? roomMsgs[0] : null;
-
-                    return {
-                        id: room.id,
-                        title: displayTitle.toUpperCase(),
-                        latestMessage: latestMsg ? latestMsg.message : 'No messages yet.',
-                        timestamp: latestMsg ? new Date(latestMsg.created_at).getTime() : new Date(room.created_at).getTime(),
-                        participants: roomParts
-                    };
-                });
-
-                // Sort by most recently active
-                userChatList.sort((a, b) => b.timestamp - a.timestamp);
-                renderChatInbox(userChatList);
-
-            } catch (err) {
-                showToast("Error", "Could not load chats.", true);
-            }
-        }
-
-        function renderChatInbox(chats) {
-            const container = document.getElementById('chat-inbox-list');
-            if (chats.length === 0) {
-                container.innerHTML = `<div class="p-8 text-center text-gray-400 font-bold">No conversations yet.<br><span class="text-xs font-normal">Tap the + button to start one!</span></div>`;
+            if (!file.type.startsWith('image/')) {
+                showToast('Error', 'Please select an image file.', true);
                 return;
             }
 
-            container.innerHTML = chats.map(chat => {
-                let timeStr = new Date(chat.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                return `
-                    <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm mb-3 cursor-pointer active:bg-gray-50 active:scale-[0.99] transition-all" onclick="openChatRoom('${chat.id}', '${esc(chat.title)}')">
-                        <div class="flex justify-between items-start mb-1">
-                            <h3 class="font-black text-gray-800 text-[16px] truncate pr-2">${chat.title}</h3>
-                            <span class="text-[10px] text-gray-400 font-bold whitespace-nowrap mt-1">${timeStr}</span>
-                        </div>
-                        <p class="text-sm text-gray-500 truncate font-medium">${chat.latestMessage}</p>
-                    </div>
-                `;
-            }).join('');
-        }
+            showToast('Processing', 'Compressing image...', false);
 
-        function filterChatInbox() {
-            const term = document.getElementById('chat-inbox-search').value.toLowerCase();
-            if(!term) { renderChatInbox(userChatList); return; }
-            let filtered = userChatList.filter(c => c.title.toLowerCase().includes(term));
-            renderChatInbox(filtered);
-        }
-
-        function openNewChatModal() {
-            selectedUsersForNewChat.clear();
-            document.getElementById('new-chat-search').value = "";
-            document.getElementById('new-chat-modal').classList.remove('hidden');
-            renderNewChatUserList();
-        }
-
-        function renderNewChatUserList() {
-            const term = document.getElementById('new-chat-search').value.toLowerCase();
-            const container = document.getElementById('new-chat-user-list');
-            
-            // This pulls from your existing salesRepList and team members
-            let allUsers = ["Dylan", "Kayla", "Morgan", ...salesRepList];
-            let filtered = allUsers.filter(u => u.toLowerCase() !== currentUser.toLowerCase() && u.toLowerCase().includes(term));
-            
-            container.innerHTML = filtered.map(u => {
-                let isSelected = selectedUsersForNewChat.has(u);
-                let bgCls = isSelected ? 'bg-green-100 border-green-300' : 'bg-white border-transparent hover:bg-gray-50';
-                let iconCls = isSelected ? 'text-green-600 ph-check-circle' : 'text-gray-300 ph-circle';
-                return `
-                    <div class="flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors ${bgCls}" onclick="toggleNewChatUser('${esc(u)}')">
-                        <span class="font-bold text-gray-700">${u}</span>
-                        <i class="ph-fill ${iconCls} text-xl"></i>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        function filterNewChatUsers() { requestAnimationFrame(renderNewChatUserList); }
-
-        function toggleNewChatUser(username) {
-            if(selectedUsersForNewChat.has(username)) selectedUsersForNewChat.delete(username);
-            else selectedUsersForNewChat.add(username);
-            renderNewChatUserList();
-        }
-
-        async function startSelectedChat() {
-            if(selectedUsersForNewChat.size === 0) {
-                showToast("Required", "Select at least one person.", true); return;
-            }
-            
-            let participants = Array.from(selectedUsersForNewChat);
-            participants.push(currentUser); // Add self to the room
-            let isGroup = participants.length > 2;
-            let roomName = isGroup ? prompt("Enter a name for this group chat:") : '';
-            
-            if(isGroup && !roomName) return; // User cancelled group name prompt
-
-            document.getElementById('new-chat-modal').classList.add('hidden');
-            showToast("Setting up...", "Creating chat room...", false);
-
-            try {
-                // If it's a 1-on-1, check if room already exists to prevent duplicates
-                if (!isGroup) {
-                    let otherUser = Array.from(selectedUsersForNewChat)[0];
-                    let existingRoom = userChatList.find(c => !c.isGroup && c.participants.length === 2 && c.participants.includes(otherUser.toLowerCase()));
-                    if (existingRoom) {
-                        openChatRoom(existingRoom.id, existingRoom.title);
-                        return;
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = function(event) {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = async function() {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 1080;
+                    let scaleSize = 1;
+                    
+                    if (img.width > MAX_WIDTH) {
+                        scaleSize = MAX_WIDTH / img.width;
                     }
-                }
+                    
+                    canvas.width = img.width * scaleSize;
+                    canvas.height = img.height * scaleSize;
 
-                // Create new room
-                let newRoomId = 'chat_' + Date.now() + Math.random().toString(36).substring(2,7);
-                await supabaseFetch(CHAT_ROOMS_TABLE, 'POST', {
-                    id: newRoomId,
-                    type: isGroup ? 'group' : 'direct',
-                    name: roomName,
-                    created_at: new Date().toISOString()
-                });
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-                // Add participants
-                let participantPayloads = participants.map(p => ({
-                    room_id: newRoomId,
-                    username: p.toLowerCase(),
-                    joined_at: new Date().toISOString()
-                }));
-                await supabaseFetch(CHAT_PARTICIPANTS_TABLE, 'POST', participantPayloads);
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                    const base64Data = dataUrl.split(',')[1];
 
-                // Open the new room
-                let displayTitle = isGroup ? roomName : Array.from(selectedUsersForNewChat)[0];
-                openChatRoom(newRoomId, displayTitle.toUpperCase());
-                
-            } catch(e) {
-                showToast("Error", "Could not create chat.", true);
-            }
-        }
+                    showToast('Uploading', 'Sending photo to server...', false);
 
-        function openChatRoom(roomId, title) {
-            activeChatRoomId = roomId;
-            document.getElementById('chat-room-title').innerText = title;
-            document.getElementById('view-chat-room').classList.remove('hidden');
-            document.getElementById('chat-messages-container').innerHTML = `<div class="flex justify-center py-10"><div class="spinner border-[#007a4d] border-t-transparent"></div></div>`;
-            
-            fetchChatMessages();
-            
-            // Poll for new messages every 3 seconds while room is open
-            if(chatPollInterval) clearInterval(chatPollInterval);
-            chatPollInterval = setInterval(fetchChatMessages, 3000);
-        }
+                    let context = 'drive';
+                    if (prefix === 'ssn-') context = 'season';
+                    else if (prefix === 'lsn-') context = 'location';
+                    else if (prefix === 'req-') context = 'request';
+                    else if (prefix === 'dock-') context = 'docks';
 
-        function closeChatRoom() {
-            activeChatRoomId = null;
-            document.getElementById('view-chat-room').classList.add('hidden');
-            if(chatPollInterval) clearInterval(chatPollInterval);
-            loadChatInbox(); // Refresh inbox to show latest messages
-        }
+                    let dockNum = pendingDockNum || selectedDockNum || "0";
 
-        async function fetchChatMessages() {
-            if(!activeChatRoomId) return;
-            try {
-                const messages = await supabaseFetch(CHAT_MESSAGES_TABLE, 'GET', null, `room_id=eq.${activeChatRoomId}&order=created_at.asc`);
-                const container = document.getElementById('chat-messages-container');
-                
-                // Only auto-scroll to bottom if we are already near the bottom, or if it's the first load
-                let isAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 50;
-                let isFirstLoad = container.innerHTML.includes('spinner');
+                    let dateStr = new Date().toISOString().split('T')[0];
+                    let cName = String(activeItem.COMMONNAME || 'Unknown').replace(/[\/\\?%*:|"<>]/g, '-');
+                    let cSize = String(activeItem.CONTSIZE || 'NoSize').replace(/[\/\\?%*:|"<>]/g, '-');
+                    let cLot = String(activeItem.LOTCODE || 'NoLot').replace(/[\/\\?%*:|"<>]/g, '-');
+                    let cLoc = String(activeItem.LOCATIONCODE || 'NoLoc').replace(/[\/\\?%*:|"<>]/g, '-');
+                    let customFileName = `${cName}-${cSize}-${cLot}-${cLoc}-${dateStr}.jpg`;
 
-                if (messages.length === 0) {
-                    container.innerHTML = `<div class="text-center text-gray-400 text-sm mt-10">No messages yet. Say hi!</div>`;
-                    return;
-                }
+                    const payload = {
+                        type: 'image',
+                        image: base64Data,
+                        filename: customFileName,
+                        mimeType: 'image/jpeg',
+                        folderContext: context,
+                        dockNum: dockNum
+                    };
 
-                let currentDate = '';
-                let html = '';
+                    try {
+                        const response = await fetch(GOOGLE_SCRIPT_URL, {
+                            method: 'POST',
+                            body: JSON.stringify(payload)
+                        });
+                        const result = await response.json();
 
-                messages.forEach(msg => {
-                    let isMe = msg.sender.toLowerCase() === currentUser.toLowerCase();
-                    let msgDate = new Date(msg.created_at);
-                    let dateStr = msgDate.toLocaleDateString();
-                    let timeStr = msgDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-
-                    // Add a date divider if the day changes
-                    if (dateStr !== currentDate) {
-                        html += `<div class="flex justify-center my-4"><span class="bg-gray-200 text-gray-500 text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">${dateStr}</span></div>`;
-                        currentDate = dateStr;
+                        if (result.status === 'success') {
+                            showToast('Success', 'Photo uploaded successfully!');
+                            if (activeItem) {
+                                let url = result.url;
+                                if (prefix === 'req-') {
+                                    activeItem.REQ_PHOTO_LINK = activeItem.REQ_PHOTO_LINK ? activeItem.REQ_PHOTO_LINK + ',' + url : url;
+                                } else if (prefix === 'dock-') {
+                                    activeItem.DOCK_PHOTO_LINK = activeItem.DOCK_PHOTO_LINK ? activeItem.DOCK_PHOTO_LINK + ',' + url : url;
+                                } else if (prefix === 'flyer-') {
+                                    activeItem.FLYER_PHOTO_LINK = activeItem.FLYER_PHOTO_LINK ? activeItem.FLYER_PHOTO_LINK + ',' + url : url;
+                                } else {
+                                    activeItem.SAVED_PHOTO_LINK = activeItem.SAVED_PHOTO_LINK ? activeItem.SAVED_PHOTO_LINK + ',' + url : url;
+                                }
+                                saveData(false, prefix, true);
+                                renderSavedPhotos();
+                            }
+                        } else {
+                            showToast('Error', 'Upload failed: ' + result.message, true);
+                        }
+                    } catch (err) {
+                        showToast('Error', 'Network error during upload.', true);
+                    } finally {
+                        input.value = "";
                     }
-
-                    if (isMe) {
-                        html += `
-                            <div class="flex flex-col items-end w-full">
-                                <div class="bg-[#007a4d] text-white px-4 py-2.5 rounded-2xl rounded-br-none shadow-sm max-w-[80%] break-words text-[15px] leading-snug">
-                                    ${msg.message}
-                                </div>
-                                <span class="text-[9px] text-gray-400 font-bold mt-1 mr-1">${timeStr}</span>
-                            </div>
-                        `;
-                    } else {
-                        html += `
-                            <div class="flex flex-col items-start w-full">
-                                <span class="text-[10px] font-bold text-gray-500 ml-2 mb-0.5 uppercase tracking-wide">${msg.sender}</span>
-                                <div class="bg-white border border-gray-200 text-gray-800 px-4 py-2.5 rounded-2xl rounded-bl-none shadow-sm max-w-[80%] break-words text-[15px] leading-snug">
-                                    ${msg.message}
-                                </div>
-                                <span class="text-[9px] text-gray-400 font-bold mt-1 ml-1">${timeStr}</span>
-                            </div>
-                        `;
-                    }
-                });
-
-                container.innerHTML = html;
-
-                if (isFirstLoad || isAtBottom) {
-                    container.scrollTop = container.scrollHeight;
-                }
-
-            } catch(e) {
-                console.error("Failed to fetch messages");
-            }
-        }
-
-        async function sendChatMessage() {
-            const input = document.getElementById('chat-message-input');
-            const text = input.value.trim();
-            if(!text || !activeChatRoomId) return;
-
-            input.value = ''; // Clear instantly for good UX
-            
-            // Optimistically add the message to the UI
-            const container = document.getElementById('chat-messages-container');
-            let timeStr = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-            container.innerHTML += `
-                <div class="flex flex-col items-end w-full opacity-70" id="optimistic-msg">
-                    <div class="bg-[#007a4d] text-white px-4 py-2.5 rounded-2xl rounded-br-none shadow-sm max-w-[80%] break-words text-[15px] leading-snug">
-                        ${text}
-                    </div>
-                    <span class="text-[9px] text-gray-400 font-bold mt-1 mr-1">Sending...</span>
-                </div>
-            `;
-            container.scrollTop = container.scrollHeight;
-
-            try {
-                await supabaseFetch(CHAT_MESSAGES_TABLE, 'POST', {
-                    room_id: activeChatRoomId,
-                    sender: currentUser,
-                    message: text,
-                    created_at: new Date().toISOString()
-                });
-                fetchChatMessages(); // Hard refresh to get confirmed message
-            } catch(e) {
-                showToast("Error", "Message failed to send.", true);
-                let optMsg = document.getElementById('optimistic-msg');
-                if(optMsg) optMsg.remove();
-                input.value = text; // Put text back so they don't lose it
-            }
-        }
-
-        function showChatParticipants() {
-            let room = userChatList.find(r => r.id === activeChatRoomId);
-            if(room) {
-                alert(`Chat Participants:\n\n${room.participants.join('\n').toUpperCase()}`);
-            }
+                };
+            };
         }
     </script>
 </body>
 </html>
+
+
