@@ -1213,28 +1213,27 @@
         }
 
         function switchView(viewId) { 
-            ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-detail','view-docks','view-request','view-reserves','view-av', 'view-hours'].forEach(id=>{
-                const el=document.getElementById(id);
-                if(el)el.classList.add('hidden');
-            }); 
-            document.getElementById('view-'+viewId).classList.remove('hidden'); 
-            requestAnimationFrame(()=>{
-                setTimeout(()=>{
-                    if(viewId==='drive')resetDriveView();
-                    if(viewId==='tasks'){ if(safeRole==='ADMIN'&&!taskViewTargetUser)renderTeamSelector(); else renderTasks(); }
-                    if(viewId==='reports')resetReportsView();
-                    if(viewId==='review')resetReviewView();
-                    if(viewId==='request'){requestViewLevel=0;renderRequest();}
-                    if(viewId==='reserves')resetReservesView();
-                    if(viewId==='sales-office')renderSalesOffice();
-                    if(viewId==='low-stock')resetLowStockView();
-                    if(viewId==='docks')resetDockView();
-                    if(viewId==='av')resetAVView();
-                    if(viewId==='hours')resetHoursView();
-                },0)
-            }); 
-        }
-
+    ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-detail','view-docks','view-request','view-reserves','view-av', 'view-hours', 'view-chat-inbox'].forEach(id=>{
+        const el=document.getElementById(id);
+        if(el)el.classList.add('hidden');
+    }); 
+    document.getElementById('view-'+viewId).classList.remove('hidden'); 
+    requestAnimationFrame(()=>{
+        setTimeout(()=>{
+            if(viewId==='drive')resetDriveView();
+            if(viewId==='tasks'){ if(safeRole==='ADMIN'&&!taskViewTargetUser)renderTeamSelector(); else renderTasks(); }
+            if(viewId==='reports')resetReportsView();
+            if(viewId==='review')resetReviewView();
+            if(viewId==='request'){requestViewLevel=0;renderRequest();}
+            if(viewId==='reserves')resetReservesView();
+            if(viewId==='sales-office')renderSalesOffice();
+            if(viewId==='low-stock')resetLowStockView();
+            if(viewId==='docks')resetDockView();
+            if(viewId==='av')resetAVView();
+            if(viewId==='hours')resetHoursView();
+        },0)
+    }); 
+}
         function reRenderCurrentView() { 
             if(!document.getElementById('view-drive').classList.contains('hidden'))renderDrive(); 
             if(!document.getElementById('view-tasks').classList.contains('hidden'))renderTasks(); 
@@ -1760,16 +1759,17 @@ function selectAvResName(name) { selectedAvResName=name; avResLevel=1; renderAV(
         }
 
         function openDetail(uid, sourceView) {
-            lastView = sourceView;
-            activeItem = fullInventory.find(i=>i.UNIQUE_ID===uid) || lowStockInventory.find(i=>i.UNIQUE_ID===uid) || reservesInventory.find(i=>i.UNIQUE_ID===uid) || requestsInventory.find(i=>i.UNIQUE_ID===uid) || socInventory.find(i=>i.UNIQUE_ID===uid);
-            if(!activeItem) return;
+    lastView = sourceView;
+    activeItem = fullInventory.find(i=>i.UNIQUE_ID===uid) || lowStockInventory.find(i=>i.UNIQUE_ID===uid) || reservesInventory.find(i=>i.UNIQUE_ID===uid) || requestsInventory.find(i=>i.UNIQUE_ID===uid) || socInventory.find(i=>i.UNIQUE_ID===uid);
+    if(!activeItem) return;
 
-            ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-docks','view-request','view-reserves','view-av', 'view-hours'].forEach(id=>{
-                const el = document.getElementById(id);
-                if(el) el.classList.add('hidden');
-            });
-            document.getElementById('view-detail').classList.remove('hidden');
+    ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-docks','view-request','view-reserves','view-av', 'view-hours', 'view-chat-inbox'].forEach(id=>{
+        const el = document.getElementById(id);
+        if(el) el.classList.add('hidden');
+    });
+    document.getElementById('view-detail').classList.remove('hidden');
 
+    // ... [keep the rest of your openDetail code exactly the same] ...
             document.getElementById('det-common').innerText = activeItem.COMMONNAME || '--';
             document.getElementById('det-size').innerText = activeItem.CONTSIZE || '--';
             document.getElementById('det-extra-info').innerHTML = `Loc: ${activeItem.LOCATIONCODE||'No Loc'} &bull; PTR: ${activeItem.PTRAVAILABLE||0} &bull; s_LTS: ${activeItem.S_LTS||0}`;
