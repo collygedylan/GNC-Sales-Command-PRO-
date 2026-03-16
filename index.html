@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-    <title>PH</title>
+    <title>GNC Park Hill</title>
     <meta name="theme-color" content="#007a4d">
     <link rel="manifest" href="manifest.json">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="application-name" content="PH">
+    <meta name="application-name" content="GNC Park Hill">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -39,7 +39,7 @@
     <div id="view-login">
         <div class="login-card">
             <div class="flex flex-col items-center mb-8 w-full relative">
-                <div class="text-2xl text-[#007a4d] font-black tracking-tighter mb-1 text-center leading-none">PH</div>                <div class="flex flex-col items-center gap-0.5 mt-5">
+                <div class="text-2xl text-[#007a4d] font-black tracking-tighter mb-1 text-center leading-none">GNC Park Hill</div>                <div class="flex flex-col items-center gap-0.5 mt-5">
                     <span class="text-[9px] font-bold text-gray-400 uppercase tracking-[0.3em]">Powered By</span>
                     <span class="text-[17px] font-black text-gray-800 tracking-[0.2em] uppercase border-b-[3px] border-[#007a4d] pb-0.5">Ag Metric</span>
                 </div>
@@ -184,7 +184,7 @@
                 <i class="ph-bold ph-list menu-btn text-2xl cursor-pointer" onclick="toggleMenu()"></i>
                 <div class="flex flex-col">
                     <div class="font-bold text-lg leading-tight"><span id="header-user">User</span></div>
-                    <div class="text-[10px] opacity-80 leading-tight">PH</div>
+                    <div class="text-[10px] opacity-80 leading-tight">GNC Park Hill</div>
                 </div>
             </div>
         </header>
@@ -267,7 +267,7 @@
                         <p class="text-green-100 text-[10px] font-bold mb-5 uppercase tracking-[0.2em] z-10 relative">Dashboard</p>
                         
                         <div class="flex flex-col items-center pt-4 border-t border-white/20 w-full mt-1 z-10 relative">
-                            <div class="text-[14px] font-black tracking-wide text-white uppercase drop-shadow-sm mb-3 text-center leading-tight">PH</div>
+                            <div class="text-[14px] font-black tracking-wide text-white uppercase drop-shadow-sm mb-3 text-center leading-tight">GNC Park Hill</div>
                             <span class="text-[8px] font-bold text-white/70 uppercase tracking-[0.3em] mb-1">Powered By</span>
                             <div class="text-[12px] font-black tracking-[0.2em] text-white uppercase drop-shadow-sm">Ag Metric</div>
                         </div>
@@ -720,7 +720,7 @@
         async function promptToEnableBiometrics(user,pin) { 
             if(!confirm("Would you like to enable Fingerprint/FaceID login for future use?"))return; 
             try{ 
-                const publicKey={challenge:new Uint8Array(32),rp:{name:"PH"},user:{id:new Uint8Array(16),name:user,displayName:user},pubKeyCredParams:[{type:"public-key",alg:-7}],authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required"},timeout:60000}; 
+                const publicKey={challenge:new Uint8Array(32),rp:{name:"GNC Park Hill"},user:{id:new Uint8Array(16),name:user,displayName:user},pubKeyCredParams:[{type:"public-key",alg:-7}],authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required"},timeout:60000}; 
                 await navigator.credentials.create({publicKey}); 
                 localStorage.setItem('gnc_bio_enabled','true'); 
                 localStorage.setItem('gnc_bio_user',user); 
@@ -2569,7 +2569,10 @@ function selectAvResName(name) { selectedAvResName=name; avResLevel=1; renderAV(
             document.querySelectorAll('.item-caliper-input').forEach(input=>{let uid=input.getAttribute('data-uid');if(!itemsData[uid])itemsData[uid]={};itemsData[uid].caliper=input.value.trim()});
             document.querySelectorAll('.item-est-ship-input').forEach(input=>{let uid=input.getAttribute('data-uid');if(!itemsData[uid])itemsData[uid]={};itemsData[uid].estShip=input.value.trim()});
             document.querySelectorAll('.item-reserve-input').forEach(input=>{let uid=input.getAttribute('data-uid');if(!itemsData[uid])itemsData[uid]={};itemsData[uid].reserve=input.value.trim()});
-           function finalizeRequestAction(existingFolderId,existingCust,itemsDataObj) {
+            finalizeRequestAction(tempReqFolder,tempReqCust,itemsData)
+        }
+
+        function finalizeRequestAction(existingFolderId,existingCust,itemsDataObj) {
             let cust=existingCust;let folderId=existingFolderId;
             if(!existingFolderId){
                 const dateStr=new Date().toISOString().split('T')[0];
@@ -2617,7 +2620,6 @@ function selectAvResName(name) { selectedAvResName=name; avResLevel=1; renderAV(
                     let clone=JSON.parse(JSON.stringify(item));
                     clone.UNIQUE_ID=newReqId;
                     clone.DOM_ID='req_'+newReqId;
-                    clone.SOURCE_TABLE = 'v2_active_request'; // <--- FIX IS HERE
                     clone.REQUESTED_BY=tempSelectedReqRep;
                     clone.REQUEST_FOLDER=folderId;
                     clone.REQ_CUSTOMER=cust;
@@ -2641,6 +2643,7 @@ function selectAvResName(name) { selectedAvResName=name; avResLevel=1; renderAV(
                 sendEmailNotification('new_request', folderId, tempSelectedReqRep, cust, insertPayloads.length);
             }).catch(err=>showToast("Error","Network error.",true))
         }
+
         function processTabSelection(tab) {
             pendingTabType=tab;
             document.getElementById('tab-select-modal').classList.add('hidden');
@@ -3101,7 +3104,6 @@ function selectAvResName(name) { selectedAvResName=name; avResLevel=1; renderAV(
                     if (itemToSave.SOURCE_TABLE === 'v2_active_request') {
                         payload.req_status = 'Complete';
                         itemToSave.REQ_STATUS = 'Complete';
-                        delete payload.date_completed; // <--- FIX IS HERE
                     }
                     
                     // Logic to Push to Sales Office
