@@ -3125,15 +3125,9 @@ let specCaliperHtml = "";
                         itemToSave.REQ_STATUS = 'Complete';
                     }
                     
-                    // Logic to Push to Sales Office
-                    let isSeasonNote = (itemToSave.APP_TAB_ASSIGNMENT === 'season');
-                    let shouldPushToSO = false;
-                    
-                    if (prefix !== 'flyer-' && prefix !== 'req-') {
-                        shouldPushToSO = true; // Normal flow
-                    } else if (itemToSave.SOURCE_TABLE === 'v2_active_request' && isSeasonNote) {
-                        shouldPushToSO = true; // Request flow that is ALSO a Season Note
-                    }
+// Logic to Push to Sales Office
+// ONLY Season Sales Notes go to the Sales Office. Period.
+let shouldPushToSO = (prefix === 'ssn-');                    }
 
                     if (shouldPushToSO) {
                         let masterUid = itemToSave.MASTER_ID || itemToSave.UNIQUE_ID; // Link to master item if Request
