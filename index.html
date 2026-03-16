@@ -3,14 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-    <title>Greenleaf Nursery Company</title>
+    <title>GNC Park Hill</title>
     <meta name="theme-color" content="#007a4d">
     <link rel="manifest" href="manifest.json">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="application-name" content="Greenleaf Nursery Company">    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="GNC Park Hill">
+    <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>:root{--bg:#007a4d;--tx:#111827}body{font-family:"Amazon Ember",Arial,sans-serif;background:white;color:var(--tx);user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior-y:contain}.nav-header{background:var(--bg);color:white;padding-top:max(10px,env(safe-area-inset-top))}#view-login,#view-change-password{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px}#view-change-password{display:none;z-index:10000}.login-card{background:white;padding:30px;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,.2);width:100%;max-width:360px;text-align:center}.input-field{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:8px;font-size:15px;margin-bottom:12px}#toast-notification{position:fixed;top:-100px;left:50%;transform:translateX(-50%);background:#16a34a;color:white;padding:16px 24px;border-radius:50px;box-shadow:0 10px 15px -3px rgba(0,0,0,.3);z-index:11000;transition:top .5s;display:flex;align-items:center;gap:12px;pointer-events:none}#toast-notification.show{top:20px}#side-drawer{position:fixed;top:0;left:-280px;width:280px;height:100%;background:white;z-index:2000;box-shadow:2px 0 10px rgba(0,0,0,.2);transition:left .3s;overflow-y:auto;padding-bottom:100px}#side-drawer.open{left:0}#drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1999;display:none}#drawer-overlay.open{display:block}.drawer-header{background:var(--bg);color:white;padding:20px;font-weight:bold;font-size:18px}.drawer-item{padding:16px 20px;border-bottom:1px solid #f3f4f6;cursor:pointer;display:flex;align-items:center;gap:12px;color:#374151;font-weight:500}.drill-item{border-bottom:1px solid #e5e7eb;padding:16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:white;transition:background .1s}.drill-item:active{background:#f3f4f6}.back-btn{display:flex;align-items:center;gap:5px;color:#6b7280;font-size:14px;font-weight:600;margin-bottom:20px;cursor:pointer;padding:10px 0}.inv-card{border:1px solid #e5e7eb;border-left-width:6px;border-radius:8px;padding:12px;background:white;cursor:pointer;flex-grow:1}.status-green{border-left-color:#22c55e}.status-purple{border-left-color:#9333ea}.status-orange{border-left-color:#f97316}.status-blue{border-left-color:#3b82f6}.status-indigo{border-left-color:#4f46e5}.status-teal{border-left-color:#0d9488}.status-yellow{border-left-color:#eab308}.status-red{border-left-color:#ef4444}.task-tabs,.detail-tabs{display:flex;border-bottom:1px solid #e5e7eb;background:#f9fafb;margin-bottom:10px}.detail-tabs{overflow-x:auto;scrollbar-width:none}.detail-tabs::-webkit-scrollbar{display:none}.task-tab,.detail-tab{flex:1;text-align:center;padding:12px;font-size:11px;font-weight:700;color:#6b7280;cursor:pointer;border-bottom:3px solid transparent;text-transform:uppercase}.detail-tab{flex:0 0 auto;padding:10px 16px}.task-tab.active,.detail-tab.active{color:var(--bg);border-bottom-color:var(--bg);background:white}.overview-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}.overview-card{background:#f8fafc;padding:10px;border-radius:6px;border:1px solid #e2e8f0}.overview-label{font-size:9px;font-weight:800;color:#64748b;text-transform:uppercase;margin-bottom:2px}.overview-val{font-size:13px;font-weight:600;color:#0f172a;word-break:break-all}.expand-trigger{display:flex;align-items:center;justify-content:space-between;padding:12px;background:#f9fafb;border-radius:6px;cursor:pointer;font-weight:600;font-size:14px;border:1px solid #e5e7eb}.expand-content{display:none;margin-top:12px;padding:12px;background:#f9fafb;border-radius:6px;border:1px solid #e5e7eb}.expanded .expand-content{display:block}.card-checkbox-container{width:0;overflow:hidden;opacity:0;transition:width .3s,opacity .3s,margin .3s}body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-right:12px}.item-row{touch-action:manipulation}.spinner{border:4px solid rgba(255,255,255,.3);border-top:4px solid white;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:0 auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.scrollbar-none::-webkit-scrollbar{display:none}.scrollbar-none{-ms-overflow-style:none;scrollbar-width:none}</style>
 </head>
 <body class="bg-gray-50 h-screen overflow-hidden">
@@ -37,7 +39,7 @@
     <div id="view-login">
         <div class="login-card">
             <div class="flex flex-col items-center mb-8 w-full relative">
-                <div class="text-2xl text-[#007a4d] font-black tracking-tighter mb-1 text-center leading-none">Greenleaf Nursery Company</div>                <div class="flex flex-col items-center gap-0.5 mt-5">
+                <div class="text-2xl text-[#007a4d] font-black tracking-tighter mb-1 text-center leading-none">GNC Park Hill</div>                <div class="flex flex-col items-center gap-0.5 mt-5">
                     <span class="text-[9px] font-bold text-gray-400 uppercase tracking-[0.3em]">Powered By</span>
                     <span class="text-[17px] font-black text-gray-800 tracking-[0.2em] uppercase border-b-[3px] border-[#007a4d] pb-0.5">Ag Metric</span>
                 </div>
@@ -182,7 +184,7 @@
                 <i class="ph-bold ph-list menu-btn text-2xl cursor-pointer" onclick="toggleMenu()"></i>
                 <div class="flex flex-col">
                     <div class="font-bold text-lg leading-tight"><span id="header-user">User</span></div>
-                    <div class="text-[10px] opacity-80 leading-tight">Greenleaf Nursery Company</div>
+                    <div class="text-[10px] opacity-80 leading-tight">GNC Park Hill</div>
                 </div>
             </div>
         </header>
@@ -265,7 +267,7 @@
                         <p class="text-green-100 text-[10px] font-bold mb-5 uppercase tracking-[0.2em] z-10 relative">Dashboard</p>
                         
                         <div class="flex flex-col items-center pt-4 border-t border-white/20 w-full mt-1 z-10 relative">
-                            <div class="text-[14px] font-black tracking-wide text-white uppercase drop-shadow-sm mb-3 text-center leading-tight">Greenleaf Nursery Company</div>
+                            <div class="text-[14px] font-black tracking-wide text-white uppercase drop-shadow-sm mb-3 text-center leading-tight">GNC Park Hill</div>
                             <span class="text-[8px] font-bold text-white/70 uppercase tracking-[0.3em] mb-1">Powered By</span>
                             <div class="text-[12px] font-black tracking-[0.2em] text-white uppercase drop-shadow-sm">Ag Metric</div>
                         </div>
@@ -563,6 +565,10 @@
         <script>
         const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6cm55anNvc3J5ZWpqZWpsaWlpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzAyNzM1NywiZXhwIjoyMDg4NjAzMzU3fQ.Bc46UfJ1N4AgAS1PgfhFg6S4BEyybR6g_TUnPZsE2t0";
+        
+        // ADDED: Initialize the Supabase client for WebSockets
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwhH-eB5Py3xCwhmWReOAcAfl9Zu6mkw0hZYnAbIP9lLANoE4iebK1hXa6-ogU4_1AURA/exec"; 
         const esc = (s) => String(s || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
         const DB_NAME="GNC_DDC_DB_V2"; const STORE_NAME="inventory_cache";
@@ -714,7 +720,7 @@
         async function promptToEnableBiometrics(user,pin) { 
             if(!confirm("Would you like to enable Fingerprint/FaceID login for future use?"))return; 
             try{ 
-                const publicKey={challenge:new Uint8Array(32),rp:{name:"Greenleaf Nursery Company"},user:{id:new Uint8Array(16),name:user,displayName:user},pubKeyCredParams:[{type:"public-key",alg:-7}],authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required"},timeout:60000}; 
+                const publicKey={challenge:new Uint8Array(32),rp:{name:"GNC Park Hill"},user:{id:new Uint8Array(16),name:user,displayName:user},pubKeyCredParams:[{type:"public-key",alg:-7}],authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required"},timeout:60000}; 
                 await navigator.credentials.create({publicKey}); 
                 localStorage.setItem('gnc_bio_enabled','true'); 
                 localStorage.setItem('gnc_bio_user',user); 
@@ -902,8 +908,44 @@
             if(!isBiometricLogin&&window.PublicKeyCredential&&localStorage.getItem('gnc_bio_enabled')!=='true'){ promptToEnableBiometrics(user,pass); } 
             applyRolePermissions(); 
             fetchBackgroundData(); 
-            setInterval(silentBackgroundSync, 1000); 
+            
+            // ADDED: Replaced standard polling with live WebSockets
+            setupWebSockets();
         }
+
+        // ADDED: Setup live WebSocket listeners for instant updates
+        function setupWebSockets() {
+            // 1. Listen for ANY updates to the Master Inventory
+            supabaseClient.channel('inventory-changes')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'v2_master_inventory' }, payload => {
+                    console.log('Instant Inventory Update Detected!', payload);
+                    silentBackgroundSync(); // Instantly grab the new data
+                })
+                .subscribe();
+
+            // 2. Listen for NEW Chat Messages
+            supabaseClient.channel('chat-messages')
+                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'v2_chat_messages' }, payload => {
+                    console.log('Instant Chat Message Detected!', payload);
+                    // If we are currently looking at the chat room, refresh it instantly
+                    if (activeChatRoomId && payload.new.room_id === activeChatRoomId) {
+                        fetchChatMessages();
+                    } else {
+                        // Otherwise, refresh the inbox so the preview updates
+                        loadChatInbox();
+                    }
+                })
+                .subscribe();
+                
+            // 3. Listen for Request changes
+            supabaseClient.channel('request-changes')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'v2_active_request' }, payload => {
+                    console.log('Instant Request Update Detected!', payload);
+                    silentBackgroundSync(); 
+                })
+                .subscribe();
+        }
+
         async function silentBackgroundSync() {
             if(!currentUser)return; 
             const checkTime=new Date().toISOString();
@@ -2038,7 +2080,7 @@ function selectAvResName(name) { selectedAvResName=name; avResLevel=1; renderAV(
                     crumb.innerText = `${selectedReqRepView} > Status`;
                     let repItems = items.filter(i => (i.REQUESTED_BY || 'Unknown Rep') === selectedReqRepView && !i.REQ_ARCHIVED);
                     let pendingCount = repItems.filter(i => i.REQ_STATUS !== 'Complete').length;
-                    let completeCount = repItems.filter(i => i.REQ_STATUS === 'Complete').length;                  
+                    let completeCount = repItems.filter(i => i.REQ_STATUS === 'Complete').length;                 
                     container.innerHTML = `
                         <div class="back-btn" onclick="requestViewLevel=0; renderRequest()"><i class="ph-bold ph-arrow-left"></i> Back to Reps</div>
                         <div class="bg-orange-50 border border-orange-200 rounded-xl shadow-sm mb-4 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectedReqStatus='Pending'; requestViewLevel=2; renderRequest()">
@@ -2245,6 +2287,7 @@ function selectAvResName(name) { selectedAvResName=name; avResLevel=1; renderAV(
             
             return `<div class="flex items-center w-full mb-2 item-row overflow-hidden" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm pointer-events-none" ${isChecked}></div><div class="inv-card ${colorClass} flex items-start justify-between flex-grow !mb-0 transition-transform active:scale-[0.99]"><div class="flex-grow min-w-0 text-[#007a4d]"><div class="flex justify-between font-bold text-sm mb-1"><span class="truncate pr-2">${item.COMMONNAME||'Unknown'} • ${item.CONTSIZE||'-'} • Loc: ${item.LOCATIONCODE||'No Loc'}</span><span class="whitespace-nowrap bg-[#007a4d]/10 px-1.5 py-0.5 rounded text-xs border border-[#007a4d]/20 h-max">Pri: ${item.PRIORITY||'-'}</span></div><div class="text-[11px] font-semibold truncate mt-0.5">Tag: ${tagColor} | Lot: ${item.LOTCODE||'-'} | PTR-Ava: ${item.PTRAVAILABLE||'0'} | s_LTS: ${item.S_LTS||'0'} | Supply: ${item.SEASONSUPPLY||'0'}</div><div class="text-[11px] font-semibold truncate mt-0.5">Item: ${item.ITEMCODE||'-'}</div></div>${thumbHtml}</div></div>`;
         }
+
         function initiateBatchAction(action) {
             if(action==='request_action'){openRequestModal();return}
             if(action==='endcap'){openEndCapModal();return}
@@ -2420,6 +2463,7 @@ function selectAvResName(name) { selectedAvResName=name; avResLevel=1; renderAV(
         }
 
         const debouncedPopulateCustomerList=debounce(()=>requestAnimationFrame(populateCustomerList), 400);
+
         function populateCustomerList() {
             const val=document.getElementById('cust-search-input').value.toLowerCase().trim();
             const container=document.getElementById('cust-list-container');
@@ -2725,7 +2769,7 @@ function selectAvResName(name) { selectedAvResName=name; avResLevel=1; renderAV(
         function selectDriveSize(size) { selectedDriveSize = size; driveViewLevel = 2; renderDrive() }
         function backToDriveSizes() { driveViewLevel = 1; selectedDriveSize = null; renderDrive() }
 
-       function renderDrive() {
+      function renderDrive() {
             const container = document.getElementById('drive-content'); 
             const filtersDiv = document.getElementById('drive-season-filters'); 
             const crumb = document.getElementById('drive-crumb'); 
@@ -2816,7 +2860,7 @@ function selectAvResName(name) { selectedAvResName=name; avResLevel=1; renderAV(
             }
         }
 
-       function toggleDriveSeason(s) {
+        function toggleDriveSeason(s) {
             if(s === 'ALL'){
                 driveSelectedSeasons.clear();
                 driveSelectedSeasons.add('ALL');
@@ -3168,7 +3212,7 @@ function selectAvResName(name) { selectedAvResName=name; avResLevel=1; renderAV(
             if(typeof validateSsnForm === 'function') validateSsnForm();
         }
 
-              // --- PULL TO REFRESH LOGIC ---
+        // --- PULL TO REFRESH LOGIC ---
         const scrollArea = document.getElementById('main-scroll-area');
         const ptrContainer = document.getElementById('pull-to-refresh');
         const ptrIcon = document.getElementById('ptr-icon');
@@ -3247,9 +3291,10 @@ function selectAvResName(name) { selectedAvResName=name; avResLevel=1; renderAV(
             }, 300);
         }
 
-       // --- PHOTO UPLOAD LOGIC ---
+        // --- PHOTO UPLOAD LOGIC (NEW ROBUST VERSION) ---
         async function handlePhotoUpload(input, prefix) {
             if (!input.files || input.files.length === 0) return;
+            if (!activeItem) { showToast("Error", "No item selected to attach photo to.", true); return; }
             
             const fileCount = input.files.length;
             showToast('Processing', `Preparing ${fileCount} photo(s)...`, false);
@@ -3257,9 +3302,9 @@ function selectAvResName(name) { selectedAvResName=name; avResLevel=1; renderAV(
             for (let i = 0; i < fileCount; i++) {
                 const file = input.files[i];
                 
-                // FIXED 1: Removed the strict startWith('image/') check so mobile live cameras aren't blocked
+                // Allow files even if mobile doesn't report a type (common camera bug)
                 if (file.type && !file.type.startsWith('image/')) {
-                    showToast('Error', `File ${i + 1} is not a valid image format.`, true);
+                    showToast('Error', `File ${i + 1} is not a valid image.`, true);
                     continue;
                 }
 
@@ -3271,23 +3316,18 @@ function selectAvResName(name) { selectedAvResName=name; avResLevel=1; renderAV(
                         const img = new Image();
                         img.src = event.target.result;
                         
-                        img.onload = function() {
+                        img.onload = async function() {
                             const canvas = document.createElement('canvas');
                             const MAX_WIDTH = 1080;
-                            let scaleSize = 1;
-                            
-                            if (img.width > MAX_WIDTH) {
-                                scaleSize = MAX_WIDTH / img.width;
-                            }
+                            let scaleSize = img.width > MAX_WIDTH ? MAX_WIDTH / img.width : 1;
                             
                             canvas.width = img.width * scaleSize;
                             canvas.height = img.height * scaleSize;
-
                             const ctx = canvas.getContext('2d');
                             ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
                             canvas.toBlob(async (blob) => {
-                                showToast('Uploading', `Sending photo ${i + 1} of ${fileCount}...`, false);
+                                showToast('Uploading', `Sending ${i + 1} of ${fileCount}...`, false);
 
                                 let bucketName = 'drive_mode_photos'; 
                                 if (prefix === 'ssn-') bucketName = 'season_sales_notes_photos';
@@ -3296,71 +3336,43 @@ function selectAvResName(name) { selectedAvResName=name; avResLevel=1; renderAV(
                                 else if (prefix === 'dock-') bucketName = 'dock_photos';
                                 else if (prefix === 'flyer-') bucketName = 'flyer_photos';
 
-                                let dateStr = new Date().toISOString().split('T')[0];
-                                
-                                // FIXED 2: We completely strip out spaces, #, and special characters from the file names
-                                const cleanText = (txt) => String(txt || 'Unknown').replace(/[^a-zA-Z0-9]/g, '');
-                                
-                                let cName = cleanText(activeItem.COMMONNAME);
-                                let cSize = cleanText(activeItem.CONTSIZE);
-                                let cLot = cleanText(activeItem.LOTCODE);
-                                let cLoc = cleanText(activeItem.LOCATIONCODE);
-                                
-                                let existingPhotos = [];
-                                if (prefix === 'req-') existingPhotos = (activeItem.REQ_PHOTO_LINK || "").split(',').filter(Boolean);
-                                else if (prefix === 'dock-') existingPhotos = (activeItem.DOCK_PHOTO_LINK || "").split(',').filter(Boolean);
-                                else if (prefix === 'flyer-') existingPhotos = (activeItem.FLYER_PHOTO_LINK || "").split(',').filter(Boolean);
-                                else existingPhotos = (activeItem.SAVED_PHOTO_LINK || "").split(',').filter(Boolean);
-                                
-                                let photoIndex = existingPhotos.length + 1; 
-                                
-                                let customFileName = `${cName}-${cSize}-${cLot}-${cLoc}-Photo${photoIndex}-${Date.now()}_${i}.jpg`;
+                                const clean = (t) => String(t || 'NA').replace(/[^a-zA-Z0-9]/g, '');
+                                let fileName = `${clean(activeItem.COMMONNAME)}-${clean(activeItem.CONTSIZE)}-${Date.now()}_${i}.jpg`;
+                                let filePath = `${new Date().toISOString().split('T')[0]}/${fileName}`;
 
                                 try {
-                                    // FIXED 3: We safely encode the URL so nothing gets chopped off
-                                    const uploadUrl = `${SUPABASE_URL}/storage/v1/object/${bucketName}/${dateStr}/${encodeURIComponent(customFileName)}`;
+                                    // Use the official client library for the upload
+                                    const { data, error } = await supabaseClient.storage
+                                        .from(bucketName)
+                                        .upload(filePath, blob, { contentType: 'image/jpeg', upsert: true });
+
+                                    if (error) throw error;
+
+                                    // Get the public URL
+                                    const { data: { publicUrl } } = supabaseClient.storage.from(bucketName).getPublicUrl(filePath);
+
+                                    // Update the correct database column
+                                    let linkCol = 'SAVED_PHOTO_LINK';
+                                    if (prefix === 'req-') linkCol = 'REQ_PHOTO_LINK';
+                                    else if (prefix === 'dock-') linkCol = 'DOCK_PHOTO_LINK';
+                                    else if (prefix === 'flyer-') linkCol = 'FLYER_PHOTO_LINK';
+
+                                    let currentLinks = activeItem[linkCol] || "";
+                                    activeItem[linkCol] = currentLinks ? currentLinks + ',' + publicUrl : publicUrl;
                                     
-                                    const uploadResponse = await fetch(uploadUrl, {
-                                        method: 'POST',
-                                        headers: {
-                                            'Authorization': 'Bearer ' + SUPABASE_KEY,
-                                            'apikey': SUPABASE_KEY,
-                                            'Content-Type': 'image/jpeg'
-                                        },
-                                        body: blob
-                                    });
-
-                                    if (!uploadResponse.ok) {
-                                        const errText = await uploadResponse.text();
-                                        throw new Error(errText || 'Upload failed');
-                                    }
-
-                                    let url = `${SUPABASE_URL}/storage/v1/object/public/${bucketName}/${dateStr}/${encodeURIComponent(customFileName)}`;
-
-                                    if (activeItem) {
-                                        if (prefix === 'req-') {
-                                            activeItem.REQ_PHOTO_LINK = activeItem.REQ_PHOTO_LINK ? activeItem.REQ_PHOTO_LINK + ',' + url : url;
-                                        } else if (prefix === 'dock-') {
-                                            activeItem.DOCK_PHOTO_LINK = activeItem.DOCK_PHOTO_LINK ? activeItem.DOCK_PHOTO_LINK + ',' + url : url;
-                                        } else if (prefix === 'flyer-') {
-                                            activeItem.FLYER_PHOTO_LINK = activeItem.FLYER_PHOTO_LINK ? activeItem.FLYER_PHOTO_LINK + ',' + url : url;
-                                        } else {
-                                            activeItem.SAVED_PHOTO_LINK = activeItem.SAVED_PHOTO_LINK ? activeItem.SAVED_PHOTO_LINK + ',' + url : url;
-                                        }
-                                        
-                                        saveData(false, prefix, false); 
-                                        renderSavedPhotos(); 
-                                    }
+                                    // Save change to DB (False = Draft/Silent save)
+                                    saveData(false, prefix, false); 
+                                    renderSavedPhotos(); 
                                     resolve();
                                 } catch (err) {
-                                    showToast('Error', `Upload failed for photo ${i + 1}: ` + err.message, true);
+                                    showToast('Error', `Upload failed: ${err.message}`, true);
                                     resolve();
                                 }
                             }, 'image/jpeg', 0.8);
                         };
                         
                         img.onerror = () => {
-                            showToast('Error', `Could not read photo ${i + 1}.`, true);
+                            showToast('Error', `Could not read photo ${i + 1}. Unsupported format.`, true);
                             resolve();
                         };
                     };
@@ -3371,12 +3383,11 @@ function selectAvResName(name) { selectedAvResName=name; avResLevel=1; renderAV(
                     };
                 });
             }
-            
-            showToast('Success', 'Photo process completed!');
+            showToast('Success', 'Upload complete!');
             input.value = ""; 
         }
+
         // --- CHAT SYSTEM LOGIC ---
-        // UPDATE THESE TO MATCH YOUR EXACT SUPABASE SETUP
         const CHAT_ROOMS_TABLE = 'v2_chat_rooms'; 
         const CHAT_PARTICIPANTS_TABLE = 'v2_chat_participants'; 
         const CHAT_MESSAGES_TABLE = 'v2_chat_messages';
