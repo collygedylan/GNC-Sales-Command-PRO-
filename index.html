@@ -3077,15 +3077,24 @@ let specCaliperHtml = "";
         }
 
         function renderTasks() {
-            let targetUser = safeRole === 'ADMIN' ? taskViewTargetUser : currentUser;
-            if(!targetUser) return;
-            const container = document.getElementById('task-content');
-            const crumb = document.getElementById('task-crumb');
-            crumb.innerHTML = safeRole === 'ADMIN' ? `<span class="cursor-pointer text-gray-400 hover:text-gray-800" onclick="taskViewTargetUser=null; renderTeamSelector()"><i class="ph-bold ph-arrow-left"></i> Back to Team</span> &bull; <span class="text-[#007a4d]">${targetUser}'s Tasks</span>` : "My Tasks";
-            
-            let userItems = fullInventory.filter(i => i.ASSIGNEDTO === targetUser && !i.DATE_COMPLETED);
-            let tabItems = userItems.filter(i => i.APP_TAB_ASSIGNMENT === activeTaskTab);
-            
+    let targetUser = safeRole === 'ADMIN' ? taskViewTargetUser : currentUser;
+    if (!targetUser) return;
+    
+    const container = document.getElementById('task-content');
+    const crumb = document.getElementById('task-crumb');
+    
+    crumb.innerHTML = safeRole === 'ADMIN' ? `<span class="cursor-pointer text-gray-400 hover:text-gray-800" onclick="taskViewTargetUser=null; renderTeamSelector()"><i class="ph-bold ph-arrow-left"></i> Back to Team</span> &bull; <span class="text-[#007a4d]">${targetUser}'s Tasks</span>` : "My Tasks";
+    
+    // 👇 HERE IS THE FIX: Make the comparison case-insensitive
+    let userItems = fullInventory.filter(i => 
+        i.ASSIGNEDTO && 
+        String(i.ASSIGNEDTO).toLowerCase() === String(targetUser).toLowerCase() && 
+        !i.DATE_COMPLETED
+    );
+    
+    let tabItems = userItems.filter(i => i.APP_TAB_ASSIGNMENT === activeTaskTab);
+    
+    // ... rest of the function stays the same            
             if(tabItems.length === 0){
                 container.innerHTML = `<div class="p-8 text-center text-gray-400">No active ${activeTaskTab} tasks.</div>`;
                 return;
