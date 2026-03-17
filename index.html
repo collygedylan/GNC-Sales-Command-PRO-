@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-    <title>GNC 1945</title>
+    <title>DC</title>
     <meta name="theme-color" content="#007a4d">
     <link rel="manifest" href="manifest.json">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="application-name" content="GNC 1945">
+    <meta name="application-name" content="DC">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -943,284 +943,302 @@
             
             counter.innerText = `${displayIndex} / ${images.length}`;
         }
-     function handleLogin(isBiometricLogin = false) {
-    const inputUser = document.getElementById('username-input').value.trim().toLowerCase(); 
-    const inputPass = document.getElementById('pin-code').value.trim();
 
-    if (!inputUser || !inputPass) { 
-        showToast("Error", "Please enter username and password", true); 
-        return; 
-    }    document.getElementById('login-inputs').classList.add('hidden'); 
-    document.getElementById('loading-spinner').classList.remove('hidden'); 
+        function handleLogin(isBiometricLogin = false) {
+            const inputUser = document.getElementById('username-input').value.trim().toLowerCase(); 
+            const inputPass = document.getElementById('pin-code').value.trim();
 
-    supabaseFetch('v2_app_users', 'GET', null, `username=ilike.*${encodeURIComponent(inputUser)}*&password=eq.${encodeURIComponent(inputPass)}&select=*`).then(data => {
-        if (data && data.length > 0) {
-            const userRecord = data[0]; 
-            currentUser = inputUser; 
-            currentRole = userRecord.role || 'User'; 
-            safeRole = String(currentRole).toUpperCase().replace(/\s+/g,'');
+            if (!inputUser || !inputPass) { 
+                showToast("Error", "Please enter username and password", true); 
+                return; 
+            }    
             
-            const isDefaultPassword = ['1234','12345','welcome','password','GREENLEAF25',inputUser].includes(inputPass); 
-            const hasChangedLocally = localStorage.getItem('gnc_pw_changed_'+currentUser) === 'true';
+            document.getElementById('login-inputs').classList.add('hidden'); 
+            document.getElementById('loading-spinner').classList.remove('hidden'); 
 
-            if (isDefaultPassword && !hasChangedLocally && !isBiometricLogin) { 
-                document.getElementById('view-login').style.display = 'none'; 
-                document.getElementById('view-change-password').style.display = 'flex'; 
-            } else { 
-                finalizeLogin(inputUser, inputPass, isBiometricLogin); 
-            }
-        } else { 
-            alert("MISMATCH DETECTED!\n\nIncorrect Username or Password."); 
-            document.getElementById('pin-code').value = ""; 
-            document.getElementById('login-inputs').classList.remove('hidden'); 
-            document.getElementById('loading-spinner').classList.add('hidden'); 
-        }
-    }).catch(err => { 
-        showToast("Error", "Network Error.", true); 
-        document.getElementById('login-inputs').classList.remove('hidden'); 
-        document.getElementById('loading-spinner').classList.add('hidden'); 
-    });
-}
-
-async function submitNewPassword() { 
-    const newPass = document.getElementById('new-password').value.trim(); 
-    const confirmPass = document.getElementById('confirm-password').value.trim(); 
-    
-    if (!newPass || newPass.length < 4) { 
-        alert("Password must be at least 4 characters!"); 
-        return; 
-    } 
-    
-    if (newPass !== confirmPass) { 
-        alert("Passwords do not match!"); 
-        return; 
-    } 
-    
-    document.getElementById('view-change-password').style.display = 'none'; 
-    document.getElementById('view-login').style.display = 'flex'; 
-    document.getElementById('login-inputs').classList.add('hidden'); 
-    document.getElementById('loading-spinner').classList.remove('hidden'); 
-    
-    try { 
-        await supabaseFetch('v2_app_users', 'PATCH', {password: newPass}, `username=ilike.*${encodeURIComponent(currentUser)}*`); 
-    } catch(e) {} 
-    
-    localStorage.setItem('gnc_pw_changed_' + currentUser, 'true'); 
-    document.getElementById('new-password').value = ""; 
-    document.getElementById('confirm-password').value = ""; 
-    finalizeLogin(currentUser, newPass, false); 
-}
-
-function finalizeLogin(user, pass, isBiometricLogin) { 
-    localStorage.setItem('gnc_user_v3', user); 
-    localStorage.setItem('gnc_pin_v3', pass); 
-    localStorage.setItem('gnc_role_v3', currentRole); 
-    document.getElementById('header-user').innerText = currentUser.toUpperCase(); 
-    
-    // Set the username on the big Dashboard card
-    let dashUser = document.getElementById('dashboard-username-display');
-    if (dashUser) dashUser.innerText = currentUser.toUpperCase();
-
-    setRepPermutations(currentUser); 
-    if (!isBiometricLogin && window.PublicKeyCredential && localStorage.getItem('gnc_bio_enabled') !== 'true') { 
-        promptToEnableBiometrics(user, pass); 
-    } 
-    applyRolePermissions(); 
-    fetchBackgroundData(); 
-    
-    // ADDED: Replaced standard polling with live WebSockets
-    setupWebSockets();
-}
-
-// ADDED: Setup live WebSocket listeners for instant updates
-function setupWebSockets() {
-    // 1. Listen for ANY updates to the Master Inventory
-    supabaseClient.channel('inventory-changes')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'v2_master_inventory' }, payload => {
-            console.log('Instant Inventory Update Detected!', payload);
-            silentBackgroundSync(); // Instantly grab the new data
-        })
-        .subscribe();
-
-    // 2. Listen for NEW Chat Messages
-    supabaseClient.channel('chat-messages')
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'v2_chat_messages' }, payload => {
-            console.log('Instant Chat Message Detected!', payload);
-            
-            // If we are currently looking at the chat room, inject the message instantly!
-            if (activeChatRoomId && payload.new.room_id === activeChatRoomId) {
-                const msg = payload.new;
-                const container = document.getElementById('chat-messages-container');
-                
-                // Don't duplicate our own optimistic messages
-                if (msg.sender.toLowerCase() === currentUser.toLowerCase()) {
-                    let optMsg = document.getElementById('optimistic-msg');
-                    if (optMsg) optMsg.remove();
-                }
-                
-                let isMe = msg.sender.toLowerCase() === currentUser.toLowerCase();
-                let msgDate = new Date(msg.created_at);
-                let timeStr = msgDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                
-                let html = '';
-                if (isMe) {
-                    html = `<div class="flex flex-col items-end w-full">
-                                <div class="bg-[#007a4d] text-white px-4 py-2.5 rounded-2xl rounded-br-none shadow-sm max-w-[80%] break-words text-[15px] leading-snug">
-                                    ${msg.message}
-                                </div>
-                                <span class="text-[9px] text-gray-400 font-bold mt-1 mr-1">${timeStr}</span>
-                            </div>`;
-                } else {
-                    html = `<div class="flex flex-col items-start w-full">
-                                <span class="text-[10px] font-bold text-gray-500 ml-2 mb-0.5 uppercase tracking-wide">${msg.sender}</span>
-                                <div class="bg-white border border-gray-200 text-gray-800 px-4 py-2.5 rounded-2xl rounded-bl-none shadow-sm max-w-[80%] break-words text-[15px] leading-snug">
-                                    ${msg.message}
-                                </div>
-                                <span class="text-[9px] text-gray-400 font-bold mt-1 ml-1">${timeStr}</span>
-                            </div>`;
-                }
-                
-                container.innerHTML += html;
-                container.scrollTop = container.scrollHeight;
-                
-            } else {
-                // Otherwise, refresh the inbox so the preview updates
-                loadChatInbox();
-            }
-        })
-        .subscribe();                
-        
-    // 3. Listen for Request changes
-    supabaseClient.channel('request-changes')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'v2_active_request' }, payload => {
-            console.log('Instant Request Update Detected!', payload);
-            silentBackgroundSync(); 
-        })
-        .subscribe();
-}
-
-async function silentBackgroundSync(directPayload = null) {
-    if (!currentUser) return; 
-    const checkTime = new Date().toISOString();
-    try {
-        // If the websocket handed us the data directly, skip the fetch!
-        let data = directPayload ? [directPayload] : null;
-        
-        if (!data) {
-            const response = await fetch(`${SUPABASE_URL}/rest/v1/v2_master_inventory?select=*&last_updated=gt.${lastSyncTime}`, {
-                method: 'GET',
-                headers: {
-                    'apikey': SUPABASE_KEY,
-                    'Authorization': 'Bearer ' + SUPABASE_KEY
-                }
-            });
-            if (response.ok) data = await response.json();
-        }
-
-        if (data && data.length > 0) {
-            let updated = false;
-            data.forEach(updatedRow => {
-                let idx = fullInventory.findIndex(i => i.UNIQUE_ID === updatedRow.unique_id);
-                if (idx > -1) {
-                    for (let k in updatedRow) { 
-                        if (updatedRow[k] !== null) fullInventory[idx][k.toUpperCase()] = updatedRow[k]; 
-                    }
-                    fullInventory[idx].SAVED_PHOTO_LINK = fullInventory[idx].PHOTO_LINK || fullInventory[idx].PHOTOLINK || ""; 
-                    fullInventory[idx].SAVED_PHOTO_NAME = fullInventory[idx].PHOTO_NAME || fullInventory[idx].PHOTONAME || ""; 
-                    updated = true; 
+            supabaseFetch('v2_app_users', 'GET', null, `username=ilike.*${encodeURIComponent(inputUser)}*&password=eq.${encodeURIComponent(inputPass)}&select=*`).then(data => {
+                if (data && data.length > 0) {
+                    const userRecord = data[0]; 
+                    currentUser = inputUser; 
+                    currentRole = userRecord.role || 'User'; 
+                    safeRole = String(currentRole).toUpperCase().replace(/\s+/g,'');
                     
-                    // NEW: Cascade this update to Docks, Reserves, and Low Stock tabs immediately!
-                    let mItem = fullInventory[idx];
-                    socInventory.forEach(soc => {
-                        if (soc.ITEMCODE === mItem.ITEMCODE) {
-                            if (mItem.SAVED_PHOTO_LINK) soc.SAVED_PHOTO_LINK = mItem.SAVED_PHOTO_LINK; 
-                            if (mItem.DOCK_PHOTO_LINK) soc.DOCK_PHOTO_LINK = mItem.DOCK_PHOTO_LINK;
-                            if (mItem.AV_NOTE) soc.AV_NOTE = mItem.AV_NOTE; 
-                            if (mItem.SALES_NOTE) soc.SALES_NOTE = mItem.SALES_NOTE; 
-                            if (mItem.DOCK_NOTE) soc.DOCK_NOTE = mItem.DOCK_NOTE;
-                        }
-                    });
-                    reservesInventory.forEach(res => {
-                        if (res.ITEMCODE === mItem.ITEMCODE) {
-                            if (mItem.SAVED_PHOTO_LINK) res.SAVED_PHOTO_LINK = mItem.SAVED_PHOTO_LINK; 
-                            if (mItem.AV_NOTE) res.AV_NOTE = mItem.AV_NOTE; 
-                            if (mItem.SALES_NOTE) res.SALES_NOTE = mItem.SALES_NOTE;
-                        }
-                    });
+                    const isDefaultPassword = ['1234','12345','welcome','password','GREENLEAF25',inputUser].includes(inputPass); 
+                    const hasChangedLocally = localStorage.getItem('gnc_pw_changed_'+currentUser) === 'true';
+
+                    if (isDefaultPassword && !hasChangedLocally && !isBiometricLogin) { 
+                        document.getElementById('view-login').style.display = 'none'; 
+                        document.getElementById('view-change-password').style.display = 'flex'; 
+                    } else { 
+                        finalizeLogin(inputUser, inputPass, isBiometricLogin); 
+                    }
+                } else { 
+                    alert("MISMATCH DETECTED!\n\nIncorrect Username or Password."); 
+                    document.getElementById('pin-code').value = ""; 
+                    document.getElementById('login-inputs').classList.remove('hidden'); 
+                    document.getElementById('loading-spinner').classList.add('hidden'); 
                 }
+            }).catch(err => { 
+                showToast("Error", "Network Error.", true); 
+                document.getElementById('login-inputs').classList.remove('hidden'); 
+                document.getElementById('loading-spinner').classList.add('hidden'); 
             });
-            if (updated) { 
-                reRenderCurrentView(); 
-                if (activeItem && !document.getElementById('view-detail').classList.contains('hidden')) { 
-                    openDetail(activeItem.UNIQUE_ID, lastView); 
-                } 
-            }
-        }                
-        
-        // --- UPDATED REQ BLOCK WITH CACHE-BUSTER AND applyLocalEdits() ---
-        const reqRes = await fetch(`${SUPABASE_URL}/rest/v1/v2_active_request?select=*&_t=${Date.now()}`, {
-            method: 'GET', 
-            headers: {'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY}
-        });
-        
-        if (reqRes.ok) {
-            const reqData = await reqRes.json();
-            let hash = JSON.stringify(reqData);
-            if (hash !== localStorage.getItem('last_req_hash')) {
-                requestsInventory = reqData.map(item => {
-                    let obj = {SOURCE_TABLE: 'v2_active_request'};
-                    for (let k in item) { 
-                        if (item[k] !== null) obj[k.toUpperCase()] = item[k]; 
-                    }
-                    obj.DOM_ID = 'req_' + obj.UNIQUE_ID;
-                    obj.SAVED_PHOTO_LINK = obj.REQ_PHOTO_LINK || obj.SAVED_PHOTO_LINK || ""; 
-                    obj.SAVED_PHOTO_NAME = obj.REQ_PHOTO_NAME || obj.SAVED_PHOTO_NAME || "";
-                    obj.CONTSIZE = item.contsize || obj.CONTSIZE || item.itemspec || obj.ITEMSPEC || item.size || "-";
-                    obj.LOCATIONCODE = obj.LOCATIONCODE || obj.LOCATION || "No Loc"; 
-                    return obj;
-                });
-                localStorage.setItem('last_req_hash', hash);
-                
-                // MAGIC FIX: Re-apply local edits to protect UI state
-                applyLocalEdits();
-                
-                if (!document.getElementById('view-request').classList.contains('hidden')) renderRequest();
-            }
         }
 
-        // --- UPDATED SO BLOCK WITH CACHE-BUSTER AND applyLocalEdits() ---
-        const soRes = await fetch(`${SUPABASE_URL}/rest/v1/v2_sales_office?select=*&_t=${Date.now()}`, {
-            method: 'GET', 
-            headers: {'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY}
-        });
-        
-        if (soRes.ok) {
-            const soData = await soRes.json();
-            let soHash = JSON.stringify(soData);
-            if (soHash !== localStorage.getItem('last_so_hash')) {
-                salesOfficeInventory = soData.map((item, idx) => {
-                    let obj = {SOURCE_TABLE: 'v2_sales_office'};
-                    for (let k in item) { 
-                        if (item[k] !== null) obj[k.toUpperCase()] = item[k]; 
-                    }
-                    obj.DOM_ID = 'so_' + obj.UNIQUE_ID;
-                    let masterItem = fullInventory.find(i => i.UNIQUE_ID === obj.UNIQUE_ID);
-                    if (masterItem) { obj.AV_NOTE = masterItem.AV_NOTE; }
-                    return obj;
-                });
-                localStorage.setItem('last_so_hash', soHash);
-                
-                // Protect local state here too
-                applyLocalEdits();
-                
-                if (!document.getElementById('view-sales-office').classList.contains('hidden')) renderSalesOffice();
-            }
+        async function submitNewPassword() { 
+            const newPass = document.getElementById('new-password').value.trim(); 
+            const confirmPass = document.getElementById('confirm-password').value.trim(); 
+            
+            if (!newPass || newPass.length < 4) { 
+                alert("Password must be at least 4 characters!"); 
+                return; 
+            } 
+            
+            if (newPass !== confirmPass) { 
+                alert("Passwords do not match!"); 
+                return; 
+            } 
+            
+            document.getElementById('view-change-password').style.display = 'none'; 
+            document.getElementById('view-login').style.display = 'flex'; 
+            document.getElementById('login-inputs').classList.add('hidden'); 
+            document.getElementById('loading-spinner').classList.remove('hidden'); 
+            
+            try { 
+                await supabaseFetch('v2_app_users', 'PATCH', {password: newPass}, `username=ilike.*${encodeURIComponent(currentUser)}*`); 
+            } catch(e) {} 
+            
+            localStorage.setItem('gnc_pw_changed_' + currentUser, 'true'); 
+            document.getElementById('new-password').value = ""; 
+            document.getElementById('confirm-password').value = ""; 
+            finalizeLogin(currentUser, newPass, false); 
         }
-        
-        lastSyncTime = checkTime;
-    } catch(e) {}
-}
 
+        function finalizeLogin(user, pass, isBiometricLogin) { 
+            localStorage.setItem('gnc_user_v3', user); 
+            localStorage.setItem('gnc_pin_v3', pass); 
+            localStorage.setItem('gnc_role_v3', currentRole); 
+            document.getElementById('header-user').innerText = currentUser.toUpperCase(); 
+            
+            // Set the username on the big Dashboard card
+            let dashUser = document.getElementById('dashboard-username-display');
+            if (dashUser) dashUser.innerText = currentUser.toUpperCase();
+
+            setRepPermutations(currentUser); 
+            if (!isBiometricLogin && window.PublicKeyCredential && localStorage.getItem('gnc_bio_enabled') !== 'true') { 
+                promptToEnableBiometrics(user, pass); 
+            } 
+            applyRolePermissions(); 
+            fetchBackgroundData(); 
+            
+            // ADDED: Replaced standard polling with live WebSockets
+            setupWebSockets();
+        }
+
+        // ADDED: Setup live WebSocket listeners for instant updates
+        function setupWebSockets() {
+            // 1. Listen for ANY updates to the Master Inventory
+            supabaseClient.channel('inventory-changes')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'v2_master_inventory' }, payload => {
+                    console.log('Instant Inventory Update Detected!', payload);
+                    silentBackgroundSync(); // Instantly grab the new data
+                })
+                .subscribe();
+
+            // 2. Listen for NEW Chat Messages
+            supabaseClient.channel('chat-messages')
+                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'v2_chat_messages' }, payload => {
+                    console.log('Instant Chat Message Detected!', payload);
+                    
+                    // If we are currently looking at the chat room, inject the message instantly!
+                    if (activeChatRoomId && payload.new.room_id === activeChatRoomId) {
+                        const msg = payload.new;
+                        const container = document.getElementById('chat-messages-container');
+                        
+                        // Don't duplicate our own optimistic messages
+                        if (msg.sender.toLowerCase() === currentUser.toLowerCase()) {
+                            let optMsg = document.getElementById('optimistic-msg');
+                            if (optMsg) optMsg.remove();
+                        }
+                        
+                        let isMe = msg.sender.toLowerCase() === currentUser.toLowerCase();
+                        let msgDate = new Date(msg.created_at);
+                        let timeStr = msgDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                        
+                        let html = '';
+                        if (isMe) {
+                            html = `<div class="flex flex-col items-end w-full">
+                                        <div class="bg-[#007a4d] text-white px-4 py-2.5 rounded-2xl rounded-br-none shadow-sm max-w-[80%] break-words text-[15px] leading-snug">
+                                            ${msg.message}
+                                        </div>
+                                        <span class="text-[9px] text-gray-400 font-bold mt-1 mr-1">${timeStr}</span>
+                                    </div>`;
+                        } else {
+                            html = `<div class="flex flex-col items-start w-full">
+                                        <span class="text-[10px] font-bold text-gray-500 ml-2 mb-0.5 uppercase tracking-wide">${msg.sender}</span>
+                                        <div class="bg-white border border-gray-200 text-gray-800 px-4 py-2.5 rounded-2xl rounded-bl-none shadow-sm max-w-[80%] break-words text-[15px] leading-snug">
+                                            ${msg.message}
+                                        </div>
+                                        <span class="text-[9px] text-gray-400 font-bold mt-1 ml-1">${timeStr}</span>
+                                    </div>`;
+                        }
+                        
+                        container.innerHTML += html;
+                        container.scrollTop = container.scrollHeight;
+                        
+                    } else {
+                        // Otherwise, refresh the inbox so the preview updates
+                        loadChatInbox();
+                    }
+                })
+                .subscribe();                
+                
+            // 3. Listen for Request changes
+            supabaseClient.channel('request-changes')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'v2_active_request' }, payload => {
+                    console.log('Instant Request Update Detected!', payload);
+                    silentBackgroundSync(); 
+                })
+                .subscribe();
+
+            // 4. Listen for Dock changes
+            supabaseClient.channel('docks-changes')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'v2_soc_master' }, payload => {
+                    console.log('Dock Update!', payload);
+                    fetchBackgroundData(); // Triggers a full silent refresh
+                })
+                .subscribe();
+
+            // 5. Listen for Sales Office changes
+            supabaseClient.channel('sales-office-changes')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'v2_sales_office' }, payload => {
+                    console.log('Sales Office Update!', payload);
+                    fetchBackgroundData(); 
+                })
+                .subscribe();
+        }
+
+        async function silentBackgroundSync(directPayload = null) {
+            if (!currentUser) return; 
+            const checkTime = new Date().toISOString();
+            try {
+                // If the websocket handed us the data directly, skip the fetch!
+                let data = directPayload ? [directPayload] : null;
+                
+                if (!data) {
+                    const response = await fetch(`${SUPABASE_URL}/rest/v1/v2_master_inventory?select=*&last_updated=gt.${lastSyncTime}`, {
+                        method: 'GET',
+                        headers: {
+                            'apikey': SUPABASE_KEY,
+                            'Authorization': 'Bearer ' + SUPABASE_KEY
+                        }
+                    });
+                    if (response.ok) data = await response.json();
+                }
+
+                if (data && data.length > 0) {
+                    let updated = false;
+                    data.forEach(updatedRow => {
+                        let idx = fullInventory.findIndex(i => i.UNIQUE_ID === updatedRow.unique_id);
+                        if (idx > -1) {
+                            for (let k in updatedRow) { 
+                                if (updatedRow[k] !== null) fullInventory[idx][k.toUpperCase()] = updatedRow[k]; 
+                            }
+                            fullInventory[idx].SAVED_PHOTO_LINK = fullInventory[idx].PHOTO_LINK || fullInventory[idx].PHOTOLINK || ""; 
+                            fullInventory[idx].SAVED_PHOTO_NAME = fullInventory[idx].PHOTO_NAME || fullInventory[idx].PHOTONAME || ""; 
+                            updated = true; 
+                            
+                            // NEW: Cascade this update to Docks, Reserves, and Low Stock tabs immediately!
+                            let mItem = fullInventory[idx];
+                            socInventory.forEach(soc => {
+                                if (soc.ITEMCODE === mItem.ITEMCODE) {
+                                    if (mItem.SAVED_PHOTO_LINK) soc.SAVED_PHOTO_LINK = mItem.SAVED_PHOTO_LINK; 
+                                    if (mItem.DOCK_PHOTO_LINK) soc.DOCK_PHOTO_LINK = mItem.DOCK_PHOTO_LINK;
+                                    if (mItem.AV_NOTE) soc.AV_NOTE = mItem.AV_NOTE; 
+                                    if (mItem.SALES_NOTE) soc.SALES_NOTE = mItem.SALES_NOTE; 
+                                    if (mItem.DOCK_NOTE) soc.DOCK_NOTE = mItem.DOCK_NOTE;
+                                }
+                            });
+                            reservesInventory.forEach(res => {
+                                if (res.ITEMCODE === mItem.ITEMCODE) {
+                                    if (mItem.SAVED_PHOTO_LINK) res.SAVED_PHOTO_LINK = mItem.SAVED_PHOTO_LINK; 
+                                    if (mItem.AV_NOTE) res.AV_NOTE = mItem.AV_NOTE; 
+                                    if (mItem.SALES_NOTE) res.SALES_NOTE = mItem.SALES_NOTE;
+                                }
+                            });
+                        }
+                    });
+                    if (updated) { 
+                        reRenderCurrentView(); 
+                        if (activeItem && !document.getElementById('view-detail').classList.contains('hidden')) { 
+                            openDetail(activeItem.UNIQUE_ID, lastView); 
+                        } 
+                    }
+                }                
+                
+                // --- UPDATED REQ BLOCK WITH CACHE-BUSTER AND applyLocalEdits() ---
+                const reqRes = await fetch(`${SUPABASE_URL}/rest/v1/v2_active_request?select=*&_t=${Date.now()}`, {
+                    method: 'GET', 
+                    headers: {'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY}
+                });
+                
+                if (reqRes.ok) {
+                    const reqData = await reqRes.json();
+                    let hash = JSON.stringify(reqData);
+                    if (hash !== localStorage.getItem('last_req_hash')) {
+                        requestsInventory = reqData.map(item => {
+                            let obj = {SOURCE_TABLE: 'v2_active_request'};
+                            for (let k in item) { 
+                                if (item[k] !== null) obj[k.toUpperCase()] = item[k]; 
+                            }
+                            obj.DOM_ID = 'req_' + obj.UNIQUE_ID;
+                            obj.SAVED_PHOTO_LINK = obj.REQ_PHOTO_LINK || obj.SAVED_PHOTO_LINK || ""; 
+                            obj.SAVED_PHOTO_NAME = obj.REQ_PHOTO_NAME || obj.SAVED_PHOTO_NAME || "";
+                            obj.CONTSIZE = item.contsize || obj.CONTSIZE || item.itemspec || obj.ITEMSPEC || item.size || "-";
+                            obj.LOCATIONCODE = obj.LOCATIONCODE || obj.LOCATION || "No Loc"; 
+                            return obj;
+                        });
+                        localStorage.setItem('last_req_hash', hash);
+                        
+                        // MAGIC FIX: Re-apply local edits to protect UI state
+                        applyLocalEdits();
+                        
+                        if (!document.getElementById('view-request').classList.contains('hidden')) renderRequest();
+                    }
+                }
+
+                // --- UPDATED SO BLOCK WITH CACHE-BUSTER AND applyLocalEdits() ---
+                const soRes = await fetch(`${SUPABASE_URL}/rest/v1/v2_sales_office?select=*&_t=${Date.now()}`, {
+                    method: 'GET', 
+                    headers: {'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY}
+                });
+                
+                if (soRes.ok) {
+                    const soData = await soRes.json();
+                    let soHash = JSON.stringify(soData);
+                    if (soHash !== localStorage.getItem('last_so_hash')) {
+                        salesOfficeInventory = soData.map((item, idx) => {
+                            let obj = {SOURCE_TABLE: 'v2_sales_office'};
+                            for (let k in item) { 
+                                if (item[k] !== null) obj[k.toUpperCase()] = item[k]; 
+                            }
+                            obj.DOM_ID = 'so_' + obj.UNIQUE_ID;
+                            let masterItem = fullInventory.find(i => i.UNIQUE_ID === obj.UNIQUE_ID);
+                            if (masterItem) { obj.AV_NOTE = masterItem.AV_NOTE; }
+                            return obj;
+                        });
+                        localStorage.setItem('last_so_hash', soHash);
+                        
+                        // Protect local state here too
+                        applyLocalEdits();
+                        
+                        if (!document.getElementById('view-sales-office').classList.contains('hidden')) renderSalesOffice();
+                    }
+                }
+                
+                lastSyncTime = checkTime;
+            } catch(e) {}
+        }
 async function fetchBackgroundData() {
     const cachedRes = await loadFromCache(); 
     if (cachedRes && fullInventory.length === 0) { 
