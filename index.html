@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-    <title>DC</title>
+    <title>GREENLEAF</title>
     <meta name="theme-color" content="#007a4d">
     <link rel="manifest" href="manifest.json">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="application-name" content="DC">
+    <meta name="application-name" content="GREENLEAF">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -39,7 +39,7 @@
     <div id="view-login">
         <div class="login-card">
             <div class="flex flex-col items-center mb-8 w-full relative">
-                <div class="text-2xl text-[#007a4d] font-black tracking-tighter mb-1 text-center leading-none">DC</div>                <div class="flex flex-col items-center gap-0.5 mt-5">
+                <div class="text-2xl text-[#007a4d] font-black tracking-tighter mb-1 text-center leading-none">GREENLEAF</div>                <div class="flex flex-col items-center gap-0.5 mt-5">
                     <span class="text-[9px] font-bold text-gray-400 uppercase tracking-[0.3em]">Powered By</span>
                     <span class="text-[17px] font-black text-gray-800 tracking-[0.2em] uppercase border-b-[3px] border-[#007a4d] pb-0.5">Ag Metric</span>
                 </div>
@@ -184,7 +184,7 @@
                 <i class="ph-bold ph-list menu-btn text-2xl cursor-pointer" onclick="toggleMenu()"></i>
                 <div class="flex flex-col">
                     <div class="font-bold text-lg leading-tight"><span id="header-user">User</span></div>
-                    <div class="text-[10px] opacity-80 leading-tight">DC</div>                </div>
+                    <div class="text-[10px] opacity-80 leading-tight">GREENLEAF</div>                </div>
             </div>
         </header>
         
@@ -266,7 +266,7 @@
                         <p class="text-green-100 text-[10px] font-bold mb-5 uppercase tracking-[0.2em] z-10 relative">Dashboard</p>
                         
                         <div class="flex flex-col items-center pt-4 border-t border-white/20 w-full mt-1 z-10 relative">
-                            <div class="text-[14px] font-black tracking-wide text-white uppercase drop-shadow-sm mb-3 text-center leading-tight">DC</div>
+                            <div class="text-[14px] font-black tracking-wide text-white uppercase drop-shadow-sm mb-3 text-center leading-tight">GREENLEAF</div>
                             <span class="text-[8px] font-bold text-white/70 uppercase tracking-[0.3em] mb-1">Powered By</span>
                             <div class="text-[12px] font-black tracking-[0.2em] text-white uppercase drop-shadow-sm">Ag Metric</div>
                         </div>
@@ -742,7 +742,7 @@
         async function promptToEnableBiometrics(user,pin) { 
             if(!confirm("Would you like to enable Fingerprint/FaceID login for future use?"))return; 
             try{ 
-                const publicKey={challenge:new Uint8Array(32),rp:{name:"DC"},user:{id:new Uint8Array(16),name:user,displayName:user},pubKeyCredParams:[{type:"public-key",alg:-7}],authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required"},timeout:60000}; 
+                const publicKey={challenge:new Uint8Array(32),rp:{name:"GREENLEAF"},user:{id:new Uint8Array(16),name:user,displayName:user},pubKeyCredParams:[{type:"public-key",alg:-7}],authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required"},timeout:60000}; 
                 await navigator.credentials.create({publicKey}); 
                 localStorage.setItem('gnc_bio_enabled','true'); 
                 localStorage.setItem('gnc_bio_user',user); 
@@ -860,46 +860,46 @@
             
             counter.innerText = `${displayIndex} / ${images.length}`;
         }
-       function handleLogin(isBiometricLogin=false) {
-    const inputUser = document.getElementById('username-input').value.trim().toLowerCase(); 
-    const inputPass = document.getElementById('pin-code').value.trim();
-
-    if(!inputUser || !inputPass){ 
-        showToast("Error", "Please enter username and password", true); 
-        return; 
-    }
-
-    document.getElementById('login-inputs').classList.add('hidden'); 
-    document.getElementById('loading-spinner').classList.remove('hidden'); 
-
-    supabaseFetch('v2_app_users', 'GET', null, `username=ilike.*${encodeURIComponent(inputUser)}*&password=eq.${encodeURIComponent(inputPass)}&select=*`).then(data => {
-        if(data && data.length > 0){
-            const userRecord = data[0]; 
-            currentUser = inputUser; 
-            currentRole = userRecord.role || 'User'; 
-            safeRole = String(currentRole).toUpperCase().replace(/\s+/g,'');
-            
-            const isDefaultPassword = ['1234','12345','welcome','password','GREENLEAF25',inputUser].includes(inputPass); 
-            const hasChangedLocally = localStorage.getItem('gnc_pw_changed_'+currentUser) === 'true';
-
-            if(isDefaultPassword && !hasChangedLocally && !isBiometricLogin){ 
-                document.getElementById('view-login').style.display = 'none'; 
-                document.getElementById('view-change-password').style.display = 'flex'; 
-            } else { 
-                finalizeLogin(inputUser, inputPass, isBiometricLogin); 
+        function handleLogin(isBiometricLogin=false) {
+            const inputUser=document.getElementById('username-input').value.trim().toLowerCase(); 
+            const inputPass=document.getElementById('pin-code').value.trim();
+            if(!inputUser||!inputPass){ showToast("Error","Please enter username and password",true); return; }
+            if(fullInventory.length===0){ 
+                let skeletonHtml=`<div class="p-4 space-y-4 w-full max-w-md mx-auto"><div class="skeleton h-8 w-1/3 mb-6"></div>`; 
+                for(let i=0;i<5;i++){ skeletonHtml+=`<div class="skeleton h-24 w-full rounded-xl mb-3"></div>`; } 
+                skeletonHtml+=`</div>`; 
+                document.getElementById('drive-content').innerHTML=skeletonHtml; 
             }
-        } else { 
-            alert("MISMATCH DETECTED!\n\nIncorrect Username or Password."); 
-            document.getElementById('pin-code').value = ""; 
-            document.getElementById('login-inputs').classList.remove('hidden'); 
-            document.getElementById('loading-spinner').classList.add('hidden'); 
+            document.getElementById('login-inputs').classList.add('hidden'); 
+            document.getElementById('loading-spinner').classList.remove('hidden'); 
+            supabaseFetch('v2_app_users','GET',null,`username=ilike.*${encodeURIComponent(inputUser)}*&password=eq.${encodeURIComponent(inputPass)}&select=*`).then(data=>{
+                if(data&&data.length>0){
+                    const userRecord=data[0]; 
+                    currentUser=inputUser; 
+                    currentRole=userRecord.role||'User'; 
+                    safeRole=String(currentRole).toUpperCase().replace(/\s+/g,'');
+                    const isDefaultPassword=['1234','12345','welcome','password','GREENLEAF25',inputUser].includes(inputPass); 
+                    const hasChangedLocally=localStorage.getItem('gnc_pw_changed_'+currentUser)==='true';
+                    if(isDefaultPassword&&!hasChangedLocally&&!isBiometricLogin){ 
+                        document.getElementById('view-login').style.display='none'; 
+                        document.getElementById('view-change-password').style.display='flex'; 
+                    }
+                    else{ 
+                        finalizeLogin(inputUser,inputPass,isBiometricLogin); 
+                    }
+                }else{ 
+                    alert("MISMATCH DETECTED!\n\nIncorrect Username or Password."); 
+                    document.getElementById('pin-code').value=""; 
+                    document.getElementById('login-inputs').classList.remove('hidden'); 
+                    document.getElementById('loading-spinner').classList.add('hidden'); 
+                }
+            }).catch(err=>{ 
+                showToast("Error","Network Error.",true); 
+                document.getElementById('login-inputs').classList.remove('hidden'); 
+                document.getElementById('loading-spinner').classList.add('hidden'); 
+            });
         }
-    }).catch(err => { 
-        showToast("Error", "Network Error.", true); 
-        document.getElementById('login-inputs').classList.remove('hidden'); 
-        document.getElementById('loading-spinner').classList.add('hidden'); 
-    });
-}
+
         async function submitNewPassword() { 
             const newPass=document.getElementById('new-password').value.trim(); 
             const confirmPass=document.getElementById('confirm-password').value.trim(); 
@@ -1023,24 +1023,25 @@
                             fullInventory[idx].SAVED_PHOTO_NAME=fullInventory[idx].PHOTO_NAME||fullInventory[idx].PHOTONAME||""; 
                             updated=true; 
                             
-                           // NEW: Cascade this update to Docks, Reserves, and Low Stock tabs immediately!
+                            // NEW: Cascade this update to Docks, Reserves, and Low Stock tabs immediately!
                             let mItem = fullInventory[idx];
                             socInventory.forEach(soc => {
-                                if(soc.ITEMCODE === mItem.ITEMCODE) {
-                                    if(mItem.SAVED_PHOTO_LINK) soc.SAVED_PHOTO_LINK = mItem.SAVED_PHOTO_LINK; 
-                                    if(mItem.DOCK_PHOTO_LINK) soc.DOCK_PHOTO_LINK = mItem.DOCK_PHOTO_LINK;
-                                    if(mItem.AV_NOTE) soc.AV_NOTE = mItem.AV_NOTE; 
-                                    if(mItem.SALES_NOTE) soc.SALES_NOTE = mItem.SALES_NOTE; 
-                                    if(mItem.DOCK_NOTE) soc.DOCK_NOTE = mItem.DOCK_NOTE;
+                                if(soc.MASTER_UNIQUE_ID === mItem.UNIQUE_ID) {
+                                    soc.SAVED_PHOTO_LINK = mItem.SAVED_PHOTO_LINK; soc.DOCK_PHOTO_LINK = mItem.DOCK_PHOTO_LINK;
+                                    soc.AV_NOTE = mItem.AV_NOTE; soc.SALES_NOTE = mItem.SALES_NOTE; soc.DOCK_NOTE = mItem.DOCK_NOTE;
                                 }
                             });
                             reservesInventory.forEach(res => {
-                                if(res.ITEMCODE === mItem.ITEMCODE) {
-                                    if(mItem.SAVED_PHOTO_LINK) res.SAVED_PHOTO_LINK = mItem.SAVED_PHOTO_LINK; 
-                                    if(mItem.AV_NOTE) res.AV_NOTE = mItem.AV_NOTE; 
-                                    if(mItem.SALES_NOTE) res.SALES_NOTE = mItem.SALES_NOTE;
+                                if(res.MASTER_UNIQUE_ID === mItem.UNIQUE_ID) {
+                                    res.SAVED_PHOTO_LINK = mItem.SAVED_PHOTO_LINK; res.AV_NOTE = mItem.AV_NOTE; res.SALES_NOTE = mItem.SALES_NOTE;
                                 }
                             });
+                            let lsIdx = lowStockInventory.findIndex(ls => ls.UNIQUE_ID === mItem.UNIQUE_ID);
+                            if(lsIdx > -1) Object.assign(lowStockInventory[lsIdx], mItem);
+
+                            if(activeItem&&activeItem.UNIQUE_ID===updatedRow.unique_id){ Object.assign(activeItem,fullInventory[idx]); }
+                        }
+                    });
                     if(updated){ reRenderCurrentView(); if(activeItem&&!document.getElementById('view-detail').classList.contains('hidden')){ openDetail(activeItem.UNIQUE_ID,lastView); } }
                 }                
                 // --- UPDATED REQ BLOCK WITH CACHE-BUSTER AND applyLocalEdits() ---
@@ -2319,24 +2320,14 @@ let activeAvReservesTab = 'customers'; // Tracks which tab is open
             supabaseFetch('v2_sales_office','DELETE',null,`unique_id=eq.${uniqueId}`).catch(err=>showToast("Error","Network error.",true)); 
         }
 
-      function generateCard(item, sourceView, colorClass='status-green') {
-            let thumbHtml = ''; 
+      function generateCard(item,sourceView,colorClass='status-green') {
+            let thumbHtml=''; let photoLink="";
+            if(sourceView==='docks') photoLink=item.DOCK_PHOTO_LINK||item.SAVED_PHOTO_LINK||item.PHOTO_LINK||""; 
+            else photoLink=item.SAVED_PHOTO_LINK||item.PHOTO_LINK||"";
             
-            // Grab whatever photo link this specific item has first
-            let photoLink = item.DOCK_PHOTO_LINK || item.SAVED_PHOTO_LINK || item.REQ_PHOTO_LINK || item.PHOTO_LINK || ""; 
-            
-            // GLOBAL FALLBACK: Search the entire Master Inventory for a matching ITEMCODE that DOES have a photo!
-            if (!photoLink && item.ITEMCODE) {
-                let master = fullInventory.find(m => m.ITEMCODE === item.ITEMCODE && (m.DOCK_PHOTO_LINK || m.SAVED_PHOTO_LINK || m.PHOTO_LINK));
-                if (master) {
-                    photoLink = master.DOCK_PHOTO_LINK || master.SAVED_PHOTO_LINK || master.PHOTO_LINK || "";
-                    item.SAVED_PHOTO_LINK = photoLink; // Cache it on this row so it loads instantly next time
-                }
-            }
-            
-            const isChecked = selectedItems.has(item.DOM_ID) ? 'checked' : ''; 
-            const tagColor = item.FIELDTAGCOLOR || '-'; 
-            const safeUidJs = esc(item.UNIQUE_ID);
+            const isChecked=selectedItems.has(item.DOM_ID)?'checked':''; 
+            const tagColor=item.FIELDTAGCOLOR||'-'; 
+            const safeUidJs=esc(item.UNIQUE_ID);
 
             if(sourceView === 'av') {
                 let holdHtml = "";
@@ -3904,7 +3895,7 @@ let userChatList = [];
             }
         }
 
-       function showChatParticipants() {
+        function showChatParticipants() {
             let room = userChatList.find(r => r.id === activeChatRoomId);
             if(room) {
                 alert(`Chat Participants:\n\n${room.participants.join('\n').toUpperCase()}`);
