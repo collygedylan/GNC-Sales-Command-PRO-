@@ -900,13 +900,6 @@
         document.getElementById('loading-spinner').classList.add('hidden'); 
     });
 }
-            }).catch(err=>{ 
-                showToast("Error","Network Error.",true); 
-                document.getElementById('login-inputs').classList.remove('hidden'); 
-                document.getElementById('loading-spinner').classList.add('hidden'); 
-            });
-        }
-
         async function submitNewPassword() { 
             const newPass=document.getElementById('new-password').value.trim(); 
             const confirmPass=document.getElementById('confirm-password').value.trim(); 
