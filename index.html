@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-    <title>GREENLEAF</title>
+    <title>DYLAN</title>
     <meta name="theme-color" content="#007a4d">
     <link rel="manifest" href="manifest.json">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="application-name" content="GREENLEAF">
+    <meta name="application-name" content="DYLAN">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -39,7 +39,7 @@
     <div id="view-login">
         <div class="login-card">
             <div class="flex flex-col items-center mb-8 w-full relative">
-                <div class="text-2xl text-[#007a4d] font-black tracking-tighter mb-1 text-center leading-none">GREENLEAF</div>                <div class="flex flex-col items-center gap-0.5 mt-5">
+                <div class="text-2xl text-[#007a4d] font-black tracking-tighter mb-1 text-center leading-none">DYLAN</div>                <div class="flex flex-col items-center gap-0.5 mt-5">
                     <span class="text-[9px] font-bold text-gray-400 uppercase tracking-[0.3em]">Powered By</span>
                     <span class="text-[17px] font-black text-gray-800 tracking-[0.2em] uppercase border-b-[3px] border-[#007a4d] pb-0.5">Ag Metric</span>
                 </div>
@@ -184,7 +184,7 @@
                 <i class="ph-bold ph-list menu-btn text-2xl cursor-pointer" onclick="toggleMenu()"></i>
                 <div class="flex flex-col">
                     <div class="font-bold text-lg leading-tight"><span id="header-user">User</span></div>
-                    <div class="text-[10px] opacity-80 leading-tight">GREENLEAF</div>
+                    <div class="text-[10px] opacity-80 leading-tight">DYLAN</div>
                 </div>
             </div>
         </header>
@@ -267,7 +267,7 @@
                         <p class="text-green-100 text-[10px] font-bold mb-5 uppercase tracking-[0.2em] z-10 relative">Dashboard</p>
                         
                         <div class="flex flex-col items-center pt-4 border-t border-white/20 w-full mt-1 z-10 relative">
-                            <div class="text-[14px] font-black tracking-wide text-white uppercase drop-shadow-sm mb-3 text-center leading-tight">GREENLEAF</div>
+                            <div class="text-[14px] font-black tracking-wide text-white uppercase drop-shadow-sm mb-3 text-center leading-tight">DYLAN</div>
                             <span class="text-[8px] font-bold text-white/70 uppercase tracking-[0.3em] mb-1">Powered By</span>
                             <div class="text-[12px] font-black tracking-[0.2em] text-white uppercase drop-shadow-sm">Ag Metric</div>
                         </div>
@@ -696,7 +696,7 @@
         
         let activeTaskTab="season"; let taskViewTargetUser=null; let taskViewLevel=0; let selectedTaskBlock=null; let selectedTaskLoc=null; let selectedEndCapFolder=null;
         
-        let activeAVTab='open'; let avOpenLevel=0; let selectedAvGroup=null; let selectedAvItemCode=null; let avResLevel=0; let selectedAvResName=null; let selectedAvResSize=null;; let selectedAvOpenSeason=null; let selectedAvOpenLot=null; 
+        let activeAVTab='open'; let activeAvResSubTab='location'; let avOpenLevel=0; let selectedAvGroup=null; let selectedAvItemCode=null; let avResLevel=0; let selectedAvResName=null; let selectedAvResSize=null; let selectedAvOpenSeason=null; let selectedAvOpenLot=null; 
         
         let lowStockViewLevel=0; let selectedLowStockName=null; let selectedLowStockSize=null; let reviewViewLevel=0; let selectedReviewItemCode=null; let selectedReviewCommonName=null; let selectedReviewContSize=null;
         let reportViewLevel=0; let activeReqTab="pending"; let selectedReqRep=null; let selectedReqRepStatus=null; let selectedReqFolder=null; let tempSelectedReqRep=""; let tempReqFolder=null; let tempReqCust=null; let previousReqStep="";
@@ -706,10 +706,24 @@
         
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Machino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
 
+        // --- NEW AV DRILL DOWN FUNCTIONS ---
+        function selectAvResCombo(name, size) { 
+            selectedAvResName = name; 
+            selectedAvResSize = size; 
+            avResLevel = 1; 
+            activeAvResSubTab = 'location'; // Default tab when opening
+            renderAV(); 
+        }
+
+        function setAvResSubTab(tab) {
+            activeAvResSubTab = tab;
+            renderAV();
+        }
+        // -----------------------------------
+
         window.onload=async function() {
             if ('serviceWorker' in navigator) { const registrations = await navigator.serviceWorker.getRegistrations(); for(let registration of registrations) { await registration.unregister(); } }
-            if ('caches' in window) { const keys = await caches.keys(); for (let key of keys) { await caches.delete(key); } }
-            const savedUser=localStorage.getItem('gnc_user_v3'); const savedPin=localStorage.getItem('gnc_pin_v3');
+            if ('caches' in window) { const keys = await caches.keys(); for (let key of keys) { await caches.delete(key); } }            const savedUser=localStorage.getItem('gnc_user_v3'); const savedPin=localStorage.getItem('gnc_pin_v3');
             if(savedUser&&savedPin){ document.getElementById('username-input').value=savedUser; document.getElementById('pin-code').value=savedPin; const cachedRes=await loadFromCache(); if(cachedRes&&fullInventory.length===0){ processAndLoadData(cachedRes); } handleLogin(true); }
         };
 
@@ -732,7 +746,7 @@
         async function promptToEnableBiometrics(user,pin) { 
             if(!confirm("Would you like to enable Fingerprint/FaceID login for future use?"))return; 
             try{ 
-                const publicKey={challenge:new Uint8Array(32),rp:{name:"GREENLEAF"},user:{id:new Uint8Array(16),name:user,displayName:user},pubKeyCredParams:[{type:"public-key",alg:-7}],authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required"},timeout:60000}; 
+                const publicKey={challenge:new Uint8Array(32),rp:{name:"DYLAN"},user:{id:new Uint8Array(16),name:user,displayName:user},pubKeyCredParams:[{type:"public-key",alg:-7}],authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required"},timeout:60000}; 
                 await navigator.credentials.create({publicKey}); 
                 localStorage.setItem('gnc_bio_enabled','true'); 
                 localStorage.setItem('gnc_bio_user',user); 
@@ -1335,10 +1349,9 @@
         function handleReservesSearch() { const term=document.getElementById('reserves-search').value.toLowerCase(); const clearBtn=document.getElementById('reserves-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden');reservesViewLevel=0;} else{clearBtn.classList.add('hidden');reservesViewLevel=0;} debouncedReservesSearch(); }
 
        const debouncedAVSearch=debounce(()=>{requestAnimationFrame(()=>renderAV())}, 400);        
-function selectAvResName(name) { selectedAvResName=name; avResLevel=1; renderAV(); }
-        function selectAvResSize(size) { selectedAvResSize=size; avResLevel=2; renderAV(); }
 
-        function renderAV() {
+
+     function renderAV() {
             const container = document.getElementById('av-content'); 
             const crumb = document.getElementById('av-crumb'); 
             const term = document.getElementById('av-search').value.toLowerCase().trim(); 
@@ -1369,6 +1382,116 @@ function selectAvResName(name) { selectedAvResName=name; avResLevel=1; renderAV(
                 return; 
             }
             
+            if(term.length > 0) { 
+                crumb.innerText = `Search Results (${items.length})`; 
+                items.sort((a,b) => {
+                    let priA = parseFloat(a.PRIORITY); let priB = parseFloat(b.PRIORITY);
+                    if(isNaN(priA)) priA = Infinity; if(isNaN(priB)) priB = Infinity;
+                    if(priA !== priB) return priA - priB;
+                    return String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""), undefined, {numeric:true});
+                }); 
+                container.innerHTML = items.map(i => generateCard(i, activeAVTab === 'open' ? 'av' : 'reserves_drill', activeAVTab === 'open' ? 'status-teal' : 'status-indigo')).join(''); 
+                return; 
+            }
+            
+            if (activeAVTab === 'open') { 
+                crumb.innerText = `Open Stock (${items.length} items)`;
+                
+                let html = '';
+                
+                // 1. Get unique plant groups and sort them alphabetically
+                const plantGroups = [...new Set(items.map(i => i.PLANTGROUPCODE || 'Unassigned'))].sort();
+                
+                plantGroups.forEach(group => {
+                    // Render Plant Group Header
+                    html += `<div class="font-black text-2xl text-teal-800 mt-6 mb-2 border-b-2 border-teal-200 pb-1">${group}</div>`;
+                    
+                    let groupItems = items.filter(i => (i.PLANTGROUPCODE || 'Unassigned') === group);
+                    
+                    // 2. Get unique item codes within this group and sort them (smallest to largest)
+                    const itemCodes = [...new Set(groupItems.map(i => i.ITEMCODE || 'Unknown'))].sort((a, b) => String(a).localeCompare(String(b), undefined, {numeric: true}));
+                    
+                    itemCodes.forEach(code => {
+                        let codeItems = groupItems.filter(i => (i.ITEMCODE || 'Unknown') === code);
+                        let sampleName = codeItems[0]?.COMMONNAME || 'Unknown Plant';
+                        
+                        // Render Item Code Sub-Header
+                        html += `<div class="font-bold text-lg text-gray-700 mt-4 mb-3 bg-gray-100 px-3 py-2 rounded-lg border border-gray-200 flex justify-between items-center shadow-sm">
+                                    <span>${sampleName}</span>
+                                    <span class="font-mono text-sm text-teal-600 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">${code}</span>
+                                 </div>`;
+                        
+                        // 3. Sort the specific cards by Priority then Location
+                        codeItems.sort((a,b) => { 
+                            let priA = parseFloat(a.PRIORITY); let priB = parseFloat(b.PRIORITY); 
+                            if(isNaN(priA)) priA = Infinity; if(isNaN(priB)) priB = Infinity; 
+                            if(priA !== priB) return priA - priB; 
+                            return String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""), undefined, {numeric:true}); 
+                        });
+                        
+                        // Render the cards
+                        html += codeItems.map(i => generateCard(i, 'av', 'status-teal')).join('');
+                    });
+                });
+                
+                container.innerHTML = html;
+                
+            } else {
+                if(avResLevel === 0){ 
+                    crumb.innerText = "My Reserves > Summary"; 
+                    
+                    // Group items by Name + Size
+                    let combos = {};
+                    items.forEach(i => {
+                        let key = i.COMMONNAME + '|||' + i.CONTSIZE;
+                        if(!combos[key]) {
+                            combos[key] = { name: i.COMMONNAME, size: i.CONTSIZE, count: 0 };
+                        }
+                        combos[key].count++;
+                    });
+
+                    // Sort alphabetically by Name, then Size
+                    let sortedKeys = Object.keys(combos).sort((a,b) => a.localeCompare(b));
+
+                    let html = sortedKeys.map(k => {
+                        let c = combos[k];
+                        return `<div class="bg-indigo-50 border border-indigo-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectAvResCombo('${esc(c.name)}', '${esc(c.size)}')">
+                            <div class="flex-grow min-w-0 pr-3">
+                                <div class="font-black text-[16px] text-indigo-900 leading-tight mb-1 truncate">${c.name}</div>
+                                <div class="font-bold text-indigo-700 text-sm">${c.size}</div>
+                            </div>
+                            <div class="flex flex-col items-end flex-shrink-0">
+                                <span class="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-0.5">Orders</span>
+                                <span class="bg-white px-2 py-1 rounded-lg shadow-sm border border-indigo-100 text-indigo-600 font-bold text-sm">${c.count}</span>
+                            </div>
+                        </div>`;
+                    }).join('');
+                    
+                    container.innerHTML = html; 
+                } 
+                else if(avResLevel === 1){ 
+                    crumb.innerText = `My Reserves > ${selectedAvResName} / ${selectedAvResSize}`; 
+                    let finalItems = items.filter(i => i.COMMONNAME === selectedAvResName && i.CONTSIZE === selectedAvResSize); 
+                    
+                    // HTML for the Location / Customers Tabs
+                    let tabsHtml = `
+                        <div class="task-tabs mb-3 mt-1">
+                            <div class="task-tab ${activeAvResSubTab === 'location' ? 'active' : ''}" onclick="setAvResSubTab('location')">All Location</div>
+                            <div class="task-tab ${activeAvResSubTab === 'customers' ? 'active' : ''}" onclick="setAvResSubTab('customers')">Customers</div>
+                        </div>
+                    `;
+
+                    // Sort based on the active tab
+                    if (activeAvResSubTab === 'location') {
+                        finalItems.sort((a,b) => (String(a.LOCATIONCODE) || "").localeCompare(String(b.LOCATIONCODE) || "", undefined, {numeric: true}));
+                    } else {
+                        finalItems.sort((a,b) => (String(a.CUSTOMERNAME) || "").localeCompare(String(b.CUSTOMERNAME) || ""));
+                    }
+
+                    container.innerHTML = `<div class="back-btn" onclick="avResLevel=0; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Summary</div>` + tabsHtml + finalItems.map(i => generateCard(i, 'reserves_drill', 'status-indigo')).join(''); 
+                }
+            }
+        }            
             if(term.length > 0) { 
                 crumb.innerText = `Search Results (${items.length})`; 
                 items.sort((a,b) => {
@@ -2288,11 +2411,15 @@ let specCaliperHtml = "";
                 return `<div class="flex items-center w-full mb-3 item-row relative" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm pointer-events-none" ${isChecked}></div><div class="inv-card status-purple flex-grow !mb-0 bg-purple-50/40 border border-purple-200 transition-transform active:scale-[0.99]"><div class="flex justify-between items-start mb-3"><div class="font-bold text-lg text-[#007a4d] leading-tight pr-2 select-text" style="-webkit-user-select: text; user-select: text;">${item.COMMONNAME||'Unknown'}<br><span class="text-sm text-gray-500 font-semibold">${item.CONTSIZE||'-'}</span></div>${thumbHtml}</div><div class="bg-white p-3 rounded-lg border border-purple-200 shadow-sm mb-3 select-text cursor-text" style="-webkit-user-select: text; user-select: text;" onclick="event.stopPropagation();"><div class="flex justify-between items-center mb-1"><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Item Code</span><span class="font-black text-purple-700 font-mono tracking-wide text-sm">${itemCode}</span></div><div class="flex justify-between items-center mb-1 border-b border-gray-100 pb-1"><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Location / Lot</span><span class="font-bold text-gray-600 text-xs">${locCode} / ${lotCode}</span></div><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5 mt-2">AV Note</div><div class="text-[14px] font-bold text-blue-800 leading-snug mb-2">${avNoteText}</div><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Sales Note</div><div class="text-[14px] font-bold text-green-800 leading-snug">${salesNoteText}</div></div><div class="flex gap-2"><button class="flex-1 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-700 text-[10px] font-bold py-2.5 rounded-lg transition-colors flex flex-col items-center justify-center gap-1 active:bg-indigo-200" onclick="event.stopPropagation(); copyTextToClipboard('${itemCode}', 'ITEM CODE')"><i class="ph-bold ph-barcode text-xl"></i> COPY ITEMCODE</button><button class="flex-1 bg-purple-50 border border-purple-200 hover:bg-purple-100 text-purple-700 text-[10px] font-bold py-2.5 rounded-lg transition-colors flex flex-col items-center justify-center gap-1 active:bg-purple-200" onclick="event.stopPropagation(); copyTextToClipboard('${safeAvNote}', 'AV NOTE')"><i class="ph-bold ph-chat-text text-xl"></i> COPY AV NOTE</button><button class="flex-1 bg-[#007a4d] hover:bg-green-700 text-white text-[10px] font-bold py-2.5 rounded-lg transition-colors flex flex-col items-center justify-center gap-1 shadow-md active:scale-95" onclick="event.stopPropagation(); markSalesOfficeComplete('${safeUidJs}', '${item.DOM_ID}')"><i class="ph-bold ph-check-circle text-xl"></i> DONE</button></div></div></div>`;
             }
 
-            if(sourceView==='reserves_drill'){
-                let custStr=item.CUSTOMERNAME||'Unknown Customer';if(item.CONSIGNEENAME&&String(item.CONSIGNEENAME).trim()!=='')custStr+=` - ${item.CONSIGNEENAME}`;let qtyOrd=item.QTY_ORDERED||item.QUANTITYORDERED||'0';let qtyShip=item.QTY_SHIPPED||item.QUANTITYSHIPPED||'0';let repStr=item.SALESREPNAME||item.SALESREP||'Unknown Rep';
-                return `<div class="flex items-center w-full mb-3 item-row relative bg-white p-4 rounded-xl border border-indigo-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', 'av')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm pointer-events-none" ${isChecked}></div><div class="flex-grow min-w-0"><div class="font-black text-indigo-800 text-[16px] leading-tight mb-1 truncate">${custStr}</div><div class="text-[12px] font-bold text-gray-600 mb-2 truncate">${item.COMMONNAME} • ${item.CONTSIZE}</div><div class="flex flex-wrap gap-2 text-[10px] font-bold"><span class="bg-indigo-50 text-indigo-700 px-2 py-1 rounded border border-indigo-100">Ordered: ${qtyOrd}</span><span class="bg-green-50 text-green-700 px-2 py-1 rounded border border-green-100">Shipped: ${qtyShip}</span><span class="bg-gray-100 text-gray-700 px-2 py-1 rounded border border-gray-200 flex items-center gap-1"><i class="ph-bold ph-user"></i>${repStr}</span></div></div></div>`;
-            }
-
+          if(sourceView==='reserves_drill'){
+        let custStr=item.CUSTOMERNAME||'Unknown Customer';
+        if(item.CONSIGNEENAME&&String(item.CONSIGNEENAME).trim()!=='')custStr+=` - ${item.CONSIGNEENAME}`;
+        let qtyOrd=item.QTY_ORDERED||item.QUANTITYORDERED||'0';
+        let qtyShip=item.QTY_SHIPPED||item.QUANTITYSHIPPED||'0';
+        let repStr=item.SALESREPNAME||item.SALESREP||'Unknown Rep';
+        let locStr=item.LOCATIONCODE||'No Loc';
+        return `<div class="flex items-center w-full mb-3 item-row relative bg-white p-4 rounded-xl border border-indigo-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', 'av')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm pointer-events-none" ${isChecked}></div><div class="flex-grow min-w-0"><div class="font-black text-indigo-800 text-[16px] leading-tight mb-1 truncate">${custStr}</div><div class="text-[12px] font-bold text-gray-600 mb-2 truncate">${item.COMMONNAME} • ${item.CONTSIZE}</div><div class="flex flex-wrap gap-2 text-[10px] font-bold"><span class="bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-100">Loc: ${locStr}</span><span class="bg-indigo-50 text-indigo-700 px-2 py-1 rounded border border-indigo-100">Ordered: ${qtyOrd}</span><span class="bg-green-50 text-green-700 px-2 py-1 rounded border border-green-100">Shipped: ${qtyShip}</span><span class="bg-gray-100 text-gray-700 px-2 py-1 rounded border border-gray-200 flex items-center gap-1"><i class="ph-bold ph-user"></i>${repStr}</span></div></div></div>`;
+    }
             if(sourceView==='drive'||sourceView==='tasks'){
                 let noteHtml="";if(item.END_CAP_FOLDER&&String(item.END_CAP_FOLDER).trim()!==""){noteHtml+=`<div class="mt-2 text-[12px] text-yellow-800 bg-yellow-100 p-2 rounded border border-yellow-200 shadow-sm whitespace-pre-wrap"><span class="font-black">END CAP:</span> ${item.END_CAP_FOLDER} | QTY: ${item.END_CAP_QTY||'0'} | Lvl: ${item.END_CAP_LEVEL||'-'}</div>`}if(item.LOC_MATCH_QTY&&String(item.LOC_MATCH_QTY).trim()!==""&&Number(item.LOC_MATCH_QTY)>0){noteHtml+=`<div class="mt-2 text-[12px] text-green-800 bg-green-100 p-2 rounded border border-green-200 shadow-sm whitespace-pre-wrap"><span class="font-black">MATCH QTY:</span> ${item.LOC_MATCH_QTY}</div>`}if(item.AV_NOTE&&String(item.AV_NOTE).trim()!==""){noteHtml+=`<div class="mt-2 text-[12px] text-blue-800 bg-blue-100 p-2 rounded border border-blue-200 shadow-sm whitespace-pre-wrap"><span class="font-black">AV NOTE:</span> ${item.AV_NOTE}</div>`}if(item.SALES_NOTE&&String(item.SALES_NOTE).trim()!==""){noteHtml+=`<div class="mt-2 text-[12px] text-green-800 bg-green-100 p-2 rounded border border-green-200 shadow-sm whitespace-pre-wrap"><span class="font-black">SALES NOTE:</span> ${item.SALES_NOTE}</div>`}if(item.FLYER_TITLE&&String(item.FLYER_TITLE).trim()!==""){noteHtml+=`<div class="mt-2 text-[12px] text-indigo-800 bg-indigo-100 p-2 rounded border border-indigo-200 shadow-sm whitespace-pre-wrap"><span class="font-black">FLYER:</span> ${item.FLYER_TITLE}</div>`}
                 let extraData="";if(sourceView==='tasks'||sourceView==='drive'){extraData=`<div class="mt-2 flex gap-2 text-[10px] font-bold text-gray-500 uppercase">${item.SPEC?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Spec: ${item.SPEC}</span>`:''}${item.CALIPER?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Cal: ${item.CALIPER}</span>`:''}${item.MATCH?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Match: ${item.MATCH}%</span>`:''}</div>`}
