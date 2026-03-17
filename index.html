@@ -1001,29 +1001,49 @@
                 .subscribe();
         }
 
-        async function silentBackgroundSync() {
+        async function silentBackgroundSync(directPayload = null) {
             if(!currentUser)return; 
             const checkTime=new Date().toISOString();
             try {
-                const response=await fetch(`${SUPABASE_URL}/rest/v1/v2_master_inventory?select=*&last_updated=gt.${lastSyncTime}`,{method:'GET',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
-                if(response.ok) {
-                    const data=await response.json();
-                    if(data&&data.length>0){
-                        let updated=false;
-                        data.forEach(updatedRow=>{
-                            let idx=fullInventory.findIndex(i=>i.UNIQUE_ID===updatedRow.unique_id);
-                            if(idx>-1){
-                                for(let k in updatedRow){ if(updatedRow[k]!==null) fullInventory[idx][k.toUpperCase()]=updatedRow[k]; }
-                                fullInventory[idx].SAVED_PHOTO_LINK=fullInventory[idx].PHOTO_LINK||fullInventory[idx].PHOTOLINK||""; 
-                                fullInventory[idx].SAVED_PHOTO_NAME=fullInventory[idx].PHOTO_NAME||fullInventory[idx].PHOTONAME||""; 
-                                updated=true; 
-                                if(activeItem&&activeItem.UNIQUE_ID===updatedRow.unique_id){ Object.assign(activeItem,fullInventory[idx]); }
-                            }
-                        });
-                        if(updated){ reRenderCurrentView(); if(activeItem&&!document.getElementById('view-detail').classList.contains('hidden')){ openDetail(activeItem.UNIQUE_ID,lastView); } }
-                    } 
-                }
+                // If the websocket handed us the data directly, skip the fetch!
+                let data = directPayload ? [directPayload] : null;
                 
+                if (!data) {
+                    const response=await fetch(`${SUPABASE_URL}/rest/v1/v2_master_inventory?select=*&last_updated=gt.${lastSyncTime}`,{method:'GET',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+                    if(response.ok) data = await response.json();
+                }
+
+                if(data&&data.length>0){
+                    let updated=false;
+                    data.forEach(updatedRow=>{
+                        let idx=fullInventory.findIndex(i=>i.UNIQUE_ID===updatedRow.unique_id);
+                        if(idx>-1){
+                            for(let k in updatedRow){ if(updatedRow[k]!==null) fullInventory[idx][k.toUpperCase()]=updatedRow[k]; }
+                            fullInventory[idx].SAVED_PHOTO_LINK=fullInventory[idx].PHOTO_LINK||fullInventory[idx].PHOTOLINK||""; 
+                            fullInventory[idx].SAVED_PHOTO_NAME=fullInventory[idx].PHOTO_NAME||fullInventory[idx].PHOTONAME||""; 
+                            updated=true; 
+                            
+                            // NEW: Cascade this update to Docks, Reserves, and Low Stock tabs immediately!
+                            let mItem = fullInventory[idx];
+                            socInventory.forEach(soc => {
+                                if(soc.MASTER_UNIQUE_ID === mItem.UNIQUE_ID) {
+                                    soc.SAVED_PHOTO_LINK = mItem.SAVED_PHOTO_LINK; soc.DOCK_PHOTO_LINK = mItem.DOCK_PHOTO_LINK;
+                                    soc.AV_NOTE = mItem.AV_NOTE; soc.SALES_NOTE = mItem.SALES_NOTE; soc.DOCK_NOTE = mItem.DOCK_NOTE;
+                                }
+                            });
+                            reservesInventory.forEach(res => {
+                                if(res.MASTER_UNIQUE_ID === mItem.UNIQUE_ID) {
+                                    res.SAVED_PHOTO_LINK = mItem.SAVED_PHOTO_LINK; res.AV_NOTE = mItem.AV_NOTE; res.SALES_NOTE = mItem.SALES_NOTE;
+                                }
+                            });
+                            let lsIdx = lowStockInventory.findIndex(ls => ls.UNIQUE_ID === mItem.UNIQUE_ID);
+                            if(lsIdx > -1) Object.assign(lowStockInventory[lsIdx], mItem);
+
+                            if(activeItem&&activeItem.UNIQUE_ID===updatedRow.unique_id){ Object.assign(activeItem,fullInventory[idx]); }
+                        }
+                    });
+                    if(updated){ reRenderCurrentView(); if(activeItem&&!document.getElementById('view-detail').classList.contains('hidden')){ openDetail(activeItem.UNIQUE_ID,lastView); } }
+                }                
                 // --- UPDATED REQ BLOCK WITH CACHE-BUSTER AND applyLocalEdits() ---
                 const reqRes = await fetch(`${SUPABASE_URL}/rest/v1/v2_active_request?select=*&_t=${Date.now()}`, {method:'GET', headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
                 if(reqRes.ok) {
