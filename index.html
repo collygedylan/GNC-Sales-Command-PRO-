@@ -992,7 +992,8 @@
                     } 
                 }
                 
-                const reqRes = await fetch(`${SUPABASE_URL}/rest/v1/v2_active_request?select=*`, {method:'GET', headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+                // --- UPDATED REQ BLOCK WITH CACHE-BUSTER AND applyLocalEdits() ---
+                const reqRes = await fetch(`${SUPABASE_URL}/rest/v1/v2_active_request?select=*&_t=${Date.now()}`, {method:'GET', headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
                 if(reqRes.ok) {
                     const reqData = await reqRes.json();
                     let hash = JSON.stringify(reqData);
@@ -1008,11 +1009,16 @@
                             return obj;
                         });
                         localStorage.setItem('last_req_hash', hash);
+                        
+                        // MAGIC FIX: Re-apply local edits to protect UI state
+                        applyLocalEdits();
+                        
                         if(!document.getElementById('view-request').classList.contains('hidden')) renderRequest();
                     }
                 }
 
-                const soRes = await fetch(`${SUPABASE_URL}/rest/v1/v2_sales_office?select=*`, {method:'GET', headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+                // --- UPDATED SO BLOCK WITH CACHE-BUSTER AND applyLocalEdits() ---
+                const soRes = await fetch(`${SUPABASE_URL}/rest/v1/v2_sales_office?select=*&_t=${Date.now()}`, {method:'GET', headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
                 if(soRes.ok) {
                     const soData = await soRes.json();
                     let soHash = JSON.stringify(soData);
@@ -1026,6 +1032,10 @@
                             return obj;
                         });
                         localStorage.setItem('last_so_hash', soHash);
+                        
+                        // Protect local state here too
+                        applyLocalEdits();
+                        
                         if(!document.getElementById('view-sales-office').classList.contains('hidden')) renderSalesOffice();
                     }
                 }
@@ -1033,7 +1043,6 @@
                 lastSyncTime=checkTime;
             } catch(e){}
         }
-
         async function fetchBackgroundData() {
             const cachedRes=await loadFromCache(); 
             if(cachedRes&&fullInventory.length===0){ setTimeout(()=>{ processAndLoadData(cachedRes); },50); } 
@@ -3140,12 +3149,12 @@ let specCaliperHtml = "";
                     let isSeasonNote = (itemToSave.APP_TAB_ASSIGNMENT === 'season');
                     let shouldPushToSO = false;
                     
-                    if (prefix !== 'flyer-' && prefix !== 'req-') {
-                        shouldPushToSO = true; // Normal flow
+                    // STRICT ENFORCEMENT: ONLY Season Sales Notes make it to the Sales Office
+                    if (prefix === 'ssn-') {
+                        shouldPushToSO = true; // explicitly saving from the Season Sales Notes tab
                     } else if (itemToSave.SOURCE_TABLE === 'v2_active_request' && isSeasonNote) {
-                        shouldPushToSO = true; // Request flow that is ALSO a Season Note
+                        shouldPushToSO = true; // Completing a Request that is categorized as a Season Note
                     }
-
                     if (shouldPushToSO) {
                         let masterUid = itemToSave.MASTER_ID || itemToSave.UNIQUE_ID; // Link to master item if Request
                         let sNote = payload.sales_note || payload.req_sales_note || itemToSave.SALES_NOTE || itemToSave.REQ_SALES_NOTE || itemToSave._NEW_SALES_NOTE || "";
