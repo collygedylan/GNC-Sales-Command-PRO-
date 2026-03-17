@@ -2664,13 +2664,18 @@ let specCaliperHtml = "";
                     clone.REQ_STATUS='Pending';
                     clone.REQ_PHOTO_LINK=newReq.req_photo_link;
                     clone.REQ_PHOTO_NAME=newReq.req_photo_name;
-                    requestsInventory.push(clone)
+                    requestsInventory.push(clone);
+                    
+                    // NEW: Backup the newly created clone locally so the race condition doesn't eat it!
+                    backupLocalItem(clone); 
                 }
             });
             showToast("Processing...",`Creating Clone Tickets...`,false);
             clearSelection();
             switchView('request');
-            supabaseFetch('v2_active_request','POST',insertPayloads).then(()=>{
+            
+            // NEW: Passed 'select=*' and 'true' to completely silence the green loading bar
+            supabaseFetch('v2_active_request','POST',insertPayloads, 'select=*', true).then(()=>{
                 showToast("Success","Request tickets cloned!",false);
                 sendEmailNotification('new_request', folderId, tempSelectedReqRep, cust, insertPayloads.length);
             }).catch(err=>showToast("Error","Network error.",true))
@@ -3259,11 +3264,21 @@ let specCaliperHtml = "";
             for (let uid in pendingEdits) {
                 if (now - pendingEdits[uid].timestamp > 900000) { delete pendingEdits[uid]; changed = true; continue; }
                 let item = fullInventory.find(i => i.UNIQUE_ID === uid) || lowStockInventory.find(i => i.UNIQUE_ID === uid) || reservesInventory.find(i => i.UNIQUE_ID === uid) || requestsInventory.find(i => i.UNIQUE_ID === uid) || managerReviewInventory.find(i => i.UNIQUE_ID === uid) || socInventory.find(i => i.UNIQUE_ID === uid);
-                if (item) { Object.assign(item, pendingEdits[uid].data); }
+                
+                if (item) { 
+                    Object.assign(item, pendingEdits[uid].data); 
+                } else {
+                    // MAGIC FIX: If it's not found, it's a NEW row that got wiped by a stale sync! Let's put it back.
+                    let data = pendingEdits[uid].data;
+                    if (data.SOURCE_TABLE === 'v2_active_request') {
+                        requestsInventory.push(data);
+                    } else if (data.SOURCE_TABLE === 'v2_sales_office') {
+                        salesOfficeInventory.push(data);
+                    }
+                }
             }
             if (changed) { localStorage.setItem('gnc_pending_edits', JSON.stringify(pendingEdits)); }
         }
-
         function filterAvNotes(prefix) {
             if (!activeItem) return;
             const inputEl = document.getElementById(prefix + 'av-note');
