@@ -2319,26 +2319,24 @@ let activeAvReservesTab = 'customers'; // Tracks which tab is open
             supabaseFetch('v2_sales_office','DELETE',null,`unique_id=eq.${uniqueId}`).catch(err=>showToast("Error","Network error.",true)); 
         }
 
-      function generateCard(item,sourceView,colorClass='status-green') {
-            let thumbHtml=''; let photoLink="";
+      function generateCard(item, sourceView, colorClass='status-green') {
+            let thumbHtml = ''; 
             
-            if(sourceView === 'docks') {
-                photoLink = item.DOCK_PHOTO_LINK || item.SAVED_PHOTO_LINK || item.PHOTO_LINK || ""; 
-                // Dynamically pull from Master Inventory if the dock item missed the sync
-                if(!photoLink && item.ITEMCODE) {
-                    let master = fullInventory.find(m => m.ITEMCODE === item.ITEMCODE && (m.DOCK_PHOTO_LINK || m.SAVED_PHOTO_LINK || m.PHOTO_LINK));
-                    if(master) {
-                        photoLink = master.DOCK_PHOTO_LINK || master.SAVED_PHOTO_LINK || master.PHOTO_LINK || "";
-                        item.SAVED_PHOTO_LINK = photoLink; 
-                    }
+            // Grab whatever photo link this specific item has first
+            let photoLink = item.DOCK_PHOTO_LINK || item.SAVED_PHOTO_LINK || item.REQ_PHOTO_LINK || item.PHOTO_LINK || ""; 
+            
+            // GLOBAL FALLBACK: Search the entire Master Inventory for a matching ITEMCODE that DOES have a photo!
+            if (!photoLink && item.ITEMCODE) {
+                let master = fullInventory.find(m => m.ITEMCODE === item.ITEMCODE && (m.DOCK_PHOTO_LINK || m.SAVED_PHOTO_LINK || m.PHOTO_LINK));
+                if (master) {
+                    photoLink = master.DOCK_PHOTO_LINK || master.SAVED_PHOTO_LINK || master.PHOTO_LINK || "";
+                    item.SAVED_PHOTO_LINK = photoLink; // Cache it on this row so it loads instantly next time
                 }
-            } else {
-                photoLink = item.SAVED_PHOTO_LINK || item.PHOTO_LINK || "";
             }
             
-            const isChecked=selectedItems.has(item.DOM_ID)?'checked':''; 
-            const tagColor=item.FIELDTAGCOLOR||'-'; 
-            const safeUidJs=esc(item.UNIQUE_ID);
+            const isChecked = selectedItems.has(item.DOM_ID) ? 'checked' : ''; 
+            const tagColor = item.FIELDTAGCOLOR || '-'; 
+            const safeUidJs = esc(item.UNIQUE_ID);
 
             if(sourceView === 'av') {
                 let holdHtml = "";
