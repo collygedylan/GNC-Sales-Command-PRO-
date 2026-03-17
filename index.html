@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-    <title>DC</title>
+    <title>GNC 1945</title>
     <meta name="theme-color" content="#007a4d">
     <link rel="manifest" href="manifest.json">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="application-name" content="DC">
+    <meta name="application-name" content="GNC 1945">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -22,7 +22,8 @@
             user-select: none; 
             -webkit-user-select: none; 
             -webkit-touch-callout: none; 
-            overscroll-behavior-y: contain; 
+            /* Fixes iOS swipe-back crash */
+            overscroll-behavior: none; 
         }
         .nav-header { background: var(--bg); color: white; padding-top: max(10px, env(safe-area-inset-top)); }
         #view-login, #view-change-password { 
@@ -108,7 +109,7 @@
     <div id="view-login">
         <div class="login-card">
             <div class="flex flex-col items-center mb-8 w-full relative">
-                <div class="text-2xl text-[#007a4d] font-black tracking-tighter mb-1 text-center leading-none">DC</div>
+                <div class="text-2xl text-[#007a4d] font-black tracking-tighter mb-1 text-center leading-none">GNC 1945</div>
                 <div class="flex flex-col items-center gap-0.5 mt-5">
                     <span class="text-[9px] font-bold text-gray-400 uppercase tracking-[0.3em]">Powered By</span>
                     <span class="text-[17px] font-black text-gray-800 tracking-[0.2em] uppercase border-b-[3px] border-[#007a4d] pb-0.5">Ag Metric</span>
@@ -257,7 +258,7 @@
                 <i class="ph-bold ph-list menu-btn text-2xl cursor-pointer" onclick="toggleMenu()"></i>
                 <div class="flex flex-col">
                     <div class="font-bold text-lg leading-tight"><span id="header-user">User</span></div>
-                    <div class="text-[10px] opacity-80 leading-tight">DC</div>
+                    <div class="text-[10px] opacity-80 leading-tight">GNC 1945</div>
                 </div>
             </div>
         </header>
@@ -340,7 +341,7 @@
                         <p class="text-green-100 text-[10px] font-bold mb-5 uppercase tracking-[0.2em] z-10 relative">Dashboard</p>
                         
                         <div class="flex flex-col items-center pt-4 border-t border-white/20 w-full mt-1 z-10 relative">
-                            <div class="text-[14px] font-black tracking-wide text-white uppercase drop-shadow-sm mb-3 text-center leading-tight">DC</div>
+                            <div class="text-[14px] font-black tracking-wide text-white uppercase drop-shadow-sm mb-3 text-center leading-tight">GNC 1945</div>
                             <span class="text-[8px] font-bold text-white/70 uppercase tracking-[0.3em] mb-1">Powered By</span>
                             <div class="text-[12px] font-black tracking-[0.2em] text-white uppercase drop-shadow-sm">Ag Metric</div>
                         </div>
@@ -781,23 +782,29 @@
         
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Machino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
 
-        window.onload=async function() {
+        window.onload = async function() {
             if ('serviceWorker' in navigator) { const registrations = await navigator.serviceWorker.getRegistrations(); for(let registration of registrations) { await registration.unregister(); } }
             if ('caches' in window) { const keys = await caches.keys(); for (let key of keys) { await caches.delete(key); } }
             
-            const savedUser=localStorage.getItem('gnc_user_v3'); 
+            const savedUser = localStorage.getItem('gnc_user_v3'); 
+            const savedPin = localStorage.getItem('gnc_pin_v3');
             
-            if(savedUser){ 
+            if (savedUser) { 
                 // Pre-fill the username
-                document.getElementById('username-input').value=savedUser; 
+                document.getElementById('username-input').value = savedUser; 
                 
                 // Pre-load the heavy data into memory instantly
-                const cachedRes=await loadFromCache(); 
-                if(cachedRes&&fullInventory.length===0){ 
+                const cachedRes = await loadFromCache(); 
+                if(cachedRes && fullInventory.length === 0){ 
                     processAndLoadData(cachedRes); 
                 } 
+
+                // FIX: If we have both their username and PIN, auto-login seamlessly!
+                if (savedPin) {
+                    document.getElementById('pin-code').value = savedPin;
+                    handleLogin(false); // Instantly log them back in so they don't feel "kicked out"
+                }
             }
-            // Notice: No auto-fill for pin-code and no handleLogin() trigger here!
         };
 
         window.addEventListener('DOMContentLoaded', () => {
@@ -818,7 +825,7 @@
         async function promptToEnableBiometrics(user,pin) { 
             if(!confirm("Would you like to enable Fingerprint/FaceID login for future use?"))return; 
             try{ 
-                const publicKey={challenge:new Uint8Array(32),rp:{name:"DC"},user:{id:new Uint8Array(16),name:user,displayName:user},pubKeyCredParams:[{type:"public-key",alg:-7}],authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required"},timeout:60000}; 
+                const publicKey={challenge:new Uint8Array(32),rp:{name:"GNC 1945"},user:{id:new Uint8Array(16),name:user,displayName:user},pubKeyCredParams:[{type:"public-key",alg:-7}],authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required"},timeout:60000}; 
                 await navigator.credentials.create({publicKey}); 
                 localStorage.setItem('gnc_bio_enabled','true'); 
                 localStorage.setItem('gnc_bio_user',user); 
@@ -943,8 +950,7 @@
     if (!inputUser || !inputPass) { 
         showToast("Error", "Please enter username and password", true); 
         return; 
-    }
-    document.getElementById('login-inputs').classList.add('hidden'); 
+    }    document.getElementById('login-inputs').classList.add('hidden'); 
     document.getElementById('loading-spinner').classList.remove('hidden'); 
 
     supabaseFetch('v2_app_users', 'GET', null, `username=ilike.*${encodeURIComponent(inputUser)}*&password=eq.${encodeURIComponent(inputPass)}&select=*`).then(data => {
@@ -1445,10 +1451,7 @@ function switchView(viewId) {
     requestAnimationFrame(() => {
         setTimeout(() => {
             if (viewId === 'drive') resetDriveView();
-            if (viewId === 'tasks') { 
-                if (safeRole === 'ADMIN' && !taskViewTargetUser) renderTeamSelector(); 
-                else renderTasks(); 
-            }
+            if (viewId === 'tasks') renderTasks(); // <-- Bypasses the old Team Selector
             if (viewId === 'reports') resetReportsView();
             if (viewId === 'review') resetReviewView();
             if (viewId === 'request') { requestViewLevel = 0; renderRequest(); }
@@ -2674,15 +2677,13 @@ function markSalesOfficeComplete(uniqueId, domId) {
 function generateCard(item, sourceView, colorClass='status-green') {
     let thumbHtml = ''; 
     
-    // Grab whatever photo link this specific item has first
     let photoLink = item.DOCK_PHOTO_LINK || item.SAVED_PHOTO_LINK || item.REQ_PHOTO_LINK || item.PHOTO_LINK || ""; 
     
-    // GLOBAL FALLBACK: Search the entire Master Inventory for a matching ITEMCODE that DOES have a photo!
     if (!photoLink && item.ITEMCODE) {
         let master = fullInventory.find(m => m.ITEMCODE === item.ITEMCODE && (m.DOCK_PHOTO_LINK || m.SAVED_PHOTO_LINK || m.PHOTO_LINK));
         if (master) {
             photoLink = master.DOCK_PHOTO_LINK || master.SAVED_PHOTO_LINK || master.PHOTO_LINK || "";
-            item.SAVED_PHOTO_LINK = photoLink; // Cache it on this row so it loads instantly next time
+            item.SAVED_PHOTO_LINK = photoLink;
         }
     }
     
@@ -2719,7 +2720,6 @@ function generateCard(item, sourceView, colorClass='status-green') {
         if (item.SPEC || item.CALIPER) {
             specCaliperHtml = `<div class="mt-2 text-[11px] font-bold text-gray-600 bg-gray-50 px-2 py-1 rounded border border-gray-100 w-max">Spec: ${item.SPEC || 'N/A'} | Caliper: ${item.CALIPER || 'N/A'}</div>`;
         }
-        // --- Calculate dynamic Loc Photo Match ---
         let ptr = parseInt(String(item.PTRAVAILABLE).replace(/,/g, '')) || 0;
         let matchPct = parseFloat(item.MATCH || item.MATCHPCT);
         let locPhotoMatch = !isNaN(matchPct) ? Math.round(ptr * (matchPct / 100)) : 'N/A';
@@ -2739,23 +2739,12 @@ function generateCard(item, sourceView, colorClass='status-green') {
     }
 
     if (sourceView === 'request') {
-        let reqQty = item.REQ_QTY || '0'; 
-        let cust = item.REQ_CUSTOMER || 'Unknown'; 
-        let rep = item.REQUESTED_BY || 'Unknown'; 
-        let reserve = item.REQ_RESERVE || 'NO'; 
-        let desSpec = item.REQ_DESIRED_SPEC || 'N/A'; 
-        let loc = item.LOCATIONCODE || 'No Loc'; 
-        let origSpec = item.SPEC || '-'; 
-        let reserveBadge = reserve === 'YES' ? `<span class="bg-red-100 text-red-700 px-1.5 py-0.5 rounded border border-red-200">Reserve: YES</span>` : `<span class="bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded border border-gray-200">Reserve: NO</span>`;
+        let reqQty = item.REQ_QTY || '0'; let cust = item.REQ_CUSTOMER || 'Unknown'; let rep = item.REQUESTED_BY || 'Unknown'; let reserve = item.REQ_RESERVE || 'NO'; let desSpec = item.REQ_DESIRED_SPEC || 'N/A'; let loc = item.LOCATIONCODE || 'No Loc'; let origSpec = item.SPEC || '-'; let reserveBadge = reserve === 'YES' ? `<span class="bg-red-100 text-red-700 px-1.5 py-0.5 rounded border border-red-200">Reserve: YES</span>` : `<span class="bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded border border-gray-200">Reserve: NO</span>`;
         let actionBadge = '';
         if (item.REQ_STATUS === 'Complete' && !item.REQ_ARCHIVED) {
-            if (item.REQ_REP_ACTION === 'Approved') { 
-                actionBadge = `<div class="mt-3 text-[10px] font-black text-green-700 bg-green-100 text-center py-2 rounded-lg border border-green-200 uppercase tracking-widest">APPROVED</div>`; 
-            } else if (item.REQ_REP_ACTION === 'Rejected') { 
-                actionBadge = `<div class="mt-3 text-[10px] font-black text-red-700 bg-red-100 text-center py-2 rounded-lg border border-red-200 uppercase tracking-widest">REJECTED</div>`; 
-            } else { 
-                actionBadge = `<div class="flex gap-2 mt-3"><button class="flex-1 bg-green-50 text-green-700 border border-green-200 font-bold py-2 rounded-lg shadow-sm hover:bg-green-100 active:scale-95 text-[10px] uppercase tracking-wider" onclick="event.stopPropagation(); setRepRequestAction('${safeUidJs}', 'Approved')">APPROVE</button><button class="flex-1 bg-red-50 text-red-700 border border-red-200 font-bold py-2 rounded-lg shadow-sm hover:bg-red-100 active:scale-95 text-[10px] uppercase tracking-wider" onclick="event.stopPropagation(); setRepRequestAction('${safeUidJs}', 'Rejected')">REJECT</button></div>`; 
-            }
+            if (item.REQ_REP_ACTION === 'Approved') { actionBadge = `<div class="mt-3 text-[10px] font-black text-green-700 bg-green-100 text-center py-2 rounded-lg border border-green-200 uppercase tracking-widest">APPROVED</div>`; } 
+            else if (item.REQ_REP_ACTION === 'Rejected') { actionBadge = `<div class="mt-3 text-[10px] font-black text-red-700 bg-red-100 text-center py-2 rounded-lg border border-red-200 uppercase tracking-widest">REJECTED</div>`; } 
+            else { actionBadge = `<div class="flex gap-2 mt-3"><button class="flex-1 bg-green-50 text-green-700 border border-green-200 font-bold py-2 rounded-lg shadow-sm hover:bg-green-100 active:scale-95 text-[10px] uppercase tracking-wider" onclick="event.stopPropagation(); setRepRequestAction('${safeUidJs}', 'Approved')">APPROVE</button><button class="flex-1 bg-red-50 text-red-700 border border-red-200 font-bold py-2 rounded-lg shadow-sm hover:bg-red-100 active:scale-95 text-[10px] uppercase tracking-wider" onclick="event.stopPropagation(); setRepRequestAction('${safeUidJs}', 'Rejected')">REJECT</button></div>`; }
         }
         return `<div class="flex items-center w-full mb-3 item-row relative bg-white p-4 rounded-xl border border-purple-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm pointer-events-none" ${isChecked}></div><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full"><div class="flex-grow min-w-0 pr-2"><div class="flex justify-between items-start mb-1"><div class="font-black text-gray-800 text-[16px] leading-tight break-words">${item.COMMONNAME||'Unknown'}</div><div class="font-black text-purple-700 bg-purple-50 px-2 py-1 rounded text-sm whitespace-nowrap ml-2 border border-purple-100">QTY: ${reqQty}</div></div><div class="font-bold text-[#007a4d] text-sm mb-2">${item.CONTSIZE||'-'}</div><div class="grid grid-cols-2 gap-x-2 gap-y-1 mb-2 text-[11px] font-bold text-gray-600"><div class="truncate"><i class="ph-bold ph-user mr-1"></i>${rep}</div><div class="truncate"><i class="ph-bold ph-storefront mr-1"></i>${cust}</div></div><div class="flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600">${reserveBadge}<span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">Loc: ${loc}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Spec: ${origSpec}</span><span class="bg-orange-50 text-orange-700 px-1.5 py-0.5 rounded border border-orange-100">Des Spec: ${desSpec}</span></div></div>${thumbHtml}</div>${actionBadge}</div></div>`;
     }
@@ -2835,7 +2824,13 @@ function generateCard(item, sourceView, colorClass='status-green') {
         
         let extraData = "";
         if (sourceView === 'tasks' || sourceView === 'drive') {
-            extraData = `<div class="mt-2 flex gap-2 text-[10px] font-bold text-gray-500 uppercase">${item.SPEC?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Spec: ${item.SPEC}</span>`:''}${item.CALIPER?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Cal: ${item.CALIPER}</span>`:''}${item.MATCH?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Match: ${item.MATCH}%</span>`:''}</div>`;
+            // NEW: Add a badge for who is assigned to this row when viewing tasks
+            let assignedBadge = "";
+            if (sourceView === 'tasks' && item.ASSIGNEDTO) {
+                assignedBadge = `<span class="bg-indigo-100 text-indigo-800 px-1.5 py-0.5 rounded border border-indigo-200 font-black"><i class="ph-bold ph-user mr-1"></i>${item.ASSIGNEDTO}</span>`;
+            }
+            
+            extraData = `<div class="mt-2 flex flex-wrap gap-2 text-[10px] font-bold text-gray-500 uppercase">${assignedBadge}${item.SPEC?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Spec: ${item.SPEC}</span>`:''}${item.CALIPER?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Cal: ${item.CALIPER}</span>`:''}${item.MATCH?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Match: ${item.MATCH}%</span>`:''}</div>`;
         }
         
         return `<div class="flex items-center w-full mb-3 item-row relative bg-white p-4 rounded-xl border border-gray-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm pointer-events-none" ${isChecked}></div><div class="flex flex-grow items-start justify-between min-w-0"><div class="flex-grow min-w-0 pr-2"><div class="font-black text-gray-800 text-[16px] leading-tight break-words mb-0.5">${item.COMMONNAME||'Unknown'}</div><div class="font-bold text-[#007a4d] text-sm mb-2">${item.CONTSIZE||'-'}</div><div class="text-[11px] font-mono text-gray-500 mb-2 flex items-center bg-gray-100 px-2 py-0.5 rounded w-max"><i class="ph-bold ph-barcode mr-1.5 text-gray-400"></i>${item.ITEMCODE||'-'}</div><div class="flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600"><span class="bg-gray-100 px-1.5 py-0.5 rounded">LOC AVA: <span class="text-gray-900">${item.PTRAVAILABLE||'0'}</span></span><span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">Loc: ${item.LOCATIONCODE||'No Loc'}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded">Lot: ${item.LOTCODE||'-'}</span><span class="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-100">s_LTS: ${item.S_LTS||'0'}</span><span class="bg-orange-50 text-orange-700 px-1.5 py-0.5 rounded border border-orange-100">Pri: ${item.PRIORITY||'-'}</span></div>${extraData}${noteHtml}</div>${thumbHtml}</div></div>`;
@@ -2843,7 +2838,6 @@ function generateCard(item, sourceView, colorClass='status-green') {
     
     return `<div class="flex items-center w-full mb-2 item-row overflow-hidden" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm pointer-events-none" ${isChecked}></div><div class="inv-card ${colorClass} flex items-start justify-between flex-grow !mb-0 transition-transform active:scale-[0.99]"><div class="flex-grow min-w-0 text-[#007a4d]"><div class="flex justify-between font-bold text-sm mb-1"><span class="truncate pr-2">${item.COMMONNAME||'Unknown'} • ${item.CONTSIZE||'-'} • Loc: ${item.LOCATIONCODE||'No Loc'}</span><span class="whitespace-nowrap bg-[#007a4d]/10 px-1.5 py-0.5 rounded text-xs border border-[#007a4d]/20 h-max">Pri: ${item.PRIORITY||'-'}</span></div><div class="text-[11px] font-semibold truncate mt-0.5">Tag: ${tagColor} | Lot: ${item.LOTCODE||'-'} | PTR-Ava: ${item.PTRAVAILABLE||'0'} | s_LTS: ${item.S_LTS||'0'} | Supply: ${item.SEASONSUPPLY||'0'}</div><div class="text-[11px] font-semibold truncate mt-0.5">Item: ${item.ITEMCODE||'-'}</div></div>${thumbHtml}</div></div>`;
 }
-
 function initiateBatchAction(action) {
     if (action === 'request_action') { openRequestModal(); return; }
     if (action === 'endcap') { openEndCapModal(); return; }
@@ -3547,17 +3541,41 @@ function selectTaskUser(u) {
 }
 
 function renderTasks() {
-    let targetUser = safeRole === 'ADMIN' ? taskViewTargetUser : currentUser;
-    if (!targetUser) return;
-    
     const container = document.getElementById('task-content');
     const crumb = document.getElementById('task-crumb');
     
-    crumb.innerHTML = safeRole === 'ADMIN' ? `<span class="cursor-pointer text-gray-400 hover:text-gray-800" onclick="taskViewTargetUser=null; renderTeamSelector()"><i class="ph-bold ph-arrow-left"></i> Back to Team</span> &bull; <span class="text-[#007a4d]">${targetUser}'s Tasks</span>` : "My Tasks";
+    let userStr = String(currentUser).toLowerCase();
     
-    let userItems = fullInventory.filter(i => i.ASSIGNEDTO === targetUser && !i.DATE_COMPLETED);
-    let tabItems = userItems.filter(i => i.APP_TAB_ASSIGNMENT === activeTaskTab);
+    // Check if the logged-in user is Dylan or J.D.
+    let isManager = userStr.includes('dylan') || userStr.includes('j.d') || userStr.includes('jd');
     
+    crumb.innerHTML = isManager ? "Team Tasks (Dylan, J.D., Kayla, Morgan)" : "My Tasks";
+    
+    // Filter the tasks based on who is logged in
+    let tabItems = fullInventory.filter(i => {
+        if (!i.ASSIGNEDTO || i.DATE_COMPLETED) return false;
+        if (i.APP_TAB_ASSIGNMENT !== activeTaskTab) return false;
+        
+        let assigned = String(i.ASSIGNEDTO).toLowerCase();
+        
+        // Apply the custom visibility rule for Season and Location notes
+        if (activeTaskTab === 'season' || activeTaskTab === 'location') {
+            if (isManager) {
+                // Dylan and J.D. see these specific people's rows combined
+                return ['dylan', 'kayla', 'morgan', 'j.d', 'jd'].some(name => assigned.includes(name));
+            } else {
+                // Morgan and Kayla only see their own exact rows
+                return assigned === userStr;
+            }
+        } else {
+            // Fallback for End Caps and Flyers
+            if (isManager) {
+                return ['dylan', 'kayla', 'morgan', 'j.d', 'jd'].some(name => assigned.includes(name));
+            }
+            return assigned === userStr;
+        }
+    });
+
     if (tabItems.length === 0) {
         container.innerHTML = `<div class="p-8 text-center text-gray-400">No active ${activeTaskTab} tasks.</div>`;
         return;
@@ -3611,7 +3629,6 @@ function renderTasks() {
         }
     }
 }
-
 function renderReview() {
     const container = document.getElementById('review-content');
     const crumb = document.getElementById('review-crumb');
