@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-    <title><title>GREENLEAF 01</title>
+    <title>GREENLEAF</title>
     <meta name="theme-color" content="#007a4d">
     <link rel="manifest" href="manifest.json">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="application-name" content="GREENLEAF 01">
+    <meta name="application-name" content="GREENLEAF">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -39,7 +39,7 @@
     <div id="view-login">
         <div class="login-card">
             <div class="flex flex-col items-center mb-8 w-full relative">
-                <div class="text-2xl text-[#007a4d] font-black tracking-tighter mb-1 text-center leading-none">GREENLEAF 01</div>                <div class="flex flex-col items-center gap-0.5 mt-5">
+                <div class="text-2xl text-[#007a4d] font-black tracking-tighter mb-1 text-center leading-none">GREENLEAF</div>                <div class="flex flex-col items-center gap-0.5 mt-5">
                     <span class="text-[9px] font-bold text-gray-400 uppercase tracking-[0.3em]">Powered By</span>
                     <span class="text-[17px] font-black text-gray-800 tracking-[0.2em] uppercase border-b-[3px] border-[#007a4d] pb-0.5">Ag Metric</span>
                 </div>
@@ -47,7 +47,7 @@
             <div id="login-inputs">
                 <input type="text" id="username-input" class="input-field mb-4 text-center border-2" placeholder="USERNAME">
                 <input type="password" id="pin-code" class="input-field mb-4 text-center border-2 tracking-widest" placeholder="PASSWORD">
-                <button class="w-full bg-[#007a4d] text-white font-bold py-3 rounded-lg shadow-md" onclick="handleLogin()">LOGIN</button>
+                <button type="button" class="w-full bg-[#007a4d] text-white font-bold py-3 rounded-lg shadow-md" onclick="handleLogin()">LOGIN</button>
                 <button id="btn-fingerprint" class="hidden w-full bg-gray-50 text-[#007a4d] border-2 border-[#007a4d] font-bold py-3 rounded-lg shadow-md mt-4 flex items-center justify-center gap-2" onclick="loginWithBiometric()"><i class="ph-bold ph-fingerprint text-2xl"></i> LOGIN WITH FINGERPRINT</button>
             </div>
             <div id="loading-spinner" class="hidden mt-6 flex flex-col items-center"><div class="spinner"></div><div id="loading-text" class="text-white font-bold text-sm mt-3 text-center">Syncing Database...</div></div>
@@ -184,7 +184,7 @@
                 <i class="ph-bold ph-list menu-btn text-2xl cursor-pointer" onclick="toggleMenu()"></i>
                 <div class="flex flex-col">
                     <div class="font-bold text-lg leading-tight"><span id="header-user">User</span></div>
-                    <div class="text-[10px] opacity-80 leading-tight">GREENLEAF 01</div>                </div>
+                    <div class="text-[10px] opacity-80 leading-tight">GREENLEAF</div>                </div>
             </div>
         </header>
         
@@ -266,7 +266,7 @@
                         <p class="text-green-100 text-[10px] font-bold mb-5 uppercase tracking-[0.2em] z-10 relative">Dashboard</p>
                         
                         <div class="flex flex-col items-center pt-4 border-t border-white/20 w-full mt-1 z-10 relative">
-                            <div class="text-[14px] font-black tracking-wide text-white uppercase drop-shadow-sm mb-3 text-center leading-tight">GREENLEAF 01</div>
+                            <div class="text-[14px] font-black tracking-wide text-white uppercase drop-shadow-sm mb-3 text-center leading-tight">GREENLEAF</div>
                             <span class="text-[8px] font-bold text-white/70 uppercase tracking-[0.3em] mb-1">Powered By</span>
                             <div class="text-[12px] font-black tracking-[0.2em] text-white uppercase drop-shadow-sm">Ag Metric</div>
                         </div>
@@ -432,10 +432,13 @@
                         <div class="detail-tab hidden" onclick="switchDetailTab('request')" id="dtab-request">Request</div>
                         <div class="detail-tab hidden" onclick="switchDetailTab('notes')" id="dtab-notes">Notes & Actions</div>
                         <div class="detail-tab hidden" onclick="switchDetailTab('docks')" id="dtab-docks">Docks</div>
-                        <div class="detail-tab hidden" onclick="switchDetailTab('flyer')" id="dtab-flyer">Flyer</div>
-                    </div>
-                    <div id="det-overview-content" class="py-4">
-                        <div class="overview-grid">
+                            <div class="detail-tab hidden" onclick="switchDetailTab('flyer')" id="dtab-flyer">Flyer</div>
+                            <div class="detail-tab hidden" onclick="switchDetailTab('gallery')" id="dtab-gallery">Gallery</div>
+                            <div class="detail-tab hidden" onclick="switchDetailTab('all-loc')" id="dtab-all-loc">All Locations</div>
+                        </div>
+                        <div id="det-gallery-content" class="hidden py-4"></div>
+                        <div id="det-all-loc-content" class="hidden py-4 px-1"></div>
+                        <div id="det-overview-content" class="py-4">                        <div class="overview-grid">
                             <div class="overview-card"><div class="overview-label">Location</div><div id="ov-loc" class="overview-val">--</div></div>
                             <div class="overview-card"><div class="overview-label">Qty Avail</div><div id="ov-avail" class="overview-val">--</div></div>
                             <div class="overview-card"><div class="overview-label">Item Code</div><div id="ov-item" class="overview-val">--</div></div>
@@ -513,14 +516,11 @@
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="req-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'req-', true)"></div>
                             <div id="req-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="req-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'req-', true)"></div>
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Reserve</label><select id="req-reserve" class="input-field bg-white" onchange="saveData(false, 'req-', true)"><option value="NO">NO</option><option value="YES">YES</option></select></div>
-                            <div class="relative w-full mt-2 mb-2"><label class="text-[10px] font-bold text-purple-700 uppercase flex justify-between"><span>Request Sales Description</span></label><div class="flex gap-2"><input type="text" id="req-sales-desc" class="input-field border-purple-500 bg-purple-50 uppercase flex-grow !mb-0" placeholder="TYPE NOTES OR SEARCH..." onchange="saveData(false, 'req-', true)"></div></div>
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="req-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'req-', true)"></div>
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Comments</label><input type="text" id="req-comments" class="input-field" placeholder="Any additional comments..." onchange="saveData(false, 'req-', true)"></div>
                         </div>
                         <div class="flex flex-col gap-3 mt-4">
-                            <button id="req-btn-save-draft" class="w-full bg-purple-600 text-white font-bold py-4 rounded-xl shadow-lg" onclick="saveData(false, 'req-')">SAVE REQUEST DATA</button>
                             <button id="req-btn-save-complete" class="w-full bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform" onclick="saveData(true, 'req-')">MARK DONE</button>
-                            <button class="w-full bg-orange-50 text-orange-700 border border-orange-200 font-bold py-4 rounded-xl shadow-sm flex justify-center items-center gap-2 admin-csr-only hidden" onclick="removeFromRequest()"><i class="ph-bold ph-minus-circle text-xl"></i> REMOVE FROM REQUEST</button>
                         </div>
                         <div id="req-matching-inventory-container"></div>
                     </div>                    <div id="det-docks-content" class="hidden py-4">
@@ -949,16 +949,49 @@
             supabaseClient.channel('chat-messages')
                 .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'v2_chat_messages' }, payload => {
                     console.log('Instant Chat Message Detected!', payload);
-                    // If we are currently looking at the chat room, refresh it instantly
+                    
+                    // If we are currently looking at the chat room, inject the message instantly!
                     if (activeChatRoomId && payload.new.room_id === activeChatRoomId) {
-                        fetchChatMessages();
+                        const msg = payload.new;
+                        const container = document.getElementById('chat-messages-container');
+                        
+                        // Don't duplicate our own optimistic messages
+                        if (msg.sender.toLowerCase() === currentUser.toLowerCase()) {
+                            let optMsg = document.getElementById('optimistic-msg');
+                            if(optMsg) optMsg.remove();
+                        }
+                        
+                        let isMe = msg.sender.toLowerCase() === currentUser.toLowerCase();
+                        let msgDate = new Date(msg.created_at);
+                        let timeStr = msgDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                        
+                        let html = '';
+                        if (isMe) {
+                            html = `<div class="flex flex-col items-end w-full">
+                                        <div class="bg-[#007a4d] text-white px-4 py-2.5 rounded-2xl rounded-br-none shadow-sm max-w-[80%] break-words text-[15px] leading-snug">
+                                            ${msg.message}
+                                        </div>
+                                        <span class="text-[9px] text-gray-400 font-bold mt-1 mr-1">${timeStr}</span>
+                                    </div>`;
+                        } else {
+                            html = `<div class="flex flex-col items-start w-full">
+                                        <span class="text-[10px] font-bold text-gray-500 ml-2 mb-0.5 uppercase tracking-wide">${msg.sender}</span>
+                                        <div class="bg-white border border-gray-200 text-gray-800 px-4 py-2.5 rounded-2xl rounded-bl-none shadow-sm max-w-[80%] break-words text-[15px] leading-snug">
+                                            ${msg.message}
+                                        </div>
+                                        <span class="text-[9px] text-gray-400 font-bold mt-1 ml-1">${timeStr}</span>
+                                    </div>`;
+                        }
+                        
+                        container.innerHTML += html;
+                        container.scrollTop = container.scrollHeight;
+                        
                     } else {
                         // Otherwise, refresh the inbox so the preview updates
                         loadChatInbox();
                     }
                 })
-                .subscribe();
-                
+                .subscribe();                
             // 3. Listen for Request changes
             supabaseClient.channel('request-changes')
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'v2_active_request' }, payload => {
@@ -1302,7 +1335,7 @@
 
         function resetAVView() { 
             activeAVTab='open'; 
-            avResLevel=0; selectedAvResName=null; selectedAvResSize=null; 
+            avResLevel=0; selectedAvResName=null; selectedAvResSize=null; activeAvReservesTab='customers'; 
             avOpenLevel=0; selectedAvGroup=null; selectedAvItemCode=null; 
             document.getElementById('tab-av-open').classList.add('active'); document.getElementById('tab-av-reserves').classList.remove('active'); 
             document.getElementById('av-search').value=""; document.getElementById('av-search-clear').classList.add('hidden'); 
@@ -1311,12 +1344,11 @@
 
         function setAVTab(tab) { 
             activeAVTab=tab; 
-            avResLevel=0; selectedAvResName=null; selectedAvResSize=null; 
+            avResLevel=0; selectedAvResName=null; selectedAvResSize=null; activeAvReservesTab='customers'; 
             avOpenLevel=0; selectedAvGroup=null; selectedAvItemCode=null; 
             document.getElementById('tab-av-open').classList.toggle('active',tab==='open'); document.getElementById('tab-av-reserves').classList.toggle('active',tab==='reserves'); 
             renderAV(); 
-        }
-        
+        }        
         function setReqTab(tab) {
             activeReqTab = tab;
             document.getElementById('tab-req-pending').classList.toggle('active', tab === 'pending');
@@ -1354,8 +1386,15 @@
         function handleReservesSearch() { const term=document.getElementById('reserves-search').value.toLowerCase(); const clearBtn=document.getElementById('reserves-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden');reservesViewLevel=0;} else{clearBtn.classList.add('hidden');reservesViewLevel=0;} debouncedReservesSearch(); }
 
        const debouncedAVSearch=debounce(()=>{requestAnimationFrame(()=>renderAV())}, 400);        
-function selectAvResName(name) { selectedAvResName=name; avResLevel=1; renderAV(); }
-        function selectAvResSize(size) { selectedAvResSize=size; avResLevel=2; renderAV(); }
+let activeAvReservesTab = 'customers'; // Tracks which tab is open
+
+        function selectAvResGroup(name, size) { 
+            selectedAvResName = name; 
+            selectedAvResSize = size; 
+            activeAvReservesTab = 'customers'; // Default to Customers tab
+            avResLevel = 1; 
+            renderAV(); 
+        }
 
         function renderAV() {
             const container = document.getElementById('av-content'); 
@@ -1443,28 +1482,72 @@ function selectAvResName(name) { selectedAvResName=name; avResLevel=1; renderAV(
                 container.innerHTML = html;
                 
             } else {
-                if(avResLevel===0){ 
-                    crumb.innerText="My Reserves > Plants"; 
-                    const names=[...new Set(items.map(i=>i.COMMONNAME))].sort(); 
-                    container.innerHTML=names.map(n=>`<div class="drill-item" onclick="selectAvResName('${esc(n)}')"><span class="font-bold text-lg">${n}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join(''); 
-                } 
-                else if(avResLevel===1){ 
-                    crumb.innerText=`My Reserves > ${selectedAvResName}`; 
-                    const namedItems=items.filter(i=>i.COMMONNAME===selectedAvResName); 
-                    const sizes=[...new Set(namedItems.map(i=>i.CONTSIZE))].sort(); 
-                    let html=`<div class="back-btn" onclick="avResLevel=0; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Plants</div>`; 
-                    html+=sizes.map(s=>{const count=namedItems.filter(i=>i.CONTSIZE===s).length;return `<div class="drill-item" onclick="selectAvResSize('${esc(s)}')"><span class="font-bold text-lg">${s} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;}).join(''); 
-                    container.innerHTML=html; 
-                } 
-                else if(avResLevel===2){ 
-                    crumb.innerText=`${selectedAvResName} / ${selectedAvResSize}`; 
-                    let finalItems=items.filter(i=>i.COMMONNAME===selectedAvResName&&i.CONTSIZE===selectedAvResSize); 
-                    finalItems.sort((a,b)=>(String(a.CUSTOMERNAME)||"").localeCompare(String(b.CUSTOMERNAME)||"")); 
-                    container.innerHTML=`<div class="back-btn" onclick="avResLevel=1; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>`+finalItems.map(i=>generateCard(i,'reserves_drill','status-indigo')).join(''); 
+                // It's the "My Reserves" tab
+                if(avResLevel === 0) { 
+                    crumb.innerText = "My Reserves > Grouped by Plant"; 
+                    
+                    // Group items by COMMONNAME + CONTSIZE to make the cards
+                    let groups = {};
+                    items.forEach(i => {
+                        let key = (i.COMMONNAME || 'Unknown') + '|||' + (i.CONTSIZE || '-');
+                        if (!groups[key]) {
+                            groups[key] = {
+                                name: i.COMMONNAME || 'Unknown',
+                                size: i.CONTSIZE || '-',
+                                count: 0,
+                                totalQty: 0
+                            };
+                        }
+                        groups[key].count++;
+                        groups[key].totalQty += (parseFloat(String(i.QTY_ORDERED || i.QUANTITYORDERED || '0').replace(/,/g,'')) || 0);
+                    });
+                    
+                    let sortedKeys = Object.keys(groups).sort();
+                    
+                    // Render the new Grouped Cards
+                    container.innerHTML = sortedKeys.map(k => {
+                        let g = groups[k];
+                        return `
+                        <div class="bg-white border border-indigo-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectAvResGroup('${esc(g.name)}', '${esc(g.size)}')">
+                            <div class="flex-grow min-w-0 pr-3">
+                                <div class="font-black text-[17px] text-indigo-900 leading-tight mb-1 truncate">${g.name}</div>
+                                <div class="text-sm font-bold text-indigo-600">${g.size}</div>
+                            </div>
+                            <div class="flex flex-col items-end flex-shrink-0">
+                                <span class="bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-lg text-sm font-black whitespace-nowrap border border-indigo-100 mb-1">Qty: ${g.totalQty}</span>
+                                <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">${g.count} Customers</span>
+                            </div>
+                        </div>`;
+                    }).join('');
+                    
+                } else if(avResLevel === 1) { 
+                    crumb.innerText = `My Reserves > ${selectedAvResName} (${selectedAvResSize})`; 
+                    
+                    let html = `<div class="back-btn" onclick="avResLevel=0; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Plants</div>`; 
+                    
+                    // Inject the new Sub-Tabs
+                    html += `
+                    <div class="task-tabs mb-4">
+                        <div class="task-tab ${activeAvReservesTab === 'customers' ? 'active' : ''}" onclick="activeAvReservesTab='customers'; renderAV()">Customers</div>
+                        <div class="task-tab ${activeAvReservesTab === 'locations' ? 'active' : ''}" onclick="activeAvReservesTab='locations'; renderAV()">All Locations</div>
+                    </div>`;
+
+                    if (activeAvReservesTab === 'customers') {
+                        // CUSTOMERS TAB: Show the specific reserve orders
+                        let finalItems = items.filter(i => i.COMMONNAME === selectedAvResName && i.CONTSIZE === selectedAvResSize); 
+                        finalItems.sort((a,b) => (String(a.CUSTOMERNAME) || "").localeCompare(String(b.CUSTOMERNAME) || "")); 
+                        html += finalItems.length > 0 ? finalItems.map(i => generateCard(i, 'reserves_drill', 'status-indigo')).join('') : `<div class="p-8 text-center text-gray-400">No customers found.</div>`;
+                    } else {
+                        // ALL LOCATIONS TAB: Search fullInventory and use the AV Open Stock style card
+                        let matchingLocs = fullInventory.filter(i => i.COMMONNAME === selectedAvResName && i.CONTSIZE === selectedAvResSize);
+                        matchingLocs.sort((a,b) => String(a.LOCATIONCODE || "").localeCompare(String(b.LOCATIONCODE || ""), undefined, {numeric: true}));
+                        html += matchingLocs.length > 0 ? matchingLocs.map(i => generateCard(i, 'av', 'status-teal')).join('') : `<div class="p-8 text-center text-gray-400">No locations found.</div>`;
+                    }
+                    
+                    container.innerHTML = html; 
                 }
             }
-        }
-        function setDocksMainTab(tab) {
+        }        function setDocksMainTab(tab) {
             activeDocksMainTab = tab;
             document.getElementById('tab-docks-all').classList.toggle('active', tab === 'all');
             document.getElementById('tab-docks-my').classList.toggle('active', tab === 'my');
@@ -1825,8 +1908,34 @@ function selectAvResName(name) { selectedAvResName=name; avResLevel=1; renderAV(
                 if(t) t.classList.remove('hidden');
             } else if (sourceView === 'docks') {
                 document.getElementById('dtab-docks').classList.remove('hidden');
-            } else if (sourceView === 'request') {
-                document.getElementById('dtab-request').classList.remove('hidden');
+                let dtabGal = document.getElementById('dtab-gallery'); if(dtabGal) dtabGal.classList.remove('hidden');
+                let dtabLoc = document.getElementById('dtab-all-loc'); if(dtabLoc) dtabLoc.classList.remove('hidden');
+                
+                // 1. Build the Gallery dynamically from all available photo links
+                let allLinks = [];
+                if(activeItem.SAVED_PHOTO_LINK) allLinks.push(...activeItem.SAVED_PHOTO_LINK.split(','));
+                if(activeItem.DOCK_PHOTO_LINK) allLinks.push(...activeItem.DOCK_PHOTO_LINK.split(','));
+                
+                // Clean up empty strings and ensure uniqueness
+                let uniqueLinks = [...new Set(allLinks.map(l => l.trim()).filter(Boolean))];
+                
+                let galHtml = uniqueLinks.length ? `<div class="grid grid-cols-2 gap-2">` + uniqueLinks.map(link => {
+                    let clean = link.match(/(https?:\/\/[^"\s>]+)/)?.[1] || link;
+                    let thumb = getDirectImageUrl(clean);
+                    return `<img src="${thumb}" class="w-full h-32 object-cover rounded-lg shadow-sm active:scale-95 transition-transform" onclick="openPhotoModal('${link}', 'Gallery')">`;
+                }).join('') + `</div>` : `<div class="text-center text-gray-400 p-8 font-bold">No photos on file.</div>`;
+                
+                let galContent = document.getElementById('det-gallery-content'); if(galContent) galContent.innerHTML = galHtml;
+
+                // 2. Build the "All Locations" tab using Drive Mode cards!
+                if(activeItem.ITEMCODE) {
+                    let matchingLocs = fullInventory.filter(i => i.ITEMCODE === activeItem.ITEMCODE);
+                    matchingLocs.sort((a,b) => String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""), undefined, {numeric: true}));
+                    
+                    let locHtml = matchingLocs.length ? matchingLocs.map(i => generateCard(i, 'drive', 'status-blue')).join('') : `<div class="text-center text-gray-400 p-8 font-bold">No other locations found.</div>`;
+                    let locContent = document.getElementById('det-all-loc-content'); if(locContent) locContent.innerHTML = locHtml;
+                }
+            } else if (sourceView === 'request') {                document.getElementById('dtab-request').classList.remove('hidden');
                 
                 // Show Season or Location tabs inside the Request view if applicable
                 if (activeItem.APP_TAB_ASSIGNMENT === 'season') {
@@ -1877,12 +1986,14 @@ function selectAvResName(name) { selectedAvResName=name; avResLevel=1; renderAV(
 
             if (sourceView === 'tasks' && activeTaskTab) {
                 switchDetailTab(activeTaskTab);
+            } else if (sourceView === 'request') {
+                // Instantly open to the camera/request tab!
+                switchDetailTab('request');
             } else {
                 switchDetailTab('overview');
             }
 
-            if(typeof validateSsnForm === 'function') validateSsnForm();
-        }
+            if(typeof validateSsnForm === 'function') validateSsnForm();        }
         function renderSavedPhotos() {
             let sLink = activeItem.SAVED_PHOTO_LINK || "";
             let rLink = activeItem.REQ_PHOTO_LINK || "";
@@ -2001,12 +2112,15 @@ function selectAvResName(name) { selectedAvResName=name; avResLevel=1; renderAV(
             document.getElementById('det-season-content').classList.add('hidden');
             document.getElementById('det-location-content').classList.add('hidden');
             document.getElementById('det-request-content').classList.add('hidden');
-            document.getElementById('det-notes-content').classList.add('hidden');
+           document.getElementById('det-notes-content').classList.add('hidden');
             document.getElementById('det-docks-content').classList.add('hidden');
             document.getElementById('det-flyer-content').classList.add('hidden');
+            
+            let galContent = document.getElementById('det-gallery-content'); if(galContent) galContent.classList.add('hidden');
+            let locContent = document.getElementById('det-all-loc-content'); if(locContent) locContent.classList.add('hidden');
 
-            const contentEl = document.getElementById('det-' + tab + '-content');
-            if(contentEl) contentEl.classList.remove('hidden');
+            const contentEl = document.getElementById('det-' + tab + '-content');           
+           if(contentEl) contentEl.classList.remove('hidden');
         }
 
         function goBackFromDetail() {
@@ -2307,11 +2421,72 @@ let specCaliperHtml = "";
                 return `<div class="flex items-center w-full mb-3 item-row relative" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm pointer-events-none" ${isChecked}></div><div class="inv-card status-purple flex-grow !mb-0 bg-purple-50/40 border border-purple-200 transition-transform active:scale-[0.99]"><div class="flex justify-between items-start mb-3"><div class="font-bold text-lg text-[#007a4d] leading-tight pr-2 select-text" style="-webkit-user-select: text; user-select: text;">${item.COMMONNAME||'Unknown'}<br><span class="text-sm text-gray-500 font-semibold">${item.CONTSIZE||'-'}</span></div>${thumbHtml}</div><div class="bg-white p-3 rounded-lg border border-purple-200 shadow-sm mb-3 select-text cursor-text" style="-webkit-user-select: text; user-select: text;" onclick="event.stopPropagation();"><div class="flex justify-between items-center mb-1"><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Item Code</span><span class="font-black text-purple-700 font-mono tracking-wide text-sm">${itemCode}</span></div><div class="flex justify-between items-center mb-1 border-b border-gray-100 pb-1"><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Location / Lot</span><span class="font-bold text-gray-600 text-xs">${locCode} / ${lotCode}</span></div><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5 mt-2">AV Note</div><div class="text-[14px] font-bold text-blue-800 leading-snug mb-2">${avNoteText}</div><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Sales Note</div><div class="text-[14px] font-bold text-green-800 leading-snug">${salesNoteText}</div></div><div class="flex gap-2"><button class="flex-1 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-700 text-[10px] font-bold py-2.5 rounded-lg transition-colors flex flex-col items-center justify-center gap-1 active:bg-indigo-200" onclick="event.stopPropagation(); copyTextToClipboard('${itemCode}', 'ITEM CODE')"><i class="ph-bold ph-barcode text-xl"></i> COPY ITEMCODE</button><button class="flex-1 bg-purple-50 border border-purple-200 hover:bg-purple-100 text-purple-700 text-[10px] font-bold py-2.5 rounded-lg transition-colors flex flex-col items-center justify-center gap-1 active:bg-purple-200" onclick="event.stopPropagation(); copyTextToClipboard('${safeAvNote}', 'AV NOTE')"><i class="ph-bold ph-chat-text text-xl"></i> COPY AV NOTE</button><button class="flex-1 bg-[#007a4d] hover:bg-green-700 text-white text-[10px] font-bold py-2.5 rounded-lg transition-colors flex flex-col items-center justify-center gap-1 shadow-md active:scale-95" onclick="event.stopPropagation(); markSalesOfficeComplete('${safeUidJs}', '${item.DOM_ID}')"><i class="ph-bold ph-check-circle text-xl"></i> DONE</button></div></div></div>`;
             }
 
-            if(sourceView==='reserves_drill'){
-                let custStr=item.CUSTOMERNAME||'Unknown Customer';if(item.CONSIGNEENAME&&String(item.CONSIGNEENAME).trim()!=='')custStr+=` - ${item.CONSIGNEENAME}`;let qtyOrd=item.QTY_ORDERED||item.QUANTITYORDERED||'0';let qtyShip=item.QTY_SHIPPED||item.QUANTITYSHIPPED||'0';let repStr=item.SALESREPNAME||item.SALESREP||'Unknown Rep';
-                return `<div class="flex items-center w-full mb-3 item-row relative bg-white p-4 rounded-xl border border-indigo-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', 'av')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm pointer-events-none" ${isChecked}></div><div class="flex-grow min-w-0"><div class="font-black text-indigo-800 text-[16px] leading-tight mb-1 truncate">${custStr}</div><div class="text-[12px] font-bold text-gray-600 mb-2 truncate">${item.COMMONNAME} • ${item.CONTSIZE}</div><div class="flex flex-wrap gap-2 text-[10px] font-bold"><span class="bg-indigo-50 text-indigo-700 px-2 py-1 rounded border border-indigo-100">Ordered: ${qtyOrd}</span><span class="bg-green-50 text-green-700 px-2 py-1 rounded border border-green-100">Shipped: ${qtyShip}</span><span class="bg-gray-100 text-gray-700 px-2 py-1 rounded border border-gray-200 flex items-center gap-1"><i class="ph-bold ph-user"></i>${repStr}</span></div></div></div>`;
-            }
+            } else {
+                // It's the "My Reserves" tab
+                if(avResLevel === 0) { 
+                    crumb.innerText = "My Reserves > Grouped by Plant"; 
+                    
+                    // Group items by COMMONNAME + CONTSIZE to make the cards
+                    let groups = {};
+                    items.forEach(i => {
+                        let key = (i.COMMONNAME || 'Unknown') + '|||' + (i.CONTSIZE || '-');
+                        if (!groups[key]) {
+                            groups[key] = {
+                                name: i.COMMONNAME || 'Unknown',
+                                size: i.CONTSIZE || '-',
+                                count: 0,
+                                totalQty: 0
+                            };
+                        }
+                        groups[key].count++;
+                        groups[key].totalQty += (parseFloat(String(i.QTY_ORDERED || i.QUANTITYORDERED || '0').replace(/,/g,'')) || 0);
+                    });
+                    
+                    let sortedKeys = Object.keys(groups).sort();
+                    
+                    // Render the new Grouped Cards
+                    container.innerHTML = sortedKeys.map(k => {
+                        let g = groups[k];
+                        return `
+                        <div class="bg-white border border-indigo-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectAvResGroup('${esc(g.name)}', '${esc(g.size)}')">
+                            <div class="flex-grow min-w-0 pr-3">
+                                <div class="font-black text-[17px] text-indigo-900 leading-tight mb-1 truncate">${g.name}</div>
+                                <div class="text-sm font-bold text-indigo-600">${g.size}</div>
+                            </div>
+                            <div class="flex flex-col items-end flex-shrink-0">
+                                <span class="bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-lg text-sm font-black whitespace-nowrap border border-indigo-100 mb-1">Qty: ${g.totalQty}</span>
+                                <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">${g.count} Customers</span>
+                            </div>
+                        </div>`;
+                    }).join('');
+                    
+                } else if(avResLevel === 1) { 
+                    crumb.innerText = `My Reserves > ${selectedAvResName} (${selectedAvResSize})`; 
+                    
+                    let html = `<div class="back-btn" onclick="avResLevel=0; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Plants</div>`; 
+                    
+                    // Inject the new Sub-Tabs
+                    html += `
+                    <div class="task-tabs mb-4">
+                        <div class="task-tab ${activeAvReservesTab === 'customers' ? 'active' : ''}" onclick="activeAvReservesTab='customers'; renderAV()">Customers</div>
+                        <div class="task-tab ${activeAvReservesTab === 'locations' ? 'active' : ''}" onclick="activeAvReservesTab='locations'; renderAV()">All Locations</div>
+                    </div>`;
 
+                    if (activeAvReservesTab === 'customers') {
+                        // CUSTOMERS TAB: Show the specific reserve orders
+                        let finalItems = items.filter(i => i.COMMONNAME === selectedAvResName && i.CONTSIZE === selectedAvResSize); 
+                        finalItems.sort((a,b) => (String(a.CUSTOMERNAME) || "").localeCompare(String(b.CUSTOMERNAME) || "")); 
+                        html += finalItems.length > 0 ? finalItems.map(i => generateCard(i, 'reserves_drill', 'status-indigo')).join('') : `<div class="p-8 text-center text-gray-400">No customers found.</div>`;
+                    } else {
+                        // ALL LOCATIONS TAB: Search fullInventory and use the AV Open Stock style card
+                        let matchingLocs = fullInventory.filter(i => i.COMMONNAME === selectedAvResName && i.CONTSIZE === selectedAvResSize);
+                        matchingLocs.sort((a,b) => String(a.LOCATIONCODE || "").localeCompare(String(b.LOCATIONCODE || ""), undefined, {numeric: true}));
+                        html += matchingLocs.length > 0 ? matchingLocs.map(i => generateCard(i, 'av', 'status-teal')).join('') : `<div class="p-8 text-center text-gray-400">No locations found.</div>`;
+                    }
+                    
+                    container.innerHTML = html; 
+                }
+            }
             if(sourceView==='drive'||sourceView==='tasks'){
                 let noteHtml="";if(item.END_CAP_FOLDER&&String(item.END_CAP_FOLDER).trim()!==""){noteHtml+=`<div class="mt-2 text-[12px] text-yellow-800 bg-yellow-100 p-2 rounded border border-yellow-200 shadow-sm whitespace-pre-wrap"><span class="font-black">END CAP:</span> ${item.END_CAP_FOLDER} | QTY: ${item.END_CAP_QTY||'0'} | Lvl: ${item.END_CAP_LEVEL||'-'}</div>`}if(item.LOC_MATCH_QTY&&String(item.LOC_MATCH_QTY).trim()!==""&&Number(item.LOC_MATCH_QTY)>0){noteHtml+=`<div class="mt-2 text-[12px] text-green-800 bg-green-100 p-2 rounded border border-green-200 shadow-sm whitespace-pre-wrap"><span class="font-black">MATCH QTY:</span> ${item.LOC_MATCH_QTY}</div>`}if(item.AV_NOTE&&String(item.AV_NOTE).trim()!==""){noteHtml+=`<div class="mt-2 text-[12px] text-blue-800 bg-blue-100 p-2 rounded border border-blue-200 shadow-sm whitespace-pre-wrap"><span class="font-black">AV NOTE:</span> ${item.AV_NOTE}</div>`}if(item.SALES_NOTE&&String(item.SALES_NOTE).trim()!==""){noteHtml+=`<div class="mt-2 text-[12px] text-green-800 bg-green-100 p-2 rounded border border-green-200 shadow-sm whitespace-pre-wrap"><span class="font-black">SALES NOTE:</span> ${item.SALES_NOTE}</div>`}if(item.FLYER_TITLE&&String(item.FLYER_TITLE).trim()!==""){noteHtml+=`<div class="mt-2 text-[12px] text-indigo-800 bg-indigo-100 p-2 rounded border border-indigo-200 shadow-sm whitespace-pre-wrap"><span class="font-black">FLYER:</span> ${item.FLYER_TITLE}</div>`}
                 let extraData="";if(sourceView==='tasks'||sourceView==='drive'){extraData=`<div class="mt-2 flex gap-2 text-[10px] font-bold text-gray-500 uppercase">${item.SPEC?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Spec: ${item.SPEC}</span>`:''}${item.CALIPER?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Cal: ${item.CALIPER}</span>`:''}${item.MATCH?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Match: ${item.MATCH}%</span>`:''}</div>`}
@@ -2665,13 +2840,18 @@ let specCaliperHtml = "";
                     clone.REQ_STATUS='Pending';
                     clone.REQ_PHOTO_LINK=newReq.req_photo_link;
                     clone.REQ_PHOTO_NAME=newReq.req_photo_name;
-                    requestsInventory.push(clone)
+                    requestsInventory.push(clone);
+                    
+                    // NEW: Backup the newly created clone locally so the race condition doesn't eat it!
+                    backupLocalItem(clone); 
                 }
             });
             showToast("Processing...",`Creating Clone Tickets...`,false);
             clearSelection();
             switchView('request');
-            supabaseFetch('v2_active_request','POST',insertPayloads).then(()=>{
+            
+            // NEW: Passed 'select=*' and 'true' to completely silence the green loading bar
+            supabaseFetch('v2_active_request','POST',insertPayloads, 'select=*', true).then(()=>{
                 showToast("Success","Request tickets cloned!",false);
                 sendEmailNotification('new_request', folderId, tempSelectedReqRep, cust, insertPayloads.length);
             }).catch(err=>showToast("Error","Network error.",true))
@@ -3260,11 +3440,21 @@ let specCaliperHtml = "";
             for (let uid in pendingEdits) {
                 if (now - pendingEdits[uid].timestamp > 900000) { delete pendingEdits[uid]; changed = true; continue; }
                 let item = fullInventory.find(i => i.UNIQUE_ID === uid) || lowStockInventory.find(i => i.UNIQUE_ID === uid) || reservesInventory.find(i => i.UNIQUE_ID === uid) || requestsInventory.find(i => i.UNIQUE_ID === uid) || managerReviewInventory.find(i => i.UNIQUE_ID === uid) || socInventory.find(i => i.UNIQUE_ID === uid);
-                if (item) { Object.assign(item, pendingEdits[uid].data); }
+                
+                if (item) { 
+                    Object.assign(item, pendingEdits[uid].data); 
+                } else {
+                    // MAGIC FIX: If it's not found, it's a NEW row that got wiped by a stale sync! Let's put it back.
+                    let data = pendingEdits[uid].data;
+                    if (data.SOURCE_TABLE === 'v2_active_request') {
+                        requestsInventory.push(data);
+                    } else if (data.SOURCE_TABLE === 'v2_sales_office') {
+                        salesOfficeInventory.push(data);
+                    }
+                }
             }
             if (changed) { localStorage.setItem('gnc_pending_edits', JSON.stringify(pendingEdits)); }
         }
-
         function filterAvNotes(prefix) {
             if (!activeItem) return;
             const inputEl = document.getElementById(prefix + 'av-note');
@@ -3286,39 +3476,49 @@ let specCaliperHtml = "";
             if(typeof validateSsnForm === 'function') validateSsnForm();
         }
 
-        // --- PULL TO REFRESH LOGIC ---
+       // --- PULL TO REFRESH LOGIC ---
         const scrollArea = document.getElementById('main-scroll-area');
         const ptrContainer = document.getElementById('pull-to-refresh');
         const ptrIcon = document.getElementById('ptr-icon');
         const ptrText = document.getElementById('ptr-text');
 
         let ptrStartY = 0;
+        let ptrStartX = 0; // NEW: Track X to prevent horizontal swipes from triggering it
         let ptrCurrentY = 0;
         let isPulling = false;
-        // Increased threshold so they have to pull it further down
         const ptrThreshold = 100; 
 
         if(scrollArea && ptrContainer) {
             scrollArea.addEventListener('touchstart', (e) => {
-                // Must be EXACTLY at the top now, no accidental triggers mid-scroll
                 if (scrollArea.scrollTop <= 0) { 
                     ptrStartY = e.touches[0].clientY;
+                    ptrStartX = e.touches[0].clientX; 
                     isPulling = true;
-                    ptrContainer.style.transition = 'none'; // Snap to finger instantly
+                    ptrContainer.style.transition = 'none'; 
                 }
             }, { passive: true });
 
             scrollArea.addEventListener('touchmove', (e) => {
                 if (!isPulling) return;
                 ptrCurrentY = e.touches[0].clientY;
+                let currentX = e.touches[0].clientX;
+                
                 const pullDistance = ptrCurrentY - ptrStartY;
+                const pullX = Math.abs(currentX - ptrStartX);
+
+                // STRICT GATE: If they swipe horizontally more than vertically, or swipe UP, cancel the pull!
+                if (pullX > pullDistance || ptrCurrentY < ptrStartY) {
+                    isPulling = false;
+                    closePtr();
+                    return;
+                }
 
                 if (pullDistance > 0 && scrollArea.scrollTop <= 0) {
-                    // Multiplier lowered to 0.35 to add heavy physical "resistance"
-                    let visualHeight = Math.min(pullDistance * 0.35, ptrThreshold + 25);
+                    // Increased resistance: Changed multiplier to 0.20 so it feels heavier
+                    let visualHeight = Math.min(pullDistance * 0.20, ptrThreshold + 25);
                     ptrContainer.style.height = `${visualHeight}px`; 
                     
-                    if (pullDistance * 0.35 >= ptrThreshold) {
+                    if (pullDistance * 0.20 >= ptrThreshold) {
                         ptrText.innerText = "Release to sync";
                         ptrIcon.style.transform = "rotate(180deg)";
                     } else {
@@ -3333,11 +3533,10 @@ let specCaliperHtml = "";
                 isPulling = false;
                 
                 const pullDistance = ptrCurrentY - ptrStartY;
-                ptrContainer.style.transition = 'height 0.3s ease'; // Smooth snap back
+                ptrContainer.style.transition = 'height 0.3s ease'; 
                 ptrIcon.style.transform = "rotate(0deg)";
 
-                if (pullDistance * 0.35 >= ptrThreshold && scrollArea.scrollTop <= 0) {
-                    // Trigger the Sync
+                if (pullDistance * 0.20 >= ptrThreshold && scrollArea.scrollTop <= 0) {
                     ptrContainer.style.height = '50px';
                     ptrText.innerText = "Syncing...";
                     ptrIcon.classList.remove('ph-arrow-down');
@@ -3345,10 +3544,7 @@ let specCaliperHtml = "";
                     
                     fetchBackgroundData();
                     
-                    // Hide it after a short delay so they know it worked
-                    setTimeout(() => {
-                        closePtr();
-                    }, 1500);
+                    setTimeout(() => { closePtr(); }, 1500);
                 } else {
                     closePtr();
                 }
@@ -3471,10 +3667,9 @@ let userChatList = [];
         let selectedUsersForNewChat = new Set();
 
         async function loadChatInbox() {
-            showToast("Loading", "Fetching messages...", false);
             try {
-                // 1. Get all rooms the current user is in
-                const myParticipants = await supabaseFetch(CHAT_PARTICIPANTS_TABLE, 'GET', null, `username=eq.${encodeURIComponent(currentUser)}`);
+                // Notice the 'true' added to the end of all these to make them silent!
+                const myParticipants = await supabaseFetch(CHAT_PARTICIPANTS_TABLE, 'GET', null, `username=eq.${encodeURIComponent(currentUser)}`, true);
                 if (!myParticipants || myParticipants.length === 0) {
                     renderChatInbox([]);
                     return;
@@ -3483,20 +3678,14 @@ let userChatList = [];
                 const roomIds = myParticipants.map(p => p.room_id);
                 const roomIdsString = `(${roomIds.join(',')})`;
 
-                // 2. Fetch the room details
-                const rooms = await supabaseFetch(CHAT_ROOMS_TABLE, 'GET', null, `id=in.${roomIdsString}`);
-                
-                // 3. Fetch the latest message for each room to show in the preview
-                const latestMessages = await supabaseFetch(CHAT_MESSAGES_TABLE, 'GET', null, `room_id=in.${roomIdsString}&order=created_at.desc`);
-
-                // 4. Fetch all participants so we can name 1-on-1 chats properly
-                const allParticipants = await supabaseFetch(CHAT_PARTICIPANTS_TABLE, 'GET', null, `room_id=in.${roomIdsString}`);
+                const rooms = await supabaseFetch(CHAT_ROOMS_TABLE, 'GET', null, `id=in.${roomIdsString}`, true);
+                const latestMessages = await supabaseFetch(CHAT_MESSAGES_TABLE, 'GET', null, `room_id=in.${roomIdsString}&order=created_at.desc`, true);
+                const allParticipants = await supabaseFetch(CHAT_PARTICIPANTS_TABLE, 'GET', null, `room_id=in.${roomIdsString}`, true);
 
                 userChatList = rooms.map(room => {
                     let roomParts = allParticipants.filter(p => p.room_id === room.id).map(p => p.username);
                     let otherUsers = roomParts.filter(u => u.toLowerCase() !== currentUser.toLowerCase());
                     
-                    // If it's a direct message, name the room after the other person
                     let displayTitle = room.name;
                     if (room.type === 'direct' || !displayTitle) {
                         displayTitle = otherUsers.join(', ') || 'Just You';
@@ -3514,12 +3703,11 @@ let userChatList = [];
                     };
                 });
 
-                // Sort by most recently active
                 userChatList.sort((a, b) => b.timestamp - a.timestamp);
                 renderChatInbox(userChatList);
 
             } catch (err) {
-                showToast("Error", "Could not load chats.", true);
+                console.log("Could not load chats.");
             }
         }
 
@@ -3657,7 +3845,7 @@ let userChatList = [];
         async function fetchChatMessages() {
             if(!activeChatRoomId) return;
             try {
-                const messages = await supabaseFetch(CHAT_MESSAGES_TABLE, 'GET', null, `room_id=eq.${activeChatRoomId}&order=created_at.asc`);
+                const messages = await supabaseFetch(CHAT_MESSAGES_TABLE, 'GET', null, `room_id=eq.${activeChatRoomId}&order=created_at.asc`, true);
                 const container = document.getElementById('chat-messages-container');
                 
                 // Only auto-scroll to bottom if we are already near the bottom, or if it's the first load
