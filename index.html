@@ -709,8 +709,20 @@
         window.onload=async function() {
             if ('serviceWorker' in navigator) { const registrations = await navigator.serviceWorker.getRegistrations(); for(let registration of registrations) { await registration.unregister(); } }
             if ('caches' in window) { const keys = await caches.keys(); for (let key of keys) { await caches.delete(key); } }
-            const savedUser=localStorage.getItem('gnc_user_v3'); const savedPin=localStorage.getItem('gnc_pin_v3');
-            if(savedUser&&savedPin){ document.getElementById('username-input').value=savedUser; document.getElementById('pin-code').value=savedPin; const cachedRes=await loadFromCache(); if(cachedRes&&fullInventory.length===0){ processAndLoadData(cachedRes); } handleLogin(true); }
+            
+            const savedUser=localStorage.getItem('gnc_user_v3'); 
+            
+            if(savedUser){ 
+                // Pre-fill the username
+                document.getElementById('username-input').value=savedUser; 
+                
+                // Pre-load the heavy data into memory instantly
+                const cachedRes=await loadFromCache(); 
+                if(cachedRes&&fullInventory.length===0){ 
+                    processAndLoadData(cachedRes); 
+                } 
+            }
+            // Notice: No auto-fill for pin-code and no handleLogin() trigger here!
         };
 
         window.addEventListener('DOMContentLoaded', () => {
@@ -728,7 +740,6 @@
             if(match&&match[1]){ return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w100`; } 
             return url; 
         }
-
         async function promptToEnableBiometrics(user,pin) { 
             if(!confirm("Would you like to enable Fingerprint/FaceID login for future use?"))return; 
             try{ 
@@ -3430,9 +3441,8 @@ let specCaliperHtml = "";
         const CHAT_PARTICIPANTS_TABLE = 'v2_chat_participants'; 
         const CHAT_MESSAGES_TABLE = 'v2_chat_messages';
         
-        let activeChatRoomId = null;
-        let chatPollInterval = null;
-        let userChatList = [];
+       let activeChatRoomId = null;
+let userChatList = [];
         let selectedUsersForNewChat = new Set();
 
         async function loadChatInbox() {
@@ -3605,24 +3615,19 @@ let specCaliperHtml = "";
         }
 
         function openChatRoom(roomId, title) {
-            activeChatRoomId = roomId;
-            document.getElementById('chat-room-title').innerText = title;
-            document.getElementById('view-chat-room').classList.remove('hidden');
-            document.getElementById('chat-messages-container').innerHTML = `<div class="flex justify-center py-10"><div class="spinner border-[#007a4d] border-t-transparent"></div></div>`;
-            
-            fetchChatMessages();
-            
-            // Poll for new messages every 3 seconds while room is open
-            if(chatPollInterval) clearInterval(chatPollInterval);
-            chatPollInterval = setInterval(fetchChatMessages, 3000);
-        }
+    activeChatRoomId = roomId;
+    document.getElementById('chat-room-title').innerText = title;
+    document.getElementById('view-chat-room').classList.remove('hidden');
+    document.getElementById('chat-messages-container').innerHTML = `<div class="flex justify-center py-10"><div class="spinner border-[#007a4d] border-t-transparent"></div></div>`;
+    
+    fetchChatMessages(); // Initial load when opening the room
+}
 
         function closeChatRoom() {
-            activeChatRoomId = null;
-            document.getElementById('view-chat-room').classList.add('hidden');
-            if(chatPollInterval) clearInterval(chatPollInterval);
-            loadChatInbox(); // Refresh inbox to show latest messages
-        }
+    activeChatRoomId = null;
+    document.getElementById('view-chat-room').classList.add('hidden');
+    loadChatInbox(); // Refresh inbox to show latest messages
+}
 
         async function fetchChatMessages() {
             if(!activeChatRoomId) return;
@@ -3709,12 +3714,12 @@ let specCaliperHtml = "";
 
             try {
                 await supabaseFetch(CHAT_MESSAGES_TABLE, 'POST', {
-                    room_id: activeChatRoomId,
-                    sender: currentUser,
-                    message: text,
-                    created_at: new Date().toISOString()
-                });
-                fetchChatMessages(); // Hard refresh to get confirmed message
+            room_id: activeChatRoomId,
+            sender: currentUser,
+            message: text,
+            created_at: new Date().toISOString()
+        });
+        // fetchChatMessages() is removed; the WebSocket will catch the INSERT and update the UI!
             } catch(e) {
                 showToast("Error", "Message failed to send.", true);
                 let optMsg = document.getElementById('optimistic-msg');
