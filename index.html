@@ -3906,7 +3906,7 @@ let userChatList = [];
             }
         }
 
-        function showChatParticipants() {
+       function showChatParticipants() {
             let room = userChatList.find(r => r.id === activeChatRoomId);
             if(room) {
                 alert(`Chat Participants:\n\n${room.participants.join('\n').toUpperCase()}`);
