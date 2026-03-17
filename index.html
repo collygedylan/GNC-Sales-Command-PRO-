@@ -949,16 +949,49 @@
             supabaseClient.channel('chat-messages')
                 .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'v2_chat_messages' }, payload => {
                     console.log('Instant Chat Message Detected!', payload);
-                    // If we are currently looking at the chat room, refresh it instantly
+                    
+                    // If we are currently looking at the chat room, inject the message instantly!
                     if (activeChatRoomId && payload.new.room_id === activeChatRoomId) {
-                        fetchChatMessages();
+                        const msg = payload.new;
+                        const container = document.getElementById('chat-messages-container');
+                        
+                        // Don't duplicate our own optimistic messages
+                        if (msg.sender.toLowerCase() === currentUser.toLowerCase()) {
+                            let optMsg = document.getElementById('optimistic-msg');
+                            if(optMsg) optMsg.remove();
+                        }
+                        
+                        let isMe = msg.sender.toLowerCase() === currentUser.toLowerCase();
+                        let msgDate = new Date(msg.created_at);
+                        let timeStr = msgDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                        
+                        let html = '';
+                        if (isMe) {
+                            html = `<div class="flex flex-col items-end w-full">
+                                        <div class="bg-[#007a4d] text-white px-4 py-2.5 rounded-2xl rounded-br-none shadow-sm max-w-[80%] break-words text-[15px] leading-snug">
+                                            ${msg.message}
+                                        </div>
+                                        <span class="text-[9px] text-gray-400 font-bold mt-1 mr-1">${timeStr}</span>
+                                    </div>`;
+                        } else {
+                            html = `<div class="flex flex-col items-start w-full">
+                                        <span class="text-[10px] font-bold text-gray-500 ml-2 mb-0.5 uppercase tracking-wide">${msg.sender}</span>
+                                        <div class="bg-white border border-gray-200 text-gray-800 px-4 py-2.5 rounded-2xl rounded-bl-none shadow-sm max-w-[80%] break-words text-[15px] leading-snug">
+                                            ${msg.message}
+                                        </div>
+                                        <span class="text-[9px] text-gray-400 font-bold mt-1 ml-1">${timeStr}</span>
+                                    </div>`;
+                        }
+                        
+                        container.innerHTML += html;
+                        container.scrollTop = container.scrollHeight;
+                        
                     } else {
                         // Otherwise, refresh the inbox so the preview updates
                         loadChatInbox();
                     }
                 })
-                .subscribe();
-                
+                .subscribe();                
             // 3. Listen for Request changes
             supabaseClient.channel('request-changes')
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'v2_active_request' }, payload => {
@@ -3332,39 +3365,49 @@ let specCaliperHtml = "";
             if(typeof validateSsnForm === 'function') validateSsnForm();
         }
 
-        // --- PULL TO REFRESH LOGIC ---
+       // --- PULL TO REFRESH LOGIC ---
         const scrollArea = document.getElementById('main-scroll-area');
         const ptrContainer = document.getElementById('pull-to-refresh');
         const ptrIcon = document.getElementById('ptr-icon');
         const ptrText = document.getElementById('ptr-text');
 
         let ptrStartY = 0;
+        let ptrStartX = 0; // NEW: Track X to prevent horizontal swipes from triggering it
         let ptrCurrentY = 0;
         let isPulling = false;
-        // Increased threshold so they have to pull it further down
         const ptrThreshold = 100; 
 
         if(scrollArea && ptrContainer) {
             scrollArea.addEventListener('touchstart', (e) => {
-                // Must be EXACTLY at the top now, no accidental triggers mid-scroll
                 if (scrollArea.scrollTop <= 0) { 
                     ptrStartY = e.touches[0].clientY;
+                    ptrStartX = e.touches[0].clientX; 
                     isPulling = true;
-                    ptrContainer.style.transition = 'none'; // Snap to finger instantly
+                    ptrContainer.style.transition = 'none'; 
                 }
             }, { passive: true });
 
             scrollArea.addEventListener('touchmove', (e) => {
                 if (!isPulling) return;
                 ptrCurrentY = e.touches[0].clientY;
+                let currentX = e.touches[0].clientX;
+                
                 const pullDistance = ptrCurrentY - ptrStartY;
+                const pullX = Math.abs(currentX - ptrStartX);
+
+                // STRICT GATE: If they swipe horizontally more than vertically, or swipe UP, cancel the pull!
+                if (pullX > pullDistance || ptrCurrentY < ptrStartY) {
+                    isPulling = false;
+                    closePtr();
+                    return;
+                }
 
                 if (pullDistance > 0 && scrollArea.scrollTop <= 0) {
-                    // Multiplier lowered to 0.35 to add heavy physical "resistance"
-                    let visualHeight = Math.min(pullDistance * 0.35, ptrThreshold + 25);
+                    // Increased resistance: Changed multiplier to 0.20 so it feels heavier
+                    let visualHeight = Math.min(pullDistance * 0.20, ptrThreshold + 25);
                     ptrContainer.style.height = `${visualHeight}px`; 
                     
-                    if (pullDistance * 0.35 >= ptrThreshold) {
+                    if (pullDistance * 0.20 >= ptrThreshold) {
                         ptrText.innerText = "Release to sync";
                         ptrIcon.style.transform = "rotate(180deg)";
                     } else {
@@ -3379,11 +3422,10 @@ let specCaliperHtml = "";
                 isPulling = false;
                 
                 const pullDistance = ptrCurrentY - ptrStartY;
-                ptrContainer.style.transition = 'height 0.3s ease'; // Smooth snap back
+                ptrContainer.style.transition = 'height 0.3s ease'; 
                 ptrIcon.style.transform = "rotate(0deg)";
 
-                if (pullDistance * 0.35 >= ptrThreshold && scrollArea.scrollTop <= 0) {
-                    // Trigger the Sync
+                if (pullDistance * 0.20 >= ptrThreshold && scrollArea.scrollTop <= 0) {
                     ptrContainer.style.height = '50px';
                     ptrText.innerText = "Syncing...";
                     ptrIcon.classList.remove('ph-arrow-down');
@@ -3391,10 +3433,7 @@ let specCaliperHtml = "";
                     
                     fetchBackgroundData();
                     
-                    // Hide it after a short delay so they know it worked
-                    setTimeout(() => {
-                        closePtr();
-                    }, 1500);
+                    setTimeout(() => { closePtr(); }, 1500);
                 } else {
                     closePtr();
                 }
@@ -3517,10 +3556,9 @@ let userChatList = [];
         let selectedUsersForNewChat = new Set();
 
         async function loadChatInbox() {
-            showToast("Loading", "Fetching messages...", false);
             try {
-                // 1. Get all rooms the current user is in
-                const myParticipants = await supabaseFetch(CHAT_PARTICIPANTS_TABLE, 'GET', null, `username=eq.${encodeURIComponent(currentUser)}`);
+                // Notice the 'true' added to the end of all these to make them silent!
+                const myParticipants = await supabaseFetch(CHAT_PARTICIPANTS_TABLE, 'GET', null, `username=eq.${encodeURIComponent(currentUser)}`, true);
                 if (!myParticipants || myParticipants.length === 0) {
                     renderChatInbox([]);
                     return;
@@ -3529,20 +3567,14 @@ let userChatList = [];
                 const roomIds = myParticipants.map(p => p.room_id);
                 const roomIdsString = `(${roomIds.join(',')})`;
 
-                // 2. Fetch the room details
-                const rooms = await supabaseFetch(CHAT_ROOMS_TABLE, 'GET', null, `id=in.${roomIdsString}`);
-                
-                // 3. Fetch the latest message for each room to show in the preview
-                const latestMessages = await supabaseFetch(CHAT_MESSAGES_TABLE, 'GET', null, `room_id=in.${roomIdsString}&order=created_at.desc`);
-
-                // 4. Fetch all participants so we can name 1-on-1 chats properly
-                const allParticipants = await supabaseFetch(CHAT_PARTICIPANTS_TABLE, 'GET', null, `room_id=in.${roomIdsString}`);
+                const rooms = await supabaseFetch(CHAT_ROOMS_TABLE, 'GET', null, `id=in.${roomIdsString}`, true);
+                const latestMessages = await supabaseFetch(CHAT_MESSAGES_TABLE, 'GET', null, `room_id=in.${roomIdsString}&order=created_at.desc`, true);
+                const allParticipants = await supabaseFetch(CHAT_PARTICIPANTS_TABLE, 'GET', null, `room_id=in.${roomIdsString}`, true);
 
                 userChatList = rooms.map(room => {
                     let roomParts = allParticipants.filter(p => p.room_id === room.id).map(p => p.username);
                     let otherUsers = roomParts.filter(u => u.toLowerCase() !== currentUser.toLowerCase());
                     
-                    // If it's a direct message, name the room after the other person
                     let displayTitle = room.name;
                     if (room.type === 'direct' || !displayTitle) {
                         displayTitle = otherUsers.join(', ') || 'Just You';
@@ -3560,12 +3592,11 @@ let userChatList = [];
                     };
                 });
 
-                // Sort by most recently active
                 userChatList.sort((a, b) => b.timestamp - a.timestamp);
                 renderChatInbox(userChatList);
 
             } catch (err) {
-                showToast("Error", "Could not load chats.", true);
+                console.log("Could not load chats.");
             }
         }
 
@@ -3703,7 +3734,7 @@ let userChatList = [];
         async function fetchChatMessages() {
             if(!activeChatRoomId) return;
             try {
-                const messages = await supabaseFetch(CHAT_MESSAGES_TABLE, 'GET', null, `room_id=eq.${activeChatRoomId}&order=created_at.asc`);
+                const messages = await supabaseFetch(CHAT_MESSAGES_TABLE, 'GET', null, `room_id=eq.${activeChatRoomId}&order=created_at.asc`, true);
                 const container = document.getElementById('chat-messages-container');
                 
                 // Only auto-scroll to bottom if we are already near the bottom, or if it's the first load
