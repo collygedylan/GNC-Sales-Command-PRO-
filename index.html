@@ -3430,21 +3430,22 @@ let specCaliperHtml = "";
             if(typeof validateSsnForm === 'function') validateSsnForm();
         }
 
-       // --- PULL TO REFRESH LOGIC ---
+       // --- PULL TO REFRESH LOGIC (FIXED FOR IOS) ---
         const scrollArea = document.getElementById('main-scroll-area');
         const ptrContainer = document.getElementById('pull-to-refresh');
         const ptrIcon = document.getElementById('ptr-icon');
         const ptrText = document.getElementById('ptr-text');
 
         let ptrStartY = 0;
-        let ptrStartX = 0; // NEW: Track X to prevent horizontal swipes from triggering it
+        let ptrStartX = 0; 
         let ptrCurrentY = 0;
         let isPulling = false;
         const ptrThreshold = 100; 
 
         if(scrollArea && ptrContainer) {
             scrollArea.addEventListener('touchstart', (e) => {
-                if (scrollArea.scrollTop <= 0) { 
+                // Buffer of 5px handles iOS Safari sub-pixel scroll issues
+                if (scrollArea.scrollTop <= 5) { 
                     ptrStartY = e.touches[0].clientY;
                     ptrStartX = e.touches[0].clientX; 
                     isPulling = true;
@@ -3454,25 +3455,30 @@ let specCaliperHtml = "";
 
             scrollArea.addEventListener('touchmove', (e) => {
                 if (!isPulling) return;
+                
                 ptrCurrentY = e.touches[0].clientY;
                 let currentX = e.touches[0].clientX;
                 
                 const pullDistance = ptrCurrentY - ptrStartY;
                 const pullX = Math.abs(currentX - ptrStartX);
 
-                // STRICT GATE: If they swipe horizontally more than vertically, or swipe UP, cancel the pull!
+                // 1. GATE: If swiping side-to-side or pulling UP, cancel the refresh
                 if (pullX > pullDistance || ptrCurrentY < ptrStartY) {
                     isPulling = false;
                     closePtr();
                     return;
                 }
 
-                if (pullDistance > 0 && scrollArea.scrollTop <= 0) {
-                    // Increased resistance: Changed multiplier to 0.20 so it feels heavier
-                    let visualHeight = Math.min(pullDistance * 0.20, ptrThreshold + 25);
+                // 2. IOS PREVENT DEFAULT: If pulling down at the top, lock Safari's scroll
+                if (pullDistance > 0 && scrollArea.scrollTop <= 5) {
+                    // MUST be non-passive to allow preventDefault
+                    if (e.cancelable) e.preventDefault();
+
+                    // Apply physics (0.25 multiplier) for a smooth stretch feel
+                    let visualHeight = Math.min(pullDistance * 0.25, ptrThreshold + 25);
                     ptrContainer.style.height = `${visualHeight}px`; 
                     
-                    if (pullDistance * 0.20 >= ptrThreshold) {
+                    if (visualHeight >= ptrThreshold) {
                         ptrText.innerText = "Release to sync";
                         ptrIcon.style.transform = "rotate(180deg)";
                     } else {
@@ -3480,22 +3486,24 @@ let specCaliperHtml = "";
                         ptrIcon.style.transform = "rotate(0deg)";
                     }
                 }
-            }, { passive: true });
+            }, { passive: false }); // CRITICAL: Must be false for iOS preventDefault() to work
 
             scrollArea.addEventListener('touchend', () => {
                 if (!isPulling) return;
                 isPulling = false;
                 
-                const pullDistance = ptrCurrentY - ptrStartY;
+                const finalPullDistance = ptrCurrentY - ptrStartY;
                 ptrContainer.style.transition = 'height 0.3s ease'; 
                 ptrIcon.style.transform = "rotate(0deg)";
 
-                if (pullDistance * 0.20 >= ptrThreshold && scrollArea.scrollTop <= 0) {
+                // Validate if threshold was met (Distance * Physics Multiplier)
+                if ((finalPullDistance * 0.25) >= ptrThreshold && scrollArea.scrollTop <= 5) {
                     ptrContainer.style.height = '50px';
                     ptrText.innerText = "Syncing...";
                     ptrIcon.classList.remove('ph-arrow-down');
                     ptrIcon.classList.add('ph-spinner', 'animate-spin');
                     
+                    // Call your data sync function
                     fetchBackgroundData();
                     
                     setTimeout(() => { closePtr(); }, 1500);
@@ -3512,6 +3520,7 @@ let specCaliperHtml = "";
                 ptrIcon.classList.add('ph-arrow-down');
                 ptrIcon.classList.remove('ph-spinner', 'animate-spin');
                 ptrText.innerText = "Pull to sync";
+                ptrIcon.style.transform = "rotate(0deg)";
             }, 300);
         }
 
@@ -3526,7 +3535,6 @@ let specCaliperHtml = "";
             for (let i = 0; i < fileCount; i++) {
                 const file = input.files[i];
                 
-                // Allow files even if mobile doesn't report a type (common camera bug)
                 if (file.type && !file.type.startsWith('image/')) {
                     showToast('Error', `File ${i + 1} is not a valid image.`, true);
                     continue;
@@ -3565,17 +3573,14 @@ let specCaliperHtml = "";
                                 let filePath = `${new Date().toISOString().split('T')[0]}/${fileName}`;
 
                                 try {
-                                    // Use the official client library for the upload
                                     const { data, error } = await supabaseClient.storage
                                         .from(bucketName)
                                         .upload(filePath, blob, { contentType: 'image/jpeg', upsert: true });
 
                                     if (error) throw error;
 
-                                    // Get the public URL
                                     const { data: { publicUrl } } = supabaseClient.storage.from(bucketName).getPublicUrl(filePath);
 
-                                    // Update the correct database column
                                     let linkCol = 'SAVED_PHOTO_LINK';
                                     if (prefix === 'req-') linkCol = 'REQ_PHOTO_LINK';
                                     else if (prefix === 'dock-') linkCol = 'DOCK_PHOTO_LINK';
@@ -3584,7 +3589,6 @@ let specCaliperHtml = "";
                                     let currentLinks = activeItem[linkCol] || "";
                                     activeItem[linkCol] = currentLinks ? currentLinks + ',' + publicUrl : publicUrl;
                                     
-                                    // Save change to DB (False = Draft/Silent save)
                                     saveData(false, prefix, false); 
                                     renderSavedPhotos(); 
                                     resolve();
@@ -3596,13 +3600,13 @@ let specCaliperHtml = "";
                         };
                         
                         img.onerror = () => {
-                            showToast('Error', `Could not read photo ${i + 1}. Unsupported format.`, true);
+                            showToast('Error', `Could not read photo ${i + 1}.`, true);
                             resolve();
                         };
                     };
                     
                     reader.onerror = () => {
-                        showToast('Error', `Failed to read file ${i + 1} from device.`, true);
+                        showToast('Error', `Failed to read file ${i + 1}.`, true);
                         resolve();
                     };
                 });
@@ -3616,13 +3620,12 @@ let specCaliperHtml = "";
         const CHAT_PARTICIPANTS_TABLE = 'v2_chat_participants'; 
         const CHAT_MESSAGES_TABLE = 'v2_chat_messages';
         
-       let activeChatRoomId = null;
-let userChatList = [];
+        let activeChatRoomId = null;
+        let userChatList = [];
         let selectedUsersForNewChat = new Set();
 
         async function loadChatInbox() {
             try {
-                // Notice the 'true' added to the end of all these to make them silent!
                 const myParticipants = await supabaseFetch(CHAT_PARTICIPANTS_TABLE, 'GET', null, `username=eq.${encodeURIComponent(currentUser)}`, true);
                 if (!myParticipants || myParticipants.length === 0) {
                     renderChatInbox([]);
@@ -3704,7 +3707,6 @@ let userChatList = [];
             const term = document.getElementById('new-chat-search').value.toLowerCase();
             const container = document.getElementById('new-chat-user-list');
             
-            // This pulls from your existing salesRepList and team members
             let allUsers = ["Dylan", "Kayla", "Morgan", ...salesRepList];
             let filtered = allUsers.filter(u => u.toLowerCase() !== currentUser.toLowerCase() && u.toLowerCase().includes(term));
             
@@ -3735,17 +3737,16 @@ let userChatList = [];
             }
             
             let participants = Array.from(selectedUsersForNewChat);
-            participants.push(currentUser); // Add self to the room
+            participants.push(currentUser); 
             let isGroup = participants.length > 2;
             let roomName = isGroup ? prompt("Enter a name for this group chat:") : '';
             
-            if(isGroup && !roomName) return; // User cancelled group name prompt
+            if(isGroup && !roomName) return; 
 
             document.getElementById('new-chat-modal').classList.add('hidden');
             showToast("Setting up...", "Creating chat room...", false);
 
             try {
-                // If it's a 1-on-1, check if room already exists to prevent duplicates
                 if (!isGroup) {
                     let otherUser = Array.from(selectedUsersForNewChat)[0];
                     let existingRoom = userChatList.find(c => !c.isGroup && c.participants.length === 2 && c.participants.includes(otherUser.toLowerCase()));
@@ -3755,7 +3756,6 @@ let userChatList = [];
                     }
                 }
 
-                // Create new room
                 let newRoomId = 'chat_' + Date.now() + Math.random().toString(36).substring(2,7);
                 await supabaseFetch(CHAT_ROOMS_TABLE, 'POST', {
                     id: newRoomId,
@@ -3764,7 +3764,6 @@ let userChatList = [];
                     created_at: new Date().toISOString()
                 });
 
-                // Add participants
                 let participantPayloads = participants.map(p => ({
                     room_id: newRoomId,
                     username: p.toLowerCase(),
@@ -3772,7 +3771,6 @@ let userChatList = [];
                 }));
                 await supabaseFetch(CHAT_PARTICIPANTS_TABLE, 'POST', participantPayloads);
 
-                // Open the new room
                 let displayTitle = isGroup ? roomName : Array.from(selectedUsersForNewChat)[0];
                 openChatRoom(newRoomId, displayTitle.toUpperCase());
                 
@@ -3782,19 +3780,18 @@ let userChatList = [];
         }
 
         function openChatRoom(roomId, title) {
-    activeChatRoomId = roomId;
-    document.getElementById('chat-room-title').innerText = title;
-    document.getElementById('view-chat-room').classList.remove('hidden');
-    document.getElementById('chat-messages-container').innerHTML = `<div class="flex justify-center py-10"><div class="spinner border-[#007a4d] border-t-transparent"></div></div>`;
-    
-    fetchChatMessages(); // Initial load when opening the room
-}
+            activeChatRoomId = roomId;
+            document.getElementById('chat-room-title').innerText = title;
+            document.getElementById('view-chat-room').classList.remove('hidden');
+            document.getElementById('chat-messages-container').innerHTML = `<div class="flex justify-center py-10"><div class="spinner border-[#007a4d] border-t-transparent"></div></div>`;
+            fetchChatMessages();
+        }
 
         function closeChatRoom() {
-    activeChatRoomId = null;
-    document.getElementById('view-chat-room').classList.add('hidden');
-    loadChatInbox(); // Refresh inbox to show latest messages
-}
+            activeChatRoomId = null;
+            document.getElementById('view-chat-room').classList.add('hidden');
+            loadChatInbox();
+        }
 
         async function fetchChatMessages() {
             if(!activeChatRoomId) return;
@@ -3802,7 +3799,6 @@ let userChatList = [];
                 const messages = await supabaseFetch(CHAT_MESSAGES_TABLE, 'GET', null, `room_id=eq.${activeChatRoomId}&order=created_at.asc`, true);
                 const container = document.getElementById('chat-messages-container');
                 
-                // Only auto-scroll to bottom if we are already near the bottom, or if it's the first load
                 let isAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 50;
                 let isFirstLoad = container.innerHTML.includes('spinner');
 
@@ -3820,40 +3816,22 @@ let userChatList = [];
                     let dateStr = msgDate.toLocaleDateString();
                     let timeStr = msgDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
 
-                    // Add a date divider if the day changes
                     if (dateStr !== currentDate) {
                         html += `<div class="flex justify-center my-4"><span class="bg-gray-200 text-gray-500 text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">${dateStr}</span></div>`;
                         currentDate = dateStr;
                     }
 
                     if (isMe) {
-                        html += `
-                            <div class="flex flex-col items-end w-full">
-                                <div class="bg-[#007a4d] text-white px-4 py-2.5 rounded-2xl rounded-br-none shadow-sm max-w-[80%] break-words text-[15px] leading-snug">
-                                    ${msg.message}
-                                </div>
-                                <span class="text-[9px] text-gray-400 font-bold mt-1 mr-1">${timeStr}</span>
-                            </div>
-                        `;
+                        html += `<div class="flex flex-col items-end w-full"><div class="bg-[#007a4d] text-white px-4 py-2.5 rounded-2xl rounded-br-none shadow-sm max-w-[80%] break-words text-[15px] leading-snug">${msg.message}</div><span class="text-[9px] text-gray-400 font-bold mt-1 mr-1">${timeStr}</span></div>`;
                     } else {
-                        html += `
-                            <div class="flex flex-col items-start w-full">
-                                <span class="text-[10px] font-bold text-gray-500 ml-2 mb-0.5 uppercase tracking-wide">${msg.sender}</span>
-                                <div class="bg-white border border-gray-200 text-gray-800 px-4 py-2.5 rounded-2xl rounded-bl-none shadow-sm max-w-[80%] break-words text-[15px] leading-snug">
-                                    ${msg.message}
-                                </div>
-                                <span class="text-[9px] text-gray-400 font-bold mt-1 ml-1">${timeStr}</span>
-                            </div>
-                        `;
+                        html += `<div class="flex flex-col items-start w-full"><span class="text-[10px] font-bold text-gray-500 ml-2 mb-0.5 uppercase tracking-wide">${msg.sender}</span><div class="bg-white border border-gray-200 text-gray-800 px-4 py-2.5 rounded-2xl rounded-bl-none shadow-sm max-w-[80%] break-words text-[15px] leading-snug">${msg.message}</div><span class="text-[9px] text-gray-400 font-bold mt-1 ml-1">${timeStr}</span></div>`;
                     }
                 });
 
                 container.innerHTML = html;
-
                 if (isFirstLoad || isAtBottom) {
                     container.scrollTop = container.scrollHeight;
                 }
-
             } catch(e) {
                 console.error("Failed to fetch messages");
             }
@@ -3864,34 +3842,24 @@ let userChatList = [];
             const text = input.value.trim();
             if(!text || !activeChatRoomId) return;
 
-            input.value = ''; // Clear instantly for good UX
-            
-            // Optimistically add the message to the UI
+            input.value = ''; 
             const container = document.getElementById('chat-messages-container');
             let timeStr = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-            container.innerHTML += `
-                <div class="flex flex-col items-end w-full opacity-70" id="optimistic-msg">
-                    <div class="bg-[#007a4d] text-white px-4 py-2.5 rounded-2xl rounded-br-none shadow-sm max-w-[80%] break-words text-[15px] leading-snug">
-                        ${text}
-                    </div>
-                    <span class="text-[9px] text-gray-400 font-bold mt-1 mr-1">Sending...</span>
-                </div>
-            `;
+            container.innerHTML += `<div class="flex flex-col items-end w-full opacity-70" id="optimistic-msg"><div class="bg-[#007a4d] text-white px-4 py-2.5 rounded-2xl rounded-br-none shadow-sm max-w-[80%] break-words text-[15px] leading-snug">${text}</div><span class="text-[9px] text-gray-400 font-bold mt-1 mr-1">Sending...</span></div>`;
             container.scrollTop = container.scrollHeight;
 
             try {
                 await supabaseFetch(CHAT_MESSAGES_TABLE, 'POST', {
-            room_id: activeChatRoomId,
-            sender: currentUser,
-            message: text,
-            created_at: new Date().toISOString()
-        });
-        // fetchChatMessages() is removed; the WebSocket will catch the INSERT and update the UI!
+                    room_id: activeChatRoomId,
+                    sender: currentUser,
+                    message: text,
+                    created_at: new Date().toISOString()
+                });
             } catch(e) {
                 showToast("Error", "Message failed to send.", true);
                 let optMsg = document.getElementById('optimistic-msg');
                 if(optMsg) optMsg.remove();
-                input.value = text; // Put text back so they don't lose it
+                input.value = text; 
             }
         }
 
@@ -3900,7 +3868,7 @@ let userChatList = [];
             if(room) {
                 alert(`Chat Participants:\n\n${room.participants.join('\n').toUpperCase()}`);
             }
-        }
-    </script>
+        }    
+</script>
 </body>
 </html>
