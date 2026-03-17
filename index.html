@@ -879,7 +879,7 @@
                     currentUser=inputUser; 
                     currentRole=userRecord.role||'User'; 
                     safeRole=String(currentRole).toUpperCase().replace(/\s+/g,'');
-                    const isDefaultPassword=['1234','12345','welcome','password',inputUser].includes(inputPass); 
+                    const isDefaultPassword=['1234','12345','welcome','password','GREENLEAF25',inputUser].includes(inputPass); 
                     const hasChangedLocally=localStorage.getItem('gnc_pw_changed_'+currentUser)==='true';
                     if(isDefaultPassword&&!hasChangedLocally&&!isBiometricLogin){ 
                         document.getElementById('view-login').style.display='none'; 
