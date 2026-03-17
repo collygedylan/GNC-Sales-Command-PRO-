@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-    <title>GREENLEAF</title>
+    <title><title>GREENLEAF 01</title>
     <meta name="theme-color" content="#007a4d">
     <link rel="manifest" href="manifest.json">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="application-name" content="GREENLEAF">
+    <meta name="application-name" content="GREENLEAF 01">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -39,7 +39,7 @@
     <div id="view-login">
         <div class="login-card">
             <div class="flex flex-col items-center mb-8 w-full relative">
-                <div class="text-2xl text-[#007a4d] font-black tracking-tighter mb-1 text-center leading-none">GREENLEAF</div>                <div class="flex flex-col items-center gap-0.5 mt-5">
+                <div class="text-2xl text-[#007a4d] font-black tracking-tighter mb-1 text-center leading-none">GREENLEAF 01</div>                <div class="flex flex-col items-center gap-0.5 mt-5">
                     <span class="text-[9px] font-bold text-gray-400 uppercase tracking-[0.3em]">Powered By</span>
                     <span class="text-[17px] font-black text-gray-800 tracking-[0.2em] uppercase border-b-[3px] border-[#007a4d] pb-0.5">Ag Metric</span>
                 </div>
@@ -184,8 +184,7 @@
                 <i class="ph-bold ph-list menu-btn text-2xl cursor-pointer" onclick="toggleMenu()"></i>
                 <div class="flex flex-col">
                     <div class="font-bold text-lg leading-tight"><span id="header-user">User</span></div>
-                    <div class="text-[10px] opacity-80 leading-tight">GREENLEAF</div>
-                </div>
+                    <div class="text-[10px] opacity-80 leading-tight">GREENLEAF 01</div>                </div>
             </div>
         </header>
         
@@ -267,7 +266,7 @@
                         <p class="text-green-100 text-[10px] font-bold mb-5 uppercase tracking-[0.2em] z-10 relative">Dashboard</p>
                         
                         <div class="flex flex-col items-center pt-4 border-t border-white/20 w-full mt-1 z-10 relative">
-                            <div class="text-[14px] font-black tracking-wide text-white uppercase drop-shadow-sm mb-3 text-center leading-tight">GREENLEAF</div>
+                            <div class="text-[14px] font-black tracking-wide text-white uppercase drop-shadow-sm mb-3 text-center leading-tight">GREENLEAF 01</div>
                             <span class="text-[8px] font-bold text-white/70 uppercase tracking-[0.3em] mb-1">Powered By</span>
                             <div class="text-[12px] font-black tracking-[0.2em] text-white uppercase drop-shadow-sm">Ag Metric</div>
                         </div>
@@ -3061,20 +3060,21 @@ let specCaliperHtml = "";
         function saveData(isComplete = false, prefix, isSilentAutoSave = false, specificItem = null) {
             if (autoSaveTimer) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
             let itemToSave = specificItem || activeItem; if (!itemToSave) return;
-            let btnDraft = document.getElementById(prefix + 'btn-save-draft'); 
             let btnComp = document.getElementById(prefix + 'btn-save-complete'); 
             let isCurrentView = (activeItem && activeItem.UNIQUE_ID === itemToSave.UNIQUE_ID);
             
-           if (isCurrentView && isComplete) { if(btnComp) btnComp.innerText = "SAVING..."; }
-            
-            // Ask if it should be pushed to AV
+            // Ask if it should be pushed to AV (Synchronous pop-up)
             let pushToAv = false;
             if (isCurrentView && isComplete && prefix === 'req-' && !isSilentAutoSave) {
                 pushToAv = confirm("Do you want to show in AV?");
             }
             
-           const executeSave = () => {                let wasAlreadyComplete = itemToSave.REQ_STATUS === 'Complete';
+            const executeSave = async () => {
+                let wasAlreadyComplete = itemToSave.REQ_STATUS === 'Complete';
+                const nowIso = new Date().toISOString();
 
+                // --- STEP 1: OPTIMISTIC LOCAL UPDATE ---
+                // We instantly grab the UI values and update the local object in memory
                 if (!specificItem) {
                     let avEl = document.getElementById(prefix + 'av-note');
                     if (avEl) { itemToSave.AV_NOTE = avEl.value.toUpperCase(); }
@@ -3096,6 +3096,37 @@ let specCaliperHtml = "";
                     }
                 }
                 
+                if (isComplete && (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-')) {
+                    let matchVal = parseFloat(itemToSave.MATCH);
+                    if (!isNaN(matchVal) && matchVal >= 0) {
+                        let ptr = parseInt(String(itemToSave.PTRAVAILABLE).replace(/,/g, '')) || 0;
+                        itemToSave.INITIAL_PTR = ptr; itemToSave.LOC_MATCH_QTY = Math.round(ptr * (matchVal / 100));
+                    }
+                }
+
+                if (isComplete) { 
+                    itemToSave.DATE_COMPLETED = nowIso; 
+                    if (itemToSave.SOURCE_TABLE === 'v2_active_request') {
+                        itemToSave.REQ_STATUS = 'Complete';
+                    }
+                }
+                backupLocalItem(itemToSave);
+
+                // --- STEP 2: INSTANT UI REACTION ---
+                // We kick the user out of the detail view instantly so they can keep working
+                if (isCurrentView && isComplete) {
+                    goBackFromDetail();
+                    reRenderCurrentView();
+                    if (!isSilentAutoSave) showToast("Success", "Task Completed!", false);
+                } else if (isComplete && !isCurrentView) { 
+                    reRenderCurrentView();
+                } else if (isCurrentView && !isSilentAutoSave && btnComp) {
+                    showToast("Saved", "Draft updated locally.", false);
+                }
+
+                // --- STEP 3: SILENT BACKGROUND DATABASE SYNC ---
+                // We now construct the payloads and use the official supabaseClient. 
+                // Because this happens AFTER the UI updates, the app feels lightning fast.
                 const setVal = (val) => (val === "" || val === undefined) ? null : val;
                 const payload = {};
                 
@@ -3103,6 +3134,7 @@ let specCaliperHtml = "";
                     payload.match = (itemToSave.MATCH === "" || itemToSave.MATCH == null) ? null : parseFloat(itemToSave.MATCH); 
                     payload.spec = setVal(itemToSave.SPEC); payload.caliper = setVal(itemToSave.CALIPER); payload.pic_note = setVal(itemToSave.PICK); 
                     payload.sales_note = setVal(itemToSave.SALES_NOTE || itemToSave._NEW_SALES_NOTE); payload.av_note = setVal(itemToSave.AV_NOTE);
+                    if (isComplete) { payload.initial_ptr = itemToSave.INITIAL_PTR; payload.loc_match_qty = itemToSave.LOC_MATCH_QTY; }
                 } else if (prefix === 'req-') { 
                     payload.req_match = (itemToSave.REQ_MATCH === "" || itemToSave.REQ_MATCH == null) ? null : parseFloat(itemToSave.REQ_MATCH); 
                     payload.req_spec = setVal(itemToSave.REQ_SPEC); payload.req_caliper = setVal(itemToSave.REQ_CALIPER); payload.req_pic_note = setVal(itemToSave.REQ_PICK); 
@@ -3115,17 +3147,6 @@ let specCaliperHtml = "";
                     payload.flyer_assigned = setVal(itemToSave.FLYER_ASSIGNED); payload.flyer_notes = setVal(itemToSave.FLYER_NOTES);
                 }
 
-                if (isComplete && (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-')) {
-                    let matchVal = parseFloat(itemToSave.MATCH);
-                    if (!isNaN(matchVal) && matchVal >= 0) {
-                        let ptr = parseInt(String(itemToSave.PTRAVAILABLE).replace(/,/g, '')) || 0;
-                        itemToSave.INITIAL_PTR = ptr; itemToSave.LOC_MATCH_QTY = Math.round(ptr * (matchVal / 100));
-                        payload.initial_ptr = itemToSave.INITIAL_PTR; payload.loc_match_qty = itemToSave.LOC_MATCH_QTY;
-                    }
-                }
-
-                backupLocalItem(itemToSave);
-
                 if (itemToSave.SAVED_PHOTO_LINK) payload.photo_link = itemToSave.SAVED_PHOTO_LINK; 
                 if (itemToSave.SAVED_PHOTO_NAME) payload.photo_name = itemToSave.SAVED_PHOTO_NAME;
                 if (itemToSave.REQ_PHOTO_LINK) payload.req_photo_link = itemToSave.REQ_PHOTO_LINK; 
@@ -3136,14 +3157,9 @@ let specCaliperHtml = "";
                 if (itemToSave.FLYER_PHOTO_NAME) payload.flyer_photo_name = itemToSave.FLYER_PHOTO_NAME;
 
                 if (isComplete) { 
-                    payload.date_completed = new Date().toISOString(); 
-                    if (prefix === 'flyer-') payload.flyer_completed = payload.date_completed;
-                    
-                    // Force complete for Requests, regardless of which tab they clicked Mark Done from
-                    if (itemToSave.SOURCE_TABLE === 'v2_active_request') {
-                        payload.req_status = 'Complete';
-                        itemToSave.REQ_STATUS = 'Complete';
-                    }
+                    payload.date_completed = nowIso; 
+                    if (prefix === 'flyer-') payload.flyer_completed = nowIso;
+                    if (itemToSave.SOURCE_TABLE === 'v2_active_request') payload.req_status = 'Complete';
                     
                     // Logic to Push to Sales Office
                     let isSeasonNote = (itemToSave.APP_TAB_ASSIGNMENT === 'season');
@@ -3151,12 +3167,13 @@ let specCaliperHtml = "";
                     
                     // STRICT ENFORCEMENT: ONLY Season Sales Notes make it to the Sales Office
                     if (prefix === 'ssn-') {
-                        shouldPushToSO = true; // explicitly saving from the Season Sales Notes tab
+                        shouldPushToSO = true; 
                     } else if (itemToSave.SOURCE_TABLE === 'v2_active_request' && isSeasonNote) {
-                        shouldPushToSO = true; // Completing a Request that is categorized as a Season Note
+                        shouldPushToSO = true; 
                     }
+                    
                     if (shouldPushToSO) {
-                        let masterUid = itemToSave.MASTER_ID || itemToSave.UNIQUE_ID; // Link to master item if Request
+                        let masterUid = itemToSave.MASTER_ID || itemToSave.UNIQUE_ID; 
                         let sNote = payload.sales_note || payload.req_sales_note || itemToSave.SALES_NOTE || itemToSave.REQ_SALES_NOTE || itemToSave._NEW_SALES_NOTE || "";
                         
                         let soPayload = { 
@@ -3174,8 +3191,10 @@ let specCaliperHtml = "";
                             completed_at: payload.date_completed 
                         };
                         
-                        supabaseFetch('v2_sales_office', 'POST', soPayload).catch(e => console.log(e));
+                        // Fire off to Supabase Official Client silently
+                        supabaseClient.from('v2_sales_office').upsert(soPayload).then();
                         
+                        // Instantly build Local Clone for Sales Office Tab
                         let cloneSO = { ...soPayload };
                         for(let key in soPayload) { cloneSO[key.toUpperCase()] = soPayload[key]; }
                         cloneSO.DOM_ID = 'so_' + cloneSO.UNIQUE_ID;
@@ -3186,7 +3205,8 @@ let specCaliperHtml = "";
                         else salesOfficeInventory.push(cloneSO);
                     }
                 }
-// Push to AV (Master Inventory) if user selected YES
+
+                // Push to AV (Master Inventory) if user selected YES
                 if (pushToAv) {
                     let masterUid = itemToSave.MASTER_ID || itemToSave.UNIQUE_ID;
                     let matchVal = parseFloat(itemToSave.REQ_MATCH);
@@ -3203,33 +3223,29 @@ let specCaliperHtml = "";
                         photo_name: itemToSave.REQ_PHOTO_NAME || itemToSave.SAVED_PHOTO_NAME || null
                     };
 
-                    // Silently update master inventory in the background
-                    supabaseFetch('v2_master_inventory', 'PATCH', avPayload, `unique_id=eq.${masterUid}`).catch(e => console.log(e));
+                    // Silently update master inventory in the background via official client
+                    supabaseClient.from('v2_master_inventory').update(avPayload).eq('unique_id', masterUid).then();
                 }
-                // If editing a request, send back to v2_active_request. Otherwise master DB.
+                
                 const targetTable = (itemToSave.SOURCE_TABLE === 'v2_active_request') ? 'v2_active_request' : (itemToSave.SOURCE_TABLE || 'v2_master_inventory');
 
-                supabaseFetch(targetTable, 'PATCH', payload, `unique_id=eq.${encodeURIComponent(itemToSave.UNIQUE_ID)}`).then(data => {
-                    if (isCurrentView && isComplete) { if(btnComp) btnComp.innerText = "MARK DONE"; }
-                    if (!isSilentAutoSave && isCurrentView && isComplete) showToast("Success", "Task Completed!"); 
-                    if (isComplete && isCurrentView) { 
-                        itemToSave.DATE_COMPLETED = payload.date_completed; 
-                        goBackFromDetail(); 
-                        reRenderCurrentView();
-                    } else if (isComplete && !isCurrentView) { 
-                        itemToSave.DATE_COMPLETED = payload.date_completed; 
-                    }
-
+                try {
+                    // Update the primary table via official client
+                    await supabaseClient.from(targetTable).update(payload).eq('unique_id', itemToSave.UNIQUE_ID);
+                    
                     if ((prefix === 'req-' || itemToSave.SOURCE_TABLE === 'v2_active_request') && isComplete && !wasAlreadyComplete) {
                         let folderItems = requestsInventory.filter(i => i.REQUEST_FOLDER === itemToSave.REQUEST_FOLDER);
                         let allComplete = folderItems.every(i => i.REQ_STATUS === 'Complete' || i.UNIQUE_ID === itemToSave.UNIQUE_ID);
                         if (allComplete) { sendEmailNotification('request_complete', itemToSave.REQUEST_FOLDER, itemToSave.REQUESTED_BY, itemToSave.REQ_CUSTOMER, folderItems.length); }
                     }
-                }).catch(err => { if (isCurrentView && isComplete) { if(btnComp) btnComp.innerText = "MARK DONE"; if (!isSilentAutoSave) showToast("Network Error", "Could not reach database.", true); } });
+                } catch(err) {
+                    console.error('Silent save failed:', err);
+                }
             };
+            
+            // Debounce drafts, execute completes instantly
             if (isSilentAutoSave && !isComplete && !specificItem) { autoSaveTimer = setTimeout(() => { executeSave(); }, 1000); } else { executeSave(); }
-        }
-        function backupLocalItem(item) {
+        }        function backupLocalItem(item) {
             if (!item) return;
             let pendingEdits = JSON.parse(localStorage.getItem('gnc_pending_edits') || '{}');
             pendingEdits[item.UNIQUE_ID] = { timestamp: new Date().getTime(), data: item };
