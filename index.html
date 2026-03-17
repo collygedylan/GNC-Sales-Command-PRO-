@@ -432,10 +432,13 @@
                         <div class="detail-tab hidden" onclick="switchDetailTab('request')" id="dtab-request">Request</div>
                         <div class="detail-tab hidden" onclick="switchDetailTab('notes')" id="dtab-notes">Notes & Actions</div>
                         <div class="detail-tab hidden" onclick="switchDetailTab('docks')" id="dtab-docks">Docks</div>
-                        <div class="detail-tab hidden" onclick="switchDetailTab('flyer')" id="dtab-flyer">Flyer</div>
-                    </div>
-                    <div id="det-overview-content" class="py-4">
-                        <div class="overview-grid">
+                            <div class="detail-tab hidden" onclick="switchDetailTab('flyer')" id="dtab-flyer">Flyer</div>
+                            <div class="detail-tab hidden" onclick="switchDetailTab('gallery')" id="dtab-gallery">Gallery</div>
+                            <div class="detail-tab hidden" onclick="switchDetailTab('all-loc')" id="dtab-all-loc">All Locations</div>
+                        </div>
+                        <div id="det-gallery-content" class="hidden py-4"></div>
+                        <div id="det-all-loc-content" class="hidden py-4 px-1"></div>
+                        <div id="det-overview-content" class="py-4">                        <div class="overview-grid">
                             <div class="overview-card"><div class="overview-label">Location</div><div id="ov-loc" class="overview-val">--</div></div>
                             <div class="overview-card"><div class="overview-label">Qty Avail</div><div id="ov-avail" class="overview-val">--</div></div>
                             <div class="overview-card"><div class="overview-label">Item Code</div><div id="ov-item" class="overview-val">--</div></div>
@@ -1822,8 +1825,34 @@ function selectAvResName(name) { selectedAvResName=name; avResLevel=1; renderAV(
                 if(t) t.classList.remove('hidden');
             } else if (sourceView === 'docks') {
                 document.getElementById('dtab-docks').classList.remove('hidden');
-            } else if (sourceView === 'request') {
-                document.getElementById('dtab-request').classList.remove('hidden');
+                let dtabGal = document.getElementById('dtab-gallery'); if(dtabGal) dtabGal.classList.remove('hidden');
+                let dtabLoc = document.getElementById('dtab-all-loc'); if(dtabLoc) dtabLoc.classList.remove('hidden');
+                
+                // 1. Build the Gallery dynamically from all available photo links
+                let allLinks = [];
+                if(activeItem.SAVED_PHOTO_LINK) allLinks.push(...activeItem.SAVED_PHOTO_LINK.split(','));
+                if(activeItem.DOCK_PHOTO_LINK) allLinks.push(...activeItem.DOCK_PHOTO_LINK.split(','));
+                
+                // Clean up empty strings and ensure uniqueness
+                let uniqueLinks = [...new Set(allLinks.map(l => l.trim()).filter(Boolean))];
+                
+                let galHtml = uniqueLinks.length ? `<div class="grid grid-cols-2 gap-2">` + uniqueLinks.map(link => {
+                    let clean = link.match(/(https?:\/\/[^"\s>]+)/)?.[1] || link;
+                    let thumb = getDirectImageUrl(clean);
+                    return `<img src="${thumb}" class="w-full h-32 object-cover rounded-lg shadow-sm active:scale-95 transition-transform" onclick="openPhotoModal('${link}', 'Gallery')">`;
+                }).join('') + `</div>` : `<div class="text-center text-gray-400 p-8 font-bold">No photos on file.</div>`;
+                
+                let galContent = document.getElementById('det-gallery-content'); if(galContent) galContent.innerHTML = galHtml;
+
+                // 2. Build the "All Locations" tab using Drive Mode cards!
+                if(activeItem.ITEMCODE) {
+                    let matchingLocs = fullInventory.filter(i => i.ITEMCODE === activeItem.ITEMCODE);
+                    matchingLocs.sort((a,b) => String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""), undefined, {numeric: true}));
+                    
+                    let locHtml = matchingLocs.length ? matchingLocs.map(i => generateCard(i, 'drive', 'status-blue')).join('') : `<div class="text-center text-gray-400 p-8 font-bold">No other locations found.</div>`;
+                    let locContent = document.getElementById('det-all-loc-content'); if(locContent) locContent.innerHTML = locHtml;
+                }
+            } else if (sourceView === 'request') {                document.getElementById('dtab-request').classList.remove('hidden');
                 
                 // Show Season or Location tabs inside the Request view if applicable
                 if (activeItem.APP_TAB_ASSIGNMENT === 'season') {
@@ -2000,12 +2029,15 @@ function selectAvResName(name) { selectedAvResName=name; avResLevel=1; renderAV(
             document.getElementById('det-season-content').classList.add('hidden');
             document.getElementById('det-location-content').classList.add('hidden');
             document.getElementById('det-request-content').classList.add('hidden');
-            document.getElementById('det-notes-content').classList.add('hidden');
+           document.getElementById('det-notes-content').classList.add('hidden');
             document.getElementById('det-docks-content').classList.add('hidden');
             document.getElementById('det-flyer-content').classList.add('hidden');
+            
+            let galContent = document.getElementById('det-gallery-content'); if(galContent) galContent.classList.add('hidden');
+            let locContent = document.getElementById('det-all-loc-content'); if(locContent) locContent.classList.add('hidden');
 
-            const contentEl = document.getElementById('det-' + tab + '-content');
-            if(contentEl) contentEl.classList.remove('hidden');
+            const contentEl = document.getElementById('det-' + tab + '-content');           
+           if(contentEl) contentEl.classList.remove('hidden');
         }
 
         function goBackFromDetail() {
