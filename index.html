@@ -901,29 +901,44 @@
             setRepPermutations(currentUser); 
             if(!isBiometricLogin&&window.PublicKeyCredential&&localStorage.getItem('gnc_bio_enabled')!=='true'){ promptToEnableBiometrics(user,pass); } 
             applyRolePermissions(); 
-            fetchBackgroundData(); 
-            setInterval(silentBackgroundSync, 1000); 
+fetchBackgroundData(); 
+
+// Clear any existing interval so they don't stack up
+if (window.globalSyncInterval) {
+    clearInterval(window.globalSyncInterval);
+}
+// Change to 30,000ms (30 seconds)
+window.globalSyncInterval = setInterval(silentBackgroundSync, 30000); 
         }
+        let isSyncing = false; 
+
         async function silentBackgroundSync() {
-            if(!currentUser)return; 
-            const checkTime=new Date().toISOString();
+            if(!currentUser || isSyncing) return; 
+            isSyncing = true;
+            
+            const checkTime = new Date().toISOString();
             try {
-                const response=await fetch(`${SUPABASE_URL}/rest/v1/v2_master_inventory?select=*&last_updated=gt.${lastSyncTime}`,{method:'GET',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/v2_master_inventory?select=*&last_updated=gt.${lastSyncTime}`, {method:'GET', headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
                 if(response.ok) {
-                    const data=await response.json();
-                    if(data&&data.length>0){
-                        let updated=false;
-                        data.forEach(updatedRow=>{
-                            let idx=fullInventory.findIndex(i=>i.UNIQUE_ID===updatedRow.unique_id);
-                            if(idx>-1){
-                                for(let k in updatedRow){ if(updatedRow[k]!==null) fullInventory[idx][k.toUpperCase()]=updatedRow[k]; }
-                                fullInventory[idx].SAVED_PHOTO_LINK=fullInventory[idx].PHOTO_LINK||fullInventory[idx].PHOTOLINK||""; 
-                                fullInventory[idx].SAVED_PHOTO_NAME=fullInventory[idx].PHOTO_NAME||fullInventory[idx].PHOTONAME||""; 
-                                updated=true; 
-                                if(activeItem&&activeItem.UNIQUE_ID===updatedRow.unique_id){ Object.assign(activeItem,fullInventory[idx]); }
+                    const data = await response.json();
+                    if(data && data.length > 0){
+                        let updated = false;
+                        data.forEach(updatedRow => {
+                            let idx = fullInventory.findIndex(i => i.UNIQUE_ID === updatedRow.unique_id);
+                            if(idx > -1){
+                                for(let k in updatedRow){ if(updatedRow[k] !== null) fullInventory[idx][k.toUpperCase()] = updatedRow[k]; }
+                                fullInventory[idx].SAVED_PHOTO_LINK = fullInventory[idx].PHOTO_LINK || fullInventory[idx].PHOTOLINK || ""; 
+                                fullInventory[idx].SAVED_PHOTO_NAME = fullInventory[idx].PHOTO_NAME || fullInventory[idx].PHOTONAME || ""; 
+                                updated = true; 
+                                if(activeItem && activeItem.UNIQUE_ID === updatedRow.unique_id){ Object.assign(activeItem, fullInventory[idx]); }
                             }
                         });
-                        if(updated){ reRenderCurrentView(); if(activeItem&&!document.getElementById('view-detail').classList.contains('hidden')){ openDetail(activeItem.UNIQUE_ID,lastView); } }
+                        if(updated){ 
+                            reRenderCurrentView(); 
+                            if(activeItem && !document.getElementById('view-detail').classList.contains('hidden')){ 
+                                openDetail(activeItem.UNIQUE_ID, lastView); 
+                            } 
+                        }
                     } 
                 }
                 
@@ -934,12 +949,12 @@
                     if(hash !== localStorage.getItem('last_req_hash')) {
                         requestsInventory = reqData.map(item => {
                             let obj = {SOURCE_TABLE: 'v2_active_request'};
-                            for(let k in item) { if(item[k]!==null) obj[k.toUpperCase()] = item[k]; }
+                            for(let k in item) { if(item[k] !== null) obj[k.toUpperCase()] = item[k]; }
                             obj.DOM_ID = 'req_' + obj.UNIQUE_ID;
                             obj.SAVED_PHOTO_LINK = obj.REQ_PHOTO_LINK || obj.SAVED_PHOTO_LINK || ""; 
                             obj.SAVED_PHOTO_NAME = obj.REQ_PHOTO_NAME || obj.SAVED_PHOTO_NAME || "";
-                            obj.CONTSIZE=item.contsize || obj.CONTSIZE || item.itemspec || obj.ITEMSPEC || item.size || "-";
-                            obj.LOCATIONCODE=obj.LOCATIONCODE||obj.LOCATION||"No Loc"; 
+                            obj.CONTSIZE = item.contsize || obj.CONTSIZE || item.itemspec || obj.ITEMSPEC || item.size || "-";
+                            obj.LOCATIONCODE = obj.LOCATIONCODE || obj.LOCATION || "No Loc"; 
                             return obj;
                         });
                         localStorage.setItem('last_req_hash', hash);
@@ -954,7 +969,7 @@
                     if(soHash !== localStorage.getItem('last_so_hash')) {
                         salesOfficeInventory = soData.map((item, idx) => {
                             let obj = {SOURCE_TABLE: 'v2_sales_office'};
-                            for(let k in item) { if(item[k]!==null) obj[k.toUpperCase()] = item[k]; }
+                            for(let k in item) { if(item[k] !== null) obj[k.toUpperCase()] = item[k]; }
                             obj.DOM_ID = 'so_' + obj.UNIQUE_ID;
                             let masterItem = fullInventory.find(i => i.UNIQUE_ID === obj.UNIQUE_ID);
                             if (masterItem) { obj.AV_NOTE = masterItem.AV_NOTE; }
@@ -965,11 +980,15 @@
                     }
                 }
                 
-                lastSyncTime=checkTime;
-            } catch(e){}
-        }
-
-        async function fetchBackgroundData() {
+                lastSyncTime = checkTime;
+                
+            } catch(e) {
+                console.log("Background sync failed:", e);
+            } finally {
+                isSyncing = false; 
+            }
+        }       
+ async function fetchBackgroundData() {
             const cachedRes=await loadFromCache(); 
             if(cachedRes&&fullInventory.length===0){ setTimeout(()=>{ processAndLoadData(cachedRes); },50); } 
             try {
@@ -3178,7 +3197,7 @@ function selectAvResName(name) { selectedAvResName=name; avResLevel=1; renderAV(
         let ptrCurrentY = 0;
         let isPulling = false;
         // Increased threshold so they have to pull it further down
-        const ptrThreshold = 100; 
+        const ptrThreshold = 150; 
 
         if(scrollArea && ptrContainer) {
             scrollArea.addEventListener('touchstart', (e) => {
@@ -3195,12 +3214,11 @@ function selectAvResName(name) { selectedAvResName=name; avResLevel=1; renderAV(
                 ptrCurrentY = e.touches[0].clientY;
                 const pullDistance = ptrCurrentY - ptrStartY;
 
-                if (pullDistance > 0 && scrollArea.scrollTop <= 0) {
-                    // Multiplier lowered to 0.35 to add heavy physical "resistance"
-                    let visualHeight = Math.min(pullDistance * 0.35, ptrThreshold + 25);
-                    ptrContainer.style.height = `${visualHeight}px`; 
-                    
-                    if (pullDistance * 0.35 >= ptrThreshold) {
+                // Lowered to 0.15 for an even stiffer physical "resistance"
+let visualHeight = Math.min(pullDistance * 0.15, ptrThreshold + 25);
+ptrContainer.style.height = `${visualHeight}px`; 
+
+if (pullDistance * 0.15 >= ptrThreshold) {
                         ptrText.innerText = "Release to sync";
                         ptrIcon.style.transform = "rotate(180deg)";
                     } else {
@@ -3218,7 +3236,7 @@ function selectAvResName(name) { selectedAvResName=name; avResLevel=1; renderAV(
                 ptrContainer.style.transition = 'height 0.3s ease'; // Smooth snap back
                 ptrIcon.style.transform = "rotate(0deg)";
 
-                if (pullDistance * 0.35 >= ptrThreshold && scrollArea.scrollTop <= 0) {
+               if (pullDistance * 0.15 >= ptrThreshold && scrollArea.scrollTop <= 0) {
                     // Trigger the Sync
                     ptrContainer.style.height = '50px';
                     ptrText.innerText = "Syncing...";
