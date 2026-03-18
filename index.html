@@ -3,16 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-    <title>GNC Park Hill</title>
+    <title>Greenleaf Nursery Company</title>
     <meta name="theme-color" content="#007a4d">
     <link rel="manifest" href="manifest.json">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="application-name" content="GNC Park Hill">
-    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="Greenleaf Nursery Company">    <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>:root{--bg:#007a4d;--tx:#111827}body{font-family:"Amazon Ember",Arial,sans-serif;background:white;color:var(--tx);user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior-y:contain}.nav-header{background:var(--bg);color:white;padding-top:max(10px,env(safe-area-inset-top))}#view-login,#view-change-password{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px}#view-change-password{display:none;z-index:10000}.login-card{background:white;padding:30px;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,.2);width:100%;max-width:360px;text-align:center}.input-field{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:8px;font-size:15px;margin-bottom:12px}#toast-notification{position:fixed;top:-100px;left:50%;transform:translateX(-50%);background:#16a34a;color:white;padding:16px 24px;border-radius:50px;box-shadow:0 10px 15px -3px rgba(0,0,0,.3);z-index:11000;transition:top .5s;display:flex;align-items:center;gap:12px;pointer-events:none}#toast-notification.show{top:20px}#side-drawer{position:fixed;top:0;left:-280px;width:280px;height:100%;background:white;z-index:2000;box-shadow:2px 0 10px rgba(0,0,0,.2);transition:left .3s;overflow-y:auto;padding-bottom:100px}#side-drawer.open{left:0}#drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1999;display:none}#drawer-overlay.open{display:block}.drawer-header{background:var(--bg);color:white;padding:20px;font-weight:bold;font-size:18px}.drawer-item{padding:16px 20px;border-bottom:1px solid #f3f4f6;cursor:pointer;display:flex;align-items:center;gap:12px;color:#374151;font-weight:500}.drill-item{border-bottom:1px solid #e5e7eb;padding:16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:white;transition:background .1s}.drill-item:active{background:#f3f4f6}.back-btn{display:flex;align-items:center;gap:5px;color:#6b7280;font-size:14px;font-weight:600;margin-bottom:20px;cursor:pointer;padding:10px 0}.inv-card{border:1px solid #e5e7eb;border-left-width:6px;border-radius:8px;padding:12px;background:white;cursor:pointer;flex-grow:1}.status-green{border-left-color:#22c55e}.status-purple{border-left-color:#9333ea}.status-orange{border-left-color:#f97316}.status-blue{border-left-color:#3b82f6}.status-indigo{border-left-color:#4f46e5}.status-teal{border-left-color:#0d9488}.status-yellow{border-left-color:#eab308}.status-red{border-left-color:#ef4444}.task-tabs,.detail-tabs{display:flex;border-bottom:1px solid #e5e7eb;background:#f9fafb;margin-bottom:10px}.detail-tabs{overflow-x:auto;scrollbar-width:none}.detail-tabs::-webkit-scrollbar{display:none}.task-tab,.detail-tab{flex:1;text-align:center;padding:12px;font-size:11px;font-weight:700;color:#6b7280;cursor:pointer;border-bottom:3px solid transparent;text-transform:uppercase}.detail-tab{flex:0 0 auto;padding:10px 16px}.task-tab.active,.detail-tab.active{color:var(--bg);border-bottom-color:var(--bg);background:white}.overview-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}.overview-card{background:#f8fafc;padding:10px;border-radius:6px;border:1px solid #e2e8f0}.overview-label{font-size:9px;font-weight:800;color:#64748b;text-transform:uppercase;margin-bottom:2px}.overview-val{font-size:13px;font-weight:600;color:#0f172a;word-break:break-all}.expand-trigger{display:flex;align-items:center;justify-content:space-between;padding:12px;background:#f9fafb;border-radius:6px;cursor:pointer;font-weight:600;font-size:14px;border:1px solid #e5e7eb}.expand-content{display:none;margin-top:12px;padding:12px;background:#f9fafb;border-radius:6px;border:1px solid #e5e7eb}.expanded .expand-content{display:block}.card-checkbox-container{width:0;overflow:hidden;opacity:0;transition:width .3s,opacity .3s,margin .3s}body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-right:12px}.item-row{touch-action:manipulation}.spinner{border:4px solid rgba(255,255,255,.3);border-top:4px solid white;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:0 auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.scrollbar-none::-webkit-scrollbar{display:none}.scrollbar-none{-ms-overflow-style:none;scrollbar-width:none}</style>
 </head>
 <body class="bg-gray-50 h-screen overflow-hidden">
@@ -39,7 +37,7 @@
     <div id="view-login">
         <div class="login-card">
             <div class="flex flex-col items-center mb-8 w-full relative">
-                <div class="text-2xl text-[#007a4d] font-black tracking-tighter mb-1 text-center leading-none">GNC Park Hill</div>                <div class="flex flex-col items-center gap-0.5 mt-5">
+                <div class="text-2xl text-[#007a4d] font-black tracking-tighter mb-1 text-center leading-none">Greenleaf Nursery Company</div>                <div class="flex flex-col items-center gap-0.5 mt-5">
                     <span class="text-[9px] font-bold text-gray-400 uppercase tracking-[0.3em]">Powered By</span>
                     <span class="text-[17px] font-black text-gray-800 tracking-[0.2em] uppercase border-b-[3px] border-[#007a4d] pb-0.5">Ag Metric</span>
                 </div>
@@ -184,7 +182,7 @@
                 <i class="ph-bold ph-list menu-btn text-2xl cursor-pointer" onclick="toggleMenu()"></i>
                 <div class="flex flex-col">
                     <div class="font-bold text-lg leading-tight"><span id="header-user">User</span></div>
-                    <div class="text-[10px] opacity-80 leading-tight">GNC Park Hill</div>
+                    <div class="text-[10px] opacity-80 leading-tight">Greenleaf Nursery Company</div>
                 </div>
             </div>
         </header>
@@ -267,7 +265,7 @@
                         <p class="text-green-100 text-[10px] font-bold mb-5 uppercase tracking-[0.2em] z-10 relative">Dashboard</p>
                         
                         <div class="flex flex-col items-center pt-4 border-t border-white/20 w-full mt-1 z-10 relative">
-                            <div class="text-[14px] font-black tracking-wide text-white uppercase drop-shadow-sm mb-3 text-center leading-tight">GNC Park Hill</div>
+                            <div class="text-[14px] font-black tracking-wide text-white uppercase drop-shadow-sm mb-3 text-center leading-tight">Greenleaf Nursery Company</div>
                             <span class="text-[8px] font-bold text-white/70 uppercase tracking-[0.3em] mb-1">Powered By</span>
                             <div class="text-[12px] font-black tracking-[0.2em] text-white uppercase drop-shadow-sm">Ag Metric</div>
                         </div>
@@ -565,10 +563,6 @@
         <script>
         const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6cm55anNvc3J5ZWpqZWpsaWlpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzAyNzM1NywiZXhwIjoyMDg4NjAzMzU3fQ.Bc46UfJ1N4AgAS1PgfhFg6S4BEyybR6g_TUnPZsE2t0";
-        
-        // ADDED: Initialize the Supabase client for WebSockets
-        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwhH-eB5Py3xCwhmWReOAcAfl9Zu6mkw0hZYnAbIP9lLANoE4iebK1hXa6-ogU4_1AURA/exec"; 
         const esc = (s) => String(s || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
         const DB_NAME="GNC_DDC_DB_V2"; const STORE_NAME="inventory_cache";
@@ -720,7 +714,7 @@
         async function promptToEnableBiometrics(user,pin) { 
             if(!confirm("Would you like to enable Fingerprint/FaceID login for future use?"))return; 
             try{ 
-                const publicKey={challenge:new Uint8Array(32),rp:{name:"GNC Park Hill"},user:{id:new Uint8Array(16),name:user,displayName:user},pubKeyCredParams:[{type:"public-key",alg:-7}],authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required"},timeout:60000}; 
+                const publicKey={challenge:new Uint8Array(32),rp:{name:"Greenleaf Nursery Company"},user:{id:new Uint8Array(16),name:user,displayName:user},pubKeyCredParams:[{type:"public-key",alg:-7}],authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required"},timeout:60000}; 
                 await navigator.credentials.create({publicKey}); 
                 localStorage.setItem('gnc_bio_enabled','true'); 
                 localStorage.setItem('gnc_bio_user',user); 
@@ -908,44 +902,8 @@
             if(!isBiometricLogin&&window.PublicKeyCredential&&localStorage.getItem('gnc_bio_enabled')!=='true'){ promptToEnableBiometrics(user,pass); } 
             applyRolePermissions(); 
             fetchBackgroundData(); 
-            
-            // ADDED: Replaced standard polling with live WebSockets
-            setupWebSockets();
+            setInterval(silentBackgroundSync, 1000); 
         }
-
-        // ADDED: Setup live WebSocket listeners for instant updates
-        function setupWebSockets() {
-            // 1. Listen for ANY updates to the Master Inventory
-            supabaseClient.channel('inventory-changes')
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'v2_master_inventory' }, payload => {
-                    console.log('Instant Inventory Update Detected!', payload);
-                    silentBackgroundSync(); // Instantly grab the new data
-                })
-                .subscribe();
-
-            // 2. Listen for NEW Chat Messages
-            supabaseClient.channel('chat-messages')
-                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'v2_chat_messages' }, payload => {
-                    console.log('Instant Chat Message Detected!', payload);
-                    // If we are currently looking at the chat room, refresh it instantly
-                    if (activeChatRoomId && payload.new.room_id === activeChatRoomId) {
-                        fetchChatMessages();
-                    } else {
-                        // Otherwise, refresh the inbox so the preview updates
-                        loadChatInbox();
-                    }
-                })
-                .subscribe();
-                
-            // 3. Listen for Request changes
-            supabaseClient.channel('request-changes')
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'v2_active_request' }, payload => {
-                    console.log('Instant Request Update Detected!', payload);
-                    silentBackgroundSync(); 
-                })
-                .subscribe();
-        }
-
         async function silentBackgroundSync() {
             if(!currentUser)return; 
             const checkTime=new Date().toISOString();
@@ -1200,9 +1158,8 @@
             setTimeout(() => toast.classList.remove('show'), 3000); 
         }
 
-       function switchView(viewId) { 
-            // ADDED: 'view-chat-inbox' to this list so it hides properly
-            ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-detail','view-docks','view-request','view-reserves','view-av', 'view-hours', 'view-chat-inbox'].forEach(id=>{
+        function switchView(viewId) { 
+            ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-detail','view-docks','view-request','view-reserves','view-av', 'view-hours'].forEach(id=>{
                 const el=document.getElementById(id);
                 if(el)el.classList.add('hidden');
             }); 
@@ -2081,7 +2038,7 @@ function selectAvResName(name) { selectedAvResName=name; avResLevel=1; renderAV(
                     crumb.innerText = `${selectedReqRepView} > Status`;
                     let repItems = items.filter(i => (i.REQUESTED_BY || 'Unknown Rep') === selectedReqRepView && !i.REQ_ARCHIVED);
                     let pendingCount = repItems.filter(i => i.REQ_STATUS !== 'Complete').length;
-                    let completeCount = repItems.filter(i => i.REQ_STATUS === 'Complete').length;                 
+                    let completeCount = repItems.filter(i => i.REQ_STATUS === 'Complete').length;                  
                     container.innerHTML = `
                         <div class="back-btn" onclick="requestViewLevel=0; renderRequest()"><i class="ph-bold ph-arrow-left"></i> Back to Reps</div>
                         <div class="bg-orange-50 border border-orange-200 rounded-xl shadow-sm mb-4 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectedReqStatus='Pending'; requestViewLevel=2; renderRequest()">
@@ -2192,11 +2149,11 @@ function selectAvResName(name) { selectedAvResName=name; avResLevel=1; renderAV(
                     } 
                 }
 
-               // --- Fetch backend-calculated Loc Photo Match ---
-let locPhotoMatch = 'N/A';
-if (item.LOC_MATCH_QTY !== undefined && item.LOC_MATCH_QTY !== null && item.LOC_MATCH_QTY !== "") {
-    locPhotoMatch = item.LOC_MATCH_QTY;
-}
+                // --- Calculate dynamic Loc Photo Match ---
+                let ptr = parseInt(String(item.PTRAVAILABLE).replace(/,/g, '')) || 0;
+                let matchPct = parseFloat(item.MATCH || item.MATCHPCT);
+                let locPhotoMatch = !isNaN(matchPct) ? Math.round(ptr * (matchPct / 100)) : 'N/A';
+
                 return `<div class="flex items-start w-full mb-3 item-row relative bg-white p-4 rounded-xl border-2 border-teal-100 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-teal-600 focus:ring-teal-600 shadow-sm pointer-events-none" ${isChecked}></div><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full"><div class="flex-grow min-w-0 pr-2"><div class="font-black text-gray-800 text-[18px] leading-tight break-words mb-1">${item.COMMONNAME||'Unknown'}</div><div class="font-black text-teal-700 text-[15px] mb-2">${item.CONTSIZE||'-'}</div><div class="grid grid-cols-2 gap-2 mb-2"><div class="text-[11px] font-bold text-gray-500 uppercase"><span class="block text-[8px] text-gray-400 mb-0.5">LOT CODE</span>${item.LOTCODE||'-'}</div><div class="text-[11px] font-bold text-gray-500 uppercase"><span class="block text-[8px] text-gray-400 mb-0.5">LOCATION</span>${item.LOCATIONCODE||'-'}</div></div><div class="flex flex-wrap gap-2 text-[11px] font-bold uppercase tracking-wider mt-1"><span class="bg-gray-100 text-gray-800 px-2 py-1 rounded border border-gray-200">LOC AVA: <span class="font-black">${item.PTRAVAILABLE||'0'}</span></span><span class="bg-purple-50 text-purple-700 px-2 py-1 rounded border border-purple-200">s_LTS: <span class="font-black">${item.S_LTS||'0'}</span></span><span class="bg-green-50 text-green-700 px-2 py-1 rounded border border-green-200">LOC PHOTO MATCH: <span class="font-black">${locPhotoMatch}</span></span></div>${holdHtml}${avNoteHtml}</div>${clickThumbHtml}</div></div></div>`;
             }
             
@@ -2288,7 +2245,6 @@ if (item.LOC_MATCH_QTY !== undefined && item.LOC_MATCH_QTY !== null && item.LOC_
             
             return `<div class="flex items-center w-full mb-2 item-row overflow-hidden" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm pointer-events-none" ${isChecked}></div><div class="inv-card ${colorClass} flex items-start justify-between flex-grow !mb-0 transition-transform active:scale-[0.99]"><div class="flex-grow min-w-0 text-[#007a4d]"><div class="flex justify-between font-bold text-sm mb-1"><span class="truncate pr-2">${item.COMMONNAME||'Unknown'} • ${item.CONTSIZE||'-'} • Loc: ${item.LOCATIONCODE||'No Loc'}</span><span class="whitespace-nowrap bg-[#007a4d]/10 px-1.5 py-0.5 rounded text-xs border border-[#007a4d]/20 h-max">Pri: ${item.PRIORITY||'-'}</span></div><div class="text-[11px] font-semibold truncate mt-0.5">Tag: ${tagColor} | Lot: ${item.LOTCODE||'-'} | PTR-Ava: ${item.PTRAVAILABLE||'0'} | s_LTS: ${item.S_LTS||'0'} | Supply: ${item.SEASONSUPPLY||'0'}</div><div class="text-[11px] font-semibold truncate mt-0.5">Item: ${item.ITEMCODE||'-'}</div></div>${thumbHtml}</div></div>`;
         }
-
         function initiateBatchAction(action) {
             if(action==='request_action'){openRequestModal();return}
             if(action==='endcap'){openEndCapModal();return}
@@ -2464,7 +2420,6 @@ if (item.LOC_MATCH_QTY !== undefined && item.LOC_MATCH_QTY !== null && item.LOC_
         }
 
         const debouncedPopulateCustomerList=debounce(()=>requestAnimationFrame(populateCustomerList), 400);
-
         function populateCustomerList() {
             const val=document.getElementById('cust-search-input').value.toLowerCase().trim();
             const container=document.getElementById('cust-list-container');
@@ -2770,7 +2725,7 @@ if (item.LOC_MATCH_QTY !== undefined && item.LOC_MATCH_QTY !== null && item.LOC_
         function selectDriveSize(size) { selectedDriveSize = size; driveViewLevel = 2; renderDrive() }
         function backToDriveSizes() { driveViewLevel = 1; selectedDriveSize = null; renderDrive() }
 
-      function renderDrive() {
+       function renderDrive() {
             const container = document.getElementById('drive-content'); 
             const filtersDiv = document.getElementById('drive-season-filters'); 
             const crumb = document.getElementById('drive-crumb'); 
@@ -2861,7 +2816,7 @@ if (item.LOC_MATCH_QTY !== undefined && item.LOC_MATCH_QTY !== null && item.LOC_
             }
         }
 
-        function toggleDriveSeason(s) {
+       function toggleDriveSeason(s) {
             if(s === 'ALL'){
                 driveSelectedSeasons.clear();
                 driveSelectedSeasons.add('ALL');
@@ -3164,4 +3119,534 @@ if (item.LOC_MATCH_QTY !== undefined && item.LOC_MATCH_QTY !== null && item.LOC_
                     }
 
                     if ((prefix === 'req-' || itemToSave.SOURCE_TABLE === 'v2_active_request') && isComplete && !wasAlreadyComplete) {
-                        let folderItems = requestsInventory.filter(i => i.REQUEST_FOLDER === itemToSave.
+                        let folderItems = requestsInventory.filter(i => i.REQUEST_FOLDER === itemToSave.REQUEST_FOLDER);
+                        let allComplete = folderItems.every(i => i.REQ_STATUS === 'Complete' || i.UNIQUE_ID === itemToSave.UNIQUE_ID);
+                        if (allComplete) { sendEmailNotification('request_complete', itemToSave.REQUEST_FOLDER, itemToSave.REQUESTED_BY, itemToSave.REQ_CUSTOMER, folderItems.length); }
+                    }
+                }).catch(err => { if (isCurrentView && isComplete) { if(btnComp) btnComp.innerText = "MARK DONE"; if (!isSilentAutoSave) showToast("Network Error", "Could not reach database.", true); } });
+            };
+            if (isSilentAutoSave && !isComplete && !specificItem) { autoSaveTimer = setTimeout(() => { executeSave(); }, 1000); } else { executeSave(); }
+        }
+        function backupLocalItem(item) {
+            if (!item) return;
+            let pendingEdits = JSON.parse(localStorage.getItem('gnc_pending_edits') || '{}');
+            pendingEdits[item.UNIQUE_ID] = { timestamp: new Date().getTime(), data: item };
+            localStorage.setItem('gnc_pending_edits', JSON.stringify(pendingEdits));
+        }
+
+        function applyLocalEdits() {
+            let pendingEdits = JSON.parse(localStorage.getItem('gnc_pending_edits') || '{}');
+            let now = new Date().getTime();
+            let changed = false;
+
+            for (let uid in pendingEdits) {
+                if (now - pendingEdits[uid].timestamp > 900000) { delete pendingEdits[uid]; changed = true; continue; }
+                let item = fullInventory.find(i => i.UNIQUE_ID === uid) || lowStockInventory.find(i => i.UNIQUE_ID === uid) || reservesInventory.find(i => i.UNIQUE_ID === uid) || requestsInventory.find(i => i.UNIQUE_ID === uid) || managerReviewInventory.find(i => i.UNIQUE_ID === uid) || socInventory.find(i => i.UNIQUE_ID === uid);
+                if (item) { Object.assign(item, pendingEdits[uid].data); }
+            }
+            if (changed) { localStorage.setItem('gnc_pending_edits', JSON.stringify(pendingEdits)); }
+        }
+
+        function filterAvNotes(prefix) {
+            if (!activeItem) return;
+            const inputEl = document.getElementById(prefix + 'av-note');
+            if (!inputEl) return;
+            const inputVal = inputEl.value.toUpperCase();
+            const list = document.getElementById(prefix + 'av-dropdown-list');
+            let matchingNotes = avNotesDb.filter(n => String(n.COMMONNAME).toUpperCase() === String(activeItem.COMMONNAME).toUpperCase()).map(n => n.SALESNOTE || n.SALES_NOTE);
+            if (inputVal) { matchingNotes = matchingNotes.filter(n => String(n).toUpperCase().includes(inputVal)); }
+            matchingNotes = [...new Set(matchingNotes)];
+            if (matchingNotes.length === 0) { list.classList.add('hidden'); return; }
+            list.innerHTML = matchingNotes.map(n => `<div class="p-3 border-b border-gray-100 text-sm font-bold text-blue-800 cursor-pointer hover:bg-blue-50 active:bg-blue-100" onclick="selectAvNote('${esc(n)}', '${prefix}')">${n}</div>`).join('');
+            list.classList.remove('hidden');
+        }
+
+        function selectAvNote(note, prefix) {
+            document.getElementById(prefix + 'av-note').value = note;
+            document.getElementById(prefix + 'av-dropdown-list').classList.add('hidden');
+            saveData(false, prefix, true);
+            if(typeof validateSsnForm === 'function') validateSsnForm();
+        }
+
+              // --- PULL TO REFRESH LOGIC ---
+        const scrollArea = document.getElementById('main-scroll-area');
+        const ptrContainer = document.getElementById('pull-to-refresh');
+        const ptrIcon = document.getElementById('ptr-icon');
+        const ptrText = document.getElementById('ptr-text');
+
+        let ptrStartY = 0;
+        let ptrCurrentY = 0;
+        let isPulling = false;
+        // Increased threshold so they have to pull it further down
+        const ptrThreshold = 100; 
+
+        if(scrollArea && ptrContainer) {
+            scrollArea.addEventListener('touchstart', (e) => {
+                // Must be EXACTLY at the top now, no accidental triggers mid-scroll
+                if (scrollArea.scrollTop <= 0) { 
+                    ptrStartY = e.touches[0].clientY;
+                    isPulling = true;
+                    ptrContainer.style.transition = 'none'; // Snap to finger instantly
+                }
+            }, { passive: true });
+
+            scrollArea.addEventListener('touchmove', (e) => {
+                if (!isPulling) return;
+                ptrCurrentY = e.touches[0].clientY;
+                const pullDistance = ptrCurrentY - ptrStartY;
+
+                if (pullDistance > 0 && scrollArea.scrollTop <= 0) {
+                    // Multiplier lowered to 0.35 to add heavy physical "resistance"
+                    let visualHeight = Math.min(pullDistance * 0.35, ptrThreshold + 25);
+                    ptrContainer.style.height = `${visualHeight}px`; 
+                    
+                    if (pullDistance * 0.35 >= ptrThreshold) {
+                        ptrText.innerText = "Release to sync";
+                        ptrIcon.style.transform = "rotate(180deg)";
+                    } else {
+                        ptrText.innerText = "Pull to sync";
+                        ptrIcon.style.transform = "rotate(0deg)";
+                    }
+                }
+            }, { passive: true });
+
+            scrollArea.addEventListener('touchend', () => {
+                if (!isPulling) return;
+                isPulling = false;
+                
+                const pullDistance = ptrCurrentY - ptrStartY;
+                ptrContainer.style.transition = 'height 0.3s ease'; // Smooth snap back
+                ptrIcon.style.transform = "rotate(0deg)";
+
+                if (pullDistance * 0.35 >= ptrThreshold && scrollArea.scrollTop <= 0) {
+                    // Trigger the Sync
+                    ptrContainer.style.height = '50px';
+                    ptrText.innerText = "Syncing...";
+                    ptrIcon.classList.remove('ph-arrow-down');
+                    ptrIcon.classList.add('ph-spinner', 'animate-spin');
+                    
+                    fetchBackgroundData();
+                    
+                    // Hide it after a short delay so they know it worked
+                    setTimeout(() => {
+                        closePtr();
+                    }, 1500);
+                } else {
+                    closePtr();
+                }
+            });
+        }
+
+        function closePtr() {
+            if(!ptrContainer) return;
+            ptrContainer.style.height = '0px';
+            setTimeout(() => {
+                ptrIcon.classList.add('ph-arrow-down');
+                ptrIcon.classList.remove('ph-spinner', 'animate-spin');
+                ptrText.innerText = "Pull to sync";
+            }, 300);
+        }
+
+       // --- PHOTO UPLOAD LOGIC (NEW ROBUST VERSION) ---
+        async function handlePhotoUpload(input, prefix) {
+            if (!input.files || input.files.length === 0) return;
+            if (!activeItem) { showToast("Error", "No item selected to attach photo to.", true); return; }
+            
+            const fileCount = input.files.length;
+            showToast('Processing', `Preparing ${fileCount} photo(s)...`, false);
+
+            for (let i = 0; i < fileCount; i++) {
+                const file = input.files[i];
+                
+                // Allow files even if mobile doesn't report a type (common camera bug)
+                if (file.type && !file.type.startsWith('image/')) {
+                    showToast('Error', `File ${i + 1} is not a valid image.`, true);
+                    continue;
+                }
+
+                await new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.readAsDataURL(file);
+                    
+                    reader.onload = function(event) {
+                        const img = new Image();
+                        img.src = event.target.result;
+                        
+                        img.onload = async function() {
+                            const canvas = document.createElement('canvas');
+                            const MAX_WIDTH = 1080;
+                            let scaleSize = img.width > MAX_WIDTH ? MAX_WIDTH / img.width : 1;
+                            
+                            canvas.width = img.width * scaleSize;
+                            canvas.height = img.height * scaleSize;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                            canvas.toBlob(async (blob) => {
+                                showToast('Uploading', `Sending ${i + 1} of ${fileCount}...`, false);
+
+                                let bucketName = 'drive_mode_photos'; 
+                                if (prefix === 'ssn-') bucketName = 'season_sales_notes_photos';
+                                else if (prefix === 'lsn-') bucketName = 'location_sales_notes_photos';
+                                else if (prefix === 'req-') bucketName = 'request_photos';
+                                else if (prefix === 'dock-') bucketName = 'dock_photos';
+                                else if (prefix === 'flyer-') bucketName = 'flyer_photos';
+
+                                const clean = (t) => String(t || 'NA').replace(/[^a-zA-Z0-9]/g, '');
+                                let fileName = `${clean(activeItem.COMMONNAME)}-${clean(activeItem.CONTSIZE)}-${Date.now()}_${i}.jpg`;
+                                let filePath = `${new Date().toISOString().split('T')[0]}/${fileName}`;
+
+                                try {
+                                    // Use the official client library for the upload
+                                    const { data, error } = await supabaseClient.storage
+                                        .from(bucketName)
+                                        .upload(filePath, blob, { contentType: 'image/jpeg', upsert: true });
+
+                                    if (error) throw error;
+
+                                    // Get the public URL
+                                    const { data: { publicUrl } } = supabaseClient.storage.from(bucketName).getPublicUrl(filePath);
+
+                                    // Update the correct database column
+                                    let linkCol = 'SAVED_PHOTO_LINK';
+                                    if (prefix === 'req-') linkCol = 'REQ_PHOTO_LINK';
+                                    else if (prefix === 'dock-') linkCol = 'DOCK_PHOTO_LINK';
+                                    else if (prefix === 'flyer-') linkCol = 'FLYER_PHOTO_LINK';
+
+                                    let currentLinks = activeItem[linkCol] || "";
+                                    activeItem[linkCol] = currentLinks ? currentLinks + ',' + publicUrl : publicUrl;
+                                    
+                                    // Save change to DB (False = Draft/Silent save)
+                                    saveData(false, prefix, false); 
+                                    renderSavedPhotos(); 
+                                    resolve();
+                                } catch (err) {
+                                    showToast('Error', `Upload failed: ${err.message}`, true);
+                                    resolve();
+                                }
+                            }, 'image/jpeg', 0.8);
+                        };
+                        
+                        img.onerror = () => {
+                            showToast('Error', `Could not read photo ${i + 1}. Unsupported format.`, true);
+                            resolve();
+                        };
+                    };
+                    
+                    reader.onerror = () => {
+                        showToast('Error', `Failed to read file ${i + 1} from device.`, true);
+                        resolve();
+                    };
+                });
+            }
+            showToast('Success', 'Upload complete!');
+            input.value = ""; 
+        }
+
+        // --- CHAT SYSTEM LOGIC ---
+        const CHAT_ROOMS_TABLE = 'v2_chat_rooms'; 
+        const CHAT_PARTICIPANTS_TABLE = 'v2_chat_participants'; 
+        const CHAT_MESSAGES_TABLE = 'v2_chat_messages';
+        
+        let activeChatRoomId = null;
+        let chatPollInterval = null;
+        let userChatList = [];
+        let selectedUsersForNewChat = new Set();
+
+        async function loadChatInbox() {
+            showToast("Loading", "Fetching messages...", false);
+            try {
+                // 1. Get all rooms the current user is in
+                const myParticipants = await supabaseFetch(CHAT_PARTICIPANTS_TABLE, 'GET', null, `username=eq.${encodeURIComponent(currentUser)}`);
+                if (!myParticipants || myParticipants.length === 0) {
+                    renderChatInbox([]);
+                    return;
+                }
+                
+                const roomIds = myParticipants.map(p => p.room_id);
+                const roomIdsString = `(${roomIds.join(',')})`;
+
+                // 2. Fetch the room details
+                const rooms = await supabaseFetch(CHAT_ROOMS_TABLE, 'GET', null, `id=in.${roomIdsString}`);
+                
+                // 3. Fetch the latest message for each room to show in the preview
+                const latestMessages = await supabaseFetch(CHAT_MESSAGES_TABLE, 'GET', null, `room_id=in.${roomIdsString}&order=created_at.desc`);
+
+                // 4. Fetch all participants so we can name 1-on-1 chats properly
+                const allParticipants = await supabaseFetch(CHAT_PARTICIPANTS_TABLE, 'GET', null, `room_id=in.${roomIdsString}`);
+
+                userChatList = rooms.map(room => {
+                    let roomParts = allParticipants.filter(p => p.room_id === room.id).map(p => p.username);
+                    let otherUsers = roomParts.filter(u => u.toLowerCase() !== currentUser.toLowerCase());
+                    
+                    // If it's a direct message, name the room after the other person
+                    let displayTitle = room.name;
+                    if (room.type === 'direct' || !displayTitle) {
+                        displayTitle = otherUsers.join(', ') || 'Just You';
+                    }
+
+                    let roomMsgs = latestMessages.filter(m => m.room_id === room.id);
+                    let latestMsg = roomMsgs.length > 0 ? roomMsgs[0] : null;
+
+                    return {
+                        id: room.id,
+                        title: displayTitle.toUpperCase(),
+                        latestMessage: latestMsg ? latestMsg.message : 'No messages yet.',
+                        timestamp: latestMsg ? new Date(latestMsg.created_at).getTime() : new Date(room.created_at).getTime(),
+                        participants: roomParts
+                    };
+                });
+
+                // Sort by most recently active
+                userChatList.sort((a, b) => b.timestamp - a.timestamp);
+                renderChatInbox(userChatList);
+
+            } catch (err) {
+                showToast("Error", "Could not load chats.", true);
+            }
+        }
+
+        function renderChatInbox(chats) {
+            const container = document.getElementById('chat-inbox-list');
+            if (chats.length === 0) {
+                container.innerHTML = `<div class="p-8 text-center text-gray-400 font-bold">No conversations yet.<br><span class="text-xs font-normal">Tap the + button to start one!</span></div>`;
+                return;
+            }
+
+            container.innerHTML = chats.map(chat => {
+                let timeStr = new Date(chat.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                return `
+                    <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm mb-3 cursor-pointer active:bg-gray-50 active:scale-[0.99] transition-all" onclick="openChatRoom('${chat.id}', '${esc(chat.title)}')">
+                        <div class="flex justify-between items-start mb-1">
+                            <h3 class="font-black text-gray-800 text-[16px] truncate pr-2">${chat.title}</h3>
+                            <span class="text-[10px] text-gray-400 font-bold whitespace-nowrap mt-1">${timeStr}</span>
+                        </div>
+                        <p class="text-sm text-gray-500 truncate font-medium">${chat.latestMessage}</p>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function filterChatInbox() {
+            const term = document.getElementById('chat-inbox-search').value.toLowerCase();
+            if(!term) { renderChatInbox(userChatList); return; }
+            let filtered = userChatList.filter(c => c.title.toLowerCase().includes(term));
+            renderChatInbox(filtered);
+        }
+
+        function openNewChatModal() {
+            selectedUsersForNewChat.clear();
+            document.getElementById('new-chat-search').value = "";
+            document.getElementById('new-chat-modal').classList.remove('hidden');
+            renderNewChatUserList();
+        }
+
+        function renderNewChatUserList() {
+            const term = document.getElementById('new-chat-search').value.toLowerCase();
+            const container = document.getElementById('new-chat-user-list');
+            
+            // This pulls from your existing salesRepList and team members
+            let allUsers = ["Dylan", "Kayla", "Morgan", ...salesRepList];
+            let filtered = allUsers.filter(u => u.toLowerCase() !== currentUser.toLowerCase() && u.toLowerCase().includes(term));
+            
+            container.innerHTML = filtered.map(u => {
+                let isSelected = selectedUsersForNewChat.has(u);
+                let bgCls = isSelected ? 'bg-green-100 border-green-300' : 'bg-white border-transparent hover:bg-gray-50';
+                let iconCls = isSelected ? 'text-green-600 ph-check-circle' : 'text-gray-300 ph-circle';
+                return `
+                    <div class="flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors ${bgCls}" onclick="toggleNewChatUser('${esc(u)}')">
+                        <span class="font-bold text-gray-700">${u}</span>
+                        <i class="ph-fill ${iconCls} text-xl"></i>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function filterNewChatUsers() { requestAnimationFrame(renderNewChatUserList); }
+
+        function toggleNewChatUser(username) {
+            if(selectedUsersForNewChat.has(username)) selectedUsersForNewChat.delete(username);
+            else selectedUsersForNewChat.add(username);
+            renderNewChatUserList();
+        }
+
+        async function startSelectedChat() {
+            if(selectedUsersForNewChat.size === 0) {
+                showToast("Required", "Select at least one person.", true); return;
+            }
+            
+            let participants = Array.from(selectedUsersForNewChat);
+            participants.push(currentUser); // Add self to the room
+            let isGroup = participants.length > 2;
+            let roomName = isGroup ? prompt("Enter a name for this group chat:") : '';
+            
+            if(isGroup && !roomName) return; // User cancelled group name prompt
+
+            document.getElementById('new-chat-modal').classList.add('hidden');
+            showToast("Setting up...", "Creating chat room...", false);
+
+            try {
+                // If it's a 1-on-1, check if room already exists to prevent duplicates
+                if (!isGroup) {
+                    let otherUser = Array.from(selectedUsersForNewChat)[0];
+                    let existingRoom = userChatList.find(c => !c.isGroup && c.participants.length === 2 && c.participants.includes(otherUser.toLowerCase()));
+                    if (existingRoom) {
+                        openChatRoom(existingRoom.id, existingRoom.title);
+                        return;
+                    }
+                }
+
+                // Create new room
+                let newRoomId = 'chat_' + Date.now() + Math.random().toString(36).substring(2,7);
+                await supabaseFetch(CHAT_ROOMS_TABLE, 'POST', {
+                    id: newRoomId,
+                    type: isGroup ? 'group' : 'direct',
+                    name: roomName,
+                    created_at: new Date().toISOString()
+                });
+
+                // Add participants
+                let participantPayloads = participants.map(p => ({
+                    room_id: newRoomId,
+                    username: p.toLowerCase(),
+                    joined_at: new Date().toISOString()
+                }));
+                await supabaseFetch(CHAT_PARTICIPANTS_TABLE, 'POST', participantPayloads);
+
+                // Open the new room
+                let displayTitle = isGroup ? roomName : Array.from(selectedUsersForNewChat)[0];
+                openChatRoom(newRoomId, displayTitle.toUpperCase());
+                
+            } catch(e) {
+                showToast("Error", "Could not create chat.", true);
+            }
+        }
+
+        function openChatRoom(roomId, title) {
+            activeChatRoomId = roomId;
+            document.getElementById('chat-room-title').innerText = title;
+            document.getElementById('view-chat-room').classList.remove('hidden');
+            document.getElementById('chat-messages-container').innerHTML = `<div class="flex justify-center py-10"><div class="spinner border-[#007a4d] border-t-transparent"></div></div>`;
+            
+            fetchChatMessages();
+            
+            // Poll for new messages every 3 seconds while room is open
+            if(chatPollInterval) clearInterval(chatPollInterval);
+            chatPollInterval = setInterval(fetchChatMessages, 3000);
+        }
+
+        function closeChatRoom() {
+            activeChatRoomId = null;
+            document.getElementById('view-chat-room').classList.add('hidden');
+            if(chatPollInterval) clearInterval(chatPollInterval);
+            loadChatInbox(); // Refresh inbox to show latest messages
+        }
+
+        async function fetchChatMessages() {
+            if(!activeChatRoomId) return;
+            try {
+                const messages = await supabaseFetch(CHAT_MESSAGES_TABLE, 'GET', null, `room_id=eq.${activeChatRoomId}&order=created_at.asc`);
+                const container = document.getElementById('chat-messages-container');
+                
+                // Only auto-scroll to bottom if we are already near the bottom, or if it's the first load
+                let isAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 50;
+                let isFirstLoad = container.innerHTML.includes('spinner');
+
+                if (messages.length === 0) {
+                    container.innerHTML = `<div class="text-center text-gray-400 text-sm mt-10">No messages yet. Say hi!</div>`;
+                    return;
+                }
+
+                let currentDate = '';
+                let html = '';
+
+                messages.forEach(msg => {
+                    let isMe = msg.sender.toLowerCase() === currentUser.toLowerCase();
+                    let msgDate = new Date(msg.created_at);
+                    let dateStr = msgDate.toLocaleDateString();
+                    let timeStr = msgDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+
+                    // Add a date divider if the day changes
+                    if (dateStr !== currentDate) {
+                        html += `<div class="flex justify-center my-4"><span class="bg-gray-200 text-gray-500 text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">${dateStr}</span></div>`;
+                        currentDate = dateStr;
+                    }
+
+                    if (isMe) {
+                        html += `
+                            <div class="flex flex-col items-end w-full">
+                                <div class="bg-[#007a4d] text-white px-4 py-2.5 rounded-2xl rounded-br-none shadow-sm max-w-[80%] break-words text-[15px] leading-snug">
+                                    ${msg.message}
+                                </div>
+                                <span class="text-[9px] text-gray-400 font-bold mt-1 mr-1">${timeStr}</span>
+                            </div>
+                        `;
+                    } else {
+                        html += `
+                            <div class="flex flex-col items-start w-full">
+                                <span class="text-[10px] font-bold text-gray-500 ml-2 mb-0.5 uppercase tracking-wide">${msg.sender}</span>
+                                <div class="bg-white border border-gray-200 text-gray-800 px-4 py-2.5 rounded-2xl rounded-bl-none shadow-sm max-w-[80%] break-words text-[15px] leading-snug">
+                                    ${msg.message}
+                                </div>
+                                <span class="text-[9px] text-gray-400 font-bold mt-1 ml-1">${timeStr}</span>
+                            </div>
+                        `;
+                    }
+                });
+
+                container.innerHTML = html;
+
+                if (isFirstLoad || isAtBottom) {
+                    container.scrollTop = container.scrollHeight;
+                }
+
+            } catch(e) {
+                console.error("Failed to fetch messages");
+            }
+        }
+
+        async function sendChatMessage() {
+            const input = document.getElementById('chat-message-input');
+            const text = input.value.trim();
+            if(!text || !activeChatRoomId) return;
+
+            input.value = ''; // Clear instantly for good UX
+            
+            // Optimistically add the message to the UI
+            const container = document.getElementById('chat-messages-container');
+            let timeStr = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            container.innerHTML += `
+                <div class="flex flex-col items-end w-full opacity-70" id="optimistic-msg">
+                    <div class="bg-[#007a4d] text-white px-4 py-2.5 rounded-2xl rounded-br-none shadow-sm max-w-[80%] break-words text-[15px] leading-snug">
+                        ${text}
+                    </div>
+                    <span class="text-[9px] text-gray-400 font-bold mt-1 mr-1">Sending...</span>
+                </div>
+            `;
+            container.scrollTop = container.scrollHeight;
+
+            try {
+                await supabaseFetch(CHAT_MESSAGES_TABLE, 'POST', {
+                    room_id: activeChatRoomId,
+                    sender: currentUser,
+                    message: text,
+                    created_at: new Date().toISOString()
+                });
+                fetchChatMessages(); // Hard refresh to get confirmed message
+            } catch(e) {
+                showToast("Error", "Message failed to send.", true);
+                let optMsg = document.getElementById('optimistic-msg');
+                if(optMsg) optMsg.remove();
+                input.value = text; // Put text back so they don't lose it
+            }
+        }
+
+        function showChatParticipants() {
+            let room = userChatList.find(r => r.id === activeChatRoomId);
+            if(room) {
+                alert(`Chat Participants:\n\n${room.participants.join('\n').toUpperCase()}`);
+            }
+        }
+    </script>
+</body>
+</html>
