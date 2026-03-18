@@ -403,13 +403,14 @@
                 <div id="view-tasks" class="hidden">
                     <div id="task-crumb" class="text-xs font-bold text-[#007a4d] mb-3"></div>
                     <div id="team-selector" class="hidden mb-4 grid grid-cols-1 gap-3"></div>
-                    <div id="task-tabs-container" class="task-tabs">
-                        <div id="tab-season" class="task-tab active" onclick="setTaskTab('season')">Season Notes</div>
-                        <div id="tab-location" class="task-tab" onclick="setTaskTab('location')">Location Notes</div>
-                        <div id="tab-endcap" class="task-tab" onclick="setTaskTab('endcap')">End Cap</div>
-                        <div id="tab-flyer" class="task-tab" onclick="setTaskTab('flyer')">Flyer</div>
-                    </div>
-                    <div id="task-content"></div>
+                   <div id="task-tabs-container" class="task-tabs overflow-x-auto scrollbar-none flex-nowrap">
+                        <div id="tab-season" class="task-tab active flex-shrink-0" onclick="setTaskTab('season')">Season Notes</div>
+                        <div id="tab-all_season" class="task-tab hidden all-team-tab flex-shrink-0" onclick="setTaskTab('all_season')">All Team Season</div>
+                        <div id="tab-location" class="task-tab flex-shrink-0" onclick="setTaskTab('location')">Location Notes</div>
+                        <div id="tab-all_location" class="task-tab hidden all-team-tab flex-shrink-0" onclick="setTaskTab('all_location')">All Team Loc</div>
+                        <div id="tab-endcap" class="task-tab flex-shrink-0" onclick="setTaskTab('endcap')">End Cap</div>
+                        <div id="tab-flyer" class="task-tab flex-shrink-0" onclick="setTaskTab('flyer')">Flyer</div>
+                    </div>                    <div id="task-content"></div>
                 </div>
                 
                 <div id="view-review" class="hidden">
@@ -1265,15 +1266,23 @@
             let isCsr=roleStr.includes('CSR'); 
             let isQc=roleStr.includes('QC'); 
             let isDylan=userStr.includes('dylan'); 
+            let isKayla=userStr.includes('kayla');
+            let isMorgan=userStr.includes('morgan');
             let isAdmin=(!isRep&&!isCsr&&!isQc)||roleStr.includes('ADMIN')||roleStr.includes('MANAGER')||isDylan;
+            
             if(isAdmin){} 
             else if(isRep){ document.querySelectorAll('.rep-hidden, .admin-only, .admin-csr-only').forEach(el=>el.classList.add('hidden')); } 
             else if(isCsr){ document.querySelectorAll('.csr-hidden, .admin-only').forEach(el=>el.classList.add('hidden')); } 
             else if(isQc){ document.querySelectorAll('.admin-only, .admin-rep-only, .admin-rep-csr-only, .admin-csr-only').forEach(el=>el.classList.add('hidden')); }
             if(!isDylan&&!isAdmin){ document.querySelectorAll('.dylan-only').forEach(el=>el.classList.add('hidden')); } 
+
+            // NEW: Show "All Team" task tabs to specific users
+            if (isAdmin || isDylan || isKayla || isMorgan) {
+                document.querySelectorAll('.all-team-tab').forEach(el => el.classList.remove('hidden'));
+            }
+            
             switchView('home');
         }
-
         function toggleMenu() { document.getElementById('side-drawer').classList.toggle('open'); document.getElementById('drawer-overlay').classList.toggle('open'); }
 
         function showToast(title, message, isAlert = false) { 
@@ -1285,27 +1294,36 @@
         }
 
         function switchView(viewId) { 
-    ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-detail','view-docks','view-request','view-reserves','view-av', 'view-hours', 'view-chat-inbox'].forEach(id=>{
-        const el=document.getElementById(id);
-        if(el)el.classList.add('hidden');
-    }); 
-    document.getElementById('view-'+viewId).classList.remove('hidden'); 
-    requestAnimationFrame(()=>{
-        setTimeout(()=>{
-            if(viewId==='drive')resetDriveView();
-            if(viewId==='tasks'){ if(safeRole==='ADMIN'&&!taskViewTargetUser)renderTeamSelector(); else renderTasks(); }
-            if(viewId==='reports')resetReportsView();
-            if(viewId==='review')resetReviewView();
-            if(viewId==='request'){requestViewLevel=0;renderRequest();}
-            if(viewId==='reserves')resetReservesView();
-            if(viewId==='sales-office')renderSalesOffice();
-            if(viewId==='low-stock')resetLowStockView();
-            if(viewId==='docks')resetDockView();
-            if(viewId==='av')resetAVView();
-            if(viewId==='hours')resetHoursView();
-        },0)
-    }); 
-}
+            ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-detail','view-docks','view-request','view-reserves','view-av', 'view-hours', 'view-chat-inbox'].forEach(id=>{
+                const el=document.getElementById(id);
+                if(el)el.classList.add('hidden');
+            }); 
+            document.getElementById('view-'+viewId).classList.remove('hidden'); 
+            requestAnimationFrame(()=>{
+                setTimeout(()=>{
+                    if(viewId==='drive')resetDriveView();
+                    
+                    if(viewId==='tasks'){ 
+                        document.getElementById('task-tabs-container').classList.remove('hidden');
+                        if(safeRole==='ADMIN' && !taskViewTargetUser && activeTaskTab !== 'all_season' && activeTaskTab !== 'all_location') {
+                            renderTeamSelector(); 
+                        } else {
+                            renderTasks(); 
+                        }
+                    }
+                    
+                    if(viewId==='reports')resetReportsView();
+                    if(viewId==='review')resetReviewView();
+                    if(viewId==='request'){requestViewLevel=0;renderRequest();}
+                    if(viewId==='reserves')resetReservesView();
+                    if(viewId==='sales-office')renderSalesOffice();
+                    if(viewId==='low-stock')resetLowStockView();
+                    if(viewId==='docks')resetDockView();
+                    if(viewId==='av')resetAVView();
+                    if(viewId==='hours')resetHoursView();
+                },0)
+            }); 
+        }
         function reRenderCurrentView() { 
             if(!document.getElementById('view-drive').classList.contains('hidden'))renderDrive(); 
             if(!document.getElementById('view-tasks').classList.contains('hidden'))renderTasks(); 
@@ -1319,14 +1337,21 @@
             if(!document.getElementById('view-av').classList.contains('hidden'))renderAV(); 
         }
 
-        function setTaskTab(tab) { 
+       function setTaskTab(tab) { 
             activeTaskTab=tab; 
             document.getElementById('tab-season').classList.toggle('active',tab==='season'); 
+            let tAllS = document.getElementById('tab-all_season'); if(tAllS) tAllS.classList.toggle('active',tab==='all_season');
             document.getElementById('tab-location').classList.toggle('active',tab==='location'); 
+            let tAllL = document.getElementById('tab-all_location'); if(tAllL) tAllL.classList.toggle('active',tab==='all_location');
             document.getElementById('tab-endcap').classList.toggle('active',tab==='endcap'); 
             document.getElementById('tab-flyer').classList.toggle('active',tab==='flyer'); 
             taskViewLevel=0; 
-            renderTasks(); 
+            
+            if (safeRole === 'ADMIN' && !taskViewTargetUser && tab !== 'all_season' && tab !== 'all_location') {
+                renderTeamSelector();
+            } else {
+                renderTasks(); 
+            }
         }
 
         function setDriveTab(tab) {
@@ -2003,8 +2028,11 @@ let activeAvReservesTab = 'customers'; // Tracks which tab is open
 
             renderSavedPhotos();
 
-            if (sourceView === 'tasks' && activeTaskTab) {
-                switchDetailTab(activeTaskTab);
+           if (sourceView === 'tasks' && activeTaskTab) {
+                let mappedTab = activeTaskTab;
+                if(mappedTab === 'all_season') mappedTab = 'season';
+                if(mappedTab === 'all_location') mappedTab = 'location';
+                switchDetailTab(mappedTab);
             } else if (sourceView === 'request') {
                 // Instantly open to the camera/request tab!
                 switchDetailTab('request');
@@ -2442,7 +2470,11 @@ let specCaliperHtml = "";
 
             if(sourceView==='drive'||sourceView==='tasks'){
                 let noteHtml="";if(item.END_CAP_FOLDER&&String(item.END_CAP_FOLDER).trim()!==""){noteHtml+=`<div class="mt-2 text-[12px] text-yellow-800 bg-yellow-100 p-2 rounded border border-yellow-200 shadow-sm whitespace-pre-wrap"><span class="font-black">END CAP:</span> ${item.END_CAP_FOLDER} | QTY: ${item.END_CAP_QTY||'0'} | Lvl: ${item.END_CAP_LEVEL||'-'}</div>`}if(item.LOC_MATCH_QTY&&String(item.LOC_MATCH_QTY).trim()!==""&&Number(item.LOC_MATCH_QTY)>0){noteHtml+=`<div class="mt-2 text-[12px] text-green-800 bg-green-100 p-2 rounded border border-green-200 shadow-sm whitespace-pre-wrap"><span class="font-black">MATCH QTY:</span> ${item.LOC_MATCH_QTY}</div>`}if(item.AV_NOTE&&String(item.AV_NOTE).trim()!==""){noteHtml+=`<div class="mt-2 text-[12px] text-blue-800 bg-blue-100 p-2 rounded border border-blue-200 shadow-sm whitespace-pre-wrap"><span class="font-black">AV NOTE:</span> ${item.AV_NOTE}</div>`}if(item.SALES_NOTE&&String(item.SALES_NOTE).trim()!==""){noteHtml+=`<div class="mt-2 text-[12px] text-green-800 bg-green-100 p-2 rounded border border-green-200 shadow-sm whitespace-pre-wrap"><span class="font-black">SALES NOTE:</span> ${item.SALES_NOTE}</div>`}if(item.FLYER_TITLE&&String(item.FLYER_TITLE).trim()!==""){noteHtml+=`<div class="mt-2 text-[12px] text-indigo-800 bg-indigo-100 p-2 rounded border border-indigo-200 shadow-sm whitespace-pre-wrap"><span class="font-black">FLYER:</span> ${item.FLYER_TITLE}</div>`}
-                let extraData="";if(sourceView==='tasks'||sourceView==='drive'){extraData=`<div class="mt-2 flex gap-2 text-[10px] font-bold text-gray-500 uppercase">${item.SPEC?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Spec: ${item.SPEC}</span>`:''}${item.CALIPER?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Cal: ${item.CALIPER}</span>`:''}${item.MATCH?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Match: ${item.MATCH}%</span>`:''}</div>`}
+                let extraData="";
+                if(sourceView==='tasks'||sourceView==='drive'){
+                    let assigneeBadge = (sourceView === 'tasks' && (activeTaskTab === 'all_season' || activeTaskTab === 'all_location') && item.ASSIGNEDTO) ? `<span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-200 ml-1"><i class="ph-bold ph-user mr-1"></i>${item.ASSIGNEDTO}</span>` : '';
+                    extraData=`<div class="mt-2 flex flex-wrap gap-2 text-[10px] font-bold text-gray-500 uppercase">${item.SPEC?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Spec: ${item.SPEC}</span>`:''}${item.CALIPER?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Cal: ${item.CALIPER}</span>`:''}${item.MATCH?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Match: ${item.MATCH}%</span>`:''}${assigneeBadge}</div>`
+                }
                 return `<div class="flex items-center w-full mb-3 item-row relative bg-white p-4 rounded-xl border border-gray-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm pointer-events-none" ${isChecked}></div><div class="flex flex-grow items-start justify-between min-w-0"><div class="flex-grow min-w-0 pr-2"><div class="font-black text-gray-800 text-[16px] leading-tight break-words mb-0.5">${item.COMMONNAME||'Unknown'}</div><div class="font-bold text-[#007a4d] text-sm mb-2">${item.CONTSIZE||'-'}</div><div class="text-[11px] font-mono text-gray-500 mb-2 flex items-center bg-gray-100 px-2 py-0.5 rounded w-max"><i class="ph-bold ph-barcode mr-1.5 text-gray-400"></i>${item.ITEMCODE||'-'}</div><div class="flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600"><span class="bg-gray-100 px-1.5 py-0.5 rounded">LOC AVA: <span class="text-gray-900">${item.PTRAVAILABLE||'0'}</span></span><span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">Loc: ${item.LOCATIONCODE||'No Loc'}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded">Lot: ${item.LOTCODE||'-'}</span><span class="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-100">s_LTS: ${item.S_LTS||'0'}</span><span class="bg-orange-50 text-orange-700 px-1.5 py-0.5 rounded border border-orange-100">Pri: ${item.PRIORITY||'-'}</span></div>${extraData}${noteHtml}</div>${thumbHtml}</div></div>`;
             }
             
@@ -3046,48 +3078,35 @@ let specCaliperHtml = "";
             renderDrive();
         }
 
-        function renderTeamSelector() {
-            let uSet = new Set();
-            fullInventory.forEach(i => { if(i.ASSIGNEDTO && !i.DATE_COMPLETED) uSet.add(i.ASSIGNEDTO) });
-            if(uSet.size === 0) { 
-                document.getElementById('task-content').innerHTML = `<div class="p-8 text-center text-gray-400">No active tasks for any team member.</div>`; 
-                return; 
-            }
-            let sorted = Array.from(uSet).sort();
-            let html = `<h2 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Select Team Member</h2>`;
-            sorted.forEach(u => {
-                let userTasks = fullInventory.filter(i => i.ASSIGNEDTO === u && !i.DATE_COMPLETED);
-                let htmlCounts = `<div class="flex gap-2 mt-2">`;
-                ['season','location','endcap','flyer'].forEach(t => {
-                    let c = userTasks.filter(i => i.APP_TAB_ASSIGNMENT === t).length;
-                    if(c > 0) htmlCounts += `<span class="text-[10px] font-bold px-2 py-1 rounded bg-gray-100 text-gray-600 uppercase">${t}: ${c}</span>`;
-                });
-                htmlCounts += `</div>`;
-                html += `<div class="bg-white border border-gray-200 p-4 rounded-xl shadow-sm mb-3 cursor-pointer active:scale-95 transition-transform" onclick="selectTaskUser('${esc(u)}')"><div class="flex justify-between items-center"><span class="font-black text-xl text-[#007a4d]">${u}</span><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${userTasks.length} Total</span></div>${htmlCounts}</div>`;
-            });
-            document.getElementById('task-tabs-container').classList.add('hidden');
-            document.getElementById('task-crumb').innerText = "Team Tasks Overview";
-            document.getElementById('task-content').innerHTML = html;
-        }
-
-        function selectTaskUser(u) {
-            taskViewTargetUser = u;
-            document.getElementById('task-tabs-container').classList.remove('hidden');
-            renderTasks();
-        }
-
         function renderTasks() {
+            let isAllTeam = (activeTaskTab === 'all_season' || activeTaskTab === 'all_location');
             let targetUser = safeRole === 'ADMIN' ? taskViewTargetUser : currentUser;
-            if(!targetUser) return;
+            
+            if(!isAllTeam && !targetUser) return;
+
             const container = document.getElementById('task-content');
             const crumb = document.getElementById('task-crumb');
-            crumb.innerHTML = safeRole === 'ADMIN' ? `<span class="cursor-pointer text-gray-400 hover:text-gray-800" onclick="taskViewTargetUser=null; renderTeamSelector()"><i class="ph-bold ph-arrow-left"></i> Back to Team</span> &bull; <span class="text-[#007a4d]">${targetUser}'s Tasks</span>` : "My Tasks";
             
-            let userItems = fullInventory.filter(i => i.ASSIGNEDTO === targetUser && !i.DATE_COMPLETED);
-            let tabItems = userItems.filter(i => i.APP_TAB_ASSIGNMENT === activeTaskTab);
+            if (isAllTeam) {
+                let label = activeTaskTab === 'all_season' ? "All Team Season Notes" : "All Team Location Notes";
+                crumb.innerHTML = `<span class="text-[#007a4d]">${label}</span>`;
+            } else {
+                crumb.innerHTML = safeRole === 'ADMIN' ? `<span class="cursor-pointer text-gray-400 hover:text-gray-800" onclick="taskViewTargetUser=null; renderTeamSelector()"><i class="ph-bold ph-arrow-left"></i> Back to Team</span> &bull; <span class="text-[#007a4d]">${targetUser}'s Tasks</span>` : "My Tasks";
+            }
+            
+            let tabItems = [];
+            
+            if (isAllTeam) {
+                let filterType = activeTaskTab === 'all_season' ? 'season' : 'location';
+                // Grab ALL items assigned to ANYONE that aren't completed
+                tabItems = fullInventory.filter(i => i.APP_TAB_ASSIGNMENT === filterType && !i.DATE_COMPLETED && i.ASSIGNEDTO);
+            } else {
+                let userItems = fullInventory.filter(i => i.ASSIGNEDTO === targetUser && !i.DATE_COMPLETED);
+                tabItems = userItems.filter(i => i.APP_TAB_ASSIGNMENT === activeTaskTab);
+            }
             
             if(tabItems.length === 0){
-                container.innerHTML = `<div class="p-8 text-center text-gray-400">No active ${activeTaskTab} tasks.</div>`;
+                container.innerHTML = `<div class="p-8 text-center text-gray-400">No active ${activeTaskTab.replace('_', ' ')} tasks.</div>`;
                 return;
             }
             
@@ -3135,11 +3154,12 @@ let specCaliperHtml = "";
                 } else if(taskViewLevel === 2) {
                     let fItems = tabItems.filter(i => (i.LOCATIONCODE || "NoLoc") === selectedTaskLoc);
                     fItems.sort((a,b) => String(a.COMMONNAME || "").localeCompare(String(b.COMMONNAME || "")));
-                    container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=1; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Locations</div>` + fItems.map(i => generateCard(i, 'tasks', activeTaskTab === 'season' ? 'status-green' : 'status-blue')).join('');
+                    // Highlight green for season (and all_season), blue for location
+                    let colorStatus = (activeTaskTab === 'season' || activeTaskTab === 'all_season') ? 'status-green' : 'status-blue';
+                    container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=1; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Locations</div>` + fItems.map(i => generateCard(i, 'tasks', colorStatus)).join('');
                 }
             }
         }
-
         function renderReview() {
             const container = document.getElementById('review-content');
             const crumb = document.getElementById('review-crumb');
@@ -3326,45 +3346,62 @@ let specCaliperHtml = "";
                         };
                         
                         // Fire off to Supabase Official Client silently
-                        supabaseClient.from('v2_sales_office').upsert(soPayload).then();
-                        
-                        // Instantly build Local Clone for Sales Office Tab
-                        let cloneSO = { ...soPayload };
-                        for(let key in soPayload) { cloneSO[key.toUpperCase()] = soPayload[key]; }
-                        cloneSO.DOM_ID = 'so_' + cloneSO.UNIQUE_ID;
-                        cloneSO.AV_NOTE = itemToSave.AV_NOTE;
-                        cloneSO.SAVED_PHOTO_LINK = soPayload.photo_link; 
-                        let existingIdx = salesOfficeInventory.findIndex(s => s.UNIQUE_ID === cloneSO.UNIQUE_ID);
-                        if (existingIdx > -1) salesOfficeInventory[existingIdx] = cloneSO;
-                        else salesOfficeInventory.push(cloneSO);
-                    }
+                    supabaseClient.from('v2_sales_office').upsert(soPayload).then();
+                    
+                    // Instantly build Local Clone for Sales Office Tab
+                    let cloneSO = { ...soPayload };
+                    for(let key in soPayload) { cloneSO[key.toUpperCase()] = soPayload[key]; }
+                    cloneSO.DOM_ID = 'so_' + cloneSO.UNIQUE_ID;
+                    // CRITICAL: We have to explicitly tell the backup function what table this belongs to
+                    cloneSO.SOURCE_TABLE = 'v2_sales_office'; 
+                    cloneSO.AV_NOTE = itemToSave.AV_NOTE;
+                    cloneSO.SAVED_PHOTO_LINK = soPayload.photo_link; 
+                    
+                    let existingIdx = salesOfficeInventory.findIndex(s => s.UNIQUE_ID === cloneSO.UNIQUE_ID);
+                    if (existingIdx > -1) salesOfficeInventory[existingIdx] = cloneSO;
+                    else salesOfficeInventory.push(cloneSO);
+
+                    // NEW: Shield the Sales Office item from the WebSocket race condition
+                    backupLocalItem(cloneSO);
+                }
+            }
+
+            // Push to AV (Master Inventory) if user selected YES
+            if (pushToAv) {
+                let masterUid = itemToSave.MASTER_ID || itemToSave.UNIQUE_ID;
+                // FIX: Dynamically grab the right data depending on if it's a Request or a Season Note
+                let matchVal = parseFloat(prefix === 'req-' ? itemToSave.REQ_MATCH : itemToSave.MATCH);
+                let ptr = parseInt(String(itemToSave.PTRAVAILABLE).replace(/,/g, '')) || 0;
+                let locMatchQty = (!isNaN(matchVal) && matchVal >= 0) ? Math.round(ptr * (matchVal / 100)) : null;
+
+                let avPayload = {
+                    av_note: itemToSave.AV_NOTE || null,
+                    spec: (prefix === 'req-' ? itemToSave.REQ_SPEC : itemToSave.SPEC) || null,
+                    caliper: (prefix === 'req-' ? itemToSave.REQ_CALIPER : itemToSave.CALIPER) || null,
+                    match: isNaN(matchVal) ? null : matchVal,
+                    loc_match_qty: locMatchQty,
+                    photo_link: itemToSave.REQ_PHOTO_LINK || itemToSave.SAVED_PHOTO_LINK || null,
+                    photo_name: itemToSave.REQ_PHOTO_NAME || itemToSave.SAVED_PHOTO_NAME || null
+                };
+
+                // FIX: Instantly reflect in local Master Inventory so AV tab populates accurately right away
+                let masterItem = fullInventory.find(i => i.UNIQUE_ID === masterUid);
+                if (masterItem) {
+                    masterItem.AV_NOTE = avPayload.av_note;
+                    masterItem.SPEC = avPayload.spec;
+                    masterItem.CALIPER = avPayload.caliper;
+                    masterItem.MATCH = avPayload.match;
+                    masterItem.LOC_MATCH_QTY = avPayload.loc_match_qty;
+                    if(avPayload.photo_link) masterItem.SAVED_PHOTO_LINK = avPayload.photo_link;
                 }
 
-                // Push to AV (Master Inventory) if user selected YES
-                if (pushToAv) {
-                    let masterUid = itemToSave.MASTER_ID || itemToSave.UNIQUE_ID;
-                    let matchVal = parseFloat(itemToSave.REQ_MATCH);
-                    let ptr = parseInt(String(itemToSave.PTRAVAILABLE).replace(/,/g, '')) || 0;
-                    let locMatchQty = (!isNaN(matchVal) && matchVal >= 0) ? Math.round(ptr * (matchVal / 100)) : null;
+                // Silently update master inventory in the background via official client
+                supabaseClient.from('v2_master_inventory').update(avPayload).eq('unique_id', masterUid).then();
+            }
+            
+            const targetTable = (itemToSave.SOURCE_TABLE === 'v2_active_request') ? 'v2_active_request' : (itemToSave.SOURCE_TABLE || 'v2_master_inventory');
 
-                    let avPayload = {
-                        av_note: itemToSave.AV_NOTE || null,
-                        spec: itemToSave.REQ_SPEC || null,
-                        caliper: itemToSave.REQ_CALIPER || null,
-                        match: isNaN(matchVal) ? null : matchVal,
-                        loc_match_qty: locMatchQty,
-                        photo_link: itemToSave.REQ_PHOTO_LINK || itemToSave.SAVED_PHOTO_LINK || null,
-                        photo_name: itemToSave.REQ_PHOTO_NAME || itemToSave.SAVED_PHOTO_NAME || null
-                    };
-
-                    // Silently update master inventory in the background via official client
-                    supabaseClient.from('v2_master_inventory').update(avPayload).eq('unique_id', masterUid).then();
-                }
-                
-                const targetTable = (itemToSave.SOURCE_TABLE === 'v2_active_request') ? 'v2_active_request' : (itemToSave.SOURCE_TABLE || 'v2_master_inventory');
-
-                try {
-                    // Update the primary table via official client
+            try {                    // Update the primary table via official client
                     await supabaseClient.from(targetTable).update(payload).eq('unique_id', itemToSave.UNIQUE_ID);
                     
                     if ((prefix === 'req-' || itemToSave.SOURCE_TABLE === 'v2_active_request') && isComplete && !wasAlreadyComplete) {
