@@ -574,219 +574,31 @@
         </div>
         
         <script>
-        /* --- CONFIGURATION & CLIENT INITIALIZATION --- */
         const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6cm55anNvc3J5ZWpqZWpsaWlpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzAyNzM1NywiZXhwIjoyMDg4NjAzMzU3fQ.Bc46UfJ1N4AgAS1PgfhFg6S4BEyybR6g_TUnPZsE2t0";
         
-        // Official Realtime WebSocket Client
+        // ADDED: Initialize the Supabase client for WebSockets
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwhH-eB5Py3xCwhmWReOAcAfl9Zu6mkw0hZYnAbIP9lLANoE4iebK1hXa6-ogU4_1AURA/exec"; 
         const esc = (s) => String(s || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
         const DB_NAME="GNC_DDC_DB_V2"; const STORE_NAME="inventory_cache";
         
-        // Global High-Speed Memory Store
-        let fullInventory=[]; let lowStockInventory=[]; let socInventory=[]; let reservesInventory=[]; 
-        let requestsInventory=[]; let managerReviewInventory=[]; let salesOfficeInventory=[]; let avNotesDb=[];
-        let currentUser=""; let activeItem=null; let lastSyncTime=new Date().toISOString();
-        let activeChatRoomId=null; let userChatList=[];
-
-        let currentRole=""; let safeRole=""; let repPermutations=[]; let lastView=""; let activeDetailTab="overview"; let selectedItems=new Set(); let isMultiSelectMode=false; let pressTimer=null; let isLongPress=false;
-        let driveViewLevel=0; let selectedDriveName=null; let selectedDriveSize=null; let driveSelectedSeasons=new Set(['ALL']);
-        let activeAVTab='open'; let avResLevel=0; let selectedAvResName=null; let selectedAvResSize=null; 
-        let activeReqTab="pending"; let requestViewLevel=0;
-
-        /* --- PERFORMANCE INITIALIZATION --- */
-        window.onload = async function() {
-            // Register Service Worker for offline speed
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('./sw.js').catch(e => {});
-            }
-
-            const savedUser = localStorage.getItem('gnc_user_v3');
-            if(savedUser){
-                currentUser = savedUser;
-                document.getElementById('username-input').value = savedUser;
-                // Instant load from device storage
-                const cached = await loadFromCache();
-                if(cached) {
-                    processAndLoadData(cached);
-                    setupWebSockets();
-                }
-                // Background refresh data silently (No green line)
-                silentBackgroundSync();
-            }
-        };
-
-        async function silentBackgroundSync() {
-            if(!currentUser) return;
-            // Fetch only changed rows since last sync
-            const data = await supabaseFetch('v2_master_inventory', 'GET', null, `last_updated=gt.${lastSyncTime}`, true);
-            if(data && data.length > 0) {
-                data.forEach(updatedRow => handleInstantDataUpdate(updatedRow));
-                lastSyncTime = new Date().toISOString();
-            }
+        function performLogout() { 
+            localStorage.clear(); 
+            sessionStorage.clear(); 
+            try { indexedDB.deleteDatabase(DB_NAME); } catch(e){} 
+            location.reload(); 
         }
 
-        /* --- SPEED HELPERS --- */
-        function debounce(func, wait) {
-            let timeout;
-            return function(...args){
-                clearTimeout(timeout);
-                timeout = setTimeout(() => func.apply(this, args), wait);
-            };
+        function debounce(func,wait) { 
+            let timeout; 
+            return function(...args){ 
+                clearTimeout(timeout); 
+                timeout=setTimeout(()=>func.apply(this,args),wait); 
+            }; 
         }
-
-        function performLogout() {
-            localStorage.clear(); sessionStorage.clear();
-            try { indexedDB.deleteDatabase(DB_NAME); } catch(e){}
-            location.reload();
-        }
-
-        // Standard fetch utility with SILENT mode to prevent green line flicker
-        async function supabaseFetch(table, method='GET', body=null, query='select=*', silent=false) {
-            if(!silent) startGlobalProgress();
-            try {
-                const h = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer '+SUPABASE_KEY, 'Content-Type': 'application/json' };
-                if(method==='GET'){
-                    const url=`${SUPABASE_URL}/rest/v1/${table}?${query}`;
-                    const res=await fetch(url,{method:'GET',headers:h});
-                    return await res.json();
-                } else {
-                    const options={method,headers:h};
-                    if(body) options.body=JSON.stringify(body);
-                    const res=await fetch(`${SUPABASE_URL}/rest/v1/${table}${query?'?'+query:''}`,options);
-                    return res.ok ? await res.json() : null;
-                }
-            } catch(e){ return []; } finally { if(!silent) stopGlobalProgress(); }
-        }
-
-        function openDB() {
-            return new Promise((resolve,reject)=>{
-                const request=indexedDB.open(DB_NAME,1);
-                request.onupgradeneeded=event=>{
-                    const db=event.target.result;
-                    if(!db.objectStoreNames.contains(STORE_NAME)){ db.createObjectStore(STORE_NAME); }
-                };
-                request.onsuccess=event=>resolve(event.target.result);
-                request.onerror=event=>reject(event.target.error);
-            });
-        }
-
-        async function saveToCache(data) {
-            try{
-                const db=await openDB();
-                const tx=db.transaction(STORE_NAME,"readwrite");
-                tx.objectStore(STORE_NAME).put(data,"latest_data");
-                return new Promise((resolve)=>{ tx.oncomplete=()=>resolve(true); tx.onerror=()=>resolve(false); });
-            }catch(e){}
-        }
-
-        async function loadFromCache() {
-            try{
-                const db=await openDB();
-                return new Promise((resolve,reject)=>{
-                    const tx=db.transaction(STORE_NAME,"readonly");
-                    const request=tx.objectStore(STORE_NAME).get("latest_data");
-                    request.onsuccess=()=>resolve(request.result);
-                    request.onerror=()=>resolve(null);
-                });
-            }catch(e){ return null; }
-        }
-
-        /* --- INSTANT NAVIGATION (NO LAG) --- */
-        function switchView(viewId) { 
-            // 1. Instant toggle - no browser wait
-            document.querySelectorAll('[id^="view-"]').forEach(el => el.classList.add('hidden'));
-            const target = document.getElementById('view-' + viewId);
-            if(target) target.classList.remove('hidden');
-
-            // 2. Clear visual selections silently
-            if(viewId !== 'detail') {
-                isMultiSelectMode = false;
-                document.body.classList.remove('multi-select-mode');
-                selectedItems.clear();
-                updateGlobalActionBar();
-            }
-
-            // 3. Re-render instantly from memory (0ms network request)
-            reRenderCurrentView();
-        }
-
-        /* --- REALTIME ENGINE (WEBSOCKETS) --- */
-        function setupWebSockets() {
-            // Channel 1: Inventory Updates
-            supabaseClient.channel('inventory-sync')
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'v2_master_inventory' }, payload => {
-                    handleInstantDataUpdate(payload.new);
-                })
-                .subscribe();
-
-            // Channel 2: Chat Messages
-            supabaseClient.channel('chat-sync')
-                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'v2_chat_messages' }, payload => {
-                    if (activeChatRoomId === payload.new.room_id) {
-                        if (typeof fetchChatMessages === 'function') fetchChatMessages();
-                    } else {
-                        if (typeof loadChatInbox === 'function') loadChatInbox();
-                    }
-                })
-                .subscribe();
-        }
-
-        function handleInstantDataUpdate(newData) {
-            const idx = fullInventory.findIndex(i => i.UNIQUE_ID === newData.unique_id);
-            if(idx > -1) {
-                // Update memory instantly
-                Object.assign(fullInventory[idx], newData);
-                // If user is currently looking at this item, update the view without refreshing
-                if(activeItem && activeItem.UNIQUE_ID === newData.unique_id) {
-                    Object.assign(activeItem, newData);
-                    if(!document.getElementById('view-detail').classList.contains('hidden')) {
-                        openDetail(activeItem.UNIQUE_ID, lastView); 
-                    }
-                }
-                reRenderCurrentView();
-            }
-        }
-
-        /* --- OPTIMISTIC UI: SAVE DATA WITHOUT WAITING --- */
-        async function saveData(isComplete = false, prefix, isSilent = false) {
-            if (!activeItem) return;
-            const now = new Date().toISOString();
-
-            // 1. GRAB VALUES FROM UI
-            const avNote = document.getElementById(prefix + 'av-note')?.value.toUpperCase();
-            const salesNote = document.getElementById(prefix + 'sales-desc')?.value.toUpperCase();
-            const match = document.getElementById(prefix + 'match')?.value;
-            const spec = document.getElementById(prefix + 'spec')?.value;
-
-            // 2. UPDATE LOCAL MEMORY IMMEDIATELY (Feels instant to user)
-            if(avNote !== undefined) activeItem.AV_NOTE = avNote;
-            if(salesNote !== undefined) activeItem.SALES_NOTE = salesNote;
-            if(match !== undefined) activeItem.MATCH = match;
-            if(spec !== undefined) activeItem.SPEC = spec;
-
-            if (isComplete) {
-                activeItem.DATE_COMPLETED = now;
-                showToast("Success", "Saved & Synced");
-                goBackFromDetail(); // Move user back immediately
-            }
-
-            // 3. SEND TO SUPABASE IN BACKGROUND (User doesn't wait for this)
-            const table = activeItem.SOURCE_TABLE || 'v2_master_inventory';
-            const payload = { 
-                av_note: avNote || null, 
-                sales_note: salesNote || null,
-                match: match ? parseFloat(match) : null,
-                spec: spec || null,
-                date_completed: isComplete ? now : null 
-            };
-
-            supabaseClient.from(table).update(payload).eq('unique_id', activeItem.UNIQUE_ID).then();
-            reRenderCurrentView();
-        }
-
+        
         let activeFetches=0; let fetchProgressInterval; let currentProgress=0;
 
         function startGlobalProgress() { 
@@ -817,27 +629,704 @@
             } 
         }
 
-        function reRenderCurrentView() {
-            if(!document.getElementById('view-drive').classList.contains('hidden'))renderDrive();
-            if(!document.getElementById('view-tasks').classList.contains('hidden'))renderTasks();
-            if(!document.getElementById('view-sales-office').classList.contains('hidden'))renderSalesOffice();
-            if(!document.getElementById('view-low-stock').classList.contains('hidden'))renderLowStock();
-            if(!document.getElementById('view-docks').classList.contains('hidden'))renderDocks();
-            if(!document.getElementById('view-review').classList.contains('hidden'))renderReview();
-            if(!document.getElementById('view-reports').classList.contains('hidden'))renderReports();
-            if(!document.getElementById('view-request').classList.contains('hidden'))renderRequest();
-            if(!document.getElementById('view-reserves').classList.contains('hidden'))renderReserves();
-            if(!document.getElementById('view-av').classList.contains('hidden'))renderAV();
+        async function supabaseFetch(table, method='GET', body=null, query='select=*') {
+            startGlobalProgress();
+            try {
+                let allData=[]; let offset=0; const limit=1000; let hasMore=true;
+                if(method==='GET'){
+                    while(hasMore){
+                        let queryString = query ? `${query}&limit=${limit}&offset=${offset}` : `limit=${limit}&offset=${offset}`;
+                        const url=`${SUPABASE_URL}/rest/v1/${table}?${queryString}`;
+                        const response=await fetch(url,{method:'GET',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json'}});
+                        if(!response.ok) throw new Error(`Supabase Error`);
+                        const text=await response.text(); const data=text?JSON.parse(text):[];
+                        if(Array.isArray(data)&&data.length>0){ allData=allData.concat(data); offset+=limit; if(data.length<limit) hasMore=false; }
+                        else { hasMore=false; }
+                    } return allData;
+                } else {
+                    const options={method:method,headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json'}};
+                    options.headers['Prefer']=method==='POST'?'return=representation,resolution=merge-duplicates':'return=representation';
+                    if(body)options.body=JSON.stringify(body);
+                    const response=await fetch(`${SUPABASE_URL}/rest/v1/${table}${query?'?'+query:''}`,options);
+                    if(!response.ok) throw new Error('Supabase error');
+                    const text=await response.text(); return text?JSON.parse(text):{};
+                }
+            } catch(e){ return []; } finally { stopGlobalProgress(); }
         }
 
-        function setTaskTab(tab) {
-            activeTaskTab=tab;
-            document.getElementById('tab-season').classList.toggle('active',tab==='season');
-            document.getElementById('tab-location').classList.toggle('active',tab==='location');
-            document.getElementById('tab-endcap').classList.toggle('active',tab==='endcap');
-            document.getElementById('tab-flyer').classList.toggle('active',tab==='flyer');
-            taskViewLevel=0;
-            renderTasks();
+        function openDB() { 
+            return new Promise((resolve,reject)=>{ 
+                const request=indexedDB.open(DB_NAME,1); 
+                request.onupgradeneeded=event=>{ 
+                    const db=event.target.result; 
+                    if(!db.objectStoreNames.contains(STORE_NAME)){ db.createObjectStore(STORE_NAME); } 
+                }; 
+                request.onsuccess=event=>resolve(event.target.result); 
+                request.onerror=event=>reject(event.target.error); 
+            }); 
+        }
+
+        async function saveToCache(data) { 
+            try{ 
+                const db=await openDB(); 
+                const tx=db.transaction(STORE_NAME,"readwrite"); 
+                tx.objectStore(STORE_NAME).put(data,"latest_data"); 
+                return new Promise((resolve)=>{ tx.oncomplete=()=>resolve(true); tx.onerror=()=>resolve(false); }); 
+            }catch(e){} 
+        }
+
+        async function loadFromCache() { 
+            try{ 
+                const db=await openDB(); 
+                return new Promise((resolve,reject)=>{ 
+                    const tx=db.transaction(STORE_NAME,"readonly"); 
+                    const request=tx.objectStore(STORE_NAME).get("latest_data"); 
+                    request.onsuccess=()=>resolve(request.result); 
+                    request.onerror=()=>resolve(null); 
+                }); 
+            }catch(e){ return null; } 
+        }
+
+        let fullInventory=[]; let lowStockInventory=[]; let socInventory=[]; let reservesInventory=[]; let requestsInventory=[]; let managerReviewInventory=[]; let salesOfficeInventory=[]; let avNotesDb=[];
+        let currentUser=""; let currentRole=""; let safeRole=""; let repPermutations=[]; let activeItem=null; let lastView=""; let activeDetailTab="overview"; let selectedItems=new Set(); let isMultiSelectMode=false; let pressTimer=null; let isLongPress=false; let touchStartX=0; let touchStartY=0; let pendingAction=null; let pendingTabType=null;
+        
+        let activeDriveTab='name'; let selectedDriveBlock=null; let selectedDriveLoc=null;
+        let driveViewLevel=0; let selectedDriveName=null; let selectedDriveSize=null; let driveSelectedSeasons=new Set(['ALL']); const availableSeasons=["ALL","S1","F1","U1","U2","U3","X","Y","Z"];
+        
+        let activeTaskTab="season"; let taskViewTargetUser=null; let taskViewLevel=0; let selectedTaskBlock=null; let selectedTaskLoc=null; let selectedEndCapFolder=null;
+        
+        let activeAVTab='open'; let avOpenLevel=0; let selectedAvGroup=null; let selectedAvItemCode=null; let avResLevel=0; let selectedAvResName=null; let selectedAvResSize=null;; let selectedAvOpenSeason=null; let selectedAvOpenLot=null; 
+        
+        let lowStockViewLevel=0; let selectedLowStockName=null; let selectedLowStockSize=null; let reviewViewLevel=0; let selectedReviewItemCode=null; let selectedReviewCommonName=null; let selectedReviewContSize=null;
+        let reportViewLevel=0; let activeReqTab="pending"; let selectedReqRep=null; let selectedReqRepStatus=null; let selectedReqFolder=null; let tempSelectedReqRep=""; let tempReqFolder=null; let tempReqCust=null; let previousReqStep="";
+        let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqFolderView=null; let selectedReqStatus='Pending';
+        let dockViewLevel=0; let selectedDockNum=null; let pendingDockNum=null; let selectedDockName=null; let selectedDockSize=null; let selectedDockItemCode=null; let selectedDockCustomer=""; let selectedDockTrip=""; let selectedDockRep=""; let lastSyncTime=new Date().toISOString();
+        let activeDocksMainTab = 'all'; let activeDocksSubTab = 'checker'; let expandedDockStops = new Set();
+        
+        const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Machino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
+
+        window.onload=async function() {
+            if ('serviceWorker' in navigator) { const registrations = await navigator.serviceWorker.getRegistrations(); for(let registration of registrations) { await registration.unregister(); } }
+            if ('caches' in window) { const keys = await caches.keys(); for (let key of keys) { await caches.delete(key); } }
+            
+            const savedUser=localStorage.getItem('gnc_user_v3'); 
+            
+            if(savedUser){ 
+                // Pre-fill the username
+                document.getElementById('username-input').value=savedUser; 
+                
+                // Pre-load the heavy data into memory instantly
+                const cachedRes=await loadFromCache(); 
+                if(cachedRes&&fullInventory.length===0){ 
+                    processAndLoadData(cachedRes); 
+                } 
+            }
+            // Notice: No auto-fill for pin-code and no handleLogin() trigger here!
+        };
+
+        window.addEventListener('DOMContentLoaded', () => {
+            if (localStorage.getItem('gnc_bio_enabled')==='true' && window.PublicKeyCredential) {
+                const bioBtn=document.getElementById('btn-fingerprint'); if (bioBtn) bioBtn.classList.remove('hidden');
+            }
+            const teamOptions = ["", "Dylan", "Kayla", "Morgan", ...salesRepList].map(n => `<option value="${n}">${n || "Unassigned"}</option>`).join('');
+            ['dock-checker', 'dock-inspector', 'dock-mistake'].forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = teamOptions; });
+        });
+
+        function getDirectImageUrl(url) { 
+            if(!url)return""; 
+            let match=url.match(/id=([a-zA-Z0-9_-]+)/); 
+            if(!match)match=url.match(/\/d\/([a-zA-Z0-9_-]+)/); 
+            if(match&&match[1]){ return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w100`; } 
+            return url; 
+        }
+        async function promptToEnableBiometrics(user,pin) { 
+            if(!confirm("Would you like to enable Fingerprint/FaceID login for future use?"))return; 
+            try{ 
+                const publicKey={challenge:new Uint8Array(32),rp:{name:"GREENLEAF"},user:{id:new Uint8Array(16),name:user,displayName:user},pubKeyCredParams:[{type:"public-key",alg:-7}],authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required"},timeout:60000}; 
+                await navigator.credentials.create({publicKey}); 
+                localStorage.setItem('gnc_bio_enabled','true'); 
+                localStorage.setItem('gnc_bio_user',user); 
+                localStorage.setItem('gnc_bio_pin',pin); 
+                showToast("Success","Fingerprint login enabled!"); 
+            }catch(err){} 
+        }
+
+        async function loginWithBiometric() { 
+            try{ 
+                const publicKey={challenge:new Uint8Array(32),timeout:60000,userVerification:"required"}; 
+                await navigator.credentials.get({publicKey}); 
+                const savedUser=localStorage.getItem('gnc_bio_user'); 
+                const savedPin=localStorage.getItem('gnc_bio_pin'); 
+                if(savedUser&&savedPin){ 
+                    document.getElementById('username-input').value=savedUser; 
+                    document.getElementById('pin-code').value=savedPin; 
+                    handleLogin(true); 
+                }else{ 
+                    showToast("Error","Credentials lost.",true); 
+                } 
+            }catch(err){ 
+                showToast("Error","Fingerprint cancelled.",true); 
+            } 
+        }
+
+        function setRepPermutations(user) { 
+            let parts=user.split('_'); 
+            if(parts.length>=2){ 
+                let first=parts[0]; 
+                let last=parts[parts.length-1]; 
+                repPermutations=[`${first} ${last}`.toLowerCase(),`${last}, ${first}`.toLowerCase(),`${last},${first}`.toLowerCase()]; 
+            }else{ 
+                repPermutations=[user.toLowerCase()]; 
+            } 
+        }
+
+        function isMyRep(repNameStr) { 
+            if(safeRole!=='SALESREP')return true; 
+            if(!repNameStr)return false; 
+            let str=String(repNameStr).toLowerCase(); 
+            return repPermutations.some(p=>str.includes(p)); 
+        }
+
+        function scrollPhotoGallery(direction) {
+            const gallery = document.getElementById('photo-modal-gallery');
+            if(!gallery) return;
+            // Scroll by exactly the width of the gallery container
+            const scrollAmount = gallery.clientWidth;
+            gallery.scrollBy({ left: direction * scrollAmount, behavior: 'smooth' });
+        }
+
+        function openPhotoModal(urlStr, caption) { 
+            const gallery = document.getElementById('photo-modal-gallery');
+            gallery.innerHTML = '';
+            
+            // Filter out empty strings just in case
+            let urls = String(urlStr).split(',').filter(u => u.trim() !== '');
+            
+            urls.forEach(u => {
+                let cleanUrl = u.trim();
+                let match = cleanUrl.match(/(https?:\/\/[^"\s>]+)/);
+                if(match) cleanUrl = match[1];
+                if(cleanUrl.startsWith('http')) {
+                    let fullUrl = cleanUrl.replace('&sz=w100', ''); 
+                    
+                    // The inline style "scroll-snap-stop: always;" forces the sticky swipe
+                    gallery.innerHTML += `<img src="${fullUrl}" class="snap-center w-full max-h-[80vh] object-contain flex-shrink-0 rounded-xl shadow-2xl" style="scroll-snap-stop: always;">`;
+                }
+            });
+
+            document.getElementById('photo-modal-caption').innerText = caption; 
+            document.getElementById('photo-modal').classList.remove('hidden');
+            
+            // Manage visibility of the counter, hint, and arrows
+            let navLeft = document.getElementById('photo-nav-left');
+            let navRight = document.getElementById('photo-nav-right');
+
+            if(urls.length > 1) {
+                document.getElementById('photo-swipe-hint').classList.remove('hidden');
+                document.getElementById('photo-modal-counter').classList.remove('hidden');
+                if(navLeft) navLeft.classList.remove('hidden');
+                if(navRight) navRight.classList.remove('hidden');
+            } else {
+                document.getElementById('photo-swipe-hint').classList.add('hidden');
+                document.getElementById('photo-modal-counter').classList.add('hidden');
+                if(navLeft) navLeft.classList.add('hidden');
+                if(navRight) navRight.classList.add('hidden');
+            }
+            
+            // Initialize the counter for the first image
+            setTimeout(() => updatePhotoCounter(), 50);
+        }
+        function closePhotoModal() { 
+            document.getElementById('photo-modal').classList.add('hidden'); 
+        }
+
+        function updatePhotoCounter() {
+            const gallery = document.getElementById('photo-modal-gallery');
+            const counter = document.getElementById('photo-modal-counter');
+            if(!gallery || !counter) return;
+            
+            const images = gallery.querySelectorAll('img');
+            if(images.length <= 1) return;
+            
+            // Calculate active index based on scroll position
+            const scrollLeft = gallery.scrollLeft;
+            const clientWidth = gallery.clientWidth;
+            
+            // Use the container width to find the nearest snapped image
+            const activeIndex = Math.round(scrollLeft / clientWidth);
+            
+            // Keep it bounded safely between 1 and max
+            const displayIndex = Math.min(Math.max(1, activeIndex + 1), images.length);
+            
+            counter.innerText = `${displayIndex} / ${images.length}`;
+        }
+        function handleLogin(isBiometricLogin=false) {
+            const inputUser=document.getElementById('username-input').value.trim().toLowerCase(); 
+            const inputPass=document.getElementById('pin-code').value.trim();
+            if(!inputUser||!inputPass){ showToast("Error","Please enter username and password",true); return; }
+            if(fullInventory.length===0){ 
+                let skeletonHtml=`<div class="p-4 space-y-4 w-full max-w-md mx-auto"><div class="skeleton h-8 w-1/3 mb-6"></div>`; 
+                for(let i=0;i<5;i++){ skeletonHtml+=`<div class="skeleton h-24 w-full rounded-xl mb-3"></div>`; } 
+                skeletonHtml+=`</div>`; 
+                document.getElementById('drive-content').innerHTML=skeletonHtml; 
+            }
+            document.getElementById('login-inputs').classList.add('hidden'); 
+            document.getElementById('loading-spinner').classList.remove('hidden'); 
+            supabaseFetch('v2_app_users','GET',null,`username=ilike.*${encodeURIComponent(inputUser)}*&password=eq.${encodeURIComponent(inputPass)}&select=*`).then(data=>{
+                if(data&&data.length>0){
+                    const userRecord=data[0]; 
+                    currentUser=inputUser; 
+                    currentRole=userRecord.role||'User'; 
+                    safeRole=String(currentRole).toUpperCase().replace(/\s+/g,'');
+                    const isDefaultPassword=['1234','12345','welcome','password','GREENLEAF25',inputUser].includes(inputPass); 
+                    const hasChangedLocally=localStorage.getItem('gnc_pw_changed_'+currentUser)==='true';
+                    if(isDefaultPassword&&!hasChangedLocally&&!isBiometricLogin){ 
+                        document.getElementById('view-login').style.display='none'; 
+                        document.getElementById('view-change-password').style.display='flex'; 
+                    }
+                    else{ 
+                        finalizeLogin(inputUser,inputPass,isBiometricLogin); 
+                    }
+                }else{ 
+                    alert("MISMATCH DETECTED!\n\nIncorrect Username or Password."); 
+                    document.getElementById('pin-code').value=""; 
+                    document.getElementById('login-inputs').classList.remove('hidden'); 
+                    document.getElementById('loading-spinner').classList.add('hidden'); 
+                }
+            }).catch(err=>{ 
+                showToast("Error","Network Error.",true); 
+                document.getElementById('login-inputs').classList.remove('hidden'); 
+                document.getElementById('loading-spinner').classList.add('hidden'); 
+            });
+        }
+
+        async function submitNewPassword() { 
+            const newPass=document.getElementById('new-password').value.trim(); 
+            const confirmPass=document.getElementById('confirm-password').value.trim(); 
+            if(!newPass||newPass.length<4){ alert("Password must be at least 4 characters!"); return; } 
+            if(newPass!==confirmPass){ alert("Passwords do not match!"); return; } 
+            document.getElementById('view-change-password').style.display='none'; 
+            document.getElementById('view-login').style.display='flex'; 
+            document.getElementById('login-inputs').classList.add('hidden'); 
+            document.getElementById('loading-spinner').classList.remove('hidden'); 
+            try{ await supabaseFetch('v2_app_users','PATCH',{password:newPass},`username=ilike.*${encodeURIComponent(currentUser)}*`); }catch(e){} 
+            localStorage.setItem('gnc_pw_changed_'+currentUser,'true'); 
+            document.getElementById('new-password').value=""; 
+            document.getElementById('confirm-password').value=""; 
+            finalizeLogin(currentUser,newPass,false); 
+        }
+
+        function finalizeLogin(user,pass,isBiometricLogin) { 
+            localStorage.setItem('gnc_user_v3',user); 
+            localStorage.setItem('gnc_pin_v3',pass); 
+            localStorage.setItem('gnc_role_v3',currentRole); 
+            document.getElementById('header-user').innerText=currentUser.toUpperCase(); 
+            
+            // Set the username on the big Dashboard card
+            let dashUser = document.getElementById('dashboard-username-display');
+            if(dashUser) dashUser.innerText = currentUser.toUpperCase();
+
+            setRepPermutations(currentUser); 
+            if(!isBiometricLogin&&window.PublicKeyCredential&&localStorage.getItem('gnc_bio_enabled')!=='true'){ promptToEnableBiometrics(user,pass); } 
+            applyRolePermissions(); 
+            fetchBackgroundData(); 
+            
+            // ADDED: Replaced standard polling with live WebSockets
+            setupWebSockets();
+        }
+
+        // ADDED: Setup live WebSocket listeners for instant updates
+        function setupWebSockets() {
+            // 1. Listen for ANY updates to the Master Inventory
+            supabaseClient.channel('inventory-changes')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'v2_master_inventory' }, payload => {
+                    console.log('Instant Inventory Update Detected!', payload);
+                    silentBackgroundSync(); // Instantly grab the new data
+                })
+                .subscribe();
+
+            // 2. Listen for NEW Chat Messages
+            supabaseClient.channel('chat-messages')
+                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'v2_chat_messages' }, payload => {
+                    console.log('Instant Chat Message Detected!', payload);
+                    
+                    // If we are currently looking at the chat room, inject the message instantly!
+                    if (activeChatRoomId && payload.new.room_id === activeChatRoomId) {
+                        const msg = payload.new;
+                        const container = document.getElementById('chat-messages-container');
+                        
+                        // Don't duplicate our own optimistic messages
+                        if (msg.sender.toLowerCase() === currentUser.toLowerCase()) {
+                            let optMsg = document.getElementById('optimistic-msg');
+                            if(optMsg) optMsg.remove();
+                        }
+                        
+                        let isMe = msg.sender.toLowerCase() === currentUser.toLowerCase();
+                        let msgDate = new Date(msg.created_at);
+                        let timeStr = msgDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                        
+                        let html = '';
+                        if (isMe) {
+                            html = `<div class="flex flex-col items-end w-full">
+                                        <div class="bg-[#007a4d] text-white px-4 py-2.5 rounded-2xl rounded-br-none shadow-sm max-w-[80%] break-words text-[15px] leading-snug">
+                                            ${msg.message}
+                                        </div>
+                                        <span class="text-[9px] text-gray-400 font-bold mt-1 mr-1">${timeStr}</span>
+                                    </div>`;
+                        } else {
+                            html = `<div class="flex flex-col items-start w-full">
+                                        <span class="text-[10px] font-bold text-gray-500 ml-2 mb-0.5 uppercase tracking-wide">${msg.sender}</span>
+                                        <div class="bg-white border border-gray-200 text-gray-800 px-4 py-2.5 rounded-2xl rounded-bl-none shadow-sm max-w-[80%] break-words text-[15px] leading-snug">
+                                            ${msg.message}
+                                        </div>
+                                        <span class="text-[9px] text-gray-400 font-bold mt-1 ml-1">${timeStr}</span>
+                                    </div>`;
+                        }
+                        
+                        container.innerHTML += html;
+                        container.scrollTop = container.scrollHeight;
+                        
+                    } else {
+                        // Otherwise, refresh the inbox so the preview updates
+                        loadChatInbox();
+                    }
+                })
+                .subscribe();                
+            // 3. Listen for Request changes
+            supabaseClient.channel('request-changes')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'v2_active_request' }, payload => {
+                    console.log('Instant Request Update Detected!', payload);
+                    silentBackgroundSync(); 
+                })
+                .subscribe();
+        }
+
+        async function silentBackgroundSync(directPayload = null) {
+            if(!currentUser)return; 
+            const checkTime=new Date().toISOString();
+            try {
+                // If the websocket handed us the data directly, skip the fetch!
+                let data = directPayload ? [directPayload] : null;
+                
+                if (!data) {
+                    const response=await fetch(`${SUPABASE_URL}/rest/v1/v2_master_inventory?select=*&last_updated=gt.${lastSyncTime}`,{method:'GET',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+                    if(response.ok) data = await response.json();
+                }
+
+                if(data&&data.length>0){
+                    let updated=false;
+                    data.forEach(updatedRow=>{
+                        let idx=fullInventory.findIndex(i=>i.UNIQUE_ID===updatedRow.unique_id);
+                        if(idx>-1){
+                            for(let k in updatedRow){ if(updatedRow[k]!==null) fullInventory[idx][k.toUpperCase()]=updatedRow[k]; }
+                            fullInventory[idx].SAVED_PHOTO_LINK=fullInventory[idx].PHOTO_LINK||fullInventory[idx].PHOTOLINK||""; 
+                            fullInventory[idx].SAVED_PHOTO_NAME=fullInventory[idx].PHOTO_NAME||fullInventory[idx].PHOTONAME||""; 
+                            updated=true; 
+                            
+                            // NEW: Cascade this update to Docks, Reserves, and Low Stock tabs immediately!
+                            let mItem = fullInventory[idx];
+                            socInventory.forEach(soc => {
+                                if(soc.MASTER_UNIQUE_ID === mItem.UNIQUE_ID) {
+                                    soc.SAVED_PHOTO_LINK = mItem.SAVED_PHOTO_LINK; soc.DOCK_PHOTO_LINK = mItem.DOCK_PHOTO_LINK;
+                                    soc.AV_NOTE = mItem.AV_NOTE; soc.SALES_NOTE = mItem.SALES_NOTE; soc.DOCK_NOTE = mItem.DOCK_NOTE;
+                                }
+                            });
+                            reservesInventory.forEach(res => {
+                                if(res.MASTER_UNIQUE_ID === mItem.UNIQUE_ID) {
+                                    res.SAVED_PHOTO_LINK = mItem.SAVED_PHOTO_LINK; res.AV_NOTE = mItem.AV_NOTE; res.SALES_NOTE = mItem.SALES_NOTE;
+                                }
+                            });
+                            let lsIdx = lowStockInventory.findIndex(ls => ls.UNIQUE_ID === mItem.UNIQUE_ID);
+                            if(lsIdx > -1) Object.assign(lowStockInventory[lsIdx], mItem);
+
+                            if(activeItem&&activeItem.UNIQUE_ID===updatedRow.unique_id){ Object.assign(activeItem,fullInventory[idx]); }
+                        }
+                    });
+                    if(updated){ reRenderCurrentView(); if(activeItem&&!document.getElementById('view-detail').classList.contains('hidden')){ openDetail(activeItem.UNIQUE_ID,lastView); } }
+                }                
+                // --- UPDATED REQ BLOCK WITH CACHE-BUSTER AND applyLocalEdits() ---
+                const reqRes = await fetch(`${SUPABASE_URL}/rest/v1/v2_active_request?select=*&_t=${Date.now()}`, {method:'GET', headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+                if(reqRes.ok) {
+                    const reqData = await reqRes.json();
+                    let hash = JSON.stringify(reqData);
+                    if(hash !== localStorage.getItem('last_req_hash')) {
+                        requestsInventory = reqData.map(item => {
+                            let obj = {SOURCE_TABLE: 'v2_active_request'};
+                            for(let k in item) { if(item[k]!==null) obj[k.toUpperCase()] = item[k]; }
+                            obj.DOM_ID = 'req_' + obj.UNIQUE_ID;
+                            obj.SAVED_PHOTO_LINK = obj.REQ_PHOTO_LINK || obj.SAVED_PHOTO_LINK || ""; 
+                            obj.SAVED_PHOTO_NAME = obj.REQ_PHOTO_NAME || obj.SAVED_PHOTO_NAME || "";
+                            obj.CONTSIZE=item.contsize || obj.CONTSIZE || item.itemspec || obj.ITEMSPEC || item.size || "-";
+                            obj.LOCATIONCODE=obj.LOCATIONCODE||obj.LOCATION||"No Loc"; 
+                            return obj;
+                        });
+                        localStorage.setItem('last_req_hash', hash);
+                        
+                        // MAGIC FIX: Re-apply local edits to protect UI state
+                        applyLocalEdits();
+                        
+                        if(!document.getElementById('view-request').classList.contains('hidden')) renderRequest();
+                    }
+                }
+
+                // --- UPDATED SO BLOCK WITH CACHE-BUSTER AND applyLocalEdits() ---
+                const soRes = await fetch(`${SUPABASE_URL}/rest/v1/v2_sales_office?select=*&_t=${Date.now()}`, {method:'GET', headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+                if(soRes.ok) {
+                    const soData = await soRes.json();
+                    let soHash = JSON.stringify(soData);
+                    if(soHash !== localStorage.getItem('last_so_hash')) {
+                        salesOfficeInventory = soData.map((item, idx) => {
+                            let obj = {SOURCE_TABLE: 'v2_sales_office'};
+                            for(let k in item) { if(item[k]!==null) obj[k.toUpperCase()] = item[k]; }
+                            obj.DOM_ID = 'so_' + obj.UNIQUE_ID;
+                            let masterItem = fullInventory.find(i => i.UNIQUE_ID === obj.UNIQUE_ID);
+                            if (masterItem) { obj.AV_NOTE = masterItem.AV_NOTE; }
+                            return obj;
+                        });
+                        localStorage.setItem('last_so_hash', soHash);
+                        
+                        // Protect local state here too
+                        applyLocalEdits();
+                        
+                        if(!document.getElementById('view-sales-office').classList.contains('hidden')) renderSalesOffice();
+                    }
+                }
+                
+                lastSyncTime=checkTime;
+            } catch(e){}
+        }
+        async function fetchBackgroundData() {
+            const cachedRes=await loadFromCache(); 
+            if(cachedRes&&fullInventory.length===0){ setTimeout(()=>{ processAndLoadData(cachedRes); },50); } 
+            try {
+                const results=await Promise.allSettled([
+                    supabaseFetch('v2_master_inventory','GET',null,'select=*'), 
+                    supabaseFetch('v2_active_request','GET',null,'select=*'),
+                    supabaseFetch('v2_reserves','GET',null,'select=*'), 
+                    supabaseFetch('v2_soc_master','GET',null,'select=*'),
+                    supabaseFetch('v2_sales_office','GET',null,'select=*'), 
+                    supabaseFetch('v2_av_notes','GET',null,'select=*')
+                ]);
+                const formatArr=(resObj,sourceTable)=>{
+                    if(resObj.status!=='fulfilled'||!Array.isArray(resObj.value))return[];
+                    return resObj.value.map((item,idx)=>{
+                        let obj={SOURCE_TABLE:sourceTable}; 
+                        for(let k in item){ if(item[k]!==null)obj[k.toUpperCase()]=item[k]; }
+                        if(!obj.UNIQUE_ID)obj.UNIQUE_ID=obj.ID||`${sourceTable}_${idx}`; 
+                        obj.COMMONNAME=obj.COMMONNAME||obj.DESCRIPTION||obj.PLANT_NAME||"Unknown";
+                        obj.CONTSIZE=item.contsize || obj.CONTSIZE || item.itemspec || obj.ITEMSPEC || item.size || "-";
+                        obj.LOCATIONCODE=obj.LOCATIONCODE||obj.LOCATION||"No Loc"; 
+                        obj.PTRAVAILABLE=obj.PTRAVAILABLE||0;
+                        obj.SAVED_PHOTO_LINK=obj.PHOTO_LINK||obj.PHOTOLINK||""; 
+                        obj.SAVED_PHOTO_NAME=obj.PHOTO_NAME||obj.PHOTONAME||""; 
+                        obj.SEASONSUPPLY=obj.SEASON_SUPPLY||obj.SEASONSUPPLY||0; 
+                        obj.FIELDTAGCOLOR=obj.FIELD_TAG_COLOR||obj.FIELDTAGCOLOR||"-"; 
+                        obj._search=`${obj.COMMONNAME||''} ${obj.LOCATIONCODE||''} ${obj.ITEMCODE||''} ${obj.CONTSIZE||''} ${obj.CUSTOMERNAME||''} ${obj.SALESREPNAME||''} ${obj.STOPNUMBER||''} ${obj.TRIPNUMBER||''}`.toLowerCase(); 
+                        return obj;
+                    });
+                };
+                let resObj={
+                    status:'success', 
+                    data:formatArr(results[0],'v2_master_inventory'), 
+                    requestsData:formatArr(results[1],'v2_active_request'),
+                    reservesData:formatArr(results[2],'v2_reserves'), 
+                    socData:formatArr(results[3],'v2_soc_master'),
+                    salesOfficeData:formatArr(results[4],'v2_sales_office'), 
+                    avNotesData:formatArr(results[5],'v2_av_notes')
+                };
+                setTimeout(()=>{ processAndLoadData(resObj); saveToCache(resObj); },100);
+            } catch(err){ if(!cachedRes)showToast("Sync Error","Could not download data.",true); }
+        }
+
+        function processAndLoadData(res) {
+            if (!res) return;
+            avNotesDb = res.avNotesData || [];
+            fullInventory = (res.data || []).map((item,idx)=>{item.DOM_ID='fi_'+idx;return item;}); 
+            requestsInventory = (res.requestsData || []).map((item,idx)=>{item.DOM_ID='req_'+item.UNIQUE_ID;return item;}); 
+            salesOfficeInventory = (res.salesOfficeData || []).map((item, idx) => {
+                item.DOM_ID = 'so_' + item.UNIQUE_ID;
+                let masterItem = fullInventory.find(i => i.UNIQUE_ID === item.UNIQUE_ID);
+                if (masterItem) { item.AV_NOTE = masterItem.AV_NOTE; }
+                return item;
+            });
+            socInventory = res.socData || [];
+            lowStockInventory = fullInventory.filter(i=>{
+                let ptr=parseInt(String(i.PTRAVAILABLE).replace(/,/g,''))||0; 
+                let slts=parseInt(String(i.S_LTS).replace(/,/g,''))||0; 
+                return ptr>0 && ptr<=slts;
+            }).map((item,idx)=>{item.DOM_ID='ls_'+idx;return item}); 
+            managerReviewInventory = fullInventory.map((item,idx)=>{item.DOM_ID='mr_'+idx;return item;}); 
+
+            let map1 = new Map();
+            let icGroups = {};
+
+            fullInventory.forEach(item => { 
+                let c = String(item.ITEMCODE || "").trim().toUpperCase(); 
+                if(c && !map1.has(c)) map1.set(c, item);
+                let eStr = String(item.END_CAP_FOLDER || "").toUpperCase().trim();
+                let hasEndCap = (eStr !== "" && eStr !== "NULL" && eStr !== "N/A" && eStr !== "-");
+                if(hasEndCap) {
+                    item.APP_TAB_ASSIGNMENT = 'endcap';
+                } else {
+                    let prio = String(item.PRIORITY || "").toUpperCase().trim();
+                    if(prio && prio !== "NULL" && prio !== "N/A" && prio !== "-") {
+                        let ic = String(item.ITEMCODE || "UNKNOWN").trim().toUpperCase();
+                        if(!icGroups[ic]) icGroups[ic] = [];
+                        icGroups[ic].push(item);
+                    } else {
+                        item.APP_TAB_ASSIGNMENT = 'location';
+                    }
+                }
+            });
+
+            for(let ic in icGroups) {
+                let rows = icGroups[ic];
+                let eligible = rows.filter(r => {
+                    let ptr = parseFloat(String(r.PTRAVAILABLE).replace(/,/g,'')) || 0;
+                    let ss = parseFloat(String(r.SEASONSUPPLY || r.SEASON_SUPPLY).replace(/,/g,'')) || 0;
+                    return ptr > (0.10 * ss);
+                });
+                let pool = eligible.length > 0 ? eligible : rows;
+                pool.sort((a,b) => {
+                    let pa = parseFloat(a.PRIORITY); if(isNaN(pa)) pa = 999;
+                    let pb = parseFloat(b.PRIORITY); if(isNaN(pb)) pb = 999;
+                    if(pa !== pb) return pa - pb; 
+                    let ptra = parseFloat(String(a.PTRAVAILABLE).replace(/,/g,'')) || 0;
+                    let ptrb = parseFloat(String(b.PTRAVAILABLE).replace(/,/g,'')) || 0;
+                    return ptrb - ptra; 
+                });
+                let winner = pool[0];
+                rows.forEach(r => {
+                    if(r.UNIQUE_ID === winner.UNIQUE_ID) r.APP_TAB_ASSIGNMENT = 'season';
+                    else r.APP_TAB_ASSIGNMENT = 'location';
+                });
+            }
+            
+            socInventory.forEach(item=>{ 
+                item.DOCK_NUM=item.DOCK_NUM||item.DOCK||item.dock; 
+                item.SALESREPNAME=item.SALESREPNAME||item.SALESREP||item['SALES_REP']||'Unknown Rep'; 
+                item.CUSTOMERNAME=item.CUSTOMERNAME||item.CUSTOMER||'Unknown Customer'; 
+                item.CONSIGNEENAME=item.CONSIGNEENAME||item.CONSIGNEENAME||item.CONSIGNEE||''; 
+                item._search=`${item.COMMONNAME||''} ${item['PLANT_NAME']||''} ${item.CUSTOMERNAME||''} ${item.SALESREPNAME||''} ${item.STOPNUMBER||''} ${item.TRIPNUMBER||''}`.toLowerCase(); 
+                let tCode=String(item.ITEMCODE||item.ITEM||"").trim().toUpperCase(); 
+                let masterItem=map1.get(tCode); 
+                if(masterItem){
+                    item.SAVED_PHOTO_LINK=masterItem.SAVED_PHOTO_LINK;
+                    item.SAVED_PHOTO_NAME=masterItem.SAVED_PHOTO_NAME;
+                    item.DOCK_PHOTO_LINK=masterItem.DOCK_PHOTO_LINK;
+                    item.AV_NOTE=masterItem.AV_NOTE;
+                    item.SALES_NOTE=masterItem.SALES_NOTE;
+                    item.DOCK_NOTE=masterItem.DOCK_NOTE;
+                    item.MASTER_UNIQUE_ID=masterItem.UNIQUE_ID;
+                } 
+            });
+            
+            reservesInventory = (res.reservesData || []).map((item,idx)=>{ 
+                item.DOM_ID='res_'+idx; 
+                item.UNIQUE_ID=item.UNIQUE_ID||'res_uid_'+idx; 
+                let resCode=String(item.ITEMCODE||item.ITEM||"").trim().toUpperCase(); 
+                let masterItem=map1.get(resCode); 
+                item.CUSTOMERNAME=item.CUSTOMERNAME||item.CUSTOMER||'Unknown Customer'; 
+                item.CONSIGNEENAME=item.CONSIGNEENAME||item.CONSIGNEE||''; 
+                item.SALESREPNAME=item.SALESREPNAME||item.SALESREP||item['SALES_REP']||'Unknown Rep'; 
+                if(masterItem){
+                    item.COMMONNAME=masterItem.COMMONNAME;
+                    item.CONTSIZE=masterItem.CONTSIZE;
+                    item.LOCATIONCODE=masterItem.LOCATIONCODE;
+                    item.PTRAVAILABLE=masterItem.PTRAVAILABLE;
+                    item.SEASONSUPPLY=masterItem.SEASONSUPPLY;
+                    item.PRIORITY=masterItem.PRIORITY;
+                    item.QUALITYCODE=masterItem.QUALITYCODE;
+                    item.FIELDTAGCOLOR=masterItem.FIELDTAGCOLOR;
+                    item.LOTCODE=masterItem.LOTCODE;
+                    item.AV_NOTE=masterItem.AV_NOTE;
+                    item.SALES_NOTE=masterItem.SALES_NOTE;
+                    item.LOC_MATCH_QTY=masterItem.LOC_MATCH_QTY;
+                    item.INITIAL_PTR=masterItem.INITIAL_PTR;
+                    item.SAVED_PHOTO_LINK=masterItem.SAVED_PHOTO_LINK;
+                    item.SAVED_PHOTO_NAME=masterItem.SAVED_PHOTO_NAME;
+                    item.MASTER_UNIQUE_ID=masterItem.UNIQUE_ID;
+                } 
+                item._search=`${item.COMMONNAME||''} ${item.CUSTOMERNAME||''} ${item.ITEMCODE||''}`.toLowerCase(); 
+                return item; 
+            });
+            
+            applyLocalEdits(); 
+            reRenderCurrentView();
+        }
+
+        function applyRolePermissions() {
+            document.getElementById('view-login').style.display='none'; 
+            document.getElementById('app-wrapper').classList.remove('hidden'); 
+            document.querySelectorAll('.admin-only, .admin-rep-only, .admin-rep-csr-only, .admin-csr-only, .rep-hidden, .csr-hidden, .dylan-only').forEach(el=>{el.classList.remove('hidden');el.style.display='';});
+            let roleStr=String(currentRole).toUpperCase(); 
+            let userStr=String(currentUser).toLowerCase(); 
+            let isRep=roleStr.includes('REP'); 
+            let isCsr=roleStr.includes('CSR'); 
+            let isQc=roleStr.includes('QC'); 
+            let isDylan=userStr.includes('dylan'); 
+            let isAdmin=(!isRep&&!isCsr&&!isQc)||roleStr.includes('ADMIN')||roleStr.includes('MANAGER')||isDylan;
+            if(isAdmin){} 
+            else if(isRep){ document.querySelectorAll('.rep-hidden, .admin-only, .admin-csr-only').forEach(el=>el.classList.add('hidden')); } 
+            else if(isCsr){ document.querySelectorAll('.csr-hidden, .admin-only').forEach(el=>el.classList.add('hidden')); } 
+            else if(isQc){ document.querySelectorAll('.admin-only, .admin-rep-only, .admin-rep-csr-only, .admin-csr-only').forEach(el=>el.classList.add('hidden')); }
+            if(!isDylan&&!isAdmin){ document.querySelectorAll('.dylan-only').forEach(el=>el.classList.add('hidden')); } 
+            switchView('home');
+        }
+
+        function toggleMenu() { document.getElementById('side-drawer').classList.toggle('open'); document.getElementById('drawer-overlay').classList.toggle('open'); }
+
+        function showToast(title, message, isAlert = false) { 
+            const toast = document.getElementById('toast-notification'); 
+            toast.style.background = isAlert ? '#ef4444' : '#16a34a'; 
+            toast.innerHTML = `<div class="font-bold text-sm">${title}</div><div class="text-xs">${message}</div>`; 
+            toast.classList.add('show'); 
+            setTimeout(() => toast.classList.remove('show'), 3000); 
+        }
+
+        function switchView(viewId) { 
+    ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-detail','view-docks','view-request','view-reserves','view-av', 'view-hours', 'view-chat-inbox'].forEach(id=>{
+        const el=document.getElementById(id);
+        if(el)el.classList.add('hidden');
+    }); 
+    document.getElementById('view-'+viewId).classList.remove('hidden'); 
+    requestAnimationFrame(()=>{
+        setTimeout(()=>{
+            if(viewId==='drive')resetDriveView();
+            if(viewId==='tasks'){ if(safeRole==='ADMIN'&&!taskViewTargetUser)renderTeamSelector(); else renderTasks(); }
+            if(viewId==='reports')resetReportsView();
+            if(viewId==='review')resetReviewView();
+            if(viewId==='request'){requestViewLevel=0;renderRequest();}
+            if(viewId==='reserves')resetReservesView();
+            if(viewId==='sales-office')renderSalesOffice();
+            if(viewId==='low-stock')resetLowStockView();
+            if(viewId==='docks')resetDockView();
+            if(viewId==='av')resetAVView();
+            if(viewId==='hours')resetHoursView();
+        },0)
+    }); 
+}
+        function reRenderCurrentView() { 
+            if(!document.getElementById('view-drive').classList.contains('hidden'))renderDrive(); 
+            if(!document.getElementById('view-tasks').classList.contains('hidden'))renderTasks(); 
+            if(!document.getElementById('view-sales-office').classList.contains('hidden'))renderSalesOffice(); 
+            if(!document.getElementById('view-low-stock').classList.contains('hidden'))renderLowStock(); 
+            if(!document.getElementById('view-docks').classList.contains('hidden'))renderDocks(); 
+            if(!document.getElementById('view-review').classList.contains('hidden'))renderReview(); 
+            if(!document.getElementById('view-reports').classList.contains('hidden'))renderReports(); 
+            if(!document.getElementById('view-request').classList.contains('hidden'))renderRequest(); 
+            if(!document.getElementById('view-reserves').classList.contains('hidden'))renderReserves(); 
+            if(!document.getElementById('view-av').classList.contains('hidden'))renderAV(); 
+        }
+
+        function setTaskTab(tab) { 
+            activeTaskTab=tab; 
+            document.getElementById('tab-season').classList.toggle('active',tab==='season'); 
+            document.getElementById('tab-location').classList.toggle('active',tab==='location'); 
+            document.getElementById('tab-endcap').classList.toggle('active',tab==='endcap'); 
+            document.getElementById('tab-flyer').classList.toggle('active',tab==='flyer'); 
+            taskViewLevel=0; 
+            renderTasks(); 
         }
 
         function setDriveTab(tab) {
@@ -860,26 +1349,26 @@
             driveSelectedSeasons.clear(); driveSelectedSeasons.add('ALL');
             renderDrive();
         }
- 
+        
         function clearAVSearch() { document.getElementById('av-search').value=""; document.getElementById('av-search-clear').classList.add('hidden'); avResLevel=0; avOpenLevel=0; renderAV(); }
         function handleAVSearch() { const term=document.getElementById('av-search').value.toLowerCase(); const clearBtn=document.getElementById('av-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden'); avResLevel=0; avOpenLevel=0;} else{clearBtn.classList.add('hidden'); avResLevel=0; avOpenLevel=0;} debouncedAVSearch(); }
 
-        function resetAVView() {
-            activeAVTab='open';
-            avResLevel=0; selectedAvResName=null; selectedAvResSize=null; activeAvReservesTab='customers';
-            avOpenLevel=0; selectedAvGroup=null; selectedAvItemCode=null;
-            document.getElementById('tab-av-open').classList.add('active'); document.getElementById('tab-av-reserves').classList.remove('active');
-            document.getElementById('av-search').value=""; document.getElementById('av-search-clear').classList.add('hidden');
-            renderAV();
+        function resetAVView() { 
+            activeAVTab='open'; 
+            avResLevel=0; selectedAvResName=null; selectedAvResSize=null; activeAvReservesTab='customers'; 
+            avOpenLevel=0; selectedAvGroup=null; selectedAvItemCode=null; 
+            document.getElementById('tab-av-open').classList.add('active'); document.getElementById('tab-av-reserves').classList.remove('active'); 
+            document.getElementById('av-search').value=""; document.getElementById('av-search-clear').classList.add('hidden'); 
+            renderAV(); 
         }
 
-        function setAVTab(tab) {
-            activeAVTab=tab;
-            avResLevel=0; selectedAvResName=null; selectedAvResSize=null; activeAvReservesTab='customers';
-            avOpenLevel=0; selectedAvGroup=null; selectedAvItemCode=null;
-            document.getElementById('tab-av-open').classList.toggle('active',tab==='open'); document.getElementById('tab-av-reserves').classList.toggle('active',tab==='reserves');
-            renderAV();
-        }
+        function setAVTab(tab) { 
+            activeAVTab=tab; 
+            avResLevel=0; selectedAvResName=null; selectedAvResSize=null; activeAvReservesTab='customers'; 
+            avOpenLevel=0; selectedAvGroup=null; selectedAvItemCode=null; 
+            document.getElementById('tab-av-open').classList.toggle('active',tab==='open'); document.getElementById('tab-av-reserves').classList.toggle('active',tab==='reserves'); 
+            renderAV(); 
+        }        
         function setReqTab(tab) {
             activeReqTab = tab;
             document.getElementById('tab-req-pending').classList.toggle('active', tab === 'pending');
@@ -895,7 +1384,7 @@
             }
             fetch(GOOGLE_SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) }).catch(e => console.log(e));
         }
- 
+        
         function resetHoursView() {
             let yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
             document.getElementById('hours-date').value = yesterday.toISOString().split('T')[0];
@@ -903,8 +1392,8 @@
         }
 
         function submitLaborHours() {
-            const dateVal = document.getElementById('hours-date').value;
-            const deptVal = document.getElementById('hours-dept').value;
+            const dateVal = document.getElementById('hours-date').value; 
+            const deptVal = document.getElementById('hours-dept').value; 
             const hoursVal = document.getElementById('hours-amount').value;
             if(!dateVal || !deptVal || !hoursVal) { showToast("Required", "Please fill out all fields.", true); return; }
             showToast("Submitting...", "Saving labor hours...", false);
@@ -916,107 +1405,107 @@
         function clearReservesSearch() { document.getElementById('reserves-search').value=""; document.getElementById('reserves-search-clear').classList.add('hidden'); reservesViewLevel=0; renderReserves(); }
         function handleReservesSearch() { const term=document.getElementById('reserves-search').value.toLowerCase(); const clearBtn=document.getElementById('reserves-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden');reservesViewLevel=0;} else{clearBtn.classList.add('hidden');reservesViewLevel=0;} debouncedReservesSearch(); }
 
-       const debouncedAVSearch=debounce(()=>{requestAnimationFrame(()=>renderAV())}, 400);
-       let activeAvReservesTab = 'customers'; // Tracks which tab is open
+       const debouncedAVSearch=debounce(()=>{requestAnimationFrame(()=>renderAV())}, 400);        
+let activeAvReservesTab = 'customers'; // Tracks which tab is open
 
-        function selectAvResGroup(name, size) {
-            selectedAvResName = name;
-            selectedAvResSize = size;
+        function selectAvResGroup(name, size) { 
+            selectedAvResName = name; 
+            selectedAvResSize = size; 
             activeAvReservesTab = 'customers'; // Default to Customers tab
-            avResLevel = 1;
-            renderAV();
+            avResLevel = 1; 
+            renderAV(); 
         }
 
         function renderAV() {
-            const container = document.getElementById('av-content');
-            const crumb = document.getElementById('av-crumb');
-            const term = document.getElementById('av-search').value.toLowerCase().trim();
+            const container = document.getElementById('av-content'); 
+            const crumb = document.getElementById('av-crumb'); 
+            const term = document.getElementById('av-search').value.toLowerCase().trim(); 
 
             let items = [];
-            if (activeAVTab === 'open') {
+            if (activeAVTab === 'open') { 
                 items = fullInventory.filter(i => {
                     let lts = Number(String(i.S_LTS || '0').replace(/,/g, ''));
                     let season = String(i.SEASON || '').toUpperCase();
                     return lts > 0 && !season.includes('Y') && !season.includes('Z');
-                });
-            } else {
-                items = reservesInventory;
-                if(safeRole === 'SALESREP') items = items.filter(i => isMyRep(i.SALESREPNAME));
+                }); 
+            } else { 
+                items = reservesInventory; 
+                if(safeRole === 'SALESREP') items = items.filter(i => isMyRep(i.SALESREPNAME)); 
             }
- 
-            if (term) {
-                const searchTerms = term.split(/\s+/);
-                items = items.filter(i => {
-                    const searchStr = (i._search || "");
-                    return searchTerms.every(t => searchStr.includes(t));
-                });
+            
+            if (term) { 
+                const searchTerms = term.split(/\s+/); 
+                items = items.filter(i => { 
+                    const searchStr = (i._search || ""); 
+                    return searchTerms.every(t => searchStr.includes(t)); 
+                }); 
             }
- 
-            if (items.length === 0) {
-                container.innerHTML = `<div class="p-8 text-center text-gray-400">No ${activeAVTab==='open'?'open stock':'reserves'} found.</div>`;
-                crumb.innerText = "No Results";
-                return;
+            
+            if (items.length === 0) { 
+                container.innerHTML = `<div class="p-8 text-center text-gray-400">No ${activeAVTab==='open'?'open stock':'reserves'} found.</div>`; 
+                crumb.innerText = "No Results"; 
+                return; 
             }
- 
-            if(term.length > 0) {
-                crumb.innerText = `Search Results (${items.length})`;
+            
+            if(term.length > 0) { 
+                crumb.innerText = `Search Results (${items.length})`; 
                 items.sort((a,b) => {
                     let priA = parseFloat(a.PRIORITY); let priB = parseFloat(b.PRIORITY);
                     if(isNaN(priA)) priA = Infinity; if(isNaN(priB)) priB = Infinity;
                     if(priA !== priB) return priA - priB;
                     return String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""), undefined, {numeric:true});
-                });
-                container.innerHTML = items.map(i => generateCard(i, activeAVTab === 'open' ? 'av' : 'reserves_drill', activeAVTab === 'open' ? 'status-teal' : 'status-indigo')).join('');
-                return;
+                }); 
+                container.innerHTML = items.map(i => generateCard(i, activeAVTab === 'open' ? 'av' : 'reserves_drill', activeAVTab === 'open' ? 'status-teal' : 'status-indigo')).join(''); 
+                return; 
             }
- 
-            if (activeAVTab === 'open') {
+            
+            if (activeAVTab === 'open') { 
                 crumb.innerText = `Open Stock (${items.length} items)`;
- 
+                
                 let html = '';
- 
+                
                 // 1. Get unique plant groups and sort them alphabetically
                 const plantGroups = [...new Set(items.map(i => i.PLANTGROUPCODE || 'Unassigned'))].sort();
- 
+                
                 plantGroups.forEach(group => {
                     // Render Plant Group Header
                     html += `<div class="font-black text-2xl text-teal-800 mt-6 mb-2 border-b-2 border-teal-200 pb-1">${group}</div>`;
- 
+                    
                     let groupItems = items.filter(i => (i.PLANTGROUPCODE || 'Unassigned') === group);
- 
+                    
                     // 2. Get unique item codes within this group and sort them (smallest to largest)
                     const itemCodes = [...new Set(groupItems.map(i => i.ITEMCODE || 'Unknown'))].sort((a, b) => String(a).localeCompare(String(b), undefined, {numeric: true}));
- 
+                    
                     itemCodes.forEach(code => {
                         let codeItems = groupItems.filter(i => (i.ITEMCODE || 'Unknown') === code);
                         let sampleName = codeItems[0]?.COMMONNAME || 'Unknown Plant';
- 
+                        
                         // Render Item Code Sub-Header
                         html += `<div class="font-bold text-lg text-gray-700 mt-4 mb-3 bg-gray-100 px-3 py-2 rounded-lg border border-gray-200 flex justify-between items-center shadow-sm">
                                     <span>${sampleName}</span>
                                     <span class="font-mono text-sm text-teal-600 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">${code}</span>
                                  </div>`;
- 
+                        
                         // 3. Sort the specific cards by Priority then Location
-                        codeItems.sort((a,b) => {
-                            let priA = parseFloat(a.PRIORITY); let priB = parseFloat(b.PRIORITY);
-                            if(isNaN(priA)) priA = Infinity; if(isNaN(priB)) priB = Infinity;
-                            if(priA !== priB) return priA - priB;
-                            return String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""), undefined, {numeric:true});
+                        codeItems.sort((a,b) => { 
+                            let priA = parseFloat(a.PRIORITY); let priB = parseFloat(b.PRIORITY); 
+                            if(isNaN(priA)) priA = Infinity; if(isNaN(priB)) priB = Infinity; 
+                            if(priA !== priB) return priA - priB; 
+                            return String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""), undefined, {numeric:true}); 
                         });
- 
+                        
                         // Render the cards
                         html += codeItems.map(i => generateCard(i, 'av', 'status-teal')).join('');
                     });
                 });
- 
+                
                 container.innerHTML = html;
- 
+                
             } else {
                 // It's the "My Reserves" tab
-                if(avResLevel === 0) {
-                    crumb.innerText = "My Reserves > Grouped by Plant";
- 
+                if(avResLevel === 0) { 
+                    crumb.innerText = "My Reserves > Grouped by Plant"; 
+                    
                     // Group items by COMMONNAME + CONTSIZE to make the cards
                     let groups = {};
                     items.forEach(i => {
@@ -1032,9 +1521,9 @@
                         groups[key].count++;
                         groups[key].totalQty += (parseFloat(String(i.QTY_ORDERED || i.QUANTITYORDERED || '0').replace(/,/g,'')) || 0);
                     });
- 
+                    
                     let sortedKeys = Object.keys(groups).sort();
- 
+                    
                     // Render the new Grouped Cards
                     container.innerHTML = sortedKeys.map(k => {
                         let g = groups[k];
@@ -1050,12 +1539,12 @@
                             </div>
                         </div>`;
                     }).join('');
- 
-                } else if(avResLevel === 1) {
-                    crumb.innerText = `My Reserves > ${selectedAvResName} (${selectedAvResSize})`;
- 
-                    let html = `<div class="back-btn" onclick="avResLevel=0; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Plants</div>`;
- 
+                    
+                } else if(avResLevel === 1) { 
+                    crumb.innerText = `My Reserves > ${selectedAvResName} (${selectedAvResSize})`; 
+                    
+                    let html = `<div class="back-btn" onclick="avResLevel=0; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Plants</div>`; 
+                    
                     // Inject the new Sub-Tabs
                     html += `
                     <div class="task-tabs mb-4">
@@ -1065,8 +1554,8 @@
 
                     if (activeAvReservesTab === 'customers') {
                         // CUSTOMERS TAB: Show the specific reserve orders
-                        let finalItems = items.filter(i => i.COMMONNAME === selectedAvResName && i.CONTSIZE === selectedAvResSize);
-                        finalItems.sort((a,b) => (String(a.CUSTOMERNAME) || "").localeCompare(String(b.CUSTOMERNAME) || ""));
+                        let finalItems = items.filter(i => i.COMMONNAME === selectedAvResName && i.CONTSIZE === selectedAvResSize); 
+                        finalItems.sort((a,b) => (String(a.CUSTOMERNAME) || "").localeCompare(String(b.CUSTOMERNAME) || "")); 
                         html += finalItems.length > 0 ? finalItems.map(i => generateCard(i, 'reserves_drill', 'status-indigo')).join('') : `<div class="p-8 text-center text-gray-400">No customers found.</div>`;
                     } else {
                         // ALL LOCATIONS TAB: Search fullInventory and use the AV Open Stock style card
@@ -1074,19 +1563,18 @@
                         matchingLocs.sort((a,b) => String(a.LOCATIONCODE || "").localeCompare(String(b.LOCATIONCODE || ""), undefined, {numeric: true}));
                         html += matchingLocs.length > 0 ? matchingLocs.map(i => generateCard(i, 'av', 'status-teal')).join('') : `<div class="p-8 text-center text-gray-400">No locations found.</div>`;
                     }
- 
-                    container.innerHTML = html;
+                    
+                    container.innerHTML = html; 
                 }
             }
-        }
-        function setDocksMainTab(tab) {
+        }        function setDocksMainTab(tab) {
             activeDocksMainTab = tab;
             document.getElementById('tab-docks-all').classList.toggle('active', tab === 'all');
             document.getElementById('tab-docks-my').classList.toggle('active', tab === 'my');
- 
+            
             const subTabs = document.getElementById('docks-my-sub-tabs');
             if (tab === 'my') { subTabs.classList.remove('hidden'); } else { subTabs.classList.add('hidden'); }
- 
+            
             dockViewLevel = 0;
             renderDocks();
         }
@@ -1097,7 +1585,7 @@
             document.getElementById('tab-docks-inspector').classList.toggle('active', tab === 'inspector');
             document.getElementById('tab-docks-mistake').classList.toggle('active', tab === 'mistake');
             document.getElementById('tab-docks-loading').classList.toggle('active', tab === 'loading');
- 
+            
             dockViewLevel = 0;
             renderDocks();
         }
@@ -1105,27 +1593,27 @@
         const debouncedDocksSearch=debounce(()=>{requestAnimationFrame(()=>renderDocks())}, 400);
         function clearDocksSearch(){ document.getElementById('docks-search').value=""; document.getElementById('docks-search-clear').classList.add('hidden'); dockViewLevel=0; renderDocks(); }
         function handleDocksSearch(){ const term=document.getElementById('docks-search').value.toLowerCase(); const clearBtn=document.getElementById('docks-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden');dockViewLevel=0;}else{clearBtn.classList.add('hidden');dockViewLevel=0;} debouncedDocksSearch(); }
- 
-        function resetDockView() {
-            dockViewLevel = 0; selectedDockNum = null;
-            document.getElementById('docks-search').value = ""; document.getElementById('docks-search-clear').classList.add('hidden');
- 
+        
+        function resetDockView() { 
+            dockViewLevel = 0; selectedDockNum = null; 
+            document.getElementById('docks-search').value = ""; document.getElementById('docks-search-clear').classList.add('hidden'); 
+            
             activeDocksMainTab = 'all';
             activeDocksSubTab = 'checker';
             expandedDockStops.clear();
- 
+            
             let tAll = document.getElementById('tab-docks-all'); if(tAll) tAll.classList.add('active');
             let tMy = document.getElementById('tab-docks-my'); if(tMy) tMy.classList.remove('active');
             let sTabs = document.getElementById('docks-my-sub-tabs'); if(sTabs) sTabs.classList.add('hidden');
- 
+            
             let tChk = document.getElementById('tab-docks-checker'); if(tChk) tChk.classList.add('active');
             let tInsp = document.getElementById('tab-docks-inspector'); if(tInsp) tInsp.classList.remove('active');
             let tMis = document.getElementById('tab-docks-mistake'); if(tMis) tMis.classList.remove('active');
             let tLoad = document.getElementById('tab-docks-loading'); if(tLoad) tLoad.classList.remove('active');
- 
-            renderDocks();
+            
+            renderDocks(); 
         }
- 
+        
         function selectDock(dock) { selectedDockNum = dock; dockViewLevel = 1; renderDocks(); }
 
         function openDockInfoModal(dockNum) {
@@ -1166,7 +1654,7 @@
 
         function toggleDockItemState(uid, type) {
             let key = 'gnc_dock_item_' + uid; let state = JSON.parse(localStorage.getItem(key) || '{"checker":false,"inspector":false}');
-            state[type] = !state[type]; localStorage.setItem(key, JSON.stringify(state)); renderDocks();
+            state[type] = !state[type]; localStorage.setItem(key, JSON.stringify(state)); renderDocks(); 
         }
 
         function toggleDockStop(stopNum) {
@@ -1183,10 +1671,10 @@
             let items = socInventory;
             if(term) { const searchTerms = term.split(/\s+/); items = items.filter(i => { const searchStr = (i._search || "").toLowerCase(); return searchTerms.every(t => searchStr.includes(t)); }); }
             if (items.length === 0) { container.innerHTML = `<div class="p-8 text-center text-gray-400">No dock items found.</div>`; crumb.innerText = "No Results"; return; }
- 
+            
             if (dockViewLevel === 0) {
                 let docks = [...new Set(items.map(i => i.DOCK_NUM || 'Unassigned'))].sort((a,b) => { let numA = parseFloat(String(a).replace(/[^0-9.]/g, '')); let numB = parseFloat(String(b).replace(/[^0-9.]/g, '')); if(!isNaN(numA) && !isNaN(numB)) return numA - numB; return String(a).localeCompare(String(b)); });
- 
+                
                 if (activeDocksMainTab === 'my') {
                     crumb.innerText = `My Docks > ${activeDocksSubTab.charAt(0).toUpperCase() + activeDocksSubTab.slice(1)}`;
                     docks = docks.filter(d => {
@@ -1218,17 +1706,17 @@
                 crumb.innerText = `Dock: ${selectedDockNum}`;
                 let dItems = items.filter(i => (i.DOCK_NUM || 'Unassigned') === selectedDockNum);
                 dItems.sort((a,b) => { let stopA = parseFloat(a.STOPNUMBER); if(isNaN(stopA)) stopA = 9999; let stopB = parseFloat(b.STOPNUMBER); if(isNaN(stopB)) stopB = 9999; if(stopA !== stopB) return stopA - stopB; return String(a.CONTSIZE || "").localeCompare(String(b.CONTSIZE || "")); });
- 
+                
                 let html = `<div class="back-btn" onclick="dockViewLevel=0; renderDocks()"><i class="ph-bold ph-arrow-left"></i> Back to Docks</div>`;
- 
+                
                 let stops = [...new Set(dItems.map(i => i.STOPNUMBER || 'Unassigned'))];
- 
+                
                 stops.forEach(stopNum => {
                     let sItems = dItems.filter(i => (i.STOPNUMBER || 'Unassigned') === stopNum);
                     let firstItem = sItems[0];
-                    let rep = firstItem.SALESREPNAME || firstItem.SALESREPID || 'Unknown Rep';
-                    let cust = firstItem.CUSTOMERNAME || 'Unknown Customer';
-                    let cons = firstItem.CONSIGNEENAME || firstItem.CONSIGNEE || '';
+                    let rep = firstItem.SALESREPNAME || firstItem.SALESREPID || 'Unknown Rep'; 
+                    let cust = firstItem.CUSTOMERNAME || 'Unknown Customer'; 
+                    let cons = firstItem.CONSIGNEENAME || firstItem.CONSIGNEE || ''; 
                     let state = firstItem.CONSIGNEESTATE || firstItem.STATE || 'N/A';
                     let tripNum = firstItem.TRIPNUMBER || '-';
                     let isExpanded = expandedDockStops.has(stopNum);
@@ -1264,77 +1752,77 @@
                     }
                     html += `</div>`;
                 });
- 
+                
                 container.innerHTML = html;
             }
         }
 
-        function calculateMatchQty(prefix) {
-            if(!activeItem)return;
-            let matchEl=document.getElementById(prefix+'match');
-            let displayEl=document.getElementById(prefix+'match-display');
-            let valEl=document.getElementById(prefix+'match-qty-val');
-            if(matchEl&&matchEl.value!==""){
-                let matchVal=parseFloat(matchEl.value);
-                let ptr=parseInt(String(activeItem.PTRAVAILABLE).replace(/,/g,''))||0;
-                let qty=Math.round(ptr*(matchVal/100));
-                if(valEl)valEl.innerText=qty;
-                if(displayEl)displayEl.classList.remove('hidden');
-            }else{
-                if(displayEl)displayEl.classList.add('hidden');
-            }
+        function calculateMatchQty(prefix) { 
+            if(!activeItem)return; 
+            let matchEl=document.getElementById(prefix+'match'); 
+            let displayEl=document.getElementById(prefix+'match-display'); 
+            let valEl=document.getElementById(prefix+'match-qty-val'); 
+            if(matchEl&&matchEl.value!==""){ 
+                let matchVal=parseFloat(matchEl.value); 
+                let ptr=parseInt(String(activeItem.PTRAVAILABLE).replace(/,/g,''))||0; 
+                let qty=Math.round(ptr*(matchVal/100)); 
+                if(valEl)valEl.innerText=qty; 
+                if(displayEl)displayEl.classList.remove('hidden'); 
+            }else{ 
+                if(displayEl)displayEl.classList.add('hidden'); 
+            } 
         }
 
-        function startPress(e,domId) {
-            if(isMultiSelectMode)return;
-            isLongPress=false;
-            if(e.type==='touchstart'){
-                touchStartX=e.touches[0].clientX;
-                touchStartY=e.touches[0].clientY;
-            }
-            if(pressTimer)clearTimeout(pressTimer);
-            pressTimer=setTimeout(()=>{
-                isLongPress=true;
-                if(navigator.vibrate)navigator.vibrate(50);
-                enableMultiSelect(domId);
-            },1000);
+        function startPress(e,domId) { 
+            if(isMultiSelectMode)return; 
+            isLongPress=false; 
+            if(e.type==='touchstart'){ 
+                touchStartX=e.touches[0].clientX; 
+                touchStartY=e.touches[0].clientY; 
+            } 
+            if(pressTimer)clearTimeout(pressTimer); 
+            pressTimer=setTimeout(()=>{ 
+                isLongPress=true; 
+                if(navigator.vibrate)navigator.vibrate(50); 
+                enableMultiSelect(domId); 
+            },1000); 
         }
 
-        function checkMove(e) {
-            if(e.type==='touchmove'){
-                let dx=Math.abs(e.touches[0].clientX-touchStartX);
-                let dy=Math.abs(e.touches[0].clientY-touchStartY);
-                if(dx>20||dy>20)cancelPress();
-            }
+        function checkMove(e) { 
+            if(e.type==='touchmove'){ 
+                let dx=Math.abs(e.touches[0].clientX-touchStartX); 
+                let dy=Math.abs(e.touches[0].clientY-touchStartY); 
+                if(dx>20||dy>20)cancelPress(); 
+            } 
         }
 
         function cancelPress() { if(pressTimer)clearTimeout(pressTimer); }
 
-        function enableMultiSelect(firstDomId) {
-            isMultiSelectMode=true;
-            document.body.classList.add('multi-select-mode');
-            selectedItems.add(firstDomId);
-            updateGlobalActionBar();
-            const rows=document.querySelectorAll('.item-row');
+        function enableMultiSelect(firstDomId) { 
+            isMultiSelectMode=true; 
+            document.body.classList.add('multi-select-mode'); 
+            selectedItems.add(firstDomId); 
+            updateGlobalActionBar(); 
+            const rows=document.querySelectorAll('.item-row'); 
             rows.forEach(row=>{
                 const domId=row.getAttribute('data-dom-id');
                 const cb=row.querySelector('.card-checkbox');
                 if(cb)cb.checked=selectedItems.has(domId);
-            });
+            }); 
         }
 
-        function clearSelection() {
-            isMultiSelectMode=false;
-            document.body.classList.remove('multi-select-mode');
-            selectedItems.clear();
-            updateGlobalActionBar();
-            document.querySelectorAll('.card-checkbox').forEach(cb=>{cb.checked=false;});
+        function clearSelection() { 
+            isMultiSelectMode=false; 
+            document.body.classList.remove('multi-select-mode'); 
+            selectedItems.clear(); 
+            updateGlobalActionBar(); 
+            document.querySelectorAll('.card-checkbox').forEach(cb=>{cb.checked=false;}); 
         }
 
-        function toggleGlobalItem(domId,isChecked) {
-            if(isChecked)selectedItems.add(domId);
-            else selectedItems.delete(domId);
-            updateGlobalActionBar();
+        function toggleGlobalItem(domId,isChecked) { 
+            if(isChecked)selectedItems.add(domId); 
+            else selectedItems.delete(domId); 
+            updateGlobalActionBar(); 
         }
 
         function applyCameraPermissions(sourceView) {
@@ -1368,40 +1856,40 @@
 
         function handleCardClick(domId,uniqueId,sourceView) {
             if(isLongPress){ isLongPress=false; return; }
-            if(isMultiSelectMode){
-                const row=document.querySelector(`[data-dom-id="${domId}"]`);
-                if(row){
-                    const cb=row.querySelector('.card-checkbox');
-                    if(cb){ cb.checked=!cb.checked; toggleGlobalItem(domId,cb.checked); }
-                }
-            }else{
-                if(sourceView === 'av' || (safeRole === 'SALESREP' && sourceView === 'drive')){
-                    let item=fullInventory.find(i=>i.UNIQUE_ID===uniqueId)||lowStockInventory.find(i=>i.UNIQUE_ID===uniqueId)||reservesInventory.find(i=>i.UNIQUE_ID===uniqueId);
-                    if(item){
-                        let pLink=item.SAVED_PHOTO_LINK||item['PHOTO_LINK']||item.PHOTOLINK||"";
-                        if(pLink){
-                            openPhotoModal(pLink, `${esc(item.COMMONNAME)} (${esc(item.CONTSIZE)}) - Loc: ${item.LOCATIONCODE||'N/A'}`);
-                        }else{
-                            showToast("No Photo","There is no photo on file for this item.",true);
-                        }
-                    }
-                }else{
-                    applyCameraPermissions(sourceView);
-                    openDetail(uniqueId,sourceView);
+            if(isMultiSelectMode){ 
+                const row=document.querySelector(`[data-dom-id="${domId}"]`); 
+                if(row){ 
+                    const cb=row.querySelector('.card-checkbox'); 
+                    if(cb){ cb.checked=!cb.checked; toggleGlobalItem(domId,cb.checked); } 
+                } 
+            }else{ 
+                if(sourceView === 'av' || (safeRole === 'SALESREP' && sourceView === 'drive')){ 
+                    let item=fullInventory.find(i=>i.UNIQUE_ID===uniqueId)||lowStockInventory.find(i=>i.UNIQUE_ID===uniqueId)||reservesInventory.find(i=>i.UNIQUE_ID===uniqueId); 
+                    if(item){ 
+                        let pLink=item.SAVED_PHOTO_LINK||item['PHOTO_LINK']||item.PHOTOLINK||""; 
+                        if(pLink){ 
+                            openPhotoModal(pLink, `${esc(item.COMMONNAME)} (${esc(item.CONTSIZE)}) - Loc: ${item.LOCATIONCODE||'N/A'}`); 
+                        }else{ 
+                            showToast("No Photo","There is no photo on file for this item.",true); 
+                        } 
+                    } 
+                }else{ 
+                    applyCameraPermissions(sourceView); 
+                    openDetail(uniqueId,sourceView); 
                 }
             }
         }
 
         function openDetail(uid, sourceView) {
-            lastView = sourceView;
-            activeItem = fullInventory.find(i=>i.UNIQUE_ID===uid) || lowStockInventory.find(i=>i.UNIQUE_ID===uid) || reservesInventory.find(i=>i.UNIQUE_ID===uid) || requestsInventory.find(i=>i.UNIQUE_ID===uid) || socInventory.find(i=>i.UNIQUE_ID===uid);
-            if(!activeItem) return;
+    lastView = sourceView;
+    activeItem = fullInventory.find(i=>i.UNIQUE_ID===uid) || lowStockInventory.find(i=>i.UNIQUE_ID===uid) || reservesInventory.find(i=>i.UNIQUE_ID===uid) || requestsInventory.find(i=>i.UNIQUE_ID===uid) || socInventory.find(i=>i.UNIQUE_ID===uid);
+    if(!activeItem) return;
 
-            ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-docks','view-request','view-reserves','view-av', 'view-hours', 'view-chat-inbox'].forEach(id=>{
-                const el = document.getElementById(id);
-                if(el) el.classList.add('hidden');
-            });
-            document.getElementById('view-detail').classList.remove('hidden');
+    ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-docks','view-request','view-reserves','view-av', 'view-hours', 'view-chat-inbox'].forEach(id=>{
+        const el = document.getElementById(id);
+        if(el) el.classList.add('hidden');
+    });
+    document.getElementById('view-detail').classList.remove('hidden');
 
             document.getElementById('det-common').innerText = activeItem.COMMONNAME || '--';
             document.getElementById('det-size').innerText = activeItem.CONTSIZE || '--';
@@ -1423,11 +1911,11 @@
             }
 
             document.getElementById('dtab-overview').classList.remove('hidden');
- 
+            
             if (sourceView === 'drive' || sourceView === 'low-stock') {
                 document.getElementById('dtab-notes').classList.remove('hidden');
                 document.getElementById('dtab-request').classList.remove('hidden');
- 
+                
                 if (activeItem.APP_TAB_ASSIGNMENT === 'season') {
                     document.getElementById('dtab-season').classList.remove('hidden');
                 }
@@ -1441,34 +1929,33 @@
                 document.getElementById('dtab-docks').classList.remove('hidden');
                 let dtabGal = document.getElementById('dtab-gallery'); if(dtabGal) dtabGal.classList.remove('hidden');
                 let dtabLoc = document.getElementById('dtab-all-loc'); if(dtabLoc) dtabLoc.classList.remove('hidden');
- 
+                
                 // 1. Build the Gallery dynamically from all available photo links
                 let allLinks = [];
                 if(activeItem.SAVED_PHOTO_LINK) allLinks.push(...activeItem.SAVED_PHOTO_LINK.split(','));
                 if(activeItem.DOCK_PHOTO_LINK) allLinks.push(...activeItem.DOCK_PHOTO_LINK.split(','));
- 
+                
                 // Clean up empty strings and ensure uniqueness
                 let uniqueLinks = [...new Set(allLinks.map(l => l.trim()).filter(Boolean))];
- 
+                
                 let galHtml = uniqueLinks.length ? `<div class="grid grid-cols-2 gap-2">` + uniqueLinks.map(link => {
                     let clean = link.match(/(https?:\/\/[^"\s>]+)/)?.[1] || link;
                     let thumb = getDirectImageUrl(clean);
                     return `<img src="${thumb}" class="w-full h-32 object-cover rounded-lg shadow-sm active:scale-95 transition-transform" onclick="openPhotoModal('${link}', 'Gallery')">`;
                 }).join('') + `</div>` : `<div class="text-center text-gray-400 p-8 font-bold">No photos on file.</div>`;
- 
+                
                 let galContent = document.getElementById('det-gallery-content'); if(galContent) galContent.innerHTML = galHtml;
 
                 // 2. Build the "All Locations" tab using Drive Mode cards!
                 if(activeItem.ITEMCODE) {
                     let matchingLocs = fullInventory.filter(i => i.ITEMCODE === activeItem.ITEMCODE);
                     matchingLocs.sort((a,b) => String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""), undefined, {numeric: true}));
- 
+                    
                     let locHtml = matchingLocs.length ? matchingLocs.map(i => generateCard(i, 'drive', 'status-blue')).join('') : `<div class="text-center text-gray-400 p-8 font-bold">No other locations found.</div>`;
                     let locContent = document.getElementById('det-all-loc-content'); if(locContent) locContent.innerHTML = locHtml;
                 }
-            } else if (sourceView === 'request') {
-                document.getElementById('dtab-request').classList.remove('hidden');
- 
+            } else if (sourceView === 'request') {                document.getElementById('dtab-request').classList.remove('hidden');
+                
                 // Show Season or Location tabs inside the Request view if applicable
                 if (activeItem.APP_TAB_ASSIGNMENT === 'season') {
                     document.getElementById('dtab-season').classList.remove('hidden');
@@ -1525,8 +2012,7 @@
                 switchDetailTab('overview');
             }
 
-            if(typeof validateSsnForm === 'function') validateSsnForm();
-        }
+            if(typeof validateSsnForm === 'function') validateSsnForm();        }
         function renderSavedPhotos() {
             let sLink = activeItem.SAVED_PHOTO_LINK || "";
             let rLink = activeItem.REQ_PHOTO_LINK || "";
@@ -1540,7 +2026,7 @@
                 if(link && String(link).trim() !== "") {
                     let urls = String(link).split(',');
                     // Added pt-2 so the delete badge doesn't get cut off at the top
-                    let html = `<div class="flex gap-2 overflow-x-auto pb-2 pt-2">`;
+                    let html = `<div class="flex gap-2 overflow-x-auto pb-2 pt-2">`; 
                     urls.forEach(u => {
                         let c = u.trim();
                         let m = c.match(/(https?:\/\/[^"\s>]+)/);
@@ -1576,35 +2062,35 @@
         async function deletePhoto(urlToRemove, linkType) {
             if(!confirm("Are you sure you want to delete this photo?")) return;
             if(!activeItem) return;
- 
+            
             // 1. Remove the URL from the active item's string locally
             let currentUrls = (activeItem[linkType] || "").split(',').map(u => u.trim()).filter(Boolean);
             let updatedUrls = currentUrls.filter(u => !u.includes(urlToRemove));
             let newLinkString = updatedUrls.join(',');
- 
+            
             activeItem[linkType] = newLinkString;
             renderSavedPhotos(); // Hide it from the screen immediately
- 
+            
             // 2. Prep the database payload
             let targetTable = (activeItem.SOURCE_TABLE === 'v2_active_request') ? 'v2_active_request' : (activeItem.SOURCE_TABLE || 'v2_master_inventory');
             let payload = {};
             payload[linkType.toLowerCase()] = newLinkString === "" ? null : newLinkString;
- 
+            
             showToast("Deleting", "Removing photo...", false);
- 
+            
             try {
                 // Update the database record
                 await supabaseFetch(targetTable, 'PATCH', payload, `unique_id=eq.${encodeURIComponent(activeItem.UNIQUE_ID)}`);
                 showToast("Success", "Photo removed.");
- 
+                
                 // 3. Delete the actual file from the Supabase Storage Bucket
                 try {
                     let urlObj = new URL(urlToRemove);
-                    let pathParts = urlObj.pathname.split('/public/')[1];
+                    let pathParts = urlObj.pathname.split('/public/')[1]; 
                     if(pathParts) {
                         let bucket = pathParts.split('/')[0];
                         let filePath = pathParts.substring(bucket.length + 1);
- 
+                        
                         await fetch(`${SUPABASE_URL}/storage/v1/object/${bucket}/${filePath}`, {
                             method: 'DELETE',
                             headers: {
@@ -1616,7 +2102,7 @@
                 } catch(storageErr) {
                     console.log("Could not delete from storage bucket, but removed from DB.");
                 }
- 
+                
             } catch(err) {
                 showToast("Error", "Could not remove photo from database.", true);
                 // Revert the UI if it fails
@@ -1645,15 +2131,15 @@
             document.getElementById('det-season-content').classList.add('hidden');
             document.getElementById('det-location-content').classList.add('hidden');
             document.getElementById('det-request-content').classList.add('hidden');
-            document.getElementById('det-notes-content').classList.add('hidden');
+           document.getElementById('det-notes-content').classList.add('hidden');
             document.getElementById('det-docks-content').classList.add('hidden');
             document.getElementById('det-flyer-content').classList.add('hidden');
- 
+            
             let galContent = document.getElementById('det-gallery-content'); if(galContent) galContent.classList.add('hidden');
             let locContent = document.getElementById('det-all-loc-content'); if(locContent) locContent.classList.add('hidden');
 
-            const contentEl = document.getElementById('det-' + tab + '-content');
-            if(contentEl) contentEl.classList.remove('hidden');
+            const contentEl = document.getElementById('det-' + tab + '-content');            
+           if(contentEl) contentEl.classList.remove('hidden');
         }
 
         function goBackFromDetail() {
@@ -1693,14 +2179,14 @@
                 container.innerHTML = `<div class="p-8 text-center text-gray-400">No completed sales notes found.</div>`;
                 return;
             }
- 
+            
             let items = [...salesOfficeInventory];
             items.sort((a, b) => {
                 let dateA = new Date(a.COMPLETED_AT || 0).getTime();
                 let dateB = new Date(b.COMPLETED_AT || 0).getTime();
-                return dateB - dateA;
+                return dateB - dateA; 
             });
- 
+            
             container.innerHTML = items.map(i => generateCard(i, 'sales-office')).join('');
         }
 
@@ -1727,7 +2213,7 @@
         function renderRequest() {
             const container = document.getElementById('request-content');
             const crumb = document.getElementById('request-crumb');
- 
+            
             let items = requestsInventory;
             if(safeRole === 'SALESREP') {
                 items = items.filter(i => isMyRep(i.REQUESTED_BY));
@@ -1736,15 +2222,15 @@
             if (activeReqTab === 'pending') {
                 crumb.innerText = "All Pending Requests";
                 let pendingItems = items.filter(i => i.REQ_STATUS !== 'Complete' && !i.REQ_ARCHIVED);
- 
+                
                 if (pendingItems.length === 0) {
                     container.innerHTML = `<div class="p-8 text-center text-gray-400">No pending requests.</div>`;
                     return;
                 }
- 
+                
                 pendingItems.sort((a,b) => String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""), undefined, {numeric: true}));
                 container.innerHTML = pendingItems.map(i => generateCard(i, 'request', 'status-purple')).join('');
- 
+                
             } else if (activeReqTab === 'reps') {
                 if (requestViewLevel === 0) {
                     crumb.innerText = "Sales Reps";
@@ -1758,7 +2244,7 @@
                     crumb.innerText = `${selectedReqRepView} > Status`;
                     let repItems = items.filter(i => (i.REQUESTED_BY || 'Unknown Rep') === selectedReqRepView && !i.REQ_ARCHIVED);
                     let pendingCount = repItems.filter(i => i.REQ_STATUS !== 'Complete').length;
-                    let completeCount = repItems.filter(i => i.REQ_STATUS === 'Complete').length;
+                    let completeCount = repItems.filter(i => i.REQ_STATUS === 'Complete').length;                 
                     container.innerHTML = `
                         <div class="back-btn" onclick="requestViewLevel=0; renderRequest()"><i class="ph-bold ph-arrow-left"></i> Back to Reps</div>
                         <div class="bg-orange-50 border border-orange-200 rounded-xl shadow-sm mb-4 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectedReqStatus='Pending'; requestViewLevel=2; renderRequest()">
@@ -1774,7 +2260,7 @@
                     crumb.innerText = `${selectedReqRepView} > ${selectedReqStatus}`;
                     let repItems = items.filter(i => (i.REQUESTED_BY || 'Unknown Rep') === selectedReqRepView && !i.REQ_ARCHIVED);
                     let statusItems = repItems.filter(i => selectedReqStatus === 'Pending' ? i.REQ_STATUS !== 'Complete' : i.REQ_STATUS === 'Complete');
- 
+                    
                     if (statusItems.length === 0) {
                         container.innerHTML = `<div class="back-btn" onclick="requestViewLevel=1; renderRequest()"><i class="ph-bold ph-arrow-left"></i> Back to Status</div><div class="p-8 text-center text-gray-400">No ${selectedReqStatus.toLowerCase()} requests.</div>`;
                         return;
@@ -1792,55 +2278,55 @@
                     let folderItems = items.filter(i => (i.REQUESTED_BY || 'Unknown Rep') === selectedReqRepView && (i.REQUEST_FOLDER || 'Unassigned') === selectedReqFolderView && !i.REQ_ARCHIVED);
                     folderItems = folderItems.filter(i => selectedReqStatus === 'Pending' ? i.REQ_STATUS !== 'Complete' : i.REQ_STATUS === 'Complete');
                     folderItems.sort((a,b) => String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""), undefined, {numeric: true}));
- 
+                    
                     container.innerHTML = `<div class="back-btn" onclick="requestViewLevel=2; renderRequest()"><i class="ph-bold ph-arrow-left"></i> Back to Folders</div>` + folderItems.map(i => generateCard(i, 'request', selectedReqStatus === 'Complete' ? 'status-green' : 'status-purple')).join('');
                 }
             }
         }
 
-        function updateGlobalActionBar() {
-            const bar=document.getElementById('global-action-bar');
-            if(selectedItems.size>0){
-                bar.classList.remove('hidden');
-                document.getElementById('sel-count').innerText=selectedItems.size;
-                const isDocksView=!document.getElementById('view-docks').classList.contains('hidden');
-                const btnAssign=document.getElementById('batch-btn-assign');
-                const btnRequest=document.getElementById('batch-btn-request');
-                if(isDocksView){
-                    if(btnAssign)btnAssign.classList.add('hidden');
-                    if(btnRequest)btnRequest.classList.add('hidden');
-                }else{
-                    if(btnAssign)btnAssign.classList.remove('hidden');
-                    if(btnRequest)btnRequest.classList.remove('hidden');
-                }
-            }else{
-                bar.classList.add('hidden');
-            }
+        function updateGlobalActionBar() { 
+            const bar=document.getElementById('global-action-bar'); 
+            if(selectedItems.size>0){ 
+                bar.classList.remove('hidden'); 
+                document.getElementById('sel-count').innerText=selectedItems.size; 
+                const isDocksView=!document.getElementById('view-docks').classList.contains('hidden'); 
+                const btnAssign=document.getElementById('batch-btn-assign'); 
+                const btnRequest=document.getElementById('batch-btn-request'); 
+                if(isDocksView){ 
+                    if(btnAssign)btnAssign.classList.add('hidden'); 
+                    if(btnRequest)btnRequest.classList.add('hidden'); 
+                }else{ 
+                    if(btnAssign)btnAssign.classList.remove('hidden'); 
+                    if(btnRequest)btnRequest.classList.remove('hidden'); 
+                } 
+            }else{ 
+                bar.classList.add('hidden'); 
+            } 
         }
 
-        function copyTextToClipboard(text,label) {
-            navigator.clipboard.writeText(text).then(()=>{
-                showToast("Copied!",`${label} copied to clipboard.`);
-            }).catch(err=>{
-                showToast("Error","Could not copy text.",true);
-            });
+        function copyTextToClipboard(text,label) { 
+            navigator.clipboard.writeText(text).then(()=>{ 
+                showToast("Copied!",`${label} copied to clipboard.`); 
+            }).catch(err=>{ 
+                showToast("Error","Could not copy text.",true); 
+            }); 
         }
 
-        function markSalesOfficeComplete(uniqueId,domId) {
-            const row=document.querySelector(`[data-dom-id="${domId}"]`);
-            if(row)row.remove();
-            salesOfficeInventory=salesOfficeInventory.filter(i=>i.UNIQUE_ID!==uniqueId);
-            showToast("Complete","Removed from Sales Office.");
-            supabaseFetch('v2_sales_office','DELETE',null,`unique_id=eq.${uniqueId}`).catch(err=>showToast("Error","Network error.",true));
+        function markSalesOfficeComplete(uniqueId,domId) { 
+            const row=document.querySelector(`[data-dom-id="${domId}"]`); 
+            if(row)row.remove(); 
+            salesOfficeInventory=salesOfficeInventory.filter(i=>i.UNIQUE_ID!==uniqueId); 
+            showToast("Complete","Removed from Sales Office."); 
+            supabaseFetch('v2_sales_office','DELETE',null,`unique_id=eq.${uniqueId}`).catch(err=>showToast("Error","Network error.",true)); 
         }
 
       function generateCard(item,sourceView,colorClass='status-green') {
             let thumbHtml=''; let photoLink="";
-            if(sourceView==='docks') photoLink=item.DOCK_PHOTO_LINK||item.SAVED_PHOTO_LINK||item.PHOTO_LINK||"";
+            if(sourceView==='docks') photoLink=item.DOCK_PHOTO_LINK||item.SAVED_PHOTO_LINK||item.PHOTO_LINK||""; 
             else photoLink=item.SAVED_PHOTO_LINK||item.PHOTO_LINK||"";
- 
-            const isChecked=selectedItems.has(item.DOM_ID)?'checked':'';
-            const tagColor=item.FIELDTAGCOLOR||'-';
+            
+            const isChecked=selectedItems.has(item.DOM_ID)?'checked':''; 
+            const tagColor=item.FIELDTAGCOLOR||'-'; 
             const safeUidJs=esc(item.UNIQUE_ID);
 
             if(sourceView === 'av') {
@@ -1868,7 +2354,7 @@
                         clickThumbHtml = `<div class="ml-3 flex-shrink-0 flex flex-col items-center" onclick="event.stopPropagation(); openPhotoModal('${photoLink}', '${esc(item.COMMONNAME)} - ${esc(item.CONTSIZE)}')"><div class="relative"><img src="${thumbUrl}" class="w-24 h-24 rounded-lg object-cover border-2 border-teal-300 shadow-md active:scale-95 transition-transform" loading="lazy">${photoCount > 1 ? `<div class="absolute -top-2 -right-2 bg-teal-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full border-2 border-white shadow-sm">+${photoCount-1}</div>` : ''}</div><div class="text-center text-[9px] font-black text-teal-600 mt-1.5 uppercase tracking-widest bg-teal-50 px-2 py-0.5 rounded-md border border-teal-100 cursor-pointer active:bg-teal-200">VIEW</div></div>`; 
                     } 
                 }
-                let specCaliperHtml = "";
+let specCaliperHtml = "";
                 if (item.SPEC || item.CALIPER) {
                     specCaliperHtml = `<div class="mt-2 text-[11px] font-bold text-gray-600 bg-gray-50 px-2 py-1 rounded border border-gray-100 w-max">Spec: ${item.SPEC || 'N/A'} | Caliper: ${item.CALIPER || 'N/A'}</div>`;
                 }
@@ -1877,8 +2363,7 @@
                 let matchPct = parseFloat(item.MATCH || item.MATCHPCT);
                 let locPhotoMatch = !isNaN(matchPct) ? Math.round(ptr * (matchPct / 100)) : 'N/A';
 
-               return `<div class="flex items-start w-full mb-3 item-row relative bg-white p-4 rounded-xl border-2 border-teal-100 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-teal-600 focus:ring-teal-600 shadow-sm pointer-events-none" ${isChecked}></div><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full"><div class="flex-grow min-w-0 pr-2"><div class="font-black text-gray-800 text-[18px] leading-tight break-words mb-1">${item.COMMONNAME||'Unknown'}</div><div class="font-black text-teal-700 text-[15px] mb-2">${item.CONTSIZE||'-'}</div><div class="grid grid-cols-2 gap-2 mb-2"><div class="text-[11px] font-bold text-gray-500 uppercase"><span class="block text-[8px] text-gray-400 mb-0.5">LOT CODE</span>${item.LOTCODE||'-'}</div><div class="text-[11px] font-bold text-gray-500 uppercase"><span class="block text-[8px] text-gray-400 mb-0.5">LOCATION</span>${item.LOCATIONCODE||'-'}</div></div><div class="flex flex-wrap gap-2 text-[11px] font-bold uppercase tracking-wider mt-1"><span class="bg-gray-100 text-gray-800 px-2 py-1 rounded border border-gray-200">LOC AVA: <span class="font-black">${item.PTRAVAILABLE||'0'}</span></span><span class="bg-purple-50 text-purple-700 px-2 py-1 rounded border border-purple-200">s_LTS: <span class="font-black">${item.S_LTS||'0'}</span></span><span class="bg-green-50 text-green-700 px-2 py-1 rounded border border-green-200">LOC PHOTO MATCH: <span class="font-black">${locPhotoMatch}</span></span></div>${specCaliperHtml}${holdHtml}${avNoteHtml}</div>${clickThumbHtml}</div></div></div>`;             
-            }
+               return `<div class="flex items-start w-full mb-3 item-row relative bg-white p-4 rounded-xl border-2 border-teal-100 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-teal-600 focus:ring-teal-600 shadow-sm pointer-events-none" ${isChecked}></div><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full"><div class="flex-grow min-w-0 pr-2"><div class="font-black text-gray-800 text-[18px] leading-tight break-words mb-1">${item.COMMONNAME||'Unknown'}</div><div class="font-black text-teal-700 text-[15px] mb-2">${item.CONTSIZE||'-'}</div><div class="grid grid-cols-2 gap-2 mb-2"><div class="text-[11px] font-bold text-gray-500 uppercase"><span class="block text-[8px] text-gray-400 mb-0.5">LOT CODE</span>${item.LOTCODE||'-'}</div><div class="text-[11px] font-bold text-gray-500 uppercase"><span class="block text-[8px] text-gray-400 mb-0.5">LOCATION</span>${item.LOCATIONCODE||'-'}</div></div><div class="flex flex-wrap gap-2 text-[11px] font-bold uppercase tracking-wider mt-1"><span class="bg-gray-100 text-gray-800 px-2 py-1 rounded border border-gray-200">LOC AVA: <span class="font-black">${item.PTRAVAILABLE||'0'}</span></span><span class="bg-purple-50 text-purple-700 px-2 py-1 rounded border border-purple-200">s_LTS: <span class="font-black">${item.S_LTS||'0'}</span></span><span class="bg-green-50 text-green-700 px-2 py-1 rounded border border-green-200">LOC PHOTO MATCH: <span class="font-black">${locPhotoMatch}</span></span></div>${specCaliperHtml}${holdHtml}${avNoteHtml}</div>${clickThumbHtml}</div></div></div>`;             }
             
             if(photoLink){ 
                 let firstUrl=String(photoLink).split(',')[0]; 
@@ -1963,7 +2448,8 @@
             
             return `<div class="flex items-center w-full mb-2 item-row overflow-hidden" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm pointer-events-none" ${isChecked}></div><div class="inv-card ${colorClass} flex items-start justify-between flex-grow !mb-0 transition-transform active:scale-[0.99]"><div class="flex-grow min-w-0 text-[#007a4d]"><div class="flex justify-between font-bold text-sm mb-1"><span class="truncate pr-2">${item.COMMONNAME||'Unknown'} • ${item.CONTSIZE||'-'} • Loc: ${item.LOCATIONCODE||'No Loc'}</span><span class="whitespace-nowrap bg-[#007a4d]/10 px-1.5 py-0.5 rounded text-xs border border-[#007a4d]/20 h-max">Pri: ${item.PRIORITY||'-'}</span></div><div class="text-[11px] font-semibold truncate mt-0.5">Tag: ${tagColor} | Lot: ${item.LOTCODE||'-'} | PTR-Ava: ${item.PTRAVAILABLE||'0'} | s_LTS: ${item.S_LTS||'0'} | Supply: ${item.SEASONSUPPLY||'0'}</div><div class="text-[11px] font-semibold truncate mt-0.5">Item: ${item.ITEMCODE||'-'}</div></div>${thumbHtml}</div></div>`;
         }
-function initiateBatchAction(action) {
+
+        function initiateBatchAction(action) {
             if(action==='request_action'){openRequestModal();return}
             if(action==='endcap'){openEndCapModal();return}
             const isRequestView=!document.getElementById('view-request').classList.contains('hidden');
@@ -2591,15 +3077,24 @@ function initiateBatchAction(action) {
         }
 
         function renderTasks() {
-            let targetUser = safeRole === 'ADMIN' ? taskViewTargetUser : currentUser;
-            if(!targetUser) return;
-            const container = document.getElementById('task-content');
-            const crumb = document.getElementById('task-crumb');
-            crumb.innerHTML = safeRole === 'ADMIN' ? `<span class="cursor-pointer text-gray-400 hover:text-gray-800" onclick="taskViewTargetUser=null; renderTeamSelector()"><i class="ph-bold ph-arrow-left"></i> Back to Team</span> &bull; <span class="text-[#007a4d]">${targetUser}'s Tasks</span>` : "My Tasks";
-            
-            let userItems = fullInventory.filter(i => i.ASSIGNEDTO === targetUser && !i.DATE_COMPLETED);
-            let tabItems = userItems.filter(i => i.APP_TAB_ASSIGNMENT === activeTaskTab);
-            
+    let targetUser = safeRole === 'ADMIN' ? taskViewTargetUser : currentUser;
+    if (!targetUser) return;
+    
+    const container = document.getElementById('task-content');
+    const crumb = document.getElementById('task-crumb');
+    
+    crumb.innerHTML = safeRole === 'ADMIN' ? `<span class="cursor-pointer text-gray-400 hover:text-gray-800" onclick="taskViewTargetUser=null; renderTeamSelector()"><i class="ph-bold ph-arrow-left"></i> Back to Team</span> &bull; <span class="text-[#007a4d]">${targetUser}'s Tasks</span>` : "My Tasks";
+    
+    // 👇 HERE IS THE FIX: Make the comparison case-insensitive
+    let userItems = fullInventory.filter(i => 
+        i.ASSIGNEDTO && 
+        String(i.ASSIGNEDTO).toLowerCase() === String(targetUser).toLowerCase() && 
+        !i.DATE_COMPLETED
+    );
+    
+    let tabItems = userItems.filter(i => i.APP_TAB_ASSIGNMENT === activeTaskTab);
+    
+    // ... rest of the function stays the same            
             if(tabItems.length === 0){
                 container.innerHTML = `<div class="p-8 text-center text-gray-400">No active ${activeTaskTab} tasks.</div>`;
                 return;
@@ -2944,21 +3439,22 @@ function initiateBatchAction(action) {
             if(typeof validateSsnForm === 'function') validateSsnForm();
         }
 
-       // --- PULL TO REFRESH LOGIC ---
+       // --- PULL TO REFRESH LOGIC (FIXED FOR IOS) ---
         const scrollArea = document.getElementById('main-scroll-area');
         const ptrContainer = document.getElementById('pull-to-refresh');
         const ptrIcon = document.getElementById('ptr-icon');
         const ptrText = document.getElementById('ptr-text');
 
         let ptrStartY = 0;
-        let ptrStartX = 0; // NEW: Track X to prevent horizontal swipes from triggering it
+        let ptrStartX = 0; 
         let ptrCurrentY = 0;
         let isPulling = false;
         const ptrThreshold = 100; 
 
         if(scrollArea && ptrContainer) {
             scrollArea.addEventListener('touchstart', (e) => {
-                if (scrollArea.scrollTop <= 0) { 
+                // Buffer of 5px handles iOS Safari sub-pixel scroll issues
+                if (scrollArea.scrollTop <= 5) { 
                     ptrStartY = e.touches[0].clientY;
                     ptrStartX = e.touches[0].clientX; 
                     isPulling = true;
@@ -2968,25 +3464,30 @@ function initiateBatchAction(action) {
 
             scrollArea.addEventListener('touchmove', (e) => {
                 if (!isPulling) return;
+                
                 ptrCurrentY = e.touches[0].clientY;
                 let currentX = e.touches[0].clientX;
                 
                 const pullDistance = ptrCurrentY - ptrStartY;
                 const pullX = Math.abs(currentX - ptrStartX);
 
-                // STRICT GATE: If they swipe horizontally more than vertically, or swipe UP, cancel the pull!
+                // 1. GATE: If swiping side-to-side or pulling UP, cancel the refresh
                 if (pullX > pullDistance || ptrCurrentY < ptrStartY) {
                     isPulling = false;
                     closePtr();
                     return;
                 }
 
-                if (pullDistance > 0 && scrollArea.scrollTop <= 0) {
-                    // Increased resistance: Changed multiplier to 0.20 so it feels heavier
-                    let visualHeight = Math.min(pullDistance * 0.20, ptrThreshold + 25);
+                // 2. IOS PREVENT DEFAULT: If pulling down at the top, lock Safari's scroll
+                if (pullDistance > 0 && scrollArea.scrollTop <= 5) {
+                    // MUST be non-passive to allow preventDefault
+                    if (e.cancelable) e.preventDefault();
+
+                    // Apply physics (0.25 multiplier) for a smooth stretch feel
+                    let visualHeight = Math.min(pullDistance * 0.25, ptrThreshold + 25);
                     ptrContainer.style.height = `${visualHeight}px`; 
                     
-                    if (pullDistance * 0.20 >= ptrThreshold) {
+                    if (visualHeight >= ptrThreshold) {
                         ptrText.innerText = "Release to sync";
                         ptrIcon.style.transform = "rotate(180deg)";
                     } else {
@@ -2994,22 +3495,24 @@ function initiateBatchAction(action) {
                         ptrIcon.style.transform = "rotate(0deg)";
                     }
                 }
-            }, { passive: true });
+            }, { passive: false }); // CRITICAL: Must be false for iOS preventDefault() to work
 
             scrollArea.addEventListener('touchend', () => {
                 if (!isPulling) return;
                 isPulling = false;
                 
-                const pullDistance = ptrCurrentY - ptrStartY;
+                const finalPullDistance = ptrCurrentY - ptrStartY;
                 ptrContainer.style.transition = 'height 0.3s ease'; 
                 ptrIcon.style.transform = "rotate(0deg)";
 
-                if (pullDistance * 0.20 >= ptrThreshold && scrollArea.scrollTop <= 0) {
+                // Validate if threshold was met (Distance * Physics Multiplier)
+                if ((finalPullDistance * 0.25) >= ptrThreshold && scrollArea.scrollTop <= 5) {
                     ptrContainer.style.height = '50px';
                     ptrText.innerText = "Syncing...";
                     ptrIcon.classList.remove('ph-arrow-down');
                     ptrIcon.classList.add('ph-spinner', 'animate-spin');
                     
+                    // Call your data sync function
                     fetchBackgroundData();
                     
                     setTimeout(() => { closePtr(); }, 1500);
@@ -3026,6 +3529,7 @@ function initiateBatchAction(action) {
                 ptrIcon.classList.add('ph-arrow-down');
                 ptrIcon.classList.remove('ph-spinner', 'animate-spin');
                 ptrText.innerText = "Pull to sync";
+                ptrIcon.style.transform = "rotate(0deg)";
             }, 300);
         }
 
@@ -3040,7 +3544,6 @@ function initiateBatchAction(action) {
             for (let i = 0; i < fileCount; i++) {
                 const file = input.files[i];
                 
-                // Allow files even if mobile doesn't report a type (common camera bug)
                 if (file.type && !file.type.startsWith('image/')) {
                     showToast('Error', `File ${i + 1} is not a valid image.`, true);
                     continue;
@@ -3079,17 +3582,14 @@ function initiateBatchAction(action) {
                                 let filePath = `${new Date().toISOString().split('T')[0]}/${fileName}`;
 
                                 try {
-                                    // Use the official client library for the upload
                                     const { data, error } = await supabaseClient.storage
                                         .from(bucketName)
                                         .upload(filePath, blob, { contentType: 'image/jpeg', upsert: true });
 
                                     if (error) throw error;
 
-                                    // Get the public URL
                                     const { data: { publicUrl } } = supabaseClient.storage.from(bucketName).getPublicUrl(filePath);
 
-                                    // Update the correct database column
                                     let linkCol = 'SAVED_PHOTO_LINK';
                                     if (prefix === 'req-') linkCol = 'REQ_PHOTO_LINK';
                                     else if (prefix === 'dock-') linkCol = 'DOCK_PHOTO_LINK';
@@ -3098,7 +3598,6 @@ function initiateBatchAction(action) {
                                     let currentLinks = activeItem[linkCol] || "";
                                     activeItem[linkCol] = currentLinks ? currentLinks + ',' + publicUrl : publicUrl;
                                     
-                                    // Save change to DB (False = Draft/Silent save)
                                     saveData(false, prefix, false); 
                                     renderSavedPhotos(); 
                                     resolve();
@@ -3110,13 +3609,13 @@ function initiateBatchAction(action) {
                         };
                         
                         img.onerror = () => {
-                            showToast('Error', `Could not read photo ${i + 1}. Unsupported format.`, true);
+                            showToast('Error', `Could not read photo ${i + 1}.`, true);
                             resolve();
                         };
                     };
                     
                     reader.onerror = () => {
-                        showToast('Error', `Failed to read file ${i + 1} from device.`, true);
+                        showToast('Error', `Failed to read file ${i + 1}.`, true);
                         resolve();
                     };
                 });
@@ -3130,13 +3629,12 @@ function initiateBatchAction(action) {
         const CHAT_PARTICIPANTS_TABLE = 'v2_chat_participants'; 
         const CHAT_MESSAGES_TABLE = 'v2_chat_messages';
         
-       let activeChatRoomId = null;
-let userChatList = [];
+        let activeChatRoomId = null;
+        let userChatList = [];
         let selectedUsersForNewChat = new Set();
 
         async function loadChatInbox() {
             try {
-                // Notice the 'true' added to the end of all these to make them silent!
                 const myParticipants = await supabaseFetch(CHAT_PARTICIPANTS_TABLE, 'GET', null, `username=eq.${encodeURIComponent(currentUser)}`, true);
                 if (!myParticipants || myParticipants.length === 0) {
                     renderChatInbox([]);
@@ -3218,7 +3716,6 @@ let userChatList = [];
             const term = document.getElementById('new-chat-search').value.toLowerCase();
             const container = document.getElementById('new-chat-user-list');
             
-            // This pulls from your existing salesRepList and team members
             let allUsers = ["Dylan", "Kayla", "Morgan", ...salesRepList];
             let filtered = allUsers.filter(u => u.toLowerCase() !== currentUser.toLowerCase() && u.toLowerCase().includes(term));
             
@@ -3249,17 +3746,16 @@ let userChatList = [];
             }
             
             let participants = Array.from(selectedUsersForNewChat);
-            participants.push(currentUser); // Add self to the room
+            participants.push(currentUser); 
             let isGroup = participants.length > 2;
             let roomName = isGroup ? prompt("Enter a name for this group chat:") : '';
             
-            if(isGroup && !roomName) return; // User cancelled group name prompt
+            if(isGroup && !roomName) return; 
 
             document.getElementById('new-chat-modal').classList.add('hidden');
             showToast("Setting up...", "Creating chat room...", false);
 
             try {
-                // If it's a 1-on-1, check if room already exists to prevent duplicates
                 if (!isGroup) {
                     let otherUser = Array.from(selectedUsersForNewChat)[0];
                     let existingRoom = userChatList.find(c => !c.isGroup && c.participants.length === 2 && c.participants.includes(otherUser.toLowerCase()));
@@ -3269,7 +3765,6 @@ let userChatList = [];
                     }
                 }
 
-                // Create new room
                 let newRoomId = 'chat_' + Date.now() + Math.random().toString(36).substring(2,7);
                 await supabaseFetch(CHAT_ROOMS_TABLE, 'POST', {
                     id: newRoomId,
@@ -3278,7 +3773,6 @@ let userChatList = [];
                     created_at: new Date().toISOString()
                 });
 
-                // Add participants
                 let participantPayloads = participants.map(p => ({
                     room_id: newRoomId,
                     username: p.toLowerCase(),
@@ -3286,7 +3780,6 @@ let userChatList = [];
                 }));
                 await supabaseFetch(CHAT_PARTICIPANTS_TABLE, 'POST', participantPayloads);
 
-                // Open the new room
                 let displayTitle = isGroup ? roomName : Array.from(selectedUsersForNewChat)[0];
                 openChatRoom(newRoomId, displayTitle.toUpperCase());
                 
@@ -3296,19 +3789,18 @@ let userChatList = [];
         }
 
         function openChatRoom(roomId, title) {
-    activeChatRoomId = roomId;
-    document.getElementById('chat-room-title').innerText = title;
-    document.getElementById('view-chat-room').classList.remove('hidden');
-    document.getElementById('chat-messages-container').innerHTML = `<div class="flex justify-center py-10"><div class="spinner border-[#007a4d] border-t-transparent"></div></div>`;
-    
-    fetchChatMessages(); // Initial load when opening the room
-}
+            activeChatRoomId = roomId;
+            document.getElementById('chat-room-title').innerText = title;
+            document.getElementById('view-chat-room').classList.remove('hidden');
+            document.getElementById('chat-messages-container').innerHTML = `<div class="flex justify-center py-10"><div class="spinner border-[#007a4d] border-t-transparent"></div></div>`;
+            fetchChatMessages();
+        }
 
         function closeChatRoom() {
-    activeChatRoomId = null;
-    document.getElementById('view-chat-room').classList.add('hidden');
-    loadChatInbox(); // Refresh inbox to show latest messages
-}
+            activeChatRoomId = null;
+            document.getElementById('view-chat-room').classList.add('hidden');
+            loadChatInbox();
+        }
 
         async function fetchChatMessages() {
             if(!activeChatRoomId) return;
@@ -3316,7 +3808,6 @@ let userChatList = [];
                 const messages = await supabaseFetch(CHAT_MESSAGES_TABLE, 'GET', null, `room_id=eq.${activeChatRoomId}&order=created_at.asc`, true);
                 const container = document.getElementById('chat-messages-container');
                 
-                // Only auto-scroll to bottom if we are already near the bottom, or if it's the first load
                 let isAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 50;
                 let isFirstLoad = container.innerHTML.includes('spinner');
 
@@ -3334,40 +3825,22 @@ let userChatList = [];
                     let dateStr = msgDate.toLocaleDateString();
                     let timeStr = msgDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
 
-                    // Add a date divider if the day changes
                     if (dateStr !== currentDate) {
                         html += `<div class="flex justify-center my-4"><span class="bg-gray-200 text-gray-500 text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">${dateStr}</span></div>`;
                         currentDate = dateStr;
                     }
 
                     if (isMe) {
-                        html += `
-                            <div class="flex flex-col items-end w-full">
-                                <div class="bg-[#007a4d] text-white px-4 py-2.5 rounded-2xl rounded-br-none shadow-sm max-w-[80%] break-words text-[15px] leading-snug">
-                                    ${msg.message}
-                                </div>
-                                <span class="text-[9px] text-gray-400 font-bold mt-1 mr-1">${timeStr}</span>
-                            </div>
-                        `;
+                        html += `<div class="flex flex-col items-end w-full"><div class="bg-[#007a4d] text-white px-4 py-2.5 rounded-2xl rounded-br-none shadow-sm max-w-[80%] break-words text-[15px] leading-snug">${msg.message}</div><span class="text-[9px] text-gray-400 font-bold mt-1 mr-1">${timeStr}</span></div>`;
                     } else {
-                        html += `
-                            <div class="flex flex-col items-start w-full">
-                                <span class="text-[10px] font-bold text-gray-500 ml-2 mb-0.5 uppercase tracking-wide">${msg.sender}</span>
-                                <div class="bg-white border border-gray-200 text-gray-800 px-4 py-2.5 rounded-2xl rounded-bl-none shadow-sm max-w-[80%] break-words text-[15px] leading-snug">
-                                    ${msg.message}
-                                </div>
-                                <span class="text-[9px] text-gray-400 font-bold mt-1 ml-1">${timeStr}</span>
-                            </div>
-                        `;
+                        html += `<div class="flex flex-col items-start w-full"><span class="text-[10px] font-bold text-gray-500 ml-2 mb-0.5 uppercase tracking-wide">${msg.sender}</span><div class="bg-white border border-gray-200 text-gray-800 px-4 py-2.5 rounded-2xl rounded-bl-none shadow-sm max-w-[80%] break-words text-[15px] leading-snug">${msg.message}</div><span class="text-[9px] text-gray-400 font-bold mt-1 ml-1">${timeStr}</span></div>`;
                     }
                 });
 
                 container.innerHTML = html;
-
                 if (isFirstLoad || isAtBottom) {
                     container.scrollTop = container.scrollHeight;
                 }
-
             } catch(e) {
                 console.error("Failed to fetch messages");
             }
@@ -3378,34 +3851,24 @@ let userChatList = [];
             const text = input.value.trim();
             if(!text || !activeChatRoomId) return;
 
-            input.value = ''; // Clear instantly for good UX
-            
-            // Optimistically add the message to the UI
+            input.value = ''; 
             const container = document.getElementById('chat-messages-container');
             let timeStr = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-            container.innerHTML += `
-                <div class="flex flex-col items-end w-full opacity-70" id="optimistic-msg">
-                    <div class="bg-[#007a4d] text-white px-4 py-2.5 rounded-2xl rounded-br-none shadow-sm max-w-[80%] break-words text-[15px] leading-snug">
-                        ${text}
-                    </div>
-                    <span class="text-[9px] text-gray-400 font-bold mt-1 mr-1">Sending...</span>
-                </div>
-            `;
+            container.innerHTML += `<div class="flex flex-col items-end w-full opacity-70" id="optimistic-msg"><div class="bg-[#007a4d] text-white px-4 py-2.5 rounded-2xl rounded-br-none shadow-sm max-w-[80%] break-words text-[15px] leading-snug">${text}</div><span class="text-[9px] text-gray-400 font-bold mt-1 mr-1">Sending...</span></div>`;
             container.scrollTop = container.scrollHeight;
 
             try {
                 await supabaseFetch(CHAT_MESSAGES_TABLE, 'POST', {
-            room_id: activeChatRoomId,
-            sender: currentUser,
-            message: text,
-            created_at: new Date().toISOString()
-        });
-        // fetchChatMessages() is removed; the WebSocket will catch the INSERT and update the UI!
+                    room_id: activeChatRoomId,
+                    sender: currentUser,
+                    message: text,
+                    created_at: new Date().toISOString()
+                });
             } catch(e) {
                 showToast("Error", "Message failed to send.", true);
                 let optMsg = document.getElementById('optimistic-msg');
                 if(optMsg) optMsg.remove();
-                input.value = text; // Put text back so they don't lose it
+                input.value = text; 
             }
         }
 
@@ -3414,8 +3877,7 @@ let userChatList = [];
             if(room) {
                 alert(`Chat Participants:\n\n${room.participants.join('\n').toUpperCase()}`);
             }
-        }
-    </script>
+        }    
+</script>
 </body>
 </html>
-        
