@@ -1,19 +1,18 @@
-Random 9.txt
+!DOCTYPE html.txt
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-  <title>DC</title>
+    <title>Greenleaf</title>
     <meta name="theme-color" content="#007a4d">
     <link rel="manifest" href="manifest.json">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="application-name" content="DC">
+    <meta name="application-name" content="Greenleaf">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>:root{--bg:#007a4d;--tx:#111827}body{font-family:"Amazon Ember",Arial,sans-serif;background:white;color:var(--tx);user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior-y:contain}.nav-header{background:var(--bg);color:white;padding-top:max(10px,env(safe-area-inset-top))}#view-login,#view-change-password{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px}#view-change-password{display:none;z-index:10000}.login-card{background:white;padding:30px;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,.2);width:100%;max-width:360px;text-align:center}.input-field{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:8px;font-size:15px;margin-bottom:12px}#toast-notification{position:fixed;top:-100px;left:50%;transform:translateX(-50%);background:#16a34a;color:white;padding:16px 24px;border-radius:50px;box-shadow:0 10px 15px -3px rgba(0,0,0,.3);z-index:11000;transition:top .5s;display:flex;align-items:center;gap:12px;pointer-events:none}#toast-notification.show{top:20px}#side-drawer{position:fixed;top:0;left:-280px;width:280px;height:100%;background:white;z-index:2000;box-shadow:2px 0 10px rgba(0,0,0,.2);transition:left .3s;overflow-y:auto;padding-bottom:100px}#side-drawer.open{left:0}#drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1999;display:none}#drawer-overlay.open{display:block}.drawer-header{background:var(--bg);color:white;padding:20px;font-weight:bold;font-size:18px}.drawer-item{padding:16px 20px;border-bottom:1px solid #f3f4f6;cursor:pointer;display:flex;align-items:center;gap:12px;color:#374151;font-weight:500}.drill-item{border-bottom:1px solid #e5e7eb;padding:16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:white;transition:background .1s}.drill-item:active{background:#f3f4f6}.back-btn{display:flex;align-items:center;gap:5px;color:#6b7280;font-size:14px;font-weight:600;margin-bottom:20px;cursor:pointer;padding:10px 0}.inv-card{border:1px solid #e5e7eb;border-left-width:6px;border-radius:8px;padding:12px;background:white;cursor:pointer;flex-grow:1}.status-green{border-left-color:#22c55e}.status-purple{border-left-color:#9333ea}.status-orange{border-left-color:#f97316}.status-blue{border-left-color:#3b82f6}.status-indigo{border-left-color:#4f46e5}.status-teal{border-left-color:#0d9488}.status-yellow{border-left-color:#eab308}.status-red{border-left-color:#ef4444}.task-tabs,.detail-tabs{display:flex;border-bottom:1px solid #e5e7eb;background:#f9fafb;margin-bottom:10px}.detail-tabs{overflow-x:auto;scrollbar-width:none}.detail-tabs::-webkit-scrollbar{display:none}.task-tab,.detail-tab{flex:1;text-align:center;padding:12px;font-size:11px;font-weight:700;color:#6b7280;cursor:pointer;border-bottom:3px solid transparent;text-transform:uppercase}.detail-tab{flex:0 0 auto;padding:10px 16px}.task-tab.active,.detail-tab.active{color:var(--bg);border-bottom-color:var(--bg);background:white}.overview-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}.overview-card{background:#f8fafc;padding:10px;border-radius:6px;border:1px solid #e2e8f0}.overview-label{font-size:9px;font-weight:800;color:#64748b;text-transform:uppercase;margin-bottom:2px}.overview-val{font-size:13px;font-weight:600;color:#0f172a;word-break:break-all}.expand-trigger{display:flex;align-items:center;justify-content:space-between;padding:12px;background:#f9fafb;border-radius:6px;cursor:pointer;font-weight:600;font-size:14px;border:1px solid #e5e7eb}.expand-content{display:none;margin-top:12px;padding:12px;background:#f9fafb;border-radius:6px;border:1px solid #e5e7eb}.expanded .expand-content{display:block}.card-checkbox-container{width:0;overflow:hidden;opacity:0;transition:width .3s,opacity .3s,margin .3s}body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-right:12px}.item-row{touch-action:manipulation}.spinner{border:4px solid rgba(255,255,255,.3);border-top:4px solid white;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:0 auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.scrollbar-none::-webkit-scrollbar{display:none}.scrollbar-none{-ms-overflow-style:none;scrollbar-width:none}</style>
 </head>
 <body class="bg-gray-50 h-screen overflow-hidden">
@@ -30,7 +29,7 @@ Random 9.txt
     <div id="view-login">
         <div class="login-card">
             <div class="flex flex-col items-center mb-8 w-full relative">
-                <div class="text-3xl text-[#007a4d] font-black tracking-tighter mb-1">DC</div>
+                <div class="text-3xl text-[#007a4d] font-black tracking-tighter mb-1">Greenleaf</div>
                 <div class="flex flex-col items-center gap-0.5 mt-5">
                     <span class="text-[9px] font-bold text-gray-400 uppercase tracking-[0.3em]">Powered By</span>
                     <span class="text-[17px] font-black text-gray-800 tracking-[0.2em] uppercase border-b-[3px] border-[#007a4d] pb-0.5">Ag Metric</span>
@@ -173,7 +172,7 @@ Random 9.txt
                 <i class="ph-bold ph-list menu-btn text-2xl cursor-pointer" onclick="toggleMenu()"></i>
                 <div class="flex flex-col">
                     <div class="font-bold text-lg leading-tight"><span id="header-user">User</span></div>
-                    <div class="text-[10px] opacity-80 leading-tight">DC</div>
+                    <div class="text-[10px] opacity-80 leading-tight">Greenleaf</div>
                 </div>
             </div>
             <div class="bg-white/20 p-2 rounded-lg cursor-pointer" onclick="fetchBackgroundData()"><i class="ph-bold ph-arrows-clockwise text-white"></i></div>
@@ -207,7 +206,7 @@ Random 9.txt
                     <div class="bg-[#007a4d] text-white p-6 rounded-2xl mb-6 shadow-lg flex flex-col items-center text-center relative overflow-hidden">
                         <div class="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-white opacity-5 rounded-full pointer-events-none"></div>
                         <div class="absolute bottom-0 left-0 -mb-10 -ml-10 w-32 h-32 bg-black opacity-10 rounded-full pointer-events-none"></div>
-                        <h1 class="text-2xl font-black tracking-tight mb-1 z-10 relative mt-4">DC</h1>
+                        <h1 class="text-2xl font-black tracking-tight mb-1 z-10 relative mt-4">Greenleaf</h1>
                         <p class="text-green-100 text-[10px] font-bold mb-5 uppercase tracking-[0.2em] z-10 relative">Dashboard</p>
                         <div class="flex flex-col items-center pt-4 border-t border-white/20 w-full mt-1 z-10 relative">
                             <span class="text-[9px] font-bold text-white/70 uppercase tracking-[0.3em] mb-1">Powered By</span>
@@ -509,20 +508,6 @@ Random 9.txt
         const esc = (s) => String(s || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
         const DB_NAME="GNC_DDC_DB_V2"; const STORE_NAME="inventory_cache";
         
-        // --- NEW REALTIME WEBSOCKET CODE ---
-        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-        function startRealtimeSync() {
-            supabaseClient
-                .channel('gnc_command_realtime')
-                .on('postgres_changes', { event: '*', schema: 'public' }, (payload) => {
-                    console.log('Instant update received from Supabase:', payload);
-                    silentBackgroundSync(); 
-                })
-                .subscribe();
-        }
-        // -----------------------------------
-
         function performLogout() { 
             localStorage.clear(); 
             sessionStorage.clear(); 
@@ -668,7 +653,7 @@ Random 9.txt
         async function promptToEnableBiometrics(user,pin) { 
             if(!confirm("Would you like to enable Fingerprint/FaceID login for future use?"))return; 
             try{ 
-                const publicKey={challenge:new Uint8Array(32),rp:{name:"DC"},user:{id:new Uint8Array(16),name:user,displayName:user},pubKeyCredParams:[{type:"public-key",alg:-7}],authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required"},timeout:60000}; 
+                const publicKey={challenge:new Uint8Array(32),rp:{name:"Greenleaf"},user:{id:new Uint8Array(16),name:user,displayName:user},pubKeyCredParams:[{type:"public-key",alg:-7}],authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required"},timeout:60000}; 
                 await navigator.credentials.create({publicKey}); 
                 localStorage.setItem('gnc_bio_enabled','true'); 
                 localStorage.setItem('gnc_bio_user',user); 
@@ -807,7 +792,7 @@ Random 9.txt
             if(!isBiometricLogin&&window.PublicKeyCredential&&localStorage.getItem('gnc_bio_enabled')!=='true'){ promptToEnableBiometrics(user,pass); } 
             applyRolePermissions(); 
             fetchBackgroundData(); 
-            startRealtimeSync(); 
+            setInterval(silentBackgroundSync, 1000); 
         }
 
         async function silentBackgroundSync() {
@@ -2605,7 +2590,7 @@ Random 9.txt
             let userItems = fullInventory.filter(i => i.ASSIGNEDTO === targetUser && !i.DATE_COMPLETED);
             let tabItems = userItems.filter(i => i.APP_TAB_ASSIGNMENT === activeTaskTab);
             
-             if(tabItems.length === 0){
+            if(tabItems.length === 0){
                 container.innerHTML = `<div class="p-8 text-center text-gray-400">No active ${activeTaskTab} tasks.</div>`;
                 return;
             }
@@ -2865,22 +2850,6 @@ Random 9.txt
             reader.onload = function(event) {
                 const img = new Image();
                 img.src = event.target.result;
-              async function handlePhotoUpload(input, prefix) {
-            if (!input.files || input.files.length === 0) return;
-            const file = input.files[0];
-            
-            if (!file.type.startsWith('image/')) {
-                showToast('Error', 'Please select an image file.', true);
-                return;
-            }
-
-            showToast('Processing', 'Compressing image...', false);
-
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = function(event) {
-                const img = new Image();
-                img.src = event.target.result;
                 img.onload = async function() {
                     const canvas = document.createElement('canvas');
                     const MAX_WIDTH = 1080;
@@ -2896,73 +2865,70 @@ Random 9.txt
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-                    canvas.toBlob(async function(blob) {
-                        showToast('Uploading', 'Sending photo to Supabase...', false);
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                    const base64Data = dataUrl.split(',')[1];
 
-                        // 1. Map to your specific Supabase Buckets
-                        let bucketName = 'drive_mode_photos'; // Default
-                        if (prefix === 'ssn-') bucketName = 'season_sales_notes_photos';
-                        else if (prefix === 'lsn-') bucketName = 'location_sales_notes_photos';
-                        else if (prefix === 'req-') bucketName = 'request_photos';
-                        else if (prefix === 'dock-') bucketName = 'dock_photos';
+                    showToast('Uploading', 'Sending photo to server...', false);
 
-                        // 2. Build a safe filename (stripping out # and other URL-breaking characters)
-                        let cName = activeItem ? String(activeItem.COMMONNAME || 'Unknown').replace(/[\/\\?%*:|"<>#]/g, '-') : 'Unknown';
-                        let cSize = activeItem ? String(activeItem.CONTSIZE || 'NoSize').replace(/[\/\\?%*:|"<>#]/g, '') : 'NoSize';
-                        let cLot = activeItem ? String(activeItem.LOTCODE || 'NoLot').replace(/[\/\\?%*:|"<>#]/g, '-') : 'NoLot';
-                        let cLoc = activeItem ? String(activeItem.LOCATIONCODE || 'NoLoc').replace(/[\/\\?%*:|"<>#]/g, '-') : 'NoLoc';
-                        
-                        let customFileName = `${cName}-${cSize}-${cLot}-${cLoc}-${Date.now()}.jpg`;
+                    let context = 'drive';
+                    if (prefix === 'ssn-') context = 'season';
+                    else if (prefix === 'lsn-') context = 'location';
+                    else if (prefix === 'req-') context = 'request';
+                    else if (prefix === 'dock-') context = 'docks';
 
-                        // 3. ENCODE the filename so it travels perfectly over the network
-                        const uploadUrl = `${SUPABASE_URL}/storage/v1/object/${bucketName}/${encodeURIComponent(customFileName)}`;
+                    let dockNum = pendingDockNum || selectedDockNum || "0";
 
-                        try {
-                            const response = await fetch(uploadUrl, {
-                                method: 'POST',
-                                headers: {
-                                    'apikey': SUPABASE_KEY,
-                                    'Authorization': 'Bearer ' + SUPABASE_KEY,
-                                    'Content-Type': 'image/jpeg',
-                                    'Cache-Control': '3600'
-                                },
-                                body: blob
-                            });
+                    let dateStr = new Date().toISOString().split('T')[0];
+                    let cName = String(activeItem.COMMONNAME || 'Unknown').replace(/[\/\\?%*:|"<>]/g, '-');
+                    let cSize = String(activeItem.CONTSIZE || 'NoSize').replace(/[\/\\?%*:|"<>]/g, '-');
+                    let cLot = String(activeItem.LOTCODE || 'NoLot').replace(/[\/\\?%*:|"<>]/g, '-');
+                    let cLoc = String(activeItem.LOCATIONCODE || 'NoLoc').replace(/[\/\\?%*:|"<>]/g, '-');
+                    let customFileName = `${cName}-${cSize}-${cLot}-${cLoc}-${dateStr}.jpg`;
 
-                            if (response.ok) {
-                                showToast('Success', 'Photo uploaded successfully!');
-                                
-                                if (activeItem) {
-                                    // Generate the public URL to save to the database (also encoded)
-                                    const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/${bucketName}/${encodeURIComponent(customFileName)}`;
-                                    
-                                    if (prefix === 'req-') {
-                                        activeItem.REQ_PHOTO_LINK = activeItem.REQ_PHOTO_LINK ? activeItem.REQ_PHOTO_LINK + ',' + publicUrl : publicUrl;
-                                    } else if (prefix === 'dock-') {
-                                        activeItem.DOCK_PHOTO_LINK = activeItem.DOCK_PHOTO_LINK ? activeItem.DOCK_PHOTO_LINK + ',' + publicUrl : publicUrl;
-                                    } else if (prefix === 'flyer-') {
-                                        activeItem.FLYER_PHOTO_LINK = activeItem.FLYER_PHOTO_LINK ? activeItem.FLYER_PHOTO_LINK + ',' + publicUrl : publicUrl;
-                                    } else {
-                                        activeItem.SAVED_PHOTO_LINK = activeItem.SAVED_PHOTO_LINK ? activeItem.SAVED_PHOTO_LINK + ',' + publicUrl : publicUrl;
-                                    }
-                                    saveData(false, prefix, true);
-                                    renderSavedPhotos();
+                    const payload = {
+                        type: 'image',
+                        image: base64Data,
+                        filename: customFileName,
+                        mimeType: 'image/jpeg',
+                        folderContext: context,
+                        dockNum: dockNum
+                    };
+
+                    try {
+                        const response = await fetch(GOOGLE_SCRIPT_URL, {
+                            method: 'POST',
+                            body: JSON.stringify(payload)
+                        });
+                        const result = await response.json();
+
+                        if (result.status === 'success') {
+                            showToast('Success', 'Photo uploaded successfully!');
+                            if (activeItem) {
+                                let url = result.url;
+                                if (prefix === 'req-') {
+                                    activeItem.REQ_PHOTO_LINK = activeItem.REQ_PHOTO_LINK ? activeItem.REQ_PHOTO_LINK + ',' + url : url;
+                                } else if (prefix === 'dock-') {
+                                    activeItem.DOCK_PHOTO_LINK = activeItem.DOCK_PHOTO_LINK ? activeItem.DOCK_PHOTO_LINK + ',' + url : url;
+                                } else if (prefix === 'flyer-') {
+                                    activeItem.FLYER_PHOTO_LINK = activeItem.FLYER_PHOTO_LINK ? activeItem.FLYER_PHOTO_LINK + ',' + url : url;
+                                } else {
+                                    activeItem.SAVED_PHOTO_LINK = activeItem.SAVED_PHOTO_LINK ? activeItem.SAVED_PHOTO_LINK + ',' + url : url;
                                 }
-                            } else {
-                                const errText = await response.text();
-                                showToast('Error', 'Upload failed.', true);
-                                console.error('Supabase Upload Error:', errText);
+                                saveData(false, prefix, true);
+                                renderSavedPhotos();
                             }
-                        } catch (err) {
-                            showToast('Error', 'Network error during upload.', true);
-                            console.error(err);
-                        } finally {
-                            input.value = "";
+                        } else {
+                            showToast('Error', 'Upload failed: ' + result.message, true);
                         }
-                    }, 'image/jpeg', 0.8);
+                    } catch (err) {
+                        showToast('Error', 'Network error during upload.', true);
+                    } finally {
+                        input.value = "";
+                    }
                 };
             };
         }
     </script>
 </body>
 </html>
+
