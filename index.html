@@ -1,4 +1,4 @@
-GNC PARK HILL.txt
+WORKING HTML.txt
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -2699,11 +2699,8 @@ const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
                             if(cleanUrl.startsWith('http')){returnText+=`  Photo ${counter}: ${cleanUrl}\n`;counter++}
                         })
                     }
-                }
-                returnText+=`\n`
-            });
-            return returnText
-        }
+
+
 
         function executeBatchAction(action,tabType) {
             const text=getSelectedItemsText(tabType);
@@ -3084,4 +3081,5 @@ const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
                 const targetTable = (prefix === 'req-') ? 'v2_active_request' : (itemToSave.SOURCE_TABLE || 'v2_master_inventory');
 
                 supabaseFetch(targetTable, 'PATCH', payload, `unique_id=eq.${encodeURIComponent(itemToSave.UNIQUE_ID)}`).then(data => {
-                    if (isCurrentView && isComple
+                    if (isCurrentView && isComplete) { if(btnComp) btnComp.innerText = "MARK DONE"; }
+                    if (!isSilentAutoSave && isCurrent
