@@ -12,6 +12,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>:root{--bg:#007a4d;--tx:#111827}body{font-family:"Amazon Ember",Arial,sans-serif;background:white;color:var(--tx);user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior-y:contain}.nav-header{background:var(--bg);color:white;padding-top:max(10px,env(safe-area-inset-top))}#view-login,#view-change-password{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px}#view-change-password{display:none;z-index:10000}.booting-session #view-login,.booting-session #view-change-password{opacity:0;visibility:hidden;pointer-events:none}.login-card{background:white;padding:30px;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,.2);width:100%;max-width:360px;text-align:center}.input-field{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:8px;font-size:15px;margin-bottom:12px}#toast-notification{position:fixed;top:-100px;left:50%;transform:translateX(-50%);background:#16a34a;color:white;padding:16px 24px;border-radius:50px;box-shadow:0 10px 15px -3px rgba(0,0,0,.3);z-index:11000;transition:top .5s;display:flex;align-items:center;gap:12px;pointer-events:none}#toast-notification.show{top:20px}#side-drawer{position:fixed;top:0;left:-280px;width:280px;height:100%;background:white;z-index:2000;box-shadow:2px 0 10px rgba(0,0,0,.2);transition:left .3s;overflow-y:auto;padding-bottom:100px}#side-drawer.open{left:0}#drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1999;display:none}#drawer-overlay.open{display:block}.drawer-header{background:var(--bg);color:white;padding:20px;font-weight:bold;font-size:18px}.drawer-item{padding:16px 20px;border-bottom:1px solid #f3f4f6;cursor:pointer;display:flex;align-items:center;gap:12px;color:#374151;font-weight:500}.drill-item{border-bottom:1px solid #e5e7eb;padding:16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:white;transition:background .1s}.drill-item:active{background:#f3f4f6}.back-btn{display:flex;align-items:center;gap:5px;color:#6b7280;font-size:14px;font-weight:600;margin-bottom:20px;cursor:pointer;padding:10px 0}.inv-card{border:1px solid #e5e7eb;border-left-width:6px;border-radius:8px;padding:12px;background:white;cursor:pointer;flex-grow:1}.status-green{border-left-color:#22c55e}.status-purple{border-left-color:#9333ea}.status-orange{border-left-color:#f97316}.status-blue{border-left-color:#3b82f6}.status-indigo{border-left-color:#4f46e5}.status-teal{border-left-color:#0d9488}.status-yellow{border-left-color:#eab308}.status-red{border-left-color:#ef4444}.task-tabs,.detail-tabs{display:flex;border-bottom:1px solid #e5e7eb;background:#f9fafb;margin-bottom:10px}.detail-tabs{overflow-x:auto;scrollbar-width:none}.detail-tabs::-webkit-scrollbar{display:none}.task-tab,.detail-tab{flex:1;text-align:center;padding:12px;font-size:11px;font-weight:700;color:#6b7280;cursor:pointer;border-bottom:3px solid transparent;text-transform:uppercase}.detail-tab{flex:0 0 auto;padding:10px 16px}.task-tab.active,.detail-tab.active{color:var(--bg);border-bottom-color:var(--bg);background:white}.overview-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}.overview-card{background:#f8fafc;padding:10px;border-radius:6px;border:1px solid #e2e8f0}.overview-label{font-size:9px;font-weight:800;color:#64748b;text-transform:uppercase;margin-bottom:2px}.overview-val{font-size:13px;font-weight:600;color:#0f172a;word-break:break-all}.expand-trigger{display:flex;align-items:center;justify-content:space-between;padding:12px;background:#f9fafb;border-radius:6px;cursor:pointer;font-weight:600;font-size:14px;border:1px solid #e5e7eb}.expand-content{display:none;margin-top:12px;padding:12px;background:#f9fafb;border-radius:6px;border:1px solid #e5e7eb}.expanded .expand-content{display:block}.card-checkbox-container{width:0;overflow:hidden;opacity:0;transition:width .3s,opacity .3s,margin .3s}body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-right:12px}.item-row{touch-action:manipulation}.spinner{border:4px solid rgba(255,255,255,.3);border-top:4px solid white;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:0 auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.scrollbar-none::-webkit-scrollbar{display:none}.scrollbar-none{-ms-overflow-style:none;scrollbar-width:none}</style>
     <script>if(localStorage.getItem('gnc_user_v3')&&localStorage.getItem('gnc_pin_v3')){document.documentElement.classList.add('booting-session');}</script>
 </head>
@@ -41,7 +42,16 @@
                 <button class="w-full bg-[#007a4d] text-white font-bold py-3 rounded-lg shadow-md" onclick="handleLogin()">LOGIN</button>
                 <button id="btn-fingerprint" class="hidden w-full bg-gray-50 text-[#007a4d] border-2 border-[#007a4d] font-bold py-3 rounded-lg shadow-md mt-4 flex items-center justify-center gap-2" onclick="loginWithBiometric()"><i class="ph-bold ph-fingerprint text-2xl"></i> LOGIN WITH FINGERPRINT</button>
             </div>
-            <div id="loading-spinner" class="hidden mt-6 flex flex-col items-center"><div class="spinner"></div><div id="loading-text" class="text-white font-bold text-sm mt-3 text-center">Syncing Database...</div></div>
+            <div id="loading-spinner" class="hidden mt-6 flex flex-col items-center w-full">
+                <div class="spinner"></div>
+                <div id="loading-text" class="text-white font-bold text-sm mt-3 text-center">Syncing Database...</div>
+                <div id="login-progress-wrap" class="hidden w-full mt-4">
+                    <div class="w-full h-3 bg-green-900/20 rounded-full overflow-hidden border border-white/20">
+                        <div id="login-progress-bar" class="h-full w-0 bg-[#22c55e] transition-all duration-300 ease-out rounded-full"></div>
+                    </div>
+                    <div id="login-progress-label" class="text-[11px] font-bold text-white mt-2 text-center">Starting...</div>
+                </div>
+            </div>
         </div>
     </div>
     <div id="view-change-password">
@@ -376,6 +386,7 @@
                         <div class="detail-tab hidden" onclick="switchDetailTab('location')" id="dtab-location">Location Sales Notes</div>
                         <div class="detail-tab hidden" onclick="switchDetailTab('request')" id="dtab-request">Request</div>
                         <div class="detail-tab hidden" onclick="switchDetailTab('notes')" id="dtab-notes">Notes & Actions</div>
+                        <div class="detail-tab hidden" onclick="switchDetailTab('gallery')" id="dtab-gallery">Photo Gallery</div>
                         <div class="detail-tab hidden" onclick="switchDetailTab('docks')" id="dtab-docks">Docks</div>
                         <div class="detail-tab hidden" onclick="switchDetailTab('flyer')" id="dtab-flyer">Flyer</div>
                     </div>
@@ -437,6 +448,11 @@
                             <button id="na-btn-save-draft" class="w-1/3 bg-gray-200 text-gray-700 font-bold py-4 rounded-xl shadow-md" onclick="saveData(false, 'na-')">SAVE DRAFT</button>
                             <button id="na-btn-save-complete" class="w-2/3 bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform" onclick="saveData(true, 'na-')">MARK DONE</button>
                         </div>
+                    </div>
+                    <div id="det-gallery-content" class="hidden py-4">
+                        <div id="gallery-empty" class="hidden p-8 text-center text-gray-400">No photos on file for this row.</div>
+                        <div id="gallery-sections" class="space-y-5"></div>
+                    </div>
                     <div id="det-request-content" class="hidden py-4">
                         <div id="req-photo-preview" class="mb-4 hidden"><p class="text-[10px] font-bold text-purple-600 mb-2 uppercase">Request Photos</p><div id="req-photo-list-container" class="space-y-2"></div></div>
                         <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-req" class="bg-purple-50 border-2 border-dashed border-purple-500 text-purple-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="handlePhotoUpload(this, 'req-')"></label></div>
@@ -462,7 +478,7 @@
                         <div id="dock-input-container">
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="dock-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'dock-', true)"></div>
                             <div id="dock-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="dock-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'dock-', true)"></div>
-                            <div class="relative w-full mt-2 mb-2"><label class="text-[10px] font-bold text-orange-700 uppercase flex justify-between"><span>Dock Note</span></label><div class="flex gap-2"><input type="text" id="dock-sales-desc" class="input-field border-orange-500 bg-orange-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase();" onblur="setTimeout(()=>{saveData(false, 'dock-', true);}, 200)" placeholder="TYPE NOTES..."></div></div>
+                            <div class="relative w-full mt-2 mb-2"><label class="text-[10px] font-bold text-orange-700 uppercase flex justify-between"><span>Dock Note</span></label><div class="flex gap-2"><textarea id="dock-sales-desc" class="input-field border-orange-500 bg-orange-50 flex-grow !mb-0 h-28 resize-none" onblur="setTimeout(()=>{saveData(false, 'dock-', true);}, 200)" placeholder="Write dock notes..."></textarea></div></div>
                         </div>
                         <div class="flex gap-2 mt-4"><button id="dock-btn-save-draft" class="w-full bg-orange-600 text-white font-bold py-4 rounded-xl shadow-lg" onclick="saveData(false, 'dock-')">SAVE DOCK DATA</button></div>
                     </div>
@@ -504,9 +520,25 @@
         const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6cm55anNvc3J5ZWpqZWpsaWlpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzAyNzM1NywiZXhwIjoyMDg4NjAzMzU3fQ.Bc46UfJ1N4AgAS1PgfhFg6S4BEyybR6g_TUnPZsE2t0";
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwhH-eB5Py3xCwhmWReOAcAfl9Zu6mkw0hZYnAbIP9lLANoE4iebK1hXa6-ogU4_1AURA/exec"; 
+        const PHOTO_BUCKETS = {
+            'ssn-': 'season_sales_notes_photos',
+            'lsn-': 'location_sales_notes_photos',
+            'req-': 'request_photos',
+            'dock-': 'dock_photos',
+            'flyer-': 'drive_mode_photos',
+            'default': 'drive_mode_photos'
+        };
         const esc = (s) => String(s || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
         const DB_NAME="GNC_DDC_DB_V2"; const STORE_NAME="inventory_cache";
         const IOS_DEVICE_REGEX = /iPad|iPhone|iPod/;
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+            auth: { persistSession: false, autoRefreshToken: false },
+            realtime: { params: { eventsPerSecond: 8 } }
+        });
+        let realtimeChannels = [];
+        let realtimeRefreshTimer = null;
+        let fallbackSyncInterval = null;
+        let liveSyncMode = 'idle';
         
         function isIOSDevice() {
             return IOS_DEVICE_REGEX.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -570,7 +602,116 @@
             document.documentElement.classList.toggle('booting-session', !!isBooting);
         }
 
+        function firstNonEmptyValue(...values) {
+            for (const value of values) {
+                if (value !== null && value !== undefined && String(value).trim() !== '') return value;
+            }
+            return '';
+        }
+
+        function normalizeRowPhotoFields(item) {
+            if (!item) return item;
+            item.SAVED_PHOTO_LINK = firstNonEmptyValue(item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']);
+            item.SAVED_PHOTO_NAME = firstNonEmptyValue(item.SAVED_PHOTO_NAME, item.PHOTO_NAME, item.PHOTONAME, item['PHOTO NAME']);
+            item.REQ_PHOTO_LINK = firstNonEmptyValue(item.REQ_PHOTO_LINK, item.REQUEST_PHOTO_LINK, item.REQUESTPHOTO_LINK);
+            item.REQ_PHOTO_NAME = firstNonEmptyValue(item.REQ_PHOTO_NAME, item.REQUEST_PHOTO_NAME, item.REQUESTPHOTONAME);
+            item.DOCK_PHOTO_LINK = firstNonEmptyValue(item.DOCK_PHOTO_LINK, item.DOCKPHOTO_LINK);
+            item.DOCK_PHOTO_NAME = firstNonEmptyValue(item.DOCK_PHOTO_NAME, item.DOCKPHOTO_NAME);
+            item.FLYER_PHOTO_LINK = firstNonEmptyValue(item.FLYER_PHOTO_LINK, item.FLYERPHOTO_LINK);
+            item.FLYER_PHOTO_NAME = firstNonEmptyValue(item.FLYER_PHOTO_NAME, item.FLYERPHOTONAME);
+            item.ROW_PHOTO_LINK = firstNonEmptyValue(item.REQ_PHOTO_LINK, item.DOCK_PHOTO_LINK, item.FLYER_PHOTO_LINK, item.SAVED_PHOTO_LINK);
+            item.ROW_PHOTO_NAME = firstNonEmptyValue(item.REQ_PHOTO_NAME, item.DOCK_PHOTO_NAME, item.FLYER_PHOTO_NAME, item.SAVED_PHOTO_NAME);
+            return item;
+        }
+
+        function clonePhotoFields(source, target) {
+            if (!source || !target) return target;
+            ['SAVED_PHOTO_LINK','SAVED_PHOTO_NAME','REQ_PHOTO_LINK','REQ_PHOTO_NAME','DOCK_PHOTO_LINK','DOCK_PHOTO_NAME','FLYER_PHOTO_LINK','FLYER_PHOTO_NAME','ROW_PHOTO_LINK','ROW_PHOTO_NAME'].forEach((key) => {
+                if (firstNonEmptyValue(source[key]) !== '') target[key] = source[key];
+            });
+            return normalizeRowPhotoFields(target);
+        }
+
+        function getRowPhotoLink(item, sourceView='') {
+            if (!item) return '';
+            if (sourceView === 'av') return firstNonEmptyValue(item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']);
+            if (sourceView === 'request') return firstNonEmptyValue(item.REQ_PHOTO_LINK, item.ROW_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']);
+            if (sourceView === 'docks') return firstNonEmptyValue(item.DOCK_PHOTO_LINK, item.ROW_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']);
+            if (sourceView === 'flyer') return firstNonEmptyValue(item.FLYER_PHOTO_LINK, item.ROW_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']);
+            return firstNonEmptyValue(item.ROW_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.REQ_PHOTO_LINK, item.DOCK_PHOTO_LINK, item.FLYER_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']);
+        }
+
+        function openAvGallery(item) {
+            if (!item) return;
+            const photoLink = getRowPhotoLink(item, 'av');
+            if (photoLink) {
+                openPhotoModal(photoLink, `${esc(item.COMMONNAME)} (${esc(item.CONTSIZE)}) - Loc: ${item.LOCATIONCODE || 'N/A'}`);
+            } else {
+                showToast("No Photo","There is no AV photo on file for this item.",true);
+            }
+        }
+
+        function queueRealtimeRefresh() {
+            if (realtimeRefreshTimer) clearTimeout(realtimeRefreshTimer);
+            realtimeRefreshTimer = setTimeout(() => {
+                fetchBackgroundData();
+            }, 250);
+        }
+
+        function cleanupRealtime() {
+            realtimeChannels.forEach(channel => {
+                try { supabaseClient.removeChannel(channel); } catch (e) {}
+            });
+            realtimeChannels = [];
+            if (realtimeRefreshTimer) {
+                clearTimeout(realtimeRefreshTimer);
+                realtimeRefreshTimer = null;
+            }
+            if (fallbackSyncInterval) {
+                clearInterval(fallbackSyncInterval);
+                fallbackSyncInterval = null;
+            }
+            liveSyncMode = 'idle';
+        }
+
+        function startFallbackSync(intervalMs = 30000) {
+            if (fallbackSyncInterval) return;
+            fallbackSyncInterval = setInterval(() => {
+                if (!document.hidden && currentUser) fetchBackgroundData();
+            }, intervalMs);
+            liveSyncMode = 'polling';
+        }
+
+        function shouldUseRealtime() {
+            return !isIOSDevice() && !isStandaloneApp() && 'WebSocket' in window;
+        }
+
+        function initializeRealtime() {
+            cleanupRealtime();
+            if (!shouldUseRealtime()) {
+                startFallbackSync(isIOSDevice() ? 45000 : 30000);
+                return;
+            }
+            ['v2_master_inventory','v2_active_request','v2_reserves','v2_soc_master','v2_sales_office','v2_av_notes'].forEach((tableName) => {
+                const channel = supabaseClient
+                    .channel(`realtime-${tableName}`)
+                    .on('postgres_changes', { event: '*', schema: 'public', table: tableName }, () => {
+                        queueRealtimeRefresh();
+                    })
+                    .subscribe((status) => {
+                        if (status === 'SUBSCRIBED') {
+                            liveSyncMode = 'realtime';
+                        }
+                        if (status === 'TIMED_OUT' || status === 'CHANNEL_ERROR' || status === 'CLOSED') {
+                            if (!fallbackSyncInterval) startFallbackSync(30000);
+                        }
+                    });
+                realtimeChannels.push(channel);
+            });
+        }
+
         function performLogout() { 
+            cleanupRealtime();
             localStorage.clear(); 
             sessionStorage.clear(); 
             try { indexedDB.deleteDatabase(DB_NAME); } catch(e){} 
@@ -586,32 +727,68 @@
         }
         
         let activeFetches=0; let fetchProgressInterval; let currentProgress=0;
+        let initialAppLoadActive=false;
+        let initialAppLoadComplete=false;
+
+        function setLoginProgress(progress, label='Loading data...') {
+            const wrap = document.getElementById('login-progress-wrap');
+            const bar = document.getElementById('login-progress-bar');
+            const labelEl = document.getElementById('login-progress-label');
+            if (!wrap || !bar || !labelEl) return;
+            wrap.classList.remove('hidden');
+            bar.style.width = `${Math.max(0, Math.min(100, progress))}%`;
+            labelEl.innerText = label;
+        }
+
+        function beginInitialAppLoad(label='Signing in...') {
+            initialAppLoadActive = true;
+            initialAppLoadComplete = false;
+            currentProgress = 8;
+            setLoginProgress(currentProgress, label);
+        }
+
+        function finishInitialAppLoad() {
+            if (!initialAppLoadActive) return;
+            initialAppLoadActive = false;
+            initialAppLoadComplete = true;
+            clearInterval(fetchProgressInterval);
+            fetchProgressInterval = null;
+            currentProgress = 100;
+            setLoginProgress(100, 'Ready');
+            setTimeout(() => {
+                const wrap = document.getElementById('login-progress-wrap');
+                const bar = document.getElementById('login-progress-bar');
+                const labelEl = document.getElementById('login-progress-label');
+                if (wrap) wrap.classList.add('hidden');
+                if (bar) bar.style.width = '0%';
+                if (labelEl) labelEl.innerText = 'Starting...';
+            }, 250);
+        }
 
         function startGlobalProgress() { 
+            if (initialAppLoadComplete || !initialAppLoadActive) return;
             activeFetches++; 
             if(activeFetches===1){ 
-                currentProgress=10; 
-                document.getElementById('top-loading-bar-container').classList.remove('hidden'); 
-                document.getElementById('top-loading-bar').style.width=currentProgress+'%'; 
+                currentProgress=Math.max(currentProgress,18); 
+                setLoginProgress(currentProgress, 'Downloading data...');
                 fetchProgressInterval=setInterval(()=>{ 
-                    if(currentProgress<85){ 
-                        currentProgress+=Math.random()*5; 
-                        document.getElementById('top-loading-bar').style.width=currentProgress+'%'; 
+                    if(currentProgress<90){ 
+                        currentProgress+=Math.random()*4; 
+                        setLoginProgress(currentProgress, 'Downloading data...');
                     } 
-                },200); 
+                },220); 
             } 
         }
 
         function stopGlobalProgress() { 
+            if (initialAppLoadComplete || !initialAppLoadActive) return;
             activeFetches--; 
             if(activeFetches<=0){ 
                 activeFetches=0; 
                 clearInterval(fetchProgressInterval); 
-                document.getElementById('top-loading-bar').style.width='100%'; 
-                setTimeout(()=>{ 
-                    document.getElementById('top-loading-bar-container').classList.add('hidden'); 
-                    document.getElementById('top-loading-bar').style.width='0%'; 
-                },400); 
+                fetchProgressInterval=null;
+                currentProgress=Math.max(currentProgress,92);
+                setLoginProgress(currentProgress, 'Finalizing app...');
             } 
         }
 
@@ -656,7 +833,7 @@
             try{ 
                 const db=await openDB(); 
                 const tx=db.transaction(STORE_NAME,"readwrite"); 
-                tx.objectStore(STORE_NAME).put(data,"latest_data");
+                tx.objectStore(STORE_NAME).put(data,"latest_data"); 
                 return new Promise((resolve)=>{ tx.oncomplete=()=>resolve(true); tx.onerror=()=>resolve(false); }); 
             }catch(e){} 
         }
@@ -692,16 +869,36 @@
         window.onload=async function() {
             await clearLegacyOfflineState();
             const savedUser=localStorage.getItem('gnc_user_v3'); const savedPin=localStorage.getItem('gnc_pin_v3');
-            if(savedUser&&savedPin){ document.getElementById('username-input').value=savedUser; document.getElementById('pin-code').value=savedPin; const cachedRes=await loadFromCache(); if(cachedRes&&fullInventory.length===0){ processAndLoadData(cachedRes); } handleLogin(true); }
+            if(savedUser&&savedPin){
+                document.getElementById('username-input').value=savedUser;
+                document.getElementById('pin-code').value=savedPin;
+                const cachedRes=await loadFromCache();
+                if(cachedRes&&fullInventory.length===0){ processAndLoadData(cachedRes); }
+                setBootingSession(false);
+                document.getElementById('login-inputs').classList.add('hidden');
+                document.getElementById('loading-spinner').classList.remove('hidden');
+                setTimeout(()=>handleLogin(true),0);
+            }
             else { setBootingSession(false); }
         };
-
         window.addEventListener('DOMContentLoaded', () => {
             if (localStorage.getItem('gnc_bio_enabled')==='true' && window.PublicKeyCredential) {
                 const bioBtn=document.getElementById('btn-fingerprint'); if (bioBtn) bioBtn.classList.remove('hidden');
             }
             const teamOptions = ["", "Dylan", "Kayla", "Morgan", ...salesRepList].map(n => `<option value="${n}">${n || "Unassigned"}</option>`).join('');
             ['dock-checker', 'dock-inspector', 'dock-mistake'].forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = teamOptions; });
+        });
+
+
+        window.addEventListener('online', () => {
+            if (currentUser) {
+                fetchBackgroundData();
+                if (liveSyncMode !== 'realtime') initializeRealtime();
+            }
+        });
+
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && currentUser) fetchBackgroundData();
         });
 
         function getDirectImageUrl(url) { 
@@ -760,13 +957,36 @@
             return repPermutations.some(p=>str.includes(p)); 
         }
 
+        function updatePhotoModalCounter() {
+            const gallery = document.getElementById('photo-modal-gallery');
+            const counter = document.getElementById('photo-modal-counter');
+            if (!gallery || !counter) return;
+            const slides = Array.from(gallery.querySelectorAll('img'));
+            const total = slides.length || 1;
+            if (slides.length <= 1) {
+                counter.innerText = `1 / ${total}`;
+                return;
+            }
+            const galleryLeft = gallery.getBoundingClientRect().left;
+            let bestIndex = 0;
+            let bestDistance = Number.POSITIVE_INFINITY;
+            slides.forEach((img, index) => {
+                const distance = Math.abs(img.getBoundingClientRect().left - galleryLeft);
+                if (distance < bestDistance) {
+                    bestDistance = distance;
+                    bestIndex = index;
+                }
+            });
+            counter.innerText = `${bestIndex + 1} / ${total}`;
+        }
+
         function openPhotoModal(urlStr, caption) { 
             const gallery = document.getElementById('photo-modal-gallery');
             gallery.innerHTML = '';
-            let urls = String(urlStr).split(',');
+            let urls = String(urlStr).split(',').map(u => u.trim()).filter(Boolean);
             
             urls.forEach(u => {
-                let cleanUrl = u.trim();
+                let cleanUrl = u;
                 let match = cleanUrl.match(/(https?:\/\/[^"\s>]+)/);
                 if(match) cleanUrl = match[1];
                 if(cleanUrl.startsWith('http')) {
@@ -775,8 +995,10 @@
                 }
             });
 
+            gallery.onscroll = () => updatePhotoModalCounter();
             document.getElementById('photo-modal-caption').innerText = caption; 
             document.getElementById('photo-modal').classList.remove('hidden');
+            updatePhotoModalCounter();
             
             if(urls.length > 1) {
                 document.getElementById('photo-swipe-hint').classList.remove('hidden');
@@ -786,6 +1008,8 @@
         }
 
         function closePhotoModal() { 
+            const gallery = document.getElementById('photo-modal-gallery');
+            if (gallery) gallery.onscroll = null;
             document.getElementById('photo-modal').classList.add('hidden'); 
         }
 
@@ -801,6 +1025,7 @@
             }
             document.getElementById('login-inputs').classList.add('hidden'); 
             document.getElementById('loading-spinner').classList.remove('hidden'); 
+            beginInitialAppLoad('Signing in...');
             supabaseFetch('v2_app_users','GET',null,`username=ilike.*${encodeURIComponent(inputUser)}*&password=eq.${encodeURIComponent(inputPass)}&select=*`).then(data=>{
                 if(data&&data.length>0){
                     const userRecord=data[0]; 
@@ -810,6 +1035,7 @@
                     const isDefaultPassword=['1234','12345','welcome','password',inputUser].includes(inputPass); 
                     const hasChangedLocally=localStorage.getItem('gnc_pw_changed_'+currentUser)==='true';
                     if(isDefaultPassword&&!hasChangedLocally&&!isBiometricLogin){ 
+                        finishInitialAppLoad();
                         setBootingSession(false);
                         document.getElementById('view-login').style.display='none'; 
                         document.getElementById('view-change-password').style.display='flex'; 
@@ -818,6 +1044,7 @@
                         finalizeLogin(inputUser,inputPass,isBiometricLogin); 
                     }
                 }else{ 
+                    finishInitialAppLoad();
                     setBootingSession(false);
                     alert("MISMATCH DETECTED!\n\nIncorrect Username or Password."); 
                     document.getElementById('pin-code').value=""; 
@@ -825,6 +1052,7 @@
                     document.getElementById('loading-spinner').classList.add('hidden'); 
                 }
             }).catch(err=>{ 
+                finishInitialAppLoad();
                 setBootingSession(false);
                 showToast("Error","Network Error.",true); 
                 document.getElementById('login-inputs').classList.remove('hidden'); 
@@ -856,11 +1084,20 @@
             document.getElementById('header-user').innerText=currentUser.toUpperCase(); 
             setRepPermutations(currentUser); 
             if(!isBiometricLogin&&window.PublicKeyCredential&&localStorage.getItem('gnc_bio_enabled')!=='true'){ promptToEnableBiometrics(user,pass); } 
-            applyRolePermissions(); 
-            fetchBackgroundData(); 
-            setInterval(silentBackgroundSync, 1000); 
+            setLoginProgress(Math.max(currentProgress, 30), 'Preparing your workspace...');
+            fetchBackgroundData().then(() => {
+                setLoginProgress(100, 'Opening app...');
+                finishInitialAppLoad();
+                applyRolePermissions(); 
+                document.getElementById('loading-spinner').classList.add('hidden');
+                initializeRealtime();
+            }).catch(() => {
+                finishInitialAppLoad();
+                applyRolePermissions(); 
+                document.getElementById('loading-spinner').classList.add('hidden');
+                initializeRealtime();
+            }); 
         }
-
         async function silentBackgroundSync() {
             if(!currentUser)return; 
             const checkTime=new Date().toISOString();
@@ -874,8 +1111,7 @@
                             let idx=fullInventory.findIndex(i=>i.UNIQUE_ID===updatedRow.unique_id);
                             if(idx>-1){
                                 for(let k in updatedRow){ if(updatedRow[k]!==null) fullInventory[idx][k.toUpperCase()]=updatedRow[k]; }
-                                fullInventory[idx].SAVED_PHOTO_LINK=fullInventory[idx].PHOTO_LINK||fullInventory[idx].PHOTOLINK||""; 
-                                fullInventory[idx].SAVED_PHOTO_NAME=fullInventory[idx].PHOTO_NAME||fullInventory[idx].PHOTONAME||""; 
+                                normalizeRowPhotoFields(fullInventory[idx]);
                                 updated=true; 
                                 if(activeItem&&activeItem.UNIQUE_ID===updatedRow.unique_id){ Object.assign(activeItem,fullInventory[idx]); }
                             }
@@ -893,8 +1129,7 @@
                             let obj = {SOURCE_TABLE: 'v2_active_request'};
                             for(let k in item) { if(item[k]!==null) obj[k.toUpperCase()] = item[k]; }
                             obj.DOM_ID = 'req_' + obj.UNIQUE_ID;
-                            obj.SAVED_PHOTO_LINK = obj.REQ_PHOTO_LINK || obj.SAVED_PHOTO_LINK || ""; 
-                            obj.SAVED_PHOTO_NAME = obj.REQ_PHOTO_NAME || obj.SAVED_PHOTO_NAME || "";
+                            normalizeRowPhotoFields(obj);
                             obj.CONTSIZE=item.contsize || obj.CONTSIZE || item.itemspec || obj.ITEMSPEC || item.size || "-";
                             obj.LOCATIONCODE=obj.LOCATIONCODE||obj.LOCATION||"No Loc"; 
                             return obj;
@@ -948,8 +1183,7 @@
                         obj.CONTSIZE=item.contsize || obj.CONTSIZE || item.itemspec || obj.ITEMSPEC || item.size || "-";
                         obj.LOCATIONCODE=obj.LOCATIONCODE||obj.LOCATION||"No Loc"; 
                         obj.PTRAVAILABLE=obj.PTRAVAILABLE||0;
-                        obj.SAVED_PHOTO_LINK=obj.PHOTO_LINK||obj.PHOTOLINK||""; 
-                        obj.SAVED_PHOTO_NAME=obj.PHOTO_NAME||obj.PHOTONAME||""; 
+                        normalizeRowPhotoFields(obj);
                         obj.SEASONSUPPLY=obj.SEASON_SUPPLY||obj.SEASONSUPPLY||0; 
                         obj.FIELDTAGCOLOR=obj.FIELD_TAG_COLOR||obj.FIELDTAGCOLOR||"-"; 
                         obj._search=`${obj.COMMONNAME||''} ${obj.LOCATIONCODE||''} ${obj.ITEMCODE||''} ${obj.CONTSIZE||''} ${obj.CUSTOMERNAME||''} ${obj.SALESREPNAME||''} ${obj.STOPNUMBER||''} ${obj.TRIPNUMBER||''}`.toLowerCase(); 
@@ -966,27 +1200,36 @@
                     avNotesData:formatArr(results[5],'v2_av_notes')
                 };
                 setTimeout(()=>{ processAndLoadData(resObj); saveToCache(resObj); },100);
-            } catch(err){ if(!cachedRes)showToast("Sync Error","Could not download data.",true); }
+                return true;
+            } catch(err){ 
+                if(!cachedRes)showToast("Sync Error","Could not download data.",true); 
+                return false;
+            }
         }
 
         function processAndLoadData(res) {
             if (!res) return;
             avNotesDb = res.avNotesData || [];
-            fullInventory = (res.data || []).map((item,idx)=>{item.DOM_ID='fi_'+idx;return item;}); 
-            requestsInventory = (res.requestsData || []).map((item,idx)=>{item.DOM_ID='req_'+item.UNIQUE_ID;return item;}); 
+            fullInventory = (res.data || []).map((item,idx)=>{item.DOM_ID='fi_'+idx;return normalizeRowPhotoFields(item);}); 
+            requestsInventory = (res.requestsData || []).map((item,idx)=>{item.DOM_ID='req_'+item.UNIQUE_ID;return normalizeRowPhotoFields(item);}); 
             salesOfficeInventory = (res.salesOfficeData || []).map((item, idx) => {
                 item.DOM_ID = 'so_' + item.UNIQUE_ID;
                 let masterItem = fullInventory.find(i => i.UNIQUE_ID === item.UNIQUE_ID);
-                if (masterItem) { item.AV_NOTE = masterItem.AV_NOTE; }
+                if (masterItem) { 
+                    item.AV_NOTE = masterItem.AV_NOTE;
+                    clonePhotoFields(masterItem, item);
+                } else {
+                    normalizeRowPhotoFields(item);
+                }
                 return item;
             });
-            socInventory = res.socData || [];
+            socInventory = (res.socData || []).map(item => normalizeRowPhotoFields(item));
             lowStockInventory = fullInventory.filter(i=>{
                 let ptr=parseInt(String(i.PTRAVAILABLE).replace(/,/g,''))||0; 
                 let slts=parseInt(String(i.S_LTS).replace(/,/g,''))||0; 
                 return ptr>0 && ptr<=slts;
-            }).map((item,idx)=>{item.DOM_ID='ls_'+idx;return item}); 
-            managerReviewInventory = fullInventory.map((item,idx)=>{item.DOM_ID='mr_'+idx;return item;}); 
+            }).map((item,idx)=>{item.DOM_ID='ls_'+idx;return normalizeRowPhotoFields(item)}); 
+            managerReviewInventory = fullInventory.map((item,idx)=>{item.DOM_ID='mr_'+idx;return normalizeRowPhotoFields(item);}); 
 
             let map1 = new Map();
             let icGroups = {};
@@ -1042,256 +1285,15 @@
                 let tCode=String(item.ITEMCODE||item.ITEM||"").trim().toUpperCase(); 
                 let masterItem=map1.get(tCode); 
                 if(masterItem){
-                    item.SAVED_PHOTO_LINK=masterItem.SAVED_PHOTO_LINK;
-                    item.SAVED_PHOTO_NAME=masterItem.SAVED_PHOTO_NAME;
-                    item.DOCK_PHOTO_LINK=masterItem.DOCK_PHOTO_LINK;
+                    clonePhotoFields(masterItem, item);
                     item.AV_NOTE=masterItem.AV_NOTE;
                     item.SALES_NOTE=masterItem.SALES_NOTE;
                     item.DOCK_NOTE=masterItem.DOCK_NOTE;
                     item.MASTER_UNIQUE_ID=masterItem.UNIQUE_ID;
-                } 
+                } else {
+                    normalizeRowPhotoFields(item);
+                }
             });
-            
-            reservesInventory = (res.reservesData || []).map((item,idx)=>{ 
-                item.DOM_ID='res_'+idx; 
-                item.UNIQUE_ID=item.UNIQUE_ID||'res_uid_'+idx; 
-                let resCode=String(item.ITEMCODE||item.ITEM||"").trim().toUpperCase(); 
-                let masterItem=map1.get(resCode); 
-                item.CUSTOMERNAME=item.CUSTOMERNAME||item.CUSTOMER||'Unknown Customer'; 
-                item.CONSIGNEENAME=item.CONSIGNEENAME||item.CONSIGNEE||''; 
-                item.SALESREPNAME=item.SALESREPNAME||item.SALESREP||item['SALES_REP']||'Unknown Rep'; 
-                if(masterItem){
-                    item.COMMONNAME=masterItem.COMMONNAME;
-                    item.CONTSIZE=masterItem.CONTSIZE;
-                    item.LOCATIONCODE=masterItem.LOCATIONCODE;
-                    item.PTRAVAILABLE=masterItem.PTRAVAILABLE;
-                    item.SEASONSUPPLY=masterItem.SEASONSUPPLY;
-                    item.PRIORITY=masterItem.PRIORITY;
-                    item.QUALITYCODE=masterItem.QUALITYCODE;
-                    item.FIELDTAGCOLOR=masterItem.FIELDTAGCOLOR;
-                    item.LOTCODE=masterItem.LOTCODE;
-                    item.AV_NOTE=masterItem.AV_NOTE;
-                    item.SALES_NOTE=masterItem.SALES_NOTE;
-                    item.LOC_MATCH_QTY=masterItem.LOC_MATCH_QTY;
-                    item.INITIAL_PTR=masterItem.INITIAL_PTR;
-                    item.SAVED_PHOTO_LINK=masterItem.SAVED_PHOTO_LINK;
-                    item.SAVED_PHOTO_NAME=masterItem.SAVED_PHOTO_NAME;
-                    item.MASTER_UNIQUE_ID=masterItem.UNIQUE_ID;
-                } 
-                item._search=`${item.COMMONNAME||''} ${item.CUSTOMERNAME||''} ${item.ITEMCODE||''}`.toLowerCase(); 
-                return item; 
-            });
-            
-            applyLocalEdits(); 
-            reRenderCurrentView();
-        }
-
-        function applyRolePermissions() {
-            document.getElementById('view-login').style.display='none'; 
-            document.getElementById('app-wrapper').classList.remove('hidden'); 
-            document.querySelectorAll('.admin-only, .admin-rep-only, .admin-rep-csr-only, .admin-csr-only, .rep-hidden, .csr-hidden, .dylan-only').forEach(el=>{el.classList.remove('hidden');el.style.display='';});
-            let roleStr=String(currentRole).toUpperCase(); 
-            let userStr=String(currentUser).toLowerCase(); 
-            let isRep=roleStr.includes('REP'); 
-            let isCsr=roleStr.includes('CSR'); 
-            let isQc=roleStr.includes('QC'); 
-            let isDylan=userStr.includes('dylan'); 
-            let isAdmin=(!isRep&&!isCsr&&!isQc)||roleStr.includes('ADMIN')||roleStr.includes('MANAGER')||isDylan;
-            if(isAdmin){} 
-            else if(isRep){ document.querySelectorAll('.rep-hidden, .admin-only, .admin-csr-only').forEach(el=>el.classList.add('hidden')); } 
-            else if(isCsr){ document.querySelectorAll('.csr-hidden, .admin-only').forEach(el=>el.classList.add('hidden')); } 
-            else if(isQc){ document.querySelectorAll('.admin-only, .admin-rep-only, .admin-rep-csr-only, .admin-csr-only').forEach(el=>el.classList.add('hidden')); }
-            if(!isDylan&&!isAdmin){ document.querySelectorAll('.dylan-only').forEach(el=>el.classList.add('hidden')); } 
-            switchView('home');
-        }
-
-        function toggleMenu() { document.getElementById('side-drawer').classList.toggle('open'); document.getElementById('drawer-overlay').classList.toggle('open'); }
-
-        function showToast(title, message, isAlert = false) { 
-            const toast = document.getElementById('toast-notification'); 
-            toast.style.background = isAlert ? '#ef4444' : '#16a34a'; 
-            toast.innerHTML = `<div class="font-bold text-sm">${title}</div><div class="text-xs">${message}</div>`; 
-            toast.classList.add('show'); 
-            setTimeout(() => toast.classList.remove('show'), 3000); 
-        }
-
-        function switchView(viewId) { 
-            ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-detail','view-docks','view-request','view-reserves','view-av', 'view-hours'].forEach(id=>{
-                const el=document.getElementById(id);
-                if(el)el.classList.add('hidden');
-            }); 
-            document.getElementById('view-'+viewId).classList.remove('hidden'); 
-            requestAnimationFrame(()=>{
-                setTimeout(()=>{
-                    if(viewId==='drive')resetDriveView();
-                    if(viewId==='tasks'){ if(safeRole==='ADMIN'&&!taskViewTargetUser)renderTeamSelector(); else renderTasks(); }
-                    if(viewId==='reports')resetReportsView();
-                    if(viewId==='review')resetReviewView();
-                    if(viewId==='request'){requestViewLevel=0;renderRequest();}
-                    if(viewId==='reserves')resetReservesView();
-                    if(viewId==='sales-office')renderSalesOffice();
-                    if(viewId==='low-stock')resetLowStockView();
-                    if(viewId==='docks')resetDockView();
-                    if(viewId==='av')resetAVView();
-                    if(viewId==='hours')resetHoursView();
-                },0)
-            }); 
-        }
-
-        function reRenderCurrentView() { 
-            if(!document.getElementById('view-drive').classList.contains('hidden'))renderDrive(); 
-            if(!document.getElementById('view-tasks').classList.contains('hidden'))renderTasks(); 
-            if(!document.getElementById('view-sales-office').classList.contains('hidden'))renderSalesOffice(); 
-            if(!document.getElementById('view-low-stock').classList.contains('hidden'))renderLowStock(); 
-            if(!document.getElementById('view-docks').classList.contains('hidden'))renderDocks(); 
-            if(!document.getElementById('view-review').classList.contains('hidden'))renderReview(); 
-            if(!document.getElementById('view-reports').classList.contains('hidden'))renderReports(); 
-            if(!document.getElementById('view-request').classList.contains('hidden'))renderRequest(); 
-            if(!document.getElementById('view-reserves').classList.contains('hidden'))renderReserves(); 
-            if(!document.getElementById('view-av').classList.contains('hidden'))renderAV(); 
-        }
-
-        function setTaskTab(tab) { 
-            activeTaskTab=tab; 
-            document.getElementById('tab-season').classList.toggle('active',tab==='season'); 
-            document.getElementById('tab-location').classList.toggle('active',tab==='location'); 
-            document.getElementById('tab-endcap').classList.toggle('active',tab==='endcap'); 
-            document.getElementById('tab-flyer').classList.toggle('active',tab==='flyer'); 
-            taskViewLevel=0; 
-            renderTasks(); 
-        }
-
-        function setDriveTab(tab) {
-            activeDriveTab = tab;
-            document.getElementById('tab-drive-name').classList.toggle('active', tab === 'name');
-            document.getElementById('tab-drive-loc').classList.toggle('active', tab === 'loc');
-            driveViewLevel = 0;
-            renderDrive();
-        }
-
-        function selectDriveBlock(block) { selectedDriveBlock = block; driveViewLevel = 1; renderDrive(); }
-        function selectDriveLoc(loc) { selectedDriveLoc = loc; driveViewLevel = 2; renderDrive(); }
-
-        function resetDriveView() {
-            activeDriveTab = 'name';
-            document.getElementById('tab-drive-name').classList.add('active');
-            document.getElementById('tab-drive-loc').classList.remove('active');
-            driveViewLevel = 0; selectedDriveName = null; selectedDriveSize = null; selectedDriveBlock = null; selectedDriveLoc = null;
-            document.getElementById('drive-search').value = ""; document.getElementById('drive-search-clear').classList.add('hidden');
-            driveSelectedSeasons.clear(); driveSelectedSeasons.add('ALL');
-            renderDrive();
-        }
-        
-        function clearAVSearch() { document.getElementById('av-search').value=""; document.getElementById('av-search-clear').classList.add('hidden'); avResLevel=0; avOpenLevel=0; renderAV(); }
-        function handleAVSearch() { const term=document.getElementById('av-search').value.toLowerCase(); const clearBtn=document.getElementById('av-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden'); avResLevel=0; avOpenLevel=0;} else{clearBtn.classList.add('hidden'); avResLevel=0; avOpenLevel=0;} debouncedAVSearch(); }
-
-        function resetAVView() { 
-            activeAVTab='open'; activeAvOpenTab='name';
-            avResLevel=0; selectedAvResName=null; selectedAvResSize=null; 
-            avOpenLevel=0; selectedAvOpenName=null; selectedAvOpenSize=null; selectedAvOpenSeason=null; selectedAvOpenLot=null;
-            document.getElementById('tab-av-open').classList.add('active'); document.getElementById('tab-av-reserves').classList.remove('active'); 
-            document.getElementById('tab-av-open-name').classList.add('active'); document.getElementById('tab-av-open-season').classList.remove('active'); document.getElementById('tab-av-open-lot').classList.remove('active');
-            document.getElementById('av-open-sub-tabs').style.display = 'flex';
-            document.getElementById('av-search').value=""; document.getElementById('av-search-clear').classList.add('hidden'); 
-            renderAV(); 
-        }
-
-        function setAVTab(tab) { 
-            activeAVTab=tab; 
-            avResLevel=0; selectedAvResName=null; selectedAvResSize=null; 
-            avOpenLevel=0; selectedAvOpenName=null; selectedAvOpenSize=null; selectedAvOpenSeason=null; selectedAvOpenLot=null;
-            document.getElementById('tab-av-open').classList.toggle('active',tab==='open'); document.getElementById('tab-av-reserves').classList.toggle('active',tab==='reserves'); 
-            const subTabs = document.getElementById('av-open-sub-tabs');
-            if (tab === 'open') { subTabs.style.display = 'flex'; } else { subTabs.style.display = 'none'; }
-            renderAV(); 
-        }
-
-        function setAvOpenTab(tab) {
-            activeAvOpenTab = tab;
-            document.getElementById('tab-av-open-name').classList.toggle('active', tab === 'name');
-            document.getElementById('tab-av-open-season').classList.toggle('active', tab === 'season');
-            document.getElementById('tab-av-open-lot').classList.toggle('active', tab === 'lot');
-            avOpenLevel = 0;
-            renderAV();
-        }
-        
-        function setReqTab(tab) {
-            activeReqTab = tab;
-            document.getElementById('tab-req-pending').classList.toggle('active', tab === 'pending');
-            document.getElementById('tab-req-reps').classList.toggle('active', tab === 'reps');
-            requestViewLevel = 0; selectedReqFolder = null; selectedReqRepView = null; selectedReqCustView = null; selectedReqFolderView = null; clearSelection(); renderRequest();
-        }
-
-        function sendEmailNotification(type, folderId, repName, customer, itemsCount) {
-            let payload = { type: "email", emailType: type, folderId: folderId, repName: repName, customer: customer, itemsCount: itemsCount, dylanEmail: "dylan_collyge@greenleafnursery.com" };
-            if (type === 'request_complete') {
-                let cleanRep = repName.trim().toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, '_');
-                payload.repEmail = cleanRep + "@greenleafnursery.com";
-            }
-            fetch(GOOGLE_SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) }).catch(e => console.log(e));
-        }
-
-        function resetHoursView() {
-            let yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
-            document.getElementById('hours-date').value = yesterday.toISOString().split('T')[0];
-            document.getElementById('hours-dept').value = ""; document.getElementById('hours-amount').value = "";
-        }
-
-        function submitLaborHours() {
-            const dateVal = document.getElementById('hours-date').value; 
-            const deptVal = document.getElementById('hours-dept').value; 
-            const hoursVal = document.getElementById('hours-amount').value;
-            if(!dateVal || !deptVal || !hoursVal) { showToast("Required", "Please fill out all fields.", true); return; }
-            showToast("Submitting...", "Saving labor hours...", false);
-            const payload = { date_reported: dateVal, department: deptVal, man_hours: parseFloat(hoursVal), submitted_by: currentUser, submitted_at: new Date().toISOString() };
-            supabaseFetch('v2_labor_hours', 'POST', payload).then(() => { showToast("Success", "Hours submitted successfully!"); document.getElementById('hours-amount').value = ""; }).catch(err => { showToast("Error", "Failed to submit hours.", true); });
-        }
-
-        const debouncedReservesSearch=debounce(()=>{requestAnimationFrame(()=>renderReserves())},150);
-        function clearReservesSearch() { document.getElementById('reserves-search').value=""; document.getElementById('reserves-search-clear').classList.add('hidden'); reservesViewLevel=0; renderReserves(); }
-        function handleReservesSearch() { const term=document.getElementById('reserves-search').value.toLowerCase(); const clearBtn=document.getElementById('reserves-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden');reservesViewLevel=0;} else{clearBtn.classList.add('hidden');reservesViewLevel=0;} debouncedReservesSearch(); }
-
-        const debouncedAVSearch=debounce(()=>{requestAnimationFrame(()=>renderAV())},150);
-
-        function selectAvResName(name) { selectedAvResName=name; avResLevel=1; renderAV(); }
-        function selectAvResSize(size) { selectedAvResSize=size; avResLevel=2; renderAV(); }
-
-        function renderAV() {
-            const container = document.getElementById('av-content'); 
-            const crumb = document.getElementById('av-crumb'); 
-            const term = document.getElementById('av-search').value.toLowerCase().trim(); 
-
-            let items = [];
-            if (activeAVTab === 'open') { 
-                items = fullInventory.filter(i => {
-                    let lts = Number(String(i.S_LTS || '0').replace(/,/g, ''));
-                    let season = String(i.SEASON || '').toUpperCase();
-                    return lts > 0 && !season.includes('Y') && !season.includes('Z');
-                }); 
-            } else { 
-                items = reservesInventory; 
-                if(safeRole === 'SALESREP') items = items.filter(i => isMyRep(i.SALESREPNAME)); 
-            }
-            
-            if (term) { 
-                const searchTerms = term.split(/\s+/); 
-                items = items.filter(i => { 
-                    const searchStr = (i._search || ""); 
-                    return searchTerms.every(t => searchStr.includes(t)); 
-                }); 
-            }
-            
-            if (items.length === 0) { 
-                container.innerHTML = `<div class="p-8 text-center text-gray-400">No ${activeAVTab==='open'?'open stock':'reserves'} found.</div>`; 
-                crumb.innerText = "No Results"; 
-                return; 
-            }
-            
-            if(term.length > 0) { 
-                crumb.innerText = `Search Results (${items.length})`; 
-                items.sort((a,b) => {
-                    let priA = parseFloat(a.PRIORITY); let priB = parseFloat(b.PRIORITY);
-                    if(isNaN(priA)) priA = Infinity; if(isNaN(priB)) priB = Infinity;
                     if(priA !== priB) return priA - priB;
                     return String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""), undefined, {numeric:true});
                 }); 
@@ -1300,69 +1302,15 @@
             }
             
             if (activeAVTab === 'open') { 
-                if (activeAvOpenTab === 'name') {
-                    if(avOpenLevel === 0) {
-                        crumb.innerText = `Open Stock: By Name (${items.length} items)`;
-                        const names = [...new Set(items.map(i => i.COMMONNAME))].sort();
-                        container.innerHTML = names.map(n => `<div class="drill-item" onclick="selectedAvOpenName='${esc(n)}'; avOpenLevel=1; renderAV()"><span class="font-bold text-lg">${n}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
-                    } else if(avOpenLevel === 1) {
-                        crumb.innerText = selectedAvOpenName;
-                        const namedItems = items.filter(i => i.COMMONNAME === selectedAvOpenName);
-                        if(namedItems.length === 0){ container.innerHTML = `<div class="p-8 text-center text-gray-400">No items found.</div>`; return; }
-                        const sizes = [...new Set(namedItems.map(i => i.CONTSIZE))].sort();
-                        let html = `<div class="back-btn" onclick="avOpenLevel=0; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Names</div><div class="font-bold text-[#007a4d] mb-4 px-2 text-xl border-b pb-2">${selectedAvOpenName}</div>`;
-                        html += sizes.map(s => { 
-                            const count = namedItems.filter(i => i.CONTSIZE === s).length; 
-                            return `<div class="drill-item" onclick="selectedAvOpenSize='${esc(s)}'; avOpenLevel=2; renderAV()"><span class="font-bold text-lg">${s} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>` 
-                        }).join('');
-                        container.innerHTML = html;
-                    } else if(avOpenLevel === 2) {
-                        crumb.innerText = `${selectedAvOpenName} / ${selectedAvOpenSize}`;
-                        let finalItems = items.filter(i => i.COMMONNAME === selectedAvOpenName && i.CONTSIZE === selectedAvOpenSize);
-                        finalItems.sort((a,b) => { let priA = parseFloat(a.PRIORITY); let priB = parseFloat(b.PRIORITY); if(isNaN(priA)) priA = Infinity; if(isNaN(priB)) priB = Infinity; return priA - priB; });
-                        container.innerHTML = `<div class="back-btn" onclick="avOpenLevel=1; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>` + finalItems.map(i => generateCard(i, 'av', 'status-teal')).join('');
-                    }
-                } else if (activeAvOpenTab === 'season') {
-                    if(avOpenLevel === 0) {
-                        crumb.innerText = `Open Stock: By Season (${items.length} items)`;
-                        const seasons = [...new Set(items.map(i => i.SEASON || 'Unassigned'))].sort();
-                        container.innerHTML = seasons.map(s => `<div class="drill-item" onclick="selectedAvOpenSeason='${esc(s)}'; avOpenLevel=1; renderAV()"><span class="font-bold text-lg text-[#007a4d]">${s}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
-                    } else if(avOpenLevel === 1) {
-                        crumb.innerText = `Season: ${selectedAvOpenSeason}`;
-                        const sItems = items.filter(i => (i.SEASON || 'Unassigned') === selectedAvOpenSeason);
-                        const names = [...new Set(sItems.map(i => i.COMMONNAME))].sort();
-                        let html = `<div class="back-btn" onclick="avOpenLevel=0; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Seasons</div>`;
-                        html += names.map(n => `<div class="drill-item" onclick="selectedAvOpenName='${esc(n)}'; avOpenLevel=2; renderAV()"><span class="font-bold text-lg">${n}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
-                        container.innerHTML = html;
-                    } else if(avOpenLevel === 2) {
-                        crumb.innerText = `${selectedAvOpenSeason} > ${selectedAvOpenName}`;
-                        const snItems = items.filter(i => (i.SEASON || 'Unassigned') === selectedAvOpenSeason && i.COMMONNAME === selectedAvOpenName);
-                        const sizes = [...new Set(snItems.map(i => i.CONTSIZE))].sort();
-                        let html = `<div class="back-btn" onclick="avOpenLevel=1; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Names</div><div class="font-bold text-[#007a4d] mb-4 px-2 text-xl border-b pb-2">${selectedAvOpenName}</div>`;
-                        html += sizes.map(s => { 
-                            const count = snItems.filter(i => i.CONTSIZE === s).length; 
-                            return `<div class="drill-item" onclick="selectedAvOpenSize='${esc(s)}'; avOpenLevel=3; renderAV()"><span class="font-bold text-lg">${s} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>` 
-                        }).join('');
-                        container.innerHTML = html;
-                    } else if(avOpenLevel === 3) {
-                        crumb.innerText = `${selectedAvOpenName} / ${selectedAvOpenSize}`;
-                        let finalItems = items.filter(i => (i.SEASON || 'Unassigned') === selectedAvOpenSeason && i.COMMONNAME === selectedAvOpenName && i.CONTSIZE === selectedAvOpenSize);
-                        finalItems.sort((a,b) => { let priA = parseFloat(a.PRIORITY); let priB = parseFloat(b.PRIORITY); if(isNaN(priA)) priA = Infinity; if(isNaN(priB)) priB = Infinity; return priA - priB; });
-                        container.innerHTML = `<div class="back-btn" onclick="avOpenLevel=2; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>` + finalItems.map(i => generateCard(i, 'av', 'status-teal')).join('');
-                    }
-                } else if (activeAvOpenTab === 'lot') {
-                    if(avOpenLevel === 0) {
-                        crumb.innerText = `Open Stock: By Lot (${items.length} items)`;
-                        let lots = [...new Set(items.map(i => i.LOTCODE || 'No Lot'))].sort();
-                        container.innerHTML = lots.map(l => `<div class="drill-item" onclick="selectedAvOpenLot='${esc(l)}'; avOpenLevel=1; renderAV()"><span class="font-bold text-lg text-gray-800">${l}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
-                    } else if(avOpenLevel === 1) {
-                        crumb.innerText = `Lot Code: ${selectedAvOpenLot}`;
-                        let lItems = items.filter(i => (i.LOTCODE || 'No Lot') === selectedAvOpenLot);
-                        lItems.sort((a,b) => String(a.COMMONNAME || "").localeCompare(String(b.COMMONNAME || "")));
-                        container.innerHTML = `<div class="back-btn" onclick="avOpenLevel=0; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Lots</div>` + lItems.map(i => generateCard(i, 'av', 'status-teal')).join('');
-                    }
-                }
-                
+                crumb.innerText = `Open Stock (${items.length} items)`;
+                items.sort((a,b) => {
+                    const nameCompare = String(a.COMMONNAME || "").localeCompare(String(b.COMMONNAME || ""));
+                    if (nameCompare !== 0) return nameCompare;
+                    const sizeCompare = String(a.CONTSIZE || "").localeCompare(String(b.CONTSIZE || ""), undefined, {numeric:true});
+                    if (sizeCompare !== 0) return sizeCompare;
+                    return String(a.LOCATIONCODE || "").localeCompare(String(b.LOCATIONCODE || ""), undefined, {numeric:true});
+                });
+                container.innerHTML = items.map(i => generateCard(i, 'av', 'status-teal')).join('');
             } else {
                 if(avResLevel===0){ 
                     crumb.innerText="My Reserves > Plants"; 
@@ -1572,10 +1520,12 @@
                     if(cb){ cb.checked=!cb.checked; toggleGlobalItem(domId,cb.checked); } 
                 } 
             }else{ 
-                if(safeRole==='SALESREP'&&(sourceView==='drive'||sourceView==='av')){ 
-                    let item=fullInventory.find(i=>i.UNIQUE_ID===uniqueId)||lowStockInventory.find(i=>i.UNIQUE_ID===uniqueId)||reservesInventory.find(i=>i.UNIQUE_ID===uniqueId); 
+                let item=fullInventory.find(i=>i.UNIQUE_ID===uniqueId)||lowStockInventory.find(i=>i.UNIQUE_ID===uniqueId)||reservesInventory.find(i=>i.UNIQUE_ID===uniqueId)||requestsInventory.find(i=>i.UNIQUE_ID===uniqueId)||socInventory.find(i=>i.UNIQUE_ID===uniqueId); 
+                if(sourceView==='av'){
+                    openAvGallery(item);
+                }else if(safeRole==='SALESREP'&&sourceView==='drive'){ 
                     if(item){ 
-                        let pLink=item.SAVED_PHOTO_LINK||item['PHOTO_LINK']||item.PHOTOLINK||""; 
+                        let pLink=getRowPhotoLink(item, 'drive'); 
                         if(pLink){ 
                             openPhotoModal(pLink, `${esc(item.COMMONNAME)} (${esc(item.CONTSIZE)}) - Loc: ${item.LOCATIONCODE||'N/A'}`); 
                         }else{ 
@@ -1620,22 +1570,32 @@
             }
 
             document.getElementById('dtab-overview').classList.remove('hidden');
-            if (sourceView === 'drive' || sourceView === 'av' || sourceView === 'low-stock') {
+            const assignment = String(activeItem.APP_TAB_ASSIGNMENT || '').toLowerCase();
+            if (sourceView === 'drive') {
+                if (assignment === 'season') document.getElementById('dtab-season').classList.remove('hidden');
+                if (assignment === 'location') document.getElementById('dtab-location').classList.remove('hidden');
+                document.getElementById('dtab-notes').classList.remove('hidden');
+                document.getElementById('dtab-gallery').classList.remove('hidden');
+            } else if (sourceView === 'av' || sourceView === 'low-stock') {
                 document.getElementById('dtab-season').classList.remove('hidden');
                 document.getElementById('dtab-location').classList.remove('hidden');
                 document.getElementById('dtab-request').classList.remove('hidden');
                 document.getElementById('dtab-notes').classList.remove('hidden');
+                document.getElementById('dtab-gallery').classList.remove('hidden');
             } else if (sourceView === 'tasks') {
                 let t = document.getElementById('dtab-' + activeTaskTab);
                 if(t) t.classList.remove('hidden');
+                document.getElementById('dtab-gallery').classList.remove('hidden');
             } else if (sourceView === 'docks') {
                 document.getElementById('dtab-docks').classList.remove('hidden');
+                document.getElementById('dtab-gallery').classList.remove('hidden');
             } else if (sourceView === 'request') {
                 document.getElementById('dtab-request').classList.remove('hidden');
+                document.getElementById('dtab-gallery').classList.remove('hidden');
             }
 
             const globalAvContainer = document.getElementById('global-av-container');
-            if (globalAvContainer) globalAvContainer.classList.remove('hidden');
+            if (globalAvContainer) globalAvContainer.classList.add('hidden');
             const globalAvNote = document.getElementById('global-av-note');
             if (globalAvNote) globalAvNote.value = activeItem.AV_NOTE || "";
 
@@ -1677,6 +1637,7 @@
             });
 
             renderSavedPhotos();
+            renderPhotoGallery();
 
             if (sourceView === 'tasks' && activeTaskTab) {
                 switchDetailTab(activeTaskTab);
@@ -1724,6 +1685,40 @@
             makeThumbs(fLink || sLink, 'flyer-photo-list-container', 'flyer-photo-preview');
         }
 
+
+        function renderPhotoGallery() {
+            const gallerySections = document.getElementById('gallery-sections');
+            const galleryEmpty = document.getElementById('gallery-empty');
+            if (!gallerySections || !galleryEmpty || !activeItem) return;
+
+            const photoGroups = [
+                { label: 'Row Photos', link: getRowPhotoLink(activeItem) },
+                { label: 'Season / Base Photos', link: activeItem.SAVED_PHOTO_LINK || '' },
+                { label: 'Request Photos', link: activeItem.REQ_PHOTO_LINK || '' },
+                { label: 'Dock Photos', link: activeItem.DOCK_PHOTO_LINK || '' },
+                { label: 'Flyer Photos', link: activeItem.FLYER_PHOTO_LINK || '' }
+            ];
+
+            let html = '';
+            photoGroups.forEach(group => {
+                if (!group.link || String(group.link).trim() === '') return;
+                let tiles = '';
+                String(group.link).split(',').forEach((rawUrl) => {
+                    let cleanUrl = rawUrl.trim();
+                    let match = cleanUrl.match(/(https?:\/\/[^"\s>]+)/);
+                    if (match) cleanUrl = match[1];
+                    if (!cleanUrl.startsWith('http')) return;
+                    const thumb = getDirectImageUrl(cleanUrl);
+                    tiles += `<img src="${thumb}" class="w-24 h-24 object-cover rounded-xl border border-gray-300 shadow-sm cursor-pointer active:scale-95" onclick="openPhotoModal('${group.link}', '${group.label}')">`;
+                });
+                if (!tiles) return;
+                html += `<div><div class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">${group.label}</div><div class="flex flex-wrap gap-3">${tiles}</div></div>`;
+            });
+
+            gallerySections.innerHTML = html;
+            galleryEmpty.classList.toggle('hidden', html !== '');
+        }
+
         function switchDetailTab(tab) {
             activeDetailTab = tab;
             const detTabsContainer = document.getElementById('det-tabs-container');
@@ -1748,6 +1743,7 @@
             document.getElementById('det-notes-content').classList.add('hidden');
             document.getElementById('det-docks-content').classList.add('hidden');
             document.getElementById('det-flyer-content').classList.add('hidden');
+            document.getElementById('det-gallery-content').classList.add('hidden');
 
             const contentEl = document.getElementById('det-' + tab + '-content');
             if(contentEl) contentEl.classList.remove('hidden');
@@ -1933,9 +1929,8 @@
         }
 
         function generateCard(item,sourceView,colorClass='status-green') {
-            let thumbHtml=''; let photoLink="";
-            if(sourceView==='docks') photoLink=item.DOCK_PHOTO_LINK||item.SAVED_PHOTO_LINK||item.PHOTO_LINK||""; 
-            else photoLink=item.SAVED_PHOTO_LINK||item.PHOTO_LINK||"";
+            normalizeRowPhotoFields(item);
+            let thumbHtml=''; let photoLink=getRowPhotoLink(item, sourceView);
             
             const isChecked=selectedItems.has(item.DOM_ID)?'checked':''; 
             const tagColor=item.FIELDTAGCOLOR||'-'; 
@@ -2306,7 +2301,7 @@
             document.querySelectorAll('.item-caliper-input').forEach(input=>{let uid=input.getAttribute('data-uid');if(!itemsData[uid])itemsData[uid]={};itemsData[uid].caliper=input.value.trim()});
             document.querySelectorAll('.item-est-ship-input').forEach(input=>{let uid=input.getAttribute('data-uid');if(!itemsData[uid])itemsData[uid]={};itemsData[uid].estShip=input.value.trim()});
             document.querySelectorAll('.item-reserve-input').forEach(input=>{let uid=input.getAttribute('data-uid');if(!itemsData[uid])itemsData[uid]={};itemsData[uid].reserve=input.value.trim()});
-            finalizeRequestAction(tempReqFolder,tempReqCust,itemsDataObj)
+            finalizeRequestAction(tempReqFolder,tempReqCust,itemsData)
         }
 
         function finalizeRequestAction(existingFolderId,existingCust,itemsDataObj) {
@@ -2369,6 +2364,7 @@
                     clone.REQ_STATUS='Pending';
                     clone.REQ_PHOTO_LINK=newReq.req_photo_link;
                     clone.REQ_PHOTO_NAME=newReq.req_photo_name;
+                    normalizeRowPhotoFields(clone);
                     requestsInventory.push(clone)
                 }
             });
@@ -2398,6 +2394,7 @@
             if(tabType!=='request'){returnText=(tabType==='docks')?"DOCK NOTES\n\n":"SALES NOTES\n\n"}
             items.forEach(i=>{
                 if(tabType==='request'){
+
                     returnText+=`${i.REQUEST_FOLDER||'No Folder'}\nID: ${i.UNIQUE_ID} | ${i.REQ_CUSTOMER||'N/A'}\n${i.COMMONNAME||'Unknown'} ${i.CONTSIZE||'-'} Loc: ${i.LOCATIONCODE||'No Loc'}\n${i.ITEMCODE||'-'} | Lot: ${i.LOTCODE||'-'}\n`;
                     if(i.REQ_QTY)returnText+=`  Requested Qty: ${i.REQ_QTY}\n`;
                     if(i.REQ_DESIRED_SPEC)returnText+=`  Desired Spec: ${i.REQ_DESIRED_SPEC}\n`;
@@ -2786,7 +2783,15 @@
                     if (avEl) { itemToSave.AV_NOTE = avEl.value.toUpperCase(); }
                     
                     let descEl = document.getElementById(prefix + 'sales-desc');
-                    if (descEl) { let textBoxVal = descEl.value.toUpperCase(); itemToSave.SALES_NOTE = textBoxVal; if (lastView === 'tasks') itemToSave._NEW_SALES_NOTE = textBoxVal; }
+                    if (descEl) {
+                        let textBoxVal = prefix === 'dock-' ? descEl.value : descEl.value.toUpperCase();
+                        if (prefix === 'req-') itemToSave.REQ_SALES_NOTE = textBoxVal;
+                        else if (prefix === 'dock-') itemToSave.DOCK_NOTE = textBoxVal;
+                        else {
+                            itemToSave.SALES_NOTE = textBoxVal;
+                            if (lastView === 'tasks') itemToSave._NEW_SALES_NOTE = textBoxVal;
+                        }
+                    }
 
                     if (isComplete && isCurrentView && itemToSave.APP_TAB_ASSIGNMENT === 'season') {
                         const noteVal = (itemToSave.SALES_NOTE || "").trim();
@@ -2801,7 +2806,7 @@
                     } else if (prefix === 'req-') { 
                         itemToSave.REQ_MATCH = document.getElementById('req-match').value; itemToSave.REQ_SPEC = document.getElementById('req-spec').value; itemToSave.REQ_CALIPER = document.getElementById('req-caliper').value; itemToSave.REQ_PICK = document.getElementById('req-pick').value; itemToSave.REQ_COMMENTS = document.getElementById('req-comments').value; let reserveEl = document.getElementById('req-reserve'); if (reserveEl) itemToSave.REQ_RESERVE = reserveEl.value;
                     } else if (prefix === 'dock-') { 
-                        itemToSave.DOCK_SPEC = document.getElementById('dock-spec').value; itemToSave.DOCK_CALIPER = document.getElementById('dock-caliper').value; itemToSave.DOCK_NOTE = document.getElementById('dock-sales-desc').value.toUpperCase(); 
+                        itemToSave.DOCK_SPEC = document.getElementById('dock-spec').value; itemToSave.DOCK_CALIPER = document.getElementById('dock-caliper').value; itemToSave.DOCK_NOTE = document.getElementById('dock-sales-desc').value; 
                     } else if (prefix === 'flyer-') {
                         itemToSave.FLYER_CAT = document.getElementById('flyer-cat').value; itemToSave.FLYER_TITLE = document.getElementById('flyer-title').value; itemToSave.FLYER_INST = document.getElementById('flyer-inst').value; itemToSave.FLYER_ASSIGNED = document.getElementById('flyer-assigned').value; itemToSave.FLYER_NOTES = document.getElementById('flyer-notes').value;
                     }
@@ -2815,11 +2820,23 @@
                     payload.spec = setVal(itemToSave.SPEC); payload.caliper = setVal(itemToSave.CALIPER); payload.pic_note = setVal(itemToSave.PICK); 
                     payload.sales_note = setVal(itemToSave.SALES_NOTE || itemToSave._NEW_SALES_NOTE); payload.av_note = setVal(itemToSave.AV_NOTE);
                 } else if (prefix === 'req-') { 
+                    const assignment = String(itemToSave.APP_TAB_ASSIGNMENT || '').toLowerCase();
+                    const isAvEligibleRequest = assignment === 'season' || assignment === 'location';
+                    const needsCaliper = itemToSave.PLANTGROUPCODE && String(itemToSave.PLANTGROUPCODE).includes('330_TREES') && ["#7","#10","#15","#25","#45"].includes(itemToSave.CONTSIZE);
+                    if (isComplete && isAvEligibleRequest) {
+                        if (!String(itemToSave.AV_NOTE || '').trim()) { if (btnComp) btnComp.innerText = "MARK DONE"; showToast("Required","AV Note is required before completing this request.",true); return; }
+                        if (!String(itemToSave.REQ_SPEC || '').trim()) { if (btnComp) btnComp.innerText = "MARK DONE"; showToast("Required","Spec is required before completing this request.",true); return; }
+                        if (needsCaliper && !String(itemToSave.REQ_CALIPER || '').trim()) { if (btnComp) btnComp.innerText = "MARK DONE"; showToast("Required","Caliper is required for this request.",true); return; }
+                    }
                     payload.req_match = (itemToSave.REQ_MATCH === "" || itemToSave.REQ_MATCH == null) ? null : parseFloat(itemToSave.REQ_MATCH); 
                     payload.req_spec = setVal(itemToSave.REQ_SPEC); payload.req_caliper = setVal(itemToSave.REQ_CALIPER); payload.req_pic_note = setVal(itemToSave.REQ_PICK); 
                     payload.req_sales_note = setVal(itemToSave.REQ_SALES_NOTE); payload.req_comments = setVal(itemToSave.REQ_COMMENTS); 
                     payload.req_reserve = setVal(itemToSave.REQ_RESERVE); payload.av_note = setVal(itemToSave.AV_NOTE);
-                    if (isComplete) { payload.req_status = 'Complete'; itemToSave.REQ_STATUS = 'Complete'; }
+                    if (isComplete) { 
+                        payload.req_status = 'Complete'; 
+                        itemToSave.REQ_STATUS = 'Complete'; 
+                        itemToSave._SHOW_IN_AV = isAvEligibleRequest ? confirm('Show this completed request in the AV tab?') : false;
+                    }
                 } else if (prefix === 'dock-') { 
                     payload.dock_spec = setVal(itemToSave.DOCK_SPEC); payload.dock_caliper = setVal(itemToSave.DOCK_CALIPER); payload.dock_note = setVal(itemToSave.DOCK_NOTE); 
                 } else if (prefix === 'flyer-') {
@@ -2860,8 +2877,32 @@
                         cloneSO.AV_NOTE = itemToSave.AV_NOTE;
                         cloneSO.SAVED_PHOTO_LINK = soPayload.photo_link; 
                         let existingIdx = salesOfficeInventory.findIndex(s => s.UNIQUE_ID === cloneSO.UNIQUE_ID);
+                        normalizeRowPhotoFields(cloneSO);
                         if (existingIdx > -1) salesOfficeInventory[existingIdx] = cloneSO;
                         else salesOfficeInventory.push(cloneSO);
+                    }
+                }
+
+                if (isComplete && prefix === 'req-' && itemToSave._SHOW_IN_AV) {
+                    const masterId = itemToSave.MASTER_ID || itemToSave.MASTER_UNIQUE_ID || itemToSave.master_id;
+                    const masterItem = fullInventory.find(i => i.UNIQUE_ID === masterId);
+                    const avPayload = {
+                        av_note: setVal(itemToSave.AV_NOTE),
+                        spec: setVal(itemToSave.REQ_SPEC || itemToSave.SPEC),
+                        caliper: setVal(itemToSave.REQ_CALIPER || itemToSave.CALIPER),
+                        photo_link: setVal(itemToSave.REQ_PHOTO_LINK || itemToSave.SAVED_PHOTO_LINK),
+                        photo_name: setVal(itemToSave.REQ_PHOTO_NAME || itemToSave.SAVED_PHOTO_NAME)
+                    };
+                    if (masterItem) {
+                        masterItem.AV_NOTE = itemToSave.AV_NOTE;
+                        masterItem.SPEC = itemToSave.REQ_SPEC || itemToSave.SPEC;
+                        masterItem.CALIPER = itemToSave.REQ_CALIPER || itemToSave.CALIPER;
+                        masterItem.SAVED_PHOTO_LINK = itemToSave.REQ_PHOTO_LINK || itemToSave.SAVED_PHOTO_LINK;
+                        masterItem.SAVED_PHOTO_NAME = itemToSave.REQ_PHOTO_NAME || itemToSave.SAVED_PHOTO_NAME;
+                        normalizeRowPhotoFields(masterItem);
+                    }
+                    if (masterId) {
+                        supabaseFetch('v2_master_inventory', 'PATCH', avPayload, `unique_id=eq.${encodeURIComponent(masterId)}`).catch(() => {});
                     }
                 }
 
@@ -2929,9 +2970,9 @@
         }
 
         async function handlePhotoUpload(input, prefix) {
-            if (!input.files || input.files.length === 0) return;
+            if (!input.files || input.files.length === 0 || !activeItem) return;
             const file = input.files[0];
-            
+
             if (!file.type.startsWith('image/')) {
                 showToast('Error', 'Please select an image file.', true);
                 return;
@@ -2944,90 +2985,63 @@
             reader.onload = function(event) {
                 const img = new Image();
                 img.src = event.target.result;
-                img.onload = async function() {
+                img.onload = function() {
                     const canvas = document.createElement('canvas');
                     const MAX_WIDTH = 1080;
-                    let scaleSize = 1;
-                    
-                    if (img.width > MAX_WIDTH) {
-                        scaleSize = MAX_WIDTH / img.width;
-                    }
-                    
+                    const scaleSize = img.width > MAX_WIDTH ? MAX_WIDTH / img.width : 1;
+
                     canvas.width = img.width * scaleSize;
                     canvas.height = img.height * scaleSize;
 
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-                    const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-                    const base64Data = dataUrl.split(',')[1];
+                    canvas.toBlob(async (blob) => {
+                        try {
+                            showToast('Uploading', 'Sending photo to Supabase...', false);
 
-                    showToast('Uploading', 'Sending photo to server...', false);
+                            const bucketName = PHOTO_BUCKETS[prefix] || PHOTO_BUCKETS.default;
+                            const clean = (t) => String(t || 'NA').replace(/[^a-zA-Z0-9_-]/g, '');
+                            const fileName = `${clean(activeItem.COMMONNAME)}-${clean(activeItem.CONTSIZE)}-${Date.now()}.jpg`;
+                            const filePath = `${new Date().toISOString().split('T')[0]}/${fileName}`;
 
-                    let context = 'drive';
-                    if (prefix === 'ssn-') context = 'season';
-                    else if (prefix === 'lsn-') context = 'location';
-                    else if (prefix === 'req-') context = 'request';
-                    else if (prefix === 'dock-') context = 'docks';
+                            const { error: uploadError } = await supabaseClient.storage
+                                .from(bucketName)
+                                .upload(filePath, blob, {
+                                    contentType: 'image/jpeg',
+                                    upsert: true
+                                });
 
-                    let dockNum = pendingDockNum || selectedDockNum || "0";
+                            if (uploadError) throw uploadError;
 
-                    let dateStr = new Date().toISOString().split('T')[0];
-                    let cName = String(activeItem.COMMONNAME || 'Unknown').replace(/[\/\\?%*:|"<>]/g, '-');
-                    let cSize = String(activeItem.CONTSIZE || 'NoSize').replace(/[\/\\?%*:|"<>]/g, '-');
-                    let cLot = String(activeItem.LOTCODE || 'NoLot').replace(/[\/\\?%*:|"<>]/g, '-');
-                    let cLoc = String(activeItem.LOCATIONCODE || 'NoLoc').replace(/[\/\\?%*:|"<>]/g, '-');
-                    let customFileName = `${cName}-${cSize}-${cLot}-${cLoc}-${dateStr}.jpg`;
+                            const { data: publicUrlData } = supabaseClient.storage
+                                .from(bucketName)
+                                .getPublicUrl(filePath);
 
-                    const payload = {
-                        type: 'image',
-                        image: base64Data,
-                        filename: customFileName,
-                        mimeType: 'image/jpeg',
-                        folderContext: context,
-                        dockNum: dockNum
-                    };
+                            const publicUrl = publicUrlData.publicUrl;
 
-                    try {
-                        const response = await fetch(GOOGLE_SCRIPT_URL, {
-                            method: 'POST',
-                            body: JSON.stringify(payload)
-                        });
-                        const result = await response.json();
-
-                        if (result.status === 'success') {
-                            showToast('Success', 'Photo uploaded successfully!');
-                            if (activeItem) {
-                                let url = result.url;
-                                if (prefix === 'req-') {
-                                    activeItem.REQ_PHOTO_LINK = activeItem.REQ_PHOTO_LINK ? activeItem.REQ_PHOTO_LINK + ',' + url : url;
-                                } else if (prefix === 'dock-') {
-                                    activeItem.DOCK_PHOTO_LINK = activeItem.DOCK_PHOTO_LINK ? activeItem.DOCK_PHOTO_LINK + ',' + url : url;
-                                } else if (prefix === 'flyer-') {
-                                    activeItem.FLYER_PHOTO_LINK = activeItem.FLYER_PHOTO_LINK ? activeItem.FLYER_PHOTO_LINK + ',' + url : url;
-                                } else {
-                                    activeItem.SAVED_PHOTO_LINK = activeItem.SAVED_PHOTO_LINK ? activeItem.SAVED_PHOTO_LINK + ',' + url : url;
-                                }
-                                saveData(false, prefix, true);
-                                renderSavedPhotos();
+                            if (prefix === 'req-') {
+                                activeItem.REQ_PHOTO_LINK = activeItem.REQ_PHOTO_LINK ? `${activeItem.REQ_PHOTO_LINK},${publicUrl}` : publicUrl;
+                            } else if (prefix === 'dock-') {
+                                activeItem.DOCK_PHOTO_LINK = activeItem.DOCK_PHOTO_LINK ? `${activeItem.DOCK_PHOTO_LINK},${publicUrl}` : publicUrl;
+                            } else if (prefix === 'flyer-') {
+                                activeItem.FLYER_PHOTO_LINK = activeItem.FLYER_PHOTO_LINK ? `${activeItem.FLYER_PHOTO_LINK},${publicUrl}` : publicUrl;
+                            } else {
+                                activeItem.SAVED_PHOTO_LINK = activeItem.SAVED_PHOTO_LINK ? `${activeItem.SAVED_PHOTO_LINK},${publicUrl}` : publicUrl;
                             }
-                        } else {
-                            showToast('Error', 'Upload failed: ' + result.message, true);
+
+                            saveData(false, prefix, true);
+                            renderSavedPhotos();
+                            showToast('Success', 'Photo uploaded successfully!');
+                        } catch (err) {
+                            showToast('Error', `Upload failed: ${err.message}`, true);
+                        } finally {
+                            input.value = '';
                         }
-                    } catch (err) {
-                        showToast('Error', 'Network error during upload.', true);
-                    } finally {
-                        input.value = "";
-                    }
+                    }, 'image/jpeg', 0.8);
                 };
             };
         }
     </script>
 </body>
 </html>
-
-
-
-
- 
-
