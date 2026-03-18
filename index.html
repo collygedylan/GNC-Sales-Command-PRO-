@@ -3144,22 +3144,51 @@ let specCaliperHtml = "";
                         if(!/[A-Z]/.test(alpha)) alpha = "Other";
                         return alpha === selectedTaskBlock;
                     });
-                    let locs = [...new Set(bItems.map(i => i.LOCATIONCODE || "NoLoc"))].sort((a,b) => String(a).localeCompare(String(b), undefined, {numeric: true}));
+                    
+                    // NEW: Group by the Location Prefix (e.g. "C.07") instead of the exact location
+                    let prefixes = [...new Set(bItems.map(i => {
+                        let loc = String(i.LOCATIONCODE || "NoLoc").trim();
+                        let parts = loc.split('.');
+                        // If it has at least 2 parts (C.07.001), grab the first two (C.07)
+                        return parts.length >= 2 ? parts[0] + '.' + parts[1] : loc;
+                    }))].sort((a,b) => String(a).localeCompare(String(b), undefined, {numeric: true}));
+                    
                     let html = `<div class="back-btn" onclick="taskViewLevel=0; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Blocks</div>`;
-                    html += locs.map(l => {
-                        let count = bItems.filter(i => (i.LOCATIONCODE || "NoLoc") === l).length;
-                        return `<div class="drill-item" onclick="selectedTaskLoc='${esc(l)}'; taskViewLevel=2; renderTasks()"><span class="font-bold text-lg text-gray-800">${l} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
+                    
+                    html += prefixes.map(p => {
+                        let count = bItems.filter(i => {
+                            let loc = String(i.LOCATIONCODE || "NoLoc").trim();
+                            let pref = loc.split('.').length >= 2 ? loc.split('.')[0] + '.' + loc.split('.')[1] : loc;
+                            return pref === p;
+                        }).length;
+                        return `<div class="drill-item" onclick="selectedTaskLoc='${esc(p)}'; taskViewLevel=2; renderTasks()"><span class="font-bold text-lg text-gray-800">${p} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
                     }).join('');
+                    
                     container.innerHTML = html;
+                    
                 } else if(taskViewLevel === 2) {
-                    let fItems = tabItems.filter(i => (i.LOCATIONCODE || "NoLoc") === selectedTaskLoc);
-                    fItems.sort((a,b) => String(a.COMMONNAME || "").localeCompare(String(b.COMMONNAME || "")));
+                    // NEW: Find all items that match the selected prefix
+                    let fItems = tabItems.filter(i => {
+                        let loc = String(i.LOCATIONCODE || "NoLoc").trim();
+                        let pref = loc.split('.').length >= 2 ? loc.split('.')[0] + '.' + loc.split('.')[1] : loc;
+                        return pref === selectedTaskLoc;
+                    });
+                    
+                    // Sort by the EXACT location first, then by plant name
+                    fItems.sort((a,b) => {
+                        let locA = String(a.LOCATIONCODE || "");
+                        let locB = String(b.LOCATIONCODE || "");
+                        if(locA !== locB) return locA.localeCompare(locB, undefined, {numeric: true});
+                        return String(a.COMMONNAME || "").localeCompare(String(b.COMMONNAME || ""));
+                    });
+                    
                     // Highlight green for season (and all_season), blue for location
                     let colorStatus = (activeTaskTab === 'season' || activeTaskTab === 'all_season') ? 'status-green' : 'status-blue';
-                    container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=1; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Locations</div>` + fItems.map(i => generateCard(i, 'tasks', colorStatus)).join('');
+                    container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=1; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Sections</div>` + fItems.map(i => generateCard(i, 'tasks', colorStatus)).join('');
                 }
             }
         }
+
         function renderReview() {
             const container = document.getElementById('review-content');
             const crumb = document.getElementById('review-crumb');
