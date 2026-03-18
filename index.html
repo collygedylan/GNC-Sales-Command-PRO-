@@ -3,33 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-    <title>Greenleaf</title>
+    <title>PH</title>
     <meta name="theme-color" content="#007a4d">
     <link rel="manifest" href="manifest.json">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="application-name" content="Greenleaf">
+    <meta name="application-name" content="PH">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>:root{--bg:#007a4d;--tx:#111827}body{font-family:"Amazon Ember",Arial,sans-serif;background:white;color:var(--tx);user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior-y:contain}.nav-header{background:var(--bg);color:white;padding-top:max(10px,env(safe-area-inset-top))}#view-login,#view-change-password{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px}#view-change-password{display:none;z-index:10000}.login-card{background:white;padding:30px;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,.2);width:100%;max-width:360px;text-align:center}.input-field{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:8px;font-size:15px;margin-bottom:12px}#toast-notification{position:fixed;top:-100px;left:50%;transform:translateX(-50%);background:#16a34a;color:white;padding:16px 24px;border-radius:50px;box-shadow:0 10px 15px -3px rgba(0,0,0,.3);z-index:11000;transition:top .5s;display:flex;align-items:center;gap:12px;pointer-events:none}#toast-notification.show{top:20px}#side-drawer{position:fixed;top:0;left:-280px;width:280px;height:100%;background:white;z-index:2000;box-shadow:2px 0 10px rgba(0,0,0,.2);transition:left .3s;overflow-y:auto;padding-bottom:100px}#side-drawer.open{left:0}#drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1999;display:none}#drawer-overlay.open{display:block}.drawer-header{background:var(--bg);color:white;padding:20px;font-weight:bold;font-size:18px}.drawer-item{padding:16px 20px;border-bottom:1px solid #f3f4f6;cursor:pointer;display:flex;align-items:center;gap:12px;color:#374151;font-weight:500}.drill-item{border-bottom:1px solid #e5e7eb;padding:16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:white;transition:background .1s}.drill-item:active{background:#f3f4f6}.back-btn{display:flex;align-items:center;gap:5px;color:#6b7280;font-size:14px;font-weight:600;margin-bottom:20px;cursor:pointer;padding:10px 0}.inv-card{border:1px solid #e5e7eb;border-left-width:6px;border-radius:8px;padding:12px;background:white;cursor:pointer;flex-grow:1}.status-green{border-left-color:#22c55e}.status-purple{border-left-color:#9333ea}.status-orange{border-left-color:#f97316}.status-blue{border-left-color:#3b82f6}.status-indigo{border-left-color:#4f46e5}.status-teal{border-left-color:#0d9488}.status-yellow{border-left-color:#eab308}.status-red{border-left-color:#ef4444}.task-tabs,.detail-tabs{display:flex;border-bottom:1px solid #e5e7eb;background:#f9fafb;margin-bottom:10px}.detail-tabs{overflow-x:auto;scrollbar-width:none}.detail-tabs::-webkit-scrollbar{display:none}.task-tab,.detail-tab{flex:1;text-align:center;padding:12px;font-size:11px;font-weight:700;color:#6b7280;cursor:pointer;border-bottom:3px solid transparent;text-transform:uppercase}.detail-tab{flex:0 0 auto;padding:10px 16px}.task-tab.active,.detail-tab.active{color:var(--bg);border-bottom-color:var(--bg);background:white}.overview-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}.overview-card{background:#f8fafc;padding:10px;border-radius:6px;border:1px solid #e2e8f0}.overview-label{font-size:9px;font-weight:800;color:#64748b;text-transform:uppercase;margin-bottom:2px}.overview-val{font-size:13px;font-weight:600;color:#0f172a;word-break:break-all}.expand-trigger{display:flex;align-items:center;justify-content:space-between;padding:12px;background:#f9fafb;border-radius:6px;cursor:pointer;font-weight:600;font-size:14px;border:1px solid #e5e7eb}.expand-content{display:none;margin-top:12px;padding:12px;background:#f9fafb;border-radius:6px;border:1px solid #e5e7eb}.expanded .expand-content{display:block}.card-checkbox-container{width:0;overflow:hidden;opacity:0;transition:width .3s,opacity .3s,margin .3s}body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-right:12px}.item-row{touch-action:manipulation}.spinner{border:4px solid rgba(255,255,255,.3);border-top:4px solid white;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:0 auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.scrollbar-none::-webkit-scrollbar{display:none}.scrollbar-none{-ms-overflow-style:none;scrollbar-width:none}</style>
 </head>
 <body class="bg-gray-50 h-screen overflow-hidden">
     <div id="top-loading-bar-container" class="hidden fixed top-0 left-0 w-full h-1 z-[99999] pointer-events-none"><div id="top-loading-bar" class="h-full bg-[#22c55e] w-0 transition-all duration-300 ease-out shadow-[0_0_10px_#22c55e]"></div></div>
     <div id="toast-notification"></div>
-    <div id="photo-modal" class="hidden fixed inset-0 bg-black bg-opacity-95 z-[15000] flex flex-col items-center justify-center p-4">
+  <div id="photo-modal" class="hidden fixed inset-0 bg-black bg-opacity-95 z-[15000] flex flex-col items-center justify-center p-4">
         <div class="absolute top-0 left-0 w-full p-6 flex justify-between items-start bg-gradient-to-b from-black/80 to-transparent z-50 pointer-events-none">
-            <div id="photo-modal-caption" class="text-white font-bold text-sm leading-tight drop-shadow-md pr-4 uppercase tracking-wide pointer-events-auto"></div>
-            <i class="ph-bold ph-x text-white text-3xl cursor-pointer bg-black/50 p-2 rounded-full active:scale-95 pointer-events-auto" onclick="closePhotoModal()"></i>
+            <div id="photo-modal-caption" class="text-white font-bold text-sm leading-tight drop-shadow-md pr-4 uppercase tracking-wide pointer-events-auto max-w-[60%]"></div>
+            
+            <div class="flex items-center gap-3 pointer-events-auto">
+                <div id="photo-modal-counter" class="text-white font-black text-sm tracking-widest drop-shadow-md px-3 py-1.5 bg-black/50 rounded-full border border-white/20 hidden"></div>
+                <i class="ph-bold ph-x text-white text-3xl cursor-pointer bg-black/50 p-2 rounded-full active:scale-95" onclick="closePhotoModal()"></i>
+            </div>
         </div>
-        <div id="photo-modal-gallery" class="flex overflow-x-auto snap-x snap-mandatory w-full max-h-[85vh] items-center space-x-4 pb-4 scrollbar-none mt-10"></div>
-        <div id="photo-swipe-hint" class="absolute bottom-10 text-white text-xs font-bold uppercase tracking-widest opacity-50 hidden pointer-events-none"><i class="ph-bold ph-arrows-left-right mr-1 text-lg align-middle"></i> Swipe for more</div>
-    </div>
+        
+        <button id="photo-nav-left" class="hidden absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/80 text-white p-3 rounded-full z-50 pointer-events-auto transition-colors" onclick="scrollPhotoGallery(-1)"><i class="ph-bold ph-caret-left text-3xl"></i></button>
+        
+        <button id="photo-nav-right" class="hidden absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/80 text-white p-3 rounded-full z-50 pointer-events-auto transition-colors" onclick="scrollPhotoGallery(1)"><i class="ph-bold ph-caret-right text-3xl"></i></button>
+
+        <div id="photo-modal-gallery" class="flex overflow-x-auto snap-x snap-mandatory w-full max-h-[85vh] items-center space-x-4 pb-4 scrollbar-none mt-10 scroll-smooth" onscroll="updatePhotoCounter()"></div>
+        
+        <div id="photo-swipe-hint" class="absolute bottom-10 text-white text-xs font-bold uppercase tracking-widest opacity-50 hidden pointer-events-none"><i class="ph-bold ph-arrows-left-right mr-1 text-lg align-middle"></i> Swipe or use arrows</div>
+    </div>    
     <div id="view-login">
         <div class="login-card">
             <div class="flex flex-col items-center mb-8 w-full relative">
-                <div class="text-3xl text-[#007a4d] font-black tracking-tighter mb-1">Greenleaf</div>
-                <div class="flex flex-col items-center gap-0.5 mt-5">
+                <div class="text-2xl text-[#007a4d] font-black tracking-tighter mb-1 text-center leading-none">PH</div>                <div class="flex flex-col items-center gap-0.5 mt-5">
                     <span class="text-[9px] font-bold text-gray-400 uppercase tracking-[0.3em]">Powered By</span>
                     <span class="text-[17px] font-black text-gray-800 tracking-[0.2em] uppercase border-b-[3px] border-[#007a4d] pb-0.5">Ag Metric</span>
                 </div>
@@ -43,6 +53,7 @@
             <div id="loading-spinner" class="hidden mt-6 flex flex-col items-center"><div class="spinner"></div><div id="loading-text" class="text-white font-bold text-sm mt-3 text-center">Syncing Database...</div></div>
         </div>
     </div>
+    
     <div id="view-change-password">
         <div class="login-card">
             <h2 class="text-2xl font-black text-[#007a4d] mb-2">Change Password</h2>
@@ -52,6 +63,7 @@
             <button class="w-full bg-[#007a4d] text-white font-bold py-3 rounded-lg shadow-md active:scale-95" onclick="submitNewPassword()">SAVE & CONTINUE</button>
         </div>
     </div>
+
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -165,16 +177,16 @@
             <button class="text-gray-500 font-bold py-2 px-4 mt-2" onclick="document.getElementById('request-rep-modal').classList.add('hidden')">Cancel</button>
         </div>
     </div>
+
     <div id="app-wrapper" class="hidden h-full flex flex-col">
         <header class="nav-header sticky top-0 z-50 p-4 flex justify-between items-center shadow-md">
             <div class="flex items-center gap-3">
                 <i class="ph-bold ph-list menu-btn text-2xl cursor-pointer" onclick="toggleMenu()"></i>
                 <div class="flex flex-col">
                     <div class="font-bold text-lg leading-tight"><span id="header-user">User</span></div>
-                    <div class="text-[10px] opacity-80 leading-tight">Greenleaf</div>
+                    <div class="text-[10px] opacity-80 leading-tight">PH</div>
                 </div>
             </div>
-            <div class="bg-white/20 p-2 rounded-lg cursor-pointer" onclick="fetchBackgroundData()"><i class="ph-bold ph-arrows-clockwise text-white"></i></div>
         </header>
         
         <div id="drawer-overlay" onclick="toggleMenu()"></div>
@@ -200,16 +212,64 @@
         </div>
         
         <div id="main-scroll-area" class="flex-grow overflow-y-auto p-4 pb-40 relative">
+            
+            <div id="pull-to-refresh" class="w-full flex justify-center items-center overflow-hidden transition-all duration-300 h-0">
+                <div class="flex items-center gap-2 text-[#007a4d] font-bold text-sm bg-green-50 px-4 py-2 rounded-full border border-green-200 shadow-inner">
+                    <i id="ptr-icon" class="ph-bold ph-arrow-down text-lg transition-transform duration-300"></i>
+                    <span id="ptr-text">Pull to sync</span>
+                </div>
+            </div>
+            <div id="view-chat-inbox" class="hidden h-full flex flex-col pb-20">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-2xl font-black text-[#007a4d]">Messages</h2>
+                        <button onclick="openNewChatModal()" class="bg-[#007a4d] text-white w-10 h-10 rounded-full shadow-md flex items-center justify-center active:scale-95 transition-transform"><i class="ph-bold ph-plus text-xl"></i></button>
+                    </div>
+                    <div id="chat-search-container" class="relative mb-3">
+                        <input type="text" id="chat-inbox-search" class="input-field w-full pr-10 !mb-0" placeholder="Search conversations..." oninput="filterChatInbox()">
+                    </div>
+                    <div id="chat-inbox-list" class="flex-col gap-2 overflow-y-auto">
+                        </div>
+                </div>
+
+                <div id="view-chat-room" class="hidden fixed inset-0 bg-gray-50 z-[100] flex flex-col">
+                    <div class="bg-[#007a4d] text-white p-4 flex items-center shadow-md pt-[max(16px,env(safe-area-inset-top))]">
+                        <i class="ph-bold ph-arrow-left text-2xl mr-3 cursor-pointer active:scale-95" onclick="closeChatRoom()"></i>
+                        <div id="chat-room-title" class="font-bold text-lg flex-grow truncate">Chat</div>
+                        <i class="ph-bold ph-users text-xl cursor-pointer opacity-80" onclick="showChatParticipants()"></i>
+                    </div>
+                    <div id="chat-messages-container" class="flex-grow overflow-y-auto p-4 space-y-4 bg-gray-100 flex flex-col">
+                        </div>
+                    <div class="bg-white p-3 border-t flex items-center gap-2 pb-[max(12px,env(safe-area-inset-bottom))] shadow-[0_-4px_10px_rgba(0,0,0,0.05)]">
+                        <input type="text" id="chat-message-input" class="flex-grow bg-gray-100 border border-gray-200 rounded-full px-4 py-3 text-sm focus:outline-none focus:border-[#007a4d]" placeholder="Type a message..." onkeypress="if(event.key === 'Enter') sendChatMessage()">
+                        <button onclick="sendChatMessage()" class="bg-[#007a4d] text-white rounded-full w-12 h-12 flex items-center justify-center shadow-md active:scale-95 shrink-0"><i class="ph-fill ph-paper-plane-right text-xl ml-1"></i></button>
+                    </div>
+                </div>
+
+                <div id="new-chat-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[11000] flex items-center justify-center p-4">
+                    <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm flex flex-col max-h-[80vh]">
+                        <h3 class="font-black text-lg text-[#007a4d] mb-4">Start Conversation</h3>
+                        <input type="text" id="new-chat-search" class="input-field border-green-200 focus:border-[#007a4d] !mb-3" placeholder="Search users..." oninput="filterNewChatUsers()">
+                        <div id="new-chat-user-list" class="flex-grow overflow-y-auto mb-4 border border-gray-100 rounded-lg p-1 space-y-1"></div>
+                        <div class="flex gap-2 mt-auto pt-2 border-t border-gray-100">
+                            <button class="w-1/3 bg-gray-100 text-gray-600 font-bold py-3 rounded-lg active:scale-95" onclick="document.getElementById('new-chat-modal').classList.add('hidden')">Cancel</button>
+                            <button class="w-2/3 bg-[#007a4d] text-white font-bold py-3 rounded-lg shadow-md active:scale-95" onclick="startSelectedChat()">Start Chat</button>
+                        </div>
+                    </div>
+                </div>
             <div id="view-wrapper" style="position:relative; z-index:20;">
+                
                 <div id="view-home" class="hidden">
                     <div class="bg-[#007a4d] text-white p-6 rounded-2xl mb-6 shadow-lg flex flex-col items-center text-center relative overflow-hidden">
                         <div class="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-white opacity-5 rounded-full pointer-events-none"></div>
                         <div class="absolute bottom-0 left-0 -mb-10 -ml-10 w-32 h-32 bg-black opacity-10 rounded-full pointer-events-none"></div>
-                        <h1 class="text-2xl font-black tracking-tight mb-1 z-10 relative mt-4">Greenleaf</h1>
+                        
+                        <h1 id="dashboard-username-display" class="text-3xl font-black tracking-tight mb-1 z-10 relative mt-4 px-2 uppercase truncate w-full">USER</h1>
                         <p class="text-green-100 text-[10px] font-bold mb-5 uppercase tracking-[0.2em] z-10 relative">Dashboard</p>
+                        
                         <div class="flex flex-col items-center pt-4 border-t border-white/20 w-full mt-1 z-10 relative">
-                            <span class="text-[9px] font-bold text-white/70 uppercase tracking-[0.3em] mb-1">Powered By</span>
-                            <div class="text-[15px] font-black tracking-[0.2em] text-white uppercase drop-shadow-sm">Ag Metric</div>
+                            <div class="text-[14px] font-black tracking-wide text-white uppercase drop-shadow-sm mb-3 text-center leading-tight">PH</div>
+                            <span class="text-[8px] font-bold text-white/70 uppercase tracking-[0.3em] mb-1">Powered By</span>
+                            <div class="text-[12px] font-black tracking-[0.2em] text-white uppercase drop-shadow-sm">Ag Metric</div>
                         </div>
                     </div>
                     <h2 class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3 pl-1">App Modules</h2>
@@ -303,10 +363,20 @@
                     <div id="reserves-content"></div>
                 </div>
                 
-                <div id="view-docks" class="hidden">
+               <div id="view-docks" class="hidden">
                     <div id="docks-search-container" class="relative mb-2">
                         <input type="text" id="docks-search" class="input-field w-full pr-10 !mb-0" placeholder="Search Docks or Items..." oninput="handleDocksSearch()">
                         <i id="docks-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearDocksSearch()"></i>
+                    </div>
+                    <div class="task-tabs mb-2 mt-2">
+                        <div id="tab-docks-all" class="task-tab active" onclick="setDocksMainTab('all')">All Docks</div>
+                        <div id="tab-docks-my" class="task-tab" onclick="setDocksMainTab('my')">My Docks</div>
+                    </div>
+                    <div id="docks-my-sub-tabs" class="task-tabs mb-2 hidden">
+                        <div id="tab-docks-checker" class="task-tab active" onclick="setDocksSubTab('checker')">Checker</div>
+                        <div id="tab-docks-inspector" class="task-tab" onclick="setDocksSubTab('inspector')">Inspector</div>
+                        <div id="tab-docks-mistake" class="task-tab" onclick="setDocksSubTab('mistake')">Mistake Guy</div>
+                        <div id="tab-docks-loading" class="task-tab" onclick="setDocksSubTab('loading')">Loading Crew</div>
                     </div>
                     <div id="docks-crumb" class="text-xs font-bold text-orange-600 mb-3 mt-3">Select a Dock</div>
                     <div id="docks-content"></div>
@@ -334,14 +404,13 @@
                     <div class="flex overflow-x-auto scrollbar-none gap-2 mb-3 pb-1" id="drive-season-filters"></div>
                     <div id="drive-crumb" class="text-xs font-bold text-[#007a4d] mb-3 empty:hidden"></div>
                     <div id="drive-content"></div>
-                </div>
+                </div>                
                 
                 <div id="view-tasks" class="hidden">
                     <div id="task-crumb" class="text-xs font-bold text-[#007a4d] mb-3"></div>
-                    <div id="team-selector" class="hidden mb-4 grid grid-cols-1 gap-3"></div>
                     <div id="task-tabs-container" class="task-tabs">
-                        <div id="tab-season" class="task-tab active" onclick="setTaskTab('season')">Season Notes</div>
-                        <div id="tab-location" class="task-tab" onclick="setTaskTab('location')">Location Notes</div>
+                        <div id="tab-season" class="task-tab active" onclick="setTaskTab('season')">Team Season Sales Notes</div>
+                        <div id="tab-location" class="task-tab" onclick="setTaskTab('location')">Team Location Sales Notes</div>
                         <div id="tab-endcap" class="task-tab" onclick="setTaskTab('endcap')">End Cap</div>
                         <div id="tab-flyer" class="task-tab" onclick="setTaskTab('flyer')">Flyer</div>
                     </div>
@@ -398,19 +467,18 @@
                     <div id="det-season-content" class="hidden py-4">
                         <div id="ssn-photo-preview" class="mb-4 hidden"><p class="text-[10px] font-bold text-blue-600 mb-2 uppercase">Photos on file</p><div id="ssn-photo-list-container" class="space-y-2"></div></div>
                         <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-ssn" class="bg-green-50 border-2 border-dashed border-green-500 text-green-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="handlePhotoUpload(this, 'ssn-')"></label></div>
-                        <div class="relative w-full mb-3"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2 relative"><input type="text" id="ssn-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); filterAvNotes('ssn-')" onfocus="filterAvNotes('ssn-')" onblur="setTimeout(()=>{if(document.getElementById('ssn-av-dropdown-list'))document.getElementById('ssn-av-dropdown-list').classList.add('hidden'); saveData(false, 'ssn-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT..."></div><div id="ssn-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div></div>
+                        <div class="relative w-full mb-3"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2 relative"><input type="text" id="ssn-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); filterAvNotes('ssn-'); validateSsnForm();" onfocus="filterAvNotes('ssn-')" onblur="setTimeout(()=>{if(document.getElementById('ssn-av-dropdown-list'))document.getElementById('ssn-av-dropdown-list').classList.add('hidden'); saveData(false, 'ssn-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT..."></div><div id="ssn-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div></div>
                         <div id="ssn-input-container">
-                            <div class="mb-3"><label class="text-[10px] font-bold text-gray-500 uppercase">Loc Match %</label><input type="number" id="ssn-match" class="input-field !mb-1" placeholder="e.g. 40" oninput="calculateMatchQty('ssn-')"><div id="ssn-match-display" class="text-[10px] font-bold text-[#007a4d] text-right mb-2 hidden">LOC Match QTY: <span id="ssn-match-qty-val">0</span></div></div>
-                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="ssn-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'ssn-', true)"></div>
-                            <div id="ssn-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="ssn-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'ssn-', true)"></div>
-                            <div class="relative w-full mt-2 mb-2"><label class="text-[10px] font-bold text-green-700 uppercase flex justify-between"><span>Sales Note</span></label><input type="text" id="ssn-sales-desc" class="input-field border-green-500 bg-green-50 uppercase flex-grow !mb-0" placeholder="Sales Note..." onchange="saveData(false, 'ssn-', true)"></div>
+                            <div class="mb-3"><label class="text-[10px] font-bold text-gray-500 uppercase">Loc Match %</label><input type="number" id="ssn-match" class="input-field !mb-1" placeholder="e.g. 40" oninput="calculateMatchQty('ssn-'); validateSsnForm();"><div id="ssn-match-display" class="text-[10px] font-bold text-[#007a4d] text-right mb-2 hidden">LOC Match QTY: <span id="ssn-match-qty-val">0</span></div></div>
+                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="ssn-spec" class="input-field" placeholder="e.g. 24-30 inch" oninput="validateSsnForm();" onchange="saveData(false, 'ssn-', true)"></div>
+                            <div id="ssn-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="ssn-caliper" class="input-field" placeholder="e.g. 2 inch" oninput="validateSsnForm();" onchange="saveData(false, 'ssn-', true)"></div>
                             <div class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="ssn-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'ssn-', true)"></div>
                         </div>
-                        <div class="flex gap-2 mt-4"><button id="ssn-btn-save-complete" class="w-full bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform" onclick="saveData(true, 'ssn-')">MARK DONE</button></div>
+                        <div class="flex gap-2 mt-4"><button id="ssn-btn-save-complete" class="w-full bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform disabled:opacity-50 disabled:bg-gray-400 disabled:cursor-not-allowed" onclick="saveData(true, 'ssn-')" disabled>MARK DONE</button></div>
                     </div>
                     <div id="det-location-content" class="hidden py-4">
                         <div id="lsn-photo-preview" class="mb-4 hidden"><p class="text-[10px] font-bold text-blue-600 mb-2 uppercase">Photos on file</p><div id="lsn-photo-list-container" class="space-y-2"></div></div>
-                        <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-lsn" class="bg-green-50 border-2 border-dashed border-green-500 text-green-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="handlePhotoUpload(this, 'lsn-')"></label></div>
+                        <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-lsn" class="bg-green-50 border-2 border-dashed border-green-500 text-green-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" multiple capture="environment" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="handlePhotoUpload(this, 'lsn-')"></label></div>
                         <div class="relative w-full mb-3"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2 relative"><input type="text" id="lsn-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); filterAvNotes('lsn-')" onfocus="filterAvNotes('lsn-')" onblur="setTimeout(()=>{if(document.getElementById('lsn-av-dropdown-list'))document.getElementById('lsn-av-dropdown-list').classList.add('hidden'); saveData(false, 'lsn-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT..."></div><div id="lsn-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div></div>
                         <div id="lsn-input-container">
                             <div class="mb-3"><label class="text-[10px] font-bold text-gray-500 uppercase">Loc Match %</label><input type="number" id="lsn-match" class="input-field !mb-1" placeholder="e.g. 95" oninput="calculateMatchQty('lsn-')"><div id="lsn-match-display" class="text-[10px] font-bold text-[#007a4d] text-right mb-2 hidden">LOC Match QTY: <span id="lsn-match-qty-val">0</span></div></div>
@@ -423,7 +491,7 @@
                     </div>
                     <div id="det-notes-content" class="hidden py-4">
                         <div id="na-photo-preview" class="mb-4 hidden"><p class="text-[10px] font-bold text-blue-600 mb-2 uppercase">Photos on file</p><div id="na-photo-list-container" class="space-y-2"></div></div>
-                        <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-na" class="bg-green-50 border-2 border-dashed border-green-500 text-green-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="handlePhotoUpload(this, 'na-')"></label></div>
+                        <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-na" class="bg-green-50 border-2 border-dashed border-green-500 text-green-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" multiple capture="environment" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="handlePhotoUpload(this, 'na-')"></label></div>
                         <div class="relative w-full mb-3"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2 relative"><input type="text" id="na-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); filterAvNotes('na-')" onfocus="filterAvNotes('na-')" onblur="setTimeout(()=>{if(document.getElementById('na-av-dropdown-list'))document.getElementById('na-av-dropdown-list').classList.add('hidden'); saveData(false, 'na-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT..."></div><div id="na-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div></div>
                         <div id="na-input-container">
                             <div class="mb-3"><label class="text-[10px] font-bold text-gray-500 uppercase">Loc Match %</label><input type="number" id="na-match" class="input-field !mb-1" placeholder="e.g. 95" oninput="calculateMatchQty('na-')"><div id="na-match-display" class="text-[10px] font-bold text-[#007a4d] text-right mb-2 hidden">LOC Match QTY: <span id="na-match-qty-val">0</span></div></div>
@@ -439,7 +507,7 @@
                     </div>
                     <div id="det-request-content" class="hidden py-4">
                         <div id="req-photo-preview" class="mb-4 hidden"><p class="text-[10px] font-bold text-purple-600 mb-2 uppercase">Request Photos</p><div id="req-photo-list-container" class="space-y-2"></div></div>
-                        <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-req" class="bg-purple-50 border-2 border-dashed border-purple-500 text-purple-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="handlePhotoUpload(this, 'req-')"></label></div>
+                        <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-req" class="bg-purple-50 border-2 border-dashed border-purple-500 text-purple-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" multiple capture="environment" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="handlePhotoUpload(this, 'req-')"></label></div>
                         <div id="req-input-container">
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Match %</label><input type="number" id="req-match" class="input-field" placeholder="e.g. 95" onchange="saveData(false, 'req-', true)"></div>
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="req-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'req-', true)"></div>
@@ -458,7 +526,7 @@
                     </div>
                     <div id="det-docks-content" class="hidden py-4">
                         <div id="dock-photo-preview" class="mb-4 hidden"><p class="text-[10px] font-bold text-orange-600 mb-2 uppercase">Photos on file</p><div id="dock-photo-list-container" class="space-y-2"></div></div>
-                        <div class="grid grid-cols-1 gap-2 mb-4"><label class="bg-orange-50 border-2 border-dashed border-orange-500 text-orange-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="handlePhotoUpload(this, 'dock-')"></label></div>
+                        <div class="grid grid-cols-1 gap-2 mb-4"><label class="bg-orange-50 border-2 border-dashed border-orange-500 text-orange-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" multiple capture="environment" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="handlePhotoUpload(this, 'dock-')"></label></div>
                         <div id="dock-input-container">
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="dock-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'dock-', true)"></div>
                             <div id="dock-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="dock-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'dock-', true)"></div>
@@ -468,7 +536,7 @@
                     </div>
                     <div id="det-flyer-content" class="hidden py-4">
                         <div id="flyer-photo-preview" class="mb-4 hidden"><p class="text-[10px] font-bold text-indigo-600 mb-2 uppercase">Photos on file</p><div id="flyer-photo-list-container" class="space-y-2"></div></div>
-                        <div class="grid grid-cols-1 gap-2 mb-4"><label class="bg-indigo-50 border-2 border-dashed border-indigo-500 text-indigo-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="handlePhotoUpload(this, 'flyer-')"></label></div>
+                        <div class="grid grid-cols-1 gap-2 mb-4"><label class="bg-indigo-50 border-2 border-dashed border-indigo-500 text-indigo-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" multiple capture="environment" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="handlePhotoUpload(this, 'flyer-')"></div>
                         <div id="flyer-input-container">
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Flyer Category</label><input type="text" id="flyer-cat" class="input-field" placeholder="e.g. Spring Sale" onchange="saveData(false, 'flyer-', true)"></div>
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Flyer Title</label><input type="text" id="flyer-title" class="input-field" placeholder="e.g. Featured Trees" onchange="saveData(false, 'flyer-', true)"></div>
@@ -493,17 +561,25 @@
                 </div>
             </div>
             
-            <nav class="fixed bottom-0 w-full bg-white border-t flex justify-around py-3 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-50">
-                <div onclick="switchView('home')"><i class="ph-bold ph-house text-2xl text-gray-400"></i></div>
-                <div onclick="switchView('drive')"><i class="ph-bold ph-car text-2xl text-gray-400"></i></div>
-                <div onclick="switchView('tasks')" class="rep-hidden csr-hidden"><i class="ph-bold ph-clipboard-text text-2xl text-gray-400"></i></div>
-                <div onclick="switchView('docks')"><i class="ph-bold ph-truck text-2xl text-gray-400"></i></div>
+           <nav class="fixed bottom-0 w-full bg-white border-t flex justify-around py-3 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-50">
+                <div onclick="switchView('home')" class="flex flex-col items-center cursor-pointer"><i class="ph-bold ph-house text-2xl text-gray-400"></i></div>
+                <div onclick="switchView('drive')" class="flex flex-col items-center cursor-pointer"><i class="ph-bold ph-car text-2xl text-gray-400"></i></div>
+                <div onclick="switchView('tasks')" class="flex flex-col items-center cursor-pointer rep-hidden csr-hidden"><i class="ph-bold ph-clipboard-text text-2xl text-gray-400"></i></div>
+                <div onclick="switchView('docks')" class="flex flex-col items-center cursor-pointer"><i class="ph-bold ph-truck text-2xl text-gray-400"></i></div>
+                
+                <div onclick="switchView('chat-inbox'); loadChatInbox();" class="flex flex-col items-center relative cursor-pointer">
+                    <i class="ph-bold ph-chat-circle-dots text-2xl text-gray-400"></i>
+                    <div id="nav-unread-badge" class="absolute -top-1 -right-2 bg-red-500 text-white text-[9px] font-black w-4 h-4 flex items-center justify-center rounded-full hidden">0</div>
+                </div>
             </nav>
         </div>
+        
         <script>
         const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6cm55anNvc3J5ZWpqZWpsaWlpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzAyNzM1NywiZXhwIjoyMDg4NjAzMzU3fQ.Bc46UfJ1N4AgAS1PgfhFg6S4BEyybR6g_TUnPZsE2t0";
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwhH-eB5Py3xCwhmWReOAcAfl9Zu6mkw0hZYnAbIP9lLANoE4iebK1hXa6-ogU4_1AURA/exec"; 
+        
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwhH-eB5Py3xCwhmWReOAcAfl9Zu6mkw0hZYnAbIP9lLANoE4iebK1hXa6-ogU4_1AURA/exec";       
         const esc = (s) => String(s || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
         const DB_NAME="GNC_DDC_DB_V2"; const STORE_NAME="inventory_cache";
         
@@ -616,7 +692,7 @@
         let activeDriveTab='name'; let selectedDriveBlock=null; let selectedDriveLoc=null;
         let driveViewLevel=0; let selectedDriveName=null; let selectedDriveSize=null; let driveSelectedSeasons=new Set(['ALL']); const availableSeasons=["ALL","S1","F1","U1","U2","U3","X","Y","Z"];
         
-        let activeTaskTab="season"; let taskViewTargetUser=null; let taskViewLevel=0; let selectedTaskBlock=null; let selectedTaskLoc=null; let selectedEndCapFolder=null;
+        let activeTaskTab="season"; let taskViewLevel=0; let selectedTaskBlock=null; let selectedTaskLoc=null; let selectedEndCapFolder=null;
         
         let activeAVTab='open'; let activeAvOpenTab='name'; let avOpenLevel=0; let selectedAvOpenName=null; let selectedAvOpenSize=null; let selectedAvOpenSeason=null; let selectedAvOpenLot=null; let avResLevel=0; let selectedAvResName=null; let selectedAvResSize=null;
         
@@ -624,6 +700,8 @@
         let reportViewLevel=0; let activeReqTab="pending"; let selectedReqRep=null; let selectedReqRepStatus=null; let selectedReqFolder=null; let tempSelectedReqRep=""; let tempReqFolder=null; let tempReqCust=null; let previousReqStep="";
         let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqFolderView=null; let selectedReqStatus='Pending';
         let dockViewLevel=0; let selectedDockNum=null; let pendingDockNum=null; let selectedDockName=null; let selectedDockSize=null; let selectedDockItemCode=null; let selectedDockCustomer=""; let selectedDockTrip=""; let selectedDockRep=""; let lastSyncTime=new Date().toISOString();
+        let activeDocksMainTab = 'all'; let activeDocksSubTab = 'checker'; let expandedDockStops = new Set();
+        
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Machino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
 
         window.onload=async function() {
@@ -652,7 +730,7 @@
         async function promptToEnableBiometrics(user,pin) { 
             if(!confirm("Would you like to enable Fingerprint/FaceID login for future use?"))return; 
             try{ 
-                const publicKey={challenge:new Uint8Array(32),rp:{name:"Greenleaf"},user:{id:new Uint8Array(16),name:user,displayName:user},pubKeyCredParams:[{type:"public-key",alg:-7}],authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required"},timeout:60000}; 
+                const publicKey={challenge:new Uint8Array(32),rp:{name:"PH"},user:{id:new Uint8Array(16),name:user,displayName:user},pubKeyCredParams:[{type:"public-key",alg:-7}],authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required"},timeout:60000}; 
                 await navigator.credentials.create({publicKey}); 
                 localStorage.setItem('gnc_bio_enabled','true'); 
                 localStorage.setItem('gnc_bio_user',user); 
@@ -697,10 +775,18 @@
             return repPermutations.some(p=>str.includes(p)); 
         }
 
+        function scrollPhotoGallery(direction) {
+            const gallery = document.getElementById('photo-modal-gallery');
+            if(!gallery) return;
+            const scrollAmount = gallery.clientWidth;
+            gallery.scrollBy({ left: direction * scrollAmount, behavior: 'smooth' });
+        }
+
         function openPhotoModal(urlStr, caption) { 
             const gallery = document.getElementById('photo-modal-gallery');
             gallery.innerHTML = '';
-            let urls = String(urlStr).split(',');
+            
+            let urls = String(urlStr).split(',').filter(u => u.trim() !== '');
             
             urls.forEach(u => {
                 let cleanUrl = u.trim();
@@ -708,24 +794,51 @@
                 if(match) cleanUrl = match[1];
                 if(cleanUrl.startsWith('http')) {
                     let fullUrl = cleanUrl.replace('&sz=w100', ''); 
-                    gallery.innerHTML += `<img src="${fullUrl}" class="snap-center w-full max-h-[80vh] object-contain flex-shrink-0 rounded-xl shadow-2xl">`;
+                    gallery.innerHTML += `<img src="${fullUrl}" class="snap-center w-full max-h-[80vh] object-contain flex-shrink-0 rounded-xl shadow-2xl" style="scroll-snap-stop: always;">`;
                 }
             });
 
             document.getElementById('photo-modal-caption').innerText = caption; 
             document.getElementById('photo-modal').classList.remove('hidden');
             
+            let navLeft = document.getElementById('photo-nav-left');
+            let navRight = document.getElementById('photo-nav-right');
+
             if(urls.length > 1) {
                 document.getElementById('photo-swipe-hint').classList.remove('hidden');
+                document.getElementById('photo-modal-counter').classList.remove('hidden');
+                if(navLeft) navLeft.classList.remove('hidden');
+                if(navRight) navRight.classList.remove('hidden');
             } else {
                 document.getElementById('photo-swipe-hint').classList.add('hidden');
+                document.getElementById('photo-modal-counter').classList.add('hidden');
+                if(navLeft) navLeft.classList.add('hidden');
+                if(navRight) navRight.classList.add('hidden');
             }
+            
+            setTimeout(() => updatePhotoCounter(), 50);
         }
-
         function closePhotoModal() { 
             document.getElementById('photo-modal').classList.add('hidden'); 
         }
 
+        function updatePhotoCounter() {
+            const gallery = document.getElementById('photo-modal-gallery');
+            const counter = document.getElementById('photo-modal-counter');
+            if(!gallery || !counter) return;
+            
+            const images = gallery.querySelectorAll('img');
+            if(images.length <= 1) return;
+            
+            const scrollLeft = gallery.scrollLeft;
+            const clientWidth = gallery.clientWidth;
+            
+            const activeIndex = Math.round(scrollLeft / clientWidth);
+            const displayIndex = Math.min(Math.max(1, activeIndex + 1), images.length);
+            
+            counter.innerText = `${displayIndex} / ${images.length}`;
+        }
+        
         function handleLogin(isBiometricLogin=false) {
             const inputUser=document.getElementById('username-input').value.trim().toLowerCase(); 
             const inputPass=document.getElementById('pin-code').value.trim();
@@ -787,11 +900,43 @@
             localStorage.setItem('gnc_pin_v3',pass); 
             localStorage.setItem('gnc_role_v3',currentRole); 
             document.getElementById('header-user').innerText=currentUser.toUpperCase(); 
+            
+            let dashUser = document.getElementById('dashboard-username-display');
+            if(dashUser) dashUser.innerText = currentUser.toUpperCase();
+
             setRepPermutations(currentUser); 
             if(!isBiometricLogin&&window.PublicKeyCredential&&localStorage.getItem('gnc_bio_enabled')!=='true'){ promptToEnableBiometrics(user,pass); } 
             applyRolePermissions(); 
             fetchBackgroundData(); 
-            setInterval(silentBackgroundSync, 1000); 
+            
+            setupWebSockets();
+        }
+
+        function setupWebSockets() {
+            supabaseClient.channel('inventory-changes')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'v2_master_inventory' }, payload => {
+                    console.log('Instant Inventory Update Detected!', payload);
+                    silentBackgroundSync(); 
+                })
+                .subscribe();
+
+            supabaseClient.channel('chat-messages')
+                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'v2_chat_messages' }, payload => {
+                    console.log('Instant Chat Message Detected!', payload);
+                    if (activeChatRoomId && payload.new.room_id === activeChatRoomId) {
+                        fetchChatMessages();
+                    } else {
+                        loadChatInbox();
+                    }
+                })
+                .subscribe();
+                
+            supabaseClient.channel('request-changes')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'v2_active_request' }, payload => {
+                    console.log('Instant Request Update Detected!', payload);
+                    silentBackgroundSync(); 
+                })
+                .subscribe();
         }
 
         async function silentBackgroundSync() {
@@ -1049,7 +1194,7 @@
         }
 
         function switchView(viewId) { 
-            ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-detail','view-docks','view-request','view-reserves','view-av', 'view-hours'].forEach(id=>{
+            ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-detail','view-docks','view-request','view-reserves','view-av', 'view-hours', 'view-chat-inbox', 'view-chat-room'].forEach(id=>{
                 const el=document.getElementById(id);
                 if(el)el.classList.add('hidden');
             }); 
@@ -1057,7 +1202,7 @@
             requestAnimationFrame(()=>{
                 setTimeout(()=>{
                     if(viewId==='drive')resetDriveView();
-                    if(viewId==='tasks'){ if(safeRole==='ADMIN'&&!taskViewTargetUser)renderTeamSelector(); else renderTasks(); }
+                    if(viewId==='tasks'){ renderTasks(); }
                     if(viewId==='reports')resetReportsView();
                     if(viewId==='review')resetReviewView();
                     if(viewId==='request'){requestViewLevel=0;renderRequest();}
@@ -1185,7 +1330,6 @@
         function handleReservesSearch() { const term=document.getElementById('reserves-search').value.toLowerCase(); const clearBtn=document.getElementById('reserves-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden');reservesViewLevel=0;} else{clearBtn.classList.add('hidden');reservesViewLevel=0;} debouncedReservesSearch(); }
 
         const debouncedAVSearch=debounce(()=>{requestAnimationFrame(()=>renderAV())},150);
-
         function selectAvResName(name) { selectedAvResName=name; avResLevel=1; renderAV(); }
         function selectAvResSize(size) { selectedAvResSize=size; avResLevel=2; renderAV(); }
 
@@ -1318,11 +1462,54 @@
                 }
             }
         }
+        
+        function setDocksMainTab(tab) {
+            activeDocksMainTab = tab;
+            document.getElementById('tab-docks-all').classList.toggle('active', tab === 'all');
+            document.getElementById('tab-docks-my').classList.toggle('active', tab === 'my');
+            
+            const subTabs = document.getElementById('docks-my-sub-tabs');
+            if (tab === 'my') { subTabs.classList.remove('hidden'); } else { subTabs.classList.add('hidden'); }
+            
+            dockViewLevel = 0;
+            renderDocks();
+        }
 
-        const debouncedDocksSearch=debounce(()=>{requestAnimationFrame(()=>renderDocks())},150);
+        function setDocksSubTab(tab) {
+            activeDocksSubTab = tab;
+            document.getElementById('tab-docks-checker').classList.toggle('active', tab === 'checker');
+            document.getElementById('tab-docks-inspector').classList.toggle('active', tab === 'inspector');
+            document.getElementById('tab-docks-mistake').classList.toggle('active', tab === 'mistake');
+            document.getElementById('tab-docks-loading').classList.toggle('active', tab === 'loading');
+            
+            dockViewLevel = 0;
+            renderDocks();
+        }
+
+        const debouncedDocksSearch=debounce(()=>{requestAnimationFrame(()=>renderDocks())}, 150);
         function clearDocksSearch(){ document.getElementById('docks-search').value=""; document.getElementById('docks-search-clear').classList.add('hidden'); dockViewLevel=0; renderDocks(); }
         function handleDocksSearch(){ const term=document.getElementById('docks-search').value.toLowerCase(); const clearBtn=document.getElementById('docks-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden');dockViewLevel=0;}else{clearBtn.classList.add('hidden');dockViewLevel=0;} debouncedDocksSearch(); }
-        function resetDockView() { dockViewLevel = 0; selectedDockNum = null; document.getElementById('docks-search').value = ""; document.getElementById('docks-search-clear').classList.add('hidden'); renderDocks(); }
+        
+        function resetDockView() { 
+            dockViewLevel = 0; selectedDockNum = null; 
+            document.getElementById('docks-search').value = ""; document.getElementById('docks-search-clear').classList.add('hidden'); 
+            
+            activeDocksMainTab = 'all';
+            activeDocksSubTab = 'checker';
+            expandedDockStops.clear();
+            
+            let tAll = document.getElementById('tab-docks-all'); if(tAll) tAll.classList.add('active');
+            let tMy = document.getElementById('tab-docks-my'); if(tMy) tMy.classList.remove('active');
+            let sTabs = document.getElementById('docks-my-sub-tabs'); if(sTabs) sTabs.classList.add('hidden');
+            
+            let tChk = document.getElementById('tab-docks-checker'); if(tChk) tChk.classList.add('active');
+            let tInsp = document.getElementById('tab-docks-inspector'); if(tInsp) tInsp.classList.remove('active');
+            let tMis = document.getElementById('tab-docks-mistake'); if(tMis) tMis.classList.remove('active');
+            let tLoad = document.getElementById('tab-docks-loading'); if(tLoad) tLoad.classList.remove('active');
+            
+            renderDocks(); 
+        }
+        
         function selectDock(dock) { selectedDockNum = dock; dockViewLevel = 1; renderDocks(); }
 
         function openDockInfoModal(dockNum) {
@@ -1366,14 +1553,42 @@
             state[type] = !state[type]; localStorage.setItem(key, JSON.stringify(state)); renderDocks(); 
         }
 
+        function toggleDockStop(stopNum) {
+            if(expandedDockStops.has(stopNum)) {
+                expandedDockStops.delete(stopNum);
+            } else {
+                expandedDockStops.add(stopNum);
+            }
+            renderDocks();
+        }
+
         function renderDocks() {
             const container = document.getElementById('docks-content'); const crumb = document.getElementById('docks-crumb'); const term = document.getElementById('docks-search').value.toLowerCase().trim();
             let items = socInventory;
             if(term) { const searchTerms = term.split(/\s+/); items = items.filter(i => { const searchStr = (i._search || "").toLowerCase(); return searchTerms.every(t => searchStr.includes(t)); }); }
             if (items.length === 0) { container.innerHTML = `<div class="p-8 text-center text-gray-400">No dock items found.</div>`; crumb.innerText = "No Results"; return; }
+            
             if (dockViewLevel === 0) {
-                crumb.innerText = "Select a Dock";
                 let docks = [...new Set(items.map(i => i.DOCK_NUM || 'Unassigned'))].sort((a,b) => { let numA = parseFloat(String(a).replace(/[^0-9.]/g, '')); let numB = parseFloat(String(b).replace(/[^0-9.]/g, '')); if(!isNaN(numA) && !isNaN(numB)) return numA - numB; return String(a).localeCompare(String(b)); });
+                
+                if (activeDocksMainTab === 'my') {
+                    crumb.innerText = `My Docks > ${activeDocksSubTab.charAt(0).toUpperCase() + activeDocksSubTab.slice(1)}`;
+                    docks = docks.filter(d => {
+                        let savedInfo = JSON.parse(localStorage.getItem('gnc_dock_team_' + d) || '{"checker":"","inspector":"","mistake":"","status":"Loading"}');
+                        if (activeDocksSubTab === 'checker') return savedInfo.checker && savedInfo.checker.trim() !== "";
+                        if (activeDocksSubTab === 'inspector') return savedInfo.inspector && savedInfo.inspector.trim() !== "";
+                        if (activeDocksSubTab === 'mistake') return savedInfo.mistake && savedInfo.mistake.trim() !== "";
+                        if (activeDocksSubTab === 'loading') return savedInfo.status && savedInfo.status.trim() !== "";
+                        return false;
+                    });
+                    if(docks.length === 0) {
+                        container.innerHTML = `<div class="p-8 text-center text-gray-400">No docks found in this tab.</div>`;
+                        return;
+                    }
+                } else {
+                    crumb.innerText = "All Docks";
+                }
+
                 container.innerHTML = docks.map(d => {
                     let dItems = items.filter(i => (i.DOCK_NUM || 'Unassigned') === d); let count = dItems.length;
                     let savedInfo = JSON.parse(localStorage.getItem('gnc_dock_team_' + d) || '{"checker":"","inspector":"","mistake":"","status":"Loading"}');
@@ -1387,15 +1602,53 @@
                 crumb.innerText = `Dock: ${selectedDockNum}`;
                 let dItems = items.filter(i => (i.DOCK_NUM || 'Unassigned') === selectedDockNum);
                 dItems.sort((a,b) => { let stopA = parseFloat(a.STOPNUMBER); if(isNaN(stopA)) stopA = 9999; let stopB = parseFloat(b.STOPNUMBER); if(isNaN(stopB)) stopB = 9999; if(stopA !== stopB) return stopA - stopB; return String(a.CONTSIZE || "").localeCompare(String(b.CONTSIZE || "")); });
-                let currentStop = null; let html = `<div class="back-btn" onclick="dockViewLevel=0; renderDocks()"><i class="ph-bold ph-arrow-left"></i> Back to Docks</div>`;
-                dItems.forEach(item => {
-                    let stopNum = item.STOPNUMBER || 'Unassigned';
-                    if (stopNum !== currentStop) {
-                        currentStop = stopNum; let rep = item.SALESREPNAME || item.SALESREPID || 'Unknown Rep'; let cust = item.CUSTOMERNAME || 'Unknown Customer'; let cons = item.CONSIGNEENAME || item.CONSIGNEE || ''; let state = item.CONSIGNEESTATE || item.STATE || 'N/A';
-                        html += `<div class="bg-gray-800 text-white rounded-xl shadow-md mb-3 p-4 mt-6 border-l-4 border-[#007a4d]"><div class="flex justify-between items-center mb-2 border-b border-gray-600 pb-2"><div class="font-black text-xl text-green-400 tracking-wider">STOP ${stopNum}</div><div class="text-[10px] font-bold bg-gray-700 px-2 py-1 rounded text-gray-300 uppercase"><i class="ph-bold ph-user mr-1"></i>${rep}</div></div><div class="font-bold text-[15px] leading-tight mb-0.5">${cust}</div>${cons && cons !== cust ? `<div class="text-[12px] text-gray-300 font-semibold mb-2 flex items-center gap-1"><i class="ph-bold ph-arrow-bend-down-right"></i> ${cons}</div>` : '<div class="mb-2"></div>'}<div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1"><i class="ph-bold ph-map-pin"></i> State: <span class="text-gray-200">${state}</span></div></div>`;
+                
+                let html = `<div class="back-btn" onclick="dockViewLevel=0; renderDocks()"><i class="ph-bold ph-arrow-left"></i> Back to Docks</div>`;
+                
+                let stops = [...new Set(dItems.map(i => i.STOPNUMBER || 'Unassigned'))];
+                
+                stops.forEach(stopNum => {
+                    let sItems = dItems.filter(i => (i.STOPNUMBER || 'Unassigned') === stopNum);
+                    let firstItem = sItems[0];
+                    let rep = firstItem.SALESREPNAME || firstItem.SALESREPID || 'Unknown Rep'; 
+                    let cust = firstItem.CUSTOMERNAME || 'Unknown Customer'; 
+                    let cons = firstItem.CONSIGNEENAME || firstItem.CONSIGNEE || ''; 
+                    let state = firstItem.CONSIGNEESTATE || firstItem.STATE || 'N/A';
+                    let tripNum = firstItem.TRIPNUMBER || '-';
+                    let isExpanded = expandedDockStops.has(stopNum);
+
+                    html += `<div class="bg-white border border-gray-300 rounded-xl shadow-sm mb-4 overflow-hidden">
+                        <div class="p-4 cursor-pointer bg-gray-50 flex justify-between items-center active:bg-gray-100 transition-colors" onclick="toggleDockStop('${esc(stopNum)}')">
+                            <div class="flex flex-col min-w-0 pr-2">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="font-black text-xl text-gray-900 tracking-tight">STOP ${stopNum}</span>
+                                    <span class="bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded text-[10px] uppercase tracking-widest">Dock ${selectedDockNum}</span>
+                                </div>
+                                <div class="font-bold text-[15px] text-[#007a4d] leading-tight truncate">${cust}</div>
+                                ${cons && cons !== cust ? `<div class="text-[11px] text-gray-500 font-semibold truncate mt-0.5"><i class="ph-bold ph-arrow-bend-down-right"></i> ${cons}</div>` : ''}
+                                <div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-1.5 flex flex-wrap gap-2">
+                                    <span>Trip: <span class="text-gray-600">${tripNum}</span></span>
+                                    <span>State: <span class="text-gray-600">${state}</span></span>
+                                    <span><i class="ph-bold ph-user"></i> ${rep}</span>
+                                </div>
+                            </div>
+                            <div class="flex flex-col items-center flex-shrink-0 ml-2 border-l border-gray-200 pl-4">
+                                <div class="font-black text-2xl text-[#007a4d] leading-none">${sItems.length}</div>
+                                <div class="text-[9px] font-bold text-gray-400 uppercase tracking-wider mt-1">Units</div>
+                                <i class="ph-bold ${isExpanded ? 'ph-caret-up' : 'ph-caret-down'} text-lg text-gray-400 mt-1"></i>
+                            </div>
+                        </div>`;
+
+                    if (isExpanded) {
+                        html += `<div class="p-3 bg-gray-200/50 border-t border-gray-300 flex flex-col gap-2">`;
+                        sItems.forEach(item => {
+                            html += generateCard(item, 'docks', 'status-orange');
+                        });
+                        html += `</div>`;
                     }
-                    html += generateCard(item, 'docks', 'status-orange');
+                    html += `</div>`;
                 });
+                
                 container.innerHTML = html;
             }
         }
@@ -1496,6 +1749,7 @@
                 }
             }
         }
+
         function handleCardClick(domId,uniqueId,sourceView) {
             if(isLongPress){ isLongPress=false; return; }
             if(isMultiSelectMode){ 
@@ -1505,7 +1759,7 @@
                     if(cb){ cb.checked=!cb.checked; toggleGlobalItem(domId,cb.checked); } 
                 } 
             }else{ 
-                if(safeRole==='SALESREP'&&(sourceView==='drive'||sourceView==='av')){ 
+                if(sourceView === 'av' || (safeRole === 'SALESREP' && sourceView === 'drive')){ 
                     let item=fullInventory.find(i=>i.UNIQUE_ID===uniqueId)||lowStockInventory.find(i=>i.UNIQUE_ID===uniqueId)||reservesInventory.find(i=>i.UNIQUE_ID===uniqueId); 
                     if(item){ 
                         let pLink=item.SAVED_PHOTO_LINK||item['PHOTO_LINK']||item.PHOTOLINK||""; 
@@ -1553,11 +1807,17 @@
             }
 
             document.getElementById('dtab-overview').classList.remove('hidden');
-            if (sourceView === 'drive' || sourceView === 'av' || sourceView === 'low-stock') {
-                document.getElementById('dtab-season').classList.remove('hidden');
-                document.getElementById('dtab-location').classList.remove('hidden');
-                document.getElementById('dtab-request').classList.remove('hidden');
+            
+            if (sourceView === 'drive' || sourceView === 'low-stock') {
                 document.getElementById('dtab-notes').classList.remove('hidden');
+                document.getElementById('dtab-request').classList.remove('hidden');
+                
+                if (activeItem.APP_TAB_ASSIGNMENT === 'season') {
+                    document.getElementById('dtab-season').classList.remove('hidden');
+                }
+                if (activeItem.APP_TAB_ASSIGNMENT === 'location') {
+                    document.getElementById('dtab-location').classList.remove('hidden');
+                }
             } else if (sourceView === 'tasks') {
                 let t = document.getElementById('dtab-' + activeTaskTab);
                 if(t) t.classList.remove('hidden');
@@ -1565,6 +1825,11 @@
                 document.getElementById('dtab-docks').classList.remove('hidden');
             } else if (sourceView === 'request') {
                 document.getElementById('dtab-request').classList.remove('hidden');
+                if (activeItem.APP_TAB_ASSIGNMENT === 'season') {
+                    document.getElementById('dtab-season').classList.remove('hidden');
+                } else if (activeItem.APP_TAB_ASSIGNMENT === 'location') {
+                    document.getElementById('dtab-location').classList.remove('hidden');
+                }
             }
 
             const globalAvContainer = document.getElementById('global-av-container');
@@ -1616,6 +1881,8 @@
             } else {
                 switchDetailTab('overview');
             }
+
+            if(typeof validateSsnForm === 'function') validateSsnForm();
         }
 
         function renderSavedPhotos() {
@@ -1624,20 +1891,26 @@
             let dLink = activeItem.DOCK_PHOTO_LINK || "";
             let fLink = activeItem.FLYER_PHOTO_LINK || "";
 
-            const makeThumbs = (link, containerId, wrapperId) => {
+            const makeThumbs = (link, containerId, wrapperId, prefix, linkType) => {
                 let el = document.getElementById(containerId);
                 let wrap = document.getElementById(wrapperId);
                 if(!el || !wrap) return;
                 if(link && String(link).trim() !== "") {
                     let urls = String(link).split(',');
-                    let html = `<div class="flex gap-2 overflow-x-auto pb-2">`;
+                    let html = `<div class="flex gap-2 overflow-x-auto pb-2 pt-2">`; 
                     urls.forEach(u => {
                         let c = u.trim();
                         let m = c.match(/(https?:\/\/[^"\s>]+)/);
                         if(m) c = m[1];
                         if(c.startsWith('http')) {
                             let thumb = getDirectImageUrl(c);
-                            html += `<img src="${thumb}" class="w-20 h-20 object-cover rounded-lg border border-gray-300 cursor-pointer shadow-sm active:scale-95" onclick="openPhotoModal('${link}', 'Saved Photo')">`;
+                            html += `
+                            <div class="relative flex-shrink-0">
+                                <img src="${thumb}" class="w-20 h-20 object-cover rounded-lg border border-gray-300 cursor-pointer shadow-sm active:scale-95" onclick="openPhotoModal('${link}', 'Saved Photo')">
+                                <div class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center cursor-pointer shadow-md active:scale-95 z-10" onclick="event.stopPropagation(); deletePhoto('${c}', '${linkType}')">
+                                    <i class="ph-bold ph-trash text-xs"></i>
+                                </div>
+                            </div>`;
                         }
                     });
                     html += `</div>`;
@@ -1649,12 +1922,59 @@
                 }
             };
 
-            makeThumbs(sLink, 'ssn-photo-list-container', 'ssn-photo-preview');
-            makeThumbs(sLink, 'lsn-photo-list-container', 'lsn-photo-preview');
-            makeThumbs(sLink, 'na-photo-list-container', 'na-photo-preview');
-            makeThumbs(rLink || sLink, 'req-photo-list-container', 'req-photo-preview');
-            makeThumbs(dLink || sLink, 'dock-photo-list-container', 'dock-photo-preview');
-            makeThumbs(fLink || sLink, 'flyer-photo-list-container', 'flyer-photo-preview');
+            makeThumbs(sLink, 'ssn-photo-list-container', 'ssn-photo-preview', 'ssn-', 'SAVED_PHOTO_LINK');
+            makeThumbs(sLink, 'lsn-photo-list-container', 'lsn-photo-preview', 'lsn-', 'SAVED_PHOTO_LINK');
+            makeThumbs(sLink, 'na-photo-list-container', 'na-photo-preview', 'na-', 'SAVED_PHOTO_LINK');
+            makeThumbs(rLink || sLink, 'req-photo-list-container', 'req-photo-preview', 'req-', rLink ? 'REQ_PHOTO_LINK' : 'SAVED_PHOTO_LINK');
+            makeThumbs(dLink || sLink, 'dock-photo-list-container', 'dock-photo-preview', 'dock-', dLink ? 'DOCK_PHOTO_LINK' : 'SAVED_PHOTO_LINK');
+            makeThumbs(fLink || sLink, 'flyer-photo-list-container', 'flyer-photo-preview', 'flyer-', fLink ? 'FLYER_PHOTO_LINK' : 'SAVED_PHOTO_LINK');
+        }
+
+        async function deletePhoto(urlToRemove, linkType) {
+            if(!confirm("Are you sure you want to delete this photo?")) return;
+            if(!activeItem) return;
+            
+            let currentUrls = (activeItem[linkType] || "").split(',').map(u => u.trim()).filter(Boolean);
+            let updatedUrls = currentUrls.filter(u => !u.includes(urlToRemove));
+            let newLinkString = updatedUrls.join(',');
+            
+            activeItem[linkType] = newLinkString;
+            renderSavedPhotos(); 
+            
+            let targetTable = (activeItem.SOURCE_TABLE === 'v2_active_request') ? 'v2_active_request' : (activeItem.SOURCE_TABLE || 'v2_master_inventory');
+            let payload = {};
+            payload[linkType.toLowerCase()] = newLinkString === "" ? null : newLinkString;
+            
+            showToast("Deleting", "Removing photo...", false);
+            
+            try {
+                await supabaseFetch(targetTable, 'PATCH', payload, `unique_id=eq.${encodeURIComponent(activeItem.UNIQUE_ID)}`);
+                showToast("Success", "Photo removed.");
+                
+                try {
+                    let urlObj = new URL(urlToRemove);
+                    let pathParts = urlObj.pathname.split('/public/')[1]; 
+                    if(pathParts) {
+                        let bucket = pathParts.split('/')[0];
+                        let filePath = pathParts.substring(bucket.length + 1);
+                        
+                        await fetch(`${SUPABASE_URL}/storage/v1/object/${bucket}/${filePath}`, {
+                            method: 'DELETE',
+                            headers: {
+                                'Authorization': 'Bearer ' + SUPABASE_KEY,
+                                'apikey': SUPABASE_KEY
+                            }
+                        });
+                    }
+                } catch(storageErr) {
+                    console.log("Could not delete from storage bucket, but removed from DB.");
+                }
+                
+            } catch(err) {
+                showToast("Error", "Could not remove photo from database.", true);
+                activeItem[linkType] = currentUrls.join(',');
+                renderSavedPhotos();
+            }
         }
 
         function switchDetailTab(tab) {
@@ -1788,8 +2108,7 @@
                     crumb.innerText = `${selectedReqRepView} > Status`;
                     let repItems = items.filter(i => (i.REQUESTED_BY || 'Unknown Rep') === selectedReqRepView && !i.REQ_ARCHIVED);
                     let pendingCount = repItems.filter(i => i.REQ_STATUS !== 'Complete').length;
-                    let completeCount = repItems.filter(i => i.REQ_STATUS === 'Complete').length;
-                    
+                    let completeCount = repItems.filter(i => i.REQ_STATUS === 'Complete').length;                 
                     container.innerHTML = `
                         <div class="back-btn" onclick="requestViewLevel=0; renderRequest()"><i class="ph-bold ph-arrow-left"></i> Back to Reps</div>
                         <div class="bg-orange-50 border border-orange-200 rounded-xl shadow-sm mb-4 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectedReqStatus='Pending'; requestViewLevel=2; renderRequest()">
@@ -1896,12 +2215,18 @@
                     let thumbUrl = getDirectImageUrl(cleanUrl); 
                     if(thumbUrl.startsWith('http')){ 
                         let photoCount = String(photoLink).split(',').length;
-                        clickThumbHtml = `<div class="ml-3 flex-shrink-0 flex flex-col items-center" onclick="event.stopPropagation(); openPhotoModal('${photoLink}', '${esc(item.COMMONNAME)} - ${esc(item.CONTSIZE)}')"><div class="relative"><img src="${thumbUrl}" class="w-24 h-24 rounded-lg object-cover border-2 border-teal-300 shadow-md active:scale-95 transition-transform" loading="lazy">${photoCount > 1 ? `<div class="absolute -top-2 -right-2 bg-teal-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full border-2 border-white shadow-sm">+${photoCount-1}</div>` : ''}</div><div class="text-center text-[9px] font-black text-teal-600 mt-1.5 uppercase tracking-widest bg-teal-50 px-2 py-0.5 rounded-md border border-teal-100 cursor-pointer active:bg-teal-200">VIEW</div></div>`; 
+                        clickThumbHtml = `<div class="ml-3 flex-shrink-0 flex flex-col items-center" onclick="event.stopPropagation(); openPhotoModal('${photoLink}', '${esc(item.COMMONNAME)} - ${esc(item.CONTSIZE)}')"><div class="relative"><img src="${thumbUrl}" class="w-24 h-24 rounded-lg object-cover border-2 border-teal-300 shadow-md active:scale-95 transition-transform" loading="lazy">${photoCount > 1 ? `<div class="absolute -top-2 -right-2 bg-teal-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full border-2 border-white shadow-sm">+${photoCount-1}</div>` : ''}</div><div class="text-center text-[9px] font-black text-teal-600 mt-1.5 uppercase tracking-widest bg-teal-50 px-
+2 py-0.5 rounded-md border border-teal-100 cursor-pointer active:bg-teal-200">VIEW</div></div>`; 
                     } 
                 }
 
-                return `<div class="flex items-start w-full mb-3 item-row relative bg-white p-4 rounded-xl border-2 border-teal-100 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-teal-600 focus:ring-teal-600 shadow-sm pointer-events-none" ${isChecked}></div><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full"><div class="flex-grow min-w-0 pr-2"><div class="font-black text-gray-800 text-[18px] leading-tight break-words mb-1">${item.COMMONNAME||'Unknown'}</div><div class="font-black text-teal-700 text-[15px] mb-2">${item.CONTSIZE||'-'}</div><div class="grid grid-cols-2 gap-2 mb-2"><div class="text-[11px] font-bold text-gray-500 uppercase"><span class="block text-[8px] text-gray-400 mb-0.5">LOT CODE</span>${item.LOTCODE||'-'}</div><div class="text-[11px] font-bold text-gray-500 uppercase"><span class="block text-[8px] text-gray-400 mb-0.5">LOCATION</span>${item.LOCATIONCODE||'-'}</div></div><div class="flex flex-wrap gap-2 text-[11px] font-bold uppercase tracking-wider mt-1"><span class="bg-gray-100 text-gray-800 px-2 py-1 rounded border border-gray-200">LOC AVA: <span class="font-black">${item.PTRAVAILABLE||'0'}</span></span><span class="bg-purple-50 text-purple-700 px-2 py-1 rounded border border-purple-200">s_LTS: <span class="font-black">${item.S_LTS||'0'}</span></span></div>${holdHtml}${avNoteHtml}</div>${clickThumbHtml}</div></div></div>`;
+                let ptr = parseInt(String(item.PTRAVAILABLE).replace(/,/g, '')) || 0;
+                let matchPct = parseFloat(item.MATCH || item.MATCHPCT);
+                let locPhotoMatch = !isNaN(matchPct) ? Math.round(ptr * (matchPct / 100)) : 'N/A';
+
+                return `<div class="flex items-start w-full mb-3 item-row relative bg-white p-4 rounded-xl border-2 border-teal-100 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-teal-600 focus:ring-teal-600 shadow-sm pointer-events-none" ${isChecked}></div><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full"><div class="flex-grow min-w-0 pr-2"><div class="font-black text-gray-800 text-[18px] leading-tight break-words mb-1">${item.COMMONNAME||'Unknown'}</div><div class="font-black text-teal-700 text-[15px] mb-2">${item.CONTSIZE||'-'}</div><div class="grid grid-cols-2 gap-2 mb-2"><div class="text-[11px] font-bold text-gray-500 uppercase"><span class="block text-[8px] text-gray-400 mb-0.5">LOT CODE</span>${item.LOTCODE||'-'}</div><div class="text-[11px] font-bold text-gray-500 uppercase"><span class="block text-[8px] text-gray-400 mb-0.5">LOCATION</span>${item.LOCATIONCODE||'-'}</div></div><div class="flex flex-wrap gap-2 text-[11px] font-bold uppercase tracking-wider mt-1"><span class="bg-gray-100 text-gray-800 px-2 py-1 rounded border border-gray-200">LOC AVA: <span class="font-black">${item.PTRAVAILABLE||'0'}</span></span><span class="bg-purple-50 text-purple-700 px-2 py-1 rounded border border-purple-200">s_LTS: <span class="font-black">${item.S_LTS||'0'}</span></span><span class="bg-green-50 text-green-700 px-2 py-1 rounded border border-green-200">LOC PHOTO MATCH: <span class="font-black">${locPhotoMatch}</span></span></div>${holdHtml}${avNoteHtml}</div>${clickThumbHtml}</div></div></div>`;
             }
+            
             if(photoLink){ 
                 let firstUrl=String(photoLink).split(',')[0]; 
                 let cleanUrl=firstUrl.trim(); 
@@ -1925,11 +2250,16 @@
             }
 
             if(sourceView === 'docks'){
-                let stopNum = item.STOPNUMBER || '-'; let tripNum = item.TRIPNUMBER || '-'; let salesRep = item.SALESREPNAME || item.SALESREPID || '-'; let sourceStr = item.SOURCE || '-'; let noteHtml = "";
-                if(item.DOCK_NOTE && String(item.DOCK_NOTE).trim() !== "") noteHtml += `<div class="mt-2 text-[12px] text-orange-800 bg-orange-100 p-2 rounded border border-orange-200 shadow-sm whitespace-pre-wrap"><span class="font-black">DOCK NOTE:</span> ${item.DOCK_NOTE}</div>`;
-                let checkState = JSON.parse(localStorage.getItem('gnc_dock_item_' + item.UNIQUE_ID) || '{"checker":false,"inspector":false}'); let isDimmed = checkState.checker && checkState.inspector; let cardOpacity = isDimmed ? "opacity-40 grayscale" : "opacity-100"; let chkClass = checkState.checker ? "bg-[#007a4d] text-white border-[#007a4d]" : "bg-gray-50 text-gray-500 border-gray-200"; let inspClass = checkState.inspector ? "bg-[#007a4d] text-white border-[#007a4d]" : "bg-gray-50 text-gray-500 border-gray-200";
-                let actionBtns = `<div class="flex gap-2 mt-3 pt-3 border-t border-gray-100"><button class="flex-1 py-2.5 rounded-lg text-[10px] uppercase font-black border shadow-sm transition-colors ${chkClass} active:scale-95" onclick="event.stopPropagation(); toggleDockItemState('${safeUidJs}', 'checker')"><i class="ph-bold ph-check-square mr-1 text-lg align-middle"></i> Check</button><button class="flex-1 py-2.5 rounded-lg text-[10px] uppercase font-black border shadow-sm transition-colors ${inspClass} active:scale-95" onclick="event.stopPropagation(); toggleDockItemState('${safeUidJs}', 'inspector')"><i class="ph-bold ph-magnifying-glass mr-1 text-lg align-middle"></i> Inspect</button><button class="flex-1 py-2.5 rounded-lg text-[10px] uppercase font-black border border-red-200 bg-red-50 text-red-600 shadow-sm transition-colors hover:bg-red-100 active:scale-95" onclick="event.stopPropagation(); openDockItemMistakeModal('${safeUidJs}')"><i class="ph-bold ph-warning-circle mr-1 text-lg align-middle"></i> Mistake</button></div>`;
-                return `<div class="flex items-center w-full mb-3 item-row relative bg-white p-4 rounded-xl border border-gray-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${cardOpacity}" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm pointer-events-none" ${isChecked}></div><div class="flex flex-col w-full min-w-0"><div class="flex items-start justify-between w-full"><div class="flex-grow min-w-0 pr-2"><div class="font-black text-gray-800 text-[16px] leading-tight break-words mb-0.5">${item.COMMONNAME||'Unknown'}</div><div class="font-bold text-[#007a4d] text-sm mb-2">${item.CONTSIZE||'-'}</div><div class="text-[11px] font-mono text-gray-500 mb-2 flex items-center bg-gray-100 px-2 py-0.5 rounded w-max"><i class="ph-bold ph-barcode mr-1.5 text-gray-400"></i>${item.ITEMCODE||'-'}</div><div class="flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600"><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Trip: ${tripNum}</span><span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">Loc: ${item.LOCATIONCODE||'No Loc'}</span><span class="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-100">Rep: ${salesRep}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Tag: ${tagColor}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Lot: ${item.LOTCODE||'-'}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Src: ${sourceStr}</span></div>${noteHtml}</div>${thumbHtml}</div>${actionBtns}</div></div>`;
+                let qty = item.QUANTITYORDERED || item.QTY_ORDERED || item.PTRAVAILABLE || '1';
+                let noteHtml = "";
+                if(item.DOCK_NOTE && String(item.DOCK_NOTE).trim() !== "") noteHtml += `<div class="mt-2 text-[12px] text-orange-800 bg-orange-100 p-2 rounded border border-orange-200 shadow-sm whitespace-pre-wrap"><span class="font-black">MISTAKE / NOTE:</span> ${item.DOCK_NOTE}</div>`;
+                let checkState = JSON.parse(localStorage.getItem('gnc_dock_item_' + item.UNIQUE_ID) || '{"checker":false,"inspector":false}'); 
+                let isDimmed = checkState.checker && checkState.inspector; 
+                let cardOpacity = isDimmed ? "opacity-50" : "opacity-100"; 
+                let chkClass = checkState.checker ? "bg-[#007a4d] text-white border-[#007a4d]" : "bg-gray-50 text-gray-500 border-gray-200"; 
+                let inspClass = checkState.inspector ? "bg-[#007a4d] text-white border-[#007a4d]" : "bg-gray-50 text-gray-500 border-gray-200";
+                let actionBtns = `<div class="flex gap-2 mt-3 pt-3 border-t border-gray-100"><button class="flex-1 py-2.5 rounded-lg text-[10px] uppercase font-black border shadow-sm transition-colors ${chkClass} active:scale-95" onclick="event.stopPropagation(); toggleDockItemState('${safeUidJs}', 'checker')"><i class="ph-bold ph-check-square mr-1 text-lg align-middle"></i> Verified</button><button class="flex-1 py-2.5 rounded-lg text-[10px] uppercase font-black border shadow-sm transition-colors ${inspClass} active:scale-95" onclick="event.stopPropagation(); toggleDockItemState('${safeUidJs}', 'inspector')"><i class="ph-bold ph-magnifying-glass mr-1 text-lg align-middle"></i> Inspect</button><button class="flex-1 py-2.5 rounded-lg text-[10px] uppercase font-black border border-red-200 bg-red-50 text-red-600 shadow-sm transition-colors hover:bg-red-100 active:scale-95" onclick="event.stopPropagation(); openDockItemMistakeModal('${safeUidJs}')"><i class="ph-bold ph-flag mr-1 text-lg align-middle"></i> Flag Issue</button></div>`;
+                return `<div class="flex items-start w-full item-row relative bg-white p-4 rounded-xl border border-gray-300 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${cardOpacity}" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm pointer-events-none" ${isChecked}></div><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start border-b border-gray-100 pb-2 mb-2 w-full"><div class="flex-grow min-w-0 pr-2"><div class="font-black text-gray-800 text-[18px] leading-tight break-words mb-0.5">${item.COMMONNAME||'Unknown'}</div><div class="text-[10px] font-mono text-gray-400 uppercase tracking-widest bg-gray-50 px-2 py-0.5 rounded border border-gray-200 w-max">ID: ${item.ITEMCODE||'-'}</div></div>${thumbHtml}</div><div class="grid grid-cols-2 gap-3 mb-2"><div><div class="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Quantity & Specs</div><div class="font-bold text-sm text-[#007a4d]">${qty} EA &bull; ${item.CONTSIZE||'-'}</div></div><div><div class="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Location</div><div class="font-bold text-sm text-blue-700">${item.LOCATIONCODE||'No Loc'}</div></div></div>${item.DOCK_SPEC || item.DOCK_CALIPER ? `<div class="text-[11px] font-bold text-gray-600 bg-gray-50 px-2 py-1 rounded border border-gray-100 mb-2 w-max">Spec: ${item.DOCK_SPEC||'N/A'} | Caliper: ${item.DOCK_CALIPER||'N/A'}</div>` : ''}${noteHtml}${actionBtns}</div></div>`;
             }
 
             if(sourceView==='sales-office'){
@@ -1940,7 +2270,6 @@
                 let lotCode = item.LOTCODE || '-'; 
                 let safeAvNote = avNoteText.replace(/'/g,"\\'").replace(/"/g,"&quot;");
                 let safeSalesNote = salesNoteText.replace(/'/g,"\\'").replace(/"/g,"&quot;");
-                
                 return `<div class="flex items-center w-full mb-3 item-row relative" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm pointer-events-none" ${isChecked}></div><div class="inv-card status-purple flex-grow !mb-0 bg-purple-50/40 border border-purple-200 transition-transform active:scale-[0.99]"><div class="flex justify-between items-start mb-3"><div class="font-bold text-lg text-[#007a4d] leading-tight pr-2 select-text" style="-webkit-user-select: text; user-select: text;">${item.COMMONNAME||'Unknown'}<br><span class="text-sm text-gray-500 font-semibold">${item.CONTSIZE||'-'}</span></div>${thumbHtml}</div><div class="bg-white p-3 rounded-lg border border-purple-200 shadow-sm mb-3 select-text cursor-text" style="-webkit-user-select: text; user-select: text;" onclick="event.stopPropagation();"><div class="flex justify-between items-center mb-1"><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Item Code</span><span class="font-black text-purple-700 font-mono tracking-wide text-sm">${itemCode}</span></div><div class="flex justify-between items-center mb-1 border-b border-gray-100 pb-1"><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Location / Lot</span><span class="font-bold text-gray-600 text-xs">${locCode} / ${lotCode}</span></div><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5 mt-2">AV Note</div><div class="text-[14px] font-bold text-blue-800 leading-snug mb-2">${avNoteText}</div><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Sales Note</div><div class="text-[14px] font-bold text-green-800 leading-snug">${salesNoteText}</div></div><div class="flex gap-2"><button class="flex-1 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-700 text-[10px] font-bold py-2.5 rounded-lg transition-colors flex flex-col items-center justify-center gap-1 active:bg-indigo-200" onclick="event.stopPropagation(); copyTextToClipboard('${itemCode}', 'ITEM CODE')"><i class="ph-bold ph-barcode text-xl"></i> COPY ITEMCODE</button><button class="flex-1 bg-purple-50 border border-purple-200 hover:bg-purple-100 text-purple-700 text-[10px] font-bold py-2.5 rounded-lg transition-colors flex flex-col items-center justify-center gap-1 active:bg-purple-200" onclick="event.stopPropagation(); copyTextToClipboard('${safeAvNote}', 'AV NOTE')"><i class="ph-bold ph-chat-text text-xl"></i> COPY AV NOTE</button><button class="flex-1 bg-[#007a4d] hover:bg-green-700 text-white text-[10px] font-bold py-2.5 rounded-lg transition-colors flex flex-col items-center justify-center gap-1 shadow-md active:scale-95" onclick="event.stopPropagation(); markSalesOfficeComplete('${safeUidJs}', '${item.DOM_ID}')"><i class="ph-bold ph-check-circle text-xl"></i> DONE</button></div></div></div>`;
             }
 
@@ -1951,7 +2280,7 @@
 
             if(sourceView==='drive'||sourceView==='tasks'){
                 let noteHtml="";if(item.END_CAP_FOLDER&&String(item.END_CAP_FOLDER).trim()!==""){noteHtml+=`<div class="mt-2 text-[12px] text-yellow-800 bg-yellow-100 p-2 rounded border border-yellow-200 shadow-sm whitespace-pre-wrap"><span class="font-black">END CAP:</span> ${item.END_CAP_FOLDER} | QTY: ${item.END_CAP_QTY||'0'} | Lvl: ${item.END_CAP_LEVEL||'-'}</div>`}if(item.LOC_MATCH_QTY&&String(item.LOC_MATCH_QTY).trim()!==""&&Number(item.LOC_MATCH_QTY)>0){noteHtml+=`<div class="mt-2 text-[12px] text-green-800 bg-green-100 p-2 rounded border border-green-200 shadow-sm whitespace-pre-wrap"><span class="font-black">MATCH QTY:</span> ${item.LOC_MATCH_QTY}</div>`}if(item.AV_NOTE&&String(item.AV_NOTE).trim()!==""){noteHtml+=`<div class="mt-2 text-[12px] text-blue-800 bg-blue-100 p-2 rounded border border-blue-200 shadow-sm whitespace-pre-wrap"><span class="font-black">AV NOTE:</span> ${item.AV_NOTE}</div>`}if(item.SALES_NOTE&&String(item.SALES_NOTE).trim()!==""){noteHtml+=`<div class="mt-2 text-[12px] text-green-800 bg-green-100 p-2 rounded border border-green-200 shadow-sm whitespace-pre-wrap"><span class="font-black">SALES NOTE:</span> ${item.SALES_NOTE}</div>`}if(item.FLYER_TITLE&&String(item.FLYER_TITLE).trim()!==""){noteHtml+=`<div class="mt-2 text-[12px] text-indigo-800 bg-indigo-100 p-2 rounded border border-indigo-200 shadow-sm whitespace-pre-wrap"><span class="font-black">FLYER:</span> ${item.FLYER_TITLE}</div>`}
-                let extraData="";if(sourceView==='tasks'||sourceView==='drive'){extraData=`<div class="mt-2 flex gap-2 text-[10px] font-bold text-gray-500 uppercase">${item.SPEC?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Spec: ${item.SPEC}</span>`:''}${item.CALIPER?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Cal: ${item.CALIPER}</span>`:''}${item.MATCH?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Match: ${item.MATCH}%</span>`:''}</div>`}
+                let extraData="";if(sourceView==='tasks'||sourceView==='drive'){extraData=`<div class="mt-2 flex flex-wrap gap-2 text-[10px] font-bold text-gray-500 uppercase">${sourceView==='tasks' && item.ASSIGNEDTO ? `<span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-200"><i class="ph-bold ph-user mr-1"></i>${item.ASSIGNEDTO}</span>` : ''}${item.SPEC?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Spec: ${item.SPEC}</span>`:''}${item.CALIPER?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Cal: ${item.CALIPER}</span>`:''}${item.MATCH?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Match: ${item.MATCH}%</span>`:''}</div>`}
                 return `<div class="flex items-center w-full mb-3 item-row relative bg-white p-4 rounded-xl border border-gray-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm pointer-events-none" ${isChecked}></div><div class="flex flex-grow items-start justify-between min-w-0"><div class="flex-grow min-w-0 pr-2"><div class="font-black text-gray-800 text-[16px] leading-tight break-words mb-0.5">${item.COMMONNAME||'Unknown'}</div><div class="font-bold text-[#007a4d] text-sm mb-2">${item.CONTSIZE||'-'}</div><div class="text-[11px] font-mono text-gray-500 mb-2 flex items-center bg-gray-100 px-2 py-0.5 rounded w-max"><i class="ph-bold ph-barcode mr-1.5 text-gray-400"></i>${item.ITEMCODE||'-'}</div><div class="flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600"><span class="bg-gray-100 px-1.5 py-0.5 rounded">LOC AVA: <span class="text-gray-900">${item.PTRAVAILABLE||'0'}</span></span><span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">Loc: ${item.LOCATIONCODE||'No Loc'}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded">Lot: ${item.LOTCODE||'-'}</span><span class="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-100">s_LTS: ${item.S_LTS||'0'}</span><span class="bg-orange-50 text-orange-700 px-1.5 py-0.5 rounded border border-orange-100">Pri: ${item.PRIORITY||'-'}</span></div>${extraData}${noteHtml}</div>${thumbHtml}</div></div>`;
             }
             
@@ -2290,6 +2619,7 @@
                     let clone=JSON.parse(JSON.stringify(item));
                     clone.UNIQUE_ID=newReqId;
                     clone.DOM_ID='req_'+newReqId;
+                    clone.SOURCE_TABLE = 'v2_active_request';
                     clone.REQUESTED_BY=tempSelectedReqRep;
                     clone.REQUEST_FOLDER=folderId;
                     clone.REQ_CUSTOMER=cust;
@@ -2421,8 +2751,7 @@
             driveViewLevel = 0;
             renderDrive();
         }
-
-        function handleDriveSearch() {
+function handleDriveSearch() {
             const term = document.getElementById('drive-search').value.toLowerCase();
             const clearBtn = document.getElementById('drive-search-clear');
             if(term.length > 0) {
@@ -2549,44 +2878,23 @@
             renderDrive();
         }
 
-        function renderTeamSelector() {
-            let uSet = new Set();
-            fullInventory.forEach(i => { if(i.ASSIGNEDTO && !i.DATE_COMPLETED) uSet.add(i.ASSIGNEDTO) });
-            if(uSet.size === 0) { 
-                document.getElementById('task-content').innerHTML = `<div class="p-8 text-center text-gray-400">No active tasks for any team member.</div>`; 
-                return; 
-            }
-            let sorted = Array.from(uSet).sort();
-            let html = `<h2 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Select Team Member</h2>`;
-            sorted.forEach(u => {
-                let userTasks = fullInventory.filter(i => i.ASSIGNEDTO === u && !i.DATE_COMPLETED);
-                let htmlCounts = `<div class="flex gap-2 mt-2">`;
-                ['season','location','endcap','flyer'].forEach(t => {
-                    let c = userTasks.filter(i => i.APP_TAB_ASSIGNMENT === t).length;
-                    if(c > 0) htmlCounts += `<span class="text-[10px] font-bold px-2 py-1 rounded bg-gray-100 text-gray-600 uppercase">${t}: ${c}</span>`;
-                });
-                htmlCounts += `</div>`;
-                html += `<div class="bg-white border border-gray-200 p-4 rounded-xl shadow-sm mb-3 cursor-pointer active:scale-95 transition-transform" onclick="selectTaskUser('${esc(u)}')"><div class="flex justify-between items-center"><span class="font-black text-xl text-[#007a4d]">${u}</span><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${userTasks.length} Total</span></div>${htmlCounts}</div>`;
-            });
-            document.getElementById('task-tabs-container').classList.add('hidden');
-            document.getElementById('task-crumb').innerText = "Team Tasks Overview";
-            document.getElementById('task-content').innerHTML = html;
-        }
-
-        function selectTaskUser(u) {
-            taskViewTargetUser = u;
-            document.getElementById('task-tabs-container').classList.remove('hidden');
-            renderTasks();
-        }
-
         function renderTasks() {
-            let targetUser = safeRole === 'ADMIN' ? taskViewTargetUser : currentUser;
-            if(!targetUser) return;
             const container = document.getElementById('task-content');
             const crumb = document.getElementById('task-crumb');
-            crumb.innerHTML = safeRole === 'ADMIN' ? `<span class="cursor-pointer text-gray-400 hover:text-gray-800" onclick="taskViewTargetUser=null; renderTeamSelector()"><i class="ph-bold ph-arrow-left"></i> Back to Team</span> &bull; <span class="text-[#007a4d]">${targetUser}'s Tasks</span>` : "My Tasks";
             
-            let userItems = fullInventory.filter(i => i.ASSIGNEDTO === targetUser && !i.DATE_COMPLETED);
+            let userItems;
+            if (safeRole === 'ADMIN') {
+                crumb.innerHTML = `<span class="text-[#007a4d]">Team Tasks Overview</span>`;
+                // Admins see all tasks assigned to anyone on the team
+                userItems = fullInventory.filter(i => i.ASSIGNEDTO && !i.DATE_COMPLETED);
+            } else {
+                crumb.innerHTML = "My Tasks";
+                // Standard users only see their own
+                userItems = fullInventory.filter(i => i.ASSIGNEDTO === currentUser && !i.DATE_COMPLETED);
+            }
+
+            document.getElementById('task-tabs-container').classList.remove('hidden');
+            
             let tabItems = userItems.filter(i => i.APP_TAB_ASSIGNMENT === activeTaskTab);
             
             if(tabItems.length === 0){
@@ -2835,95 +3143,98 @@
 
         async function handlePhotoUpload(input, prefix) {
             if (!input.files || input.files.length === 0) return;
-            const file = input.files[0];
+            if (!activeItem) { showToast("Error", "No item selected to attach photo to.", true); return; }
             
-            if (!file.type.startsWith('image/')) {
-                showToast('Error', 'Please select an image file.', true);
-                return;
-            }
+            const fileCount = input.files.length;
+            showToast('Processing', `Preparing ${fileCount} photo(s)...`, false);
 
-            showToast('Processing', 'Compressing image...', false);
+            for (let i = 0; i < fileCount; i++) {
+                const file = input.files[i];
+                
+                if (file.type && !file.type.startsWith('image/')) {
+                    showToast('Error', `File ${i + 1} is not a valid image.`, true);
+                    continue;
+                }
 
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = function(event) {
-                const img = new Image();
-                img.src = event.target.result;
-                img.onload = async function() {
-                    const canvas = document.createElement('canvas');
-                    const MAX_WIDTH = 1080;
-                    let scaleSize = 1;
+                await new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.readAsDataURL(file);
                     
-                    if (img.width > MAX_WIDTH) {
-                        scaleSize = MAX_WIDTH / img.width;
-                    }
-                    
-                    canvas.width = img.width * scaleSize;
-                    canvas.height = img.height * scaleSize;
+                    reader.onload = function(event) {
+                        const img = new Image();
+                        img.src = event.target.result;
+                        
+                        img.onload = async function() {
+                            const canvas = document.createElement('canvas');
+                            const MAX_WIDTH = 1080;
+                            let scaleSize = img.width > MAX_WIDTH ? MAX_WIDTH / img.width : 1;
+                            
+                            canvas.width = img.width * scaleSize;
+                            canvas.height = img.height * scaleSize;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                            canvas.toBlob(async (blob) => {
+                                showToast('Uploading', `Sending ${i + 1} of ${fileCount}...`, false);
 
-                    const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-                    const base64Data = dataUrl.split(',')[1];
+                                let bucketName = 'drive_mode_photos'; 
+                                if (prefix === 'ssn-') bucketName = 'season_sales_notes_photos';
+                                else if (prefix === 'lsn-') bucketName = 'location_sales_notes_photos';
+                                else if (prefix === 'req-') bucketName = 'request_photos';
+                                else if (prefix === 'dock-') bucketName = 'dock_photos';
+                                else if (prefix === 'flyer-') bucketName = 'flyer_photos';
 
-                    showToast('Uploading', 'Sending photo to server...', false);
+                                let dockNum = pendingDockNum || selectedDockNum || "0";
+                                let dateStr = new Date().toISOString().split('T')[0];
+                                let cName = String(activeItem.COMMONNAME || 'Unknown').replace(/[\/\\?%*:|"<>]/g, '-');
+                                let cSize = String(activeItem.CONTSIZE || 'NoSize').replace(/[\/\\?%*:|"<>]/g, '-');
+                                let cLot = String(activeItem.LOTCODE || 'NoLot').replace(/[\/\\?%*:|"<>]/g, '-');
+                                let cLoc = String(activeItem.LOCATIONCODE || 'NoLoc').replace(/[\/\\?%*:|"<>]/g, '-');
+                                let customFileName = `${cName}-${cSize}-${cLot}-${cLoc}-${dateStr}_${i}.jpg`;
+                                let filePath = `${dateStr}/${customFileName}`;
 
-                    let context = 'drive';
-                    if (prefix === 'ssn-') context = 'season';
-                    else if (prefix === 'lsn-') context = 'location';
-                    else if (prefix === 'req-') context = 'request';
-                    else if (prefix === 'dock-') context = 'docks';
+                                try {
+                                    const { data, error } = await supabaseClient.storage
+                                        .from(bucketName)
+                                        .upload(filePath, blob, { contentType: 'image/jpeg', upsert: true });
 
-                    let dockNum = pendingDockNum || selectedDockNum || "0";
+                                    if (error) throw error;
 
-                    let dateStr = new Date().toISOString().split('T')[0];
-                    let cName = String(activeItem.COMMONNAME || 'Unknown').replace(/[\/\\?%*:|"<>]/g, '-');
-                    let cSize = String(activeItem.CONTSIZE || 'NoSize').replace(/[\/\\?%*:|"<>]/g, '-');
-                    let cLot = String(activeItem.LOTCODE || 'NoLot').replace(/[\/\\?%*:|"<>]/g, '-');
-                    let cLoc = String(activeItem.LOCATIONCODE || 'NoLoc').replace(/[\/\\?%*:|"<>]/g, '-');
-                    let customFileName = `${cName}-${cSize}-${cLot}-${cLoc}-${dateStr}.jpg`;
+                                    const { data: { publicUrl } } = supabaseClient.storage.from(bucketName).getPublicUrl(filePath);
 
-                    const payload = {
-                        type: 'image',
-                        image: base64Data,
-                        filename: customFileName,
-                        mimeType: 'image/jpeg',
-                        folderContext: context,
-                        dockNum: dockNum
-                    };
+                                    let linkCol = 'SAVED_PHOTO_LINK';
+                                    if (prefix === 'req-') linkCol = 'REQ_PHOTO_LINK';
+                                    else if (prefix === 'dock-') linkCol = 'DOCK_PHOTO_LINK';
+                                    else if (prefix === 'flyer-') linkCol = 'FLYER_PHOTO_LINK';
 
-                    try {
-                        const response = await fetch(GOOGLE_SCRIPT_URL, {
-                            method: 'POST',
-                            body: JSON.stringify(payload)
-                        });
-                        const result = await response.json();
-
-                        if (result.status === 'success') {
-                            showToast('Success', 'Photo uploaded successfully!');
-                            if (activeItem) {
-                                let url = result.url;
-                                if (prefix === 'req-') {
-                                    activeItem.REQ_PHOTO_LINK = activeItem.REQ_PHOTO_LINK ? activeItem.REQ_PHOTO_LINK + ',' + url : url;
-                                } else if (prefix === 'dock-') {
-                                    activeItem.DOCK_PHOTO_LINK = activeItem.DOCK_PHOTO_LINK ? activeItem.DOCK_PHOTO_LINK + ',' + url : url;
-                                } else if (prefix === 'flyer-') {
-                                    activeItem.FLYER_PHOTO_LINK = activeItem.FLYER_PHOTO_LINK ? activeItem.FLYER_PHOTO_LINK + ',' + url : url;
-                                } else {
-                                    activeItem.SAVED_PHOTO_LINK = activeItem.SAVED_PHOTO_LINK ? activeItem.SAVED_PHOTO_LINK + ',' + url : url;
+                                    let currentLinks = activeItem[linkCol] || "";
+                                    activeItem[linkCol] = currentLinks ? currentLinks + ',' + publicUrl : publicUrl;
+                                    
+                                    saveData(false, prefix, true); 
+                                    renderSavedPhotos(); 
+                                    resolve();
+                                } catch (err) {
+                                    showToast('Error', `Upload failed: ${err.message}`, true);
+                                    resolve();
                                 }
-                                saveData(false, prefix, true);
-                                renderSavedPhotos();
-                            }
-                        } else {
-                            showToast('Error', 'Upload failed: ' + result.message, true);
-                        }
-                    } catch (err) {
-                        showToast('Error', 'Network error during upload.', true);
-                    } finally {
-                        input.value = "";
-                    }
+                            }, 'image/jpeg', 0.8);
+                        };
+                        
+                        img.onerror = () => {
+                            showToast('Error', `Could not read photo ${i + 1}. Unsupported format.`, true);
+                            resolve();
+                        };
+                    };
+                    
+                    reader.onerror = () => {
+                        showToast('Error', `Failed to read file ${i + 1} from device.`, true);
+                        resolve();
+                    };
+                });
+            }
+            showToast('Success', 'Upload complete!');
+            input.value = ""; 
+        }
                 };
             };
         }
