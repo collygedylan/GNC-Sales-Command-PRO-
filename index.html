@@ -916,26 +916,27 @@
             finalizeLogin(currentUser,newPass,false); 
         }
 
-        function finalizeLogin(user,pass,isBiometricLogin) { 
-            localStorage.setItem('gnc_user_v3',user); 
-            localStorage.setItem('gnc_pin_v3',pass); 
-            localStorage.setItem('gnc_role_v3',currentRole); 
-            document.getElementById('header-user').innerText=currentUser.toUpperCase(); 
+     function finalizeLogin(user, pass, isBiometricLogin) { 
+            localStorage.setItem('gnc_user_v3', user); 
+            localStorage.setItem('gnc_pin_v3', pass); 
+            localStorage.setItem('gnc_role_v3', currentRole); 
+            document.getElementById('header-user').innerText = currentUser.toUpperCase(); 
             
             // Set the username on the big Dashboard card
             let dashUser = document.getElementById('dashboard-username-display');
             if(dashUser) dashUser.innerText = currentUser.toUpperCase();
 
             setRepPermutations(currentUser); 
-            if(!isBiometricLogin&&window.PublicKeyCredential&&localStorage.getItem('gnc_bio_enabled')!=='true'){ promptToEnableBiometrics(user,pass); } 
+            if(!isBiometricLogin && window.PublicKeyCredential && localStorage.getItem('gnc_bio_enabled') !== 'true'){ 
+                promptToEnableBiometrics(user, pass); 
+            } 
             applyRolePermissions(); 
             fetchBackgroundData(); 
-            
-            // ADDED: Replaced standard polling with live WebSockets
-            setupWebSockets();
+            setupWebSockets(); 
         }
 
         // ADDED: Setup live WebSocket listeners for instant updates
+        function setupWebSockets() {        // ADDED: Setup live WebSocket listeners for instant updates
         function setupWebSockets() {
             // 1. Listen for ANY updates to the Master Inventory
             supabaseClient.channel('inventory-changes')
