@@ -1247,7 +1247,6 @@
         }
 
         function applyRolePermissions() {
-           function applyRolePermissions() {
             document.getElementById('view-login').style.display='none'; 
             document.getElementById('app-wrapper').classList.remove('hidden'); 
             document.querySelectorAll('.admin-only, .admin-rep-only, .admin-rep-csr-only, .admin-csr-only, .rep-hidden, .csr-hidden, .dylan-only').forEach(el=>{el.classList.remove('hidden');el.style.display='';});
@@ -2063,7 +2062,8 @@ let activeAvReservesTab = 'customers'; // Tracks which tab is open
                     let locHtml = matchingLocs.length ? matchingLocs.map(i => generateCard(i, 'drive', 'status-blue')).join('') : `<div class="text-center text-gray-400 p-8 font-bold">No other locations found.</div>`;
                     let locContent = document.getElementById('det-all-loc-content'); if(locContent) locContent.innerHTML = locHtml;
                 }
-            } else if (sourceView === 'request') {                document.getElementById('dtab-request').classList.remove('hidden');
+            } else if (sourceView === 'request') {
+                document.getElementById('dtab-request').classList.remove('hidden');
                 
                 // Show Season or Location tabs inside the Request view if applicable
                 if (activeItem.APP_TAB_ASSIGNMENT === 'season') {
@@ -2113,13 +2113,10 @@ let activeAvReservesTab = 'customers'; // Tracks which tab is open
             renderSavedPhotos();
 
             if (sourceView === 'tasks' && activeTaskTab) {
-                switchDetailTab(activeTaskTab);
-            } else if (sourceView === 'request') {
-               if (sourceView === 'tasks' && activeTaskTab) {
                 let targetTab = activeTaskTab;
                 if(activeTaskTab === 'team-season') targetTab = 'season';
                 if(activeTaskTab === 'team-location') targetTab = 'location';
-                if(activeTaskTab === 'dylan') targetTab = activeItem.APP_TAB_ASSIGNMENT === 'season' ? 'season' : 'location';
+                if(activeTaskTab === 'dylan' && activeItem) targetTab = activeItem.APP_TAB_ASSIGNMENT === 'season' ? 'season' : 'location';
                 if(activeTaskTab === 'endcap') targetTab = 'overview';
                 switchDetailTab(targetTab);
             } else if (sourceView === 'request') {
@@ -2130,7 +2127,9 @@ let activeAvReservesTab = 'customers'; // Tracks which tab is open
             }
 
             if(typeof validateSsnForm === 'function') validateSsnForm(); 
-        }        function renderSavedPhotos() {
+        }
+
+        function renderSavedPhotos() {
             let sLink = activeItem.SAVED_PHOTO_LINK || "";
             let rLink = activeItem.REQ_PHOTO_LINK || "";
             let dLink = activeItem.DOCK_PHOTO_LINK || "";
