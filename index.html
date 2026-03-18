@@ -22,30 +22,20 @@
             user-select: none; 
             -webkit-user-select: none; 
             -webkit-touch-callout: none; 
-            /* Fixes iOS swipe-back crash */
             overscroll-behavior: none; 
         }
-        /* SPEED DEMON: Hardware Acceleration added below */
+        /* SPEED DEMON: Hardware Acceleration */
         .nav-header { background: var(--bg); color: white; padding-top: max(10px, env(safe-area-inset-top)); transform: translateZ(0); will-change: transform; }
         #main-scroll-area { transform: translateZ(0); will-change: transform; }
-        #view-login, #view-change-password { 
-            position: fixed; inset: 0; background: var(--bg); z-index: 9999; 
-            display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; 
-        }
+        
+        #view-login, #view-change-password { position: fixed; inset: 0; background: var(--bg); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
         #view-change-password { display: none; z-index: 10000; }
         .login-card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,.2); width: 100%; max-width: 360px; text-align: center; }
         .input-field { width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 15px; margin-bottom: 12px; }
-        #toast-notification { 
-            position: fixed; top: -100px; left: 50%; transform: translateX(-50%); background: #16a34a; color: white; 
-            padding: 16px 24px; border-radius: 50px; box-shadow: 0 10px 15px -3px rgba(0,0,0,.3); z-index: 11000; 
-            transition: top .5s; display: flex; align-items: center; gap: 12px; pointer-events: none; 
-        }
+        #toast-notification { position: fixed; top: -100px; left: 50%; transform: translateX(-50%); background: #16a34a; color: white; padding: 16px 24px; border-radius: 50px; box-shadow: 0 10px 15px -3px rgba(0,0,0,.3); z-index: 11000; transition: top .5s; display: flex; align-items: center; gap: 12px; pointer-events: none; }
         #toast-notification.show { top: 20px; }
-        /* SPEED DEMON: Hardware Acceleration added below */
-        #side-drawer { 
-            position: fixed; top: 0; left: -280px; width: 280px; height: 100%; background: white; z-index: 2000; 
-            box-shadow: 2px 0 10px rgba(0,0,0,.2); transition: left .3s; overflow-y: auto; padding-bottom: 100px; transform: translateZ(0); will-change: transform; 
-        }
+        
+        #side-drawer { position: fixed; top: 0; left: -280px; width: 280px; height: 100%; background: white; z-index: 2000; box-shadow: 2px 0 10px rgba(0,0,0,.2); transition: left .3s; overflow-y: auto; padding-bottom: 100px; transform: translateZ(0); will-change: transform; }
         #side-drawer.open { left: 0; }
         #drawer-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 1999; display: none; }
         #drawer-overlay.open { display: block; }
@@ -55,34 +45,30 @@
         .drill-item:active { background: #f3f4f6; }
         .back-btn { display: flex; align-items: center; gap: 5px; color: #6b7280; font-size: 14px; font-weight: 600; margin-bottom: 20px; cursor: pointer; padding: 10px 0; }
         .inv-card { border: 1px solid #e5e7eb; border-left-width: 6px; border-radius: 8px; padding: 12px; background: white; cursor: pointer; flex-grow: 1; }
-        .status-green { border-left-color: #22c55e; }
-        .status-purple { border-left-color: #9333ea; }
-        .status-orange { border-left-color: #f97316; }
-        .status-blue { border-left-color: #3b82f6; }
-        .status-indigo { border-left-color: #4f46e5; }
-        .status-teal { border-left-color: #0d9488; }
-        .status-yellow { border-left-color: #eab308; }
-        .status-red { border-left-color: #ef4444; }
+        
+        .status-green { border-left-color: #22c55e; } .status-purple { border-left-color: #9333ea; } .status-orange { border-left-color: #f97316; } .status-blue { border-left-color: #3b82f6; } .status-indigo { border-left-color: #4f46e5; } .status-teal { border-left-color: #0d9488; } .status-yellow { border-left-color: #eab308; } .status-red { border-left-color: #ef4444; }
+        
         .task-tabs, .detail-tabs { display: flex; border-bottom: 1px solid #e5e7eb; background: #f9fafb; margin-bottom: 10px; }
-        .detail-tabs { overflow-x: auto; scrollbar-width: none; }
-        .detail-tabs::-webkit-scrollbar { display: none; }
+        .detail-tabs { overflow-x: auto; scrollbar-width: none; } .detail-tabs::-webkit-scrollbar { display: none; }
         .task-tab, .detail-tab { flex: 1; text-align: center; padding: 12px; font-size: 11px; font-weight: 700; color: #6b7280; cursor: pointer; border-bottom: 3px solid transparent; text-transform: uppercase; }
         .detail-tab { flex: 0 0 auto; padding: 10px 16px; }
         .task-tab.active, .detail-tab.active { color: var(--bg); border-bottom-color: var(--bg); background: white; }
+        
         .overview-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
         .overview-card { background: #f8fafc; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0; }
         .overview-label { font-size: 9px; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 2px; }
         .overview-val { font-size: 13px; font-weight: 600; color: #0f172a; word-break: break-all; }
+        
         .expand-trigger { display: flex; align-items: center; justify-content: space-between; padding: 12px; background: #f9fafb; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 14px; border: 1px solid #e5e7eb; }
         .expand-content { display: none; margin-top: 12px; padding: 12px; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb; }
         .expanded .expand-content { display: block; }
+        
         .card-checkbox-container { width: 0; overflow: hidden; opacity: 0; transition: width .3s, opacity .3s, margin .3s; }
         body.multi-select-mode .card-checkbox-container { width: 24px; opacity: 1; margin-right: 12px; }
         .item-row { touch-action: manipulation; }
         .spinner { border: 4px solid rgba(255,255,255,.3); border-top: 4px solid white; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .scrollbar-none::-webkit-scrollbar { display: none; }
-        .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
+        .scrollbar-none::-webkit-scrollbar { display: none; } .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
 <body class="bg-gray-50 h-screen overflow-hidden">
@@ -94,19 +80,14 @@
     <div id="photo-modal" class="hidden fixed inset-0 bg-black bg-opacity-95 z-[15000] flex flex-col items-center justify-center p-4">
         <div class="absolute top-0 left-0 w-full p-6 flex justify-between items-start bg-gradient-to-b from-black/80 to-transparent z-50 pointer-events-none">
             <div id="photo-modal-caption" class="text-white font-bold text-sm leading-tight drop-shadow-md pr-4 uppercase tracking-wide pointer-events-auto max-w-[60%]"></div>
-            
             <div class="flex items-center gap-3 pointer-events-auto">
                 <div id="photo-modal-counter" class="text-white font-black text-sm tracking-widest drop-shadow-md px-3 py-1.5 bg-black/50 rounded-full border border-white/20 hidden"></div>
                 <i class="ph-bold ph-x text-white text-3xl cursor-pointer bg-black/50 p-2 rounded-full active:scale-95" onclick="closePhotoModal()"></i>
             </div>
         </div>
-        
         <button id="photo-nav-left" class="hidden absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/80 text-white p-3 rounded-full z-50 pointer-events-auto transition-colors" onclick="scrollPhotoGallery(-1)"><i class="ph-bold ph-caret-left text-3xl"></i></button>
-        
         <button id="photo-nav-right" class="hidden absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/80 text-white p-3 rounded-full z-50 pointer-events-auto transition-colors" onclick="scrollPhotoGallery(1)"><i class="ph-bold ph-caret-right text-3xl"></i></button>
-
         <div id="photo-modal-gallery" class="flex overflow-x-auto snap-x snap-mandatory w-full max-h-[85vh] items-center space-x-4 pb-4 scrollbar-none mt-10 scroll-smooth" onscroll="updatePhotoCounter()"></div>
-        
         <div id="photo-swipe-hint" class="absolute bottom-10 text-white text-xs font-bold uppercase tracking-widest opacity-50 hidden pointer-events-none"><i class="ph-bold ph-arrows-left-right mr-1 text-lg align-middle"></i> Swipe or use arrows</div>
     </div>    
     
@@ -657,7 +638,8 @@
                 </div>
             </nav>
         </div>
-<script>
+        
+        <script>
         const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6cm55anNvc3J5ZWpqZWpsaWlpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzAyNzM1NywiZXhwIjoyMDg4NjAzMzU3fQ.Bc46UfJ1N4AgAS1PgfhFg6S4BEyybR6g_TUnPZsE2t0";
         
@@ -799,6 +781,7 @@
         let pendingDockNum=null; let selectedDockName=null; let selectedDockSize=null; let selectedDockItemCode=null; let selectedDockCustomer=""; let selectedDockTrip=""; let selectedDockRep=""; let lastSyncTime=new Date().toISOString();
         let activeDocksMainTab = 'all'; let activeDocksSubTab = 'checker'; let expandedDockStops = new Set();
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Machino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
+        
         window.onload = async function() {
             if ('serviceWorker' in navigator) { const registrations = await navigator.serviceWorker.getRegistrations();
                 for(let registration of registrations) { await registration.unregister(); } }
@@ -824,6 +807,7 @@
                 }
             }
         };
+        
         window.addEventListener('DOMContentLoaded', () => {
             if (localStorage.getItem('gnc_bio_enabled')==='true' && window.PublicKeyCredential) {
                 const bioBtn=document.getElementById('btn-fingerprint'); if (bioBtn) bioBtn.classList.remove('hidden');
@@ -831,6 +815,7 @@
             const teamOptions = ["", "Dylan", "Kayla", "Morgan", ...salesRepList].map(n => `<option value="${n}">${n || "Unassigned"}</option>`).join('');
             ['dock-checker', 'dock-inspector', 'dock-mistake'].forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = teamOptions; });
         });
+        
         function getDirectImageUrl(url) { 
             if(!url)return""; 
             let match=url.match(/id=([a-zA-Z0-9_-]+)/); 
@@ -838,6 +823,7 @@
             if(match&&match[1]){ return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w100`; } 
             return url;
         }
+        
         async function promptToEnableBiometrics(user,pin) { 
             if(!confirm("Would you like to enable Fingerprint/FaceID login for future use?"))return;
             try{ 
@@ -1041,19 +1027,16 @@
             } 
             applyRolePermissions(); 
             fetchBackgroundData();
-            // ADDED: Replaced standard polling with live WebSockets
-            setupWebSockets();
-        }
-
-        // ADDED: Setup live WebSocket listeners for instant updates
+// ADDED: Setup live WebSocket listeners for instant updates
         function setupWebSockets() {
             // 1. Listen for ANY updates to the Master Inventory
             supabaseClient.channel('inventory-changes')
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'v2_master_inventory' }, payload => {
                     console.log('Instant Inventory Update Detected!', payload);
-                    silentBackgroundSync(); // Instantly grab the new data
+                    silentBackgroundSync(); // Instantly grab the new data [cite: 2610, 2611]
                 })
                 .subscribe();
+                
             // 2. Listen for NEW Chat Messages
             supabaseClient.channel('chat-messages')
                 .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'v2_chat_messages' }, payload => {
@@ -1100,28 +1083,31 @@
                         loadChatInbox();
                     }
                 })
-                .subscribe();
+                .subscribe(); [cite: 2612, 2613, 2614, 2615, 2616, 2617, 2618, 2619, 2620, 2621, 2622, 2623, 2624, 2625, 2626]
+                
             // 3. Listen for Request changes
             supabaseClient.channel('request-changes')
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'v2_active_request' }, payload => {
                     console.log('Instant Request Update Detected!', payload);
                     silentBackgroundSync(); 
                 })
-                .subscribe();
+                .subscribe(); [cite: 2627, 2628]
+                
             // 4. Listen for Dock changes
             supabaseClient.channel('docks-changes')
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'v2_soc_master' }, payload => {
                     console.log('Dock Update!', payload);
                     fetchBackgroundData(); // Triggers a full silent refresh
                 })
-                .subscribe();
+                .subscribe(); [cite: 2629, 2630]
+                
             // 5. Listen for Sales Office changes
             supabaseClient.channel('sales-office-changes')
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'v2_sales_office' }, payload => {
                     console.log('Sales Office Update!', payload);
                     fetchBackgroundData(); 
                 })
-                .subscribe();
+                .subscribe(); [cite: 2631, 2632]
         }
 
         async function silentBackgroundSync(directPayload = null) {
@@ -1140,7 +1126,7 @@
                         }
                     });
                     if (response.ok) data = await response.json();
-                }
+                } [cite: 2633, 2634, 2635, 2636, 2637]
 
                 if (data && data.length > 0) {
                     let updated = false;
@@ -1173,7 +1159,8 @@
                                 }
                             });
                         }
-                    });
+                    }); [cite: 2638, 2639, 2640, 2641, 2642, 2643, 2644, 2645, 2646, 2647, 2648]
+                    
                     if (updated) { 
                         reRenderCurrentView();
                         if (activeItem && !document.getElementById('view-detail').classList.contains('hidden')) { 
@@ -1209,7 +1196,7 @@
                         applyLocalEdits();
                         if (!document.getElementById('view-request').classList.contains('hidden')) renderRequest();
                     }
-                }
+                } [cite: 2649, 2650, 2651, 2652, 2653, 2654, 2655, 2656, 2657, 2658, 2659]
 
                 // --- UPDATED SO BLOCK WITH CACHE-BUSTER AND applyLocalEdits() ---
                 const soRes = await fetch(`${SUPABASE_URL}/rest/v1/v2_sales_office?select=*&_t=${Date.now()}`, {
@@ -1240,7 +1227,7 @@
                 
                 lastSyncTime = checkTime;
             } catch(e) {}
-        }
+        } [cite: 2660, 2661, 2662, 2663, 2664, 2665, 2666, 2667, 2668]
         
         async function fetchBackgroundData() {
             const cachedRes = await loadFromCache();
@@ -1275,7 +1262,8 @@
                         obj._search = `${obj.COMMONNAME||''} ${obj.LOCATIONCODE||''} ${obj.ITEMCODE||''} ${obj.CONTSIZE||''} ${obj.CUSTOMERNAME||''} ${obj.SALESREPNAME||''} ${obj.STOPNUMBER||''} ${obj.TRIPNUMBER||''}`.toLowerCase(); 
                         return obj;
                     });
-                };
+                }; [cite: 2669, 2670, 2671, 2672, 2673, 2674, 2675, 2676, 2677, 2678]
+                
                 let resObj = {
                     status: 'success', 
                     data: formatArr(results[0], 'v2_master_inventory'), 
@@ -1290,8 +1278,9 @@
             } catch(err) { 
                 if (!cachedRes) showToast("Sync Error", "Could not download data.", true);
             }
-        }
-function processAndLoadData(res) {
+        } [cite: 2678, 2679, 2680, 2681]
+
+        function processAndLoadData(res) {
             if (!res) return;
             avNotesDb = res.avNotesData || [];
             fullInventory = (res.data || []).map((item, idx) => { item.DOM_ID = 'fi_' + idx; return item; });
@@ -1334,7 +1323,7 @@ function processAndLoadData(res) {
                         item.APP_TAB_ASSIGNMENT = 'location';
                     }
                 }
-            });
+            }); [cite: 2682, 2683, 2684, 2685, 2686, 2687, 2688, 2689, 2690, 2691]
 
             for (let ic in icGroups) {
                 let rows = icGroups[ic];
@@ -1359,7 +1348,7 @@ function processAndLoadData(res) {
                     if (r.UNIQUE_ID === winner.UNIQUE_ID) r.APP_TAB_ASSIGNMENT = 'season';
                     else r.APP_TAB_ASSIGNMENT = 'location';
                 });
-            }
+            } [cite: 2692, 2693, 2694, 2695, 2696, 2697, 2698]
             
             socInventory.forEach(item => { 
                 item.DOCK_NUM = item.DOCK_NUM || item.DOCK || item.dock; 
@@ -1379,7 +1368,7 @@ function processAndLoadData(res) {
                     item.DOCK_NOTE = masterItem.DOCK_NOTE;
                     item.MASTER_UNIQUE_ID = masterItem.UNIQUE_ID;
                 } 
-            });
+            }); [cite: 2698, 2699, 2700, 2701, 2702]
             
             reservesInventory = (res.reservesData || []).map((item, idx) => { 
                 item.DOM_ID = 'res_' + idx; 
@@ -1410,7 +1399,7 @@ function processAndLoadData(res) {
                 } 
                 item._search = `${item.COMMONNAME||''} ${item.CUSTOMERNAME||''} ${item.ITEMCODE||''}`.toLowerCase(); 
                 return item; 
-            });
+            }); [cite: 2703, 2704, 2705, 2706, 2707, 2708, 2709, 2710]
             
             applyLocalEdits(); 
             reRenderCurrentView();
@@ -1445,12 +1434,12 @@ function processAndLoadData(res) {
                 document.querySelectorAll('.dylan-only').forEach(el => el.classList.add('hidden')); 
             } 
             switchView('home');
-        }
+        } [cite: 2710, 2711, 2712, 2713, 2714, 2715, 2716, 2717, 2718, 2719]
 
         function toggleMenu() { 
             document.getElementById('side-drawer').classList.toggle('open'); 
             document.getElementById('drawer-overlay').classList.toggle('open'); 
-        }
+        } [cite: 2719, 2720]
 
         function showToast(title, message, isAlert = false) { 
             const toast = document.getElementById('toast-notification'); 
@@ -1458,7 +1447,7 @@ function processAndLoadData(res) {
             toast.innerHTML = `<div class="font-bold text-sm">${title}</div><div class="text-xs">${message}</div>`; 
             toast.classList.add('show'); 
             setTimeout(() => toast.classList.remove('show'), 3000); 
-        }
+        } [cite: 2720, 2721, 2722]
 
         function switchView(viewId) { 
             ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-detail','view-docks','view-request','view-reserves','view-av', 'view-hours', 'view-chat-inbox'].forEach(id => {
@@ -1482,7 +1471,7 @@ function processAndLoadData(res) {
                     if (viewId === 'hours') resetHoursView();
                 }, 0)
             }); 
-        }
+        } [cite: 2722, 2723, 2724, 2725, 2726, 2727]
 
         function reRenderCurrentView() { 
             if (!document.getElementById('view-drive').classList.contains('hidden')) renderDrive(); 
@@ -1495,7 +1484,7 @@ function processAndLoadData(res) {
             if (!document.getElementById('view-request').classList.contains('hidden')) renderRequest(); 
             if (!document.getElementById('view-reserves').classList.contains('hidden')) renderReserves(); 
             if (!document.getElementById('view-av').classList.contains('hidden')) renderAV(); 
-        }
+        } [cite: 2727, 2728, 2729]
 
         function setTaskTab(tab) { 
             activeTaskTab = tab; 
@@ -1505,7 +1494,7 @@ function processAndLoadData(res) {
             document.getElementById('tab-flyer').classList.toggle('active', tab === 'flyer'); 
             taskViewLevel = 0; 
             renderTasks(); 
-        }
+        } [cite: 2729, 2730, 2731]
 
         function setDriveTab(tab) {
             activeDriveTab = tab;
@@ -1513,10 +1502,10 @@ function processAndLoadData(res) {
             document.getElementById('tab-drive-loc').classList.toggle('active', tab === 'loc');
             driveViewLevel = 0;
             renderDrive();
-        }
+        } [cite: 2731, 2732, 2733]
 
-        function selectDriveBlock(block) { selectedDriveBlock = block; driveViewLevel = 1; renderDrive(); }
-        function selectDriveLoc(loc) { selectedDriveLoc = loc; driveViewLevel = 2; renderDrive(); }
+        function selectDriveBlock(block) { selectedDriveBlock = block; driveViewLevel = 1; renderDrive(); } [cite: 2733, 2734]
+        function selectDriveLoc(loc) { selectedDriveLoc = loc; driveViewLevel = 2; renderDrive(); } [cite: 2734, 2735]
 
         function resetDriveView() {
             activeDriveTab = 'name';
@@ -1526,7 +1515,7 @@ function processAndLoadData(res) {
             document.getElementById('drive-search').value = ""; document.getElementById('drive-search-clear').classList.add('hidden');
             driveSelectedSeasons.clear(); driveSelectedSeasons.add('ALL');
             renderDrive();
-        }
+        } [cite: 2735, 2736, 2737]
 
         function clearAVSearch() { 
             document.getElementById('av-search').value = ""; 
@@ -1534,7 +1523,7 @@ function processAndLoadData(res) {
             avResLevel = 0; 
             avOpenLevel = 0; 
             renderAV(); 
-        }
+        } [cite: 2737, 2738]
 
         function handleAVSearch() { 
             const term = document.getElementById('av-search').value.toLowerCase(); 
@@ -1549,7 +1538,7 @@ function processAndLoadData(res) {
                 avOpenLevel = 0;
             } 
             debouncedAVSearch(); 
-        }
+        } [cite: 2738, 2739, 2740, 2741, 2742]
 
         function resetAVView() { 
             activeAVTab = 'open'; 
@@ -1560,7 +1549,7 @@ function processAndLoadData(res) {
             document.getElementById('av-search').value = ""; 
             document.getElementById('av-search-clear').classList.add('hidden'); 
             renderAV(); 
-        }
+        } [cite: 2742, 2743, 2744, 2745]
 
         function setAVTab(tab) { 
             activeAVTab = tab; 
@@ -1569,14 +1558,14 @@ function processAndLoadData(res) {
             document.getElementById('tab-av-open').classList.toggle('active', tab === 'open'); 
             document.getElementById('tab-av-reserves').classList.toggle('active', tab === 'reserves'); 
             renderAV(); 
-        }        
+        } [cite: 2745, 2746, 2747, 2748]       
 
         function setReqTab(tab) {
             activeReqTab = tab;
             document.getElementById('tab-req-pending').classList.toggle('active', tab === 'pending');
             document.getElementById('tab-req-reps').classList.toggle('active', tab === 'reps');
             requestViewLevel = 0; selectedReqFolder = null; selectedReqRepView = null; selectedReqCustView = null; selectedReqFolderView = null; clearSelection(); renderRequest();
-        }
+        } [cite: 2748, 2749, 2750]
 
         function sendEmailNotification(type, folderId, repName, customer, itemsCount) {
             let payload = { 
@@ -1595,14 +1584,14 @@ function processAndLoadData(res) {
             }
             
             fetch(GOOGLE_SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) }).catch(e => console.log(e));
-        }
+        } [cite: 2750, 2751, 2752, 2753, 2754]
 
         function resetHoursView() {
             let yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
             document.getElementById('hours-date').value = yesterday.toISOString().split('T')[0];
             document.getElementById('hours-dept').value = ""; 
             document.getElementById('hours-amount').value = "";
-        }
+        } [cite: 2754, 2755, 2756]
 
         function submitLaborHours() {
             const dateVal = document.getElementById('hours-date').value; 
@@ -1629,16 +1618,16 @@ function processAndLoadData(res) {
             }).catch(err => { 
                 showToast("Error", "Failed to submit hours.", true); 
             });
-        }
+        } [cite: 2756, 2757, 2758, 2759, 2760, 2761]
 
-        const debouncedReservesSearch = debounce(() => { requestAnimationFrame(() => renderReserves()) }, 400);
+        const debouncedReservesSearch = debounce(() => { requestAnimationFrame(() => renderReserves()) }, 400); [cite: 2761]
 
         function clearReservesSearch() { 
             document.getElementById('reserves-search').value = ""; 
             document.getElementById('reserves-search-clear').classList.add('hidden'); 
             reservesViewLevel = 0; 
             renderReserves(); 
-        }
+        } [cite: 2762, 2763, 2764]
 
         function handleReservesSearch() { 
             const term = document.getElementById('reserves-search').value.toLowerCase(); 
@@ -1651,10 +1640,10 @@ function processAndLoadData(res) {
                 reservesViewLevel = 0;
             } 
             debouncedReservesSearch(); 
-        }
+        } [cite: 2764, 2765, 2766, 2767]
 
         const debouncedAVSearch = debounce(() => { requestAnimationFrame(() => renderAV()) }, 400);        
-        let activeAvReservesTab = 'customers'; // Tracks which tab is open
+        let activeAvReservesTab = 'customers'; // Tracks which tab is open [cite: 2767, 2768]
 
         function selectAvResGroup(name, size) { 
             selectedAvResName = name; 
@@ -1662,7 +1651,7 @@ function processAndLoadData(res) {
             activeAvReservesTab = 'customers'; // Default to Customers tab
             avResLevel = 1; 
             renderAV(); 
-        }
+        } [cite: 2768, 2769, 2770, 2771]
 
         function renderAV() {
             const container = document.getElementById('av-content'); 
@@ -1815,9 +1804,8 @@ function processAndLoadData(res) {
                     container.innerHTML = html; 
                 }
             }
-        }
-
-        function setDocksMainTab(tab) {
+        } [cite: 2771, 2772, 2773, 2774, 2775, 2776, 2777, 2778, 2779, 2780, 2781, 2782, 2783, 2784, 2785, 2786, 2787, 2788, 2789, 2790, 2791, 2792, 2793, 2794, 2795, 2796, 2797, 2798, 2799, 2800, 2801, 2802, 2803, 2804, 2805, 2806, 2807, 2808, 2809, 2810, 2811, 2812, 2813, 2814, 2815]
+function setDocksMainTab(tab) {
             activeDocksMainTab = tab;
             document.getElementById('tab-docks-all').classList.toggle('active', tab === 'all');
             document.getElementById('tab-docks-my').classList.toggle('active', tab === 'my');
@@ -2112,7 +2100,8 @@ function processAndLoadData(res) {
                 container.innerHTML = html;
             }
         }
-function calculateMatchQty(prefix) { 
+
+        function calculateMatchQty(prefix) { 
             if (!activeItem) return; 
             let matchEl = document.getElementById(prefix + 'match'); 
             let displayEl = document.getElementById(prefix + 'match-display'); 
@@ -2132,6 +2121,7 @@ function calculateMatchQty(prefix) {
         function startPress(e, domId) { 
             if (isMultiSelectMode) return; 
             isLongPress = false;
+            
             if (e.type === 'touchstart') { 
                 touchStartX = e.touches[0].clientX; 
                 touchStartY = e.touches[0].clientY;
@@ -2246,9 +2236,12 @@ function calculateMatchQty(prefix) {
 
         function openDetail(uid, sourceView) {
             lastView = sourceView;
+            
+            // Search ALL arrays, not just fullInventory
             activeItem = fullInventory.find(i=>i.UNIQUE_ID===uid) || lowStockInventory.find(i=>i.UNIQUE_ID===uid) || reservesInventory.find(i=>i.UNIQUE_ID===uid) || requestsInventory.find(i=>i.UNIQUE_ID===uid) || socInventory.find(i=>i.UNIQUE_ID===uid);
             if (!activeItem) return;
 
+            // Hide ALL views properly instead of just home and drive
             ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-docks','view-request','view-reserves','view-av', 'view-hours', 'view-chat-inbox'].forEach(id=>{
                 const el = document.getElementById(id);
                 if (el) el.classList.add('hidden');
@@ -2295,6 +2288,7 @@ function calculateMatchQty(prefix) {
                 let dtabGal = document.getElementById('dtab-gallery'); if (dtabGal) dtabGal.classList.remove('hidden');
                 let dtabLoc = document.getElementById('dtab-all-loc'); if (dtabLoc) dtabLoc.classList.remove('hidden');
                 
+                // Build the Gallery dynamically from all available photo links
                 let allLinks = [];
                 if (activeItem.SAVED_PHOTO_LINK) allLinks.push(...activeItem.SAVED_PHOTO_LINK.split(','));
                 if (activeItem.DOCK_PHOTO_LINK) allLinks.push(...activeItem.DOCK_PHOTO_LINK.split(','));
@@ -2309,6 +2303,7 @@ function calculateMatchQty(prefix) {
                 
                 let galContent = document.getElementById('det-gallery-content'); if (galContent) galContent.innerHTML = galHtml;
 
+                // Build the "All Locations" tab using Drive Mode cards!
                 if (activeItem.ITEMCODE) {
                     let matchingLocs = fullInventory.filter(i => i.ITEMCODE === activeItem.ITEMCODE);
                     matchingLocs.sort((a,b) => String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""), undefined, {numeric: true}));
@@ -2319,6 +2314,7 @@ function calculateMatchQty(prefix) {
             } else if (sourceView === 'request') {                
                 document.getElementById('dtab-request').classList.remove('hidden');
                 
+                // Show Season or Location tabs inside the Request view if applicable
                 if (activeItem.APP_TAB_ASSIGNMENT === 'season') {
                     document.getElementById('dtab-season').classList.remove('hidden');
                 } else if (activeItem.APP_TAB_ASSIGNMENT === 'location') {
@@ -2368,12 +2364,13 @@ function calculateMatchQty(prefix) {
             if (sourceView === 'tasks' && activeTaskTab) {
                 switchDetailTab(activeTaskTab);
             } else if (sourceView === 'request') {
+                // Instantly open to the camera/request tab!
                 switchDetailTab('request');
             } else {
                 switchDetailTab('overview');
             }
 
-            if (typeof validateSsnForm === 'function') validateSsnForm();
+            if (typeof validateSsnForm === 'function') validateSsnForm();        
         }
 
         function goBackFromDetail() {
