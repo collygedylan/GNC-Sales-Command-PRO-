@@ -10,8 +10,7 @@
     <meta name="application-name" content="GREENLEAF">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdn.tailwindcss.com"></script> <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>:root{--bg:#007a4d;--tx:#111827}body{font-family:"Amazon Ember",Arial,sans-serif;background:white;color:var(--tx);user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior-y:contain}.nav-header{background:var(--bg);color:white;padding-top:max(10px,env(safe-area-inset-top))}#view-login,#view-change-password{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px}#view-change-password{display:none;z-index:10000}.login-card{background:white;padding:30px;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,.2);width:100%;max-width:360px;text-align:center}.input-field{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:8px;font-size:15px;margin-bottom:12px}#toast-notification{position:fixed;top:-100px;left:50%;transform:translateX(-50%);background:#16a34a;color:white;padding:16px 24px;border-radius:50px;box-shadow:0 10px 15px -3px rgba(0,0,0,.3);z-index:11000;transition:top .5s;display:flex;align-items:center;gap:12px;pointer-events:none}#toast-notification.show{top:20px}#side-drawer{position:fixed;top:0;left:-280px;width:280px;height:100%;background:white;z-index:2000;box-shadow:2px 0 10px rgba(0,0,0,.2);transition:left .3s;overflow-y:auto;padding-bottom:100px}#side-drawer.open{left:0}#drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1999;display:none}#drawer-overlay.open{display:block}.drawer-header{background:var(--bg);color:white;padding:20px;font-weight:bold;font-size:18px}.drawer-item{padding:16px 20px;border-bottom:1px solid #f3f4f6;cursor:pointer;display:flex;align-items:center;gap:12px;color:#374151;font-weight:500}.drill-item{border-bottom:1px solid #e5e7eb;padding:16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:white;transition:background .1s}.drill-item:active{background:#f3f4f6}.back-btn{display:flex;align-items:center;gap:5px;color:#6b7280;font-size:14px;font-weight:600;margin-bottom:20px;cursor:pointer;padding:10px 0}.inv-card{border:1px solid #e5e7eb;border-left-width:6px;border-radius:8px;padding:12px;background:white;cursor:pointer;flex-grow:1}.status-green{border-left-color:#22c55e}.status-purple{border-left-color:#9333ea}.status-orange{border-left-color:#f97316}.status-blue{border-left-color:#3b82f6}.status-indigo{border-left-color:#4f46e5}.status-teal{border-left-color:#0d9488}.status-yellow{border-left-color:#eab308}.status-red{border-left-color:#ef4444}.task-tabs,.detail-tabs{display:flex;border-bottom:1px solid #e5e7eb;background:#f9fafb;margin-bottom:10px}.detail-tabs{overflow-x:auto;scrollbar-width:none}.detail-tabs::-webkit-scrollbar{display:none}.task-tab,.detail-tab{flex:1;text-align:center;padding:12px;font-size:11px;font-weight:700;color:#6b7280;cursor:pointer;border-bottom:3px solid transparent;text-transform:uppercase}.detail-tab{flex:0 0 auto;padding:10px 16px}.task-tab.active,.detail-tab.active{color:var(--bg);border-bottom-color:var(--bg);background:white}.overview-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}.overview-card{background:#f8fafc;padding:10px;border-radius:6px;border:1px solid #e2e8f0}.overview-label{font-size:9px;font-weight:800;color:#64748b;text-transform:uppercase;margin-bottom:2px}.overview-val{font-size:13px;font-weight:600;color:#0f172a;word-break:break-all}.expand-trigger{display:flex;align-items:center;justify-content:space-between;padding:12px;background:#f9fafb;border-radius:6px;cursor:pointer;font-weight:600;font-size:14px;border:1px solid #e5e7eb}.expand-content{display:none;margin-top:12px;padding:12px;background:#f9fafb;border-radius:6px;border:1px solid #e5e7eb}.expanded .expand-content{display:block}.card-checkbox-container{width:0;overflow:hidden;opacity:0;transition:width .3s,opacity .3s,margin .3s}body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-right:12px}.item-row{touch-action:manipulation}.spinner{border:4px solid rgba(255,255,255,.3);border-top:4px solid white;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:0 auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.scrollbar-none::-webkit-scrollbar{display:none}.scrollbar-none{-ms-overflow-style:none;scrollbar-width:none}</style>
 </head>
@@ -21,19 +20,14 @@
   <div id="photo-modal" class="hidden fixed inset-0 bg-black bg-opacity-95 z-[15000] flex flex-col items-center justify-center p-4">
         <div class="absolute top-0 left-0 w-full p-6 flex justify-between items-start bg-gradient-to-b from-black/80 to-transparent z-50 pointer-events-none">
             <div id="photo-modal-caption" class="text-white font-bold text-sm leading-tight drop-shadow-md pr-4 uppercase tracking-wide pointer-events-auto max-w-[60%]"></div>
-            
             <div class="flex items-center gap-3 pointer-events-auto">
                 <div id="photo-modal-counter" class="text-white font-black text-sm tracking-widest drop-shadow-md px-3 py-1.5 bg-black/50 rounded-full border border-white/20 hidden"></div>
                 <i class="ph-bold ph-x text-white text-3xl cursor-pointer bg-black/50 p-2 rounded-full active:scale-95" onclick="closePhotoModal()"></i>
             </div>
         </div>
-        
         <button id="photo-nav-left" class="hidden absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/80 text-white p-3 rounded-full z-50 pointer-events-auto transition-colors" onclick="scrollPhotoGallery(-1)"><i class="ph-bold ph-caret-left text-3xl"></i></button>
-        
         <button id="photo-nav-right" class="hidden absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/80 text-white p-3 rounded-full z-50 pointer-events-auto transition-colors" onclick="scrollPhotoGallery(1)"><i class="ph-bold ph-caret-right text-3xl"></i></button>
-
         <div id="photo-modal-gallery" class="flex overflow-x-auto snap-x snap-mandatory w-full max-h-[85vh] items-center space-x-4 pb-4 scrollbar-none mt-10 scroll-smooth" onscroll="updatePhotoCounter()"></div>
-        
         <div id="photo-swipe-hint" class="absolute bottom-10 text-white text-xs font-bold uppercase tracking-widest opacity-50 hidden pointer-events-none"><i class="ph-bold ph-arrows-left-right mr-1 text-lg align-middle"></i> Swipe or use arrows</div>
     </div>    
     <div id="view-login">
@@ -53,7 +47,6 @@
             <div id="loading-spinner" class="hidden mt-6 flex flex-col items-center"><div class="spinner"></div><div id="loading-text" class="text-white font-bold text-sm mt-3 text-center">Syncing Database...</div></div>
         </div>
     </div>
-    
     <div id="view-change-password">
         <div class="login-card">
             <h2 class="text-2xl font-black text-[#007a4d] mb-2">Change Password</h2>
@@ -226,8 +219,7 @@
                     <div id="chat-search-container" class="relative mb-3">
                         <input type="text" id="chat-inbox-search" class="input-field w-full pr-10 !mb-0" placeholder="Search conversations..." oninput="filterChatInbox()">
                     </div>
-                    <div id="chat-inbox-list" class="flex-col gap-2 overflow-y-auto">
-                        </div>
+                    <div id="chat-inbox-list" class="flex-col gap-2 overflow-y-auto"></div>
                 </div>
 
                 <div id="view-chat-room" class="hidden fixed inset-0 bg-gray-50 z-[100] flex flex-col">
@@ -236,8 +228,7 @@
                         <div id="chat-room-title" class="font-bold text-lg flex-grow truncate">Chat</div>
                         <i class="ph-bold ph-users text-xl cursor-pointer opacity-80" onclick="showChatParticipants()"></i>
                     </div>
-                    <div id="chat-messages-container" class="flex-grow overflow-y-auto p-4 space-y-4 bg-gray-100 flex flex-col">
-                        </div>
+                    <div id="chat-messages-container" class="flex-grow overflow-y-auto p-4 space-y-4 bg-gray-100 flex flex-col"></div>
                     <div class="bg-white p-3 border-t flex items-center gap-2 pb-[max(12px,env(safe-area-inset-bottom))] shadow-[0_-4px_10px_rgba(0,0,0,0.05)]">
                         <input type="text" id="chat-message-input" class="flex-grow bg-gray-100 border border-gray-200 rounded-full px-4 py-3 text-sm focus:outline-none focus:border-[#007a4d]" placeholder="Type a message..." onkeypress="if(event.key === 'Enter') sendChatMessage()">
                         <button onclick="sendChatMessage()" class="bg-[#007a4d] text-white rounded-full w-12 h-12 flex items-center justify-center shadow-md active:scale-95 shrink-0"><i class="ph-fill ph-paper-plane-right text-xl ml-1"></i></button>
@@ -403,13 +394,14 @@
                 <div id="view-tasks" class="hidden">
                     <div id="task-crumb" class="text-xs font-bold text-[#007a4d] mb-3"></div>
                     <div id="team-selector" class="hidden mb-4 grid grid-cols-1 gap-3"></div>
-                    <div id="task-tabs-container" class="task-tabs">
-                        <div id="tab-season" class="task-tab active" onclick="setTaskTab('season')">Season Notes</div>
-                        <div id="tab-location" class="task-tab" onclick="setTaskTab('location')">Location Notes</div>
-                        <div id="tab-endcap" class="task-tab" onclick="setTaskTab('endcap')">End Cap</div>
-                        <div id="tab-flyer" class="task-tab" onclick="setTaskTab('flyer')">Flyer</div>
-                    </div>
-                    <div id="task-content"></div>
+                   <div id="task-tabs-container" class="task-tabs overflow-x-auto scrollbar-none flex-nowrap">
+                        <div id="tab-season" class="task-tab active flex-shrink-0" onclick="setTaskTab('season')">Season Notes</div>
+                        <div id="tab-all_season" class="task-tab hidden all-team-tab flex-shrink-0" onclick="setTaskTab('all_season')">All Team Season</div>
+                        <div id="tab-location" class="task-tab flex-shrink-0" onclick="setTaskTab('location')">Location Notes</div>
+                        <div id="tab-all_location" class="task-tab hidden all-team-tab flex-shrink-0" onclick="setTaskTab('all_location')">All Team Loc</div>
+                        <div id="tab-endcap" class="task-tab flex-shrink-0" onclick="setTaskTab('endcap')">End Cap</div>
+                        <div id="tab-flyer" class="task-tab flex-shrink-0" onclick="setTaskTab('flyer')">Flyer</div>
+                    </div>                    <div id="task-content"></div>
                 </div>
                 
                 <div id="view-review" class="hidden">
@@ -705,21 +697,25 @@
         
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Machino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
 
-        window.onload=async function() {
-            if ('serviceWorker' in navigator) { const registrations = await navigator.serviceWorker.getRegistrations(); for(let registration of registrations) { await registration.unregister(); } }
-            if ('caches' in window) { const keys = await caches.keys(); for (let key of keys) { await caches.delete(key); } }
+        window.onload = function() {
+            const savedUser = localStorage.getItem('gnc_user_v3'); 
             
-            const savedUser=localStorage.getItem('gnc_user_v3'); 
-            
-            if(savedUser){ 
-                // Pre-fill the username
-                document.getElementById('username-input').value=savedUser; 
+            if (savedUser) { 
+                // Pre-fill the username immediately so the UI is instantly responsive
+                document.getElementById('username-input').value = savedUser; 
                 
-                // Pre-load the heavy data into memory instantly
-                const cachedRes=await loadFromCache(); 
-                if(cachedRes&&fullInventory.length===0){ 
-                    processAndLoadData(cachedRes); 
-                } 
+                // Defer the heavy data load so we don't freeze the iOS main thread on boot.
+                // This prevents the iOS watchdog from crashing the app!
+                setTimeout(async () => {
+                    try {
+                        const cachedRes = await loadFromCache(); 
+                        if (cachedRes && fullInventory.length === 0) { 
+                            processAndLoadData(cachedRes); 
+                        } 
+                    } catch (e) {
+                        console.error("Cache load error:", e);
+                    }
+                }, 100); // 100ms delay gives the screen time to render first
             }
             // Notice: No auto-fill for pin-code and no handleLogin() trigger here!
         };
@@ -1265,15 +1261,23 @@
             let isCsr=roleStr.includes('CSR'); 
             let isQc=roleStr.includes('QC'); 
             let isDylan=userStr.includes('dylan'); 
+            let isKayla=userStr.includes('kayla');
+            let isMorgan=userStr.includes('morgan');
             let isAdmin=(!isRep&&!isCsr&&!isQc)||roleStr.includes('ADMIN')||roleStr.includes('MANAGER')||isDylan;
+            
             if(isAdmin){} 
             else if(isRep){ document.querySelectorAll('.rep-hidden, .admin-only, .admin-csr-only').forEach(el=>el.classList.add('hidden')); } 
             else if(isCsr){ document.querySelectorAll('.csr-hidden, .admin-only').forEach(el=>el.classList.add('hidden')); } 
             else if(isQc){ document.querySelectorAll('.admin-only, .admin-rep-only, .admin-rep-csr-only, .admin-csr-only').forEach(el=>el.classList.add('hidden')); }
             if(!isDylan&&!isAdmin){ document.querySelectorAll('.dylan-only').forEach(el=>el.classList.add('hidden')); } 
+
+            // NEW: Show "All Team" task tabs to specific users
+            if (isAdmin || isDylan || isKayla || isMorgan) {
+                document.querySelectorAll('.all-team-tab').forEach(el => el.classList.remove('hidden'));
+            }
+            
             switchView('home');
         }
-
         function toggleMenu() { document.getElementById('side-drawer').classList.toggle('open'); document.getElementById('drawer-overlay').classList.toggle('open'); }
 
         function showToast(title, message, isAlert = false) { 
@@ -1285,27 +1289,36 @@
         }
 
         function switchView(viewId) { 
-    ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-detail','view-docks','view-request','view-reserves','view-av', 'view-hours', 'view-chat-inbox'].forEach(id=>{
-        const el=document.getElementById(id);
-        if(el)el.classList.add('hidden');
-    }); 
-    document.getElementById('view-'+viewId).classList.remove('hidden'); 
-    requestAnimationFrame(()=>{
-        setTimeout(()=>{
-            if(viewId==='drive')resetDriveView();
-            if(viewId==='tasks'){ if(safeRole==='ADMIN'&&!taskViewTargetUser)renderTeamSelector(); else renderTasks(); }
-            if(viewId==='reports')resetReportsView();
-            if(viewId==='review')resetReviewView();
-            if(viewId==='request'){requestViewLevel=0;renderRequest();}
-            if(viewId==='reserves')resetReservesView();
-            if(viewId==='sales-office')renderSalesOffice();
-            if(viewId==='low-stock')resetLowStockView();
-            if(viewId==='docks')resetDockView();
-            if(viewId==='av')resetAVView();
-            if(viewId==='hours')resetHoursView();
-        },0)
-    }); 
-}
+            ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-detail','view-docks','view-request','view-reserves','view-av', 'view-hours', 'view-chat-inbox'].forEach(id=>{
+                const el=document.getElementById(id);
+                if(el)el.classList.add('hidden');
+            }); 
+            document.getElementById('view-'+viewId).classList.remove('hidden'); 
+            requestAnimationFrame(()=>{
+                setTimeout(()=>{
+                    if(viewId==='drive')resetDriveView();
+                    
+                    if(viewId==='tasks'){ 
+                        document.getElementById('task-tabs-container').classList.remove('hidden');
+                        if(safeRole==='ADMIN' && !taskViewTargetUser && activeTaskTab !== 'all_season' && activeTaskTab !== 'all_location') {
+                            renderTeamSelector(); 
+                        } else {
+                            renderTasks(); 
+                        }
+                    }
+                    
+                    if(viewId==='reports')resetReportsView();
+                    if(viewId==='review')resetReviewView();
+                    if(viewId==='request'){requestViewLevel=0;renderRequest();}
+                    if(viewId==='reserves')resetReservesView();
+                    if(viewId==='sales-office')renderSalesOffice();
+                    if(viewId==='low-stock')resetLowStockView();
+                    if(viewId==='docks')resetDockView();
+                    if(viewId==='av')resetAVView();
+                    if(viewId==='hours')resetHoursView();
+                },0)
+            }); 
+        }
         function reRenderCurrentView() { 
             if(!document.getElementById('view-drive').classList.contains('hidden'))renderDrive(); 
             if(!document.getElementById('view-tasks').classList.contains('hidden'))renderTasks(); 
@@ -1319,14 +1332,21 @@
             if(!document.getElementById('view-av').classList.contains('hidden'))renderAV(); 
         }
 
-        function setTaskTab(tab) { 
+       function setTaskTab(tab) { 
             activeTaskTab=tab; 
             document.getElementById('tab-season').classList.toggle('active',tab==='season'); 
+            let tAllS = document.getElementById('tab-all_season'); if(tAllS) tAllS.classList.toggle('active',tab==='all_season');
             document.getElementById('tab-location').classList.toggle('active',tab==='location'); 
+            let tAllL = document.getElementById('tab-all_location'); if(tAllL) tAllL.classList.toggle('active',tab==='all_location');
             document.getElementById('tab-endcap').classList.toggle('active',tab==='endcap'); 
             document.getElementById('tab-flyer').classList.toggle('active',tab==='flyer'); 
             taskViewLevel=0; 
-            renderTasks(); 
+            
+            if (safeRole === 'ADMIN' && !taskViewTargetUser && tab !== 'all_season' && tab !== 'all_location') {
+                renderTeamSelector();
+            } else {
+                renderTasks(); 
+            }
         }
 
         function setDriveTab(tab) {
@@ -1349,7 +1369,7 @@
             driveSelectedSeasons.clear(); driveSelectedSeasons.add('ALL');
             renderDrive();
         }
-        
+
         function clearAVSearch() { document.getElementById('av-search').value=""; document.getElementById('av-search-clear').classList.add('hidden'); avResLevel=0; avOpenLevel=0; renderAV(); }
         function handleAVSearch() { const term=document.getElementById('av-search').value.toLowerCase(); const clearBtn=document.getElementById('av-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden'); avResLevel=0; avOpenLevel=0;} else{clearBtn.classList.add('hidden'); avResLevel=0; avOpenLevel=0;} debouncedAVSearch(); }
 
@@ -1405,7 +1425,7 @@
         function clearReservesSearch() { document.getElementById('reserves-search').value=""; document.getElementById('reserves-search-clear').classList.add('hidden'); reservesViewLevel=0; renderReserves(); }
         function handleReservesSearch() { const term=document.getElementById('reserves-search').value.toLowerCase(); const clearBtn=document.getElementById('reserves-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden');reservesViewLevel=0;} else{clearBtn.classList.add('hidden');reservesViewLevel=0;} debouncedReservesSearch(); }
 
-       const debouncedAVSearch=debounce(()=>{requestAnimationFrame(()=>renderAV())}, 400);        
+        const debouncedAVSearch=debounce(()=>{requestAnimationFrame(()=>renderAV())}, 400);        
 let activeAvReservesTab = 'customers'; // Tracks which tab is open
 
         function selectAvResGroup(name, size) { 
@@ -1455,7 +1475,7 @@ let activeAvReservesTab = 'customers'; // Tracks which tab is open
                     if(priA !== priB) return priA - priB;
                     return String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""), undefined, {numeric:true});
                 }); 
-                container.innerHTML = items.map(i => generateCard(i, activeAVTab === 'open' ? 'av' : 'reserves_drill', activeAVTab === 'open' ? 'status-teal' : 'status-indigo')).join(''); 
+                container.innerHTML = items.slice(0, 250).map(i => generateCard(i, activeAVTab === 'open' ? 'av' : 'reserves_drill', activeAVTab === 'open' ? 'status-teal' : 'status-indigo')).join(''); 
                 return; 
             }
             
@@ -1495,7 +1515,7 @@ let activeAvReservesTab = 'customers'; // Tracks which tab is open
                         });
                         
                         // Render the cards
-                        html += codeItems.map(i => generateCard(i, 'av', 'status-teal')).join('');
+                        html += codeItems.slice(0, 250).map(i => generateCard(i, 'av', 'status-teal')).join('');
                     });
                 });
                 
@@ -1525,7 +1545,7 @@ let activeAvReservesTab = 'customers'; // Tracks which tab is open
                     let sortedKeys = Object.keys(groups).sort();
                     
                     // Render the new Grouped Cards
-                    container.innerHTML = sortedKeys.map(k => {
+                    container.innerHTML = sortedKeys.slice(0, 250).map(k => {
                         let g = groups[k];
                         return `
                         <div class="bg-white border border-indigo-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectAvResGroup('${esc(g.name)}', '${esc(g.size)}')">
@@ -1556,12 +1576,12 @@ let activeAvReservesTab = 'customers'; // Tracks which tab is open
                         // CUSTOMERS TAB: Show the specific reserve orders
                         let finalItems = items.filter(i => i.COMMONNAME === selectedAvResName && i.CONTSIZE === selectedAvResSize); 
                         finalItems.sort((a,b) => (String(a.CUSTOMERNAME) || "").localeCompare(String(b.CUSTOMERNAME) || "")); 
-                        html += finalItems.length > 0 ? finalItems.map(i => generateCard(i, 'reserves_drill', 'status-indigo')).join('') : `<div class="p-8 text-center text-gray-400">No customers found.</div>`;
+                        html += finalItems.length > 0 ? finalItems.slice(0, 250).map(i => generateCard(i, 'reserves_drill', 'status-indigo')).join('') : `<div class="p-8 text-center text-gray-400">No customers found.</div>`;
                     } else {
                         // ALL LOCATIONS TAB: Search fullInventory and use the AV Open Stock style card
                         let matchingLocs = fullInventory.filter(i => i.COMMONNAME === selectedAvResName && i.CONTSIZE === selectedAvResSize);
                         matchingLocs.sort((a,b) => String(a.LOCATIONCODE || "").localeCompare(String(b.LOCATIONCODE || ""), undefined, {numeric: true}));
-                        html += matchingLocs.length > 0 ? matchingLocs.map(i => generateCard(i, 'av', 'status-teal')).join('') : `<div class="p-8 text-center text-gray-400">No locations found.</div>`;
+                        html += matchingLocs.length > 0 ? matchingLocs.slice(0, 250).map(i => generateCard(i, 'av', 'status-teal')).join('') : `<div class="p-8 text-center text-gray-400">No locations found.</div>`;
                     }
                     
                     container.innerHTML = html; 
@@ -1693,7 +1713,7 @@ let activeAvReservesTab = 'customers'; // Tracks which tab is open
                     crumb.innerText = "All Docks";
                 }
 
-                container.innerHTML = docks.map(d => {
+                container.innerHTML = docks.slice(0, 250).map(d => {
                     let dItems = items.filter(i => (i.DOCK_NUM || 'Unassigned') === d); let count = dItems.length;
                     let savedInfo = JSON.parse(localStorage.getItem('gnc_dock_team_' + d) || '{"checker":"","inspector":"","mistake":"","status":"Loading"}');
                     let statusColor = "text-blue-600 bg-blue-50";
@@ -1745,7 +1765,7 @@ let activeAvReservesTab = 'customers'; // Tracks which tab is open
 
                     if (isExpanded) {
                         html += `<div class="p-3 bg-gray-200/50 border-t border-gray-300 flex flex-col gap-2">`;
-                        sItems.forEach(item => {
+                        sItems.slice(0, 250).forEach(item => {
                             html += generateCard(item, 'docks', 'status-orange');
                         });
                         html += `</div>`;
@@ -1938,7 +1958,7 @@ let activeAvReservesTab = 'customers'; // Tracks which tab is open
                 // Clean up empty strings and ensure uniqueness
                 let uniqueLinks = [...new Set(allLinks.map(l => l.trim()).filter(Boolean))];
                 
-                let galHtml = uniqueLinks.length ? `<div class="grid grid-cols-2 gap-2">` + uniqueLinks.map(link => {
+                let galHtml = uniqueLinks.length ? `<div class="grid grid-cols-2 gap-2">` + uniqueLinks.slice(0, 250).map(link => {
                     let clean = link.match(/(https?:\/\/[^"\s>]+)/)?.[1] || link;
                     let thumb = getDirectImageUrl(clean);
                     return `<img src="${thumb}" class="w-full h-32 object-cover rounded-lg shadow-sm active:scale-95 transition-transform" onclick="openPhotoModal('${link}', 'Gallery')">`;
@@ -1951,7 +1971,7 @@ let activeAvReservesTab = 'customers'; // Tracks which tab is open
                     let matchingLocs = fullInventory.filter(i => i.ITEMCODE === activeItem.ITEMCODE);
                     matchingLocs.sort((a,b) => String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""), undefined, {numeric: true}));
                     
-                    let locHtml = matchingLocs.length ? matchingLocs.map(i => generateCard(i, 'drive', 'status-blue')).join('') : `<div class="text-center text-gray-400 p-8 font-bold">No other locations found.</div>`;
+                    let locHtml = matchingLocs.length ? matchingLocs.slice(0, 250).map(i => generateCard(i, 'drive', 'status-blue')).join('') : `<div class="text-center text-gray-400 p-8 font-bold">No other locations found.</div>`;
                     let locContent = document.getElementById('det-all-loc-content'); if(locContent) locContent.innerHTML = locHtml;
                 }
             } else if (sourceView === 'request') {                document.getElementById('dtab-request').classList.remove('hidden');
@@ -2003,8 +2023,11 @@ let activeAvReservesTab = 'customers'; // Tracks which tab is open
 
             renderSavedPhotos();
 
-            if (sourceView === 'tasks' && activeTaskTab) {
-                switchDetailTab(activeTaskTab);
+           if (sourceView === 'tasks' && activeTaskTab) {
+                let mappedTab = activeTaskTab;
+                if(mappedTab === 'all_season') mappedTab = 'season';
+                if(mappedTab === 'all_location') mappedTab = 'location';
+                switchDetailTab(mappedTab);
             } else if (sourceView === 'request') {
                 // Instantly open to the camera/request tab!
                 switchDetailTab('request');
@@ -2027,7 +2050,7 @@ let activeAvReservesTab = 'customers'; // Tracks which tab is open
                     let urls = String(link).split(',');
                     // Added pt-2 so the delete badge doesn't get cut off at the top
                     let html = `<div class="flex gap-2 overflow-x-auto pb-2 pt-2">`; 
-                    urls.forEach(u => {
+                    urls.slice(0, 250).forEach(u => {
                         let c = u.trim();
                         let m = c.match(/(https?:\/\/[^"\s>]+)/);
                         if(m) c = m[1];
@@ -2187,7 +2210,7 @@ let activeAvReservesTab = 'customers'; // Tracks which tab is open
                 return dateB - dateA; 
             });
             
-            container.innerHTML = items.map(i => generateCard(i, 'sales-office')).join('');
+            container.innerHTML = items.slice(0, 250).map(i => generateCard(i, 'sales-office')).join('');
         }
 
         function resetLowStockView() {
@@ -2207,7 +2230,7 @@ let activeAvReservesTab = 'customers'; // Tracks which tab is open
             if (crumb) crumb.innerText = "Action Required";
             let items = [...lowStockInventory];
             items.sort((a, b) => String(a.COMMONNAME || "").localeCompare(String(b.COMMONNAME || "")));
-            container.innerHTML = items.map(i => generateCard(i, 'low-stock', 'status-red')).join('');
+            container.innerHTML = items.slice(0, 250).map(i => generateCard(i, 'low-stock', 'status-red')).join('');
         }
 
         function renderRequest() {
@@ -2229,7 +2252,7 @@ let activeAvReservesTab = 'customers'; // Tracks which tab is open
                 }
                 
                 pendingItems.sort((a,b) => String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""), undefined, {numeric: true}));
-                container.innerHTML = pendingItems.map(i => generateCard(i, 'request', 'status-purple')).join('');
+                container.innerHTML = pendingItems.slice(0, 250).map(i => generateCard(i, 'request', 'status-purple')).join('');
                 
             } else if (activeReqTab === 'reps') {
                 if (requestViewLevel === 0) {
@@ -2279,7 +2302,7 @@ let activeAvReservesTab = 'customers'; // Tracks which tab is open
                     folderItems = folderItems.filter(i => selectedReqStatus === 'Pending' ? i.REQ_STATUS !== 'Complete' : i.REQ_STATUS === 'Complete');
                     folderItems.sort((a,b) => String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""), undefined, {numeric: true}));
                     
-                    container.innerHTML = `<div class="back-btn" onclick="requestViewLevel=2; renderRequest()"><i class="ph-bold ph-arrow-left"></i> Back to Folders</div>` + folderItems.map(i => generateCard(i, 'request', selectedReqStatus === 'Complete' ? 'status-green' : 'status-purple')).join('');
+                    container.innerHTML = `<div class="back-btn" onclick="requestViewLevel=2; renderRequest()"><i class="ph-bold ph-arrow-left"></i> Back to Folders</div>` + folderItems.slice(0, 250).map(i => generateCard(i, 'request', selectedReqStatus === 'Complete' ? 'status-green' : 'status-purple')).join('');
                 }
             }
         }
@@ -2442,7 +2465,11 @@ let specCaliperHtml = "";
 
             if(sourceView==='drive'||sourceView==='tasks'){
                 let noteHtml="";if(item.END_CAP_FOLDER&&String(item.END_CAP_FOLDER).trim()!==""){noteHtml+=`<div class="mt-2 text-[12px] text-yellow-800 bg-yellow-100 p-2 rounded border border-yellow-200 shadow-sm whitespace-pre-wrap"><span class="font-black">END CAP:</span> ${item.END_CAP_FOLDER} | QTY: ${item.END_CAP_QTY||'0'} | Lvl: ${item.END_CAP_LEVEL||'-'}</div>`}if(item.LOC_MATCH_QTY&&String(item.LOC_MATCH_QTY).trim()!==""&&Number(item.LOC_MATCH_QTY)>0){noteHtml+=`<div class="mt-2 text-[12px] text-green-800 bg-green-100 p-2 rounded border border-green-200 shadow-sm whitespace-pre-wrap"><span class="font-black">MATCH QTY:</span> ${item.LOC_MATCH_QTY}</div>`}if(item.AV_NOTE&&String(item.AV_NOTE).trim()!==""){noteHtml+=`<div class="mt-2 text-[12px] text-blue-800 bg-blue-100 p-2 rounded border border-blue-200 shadow-sm whitespace-pre-wrap"><span class="font-black">AV NOTE:</span> ${item.AV_NOTE}</div>`}if(item.SALES_NOTE&&String(item.SALES_NOTE).trim()!==""){noteHtml+=`<div class="mt-2 text-[12px] text-green-800 bg-green-100 p-2 rounded border border-green-200 shadow-sm whitespace-pre-wrap"><span class="font-black">SALES NOTE:</span> ${item.SALES_NOTE}</div>`}if(item.FLYER_TITLE&&String(item.FLYER_TITLE).trim()!==""){noteHtml+=`<div class="mt-2 text-[12px] text-indigo-800 bg-indigo-100 p-2 rounded border border-indigo-200 shadow-sm whitespace-pre-wrap"><span class="font-black">FLYER:</span> ${item.FLYER_TITLE}</div>`}
-                let extraData="";if(sourceView==='tasks'||sourceView==='drive'){extraData=`<div class="mt-2 flex gap-2 text-[10px] font-bold text-gray-500 uppercase">${item.SPEC?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Spec: ${item.SPEC}</span>`:''}${item.CALIPER?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Cal: ${item.CALIPER}</span>`:''}${item.MATCH?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Match: ${item.MATCH}%</span>`:''}</div>`}
+                let extraData="";
+                if(sourceView==='tasks'||sourceView==='drive'){
+                    let assigneeBadge = (sourceView === 'tasks' && (activeTaskTab === 'all_season' || activeTaskTab === 'all_location') && item.ASSIGNEDTO) ? `<span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-200 ml-1"><i class="ph-bold ph-user mr-1"></i>${item.ASSIGNEDTO}</span>` : '';
+                    extraData=`<div class="mt-2 flex flex-wrap gap-2 text-[10px] font-bold text-gray-500 uppercase">${item.SPEC?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Spec: ${item.SPEC}</span>`:''}${item.CALIPER?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Cal: ${item.CALIPER}</span>`:''}${item.MATCH?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Match: ${item.MATCH}%</span>`:''}${assigneeBadge}</div>`
+                }
                 return `<div class="flex items-center w-full mb-3 item-row relative bg-white p-4 rounded-xl border border-gray-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm pointer-events-none" ${isChecked}></div><div class="flex flex-grow items-start justify-between min-w-0"><div class="flex-grow min-w-0 pr-2"><div class="font-black text-gray-800 text-[16px] leading-tight break-words mb-0.5">${item.COMMONNAME||'Unknown'}</div><div class="font-bold text-[#007a4d] text-sm mb-2">${item.CONTSIZE||'-'}</div><div class="text-[11px] font-mono text-gray-500 mb-2 flex items-center bg-gray-100 px-2 py-0.5 rounded w-max"><i class="ph-bold ph-barcode mr-1.5 text-gray-400"></i>${item.ITEMCODE||'-'}</div><div class="flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600"><span class="bg-gray-100 px-1.5 py-0.5 rounded">LOC AVA: <span class="text-gray-900">${item.PTRAVAILABLE||'0'}</span></span><span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">Loc: ${item.LOCATIONCODE||'No Loc'}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded">Lot: ${item.LOTCODE||'-'}</span><span class="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-100">s_LTS: ${item.S_LTS||'0'}</span><span class="bg-orange-50 text-orange-700 px-1.5 py-0.5 rounded border border-orange-100">Pri: ${item.PRIORITY||'-'}</span></div>${extraData}${noteHtml}</div>${thumbHtml}</div></div>`;
             }
             
@@ -2723,7 +2750,7 @@ let specCaliperHtml = "";
             }).catch(err=>{showToast("Error","Assignment failed",true)})
         }
 
-        function submitRequestWithQtys() {
+       function submitRequestWithQtys() {
             let itemsData={};
             document.querySelectorAll('.item-qty-input').forEach(input=>{let uid=input.getAttribute('data-uid');if(!itemsData[uid])itemsData[uid]={};itemsData[uid].qty=input.value.trim()});
             document.querySelectorAll('.item-spec-input').forEach(input=>{let uid=input.getAttribute('data-uid');if(!itemsData[uid])itemsData[uid]={};itemsData[uid].spec=input.value.trim()});
@@ -2779,22 +2806,22 @@ let specCaliperHtml = "";
                     };
                     insertPayloads.push(newReq);
                     let clone = JSON.parse(JSON.stringify(item));
-			clone.UNIQUE_ID = newReqId;
-			clone.DOM_ID = 'req_' + newReqId;
-			clone.SOURCE_TABLE = 'v2_active_request';
-			clone.REQUESTED_BY = tempSelectedReqRep;
-			clone.REQUEST_FOLDER = folderId;
-			clone.REQ_CUSTOMER = cust;
-			clone.REQ_QTY = dataObj.qty || "";
-			clone.REQ_DESIRED_SPEC = dataObj.spec || "";
-			clone.REQ_DESIRED_CALIPER = dataObj.caliper || "";
-			clone.REQ_EST_SHIP = dataObj.estShip || "";
-			clone.REQ_RESERVE = dataObj.reserve || "NO";
-			clone.REQ_ARCHIVED = false;
-			clone.REQ_STATUS = 'Pending';
-			clone.REQ_PHOTO_LINK = newReq.req_photo_link;
-			clone.REQ_PHOTO_NAME = newReq.req_photo_name;
-			requestsInventory.push(clone);
+                    clone.UNIQUE_ID = newReqId;
+                    clone.DOM_ID = 'req_' + newReqId;
+                    clone.SOURCE_TABLE = 'v2_active_request';
+                    clone.REQUESTED_BY = tempSelectedReqRep;
+                    clone.REQUEST_FOLDER = folderId;
+                    clone.REQ_CUSTOMER = cust;
+                    clone.REQ_QTY = dataObj.qty || "";
+                    clone.REQ_DESIRED_SPEC = dataObj.spec || "";
+                    clone.REQ_DESIRED_CALIPER = dataObj.caliper || "";
+                    clone.REQ_EST_SHIP = dataObj.estShip || "";
+                    clone.REQ_RESERVE = dataObj.reserve || "NO";
+                    clone.REQ_ARCHIVED = false;
+                    clone.REQ_STATUS = 'Pending';
+                    clone.REQ_PHOTO_LINK = newReq.req_photo_link;
+                    clone.REQ_PHOTO_NAME = newReq.req_photo_name;
+                    requestsInventory.push(clone);
                     
                     // NEW: Backup the newly created clone locally so the race condition doesn't eat it!
                     backupLocalItem(clone); 
@@ -2987,7 +3014,7 @@ let specCaliperHtml = "";
                     crumb.innerText = `${selectedDriveName} / ${selectedDriveSize}`;
                     let finalItems = searchFilteredItems.filter(i => i.COMMONNAME === selectedDriveName && i.CONTSIZE === selectedDriveSize);
                     finalItems.sort((a,b) => { let priA = parseFloat(a.PRIORITY); let priB = parseFloat(b.PRIORITY); if(isNaN(priA)) priA = Infinity; if(isNaN(priB)) priB = Infinity; return priA - priB; });
-                    container.innerHTML = `<div class="back-btn" onclick="backToDriveSizes()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>` + finalItems.map(i => generateCard(i, 'drive', 'status-blue')).join('');
+                    container.innerHTML = `<div class="back-btn" onclick="backToDriveSizes()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>` + finalItems.slice(0, 250).map(i => generateCard(i, 'drive', 'status-blue')).join('');
                 }
 
             } else if (activeDriveTab === 'loc') {
@@ -3022,7 +3049,7 @@ let specCaliperHtml = "";
                     crumb.innerText = `Block ${selectedDriveBlock} / Loc ${selectedDriveLoc}`;
                     let fItems = searchFilteredItems.filter(i => (i.LOCATIONCODE || "NoLoc") === selectedDriveLoc);
                     fItems.sort((a,b) => String(a.COMMONNAME || "").localeCompare(String(b.COMMONNAME || "")));
-                    container.innerHTML = `<div class="back-btn" onclick="driveViewLevel=1; renderDrive()"><i class="ph-bold ph-arrow-left"></i> Back to Locations</div>` + fItems.map(i => generateCard(i, 'drive', 'status-blue')).join('');
+                    container.innerHTML = `<div class="back-btn" onclick="driveViewLevel=1; renderDrive()"><i class="ph-bold ph-arrow-left"></i> Back to Locations</div>` + fItems.slice(0, 250).map(i => generateCard(i, 'drive', 'status-blue')).join('');
                 }
             }
         }
@@ -3046,48 +3073,35 @@ let specCaliperHtml = "";
             renderDrive();
         }
 
-        function renderTeamSelector() {
-            let uSet = new Set();
-            fullInventory.forEach(i => { if(i.ASSIGNEDTO && !i.DATE_COMPLETED) uSet.add(i.ASSIGNEDTO) });
-            if(uSet.size === 0) { 
-                document.getElementById('task-content').innerHTML = `<div class="p-8 text-center text-gray-400">No active tasks for any team member.</div>`; 
-                return; 
-            }
-            let sorted = Array.from(uSet).sort();
-            let html = `<h2 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Select Team Member</h2>`;
-            sorted.forEach(u => {
-                let userTasks = fullInventory.filter(i => i.ASSIGNEDTO === u && !i.DATE_COMPLETED);
-                let htmlCounts = `<div class="flex gap-2 mt-2">`;
-                ['season','location','endcap','flyer'].forEach(t => {
-                    let c = userTasks.filter(i => i.APP_TAB_ASSIGNMENT === t).length;
-                    if(c > 0) htmlCounts += `<span class="text-[10px] font-bold px-2 py-1 rounded bg-gray-100 text-gray-600 uppercase">${t}: ${c}</span>`;
-                });
-                htmlCounts += `</div>`;
-                html += `<div class="bg-white border border-gray-200 p-4 rounded-xl shadow-sm mb-3 cursor-pointer active:scale-95 transition-transform" onclick="selectTaskUser('${esc(u)}')"><div class="flex justify-between items-center"><span class="font-black text-xl text-[#007a4d]">${u}</span><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${userTasks.length} Total</span></div>${htmlCounts}</div>`;
-            });
-            document.getElementById('task-tabs-container').classList.add('hidden');
-            document.getElementById('task-crumb').innerText = "Team Tasks Overview";
-            document.getElementById('task-content').innerHTML = html;
-        }
-
-        function selectTaskUser(u) {
-            taskViewTargetUser = u;
-            document.getElementById('task-tabs-container').classList.remove('hidden');
-            renderTasks();
-        }
-
         function renderTasks() {
+            let isAllTeam = (activeTaskTab === 'all_season' || activeTaskTab === 'all_location');
             let targetUser = safeRole === 'ADMIN' ? taskViewTargetUser : currentUser;
-            if(!targetUser) return;
+            
+            if(!isAllTeam && !targetUser) return;
+
             const container = document.getElementById('task-content');
             const crumb = document.getElementById('task-crumb');
-            crumb.innerHTML = safeRole === 'ADMIN' ? `<span class="cursor-pointer text-gray-400 hover:text-gray-800" onclick="taskViewTargetUser=null; renderTeamSelector()"><i class="ph-bold ph-arrow-left"></i> Back to Team</span> &bull; <span class="text-[#007a4d]">${targetUser}'s Tasks</span>` : "My Tasks";
             
-            let userItems = fullInventory.filter(i => i.ASSIGNEDTO === targetUser && !i.DATE_COMPLETED);
-            let tabItems = userItems.filter(i => i.APP_TAB_ASSIGNMENT === activeTaskTab);
+            if (isAllTeam) {
+                let label = activeTaskTab === 'all_season' ? "All Team Season Notes" : "All Team Location Notes";
+                crumb.innerHTML = `<span class="text-[#007a4d]">${label}</span>`;
+            } else {
+                crumb.innerHTML = safeRole === 'ADMIN' ? `<span class="cursor-pointer text-gray-400 hover:text-gray-800" onclick="taskViewTargetUser=null; renderTeamSelector()"><i class="ph-bold ph-arrow-left"></i> Back to Team</span> &bull; <span class="text-[#007a4d]">${targetUser}'s Tasks</span>` : "My Tasks";
+            }
+            
+            let tabItems = [];
+            
+            if (isAllTeam) {
+                let filterType = activeTaskTab === 'all_season' ? 'season' : 'location';
+                // Grab ALL items assigned to ANYONE that aren't completed
+                tabItems = fullInventory.filter(i => i.APP_TAB_ASSIGNMENT === filterType && !i.DATE_COMPLETED && i.ASSIGNEDTO);
+            } else {
+                let userItems = fullInventory.filter(i => i.ASSIGNEDTO === targetUser && !i.DATE_COMPLETED);
+                tabItems = userItems.filter(i => i.APP_TAB_ASSIGNMENT === activeTaskTab);
+            }
             
             if(tabItems.length === 0){
-                container.innerHTML = `<div class="p-8 text-center text-gray-400">No active ${activeTaskTab} tasks.</div>`;
+                container.innerHTML = `<div class="p-8 text-center text-gray-400">No active ${activeTaskTab.replace('_', ' ')} tasks.</div>`;
                 return;
             }
             
@@ -3101,11 +3115,11 @@ let specCaliperHtml = "";
                 } else if(taskViewLevel === 1) {
                     let fItems = tabItems.filter(i => (i.END_CAP_FOLDER || 'Unassigned') === selectedEndCapFolder);
                     fItems.sort((a,b) => String(a.COMMONNAME || "").localeCompare(String(b.COMMONNAME || "")));
-                    container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=0; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to End Caps</div>` + fItems.map(i => generateCard(i, 'tasks', 'status-yellow')).join('');
+                    container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=0; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to End Caps</div>` + fItems.slice(0, 250).map(i => generateCard(i, 'tasks', 'status-yellow')).join('');
                 }
             } else if(activeTaskTab === 'flyer') {
                 tabItems.sort((a,b) => String(a.COMMONNAME || "").localeCompare(String(b.COMMONNAME || "")));
-                container.innerHTML = tabItems.map(i => generateCard(i, 'tasks', 'status-indigo')).join('');
+                container.innerHTML = tabItems.slice(0, 250).map(i => generateCard(i, 'tasks', 'status-indigo')).join('');
             } else {
                 if(taskViewLevel === 0) {
                     let blocks = {};
@@ -3125,17 +3139,47 @@ let specCaliperHtml = "";
                         if(!/[A-Z]/.test(alpha)) alpha = "Other";
                         return alpha === selectedTaskBlock;
                     });
-                    let locs = [...new Set(bItems.map(i => i.LOCATIONCODE || "NoLoc"))].sort((a,b) => String(a).localeCompare(String(b), undefined, {numeric: true}));
+                    
+                    // Group by the Location Prefix (e.g. "C.07") instead of the exact location
+                    let prefixes = [...new Set(bItems.map(i => {
+                        let loc = String(i.LOCATIONCODE || "NoLoc").trim();
+                        let parts = loc.split('.');
+                        // If it has at least 2 parts (C.07.001), grab the first two (C.07)
+                        return parts.length >= 2 ? parts[0] + '.' + parts[1] : loc;
+                    }))].sort((a,b) => String(a).localeCompare(String(b), undefined, {numeric: true}));
+                    
                     let html = `<div class="back-btn" onclick="taskViewLevel=0; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Blocks</div>`;
-                    html += locs.map(l => {
-                        let count = bItems.filter(i => (i.LOCATIONCODE || "NoLoc") === l).length;
-                        return `<div class="drill-item" onclick="selectedTaskLoc='${esc(l)}'; taskViewLevel=2; renderTasks()"><span class="font-bold text-lg text-gray-800">${l} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
+                    
+                    html += prefixes.map(p => {
+                        let count = bItems.filter(i => {
+                            let loc = String(i.LOCATIONCODE || "NoLoc").trim();
+                            let pref = loc.split('.').length >= 2 ? loc.split('.')[0] + '.' + loc.split('.')[1] : loc;
+                            return pref === p;
+                        }).length;
+                        return `<div class="drill-item" onclick="selectedTaskLoc='${esc(p)}'; taskViewLevel=2; renderTasks()"><span class="font-bold text-lg text-gray-800">${p} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
                     }).join('');
+                    
                     container.innerHTML = html;
+                    
                 } else if(taskViewLevel === 2) {
-                    let fItems = tabItems.filter(i => (i.LOCATIONCODE || "NoLoc") === selectedTaskLoc);
-                    fItems.sort((a,b) => String(a.COMMONNAME || "").localeCompare(String(b.COMMONNAME || "")));
-                    container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=1; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Locations</div>` + fItems.map(i => generateCard(i, 'tasks', activeTaskTab === 'season' ? 'status-green' : 'status-blue')).join('');
+                    // Find all items that match the selected prefix
+                    let fItems = tabItems.filter(i => {
+                        let loc = String(i.LOCATIONCODE || "NoLoc").trim();
+                        let pref = loc.split('.').length >= 2 ? loc.split('.')[0] + '.' + loc.split('.')[1] : loc;
+                        return pref === selectedTaskLoc;
+                    });
+                    
+                    // Sort by the EXACT location first, then by plant name
+                    fItems.sort((a,b) => {
+                        let locA = String(a.LOCATIONCODE || "");
+                        let locB = String(b.LOCATIONCODE || "");
+                        if(locA !== locB) return locA.localeCompare(locB, undefined, {numeric: true});
+                        return String(a.COMMONNAME || "").localeCompare(String(b.COMMONNAME || ""));
+                    });
+                    
+                    // Highlight green for season (and all_season), blue for location
+                    let colorStatus = (activeTaskTab === 'season' || activeTaskTab === 'all_season') ? 'status-green' : 'status-blue';
+                    container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=1; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Sections</div>` + fItems.slice(0, 250).map(i => generateCard(i, 'tasks', colorStatus)).join('');
                 }
             }
         }
@@ -3165,7 +3209,7 @@ let specCaliperHtml = "";
                 crumb.innerText = `${selectedReviewCommonName} / ${selectedReviewContSize}`;
                 let items = managerReviewInventory.filter(i => i.ITEMCODE === selectedReviewItemCode);
                 items.sort((a,b) => String(a.LOCATIONCODE || "").localeCompare(String(b.LOCATIONCODE || ""), undefined, {numeric: true}));
-                container.innerHTML = `<div class="back-btn" onclick="resetReviewView()"><i class="ph-bold ph-arrow-left"></i> Back to List</div>` + items.map(i => generateCard(i, 'review', 'status-yellow')).join('');
+                container.innerHTML = `<div class="back-btn" onclick="resetReviewView()"><i class="ph-bold ph-arrow-left"></i> Back to List</div>` + items.slice(0, 250).map(i => generateCard(i, 'review', 'status-yellow')).join('');
             }
         }
         
@@ -3326,45 +3370,61 @@ let specCaliperHtml = "";
                         };
                         
                         // Fire off to Supabase Official Client silently
-                        supabaseClient.from('v2_sales_office').upsert(soPayload).then();
-                        
-                        // Instantly build Local Clone for Sales Office Tab
-                        let cloneSO = { ...soPayload };
-                        for(let key in soPayload) { cloneSO[key.toUpperCase()] = soPayload[key]; }
-                        cloneSO.DOM_ID = 'so_' + cloneSO.UNIQUE_ID;
-                        cloneSO.AV_NOTE = itemToSave.AV_NOTE;
-                        cloneSO.SAVED_PHOTO_LINK = soPayload.photo_link; 
-                        let existingIdx = salesOfficeInventory.findIndex(s => s.UNIQUE_ID === cloneSO.UNIQUE_ID);
-                        if (existingIdx > -1) salesOfficeInventory[existingIdx] = cloneSO;
-                        else salesOfficeInventory.push(cloneSO);
-                    }
+                    supabaseClient.from('v2_sales_office').upsert(soPayload).then();
+                    
+                    // Instantly build Local Clone for Sales Office Tab
+                    let cloneSO = { ...soPayload };
+                    for(let key in soPayload) { cloneSO[key.toUpperCase()] = soPayload[key]; }
+                    cloneSO.DOM_ID = 'so_' + cloneSO.UNIQUE_ID;
+                    // CRITICAL: We have to explicitly tell the backup function what table this belongs to
+                    cloneSO.SOURCE_TABLE = 'v2_sales_office'; 
+                    cloneSO.AV_NOTE = itemToSave.AV_NOTE;
+                    cloneSO.SAVED_PHOTO_LINK = soPayload.photo_link; 
+                    
+                    let existingIdx = salesOfficeInventory.findIndex(s => s.UNIQUE_ID === cloneSO.UNIQUE_ID);
+                    if (existingIdx > -1) salesOfficeInventory[existingIdx] = cloneSO;
+                    else salesOfficeInventory.push(cloneSO);
+
+                    // Backup local state for resilience
+                    backupLocalItem(cloneSO);
+                }
+            }
+
+            // Push to AV (Master Inventory) if user selected YES
+            if (pushToAv) {
+                let masterUid = itemToSave.MASTER_ID || itemToSave.UNIQUE_ID;
+                let matchVal = parseFloat(prefix === 'req-' ? itemToSave.REQ_MATCH : itemToSave.MATCH);
+                let ptr = parseInt(String(itemToSave.PTRAVAILABLE).replace(/,/g, '')) || 0;
+                let locMatchQty = (!isNaN(matchVal) && matchVal >= 0) ? Math.round(ptr * (matchVal / 100)) : null;
+
+                let avPayload = {
+                    av_note: itemToSave.AV_NOTE || null,
+                    spec: (prefix === 'req-' ? itemToSave.REQ_SPEC : itemToSave.SPEC) || null,
+                    caliper: (prefix === 'req-' ? itemToSave.REQ_CALIPER : itemToSave.CALIPER) || null,
+                    match: isNaN(matchVal) ? null : matchVal,
+                    loc_match_qty: locMatchQty,
+                    photo_link: itemToSave.REQ_PHOTO_LINK || itemToSave.SAVED_PHOTO_LINK || null,
+                    photo_name: itemToSave.REQ_PHOTO_NAME || itemToSave.SAVED_PHOTO_NAME || null
+                };
+
+                // Instantly reflect in local Master Inventory so AV tab populates accurately right away
+                let masterItem = fullInventory.find(i => i.UNIQUE_ID === masterUid);
+                if (masterItem) {
+                    masterItem.AV_NOTE = avPayload.av_note;
+                    masterItem.SPEC = avPayload.spec;
+                    masterItem.CALIPER = avPayload.caliper;
+                    masterItem.MATCH = avPayload.match;
+                    masterItem.LOC_MATCH_QTY = avPayload.loc_match_qty;
+                    if(avPayload.photo_link) masterItem.SAVED_PHOTO_LINK = avPayload.photo_link;
                 }
 
-                // Push to AV (Master Inventory) if user selected YES
-                if (pushToAv) {
-                    let masterUid = itemToSave.MASTER_ID || itemToSave.UNIQUE_ID;
-                    let matchVal = parseFloat(itemToSave.REQ_MATCH);
-                    let ptr = parseInt(String(itemToSave.PTRAVAILABLE).replace(/,/g, '')) || 0;
-                    let locMatchQty = (!isNaN(matchVal) && matchVal >= 0) ? Math.round(ptr * (matchVal / 100)) : null;
+                // Silently update master inventory in the background via official client
+                supabaseClient.from('v2_master_inventory').update(avPayload).eq('unique_id', masterUid).then();
+            }
+            
+            const targetTable = (itemToSave.SOURCE_TABLE === 'v2_active_request') ? 'v2_active_request' : (itemToSave.SOURCE_TABLE || 'v2_master_inventory');
 
-                    let avPayload = {
-                        av_note: itemToSave.AV_NOTE || null,
-                        spec: itemToSave.REQ_SPEC || null,
-                        caliper: itemToSave.REQ_CALIPER || null,
-                        match: isNaN(matchVal) ? null : matchVal,
-                        loc_match_qty: locMatchQty,
-                        photo_link: itemToSave.REQ_PHOTO_LINK || itemToSave.SAVED_PHOTO_LINK || null,
-                        photo_name: itemToSave.REQ_PHOTO_NAME || itemToSave.SAVED_PHOTO_NAME || null
-                    };
-
-                    // Silently update master inventory in the background via official client
-                    supabaseClient.from('v2_master_inventory').update(avPayload).eq('unique_id', masterUid).then();
-                }
-                
-                const targetTable = (itemToSave.SOURCE_TABLE === 'v2_active_request') ? 'v2_active_request' : (itemToSave.SOURCE_TABLE || 'v2_master_inventory');
-
-                try {
-                    // Update the primary table via official client
+            try {                    // Update the primary table via official client
                     await supabaseClient.from(targetTable).update(payload).eq('unique_id', itemToSave.UNIQUE_ID);
                     
                     if ((prefix === 'req-' || itemToSave.SOURCE_TABLE === 'v2_active_request') && isComplete && !wasAlreadyComplete) {
@@ -3398,7 +3458,6 @@ let specCaliperHtml = "";
                 if (item) { 
                     Object.assign(item, pendingEdits[uid].data); 
                 } else {
-                    // MAGIC FIX: If it's not found, it's a NEW row that got wiped by a stale sync! Let's put it back.
                     let data = pendingEdits[uid].data;
                     if (data.SOURCE_TABLE === 'v2_active_request') {
                         requestsInventory.push(data);
@@ -3437,7 +3496,7 @@ let specCaliperHtml = "";
         const ptrText = document.getElementById('ptr-text');
 
         let ptrStartY = 0;
-        let ptrStartX = 0; // NEW: Track X to prevent horizontal swipes from triggering it
+        let ptrStartX = 0;
         let ptrCurrentY = 0;
         let isPulling = false;
         const ptrThreshold = 100; 
@@ -3468,7 +3527,6 @@ let specCaliperHtml = "";
                 }
 
                 if (pullDistance > 0 && scrollArea.scrollTop <= 0) {
-                    // Increased resistance: Changed multiplier to 0.20 so it feels heavier
                     let visualHeight = Math.min(pullDistance * 0.20, ptrThreshold + 25);
                     ptrContainer.style.height = `${visualHeight}px`; 
                     
@@ -3515,7 +3573,7 @@ let specCaliperHtml = "";
             }, 300);
         }
 
-        // --- PHOTO UPLOAD LOGIC (NEW ROBUST VERSION) ---
+        // --- PHOTO UPLOAD LOGIC ---
         async function handlePhotoUpload(input, prefix) {
             if (!input.files || input.files.length === 0) return;
             if (!activeItem) { showToast("Error", "No item selected to attach photo to.", true); return; }
@@ -3526,7 +3584,6 @@ let specCaliperHtml = "";
             for (let i = 0; i < fileCount; i++) {
                 const file = input.files[i];
                 
-                // Allow files even if mobile doesn't report a type (common camera bug)
                 if (file.type && !file.type.startsWith('image/')) {
                     showToast('Error', `File ${i + 1} is not a valid image.`, true);
                     continue;
@@ -3565,17 +3622,14 @@ let specCaliperHtml = "";
                                 let filePath = `${new Date().toISOString().split('T')[0]}/${fileName}`;
 
                                 try {
-                                    // Use the official client library for the upload
                                     const { data, error } = await supabaseClient.storage
                                         .from(bucketName)
                                         .upload(filePath, blob, { contentType: 'image/jpeg', upsert: true });
 
                                     if (error) throw error;
 
-                                    // Get the public URL
                                     const { data: { publicUrl } } = supabaseClient.storage.from(bucketName).getPublicUrl(filePath);
 
-                                    // Update the correct database column
                                     let linkCol = 'SAVED_PHOTO_LINK';
                                     if (prefix === 'req-') linkCol = 'REQ_PHOTO_LINK';
                                     else if (prefix === 'dock-') linkCol = 'DOCK_PHOTO_LINK';
@@ -3584,7 +3638,6 @@ let specCaliperHtml = "";
                                     let currentLinks = activeItem[linkCol] || "";
                                     activeItem[linkCol] = currentLinks ? currentLinks + ',' + publicUrl : publicUrl;
                                     
-                                    // Save change to DB (False = Draft/Silent save)
                                     saveData(false, prefix, false); 
                                     renderSavedPhotos(); 
                                     resolve();
@@ -3616,13 +3669,12 @@ let specCaliperHtml = "";
         const CHAT_PARTICIPANTS_TABLE = 'v2_chat_participants'; 
         const CHAT_MESSAGES_TABLE = 'v2_chat_messages';
         
-       let activeChatRoomId = null;
-let userChatList = [];
+        let activeChatRoomId = null;
+        let userChatList = [];
         let selectedUsersForNewChat = new Set();
 
         async function loadChatInbox() {
             try {
-                // Notice the 'true' added to the end of all these to make them silent!
                 const myParticipants = await supabaseFetch(CHAT_PARTICIPANTS_TABLE, 'GET', null, `username=eq.${encodeURIComponent(currentUser)}`, true);
                 if (!myParticipants || myParticipants.length === 0) {
                     renderChatInbox([]);
@@ -3704,7 +3756,6 @@ let userChatList = [];
             const term = document.getElementById('new-chat-search').value.toLowerCase();
             const container = document.getElementById('new-chat-user-list');
             
-            // This pulls from your existing salesRepList and team members
             let allUsers = ["Dylan", "Kayla", "Morgan", ...salesRepList];
             let filtered = allUsers.filter(u => u.toLowerCase() !== currentUser.toLowerCase() && u.toLowerCase().includes(term));
             
@@ -3735,17 +3786,16 @@ let userChatList = [];
             }
             
             let participants = Array.from(selectedUsersForNewChat);
-            participants.push(currentUser); // Add self to the room
+            participants.push(currentUser); 
             let isGroup = participants.length > 2;
             let roomName = isGroup ? prompt("Enter a name for this group chat:") : '';
             
-            if(isGroup && !roomName) return; // User cancelled group name prompt
+            if(isGroup && !roomName) return; 
 
             document.getElementById('new-chat-modal').classList.add('hidden');
             showToast("Setting up...", "Creating chat room...", false);
 
             try {
-                // If it's a 1-on-1, check if room already exists to prevent duplicates
                 if (!isGroup) {
                     let otherUser = Array.from(selectedUsersForNewChat)[0];
                     let existingRoom = userChatList.find(c => !c.isGroup && c.participants.length === 2 && c.participants.includes(otherUser.toLowerCase()));
@@ -3755,7 +3805,6 @@ let userChatList = [];
                     }
                 }
 
-                // Create new room
                 let newRoomId = 'chat_' + Date.now() + Math.random().toString(36).substring(2,7);
                 await supabaseFetch(CHAT_ROOMS_TABLE, 'POST', {
                     id: newRoomId,
@@ -3764,7 +3813,6 @@ let userChatList = [];
                     created_at: new Date().toISOString()
                 });
 
-                // Add participants
                 let participantPayloads = participants.map(p => ({
                     room_id: newRoomId,
                     username: p.toLowerCase(),
@@ -3772,7 +3820,6 @@ let userChatList = [];
                 }));
                 await supabaseFetch(CHAT_PARTICIPANTS_TABLE, 'POST', participantPayloads);
 
-                // Open the new room
                 let displayTitle = isGroup ? roomName : Array.from(selectedUsersForNewChat)[0];
                 openChatRoom(newRoomId, displayTitle.toUpperCase());
                 
@@ -3782,19 +3829,19 @@ let userChatList = [];
         }
 
         function openChatRoom(roomId, title) {
-    activeChatRoomId = roomId;
-    document.getElementById('chat-room-title').innerText = title;
-    document.getElementById('view-chat-room').classList.remove('hidden');
-    document.getElementById('chat-messages-container').innerHTML = `<div class="flex justify-center py-10"><div class="spinner border-[#007a4d] border-t-transparent"></div></div>`;
-    
-    fetchChatMessages(); // Initial load when opening the room
-}
+            activeChatRoomId = roomId;
+            document.getElementById('chat-room-title').innerText = title;
+            document.getElementById('view-chat-room').classList.remove('hidden');
+            document.getElementById('chat-messages-container').innerHTML = `<div class="flex justify-center py-10"><div class="spinner border-[#007a4d] border-t-transparent"></div></div>`;
+            
+            fetchChatMessages(); 
+        }
 
         function closeChatRoom() {
-    activeChatRoomId = null;
-    document.getElementById('view-chat-room').classList.add('hidden');
-    loadChatInbox(); // Refresh inbox to show latest messages
-}
+            activeChatRoomId = null;
+            document.getElementById('view-chat-room').classList.add('hidden');
+            loadChatInbox(); 
+        }
 
         async function fetchChatMessages() {
             if(!activeChatRoomId) return;
@@ -3802,7 +3849,6 @@ let userChatList = [];
                 const messages = await supabaseFetch(CHAT_MESSAGES_TABLE, 'GET', null, `room_id=eq.${activeChatRoomId}&order=created_at.asc`, true);
                 const container = document.getElementById('chat-messages-container');
                 
-                // Only auto-scroll to bottom if we are already near the bottom, or if it's the first load
                 let isAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 50;
                 let isFirstLoad = container.innerHTML.includes('spinner');
 
@@ -3820,7 +3866,6 @@ let userChatList = [];
                     let dateStr = msgDate.toLocaleDateString();
                     let timeStr = msgDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
 
-                    // Add a date divider if the day changes
                     if (dateStr !== currentDate) {
                         html += `<div class="flex justify-center my-4"><span class="bg-gray-200 text-gray-500 text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">${dateStr}</span></div>`;
                         currentDate = dateStr;
@@ -3864,9 +3909,8 @@ let userChatList = [];
             const text = input.value.trim();
             if(!text || !activeChatRoomId) return;
 
-            input.value = ''; // Clear instantly for good UX
+            input.value = ''; 
             
-            // Optimistically add the message to the UI
             const container = document.getElementById('chat-messages-container');
             let timeStr = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             container.innerHTML += `
@@ -3881,17 +3925,16 @@ let userChatList = [];
 
             try {
                 await supabaseFetch(CHAT_MESSAGES_TABLE, 'POST', {
-            room_id: activeChatRoomId,
-            sender: currentUser,
-            message: text,
-            created_at: new Date().toISOString()
-        });
-        // fetchChatMessages() is removed; the WebSocket will catch the INSERT and update the UI!
+                    room_id: activeChatRoomId,
+                    sender: currentUser,
+                    message: text,
+                    created_at: new Date().toISOString()
+                });
             } catch(e) {
                 showToast("Error", "Message failed to send.", true);
                 let optMsg = document.getElementById('optimistic-msg');
                 if(optMsg) optMsg.remove();
-                input.value = text; // Put text back so they don't lose it
+                input.value = text; 
             }
         }
 
