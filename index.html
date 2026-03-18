@@ -3247,9 +3247,10 @@ function selectAvResName(name) { selectedAvResName=name; avResLevel=1; renderAV(
             }, 300);
         }
 
-       // --- PHOTO UPLOAD LOGIC ---
+       // --- PHOTO UPLOAD LOGIC (NEW ROBUST VERSION) ---
         async function handlePhotoUpload(input, prefix) {
             if (!input.files || input.files.length === 0) return;
+            if (!activeItem) { showToast("Error", "No item selected to attach photo to.", true); return; }
             
             const fileCount = input.files.length;
             showToast('Processing', `Preparing ${fileCount} photo(s)...`, false);
@@ -3257,9 +3258,9 @@ function selectAvResName(name) { selectedAvResName=name; avResLevel=1; renderAV(
             for (let i = 0; i < fileCount; i++) {
                 const file = input.files[i];
                 
-                // FIXED 1: Removed the strict startWith('image/') check so mobile live cameras aren't blocked
+                // Allow files even if mobile doesn't report a type (common camera bug)
                 if (file.type && !file.type.startsWith('image/')) {
-                    showToast('Error', `File ${i + 1} is not a valid image format.`, true);
+                    showToast('Error', `File ${i + 1} is not a valid image.`, true);
                     continue;
                 }
 
@@ -3271,23 +3272,18 @@ function selectAvResName(name) { selectedAvResName=name; avResLevel=1; renderAV(
                         const img = new Image();
                         img.src = event.target.result;
                         
-                        img.onload = function() {
+                        img.onload = async function() {
                             const canvas = document.createElement('canvas');
                             const MAX_WIDTH = 1080;
-                            let scaleSize = 1;
-                            
-                            if (img.width > MAX_WIDTH) {
-                                scaleSize = MAX_WIDTH / img.width;
-                            }
+                            let scaleSize = img.width > MAX_WIDTH ? MAX_WIDTH / img.width : 1;
                             
                             canvas.width = img.width * scaleSize;
                             canvas.height = img.height * scaleSize;
-
                             const ctx = canvas.getContext('2d');
                             ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
                             canvas.toBlob(async (blob) => {
-                                showToast('Uploading', `Sending photo ${i + 1} of ${fileCount}...`, false);
+                                showToast('Uploading', `Sending ${i + 1} of ${fileCount}...`, false);
 
                                 let bucketName = 'drive_mode_photos'; 
                                 if (prefix === 'ssn-') bucketName = 'season_sales_notes_photos';
@@ -3296,71 +3292,43 @@ function selectAvResName(name) { selectedAvResName=name; avResLevel=1; renderAV(
                                 else if (prefix === 'dock-') bucketName = 'dock_photos';
                                 else if (prefix === 'flyer-') bucketName = 'flyer_photos';
 
-                                let dateStr = new Date().toISOString().split('T')[0];
-                                
-                                // FIXED 2: We completely strip out spaces, #, and special characters from the file names
-                                const cleanText = (txt) => String(txt || 'Unknown').replace(/[^a-zA-Z0-9]/g, '');
-                                
-                                let cName = cleanText(activeItem.COMMONNAME);
-                                let cSize = cleanText(activeItem.CONTSIZE);
-                                let cLot = cleanText(activeItem.LOTCODE);
-                                let cLoc = cleanText(activeItem.LOCATIONCODE);
-                                
-                                let existingPhotos = [];
-                                if (prefix === 'req-') existingPhotos = (activeItem.REQ_PHOTO_LINK || "").split(',').filter(Boolean);
-                                else if (prefix === 'dock-') existingPhotos = (activeItem.DOCK_PHOTO_LINK || "").split(',').filter(Boolean);
-                                else if (prefix === 'flyer-') existingPhotos = (activeItem.FLYER_PHOTO_LINK || "").split(',').filter(Boolean);
-                                else existingPhotos = (activeItem.SAVED_PHOTO_LINK || "").split(',').filter(Boolean);
-                                
-                                let photoIndex = existingPhotos.length + 1; 
-                                
-                                let customFileName = `${cName}-${cSize}-${cLot}-${cLoc}-Photo${photoIndex}-${Date.now()}_${i}.jpg`;
+                                const clean = (t) => String(t || 'NA').replace(/[^a-zA-Z0-9]/g, '');
+                                let fileName = `${clean(activeItem.COMMONNAME)}-${clean(activeItem.CONTSIZE)}-${Date.now()}_${i}.jpg`;
+                                let filePath = `${new Date().toISOString().split('T')[0]}/${fileName}`;
 
                                 try {
-                                    // FIXED 3: We safely encode the URL so nothing gets chopped off
-                                    const uploadUrl = `${SUPABASE_URL}/storage/v1/object/${bucketName}/${dateStr}/${encodeURIComponent(customFileName)}`;
+                                    // Use the official client library for the upload
+                                    const { data, error } = await supabaseClient.storage
+                                        .from(bucketName)
+                                        .upload(filePath, blob, { contentType: 'image/jpeg', upsert: true });
+
+                                    if (error) throw error;
+
+                                    // Get the public URL
+                                    const { data: { publicUrl } } = supabaseClient.storage.from(bucketName).getPublicUrl(filePath);
+
+                                    // Update the correct database column
+                                    let linkCol = 'SAVED_PHOTO_LINK';
+                                    if (prefix === 'req-') linkCol = 'REQ_PHOTO_LINK';
+                                    else if (prefix === 'dock-') linkCol = 'DOCK_PHOTO_LINK';
+                                    else if (prefix === 'flyer-') linkCol = 'FLYER_PHOTO_LINK';
+
+                                    let currentLinks = activeItem[linkCol] || "";
+                                    activeItem[linkCol] = currentLinks ? currentLinks + ',' + publicUrl : publicUrl;
                                     
-                                    const uploadResponse = await fetch(uploadUrl, {
-                                        method: 'POST',
-                                        headers: {
-                                            'Authorization': 'Bearer ' + SUPABASE_KEY,
-                                            'apikey': SUPABASE_KEY,
-                                            'Content-Type': 'image/jpeg'
-                                        },
-                                        body: blob
-                                    });
-
-                                    if (!uploadResponse.ok) {
-                                        const errText = await uploadResponse.text();
-                                        throw new Error(errText || 'Upload failed');
-                                    }
-
-                                    let url = `${SUPABASE_URL}/storage/v1/object/public/${bucketName}/${dateStr}/${encodeURIComponent(customFileName)}`;
-
-                                    if (activeItem) {
-                                        if (prefix === 'req-') {
-                                            activeItem.REQ_PHOTO_LINK = activeItem.REQ_PHOTO_LINK ? activeItem.REQ_PHOTO_LINK + ',' + url : url;
-                                        } else if (prefix === 'dock-') {
-                                            activeItem.DOCK_PHOTO_LINK = activeItem.DOCK_PHOTO_LINK ? activeItem.DOCK_PHOTO_LINK + ',' + url : url;
-                                        } else if (prefix === 'flyer-') {
-                                            activeItem.FLYER_PHOTO_LINK = activeItem.FLYER_PHOTO_LINK ? activeItem.FLYER_PHOTO_LINK + ',' + url : url;
-                                        } else {
-                                            activeItem.SAVED_PHOTO_LINK = activeItem.SAVED_PHOTO_LINK ? activeItem.SAVED_PHOTO_LINK + ',' + url : url;
-                                        }
-                                        
-                                        saveData(false, prefix, false); 
-                                        renderSavedPhotos(); 
-                                    }
+                                    // Save change to DB (False = Draft/Silent save)
+                                    saveData(false, prefix, false); 
+                                    renderSavedPhotos(); 
                                     resolve();
                                 } catch (err) {
-                                    showToast('Error', `Upload failed for photo ${i + 1}: ` + err.message, true);
+                                    showToast('Error', `Upload failed: ${err.message}`, true);
                                     resolve();
                                 }
                             }, 'image/jpeg', 0.8);
                         };
                         
                         img.onerror = () => {
-                            showToast('Error', `Could not read photo ${i + 1}.`, true);
+                            showToast('Error', `Could not read photo ${i + 1}. Unsupported format.`, true);
                             resolve();
                         };
                     };
@@ -3371,12 +3339,11 @@ function selectAvResName(name) { selectedAvResName=name; avResLevel=1; renderAV(
                     };
                 });
             }
-            
-            showToast('Success', 'Photo process completed!');
+            showToast('Success', 'Upload complete!');
             input.value = ""; 
         }
+
         // --- CHAT SYSTEM LOGIC ---
-        // UPDATE THESE TO MATCH YOUR EXACT SUPABASE SETUP
         const CHAT_ROOMS_TABLE = 'v2_chat_rooms'; 
         const CHAT_PARTICIPANTS_TABLE = 'v2_chat_participants'; 
         const CHAT_MESSAGES_TABLE = 'v2_chat_messages';
