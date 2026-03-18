@@ -601,31 +601,11 @@
         let activeFetches=0; let fetchProgressInterval; let currentProgress=0;
 
         function startGlobalProgress() { 
-            activeFetches++; 
-            if(activeFetches===1){ 
-                currentProgress=10; 
-                document.getElementById('top-loading-bar-container').classList.remove('hidden'); 
-                document.getElementById('top-loading-bar').style.width=currentProgress+'%'; 
-                fetchProgressInterval=setInterval(()=>{ 
-                    if(currentProgress<85){ 
-                        currentProgress+=Math.random()*5; 
-                        document.getElementById('top-loading-bar').style.width=currentProgress+'%'; 
-                    } 
-                },200); 
-            } 
+            // Disabled: Green loading bar completely hidden 
         }
 
         function stopGlobalProgress() { 
-            activeFetches--; 
-            if(activeFetches<=0){ 
-                activeFetches=0; 
-                clearInterval(fetchProgressInterval); 
-                document.getElementById('top-loading-bar').style.width='100%'; 
-                setTimeout(()=>{ 
-                    document.getElementById('top-loading-bar-container').classList.add('hidden'); 
-                    document.getElementById('top-loading-bar').style.width='0%'; 
-                },400); 
-            } 
+            // Disabled: Green loading bar completely hidden 
         }
 
         async function supabaseFetch(table, method='GET', body=null, query='select=*') {
@@ -704,38 +684,48 @@
         
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Machino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
 
-        window.onload=async function() {
-            // (Optional: You might want to remove the cache/SW unregister lines eventually, 
-            // as this forces the app to re-download assets on every reload, but we'll leave them for now)
-            if ('serviceWorker' in navigator) { const registrations = await navigator.serviceWorker.getRegistrations(); for(let registration of registrations) { await registration.unregister(); } }
-            if ('caches' in window) { const keys = await caches.keys(); for (let key of keys) { await caches.delete(key); } }
-            
+        window.onload = function() {
             const savedUser = localStorage.getItem('gnc_user_v3'); 
             const savedPin = localStorage.getItem('gnc_pin_v3');
             const savedRole = localStorage.getItem('gnc_role_v3');
             
-            if(savedUser && savedPin){ 
-                // Restore state instantly
+            if (savedUser && savedPin) { 
+                // 1. Restore state immediately without waiting for promises
                 currentUser = savedUser;
                 currentRole = savedRole || 'User';
                 safeRole = String(currentRole).toUpperCase().replace(/\s+/g,'');
 
                 document.getElementById('username-input').value = savedUser; 
                 document.getElementById('pin-code').value = savedPin;
-                
-                // Pre-load the heavy data into memory instantly
-                const cachedRes = await loadFromCache(); 
-                if(cachedRes && fullInventory.length === 0){ 
-                    processAndLoadData(cachedRes); 
-                } 
 
-                // SILENT AUTO-LOGIN: Bypass the login screen entirely
+                // 2. Bypass login screen instantly!
                 finalizeLogin(savedUser, savedPin, false);
+
+                // 3. Load heavy cache data asynchronously in the background so UI doesn't block
+                loadFromCache().then(cachedRes => {
+                    if (cachedRes && fullInventory.length === 0) { 
+                        processAndLoadData(cachedRes); 
+                    }
+                }).catch(e => console.log("Cache load skipped"));
 
             } else if (savedUser) {
                 // If they have a user but no PIN (maybe they cleared it), just pre-fill the username
                 document.getElementById('username-input').value = savedUser;
             }
+
+            // 4. Safely clear old caches in the background 5 seconds later
+            setTimeout(async () => {
+                try {
+                    if ('serviceWorker' in navigator) { 
+                        const registrations = await navigator.serviceWorker.getRegistrations(); 
+                        for (let r of registrations) await r.unregister(); 
+                    }
+                    if ('caches' in window) { 
+                        const keys = await caches.keys(); 
+                        for (let k of keys) await caches.delete(k); 
+                    }
+                } catch(e) {}
+            }, 5000);
         };
 
         window.addEventListener('DOMContentLoaded', () => {
@@ -757,7 +747,7 @@
         async function promptToEnableBiometrics(user,pin) { 
             if(!confirm("Would you like to enable Fingerprint/FaceID login for future use?"))return; 
             try{ 
-                const publicKey={challenge:new Uint8Array(32),rp:{name:"GREENLEAF"},user:{id:new Uint8Array(16),name:user,displayName:user},pubKeyCredParams:[{type:"public-key",alg:-7}],authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required"},timeout:60000}; 
+                const publicKey={challenge:new Uint8Array(32),rp:{name:"GNC 1945"},user:{id:new Uint8Array(16),name:user,displayName:user},pubKeyCredParams:[{type:"public-key",alg:-7}],authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required"},timeout:60000}; 
                 await navigator.credentials.create({publicKey}); 
                 localStorage.setItem('gnc_bio_enabled','true'); 
                 localStorage.setItem('gnc_bio_user',user); 
@@ -783,6 +773,7 @@
                 showToast("Error","Fingerprint cancelled.",true); 
             } 
         }
+
         function setRepPermutations(user) { 
             let parts=user.split('_'); 
             if(parts.length>=2){ 
@@ -849,7 +840,7 @@
             
             // Initialize the counter for the first image
             setTimeout(() => updatePhotoCounter(), 50);
-        }
+        }        }
         function closePhotoModal() { 
             document.getElementById('photo-modal').classList.add('hidden'); 
         }
