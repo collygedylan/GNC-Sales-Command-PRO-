@@ -4737,6 +4737,7 @@
                 const setVal = (val) => (val === '' || val === undefined) ? null : val;
                 const payload = {};
                 let isAvEligibleRequest = false;
+                let qualifiesForOpenStockView = false;
                 let requestAssignment = '';
 
                 if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-') {
@@ -4749,6 +4750,9 @@
                     const assignment = String(itemToSave.APP_TAB_ASSIGNMENT || '').toLowerCase();
                     requestAssignment = assignment;
                     isAvEligibleRequest = assignment === 'season' || assignment === 'location';
+                    const ltsValue = Number(String(itemToSave.S_LTS || '0').replace(/,/g, ''));
+                    const requestSeason = String(itemToSave.SEASON || '').toUpperCase();
+                    qualifiesForOpenStockView = isAvEligibleRequest && ltsValue > 0 && !requestSeason.includes('Y') && !requestSeason.includes('Z');
                     const needsCaliper = itemToSave.PLANTGROUPCODE && String(itemToSave.PLANTGROUPCODE).includes('330_TREES') && ['#7','#10','#15','#25','#45'].includes(itemToSave.CONTSIZE);
                     if (isComplete && isAvEligibleRequest) {
                         const effectiveAvNote = String(itemToSave.AV_NOTE || '').trim();
@@ -4766,6 +4770,7 @@
                     payload.req_reserve = setVal(itemToSave.REQ_RESERVE);
                     payload.av_note = setVal(itemToSave.AV_NOTE);
                     if (isComplete) {
+                        itemToSave._SHOW_IN_AV = qualifiesForOpenStockView ? confirm('Show in AV?') : false;
                         payload.req_status = 'Complete';
                         itemToSave.REQ_STATUS = 'Complete';
                     }
@@ -4817,11 +4822,10 @@
                 }
 
                 const buildCompletionArtifacts = () => {
-                    const artifacts = { soPayload: null, cloneSO: null, avSyncMasterId: null, avSyncMasterItem: null, avSyncPayload: null };
-                    const shouldSyncRequestRow = prefix === 'req-' && isAvEligibleRequest;
-                    if (!isComplete && !shouldSyncRequestRow) return artifacts;
+                    const artifacts = { soPayload: null, cloneSO: null, masterSyncId: null, masterSyncItem: null, masterSyncPayload: null, applyAvSync: false };
+                    if (!isComplete) return artifacts;
 
-                    if (isComplete && prefix !== 'flyer-' && prefix !== 'req-') {
+                    if (prefix !== 'flyer-' && prefix !== 'req-') {
                         artifacts.soPayload = {
                             unique_id: itemToSave.UNIQUE_ID,
                             itemcode: itemToSave.ITEMCODE || '',
@@ -4844,22 +4848,23 @@
                         normalizeRowPhotoFields(artifacts.cloneSO);
                     }
 
-                    if (shouldSyncRequestRow) {
-                        artifacts.avSyncMasterId = itemToSave.MASTER_ID || itemToSave.MASTER_UNIQUE_ID || itemToSave.master_id;
-                        artifacts.avSyncMasterItem = findItemByUniqueId(artifacts.avSyncMasterId);
-                        artifacts.avSyncPayload = {
-                            av_note: setVal(itemToSave.AV_NOTE),
-                            spec: setVal(itemToSave.REQ_SPEC || itemToSave.SPEC),
-                            caliper: setVal(itemToSave.REQ_CALIPER || itemToSave.CALIPER),
-                            photo_link: setVal(itemToSave.REQ_PHOTO_LINK || itemToSave.SAVED_PHOTO_LINK),
-                            photo_name: setVal(itemToSave.REQ_PHOTO_NAME || itemToSave.SAVED_PHOTO_NAME)
-                        };
-                        if (isComplete) {
-                            artifacts.avSyncPayload.date_completed = payload.date_completed;
-                            if (requestAssignment === 'season' && artifacts.avSyncMasterId) {
-                                const salesSourceItem = artifacts.avSyncMasterItem || itemToSave;
+                    if (prefix === 'req-' && isAvEligibleRequest) {
+                        artifacts.masterSyncId = itemToSave.MASTER_ID || itemToSave.MASTER_UNIQUE_ID || itemToSave.master_id;
+                        artifacts.masterSyncItem = findItemByUniqueId(artifacts.masterSyncId);
+                        if (artifacts.masterSyncId) {
+                            artifacts.masterSyncPayload = { date_completed: payload.date_completed };
+                            if (itemToSave._SHOW_IN_AV) {
+                                artifacts.applyAvSync = true;
+                                artifacts.masterSyncPayload.av_note = setVal(itemToSave.AV_NOTE);
+                                artifacts.masterSyncPayload.spec = setVal(itemToSave.REQ_SPEC || itemToSave.SPEC);
+                                artifacts.masterSyncPayload.caliper = setVal(itemToSave.REQ_CALIPER || itemToSave.CALIPER);
+                                artifacts.masterSyncPayload.photo_link = setVal(itemToSave.REQ_PHOTO_LINK || itemToSave.SAVED_PHOTO_LINK);
+                                artifacts.masterSyncPayload.photo_name = setVal(itemToSave.REQ_PHOTO_NAME || itemToSave.SAVED_PHOTO_NAME);
+                            }
+                            if (requestAssignment === 'season') {
+                                const salesSourceItem = artifacts.masterSyncItem || itemToSave;
                                 artifacts.soPayload = {
-                                    unique_id: artifacts.avSyncMasterId,
+                                    unique_id: artifacts.masterSyncId,
                                     itemcode: salesSourceItem.ITEMCODE || itemToSave.ITEMCODE || '',
                                     commonname: salesSourceItem.COMMONNAME || itemToSave.COMMONNAME || '',
                                     contsize: salesSourceItem.CONTSIZE || itemToSave.CONTSIZE || '',
@@ -4907,19 +4912,21 @@
                         else salesOfficeInventory.push(artifacts.cloneSO);
                     }
 
-                    if (artifacts.avSyncPayload && artifacts.avSyncMasterId) {
-                        if (artifacts.avSyncMasterItem) {
-                            artifacts.avSyncMasterItem.AV_NOTE = itemToSave.AV_NOTE;
-                            artifacts.avSyncMasterItem.SPEC = itemToSave.REQ_SPEC || itemToSave.SPEC;
-                            artifacts.avSyncMasterItem.CALIPER = itemToSave.REQ_CALIPER || itemToSave.CALIPER;
-                            artifacts.avSyncMasterItem.SAVED_PHOTO_LINK = itemToSave.REQ_PHOTO_LINK || itemToSave.SAVED_PHOTO_LINK;
-                            artifacts.avSyncMasterItem.SAVED_PHOTO_NAME = itemToSave.REQ_PHOTO_NAME || itemToSave.SAVED_PHOTO_NAME;
-                            if (isComplete) artifacts.avSyncMasterItem.DATE_COMPLETED = payload.date_completed;
-                            normalizeRowPhotoFields(artifacts.avSyncMasterItem);
-                            buildSearchIndex(artifacts.avSyncMasterItem);
-                            syncRowDataAcrossViews(artifacts.avSyncMasterItem);
+                    if (artifacts.masterSyncPayload && artifacts.masterSyncId) {
+                        if (artifacts.masterSyncItem) {
+                            artifacts.masterSyncItem.DATE_COMPLETED = payload.date_completed;
+                            if (artifacts.applyAvSync) {
+                                artifacts.masterSyncItem.AV_NOTE = itemToSave.AV_NOTE;
+                                artifacts.masterSyncItem.SPEC = itemToSave.REQ_SPEC || itemToSave.SPEC;
+                                artifacts.masterSyncItem.CALIPER = itemToSave.REQ_CALIPER || itemToSave.CALIPER;
+                                artifacts.masterSyncItem.SAVED_PHOTO_LINK = itemToSave.REQ_PHOTO_LINK || itemToSave.SAVED_PHOTO_LINK;
+                                artifacts.masterSyncItem.SAVED_PHOTO_NAME = itemToSave.REQ_PHOTO_NAME || itemToSave.SAVED_PHOTO_NAME;
+                            }
+                            normalizeRowPhotoFields(artifacts.masterSyncItem);
+                            buildSearchIndex(artifacts.masterSyncItem);
+                            syncRowDataAcrossViews(artifacts.masterSyncItem);
                         }
-                        supabaseFetch('v2_ok_master_inventory', 'PATCH', artifacts.avSyncPayload, `unique_id=eq.${encodeURIComponent(artifacts.avSyncMasterId)}`).catch(() => {});
+                        supabaseFetch('v2_ok_master_inventory', 'PATCH', artifacts.masterSyncPayload, `unique_id=eq.${encodeURIComponent(artifacts.masterSyncId)}`).catch(() => {});
                     }
 
                     if (!isComplete && isCurrentView) {
