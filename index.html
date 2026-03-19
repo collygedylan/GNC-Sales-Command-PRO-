@@ -4216,8 +4216,15 @@
             updateFooterRequestBadge();
             renderRequest();
             markViewDirty('request');
-            showToast('Removed', 'Request removed from Request tab.');
-            supabaseFetch('v2_active_request', 'PATCH', { req_archived: true }, `unique_id=eq.${encodeURIComponent(uid)}`).catch(() => {
+            showToast('Removing', 'Updating request...', false);
+            supabaseFetch('v2_active_request', 'PATCH', { req_archived: true }, `unique_id=eq.${encodeURIComponent(uid)}`).then(() => {
+                showToast('Removed', 'Request removed from Request tab.');
+            }).catch(async () => {
+                const confirmedArchived = await confirmRequestArchived(uid);
+                if (confirmedArchived) {
+                    showToast('Removed', 'Request removed from Request tab.');
+                    return;
+                }
                 item.REQ_ARCHIVED = previousArchived;
                 buildSearchIndex(item);
                 updateFooterRequestBadge();
@@ -4656,6 +4663,19 @@
                 return Array.isArray(rows) ? rows.map(row => String(row.unique_id || row.UNIQUE_ID || '').trim()).filter(Boolean) : [];
             } catch (error) {
                 return [];
+            }
+        }
+
+        async function confirmRequestArchived(requestId = '') {
+            const id = String(requestId || '').trim();
+            if (!id) return false;
+            try {
+                const rows = await supabaseFetch('v2_active_request', 'GET', null, `select=unique_id,req_archived&unique_id=eq.${encodeURIComponent(id)}&limit=1`);
+                if (!Array.isArray(rows) || rows.length === 0) return false;
+                const row = rows[0] || {};
+                return String(row.unique_id || row.UNIQUE_ID || '').trim() === id && !!(row.req_archived ?? row.REQ_ARCHIVED);
+            } catch (error) {
+                return false;
             }
         }
 
@@ -6020,3 +6040,9 @@ ${formatRequestItemsText(items)}`;
     </script>
 </body>
 </html>
+
+
+
+
+
+
