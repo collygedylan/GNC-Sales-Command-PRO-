@@ -537,6 +537,7 @@
                 <div onclick="switchView('drive')"><i class="ph-bold ph-car text-2xl text-gray-400"></i></div>
                 <div onclick="switchView('tasks')" class="rep-hidden csr-hidden"><i class="ph-bold ph-clipboard-text text-2xl text-gray-400"></i></div>
                 <div onclick="switchView('docks')"><i class="ph-bold ph-truck text-2xl text-gray-400"></i></div>
+                <div id="footer-request-btn" class="hidden relative cursor-pointer" onclick="switchView('request')"><div class="relative"><i class="ph-bold ph-chat-circle-text text-2xl text-gray-400"></i><span id="footer-request-badge" class="hidden absolute -top-2 -right-3 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-white">0</span></div></div>
             </nav>
         </div>
         <script id="app-script-source" type="text/plain">
@@ -1734,6 +1735,35 @@
             return tokens.has('dylan') || tokens.has('jd');
         }
 
+        function canUseFooterRequestShortcut() {
+            return canShareRequestFolders();
+        }
+
+        function getPendingRequestCount() {
+            let items = requestsInventory.filter(i => i && !i.REQ_ARCHIVED && String(i.REQ_STATUS || '').toUpperCase() !== 'COMPLETE');
+            if (safeRole === 'SALESREP') items = items.filter(i => isMyRep(i.REQUESTED_BY));
+            return items.length;
+        }
+
+        function updateFooterRequestBadge() {
+            const button = document.getElementById('footer-request-btn');
+            const badge = document.getElementById('footer-request-badge');
+            if (!button || !badge) return;
+            const canUse = canUseFooterRequestShortcut();
+            button.classList.toggle('hidden', !canUse);
+            if (!canUse) {
+                badge.classList.add('hidden');
+                return;
+            }
+            const pendingCount = getPendingRequestCount();
+            if (pendingCount > 0) {
+                badge.innerText = pendingCount > 99 ? '99+' : String(pendingCount);
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+
         function isQuickDriveRequestMode() {
             return driveQuickRequestFlow;
         }
@@ -2543,6 +2573,7 @@
             fullInventory = (merged.data || []).map((item,idx)=>{item.DOM_ID='fi_'+idx;return buildSearchIndex(normalizeRowPhotoFields(item));}); 
             avOpenInventory = (merged.avOpenData || []).map((item,idx)=>{item.DOM_ID='avo_'+(item.UNIQUE_ID || idx);return buildSearchIndex(normalizeRowPhotoFields(item));}); 
             requestsInventory = (merged.requestsData || []).map((item,idx)=>{item.DOM_ID='req_'+item.UNIQUE_ID;return buildSearchIndex(normalizeRowPhotoFields(item));}); 
+            updateFooterRequestBadge();
             salesOfficeInventory = (merged.salesOfficeData || []).map((item, idx) => {
                 item.DOM_ID = 'so_' + item.UNIQUE_ID;
                 let masterItem = fullInventory.find(i => i.UNIQUE_ID === item.UNIQUE_ID);
@@ -2607,6 +2638,46 @@
                     else r.APP_TAB_ASSIGNMENT = 'location';
                 });
             }
+
+            const masterById = new Map(fullInventory.map(item => [String(item.UNIQUE_ID || '').trim(), item]).filter(entry => entry[0] !== ''));
+            requestsInventory = requestsInventory.map((item) => {
+                const masterId = String(item.MASTER_ID || item.MASTER_UNIQUE_ID || item.master_id || '').trim();
+                const itemCode = String(item.ITEMCODE || item.ITEM || '').trim().toUpperCase();
+                const masterItem = (masterId && masterById.get(masterId)) || (itemCode ? map1.get(itemCode) : null);
+                if (!masterItem) {
+                    normalizeRowPhotoFields(item);
+                    buildSearchIndex(item);
+                    return item;
+                }
+                item.MASTER_UNIQUE_ID = masterItem.UNIQUE_ID;
+                if (!item.MASTER_ID) item.MASTER_ID = masterItem.UNIQUE_ID;
+                if (!item.master_id) item.master_id = masterItem.UNIQUE_ID;
+                item.COMMONNAME = item.COMMONNAME || masterItem.COMMONNAME;
+                item.CONTSIZE = item.CONTSIZE || masterItem.CONTSIZE;
+                item.LOCATIONCODE = item.LOCATIONCODE || masterItem.LOCATIONCODE;
+                item.LOTCODE = item.LOTCODE || masterItem.LOTCODE;
+                item.ITEMCODE = item.ITEMCODE || masterItem.ITEMCODE;
+                item.PTRAVAILABLE = item.PTRAVAILABLE || masterItem.PTRAVAILABLE;
+                item.SEASONSUPPLY = item.SEASONSUPPLY || masterItem.SEASONSUPPLY;
+                item.PRIORITY = item.PRIORITY || masterItem.PRIORITY;
+                item.QUALITYCODE = item.QUALITYCODE || masterItem.QUALITYCODE;
+                item.FIELDTAGCOLOR = item.FIELDTAGCOLOR || masterItem.FIELDTAGCOLOR;
+                item.PLANTGROUPCODE = item.PLANTGROUPCODE || masterItem.PLANTGROUPCODE;
+                item.BLOCKALPHA = item.BLOCKALPHA || masterItem.BLOCKALPHA;
+                item.APP_TAB_ASSIGNMENT = item.APP_TAB_ASSIGNMENT || masterItem.APP_TAB_ASSIGNMENT;
+                item.SEASON = item.SEASON || masterItem.SEASON;
+                if (String(item.S_LTS || '').trim() === '') item.S_LTS = masterItem.S_LTS;
+                item.AV_NOTE = firstNonEmptyValue(item.AV_NOTE, masterItem.AV_NOTE);
+                item.SPEC = firstNonEmptyValue(item.SPEC, masterItem.SPEC);
+                item.CALIPER = firstNonEmptyValue(item.CALIPER, masterItem.CALIPER);
+                item.MATCH = firstNonEmptyValue(item.MATCH, masterItem.MATCH);
+                item.PICK = firstNonEmptyValue(item.PICK, masterItem.PICK);
+                clonePhotoFields(masterItem, item);
+                normalizeRowPhotoFields(item);
+                buildSearchIndex(item);
+                return item;
+            });
+            updateFooterRequestBadge();
             
             socInventory.forEach(item=>{ 
                 item.DOCK_NUM=item.DOCK_NUM||item.DOCK||item.dock; 
@@ -2680,6 +2751,7 @@
             else if(isCsr){ document.querySelectorAll('.csr-hidden, .admin-only').forEach(el=>el.classList.add('hidden')); } 
             else if(isQc){ document.querySelectorAll('.admin-only, .admin-rep-only, .admin-rep-csr-only, .admin-csr-only').forEach(el=>el.classList.add('hidden')); }
             if(!isDylan&&!isAdmin){ document.querySelectorAll('.dylan-only').forEach(el=>el.classList.add('hidden')); }
+            updateFooterRequestBadge();
             if(!hasAppliedInitialHomeView){
                 hasAppliedInitialHomeView=true;
                 switchView('home');
@@ -3748,6 +3820,7 @@
         }
 
         function renderRequest() {
+            updateFooterRequestBadge();
             if (ensureViewDataForRender('request')) return;
             const container = document.getElementById('request-content');
             const crumb = document.getElementById('request-crumb');
@@ -4124,6 +4197,7 @@
                 row.addEventListener('touchend', handleRequestSwipeEnd, { passive: true });
                 row.addEventListener('touchcancel', handleRequestSwipeEnd, { passive: true });
                 row.addEventListener('click', (event) => {
+                    if (event.target && event.target.closest('.request-swipe-action')) return;
                     if (!row.classList.contains('swipe-open')) return;
                     event.preventDefault();
                     event.stopImmediatePropagation();
@@ -4139,6 +4213,7 @@
             item.REQ_ARCHIVED = true;
             buildSearchIndex(item);
             closeAllRequestSwipes();
+            updateFooterRequestBadge();
             renderRequest();
             showToast('Removed', 'Request removed from Request tab.');
             if (isIOSDevice() || isStandaloneApp()) {
@@ -4147,6 +4222,7 @@
             supabaseFetch('v2_active_request', 'PATCH', { req_archived: true }, `unique_id=eq.${encodeURIComponent(uid)}`).catch(() => {
                 item.REQ_ARCHIVED = previousArchived;
                 buildSearchIndex(item);
+                updateFooterRequestBadge();
                 renderRequest();
                 showToast('Error', 'Could not remove request.', true);
             });
@@ -4590,6 +4666,7 @@
             if (!idSet.size) return;
             requestsInventory = requestsInventory.filter(item => !idSet.has(String(item.UNIQUE_ID || '').trim()));
             if (activeItem && idSet.has(String(activeItem.UNIQUE_ID || '').trim())) activeItem = null;
+            updateFooterRequestBadge();
             markViewDirty('request');
             reRenderCurrentView();
         }
@@ -4666,6 +4743,7 @@
                     requestsInventory.push(clone)
                 }
             });
+            updateFooterRequestBadge();
             if(!insertPayloads.length){
                 if (quickMode) {
                     restoredDriveIds.forEach(domId => driveQuickRequestItems.add(domId));
@@ -5514,6 +5592,8 @@ ${formatRequestItemsText(items)}`;
                 let isAvEligibleRequest = false;
                 let qualifiesForOpenStockView = false;
                 let requestAssignment = '';
+                let requestMasterId = '';
+                let requestMasterItem = null;
 
                 if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-') {
                     payload.match = (itemToSave.MATCH === '' || itemToSave.MATCH == null) ? null : parseFloat(itemToSave.MATCH);
@@ -5522,13 +5602,29 @@ ${formatRequestItemsText(items)}`;
                     payload.pic_note = setVal(itemToSave.PICK);
                     payload.av_note = setVal(itemToSave.AV_NOTE);
                 } else if (prefix === 'req-') {
-                    const assignment = String(itemToSave.APP_TAB_ASSIGNMENT || '').toLowerCase();
+                    requestMasterId = String(itemToSave.MASTER_ID || itemToSave.MASTER_UNIQUE_ID || itemToSave.master_id || '').trim();
+                    requestMasterItem = (requestMasterId ? findItemByUniqueId(requestMasterId) : null) || fullInventory.find(i => String(i.ITEMCODE || '').trim().toUpperCase() === String(itemToSave.ITEMCODE || '').trim().toUpperCase()) || null;
+                    if (requestMasterItem) {
+                        requestMasterId = requestMasterItem.UNIQUE_ID;
+                        itemToSave.MASTER_UNIQUE_ID = requestMasterItem.UNIQUE_ID;
+                        if (!itemToSave.MASTER_ID) itemToSave.MASTER_ID = requestMasterItem.UNIQUE_ID;
+                        if (!itemToSave.master_id) itemToSave.master_id = requestMasterItem.UNIQUE_ID;
+                        itemToSave.APP_TAB_ASSIGNMENT = itemToSave.APP_TAB_ASSIGNMENT || requestMasterItem.APP_TAB_ASSIGNMENT;
+                        itemToSave.SEASON = itemToSave.SEASON || requestMasterItem.SEASON;
+                        if (String(itemToSave.S_LTS || '').trim() === '') itemToSave.S_LTS = requestMasterItem.S_LTS;
+                        itemToSave.PLANTGROUPCODE = itemToSave.PLANTGROUPCODE || requestMasterItem.PLANTGROUPCODE;
+                        itemToSave.CONTSIZE = itemToSave.CONTSIZE || requestMasterItem.CONTSIZE;
+                    }
+                    const assignment = String(itemToSave.APP_TAB_ASSIGNMENT || (requestMasterItem ? requestMasterItem.APP_TAB_ASSIGNMENT : '') || '').toLowerCase();
                     requestAssignment = assignment;
                     isAvEligibleRequest = assignment === 'season' || assignment === 'location';
-                    const ltsValue = Number(String(itemToSave.S_LTS || '0').replace(/,/g, ''));
-                    const requestSeason = String(itemToSave.SEASON || '').toUpperCase();
+                    const effectiveLts = firstNonEmptyValue(itemToSave.S_LTS, requestMasterItem ? requestMasterItem.S_LTS : '0');
+                    const ltsValue = Number(String(effectiveLts || '0').replace(/,/g, ''));
+                    const requestSeason = String(firstNonEmptyValue(itemToSave.SEASON, requestMasterItem ? requestMasterItem.SEASON : '')).toUpperCase();
+                    const effectivePlantGroup = firstNonEmptyValue(itemToSave.PLANTGROUPCODE, requestMasterItem ? requestMasterItem.PLANTGROUPCODE : '');
+                    const effectiveContSize = firstNonEmptyValue(itemToSave.CONTSIZE, requestMasterItem ? requestMasterItem.CONTSIZE : '');
                     qualifiesForOpenStockView = isAvEligibleRequest && ltsValue > 0 && !requestSeason.includes('Y') && !requestSeason.includes('Z');
-                    const needsCaliper = itemToSave.PLANTGROUPCODE && String(itemToSave.PLANTGROUPCODE).includes('330_TREES') && ['#7','#10','#15','#25','#45'].includes(itemToSave.CONTSIZE);
+                    const needsCaliper = effectivePlantGroup && String(effectivePlantGroup).includes('330_TREES') && ['#7','#10','#15','#25','#45'].includes(effectiveContSize);
                     if (isComplete && isAvEligibleRequest) {
                         const effectiveAvNote = String(itemToSave.AV_NOTE || '').trim();
                         const effectiveSpec = String(itemToSave.REQ_SPEC || itemToSave.SPEC || '').trim();
@@ -5624,8 +5720,8 @@ ${formatRequestItemsText(items)}`;
                     }
 
                     if (prefix === 'req-' && isAvEligibleRequest) {
-                        artifacts.masterSyncId = itemToSave.MASTER_ID || itemToSave.MASTER_UNIQUE_ID || itemToSave.master_id;
-                        artifacts.masterSyncItem = findItemByUniqueId(artifacts.masterSyncId);
+                        artifacts.masterSyncId = requestMasterId || itemToSave.MASTER_ID || itemToSave.MASTER_UNIQUE_ID || itemToSave.master_id;
+                        artifacts.masterSyncItem = requestMasterItem || findItemByUniqueId(artifacts.masterSyncId);
                         if (artifacts.masterSyncId) {
                             artifacts.masterSyncPayload = { date_completed: payload.date_completed };
                             if (itemToSave._SHOW_IN_AV) {
