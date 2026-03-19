@@ -780,7 +780,7 @@
         }
 
         function getDatasetKeysForTable(tableName = '') {
-            if (tableName === 'v2_master_inventory') return ['master', 'avOpen'];
+            if (tableName === 'v2_ok_master_inventory') return ['master', 'avOpen'];
             if (tableName === 'v2_active_request') return ['requests'];
             if (tableName === 'v2_reserves') return ['reserves'];
             if (tableName === 'v2_soc_master') return ['soc'];
@@ -848,7 +848,7 @@
                 updateSyncDiagnostics(navigator.onLine === false ? 'offline' : 'idle');
                 return;
             }
-            ['v2_master_inventory','v2_active_request','v2_reserves','v2_soc_master','v2_sales_office','v2_av_notes'].forEach((tableName) => {
+            ['v2_ok_master_inventory','v2_active_request','v2_reserves','v2_soc_master','v2_sales_office','v2_av_notes'].forEach((tableName) => {
                 const channel = supabaseClient
                     .channel(`realtime-${tableName}`)
                     .on('postgres_changes', { event: '*', schema: 'public', table: tableName }, () => {
@@ -1216,8 +1216,8 @@
         });
 
         const DATASET_DEFINITIONS = {
-            master: { table: 'v2_master_inventory', sourceTable: 'v2_master_inventory', initialQuery: 'select=*', fullQuery: 'select=*' },
-            avOpen: { table: 'v2_master_inventory', sourceTable: 'v2_master_inventory', initialQuery: 'select=*&s_lts=gt.0', fullQuery: 'select=*&s_lts=gt.0' },
+            master: { table: 'v2_ok_master_inventory', sourceTable: 'v2_ok_master_inventory', initialQuery: 'select=*', fullQuery: 'select=*' },
+            avOpen: { table: 'v2_ok_master_inventory', sourceTable: 'v2_ok_master_inventory', initialQuery: 'select=*&s_lts=gt.0', fullQuery: 'select=*&s_lts=gt.0' },
             requests: { table: 'v2_active_request', sourceTable: 'v2_active_request', initialQuery: 'select=*', fullQuery: 'select=*' },
             reserves: { table: 'v2_reserves', sourceTable: 'v2_reserves', initialQuery: 'select=*', fullQuery: 'select=*' },
             soc: { table: 'v2_soc_master', sourceTable: 'v2_soc_master', initialQuery: 'select=*', fullQuery: 'select=*' },
@@ -1967,7 +1967,7 @@
             if(!currentUser)return; 
             const checkTime=new Date().toISOString();
             try {
-                const response=await fetch(`${SUPABASE_URL}/rest/v1/v2_master_inventory?select=*&last_updated=gt.${lastSyncTime}`,{method:'GET',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+                const response=await fetch(`${SUPABASE_URL}/rest/v1/v2_ok_master_inventory?select=*&last_updated=gt.${lastSyncTime}`,{method:'GET',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
                 if(response.ok) {
                     const data=await response.json();
                     if(data&&data.length>0){
@@ -2564,7 +2564,7 @@
             if (item && item.MASTER_UNIQUE_ID) {
                 item.DOCK_NOTE = text;
                 showToast("Saving...", "Updating mistake...", false);
-                supabaseFetch('v2_master_inventory', 'PATCH', { dock_note: text }, `unique_id=eq.${item.MASTER_UNIQUE_ID}`).then(() => { showToast("Success", "Mistake saved!"); document.getElementById('dock-mistake-modal').classList.add('hidden'); renderDocks(); }).catch(err => { showToast("Error", "Failed to save mistake", true); });
+                supabaseFetch('v2_ok_master_inventory', 'PATCH', { dock_note: text }, `unique_id=eq.${item.MASTER_UNIQUE_ID}`).then(() => { showToast("Success", "Mistake saved!"); document.getElementById('dock-mistake-modal').classList.add('hidden'); renderDocks(); }).catch(err => { showToast("Error", "Failed to save mistake", true); });
             }
         }
 
@@ -3704,7 +3704,7 @@
                     item.END_CAP_LEVEL=dataObj.level;
                     item.ASSIGNEDTO=currentUser;
                     item.APP_TAB_ASSIGNMENT='endcap';
-                    updates.push(supabaseFetch('v2_master_inventory','PATCH',{end_cap_folder:folder,end_cap_qty:dataObj.qty,end_cap_level:dataObj.level,assignedto:currentUser},`unique_id=eq.${item.UNIQUE_ID}`))
+                    updates.push(supabaseFetch('v2_ok_master_inventory','PATCH',{end_cap_folder:folder,end_cap_qty:dataObj.qty,end_cap_level:dataObj.level,assignedto:currentUser},`unique_id=eq.${item.UNIQUE_ID}`))
                 }
             });
             document.getElementById('endcap-modal').classList.add('hidden');
@@ -3911,7 +3911,7 @@
                 if(item){
                     item.ASSIGNEDTO=user;
                     item.DATE_COMPLETED="";
-                    const table=item.SOURCE_TABLE||'v2_master_inventory';
+                    const table=item.SOURCE_TABLE||'v2_ok_master_inventory';
                     promises.push(supabaseFetch(table,'PATCH',{assignedto:user,date_completed:null},`unique_id=eq.${item.UNIQUE_ID}`))
                 }
             });
@@ -4686,7 +4686,7 @@
                     return artifacts;
                 };
 
-                const targetTable = (prefix === 'req-') ? 'v2_active_request' : (itemToSave.SOURCE_TABLE || 'v2_master_inventory');
+                const targetTable = (prefix === 'req-') ? 'v2_active_request' : (itemToSave.SOURCE_TABLE || 'v2_ok_master_inventory');
                 const pendingUploads = isComplete ? getPendingPhotoUploadsForItem(itemToSave) : [];
 
                 const restoreFromFailedSave = (message) => {
@@ -4717,7 +4717,7 @@
                             artifacts.avSyncMasterItem.SAVED_PHOTO_NAME = itemToSave.REQ_PHOTO_NAME || itemToSave.SAVED_PHOTO_NAME;
                             normalizeRowPhotoFields(artifacts.avSyncMasterItem);
                         }
-                        supabaseFetch('v2_master_inventory', 'PATCH', artifacts.avSyncPayload, `unique_id=eq.${encodeURIComponent(artifacts.avSyncMasterId)}`).catch(() => {});
+                        supabaseFetch('v2_ok_master_inventory', 'PATCH', artifacts.avSyncPayload, `unique_id=eq.${encodeURIComponent(artifacts.avSyncMasterId)}`).catch(() => {});
                     }
 
                     if (!isComplete && isCurrentView) {
@@ -4927,6 +4927,7 @@
     </script>
 </body>
 </html>
+
 
 
 
