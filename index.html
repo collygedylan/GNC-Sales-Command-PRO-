@@ -4737,6 +4737,7 @@
                 const setVal = (val) => (val === '' || val === undefined) ? null : val;
                 const payload = {};
                 let isAvEligibleRequest = false;
+                let requestAssignment = '';
 
                 if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-') {
                     payload.match = (itemToSave.MATCH === '' || itemToSave.MATCH == null) ? null : parseFloat(itemToSave.MATCH);
@@ -4746,6 +4747,7 @@
                     payload.av_note = setVal(itemToSave.AV_NOTE);
                 } else if (prefix === 'req-') {
                     const assignment = String(itemToSave.APP_TAB_ASSIGNMENT || '').toLowerCase();
+                    requestAssignment = assignment;
                     isAvEligibleRequest = assignment === 'season' || assignment === 'location';
                     const needsCaliper = itemToSave.PLANTGROUPCODE && String(itemToSave.PLANTGROUPCODE).includes('330_TREES') && ['#7','#10','#15','#25','#45'].includes(itemToSave.CONTSIZE);
                     if (isComplete && isAvEligibleRequest) {
@@ -4852,6 +4854,32 @@
                             photo_link: setVal(itemToSave.REQ_PHOTO_LINK || itemToSave.SAVED_PHOTO_LINK),
                             photo_name: setVal(itemToSave.REQ_PHOTO_NAME || itemToSave.SAVED_PHOTO_NAME)
                         };
+                        if (isComplete) {
+                            artifacts.avSyncPayload.date_completed = payload.date_completed;
+                            if (requestAssignment === 'season' && artifacts.avSyncMasterId) {
+                                const salesSourceItem = artifacts.avSyncMasterItem || itemToSave;
+                                artifacts.soPayload = {
+                                    unique_id: artifacts.avSyncMasterId,
+                                    itemcode: salesSourceItem.ITEMCODE || itemToSave.ITEMCODE || '',
+                                    commonname: salesSourceItem.COMMONNAME || itemToSave.COMMONNAME || '',
+                                    contsize: salesSourceItem.CONTSIZE || itemToSave.CONTSIZE || '',
+                                    locationcode: salesSourceItem.LOCATIONCODE || itemToSave.LOCATIONCODE || '',
+                                    lotcode: salesSourceItem.LOTCODE || itemToSave.LOTCODE || '',
+                                    ptravailable: String(salesSourceItem.PTRAVAILABLE || itemToSave.PTRAVAILABLE || ''),
+                                    priority: String(salesSourceItem.PRIORITY || itemToSave.PRIORITY || ''),
+                                    photo_link: itemToSave.REQ_PHOTO_LINK || itemToSave.SAVED_PHOTO_LINK || salesSourceItem.NA_PHOTO_LINK || salesSourceItem.SAVED_PHOTO_LINK || '',
+                                    completed_by: currentUser,
+                                    completed_at: payload.date_completed
+                                };
+                                artifacts.cloneSO = { ...artifacts.soPayload };
+                                for (let key in artifacts.soPayload) { artifacts.cloneSO[key.toUpperCase()] = artifacts.soPayload[key]; }
+                                artifacts.cloneSO.DOM_ID = 'so_' + artifacts.cloneSO.UNIQUE_ID;
+                                artifacts.cloneSO.AV_NOTE = itemToSave.AV_NOTE || salesSourceItem.AV_NOTE || '';
+                                artifacts.cloneSO.SAVED_PHOTO_LINK = artifacts.soPayload.photo_link;
+                                clonePhotoFields(itemToSave, artifacts.cloneSO);
+                                normalizeRowPhotoFields(artifacts.cloneSO);
+                            }
+                        }
                     }
 
                     return artifacts;
@@ -4886,6 +4914,7 @@
                             artifacts.avSyncMasterItem.CALIPER = itemToSave.REQ_CALIPER || itemToSave.CALIPER;
                             artifacts.avSyncMasterItem.SAVED_PHOTO_LINK = itemToSave.REQ_PHOTO_LINK || itemToSave.SAVED_PHOTO_LINK;
                             artifacts.avSyncMasterItem.SAVED_PHOTO_NAME = itemToSave.REQ_PHOTO_NAME || itemToSave.SAVED_PHOTO_NAME;
+                            if (isComplete) artifacts.avSyncMasterItem.DATE_COMPLETED = payload.date_completed;
                             normalizeRowPhotoFields(artifacts.avSyncMasterItem);
                             buildSearchIndex(artifacts.avSyncMasterItem);
                             syncRowDataAcrossViews(artifacts.avSyncMasterItem);
