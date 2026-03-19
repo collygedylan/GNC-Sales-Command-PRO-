@@ -5382,9 +5382,10 @@ ${formatRequestItemsText(items)}`;
                     : 'My Tasks';
             }
 
+            const keepCompletedInColorWalk = activeTaskTab === 'colorwalk';
             let scopedItems = useSharedNotesQueue
-                ? fullInventory.filter(i => !i.DATE_COMPLETED)
-                : fullInventory.filter(i => i.ASSIGNEDTO === targetUser && !i.DATE_COMPLETED);
+                ? fullInventory.filter(i => keepCompletedInColorWalk || !i.DATE_COMPLETED)
+                : fullInventory.filter(i => i.ASSIGNEDTO === targetUser && (keepCompletedInColorWalk || !i.DATE_COMPLETED));
             let tabItems = getTaskTabItems(scopedItems, activeTaskTab);
 
             if(tabItems.length === 0){
@@ -5714,7 +5715,8 @@ ${formatRequestItemsText(items)}`;
                     const artifacts = { soPayload: null, cloneSO: null, masterSyncId: null, masterSyncItem: null, masterSyncPayload: null, applyAvSync: false };
                     if (!isComplete) return artifacts;
 
-                    if (prefix !== 'flyer-' && prefix !== 'req-') {
+                    const shouldCreateSalesOfficeRow = prefix !== 'flyer-' && prefix !== 'req-' && (prefix === 'ssn-' || String(itemToSave.APP_TAB_ASSIGNMENT || '').toLowerCase() === 'season');
+                    if (shouldCreateSalesOfficeRow) {
                         artifacts.soPayload = {
                             unique_id: itemToSave.UNIQUE_ID,
                             itemcode: itemToSave.ITEMCODE || '',
