@@ -552,8 +552,8 @@
             realtime: { params: { eventsPerSecond: 8 } }
         });
         let realtimeChannels = [];
-        let realtimeRefreshTimer = null;
-        let realtimeRefreshKeys = new Set();
+        let realtimeChangeTimer = null;
+        let realtimeChangeQueue = [];
         let fallbackSyncInterval = null;
         let liveSyncMode = 'idle';
         const SUPABASE_READ_TIMEOUT_MS = 20000;
@@ -789,25 +789,97 @@
             return [];
         }
 
-        function refreshLoadedDatasetKey(key) {
-            const state = getDatasetState(key);
-            if (!state.initialLoaded && !state.fullLoaded) return Promise.resolve(true);
-            return ensureDatasetLoaded(key, state.fullLoaded ? 'full' : 'initial', { force: true });
+        function upsertRealtimeRow(collection, row) {
+            if (!Array.isArray(collection) || !row) return false;
+            const uid = String(row.UNIQUE_ID || '');
+            if (!uid) return false;
+            const idx = collection.findIndex(item => String(item.UNIQUE_ID || '') === uid);
+            if (idx === -1) collection.push(row);
+            else collection[idx] = Object.assign({}, collection[idx], row);
+            return true;
         }
 
-        function queueRealtimeRefresh(tableName = '') {
-            getDatasetKeysForTable(tableName).forEach((key) => realtimeRefreshKeys.add(key));
-            if (realtimeRefreshTimer) clearTimeout(realtimeRefreshTimer);
-            realtimeRefreshTimer = setTimeout(() => {
-                const keys = Array.from(realtimeRefreshKeys).filter((key) => {
-                    const state = getDatasetState(key);
-                    return state.initialLoaded || state.fullLoaded;
-                });
-                realtimeRefreshKeys.clear();
-                if (keys.length > 0) {
-                    Promise.all(keys.map((key) => refreshLoadedDatasetKey(key))).catch(() => {});
+        function removeRealtimeRow(collection, uniqueId) {
+            if (!Array.isArray(collection)) return false;
+            const uid = String(uniqueId || '');
+            if (!uid) return false;
+            const idx = collection.findIndex(item => String(item.UNIQUE_ID || '') === uid);
+            if (idx === -1) return false;
+            collection.splice(idx, 1);
+            return true;
+        }
+
+        function applyRealtimeChange(tableName = '', payload = null) {
+            if (!payload || !payload.eventType) return false;
+            const eventType = String(payload.eventType || '').toUpperCase();
+            const oldRow = payload.old || {};
+            const nextRow = payload.new ? formatFetchedRows([payload.new], tableName)[0] : null;
+            const uniqueId = String((nextRow && nextRow.UNIQUE_ID) || oldRow.unique_id || oldRow.UNIQUE_ID || '');
+            if (!uniqueId) return false;
+
+            let changed = false;
+            if (tableName === 'v2_ok_master_inventory') {
+                if (eventType === 'DELETE') {
+                    changed = removeRealtimeRow(fullInventory, uniqueId) || changed;
+                    changed = removeRealtimeRow(avOpenInventory, uniqueId) || changed;
+                } else if (nextRow) {
+                    changed = upsertRealtimeRow(fullInventory, nextRow) || changed;
+                    const sLts = parseFloat(String(nextRow.S_LTS || 0).replace(/,/g, '')) || 0;
+                    if (sLts > 0) changed = upsertRealtimeRow(avOpenInventory, nextRow) || changed;
+                    else changed = removeRealtimeRow(avOpenInventory, uniqueId) || changed;
                 }
-            }, 250);
+            } else if (tableName === 'v2_active_request') {
+                changed = eventType === 'DELETE'
+                    ? removeRealtimeRow(requestsInventory, uniqueId)
+                    : upsertRealtimeRow(requestsInventory, nextRow);
+            } else if (tableName === 'v2_reserves') {
+                changed = eventType === 'DELETE'
+                    ? removeRealtimeRow(reservesInventory, uniqueId)
+                    : upsertRealtimeRow(reservesInventory, nextRow);
+            } else if (tableName === 'v2_soc_master') {
+                changed = eventType === 'DELETE'
+                    ? removeRealtimeRow(socInventory, uniqueId)
+                    : upsertRealtimeRow(socInventory, nextRow);
+            } else if (tableName === 'v2_sales_office') {
+                changed = eventType === 'DELETE'
+                    ? removeRealtimeRow(salesOfficeInventory, uniqueId)
+                    : upsertRealtimeRow(salesOfficeInventory, nextRow);
+            } else if (tableName === 'v2_av_notes') {
+                changed = eventType === 'DELETE'
+                    ? removeRealtimeRow(avNotesDb, uniqueId)
+                    : upsertRealtimeRow(avNotesDb, nextRow);
+            }
+
+            if (!changed) return false;
+
+            processAndLoadData({
+                data: fullInventory,
+                avOpenData: avOpenInventory,
+                requestsData: requestsInventory,
+                reservesData: reservesInventory,
+                socData: socInventory,
+                salesOfficeData: salesOfficeInventory,
+                avNotesData: avNotesDb
+            });
+            return true;
+        }
+
+        function queueRealtimeChange(tableName = '', payload = null) {
+            realtimeChangeQueue.push({ tableName, payload });
+            if (realtimeChangeTimer) clearTimeout(realtimeChangeTimer);
+            realtimeChangeTimer = setTimeout(() => {
+                const pending = realtimeChangeQueue.splice(0);
+                realtimeChangeTimer = null;
+                let changed = false;
+                pending.forEach((entry) => {
+                    if (applyRealtimeChange(entry.tableName, entry.payload)) changed = true;
+                });
+                if (changed) {
+                    persistCurrentCache();
+                    touchSyncTimestamp();
+                    updateSyncDiagnostics('realtime');
+                }
+            }, 180);
         }
 
         function cleanupRealtime() {
@@ -815,11 +887,11 @@
                 try { supabaseClient.removeChannel(channel); } catch (e) {}
             });
             realtimeChannels = [];
-            if (realtimeRefreshTimer) {
-                clearTimeout(realtimeRefreshTimer);
-                realtimeRefreshTimer = null;
+            if (realtimeChangeTimer) {
+                clearTimeout(realtimeChangeTimer);
+                realtimeChangeTimer = null;
             }
-            realtimeRefreshKeys.clear();
+            realtimeChangeQueue = [];
             if (fallbackSyncInterval) {
                 clearInterval(fallbackSyncInterval);
                 fallbackSyncInterval = null;
@@ -851,8 +923,8 @@
             ['v2_ok_master_inventory','v2_active_request','v2_reserves','v2_soc_master','v2_sales_office','v2_av_notes'].forEach((tableName) => {
                 const channel = supabaseClient
                     .channel(`realtime-${tableName}`)
-                    .on('postgres_changes', { event: '*', schema: 'public', table: tableName }, () => {
-                        queueRealtimeRefresh(tableName);
+                    .on('postgres_changes', { event: '*', schema: 'public', table: tableName }, (payload) => {
+                        queueRealtimeChange(tableName, payload);
                     })
                     .subscribe((status) => {
                         if (status === 'SUBSCRIBED') {
@@ -1965,6 +2037,7 @@
         }
         async function silentBackgroundSync() {
             if(!currentUser)return; 
+            if (liveSyncMode === 'realtime' && shouldUseRealtime()) return;
             const checkTime=new Date().toISOString();
             try {
                 const response=await fetch(`${SUPABASE_URL}/rest/v1/v2_ok_master_inventory?select=*&last_updated=gt.${lastSyncTime}`,{method:'GET',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
