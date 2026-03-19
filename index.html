@@ -1,4 +1,4 @@
-D<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -2263,7 +2263,7 @@ D<!DOCTYPE html>
                 if (forceReset || !state.initialized) resetDriveView();
                 else renderDrive();
             } else if (viewId === 'tasks') {
-                if (safeRole === 'ADMIN' && !taskViewTargetUser) renderTeamSelector();
+                if (safeRole === 'ADMIN' && !taskViewTargetUser && !taskTabUsesBlockDrill(activeTaskTab)) renderTeamSelector();
                 else renderTasks();
             } else if (viewId === 'reports') {
                 if (forceReset || !state.initialized) resetReportsView();
@@ -2322,6 +2322,13 @@ D<!DOCTYPE html>
             document.getElementById('tab-endcap').classList.toggle('active',tab==='endcap'); 
             document.getElementById('tab-flyer').classList.toggle('active',tab==='flyer'); 
             taskViewLevel=0; 
+            selectedTaskBlock=null;
+            selectedTaskLoc=null;
+            selectedEndCapFolder=null;
+            if (safeRole === 'ADMIN' && !taskViewTargetUser && !taskTabUsesBlockDrill(tab)) {
+                renderTeamSelector();
+                return;
+            }
             renderTasks(); 
         }
 
@@ -4185,22 +4192,62 @@ D<!DOCTYPE html>
             renderTasks();
         }
 
+        function taskTabUsesBlockDrill(tab = activeTaskTab) {
+            return tab === 'season' || tab === 'location';
+        }
+
+        function getTaskBlockAlpha(item) {
+            const rawBlock = String(item ? (item.BLOCKALPHA || '') : '').trim().toUpperCase();
+            if (/^[A-Z]/.test(rawBlock)) return rawBlock.charAt(0);
+            const loc = String(item ? (item.LOCATIONCODE || '') : '').trim().toUpperCase();
+            const match = loc.match(/^([A-Z])/);
+            return match ? match[1] : 'Other';
+        }
+
+        function getTaskLocationBucket(item) {
+            const blockAlpha = getTaskBlockAlpha(item);
+            const loc = String(item ? (item.LOCATIONCODE || '') : '').trim().toUpperCase();
+            const exact = loc.match(/^([A-Z])\.(\d{2})/);
+            if (exact) return `${exact[1]}.${exact[2]}`;
+            const digits = loc.match(/(\d{2})/);
+            if (blockAlpha !== 'Other' && digits) return `${blockAlpha}.${digits[1]}`;
+            return loc || 'UNASSIGNED';
+        }
+
         function renderTasks() {
             if (ensureViewDataForRender('tasks')) return;
-            let targetUser = safeRole === 'ADMIN' ? taskViewTargetUser : currentUser;
-            if(!targetUser) return;
+            const tabs = document.getElementById('task-tabs-container');
+            if (tabs) tabs.classList.remove('hidden');
+
+            const useBlockDrill = taskTabUsesBlockDrill(activeTaskTab);
+            const useSharedNotesQueue = safeRole === 'ADMIN' && useBlockDrill;
+            let targetUser = safeRole === 'ADMIN' && !useSharedNotesQueue ? taskViewTargetUser : currentUser;
+            if(!useSharedNotesQueue && !targetUser) return;
+
             const container = document.getElementById('task-content');
             const crumb = document.getElementById('task-crumb');
-            crumb.innerHTML = safeRole === 'ADMIN' ? `<span class="cursor-pointer text-gray-400 hover:text-gray-800" onclick="taskViewTargetUser=null; renderTeamSelector()"><i class="ph-bold ph-arrow-left"></i> Back to Team</span> &bull; <span class="text-[#007a4d]">${targetUser}'s Tasks</span>` : "My Tasks";
-            
-            let userItems = fullInventory.filter(i => i.ASSIGNEDTO === targetUser && !i.DATE_COMPLETED);
-            let tabItems = userItems.filter(i => i.APP_TAB_ASSIGNMENT === activeTaskTab);
-            
+            const notesTitle = activeTaskTab === 'season' ? 'Season Sales Notes' : 'Location Sales Notes';
+
+            if (useSharedNotesQueue) {
+                if (taskViewLevel === 0) crumb.innerText = notesTitle;
+                else if (taskViewLevel === 1) crumb.innerText = `${notesTitle} > Block ${selectedTaskBlock}`;
+                else crumb.innerText = `${notesTitle} > ${selectedTaskLoc}`;
+            } else {
+                crumb.innerHTML = safeRole === 'ADMIN'
+                    ? `<span class="cursor-pointer text-gray-400 hover:text-gray-800" onclick="taskViewTargetUser=null; renderTeamSelector()"><i class="ph-bold ph-arrow-left"></i> Back to Team</span> &bull; <span class="text-[#007a4d]">${targetUser}'s Tasks</span>`
+                    : 'My Tasks';
+            }
+
+            let scopedItems = useSharedNotesQueue
+                ? fullInventory.filter(i => !i.DATE_COMPLETED)
+                : fullInventory.filter(i => i.ASSIGNEDTO === targetUser && !i.DATE_COMPLETED);
+            let tabItems = scopedItems.filter(i => i.APP_TAB_ASSIGNMENT === activeTaskTab);
+
             if(tabItems.length === 0){
                 container.innerHTML = `<div class="p-8 text-center text-gray-400">No active ${activeTaskTab} tasks.</div>`;
                 return;
             }
-            
+
             if(activeTaskTab === 'endcap') {
                 if(taskViewLevel === 0) {
                     let folders = [...new Set(tabItems.map(i => i.END_CAP_FOLDER || 'Unassigned'))].sort();
@@ -4210,41 +4257,34 @@ D<!DOCTYPE html>
                     }).join('');
                 } else if(taskViewLevel === 1) {
                     let fItems = tabItems.filter(i => (i.END_CAP_FOLDER || 'Unassigned') === selectedEndCapFolder);
-                    fItems.sort((a,b) => String(a.COMMONNAME || "").localeCompare(String(b.COMMONNAME || "")));
+                    fItems.sort((a,b) => String(a.COMMONNAME || '').localeCompare(String(b.COMMONNAME || '')));
                     container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=0; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to End Caps</div>` + fItems.map(i => generateCard(i, 'tasks', 'status-yellow')).join('');
                 }
             } else if(activeTaskTab === 'flyer') {
-                tabItems.sort((a,b) => String(a.COMMONNAME || "").localeCompare(String(b.COMMONNAME || "")));
+                tabItems.sort((a,b) => String(a.COMMONNAME || '').localeCompare(String(b.COMMONNAME || '')));
                 container.innerHTML = tabItems.map(i => generateCard(i, 'tasks', 'status-indigo')).join('');
             } else {
                 if(taskViewLevel === 0) {
                     let blocks = {};
                     tabItems.forEach(i => {
-                        let loc = String(i.LOCATIONCODE || "NoLoc").trim();
-                        let blockAlpha = loc.charAt(0).toUpperCase();
-                        if(!/[A-Z]/.test(blockAlpha)) blockAlpha = "Other";
+                        let blockAlpha = getTaskBlockAlpha(i);
                         if(!blocks[blockAlpha]) blocks[blockAlpha] = {count:0};
                         blocks[blockAlpha].count++;
                     });
                     let html = Object.keys(blocks).sort().map(b => `<div class="bg-white border border-green-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectedTaskBlock='${esc(b)}'; taskViewLevel=1; renderTasks()"><div class="flex items-center gap-3"><div class="bg-green-100 text-[#007a4d] px-3 py-1.5 rounded-lg font-black text-lg">${b}</div><span class="font-bold text-lg text-gray-700">Block ${b}</span></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${blocks[b].count} Items</span></div>`).join('');
                     container.innerHTML = html;
                 } else if(taskViewLevel === 1) {
-                    let bItems = tabItems.filter(i => {
-                        let loc = String(i.LOCATIONCODE || "NoLoc").trim();
-                        let alpha = loc.charAt(0).toUpperCase();
-                        if(!/[A-Z]/.test(alpha)) alpha = "Other";
-                        return alpha === selectedTaskBlock;
-                    });
-                    let locs = [...new Set(bItems.map(i => i.LOCATIONCODE || "NoLoc"))].sort((a,b) => String(a).localeCompare(String(b), undefined, {numeric: true}));
+                    let bItems = tabItems.filter(i => getTaskBlockAlpha(i) === selectedTaskBlock);
+                    let locs = [...new Set(bItems.map(i => getTaskLocationBucket(i)))].sort((a,b) => String(a).localeCompare(String(b), undefined, {numeric: true}));
                     let html = `<div class="back-btn" onclick="taskViewLevel=0; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Blocks</div>`;
                     html += locs.map(l => {
-                        let count = bItems.filter(i => (i.LOCATIONCODE || "NoLoc") === l).length;
+                        let count = bItems.filter(i => getTaskLocationBucket(i) === l).length;
                         return `<div class="drill-item" onclick="selectedTaskLoc='${esc(l)}'; taskViewLevel=2; renderTasks()"><span class="font-bold text-lg text-gray-800">${l} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
                     }).join('');
                     container.innerHTML = html;
                 } else if(taskViewLevel === 2) {
-                    let fItems = tabItems.filter(i => (i.LOCATIONCODE || "NoLoc") === selectedTaskLoc);
-                    fItems.sort((a,b) => String(a.COMMONNAME || "").localeCompare(String(b.COMMONNAME || "")));
+                    let fItems = tabItems.filter(i => getTaskLocationBucket(i) === selectedTaskLoc);
+                    fItems.sort((a,b) => String(a.COMMONNAME || '').localeCompare(String(b.COMMONNAME || '')));
                     container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=1; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Locations</div>` + fItems.map(i => generateCard(i, 'tasks', activeTaskTab === 'season' ? 'status-green' : 'status-blue')).join('');
                 }
             }
