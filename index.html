@@ -791,23 +791,24 @@
         }
 
         function startFallbackSync(intervalMs = getFallbackSyncInterval()) {
-            if (fallbackSyncInterval) return;
-            if (currentUser && !document.hidden) fetchBackgroundData();
-            fallbackSyncInterval = setInterval(() => {
-                if (!document.hidden && currentUser) fetchBackgroundData();
-            }, intervalMs);
-            liveSyncMode = 'polling';
-            updateSyncDiagnostics();
+            if (fallbackSyncInterval) {
+                clearInterval(fallbackSyncInterval);
+                fallbackSyncInterval = null;
+            }
+            liveSyncMode = navigator.onLine === false ? 'offline' : 'idle';
+            updateSyncDiagnostics(navigator.onLine === false ? 'offline' : 'idle');
+        }
         }
 
         function shouldUseRealtime() {
-            return !isIOSDevice() && !isStandaloneApp() && 'WebSocket' in window && navigator.onLine !== false;
+            return 'WebSocket' in window && navigator.onLine !== false;
         }
 
         function initializeRealtime() {
             cleanupRealtime();
             if (!shouldUseRealtime()) {
-                startFallbackSync(getFallbackSyncInterval());
+                liveSyncMode = navigator.onLine === false ? 'offline' : 'idle';
+                updateSyncDiagnostics(navigator.onLine === false ? 'offline' : 'idle');
                 return;
             }
             ['v2_master_inventory','v2_active_request','v2_reserves','v2_soc_master','v2_sales_office','v2_av_notes'].forEach((tableName) => {
@@ -822,7 +823,8 @@
                             updateSyncDiagnostics();
                         }
                         if (status === 'TIMED_OUT' || status === 'CHANNEL_ERROR' || status === 'CLOSED') {
-                            if (!fallbackSyncInterval) startFallbackSync(getFallbackSyncInterval());
+                            liveSyncMode = navigator.onLine === false ? 'offline' : 'idle';
+                            updateSyncDiagnostics(navigator.onLine === false ? 'offline' : 'idle');
                         }
                     });
                 realtimeChannels.push(channel);
