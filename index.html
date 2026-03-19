@@ -4215,10 +4215,8 @@
             closeAllRequestSwipes();
             updateFooterRequestBadge();
             renderRequest();
+            markViewDirty('request');
             showToast('Removed', 'Request removed from Request tab.');
-            if (isIOSDevice() || isStandaloneApp()) {
-                setTimeout(() => queueForegroundRefresh(180), 180);
-            }
             supabaseFetch('v2_active_request', 'PATCH', { req_archived: true }, `unique_id=eq.${encodeURIComponent(uid)}`).catch(() => {
                 item.REQ_ARCHIVED = previousArchived;
                 buildSearchIndex(item);
@@ -6022,9 +6020,3 @@ ${formatRequestItemsText(items)}`;
     </script>
 </body>
 </html>
-
-
-
-
-
-
