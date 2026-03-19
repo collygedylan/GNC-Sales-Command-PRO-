@@ -160,7 +160,7 @@
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center flex flex-col max-h-[90vh] overflow-hidden">
             <div id="step-1-rep" class="flex flex-col min-h-0">
                 <h3 class="font-bold text-lg mb-2 text-orange-600">Who requested this?</h3>
-                <input type="text" id="rep-search-input" class="input-field mb-3 border-orange-200 focus:border-orange-500" placeholder="Search name..." oninput="debouncedFilterRepList()">
+                <input type="text" id="rep-search-input" class="input-field mb-3 border-orange-200 focus:border-orange-500" placeholder="Search name..." oninput="debouncedFilterRepList()" onkeydown="dismissSearchKeyboard(event)">
                 <div id="rep-list-container" class="grid grid-cols-1 gap-2 mb-4 max-h-[40vh] overflow-y-auto px-2 py-1"></div>
                 <button id="custom-rep-btn" class="hidden w-full bg-orange-600 text-white font-bold p-3 rounded-lg mb-4 shadow-sm" onclick="selectRepForRequest(document.getElementById('rep-search-input').value.trim())">Assign to: <span></span></button>
             </div>
@@ -173,7 +173,7 @@
                     <h3 class="font-bold text-lg text-orange-600">Customer</h3>
                 </div>
                 <label id="request-customer-label" class="text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Customer / Consignee</label>
-                <input type="text" id="cust-search-input" class="input-field mb-2 border-orange-200" placeholder="Search customer..." oninput="debouncedPopulateCustomerList()">
+                <input type="text" id="cust-search-input" class="input-field mb-2 border-orange-200" placeholder="Search customer..." oninput="debouncedPopulateCustomerList()" onkeydown="dismissSearchKeyboard(event)">
                 <div id="cust-list-container" class="grid grid-cols-1 gap-2 mb-4 max-h-[28vh] overflow-y-auto px-1 py-1"></div>
                 <div id="quick-consignee-wrap" class="hidden mb-5">
                     <label class="text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Consignee Name</label>
@@ -287,7 +287,7 @@
 
                 <div id="view-av" class="hidden">
                     <div id="av-search-container" class="sticky-search relative mb-2">
-                        <input type="text" id="av-search" class="input-field w-full pr-10 !mb-0" placeholder="Search AV Stock..." oninput="handleAVSearch()">
+                        <input type="text" id="av-search" class="input-field w-full pr-10 !mb-0" placeholder="Search AV Stock..." oninput="handleAVSearch()" onkeydown="dismissSearchKeyboard(event)">
                         <i id="av-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearAVSearch()"></i>
                     </div>
                     <div class="task-tabs mt-2 mb-2">
@@ -330,7 +330,7 @@
                 
                 <div id="view-reserves" class="hidden">
                     <div id="reserves-search-container" class="sticky-search relative mb-2">
-                        <input type="text" id="reserves-search" class="input-field w-full pr-10 !mb-0" placeholder="Search..." oninput="handleReservesSearch()">
+                        <input type="text" id="reserves-search" class="input-field w-full pr-10 !mb-0" placeholder="Search..." oninput="handleReservesSearch()" onkeydown="dismissSearchKeyboard(event)">
                         <i id="reserves-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearReservesSearch()"></i>
                     </div>
                     <div id="reserves-crumb" class="text-xs font-bold text-[#007a4d] mb-3 mt-3 empty:hidden"></div>
@@ -339,7 +339,7 @@
                 
                 <div id="view-docks" class="hidden">
                     <div id="docks-search-container" class="sticky-search relative mb-2">
-                        <input type="text" id="docks-search" class="input-field w-full pr-10 !mb-0" placeholder="Search Docks or Items..." oninput="handleDocksSearch()">
+                        <input type="text" id="docks-search" class="input-field w-full pr-10 !mb-0" placeholder="Search Docks or Items..." oninput="handleDocksSearch()" onkeydown="dismissSearchKeyboard(event)">
                         <i id="docks-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearDocksSearch()"></i>
                     </div>
                     <div id="docks-crumb" class="text-xs font-bold text-orange-600 mb-3 mt-3">Select a Dock</div>
@@ -363,7 +363,7 @@
                         <div id="tab-drive-mode-nc" class="task-tab" onclick="setDriveMode('nc')">NC Drive Mode</div>
                     </div>
                     <div id="drive-search-container" class="sticky-search relative mb-2">
-                        <input type="text" id="drive-search" class="input-field w-full pr-10 !mb-0" placeholder="Search Names or Locs..." oninput="handleDriveSearch()">
+                        <input type="text" id="drive-search" class="input-field w-full pr-10 !mb-0" placeholder="Search Names or Locs..." oninput="handleDriveSearch()" onkeydown="dismissSearchKeyboard(event)">
                         <i id="drive-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearDriveSearch()"></i>
                     </div>
                     <div class="task-tabs mb-2">
@@ -1827,6 +1827,22 @@
         function getRequestSourceDomIds() {
             const domIds = isQuickDriveRequestMode() ? Array.from(driveQuickRequestItems) : Array.from(selectedItems);
             return domIds.filter(domId => !!findItemByDomId(domId));
+        }
+
+        function dismissSearchKeyboard(event) {
+            if (!event) return;
+            const key = event.key || event.code || '';
+            if (key !== 'Enter' && key !== 'NumpadEnter' && event.keyCode !== 13) return;
+            event.preventDefault();
+            const target = event.target || document.activeElement;
+            if (!target || typeof target.blur !== 'function') return;
+            target.blur();
+            requestAnimationFrame(() => {
+                if (document.activeElement === target) target.blur();
+            });
+            setTimeout(() => {
+                if (document.activeElement === target) target.blur();
+            }, 80);
         }
 
         function normalizeSearchValue(value) {
