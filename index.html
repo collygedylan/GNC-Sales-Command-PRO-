@@ -548,6 +548,7 @@
         });
         let realtimeChannels = [];
         let realtimeRefreshTimer = null;
+        let realtimeRefreshKeys = new Set();
         let fallbackSyncInterval = null;
         let liveSyncMode = 'idle';
         const SUPABASE_READ_TIMEOUT_MS = 20000;
@@ -730,6 +731,7 @@
             };
 
             fullInventory.forEach(row => { if (sameMasterRow(row)) applySharedMasterData(row); });
+            avOpenInventory.forEach(row => { if (sameMasterRow(row)) applySharedMasterData(row); });
             lowStockInventory.forEach(row => { if (sameMasterRow(row)) applySharedMasterData(row); });
             managerReviewInventory.forEach(row => { if (sameMasterRow(row)) applySharedMasterData(row); });
             socInventory.forEach(row => {
@@ -772,10 +774,34 @@
             }
         }
 
-        function queueRealtimeRefresh() {
+        function getDatasetKeysForTable(tableName = '') {
+            if (tableName === 'v2_master_inventory') return ['master', 'avOpen'];
+            if (tableName === 'v2_active_request') return ['requests'];
+            if (tableName === 'v2_reserves') return ['reserves'];
+            if (tableName === 'v2_soc_master') return ['soc'];
+            if (tableName === 'v2_sales_office') return ['salesOffice'];
+            if (tableName === 'v2_av_notes') return ['avNotes'];
+            return [];
+        }
+
+        function refreshLoadedDatasetKey(key) {
+            const state = getDatasetState(key);
+            if (!state.initialLoaded && !state.fullLoaded) return Promise.resolve(true);
+            return ensureDatasetLoaded(key, state.fullLoaded ? 'full' : 'initial', { force: true });
+        }
+
+        function queueRealtimeRefresh(tableName = '') {
+            getDatasetKeysForTable(tableName).forEach((key) => realtimeRefreshKeys.add(key));
             if (realtimeRefreshTimer) clearTimeout(realtimeRefreshTimer);
             realtimeRefreshTimer = setTimeout(() => {
-                fetchBackgroundData();
+                const keys = Array.from(realtimeRefreshKeys).filter((key) => {
+                    const state = getDatasetState(key);
+                    return state.initialLoaded || state.fullLoaded;
+                });
+                realtimeRefreshKeys.clear();
+                if (keys.length > 0) {
+                    Promise.all(keys.map((key) => refreshLoadedDatasetKey(key))).catch(() => {});
+                }
             }, 250);
         }
 
@@ -788,6 +814,7 @@
                 clearTimeout(realtimeRefreshTimer);
                 realtimeRefreshTimer = null;
             }
+            realtimeRefreshKeys.clear();
             if (fallbackSyncInterval) {
                 clearInterval(fallbackSyncInterval);
                 fallbackSyncInterval = null;
@@ -820,7 +847,7 @@
                 const channel = supabaseClient
                     .channel(`realtime-${tableName}`)
                     .on('postgres_changes', { event: '*', schema: 'public', table: tableName }, () => {
-                        queueRealtimeRefresh();
+                        queueRealtimeRefresh(tableName);
                     })
                     .subscribe((status) => {
                         if (status === 'SUBSCRIBED') {
@@ -1056,8 +1083,67 @@
             }catch(e){ return null; } 
         }
 
-        let fullInventory=[]; let lowStockInventory=[]; let socInventory=[]; let reservesInventory=[]; let requestsInventory=[]; let managerReviewInventory=[]; let salesOfficeInventory=[]; let avNotesDb=[];
+        function buildCacheSnapshot() {
+            return {
+                status: 'success',
+                data: fullInventory || [],
+                avOpenData: avOpenInventory || [],
+                requestsData: requestsInventory || [],
+                reservesData: reservesInventory || [],
+                socData: socInventory || [],
+                salesOfficeData: salesOfficeInventory || [],
+                avNotesData: avNotesDb || [],
+                meta: {
+                    datasetLoadState: serializeDatasetLoadState()
+                }
+            };
+        }
+
+        function warmCachedInventory(force = false) {
+            if (force) cacheWarmPromise = null;
+            if (!cacheWarmPromise) {
+                cacheWarmPromise = loadFromCache().then((cachedRes) => {
+                    if (!cachedRes) return false;
+                    processAndLoadData(cachedRes);
+                    const cachedMeta = cachedRes.meta && cachedRes.meta.datasetLoadState ? cachedRes.meta.datasetLoadState : {
+                        master: { initialLoaded: Array.isArray(cachedRes.data) && cachedRes.data.length > 0, fullLoaded: Array.isArray(cachedRes.data) && cachedRes.data.length > 0 },
+                        avOpen: { initialLoaded: Array.isArray(cachedRes.avOpenData) && cachedRes.avOpenData.length > 0, fullLoaded: Array.isArray(cachedRes.avOpenData) && cachedRes.avOpenData.length > 0 },
+                        requests: { initialLoaded: Array.isArray(cachedRes.requestsData) && cachedRes.requestsData.length > 0, fullLoaded: Array.isArray(cachedRes.requestsData) && cachedRes.requestsData.length > 0 },
+                        reserves: { initialLoaded: Array.isArray(cachedRes.reservesData) && cachedRes.reservesData.length > 0, fullLoaded: Array.isArray(cachedRes.reservesData) && cachedRes.reservesData.length > 0 },
+                        soc: { initialLoaded: Array.isArray(cachedRes.socData) && cachedRes.socData.length > 0, fullLoaded: Array.isArray(cachedRes.socData) && cachedRes.socData.length > 0 },
+                        salesOffice: { initialLoaded: Array.isArray(cachedRes.salesOfficeData) && cachedRes.salesOfficeData.length > 0, fullLoaded: Array.isArray(cachedRes.salesOfficeData) && cachedRes.salesOfficeData.length > 0 },
+                        avNotes: { initialLoaded: Array.isArray(cachedRes.avNotesData) && cachedRes.avNotesData.length > 0, fullLoaded: Array.isArray(cachedRes.avNotesData) && cachedRes.avNotesData.length > 0 }
+                    };
+                    hydrateDatasetLoadState(cachedMeta);
+                    return true;
+                }).catch(() => false);
+            }
+            return cacheWarmPromise;
+        }
+
+        const INITIAL_PAGE_LIMIT = 250;
+
+        function createDatasetLoadEntry() {
+            return { initialLoaded: false, fullLoaded: false, initialPromise: null, fullPromise: null, lastLoadedAt: '' };
+        }
+
+        function createDatasetLoadState() {
+            return {
+                master: createDatasetLoadEntry(),
+                avOpen: createDatasetLoadEntry(),
+                requests: createDatasetLoadEntry(),
+                reserves: createDatasetLoadEntry(),
+                soc: createDatasetLoadEntry(),
+                salesOffice: createDatasetLoadEntry(),
+                avNotes: createDatasetLoadEntry()
+            };
+        }
+
+        let fullInventory=[]; let avOpenInventory=[]; let lowStockInventory=[]; let socInventory=[]; let reservesInventory=[]; let requestsInventory=[]; let managerReviewInventory=[]; let salesOfficeInventory=[]; let avNotesDb=[];
         let loginPrefetchPromise=null;
+        let loginPrefetchMode='';
+        let datasetLoadState=createDatasetLoadState();
+        let cacheWarmPromise=null;
         let currentUser=""; let currentUserDisplay=""; let currentRole=""; let safeRole=""; let repPermutations=[]; let activeItem=null; let lastView=""; let activeDetailTab="overview"; let selectedItems=new Set(); let isMultiSelectMode=false; let pressTimer=null; let isLongPress=false; let touchStartX=0; let touchStartY=0; let pendingAction=null; let pendingTabType=null; let hasAppliedInitialHomeView=false;
         
         let activeDriveTab='name'; let selectedDriveBlock=null; let selectedDriveLoc=null;
@@ -1081,11 +1167,10 @@
                 const savedUser=localStorage.getItem('gnc_user_v3'); const savedPin=localStorage.getItem('gnc_pin_v3');
                 document.getElementById('login-inputs').classList.remove('hidden');
                 document.getElementById('loading-spinner').classList.add('hidden');
+                await warmCachedInventory();
                 if(savedUser&&savedPin){
                     document.getElementById('username-input').value=savedUser;
                     document.getElementById('pin-code').value=savedPin;
-                    const cachedRes=await loadFromCache();
-                    if(cachedRes&&fullInventory.length===0){ processAndLoadData(cachedRes); }
                     document.getElementById('login-inputs').classList.add('hidden');
                     document.getElementById('loading-spinner').classList.remove('hidden');
                     setTimeout(()=>handleLogin(true),0);
@@ -1123,6 +1208,313 @@
             if (!document.hidden && currentUser) queueForegroundRefresh(isIOSDevice() ? 60 : 120);
             if (!document.hidden) updateSyncDiagnostics();
         });
+
+        const DATASET_DEFINITIONS = {
+            master: { table: 'v2_master_inventory', sourceTable: 'v2_master_inventory', initialQuery: 'select=*', fullQuery: 'select=*' },
+            avOpen: { table: 'v2_master_inventory', sourceTable: 'v2_master_inventory', initialQuery: 'select=*&s_lts=gt.0', fullQuery: 'select=*&s_lts=gt.0' },
+            requests: { table: 'v2_active_request', sourceTable: 'v2_active_request', initialQuery: 'select=*', fullQuery: 'select=*' },
+            reserves: { table: 'v2_reserves', sourceTable: 'v2_reserves', initialQuery: 'select=*', fullQuery: 'select=*' },
+            soc: { table: 'v2_soc_master', sourceTable: 'v2_soc_master', initialQuery: 'select=*', fullQuery: 'select=*' },
+            salesOffice: { table: 'v2_sales_office', sourceTable: 'v2_sales_office', initialQuery: 'select=*', fullQuery: 'select=*' },
+            avNotes: { table: 'v2_av_notes', sourceTable: 'v2_av_notes', initialQuery: 'select=*', fullQuery: 'select=*' }
+        };
+
+        const VIEW_LOAD_UI = {
+            drive: { container: 'drive-content', crumb: 'drive-crumb' },
+            av: { container: 'av-content', crumb: 'av-crumb' },
+            docks: { container: 'docks-content', crumb: 'docks-crumb' },
+            request: { container: 'request-content', crumb: 'request-crumb' },
+            reserves: { container: 'reserves-content', crumb: 'reserves-crumb' },
+            'sales-office': { container: 'sales-office-content' },
+            tasks: { container: 'task-content', crumb: 'task-crumb' },
+            'low-stock': { container: 'low-stock-content', crumb: 'low-stock-crumb' },
+            reports: { container: 'reports-content', crumb: 'reports-crumb' },
+            review: { container: 'review-content', crumb: 'review-crumb' }
+        };
+
+        function getDatasetState(key) {
+            if (!datasetLoadState[key]) datasetLoadState[key] = createDatasetLoadEntry();
+            return datasetLoadState[key];
+        }
+
+        function serializeDatasetLoadState() {
+            const out = {};
+            Object.keys(datasetLoadState).forEach((key) => {
+                const state = getDatasetState(key);
+                out[key] = {
+                    initialLoaded: !!state.initialLoaded,
+                    fullLoaded: !!state.fullLoaded,
+                    lastLoadedAt: state.lastLoadedAt || ''
+                };
+            });
+            return out;
+        }
+
+        function hydrateDatasetLoadState(meta = {}) {
+            datasetLoadState = createDatasetLoadState();
+            Object.keys(datasetLoadState).forEach((key) => {
+                const saved = meta[key] || {};
+                const state = getDatasetState(key);
+                state.initialLoaded = !!saved.initialLoaded;
+                state.fullLoaded = !!saved.fullLoaded;
+                state.initialPromise = null;
+                state.fullPromise = null;
+                state.lastLoadedAt = saved.lastLoadedAt || '';
+            });
+        }
+
+        function touchSyncTimestamp() {
+            const stamp = new Date().toISOString();
+            lastSyncTime = stamp;
+            lastSuccessfulSyncTime = stamp;
+            syncDiagnosticsOverride = '';
+            updateSyncDiagnostics(liveSyncMode === 'realtime' ? 'realtime' : 'idle');
+        }
+
+        function formatFetchedRows(items, sourceTable) {
+            if (!Array.isArray(items)) return [];
+            return items.map((item, idx) => {
+                let obj = { SOURCE_TABLE: sourceTable };
+                for (let k in item) { if (item[k] !== null) obj[k.toUpperCase()] = item[k]; }
+                if (!obj.UNIQUE_ID) obj.UNIQUE_ID = obj.ID || `${sourceTable}_${idx}`;
+                obj.COMMONNAME = obj.COMMONNAME || obj.DESCRIPTION || obj.PLANT_NAME || 'Unknown';
+                obj.CONTSIZE = item.contsize || obj.CONTSIZE || item.itemspec || obj.ITEMSPEC || item.size || '-';
+                obj.LOCATIONCODE = obj.LOCATIONCODE || obj.LOCATION || 'No Loc';
+                obj.PTRAVAILABLE = obj.PTRAVAILABLE || 0;
+                obj.SEASONSUPPLY = obj.SEASON_SUPPLY || obj.SEASONSUPPLY || 0;
+                obj.FIELDTAGCOLOR = obj.FIELD_TAG_COLOR || obj.FIELDTAGCOLOR || '-';
+                normalizeRowPhotoFields(obj);
+                return buildSearchIndex(obj);
+            });
+        }
+
+        async function fetchAllSupabaseRows(table, query = 'select=*') {
+            startGlobalProgress();
+            try {
+                let allData = [];
+                let offset = 0;
+                const limit = 1000;
+                let hasMore = true;
+                while (hasMore) {
+                    const queryString = query ? `${query}&limit=${limit}&offset=${offset}` : `limit=${limit}&offset=${offset}`;
+                    const url = `${SUPABASE_URL}/rest/v1/${table}?${queryString}`;
+                    const response = await fetchWithTimeout(url, { method: 'GET', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' } }, SUPABASE_READ_TIMEOUT_MS, `${table} read`);
+                    if (!response.ok) throw new Error(await getResponseError(response, `Supabase read failed (${response.status})`));
+                    const text = await response.text();
+                    const data = text ? JSON.parse(text) : [];
+                    if (Array.isArray(data) && data.length > 0) {
+                        allData = allData.concat(data);
+                        offset += limit;
+                        if (data.length < limit) hasMore = false;
+                    } else {
+                        hasMore = false;
+                    }
+                }
+                return allData;
+            } finally {
+                stopGlobalProgress();
+            }
+        }
+
+        async function fetchSupabasePage(table, query = 'select=*', limit = INITIAL_PAGE_LIMIT, offset = 0) {
+            startGlobalProgress();
+            try {
+                const queryString = query ? `${query}&limit=${limit}&offset=${offset}` : `limit=${limit}&offset=${offset}`;
+                const url = `${SUPABASE_URL}/rest/v1/${table}?${queryString}`;
+                const response = await fetchWithTimeout(url, { method: 'GET', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' } }, SUPABASE_READ_TIMEOUT_MS, `${table} read`);
+                if (!response.ok) throw new Error(await getResponseError(response, `Supabase read failed (${response.status})`));
+                const text = await response.text();
+                return text ? JSON.parse(text) : [];
+            } finally {
+                stopGlobalProgress();
+            }
+        }
+
+        function buildDatasetPayload(key, rows) {
+            const definition = DATASET_DEFINITIONS[key];
+            const formatted = formatFetchedRows(rows, definition.sourceTable);
+            if (key === 'master') return { data: formatted };
+            if (key === 'avOpen') return { avOpenData: formatted };
+            if (key === 'requests') return { requestsData: formatted };
+            if (key === 'reserves') return { reservesData: formatted };
+            if (key === 'soc') return { socData: formatted };
+            if (key === 'salesOffice') return { salesOfficeData: formatted };
+            if (key === 'avNotes') return { avNotesData: formatted };
+            return {};
+        }
+
+        function persistCurrentCache() {
+            saveToCache(buildCacheSnapshot());
+        }
+
+        function isDatasetLoaded(key, mode = 'initial') {
+            const state = getDatasetState(key);
+            return mode === 'full' ? !!state.fullLoaded : (!!state.initialLoaded || !!state.fullLoaded);
+        }
+
+        async function ensureDatasetLoaded(key, mode = 'initial', options = {}) {
+            const definition = DATASET_DEFINITIONS[key];
+            if (!definition) return false;
+            const wantsFull = mode === 'full';
+            const state = getDatasetState(key);
+
+            if (options.force && !wantsFull && state.fullLoaded) {
+                return ensureDatasetLoaded(key, 'full', options);
+            }
+            if (!options.force) {
+                if (wantsFull && state.fullLoaded) return true;
+                if (!wantsFull && (state.initialLoaded || state.fullLoaded)) return true;
+            }
+            if (wantsFull && state.fullPromise) return state.fullPromise;
+            if (!wantsFull && state.initialPromise) return state.initialPromise;
+
+            const runLoad = async () => {
+                const rows = wantsFull
+                    ? await fetchAllSupabaseRows(definition.table, definition.fullQuery || definition.initialQuery || 'select=*')
+                    : await fetchSupabasePage(definition.table, definition.initialQuery || 'select=*', definition.initialLimit || INITIAL_PAGE_LIMIT, 0);
+                state.initialLoaded = true;
+                state.fullLoaded = wantsFull ? true : state.fullLoaded;
+                state.lastLoadedAt = new Date().toISOString();
+                processAndLoadData(buildDatasetPayload(key, rows));
+                persistCurrentCache();
+                touchSyncTimestamp();
+                return true;
+            };
+
+            if (wantsFull) {
+                state.fullPromise = Promise.resolve(state.initialPromise).catch(() => false).then(runLoad).finally(() => {
+                    state.fullPromise = null;
+                });
+                return state.fullPromise;
+            }
+
+            state.initialPromise = runLoad().finally(() => {
+                state.initialPromise = null;
+            });
+            return state.initialPromise;
+        }
+
+        function queueDatasetLoad(key, mode = 'full') {
+            setTimeout(() => {
+                ensureDatasetLoaded(key, mode).catch(() => {});
+            }, 30);
+        }
+
+        function getViewLoadingConfig(viewId) {
+            if (viewId === 'drive') return { required: [{ key: 'master', mode: 'initial' }], background: [{ key: 'master', mode: 'full' }], label: 'Loading Drive rows...' };
+            if (viewId === 'av') {
+                if (activeAVTab === 'reserves') {
+                    return { required: [{ key: 'reserves', mode: 'initial' }], background: [{ key: 'reserves', mode: 'full' }, { key: 'master', mode: 'full' }, { key: 'avNotes', mode: 'full' }], label: 'Loading AV reserves...' };
+                }
+                return { required: [{ key: 'avOpen', mode: 'initial' }], background: [{ key: 'avOpen', mode: 'full' }, { key: 'avNotes', mode: 'full' }], label: 'Loading AV open stock...' };
+            }
+            if (viewId === 'docks') return { required: [{ key: 'soc', mode: 'initial' }], background: [{ key: 'soc', mode: 'full' }, { key: 'master', mode: 'full' }], label: 'Loading dock rows...' };
+            if (viewId === 'request') return { required: [{ key: 'requests', mode: 'initial' }], background: [{ key: 'requests', mode: 'full' }], label: 'Loading requests...' };
+            if (viewId === 'reserves') return { required: [{ key: 'reserves', mode: 'initial' }], background: [{ key: 'reserves', mode: 'full' }, { key: 'master', mode: 'full' }], label: 'Loading reserves...' };
+            if (viewId === 'sales-office') return { required: [{ key: 'salesOffice', mode: 'initial' }], background: [{ key: 'salesOffice', mode: 'full' }, { key: 'master', mode: 'full' }], label: 'Loading sales office...' };
+            if (viewId === 'tasks') return { required: [{ key: 'master', mode: 'full' }], background: [{ key: 'avNotes', mode: 'full' }], label: 'Loading full task inventory...' };
+            if (viewId === 'low-stock') return { required: [{ key: 'master', mode: 'full' }], label: 'Loading low stock...' };
+            if (viewId === 'review') return { required: [{ key: 'master', mode: 'full' }], label: 'Loading review rows...' };
+            if (viewId === 'reports') return { required: [{ key: 'master', mode: 'full' }, { key: 'requests', mode: 'full' }, { key: 'reserves', mode: 'full' }, { key: 'soc', mode: 'full' }], label: 'Loading reports...' };
+            return null;
+        }
+
+        function isViewVisible(viewId) {
+            const el = document.getElementById('view-' + viewId);
+            return !!(el && !el.classList.contains('hidden'));
+        }
+
+        function showViewLoadingState(viewId, message = 'Loading rows...') {
+            const ui = VIEW_LOAD_UI[viewId];
+            if (!ui) return;
+            const container = document.getElementById(ui.container);
+            const crumb = ui.crumb ? document.getElementById(ui.crumb) : null;
+            if (crumb) crumb.innerText = message;
+            if (!container) return;
+            let skeletonHtml = `<div class="p-4 space-y-3">`;
+            for (let i = 0; i < 5; i++) skeletonHtml += `<div class="skeleton h-24 w-full rounded-xl"></div>`;
+            skeletonHtml += `<div class="text-center text-xs font-bold text-gray-400 uppercase tracking-wider pt-2">${message}</div></div>`;
+            container.innerHTML = skeletonHtml;
+        }
+
+        function showViewErrorState(viewId, message = 'Could not load data.') {
+            const ui = VIEW_LOAD_UI[viewId];
+            if (!ui) return;
+            const container = document.getElementById(ui.container);
+            const crumb = ui.crumb ? document.getElementById(ui.crumb) : null;
+            if (crumb) crumb.innerText = 'Load Failed';
+            if (!container) return;
+            container.innerHTML = `<div class="p-8 text-center"><div class="font-black text-red-600 mb-2">Load Failed</div><div class="text-sm text-gray-500 mb-4">${message}</div><button class="bg-[#007a4d] text-white px-4 py-2 rounded-lg font-bold" onclick="markViewDirty('${viewId}'); renderViewContent('${viewId}', false, true)">Retry</button></div>`;
+        }
+
+        function ensureViewDataForRender(viewId) {
+            const config = getViewLoadingConfig(viewId);
+            if (!config) return false;
+            const pending = config.required.filter((item) => !isDatasetLoaded(item.key, item.mode));
+            if (!pending.length) {
+                (config.background || []).forEach((item) => queueDatasetLoad(item.key, item.mode));
+                return false;
+            }
+            showViewLoadingState(viewId, config.label);
+            Promise.all(pending.map((item) => ensureDatasetLoaded(item.key, item.mode))).then(() => {
+                (config.background || []).forEach((item) => queueDatasetLoad(item.key, item.mode));
+                markViewDirty(viewId);
+                if (isViewVisible(viewId)) renderViewContent(viewId, false, true);
+            }).catch((error) => {
+                if (isViewVisible(viewId)) showViewErrorState(viewId, error && error.message ? error.message : 'Could not load data.');
+            });
+            return true;
+        }
+
+        async function refreshLoadedDatasets(force = true) {
+            if (navigator.onLine === false) {
+                liveSyncMode = 'offline';
+                updateSyncDiagnostics('offline');
+                return false;
+            }
+            const loadedKeys = Object.keys(datasetLoadState).filter((key) => {
+                const state = getDatasetState(key);
+                return state.initialLoaded || state.fullLoaded;
+            });
+            if (!loadedKeys.length) {
+                const visibleView = TRACKED_VIEW_IDS.find((viewId) => isViewVisible(viewId));
+                const config = visibleView ? getViewLoadingConfig(visibleView) : null;
+                if (!config) return true;
+                await Promise.all(config.required.map((item) => ensureDatasetLoaded(item.key, item.mode, { force })));
+                return true;
+            }
+            updateSyncDiagnostics('refreshing');
+            await Promise.all(loadedKeys.map((key) => {
+                const state = getDatasetState(key);
+                return ensureDatasetLoaded(key, state.fullLoaded ? 'full' : 'initial', { force });
+            }));
+            updateSyncDiagnostics(liveSyncMode === 'realtime' ? 'realtime' : 'idle');
+            return true;
+        }
+
+        function findItemByUniqueId(uid) {
+            return fullInventory.find(i=>i.UNIQUE_ID===uid)
+                || avOpenInventory.find(i=>i.UNIQUE_ID===uid)
+                || lowStockInventory.find(i=>i.UNIQUE_ID===uid)
+                || reservesInventory.find(i=>i.UNIQUE_ID===uid)
+                || requestsInventory.find(i=>i.UNIQUE_ID===uid)
+                || socInventory.find(i=>i.UNIQUE_ID===uid)
+                || managerReviewInventory.find(i=>i.UNIQUE_ID===uid)
+                || salesOfficeInventory.find(i=>i.UNIQUE_ID===uid)
+                || null;
+        }
+
+        function findItemByDomId(domId) {
+            return fullInventory.find(i=>i.DOM_ID===domId)
+                || avOpenInventory.find(i=>i.DOM_ID===domId)
+                || lowStockInventory.find(i=>i.DOM_ID===domId)
+                || reservesInventory.find(i=>i.DOM_ID===domId)
+                || requestsInventory.find(i=>i.DOM_ID===domId)
+                || socInventory.find(i=>i.DOM_ID===domId)
+                || managerReviewInventory.find(i=>i.DOM_ID===domId)
+                || salesOfficeInventory.find(i=>i.DOM_ID===domId)
+                || null;
+        }
 
         function getDirectImageUrl(url) { 
             if(!url)return""; 
@@ -1467,8 +1859,7 @@
             document.getElementById('login-inputs').classList.add('hidden'); 
             document.getElementById('loading-spinner').classList.remove('hidden'); 
             beginInitialAppLoad('Signing in...');
-            if (fullInventory.length === 0) primeLoginDataLoad();
-            fetchLoginUser(rawUser, inputPass).then(data=>{
+                fetchLoginUser(rawUser, inputPass).then(data=>{
                 if(data&&data.length>0){
                     const userRecord=data[0]; 
                     currentUser=String(userRecord.username || inputUser).trim().toLowerCase(); 
@@ -1525,16 +1916,10 @@
             applyRolePermissions();
             document.getElementById('loading-spinner').classList.add('hidden');
             initializeRealtime();
-            if (fromCache) {
-                showToast("Syncing", "Opening saved data while fresh Supabase data downloads...", false);
-            }
         }
 
         function primeLoginDataLoad() {
-            if (!loginPrefetchPromise) {
-                loginPrefetchPromise = fetchBackgroundData();
-            }
-            return loginPrefetchPromise;
+            return Promise.resolve(true);
         }
         async function finalizeLogin(user,pass,isBiometricLogin) { 
             setBootingSession(false);
@@ -1559,38 +1944,19 @@
 
             if (fullInventory.length === 0) {
                 try {
-                    const cachedRes = await loadFromCache();
-                    if (cachedRes) processAndLoadData(cachedRes);
+                    await warmCachedInventory();
                 } catch (e) {}
             }
 
-            if (fullInventory.length > 0) {
-                openApp(true);
-            } else {
-                openApp(false);
-                showToast("Syncing", "Opening app while fresh Supabase data downloads...", false);
+            const openedFromCache = fullInventory.length > 0;
+            openApp(openedFromCache);
+            if (!openedFromCache) {
+                showToast("Ready", "Fast mode is on. Tabs load as you open them.", false);
             }
 
-            const backgroundPromise = loginPrefetchPromise || fetchBackgroundData();
-            backgroundPromise.then(() => {
-                if (!appOpened) {
-                    openApp(false);
-                } else {
-                    reRenderCurrentView();
-                    if (activeItem && !document.getElementById('view-detail').classList.contains('hidden')) {
-                        openDetail(activeItem.UNIQUE_ID, lastView);
-                    }
-                }
-            }).catch(() => {
-                if (!appOpened) {
-                    openApp(false);
-                    showToast("Sync Error", "Fresh Supabase sync failed.", true);
-                } else {
-                    showToast("Sync Error", "Using saved data. Fresh Supabase sync failed.", true);
-                }
-            }).finally(() => {
-                loginPrefetchPromise = null;
-            }); 
+            queueDatasetLoad('avNotes', 'full');
+            loginPrefetchPromise = null;
+            loginPrefetchMode = '';
         }
         async function silentBackgroundSync() {
             if(!currentUser)return; 
@@ -1660,84 +2026,27 @@
             } catch(e){}
         }
 
-        async function fetchBackgroundData() {
-            updateSyncDiagnostics('refreshing');
-            const cachedRes=await loadFromCache();
-            if(cachedRes&&fullInventory.length===0){ setTimeout(()=>{ processAndLoadData(cachedRes); },50); }
-            const formatArr=(resObj,sourceTable)=>{
-                if(resObj.status!=='fulfilled'||!Array.isArray(resObj.value))return[];
-                return resObj.value.map((item,idx)=>{
-                    let obj={SOURCE_TABLE:sourceTable};
-                    for(let k in item){ if(item[k]!==null)obj[k.toUpperCase()]=item[k]; }
-                    if(!obj.UNIQUE_ID)obj.UNIQUE_ID=obj.ID||`${sourceTable}_${idx}`;
-                    obj.COMMONNAME=obj.COMMONNAME||obj.DESCRIPTION||obj.PLANT_NAME||"Unknown";
-                    obj.CONTSIZE=item.contsize || obj.CONTSIZE || item.itemspec || obj.ITEMSPEC || item.size || "-";
-                    obj.LOCATIONCODE=obj.LOCATIONCODE||obj.LOCATION||"No Loc";
-                    obj.PTRAVAILABLE=obj.PTRAVAILABLE||0;
-                    normalizeRowPhotoFields(obj);
-                    obj.SEASONSUPPLY=obj.SEASON_SUPPLY||obj.SEASONSUPPLY||0;
-                    obj.FIELDTAGCOLOR=obj.FIELD_TAG_COLOR||obj.FIELDTAGCOLOR||"-";
-                    return buildSearchIndex(obj);
-                });
-            };
-            try {
-                const masterPromise = supabaseFetch('v2_master_inventory','GET',null,'select=*');
-                const requestsPromise = supabaseFetch('v2_active_request','GET',null,'select=*');
-                const reservesPromise = supabaseFetch('v2_reserves','GET',null,'select=*');
-                const socPromise = supabaseFetch('v2_soc_master','GET',null,'select=*');
-                const salesOfficePromise = supabaseFetch('v2_sales_office','GET',null,'select=*');
-                const avNotesPromise = supabaseFetch('v2_av_notes','GET',null,'select=*');
-
-                const stagedMaster = await masterPromise;
-                if(fullInventory.length===0 && Array.isArray(stagedMaster) && stagedMaster.length>0){
-                    const partialRes = {
-                        status:'success',
-                        data: formatArr({status:'fulfilled', value: stagedMaster}, 'v2_master_inventory'),
-                        requestsData: cachedRes?.requestsData || [],
-                        reservesData: cachedRes?.reservesData || [],
-                        socData: cachedRes?.socData || [],
-                        salesOfficeData: cachedRes?.salesOfficeData || [],
-                        avNotesData: cachedRes?.avNotesData || []
-                    };
-                    setTimeout(()=>{ processAndLoadData(partialRes); },25);
-                }
-
-                const results=await Promise.allSettled([
-                    Promise.resolve(stagedMaster),
-                    requestsPromise,
-                    reservesPromise,
-                    socPromise,
-                    salesOfficePromise,
-                    avNotesPromise
-                ]);
-                let resObj={
-                    status:'success',
-                    data:formatArr(results[0],'v2_master_inventory'),
-                    requestsData:formatArr(results[1],'v2_active_request'),
-                    reservesData:formatArr(results[2],'v2_reserves'),
-                    socData:formatArr(results[3],'v2_soc_master'),
-                    salesOfficeData:formatArr(results[4],'v2_sales_office'),
-                    avNotesData:formatArr(results[5],'v2_av_notes')
-                };
-                setTimeout(()=>{ processAndLoadData(resObj); saveToCache(resObj); },100);
-                lastSyncTime = new Date().toISOString();
-                lastSuccessfulSyncTime = lastSyncTime;
-                syncDiagnosticsOverride = '';
-                updateSyncDiagnostics();
-                return true;
-            } catch(err){
-                if(!cachedRes)showToast("Sync Error","Could not download data.",true);
-                syncDiagnosticsOverride = '';
-                updateSyncDiagnostics();
-                return false;
-            }
+        async function fetchBackgroundData(mode='full') {
+            if (mode === 'critical' || mode === 'supplemental') return true;
+            return refreshLoadedDatasets(true);
         }
         function processAndLoadData(res) {
             if (!res) return;
-            avNotesDb = res.avNotesData || [];
-            fullInventory = (res.data || []).map((item,idx)=>{item.DOM_ID='fi_'+idx;return buildSearchIndex(normalizeRowPhotoFields(item));}); 
-            requestsInventory = (res.requestsData || []).map((item,idx)=>{item.DOM_ID='req_'+item.UNIQUE_ID;return buildSearchIndex(normalizeRowPhotoFields(item));}); 
-            salesOfficeInventory = (res.salesOfficeData || []).map((item, idx) => {
+            const hasKey = (key) => Object.prototype.hasOwnProperty.call(res, key);
+            const merged = {
+                data: hasKey('data') ? (res.data || []) : fullInventory,
+                avOpenData: hasKey('avOpenData') ? (res.avOpenData || []) : avOpenInventory,
+                requestsData: hasKey('requestsData') ? (res.requestsData || []) : requestsInventory,
+                reservesData: hasKey('reservesData') ? (res.reservesData || []) : reservesInventory,
+                socData: hasKey('socData') ? (res.socData || []) : socInventory,
+                salesOfficeData: hasKey('salesOfficeData') ? (res.salesOfficeData || []) : salesOfficeInventory,
+                avNotesData: hasKey('avNotesData') ? (res.avNotesData || []) : avNotesDb
+            };
+            avNotesDb = merged.avNotesData || [];
+            fullInventory = (merged.data || []).map((item,idx)=>{item.DOM_ID='fi_'+idx;return buildSearchIndex(normalizeRowPhotoFields(item));}); 
+            avOpenInventory = (merged.avOpenData || []).map((item,idx)=>{item.DOM_ID='avo_'+(item.UNIQUE_ID || idx);return buildSearchIndex(normalizeRowPhotoFields(item));}); 
+            requestsInventory = (merged.requestsData || []).map((item,idx)=>{item.DOM_ID='req_'+item.UNIQUE_ID;return buildSearchIndex(normalizeRowPhotoFields(item));}); 
+            salesOfficeInventory = (merged.salesOfficeData || []).map((item, idx) => {
                 item.DOM_ID = 'so_' + item.UNIQUE_ID;
                 let masterItem = fullInventory.find(i => i.UNIQUE_ID === item.UNIQUE_ID);
                 if (masterItem) { 
@@ -1749,7 +2058,7 @@
                 buildSearchIndex(item);
                 return item;
             });
-            socInventory = (res.socData || []).map(item => buildSearchIndex(normalizeRowPhotoFields(item)));
+            socInventory = (merged.socData || []).map(item => buildSearchIndex(normalizeRowPhotoFields(item)));
             lowStockInventory = fullInventory.filter(i=>{
                 let ptr=parseInt(String(i.PTRAVAILABLE).replace(/,/g,''))||0; 
                 let slts=parseInt(String(i.S_LTS).replace(/,/g,''))||0; 
@@ -1822,7 +2131,7 @@
                 buildSearchIndex(item);
             });
             
-            reservesInventory = (res.reservesData || []).map((item,idx)=>{ 
+            reservesInventory = (merged.reservesData || []).map((item,idx)=>{ 
                 item.DOM_ID='res_'+idx; 
                 item.UNIQUE_ID=item.UNIQUE_ID||'res_uid_'+idx; 
                 let resCode=String(item.ITEMCODE||item.ITEM||"").trim().toUpperCase(); 
@@ -2113,13 +2422,14 @@
         function selectAvResSize(size) { selectedAvResSize=size; avResLevel=2; renderAV(); }
 
         function renderAV() {
+            if (ensureViewDataForRender('av')) return;
             const container = document.getElementById('av-content'); 
             const crumb = document.getElementById('av-crumb'); 
             const term = document.getElementById('av-search').value.toLowerCase().trim(); 
 
             let items = [];
             if (activeAVTab === 'open') { 
-                items = fullInventory.filter(i => {
+                items = (isDatasetLoaded('avOpen', 'initial') ? avOpenInventory : fullInventory).filter(i => {
                     let lts = Number(String(i.S_LTS || '0').replace(/,/g, ''));
                     let season = String(i.SEASON || '').toUpperCase();
                     return lts > 0 && !season.includes('Y') && !season.includes('Z');
@@ -2232,6 +2542,7 @@
         }
 
         function renderDocks() {
+            if (ensureViewDataForRender('docks')) return;
             const container = document.getElementById('docks-content'); const crumb = document.getElementById('docks-crumb'); const term = document.getElementById('docks-search').value.toLowerCase().trim();
             let items = safeRole === 'SALESREP' ? socInventory.filter(i => isMyRep(i.SALESREPNAME || i.SALESREPID)) : socInventory;
             if(term) { items = filterBySearch(items, term, 'docks'); }
@@ -2370,7 +2681,7 @@
                     if(cb){ cb.checked=!cb.checked; toggleGlobalItem(domId,cb.checked); } 
                 } 
             }else{ 
-                let item=fullInventory.find(i=>i.UNIQUE_ID===uniqueId)||lowStockInventory.find(i=>i.UNIQUE_ID===uniqueId)||reservesInventory.find(i=>i.UNIQUE_ID===uniqueId)||requestsInventory.find(i=>i.UNIQUE_ID===uniqueId)||socInventory.find(i=>i.UNIQUE_ID===uniqueId); 
+                let item=findItemByUniqueId(uniqueId); 
                 if(sourceView==='av'){
                     openAvGallery(item);
                 }else if(safeRole==='SALESREP'&&sourceView==='drive'){ 
@@ -2391,7 +2702,7 @@
 
         function openDetail(uid, sourceView) {
             lastView = sourceView;
-            activeItem = fullInventory.find(i=>i.UNIQUE_ID===uid) || lowStockInventory.find(i=>i.UNIQUE_ID===uid) || reservesInventory.find(i=>i.UNIQUE_ID===uid) || requestsInventory.find(i=>i.UNIQUE_ID===uid) || socInventory.find(i=>i.UNIQUE_ID===uid);
+            activeItem = findItemByUniqueId(uid);
             if(!activeItem) return;
 
             ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-docks','view-request','view-reserves','view-av', 'view-hours'].forEach(id=>{
@@ -2662,6 +2973,7 @@
         }
 
         function renderSalesOffice() {
+            if (ensureViewDataForRender('sales-office')) return;
             const container = document.getElementById('sales-office-content');
             if (!container) return;
             if (salesOfficeInventory.length === 0) {
@@ -2685,6 +2997,7 @@
         }
 
         function renderLowStock() {
+            if (ensureViewDataForRender('low-stock')) return;
             const container = document.getElementById('low-stock-content');
             const crumb = document.getElementById('low-stock-crumb');
             if (!container) return;
@@ -2700,6 +3013,7 @@
         }
 
         function renderRequest() {
+            if (ensureViewDataForRender('request')) return;
             const container = document.getElementById('request-content');
             const crumb = document.getElementById('request-crumb');
             
@@ -3250,7 +3564,7 @@
             let container=document.getElementById('ec-list-container');
             let html="";
             selectedItems.forEach(dId=>{
-                let item=fullInventory.find(i=>i.DOM_ID===dId);
+                let item=findItemByDomId(dId);
                 if(item){
                     let safeUidHtml=esc(item.UNIQUE_ID);
                     html+=`<div class="bg-yellow-50 p-3 rounded-lg border border-yellow-200 shadow-sm mb-2 flex flex-col gap-2"><div class="flex-grow min-w-0"><div class="text-sm font-bold text-gray-800">${item.COMMONNAME||'Unknown'}</div><div class="text-[11px] text-gray-500 font-semibold">${item.CONTSIZE||'-'} | Loc: ${item.LOCATIONCODE||'-'}</div></div><div class="grid grid-cols-2 gap-2"><div><label class="text-[9px] font-bold text-gray-500 uppercase ml-1">QTY</label><input type="number" class="ec-qty-input w-full p-2 border border-yellow-300 rounded-md text-sm font-bold focus:border-yellow-500 focus:outline-none" placeholder="Qty" data-uid="${safeUidHtml}"></div><div><label class="text-[9px] font-bold text-gray-500 uppercase ml-1">Level</label><input type="text" class="ec-level-input w-full p-2 border border-yellow-300 rounded-md text-sm font-bold focus:border-yellow-500 focus:outline-none" placeholder="e.g. Top, Level 1" data-uid="${safeUidHtml}"></div></div></div>`
@@ -3274,7 +3588,7 @@
             });
             const domIds=Array.from(selectedItems);
             domIds.forEach(dId=>{
-                let item=fullInventory.find(i=>i.DOM_ID===dId);
+                let item=findItemByDomId(dId);
                 if(item){
                     let dataObj=itemsData[item.UNIQUE_ID]||{};
                     item.END_CAP_FOLDER=folder;
@@ -3459,7 +3773,7 @@
             let container=document.getElementById('qty-list-container');
             let html="";
             selectedItems.forEach(dId=>{
-                let item=fullInventory.find(i=>i.DOM_ID===dId)||lowStockInventory.find(i=>i.DOM_ID===dId)||reservesInventory.find(i=>i.DOM_ID===dId);
+                let item=findItemByDomId(dId);
                 if(item){
                     let safeUidHtml=esc(item.UNIQUE_ID);
                     const isTree=item.PLANTGROUPCODE&&String(item.PLANTGROUPCODE).includes('330_TREES');
@@ -3485,7 +3799,7 @@
             const domIds=Array.from(selectedItems);
             let promises=[];
             domIds.forEach(dId=>{
-                let item=fullInventory.find(i=>i.DOM_ID===dId)||lowStockInventory.find(i=>i.DOM_ID===dId);
+                let item=findItemByDomId(dId);
                 if(item){
                     item.ASSIGNEDTO=user;
                     item.DATE_COMPLETED="";
@@ -3523,7 +3837,7 @@
             const uuidGen=()=>Date.now().toString(36)+Math.random().toString(36).substring(2);
             let insertPayloads=[];
             domIds.forEach(dId=>{
-                let item=fullInventory.find(i=>i.DOM_ID===dId)||lowStockInventory.find(i=>i.DOM_ID===dId)||reservesInventory.find(i=>i.DOM_ID===dId);
+                let item=findItemByDomId(dId);
                 if(item){
                     let dataObj=itemsDataObj[item.UNIQUE_ID]||{};
                     let newReqId='REQ-'+uuidGen();
@@ -3594,7 +3908,7 @@
         function getSelectedItemsText(tabType) {
             let items=[];
             selectedItems.forEach(domId=>{
-                let found=fullInventory.find(i=>i.DOM_ID===domId)||lowStockInventory.find(i=>i.DOM_ID===domId)||reservesInventory.find(i=>i.DOM_ID===domId)||requestsInventory.find(i=>i.DOM_ID===domId)||socInventory.find(i=>i.DOM_ID===domId);
+                let found=findItemByDomId(domId);
                 if(found)items.push(found)
             });
             let returnText="";
@@ -3736,6 +4050,7 @@
         function backToDriveSizes() { driveViewLevel = 1; selectedDriveSize = null; renderDrive() }
 
        function renderDrive() {
+            if (ensureViewDataForRender('drive')) return;
             const container = document.getElementById('drive-content'); 
             const filtersDiv = document.getElementById('drive-season-filters'); 
             const crumb = document.getElementById('drive-crumb'); 
@@ -3872,6 +4187,7 @@
         }
 
         function renderTasks() {
+            if (ensureViewDataForRender('tasks')) return;
             let targetUser = safeRole === 'ADMIN' ? taskViewTargetUser : currentUser;
             if(!targetUser) return;
             const container = document.getElementById('task-content');
@@ -3936,6 +4252,7 @@
         }
 
         function renderReserves() {
+            if (ensureViewDataForRender('reserves')) return;
             const container = document.getElementById('reserves-content');
             const crumb = document.getElementById('reserves-crumb');
             if (!container || !crumb) return;
@@ -3975,6 +4292,7 @@
         }
 
         function renderReports() {
+            if (ensureViewDataForRender('reports')) return;
             const container = document.getElementById('reports-content');
             const crumb = document.getElementById('reports-crumb');
             if (!container) return;
@@ -4015,6 +4333,7 @@
         }
 
         function renderReview() {
+            if (ensureViewDataForRender('review')) return;
             const container = document.getElementById('review-content');
             const crumb = document.getElementById('review-crumb');
             if(managerReviewInventory.length === 0){
@@ -4204,7 +4523,7 @@
 
                     if (prefix === 'req-' && itemToSave._SHOW_IN_AV) {
                         artifacts.avSyncMasterId = itemToSave.MASTER_ID || itemToSave.MASTER_UNIQUE_ID || itemToSave.master_id;
-                        artifacts.avSyncMasterItem = fullInventory.find(i => i.UNIQUE_ID === artifacts.avSyncMasterId);
+                        artifacts.avSyncMasterItem = findItemByUniqueId(artifacts.avSyncMasterId);
                         artifacts.avSyncPayload = {
                             av_note: setVal(itemToSave.AV_NOTE),
                             spec: setVal(itemToSave.REQ_SPEC || itemToSave.SPEC),
@@ -4325,7 +4644,7 @@
 
             for (let uid in pendingEdits) {
                 if (now - pendingEdits[uid].timestamp > 900000) { delete pendingEdits[uid]; changed = true; continue; }
-                let item = fullInventory.find(i => i.UNIQUE_ID === uid) || lowStockInventory.find(i => i.UNIQUE_ID === uid) || reservesInventory.find(i => i.UNIQUE_ID === uid) || requestsInventory.find(i => i.UNIQUE_ID === uid) || managerReviewInventory.find(i => i.UNIQUE_ID === uid) || socInventory.find(i => i.UNIQUE_ID === uid);
+                let item = findItemByUniqueId(uid);
                 if (item) { Object.assign(item, pendingEdits[uid].data); }
             }
             if (changed) { localStorage.setItem('gnc_pending_edits', JSON.stringify(pendingEdits)); }
@@ -4333,6 +4652,10 @@
 
         function filterAvNotes(prefix) {
             if (!activeItem) return;
+            if (!isDatasetLoaded('avNotes', 'initial')) {
+                ensureDatasetLoaded('avNotes', 'full').then(() => filterAvNotes(prefix)).catch(() => {});
+                return;
+            }
             const inputEl = document.getElementById(prefix + 'av-note');
             if (!inputEl) return;
             const inputVal = inputEl.value.toUpperCase();
