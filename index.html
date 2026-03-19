@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+D<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -1745,10 +1745,9 @@
             });
             const cameraEl = document.getElementById(config.cameraId);
             if (cameraEl) {
-                cameraEl.classList.toggle('opacity-50', locked);
-                cameraEl.classList.toggle('pointer-events-none', locked);
+                cameraEl.classList.remove('opacity-50', 'pointer-events-none');
                 const fileInput = cameraEl.querySelector('input[type="file"]');
-                if (fileInput) fileInput.disabled = locked;
+                if (fileInput) fileInput.disabled = false;
             }
         }
 
@@ -4682,11 +4681,6 @@
             }
             if (navigator.onLine === false) {
                 showToast('Offline', 'No service. Photo could not upload.', true);
-                input.value = '';
-                return;
-            }
-            if (sectionHasProtectedData(prefix) && !isProtectedUnlocked(prefix)) {
-                showToast('Locked', 'Press and hold unlock before changing protected photos.', true);
                 input.value = '';
                 return;
             }
