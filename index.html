@@ -169,13 +169,17 @@
             </div>
             <div id="step-2-cust" class="hidden flex flex-col text-left min-h-0">
                 <div class="flex items-center mb-4 border-b border-gray-100 pb-2">
-                    <i class="ph-bold ph-arrow-left text-gray-400 text-2xl mr-2 cursor-pointer p-1" onclick="document.getElementById('step-2-cust').classList.add('hidden'); document.getElementById('step-1-rep').classList.remove('hidden');"></i>
+                    <i class="ph-bold ph-arrow-left text-gray-400 text-2xl mr-2 cursor-pointer p-1" onclick="goBackFromCustomerStep()"></i>
                     <h3 class="font-bold text-lg text-orange-600">Customer</h3>
                 </div>
-                <label class="text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Customer / Consignee</label>
+                <label id="request-customer-label" class="text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Customer / Consignee</label>
                 <input type="text" id="cust-search-input" class="input-field mb-2 border-orange-200" placeholder="Search customer..." oninput="debouncedPopulateCustomerList()">
-                <div id="cust-list-container" class="grid grid-cols-1 gap-2 mb-6 max-h-[34vh] overflow-y-auto px-1 py-1"></div>
-                <button class="w-full bg-orange-600 text-white font-bold p-4 rounded-xl shadow-lg mt-auto" onclick="processCustStep()">NEXT: ITEM DETAILS</button>
+                <div id="cust-list-container" class="grid grid-cols-1 gap-2 mb-4 max-h-[28vh] overflow-y-auto px-1 py-1"></div>
+                <div id="quick-consignee-wrap" class="hidden mb-5">
+                    <label class="text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Consignee Name</label>
+                    <input type="text" id="quick-consignee-input" class="input-field border-orange-200" placeholder="Enter consignee name (optional)">
+                </div>
+                <button id="request-customer-next-btn" class="w-full bg-orange-600 text-white font-bold p-4 rounded-xl shadow-lg mt-auto" onclick="processCustStep()">NEXT: ITEM DETAILS</button>
             </div>
             <div id="step-3-qty" class="hidden flex flex-col text-left h-full">
                 <div class="flex items-center mb-4 border-b border-gray-100 pb-2">
@@ -185,7 +189,7 @@
                 <div id="qty-list-container" class="flex flex-col gap-3 overflow-y-auto max-h-[50vh] mb-4 p-1"></div>
                 <button class="w-full bg-[#007a4d] text-white font-bold p-4 rounded-xl shadow-lg mt-auto" onclick="submitRequestWithQtys()">SUBMIT REQUEST</button>
             </div>
-            <button class="text-gray-500 font-bold py-2 px-4 mt-2" onclick="document.getElementById('request-rep-modal').classList.add('hidden')">Cancel</button>
+            <button class="text-gray-500 font-bold py-2 px-4 mt-2" onclick="closeRequestModal()">Cancel</button>
         </div>
     </div>
     <div id="app-wrapper" class="hidden h-full flex flex-col">
@@ -366,6 +370,7 @@
                         <div id="tab-drive-name" class="task-tab active" onclick="setDriveTab('name')">By Name</div>
                         <div id="tab-drive-loc" class="task-tab" onclick="setDriveTab('loc')">By Location</div>
                     </div>
+                    <div id="drive-quick-request-bar" class="hidden mb-3"></div>
                     <div class="flex overflow-x-auto scrollbar-none gap-2 mb-3 pb-1" id="drive-season-filters"></div>
                     <div id="drive-crumb" class="text-xs font-bold text-[#007a4d] mb-3 empty:hidden"></div>
                     <div id="drive-content"></div>
@@ -1235,7 +1240,7 @@
         let activeAVTab='open'; let activeAvOpenTab='name'; let avOpenLevel=0; let selectedAvOpenName=null; let selectedAvOpenSize=null; let selectedAvOpenSeason=null; let selectedAvOpenLot=null; let avResLevel=0; let selectedAvResName=null; let selectedAvResSize=null;
         
         let lowStockViewLevel=0; let selectedLowStockName=null; let selectedLowStockSize=null; let reviewViewLevel=0; let selectedReviewItemCode=null; let selectedReviewCommonName=null; let selectedReviewContSize=null;
-        let requestViewLevel=0; let reservesViewLevel=0; let reportViewLevel=0; let activeReqTab="pending"; let selectedReqRep=null; let selectedReqRepStatus=null; let selectedReqFolder=null; let tempSelectedReqRep=""; let tempReqFolder=null; let tempReqCust=null; let previousReqStep="";
+        let requestViewLevel=0; let reservesViewLevel=0; let reportViewLevel=0; let activeReqTab="pending"; let selectedReqRep=null; let selectedReqRepStatus=null; let selectedReqFolder=null; let tempSelectedReqRep=""; let tempReqFolder=null; let tempReqCust=null; let previousReqStep=""; let driveQuickRequestItems=new Set(); let driveQuickRequestFlow=false;
         let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqFolderView=null; let selectedReqStatus='Pending';
         let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pendingDockNum=null; let selectedDockName=null; let selectedDockSize=null; let selectedDockItemCode=null; let selectedDockCustomer=""; let selectedDockTrip=""; let selectedDockRep=""; let lastSyncTime=new Date().toISOString();
         let lastSuccessfulSyncTime = "";
@@ -1656,8 +1661,11 @@
         let activeReportTab = 'ALL';
         let protectedEditState = {};
         let protectedUnlockTimers = {};
+        let photoDeletePressTimers = {};
+        let photoDeleteLongPressFired = false;
         let searchRenderFrame = {};
         let searchRenderTimer = {};
+        const PROTECTED_UNLOCK_USERS = new Set(['dylan', 'jd', 'morgan', 'kayla']);
         const PROTECTED_EDIT_CONFIG = {
             'ssn-': { containerId: 'det-season-content', cameraId: 'camera-btn-ssn', photoField: 'SAVED_PHOTO_LINK', photoNameField: 'SAVED_PHOTO_NAME', inputIds: ['ssn-av-note', 'ssn-spec', 'ssn-caliper'] },
             'lsn-': { containerId: 'det-location-content', cameraId: 'camera-btn-lsn', photoField: 'SAVED_PHOTO_LINK', photoNameField: 'SAVED_PHOTO_NAME', inputIds: ['lsn-av-note', 'lsn-spec', 'lsn-caliper'] },
@@ -1666,6 +1674,160 @@
             'dock-': { containerId: 'det-docks-content', cameraId: 'camera-btn-dock', photoField: 'DOCK_PHOTO_LINK', photoNameField: 'DOCK_PHOTO_NAME', inputIds: ['dock-spec', 'dock-caliper'] },
             'flyer-': { containerId: 'det-flyer-content', cameraId: 'camera-btn-flyer', photoField: 'FLYER_PHOTO_LINK', photoNameField: 'FLYER_PHOTO_NAME', inputIds: [] }
         };
+
+        function getProtectedUserTokens() {
+            const rawValues = [currentUser, currentUserDisplay].map(value => String(value || '').toLowerCase().trim()).filter(Boolean);
+            const tokens = new Set();
+            rawValues.forEach(value => {
+                tokens.add(value);
+                value.split(/[^a-z0-9]+/).filter(Boolean).forEach(token => tokens.add(token));
+            });
+            return tokens;
+        }
+
+        function canUnlockProtectedData() {
+            const tokens = getProtectedUserTokens();
+            for (const token of tokens) {
+                if (PROTECTED_UNLOCK_USERS.has(token)) return true;
+            }
+            return false;
+        }
+
+        function canShareRequestFolders() {
+            const tokens = getProtectedUserTokens();
+            return tokens.has('dylan') || tokens.has('jd');
+        }
+
+        function canUseDriveQuickRequest() {
+            const tokens = getProtectedUserTokens();
+            return tokens.has('dylan') || tokens.has('jd');
+        }
+
+        function isQuickDriveRequestMode() {
+            return driveQuickRequestFlow;
+        }
+
+        function buildRequestCustomerValue(customer, consignee = '') {
+            const cleanCustomer = String(customer || '').trim();
+            const cleanConsignee = String(consignee || '').trim();
+            if (!cleanCustomer) return '';
+            return cleanConsignee && cleanConsignee.toLowerCase() !== cleanCustomer.toLowerCase() ? `${cleanCustomer} | ${cleanConsignee}` : cleanCustomer;
+        }
+
+        function resetQuickDriveRequestState() {
+            driveQuickRequestFlow = false;
+            const consigneeInput = document.getElementById('quick-consignee-input');
+            if (consigneeInput) consigneeInput.value = '';
+        }
+
+        function renderDriveQuickRequestBar() {
+            const bar = document.getElementById('drive-quick-request-bar');
+            if (!bar) return;
+            const validIds = Array.from(driveQuickRequestItems).filter(domId => !!findItemByDomId(domId));
+            if (validIds.length !== driveQuickRequestItems.size) driveQuickRequestItems = new Set(validIds);
+            if (!canUseDriveQuickRequest() || activeDriveMode !== 'ok' || driveQuickRequestItems.size === 0) {
+                bar.classList.add('hidden');
+                bar.innerHTML = '';
+                return;
+            }
+            const count = driveQuickRequestItems.size;
+            bar.innerHTML = `<div class="bg-orange-50 border border-orange-200 rounded-xl p-3 flex items-center justify-between gap-3"><div><div class="text-[10px] font-black text-orange-700 uppercase tracking-wider">Drive Request Builder</div><div class="text-sm font-bold text-orange-900">${count} row${count === 1 ? '' : 's'} ready for Request</div></div><div class="flex gap-2 shrink-0"><button class="bg-white border border-orange-200 text-orange-700 text-[10px] font-black uppercase tracking-wider px-3 py-2 rounded-lg" onclick="clearDriveQuickRequestItems()">Clear</button><button class="bg-orange-600 text-white text-[10px] font-black uppercase tracking-wider px-3 py-2 rounded-lg shadow-sm" onclick="openDriveQuickRequestModal()">Create Request</button></div></div>`;
+            bar.classList.remove('hidden');
+        }
+
+        function toggleDriveQuickRequestItem(domId) {
+            if (!canUseDriveQuickRequest()) return;
+            if (!findItemByDomId(domId)) return;
+            if (driveQuickRequestItems.has(domId)) driveQuickRequestItems.delete(domId);
+            else driveQuickRequestItems.add(domId);
+            const driveView = document.getElementById('view-drive');
+            if (driveView && !driveView.classList.contains('hidden')) renderDrive();
+            else renderDriveQuickRequestBar();
+        }
+
+        function clearDriveQuickRequestItems(silent = false) {
+            const hadItems = driveQuickRequestItems.size > 0;
+            driveQuickRequestItems.clear();
+            const driveView = document.getElementById('view-drive');
+            if (driveView && !driveView.classList.contains('hidden')) renderDrive();
+            else renderDriveQuickRequestBar();
+            if (!silent && hadItems) showToast('Cleared', 'Drive request rows cleared.');
+        }
+
+        function openDriveQuickRequestModal() {
+            if (!canUseDriveQuickRequest()) return;
+            if (!driveQuickRequestItems.size) {
+                showToast('Select Rows', 'Add one or more Drive rows first.', true);
+                return;
+            }
+            driveQuickRequestFlow = true;
+            showRequestModalBase();
+        }
+
+        function configureRequestCustomerStep() {
+            const label = document.getElementById('request-customer-label');
+            const nextBtn = document.getElementById('request-customer-next-btn');
+            const quickWrap = document.getElementById('quick-consignee-wrap');
+            if (label) label.innerText = isQuickDriveRequestMode() ? 'Customer Name' : 'Customer / Consignee';
+            if (nextBtn) nextBtn.innerText = isQuickDriveRequestMode() ? 'CREATE QUICK REQUEST' : 'NEXT: ITEM DETAILS';
+            if (quickWrap) quickWrap.classList.toggle('hidden', !isQuickDriveRequestMode());
+        }
+
+        function showRequestModalBase() {
+            tempSelectedReqRep = '';
+            tempReqFolder = null;
+            tempReqCust = null;
+            previousReqStep = '';
+            document.getElementById('step-1-rep').classList.remove('hidden');
+            document.getElementById('step-1.5-folder').classList.add('hidden');
+            document.getElementById('step-2-cust').classList.add('hidden');
+            document.getElementById('step-3-qty').classList.add('hidden');
+            document.getElementById('request-rep-modal').classList.remove('hidden');
+            document.getElementById('rep-search-input').value = '';
+            document.getElementById('cust-search-input').value = '';
+            configureRequestCustomerStep();
+            filterRepList();
+        }
+
+        function closeRequestModal() {
+            document.getElementById('request-rep-modal').classList.add('hidden');
+            document.getElementById('step-1-rep').classList.remove('hidden');
+            document.getElementById('step-1.5-folder').classList.add('hidden');
+            document.getElementById('step-2-cust').classList.add('hidden');
+            document.getElementById('step-3-qty').classList.add('hidden');
+            document.getElementById('rep-search-input').value = '';
+            document.getElementById('cust-search-input').value = '';
+            tempSelectedReqRep = '';
+            tempReqFolder = null;
+            tempReqCust = null;
+            previousReqStep = '';
+            resetQuickDriveRequestState();
+            configureRequestCustomerStep();
+            renderDriveQuickRequestBar();
+        }
+
+        function showRequestCustomerStep(fromStepId = 'step-1-rep') {
+            previousReqStep = fromStepId;
+            document.getElementById('step-1-rep').classList.add('hidden');
+            document.getElementById('step-1.5-folder').classList.add('hidden');
+            document.getElementById('step-2-cust').classList.remove('hidden');
+            document.getElementById('cust-search-input').value = '';
+            const consigneeInput = document.getElementById('quick-consignee-input');
+            if (consigneeInput) consigneeInput.value = '';
+            configureRequestCustomerStep();
+            populateCustomerList();
+        }
+
+        function goBackFromCustomerStep() {
+            document.getElementById('step-2-cust').classList.add('hidden');
+            const targetStep = !isQuickDriveRequestMode() && previousReqStep === 'step-1.5-folder' ? 'step-1.5-folder' : 'step-1-rep';
+            document.getElementById(targetStep).classList.remove('hidden');
+        }
+
+        function getRequestSourceDomIds() {
+            const domIds = isQuickDriveRequestMode() ? Array.from(driveQuickRequestItems) : Array.from(selectedItems);
+            return domIds.filter(domId => !!findItemByDomId(domId));
+        }
 
         function normalizeSearchValue(value) {
             return String(value || '').toLowerCase().trim();
@@ -1766,6 +1928,23 @@
             return [item.AV_NOTE, item.SPEC, item.CALIPER, item.SAVED_PHOTO_LINK].some(value => String(value || '').trim() !== '');
         }
 
+        function isProtectedSectionCompleted(prefix, item = activeItem) {
+            if (!item) return false;
+            if (prefix === 'req-') return String(item.REQ_STATUS || '').toUpperCase() === 'COMPLETE';
+            if (prefix === 'flyer-') return String(item.FLYER_COMPLETED || item.DATE_COMPLETED || '').trim() !== '';
+            return String(item.DATE_COMPLETED || '').trim() !== '';
+        }
+
+        function isProtectedSectionLocked(prefix, item = activeItem) {
+            return isProtectedSectionCompleted(prefix, item) && sectionHasProtectedData(prefix, item);
+        }
+
+        function canRemoveProtectedPhoto(prefix, item = activeItem) {
+            if (!item) return false;
+            if (!isProtectedSectionCompleted(prefix, item)) return true;
+            return canUnlockProtectedData();
+        }
+
         function isProtectedUnlocked(prefix) {
             return !!protectedEditState[prefix];
         }
@@ -1800,22 +1979,24 @@
         function renderProtectedControls(prefix) {
             const bar = ensureProtectedControl(prefix);
             if (!bar) return;
-            if (!sectionHasProtectedData(prefix)) {
+            if (!isProtectedSectionLocked(prefix)) {
                 bar.classList.add('hidden');
                 return;
             }
             bar.classList.remove('hidden');
             if (isProtectedUnlocked(prefix)) {
-                bar.innerHTML = `<div class="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center justify-between gap-3"><div><div class="text-[10px] font-black text-amber-700 uppercase tracking-wider">Protected Data Unlocked</div><div class="text-xs font-semibold text-amber-900">Protected fields and photos stay editable for 90 seconds.</div></div><button class="bg-amber-600 text-white text-[10px] font-black uppercase tracking-wider px-4 py-2 rounded-lg shadow-sm" onclick="lockProtectedSection('${prefix}')">LOCK NOW</button></div>`;
+                bar.innerHTML = `<div class="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center justify-between gap-3"><div><div class="text-[10px] font-black text-amber-700 uppercase tracking-wider">Protected Data Unlocked</div><div class="text-xs font-semibold text-amber-900">Completed data stays editable for 90 seconds.</div></div><button class="bg-amber-600 text-white text-[10px] font-black uppercase tracking-wider px-4 py-2 rounded-lg shadow-sm" onclick="lockProtectedSection('${prefix}')">LOCK NOW</button></div>`;
+            } else if (!canUnlockProtectedData()) {
+                bar.innerHTML = `<div class="bg-gray-50 border border-gray-200 rounded-xl p-3"><div class="text-[10px] font-black text-gray-600 uppercase tracking-wider">Protected After Done</div><div class="text-xs font-semibold text-gray-700 mt-1">Only Dylan, JD, Morgan, or Kayla can unlock completed data. Photos can be removed with a long press before Done.</div></div>`;
             } else {
-                bar.innerHTML = `<div class="bg-gray-50 border border-gray-200 rounded-xl p-3 flex items-center justify-between gap-3"><div><div class="text-[10px] font-black text-gray-600 uppercase tracking-wider">Protected Data Locked</div><div class="text-xs font-semibold text-gray-700">Press and hold to intentionally unlock AV, spec, caliper, or photo changes.</div></div><button class="bg-[#007a4d] text-white text-[10px] font-black uppercase tracking-wider px-4 py-2 rounded-lg shadow-sm active:scale-95" onmousedown="startProtectedUnlock('${prefix}')" onmouseup="cancelProtectedUnlock('${prefix}')" onmouseleave="cancelProtectedUnlock('${prefix}')" ontouchstart="startProtectedUnlock('${prefix}')" ontouchend="cancelProtectedUnlock('${prefix}')" ontouchcancel="cancelProtectedUnlock('${prefix}')">PRESS & HOLD</button></div>`;
+                bar.innerHTML = `<div class="bg-gray-50 border border-gray-200 rounded-xl p-3 flex items-center justify-between gap-3"><div><div class="text-[10px] font-black text-gray-600 uppercase tracking-wider">Protected After Done</div><div class="text-xs font-semibold text-gray-700">Press and hold to unlock completed AV, spec, or caliper changes.</div></div><button class="bg-[#007a4d] text-white text-[10px] font-black uppercase tracking-wider px-4 py-2 rounded-lg shadow-sm active:scale-95" onmousedown="startProtectedUnlock('${prefix}')" onmouseup="cancelProtectedUnlock('${prefix}')" onmouseleave="cancelProtectedUnlock('${prefix}')" ontouchstart="startProtectedUnlock('${prefix}')" ontouchend="cancelProtectedUnlock('${prefix}')" ontouchcancel="cancelProtectedUnlock('${prefix}')">PRESS & HOLD</button></div>`;
             }
         }
 
         function applyProtectedEditState(prefix) {
             const config = getProtectedEditConfig(prefix);
             if (!config) return;
-            const locked = sectionHasProtectedData(prefix) && !isProtectedUnlocked(prefix);
+            const locked = isProtectedSectionLocked(prefix) && !isProtectedUnlocked(prefix);
             renderProtectedControls(prefix);
             config.inputIds.forEach(id => {
                 const el = document.getElementById(id);
@@ -1837,6 +2018,10 @@
         }
 
         function unlockProtectedSection(prefix) {
+            if (!canUnlockProtectedData()) {
+                showToast('Restricted', 'Only Dylan, JD, Morgan, or Kayla can unlock completed data.', true);
+                return;
+            }
             protectedEditState[prefix] = true;
             clearProtectedTimers(prefix);
             protectedUnlockTimers[prefix] = setTimeout(() => lockProtectedSection(prefix, true), 90000);
@@ -1852,7 +2037,11 @@
         }
 
         function startProtectedUnlock(prefix) {
-            if (!sectionHasProtectedData(prefix)) return;
+            if (!isProtectedSectionLocked(prefix)) return;
+            if (!canUnlockProtectedData()) {
+                showToast('Restricted', 'Only Dylan, JD, Morgan, or Kayla can unlock completed data.', true);
+                return;
+            }
             const holdKey = `${prefix}hold`;
             if (protectedUnlockTimers[holdKey]) clearTimeout(protectedUnlockTimers[holdKey]);
             protectedUnlockTimers[holdKey] = setTimeout(() => {
@@ -1866,6 +2055,46 @@
             if (protectedUnlockTimers[holdKey]) {
                 clearTimeout(protectedUnlockTimers[holdKey]);
                 delete protectedUnlockTimers[holdKey];
+            }
+        }
+
+        function startPhotoDeletePress(event, prefix, photoIndex) {
+            if (!activeItem) return;
+            if (event && event.touches && event.touches.length > 1) return;
+            const key = `${prefix}${photoIndex}`;
+            cancelPhotoDeletePress(prefix, photoIndex);
+            photoDeleteLongPressFired = false;
+            photoDeletePressTimers[key] = setTimeout(() => {
+                delete photoDeletePressTimers[key];
+                photoDeleteLongPressFired = true;
+                promptPhotoDelete(prefix, photoIndex);
+            }, 750);
+        }
+
+        function cancelPhotoDeletePress(prefix, photoIndex) {
+            const key = `${prefix}${photoIndex}`;
+            if (photoDeletePressTimers[key]) {
+                clearTimeout(photoDeletePressTimers[key]);
+                delete photoDeletePressTimers[key];
+            }
+        }
+
+        function handlePhotoThumbClick(link, title) {
+            if (photoDeleteLongPressFired) {
+                photoDeleteLongPressFired = false;
+                return;
+            }
+            openPhotoModal(link, title);
+        }
+
+        function promptPhotoDelete(prefix, photoIndex) {
+            if (!activeItem) return;
+            if (!canRemoveProtectedPhoto(prefix)) {
+                showToast('Restricted', 'Only Dylan, JD, Morgan, or Kayla can remove photos after Done.', true);
+                return;
+            }
+            if (confirm('Delete this photo from this row?')) {
+                removePhotoAtIndex(prefix, photoIndex, true);
             }
         }
 
@@ -3009,8 +3238,9 @@
                         if(m) c = m[1];
                         if(c.startsWith('http')) {
                             let thumb = getDirectImageUrl(c);
-                            const canRemove = allowRemove && isProtectedUnlocked(prefix);
-                            html += `<div class="relative shrink-0"><img src="${thumb}" class="w-20 h-20 object-cover rounded-lg border border-gray-300 cursor-pointer shadow-sm active:scale-95" onclick="openPhotoModal('${link}', '${title}')">${canRemove ? `<button class="absolute -top-2 -right-2 bg-red-600 text-white w-6 h-6 rounded-full text-[11px] font-black shadow-md" onclick="event.stopPropagation(); removePhotoAtIndex('${prefix}', ${idx})">X</button>` : ''}</div>`;
+                            const pressAttrs = allowRemove ? ` oncontextmenu="event.preventDefault(); return false;" onmousedown="startPhotoDeletePress(event, '${prefix}', ${idx})" onmouseup="cancelPhotoDeletePress('${prefix}', ${idx})" onmouseleave="cancelPhotoDeletePress('${prefix}', ${idx})" ontouchstart="startPhotoDeletePress(event, '${prefix}', ${idx})" ontouchend="cancelPhotoDeletePress('${prefix}', ${idx})" ontouchcancel="cancelPhotoDeletePress('${prefix}', ${idx})" ontouchmove="cancelPhotoDeletePress('${prefix}', ${idx})"` : '';
+                            const hintHtml = allowRemove ? `<div class="mt-1 text-[9px] font-bold text-gray-400 uppercase text-center">Hold to Delete</div>` : '';
+                            html += `<div class="relative shrink-0"><img src="${thumb}" class="w-20 h-20 object-cover rounded-lg border border-gray-300 cursor-pointer shadow-sm active:scale-95" onclick="handlePhotoThumbClick('${link}', '${title}')"${pressAttrs}>${hintHtml}</div>`;
                         }
                     });
                     html += `</div>`;
@@ -3031,12 +3261,12 @@
             refreshProtectedSections();
         }
 
-        function removePhotoAtIndex(prefix, photoIndex) {
+        function removePhotoAtIndex(prefix, photoIndex, skipPermissionCheck = false) {
             if (!activeItem) return;
             const config = getProtectedEditConfig(prefix);
             if (!config) return;
-            if (sectionHasProtectedData(prefix) && !isProtectedUnlocked(prefix)) {
-                showToast('Locked', 'Press and hold unlock before removing protected photos.', true);
+            if (!skipPermissionCheck && !canRemoveProtectedPhoto(prefix)) {
+                showToast('Restricted', 'Only Dylan, JD, Morgan, or Kayla can remove photos after Done.', true);
                 return;
             }
 
@@ -3197,23 +3427,23 @@
         }
 
         function getRequestAssignedRep(item) {
-            return String(item.SALESREPNAME || item.SALESREP || item.REQUESTED_BY || item.SALESREPID || 'Unknown Rep').trim() || 'Unknown Rep';
+            return String(item.REQUESTED_BY || item.SALESREPNAME || item.SALESREP || item.SALESREPID || 'Unknown Rep').trim() || 'Unknown Rep';
         }
 
         function getRequestCustomerConsigneeFolder(item) {
             const clean = (value) => String(value || '').trim();
-            let customer = clean(item.CUSTOMERNAME || item.CUSTOMER || '');
-            let consignee = clean(item.CONSIGNEENAME || item.CONSIGNEE || '');
-            if (!customer) {
-                const reqCustomer = clean(item.REQ_CUSTOMER || '');
+            const reqCustomer = clean(item.REQ_CUSTOMER || '');
+            if (reqCustomer) {
                 if (reqCustomer.includes('|')) {
                     const parts = reqCustomer.split('|').map(part => part.trim()).filter(Boolean);
-                    customer = parts[0] || '';
-                    consignee = consignee || parts[1] || '';
-                } else {
-                    customer = reqCustomer;
+                    const customer = parts[0] || 'Unknown Customer';
+                    const consignee = parts[1] || '';
+                    return consignee && consignee !== customer ? `${customer}-${consignee}` : customer;
                 }
+                return reqCustomer;
             }
+            let customer = clean(item.CUSTOMERNAME || item.CUSTOMER || '');
+            let consignee = clean(item.CONSIGNEENAME || item.CONSIGNEE || '');
             if (!customer) customer = 'Unknown Customer';
             return consignee && consignee !== customer ? `${customer}-${consignee}` : customer;
         }
@@ -3312,7 +3542,10 @@
                     let html = `<div class="back-btn" onclick="requestViewLevel=1; renderRequest()"><i class="ph-bold ph-arrow-left"></i> Back to Status</div>`;
                     html += folders.map(f => {
                         let count = statusItems.filter(i => (selectedReqStatus === 'Complete' ? getRequestCustomerConsigneeFolder(i) : (i.REQUEST_FOLDER || 'Unassigned')) === f).length;
-                        return `<div class="bg-white border border-purple-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectedReqFolderView='${esc(f)}'; requestViewLevel=3; renderRequest()"><div class="flex items-center gap-3"><div class="bg-purple-50 p-2 rounded-lg"><i class="ph-fill ph-folder text-2xl text-purple-500"></i></div><span class="font-bold text-sm text-purple-800 break-all">${f}</span></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg min-w-max ml-2">${count} Items</span></div>`;
+                        const folderNote = getRequestFolderNote(f, selectedReqStatus, selectedReqRepView);
+                        const noteHtml = folderNote ? `<div class="mt-3 bg-amber-50 border border-amber-200 rounded-lg p-2 text-[11px] font-semibold text-amber-900 whitespace-pre-wrap"><span class="font-black uppercase text-[10px] tracking-wider text-amber-700">Folder Note</span><div class="mt-1">${esc(folderNote)}</div></div>` : '';
+                        const shareActions = canShareRequestFolders() ? `<div class="grid grid-cols-4 gap-2 mt-3"><button class="bg-white border border-purple-200 text-purple-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); shareRequestFolder('copy', '${esc(f)}', '${selectedReqStatus}', '${esc(selectedReqRepView)}')">Copy</button><button class="bg-white border border-indigo-200 text-indigo-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); shareRequestFolder('email', '${esc(f)}', '${selectedReqStatus}', '${esc(selectedReqRepView)}')">Email</button><button class="bg-white border border-emerald-200 text-emerald-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); shareRequestFolder('text', '${esc(f)}', '${selectedReqStatus}', '${esc(selectedReqRepView)}')">Text</button><button class="bg-white border border-amber-200 text-amber-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); setRequestFolderNote('${esc(f)}', '${selectedReqStatus}', '${esc(selectedReqRepView)}')">Note</button></div>` : '';
+                        return `<div class="bg-white border border-purple-200 rounded-xl shadow-sm mb-3 p-4 cursor-pointer active:scale-95 transition-transform" onclick="selectedReqFolderView='${esc(f)}'; requestViewLevel=3; renderRequest()"><div class="flex justify-between items-center"><div class="flex items-center gap-3 min-w-0"><div class="bg-purple-50 p-2 rounded-lg"><i class="ph-fill ph-folder text-2xl text-purple-500"></i></div><span class="font-bold text-sm text-purple-800 break-all">${f}</span></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg min-w-max ml-2">${count} Items</span></div>${noteHtml}${shareActions}</div>`;
                     }).join('');
                     container.innerHTML = html;
                 } else if (requestViewLevel === 3) {
@@ -3770,7 +4003,12 @@
             if(sourceView==='drive'||sourceView==='tasks'){
                 let noteHtml="";if(item.END_CAP_FOLDER&&String(item.END_CAP_FOLDER).trim()!==""){noteHtml+=`<div class="mt-2 text-[12px] text-yellow-800 bg-yellow-100 p-2 rounded border border-yellow-200 shadow-sm whitespace-pre-wrap"><span class="font-black">END CAP:</span> ${item.END_CAP_FOLDER} | QTY: ${item.END_CAP_QTY||'0'} | Lvl: ${item.END_CAP_LEVEL||'-'}</div>`}if(item.LOC_MATCH_QTY&&String(item.LOC_MATCH_QTY).trim()!==""&&Number(item.LOC_MATCH_QTY)>0){noteHtml+=`<div class="mt-2 text-[12px] text-green-800 bg-green-100 p-2 rounded border border-green-200 shadow-sm whitespace-pre-wrap"><span class="font-black">MATCH QTY:</span> ${item.LOC_MATCH_QTY}</div>`}if(item.AV_NOTE&&String(item.AV_NOTE).trim()!==""){noteHtml+=`<div class="mt-2 text-[12px] text-blue-800 bg-blue-100 p-2 rounded border border-blue-200 shadow-sm whitespace-pre-wrap"><span class="font-black">AV NOTE:</span> ${item.AV_NOTE}</div>`}if(item.FLYER_TITLE&&String(item.FLYER_TITLE).trim()!==""){noteHtml+=`<div class="mt-2 text-[12px] text-indigo-800 bg-indigo-100 p-2 rounded border border-indigo-200 shadow-sm whitespace-pre-wrap"><span class="font-black">FLYER:</span> ${item.FLYER_TITLE}</div>`}
                 let extraData="";if(sourceView==='tasks'||sourceView==='drive'){extraData=`<div class="mt-2 flex gap-2 text-[10px] font-bold text-gray-500 uppercase">${item.SPEC?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Spec: ${item.SPEC}</span>`:''}${item.CALIPER?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Cal: ${item.CALIPER}</span>`:''}${item.MATCH?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Match: ${item.MATCH}%</span>`:''}</div>`}
-                return `<div class="flex items-center w-full mb-3 item-row relative bg-white p-4 rounded-xl border border-gray-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm pointer-events-none" ${isChecked}></div><div class="flex flex-grow items-start justify-between min-w-0"><div class="flex-grow min-w-0 pr-2"><div class="font-black text-gray-800 text-[16px] leading-tight break-words mb-0.5">${item.COMMONNAME||'Unknown'}</div><div class="font-bold text-[#007a4d] text-sm mb-2">${item.CONTSIZE||'-'}</div><div class="text-[11px] font-mono text-gray-500 mb-2 flex items-center bg-gray-100 px-2 py-0.5 rounded w-max"><i class="ph-bold ph-barcode mr-1.5 text-gray-400"></i>${item.ITEMCODE||'-'}</div><div class="flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600"><span class="bg-gray-100 px-1.5 py-0.5 rounded">LOC AVA: <span class="text-gray-900">${item.PTRAVAILABLE||'0'}</span></span><span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">Loc: ${item.LOCATIONCODE||'No Loc'}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded">Lot: ${item.LOTCODE||'-'}</span><span class="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-100">s_LTS: ${item.S_LTS||'0'}</span><span class="bg-orange-50 text-orange-700 px-1.5 py-0.5 rounded border border-orange-100">Pri: ${item.PRIORITY||'-'}</span></div>${extraData}${noteHtml}</div>${thumbHtml}</div></div>`;
+                let quickRequestBtn="";
+                if(sourceView==='drive'&&canUseDriveQuickRequest()){
+                    const isQueued=driveQuickRequestItems.has(item.DOM_ID);
+                    quickRequestBtn=`<button class="mt-3 inline-flex items-center gap-2 ${isQueued?'bg-orange-600 text-white border border-orange-600':'bg-orange-50 text-orange-700 border border-orange-200'} font-black text-[10px] uppercase tracking-wider px-3 py-2 rounded-lg shadow-sm active:scale-95" onclick="event.stopPropagation(); toggleDriveQuickRequestItem('${item.DOM_ID}')"><i class="ph-bold ${isQueued?'ph-check':'ph-plus'} text-base"></i>${isQueued?'Added':'Add to Request'}</button>`;
+                }
+                return `<div class="flex items-center w-full mb-3 item-row relative bg-white p-4 rounded-xl border border-gray-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm pointer-events-none" ${isChecked}></div><div class="flex flex-grow items-start justify-between min-w-0"><div class="flex-grow min-w-0 pr-2"><div class="font-black text-gray-800 text-[16px] leading-tight break-words mb-0.5">${item.COMMONNAME||'Unknown'}</div><div class="font-bold text-[#007a4d] text-sm mb-2">${item.CONTSIZE||'-'}</div><div class="text-[11px] font-mono text-gray-500 mb-2 flex items-center bg-gray-100 px-2 py-0.5 rounded w-max"><i class="ph-bold ph-barcode mr-1.5 text-gray-400"></i>${item.ITEMCODE||'-'}</div><div class="flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600"><span class="bg-gray-100 px-1.5 py-0.5 rounded">LOC AVA: <span class="text-gray-900">${item.PTRAVAILABLE||'0'}</span></span><span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">Loc: ${item.LOCATIONCODE||'No Loc'}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded">Lot: ${item.LOTCODE||'-'}</span><span class="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-100">s_LTS: ${item.S_LTS||'0'}</span><span class="bg-orange-50 text-orange-700 px-1.5 py-0.5 rounded border border-orange-100">Pri: ${item.PRIORITY||'-'}</span></div>${extraData}${noteHtml}${quickRequestBtn}</div>${thumbHtml}</div></div>`;
             }
             
             return `<div class="flex items-center w-full mb-2 item-row overflow-hidden" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm pointer-events-none" ${isChecked}></div><div class="inv-card ${colorClass} flex items-start justify-between flex-grow !mb-0 transition-transform active:scale-[0.99]"><div class="flex-grow min-w-0 text-[#007a4d]"><div class="flex justify-between font-bold text-sm mb-1"><span class="truncate pr-2">${item.COMMONNAME||'Unknown'} | ${item.CONTSIZE||'-'} | Loc: ${item.LOCATIONCODE||'No Loc'}</span><span class="whitespace-nowrap bg-[#007a4d]/10 px-1.5 py-0.5 rounded text-xs border border-[#007a4d]/20 h-max">Pri: ${item.PRIORITY||'-'}</span></div><div class="text-[11px] font-semibold truncate mt-0.5">Tag: ${tagColor} | Lot: ${item.LOTCODE||'-'} | PTR-Ava: ${item.PTRAVAILABLE||'0'} | s_LTS: ${item.S_LTS||'0'} | Supply: ${item.SEASONSUPPLY||'0'}</div><div class="text-[11px] font-semibold truncate mt-0.5">Item: ${item.ITEMCODE||'-'}</div></div>${thumbHtml}</div></div>`;
@@ -3883,20 +4121,14 @@
         }
 
         function openRequestModal() {
+            resetQuickDriveRequestState();
+            showRequestModalBase();
             if(safeRole==='SALESREP'){
                 let parts=currentUser.split('_');
                 let first=parts[0].charAt(0).toUpperCase()+parts[0].slice(1);
                 let last=parts.length>1?parts[parts.length-1].charAt(0).toUpperCase()+parts[parts.length-1].slice(1):"";
                 selectRepForRequest(`${first} ${last}`);
-                return;
             }
-            document.getElementById('step-1-rep').classList.remove('hidden');
-            document.getElementById('step-1.5-folder').classList.add('hidden');
-            document.getElementById('step-2-cust').classList.add('hidden');
-            document.getElementById('step-3-qty').classList.add('hidden');
-            document.getElementById('request-rep-modal').classList.remove('hidden');
-            document.getElementById('rep-search-input').value="";
-            filterRepList()
         }
 
         const debouncedFilterRepList=debounce(()=>requestAnimationFrame(filterRepList),150);
@@ -3926,6 +4158,10 @@
             tempSelectedReqRep=repName;
             document.getElementById('step-1-rep').classList.add('hidden');
             document.getElementById('request-rep-modal').classList.remove('hidden');
+            if (isQuickDriveRequestMode()) {
+                showRequestCustomerStep('step-1-rep');
+                return;
+            }
             let repReqs=requestsInventory.filter(i=>i.REQUESTED_BY===repName&&!i.REQ_ARCHIVED);
             let uniqueFolders={};
             repReqs.forEach(i=>{if(i.REQUEST_FOLDER)uniqueFolders[i.REQUEST_FOLDER]=i.REQ_CUSTOMER||"Unknown"});
@@ -3943,12 +4179,10 @@
                     html+=`<button class="w-full bg-yellow-50 text-yellow-800 font-bold p-4 rounded-xl shadow-sm border border-yellow-200 mb-2 text-left flex items-center gap-3 active:bg-yellow-100 transition-colors" onclick="goToQtyStep('${esc(fk)}', '${esc(uniqueFolders[fk])}', 'step-1.5-folder')"><i class="ph-fill ph-folder text-2xl text-yellow-500"></i><div class="flex flex-col min-w-0"><span class="text-sm truncate">${fLabel}</span><span class="text-[10px] text-gray-500 uppercase font-normal">Append to existing</span></div></button>`
                 });
                 html+=`</div>`;
-                html+=`<button class="w-full bg-orange-600 text-white font-bold p-4 rounded-xl shadow-md mt-auto active:scale-95 transition-transform flex-shrink-0" onclick="document.getElementById('step-1.5-folder').classList.add('hidden'); document.getElementById('step-2-cust').classList.remove('hidden'); document.getElementById('cust-search-input').value=''; populateCustomerList();">+ CREATE NEW FOLDER</button></div>`;
+                html+=`<button class="w-full bg-orange-600 text-white font-bold p-4 rounded-xl shadow-md mt-auto active:scale-95 transition-transform flex-shrink-0" onclick="showRequestCustomerStep('step-1.5-folder')">+ CREATE NEW FOLDER</button></div>`;
                 document.getElementById('existing-folder-container').innerHTML=html
             }else{
-                document.getElementById('step-2-cust').classList.remove('hidden');
-                document.getElementById('cust-search-input').value="";
-                populateCustomerList()
+                showRequestCustomerStep('step-1-rep')
             }
         }
 
@@ -3991,13 +4225,31 @@
         }
 
         function setCustomerInput(val) {
-            document.getElementById('cust-search-input').value=val;
+            if (isQuickDriveRequestMode()) {
+                const parts = String(val || '').split('|').map(part => part.trim()).filter(Boolean);
+                document.getElementById('cust-search-input').value = parts[0] || '';
+                const consigneeInput = document.getElementById('quick-consignee-input');
+                if (consigneeInput) consigneeInput.value = parts[1] || '';
+            } else {
+                document.getElementById('cust-search-input').value=val;
+            }
             populateCustomerList()
         }
 
         function processCustStep() {
             let cust=document.getElementById('cust-search-input').value.trim();
             if(!cust){showToast("Required","Please enter or select a customer.",true);return}
+            if (isQuickDriveRequestMode()) {
+                const consignee = document.getElementById('quick-consignee-input').value.trim();
+                const combinedCustomer = buildRequestCustomerValue(cust, consignee);
+                const quickItemsData = {};
+                getRequestSourceDomIds().forEach(dId => {
+                    const item = findItemByDomId(dId);
+                    if (item) quickItemsData[item.UNIQUE_ID] = { estShip: 'ASAP', reserve: 'NO' };
+                });
+                finalizeRequestAction(null, combinedCustomer, quickItemsData);
+                return;
+            }
             goToQtyStep(null,cust,'step-2-cust')
         }
 
@@ -4085,18 +4337,23 @@
 
         function finalizeRequestAction(existingFolderId,existingCust,itemsDataObj) {
             let cust=existingCust;let folderId=existingFolderId;
+            const quickMode = isQuickDriveRequestMode();
+            const requestedBy = tempSelectedReqRep;
+            const sourceDomIds=getRequestSourceDomIds();
+            if(!sourceDomIds.length){showToast("Required","Please select a row first.",true);return}
             if(!existingFolderId){
                 const dateStr=new Date().toISOString().split('T')[0];
                 const shortTime=new Date().toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'}).replace(/:/g,'');
                 let safeCustName=cust.replace(/[^a-zA-Z0-9 ]/g,"").trim().replace(/\s+/g,'-');
                 folderId=`REQ-${dateStr}-${shortTime}-${safeCustName}`
             }
-            document.getElementById('request-rep-modal').classList.add('hidden');
-            const domIds=Array.from(selectedItems);
+            const restoredDriveIds = quickMode ? Array.from(driveQuickRequestItems) : [];
+            closeRequestModal();
             const uuidGen=()=>Date.now().toString(36)+Math.random().toString(36).substring(2);
             let insertPayloads=[];
             let optimisticIds=[];
-            domIds.forEach(dId=>{
+            let optimisticSourceMap={};
+            sourceDomIds.forEach(dId=>{
                 let item=findItemByDomId(dId);
                 if(item){
                     let dataObj=itemsDataObj[item.UNIQUE_ID]||{};
@@ -4115,7 +4372,7 @@
                         qualitycode:item.QUALITYCODE,
                         field_tag_color:item.FIELDTAGCOLOR,
                         plantgroupcode:item.PLANTGROUPCODE,
-                        requested_by:tempSelectedReqRep,
+                        requested_by:requestedBy,
                         request_folder:folderId,
                         req_customer:cust,
                         req_qty:dataObj.qty||"",
@@ -4130,10 +4387,11 @@
                     };
                     insertPayloads.push(newReq);
                     optimisticIds.push(newReqId);
+                    optimisticSourceMap[newReqId]=dId;
                     let clone=JSON.parse(JSON.stringify(item));
                     clone.UNIQUE_ID=newReqId;
                     clone.DOM_ID='req_'+newReqId;
-                    clone.REQUESTED_BY=tempSelectedReqRep;
+                    clone.REQUESTED_BY=requestedBy;
                     clone.REQUEST_FOLDER=folderId;
                     clone.REQ_CUSTOMER=cust;
                     clone.REQ_QTY=dataObj.qty||"";
@@ -4149,28 +4407,45 @@
                     requestsInventory.push(clone)
                 }
             });
+            if(!insertPayloads.length){
+                if (quickMode) {
+                    restoredDriveIds.forEach(domId => driveQuickRequestItems.add(domId));
+                    renderDriveQuickRequestBar();
+                }
+                showToast("Error","No valid drive rows were available for that request.",true);
+                return;
+            }
+            if (quickMode) clearDriveQuickRequestItems(true);
             showToast("Processing...",`Creating Clone Tickets...`,false);
-            clearSelection();
+            if (!quickMode) clearSelection();
             markViewDirty('request');
             switchView('request');
             supabaseFetch('v2_active_request','POST',insertPayloads).then(()=>{
                 showToast("Success","Request tickets cloned!",false);
-                sendEmailNotification('new_request', folderId, tempSelectedReqRep, cust, insertPayloads.length);
+                sendEmailNotification('new_request', folderId, requestedBy, cust, insertPayloads.length);
             }).catch(async err=>{
                 const confirmedIds = await confirmRequestInsertIds(optimisticIds);
                 if (confirmedIds.length === optimisticIds.length && optimisticIds.length > 0) {
                     showToast("Success","Request tickets cloned!",false);
-                    sendEmailNotification('new_request', folderId, tempSelectedReqRep, cust, insertPayloads.length);
+                    sendEmailNotification('new_request', folderId, requestedBy, cust, insertPayloads.length);
                     return;
                 }
                 if (confirmedIds.length > 0) {
                     const confirmedSet = new Set(confirmedIds);
                     const missingIds = optimisticIds.filter(id => !confirmedSet.has(id));
                     rollbackOptimisticRequestIds(missingIds);
+                    if (quickMode) {
+                        missingIds.map(id => optimisticSourceMap[id]).filter(Boolean).forEach(domId => driveQuickRequestItems.add(domId));
+                        renderDriveQuickRequestBar();
+                    }
                     showToast("Partial Save","Some requests saved. Retry the missing rows.",true);
                     return;
                 }
                 rollbackOptimisticRequestIds(optimisticIds);
+                if (quickMode) {
+                    restoredDriveIds.forEach(domId => driveQuickRequestItems.add(domId));
+                    renderDriveQuickRequestBar();
+                }
                 showToast("Error","Network error. Request did not save.",true);
             })
         }
@@ -4182,42 +4457,171 @@
             else{executeBatchAction(pendingAction,pendingTabType)}
         }
 
+        function formatRequestItemsText(items, headerLabel = '') {
+            let returnText = headerLabel ? `${headerLabel}
+
+` : '';
+            items.forEach(i => {
+                returnText += `${i.REQUEST_FOLDER||'No Folder'}
+ID: ${i.UNIQUE_ID} | ${i.REQ_CUSTOMER||'N/A'}
+${i.COMMONNAME||'Unknown'} ${i.CONTSIZE||'-'} Loc: ${i.LOCATIONCODE||'No Loc'}
+${i.ITEMCODE||'-'} | Lot: ${i.LOTCODE||'-'}
+`;
+                if(i.REQ_QTY)returnText += `  Requested Qty: ${i.REQ_QTY}
+`;
+                if(i.REQ_DESIRED_SPEC)returnText += `  Desired Spec: ${i.REQ_DESIRED_SPEC}
+`;
+                if(i.REQ_DESIRED_CALIPER)returnText += `  Desired Caliper: ${i.REQ_DESIRED_CALIPER}
+`;
+                if(i.REQ_EST_SHIP)returnText += `  Est Ship: ${i.REQ_EST_SHIP}
+`;
+                if(i.REQ_RESERVE)returnText += `  Reserve: ${i.REQ_RESERVE}
+`;
+                if(i.REQ_MATCH)returnText += `  Match: ${i.REQ_MATCH}%
+`;
+                if(i.REQ_SPEC)returnText += `  Spec: ${i.REQ_SPEC}
+`;
+                if(i.REQ_CALIPER)returnText += `  Caliper: ${i.REQ_CALIPER}
+`;
+                if(i.REQ_PICK)returnText += `  Pick Note: ${i.REQ_PICK}
+`;
+                let photo=i.REQ_PHOTO_LINK||i.SAVED_PHOTO_LINK||i['PHOTO LINK']||i.PHOTOLINK;
+                if(photo&&String(photo).trim()!==""){
+                    let urls=String(photo).split(',');
+                    let counter=1;
+                    urls.forEach(url=>{
+                        let cleanUrl=url.trim();
+                        let match=cleanUrl.match(/(https?:\/\/[^"\s>]+)/);
+                        if(match)cleanUrl=match[1];
+                        if(cleanUrl.startsWith('http')){returnText += `  Photo ${counter}: ${cleanUrl}
+`;counter++}
+                    })
+                }
+                returnText += `
+`;
+            });
+            return returnText
+        }
+
+        function getRequestFolderItems(folderName, status = selectedReqStatus, repName = selectedReqRepView) {
+            let items = requestsInventory.filter(i => !i.REQ_ARCHIVED);
+            if (safeRole === 'SALESREP') items = items.filter(i => isMyRep(i.REQUESTED_BY));
+            if (repName) items = items.filter(i => getRequestAssignedRep(i) === repName);
+            items = items.filter(i => status === 'Pending' ? i.REQ_STATUS !== 'Complete' : i.REQ_STATUS === 'Complete');
+            items = items.filter(i => (status === 'Complete' ? getRequestCustomerConsigneeFolder(i) : (i.REQUEST_FOLDER || 'Unassigned')) === folderName);
+            return items.sort((a,b) => String(a.LOCATIONCODE||'').localeCompare(String(b.LOCATIONCODE||''), undefined, {numeric: true}));
+        }
+
+        async function shareRequestFolder(action, folderName, status = selectedReqStatus, repName = selectedReqRepView) {
+            const items = getRequestFolderItems(folderName, status, repName);
+            if (!items.length) {
+                showToast('Empty', 'No request rows found in that folder.', true);
+                return;
+            }
+            const subject = `${repName || 'Request'} - ${folderName}`;
+            const folderNote = getRequestFolderNote(folderName, status, repName);
+            const text = `${subject}
+${folderNote ? `Folder Note: ${folderNote}
+` : ''}
+${formatRequestItemsText(items)}`;
+            if (action === 'copy') {
+                copyTextWithFallback(text).then(() => {
+                    showToast('Success', 'Folder copied to clipboard!');
+                }).catch(() => {
+                    showToast('Error', 'Could not copy folder text.', true);
+                });
+                return;
+            }
+            if (action === 'email') {
+                try {
+                    const shared = await handleMobileShare('email', subject, text);
+                    if (!shared) {
+                        window.location.href=`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
+                    } else {
+                        showToast('Ready', 'Use the share sheet to send the folder email.');
+                    }
+                } catch (err) {
+                    try {
+                        await copyTextWithFallback(text);
+                        showToast('Copied', 'Folder email text copied so you can paste it without leaving the app.');
+                    } catch (copyErr) {
+                        showToast('Error', 'Could not prepare the folder email text.', true);
+                    }
+                }
+                return;
+            }
+            if (action === 'text') {
+                try {
+                    const shared = await handleMobileShare('text', subject, text);
+                    if (!shared) {
+                        window.location.href=`sms:?&body=${encodeURIComponent(text)}`;
+                    } else {
+                        showToast('Ready', 'Use the share sheet to send the folder text.');
+                    }
+                } catch (err) {
+                    try {
+                        await copyTextWithFallback(text);
+                        showToast('Copied', 'Folder text copied so you can paste it into Messages without leaving the app.');
+                    } catch (copyErr) {
+                        showToast('Error', 'Could not prepare the folder text.', true);
+                    }
+                }
+            }
+        }
+
+        function getRequestFolderNoteKey(folderName, status = selectedReqStatus, repName = selectedReqRepView) {
+            return `gnc_request_folder_note_${normalizeSearchValue(repName)}_${normalizeSearchValue(status)}_${normalizeSearchValue(folderName)}`;
+        }
+
+        function getRequestFolderNote(folderName, status = selectedReqStatus, repName = selectedReqRepView) {
+            return localStorage.getItem(getRequestFolderNoteKey(folderName, status, repName)) || '';
+        }
+
+        function setRequestFolderNote(folderName, status = selectedReqStatus, repName = selectedReqRepView) {
+            if (!canShareRequestFolders()) {
+                showToast('Restricted', 'Only Dylan and JD can add folder notes.', true);
+                return;
+            }
+            const existingNote = getRequestFolderNote(folderName, status, repName);
+            const nextNote = prompt(`Folder note for ${folderName}`, existingNote);
+            if (nextNote === null) return;
+            const trimmedNote = String(nextNote || '').trim();
+            const noteKey = getRequestFolderNoteKey(folderName, status, repName);
+            if (trimmedNote) {
+                localStorage.setItem(noteKey, trimmedNote);
+                showToast('Saved', 'Folder note saved.');
+            } else {
+                localStorage.removeItem(noteKey);
+                showToast('Cleared', 'Folder note removed.');
+            }
+            renderRequest();
+        }
+
         function getSelectedItemsText(tabType) {
             let items=[];
             selectedItems.forEach(domId=>{
                 let found=findItemByDomId(domId);
                 if(found)items.push(found)
             });
+            if(tabType==='request'){
+                return formatRequestItemsText(items)
+            }
             let returnText="";
-            if(tabType!=='request'){returnText=(tabType==='docks')?"DOCK NOTES\n\n":"SELECTED ROWS\n\n"}
+            if(tabType!=='request'){returnText=(tabType==='docks')?"DOCK NOTES
+
+":"SELECTED ROWS
+
+"}
             items.forEach(i=>{
-                if(tabType==='request'){
-                    returnText+=`${i.REQUEST_FOLDER||'No Folder'}\nID: ${i.UNIQUE_ID} | ${i.REQ_CUSTOMER||'N/A'}\n${i.COMMONNAME||'Unknown'} ${i.CONTSIZE||'-'} Loc: ${i.LOCATIONCODE||'No Loc'}\n${i.ITEMCODE||'-'} | Lot: ${i.LOTCODE||'-'}\n`;
-                    if(i.REQ_QTY)returnText+=`  Requested Qty: ${i.REQ_QTY}\n`;
-                    if(i.REQ_DESIRED_SPEC)returnText+=`  Desired Spec: ${i.REQ_DESIRED_SPEC}\n`;
-                    if(i.REQ_DESIRED_CALIPER)returnText+=`  Desired Caliper: ${i.REQ_DESIRED_CALIPER}\n`;
-                    if(i.REQ_EST_SHIP)returnText+=`  Est Ship: ${i.REQ_EST_SHIP}\n`;
-                    if(i.REQ_RESERVE)returnText+=`  Reserve: ${i.REQ_RESERVE}\n`;
-                    if(i.REQ_MATCH)returnText+=`  Match: ${i.REQ_MATCH}%\n`;
-                    if(i.REQ_SPEC)returnText+=`  Spec: ${i.REQ_SPEC}\n`;
-                    if(i.REQ_CALIPER)returnText+=`  Caliper: ${i.REQ_CALIPER}\n`;
-                    if(i.REQ_PICK)returnText+=`  Pick Note: ${i.REQ_PICK}\n`;
-                    let photo=i.REQ_PHOTO_LINK||i.SAVED_PHOTO_LINK||i['PHOTO LINK']||i.PHOTOLINK;
-                    if(photo&&String(photo).trim()!==""){
-                        let urls=String(photo).split(',');
-                        let counter=1;
-                        urls.forEach(url=>{
-                            let cleanUrl=url.trim();
-                            let match=cleanUrl.match(/(https?:\/\/[^"\s>]+)/);
-                            if(match)cleanUrl=match[1];
-                            if(cleanUrl.startsWith('http')){returnText+=`  Photo ${counter}: ${cleanUrl}\n`;counter++}
-                        })
-                    }
-                }else if(tabType==='docks'){
-                    returnText+=`- ${i.COMMONNAME||'Unknown'} (${i.CONTSIZE||'-'}) | Loc: ${i.LOCATIONCODE||'No Loc'}\n`;
-                    if(i.DOCK_SPEC)returnText+=`  Spec: ${i.DOCK_SPEC}\n`;
-                    if(i.DOCK_CALIPER)returnText+=`  Caliper: ${i.DOCK_CALIPER}\n`;
-                    if(i.DOCK_NOTE)returnText+=`  Dock Note: ${i.DOCK_NOTE}\n`;
+                if(tabType==='docks'){
+                    returnText+=`- ${i.COMMONNAME||'Unknown'} (${i.CONTSIZE||'-'}) | Loc: ${i.LOCATIONCODE||'No Loc'}
+`;
+                    if(i.DOCK_SPEC)returnText+=`  Spec: ${i.DOCK_SPEC}
+`;
+                    if(i.DOCK_CALIPER)returnText+=`  Caliper: ${i.DOCK_CALIPER}
+`;
+                    if(i.DOCK_NOTE)returnText+=`  Dock Note: ${i.DOCK_NOTE}
+`;
                     let photo=i.DOCK_PHOTO_LINK||i.SAVED_PHOTO_LINK||i['PHOTO LINK']||i.PHOTOLINK;
                     if(photo&&String(photo).trim()!==""){
                         let urls=String(photo).split(',');
@@ -4226,16 +4630,23 @@
                             let cleanUrl=url.trim();
                             let match=cleanUrl.match(/(https?:\/\/[^"\s>]+)/);
                             if(match)cleanUrl=match[1];
-                            if(cleanUrl.startsWith('http')){returnText+=`  Photo ${counter}: ${cleanUrl}\n`;counter++}
+                            if(cleanUrl.startsWith('http')){returnText+=`  Photo ${counter}: ${cleanUrl}
+`;counter++}
                         })
                     }
                 }else{
-                    returnText+=`- ${i.COMMONNAME||'Unknown'} (${i.CONTSIZE||'-'}) | Loc: ${i.LOCATIONCODE||'No Loc'}\n`;
-                    let match=i.MATCH||i.MATCHPCT;if(match)returnText+=`  Match: ${match}%\n`;
-                    let spec=i.SPEC;if(spec)returnText+=`  Spec: ${spec}\n`;
-                    let caliper=i.CALIPER;if(caliper)returnText+=`  Caliper: ${caliper}\n`;
-                    let pick=i.PIC_NOTE||i.PICKNOTE||i.PICK;if(pick)returnText+=`  Pick Note: ${pick}\n`;
-                    let sales=i.SALES_NOTE||i.SALESNOTE||i.SALESDESC;if(sales)returnText+=`  Sales Note: ${sales}\n`;
+                    returnText+=`- ${i.COMMONNAME||'Unknown'} (${i.CONTSIZE||'-'}) | Loc: ${i.LOCATIONCODE||'No Loc'}
+`;
+                    let match=i.MATCH||i.MATCHPCT;if(match)returnText+=`  Match: ${match}%
+`;
+                    let spec=i.SPEC;if(spec)returnText+=`  Spec: ${spec}
+`;
+                    let caliper=i.CALIPER;if(caliper)returnText+=`  Caliper: ${caliper}
+`;
+                    let pick=i.PIC_NOTE||i.PICKNOTE||i.PICK;if(pick)returnText+=`  Pick Note: ${pick}
+`;
+                    let sales=i.SALES_NOTE||i.SALESNOTE||i.SALESDESC;if(sales)returnText+=`  Sales Note: ${sales}
+`;
                     let photo=i.NA_PHOTO_LINK||i.SAVED_PHOTO_LINK||i['PHOTO LINK']||i.PHOTOLINK;
                     if(photo&&String(photo).trim()!==""){
                         let urls=String(photo).split(',');
@@ -4244,11 +4655,13 @@
                             let cleanUrl=url.trim();
                             let match=cleanUrl.match(/(https?:\/\/[^"\s>]+)/);
                             if(match)cleanUrl=match[1];
-                            if(cleanUrl.startsWith('http')){returnText+=`  Photo ${counter}: ${cleanUrl}\n`;counter++}
+                            if(cleanUrl.startsWith('http')){returnText+=`  Photo ${counter}: ${cleanUrl}
+`;counter++}
                         })
                     }
                 }
-                returnText+=`\n`
+                returnText+=`
+`
             });
             return returnText
         }
@@ -4334,6 +4747,7 @@
             const crumb = document.getElementById('drive-crumb'); 
             const term = document.getElementById('drive-search').value.toLowerCase().trim();
             const driveModeLabel = DRIVE_MODE_LABELS[activeDriveMode] || 'Drive Mode';
+            renderDriveQuickRequestBar();
             
             if (activeDriveMode !== 'ok') {
                 filtersDiv.innerHTML = '';
