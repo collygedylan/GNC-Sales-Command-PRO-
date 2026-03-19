@@ -550,6 +550,12 @@
         let realtimeRefreshTimer = null;
         let fallbackSyncInterval = null;
         let liveSyncMode = 'idle';
+        const SUPABASE_READ_TIMEOUT_MS = 20000;
+        const SUPABASE_WRITE_TIMEOUT_MS = 15000;
+        const SUPABASE_UPLOAD_TIMEOUT_MS = 45000;
+        const PHOTO_MAX_WIDTH = 900;
+        const PHOTO_JPEG_QUALITY = 0.72;
+        let pendingPhotoUploads = new Map();
         
         function isIOSDevice() {
             return IOS_DEVICE_REGEX.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -912,6 +918,65 @@
             } 
         }
 
+        async function fetchWithTimeout(url, options = {}, timeoutMs = SUPABASE_WRITE_TIMEOUT_MS, label = 'Request') {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+            try {
+                return await fetch(url, { ...options, signal: controller.signal });
+            } catch (error) {
+                if (error && error.name === 'AbortError') {
+                    throw new Error(`${label} timed out after ${Math.ceil(timeoutMs / 1000)}s`);
+                }
+                throw error;
+            } finally {
+                clearTimeout(timeoutId);
+            }
+        }
+
+        async function getResponseError(response, fallback = 'Supabase error') {
+            try {
+                const text = await response.text();
+                return text || fallback;
+            } catch (error) {
+                return fallback;
+            }
+        }
+
+        function withTimeout(promise, timeoutMs, label = 'Request') {
+            return new Promise((resolve, reject) => {
+                const timer = setTimeout(() => reject(new Error(`${label} timed out after ${Math.ceil(timeoutMs / 1000)}s`)), timeoutMs);
+                Promise.resolve(promise).then((value) => {
+                    clearTimeout(timer);
+                    resolve(value);
+                }).catch((error) => {
+                    clearTimeout(timer);
+                    reject(error);
+                });
+            });
+        }
+
+        function getPendingPhotoUploadKey(item, prefix = '') {
+            return item ? `${item.UNIQUE_ID}::${prefix}` : '';
+        }
+
+        function registerPendingPhotoUpload(item, prefix, promise) {
+            const key = getPendingPhotoUploadKey(item, prefix);
+            if (!key || !promise) return promise;
+            pendingPhotoUploads.set(key, promise);
+            promise.finally(() => {
+                if (pendingPhotoUploads.get(key) === promise) pendingPhotoUploads.delete(key);
+            });
+            return promise;
+        }
+
+        function getPendingPhotoUploadsForItem(item) {
+            if (!item) return [];
+            const matchKey = `${item.UNIQUE_ID}::`;
+            return Array.from(pendingPhotoUploads.entries())
+                .filter(([key]) => key.startsWith(matchKey))
+                .map(([, promise]) => promise);
+        }
+
         async function supabaseFetch(table, method='GET', body=null, query='select=*') {
             startGlobalProgress();
             try {
@@ -920,8 +985,8 @@
                     while(hasMore){
                         let queryString = query ? `${query}&limit=${limit}&offset=${offset}` : `limit=${limit}&offset=${offset}`;
                         const url=`${SUPABASE_URL}/rest/v1/${table}?${queryString}`;
-                        const response=await fetch(url,{method:'GET',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json'}});
-                        if(!response.ok) throw new Error(`Supabase Error`);
+                        const response=await fetchWithTimeout(url,{method:'GET',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json'}}, SUPABASE_READ_TIMEOUT_MS, `${table} read`);
+                        if(!response.ok) throw new Error(await getResponseError(response, `Supabase read failed (${response.status})`));
                         const text=await response.text(); const data=text?JSON.parse(text):[];
                         if(Array.isArray(data)&&data.length>0){ allData=allData.concat(data); offset+=limit; if(data.length<limit) hasMore=false; }
                         else { hasMore=false; }
@@ -930,11 +995,14 @@
                     const options={method:method,headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json'}};
                     options.headers['Prefer']=method==='POST'?'return=representation,resolution=merge-duplicates':'return=representation';
                     if(body)options.body=JSON.stringify(body);
-                    const response=await fetch(`${SUPABASE_URL}/rest/v1/${table}${query?'?'+query:''}`,options);
-                    if(!response.ok) throw new Error('Supabase error');
+                    const response=await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/${table}${query?'?'+query:''}`,options,SUPABASE_WRITE_TIMEOUT_MS, `${table} ${method}`);
+                    if(!response.ok) throw new Error(await getResponseError(response, `Supabase write failed (${response.status})`));
                     const text=await response.text(); return text?JSON.parse(text):{};
                 }
-            } catch(e){ return []; } finally { stopGlobalProgress(); }
+            } catch(e){
+                if(method==='GET') return [];
+                throw e;
+            } finally { stopGlobalProgress(); }
         }
 
         async function fetchLoginUser(username, password) {
@@ -2723,6 +2791,16 @@
             updateSyncDiagnostics('queued');
             foregroundRefreshTimer = setTimeout(() => {
                 foregroundRefreshTimer = null;
+                if (navigator.onLine === false) {
+                    liveSyncMode = 'offline';
+                    updateSyncDiagnostics('offline');
+                    return;
+                }
+                if (shouldUseRealtime()) {
+                    if (liveSyncMode !== 'realtime') initializeRealtime();
+                    else updateSyncDiagnostics('realtime');
+                    return;
+                }
                 fetchBackgroundData();
                 if (liveSyncMode !== 'realtime') initializeRealtime();
             }, delay);
@@ -3969,51 +4047,67 @@
 
         function saveData(isComplete = false, prefix, isSilentAutoSave = false, specificItem = null) {
             if (autoSaveTimer) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
-            let itemToSave = specificItem || activeItem; if (!itemToSave) return;
-            let btnDraft = document.getElementById(prefix + 'btn-save-draft'); 
-            let btnComp = document.getElementById(prefix + 'btn-save-complete'); 
-            let isCurrentView = (activeItem && activeItem.UNIQUE_ID === itemToSave.UNIQUE_ID);
-            
-            if (isCurrentView && isComplete) { if(btnComp) btnComp.innerText = "SAVING..."; }
-            
+            let itemToSave = specificItem || activeItem;
+            if (!itemToSave) return;
+            let btnComp = document.getElementById(prefix + 'btn-save-complete');
+            let isCurrentView = !!(activeItem && activeItem.UNIQUE_ID === itemToSave.UNIQUE_ID);
+
+            if (isCurrentView && isComplete && btnComp) btnComp.innerText = 'SAVING...';
+
             const executeSave = () => {
                 let wasAlreadyComplete = itemToSave.REQ_STATUS === 'Complete';
+                const previousDateCompleted = itemToSave.DATE_COMPLETED || '';
+                const previousReqStatus = itemToSave.REQ_STATUS;
+                const detailWasVisible = !!(document.getElementById('view-detail') && !document.getElementById('view-detail').classList.contains('hidden'));
+                let didOptimisticClose = false;
 
                 if (!specificItem) {
                     let avEl = document.getElementById(prefix + 'av-note');
                     if (avEl) { itemToSave.AV_NOTE = avEl.value.toUpperCase(); }
-                    
+
                     let descEl = prefix === 'dock-' ? document.getElementById('dock-sales-desc') : null;
                     if (descEl && prefix === 'dock-') {
                         itemToSave.DOCK_NOTE = descEl.value;
                     }
 
-
-                    if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-') { 
-                        let matchEl = document.getElementById(prefix + 'match'); if(matchEl) itemToSave.MATCH = matchEl.value; 
-                        let specEl = document.getElementById(prefix + 'spec'); if(specEl) itemToSave.SPEC = specEl.value; 
-                        let calEl = document.getElementById(prefix + 'caliper'); if(calEl) itemToSave.CALIPER = calEl.value; 
-                        let pickEl = document.getElementById(prefix + 'pick'); if(pickEl) itemToSave.PICK = pickEl.value; 
-                    } else if (prefix === 'req-') { 
-                        itemToSave.REQ_MATCH = document.getElementById('req-match').value; itemToSave.REQ_SPEC = document.getElementById('req-spec').value; itemToSave.REQ_CALIPER = document.getElementById('req-caliper').value; itemToSave.REQ_PICK = document.getElementById('req-pick').value; itemToSave.REQ_COMMENTS = document.getElementById('req-comments').value; let reserveEl = document.getElementById('req-reserve'); if (reserveEl) itemToSave.REQ_RESERVE = reserveEl.value;
-                    } else if (prefix === 'dock-') { 
-                        itemToSave.DOCK_SPEC = document.getElementById('dock-spec').value; itemToSave.DOCK_CALIPER = document.getElementById('dock-caliper').value; itemToSave.DOCK_NOTE = document.getElementById('dock-sales-desc').value; 
+                    if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-') {
+                        let matchEl = document.getElementById(prefix + 'match'); if(matchEl) itemToSave.MATCH = matchEl.value;
+                        let specEl = document.getElementById(prefix + 'spec'); if(specEl) itemToSave.SPEC = specEl.value;
+                        let calEl = document.getElementById(prefix + 'caliper'); if(calEl) itemToSave.CALIPER = calEl.value;
+                        let pickEl = document.getElementById(prefix + 'pick'); if(pickEl) itemToSave.PICK = pickEl.value;
+                    } else if (prefix === 'req-') {
+                        itemToSave.REQ_MATCH = document.getElementById('req-match').value;
+                        itemToSave.REQ_SPEC = document.getElementById('req-spec').value;
+                        itemToSave.REQ_CALIPER = document.getElementById('req-caliper').value;
+                        itemToSave.REQ_PICK = document.getElementById('req-pick').value;
+                        itemToSave.REQ_COMMENTS = document.getElementById('req-comments').value;
+                        let reserveEl = document.getElementById('req-reserve'); if (reserveEl) itemToSave.REQ_RESERVE = reserveEl.value;
+                    } else if (prefix === 'dock-') {
+                        itemToSave.DOCK_SPEC = document.getElementById('dock-spec').value;
+                        itemToSave.DOCK_CALIPER = document.getElementById('dock-caliper').value;
+                        itemToSave.DOCK_NOTE = document.getElementById('dock-sales-desc').value;
                     } else if (prefix === 'flyer-') {
-                        itemToSave.FLYER_CAT = document.getElementById('flyer-cat').value; itemToSave.FLYER_TITLE = document.getElementById('flyer-title').value; itemToSave.FLYER_INST = document.getElementById('flyer-inst').value; itemToSave.FLYER_ASSIGNED = document.getElementById('flyer-assigned').value; itemToSave.FLYER_NOTES = document.getElementById('flyer-notes').value;
+                        itemToSave.FLYER_CAT = document.getElementById('flyer-cat').value;
+                        itemToSave.FLYER_TITLE = document.getElementById('flyer-title').value;
+                        itemToSave.FLYER_INST = document.getElementById('flyer-inst').value;
+                        itemToSave.FLYER_ASSIGNED = document.getElementById('flyer-assigned').value;
+                        itemToSave.FLYER_NOTES = document.getElementById('flyer-notes').value;
                     }
                 }
-                
-                const setVal = (val) => (val === "" || val === undefined) ? null : val;
+
+                const setVal = (val) => (val === '' || val === undefined) ? null : val;
                 const payload = {};
-                
-                if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-') { 
-                    payload.match = (itemToSave.MATCH === "" || itemToSave.MATCH == null) ? null : parseFloat(itemToSave.MATCH); 
-                    payload.spec = setVal(itemToSave.SPEC); payload.caliper = setVal(itemToSave.CALIPER); payload.pic_note = setVal(itemToSave.PICK); 
+
+                if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-') {
+                    payload.match = (itemToSave.MATCH === '' || itemToSave.MATCH == null) ? null : parseFloat(itemToSave.MATCH);
+                    payload.spec = setVal(itemToSave.SPEC);
+                    payload.caliper = setVal(itemToSave.CALIPER);
+                    payload.pic_note = setVal(itemToSave.PICK);
                     payload.av_note = setVal(itemToSave.AV_NOTE);
-                } else if (prefix === 'req-') { 
+                } else if (prefix === 'req-') {
                     const assignment = String(itemToSave.APP_TAB_ASSIGNMENT || '').toLowerCase();
                     const isAvEligibleRequest = assignment === 'season' || assignment === 'location';
-                    const needsCaliper = itemToSave.PLANTGROUPCODE && String(itemToSave.PLANTGROUPCODE).includes('330_TREES') && ["#7","#10","#15","#25","#45"].includes(itemToSave.CONTSIZE);
+                    const needsCaliper = itemToSave.PLANTGROUPCODE && String(itemToSave.PLANTGROUPCODE).includes('330_TREES') && ['#7','#10','#15','#25','#45'].includes(itemToSave.CONTSIZE);
                     if (isComplete && isAvEligibleRequest) {
                         const effectiveAvNote = String(itemToSave.AV_NOTE || '').trim();
                         const effectiveSpec = String(itemToSave.REQ_SPEC || itemToSave.SPEC || '').trim();
@@ -4022,113 +4116,199 @@
                         if (!effectiveSpec) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required','Spec is required before completing this request.',true); return; }
                         if (needsCaliper && !effectiveCaliper) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required','Caliper is required for this request.',true); return; }
                     }
-                    payload.req_match = (itemToSave.REQ_MATCH === "" || itemToSave.REQ_MATCH == null) ? null : parseFloat(itemToSave.REQ_MATCH); 
-                    payload.req_spec = setVal(itemToSave.REQ_SPEC); payload.req_caliper = setVal(itemToSave.REQ_CALIPER); payload.req_pic_note = setVal(itemToSave.REQ_PICK); 
+                    payload.req_match = (itemToSave.REQ_MATCH === '' || itemToSave.REQ_MATCH == null) ? null : parseFloat(itemToSave.REQ_MATCH);
+                    payload.req_spec = setVal(itemToSave.REQ_SPEC);
+                    payload.req_caliper = setVal(itemToSave.REQ_CALIPER);
+                    payload.req_pic_note = setVal(itemToSave.REQ_PICK);
                     payload.req_comments = setVal(itemToSave.REQ_COMMENTS);
-                    payload.req_reserve = setVal(itemToSave.REQ_RESERVE); payload.av_note = setVal(itemToSave.AV_NOTE);
-                    if (isComplete) { 
-                        payload.req_status = 'Complete'; 
-                        itemToSave.REQ_STATUS = 'Complete'; 
+                    payload.req_reserve = setVal(itemToSave.REQ_RESERVE);
+                    payload.av_note = setVal(itemToSave.AV_NOTE);
+                    if (isComplete) {
+                        payload.req_status = 'Complete';
+                        itemToSave.REQ_STATUS = 'Complete';
                         itemToSave._SHOW_IN_AV = isAvEligibleRequest ? confirm('Show this completed request in the AV tab?') : false;
                     }
-                } else if (prefix === 'dock-') { 
-                    payload.dock_spec = setVal(itemToSave.DOCK_SPEC); payload.dock_caliper = setVal(itemToSave.DOCK_CALIPER); payload.dock_note = setVal(itemToSave.DOCK_NOTE); 
+                } else if (prefix === 'dock-') {
+                    payload.dock_spec = setVal(itemToSave.DOCK_SPEC);
+                    payload.dock_caliper = setVal(itemToSave.DOCK_CALIPER);
+                    payload.dock_note = setVal(itemToSave.DOCK_NOTE);
                 } else if (prefix === 'flyer-') {
-                    payload.flyer_cat = setVal(itemToSave.FLYER_CAT); payload.flyer_title = setVal(itemToSave.FLYER_TITLE); payload.flyer_inst = setVal(itemToSave.FLYER_INST); 
-                    payload.flyer_assigned = setVal(itemToSave.FLYER_ASSIGNED); payload.flyer_notes = setVal(itemToSave.FLYER_NOTES);
+                    payload.flyer_cat = setVal(itemToSave.FLYER_CAT);
+                    payload.flyer_title = setVal(itemToSave.FLYER_TITLE);
+                    payload.flyer_inst = setVal(itemToSave.FLYER_INST);
+                    payload.flyer_assigned = setVal(itemToSave.FLYER_ASSIGNED);
+                    payload.flyer_notes = setVal(itemToSave.FLYER_NOTES);
                 }
 
                 if (isComplete && (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-')) {
                     let matchVal = parseFloat(itemToSave.MATCH);
                     if (!isNaN(matchVal) && matchVal >= 0) {
-                        let ptr = parseInt(String(itemToSave.PTRAVAILABLE).replace(/,/g, '')) || 0;
-                        itemToSave.INITIAL_PTR = ptr; itemToSave.LOC_MATCH_QTY = Math.round(ptr * (matchVal / 100));
-                        payload.initial_ptr = itemToSave.INITIAL_PTR; payload.loc_match_qty = itemToSave.LOC_MATCH_QTY;
+                        let ptr = parseInt(String(itemToSave.PTRAVAILABLE).replace(/,/g,'')) || 0;
+                        itemToSave.INITIAL_PTR = ptr;
+                        itemToSave.LOC_MATCH_QTY = Math.round(ptr * (matchVal / 100));
+                        payload.initial_ptr = itemToSave.INITIAL_PTR;
+                        payload.loc_match_qty = itemToSave.LOC_MATCH_QTY;
                     }
                 }
 
                 backupLocalItem(itemToSave);
 
-                if (itemToSave.SAVED_PHOTO_LINK) payload.photo_link = itemToSave.SAVED_PHOTO_LINK; 
-                if (itemToSave.SAVED_PHOTO_NAME) payload.photo_name = itemToSave.SAVED_PHOTO_NAME;
-                if (itemToSave.REQ_PHOTO_LINK) payload.req_photo_link = itemToSave.REQ_PHOTO_LINK; 
-                if (itemToSave.REQ_PHOTO_NAME) payload.req_photo_name = itemToSave.REQ_PHOTO_NAME;
-                if (itemToSave.DOCK_PHOTO_LINK) payload.dock_photo_link = itemToSave.DOCK_PHOTO_LINK; 
-                if (itemToSave.DOCK_PHOTO_NAME) payload.dock_photo_name = itemToSave.DOCK_PHOTO_NAME;
-                if (itemToSave.FLYER_PHOTO_LINK) payload.flyer_photo_link = itemToSave.FLYER_PHOTO_LINK; 
-                if (itemToSave.FLYER_PHOTO_NAME) payload.flyer_photo_name = itemToSave.FLYER_PHOTO_NAME;
+                const applyPhotoFieldsToPayload = () => {
+                    const fieldPairs = [
+                        ['photo_link', 'SAVED_PHOTO_LINK'],
+                        ['photo_name', 'SAVED_PHOTO_NAME'],
+                        ['req_photo_link', 'REQ_PHOTO_LINK'],
+                        ['req_photo_name', 'REQ_PHOTO_NAME'],
+                        ['dock_photo_link', 'DOCK_PHOTO_LINK'],
+                        ['dock_photo_name', 'DOCK_PHOTO_NAME'],
+                        ['flyer_photo_link', 'FLYER_PHOTO_LINK'],
+                        ['flyer_photo_name', 'FLYER_PHOTO_NAME']
+                    ];
+                    fieldPairs.forEach(([payloadKey, itemKey]) => {
+                        if (itemToSave[itemKey]) payload[payloadKey] = itemToSave[itemKey];
+                        else delete payload[payloadKey];
+                    });
+                };
 
-                if (isComplete) { 
-                    payload.date_completed = new Date().toISOString(); 
+                if (isComplete) {
+                    payload.date_completed = new Date().toISOString();
                     if (prefix === 'flyer-') payload.flyer_completed = payload.date_completed;
-                    
-                    let soPayload = { unique_id: itemToSave.UNIQUE_ID, itemcode: itemToSave.ITEMCODE || "", commonname: itemToSave.COMMONNAME || "", contsize: itemToSave.CONTSIZE || "", locationcode: itemToSave.LOCATIONCODE || "", lotcode: itemToSave.LOTCODE || "", ptravailable: String(itemToSave.PTRAVAILABLE || ""), priority: String(itemToSave.PRIORITY || ""), photo_link: itemToSave.NA_PHOTO_LINK || itemToSave.SAVED_PHOTO_LINK || "", completed_by: currentUser, completed_at: payload.date_completed };
-                    if (prefix !== 'flyer-' && prefix !== 'req-') {
-                        supabaseFetch('v2_sales_office', 'POST', soPayload).catch(e => console.log(e));
-                        let cloneSO = { ...soPayload };
-                        for(let key in soPayload) { cloneSO[key.toUpperCase()] = soPayload[key]; }
-                        cloneSO.DOM_ID = 'so_' + cloneSO.UNIQUE_ID;
-                        cloneSO.AV_NOTE = itemToSave.AV_NOTE;
-                        cloneSO.SAVED_PHOTO_LINK = soPayload.photo_link; 
-                        clonePhotoFields(itemToSave, cloneSO);
-                        let existingIdx = salesOfficeInventory.findIndex(s => s.UNIQUE_ID === cloneSO.UNIQUE_ID);
-                        normalizeRowPhotoFields(cloneSO);
-                        if (existingIdx > -1) salesOfficeInventory[existingIdx] = cloneSO;
-                        else salesOfficeInventory.push(cloneSO);
-                    }
                 }
 
-                if (isComplete && prefix === 'req-' && itemToSave._SHOW_IN_AV) {
-                    const masterId = itemToSave.MASTER_ID || itemToSave.MASTER_UNIQUE_ID || itemToSave.master_id;
-                    const masterItem = fullInventory.find(i => i.UNIQUE_ID === masterId);
-                    const avPayload = {
-                        av_note: setVal(itemToSave.AV_NOTE),
-                        spec: setVal(itemToSave.REQ_SPEC || itemToSave.SPEC),
-                        caliper: setVal(itemToSave.REQ_CALIPER || itemToSave.CALIPER),
-                        photo_link: setVal(itemToSave.REQ_PHOTO_LINK || itemToSave.SAVED_PHOTO_LINK),
-                        photo_name: setVal(itemToSave.REQ_PHOTO_NAME || itemToSave.SAVED_PHOTO_NAME)
-                    };
-                    if (masterItem) {
-                        masterItem.AV_NOTE = itemToSave.AV_NOTE;
-                        masterItem.SPEC = itemToSave.REQ_SPEC || itemToSave.SPEC;
-                        masterItem.CALIPER = itemToSave.REQ_CALIPER || itemToSave.CALIPER;
-                        masterItem.SAVED_PHOTO_LINK = itemToSave.REQ_PHOTO_LINK || itemToSave.SAVED_PHOTO_LINK;
-                        masterItem.SAVED_PHOTO_NAME = itemToSave.REQ_PHOTO_NAME || itemToSave.SAVED_PHOTO_NAME;
-                        normalizeRowPhotoFields(masterItem);
+                const buildCompletionArtifacts = () => {
+                    const artifacts = { soPayload: null, cloneSO: null, avSyncMasterId: null, avSyncMasterItem: null, avSyncPayload: null };
+                    if (!isComplete) return artifacts;
+
+                    if (prefix !== 'flyer-' && prefix !== 'req-') {
+                        artifacts.soPayload = {
+                            unique_id: itemToSave.UNIQUE_ID,
+                            itemcode: itemToSave.ITEMCODE || '',
+                            commonname: itemToSave.COMMONNAME || '',
+                            contsize: itemToSave.CONTSIZE || '',
+                            locationcode: itemToSave.LOCATIONCODE || '',
+                            lotcode: itemToSave.LOTCODE || '',
+                            ptravailable: String(itemToSave.PTRAVAILABLE || ''),
+                            priority: String(itemToSave.PRIORITY || ''),
+                            photo_link: itemToSave.NA_PHOTO_LINK || itemToSave.SAVED_PHOTO_LINK || '',
+                            completed_by: currentUser,
+                            completed_at: payload.date_completed
+                        };
+                        artifacts.cloneSO = { ...artifacts.soPayload };
+                        for (let key in artifacts.soPayload) { artifacts.cloneSO[key.toUpperCase()] = artifacts.soPayload[key]; }
+                        artifacts.cloneSO.DOM_ID = 'so_' + artifacts.cloneSO.UNIQUE_ID;
+                        artifacts.cloneSO.AV_NOTE = itemToSave.AV_NOTE;
+                        artifacts.cloneSO.SAVED_PHOTO_LINK = artifacts.soPayload.photo_link;
+                        clonePhotoFields(itemToSave, artifacts.cloneSO);
+                        normalizeRowPhotoFields(artifacts.cloneSO);
                     }
-                    if (masterId) {
-                        supabaseFetch('v2_master_inventory', 'PATCH', avPayload, `unique_id=eq.${encodeURIComponent(masterId)}`).catch(() => {});
+
+                    if (prefix === 'req-' && itemToSave._SHOW_IN_AV) {
+                        artifacts.avSyncMasterId = itemToSave.MASTER_ID || itemToSave.MASTER_UNIQUE_ID || itemToSave.master_id;
+                        artifacts.avSyncMasterItem = fullInventory.find(i => i.UNIQUE_ID === artifacts.avSyncMasterId);
+                        artifacts.avSyncPayload = {
+                            av_note: setVal(itemToSave.AV_NOTE),
+                            spec: setVal(itemToSave.REQ_SPEC || itemToSave.SPEC),
+                            caliper: setVal(itemToSave.REQ_CALIPER || itemToSave.CALIPER),
+                            photo_link: setVal(itemToSave.REQ_PHOTO_LINK || itemToSave.SAVED_PHOTO_LINK),
+                            photo_name: setVal(itemToSave.REQ_PHOTO_NAME || itemToSave.SAVED_PHOTO_NAME)
+                        };
                     }
-                }
+
+                    return artifacts;
+                };
 
                 const targetTable = (prefix === 'req-') ? 'v2_active_request' : (itemToSave.SOURCE_TABLE || 'v2_master_inventory');
+                const pendingUploads = isComplete ? getPendingPhotoUploadsForItem(itemToSave) : [];
 
-                supabaseFetch(targetTable, 'PATCH', payload, `unique_id=eq.${encodeURIComponent(itemToSave.UNIQUE_ID)}`).then(data => {
+                const restoreFromFailedSave = (message) => {
+                    itemToSave.DATE_COMPLETED = previousDateCompleted;
+                    itemToSave.REQ_STATUS = previousReqStatus;
+                    if (isCurrentView && isComplete && btnComp) btnComp.innerText = 'MARK DONE';
+                    if (didOptimisticClose) reRenderCurrentView();
+                    if (!isSilentAutoSave) showToast('Network Error', message || 'Could not reach database.', true);
+                };
+
+                const handleSaveSuccess = (artifacts) => {
                     buildSearchIndex(itemToSave);
                     syncRowDataAcrossViews(itemToSave);
+
+                    if (artifacts.soPayload && artifacts.cloneSO) {
+                        supabaseFetch('v2_sales_office', 'POST', artifacts.soPayload).catch(e => console.log(e));
+                        let existingIdx = salesOfficeInventory.findIndex(s => s.UNIQUE_ID === artifacts.cloneSO.UNIQUE_ID);
+                        if (existingIdx > -1) salesOfficeInventory[existingIdx] = artifacts.cloneSO;
+                        else salesOfficeInventory.push(artifacts.cloneSO);
+                    }
+
+                    if (artifacts.avSyncPayload && artifacts.avSyncMasterId) {
+                        if (artifacts.avSyncMasterItem) {
+                            artifacts.avSyncMasterItem.AV_NOTE = itemToSave.AV_NOTE;
+                            artifacts.avSyncMasterItem.SPEC = itemToSave.REQ_SPEC || itemToSave.SPEC;
+                            artifacts.avSyncMasterItem.CALIPER = itemToSave.REQ_CALIPER || itemToSave.CALIPER;
+                            artifacts.avSyncMasterItem.SAVED_PHOTO_LINK = itemToSave.REQ_PHOTO_LINK || itemToSave.SAVED_PHOTO_LINK;
+                            artifacts.avSyncMasterItem.SAVED_PHOTO_NAME = itemToSave.REQ_PHOTO_NAME || itemToSave.SAVED_PHOTO_NAME;
+                            normalizeRowPhotoFields(artifacts.avSyncMasterItem);
+                        }
+                        supabaseFetch('v2_master_inventory', 'PATCH', artifacts.avSyncPayload, `unique_id=eq.${encodeURIComponent(artifacts.avSyncMasterId)}`).catch(() => {});
+                    }
+
                     if (!isComplete && isCurrentView) {
                         renderSavedPhotos();
                         renderPhotoGallery();
                         refreshProtectedSections();
                     }
-                    if (isCurrentView && isComplete) { if(btnComp) btnComp.innerText = "MARK DONE"; }
-                    if (!isSilentAutoSave && isCurrentView && isComplete) showToast("Success", "Task Completed!"); 
-                    if (isComplete) {
+                    if (isCurrentView && isComplete && btnComp) btnComp.innerText = 'MARK DONE';
+                    if (!isSilentAutoSave && isCurrentView && isComplete) showToast('Success', 'Task Completed!');
+                    if (isComplete && !didOptimisticClose) {
                         itemToSave.DATE_COMPLETED = payload.date_completed;
-                        if (isCurrentView) {
-                            goBackFromDetail();
-                        }
+                        if (isCurrentView && detailWasVisible) goBackFromDetail();
                         reRenderCurrentView();
                     }
 
                     if (prefix === 'req-' && isComplete && !wasAlreadyComplete) {
                         let folderItems = requestsInventory.filter(i => i.REQUEST_FOLDER === itemToSave.REQUEST_FOLDER);
                         let allComplete = folderItems.every(i => i.REQ_STATUS === 'Complete' || i.UNIQUE_ID === itemToSave.UNIQUE_ID);
-                        if (allComplete) { sendEmailNotification('request_complete', itemToSave.REQUEST_FOLDER, itemToSave.REQUESTED_BY, itemToSave.REQ_CUSTOMER, folderItems.length); }
+                        if (allComplete) sendEmailNotification('request_complete', itemToSave.REQUEST_FOLDER, itemToSave.REQUESTED_BY, itemToSave.REQ_CUSTOMER, folderItems.length);
                     }
-                }).catch(err => { if (isCurrentView && isComplete) { if(btnComp) btnComp.innerText = "MARK DONE"; if (!isSilentAutoSave) showToast("Network Error", "Could not reach database.", true); } });
+                };
+
+                const persistSave = () => {
+                    if (navigator.onLine === false) {
+                        restoreFromFailedSave('No service. Could not reach Supabase.');
+                        return;
+                    }
+                    applyPhotoFieldsToPayload();
+                    const artifacts = buildCompletionArtifacts();
+                    supabaseFetch(targetTable, 'PATCH', payload, `unique_id=eq.${encodeURIComponent(itemToSave.UNIQUE_ID)}`)
+                        .then(() => { handleSaveSuccess(artifacts); })
+                        .catch((err) => { restoreFromFailedSave(err && err.message ? err.message : 'Could not reach database.'); });
+                };
+
+                if (isComplete) {
+                    itemToSave.DATE_COMPLETED = payload.date_completed;
+                    if (isCurrentView && detailWasVisible) {
+                        didOptimisticClose = true;
+                        goBackFromDetail();
+                    }
+                    reRenderCurrentView();
+                }
+
+                if (pendingUploads.length > 0) {
+                    Promise.all(pendingUploads).then(() => {
+                        persistSave();
+                    }).catch((err) => {
+                        restoreFromFailedSave(err && err.message ? err.message : 'Photo upload failed before the save finished.');
+                    });
+                    return;
+                }
+
+                persistSave();
             };
-            if (isSilentAutoSave && !isComplete && !specificItem) { autoSaveTimer = setTimeout(() => { executeSave(); }, 1000); } else { executeSave(); }
+
+            if (isSilentAutoSave && !isComplete && !specificItem) {
+                autoSaveTimer = setTimeout(() => { executeSave(); }, 1000);
+            } else {
+                executeSave();
+            }
         }
 
         function backupLocalItem(item) {
@@ -4173,8 +4353,14 @@
 
         async function handlePhotoUpload(input, prefix) {
             if (!input.files || input.files.length === 0 || !activeItem) return;
+            const itemToUpload = activeItem;
             if ((isIOSDevice() || isStandaloneApp()) && document.activeElement && ['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) {
                 document.activeElement.blur();
+            }
+            if (navigator.onLine === false) {
+                showToast('Offline', 'No service. Photo could not upload.', true);
+                input.value = '';
+                return;
             }
             if (sectionHasProtectedData(prefix) && !isProtectedUnlocked(prefix)) {
                 showToast('Locked', 'Press and hold unlock before changing protected photos.', true);
@@ -4185,76 +4371,90 @@
 
             if (!file.type.startsWith('image/')) {
                 showToast('Error', 'Please select an image file.', true);
+                input.value = '';
                 return;
             }
 
             showToast('Processing', 'Compressing image...', false);
 
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = function(event) {
-                const img = new Image();
-                img.src = event.target.result;
-                img.onload = function() {
-                    const canvas = document.createElement('canvas');
-                    const MAX_WIDTH = 1080;
-                    const scaleSize = img.width > MAX_WIDTH ? MAX_WIDTH / img.width : 1;
+            const uploadPromise = new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onerror = () => reject(new Error('Could not read the selected image.'));
+                reader.onload = function(event) {
+                    const img = new Image();
+                    img.onerror = () => reject(new Error('Could not process the selected image.'));
+                    img.src = event.target.result;
+                    img.onload = function() {
+                        const canvas = document.createElement('canvas');
+                        const scaleSize = img.width > PHOTO_MAX_WIDTH ? PHOTO_MAX_WIDTH / img.width : 1;
 
-                    canvas.width = img.width * scaleSize;
-                    canvas.height = img.height * scaleSize;
+                        canvas.width = Math.max(1, Math.round(img.width * scaleSize));
+                        canvas.height = Math.max(1, Math.round(img.height * scaleSize));
 
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-                    canvas.toBlob(async (blob) => {
-                        try {
-                            showToast('Uploading', 'Sending photo to Supabase...', false);
-
-                            const bucketName = PHOTO_BUCKETS[prefix] || PHOTO_BUCKETS.default;
-                            const clean = (t) => String(t || 'NA').replace(/[^a-zA-Z0-9_-]/g, '');
-                            const fileName = `${clean(activeItem.COMMONNAME)}-${clean(activeItem.CONTSIZE)}-${Date.now()}.jpg`;
-                            const filePath = `${new Date().toISOString().split('T')[0]}/${fileName}`;
-
-                            const { error: uploadError } = await supabaseClient.storage
-                                .from(bucketName)
-                                .upload(filePath, blob, {
-                                    contentType: 'image/jpeg',
-                                    upsert: true
-                                });
-
-                            if (uploadError) throw uploadError;
-
-                            const { data: publicUrlData } = supabaseClient.storage
-                                .from(bucketName)
-                                .getPublicUrl(filePath);
-
-                            const publicUrl = publicUrlData.publicUrl;
-
-                            if (prefix === 'req-') {
-                                activeItem.REQ_PHOTO_LINK = activeItem.REQ_PHOTO_LINK ? `${activeItem.REQ_PHOTO_LINK},${publicUrl}` : publicUrl;
-                            } else if (prefix === 'dock-') {
-                                activeItem.DOCK_PHOTO_LINK = activeItem.DOCK_PHOTO_LINK ? `${activeItem.DOCK_PHOTO_LINK},${publicUrl}` : publicUrl;
-                            } else if (prefix === 'flyer-') {
-                                activeItem.FLYER_PHOTO_LINK = activeItem.FLYER_PHOTO_LINK ? `${activeItem.FLYER_PHOTO_LINK},${publicUrl}` : publicUrl;
-                            } else {
-                                activeItem.SAVED_PHOTO_LINK = activeItem.SAVED_PHOTO_LINK ? `${activeItem.SAVED_PHOTO_LINK},${publicUrl}` : publicUrl;
+                        canvas.toBlob(async (blob) => {
+                            if (!blob) {
+                                reject(new Error('Could not compress the selected image.'));
+                                return;
                             }
+                            try {
+                                showToast('Uploading', 'Sending photo to Supabase...', false);
 
-                            buildSearchIndex(activeItem);
-                            syncRowDataAcrossViews(activeItem);
-                            saveData(false, prefix, true);
-                            renderSavedPhotos();
-                            renderPhotoGallery();
-                            refreshProtectedSections();
-                            showToast('Success', 'Photo uploaded successfully!');
-                        } catch (err) {
-                            showToast('Error', `Upload failed: ${err.message}`, true);
-                        } finally {
-                            input.value = '';
-                        }
-                    }, 'image/jpeg', 0.8);
+                                const bucketName = PHOTO_BUCKETS[prefix] || PHOTO_BUCKETS.default;
+                                const clean = (t) => String(t || 'NA').replace(/[^a-zA-Z0-9_-]/g, '');
+                                const fileName = `${clean(itemToUpload.COMMONNAME)}-${clean(itemToUpload.CONTSIZE)}-${Date.now()}.jpg`;
+                                const filePath = `${new Date().toISOString().split('T')[0]}/${fileName}`;
+
+                                const uploadResult = await withTimeout(
+                                    supabaseClient.storage.from(bucketName).upload(filePath, blob, {
+                                        contentType: 'image/jpeg',
+                                        upsert: true
+                                    }),
+                                    SUPABASE_UPLOAD_TIMEOUT_MS,
+                                    'Photo upload'
+                                );
+                                const uploadError = uploadResult && uploadResult.error ? uploadResult.error : null;
+                                if (uploadError) throw uploadError;
+
+                                const { data: publicUrlData } = supabaseClient.storage.from(bucketName).getPublicUrl(filePath);
+                                const publicUrl = publicUrlData.publicUrl;
+
+                                if (prefix === 'req-') {
+                                    itemToUpload.REQ_PHOTO_LINK = itemToUpload.REQ_PHOTO_LINK ? `${itemToUpload.REQ_PHOTO_LINK},${publicUrl}` : publicUrl;
+                                } else if (prefix === 'dock-') {
+                                    itemToUpload.DOCK_PHOTO_LINK = itemToUpload.DOCK_PHOTO_LINK ? `${itemToUpload.DOCK_PHOTO_LINK},${publicUrl}` : publicUrl;
+                                } else if (prefix === 'flyer-') {
+                                    itemToUpload.FLYER_PHOTO_LINK = itemToUpload.FLYER_PHOTO_LINK ? `${itemToUpload.FLYER_PHOTO_LINK},${publicUrl}` : publicUrl;
+                                } else {
+                                    itemToUpload.SAVED_PHOTO_LINK = itemToUpload.SAVED_PHOTO_LINK ? `${itemToUpload.SAVED_PHOTO_LINK},${publicUrl}` : publicUrl;
+                                }
+
+                                buildSearchIndex(itemToUpload);
+                                syncRowDataAcrossViews(itemToUpload);
+                                saveData(false, prefix, true, itemToUpload);
+                                if (activeItem && activeItem.UNIQUE_ID === itemToUpload.UNIQUE_ID) {
+                                    renderSavedPhotos();
+                                    renderPhotoGallery();
+                                    refreshProtectedSections();
+                                }
+                                showToast('Success', 'Photo uploaded successfully!');
+                                resolve(publicUrl);
+                            } catch (err) {
+                                showToast('Error', `Upload failed: ${err.message || 'Unknown error'}`, true);
+                                reject(err);
+                            } finally {
+                                input.value = '';
+                            }
+                        }, 'image/jpeg', PHOTO_JPEG_QUALITY);
+                    };
                 };
-            };
+                reader.readAsDataURL(file);
+            });
+
+            registerPendingPhotoUpload(itemToUpload, prefix, uploadPromise);
+            uploadPromise.catch(() => {});
         }
     </script>
 </body>
