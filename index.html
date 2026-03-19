@@ -382,6 +382,7 @@
                     <div id="task-tabs-container" class="task-tabs">
                         <div id="tab-season" class="task-tab active" onclick="setTaskTab('season')">Season Notes</div>
                         <div id="tab-location" class="task-tab" onclick="setTaskTab('location')">Location Notes</div>
+                        <div id="tab-colorwalk" class="task-tab" onclick="setTaskTab('colorwalk')">Color Walk</div>
                         <div id="tab-endcap" class="task-tab" onclick="setTaskTab('endcap')">End Cap</div>
                         <div id="tab-flyer" class="task-tab" onclick="setTaskTab('flyer')">Flyer</div>
                     </div>
@@ -2816,6 +2817,7 @@
             activeTaskTab=tab; 
             document.getElementById('tab-season').classList.toggle('active',tab==='season'); 
             document.getElementById('tab-location').classList.toggle('active',tab==='location'); 
+            document.getElementById('tab-colorwalk').classList.toggle('active',tab==='colorwalk'); 
             document.getElementById('tab-endcap').classList.toggle('active',tab==='endcap'); 
             document.getElementById('tab-flyer').classList.toggle('active',tab==='flyer'); 
             taskViewLevel=0; 
@@ -3293,7 +3295,7 @@
                     if(camLsn) camLsn.style.display = 'none';
                     if(camNa) camNa.style.display = 'none';
                     if(camReq) camReq.style.display = 'none';
-                } else if (activeTaskTab === 'location') {
+                } else if (activeTaskTab === 'location' || activeTaskTab === 'colorwalk') {
                     if(camSsn) camSsn.style.display = 'none';
                     if(camNa) camNa.style.display = 'none';
                     if(camReq) camReq.style.display = 'none';
@@ -3377,7 +3379,8 @@
                 document.getElementById('dtab-notes').classList.remove('hidden');
                 document.getElementById('dtab-gallery').classList.remove('hidden');
             } else if (sourceView === 'tasks') {
-                let t = document.getElementById('dtab-' + activeTaskTab);
+                const taskDetailTab = activeTaskTab === 'colorwalk' ? 'location' : activeTaskTab;
+                let t = document.getElementById('dtab-' + taskDetailTab);
                 if(t) t.classList.remove('hidden');
                 document.getElementById('dtab-gallery').classList.remove('hidden');
             } else if (sourceView === 'docks') {
@@ -3433,7 +3436,7 @@
             renderPhotoGallery();
 
             if (sourceView === 'tasks' && activeTaskTab) {
-                switchDetailTab(activeTaskTab);
+                switchDetailTab(activeTaskTab === 'colorwalk' ? 'location' : activeTaskTab);
             } else {
                 switchDetailTab('overview');
             }
@@ -5139,9 +5142,10 @@ ${formatRequestItemsText(items)}`;
             sorted.forEach(u => {
                 let userTasks = fullInventory.filter(i => i.ASSIGNEDTO === u && !i.DATE_COMPLETED);
                 let htmlCounts = `<div class="flex gap-2 mt-2">`;
-                ['season','location','endcap','flyer'].forEach(t => {
-                    let c = userTasks.filter(i => i.APP_TAB_ASSIGNMENT === t).length;
-                    if(c > 0) htmlCounts += `<span class="text-[10px] font-bold px-2 py-1 rounded bg-gray-100 text-gray-600 uppercase">${t}: ${c}</span>`;
+                ['season','location','colorwalk','endcap','flyer'].forEach(t => {
+                    let c = getTaskTabItems(userTasks, t).length;
+                    const label = t === 'colorwalk' ? 'color' : t;
+                    if(c > 0) htmlCounts += `<span class="text-[10px] font-bold px-2 py-1 rounded bg-gray-100 text-gray-600 uppercase">${label}: ${c}</span>`;
                 });
                 htmlCounts += `</div>`;
                 html += `<div class="bg-white border border-gray-200 p-4 rounded-xl shadow-sm mb-3 cursor-pointer active:scale-95 transition-transform" onclick="selectTaskUser('${esc(u)}')"><div class="flex justify-between items-center"><span class="font-black text-xl text-[#007a4d]">${u}</span><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${userTasks.length} Total</span></div>${htmlCounts}</div>`;
@@ -5157,8 +5161,62 @@ ${formatRequestItemsText(items)}`;
             renderTasks();
         }
 
+        function openTaskBlockView(block) {
+            selectedTaskBlock = block;
+            selectedTaskLoc = null;
+            taskViewLevel = 1;
+            renderTasks();
+            return false;
+        }
+
+        function openTaskLocationView(loc) {
+            selectedTaskLoc = loc;
+            taskViewLevel = 2;
+            renderTasks();
+            return false;
+        }
+
+        function backToTaskBlockList() {
+            taskViewLevel = 0;
+            selectedTaskBlock = null;
+            selectedTaskLoc = null;
+            renderTasks();
+            return false;
+        }
+
+        function backToTaskLocationList() {
+            taskViewLevel = 1;
+            selectedTaskLoc = null;
+            renderTasks();
+            return false;
+        }
+
         function taskTabUsesBlockDrill(tab = activeTaskTab) {
-            return tab === 'season' || tab === 'location';
+            return tab === 'season' || tab === 'location' || tab === 'colorwalk';
+        }
+
+        const COLOR_WALK_LOCATION_BUCKETS = new Set(['C.06', 'C.07', 'D.05', 'D.06', 'D.07', 'D.08', 'D.09', 'D.10']);
+        const COLOR_WALK_PLANT_GROUPS = new Set(['150_ANNUAL', '151_PEREN', '155_SUCCUL', '160_TROPIC']);
+
+        function getTaskTabLabel(tab = activeTaskTab) {
+            if (tab === 'season') return 'Season Sales Notes';
+            if (tab === 'location') return 'Location Sales Notes';
+            if (tab === 'colorwalk') return 'Color Walk';
+            if (tab === 'endcap') return 'End Cap';
+            if (tab === 'flyer') return 'Flyer';
+            return tab;
+        }
+
+        function isColorWalkTaskItem(item) {
+            if (!item) return false;
+            const plantGroup = String(item.PLANTGROUPCODE || '').trim().toUpperCase();
+            if (!COLOR_WALK_PLANT_GROUPS.has(plantGroup)) return false;
+            return COLOR_WALK_LOCATION_BUCKETS.has(getTaskLocationBucket(item));
+        }
+
+        function getTaskTabItems(items, tab = activeTaskTab) {
+            if (tab === 'colorwalk') return items.filter(i => isColorWalkTaskItem(i));
+            return items.filter(i => i.APP_TAB_ASSIGNMENT === tab);
         }
 
         function getTaskBlockAlpha(item) {
@@ -5179,6 +5237,31 @@ ${formatRequestItemsText(items)}`;
             return loc || 'UNASSIGNED';
         }
 
+        function compareLocationCodeValues(a, b) {
+            const normalize = (value) => String(value || '').trim().toUpperCase();
+            const parse = (value) => {
+                const clean = normalize(value);
+                const match = clean.match(/^([A-Z]+)(?:\.(\d+))?(?:\.(\d+))?(?:\.(\d+))?$/);
+                if (!match) return { raw: clean, block: clean, parts: [] };
+                return {
+                    raw: clean,
+                    block: match[1] || '',
+                    parts: [match[2], match[3], match[4]].filter(part => part !== undefined).map(part => parseInt(part, 10))
+                };
+            };
+            const left = parse(a);
+            const right = parse(b);
+            const blockCompare = left.block.localeCompare(right.block, undefined, { numeric: true });
+            if (blockCompare !== 0) return blockCompare;
+            const maxLen = Math.max(left.parts.length, right.parts.length);
+            for (let i = 0; i < maxLen; i++) {
+                const leftPart = Number.isFinite(left.parts[i]) ? left.parts[i] : -1;
+                const rightPart = Number.isFinite(right.parts[i]) ? right.parts[i] : -1;
+                if (leftPart !== rightPart) return leftPart - rightPart;
+            }
+            return left.raw.localeCompare(right.raw, undefined, { numeric: true });
+        }
+
         function renderTasks() {
             if (ensureViewDataForRender('tasks')) return;
             const tabs = document.getElementById('task-tabs-container');
@@ -5191,7 +5274,7 @@ ${formatRequestItemsText(items)}`;
 
             const container = document.getElementById('task-content');
             const crumb = document.getElementById('task-crumb');
-            const notesTitle = activeTaskTab === 'season' ? 'Season Sales Notes' : 'Location Sales Notes';
+            const notesTitle = getTaskTabLabel(activeTaskTab);
 
             if (useSharedNotesQueue) {
                 if (taskViewLevel === 0) crumb.innerText = notesTitle;
@@ -5206,10 +5289,10 @@ ${formatRequestItemsText(items)}`;
             let scopedItems = useSharedNotesQueue
                 ? fullInventory.filter(i => !i.DATE_COMPLETED)
                 : fullInventory.filter(i => i.ASSIGNEDTO === targetUser && !i.DATE_COMPLETED);
-            let tabItems = scopedItems.filter(i => i.APP_TAB_ASSIGNMENT === activeTaskTab);
+            let tabItems = getTaskTabItems(scopedItems, activeTaskTab);
 
             if(tabItems.length === 0){
-                container.innerHTML = `<div class="p-8 text-center text-gray-400">No active ${activeTaskTab} tasks.</div>`;
+                container.innerHTML = `<div class="p-8 text-center text-gray-400">No active ${notesTitle} rows.</div>`;
                 return;
             }
 
@@ -5236,21 +5319,28 @@ ${formatRequestItemsText(items)}`;
                         if(!blocks[blockAlpha]) blocks[blockAlpha] = {count:0};
                         blocks[blockAlpha].count++;
                     });
-                    let html = Object.keys(blocks).sort().map(b => `<div class="bg-white border border-green-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectedTaskBlock='${esc(b)}'; taskViewLevel=1; renderTasks()"><div class="flex items-center gap-3"><div class="bg-green-100 text-[#007a4d] px-3 py-1.5 rounded-lg font-black text-lg">${b}</div><span class="font-bold text-lg text-gray-700">Block ${b}</span></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${blocks[b].count} Items</span></div>`).join('');
+                    let html = Object.keys(blocks).sort().map(b => `<div class="bg-white border border-green-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="return openTaskBlockView('${esc(b)}')"><div class="flex items-center gap-3"><div class="bg-green-100 text-[#007a4d] px-3 py-1.5 rounded-lg font-black text-lg">${b}</div><span class="font-bold text-lg text-gray-700">Block ${b}</span></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${blocks[b].count} Items</span></div>`).join('');
                     container.innerHTML = html;
                 } else if(taskViewLevel === 1) {
                     let bItems = tabItems.filter(i => getTaskBlockAlpha(i) === selectedTaskBlock);
-                    let locs = [...new Set(bItems.map(i => getTaskLocationBucket(i)))].sort((a,b) => String(a).localeCompare(String(b), undefined, {numeric: true}));
-                    let html = `<div class="back-btn" onclick="taskViewLevel=0; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Blocks</div>`;
+                    let locs = [...new Set(bItems.map(i => getTaskLocationBucket(i)))].sort((a,b) => compareLocationCodeValues(a, b));
+                    let html = `<div class="back-btn" onclick="return backToTaskBlockList()"><i class="ph-bold ph-arrow-left"></i> Back to Blocks</div>`;
                     html += locs.map(l => {
                         let count = bItems.filter(i => getTaskLocationBucket(i) === l).length;
-                        return `<div class="drill-item" onclick="selectedTaskLoc='${esc(l)}'; taskViewLevel=2; renderTasks()"><span class="font-bold text-lg text-gray-800">${l} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
+                        return `<div class="drill-item" onclick="return openTaskLocationView('${esc(l)}')"><span class="font-bold text-lg text-gray-800">${l} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
                     }).join('');
                     container.innerHTML = html;
                 } else if(taskViewLevel === 2) {
                     let fItems = tabItems.filter(i => getTaskLocationBucket(i) === selectedTaskLoc);
-                    fItems.sort((a,b) => String(a.COMMONNAME || '').localeCompare(String(b.COMMONNAME || '')));
-                    container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=1; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Locations</div>` + fItems.map(i => generateCard(i, 'tasks', activeTaskTab === 'season' ? 'status-green' : 'status-blue')).join('');
+                    fItems.sort((a,b) => {
+                        const locationCompare = compareLocationCodeValues(a.LOCATIONCODE, b.LOCATIONCODE);
+                        if (locationCompare !== 0) return locationCompare;
+                        const nameCompare = String(a.COMMONNAME || '').localeCompare(String(b.COMMONNAME || ''));
+                        if (nameCompare !== 0) return nameCompare;
+                        return String(a.CONTSIZE || '').localeCompare(String(b.CONTSIZE || ''), undefined, { numeric: true });
+                    });
+                    const colorClass = activeTaskTab === 'season' ? 'status-green' : (activeTaskTab === 'colorwalk' ? 'status-indigo' : 'status-blue');
+                    container.innerHTML = `<div class="back-btn" onclick="return backToTaskLocationList()"><i class="ph-bold ph-arrow-left"></i> Back to Locations</div>` + fItems.map(i => generateCard(i, 'tasks', colorClass)).join('');
                 }
             }
         }
