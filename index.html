@@ -3196,6 +3196,59 @@
             container.innerHTML = items.map(i => generateCard(i, 'low-stock', 'status-red')).join('');
         }
 
+        function getRequestAssignedRep(item) {
+            return String(item.SALESREPNAME || item.SALESREP || item.REQUESTED_BY || item.SALESREPID || 'Unknown Rep').trim() || 'Unknown Rep';
+        }
+
+        function getRequestCustomerConsigneeFolder(item) {
+            const clean = (value) => String(value || '').trim();
+            let customer = clean(item.CUSTOMERNAME || item.CUSTOMER || '');
+            let consignee = clean(item.CONSIGNEENAME || item.CONSIGNEE || '');
+            if (!customer) {
+                const reqCustomer = clean(item.REQ_CUSTOMER || '');
+                if (reqCustomer.includes('|')) {
+                    const parts = reqCustomer.split('|').map(part => part.trim()).filter(Boolean);
+                    customer = parts[0] || '';
+                    consignee = consignee || parts[1] || '';
+                } else {
+                    customer = reqCustomer;
+                }
+            }
+            if (!customer) customer = 'Unknown Customer';
+            return consignee && consignee !== customer ? `${customer}-${consignee}` : customer;
+        }
+
+        function getCurrentRequestDetailItems() {
+            let items = requestsInventory;
+            if (safeRole === 'SALESREP') items = items.filter(i => isMyRep(i.REQUESTED_BY));
+
+            if (activeReqTab === 'pending') {
+                items = items.filter(i => i.REQ_STATUS !== 'Complete' && !i.REQ_ARCHIVED);
+            } else if (activeReqTab === 'reps') {
+                items = items.filter(i => getRequestAssignedRep(i) === selectedReqRepView && !i.REQ_ARCHIVED);
+                if (selectedReqStatus) {
+                    items = items.filter(i => selectedReqStatus === 'Pending' ? i.REQ_STATUS !== 'Complete' : i.REQ_STATUS === 'Complete');
+                }
+                if (requestViewLevel >= 3 && selectedReqFolderView) {
+                    items = items.filter(i => {
+                        const groupKey = selectedReqStatus === 'Complete' ? getRequestCustomerConsigneeFolder(i) : (i.REQUEST_FOLDER || 'Unassigned');
+                        return groupKey === selectedReqFolderView;
+                    });
+                }
+            } else {
+                items = [];
+            }
+
+            return items.sort((a,b) => String(a.LOCATIONCODE||'').localeCompare(String(b.LOCATIONCODE||''), undefined, {numeric: true}));
+        }
+
+        function getNextRequestDetailId(currentUniqueId) {
+            const items = getCurrentRequestDetailItems();
+            const idx = items.findIndex(i => i.UNIQUE_ID === currentUniqueId);
+            if (idx === -1) return items.length ? items[0].UNIQUE_ID : null;
+            return items[idx + 1] ? items[idx + 1].UNIQUE_ID : null;
+        }
+
         function renderRequest() {
             if (ensureViewDataForRender('request')) return;
             const container = document.getElementById('request-content');
@@ -3222,7 +3275,7 @@
             } else if (activeReqTab === 'reps') {
                 if (requestViewLevel === 0) {
                     crumb.innerText = "Sales Reps";
-                    let reps = [...new Set(items.map(i => i.REQUESTED_BY || 'Unknown Rep'))].sort();
+                    let reps = [...new Set(items.map(i => getRequestAssignedRep(i)))].sort();
                     if (reps.length === 0) {
                         container.innerHTML = `<div class="p-8 text-center text-gray-400">No sales reps found.</div>`;
                         return;
@@ -3230,7 +3283,7 @@
                     container.innerHTML = reps.map(r => `<div class="drill-item" onclick="selectedReqRepView='${esc(r)}'; requestViewLevel=1; renderRequest()"><span class="font-bold text-lg">${r}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
                 } else if (requestViewLevel === 1) {
                     crumb.innerText = `${selectedReqRepView} > Status`;
-                    let repItems = items.filter(i => (i.REQUESTED_BY || 'Unknown Rep') === selectedReqRepView && !i.REQ_ARCHIVED);
+                    let repItems = items.filter(i => getRequestAssignedRep(i) === selectedReqRepView && !i.REQ_ARCHIVED);
                     let pendingCount = repItems.filter(i => i.REQ_STATUS !== 'Complete').length;
                     let completeCount = repItems.filter(i => i.REQ_STATUS === 'Complete').length;
                     
@@ -3247,7 +3300,7 @@
                     `;
                 } else if (requestViewLevel === 2) {
                     crumb.innerText = `${selectedReqRepView} > ${selectedReqStatus}`;
-                    let repItems = items.filter(i => (i.REQUESTED_BY || 'Unknown Rep') === selectedReqRepView && !i.REQ_ARCHIVED);
+                    let repItems = items.filter(i => getRequestAssignedRep(i) === selectedReqRepView && !i.REQ_ARCHIVED);
                     let statusItems = repItems.filter(i => selectedReqStatus === 'Pending' ? i.REQ_STATUS !== 'Complete' : i.REQ_STATUS === 'Complete');
                     
                     if (statusItems.length === 0) {
@@ -3255,16 +3308,17 @@
                         return;
                     }
 
-                    let folders = [...new Set(statusItems.map(i => i.REQUEST_FOLDER || 'Unassigned'))].sort();
+                    let folders = [...new Set(statusItems.map(i => selectedReqStatus === 'Complete' ? getRequestCustomerConsigneeFolder(i) : (i.REQUEST_FOLDER || 'Unassigned')))].sort();
                     let html = `<div class="back-btn" onclick="requestViewLevel=1; renderRequest()"><i class="ph-bold ph-arrow-left"></i> Back to Status</div>`;
                     html += folders.map(f => {
-                        let count = statusItems.filter(i => (i.REQUEST_FOLDER || 'Unassigned') === f).length;
+                        let count = statusItems.filter(i => (selectedReqStatus === 'Complete' ? getRequestCustomerConsigneeFolder(i) : (i.REQUEST_FOLDER || 'Unassigned')) === f).length;
                         return `<div class="bg-white border border-purple-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectedReqFolderView='${esc(f)}'; requestViewLevel=3; renderRequest()"><div class="flex items-center gap-3"><div class="bg-purple-50 p-2 rounded-lg"><i class="ph-fill ph-folder text-2xl text-purple-500"></i></div><span class="font-bold text-sm text-purple-800 break-all">${f}</span></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg min-w-max ml-2">${count} Items</span></div>`;
                     }).join('');
                     container.innerHTML = html;
                 } else if (requestViewLevel === 3) {
-                    crumb.innerText = selectedReqFolderView;
-                    let folderItems = items.filter(i => (i.REQUESTED_BY || 'Unknown Rep') === selectedReqRepView && (i.REQUEST_FOLDER || 'Unassigned') === selectedReqFolderView && !i.REQ_ARCHIVED);
+                    crumb.innerText = selectedReqStatus === 'Complete' ? `${selectedReqRepView} > ${selectedReqFolderView}` : selectedReqFolderView;
+                    let folderItems = items.filter(i => getRequestAssignedRep(i) === selectedReqRepView && !i.REQ_ARCHIVED);
+                    folderItems = folderItems.filter(i => (selectedReqStatus === 'Complete' ? getRequestCustomerConsigneeFolder(i) : (i.REQUEST_FOLDER || 'Unassigned')) === selectedReqFolderView);
                     folderItems = folderItems.filter(i => selectedReqStatus === 'Pending' ? i.REQ_STATUS !== 'Complete' : i.REQ_STATUS === 'Complete');
                     folderItems.sort((a,b) => String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""), undefined, {numeric: true}));
                     
@@ -4643,6 +4697,7 @@
                 const previousDateCompleted = itemToSave.DATE_COMPLETED || '';
                 const previousReqStatus = itemToSave.REQ_STATUS;
                 const detailWasVisible = !!(document.getElementById('view-detail') && !document.getElementById('view-detail').classList.contains('hidden'));
+                const nextRequestId = (prefix === 'req-' && isComplete && isCurrentView && detailWasVisible && lastView === 'request') ? getNextRequestDetailId(itemToSave.UNIQUE_ID) : null;
                 let didOptimisticClose = false;
 
                 if (!specificItem) {
@@ -4681,6 +4736,7 @@
 
                 const setVal = (val) => (val === '' || val === undefined) ? null : val;
                 const payload = {};
+                let isAvEligibleRequest = false;
 
                 if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-') {
                     payload.match = (itemToSave.MATCH === '' || itemToSave.MATCH == null) ? null : parseFloat(itemToSave.MATCH);
@@ -4690,7 +4746,7 @@
                     payload.av_note = setVal(itemToSave.AV_NOTE);
                 } else if (prefix === 'req-') {
                     const assignment = String(itemToSave.APP_TAB_ASSIGNMENT || '').toLowerCase();
-                    const isAvEligibleRequest = assignment === 'season' || assignment === 'location';
+                    isAvEligibleRequest = assignment === 'season' || assignment === 'location';
                     const needsCaliper = itemToSave.PLANTGROUPCODE && String(itemToSave.PLANTGROUPCODE).includes('330_TREES') && ['#7','#10','#15','#25','#45'].includes(itemToSave.CONTSIZE);
                     if (isComplete && isAvEligibleRequest) {
                         const effectiveAvNote = String(itemToSave.AV_NOTE || '').trim();
@@ -4710,7 +4766,6 @@
                     if (isComplete) {
                         payload.req_status = 'Complete';
                         itemToSave.REQ_STATUS = 'Complete';
-                        itemToSave._SHOW_IN_AV = isAvEligibleRequest ? confirm('Show this completed request in the AV tab?') : false;
                     }
                 } else if (prefix === 'dock-') {
                     payload.dock_spec = setVal(itemToSave.DOCK_SPEC);
@@ -4761,9 +4816,10 @@
 
                 const buildCompletionArtifacts = () => {
                     const artifacts = { soPayload: null, cloneSO: null, avSyncMasterId: null, avSyncMasterItem: null, avSyncPayload: null };
-                    if (!isComplete) return artifacts;
+                    const shouldSyncRequestRow = prefix === 'req-' && isAvEligibleRequest;
+                    if (!isComplete && !shouldSyncRequestRow) return artifacts;
 
-                    if (prefix !== 'flyer-' && prefix !== 'req-') {
+                    if (isComplete && prefix !== 'flyer-' && prefix !== 'req-') {
                         artifacts.soPayload = {
                             unique_id: itemToSave.UNIQUE_ID,
                             itemcode: itemToSave.ITEMCODE || '',
@@ -4786,7 +4842,7 @@
                         normalizeRowPhotoFields(artifacts.cloneSO);
                     }
 
-                    if (prefix === 'req-' && itemToSave._SHOW_IN_AV) {
+                    if (shouldSyncRequestRow) {
                         artifacts.avSyncMasterId = itemToSave.MASTER_ID || itemToSave.MASTER_UNIQUE_ID || itemToSave.master_id;
                         artifacts.avSyncMasterItem = findItemByUniqueId(artifacts.avSyncMasterId);
                         artifacts.avSyncPayload = {
@@ -4831,6 +4887,8 @@
                             artifacts.avSyncMasterItem.SAVED_PHOTO_LINK = itemToSave.REQ_PHOTO_LINK || itemToSave.SAVED_PHOTO_LINK;
                             artifacts.avSyncMasterItem.SAVED_PHOTO_NAME = itemToSave.REQ_PHOTO_NAME || itemToSave.SAVED_PHOTO_NAME;
                             normalizeRowPhotoFields(artifacts.avSyncMasterItem);
+                            buildSearchIndex(artifacts.avSyncMasterItem);
+                            syncRowDataAcrossViews(artifacts.avSyncMasterItem);
                         }
                         supabaseFetch('v2_ok_master_inventory', 'PATCH', artifacts.avSyncPayload, `unique_id=eq.${encodeURIComponent(artifacts.avSyncMasterId)}`).catch(() => {});
                     }
@@ -4846,6 +4904,10 @@
                         itemToSave.DATE_COMPLETED = payload.date_completed;
                         if (isCurrentView && detailWasVisible) goBackFromDetail();
                         reRenderCurrentView();
+                    }
+
+                    if (prefix === 'req-' && isComplete && nextRequestId) {
+                        openDetail(nextRequestId, 'request');
                     }
 
                     if (prefix === 'req-' && isComplete && !wasAlreadyComplete) {
