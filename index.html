@@ -3464,6 +3464,51 @@
             return consignee && consignee !== customer ? `${customer}-${consignee}` : customer;
         }
 
+        function openRequestRepView(repName) {
+            selectedReqRepView = String(repName || '').trim() || 'Unknown Rep';
+            selectedReqStatus = 'Pending';
+            selectedReqFolderView = null;
+            requestViewLevel = 1;
+            renderRequest();
+            return false;
+        }
+
+        function openRequestStatusView(status) {
+            selectedReqStatus = status === 'Complete' ? 'Complete' : 'Pending';
+            selectedReqFolderView = null;
+            requestViewLevel = 2;
+            renderRequest();
+            return false;
+        }
+
+        function openRequestFolderView(folderName) {
+            selectedReqFolderView = String(folderName || '').trim() || 'Unassigned';
+            requestViewLevel = 3;
+            renderRequest();
+            return false;
+        }
+
+        function backToRequestRepList() {
+            requestViewLevel = 0;
+            selectedReqRepView = null;
+            selectedReqFolderView = null;
+            renderRequest();
+            return false;
+        }
+
+        function backToRequestStatusList() {
+            requestViewLevel = 1;
+            selectedReqFolderView = null;
+            renderRequest();
+            return false;
+        }
+
+        function backToRequestFolderList() {
+            requestViewLevel = 2;
+            renderRequest();
+            return false;
+        }
+
         function getCurrentRequestDetailItems() {
             let items = requestsInventory;
             if (safeRole === 'SALESREP') items = items.filter(i => isMyRep(i.REQUESTED_BY));
@@ -3526,7 +3571,7 @@
                         container.innerHTML = `<div class="p-8 text-center text-gray-400">No sales reps found.</div>`;
                         return;
                     }
-                    container.innerHTML = reps.map(r => `<div class="drill-item" onclick="selectedReqRepView='${esc(r)}'; requestViewLevel=1; renderRequest()"><span class="font-bold text-lg">${r}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
+                    container.innerHTML = reps.map(r => `<div class="drill-item" onclick="return openRequestRepView('${esc(r)}')"><span class="font-bold text-lg">${r}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
                 } else if (requestViewLevel === 1) {
                     crumb.innerText = `${selectedReqRepView} > Status`;
                     let repItems = items.filter(i => getRequestAssignedRep(i) === selectedReqRepView && !i.REQ_ARCHIVED);
@@ -3534,12 +3579,12 @@
                     let completeCount = repItems.filter(i => i.REQ_STATUS === 'Complete').length;
                     
                     container.innerHTML = `
-                        <div class="back-btn" onclick="requestViewLevel=0; renderRequest()"><i class="ph-bold ph-arrow-left"></i> Back to Reps</div>
-                        <div class="bg-orange-50 border border-orange-200 rounded-xl shadow-sm mb-4 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectedReqStatus='Pending'; requestViewLevel=2; renderRequest()">
+                        <div class="back-btn" onclick="return backToRequestRepList()"><i class="ph-bold ph-arrow-left"></i> Back to Reps</div>
+                        <div class="bg-orange-50 border border-orange-200 rounded-xl shadow-sm mb-4 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="return openRequestStatusView('Pending')">
                             <div class="flex items-center gap-3"><i class="ph-bold ph-clock text-2xl text-orange-500"></i><span class="font-bold text-lg text-orange-800">Pending Requests</span></div>
                             <span class="text-xs font-bold text-white bg-orange-500 px-2 py-1 rounded-lg">${pendingCount}</span>
                         </div>
-                        <div class="bg-green-50 border border-green-200 rounded-xl shadow-sm mb-4 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectedReqStatus='Complete'; requestViewLevel=2; renderRequest()">
+                        <div class="bg-green-50 border border-green-200 rounded-xl shadow-sm mb-4 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="return openRequestStatusView('Complete')">
                             <div class="flex items-center gap-3"><i class="ph-bold ph-check-circle text-2xl text-green-500"></i><span class="font-bold text-lg text-green-800">Completed Requests</span></div>
                             <span class="text-xs font-bold text-white bg-green-500 px-2 py-1 rounded-lg">${completeCount}</span>
                         </div>
@@ -3550,18 +3595,18 @@
                     let statusItems = repItems.filter(i => selectedReqStatus === 'Pending' ? i.REQ_STATUS !== 'Complete' : i.REQ_STATUS === 'Complete');
                     
                     if (statusItems.length === 0) {
-                        container.innerHTML = `<div class="back-btn" onclick="requestViewLevel=1; renderRequest()"><i class="ph-bold ph-arrow-left"></i> Back to Status</div><div class="p-8 text-center text-gray-400">No ${selectedReqStatus.toLowerCase()} requests.</div>`;
+                        container.innerHTML = `<div class="back-btn" onclick="return backToRequestStatusList()"><i class="ph-bold ph-arrow-left"></i> Back to Status</div><div class="p-8 text-center text-gray-400">No ${selectedReqStatus.toLowerCase()} requests.</div>`;
                         return;
                     }
 
                     let folders = [...new Set(statusItems.map(i => selectedReqStatus === 'Complete' ? getRequestCustomerConsigneeFolder(i) : (i.REQUEST_FOLDER || 'Unassigned')))].sort();
-                    let html = `<div class="back-btn" onclick="requestViewLevel=1; renderRequest()"><i class="ph-bold ph-arrow-left"></i> Back to Status</div>`;
+                    let html = `<div class="back-btn" onclick="return backToRequestStatusList()"><i class="ph-bold ph-arrow-left"></i> Back to Status</div>`;
                     html += folders.map(f => {
                         let count = statusItems.filter(i => (selectedReqStatus === 'Complete' ? getRequestCustomerConsigneeFolder(i) : (i.REQUEST_FOLDER || 'Unassigned')) === f).length;
                         const folderNote = getRequestFolderNote(f, selectedReqStatus, selectedReqRepView);
                         const noteHtml = folderNote ? `<div class="mt-3 bg-amber-50 border border-amber-200 rounded-lg p-2 text-[11px] font-semibold text-amber-900 whitespace-pre-wrap"><span class="font-black uppercase text-[10px] tracking-wider text-amber-700">Folder Note</span><div class="mt-1">${esc(folderNote)}</div></div>` : '';
                         const shareActions = canShareRequestFolders() ? `<div class="grid grid-cols-4 gap-2 mt-3"><button class="bg-white border border-purple-200 text-purple-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); shareRequestFolder('copy', '${esc(f)}', '${selectedReqStatus}', '${esc(selectedReqRepView)}')">Copy</button><button class="bg-white border border-indigo-200 text-indigo-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); shareRequestFolder('email', '${esc(f)}', '${selectedReqStatus}', '${esc(selectedReqRepView)}')">Email</button><button class="bg-white border border-emerald-200 text-emerald-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); shareRequestFolder('text', '${esc(f)}', '${selectedReqStatus}', '${esc(selectedReqRepView)}')">Text</button><button class="bg-white border border-amber-200 text-amber-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); setRequestFolderNote('${esc(f)}', '${selectedReqStatus}', '${esc(selectedReqRepView)}')">Note</button></div>` : '';
-                        return `<div class="bg-white border border-purple-200 rounded-xl shadow-sm mb-3 p-4 cursor-pointer active:scale-95 transition-transform" onclick="selectedReqFolderView='${esc(f)}'; requestViewLevel=3; renderRequest()"><div class="flex justify-between items-center"><div class="flex items-center gap-3 min-w-0"><div class="bg-purple-50 p-2 rounded-lg"><i class="ph-fill ph-folder text-2xl text-purple-500"></i></div><span class="font-bold text-sm text-purple-800 break-all">${f}</span></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg min-w-max ml-2">${count} Items</span></div>${noteHtml}${shareActions}</div>`;
+                        return `<div class="bg-white border border-purple-200 rounded-xl shadow-sm mb-3 p-4 cursor-pointer active:scale-95 transition-transform" onclick="return openRequestFolderView('${esc(f)}')"><div class="flex justify-between items-center"><div class="flex items-center gap-3 min-w-0"><div class="bg-purple-50 p-2 rounded-lg"><i class="ph-fill ph-folder text-2xl text-purple-500"></i></div><span class="font-bold text-sm text-purple-800 break-all">${f}</span></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg min-w-max ml-2">${count} Items</span></div>${noteHtml}${shareActions}</div>`;
                     }).join('');
                     container.innerHTML = html;
                 } else if (requestViewLevel === 3) {
@@ -3571,7 +3616,7 @@
                     folderItems = folderItems.filter(i => selectedReqStatus === 'Pending' ? i.REQ_STATUS !== 'Complete' : i.REQ_STATUS === 'Complete');
                     folderItems.sort((a,b) => String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""), undefined, {numeric: true}));
                     
-                    container.innerHTML = `<div class="back-btn" onclick="requestViewLevel=2; renderRequest()"><i class="ph-bold ph-arrow-left"></i> Back to Folders</div>` + folderItems.map(i => generateCard(i, 'request', selectedReqStatus === 'Complete' ? 'status-green' : 'status-purple')).join('');
+                    container.innerHTML = `<div class="back-btn" onclick="return backToRequestFolderList()"><i class="ph-bold ph-arrow-left"></i> Back to Folders</div>` + folderItems.map(i => generateCard(i, 'request', selectedReqStatus === 'Complete' ? 'status-green' : 'status-purple')).join('');
                     requestAnimationFrame(decorateRequestRows);
                 }
             }
