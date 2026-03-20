@@ -1311,6 +1311,7 @@
         let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pendingDockNum=null; let selectedDockName=null; let selectedDockSize=null; let selectedDockItemCode=null; let selectedDockCustomer=""; let selectedDockTrip=""; let selectedDockRep=""; let lastSyncTime=new Date().toISOString();
         let lastSuccessfulSyncTime = "";
         let syncDiagnosticsOverride = "";
+        let pendingRequestArchiveFlushTimer = null;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Machino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
 
         window.onload=async function() {
@@ -1345,11 +1346,10 @@
             initializeInteractiveChrome();
             updateSyncDiagnostics();
         });
-
-
         window.addEventListener('online', () => {
             if (currentUser) {
-                flushPendingRequestArchives();
+                flushPendingRequestArchives().catch(() => {});
+                schedulePendingRequestArchiveFlush(2800);
                 queueForegroundRefresh(80);
             }
         });
@@ -4555,8 +4555,7 @@
                 }, true);
             });
         }
-
-        function archiveRequestRow(uid) {
+        async function archiveRequestRow(uid) {
             const item = requestsInventory.find((entry) => entry.UNIQUE_ID === uid);
             if (!item) return;
             item.REQ_ARCHIVED = true;
@@ -4567,19 +4566,18 @@
             renderRequest();
             markViewDirty('request');
             showToast('Removing', 'Updating request...', false);
-            supabaseFetch('v2_active_request', 'PATCH', { req_archived: true }, `unique_id=eq.${encodeURIComponent(uid)}`).then(() => {
+            const archived = await syncRequestArchive(uid, navigator.onLine === false ? 1 : 3);
+            if (archived) {
                 clearPendingRequestArchive(uid);
                 showToast('Removed', 'Request removed from Request tab.');
-            }).catch(async () => {
-                const confirmedArchived = await confirmRequestArchived(uid);
-                if (confirmedArchived) {
-                    clearPendingRequestArchive(uid);
-                    showToast('Removed', 'Request removed from Request tab.');
-                    return;
-                }
+                return;
+            }
+            schedulePendingRequestArchiveFlush(navigator.onLine === false ? 4500 : 2200);
+            if (navigator.onLine === false) {
                 showToast('Queued', 'Request will finish removing when service is stable.', false);
-                flushPendingRequestArchives().catch(() => {});
-            });
+                return;
+            }
+            showToast('Retrying', 'Request removal is retrying in the background.', false);
         }
 
         function updateGlobalActionBar() { 
@@ -5044,7 +5042,6 @@
                 return [];
             }
         }
-
         async function confirmRequestArchived(requestId = '') {
             const id = String(requestId || '').trim();
             if (!id) return false;
@@ -5058,6 +5055,47 @@
             }
         }
 
+        function clearPendingRequestArchiveFlushTimer() {
+            if (pendingRequestArchiveFlushTimer) {
+                clearTimeout(pendingRequestArchiveFlushTimer);
+                pendingRequestArchiveFlushTimer = null;
+            }
+        }
+
+        function schedulePendingRequestArchiveFlush(delayMs = 2500) {
+            clearPendingRequestArchiveFlushTimer();
+            if (!currentUser || navigator.onLine === false) return;
+            if (!Object.keys(getPendingRequestArchiveMap()).length) return;
+            pendingRequestArchiveFlushTimer = setTimeout(() => {
+                pendingRequestArchiveFlushTimer = null;
+                flushPendingRequestArchives().catch(() => {});
+            }, Math.max(500, Number(delayMs) || 0));
+        }
+
+        async function waitForRequestArchiveRetry(delayMs = 0) {
+            const waitMs = Math.max(0, Number(delayMs) || 0);
+            if (!waitMs) return;
+            await new Promise((resolve) => setTimeout(resolve, waitMs));
+        }
+
+        async function syncRequestArchive(uid, maxAttempts = 1) {
+            const id = String(uid || '').trim();
+            const attempts = Math.max(1, Number(maxAttempts) || 1);
+            if (!id) return false;
+            for (let attempt = 0; attempt < attempts; attempt++) {
+                try {
+                    await supabaseFetch('v2_active_request', 'PATCH', { req_archived: true }, `unique_id=eq.${encodeURIComponent(id)}`);
+                    return true;
+                } catch (error) {
+                    const confirmedArchived = await confirmRequestArchived(id);
+                    if (confirmedArchived) return true;
+                    if (attempt < attempts - 1 && navigator.onLine !== false) {
+                        await waitForRequestArchiveRetry(900 * (attempt + 1));
+                    }
+                }
+            }
+            return false;
+        }
         function getPendingRequestArchiveMap() {
             try {
                 const raw = localStorage.getItem('gnc_pending_request_archives') || '{}';
@@ -5067,9 +5105,10 @@
                 return {};
             }
         }
-
         function setPendingRequestArchiveMap(map) {
             localStorage.setItem('gnc_pending_request_archives', JSON.stringify(map || {}));
+            if (map && Object.keys(map).length) schedulePendingRequestArchiveFlush();
+            else clearPendingRequestArchiveFlushTimer();
         }
 
         function queuePendingRequestArchive(itemOrId) {
@@ -5103,24 +5142,20 @@
                 buildSearchIndex(item);
             });
         }
-
         async function flushPendingRequestArchives() {
             if (!currentUser || navigator.onLine === false) return;
             const map = getPendingRequestArchiveMap();
             const ids = Object.keys(map);
-            if (!ids.length) return;
+            if (!ids.length) {
+                clearPendingRequestArchiveFlushTimer();
+                return;
+            }
             const remaining = {};
             for (const uid of ids) {
-                try {
-                    await supabaseFetch('v2_active_request', 'PATCH', { req_archived: true }, `unique_id=eq.${encodeURIComponent(uid)}`);
-                    clearPendingRequestArchive(uid);
-                } catch (error) {
-                    const confirmedArchived = await confirmRequestArchived(uid);
-                    if (!confirmedArchived) remaining[uid] = map[uid];
-                    else clearPendingRequestArchive(uid);
-                }
+                const archived = await syncRequestArchive(uid, 2);
+                if (!archived) remaining[uid] = map[uid];
             }
-            if (Object.keys(remaining).length) setPendingRequestArchiveMap(remaining);
+            setPendingRequestArchiveMap(remaining);
         }
 
         function rollbackOptimisticRequestIds(requestIds = []) {
@@ -6577,3 +6612,4 @@ ${formatRequestItemsText(items)}`;
     </script>
 </body>
 </html>
+
