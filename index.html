@@ -5735,6 +5735,20 @@ ${formatRequestItemsText(items)}`;
             return false;
         }
 
+        function openFlyerFolder(folderName) {
+            selectedFlyerFolder = String(folderName || '');
+            taskViewLevel = 1;
+            renderTasks();
+            return false;
+        }
+
+        function backToFlyerFolderList() {
+            taskViewLevel = 0;
+            selectedFlyerFolder = null;
+            renderTasks();
+            return false;
+        }
+
         function taskTabUsesBlockDrill(tab = activeTaskTab) {
             return tab === 'season' || tab === 'location' || tab === 'colorwalk';
         }
@@ -5855,36 +5869,23 @@ ${formatRequestItemsText(items)}`;
                         return `<div class="bg-white border border-yellow-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectedEndCapFolder='${esc(f)}'; taskViewLevel=1; renderTasks()"><div class="flex items-center gap-3"><div class="bg-yellow-50 p-2 rounded-lg"><i class="ph-fill ph-storefront text-2xl text-yellow-500"></i></div><span class="font-bold text-lg text-yellow-800">${f}</span></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${count} Items</span></div>`;
                     }).join('');
                 } else if(taskViewLevel === 1) {
-                    let fItems = tabItems.filter(i => (i.END_CAP_FOLDER || 'Unassigned') === selectedEndCapFolder);
-                    fItems.sort((a,b) => String(a.COMMONNAME || '').localeCompare(String(b.COMMONNAME || '')));
-                    container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=0; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to End Caps</div>` + fItems.map(i => generateCard(i, 'tasks', 'status-yellow')).join('');
-                }
-            } else if(activeTaskTab === 'flyer') {
-                if(taskViewLevel === 0) {
-                    let folderMap = {};
-                    tabItems.forEach(i => {
-                        const folderName = getFlyerFolderName(i);
-                        if(!folderMap[folderName]) folderMap[folderName] = { count: 0, complete: 0, assignees: new Set() };
-                        folderMap[folderName].count++;
-                        if (String(i.FLYER_COMPLETED || i.DATE_COMPLETED || '').trim() !== '') folderMap[folderName].complete++;
-                        getFlyerAssigneeList(i.FLYER_ASSIGNED || i.ASSIGNEDTO || '').forEach(name => folderMap[folderName].assignees.add(name));
-                    });
                     container.innerHTML = Object.keys(folderMap).sort().map(folderName => {
                         const meta = folderMap[folderName];
                         const assignees = Array.from(meta.assignees).join(', ') || 'Unassigned';
-                        return `<div class="bg-white border border-indigo-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectedFlyerFolder='${esc(folderName)}'; taskViewLevel=1; renderTasks()"><div class="min-w-0 pr-3"><div class="font-bold text-lg text-indigo-800 truncate">${folderName}</div><div class="text-xs font-semibold text-indigo-500 mt-1 truncate">${assignees}</div></div><div class="text-right shrink-0"><div class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${meta.count} Rows</div><div class="text-[11px] font-semibold text-gray-500 mt-2">${meta.complete} Complete</div></div></div>`;
+                        return `<div class="bg-white border border-indigo-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="return openFlyerFolder('${esc(folderName)}')"><div class="min-w-0 pr-3"><div class="font-bold text-lg text-indigo-800 truncate">${folderName}</div><div class="text-xs font-semibold text-indigo-500 mt-1 truncate">${assignees}</div></div><div class="text-right shrink-0"><div class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${meta.count} Rows</div><div class="text-[11px] font-semibold text-gray-500 mt-2">${meta.complete} Complete</div></div></div>`;
                     }).join('');
                 } else if(taskViewLevel === 1) {
                     let folderItems = tabItems.filter(i => getFlyerFolderName(i) === selectedFlyerFolder);
                     folderItems.sort((a,b) => {
+                        const locationCompare = String(a.LOCATIONCODE || '').localeCompare(String(b.LOCATIONCODE || ''), undefined, { numeric: true, sensitivity: 'base' });
+                        if (locationCompare !== 0) return locationCompare;
                         const completeCompare = String(a.FLYER_COMPLETED || a.DATE_COMPLETED || '').localeCompare(String(b.FLYER_COMPLETED || b.DATE_COMPLETED || ''));
                         if (completeCompare !== 0) return completeCompare;
                         return String(a.COMMONNAME || '').localeCompare(String(b.COMMONNAME || ''));
                     });
                     const folderAssignees = getFlyerFolderAssignedNames(selectedFlyerFolder, folderItems).join(', ') || 'Unassigned';
                     const folderHeader = `<div class="mb-3 rounded-2xl border border-indigo-200 bg-indigo-50 p-4"><div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-indigo-600">Flyer Folder</div><div class="text-lg font-black text-indigo-900 truncate mt-1">${selectedFlyerFolder || ''}</div><div class="text-[11px] font-semibold text-indigo-500 mt-1">${folderItems.length} row${folderItems.length === 1 ? '' : 's'} | ${folderAssignees}</div></div><button class="w-full sm:w-auto min-h-[42px] px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-[0.14em] transition-colors duration-150 bg-white border border-indigo-200 text-indigo-700 shadow-sm hover:bg-indigo-100" onclick="return startAddRowsToFlyerFolder('${esc(selectedFlyerFolder || '')}')">Add Rows To Folder</button></div></div>`;
-                    container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=0; selectedFlyerFolder=null; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Folders</div>${folderHeader}` + folderItems.map(i => generateCard(i, 'tasks', 'status-indigo')).join('');
-                }
+                    container.innerHTML = `<div class="back-btn" onclick="return backToFlyerFolderList()"><i class="ph-bold ph-arrow-left"></i> Back to Folders</div>${folderHeader}` + folderItems.map(i => generateCard(i, 'tasks', 'status-indigo')).join('');
             } else {
                 if(taskViewLevel === 0) {
                     let blocks = {};
@@ -6540,14 +6541,3 @@ ${formatRequestItemsText(items)}`;
     </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
