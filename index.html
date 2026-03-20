@@ -221,7 +221,7 @@
             <div class="drawer-item text-green-600 font-bold" onclick="fetchBackgroundData(); toggleMenu();"><i class="ph-bold ph-arrows-clockwise"></i> Force Data Sync</div>
             <hr class="my-2">
             <div class="drawer-item" onclick="switchView('drive'); toggleMenu();"><i class="ph-bold ph-car"></i> Drive Mode</div>
-            <div class="drawer-item rep-hidden csr-hidden" onclick="switchView('tasks'); toggleMenu();"><i class="ph-bold ph-clipboard-text"></i> My Tasks</div>
+            <div class="drawer-item" onclick="switchView('tasks'); toggleMenu();"><i class="ph-bold ph-clipboard-text"></i> My Tasks</div>
             <div class="drawer-item text-orange-600 font-bold" onclick="switchView('docks'); toggleMenu();"><i class="ph-bold ph-truck"></i> Docks</div>
             <div class="drawer-item text-teal-600 font-bold" onclick="switchView('av'); toggleMenu();"><i class="ph-bold ph-notebook"></i> AV</div>
             <hr class="my-2">
@@ -255,7 +255,7 @@
                     <h2 class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3 pl-1">App Modules</h2>
                     <div class="grid grid-cols-2 gap-3 mb-8">
                         <div onclick="switchView('drive')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-car text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Drive Mode</span></div>
-                        <div onclick="switchView('tasks')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer rep-hidden csr-hidden"><i class="ph-bold ph-clipboard-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Tasks</span></div>
+                        <div onclick="switchView('tasks')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-clipboard-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Tasks</span></div>
                         <div onclick="switchView('docks')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-truck text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Docks</span></div>
                         <div onclick="switchView('av')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-notebook text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">AV</span></div>
                         <div onclick="switchView('request')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer admin-rep-csr-only hidden"><i class="ph-bold ph-chat-circle-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Requests</span></div>
@@ -539,7 +539,7 @@
             <nav id="bottom-nav" class="fixed bottom-0 w-full bg-white border-t flex justify-around py-3 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-50">
                 <div onclick="switchView('home')"><i class="ph-bold ph-house text-2xl text-gray-400"></i></div>
                 <div onclick="switchView('drive')"><i class="ph-bold ph-car text-2xl text-gray-400"></i></div>
-                <div onclick="switchView('tasks')" class="rep-hidden csr-hidden"><i class="ph-bold ph-clipboard-text text-2xl text-gray-400"></i></div>
+                <div onclick="switchView('tasks')"><i class="ph-bold ph-clipboard-text text-2xl text-gray-400"></i></div>
                 <div onclick="switchView('docks')"><i class="ph-bold ph-truck text-2xl text-gray-400"></i></div>
                 <div id="footer-request-btn" class="hidden relative cursor-pointer" onclick="switchView('request')"><div class="relative"><i class="ph-bold ph-chat-circle-text text-2xl text-gray-400"></i><span id="footer-request-badge" class="hidden absolute -top-2 -right-3 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-white">0</span></div></div>
             </nav>
@@ -2058,16 +2058,13 @@
         }
 
         function getFlyerFolderName(item) {
-            return String(item && item.FLYER_TITLE || '').trim() || 'Unfiled Flyer';
+            return String(item && item.FLYER_TITLE || '').trim();
         }
 
         function isFlyerTaskItem(item) {
             if (!item) return false;
             return String(item.APP_TAB_ASSIGNMENT || '').toLowerCase() === 'flyer'
-                || String(item.FLYER_TITLE || '').trim() !== ''
-                || String(item.FLYER_ASSIGNED || '').trim() !== ''
-                || String(item.FLYER_PHOTO_LINK || '').trim() !== ''
-                || String(item.FLYER_COMPLETED || '').trim() !== '';
+                && String(item.FLYER_TITLE || '').trim() !== '';
         }
 
         function isFlyerAssignedToUser(item, userName = '') {
@@ -3079,7 +3076,7 @@
                 if (forceReset || !state.initialized) resetDriveView();
                 else renderDrive();
             } else if (viewId === 'tasks') {
-                if (safeRole === 'ADMIN' && !taskViewTargetUser && !taskTabUsesBlockDrill(activeTaskTab)) renderTeamSelector();
+                if (safeRole === 'ADMIN' && activeTaskTab !== 'flyer' && !taskViewTargetUser && !taskTabUsesBlockDrill(activeTaskTab)) renderTeamSelector();
                 else renderTasks();
             } else if (viewId === 'reports') {
                 if (forceReset || !state.initialized) resetReportsView();
@@ -3143,7 +3140,7 @@
             selectedTaskLoc=null;
             selectedEndCapFolder=null;
             selectedFlyerFolder=null;
-            if (safeRole === 'ADMIN' && !taskViewTargetUser && !taskTabUsesBlockDrill(tab)) {
+            if (safeRole === 'ADMIN' && tab !== 'flyer' && !taskViewTargetUser && !taskTabUsesBlockDrill(tab)) {
                 scheduleUiRender('task-tab', () => renderTeamSelector());
                 return;
             }
@@ -5775,12 +5772,9 @@ ${formatRequestItemsText(items)}`;
             const keepCompletedInTaskTab = activeTaskTab === 'colorwalk' || activeTaskTab === 'flyer';
             let scopedItems = useSharedNotesQueue
                 ? fullInventory.filter(i => keepCompletedInTaskTab || !i.DATE_COMPLETED)
-                : fullInventory.filter(i => {
-                    const assignedToTarget = activeTaskTab === 'flyer'
-                        ? isFlyerAssignedToUser(i, targetUser)
-                        : i.ASSIGNEDTO === targetUser;
-                    return assignedToTarget && (keepCompletedInTaskTab || !i.DATE_COMPLETED);
-                });
+                : isSharedFlyerQueue
+                    ? fullInventory.filter(i => isFlyerTaskItem(i))
+                    : fullInventory.filter(i => i.ASSIGNEDTO === targetUser && (keepCompletedInTaskTab || !i.DATE_COMPLETED));
             let tabItems = getTaskTabItems(scopedItems, activeTaskTab);
 
             if(tabItems.length === 0){
