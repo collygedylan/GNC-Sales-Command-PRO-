@@ -2188,7 +2188,6 @@
                     app_tab_assignment: 'flyer',
                     assignedto: primaryAssignee,
                     date_completed: null,
-                    flyer_completed: null,
                     flyer_title: flyerFolder,
                     flyer_assigned: flyerAssignedTo || null
                 }, `unique_id=eq.${encodeURIComponent(item.UNIQUE_ID)}`));
@@ -2198,7 +2197,13 @@
                 return false;
             }
             showToast('Processing...', `${isAddingToExistingFolder ? 'Adding rows to' : 'Creating flyer folder'} ${flyerFolder}...`, false);
-            Promise.all(updates).then(() => {
+            Promise.allSettled(updates).then((results) => {
+                const failed = results.filter(result => result.status === 'rejected');
+                const succeeded = results.length - failed.length;
+                if (!succeeded) {
+                    const firstError = failed[0] && failed[0].reason && failed[0].reason.message ? failed[0].reason.message : 'Flyer creation failed.';
+                    throw new Error(firstError);
+                }
                 clearDriveQuickRequestItems(true);
                 clearPendingFlyerFolderTarget(true);
                 markViewDirty('tasks');
@@ -2208,9 +2213,14 @@
                 selectedFlyerFolder = flyerFolder;
                 taskViewLevel = 1;
                 renderTasks();
-                showToast('Success', `${domIds.length} row${domIds.length === 1 ? '' : 's'} added to ${flyerFolder}.`);
-            }).catch(() => {
-                showToast('Error', 'Flyer creation failed.', true);
+                if (failed.length) {
+                    const firstError = failed[0] && failed[0].reason && failed[0].reason.message ? failed[0].reason.message : 'Some rows could not be added.';
+                    showToast('Partial Success', `${succeeded} row${succeeded === 1 ? '' : 's'} added to ${flyerFolder}. ${failed.length} failed. ${firstError}`, true);
+                } else {
+                    showToast('Success', `${domIds.length} row${domIds.length === 1 ? '' : 's'} added to ${flyerFolder}.`);
+                }
+            }).catch((err) => {
+                showToast('Error', err && err.message ? err.message : 'Flyer creation failed.', true);
             });
             return false;
         }
@@ -5803,8 +5813,9 @@ ${formatRequestItemsText(items)}`;
 
             const useBlockDrill = taskTabUsesBlockDrill(activeTaskTab);
             const useSharedNotesQueue = safeRole === 'ADMIN' && useBlockDrill;
-            let targetUser = safeRole === 'ADMIN' && !useSharedNotesQueue ? taskViewTargetUser : currentUser;
-            if(!useSharedNotesQueue && !targetUser) return;
+            const isSharedFlyerQueue = activeTaskTab === 'flyer';
+            let targetUser = safeRole === 'ADMIN' && !useSharedNotesQueue && !isSharedFlyerQueue ? taskViewTargetUser : currentUser;
+            if(!useSharedNotesQueue && !isSharedFlyerQueue && !targetUser) return;
 
             const container = document.getElementById('task-content');
             const crumb = document.getElementById('task-crumb');
@@ -5814,6 +5825,8 @@ ${formatRequestItemsText(items)}`;
                 if (taskViewLevel === 0) crumb.innerText = notesTitle;
                 else if (taskViewLevel === 1) crumb.innerText = `${notesTitle} > Block ${selectedTaskBlock}`;
                 else crumb.innerText = `${notesTitle} > ${selectedTaskLoc}`;
+            } else if (isSharedFlyerQueue) {
+                crumb.innerText = taskViewLevel === 0 ? 'Flyer Folders' : `Flyer Folders > ${selectedFlyerFolder || 'Folder'}`;
             } else {
                 crumb.innerHTML = safeRole === 'ADMIN'
                     ? `<span class="cursor-pointer text-gray-400 hover:text-gray-800" onclick="taskViewTargetUser=null; renderTeamSelector()"><i class="ph-bold ph-arrow-left"></i> Back to Team</span> &bull; <span class="text-[#007a4d]">${targetUser}'s Tasks</span>`
@@ -6193,7 +6206,6 @@ ${formatRequestItemsText(items)}`;
 
                 if (isComplete) {
                     payload.date_completed = new Date().toISOString();
-                    if (prefix === 'flyer-') payload.flyer_completed = payload.date_completed;
                 }
 
                 const buildCompletionArtifacts = () => {
