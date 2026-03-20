@@ -513,6 +513,9 @@
                         <div id="flyer-photo-preview" class="mb-4 hidden"><p class="text-[10px] font-bold text-indigo-600 mb-2 uppercase">Photos on file</p><div id="flyer-photo-list-container" class="space-y-2"></div></div>
                         <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-flyer" class="bg-indigo-50 border-2 border-dashed border-indigo-500 text-indigo-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="handlePhotoUpload(this, 'flyer-')"></label></div>
                         <div id="flyer-input-container">
+                            <div class="relative w-full mb-3"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2 relative"><input type="text" id="flyer-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); filterAvNotes('flyer-')" onfocus="filterAvNotes('flyer-')" onblur="setTimeout(()=>{if(document.getElementById('flyer-av-dropdown-list'))document.getElementById('flyer-av-dropdown-list').classList.add('hidden'); saveData(false, 'flyer-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT..."></div><div id="flyer-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div></div>
+                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="flyer-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'flyer-', true)"></div>
+                            <div id="flyer-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="flyer-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'flyer-', true)"></div>
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Flyer Category</label><input type="text" id="flyer-cat" class="input-field" placeholder="e.g. Spring Sale" onchange="saveData(false, 'flyer-', true)"></div>
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Flyer Folder</label><input type="text" id="flyer-title" class="input-field" placeholder="e.g. Spring Promo Folder" onchange="saveData(false, 'flyer-', true)"></div>
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Instructions</label><input type="text" id="flyer-inst" class="input-field" placeholder="e.g. Needs front cover" onchange="saveData(false, 'flyer-', true)"></div>
@@ -1290,7 +1293,7 @@
         let activeDriveMode='ok'; let activeDriveTab='name'; let selectedDriveBlock=null; let selectedDriveLoc=null; let driveQuickRequestCardMode=false; let driveQuickFilterName=''; let driveQuickFilterLocation=''; let driveQuickFilterLot=''; let driveQuickFilterSize=''; let driveQuickFilterLtsMode=''; let driveQuickFilterLtsValue=''; let driveQuickHoldStopOnly=false; let driveQuickFilterOptionsCacheKey=''; let driveQuickFilterOptionsCache=null; let driveBaseFilterCacheKey=''; let driveBaseFilterCacheItems=[]; let driveQuickFilterCacheKey=''; let driveQuickFilterCacheItems=[];
         let driveViewLevel=0; let selectedDriveName=null; let selectedDriveSize=null; let driveSelectedSeasons=new Set(['ALL']); const availableSeasons=["ALL","S1","F1","U1","U2","U3","X","Y","Z"];
         
-        let activeTaskTab="season"; let taskViewTargetUser=null; let taskViewLevel=0; let selectedTaskBlock=null; let selectedTaskLoc=null; let selectedEndCapFolder=null; let selectedFlyerFolder=null;
+        let activeTaskTab="season"; let taskViewTargetUser=null; let taskViewLevel=0; let selectedTaskBlock=null; let selectedTaskLoc=null; let selectedEndCapFolder=null; let selectedFlyerFolder=null; let pendingFlyerFolderTarget=null; let pendingFlyerFolderAssignees="";
         
         let activeAVTab='open'; let activeAvOpenTab='name'; let avOpenLevel=0; let selectedAvOpenName=null; let selectedAvOpenSize=null; let selectedAvOpenSeason=null; let selectedAvOpenLot=null; let avResLevel=0; let selectedAvResName=null; let selectedAvResSize=null;
         
@@ -1729,7 +1732,7 @@
             'na-': { containerId: 'det-notes-content', cameraId: 'camera-btn-na', photoField: 'SAVED_PHOTO_LINK', photoNameField: 'SAVED_PHOTO_NAME', inputIds: ['na-av-note', 'na-spec', 'na-caliper'] },
             'req-': { containerId: 'det-request-content', cameraId: 'camera-btn-req', photoField: 'REQ_PHOTO_LINK', photoNameField: 'REQ_PHOTO_NAME', inputIds: ['req-av-note', 'req-spec', 'req-caliper'] },
             'dock-': { containerId: 'det-docks-content', cameraId: 'camera-btn-dock', photoField: 'DOCK_PHOTO_LINK', photoNameField: 'DOCK_PHOTO_NAME', inputIds: ['dock-spec', 'dock-caliper'] },
-            'flyer-': { containerId: 'det-flyer-content', cameraId: 'camera-btn-flyer', photoField: 'FLYER_PHOTO_LINK', photoNameField: 'FLYER_PHOTO_NAME', inputIds: [] }
+            'flyer-': { containerId: 'det-flyer-content', cameraId: 'camera-btn-flyer', photoField: 'FLYER_PHOTO_LINK', photoNameField: 'FLYER_PHOTO_NAME', inputIds: ['flyer-av-note', 'flyer-spec', 'flyer-caliper', 'flyer-cat', 'flyer-title', 'flyer-inst', 'flyer-assigned', 'flyer-notes'] }
         };
 
         function getProtectedUserTokens() {
@@ -2007,12 +2010,14 @@
                         </div>
                     </div>
                 </div>` : '';
+            const flyerTargetingFolder = String(pendingFlyerFolderTarget || '').trim();
+            const flyerActionLabel = flyerTargetingFolder ? 'Add To Folder' : 'Create Flyer';
             const requestBtn = count === 0
                 ? `<button class="${disabledBtn}" disabled>Create Request</button>`
                 : `<button class="${primaryBtn}" onclick="openDriveQuickRequestModal()">Create Request</button>`;
             const flyerBtn = count === 0
-                ? `<button class="${disabledBtn}" disabled>Create Flyer</button>`
-                : `<button class="${secondaryBtn}" onclick="createDriveQuickFlyers()">Create Flyer</button>`;
+                ? `<button class="${disabledBtn}" disabled>${flyerActionLabel}</button>`
+                : `<button class="${secondaryBtn}" onclick="createDriveQuickFlyers()">${flyerActionLabel}</button>`;
             const assignBtn = count === 0
                 ? `<button class="${disabledBtn}" disabled>Assign Items</button>`
                 : `<button class="${secondaryBtn}" onclick="startDriveQuickAssignFlow()">Assign Items</button>`;
@@ -2023,10 +2028,13 @@
             const headerHtml = showCardMode
                 ? `<div><div class="text-[10px] font-black text-emerald-700 uppercase tracking-[0.16em]">Drive Action Builder</div><div class="text-lg font-black text-slate-900 mt-1">${count} row${count === 1 ? '' : 's'} ready for action</div></div>`
                 : `<div><div class="text-[10px] font-black text-emerald-700 uppercase tracking-[0.16em]">Drive Selection</div><div class="text-base font-black text-slate-900 mt-1">${count} row${count === 1 ? '' : 's'} selected</div></div>`;
+            const flyerTargetPanel = flyerTargetingFolder
+                ? `<div class="rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-indigo-600">Active Flyer Folder</div><div class="text-base font-black text-indigo-900 truncate mt-1">${flyerTargetingFolder}</div><div class="text-[11px] font-semibold text-indigo-500 mt-1">Drive rows will be added into this folder.</div></div><button class="${secondaryBtn}" onclick="clearPendingFlyerFolderTarget()">Choose New Folder</button></div>`
+                : '';
             const shellClass = showCardMode
                 ? 'rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-green-50 p-4 shadow-sm'
                 : 'rounded-2xl border border-emerald-200 bg-white p-3 shadow-sm';
-            bar.innerHTML = `<div class="${shellClass}"><div class="flex flex-col gap-4"><div class="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">${headerHtml}<div class="grid grid-cols-1 sm:grid-cols-2 xl:flex gap-2 w-full xl:w-auto xl:min-w-[320px]">${cardViewBtn}${clearBtn}${requestBtn}${flyerBtn}${assignBtn}</div></div>${filterPanel}</div></div>`;
+            bar.innerHTML = `<div class="${shellClass}"><div class="flex flex-col gap-4"><div class="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">${headerHtml}<div class="grid grid-cols-1 sm:grid-cols-2 xl:flex gap-2 w-full xl:w-auto xl:min-w-[320px]">${cardViewBtn}${clearBtn}${requestBtn}${flyerBtn}${assignBtn}</div></div>${flyerTargetPanel}${filterPanel}</div></div>`;
             bar.classList.remove('hidden');
         }
 
@@ -2086,6 +2094,36 @@
             return ltsValue > 0 && !seasonValue.includes('Y') && !seasonValue.includes('Z');
         }
 
+        function getFlyerFolderAssignedNames(folderName, items = fullInventory) {
+            const normalizedFolder = String(folderName || '').trim();
+            const names = new Set();
+            if (!normalizedFolder) return [];
+            items.filter(item => item && String(item.APP_TAB_ASSIGNMENT || '').toLowerCase() === 'flyer' && getFlyerFolderName(item) === normalizedFolder)
+                .forEach(item => getFlyerAssigneeList(item.FLYER_ASSIGNED || item.ASSIGNEDTO || '').forEach(name => names.add(name)));
+            return Array.from(names);
+        }
+
+        function clearPendingFlyerFolderTarget(silent = false) {
+            const previousFolder = String(pendingFlyerFolderTarget || '').trim();
+            pendingFlyerFolderTarget = null;
+            pendingFlyerFolderAssignees = '';
+            renderDriveQuickRequestBar();
+            if (!silent && previousFolder) showToast('Folder Cleared', `${previousFolder} is no longer the active flyer target.`);
+        }
+
+        function startAddRowsToFlyerFolder(folderName) {
+            const normalizedFolder = String(folderName || '').trim();
+            if (!normalizedFolder) {
+                showToast('Folder Required', 'Open a flyer folder first.', true);
+                return false;
+            }
+            pendingFlyerFolderTarget = normalizedFolder;
+            pendingFlyerFolderAssignees = getFlyerFolderAssignedNames(normalizedFolder).join(', ');
+            switchView('drive');
+            showToast('Add Rows', `Select Drive rows, then tap Add To Folder to add them to ${normalizedFolder}.`);
+            return false;
+        }
+
         function startDriveQuickAssignFlow() {
             if (!canUseDriveQuickRequest()) return false;
             if (!driveQuickRequestItems.size) {
@@ -2105,16 +2143,25 @@
                 return false;
             }
 
-            const suggestedFolder = `${new Date().toISOString().split('T')[0]} Flyer Folder`;
-            const folderInput = window.prompt('Enter the flyer folder name for these rows.', suggestedFolder);
-            if (folderInput === null) return false;
-            const flyerFolder = String(folderInput || '').trim();
+            const existingTargetFolder = String(pendingFlyerFolderTarget || '').trim();
+            const isAddingToExistingFolder = existingTargetFolder !== '';
+            let flyerFolder = existingTargetFolder;
+            if (!flyerFolder) {
+                const suggestedFolder = `${new Date().toISOString().split('T')[0]} Flyer Folder`;
+                const folderInput = window.prompt('Enter the flyer folder name for these rows.', suggestedFolder);
+                if (folderInput === null) return false;
+                flyerFolder = String(folderInput || '').trim();
+            }
             if (!flyerFolder) {
                 showToast('Folder Required', 'Enter a flyer folder name before creating the folder.', true);
                 return false;
             }
 
-            const assigneeInput = window.prompt('Assign this flyer folder to one or more people. Separate names with commas.', String(currentUserDisplay || currentUser || '').trim());
+            const defaultAssignees = String(pendingFlyerFolderAssignees || getFlyerFolderAssignedNames(flyerFolder).join(', ') || currentUserDisplay || currentUser || '').trim();
+            const assigneePrompt = isAddingToExistingFolder
+                ? `Assign ${flyerFolder} to one or more people. Separate names with commas.`
+                : 'Assign this flyer folder to one or more people. Separate names with commas.';
+            const assigneeInput = window.prompt(assigneePrompt, defaultAssignees);
             if (assigneeInput === null) return false;
             const assignees = getFlyerAssigneeList(assigneeInput);
             if (!assignees.length) {
@@ -2150,14 +2197,18 @@
                 showToast('Error', 'No valid Drive rows were available for Flyer.', true);
                 return false;
             }
-            showToast('Processing...', `Creating flyer folder ${flyerFolder}...`, false);
+            showToast('Processing...', `${isAddingToExistingFolder ? 'Adding rows to' : 'Creating flyer folder'} ${flyerFolder}...`, false);
             Promise.all(updates).then(() => {
                 clearDriveQuickRequestItems(true);
+                clearPendingFlyerFolderTarget(true);
                 markViewDirty('tasks');
                 reRenderCurrentView();
-                showToast('Success', `${domIds.length} row${domIds.length === 1 ? '' : 's'} added to ${flyerFolder}.`);
                 switchView('tasks');
                 setTaskTab('flyer');
+                selectedFlyerFolder = flyerFolder;
+                taskViewLevel = 1;
+                renderTasks();
+                showToast('Success', `${domIds.length} row${domIds.length === 1 ? '' : 's'} added to ${flyerFolder}.`);
             }).catch(() => {
                 showToast('Error', 'Flyer creation failed.', true);
             });
@@ -2380,7 +2431,7 @@
                 return [item.DOCK_SPEC, item.DOCK_CALIPER, item.DOCK_PHOTO_LINK].some(value => String(value || '').trim() !== '');
             }
             if (prefix === 'flyer-') {
-                return [item.FLYER_PHOTO_LINK].some(value => String(value || '').trim() !== '');
+                return [item.AV_NOTE, item.SPEC, item.CALIPER, item.FLYER_PHOTO_LINK].some(value => String(value || '').trim() !== '');
             }
             return [item.AV_NOTE, item.SPEC, item.CALIPER, item.SAVED_PHOTO_LINK].some(value => String(value || '').trim() !== '');
         }
@@ -5816,7 +5867,9 @@ ${formatRequestItemsText(items)}`;
                         if (completeCompare !== 0) return completeCompare;
                         return String(a.COMMONNAME || '').localeCompare(String(b.COMMONNAME || ''));
                     });
-                    container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=0; selectedFlyerFolder=null; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Folders</div>` + folderItems.map(i => generateCard(i, 'tasks', 'status-indigo')).join('');
+                    const folderAssignees = getFlyerFolderAssignedNames(selectedFlyerFolder, folderItems).join(', ') || 'Unassigned';
+                    const folderHeader = `<div class="mb-3 rounded-2xl border border-indigo-200 bg-indigo-50 p-4"><div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-indigo-600">Flyer Folder</div><div class="text-lg font-black text-indigo-900 truncate mt-1">${selectedFlyerFolder || ''}</div><div class="text-[11px] font-semibold text-indigo-500 mt-1">${folderItems.length} row${folderItems.length === 1 ? '' : 's'} | ${folderAssignees}</div></div><button class="w-full sm:w-auto min-h-[42px] px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-[0.14em] transition-colors duration-150 bg-white border border-indigo-200 text-indigo-700 shadow-sm hover:bg-indigo-100" onclick="return startAddRowsToFlyerFolder('${esc(selectedFlyerFolder || '')}')">Add Rows To Folder</button></div></div>`;
+                    container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=0; selectedFlyerFolder=null; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to Folders</div>${folderHeader}` + folderItems.map(i => generateCard(i, 'tasks', 'status-indigo')).join('');
                 }
             } else {
                 if(taskViewLevel === 0) {
@@ -6008,11 +6061,16 @@ ${formatRequestItemsText(items)}`;
                         itemToSave.DOCK_CALIPER = document.getElementById('dock-caliper').value;
                         itemToSave.DOCK_NOTE = document.getElementById('dock-sales-desc').value;
                     } else if (prefix === 'flyer-') {
+                        let flyerAvEl = document.getElementById('flyer-av-note'); if (flyerAvEl) itemToSave.AV_NOTE = flyerAvEl.value.toUpperCase();
+                        let flyerSpecEl = document.getElementById('flyer-spec'); if (flyerSpecEl) itemToSave.SPEC = flyerSpecEl.value;
+                        let flyerCalEl = document.getElementById('flyer-caliper'); if (flyerCalEl) itemToSave.CALIPER = flyerCalEl.value;
                         itemToSave.FLYER_CAT = document.getElementById('flyer-cat').value;
                         itemToSave.FLYER_TITLE = document.getElementById('flyer-title').value;
                         itemToSave.FLYER_INST = document.getElementById('flyer-inst').value;
                         itemToSave.FLYER_ASSIGNED = document.getElementById('flyer-assigned').value;
                         itemToSave.FLYER_NOTES = document.getElementById('flyer-notes').value;
+                        const flyerAssignees = getFlyerAssigneeList(itemToSave.FLYER_ASSIGNED);
+                        if (flyerAssignees.length) itemToSave.ASSIGNEDTO = flyerAssignees[0];
                     }
                 }
 
@@ -6079,6 +6137,19 @@ ${formatRequestItemsText(items)}`;
                     payload.dock_caliper = setVal(itemToSave.DOCK_CALIPER);
                     payload.dock_note = setVal(itemToSave.DOCK_NOTE);
                 } else if (prefix === 'flyer-') {
+                    const needsCaliper = itemToSave.PLANTGROUPCODE && String(itemToSave.PLANTGROUPCODE).includes('330_TREES') && ['#7','#10','#15','#25','#45'].includes(itemToSave.CONTSIZE);
+                    if (isComplete) {
+                        const effectiveAvNote = String(itemToSave.AV_NOTE || '').trim();
+                        const effectiveSpec = String(itemToSave.SPEC || '').trim();
+                        const effectiveCaliper = String(itemToSave.CALIPER || '').trim();
+                        if (!effectiveAvNote) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required','AV Note is required before completing this flyer.',true); return; }
+                        if (!effectiveSpec) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required','Spec is required before completing this flyer.',true); return; }
+                        if (needsCaliper && !effectiveCaliper) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required','Caliper is required for this flyer.',true); return; }
+                    }
+                    payload.av_note = setVal(itemToSave.AV_NOTE);
+                    payload.spec = setVal(itemToSave.SPEC);
+                    payload.caliper = setVal(itemToSave.CALIPER);
+                    payload.assignedto = setVal(itemToSave.ASSIGNEDTO);
                     payload.flyer_cat = setVal(itemToSave.FLYER_CAT);
                     payload.flyer_title = setVal(itemToSave.FLYER_TITLE);
                     payload.flyer_inst = setVal(itemToSave.FLYER_INST);
@@ -6456,14 +6527,3 @@ ${formatRequestItemsText(items)}`;
     </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
