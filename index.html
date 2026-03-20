@@ -2071,8 +2071,11 @@
 
         function isFlyerTaskItem(item) {
             if (!item) return false;
-            return String(item.APP_TAB_ASSIGNMENT || '').toLowerCase() === 'flyer'
-                && String(item.FLYER_TITLE || '').trim() !== '';
+            const folderName = getFlyerFolderName(item);
+            if (!folderName) return false;
+            const legacyAssignment = String(item.APP_TAB_ASSIGNMENT || '').toLowerCase() === 'flyer';
+            const hasFlyerMetadata = [item.FLYER_ASSIGNED, item.FLYER_CAT, item.FLYER_INST, item.FLYER_NOTES, item.FLYER_PHOTO_LINK].some(value => String(value || '').trim() !== '');
+            return legacyAssignment || hasFlyerMetadata;
         }
 
         function isFlyerAssignedToUser(item, userName = '') {
@@ -2098,7 +2101,7 @@
             const normalizedFolder = String(folderName || '').trim();
             const names = new Set();
             if (!normalizedFolder) return [];
-            items.filter(item => item && String(item.APP_TAB_ASSIGNMENT || '').toLowerCase() === 'flyer' && getFlyerFolderName(item) === normalizedFolder)
+            items.filter(item => item && getFlyerFolderName(item) === normalizedFolder)
                 .forEach(item => getFlyerAssigneeList(item.FLYER_ASSIGNED || item.ASSIGNEDTO || '').forEach(name => names.add(name)));
             return Array.from(names);
         }
@@ -2185,7 +2188,6 @@
                 syncRowDataAcrossViews(item);
                 const table = item.SOURCE_TABLE || 'v2_master_inventory';
                 updates.push(supabaseFetch(table, 'PATCH', {
-                    app_tab_assignment: 'flyer',
                     assignedto: primaryAssignee,
                     date_completed: null,
                     flyer_title: flyerFolder,
@@ -2224,7 +2226,6 @@
             });
             return false;
         }
-
         function openDriveQuickRequestModal() {
             if (!canUseDriveQuickRequest()) return;
             if (!driveQuickRequestItems.size) {
