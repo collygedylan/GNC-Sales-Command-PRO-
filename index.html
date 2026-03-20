@@ -2,9 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
     <title>GREENLEAF NURSERY COMPANY</title>
     <meta name="theme-color" content="#007a4d">
+    <link rel="preconnect" href="https://cdn.tailwindcss.com">
+    <link rel="preconnect" href="https://unpkg.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <link rel="manifest" href="manifest.json">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="application-name" content="GREENLEAF NURSERY COMPANY">
@@ -13,9 +17,11 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>:root{--bg:#007a4d;--tx:#111827}body{font-family:"Amazon Ember",Arial,sans-serif;background:white;color:var(--tx);user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior-y:contain}.nav-header{background:var(--bg);color:white;padding-top:max(10px,env(safe-area-inset-top))}#view-login,#view-change-password{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px}#view-change-password{display:none;z-index:10000}.login-card{background:white;padding:30px;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,.2);width:100%;max-width:360px;text-align:center}.input-field{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:8px;font-size:15px;margin-bottom:12px}#toast-notification{position:fixed;top:-100px;left:50%;transform:translateX(-50%);background:#16a34a;color:white;padding:16px 24px;border-radius:50px;box-shadow:0 10px 15px -3px rgba(0,0,0,.3);z-index:11000;transition:top .5s;display:flex;align-items:center;gap:12px;pointer-events:none}#toast-notification.show{top:20px}#side-drawer{position:fixed;top:0;left:-280px;width:280px;height:100%;background:white;z-index:2000;box-shadow:2px 0 10px rgba(0,0,0,.2);transition:left .3s;overflow-y:auto;padding-bottom:100px}#side-drawer.open{left:0}#drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1999;display:none}#drawer-overlay.open{display:block}.drawer-header{background:var(--bg);color:white;padding:20px;font-weight:bold;font-size:18px}.drawer-item{padding:16px 20px;border-bottom:1px solid #f3f4f6;cursor:pointer;display:flex;align-items:center;gap:12px;color:#374151;font-weight:500}.drill-item{border-bottom:1px solid #e5e7eb;padding:16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:white;transition:background .1s}.drill-item:active{background:#f3f4f6}.back-btn{display:flex;align-items:center;gap:5px;color:#6b7280;font-size:14px;font-weight:600;margin-bottom:20px;cursor:pointer;padding:10px 0}.inv-card{border:1px solid #e5e7eb;border-left-width:6px;border-radius:8px;padding:12px;background:white;cursor:pointer;flex-grow:1}.status-green{border-left-color:#22c55e}.status-purple{border-left-color:#9333ea}.status-orange{border-left-color:#f97316}.status-blue{border-left-color:#3b82f6}.status-indigo{border-left-color:#4f46e5}.status-teal{border-left-color:#0d9488}.status-yellow{border-left-color:#eab308}.status-red{border-left-color:#ef4444}.task-tabs,.detail-tabs{display:flex;border-bottom:1px solid #e5e7eb;background:#f9fafb;margin-bottom:10px}.detail-tabs{overflow-x:auto;scrollbar-width:none}.detail-tabs::-webkit-scrollbar{display:none}.task-tab,.detail-tab{flex:1;text-align:center;padding:12px;font-size:11px;font-weight:700;color:#6b7280;cursor:pointer;border-bottom:3px solid transparent;text-transform:uppercase}.detail-tab{flex:0 0 auto;padding:10px 16px}.task-tab.active,.detail-tab.active{color:var(--bg);border-bottom-color:var(--bg);background:white}.overview-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}.overview-card{background:#f8fafc;padding:10px;border-radius:6px;border:1px solid #e2e8f0}.overview-label{font-size:9px;font-weight:800;color:#64748b;text-transform:uppercase;margin-bottom:2px}.overview-val{font-size:13px;font-weight:600;color:#0f172a;word-break:break-all}.expand-trigger{display:flex;align-items:center;justify-content:space-between;padding:12px;background:#f9fafb;border-radius:6px;cursor:pointer;font-weight:600;font-size:14px;border:1px solid #e5e7eb}.expand-content{display:none;margin-top:12px;padding:12px;background:#f9fafb;border-radius:6px;border:1px solid #e5e7eb}.expanded .expand-content{display:block}.card-checkbox-container{width:0;overflow:hidden;opacity:0;transition:width .3s,opacity .3s,margin .3s}body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-right:12px}body.multi-select-mode .card-checkbox{pointer-events:auto}body.multi-select-mode .item-row{cursor:pointer}.item-row{touch-action:manipulation}.spinner{border:4px solid rgba(255,255,255,.3);border-top:4px solid white;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:0 auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.scrollbar-none::-webkit-scrollbar{display:none}.scrollbar-none{-ms-overflow-style:none;scrollbar-width:none}</style>
+    <style>:root{--bg:#007a4d;--text-color:#111827;--app-height:100vh}html,body{min-height:100%}@supports (height:100dvh){:root{--app-height:100dvh}}body{font-family:"Amazon Ember",Arial,sans-serif;background:white;color:var(--text-color);user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior-y:contain;min-height:var(--app-height);height:var(--app-height)}button,[role="button"],.task-tab,.detail-tab,.drawer-item,.drill-item,.menu-btn{touch-action:manipulation}.nav-header{background:var(--bg);color:white;padding-top:max(10px,env(safe-area-inset-top))}#view-login,#view-change-password{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;min-height:var(--app-height)}#view-change-password{display:none;z-index:10000}#app-wrapper{min-height:var(--app-height);height:var(--app-height)}.login-card{background:white;padding:30px;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,.2);width:100%;max-width:360px;text-align:center}.input-field{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:8px;font-size:16px;margin-bottom:12px}#toast-notification{position:fixed;top:-100px;left:50%;transform:translateX(-50%);background:#16a34a;color:white;padding:16px 24px;border-radius:50px;box-shadow:0 10px 15px -3px rgba(0,0,0,.3);z-index:11000;transition:top .5s;display:flex;align-items:center;gap:12px;pointer-events:none}#toast-notification.show{top:20px}#side-drawer{position:fixed;top:0;left:-280px;width:280px;height:100%;background:white;z-index:2000;box-shadow:2px 0 10px rgba(0,0,0,.2);transition:left .3s;overflow-y:auto;padding-bottom:100px}#side-drawer.open{left:0}#drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1999;display:none}#drawer-overlay.open{display:block}.drawer-header{background:var(--bg);color:white;padding:20px;font-weight:bold;font-size:18px}.drawer-item{padding:16px 20px;border-bottom:1px solid #f3f4f6;cursor:pointer;display:flex;align-items:center;gap:12px;color:#374151;font-weight:500}.drill-item{border-bottom:1px solid #e5e7eb;padding:16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:white;transition:background .1s}.drill-item:active{background:#f3f4f6}.back-btn{display:flex;align-items:center;gap:5px;color:#6b7280;font-size:14px;font-weight:600;margin-bottom:20px;cursor:pointer;padding:10px 0}.inv-card{border:1px solid #e5e7eb;border-left-width:6px;border-radius:8px;padding:12px;background:white;cursor:pointer;flex-grow:1}.status-green{border-left-color:#22c55e}.status-purple{border-left-color:#9333ea}.status-orange{border-left-color:#f97316}.status-blue{border-left-color:#3b82f6}.status-indigo{border-left-color:#4f46e5}.status-teal{border-left-color:#0d9488}.status-yellow{border-left-color:#eab308}.status-red{border-left-color:#ef4444}.task-tabs,.detail-tabs{display:flex;border-bottom:1px solid #e5e7eb;background:#f9fafb;margin-bottom:10px}.detail-tabs{overflow-x:auto;scrollbar-width:none}.detail-tabs::-webkit-scrollbar{display:none}.task-tab,.detail-tab{flex:1;text-align:center;padding:12px;font-size:11px;font-weight:700;color:#6b7280;cursor:pointer;border-bottom:3px solid transparent;text-transform:uppercase}.detail-tab{flex:0 0 auto;padding:10px 16px}.task-tab.active,.detail-tab.active{color:var(--bg);border-bottom-color:var(--bg);background:white}.overview-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}.overview-card{background:#f8fafc;padding:10px;border-radius:6px;border:1px solid #e2e8f0}.overview-label{font-size:9px;font-weight:800;color:#64748b;text-transform:uppercase;margin-bottom:2px}.overview-val{font-size:13px;font-weight:600;color:#0f172a;word-break:break-all}.expand-trigger{display:flex;align-items:center;justify-content:space-between;padding:12px;background:#f9fafb;border-radius:6px;cursor:pointer;font-weight:600;font-size:14px;border:1px solid #e5e7eb}.expand-content{display:none;margin-top:12px;padding:12px;background:#f9fafb;border-radius:6px;border:1px solid #e5e7eb}.expanded .expand-content{display:block}.card-checkbox-container{width:0;overflow:hidden;opacity:0;transition:width .3s,opacity .3s,margin .3s}body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-right:12px}body.multi-select-mode .card-checkbox{pointer-events:auto}body.multi-select-mode .item-row{cursor:pointer}.item-row{touch-action:manipulation}.spinner{border:4px solid rgba(255,255,255,.3);border-top:4px solid white;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:0 auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.scrollbar-none::-webkit-scrollbar{display:none}.scrollbar-none{-ms-overflow-style:none;scrollbar-width:none}</style>
     <style>
-        #main-scroll-area{overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch}
+        #main-scroll-area{min-height:0;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;padding-bottom:calc(10rem + env(safe-area-inset-bottom))}
+        #global-action-bar{padding-bottom:calc(.75rem + env(safe-area-inset-bottom))}
+        #bottom-nav{padding-bottom:calc(.75rem + env(safe-area-inset-bottom))}
         .sticky-search{position:-webkit-sticky;position:sticky;top:0;z-index:35;background:#f9fafb;padding-top:max(4px,env(safe-area-inset-top));padding-bottom:10px;box-shadow:0 6px 12px rgba(15,23,42,.05);transform:translateZ(0);-webkit-transform:translateZ(0);backface-visibility:hidden}
         .request-swipe-row{display:block !important;padding:0 !important;position:relative;overflow:hidden;background:linear-gradient(to left,#ef4444 96px,#ffffff 96px) !important;touch-action:pan-y;-webkit-user-select:none;user-select:none}
         .request-swipe-surface{position:relative;z-index:2;background:#fff;border-radius:inherit;padding:1rem;transition:transform .18s ease;will-change:transform}
@@ -28,7 +34,7 @@
         #pull-refresh-indicator.refreshing .pull-refresh-pill{background:#111827;color:#fff;border-color:#111827}
     </style>
 </head>
-<body class="bg-gray-50 h-screen overflow-hidden">
+<body class="bg-gray-50 overflow-hidden">
     <div id="top-loading-bar-container" class="hidden fixed top-0 left-0 w-full h-1 z-[99999] pointer-events-none"><div id="top-loading-bar" class="h-full bg-[#22c55e] w-0 transition-all duration-300 ease-out shadow-[0_0_10px_#22c55e]"></div></div>
     <div id="toast-notification"></div>
     <div id="photo-modal" class="hidden fixed inset-0 bg-black bg-opacity-95 z-[15000] flex flex-col items-center justify-center p-4">
@@ -51,7 +57,7 @@
             <div id="login-inputs">
                 <input type="text" id="username-input" class="input-field mb-4 text-center border-2" placeholder="USERNAME" autocapitalize="none" autocorrect="off" spellcheck="false" autocomplete="username" enterkeyhint="next" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('pin-code').focus();}">
                 <input type="password" id="pin-code" class="input-field mb-4 text-center border-2 tracking-widest" placeholder="PASSWORD" autocapitalize="none" autocorrect="off" spellcheck="false" autocomplete="current-password" enterkeyhint="go" onkeydown="if(event.key==='Enter'){return triggerLoginFromUI(event);}">
-                <button id="login-button" type="button" class="w-full bg-[#007a4d] text-white font-bold py-3 rounded-lg shadow-md" onclick="return triggerLoginFromUI(event)" ontouchend="return triggerLoginFromUI(event)">LOGIN</button>
+                <button id="login-button" type="button" class="w-full bg-[#007a4d] text-white font-bold py-3 rounded-lg shadow-md" onclick="return triggerLoginFromUI(event)">LOGIN</button>
                 <button id="btn-fingerprint" class="hidden w-full bg-gray-50 text-[#007a4d] border-2 border-[#007a4d] font-bold py-3 rounded-lg shadow-md mt-4 flex items-center justify-center gap-2" onclick="loginWithBiometric()"><i class="ph-bold ph-fingerprint text-2xl"></i> LOGIN WITH FINGERPRINT</button>
             </div>
             <div id="loading-spinner" class="hidden mt-6 flex flex-col items-center w-full">
@@ -72,7 +78,7 @@
             <p class="text-xs text-gray-500 font-bold mb-6">Set a new password for your account to continue.</p>
             <input type="password" id="new-password" class="input-field mb-3 text-center border-2 tracking-widest" placeholder="NEW PASSWORD" autocapitalize="none" autocorrect="off" spellcheck="false" autocomplete="new-password" enterkeyhint="next" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('confirm-password').focus();}">
             <input type="password" id="confirm-password" class="input-field mb-6 text-center border-2 tracking-widest" placeholder="CONFIRM PASSWORD" autocapitalize="none" autocorrect="off" spellcheck="false" autocomplete="new-password" enterkeyhint="go" onkeydown="if(event.key==='Enter'){return triggerPasswordChangeFromUI(event);}">
-            <button id="save-password-button" type="button" class="w-full bg-[#007a4d] text-white font-bold py-3 rounded-lg shadow-md active:scale-95" onclick="return triggerPasswordChangeFromUI(event)" ontouchend="return triggerPasswordChangeFromUI(event)">SAVE & CONTINUE</button>
+            <button id="save-password-button" type="button" class="w-full bg-[#007a4d] text-white font-bold py-3 rounded-lg shadow-md active:scale-95" onclick="return triggerPasswordChangeFromUI(event)">SAVE & CONTINUE</button>
         </div>
     </div>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
@@ -358,9 +364,7 @@
                 
                 <div id="view-drive" class="hidden">
                     <div class="task-tabs mb-2">
-                        <div id="tab-drive-mode-ok" class="task-tab active" onclick="setDriveMode('ok')">OK Drive Mode</div>
-                        <div id="tab-drive-mode-tx" class="task-tab" onclick="setDriveMode('tx')">TX Drive Mode</div>
-                        <div id="tab-drive-mode-nc" class="task-tab" onclick="setDriveMode('nc')">NC Drive Mode</div>
+                        <div id="tab-drive-mode-ok" class="task-tab active">Drive Mode</div>
                     </div>
                     <div id="drive-search-container" class="sticky-search relative mb-2">
                         <input type="text" id="drive-search" class="input-field w-full pr-10 !mb-0" placeholder="Search Names or Locs..." oninput="handleDriveSearch()" onkeydown="dismissSearchKeyboard(event)">
@@ -532,7 +536,7 @@
                 </div>
             </div>
             
-            <nav class="fixed bottom-0 w-full bg-white border-t flex justify-around py-3 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-50">
+            <nav id="bottom-nav" class="fixed bottom-0 w-full bg-white border-t flex justify-around py-3 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-50">
                 <div onclick="switchView('home')"><i class="ph-bold ph-house text-2xl text-gray-400"></i></div>
                 <div onclick="switchView('drive')"><i class="ph-bold ph-car text-2xl text-gray-400"></i></div>
                 <div onclick="switchView('tasks')" class="rep-hidden csr-hidden"><i class="ph-bold ph-clipboard-text text-2xl text-gray-400"></i></div>
@@ -570,6 +574,7 @@
         const PHOTO_MAX_WIDTH = 900;
         const PHOTO_JPEG_QUALITY = 0.72;
         let pendingPhotoUploads = new Map();
+        let viewportHeightSyncInitialized = false;
         
         function isIOSDevice() {
             return IOS_DEVICE_REGEX.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -577,6 +582,24 @@
 
         function isStandaloneApp() {
             return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+        }
+
+        function syncViewportHeight() {
+            const viewport = window.visualViewport;
+            const nextHeight = Math.max(320, Math.round(viewport ? viewport.height : (window.innerHeight || 0)));
+            document.documentElement.style.setProperty('--app-height', `${nextHeight}px`);
+        }
+
+        function initializeViewportHeightSync() {
+            if (viewportHeightSyncInitialized) return;
+            viewportHeightSyncInitialized = true;
+            syncViewportHeight();
+            window.addEventListener('resize', syncViewportHeight, { passive: true });
+            window.addEventListener('orientationchange', () => requestAnimationFrame(syncViewportHeight), { passive: true });
+            if (window.visualViewport) {
+                window.visualViewport.addEventListener('resize', syncViewportHeight, { passive: true });
+                window.visualViewport.addEventListener('scroll', syncViewportHeight, { passive: true });
+            }
         }
 
         async function clearLegacyOfflineState() {
@@ -1263,8 +1286,8 @@
         let cacheWarmPromise=null;
         let currentUser=""; let currentUserDisplay=""; let currentRole=""; let safeRole=""; let repPermutations=[]; let activeItem=null; let lastView=""; let activeDetailTab="overview"; let selectedItems=new Set(); let isMultiSelectMode=false; let pressTimer=null; let isLongPress=false; let touchStartX=0; let touchStartY=0; let pendingAction=null; let pendingTabType=null; let hasAppliedInitialHomeView=false;
         
-        const DRIVE_MODE_LABELS = { ok: 'OK Drive Mode', tx: 'TX Drive Mode', nc: 'NC Drive Mode' };
-        let activeDriveMode='ok'; let activeDriveTab='name'; let selectedDriveBlock=null; let selectedDriveLoc=null; let driveQuickRequestCardMode=false; let driveQuickFilterName=''; let driveQuickFilterLocation=''; let driveQuickFilterLot=''; let driveQuickFilterSize=''; let driveQuickFilterLtsMode=''; let driveQuickFilterLtsValue=''; let driveQuickHoldStopOnly=false; let driveQuickFilterOptionsCacheKey=''; let driveQuickFilterOptionsCache=null;
+        const DRIVE_MODE_LABELS = { ok: 'Drive Mode' };
+        let activeDriveMode='ok'; let activeDriveTab='name'; let selectedDriveBlock=null; let selectedDriveLoc=null; let driveQuickRequestCardMode=false; let driveQuickFilterName=''; let driveQuickFilterLocation=''; let driveQuickFilterLot=''; let driveQuickFilterSize=''; let driveQuickFilterLtsMode=''; let driveQuickFilterLtsValue=''; let driveQuickHoldStopOnly=false; let driveQuickFilterOptionsCacheKey=''; let driveQuickFilterOptionsCache=null; let driveBaseFilterCacheKey=''; let driveBaseFilterCacheItems=[]; let driveQuickFilterCacheKey=''; let driveQuickFilterCacheItems=[];
         let driveViewLevel=0; let selectedDriveName=null; let selectedDriveSize=null; let driveSelectedSeasons=new Set(['ALL']); const availableSeasons=["ALL","S1","F1","U1","U2","U3","X","Y","Z"];
         
         let activeTaskTab="season"; let taskViewTargetUser=null; let taskViewLevel=0; let selectedTaskBlock=null; let selectedTaskLoc=null; let selectedEndCapFolder=null;
@@ -1307,6 +1330,7 @@
             }
             const teamOptions = ["", "Dylan", "Kayla", "Morgan", ...salesRepList].map(n => `<option value="${n}">${n || "Unassigned"}</option>`).join('');
             ['dock-checker', 'dock-inspector', 'dock-mistake'].forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = teamOptions; });
+            initializeViewportHeightSync();
             initializeInteractiveChrome();
             updateSyncDiagnostics();
         });
@@ -1864,9 +1888,30 @@
             return driveQuickFilterOptionsCache;
         }
 
-        function getDriveFilteredItems(includeQuickFilters = false) {
+        function getDriveBaseFilterKey() {
+            const searchInput = document.getElementById('drive-search');
+            const term = searchInput ? searchInput.value.toLowerCase().trim() : '';
+            const masterState = getDatasetState('master');
+            return [
+                activeDriveMode,
+                [...driveSelectedSeasons].sort().join('|'),
+                term,
+                driveQuickHoldStopOnly ? '1' : '0',
+                fullInventory.length,
+                masterState.lastLoadedAt || '',
+                lastSyncTime || ''
+            ].join('::');
+        }
+
+        function getDriveBaseFilteredItems() {
+            const cacheKey = getDriveBaseFilterKey();
+            if (driveBaseFilterCacheKey === cacheKey) return driveBaseFilterCacheItems;
             let items = getDriveModeItems();
-            if (activeDriveMode !== 'ok') return [];
+            if (activeDriveMode !== 'ok') {
+                driveBaseFilterCacheKey = cacheKey;
+                driveBaseFilterCacheItems = [];
+                return driveBaseFilterCacheItems;
+            }
             if (!driveSelectedSeasons.has('ALL')) {
                 items = items.filter(i => {
                     let s = String(i.SEASON || '').toUpperCase();
@@ -1876,28 +1921,47 @@
             const searchInput = document.getElementById('drive-search');
             const term = searchInput ? searchInput.value.toLowerCase().trim() : '';
             if (term) items = filterBySearch(items, term, 'drive');
-            if (includeQuickFilters) {
-                if (driveQuickFilterName) {
-                    const nameTerm = String(driveQuickFilterName || '').toLowerCase().trim();
-                    items = items.filter(i => String(i.COMMONNAME || '').toLowerCase().includes(nameTerm));
-                }
-                if (driveQuickFilterLocation) items = items.filter(i => String(i.LOCATIONCODE || '').trim() === driveQuickFilterLocation);
-                if (driveQuickFilterLot) items = items.filter(i => String(i.LOTCODE || '').trim() === driveQuickFilterLot);
-                if (driveQuickFilterSize) items = items.filter(i => String(i.CONTSIZE || '').trim() === driveQuickFilterSize);
-                const ltsValue = parseFloat(driveQuickFilterLtsValue);
-                if (driveQuickFilterLtsMode && !isNaN(ltsValue)) {
-                    items = items.filter(i => {
-                        const rowLts = parseFloat(String(i.S_LTS || '0').replace(/,/g, '')) || 0;
-                        return driveQuickFilterLtsMode === 'gt' ? rowLts > ltsValue : rowLts < ltsValue;
-                    });
-                }
-            }
             if (driveQuickHoldStopOnly) {
                 items = items.filter(i => {
                     const holdCode = String(firstNonEmptyValue(i.HOLDSTOPCODE, i.HOLD_STOP_CODE, i.HOLDSTOP) || '').toUpperCase();
                     return holdCode.includes('H') || holdCode.includes('S');
                 });
             }
+            driveBaseFilterCacheKey = cacheKey;
+            driveBaseFilterCacheItems = items;
+            return items;
+        }
+
+        function getDriveFilteredItems(includeQuickFilters = false) {
+            const baseItems = getDriveBaseFilteredItems();
+            if (!includeQuickFilters) return baseItems;
+            const quickCacheKey = [
+                driveBaseFilterCacheKey,
+                String(driveQuickFilterName || '').toLowerCase().trim(),
+                String(driveQuickFilterLocation || '').trim(),
+                String(driveQuickFilterLot || '').trim(),
+                String(driveQuickFilterSize || '').trim(),
+                String(driveQuickFilterLtsMode || '').trim(),
+                String(driveQuickFilterLtsValue || '').trim()
+            ].join('::');
+            if (driveQuickFilterCacheKey === quickCacheKey) return driveQuickFilterCacheItems;
+            let items = baseItems;
+            if (driveQuickFilterName) {
+                const nameTerm = String(driveQuickFilterName || '').toLowerCase().trim();
+                items = items.filter(i => String(i.COMMONNAME || '').toLowerCase().includes(nameTerm));
+            }
+            if (driveQuickFilterLocation) items = items.filter(i => String(i.LOCATIONCODE || '').trim() === driveQuickFilterLocation);
+            if (driveQuickFilterLot) items = items.filter(i => String(i.LOTCODE || '').trim() === driveQuickFilterLot);
+            if (driveQuickFilterSize) items = items.filter(i => String(i.CONTSIZE || '').trim() === driveQuickFilterSize);
+            const ltsValue = parseFloat(driveQuickFilterLtsValue);
+            if (driveQuickFilterLtsMode && !isNaN(ltsValue)) {
+                items = items.filter(i => {
+                    const rowLts = parseFloat(String(i.S_LTS || '0').replace(/,/g, '')) || 0;
+                    return driveQuickFilterLtsMode === 'gt' ? rowLts > ltsValue : rowLts < ltsValue;
+                });
+            }
+            driveQuickFilterCacheKey = quickCacheKey;
+            driveQuickFilterCacheItems = items;
             return items;
         }
 
@@ -1918,47 +1982,55 @@
             const candidateItems = getDriveFilteredItems(false);
             const filterOptions = getDriveQuickFilterOptions(candidateItems);
             const buildOptions = (values, selectedValue, placeholder) => `<option value="">${placeholder}</option>` + values.map(value => `<option value="${esc(value)}" ${selectedValue === value ? 'selected' : ''}>${value}</option>`).join('');
+            const buttonBase = 'w-full sm:w-auto min-h-[42px] px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-[0.14em] transition-colors duration-150';
+            const primaryBtn = `${buttonBase} bg-[#007a4d] text-white shadow-sm hover:bg-[#006341]`;
+            const secondaryBtn = `${buttonBase} bg-white border border-emerald-200 text-[#007a4d] shadow-sm hover:bg-emerald-50`;
+            const tertiaryBtn = `${buttonBase} bg-slate-900 text-white shadow-sm hover:bg-slate-800`;
+            const disabledBtn = `${buttonBase} bg-emerald-100 text-emerald-300 shadow-sm cursor-not-allowed`;
+            const filterInputClass = 'input-field !mb-0 text-sm border-green-200 bg-white mt-1 shadow-sm';
             const filterPanel = showCardMode ? `
-                <div class="mt-3 pt-3 border-t border-orange-200">
-                    <div class="text-[10px] font-black text-orange-700 uppercase tracking-wider mb-2">Drive Card View Filters</div>
-                    <div class="grid grid-cols-2 gap-2">
-                        <label class="text-[10px] font-bold text-gray-500 uppercase col-span-2">Common Name<input type="text" class="input-field !mb-0 text-sm border-orange-200 mt-1" value="${esc(driveQuickFilterName)}" placeholder="Type a common name" oninput="setDriveQuickFilter('name', this.value)" onkeydown="dismissSearchKeyboard(event)"></label>
-                        <label class="text-[10px] font-bold text-gray-500 uppercase">Location<select class="input-field !mb-0 text-sm border-orange-200 mt-1" onchange="setDriveQuickFilter('location', this.value)">${buildOptions(filterOptions.locations, driveQuickFilterLocation, 'All Locations')}</select></label>
-                        <label class="text-[10px] font-bold text-gray-500 uppercase">Cont Size<select class="input-field !mb-0 text-sm border-orange-200 mt-1" onchange="setDriveQuickFilter('size', this.value)">${buildOptions(filterOptions.sizes, driveQuickFilterSize, 'All Sizes')}</select></label>
-                        <label class="text-[10px] font-bold text-gray-500 uppercase">Lot Code<select class="input-field !mb-0 text-sm border-orange-200 mt-1" onchange="setDriveQuickFilter('lot', this.value)">${buildOptions(filterOptions.lots, driveQuickFilterLot, 'All Lots')}</select></label>
-                        <label class="text-[10px] font-bold text-gray-500 uppercase">s_LTS<select class="input-field !mb-0 text-sm border-orange-200 mt-1" onchange="setDriveQuickFilter('ltsMode', this.value)"><option value="">Any</option><option value="gt" ${driveQuickFilterLtsMode === 'gt' ? 'selected' : ''}>Greater Than</option><option value="lt" ${driveQuickFilterLtsMode === 'lt' ? 'selected' : ''}>Less Than</option></select></label>
-                        <label class="text-[10px] font-bold text-gray-500 uppercase">s_LTS Number<input type="number" class="input-field !mb-0 text-sm border-orange-200 mt-1" value="${esc(driveQuickFilterLtsValue)}" placeholder="Enter number" oninput="setDriveQuickFilter('ltsValue', this.value)"></label>
+                <div class="mt-1 pt-4 border-t border-emerald-100">
+                    <div class="text-[10px] font-black text-emerald-700 uppercase tracking-[0.16em] mb-3">Drive Card View Filters</div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <label class="text-[10px] font-bold text-slate-500 uppercase sm:col-span-2">Common Name<input type="text" class="${filterInputClass}" value="${esc(driveQuickFilterName)}" placeholder="Type a common name" oninput="setDriveQuickFilter('name', this.value)" onkeydown="dismissSearchKeyboard(event)"></label>
+                        <label class="text-[10px] font-bold text-slate-500 uppercase">Location<select class="${filterInputClass}" onchange="setDriveQuickFilter('location', this.value)">${buildOptions(filterOptions.locations, driveQuickFilterLocation, 'All Locations')}</select></label>
+                        <label class="text-[10px] font-bold text-slate-500 uppercase">Cont Size<select class="${filterInputClass}" onchange="setDriveQuickFilter('size', this.value)">${buildOptions(filterOptions.sizes, driveQuickFilterSize, 'All Sizes')}</select></label>
+                        <label class="text-[10px] font-bold text-slate-500 uppercase">Lot Code<select class="${filterInputClass}" onchange="setDriveQuickFilter('lot', this.value)">${buildOptions(filterOptions.lots, driveQuickFilterLot, 'All Lots')}</select></label>
+                        <label class="text-[10px] font-bold text-slate-500 uppercase">s_LTS<select class="${filterInputClass}" onchange="setDriveQuickFilter('ltsMode', this.value)"><option value="">Any</option><option value="gt" ${driveQuickFilterLtsMode === 'gt' ? 'selected' : ''}>Greater Than</option><option value="lt" ${driveQuickFilterLtsMode === 'lt' ? 'selected' : ''}>Less Than</option></select></label>
+                        <label class="text-[10px] font-bold text-slate-500 uppercase sm:col-span-2 lg:col-span-1">s_LTS Number<input type="number" class="${filterInputClass}" value="${esc(driveQuickFilterLtsValue)}" placeholder="Enter number" oninput="setDriveQuickFilter('ltsValue', this.value)"></label>
                     </div>
-                    <div class="flex items-center justify-between gap-2 mt-3">
-                        <span class="text-[10px] font-bold text-orange-800">Card view stays on until they switch back.</span>
-                        <div class="flex gap-2 shrink-0">
-                            <button class="bg-white border border-orange-200 text-orange-700 text-[10px] font-black uppercase tracking-wider px-3 py-2 rounded-lg" onclick="clearDriveQuickFilters()">Clear Filters</button>
-                            <button class="bg-white border border-gray-300 text-gray-700 text-[10px] font-black uppercase tracking-wider px-3 py-2 rounded-lg" onclick="return disableDriveQuickRequestCardMode()">Drill View</button>
+                    <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <span class="text-[11px] font-semibold text-emerald-800">Card view stays on until they switch back.</span>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full sm:w-auto">
+                            <button class="${secondaryBtn}" onclick="clearDriveQuickFilters()">Clear Filters</button>
+                            <button class="${tertiaryBtn}" onclick="return disableDriveQuickRequestCardMode()">Drill View</button>
                         </div>
                     </div>
                 </div>` : '';
             const requestBtn = count === 0
-                ? `<button class="bg-orange-200 text-white text-[10px] font-black uppercase tracking-wider px-3 py-2 rounded-lg shadow-sm cursor-not-allowed" disabled>Create Request</button>`
-                : `<button class="bg-orange-600 text-white text-[10px] font-black uppercase tracking-wider px-3 py-2 rounded-lg shadow-sm" onclick="openDriveQuickRequestModal()">Create Request</button>`;
+                ? `<button class="${disabledBtn}" disabled>Create Request</button>`
+                : `<button class="${primaryBtn}" onclick="openDriveQuickRequestModal()">Create Request</button>`;
             const flyerBtn = count === 0
-                ? `<button class="bg-indigo-200 text-white text-[10px] font-black uppercase tracking-wider px-3 py-2 rounded-lg shadow-sm cursor-not-allowed" disabled>Create Flyer</button>`
-                : `<button class="bg-indigo-600 text-white text-[10px] font-black uppercase tracking-wider px-3 py-2 rounded-lg shadow-sm" onclick="createDriveQuickFlyers()">Create Flyer</button>`;
+                ? `<button class="${disabledBtn}" disabled>Create Flyer</button>`
+                : `<button class="${secondaryBtn}" onclick="createDriveQuickFlyers()">Create Flyer</button>`;
             const assignBtn = count === 0
-                ? `<button class="bg-blue-200 text-white text-[10px] font-black uppercase tracking-wider px-3 py-2 rounded-lg shadow-sm cursor-not-allowed" disabled>Assign Items</button>`
-                : `<button class="bg-blue-600 text-white text-[10px] font-black uppercase tracking-wider px-3 py-2 rounded-lg shadow-sm" onclick="startDriveQuickAssignFlow()">Assign Items</button>`;
+                ? `<button class="${disabledBtn}" disabled>Assign Items</button>`
+                : `<button class="${secondaryBtn}" onclick="startDriveQuickAssignFlow()">Assign Items</button>`;
             const cardViewBtn = showCardMode
-                ? `<button class="bg-gray-900 text-white text-[10px] font-black uppercase tracking-wider px-3 py-2 rounded-lg shadow-sm" onclick="return disableDriveQuickRequestCardMode()">Drill View</button>`
-                : `<button class="bg-white border border-orange-300 text-orange-700 text-[10px] font-black uppercase tracking-wider px-3 py-2 rounded-lg" onclick="return setDriveQuickRequestCardMode(true)">Card View</button>`;
-            const clearBtn = `<button class="bg-white border border-orange-200 text-orange-700 text-[10px] font-black uppercase tracking-wider px-3 py-2 rounded-lg" onclick="clearDriveQuickRequestItems()">Clear Rows</button>`;
+                ? `<button class="${tertiaryBtn}" onclick="return disableDriveQuickRequestCardMode()">Drill View</button>`
+                : `<button class="${secondaryBtn}" onclick="return setDriveQuickRequestCardMode(true)">Card View</button>`;
+            const clearBtn = `<button class="${secondaryBtn}" onclick="clearDriveQuickRequestItems()">Clear Rows</button>`;
             const headerHtml = showCardMode
-                ? `<div><div class="text-[10px] font-black text-orange-700 uppercase tracking-wider">Drive Action Builder</div><div class="text-sm font-bold text-orange-900">${count} row${count === 1 ? '' : 's'} ready for action</div></div>`
-                : `<div class="text-sm font-bold text-orange-900">${count} row${count === 1 ? '' : 's'} selected</div>`;
-            const shellClass = showCardMode ? 'bg-orange-50 border border-orange-200 rounded-xl p-3' : 'bg-orange-50 border border-orange-200 rounded-lg p-2.5';
-            bar.innerHTML = `<div class="${shellClass}"><div class="flex items-center justify-between gap-3">${headerHtml}<div class="flex gap-2 shrink-0 flex-wrap justify-end">${cardViewBtn}${clearBtn}${requestBtn}${flyerBtn}${assignBtn}</div></div>${filterPanel}</div>`;
+                ? `<div><div class="text-[10px] font-black text-emerald-700 uppercase tracking-[0.16em]">Drive Action Builder</div><div class="text-lg font-black text-slate-900 mt-1">${count} row${count === 1 ? '' : 's'} ready for action</div></div>`
+                : `<div><div class="text-[10px] font-black text-emerald-700 uppercase tracking-[0.16em]">Drive Selection</div><div class="text-base font-black text-slate-900 mt-1">${count} row${count === 1 ? '' : 's'} selected</div></div>`;
+            const shellClass = showCardMode
+                ? 'rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-green-50 p-4 shadow-sm'
+                : 'rounded-2xl border border-emerald-200 bg-white p-3 shadow-sm';
+            bar.innerHTML = `<div class="${shellClass}"><div class="flex flex-col gap-4"><div class="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">${headerHtml}<div class="grid grid-cols-1 sm:grid-cols-2 xl:flex gap-2 w-full xl:w-auto xl:min-w-[320px]">${cardViewBtn}${clearBtn}${requestBtn}${flyerBtn}${assignBtn}</div></div>${filterPanel}</div></div>`;
             bar.classList.remove('hidden');
         }
 
-                function toggleDriveQuickRequestItem(domId) {
+        function toggleDriveQuickRequestItem(domId) {
             if (!canUseDriveQuickRequest()) return;
             if (!findItemByDomId(domId)) return;
             if (driveQuickRequestItems.has(domId)) driveQuickRequestItems.delete(domId);
@@ -2181,6 +2253,7 @@
             item._searchCandidates = candidates;
             item._searchPrimaryStarts = primaryFields;
             item._searchWordStarts = [...new Set(candidates.flatMap(tokenizeSearchValue))];
+            item._searchProfileWordStarts = {};
             item._search = candidates.join(' ');
             return item;
         }
@@ -2197,11 +2270,24 @@
             return [...new Set(resolver(item).map(normalizeSearchValue).filter(Boolean))];
         }
 
+        function getSearchWordStartsForProfile(item, profileName = '') {
+            if (!item) return [];
+            if (!profileName) {
+                if (!Array.isArray(item._searchWordStarts)) buildSearchIndex(item);
+                return item._searchWordStarts || [];
+            }
+            if (!item._searchProfileWordStarts) item._searchProfileWordStarts = {};
+            if (Array.isArray(item._searchProfileWordStarts[profileName])) return item._searchProfileWordStarts[profileName];
+            const searchValues = getSearchValuesForProfile(item, profileName);
+            const wordStarts = [...new Set(searchValues.flatMap(tokenizeSearchValue))];
+            item._searchProfileWordStarts[profileName] = wordStarts;
+            return wordStarts;
+        }
+
         function matchesItemSearch(item, rawTerm, profileName = '') {
             const terms = tokenizeSearchValue(rawTerm);
             if (!terms.length) return true;
-            const searchValues = getSearchValuesForProfile(item, profileName);
-            const wordStarts = [...new Set(searchValues.flatMap(tokenizeSearchValue))];
+            const wordStarts = getSearchWordStartsForProfile(item, profileName);
             const [firstTerm, ...restTerms] = terms;
             if (!wordStarts.some(word => word.startsWith(firstTerm))) return false;
             return restTerms.every(term => wordStarts.some(word => word.startsWith(term)));
@@ -3003,9 +3089,8 @@
         }
 
         function syncDriveModeTabs() {
-            document.getElementById('tab-drive-mode-ok').classList.toggle('active', activeDriveMode === 'ok');
-            document.getElementById('tab-drive-mode-tx').classList.toggle('active', activeDriveMode === 'tx');
-            document.getElementById('tab-drive-mode-nc').classList.toggle('active', activeDriveMode === 'nc');
+            const driveModeTab = document.getElementById('tab-drive-mode-ok');
+            if (driveModeTab) driveModeTab.classList.toggle('active', activeDriveMode === 'ok');
         }
 
         function setDriveMode(mode) {
@@ -4107,9 +4192,16 @@
             scrollArea.addEventListener('scroll', () => {
                 if (scrollArea.scrollTop > 8) closeAllRequestSwipes();
             }, { passive: true });
-            window.addEventListener('pageshow', () => queueForegroundRefresh(120), { passive: true });
-            window.addEventListener('focus', () => queueForegroundRefresh(120), { passive: true });
+            window.addEventListener('pageshow', () => {
+                syncViewportHeight();
+                queueForegroundRefresh(120);
+            }, { passive: true });
+            window.addEventListener('focus', () => {
+                syncViewportHeight();
+                queueForegroundRefresh(120);
+            }, { passive: true });
             window.addEventListener('orientationchange', () => {
+                syncViewportHeight();
                 closeAllRequestSwipes();
                 setPullRefreshIndicator('hidden');
                 queueForegroundRefresh(350);
@@ -5268,7 +5360,9 @@ ${formatRequestItemsText(items)}`;
         function openAssignModal() { document.getElementById('assign-modal').classList.remove('hidden') }
         function closeAssignModal() { driveQuickAssignFlow = false; document.getElementById('assign-modal').classList.add('hidden') }
 
-        const debouncedDriveSearch = debounce(() => { requestAnimationFrame(() => renderDrive()); }, 150);
+        const debouncedDriveSearch = debounce(() => {
+            scheduleUiRender('drive-search', () => renderDrive());
+        }, 120);
         
         function clearDriveSearch() {
             document.getElementById('drive-search').value = "";
@@ -5287,7 +5381,7 @@ ${formatRequestItemsText(items)}`;
                 clearBtn.classList.add('hidden');
                 driveViewLevel = 0;
             }
-            scheduleSearchRender('drive', () => renderDrive());
+            debouncedDriveSearch();
         }
 
         function selectDriveName(name) { selectedDriveName = name; driveViewLevel = 1; renderDrive() }
@@ -6266,6 +6360,11 @@ ${formatRequestItemsText(items)}`;
     </script>
 </body>
 </html>
+
+
+
+
+
 
 
 
