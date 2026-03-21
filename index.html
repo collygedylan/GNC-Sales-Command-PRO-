@@ -17,11 +17,22 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>:root{--bg:#007a4d;--text-color:#111827;--app-height:100vh}html,body{min-height:100%;width:100%;max-width:100%;overflow-x:hidden;overscroll-behavior-x:none}html{background:white}@supports (height:100dvh){:root{--app-height:100dvh}}body{font-family:"Amazon Ember",Arial,sans-serif;background:white;color:var(--text-color);user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior-y:contain;min-height:var(--app-height);height:var(--app-height);width:100%;overflow:hidden}button,[role="button"],.task-tab,.detail-tab,.drawer-item,.drill-item,.menu-btn{touch-action:manipulation}.nav-header{background:var(--bg);color:white;padding-top:max(10px,env(safe-area-inset-top))}#view-login,#view-change-password{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;min-height:var(--app-height)}#view-change-password{display:none;z-index:10000}#app-wrapper{min-height:var(--app-height);height:var(--app-height);width:100%;max-width:100%;overflow:hidden}.login-card{background:white;padding:30px;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,.2);width:100%;max-width:360px;text-align:center}.input-field{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:8px;font-size:16px;margin-bottom:12px}#toast-notification{position:fixed;top:-100px;left:50%;transform:translateX(-50%);background:#16a34a;color:white;padding:16px 24px;border-radius:50px;box-shadow:0 10px 15px -3px rgba(0,0,0,.3);z-index:11000;transition:top .5s;display:flex;align-items:center;gap:12px;pointer-events:none}#toast-notification.show{top:20px}#side-drawer{position:fixed;top:0;left:-280px;width:280px;height:100%;background:white;z-index:2000;box-shadow:2px 0 10px rgba(0,0,0,.2);transition:left .3s;overflow-y:auto;padding-bottom:100px}#side-drawer.open{left:0}#drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1999;display:none}#drawer-overlay.open{display:block}.drawer-header{background:var(--bg);color:white;padding:20px;font-weight:bold;font-size:18px}.drawer-item{padding:16px 20px;border-bottom:1px solid #f3f4f6;cursor:pointer;display:flex;align-items:center;gap:12px;color:#374151;font-weight:500}.drill-item{border-bottom:1px solid #e5e7eb;padding:16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:white;transition:background .1s}.drill-item:active{background:#f3f4f6}.back-btn{display:flex;align-items:center;gap:5px;color:#6b7280;font-size:14px;font-weight:600;margin-bottom:20px;cursor:pointer;padding:10px 0}.inv-card{border:1px solid #e5e7eb;border-left-width:6px;border-radius:8px;padding:12px;background:white;cursor:pointer;flex-grow:1}.status-green{border-left-color:#22c55e}.status-purple{border-left-color:#9333ea}.status-orange{border-left-color:#f97316}.status-blue{border-left-color:#3b82f6}.status-indigo{border-left-color:#4f46e5}.status-teal{border-left-color:#0d9488}.status-yellow{border-left-color:#eab308}.status-red{border-left-color:#ef4444}.task-tabs,.detail-tabs{display:flex;border-bottom:1px solid #e5e7eb;background:#f9fafb;margin-bottom:10px}.detail-tabs{overflow-x:auto;scrollbar-width:none}.detail-tabs::-webkit-scrollbar{display:none}.task-tab,.detail-tab{flex:1;text-align:center;padding:12px;font-size:11px;font-weight:700;color:#6b7280;cursor:pointer;border-bottom:3px solid transparent;text-transform:uppercase}.detail-tab{flex:0 0 auto;padding:10px 16px}.task-tab.active,.detail-tab.active{color:var(--bg);border-bottom-color:var(--bg);background:white}.overview-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}.overview-card{background:#f8fafc;padding:10px;border-radius:6px;border:1px solid #e2e8f0}.overview-label{font-size:9px;font-weight:800;color:#64748b;text-transform:uppercase;margin-bottom:2px}.overview-val{font-size:13px;font-weight:600;color:#0f172a;word-break:break-all}.expand-trigger{display:flex;align-items:center;justify-content:space-between;padding:12px;background:#f9fafb;border-radius:6px;cursor:pointer;font-weight:600;font-size:14px;border:1px solid #e5e7eb}.expand-content{display:none;margin-top:12px;padding:12px;background:#f9fafb;border-radius:6px;border:1px solid #e5e7eb}.expanded .expand-content{display:block}.card-checkbox-container{width:0;overflow:hidden;opacity:0;transition:width .3s,opacity .3s,margin .3s}body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-right:12px}body.multi-select-mode .card-checkbox{pointer-events:auto}body.multi-select-mode .item-row{cursor:pointer}.item-row{touch-action:manipulation}.spinner{border:4px solid rgba(255,255,255,.3);border-top:4px solid white;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:0 auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.scrollbar-none::-webkit-scrollbar{display:none}.scrollbar-none{-ms-overflow-style:none;scrollbar-width:none}</style>
+    <style>:root{--bg:#007a4d;--text-color:#111827;--app-height:100vh}html,body{min-height:100%;width:100%;max-width:100%;overflow-x:hidden;overscroll-behavior-x:none}html{background:white}@supports (height:100dvh){:root{--app-height:100dvh}}body{font-family:"Amazon Ember",Arial,sans-serif;background:white;color:var(--text-color);user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior-y:contain;min-height:var(--app-height);height:var(--app-height);width:100%;overflow:hidden}button,[role="button"],.task-tab,.detail-tab,.drawer-item,.drill-item,.menu-btn{touch-action:manipulation}.nav-header{background:var(--bg);color:white;padding-top:max(10px,env(safe-area-inset-top))}#view-login,#view-change-password{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;min-height:var(--app-height)}#view-change-password{display:none;z-index:10000}#app-wrapper{min-height:var(--app-height);height:var(--app-height);width:100%;max-width:100%;overflow:hidden}.login-card{background:white;padding:30px;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,.2);width:100%;max-width:360px;text-align:center}.input-field{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:8px;font-size:16px;margin-bottom:12px}#toast-notification{position:fixed;top:-100px;left:50%;transform:translateX(-50%);background:#16a34a;color:white;padding:16px 24px;border-radius:50px;box-shadow:0 10px 15px -3px rgba(0,0,0,.3);z-index:11000;transition:top .5s;display:flex;align-items:center;gap:12px;pointer-events:none}#toast-notification.show{top:20px}#side-drawer{position:fixed;top:0;left:-280px;width:280px;height:100%;background:white;z-index:2000;box-shadow:2px 0 10px rgba(0,0,0,.2);transition:left .3s;overflow-y:auto;padding-bottom:100px}#side-drawer.open{left:0}#drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1999;display:none}#drawer-overlay.open{display:block}.drawer-header{background:var(--bg);color:white;padding:20px;font-weight:bold;font-size:18px}.drawer-item{padding:16px 20px;border-bottom:1px solid #f3f4f6;cursor:pointer;display:flex;align-items:center;gap:12px;color:#374151;font-weight:500}.drill-item{border-bottom:1px solid #e5e7eb;padding:16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:white;transition:background .1s}.drill-item:active{background:#f3f4f6}.back-btn{display:flex;align-items:center;gap:5px;color:#6b7280;font-size:14px;font-weight:600;margin-bottom:20px;cursor:pointer;padding:10px 0}.inv-card{border:1px solid #dbe4dc;border-left-width:6px;border-radius:18px;padding:14px;background:white;cursor:pointer;flex-grow:1;box-shadow:0 10px 24px rgba(15,23,42,.06);overflow:hidden}.status-green{border-left-color:#22c55e}.status-purple{border-left-color:#9333ea}.status-orange{border-left-color:#f97316}.status-blue{border-left-color:#3b82f6}.status-indigo{border-left-color:#4f46e5}.status-teal{border-left-color:#0d9488}.status-yellow{border-left-color:#eab308}.status-red{border-left-color:#ef4444}.task-tabs,.detail-tabs{display:flex;border-bottom:1px solid #e5e7eb;background:#f9fafb;margin-bottom:10px}.detail-tabs{overflow-x:auto;scrollbar-width:none}.detail-tabs::-webkit-scrollbar{display:none}.task-tab,.detail-tab{flex:1;text-align:center;padding:12px;font-size:11px;font-weight:700;color:#6b7280;cursor:pointer;border-bottom:3px solid transparent;text-transform:uppercase}.detail-tab{flex:0 0 auto;padding:10px 16px}.task-tab.active,.detail-tab.active{color:var(--bg);border-bottom-color:var(--bg);background:white}.overview-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}.overview-card{background:#f8fafc;padding:10px;border-radius:6px;border:1px solid #e2e8f0}.overview-label{font-size:9px;font-weight:800;color:#64748b;text-transform:uppercase;margin-bottom:2px}.overview-val{font-size:13px;font-weight:600;color:#0f172a;word-break:break-all}.expand-trigger{display:flex;align-items:center;justify-content:space-between;padding:12px;background:#f9fafb;border-radius:6px;cursor:pointer;font-weight:600;font-size:14px;border:1px solid #e5e7eb}.expand-content{display:none;margin-top:12px;padding:12px;background:#f9fafb;border-radius:6px;border:1px solid #e5e7eb}.expanded .expand-content{display:block}.card-checkbox-container{width:0;overflow:hidden;opacity:0;transition:width .3s,opacity .3s,margin .3s}body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-right:12px}body.multi-select-mode .card-checkbox{pointer-events:auto}body.multi-select-mode .item-row{cursor:pointer}.item-row{touch-action:manipulation}.spinner{border:4px solid rgba(255,255,255,.3);border-top:4px solid white;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:0 auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.scrollbar-none::-webkit-scrollbar{display:none}.scrollbar-none{-ms-overflow-style:none;scrollbar-width:none}</style>
     <style>
         #main-scroll-area{min-height:0;width:100%;max-width:100%;overflow-x:hidden;overscroll-behavior-x:none;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;padding-bottom:calc(10rem + env(safe-area-inset-bottom))}
         #global-action-bar{padding-bottom:calc(.75rem + env(safe-area-inset-bottom))}
-        #bottom-nav{padding-bottom:calc(.75rem + env(safe-area-inset-bottom))}
+        #bottom-nav{padding:10px 10px calc(.75rem + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:.55rem;background:rgba(255,255,255,.98);backdrop-filter:saturate(150%) blur(12px)}
+        .footer-nav-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.18rem;min-height:52px;border-radius:16px;border:1px solid transparent;background:transparent;color:#6b7280;font-size:10px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;transition:background .16s ease,color .16s ease,border-color .16s ease,transform .16s ease;position:relative}
+        .footer-nav-btn i{font-size:22px;line-height:1}
+        .footer-nav-btn:active{transform:scale(.97)}
+        .footer-nav-btn.active,.footer-nav-btn.menu-open{color:#007a4d;background:#ecfdf5;border-color:#a7f3d0;box-shadow:0 6px 16px rgba(7,94,63,.12)}
+        .footer-nav-badge{position:absolute;top:3px;right:8px;min-width:18px;height:18px;padding:0 4px;background:#ef4444;color:#fff;font-size:10px;font-weight:900;border-radius:999px;display:flex;align-items:center;justify-content:center;border:2px solid #fff}
+        .app-card-shell{background:#fff;border:1px solid #dbe4dc;border-radius:18px !important;box-shadow:0 10px 24px rgba(15,23,42,.06);overflow:hidden}
+        .app-card-ready{border-left:6px solid #22c55e !important}
+        .app-card-hold{border-left:6px solid #facc15 !important}
+        .app-card-stop{border-left:6px solid #ef4444 !important}
+        .app-card-note{border-radius:12px}
+        .app-card-actions{display:flex;gap:.55rem;margin-top:.9rem;padding-top:.85rem;border-top:1px solid #e5e7eb}
         #view-wrapper{width:100%;max-width:100%;overflow:visible}
         .sticky-search{position:-webkit-sticky;position:sticky;top:0;z-index:35;background:#f9fafb;padding-top:max(4px,env(safe-area-inset-top));padding-bottom:10px;box-shadow:0 6px 12px rgba(15,23,42,.05);transform:translateZ(0);-webkit-transform:translateZ(0);backface-visibility:hidden}
         .request-swipe-row{display:block !important;padding:0 !important;position:relative;overflow:hidden;background:linear-gradient(to left,#ef4444 96px,#ffffff 96px) !important;touch-action:pan-y;overscroll-behavior-x:contain;-webkit-user-select:none;user-select:none}
@@ -39,14 +50,62 @@
         .photo-modal-slide img{width:100%;max-height:80vh;object-fit:contain;border-radius:1rem;box-shadow:0 20px 45px rgba(0,0,0,.35);background:rgba(255,255,255,.02);user-select:none;-webkit-user-drag:none}
         .photo-gallery-clickzone{cursor:pointer}
         #drive-search-container,#av-search-container,#reserves-search-container,#docks-search-container{position:-webkit-sticky;position:sticky;top:0;z-index:45}
+        .nav-header{position:-webkit-sticky;position:sticky;top:0;z-index:60;padding:max(10px,env(safe-area-inset-top)) 12px 12px;background:linear-gradient(180deg,#007a4d 0%,#0d8b5d 100%);box-shadow:0 10px 24px rgba(7,94,63,.18)}
+        .nav-header-shell{display:flex;flex-direction:column;gap:.5rem}
+        .nav-header-utility{display:flex;align-items:center;justify-content:space-between;gap:.75rem}
+        .nav-header-identity{display:flex;align-items:center;gap:.7rem;min-width:0;flex:1}
+        .nav-header-menu-btn{display:flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:14px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.2);box-shadow:inset 0 1px 0 rgba(255,255,255,.12)}
+        .nav-header-copy{display:flex;flex-direction:column;min-width:0}
+        .nav-header-user{font-size:15px;font-weight:900;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .nav-header-company{font-size:9px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:rgba(236,253,245,.88);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .nav-header-meta{display:flex;flex-direction:column;align-items:flex-end;gap:.35rem;max-width:48%}
+        .nav-header-meta-row{display:flex;align-items:center;justify-content:flex-end;gap:.4rem;flex-wrap:wrap}
+        .nav-version-pill{display:inline-flex;align-items:center;min-height:26px;padding:.32rem .7rem;border-radius:999px;background:rgba(255,255,255,.92);border:1px solid rgba(255,255,255,.28);color:#007a4d;font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;box-shadow:0 6px 14px rgba(7,94,63,.18)}
+        #sync-diagnostics-badge{border-radius:999px;box-shadow:0 4px 10px rgba(15,23,42,.12)}
+        #sync-diagnostics-detail{font-size:9px;font-weight:800;line-height:1.2;color:rgba(236,253,245,.88);text-align:right;max-width:200px}
+        #global-header-view-shell{display:flex;align-items:center;gap:.65rem;background:rgba(0,0,0,.12);border:1px solid rgba(255,255,255,.14);border-radius:1rem;padding:.5rem .65rem;box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}
+        #global-header-view-shell .amazon-inline-back{width:38px;height:38px;border-radius:12px;margin:0;box-shadow:none}
+        #global-header-view-shell .amazon-inline-back.hidden{display:none}
+        #global-header-view-copy{min-width:0;display:flex;flex-direction:column}
+        #global-header-view-eyebrow{font-size:9px;font-weight:900;letter-spacing:.18em;text-transform:uppercase;color:#d1fae5}
+        #global-header-view-title{font-size:15px;font-weight:900;line-height:1.1;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        #global-header-search-slot{display:block}
+        #global-header-search-slot.hidden{display:none}
+        #global-header-search-slot .amazon-search-host{position:relative;top:auto;z-index:auto;width:100%;background:transparent;padding:0;box-shadow:none;margin:0}
+        #global-header-search-slot .input-field{height:42px;margin:0;background:#ffffff;border:1px solid #a7f3d0;border-radius:14px;padding:0 2.5rem 0 .95rem;font-size:15px;font-weight:700;color:#111827;box-shadow:0 8px 18px rgba(7,94,63,.12)}
+        #global-header-search-slot .ph-x{top:50%;right:14px;transform:translateY(-50%);color:#007a4d}
         .drive-card-filter-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.5rem}
         .drive-card-filter-grid .drive-card-filter-name{grid-column:span 2}
         .drive-card-filter-grid label{min-width:0}
-        .freeze-panel{position:-webkit-sticky;position:sticky;top:0;z-index:44;background:#f9fafb;margin:-1rem -1rem .5rem;padding:.35rem 1rem .5rem;border-bottom:1px solid #e5e7eb;box-shadow:0 10px 16px rgba(15,23,42,.05)}
+        .freeze-panel{position:-webkit-sticky;position:sticky;top:0;z-index:44;background:linear-gradient(180deg,#ecfdf5 0%,#f9fafb 72%);margin:-1rem -1rem .65rem;padding:.22rem .85rem .45rem;border-bottom:1px solid #d1fae5;box-shadow:0 10px 16px rgba(15,23,42,.04)}
         .freeze-panel .sticky-search{position:relative;top:auto;z-index:auto;box-shadow:none}
         .freeze-panel #drive-search-container,.freeze-panel #av-search-container,.freeze-panel #reserves-search-container,.freeze-panel #docks-search-container{position:relative;top:auto;z-index:auto}
-        .freeze-panel .task-tabs,.freeze-panel .detail-tabs{background:#f9fafb}
+        .freeze-panel .task-tabs,.freeze-panel .detail-tabs{background:transparent}
         .freeze-panel > :last-child{margin-bottom:0 !important}
+        #global-back-btn{display:none !important}
+        .amazon-inline-back{flex:0 0 auto;width:42px;height:42px;border-radius:14px;border:1px solid rgba(255,255,255,.28);background:rgba(255,255,255,.92);color:#007a4d;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 14px rgba(7,94,63,.18);font-weight:900}
+        .amazon-inline-back:active{transform:scale(.97)}
+        .amazon-search-host{flex:1;min-width:0;position:relative}
+        .amazon-search-host.sticky-search{background:transparent;padding:0;box-shadow:none;margin-bottom:0}
+        .amazon-search-host .input-field{height:44px;background:#ffffff;border:1px solid #86efac;border-radius:14px;padding:0 2.5rem 0 1rem;font-size:15px;font-weight:700;color:#111827;box-shadow:inset 0 1px 0 rgba(255,255,255,.8)}
+        .amazon-search-host .input-field::placeholder{color:#6b7280;font-weight:700}
+        .amazon-search-host .ph-x{top:50%;right:14px;transform:translateY(-50%);color:#007a4d}
+        .amazon-view-shell{display:flex;align-items:center;gap:.75rem;background:linear-gradient(135deg,#007a4d 0%,#119b6a 100%);padding:.55rem .65rem;border-radius:1.25rem;box-shadow:0 14px 24px rgba(0,122,77,.16);margin-bottom:.75rem;border:1px solid rgba(255,255,255,.18)}
+        .freeze-panel .amazon-view-shell{display:none}
+        .amazon-view-copy{min-width:0;display:flex;flex-direction:column}
+        .amazon-view-eyebrow{font-size:9px;font-weight:900;letter-spacing:.18em;text-transform:uppercase;color:#d1fae5}
+        .amazon-view-title{font-size:15px;font-weight:900;line-height:1.15;color:white;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .amazon-filter-strip{display:flex;gap:.35rem;overflow-x:auto;scrollbar-width:none;background:transparent;border:0;margin:0 0 .45rem;padding:.05rem 0 .08rem}
+        .amazon-filter-strip::-webkit-scrollbar{display:none}
+        .amazon-filter-strip .task-tab,.amazon-filter-strip .detail-tab{flex:0 0 auto;min-width:max-content;padding:.58rem .82rem;border:1px solid #a7f3d0;border-bottom-width:1px;border-radius:999px;background:#ffffff;color:#065f46;box-shadow:0 1px 2px rgba(15,23,42,.08);font-size:10px;line-height:1.05}
+        .amazon-filter-strip .task-tab.active,.amazon-filter-strip .detail-tab.active{background:#007a4d;color:#fff;border-color:#007a4d;box-shadow:inset 0 -2px 0 #bbf7d0,0 6px 14px rgba(0,122,77,.18)}
+        .amazon-filter-chip-row{display:flex;overflow-x:auto;gap:.35rem;padding:.05rem 0 .2rem;scrollbar-width:none}
+        .amazon-filter-chip-row::-webkit-scrollbar{display:none}
+        .amazon-filter-chip-row > *{flex:0 0 auto;box-shadow:0 1px 2px rgba(15,23,42,.08)}
+        .amazon-crumb{display:inline-flex;align-items:center;min-height:24px;padding:.28rem .68rem;border-radius:999px;background:#ffffff;border:1px solid #a7f3d0;color:#007a4d !important;font-size:9px !important;font-weight:900 !important;letter-spacing:.08em;text-transform:uppercase;box-shadow:0 1px 2px rgba(15,23,42,.06);margin-bottom:.42rem !important}
+        #drive-quick-request-bar{margin-bottom:.45rem !important}
+        #team-selector{margin-bottom:.55rem !important}
+        #view-detail .freeze-panel > .back-btn.amazon-hidden-back{display:none}
     </style>
 </head>
 <body class="bg-gray-50 overflow-hidden">
@@ -219,19 +278,31 @@
         </div>
     </div>
     <div id="app-wrapper" class="hidden h-full flex flex-col">
-        <header class="nav-header sticky top-0 z-50 p-4 flex justify-between items-center shadow-md">
-            <div class="flex items-center gap-3 min-w-0">
-                <button id="global-back-btn" type="button" class="hidden shrink-0 bg-white/10 p-2 rounded-lg active:scale-95 transition-transform" onclick="goBackUniversal()" aria-label="Back"><i class="ph-bold ph-arrow-left text-xl text-white"></i></button>
-                <i class="ph-bold ph-list menu-btn text-2xl cursor-pointer shrink-0" onclick="toggleMenu()"></i>
-                <div class="flex flex-col min-w-0">
-                    <div class="font-bold text-lg leading-tight"><span id="header-user">User</span></div>
-                    <div class="text-[10px] opacity-80 leading-tight">GREENLEAF NURSERY COMPANY</div>
+        <header class="nav-header">
+            <div class="nav-header-shell">
+                <div class="nav-header-utility">
+                    <div class="nav-header-identity">
+                        <div class="nav-header-copy">
+                            <div id="header-user" class="nav-header-user">User</div>
+                            <div class="nav-header-company">GREENLEAF NURSERY COMPANY</div>
+                        </div>
+                    </div>
+                    <div class="nav-header-meta">
+                        <div class="nav-header-meta-row">
+                            <div id="header-version" class="nav-version-pill">v2026.03.21</div>
+                            <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
+                        </div>
+                        <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
+                    </div>
                 </div>
-            </div>
-            <div class="flex flex-col items-end gap-1.5">
-                <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
-                <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
-                <div class="bg-white/20 p-2 rounded-lg cursor-pointer" onclick="fetchBackgroundData()"><i class="ph-bold ph-arrows-clockwise text-white"></i></div>
+                <div id="global-header-search-slot" class="hidden"></div>
+                <div id="global-header-view-shell">
+                    <button id="global-header-inline-back" type="button" class="amazon-inline-back hidden" aria-label="Back" onclick="goBackUniversal()"><i class="ph-bold ph-arrow-left text-lg"></i></button>
+                    <div id="global-header-view-copy">
+                        <div id="global-header-view-eyebrow">Current View</div>
+                        <div id="global-header-view-title">Home</div>
+                    </div>
+                </div>
             </div>
         </header>
         
@@ -584,12 +655,12 @@
                 </div>
             </div>
             
-            <nav id="bottom-nav" class="fixed bottom-0 w-full bg-white border-t flex justify-around py-3 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-50">
-                <div onclick="switchView('home')"><i class="ph-bold ph-house text-2xl text-gray-400"></i></div>
-                <div onclick="switchView('drive')"><i class="ph-bold ph-car text-2xl text-gray-400"></i></div>
-                <div onclick="switchView('tasks')"><i class="ph-bold ph-clipboard-text text-2xl text-gray-400"></i></div>
-                <div onclick="switchView('docks')"><i class="ph-bold ph-truck text-2xl text-gray-400"></i></div>
-                <div id="footer-request-btn" class="hidden relative cursor-pointer" onclick="switchView('request')"><div class="relative"><i class="ph-bold ph-chat-circle-text text-2xl text-gray-400"></i><span id="footer-request-badge" class="hidden absolute -top-2 -right-3 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-white">0</span></div></div>
+            <nav id="bottom-nav" class="fixed bottom-0 w-full border-t border-green-100 shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.22)] z-50">
+                <button type="button" id="footer-menu-btn" class="footer-nav-btn" onclick="toggleMenu()" aria-label="Menu"><i class="ph-bold ph-list"></i><span>Menu</span></button>
+                <button type="button" data-footer-view="drive" class="footer-nav-btn" onclick="switchView('drive')" aria-label="Drive Mode"><i class="ph-bold ph-car"></i><span>Drive</span></button>
+                <button type="button" data-footer-view="tasks" class="footer-nav-btn" onclick="switchView('tasks')" aria-label="Tasks"><i class="ph-bold ph-clipboard-text"></i><span>Tasks</span></button>
+                <button type="button" data-footer-view="docks" class="footer-nav-btn" onclick="switchView('docks')" aria-label="Docks"><i class="ph-bold ph-truck"></i><span>Docks</span></button>
+                <button type="button" id="footer-request-btn" data-footer-view="request" class="footer-nav-btn hidden" onclick="switchView('request')" aria-label="Requests"><i class="ph-bold ph-chat-circle-text"></i><span>Reqs</span><span id="footer-request-badge" class="footer-nav-badge hidden">0</span></button>
             </nav>
         </div>
         <script id="app-script-source" type="text/plain">
@@ -1238,10 +1309,10 @@
             startGlobalProgress();
             try {
                 const url = `${SUPABASE_URL}/rest/v1/v2_app_users?select=*&username=ilike.${encodeURIComponent(username)}&password=eq.${encodeURIComponent(password)}&limit=1`;
-                const response = await fetch(url, {
+                const response = await fetchWithTimeout(url, {
                     method: 'GET',
                     headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }
-                });
+                }, SUPABASE_READ_TIMEOUT_MS, 'Login');
                 if (!response.ok) throw new Error('Supabase Error');
                 const text = await response.text();
                 return text ? JSON.parse(text) : [];
@@ -1367,6 +1438,129 @@
         let pendingRequestArchiveFlushTimer = null;
         let pendingRequestArchiveFlushInFlight = false;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Machino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
+        const APP_VERSION = 'v2026.03.21';
+        const GLOBAL_HEADER_SEARCH_CONFIG = {
+            av: 'av-search-container',
+            reserves: 'reserves-search-container',
+            docks: 'docks-search-container',
+            drive: 'drive-search-container'
+        };
+
+        const AMAZON_HEADER_META = {
+            home: { eyebrow: 'Current View', title: 'Home' },
+            av: { eyebrow: 'Amazon Search', title: 'AV Stock' },
+            reserves: { eyebrow: 'Amazon Search', title: 'Reserves' },
+            docks: { eyebrow: 'Amazon Search', title: 'Docks' },
+            drive: { eyebrow: 'Amazon Search', title: 'Drive Mode' },
+            request: { eyebrow: 'Amazon Filters', title: 'Requests' },
+            tasks: { eyebrow: 'Amazon Filters', title: 'My Tasks' },
+            reports: { eyebrow: 'Amazon Filters', title: 'Reports' },
+            'low-stock': { eyebrow: 'Amazon Filters', title: 'Low Stock' },
+            'sales-office': { eyebrow: 'Amazon Filters', title: 'Sales Office' },
+            review: { eyebrow: 'Amazon Filters', title: 'Manager Review' },
+            detail: { eyebrow: 'Amazon Actions', title: 'Item Detail' },
+            hours: { eyebrow: 'Amazon Actions', title: 'Labor Hours' }
+        };
+
+        function createAmazonInlineBackButton() {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'amazon-inline-back';
+            button.setAttribute('aria-label', 'Back');
+            button.innerHTML = '<i class="ph-bold ph-arrow-left text-lg"></i>';
+            button.onclick = () => goBackUniversal();
+            return button;
+        }
+
+        function createAmazonViewShell(viewId) {
+            const meta = AMAZON_HEADER_META[viewId] || { eyebrow: 'Amazon View', title: 'View' };
+            const shell = document.createElement('div');
+            shell.className = 'amazon-view-shell';
+            shell.setAttribute('data-amazon-view', viewId);
+            shell.appendChild(createAmazonInlineBackButton());
+            const copy = document.createElement('div');
+            copy.className = 'amazon-view-copy';
+            copy.innerHTML = `<div class="amazon-view-eyebrow">${meta.eyebrow}</div><div class="amazon-view-title">${meta.title}</div>`;
+            shell.appendChild(copy);
+            return shell;
+        }
+
+        function ensureGlobalHeaderSearchPlaceholders() {
+            Object.values(GLOBAL_HEADER_SEARCH_CONFIG).forEach((containerId) => {
+                const container = document.getElementById(containerId);
+                if (!container) return;
+                container.classList.add('amazon-search-host');
+                let placeholder = document.querySelector(`[data-header-search-placeholder="${containerId}"]`);
+                if (!placeholder) {
+                    placeholder = document.createElement('div');
+                    placeholder.className = 'hidden';
+                    placeholder.setAttribute('data-header-search-placeholder', containerId);
+                    container.parentNode.insertBefore(placeholder, container);
+                }
+            });
+        }
+
+        function restoreGlobalHeaderSearchContainers() {
+            Object.values(GLOBAL_HEADER_SEARCH_CONFIG).forEach((containerId) => {
+                const container = document.getElementById(containerId);
+                const placeholder = document.querySelector(`[data-header-search-placeholder="${containerId}"]`);
+                if (!container || !placeholder || !placeholder.parentNode) return;
+                if (container.parentNode !== placeholder.parentNode || container.previousSibling !== placeholder) {
+                    placeholder.parentNode.insertBefore(container, placeholder.nextSibling);
+                }
+            });
+        }
+
+        function clearNodeChildren(node) {
+            if (!node) return;
+            while (node.firstChild) node.removeChild(node.firstChild);
+        }
+
+        function formatGlobalHeaderTitle(viewId) {
+            return String(viewId || 'home').replace(/-/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+        }
+
+        function syncGlobalHeaderChrome() {
+            ensureGlobalHeaderSearchPlaceholders();
+            restoreGlobalHeaderSearchContainers();
+            const currentView = getCurrentVisibleViewId();
+            const meta = AMAZON_HEADER_META[currentView] || { eyebrow: 'Current View', title: formatGlobalHeaderTitle(currentView) };
+            const headerUser = document.getElementById('header-user');
+            const headerVersion = document.getElementById('header-version');
+            const eyebrow = document.getElementById('global-header-view-eyebrow');
+            const title = document.getElementById('global-header-view-title');
+            const backBtn = document.getElementById('global-header-inline-back');
+            const searchSlot = document.getElementById('global-header-search-slot');
+            if (headerUser) headerUser.innerText = currentUserDisplay || currentUser || 'User';
+            if (headerVersion) headerVersion.innerText = APP_VERSION;
+            if (eyebrow) eyebrow.innerText = meta.eyebrow || 'Current View';
+            if (title) title.innerText = meta.title || formatGlobalHeaderTitle(currentView);
+            if (backBtn) backBtn.classList.toggle('hidden', currentView === 'home');
+            clearNodeChildren(searchSlot);
+            const searchContainerId = GLOBAL_HEADER_SEARCH_CONFIG[currentView];
+            const searchContainer = searchContainerId ? document.getElementById(searchContainerId) : null;
+            if (searchSlot && searchContainer) {
+                searchSlot.classList.remove('hidden');
+                searchSlot.appendChild(searchContainer);
+            } else if (searchSlot) {
+                searchSlot.classList.add('hidden');
+            }
+        }
+
+        function installAmazonHeaderChrome() {
+            ensureGlobalHeaderSearchPlaceholders();
+            const detailBack = document.querySelector('#view-detail .freeze-panel > .back-btn');
+            if (detailBack) detailBack.classList.add('amazon-hidden-back');
+
+            document.querySelectorAll('.freeze-panel .task-tabs, .freeze-panel .detail-tabs').forEach((el) => el.classList.add('amazon-filter-strip'));
+            const driveSeasonFilters = document.getElementById('drive-season-filters');
+            if (driveSeasonFilters) driveSeasonFilters.classList.add('amazon-filter-chip-row');
+            ['av-crumb','reports-crumb','request-crumb','reserves-crumb','docks-crumb','low-stock-crumb','drive-crumb','task-crumb','review-crumb'].forEach((id) => {
+                const el = document.getElementById(id);
+                if (el) el.classList.add('amazon-crumb');
+            });
+            syncGlobalHeaderChrome();
+        }
 
         window.onload=async function() {
             try {
@@ -1374,7 +1568,7 @@
                 const savedUser=localStorage.getItem('gnc_user_v3'); const savedPin=localStorage.getItem('gnc_pin_v3');
                 document.getElementById('login-inputs').classList.remove('hidden');
                 document.getElementById('loading-spinner').classList.add('hidden');
-                await warmCachedInventory();
+                warmCachedInventory().catch(() => {});
                 if(savedUser&&savedPin){
                     document.getElementById('username-input').value=savedUser;
                     document.getElementById('pin-code').value=savedPin;
@@ -1398,6 +1592,7 @@
             ['dock-checker', 'dock-inspector', 'dock-mistake'].forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = teamOptions; });
             initializeViewportHeightSync();
             initializeInteractiveChrome();
+            installAmazonHeaderChrome();
             updateSyncDiagnostics();
         });
         window.addEventListener('online', () => {
@@ -1936,6 +2131,7 @@
             button.classList.toggle('hidden', !canUse);
             if (!canUse) {
                 badge.classList.add('hidden');
+                updateFooterNavState();
                 return;
             }
             const pendingCount = getPendingRequestCount();
@@ -1945,6 +2141,7 @@
             } else {
                 badge.classList.add('hidden');
             }
+            updateFooterNavState();
         }
 
         function isQuickDriveRequestMode() {
@@ -3103,7 +3300,19 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function primeLoginDataLoad() {
-            return Promise.resolve(true);
+            [
+                { key: 'master', mode: 'initial' },
+                { key: 'avOpen', mode: 'initial' },
+                { key: 'requests', mode: 'initial' },
+                { key: 'soc', mode: 'initial' },
+                { key: 'reserves', mode: 'initial' },
+                { key: 'salesOffice', mode: 'initial' }
+            ].forEach((item, index) => {
+                setTimeout(() => {
+                    ensureDatasetLoaded(item.key, item.mode).catch(() => {});
+                }, 40 + (index * 110));
+            });
+            return true;
         }
         async function finalizeLogin(user,pass,isBiometricLogin) { 
             setBootingSession(false);
@@ -3111,6 +3320,7 @@ function toggleDriveQuickRequestItem(domId) {
             localStorage.setItem('gnc_pin_v3',pass); 
             localStorage.setItem('gnc_role_v3',currentRole); 
             document.getElementById('header-user').innerText=currentUserDisplay || currentUser; 
+            syncGlobalHeaderChrome();
             updateSyncDiagnostics();
             setRepPermutations(currentUser); 
             const shouldPromptBiometric = !isBiometricLogin && window.PublicKeyCredential && localStorage.getItem('gnc_bio_enabled')!=='true';
@@ -3127,15 +3337,20 @@ function toggleDriveQuickRequestItem(domId) {
             };
 
             if (fullInventory.length === 0) {
-                try {
-                    await warmCachedInventory();
-                } catch (e) {}
+                warmCachedInventory().then((hasCache) => {
+                    if (hasCache) {
+                        setTimeout(() => reRenderCurrentView(), 40);
+                        syncGlobalHeaderChrome();
+                        updateFooterNavState();
+                    }
+                }).catch(() => {});
             }
 
             const openedFromCache = fullInventory.length > 0;
             openApp(openedFromCache);
+            primeLoginDataLoad();
             if (!openedFromCache) {
-                showToast("Ready", "Fast mode is on. Tabs load as you open them.", false);
+                showToast("Ready", "Fast mode is on. Data is warming in the background.", false);
             }
 
             queueDatasetLoad('avNotes', 'full');
@@ -3421,7 +3636,7 @@ function toggleDriveQuickRequestItem(domId) {
             }
         }
 
-        function toggleMenu() { document.getElementById('side-drawer').classList.toggle('open'); document.getElementById('drawer-overlay').classList.toggle('open'); }
+        function toggleMenu(forceOpen = null) { const drawer = document.getElementById('side-drawer'); const overlay = document.getElementById('drawer-overlay'); if (!drawer || !overlay) return; const shouldOpen = forceOpen === null ? !drawer.classList.contains('open') : !!forceOpen; drawer.classList.toggle('open', shouldOpen); overlay.classList.toggle('open', shouldOpen); updateFooterNavState(); }
 
         function showToast(title, message, isAlert = false) { 
             const toast = document.getElementById('toast-notification'); 
@@ -3541,12 +3756,22 @@ function toggleDriveQuickRequestItem(domId) {
         function updateGlobalBackButton() {
             const backBtn = document.getElementById('global-back-btn');
             if (!backBtn) return;
-            backBtn.classList.toggle('hidden', getCurrentVisibleViewId() === 'home');
+            backBtn.classList.add('hidden');
+        }
+
+        function updateFooterNavState() {
+            const currentView = getCurrentVisibleViewId();
+            document.querySelectorAll('#bottom-nav [data-footer-view]').forEach((button) => {
+                button.classList.toggle('active', button.getAttribute('data-footer-view') === currentView);
+            });
+            const menuBtn = document.getElementById('footer-menu-btn');
+            const drawer = document.getElementById('side-drawer');
+            if (menuBtn && drawer) menuBtn.classList.toggle('menu-open', drawer.classList.contains('open'));
         }
 
         function switchView(viewId) { 
             closeDriveQuickFiltersModal();
-['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-detail','view-docks','view-request','view-reserves','view-av', 'view-hours'].forEach(id=>{
+            ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-detail','view-docks','view-request','view-reserves','view-av', 'view-hours'].forEach(id=>{
                 const el=document.getElementById(id);
                 if(el)el.classList.add('hidden');
             }); 
@@ -3554,6 +3779,8 @@ function toggleDriveQuickRequestItem(domId) {
             if (targetView) targetView.classList.remove('hidden');
             queueViewRender(viewId);
             updateGlobalBackButton();
+            syncGlobalHeaderChrome();
+            updateFooterNavState();
         }
 
         function goBackUniversal() {
@@ -4107,13 +4334,13 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
             const state = lead.CONSIGNEESTATE || lead.STATE || 'N/A';
             crumb.innerText = `Dock ${selectedDockNum} > Stop ${selectedDockStop}`;
             let html = `<div class="back-btn" onclick="dockViewLevel=1; renderDocks()"><i class="ph-bold ph-arrow-left"></i> Back to Stops</div>`;
-            html += `<div class="bg-gray-800 text-white rounded-xl shadow-md mb-4 p-4 border-l-4 border-[#007a4d]"><div class="flex justify-between items-center mb-2 border-b border-gray-600 pb-2"><div class="font-black text-xl text-green-400 tracking-wider">STOP ${selectedDockStop}</div><div class="text-[10px] font-bold bg-gray-700 px-2 py-1 rounded text-gray-300 uppercase"><i class="ph-bold ph-user mr-1"></i>${rep}</div></div><div class="font-bold text-[15px] leading-tight mb-0.5">${cust}</div>${cons && cons !== cust ? `<div class="text-[12px] text-gray-300 font-semibold mb-2 flex items-center gap-1"><i class="ph-bold ph-arrow-bend-down-right"></i> ${cons}</div>` : '<div class="mb-2"></div>'}<div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1"><i class="ph-bold ph-map-pin"></i> State: <span class="text-gray-200">${state}</span></div></div>`;
+            html += `<div class="bg-gradient-to-r from-[#007a4d] to-[#119b6a] text-white rounded-2xl shadow-lg mb-4 p-4 border border-green-200/40"><div class="flex justify-between items-center mb-2 border-b border-white/20 pb-2"><div class="font-black text-xl tracking-wider">STOP ${selectedDockStop}</div><div class="text-[10px] font-bold bg-white/15 px-2 py-1 rounded text-white uppercase border border-white/15"><i class="ph-bold ph-user mr-1"></i>${rep}</div></div><div class="font-bold text-[15px] leading-tight mb-0.5">${cust}</div>${cons && cons !== cust ? `<div class="text-[12px] text-green-50 font-semibold mb-2 flex items-center gap-1"><i class="ph-bold ph-arrow-bend-down-right"></i> ${cons}</div>` : '<div class="mb-2"></div>'}<div class="text-[10px] font-bold text-green-50 uppercase tracking-wider flex items-center gap-1"><i class="ph-bold ph-map-pin"></i> State: <span class="text-white">${state}</span></div></div>`;
             html += stopItems.map((item, index) => {
                 const checkerState = JSON.parse(localStorage.getItem('gnc_dock_item_' + item.UNIQUE_ID) || '{"checker":false,"inspector":false}');
                 const statusLabel = checkerState.checker && checkerState.inspector ? 'Ready' : (checkerState.checker || checkerState.inspector ? 'In Progress' : 'Open');
                 const statusClass = checkerState.checker && checkerState.inspector ? 'bg-green-100 text-green-700 border-green-200' : (checkerState.checker || checkerState.inspector ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-gray-100 text-gray-600 border-gray-200');
-                const summaryCust = item.CUSTOMERNAME || cust;
-                return `<details class="bg-white border border-gray-200 rounded-xl shadow-sm mb-3 overflow-hidden" ${index === 0 ? 'open' : ''}><summary class="list-none cursor-pointer p-4 flex items-start justify-between gap-3"><div class="min-w-0"><div class="font-black text-gray-800 text-[15px] leading-tight break-words">${item.COMMONNAME || 'Unknown'}</div><div class="text-sm font-bold text-[#007a4d] mt-1">${item.CONTSIZE || '-'}</div><div class="flex flex-wrap gap-2 mt-2 text-[10px] font-bold uppercase tracking-wider text-gray-600"><span class="bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-100">Loc: ${item.LOCATIONCODE || 'No Loc'}</span><span class="bg-gray-100 px-2 py-1 rounded border border-gray-200">Lot: ${item.LOTCODE || '-'}</span><span class="bg-gray-100 px-2 py-1 rounded border border-gray-200">Item: ${item.ITEMCODE || '-'}</span></div><div class="text-xs font-semibold text-gray-500 mt-2 truncate">${summaryCust}</div></div><div class="shrink-0 flex flex-col items-end gap-2"><span class="text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded border ${statusClass}">${statusLabel}</span><i class="ph-bold ph-caret-down text-gray-300 text-xl"></i></div></summary><div class="px-3 pb-3 border-t border-gray-100">${generateCard(item, 'docks', 'status-orange')}</div></details>`;
+
+                return `<details class="bg-white border border-gray-200 rounded-xl shadow-sm mb-3 overflow-hidden" ${index === 0 ? 'open' : ''}><summary class="list-none cursor-pointer px-4 py-3 flex items-center justify-between gap-3 bg-gray-50/80 border-b border-gray-100"><div class="min-w-0"><div class="text-[10px] font-black text-gray-400 uppercase tracking-wider">Dock Item</div><div class="text-sm font-black text-[#007a4d] truncate">${item.ITEMCODE || item.COMMONNAME || 'Open Row'}</div></div><div class="shrink-0 flex items-center gap-2"><span class="text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded border ${statusClass}">${statusLabel}</span><i class="ph-bold ph-caret-down text-gray-300 text-xl"></i></div></summary><div class="px-3 pb-3 pt-3">${generateCard(item, 'docks', 'status-orange')}</div></details>`;
             }).join('');
             container.innerHTML = html;
         }
@@ -5163,17 +5390,17 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
             const salesNoteText = firstNonEmptyValue(item.SALESNOTE, item.SALES_NOTE, item.SALES_DESC, item.SALESDESC);
             const hasStopHold = cleanHoldCode.includes('S');
             const hasHold = !hasStopHold && cleanHoldCode.includes('H');
-            const holdBorderClass = hasStopHold ? 'border-4 border-red-500' : (hasHold ? 'border-4 border-yellow-400' : 'border-4 border-green-500');
+            const holdBorderClass = hasStopHold ? 'app-card-stop' : (hasHold ? 'app-card-hold' : 'app-card-ready');
             const holdCardToneClass = hasStopHold ? 'bg-red-50 border-red-200 text-red-800' : (hasHold ? 'bg-yellow-50 border-yellow-200 text-yellow-800' : 'bg-green-50 border-green-200 text-green-800');
             const holdLabelToneClass = hasStopHold ? 'text-red-600' : (hasHold ? 'text-yellow-700' : 'text-green-700');
             const buildHoldReasonHtml = () => {
                 if (!cleanHoldCode && !holdReasonText) return '';
                 const holdTitle = cleanHoldCode ? `HOLD: ${cleanHoldCode}` : 'HOLD STATUS';
-                return `<div class="mt-2 ${holdCardToneClass} border rounded p-2 shadow-sm whitespace-pre-wrap"><div class="text-[10px] font-black ${holdLabelToneClass} uppercase tracking-wider mb-0.5">${holdTitle}</div>${holdReasonText ? `<div class="text-[12px] font-semibold leading-snug">${holdReasonText}</div>` : ''}</div>`;
+                return `<div class="app-card-note mt-2 ${holdCardToneClass} border rounded p-2 shadow-sm whitespace-pre-wrap"><div class="text-[10px] font-black ${holdLabelToneClass} uppercase tracking-wider mb-0.5">${holdTitle}</div>${holdReasonText ? `<div class="text-[12px] font-semibold leading-snug">${holdReasonText}</div>` : ''}</div>`;
             };
             const buildSalesNoteHtml = () => {
                 if (!salesNoteText || String(salesNoteText).trim() === '') return '';
-                return `<div class="mt-2 text-[12px] text-sky-800 bg-sky-50 p-2 rounded border border-sky-200 shadow-sm whitespace-pre-wrap"><span class="font-black">SALES NOTE:</span> ${salesNoteText}</div>`;
+                return `<div class="app-card-note mt-2 text-[12px] text-sky-800 bg-sky-50 p-2 rounded border border-sky-200 shadow-sm whitespace-pre-wrap"><span class="font-black">SALES NOTE:</span> ${salesNoteText}</div>`;
             };
 
             if(sourceView === 'av-photo' || sourceView === 'av') {
@@ -5190,7 +5417,7 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
                 const thumbPreviewUrl = photoCount ? getDirectImageUrl(photoUrls[0]) : '';
 
                 if (sourceView === 'av-photo') {
-                    return `<div class="item-row relative bg-white rounded-2xl overflow-hidden ${holdBorderClass} shadow-sm active:scale-[0.99] transition-transform cursor-pointer" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', 'av-photo')"><div class="card-checkbox-container absolute top-3 left-3 z-20 bg-white/95 rounded-xl p-1.5 shadow-sm"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-teal-600 focus:ring-teal-600 shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div>${largePreviewUrl && largePreviewUrl.startsWith('http') ? `<div class="relative aspect-[4/3] bg-slate-100"><img src="${largePreviewUrl}" class="w-full h-full object-cover" loading="lazy"><div class="absolute top-3 right-3 bg-black/70 text-white text-[10px] font-black px-2 py-1 rounded-full">${photoCount} ${photoCount === 1 ? 'PHOTO' : 'PHOTOS'}</div></div>` : `<div class="aspect-[4/3] bg-slate-100 flex items-center justify-center text-xs font-black text-slate-400 uppercase tracking-widest">No Photo</div>`}<div class="p-3"><div class="font-black text-gray-800 text-[14px] leading-tight break-words">${item.COMMONNAME||'Unknown'}</div><div class="font-black text-teal-700 text-[13px] mt-1">${item.CONTSIZE||'-'}</div><div class="grid grid-cols-2 gap-2 mt-3 text-[11px] font-bold text-gray-600 uppercase"><div><span class="block text-[9px] text-gray-400 mb-1">Location</span>${item.LOCATIONCODE||'-'}</div><div><span class="block text-[9px] text-gray-400 mb-1">Lot Code</span>${item.LOTCODE||'-'}</div></div><div class="flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-wider mt-3"><span class="bg-teal-50 text-teal-700 px-2 py-1 rounded border border-teal-100">Loc Ava: ${item.PTRAVAILABLE||'0'}</span><span class="bg-purple-50 text-purple-700 px-2 py-1 rounded border border-purple-100">s_LTS: ${item.S_LTS||'0'}</span>${item.SEASON ? `<span class="bg-amber-50 text-amber-700 px-2 py-1 rounded border border-amber-100">Season: ${item.SEASON}</span>` : ''}</div>${holdHtml}${salesNoteHtml}${avNoteHtml}</div></div>`;
+                    return `<div class="item-row relative app-card-shell overflow-hidden ${holdBorderClass} shadow-sm active:scale-[0.99] transition-transform cursor-pointer" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', 'av-photo')"><div class="card-checkbox-container absolute top-3 left-3 z-20 bg-white/95 rounded-xl p-1.5 shadow-sm"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-teal-600 focus:ring-teal-600 shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div>${largePreviewUrl && largePreviewUrl.startsWith('http') ? `<div class="relative aspect-[4/3] bg-slate-100"><img src="${largePreviewUrl}" class="w-full h-full object-cover" loading="lazy"><div class="absolute top-3 right-3 bg-black/70 text-white text-[10px] font-black px-2 py-1 rounded-full">${photoCount} ${photoCount === 1 ? 'PHOTO' : 'PHOTOS'}</div></div>` : `<div class="aspect-[4/3] bg-slate-100 flex items-center justify-center text-xs font-black text-slate-400 uppercase tracking-widest">No Photo</div>`}<div class="p-3"><div class="font-black text-gray-800 text-[14px] leading-tight break-words">${item.COMMONNAME||'Unknown'}</div><div class="font-black text-teal-700 text-[13px] mt-1">${item.CONTSIZE||'-'}</div><div class="grid grid-cols-2 gap-2 mt-3 text-[11px] font-bold text-gray-600 uppercase"><div><span class="block text-[9px] text-gray-400 mb-1">Location</span>${item.LOCATIONCODE||'-'}</div><div><span class="block text-[9px] text-gray-400 mb-1">Lot Code</span>${item.LOTCODE||'-'}</div></div><div class="flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-wider mt-3"><span class="bg-teal-50 text-teal-700 px-2 py-1 rounded border border-teal-100">Loc Ava: ${item.PTRAVAILABLE||'0'}</span><span class="bg-purple-50 text-purple-700 px-2 py-1 rounded border border-purple-100">s_LTS: ${item.S_LTS||'0'}</span>${item.SEASON ? `<span class="bg-amber-50 text-amber-700 px-2 py-1 rounded border border-amber-100">Season: ${item.SEASON}</span>` : ''}</div>${holdHtml}${salesNoteHtml}${avNoteHtml}</div></div>`;
                 }
 
                 let clickThumbHtml = "";
@@ -5198,7 +5425,7 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
                     clickThumbHtml = `<div class="ml-3 flex-shrink-0 flex flex-col items-center" onclick="event.stopPropagation(); handleCardClick('${item.DOM_ID}', '${safeUidJs}', 'av')"><div class="relative"><img src="${thumbPreviewUrl}" class="w-16 h-16 rounded-lg object-cover border-2 border-teal-300 shadow-md active:scale-95 transition-transform" loading="lazy">${photoCount > 1 ? `<div class="absolute -top-2 -right-2 bg-teal-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full border-2 border-white shadow-sm">+${photoCount-1}</div>` : ''}</div><div class="text-center text-[9px] font-black text-teal-600 mt-1.5 uppercase tracking-widest bg-teal-50 px-2 py-0.5 rounded-md border border-teal-100 cursor-pointer active:bg-teal-200">VIEW</div></div>`;
                 }
 
-                return `<div class="flex items-start w-full mb-2 item-row relative bg-white p-3 rounded-lg ${holdBorderClass} shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-teal-600 focus:ring-teal-600 shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full"><div class="flex-grow min-w-0 pr-2"><div class="font-black text-gray-800 text-[13px] leading-tight break-words mb-1">${item.COMMONNAME||'Unknown'}</div><div class="font-black text-teal-700 text-[13px] mb-2">${item.CONTSIZE||'-'}</div><div class="grid grid-cols-2 gap-2 mb-2"><div class="text-[11px] font-bold text-gray-500 uppercase"><span class="block text-[8px] text-gray-400 mb-0.5">LOT CODE</span>${item.LOTCODE||'-'}</div><div class="text-[11px] font-bold text-gray-500 uppercase"><span class="block text-[8px] text-gray-400 mb-0.5">LOCATION</span>${item.LOCATIONCODE||'-'}</div></div><div class="flex flex-wrap gap-2 text-[11px] font-bold uppercase tracking-wider mt-1"><span class="bg-gray-100 text-gray-800 px-2 py-1 rounded border border-gray-200">LOC AVA: <span class="font-black">${item.PTRAVAILABLE||'0'}</span></span><span class="bg-purple-50 text-purple-700 px-2 py-1 rounded border border-purple-200">s_LTS: <span class="font-black">${item.S_LTS||'0'}</span></span></div>${holdHtml}${salesNoteHtml}${avNoteHtml}</div>${clickThumbHtml}</div></div></div>`;
+                return `<div class="flex items-start w-full mb-2 item-row relative app-card-shell p-3 ${holdBorderClass} shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-teal-600 focus:ring-teal-600 shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full"><div class="flex-grow min-w-0 pr-2"><div class="font-black text-gray-800 text-[13px] leading-tight break-words mb-1">${item.COMMONNAME||'Unknown'}</div><div class="font-black text-teal-700 text-[13px] mb-2">${item.CONTSIZE||'-'}</div><div class="grid grid-cols-2 gap-2 mb-2"><div class="text-[11px] font-bold text-gray-500 uppercase"><span class="block text-[8px] text-gray-400 mb-0.5">LOT CODE</span>${item.LOTCODE||'-'}</div><div class="text-[11px] font-bold text-gray-500 uppercase"><span class="block text-[8px] text-gray-400 mb-0.5">LOCATION</span>${item.LOCATIONCODE||'-'}</div></div><div class="flex flex-wrap gap-2 text-[11px] font-bold uppercase tracking-wider mt-1"><span class="bg-gray-100 text-gray-800 px-2 py-1 rounded border border-gray-200">LOC AVA: <span class="font-black">${item.PTRAVAILABLE||'0'}</span></span><span class="bg-purple-50 text-purple-700 px-2 py-1 rounded border border-purple-200">s_LTS: <span class="font-black">${item.S_LTS||'0'}</span></span></div>${holdHtml}${salesNoteHtml}${avNoteHtml}</div>${clickThumbHtml}</div></div></div>`;
             }
             if(photoLink){ 
                 let firstUrl=String(photoLink).split(',')[0]; 
@@ -5221,7 +5448,7 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
                     else if (item.REQ_REP_ACTION === 'Rejected') { actionBadge = `<div class="mt-3 text-[10px] font-black text-red-700 bg-red-100 text-center py-2 rounded-lg border border-red-200 uppercase tracking-widest">REJECTED</div>`; } 
                     else { actionBadge = `<div class="flex gap-2 mt-3"><button class="flex-1 bg-green-50 text-green-700 border border-green-200 font-bold py-2 rounded-lg shadow-sm hover:bg-green-100 active:scale-95 text-[10px] uppercase tracking-wider" onclick="event.stopPropagation(); setRepRequestAction('${safeUidJs}', 'Approved')">APPROVE</button><button class="flex-1 bg-red-50 text-red-700 border border-red-200 font-bold py-2 rounded-lg shadow-sm hover:bg-red-100 active:scale-95 text-[10px] uppercase tracking-wider" onclick="event.stopPropagation(); setRepRequestAction('${safeUidJs}', 'Rejected')">REJECT</button></div>`; }
                 }
-                return `<div class="flex items-center w-full mb-2 item-row relative bg-white p-3 rounded-lg ${holdBorderClass} shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full"><div class="flex-grow min-w-0 pr-2"><div class="flex justify-between items-start mb-1"><div class="font-black text-gray-800 text-[14px] leading-tight break-words">${item.COMMONNAME||'Unknown'}</div><div class="font-black text-purple-700 bg-purple-50 px-2 py-1 rounded text-sm whitespace-nowrap ml-2 border border-purple-100">QTY: ${reqQty}</div></div><div class="font-bold text-[#007a4d] text-sm mb-2">${item.CONTSIZE||'-'}</div><div class="grid grid-cols-2 gap-x-2 gap-y-1 mb-2 text-[11px] font-bold text-gray-600"><div class="truncate"><i class="ph-bold ph-user mr-1"></i>${rep}</div><div class="truncate"><i class="ph-bold ph-storefront mr-1"></i>${cust}</div></div><div class="flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600">${reserveBadge}<span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">Loc: ${loc}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Spec: ${origSpec}</span><span class="bg-orange-50 text-orange-700 px-1.5 py-0.5 rounded border border-orange-100">Des Spec: ${desSpec}</span></div>${holdHtml}${salesNoteHtml}</div>${thumbHtml}</div>${actionBadge}</div></div>`;
+                return `<div class="flex items-center w-full mb-2 item-row relative app-card-shell p-3 ${holdBorderClass} shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full"><div class="flex-grow min-w-0 pr-2"><div class="flex justify-between items-start mb-1"><div class="font-black text-gray-800 text-[14px] leading-tight break-words">${item.COMMONNAME||'Unknown'}</div><div class="font-black text-purple-700 bg-purple-50 px-2 py-1 rounded text-sm whitespace-nowrap ml-2 border border-purple-100">QTY: ${reqQty}</div></div><div class="font-bold text-[#007a4d] text-sm mb-2">${item.CONTSIZE||'-'}</div><div class="grid grid-cols-2 gap-x-2 gap-y-1 mb-2 text-[11px] font-bold text-gray-600"><div class="truncate"><i class="ph-bold ph-user mr-1"></i>${rep}</div><div class="truncate"><i class="ph-bold ph-storefront mr-1"></i>${cust}</div></div><div class="flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600">${reserveBadge}<span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">Loc: ${loc}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Spec: ${origSpec}</span><span class="bg-orange-50 text-orange-700 px-1.5 py-0.5 rounded border border-orange-100">Des Spec: ${desSpec}</span></div>${holdHtml}${salesNoteHtml}</div>${thumbHtml}</div>${actionBadge}</div></div>`;
             }
 
             if(sourceView === 'docks'){
@@ -5229,7 +5456,7 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
                 if(item.DOCK_NOTE && String(item.DOCK_NOTE).trim() !== "") noteHtml += `<div class="mt-2 text-[12px] text-orange-800 bg-orange-100 p-2 rounded border border-orange-200 shadow-sm whitespace-pre-wrap"><span class="font-black">DOCK NOTE:</span> ${item.DOCK_NOTE}</div>`;
                 let checkState = JSON.parse(localStorage.getItem('gnc_dock_item_' + item.UNIQUE_ID) || '{"checker":false,"inspector":false}'); let isDimmed = checkState.checker && checkState.inspector; let cardOpacity = isDimmed ? "opacity-40 grayscale" : "opacity-100"; let chkClass = checkState.checker ? "bg-[#007a4d] text-white border-[#007a4d]" : "bg-gray-50 text-gray-500 border-gray-200"; let inspClass = checkState.inspector ? "bg-[#007a4d] text-white border-[#007a4d]" : "bg-gray-50 text-gray-500 border-gray-200";
                 let actionBtns = `<div class="flex gap-2 mt-3 pt-3 border-t border-gray-100"><button class="flex-1 py-2 rounded-lg text-[10px] uppercase font-black border shadow-sm transition-colors ${chkClass} active:scale-95" onclick="event.stopPropagation(); toggleDockItemState('${safeUidJs}', 'checker')"><i class="ph-bold ph-check-square mr-1 text-lg align-middle"></i> Check</button><button class="flex-1 py-2 rounded-lg text-[10px] uppercase font-black border shadow-sm transition-colors ${inspClass} active:scale-95" onclick="event.stopPropagation(); toggleDockItemState('${safeUidJs}', 'inspector')"><i class="ph-bold ph-magnifying-glass mr-1 text-lg align-middle"></i> Inspect</button><button class="flex-1 py-2 rounded-lg text-[10px] uppercase font-black border border-red-200 bg-red-50 text-red-600 shadow-sm transition-colors hover:bg-red-100 active:scale-95" onclick="event.stopPropagation(); openDockItemMistakeModal('${safeUidJs}')"><i class="ph-bold ph-warning-circle mr-1 text-lg align-middle"></i> Mistake</button></div>`;
-                return `<div class="flex items-center w-full mb-2 item-row relative bg-white p-3 rounded-lg border border-gray-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${cardOpacity}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-col w-full min-w-0"><div class="flex items-start justify-between w-full"><div class="flex-grow min-w-0 pr-2"><div class="font-black text-gray-800 text-[14px] leading-tight break-words mb-0.5">${item.COMMONNAME||'Unknown'}</div><div class="font-bold text-[#007a4d] text-sm mb-2">${item.CONTSIZE||'-'}</div><div class="text-[11px] font-mono text-gray-500 mb-2 flex items-center bg-gray-100 px-2 py-0.5 rounded w-max"><i class="ph-bold ph-barcode mr-1.5 text-gray-400"></i>${item.ITEMCODE||'-'}</div><div class="flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600"><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Trip: ${tripNum}</span><span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">Loc: ${item.LOCATIONCODE||'No Loc'}</span><span class="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-100">Rep: ${salesRep}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Tag: ${tagColor}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Lot: ${item.LOTCODE||'-'}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Src: ${sourceStr}</span></div>${noteHtml}</div>${thumbHtml}</div>${actionBtns}</div></div>`;
+                return `<div class="flex items-center w-full mb-2 item-row relative app-card-shell p-3 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${cardOpacity}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-col w-full min-w-0"><div class="flex items-start justify-between w-full"><div class="flex-grow min-w-0 pr-2"><div class="font-black text-gray-800 text-[14px] leading-tight break-words mb-0.5">${item.COMMONNAME||'Unknown'}</div><div class="font-bold text-[#007a4d] text-sm mb-2">${item.CONTSIZE||'-'}</div><div class="text-[11px] font-mono text-gray-500 mb-2 flex items-center bg-gray-100 px-2 py-0.5 rounded w-max"><i class="ph-bold ph-barcode mr-1.5 text-gray-400"></i>${item.ITEMCODE||'-'}</div><div class="flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600"><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Trip: ${tripNum}</span><span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">Loc: ${item.LOCATIONCODE||'No Loc'}</span><span class="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-100">Rep: ${salesRep}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Tag: ${tagColor}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Lot: ${item.LOTCODE||'-'}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Src: ${sourceStr}</span></div>${noteHtml}</div>${thumbHtml}</div>${actionBtns}</div></div>`;
             }
 
             if(sourceView==='sales-office'){
@@ -5243,7 +5470,7 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
             }
             if(sourceView==='reserves_drill'){
                 let custStr=item.CUSTOMERNAME||'Unknown Customer';if(item.CONSIGNEENAME&&String(item.CONSIGNEENAME).trim()!=='')custStr+=` - ${item.CONSIGNEENAME}`;let qtyOrd=item.QTY_ORDERED||item.QUANTITYORDERED||'0';let qtyShip=item.QTY_SHIPPED||item.QUANTITYSHIPPED||'0';let repStr=item.SALESREPNAME||item.SALESREP||'Unknown Rep';
-                return `<div class="flex items-center w-full mb-2 item-row relative bg-white p-3 rounded-lg border border-indigo-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', 'av')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex-grow min-w-0 pr-2"><div class="font-black text-indigo-800 text-[14px] leading-tight mb-1 truncate">${custStr}</div><div class="text-[12px] font-bold text-gray-600 mb-2 truncate">${item.COMMONNAME} | ${item.CONTSIZE}</div><div class="flex flex-wrap gap-2 text-[10px] font-bold"><span class="bg-indigo-50 text-indigo-700 px-2 py-1 rounded border border-indigo-100">Ordered: ${qtyOrd}</span><span class="bg-green-50 text-green-700 px-2 py-1 rounded border border-green-100">Shipped: ${qtyShip}</span><span class="bg-gray-100 text-gray-700 px-2 py-1 rounded border border-gray-200 flex items-center gap-1"><i class="ph-bold ph-user"></i>${repStr}</span></div></div>${thumbHtml}</div>`;
+                return `<div class="flex items-center w-full mb-2 item-row relative app-card-shell p-3 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', 'av')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex-grow min-w-0 pr-2"><div class="font-black text-indigo-800 text-[14px] leading-tight mb-1 truncate">${custStr}</div><div class="text-[12px] font-bold text-gray-600 mb-2 truncate">${item.COMMONNAME} | ${item.CONTSIZE}</div><div class="flex flex-wrap gap-2 text-[10px] font-bold"><span class="bg-indigo-50 text-indigo-700 px-2 py-1 rounded border border-indigo-100">Ordered: ${qtyOrd}</span><span class="bg-green-50 text-green-700 px-2 py-1 rounded border border-green-100">Shipped: ${qtyShip}</span><span class="bg-gray-100 text-gray-700 px-2 py-1 rounded border border-gray-200 flex items-center gap-1"><i class="ph-bold ph-user"></i>${repStr}</span></div></div>${thumbHtml}</div>`;
             }
 
             if(sourceView==='drive'||sourceView==='tasks'){
@@ -5262,7 +5489,7 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
                     const isQueued=driveQuickRequestItems.has(item.DOM_ID);
                     quickRequestBtn=`<div class="mt-3 flex items-center justify-between"><span class="text-[10px] font-black uppercase tracking-wider ${isQueued?'text-orange-700':'text-gray-400'}">${isQueued?'Queued For Action':'Quick Add'}</span><button type="button" aria-label="${isQueued?'Remove from builder':'Add to builder'}" class="inline-flex items-center justify-center w-9 h-9 rounded-full shadow-sm border ${isQueued?'bg-orange-600 text-white border-orange-600':'bg-white text-orange-600 border-orange-300'} active:scale-95" onclick="event.stopPropagation(); toggleDriveQuickRequestItem('${item.DOM_ID}')"><i class="ph-bold ${isQueued?'ph-check':'ph-plus'} text-lg"></i></button></div>`;
                 }
-                return `<div class="flex items-center w-full mb-2 item-row relative bg-white p-3 rounded-lg ${holdBorderClass} shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-grow items-start justify-between min-w-0"><div class="flex-grow min-w-0 pr-2"><div class="font-black text-gray-800 text-[14px] leading-tight break-words mb-0.5">${item.COMMONNAME||'Unknown'}</div><div class="font-bold text-[#007a4d] text-sm mb-2">${item.CONTSIZE||'-'}</div><div class="text-[11px] font-mono text-gray-500 mb-2 flex items-center bg-gray-100 px-2 py-0.5 rounded w-max"><i class="ph-bold ph-barcode mr-1.5 text-gray-400"></i>${item.ITEMCODE||'-'}</div><div class="flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600"><span class="bg-gray-100 px-1.5 py-0.5 rounded">LOC AVA: <span class="text-gray-900">${item.PTRAVAILABLE||'0'}</span></span><span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">Loc: ${item.LOCATIONCODE||'No Loc'}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded">Lot: ${item.LOTCODE||'-'}</span><span class="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-100">s_LTS: ${item.S_LTS||'0'}</span><span class="bg-orange-50 text-orange-700 px-1.5 py-0.5 rounded border border-orange-100">Pri: ${item.PRIORITY||'-'}</span></div>${extraData}${noteHtml}${quickRequestBtn}</div>${thumbHtml}</div></div>`;
+                return `<div class="flex items-center w-full mb-2 item-row relative app-card-shell p-3 ${holdBorderClass} shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-grow items-start justify-between min-w-0"><div class="flex-grow min-w-0 pr-2"><div class="font-black text-gray-800 text-[14px] leading-tight break-words mb-0.5">${item.COMMONNAME||'Unknown'}</div><div class="font-bold text-[#007a4d] text-sm mb-2">${item.CONTSIZE||'-'}</div><div class="text-[11px] font-mono text-gray-500 mb-2 flex items-center bg-gray-100 px-2 py-0.5 rounded w-max"><i class="ph-bold ph-barcode mr-1.5 text-gray-400"></i>${item.ITEMCODE||'-'}</div><div class="flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600"><span class="bg-gray-100 px-1.5 py-0.5 rounded">LOC AVA: <span class="text-gray-900">${item.PTRAVAILABLE||'0'}</span></span><span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">Loc: ${item.LOCATIONCODE||'No Loc'}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded">Lot: ${item.LOTCODE||'-'}</span><span class="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-100">s_LTS: ${item.S_LTS||'0'}</span><span class="bg-orange-50 text-orange-700 px-1.5 py-0.5 rounded border border-orange-100">Pri: ${item.PRIORITY||'-'}</span></div>${extraData}${noteHtml}${quickRequestBtn}</div>${thumbHtml}</div></div>`;
             }
             
             return `<div class="flex items-center w-full mb-2 item-row overflow-hidden" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="inv-card ${colorClass} flex items-start justify-between flex-grow !mb-0 transition-transform active:scale-[0.99]"><div class="flex-grow min-w-0 text-[#007a4d]"><div class="flex justify-between font-bold text-sm mb-1"><span class="truncate pr-2">${item.COMMONNAME||'Unknown'} | ${item.CONTSIZE||'-'} | Loc: ${item.LOCATIONCODE||'No Loc'}</span><span class="whitespace-nowrap bg-[#007a4d]/10 px-1.5 py-0.5 rounded text-xs border border-[#007a4d]/20 h-max">Pri: ${item.PRIORITY||'-'}</span></div><div class="text-[11px] font-semibold truncate mt-0.5">Tag: ${tagColor} | Lot: ${item.LOTCODE||'-'} | PTR-Ava: ${item.PTRAVAILABLE||'0'} | s_LTS: ${item.S_LTS||'0'} | Supply: ${item.SEASONSUPPLY||'0'}</div><div class="text-[11px] font-semibold truncate mt-0.5">Item: ${item.ITEMCODE||'-'}</div></div>${thumbHtml}</div></div>`;
@@ -7255,4 +7482,3 @@ function toggleDriveSeason(s) {
     </script>
 </body>
 </html>
-
