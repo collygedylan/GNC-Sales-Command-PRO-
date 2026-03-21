@@ -22,7 +22,7 @@
         #main-scroll-area{min-height:0;width:100%;max-width:100%;overflow-x:hidden;overscroll-behavior-x:none;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;padding-bottom:calc(10rem + env(safe-area-inset-bottom))}
         #global-action-bar{padding-bottom:calc(.75rem + env(safe-area-inset-bottom))}
         #bottom-nav{padding-bottom:calc(.75rem + env(safe-area-inset-bottom))}
-        #view-wrapper{width:100%;max-width:100%;overflow-x:hidden}
+        #view-wrapper{width:100%;max-width:100%;overflow:visible}
         .sticky-search{position:-webkit-sticky;position:sticky;top:0;z-index:35;background:#f9fafb;padding-top:max(4px,env(safe-area-inset-top));padding-bottom:10px;box-shadow:0 6px 12px rgba(15,23,42,.05);transform:translateZ(0);-webkit-transform:translateZ(0);backface-visibility:hidden}
         .request-swipe-row{display:block !important;padding:0 !important;position:relative;overflow:hidden;background:linear-gradient(to left,#ef4444 96px,#ffffff 96px) !important;touch-action:pan-y;overscroll-behavior-x:contain;-webkit-user-select:none;user-select:none}
         .request-swipe-surface{position:relative;z-index:2;background:#fff;border-radius:inherit;padding:1rem;transition:transform .18s ease;will-change:transform}
@@ -38,6 +38,15 @@
         .photo-modal-slide{flex:0 0 100%;width:100%;scroll-snap-align:center;scroll-snap-stop:always;display:flex;align-items:center;justify-content:center;padding:0 .75rem}
         .photo-modal-slide img{width:100%;max-height:80vh;object-fit:contain;border-radius:1rem;box-shadow:0 20px 45px rgba(0,0,0,.35);background:rgba(255,255,255,.02);user-select:none;-webkit-user-drag:none}
         .photo-gallery-clickzone{cursor:pointer}
+        #drive-search-container,#av-search-container,#reserves-search-container,#docks-search-container{position:-webkit-sticky;position:sticky;top:0;z-index:45}
+        .drive-card-filter-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.5rem}
+        .drive-card-filter-grid .drive-card-filter-name{grid-column:span 2}
+        .drive-card-filter-grid label{min-width:0}
+        .freeze-panel{position:-webkit-sticky;position:sticky;top:0;z-index:44;background:#f9fafb;margin:-1rem -1rem .5rem;padding:.35rem 1rem .5rem;border-bottom:1px solid #e5e7eb;box-shadow:0 10px 16px rgba(15,23,42,.05)}
+        .freeze-panel .sticky-search{position:relative;top:auto;z-index:auto;box-shadow:none}
+        .freeze-panel #drive-search-container,.freeze-panel #av-search-container,.freeze-panel #reserves-search-container,.freeze-panel #docks-search-container{position:relative;top:auto;z-index:auto}
+        .freeze-panel .task-tabs,.freeze-panel .detail-tabs{background:#f9fafb}
+        .freeze-panel > :last-child{margin-bottom:0 !important}
     </style>
 </head>
 <body class="bg-gray-50 overflow-hidden">
@@ -211,9 +220,10 @@
     </div>
     <div id="app-wrapper" class="hidden h-full flex flex-col">
         <header class="nav-header sticky top-0 z-50 p-4 flex justify-between items-center shadow-md">
-            <div class="flex items-center gap-3">
-                <i class="ph-bold ph-list menu-btn text-2xl cursor-pointer" onclick="toggleMenu()"></i>
-                <div class="flex flex-col">
+            <div class="flex items-center gap-3 min-w-0">
+                <button id="global-back-btn" type="button" class="hidden shrink-0 bg-white/10 p-2 rounded-lg active:scale-95 transition-transform" onclick="goBackUniversal()" aria-label="Back"><i class="ph-bold ph-arrow-left text-xl text-white"></i></button>
+                <i class="ph-bold ph-list menu-btn text-2xl cursor-pointer shrink-0" onclick="toggleMenu()"></i>
+                <div class="flex flex-col min-w-0">
                     <div class="font-bold text-lg leading-tight"><span id="header-user">User</span></div>
                     <div class="text-[10px] opacity-80 leading-tight">GREENLEAF NURSERY COMPANY</div>
                 </div>
@@ -303,6 +313,7 @@
                 </div>
 
                 <div id="view-av" class="hidden">
+                    <div class="freeze-panel">
                     <div id="av-search-container" class="sticky-search relative mb-2">
                         <input type="text" id="av-search" class="input-field w-full pr-10 !mb-0" placeholder="Search AV Stock..." oninput="handleAVSearch()" onkeydown="dismissSearchKeyboard(event)">
                         <i id="av-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearAVSearch()"></i>
@@ -313,15 +324,17 @@
                     </div>
                     <div id="av-open-sub-tabs" class="task-tabs mb-2">
                         <div id="tab-av-open-name" class="task-tab active" onclick="setAvOpenTab('name')">By Name</div>
-                        <div id="tab-av-open-season" class="task-tab" onclick="setAvOpenTab('season')">By Season</div>
-                        <div id="tab-av-open-lot" class="task-tab" onclick="setAvOpenTab('lot')">By Lot</div>
+
+
                         <div id="tab-av-open-photos" class="task-tab" onclick="setAvOpenTab('photos')">Photos</div>
                     </div>
                     <div id="av-crumb" class="text-xs font-bold text-[#007a4d] mb-3 mt-2 empty:hidden">Open Stock</div>
+                    </div>
                     <div id="av-content"></div>
                 </div>
                 
                 <div id="view-reports" class="hidden">
+                    <div class="freeze-panel">
                     <div id="reports-crumb" class="text-xs font-bold text-[#007a4d] mb-3">Crop Value Summary</div>
                     <div class="detail-tabs mb-4">
                         <div class="detail-tab report-tab active border-[#007a4d] text-[#007a4d]" onclick="setReportTab('ALL')" id="rtab-ALL">Summary</div>
@@ -334,47 +347,59 @@
                         <div class="detail-tab report-tab" onclick="setReportTab('Y')" id="rtab-Y">Y</div>
                         <div class="detail-tab report-tab" onclick="setReportTab('Z')" id="rtab-Z">Z</div>
                     </div>
+                    </div>
                     <div id="reports-content"></div>
                 </div>
                 
                 <div id="view-request" class="hidden">
+                    <div class="freeze-panel">
                     <div class="task-tabs mb-2 mt-2">
                         <div id="tab-req-pending" class="task-tab active" onclick="setReqTab('pending')">Pending</div>
                         <div id="tab-req-reps" class="task-tab" onclick="setReqTab('reps')">Sales Reps</div>
                     </div>
                     <div id="request-crumb" class="text-xs font-bold text-[#007a4d] mb-3 empty:hidden"></div>
+                    </div>
                     <div id="request-content"></div>
                 </div>
                 
                 <div id="view-reserves" class="hidden">
+                    <div class="freeze-panel">
                     <div id="reserves-search-container" class="sticky-search relative mb-2">
                         <input type="text" id="reserves-search" class="input-field w-full pr-10 !mb-0" placeholder="Search..." oninput="handleReservesSearch()" onkeydown="dismissSearchKeyboard(event)">
                         <i id="reserves-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearReservesSearch()"></i>
                     </div>
                     <div id="reserves-crumb" class="text-xs font-bold text-[#007a4d] mb-3 mt-3 empty:hidden"></div>
+                    </div>
                     <div id="reserves-content"></div>
                 </div>
                 
                 <div id="view-docks" class="hidden">
+                    <div class="freeze-panel">
                     <div id="docks-search-container" class="sticky-search relative mb-2">
                         <input type="text" id="docks-search" class="input-field w-full pr-10 !mb-0" placeholder="Search Docks or Items..." oninput="handleDocksSearch()" onkeydown="dismissSearchKeyboard(event)">
                         <i id="docks-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearDocksSearch()"></i>
                     </div>
                     <div id="docks-crumb" class="text-xs font-bold text-orange-600 mb-3 mt-3">Select a Dock</div>
+                    </div>
                     <div id="docks-content"></div>
                 </div>
                 
                 <div id="view-low-stock" class="hidden">
+                    <div class="freeze-panel">
                     <div id="low-stock-crumb" class="text-xs font-bold text-[#007a4d] mb-3">Action Required</div>
+                    </div>
                     <div id="low-stock-content"></div>
                 </div>
                 
                 <div id="view-sales-office" class="hidden">
+                    <div class="freeze-panel">
                     <div class="text-xs font-bold text-[#007a4d] mb-3">Completed Rows</div>
+                    </div>
                     <div id="sales-office-content"></div>
                 </div>
                 
                 <div id="view-drive" class="hidden">
+                    <div class="freeze-panel">
                     <div class="task-tabs mb-2">
                         <div id="tab-drive-mode-ok" class="task-tab active">Drive Mode</div>
                     </div>
@@ -390,10 +415,12 @@
                     <div id="drive-quick-request-bar" class="hidden mb-3"></div>
                     <div class="flex overflow-x-auto scrollbar-none gap-2 mb-3 pb-1" id="drive-season-filters"></div>
                     <div id="drive-crumb" class="text-xs font-bold text-[#007a4d] mb-3 empty:hidden"></div>
+                    </div>
                     <div id="drive-content"></div>
                 </div>
                 
                 <div id="view-tasks" class="hidden">
+                    <div class="freeze-panel">
                     <div id="task-crumb" class="text-xs font-bold text-[#007a4d] mb-3"></div>
                     <div id="team-selector" class="hidden mb-4 grid grid-cols-1 gap-3"></div>
                     <div id="task-tabs-container" class="task-tabs">
@@ -403,15 +430,19 @@
                         <div id="tab-endcap" class="task-tab" onclick="setTaskTab('endcap')">End Cap</div>
                         <div id="tab-flyer" class="task-tab" onclick="setTaskTab('flyer')">Flyer</div>
                     </div>
+                    </div>
                     <div id="task-content"></div>
                 </div>
                 
                 <div id="view-review" class="hidden">
+                    <div class="freeze-panel">
                     <div id="review-crumb" class="text-xs font-bold text-[#007a4d] mb-3"></div>
+                    </div>
                     <div id="review-content"></div>
                 </div>
                 
                 <div id="view-detail" class="hidden">
+                    <div class="freeze-panel">
                     <div class="back-btn" onclick="goBackFromDetail()"><i class="ph-bold ph-arrow-left"></i> Back</div>
                     <div class="mb-4">
                         <h1 id="det-common" class="text-2xl font-black text-[#007a4d] leading-none mb-1">--</h1>
@@ -436,6 +467,7 @@
                         <div class="detail-tab hidden" onclick="switchDetailTab('gallery')" id="dtab-gallery">Photo Gallery</div>
                         <div class="detail-tab hidden" onclick="switchDetailTab('docks')" id="dtab-docks">Docks</div>
                         <div class="detail-tab hidden" onclick="switchDetailTab('flyer')" id="dtab-flyer">Flyer</div>
+                    </div>
                     </div>
                     <div id="det-overview-content" class="py-4">
                         <div class="overview-grid">
@@ -820,6 +852,8 @@
                 }
             });
 
+            if (masterInventoryById.has(masterId)) invalidateMasterDerivedInventories();
+
             if (activeItem && sameMasterRow(activeItem)) {
                 applyExactRowData(activeItem);
             }
@@ -907,15 +941,19 @@
 
             if (!changed) return false;
 
-            processAndLoadData({
-                data: fullInventory,
-                avOpenData: avOpenInventory,
-                requestsData: requestsInventory,
-                reservesData: reservesInventory,
-                socData: socInventory,
-                salesOfficeData: salesOfficeInventory,
-                avNotesData: avNotesDb
-            });
+            if (tableName === 'v2_master_inventory') {
+                processAndLoadData({ data: fullInventory, avOpenData: avOpenInventory });
+            } else if (tableName === 'v2_active_request') {
+                processAndLoadData({ requestsData: requestsInventory });
+            } else if (tableName === 'v2_reserves') {
+                processAndLoadData({ reservesData: reservesInventory });
+            } else if (tableName === 'v2_soc_master') {
+                processAndLoadData({ socData: socInventory });
+            } else if (tableName === 'v2_sales_office') {
+                processAndLoadData({ salesOfficeData: salesOfficeInventory });
+            } else if (tableName === 'v2_av_notes') {
+                processAndLoadData({ avNotesData: avNotesDb });
+            }
             return true;
         }
 
@@ -1304,14 +1342,16 @@
         }
 
         let fullInventory=[]; let avOpenInventory=[]; let lowStockInventory=[]; let socInventory=[]; let reservesInventory=[]; let requestsInventory=[]; let managerReviewInventory=[]; let salesOfficeInventory=[]; let avNotesDb=[];
+        let masterInventoryById=new Map(); let masterInventoryByExactKey=new Map(); let lowStockInventoryDirty=true; let managerReviewInventoryDirty=true;
         let loginPrefetchPromise=null;
         let loginPrefetchMode='';
         let datasetLoadState=createDatasetLoadState();
         let cacheWarmPromise=null;
+        let cachePersistTimer=null;
         let currentUser=""; let currentUserDisplay=""; let currentRole=""; let safeRole=""; let repPermutations=[]; let activeItem=null; let lastView=""; let activeDetailTab="overview"; let selectedItems=new Set(); let isMultiSelectMode=false; let pressTimer=null; let isLongPress=false; let touchStartX=0; let touchStartY=0; let pendingAction=null; let pendingTabType=null; let hasAppliedInitialHomeView=false;
         
         const DRIVE_MODE_LABELS = { ok: 'Drive Mode' };
-        let activeDriveMode='ok'; let activeDriveTab='name'; let selectedDriveBlock=null; let selectedDriveLoc=null; let driveQuickRequestCardMode=false; let driveQuickFilterName=''; let driveQuickFilterLocation=''; let driveQuickFilterLot=''; let driveQuickFilterSize=''; let driveQuickFilterLtsMode=''; let driveQuickFilterLtsValue=''; let driveQuickHoldStopOnly=false; let driveQuickFilterOptionsCacheKey=''; let driveQuickFilterOptionsCache=null; let driveBaseFilterCacheKey=''; let driveBaseFilterCacheItems=[]; let driveQuickFilterCacheKey=''; let driveQuickFilterCacheItems=[];
+        let activeDriveMode='ok'; let activeDriveTab='name'; let selectedDriveBlock=null; let selectedDriveLoc=null; let driveQuickRequestCardMode=false; let driveQuickFilterName=''; let driveQuickFilterLocation=''; let driveQuickFilterLot=''; let driveQuickFilterSize=''; let driveQuickFilterPriority=''; let driveQuickFilterLtsMode=''; let driveQuickFilterLtsValue=''; let driveQuickHoldStopOnly=false; let driveQuickFilterOptionsCacheKey=''; let driveQuickFilterOptionsCache=null; let driveBaseFilterCacheKey=''; let driveBaseFilterCacheItems=[]; let driveQuickFilterCacheKey=''; let driveQuickFilterCacheItems=[]; let driveQuickFiltersModalOpen=false;
         let driveViewLevel=0; let selectedDriveName=null; let selectedDriveSize=null; let driveSelectedSeasons=new Set(['ALL']); const availableSeasons=["ALL","S1","F1","U1","U2","U3","X","Y","Z"];
         
         let activeTaskTab="season"; let taskViewTargetUser=null; let taskViewLevel=0; let selectedTaskBlock=null; let selectedTaskLoc=null; let selectedEndCapFolder=null; let selectedFlyerFolder=null; let pendingFlyerFolderTarget=null; let pendingFlyerFolderAssignees="";
@@ -1511,8 +1551,14 @@
             return {};
         }
 
-        function persistCurrentCache() {
-            saveToCache(buildCacheSnapshot());
+        function persistCurrentCache(immediate = false) {
+            const runPersist = () => saveToCache(buildCacheSnapshot());
+            if (cachePersistTimer) { clearTimeout(cachePersistTimer); cachePersistTimer = null; }
+            if (immediate) return runPersist();
+            cachePersistTimer = setTimeout(() => {
+                cachePersistTimer = null;
+                runPersist();
+            }, 160);
         }
 
         function isDatasetLoaded(key, mode = 'initial') {
@@ -1661,8 +1707,10 @@
         }
 
         function findItemByUniqueId(uid) {
-            return fullInventory.find(i=>i.UNIQUE_ID===uid)
-                || avOpenInventory.find(i=>i.UNIQUE_ID===uid)
+            const normalizedUid = String(uid || '').trim();
+            const masterItem = normalizedUid ? (masterInventoryById.get(normalizedUid) || fullInventory.find(i=>i.UNIQUE_ID===uid)) : null;
+            if (masterItem) return masterItem;
+            return avOpenInventory.find(i=>i.UNIQUE_ID===uid)
                 || lowStockInventory.find(i=>i.UNIQUE_ID===uid)
                 || reservesInventory.find(i=>i.UNIQUE_ID===uid)
                 || requestsInventory.find(i=>i.UNIQUE_ID===uid)
@@ -1672,22 +1720,63 @@
                 || null;
         }
 
+        function getMasterInventoryExactKey(item) {
+            if (!item) return '';
+            const itemCode = String(item.ITEMCODE || item.ITEM || '').trim().toUpperCase();
+            const locationCode = String(item.LOCATIONCODE || item.LOCATION || '').trim().toUpperCase();
+            const lotCode = String(item.LOTCODE || item.LOT || '').trim().toUpperCase();
+            if (!itemCode || !locationCode || !lotCode) return '';
+            return `${itemCode}__${locationCode}__${lotCode}`;
+        }
+
+        function rebuildMasterInventoryIndexes() {
+            masterInventoryById = new Map();
+            masterInventoryByExactKey = new Map();
+            fullInventory.forEach((item) => {
+                const uniqueId = String(item.UNIQUE_ID || '').trim();
+                if (uniqueId) masterInventoryById.set(uniqueId, item);
+                const exactKey = getMasterInventoryExactKey(item);
+                if (exactKey && !masterInventoryByExactKey.has(exactKey)) masterInventoryByExactKey.set(exactKey, item);
+            });
+        }
+
+        function invalidateMasterDerivedInventories() {
+            lowStockInventory = [];
+            managerReviewInventory = [];
+            lowStockInventoryDirty = true;
+            managerReviewInventoryDirty = true;
+        }
+
+        function ensureLowStockInventoryBuilt() {
+            if (!lowStockInventoryDirty) return lowStockInventory;
+            let nextIndex = 0;
+            lowStockInventory = fullInventory.reduce((rows, item) => {
+                let ptr = parseInt(String(item.PTRAVAILABLE).replace(/,/g,'')) || 0;
+                let slts = parseInt(String(item.S_LTS).replace(/,/g,'')) || 0;
+                if (ptr > 0 && ptr <= slts) rows.push({ ...item, DOM_ID: 'ls_' + nextIndex++ });
+                return rows;
+            }, []);
+            lowStockInventoryDirty = false;
+            return lowStockInventory;
+        }
+
+        function ensureManagerReviewInventoryBuilt() {
+            if (!managerReviewInventoryDirty) return managerReviewInventory;
+            managerReviewInventory = fullInventory.map((item, idx) => ({ ...item, DOM_ID: 'mr_' + idx }));
+            managerReviewInventoryDirty = false;
+            return managerReviewInventory;
+        }
+
         function findLinkedMasterRow(item) {
             if (!item) return null;
             const masterId = String(item.MASTER_ID || item.MASTER_UNIQUE_ID || item.master_id || '').trim();
             if (masterId) {
-                const linkedById = fullInventory.find(i => String(i.UNIQUE_ID || '').trim() === masterId);
+                const linkedById = masterInventoryById.get(masterId) || fullInventory.find(i => String(i.UNIQUE_ID || '').trim() === masterId);
                 if (linkedById) return linkedById;
             }
-            const itemCode = String(item.ITEMCODE || item.ITEM || '').trim().toUpperCase();
-            const locationCode = String(item.LOCATIONCODE || item.LOCATION || '').trim().toUpperCase();
-            const lotCode = String(item.LOTCODE || item.LOT || '').trim().toUpperCase();
-            if (itemCode && locationCode && lotCode) {
-                const exactRow = fullInventory.find(i =>
-                    String(i.ITEMCODE || i.ITEM || '').trim().toUpperCase() === itemCode &&
-                    String(i.LOCATIONCODE || i.LOCATION || '').trim().toUpperCase() === locationCode &&
-                    String(i.LOTCODE || i.LOT || '').trim().toUpperCase() === lotCode
-                );
+            const exactKey = getMasterInventoryExactKey(item);
+            if (exactKey) {
+                const exactRow = masterInventoryByExactKey.get(exactKey) || fullInventory.find(i => getMasterInventoryExactKey(i) === exactKey);
                 if (exactRow) return exactRow;
             }
             return null;
@@ -1882,6 +1971,7 @@
             driveQuickFilterLocation = '';
             driveQuickFilterLot = '';
             driveQuickFilterSize = '';
+            driveQuickFilterPriority = '';
             driveQuickFilterLtsMode = '';
             driveQuickFilterLtsValue = '';
         }
@@ -1908,12 +1998,17 @@
             scheduleUiRender('drive-quick-filter', () => refreshDriveQuickFilterResults());
         }, 120);
 
+        function getDriveQuickPriorityValues() {
+            return [...new Set(String(driveQuickFilterPriority || '').split('|').map(value => value.trim()).filter(Boolean))];
+        }
+
         function setDriveQuickFilter(type, value) {
             const nextValue = String(value || '').trim();
             if (type === 'name') driveQuickFilterName = nextValue;
             else if (type === 'location') driveQuickFilterLocation = nextValue;
             else if (type === 'lot') driveQuickFilterLot = nextValue;
             else if (type === 'size') driveQuickFilterSize = nextValue;
+            else if (type === 'priority') driveQuickFilterPriority = nextValue;
             else if (type === 'ltsMode') driveQuickFilterLtsMode = nextValue;
             else if (type === 'ltsValue') driveQuickFilterLtsValue = nextValue;
             if (type === 'name' || type === 'ltsValue') debouncedDriveQuickFilterInputRender();
@@ -1921,16 +2016,31 @@
             return false;
         }
 
-        function clearDriveQuickFilters() {
-            driveQuickFilterName = '';
-            driveQuickFilterLocation = '';
-            driveQuickFilterLot = '';
-            driveQuickFilterSize = '';
-            driveQuickFilterLtsMode = '';
-            driveQuickFilterLtsValue = '';
-            refreshDriveQuickFilterResults();
+        function toggleDriveQuickPriorityFilter(value) {
+            const nextValue = String(value || '').trim();
+            if (!nextValue) {
+                driveQuickFilterPriority = '';
+            } else {
+                const selectedValues = getDriveQuickPriorityValues();
+                if (selectedValues.includes(nextValue)) driveQuickFilterPriority = selectedValues.filter(entry => entry !== nextValue).join('|');
+                else driveQuickFilterPriority = selectedValues.concat(nextValue).sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true })).join('|');
+            }
+            scheduleUiRender('drive-quick-filter', () => refreshDriveQuickFilterResults());
             return false;
         }
+
+        function clearDriveQuickFilters() {
+driveQuickFilterName = '';
+driveQuickFilterLocation = '';
+driveQuickFilterLot = '';
+driveQuickFilterSize = '';
+driveQuickFilterPriority = '';
+driveQuickFilterLtsMode = '';
+driveQuickFilterLtsValue = '';
+if (driveQuickFiltersModalOpen) renderDriveQuickFiltersModal();
+refreshDriveQuickFilterResults();
+return false;
+}
 
         function getDriveModeItems() {
             if (activeDriveMode === 'ok') return fullInventory;
@@ -1953,7 +2063,8 @@
             driveQuickFilterOptionsCache = {
                 locations: buildOptions('LOCATIONCODE'),
                 sizes: buildOptions('CONTSIZE'),
-                lots: buildOptions('LOTCODE')
+                lots: buildOptions('LOTCODE'),
+                priorities: buildOptions('PRIORITY')
             };
             return driveQuickFilterOptionsCache;
         }
@@ -2011,6 +2122,7 @@
                 String(driveQuickFilterLocation || '').trim(),
                 String(driveQuickFilterLot || '').trim(),
                 String(driveQuickFilterSize || '').trim(),
+                getDriveQuickPriorityValues().join('|'),
                 String(driveQuickFilterLtsMode || '').trim(),
                 String(driveQuickFilterLtsValue || '').trim()
             ].join('::');
@@ -2023,6 +2135,8 @@
             if (driveQuickFilterLocation) items = items.filter(i => String(i.LOCATIONCODE || '').trim() === driveQuickFilterLocation);
             if (driveQuickFilterLot) items = items.filter(i => String(i.LOTCODE || '').trim() === driveQuickFilterLot);
             if (driveQuickFilterSize) items = items.filter(i => String(i.CONTSIZE || '').trim() === driveQuickFilterSize);
+            const selectedPriorities = getDriveQuickPriorityValues();
+            if (selectedPriorities.length) items = items.filter(i => selectedPriorities.includes(String(i.PRIORITY || '').trim()));
             const ltsValue = parseFloat(driveQuickFilterLtsValue);
             if (driveQuickFilterLtsMode && !isNaN(ltsValue)) {
                 items = items.filter(i => {
@@ -2034,68 +2148,157 @@
             driveQuickFilterCacheItems = items;
             return items;
         }
-        function renderDriveQuickRequestBar() {
-            const bar = document.getElementById('drive-quick-request-bar');
-            if (!bar) return;
-            const validIds = Array.from(driveQuickRequestItems).filter(domId => !!findItemByDomId(domId));
-            if (validIds.length !== driveQuickRequestItems.size) driveQuickRequestItems = new Set(validIds);
-            const canUseQuick = canUseDriveQuickRequest() && activeDriveMode === 'ok';
-            const showCardMode = activeDriveTab === 'card';
-            const count = driveQuickRequestItems.size;
-            if (!canUseQuick || !showCardMode) {
-                bar.classList.add('hidden');
-                bar.innerHTML = '';
-                return;
-            }
+        function getDriveQuickActiveFilterEntries() {
+    const entries = [];
+    if (driveQuickFilterName) entries.push({ label: 'Name', value: driveQuickFilterName });
+    if (driveQuickFilterLocation) entries.push({ label: 'Location', value: driveQuickFilterLocation });
+    getDriveQuickPriorityValues().forEach(value => entries.push({ label: 'Priority', value }));
+    if (driveQuickFilterSize) entries.push({ label: 'Cont Size', value: driveQuickFilterSize });
+    if (driveQuickFilterLot) entries.push({ label: 'Lot', value: driveQuickFilterLot });
+    const ltsValue = String(driveQuickFilterLtsValue || '').trim();
+    if (driveQuickFilterLtsMode && ltsValue) entries.push({ label: 's_LTS', value: `${driveQuickFilterLtsMode === 'gt' ? '>' : '<'} ${ltsValue}` });
+    return entries;
+}
 
-            const candidateItems = getDriveFilteredItems(false);
-            const filterOptions = getDriveQuickFilterOptions(candidateItems);
-            const buildOptions = (values, selectedValue, placeholder) => `<option value="">${placeholder}</option>` + values.map(value => `<option value="${esc(value)}" ${selectedValue === value ? 'selected' : ''}>${value}</option>`).join('');
-            const buttonBase = 'w-full sm:w-auto min-h-[42px] px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-[0.14em] transition-colors duration-150';
-            const primaryBtn = `${buttonBase} bg-[#007a4d] text-white shadow-sm hover:bg-[#006341]`;
-            const secondaryBtn = `${buttonBase} bg-white border border-emerald-200 text-[#007a4d] shadow-sm hover:bg-emerald-50`;
-            const disabledBtn = `${buttonBase} bg-emerald-100 text-emerald-300 shadow-sm cursor-not-allowed`;
-            const filterInputClass = 'input-field !mb-0 text-sm border-green-200 bg-white mt-1 shadow-sm';
-            const filterPanel = `
-                <div class="mt-1 pt-4 border-t border-emerald-100">
-                    <div class="text-[10px] font-black text-emerald-700 uppercase tracking-[0.16em] mb-3">Drive Card View Filters</div>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <label class="text-[10px] font-bold text-slate-500 uppercase sm:col-span-2">Common Name<input type="text" class="${filterInputClass}" value="${esc(driveQuickFilterName)}" placeholder="Type a common name" oninput="setDriveQuickFilter('name', this.value)" onkeydown="dismissSearchKeyboard(event)"></label>
-                        <label class="text-[10px] font-bold text-slate-500 uppercase">Location<select class="${filterInputClass}" onchange="setDriveQuickFilter('location', this.value)">${buildOptions(filterOptions.locations, driveQuickFilterLocation, 'All Locations')}</select></label>
-                        <label class="text-[10px] font-bold text-slate-500 uppercase">Cont Size<select class="${filterInputClass}" onchange="setDriveQuickFilter('size', this.value)">${buildOptions(filterOptions.sizes, driveQuickFilterSize, 'All Sizes')}</select></label>
-                        <label class="text-[10px] font-bold text-slate-500 uppercase">Lot Code<select class="${filterInputClass}" onchange="setDriveQuickFilter('lot', this.value)">${buildOptions(filterOptions.lots, driveQuickFilterLot, 'All Lots')}</select></label>
-                        <label class="text-[10px] font-bold text-slate-500 uppercase">s_LTS<select class="${filterInputClass}" onchange="setDriveQuickFilter('ltsMode', this.value)"><option value="">Any</option><option value="gt" ${driveQuickFilterLtsMode === 'gt' ? 'selected' : ''}>Greater Than</option><option value="lt" ${driveQuickFilterLtsMode === 'lt' ? 'selected' : ''}>Less Than</option></select></label>
-                        <label class="text-[10px] font-bold text-slate-500 uppercase sm:col-span-2 lg:col-span-1">s_LTS Number<input type="number" class="${filterInputClass}" value="${esc(driveQuickFilterLtsValue)}" placeholder="Enter number" oninput="setDriveQuickFilter('ltsValue', this.value)"></label>
-                    </div>
-                    <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <span class="text-[11px] font-semibold text-emerald-800">Use the Drive tabs to switch between drill views and card view.</span>
-                        <div class="grid grid-cols-1 gap-2 w-full sm:w-auto">
-                            <button class="${secondaryBtn}" onclick="clearDriveQuickFilters()">Clear Filters</button>
+function getDriveQuickFilterControlsHtml(filterOptions) {
+    const buildOptions = (values, selectedValue, placeholder) => `<option value="">${placeholder}</option>` + values.map(value => `<option value="${esc(value)}" ${selectedValue === value ? 'selected' : ''}>${value}</option>`).join('');
+    const filterInputClass = 'w-full min-w-0 h-[42px] rounded-xl border border-green-200 bg-white mt-1 px-3 text-[13px] font-bold text-slate-700 shadow-sm';
+    const filterLabelClass = 'text-[10px] font-black text-slate-500 uppercase tracking-[0.08em] min-w-0';
+    const selectedPriorities = getDriveQuickPriorityValues();
+    const priorityChipBase = 'min-h-[38px] px-3 py-2 rounded-full border text-[11px] font-black uppercase tracking-[0.08em] transition-colors duration-150';
+    const priorityClearChip = `<button type="button" class="${selectedPriorities.length ? 'bg-white border-emerald-200 text-emerald-700' : 'bg-emerald-600 border-emerald-600 text-white'} ${priorityChipBase}" onclick="toggleDriveQuickPriorityFilter('')">Any</button>`;
+    const priorityChipButtons = filterOptions.priorities.map(value => {
+        const active = selectedPriorities.includes(value);
+        const toneClass = active ? 'bg-emerald-600 border-emerald-600 text-white shadow-sm' : 'bg-white border-emerald-200 text-emerald-700';
+        return `<button type="button" class="${priorityChipBase} ${toneClass}" onclick="toggleDriveQuickPriorityFilter('${esc(value)}')">${esc(value)}</button>`;
+    }).join('');
+    return `
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <label class="${filterLabelClass} sm:col-span-2">Common Name<input type="text" class="${filterInputClass}" value="${esc(driveQuickFilterName)}" placeholder="Name" oninput="setDriveQuickFilter('name', this.value)" onkeydown="dismissSearchKeyboard(event)"></label>
+            <label class="${filterLabelClass}">Location<select class="${filterInputClass}" onchange="setDriveQuickFilter('location', this.value)">${buildOptions(filterOptions.locations, driveQuickFilterLocation, 'All')}</select></label>
+            <div class="${filterLabelClass} sm:col-span-2">Priority<div class="mt-2 flex flex-wrap gap-2">${priorityClearChip}${priorityChipButtons}</div><div class="mt-2 text-[11px] font-semibold normal-case tracking-normal text-slate-500">Tap one or more priorities to keep all matching cards visible.</div></div>
+            <label class="${filterLabelClass}">Cont Size<select class="${filterInputClass}" onchange="setDriveQuickFilter('size', this.value)">${buildOptions(filterOptions.sizes, driveQuickFilterSize, 'All')}</select></label>
+            <label class="${filterLabelClass}">Lot Code<select class="${filterInputClass}" onchange="setDriveQuickFilter('lot', this.value)">${buildOptions(filterOptions.lots, driveQuickFilterLot, 'All')}</select></label>
+            <label class="${filterLabelClass}">s_LTS<select class="${filterInputClass}" onchange="setDriveQuickFilter('ltsMode', this.value)"><option value="">Any</option><option value="gt" ${driveQuickFilterLtsMode === 'gt' ? 'selected' : ''}>GT</option><option value="lt" ${driveQuickFilterLtsMode === 'lt' ? 'selected' : ''}>LT</option></select></label>
+            <label class="${filterLabelClass}">s_LTS #<input type="number" class="${filterInputClass}" value="${esc(driveQuickFilterLtsValue)}" placeholder="#" oninput="setDriveQuickFilter('ltsValue', this.value)"></label>
+        </div>`;
+}
+
+function ensureDriveQuickFiltersModal() {
+    let modal = document.getElementById('drive-quick-filters-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'drive-quick-filters-modal';
+        modal.className = 'hidden fixed inset-0 z-[16000]';
+        document.body.appendChild(modal);
+    }
+    return modal;
+}
+
+function renderDriveQuickFiltersModal() {
+    const modal = ensureDriveQuickFiltersModal();
+    if (!driveQuickFiltersModalOpen || !canUseDriveQuickRequest() || activeDriveMode !== 'ok' || activeDriveTab !== 'card') {
+        modal.classList.add('hidden');
+        modal.innerHTML = '';
+        return;
+    }
+    const candidateItems = getDriveFilteredItems(false);
+    const filterOptions = getDriveQuickFilterOptions(candidateItems);
+    const activeFilters = getDriveQuickActiveFilterEntries();
+    const matchingCount = getDriveFilteredItems(true).length;
+    const activeFiltersHtml = activeFilters.length
+        ? `<div class="flex gap-2 overflow-x-auto scrollbar-none pb-2 mb-3">${activeFilters.map(filter => `<span class="shrink-0 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-[11px] font-black text-emerald-700 uppercase tracking-[0.08em]">${esc(filter.label)}: ${esc(filter.value)}</span>`).join('')}</div>`
+        : `<div class="text-[11px] font-semibold text-slate-500 mb-3">No extra card filters are active.</div>`;
+    modal.innerHTML = `
+        <div class="absolute inset-0 bg-slate-900/35" onclick="closeDriveQuickFiltersModal()"></div>
+        <div class="absolute inset-x-0 bottom-0 max-h-[82vh] rounded-t-[1.75rem] border border-emerald-100 bg-white shadow-2xl">
+            <div class="max-h-[82vh] overflow-y-auto px-4 pt-4 pb-6">
+                <div class="sticky top-0 bg-white pb-3">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <div class="text-[10px] font-black text-emerald-700 uppercase tracking-[0.16em]">Drive Card View Filters</div>
+                            <div class="text-lg font-black text-slate-900 mt-1">${matchingCount} matching row${matchingCount === 1 ? '' : 's'}</div>
+                            <div class="text-[11px] font-semibold text-slate-500 mt-1">${activeFilters.length} active filter${activeFilters.length === 1 ? '' : 's'} | changes apply live</div>
                         </div>
+                        <button type="button" class="shrink-0 min-w-[84px] min-h-[40px] rounded-full border border-slate-200 bg-white px-3 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600" onclick="closeDriveQuickFiltersModal()">Done</button>
                     </div>
-                </div>`;
-            const flyerTargetingFolder = String(pendingFlyerFolderTarget || '').trim();
-            const flyerActionLabel = flyerTargetingFolder ? 'Add To Folder' : 'Create Flyer';
-            const requestBtn = count === 0
-                ? `<button class="${disabledBtn}" disabled>Create Request</button>`
-                : `<button class="${primaryBtn}" onclick="openDriveQuickRequestModal()">Create Request</button>`;
-            const flyerBtn = count === 0
-                ? `<button class="${disabledBtn}" disabled>${flyerActionLabel}</button>`
-                : `<button class="${secondaryBtn}" onclick="createDriveQuickFlyers()">${flyerActionLabel}</button>`;
-            const assignBtn = count === 0
-                ? `<button class="${disabledBtn}" disabled>Assign Items</button>`
-                : `<button class="${secondaryBtn}" onclick="startDriveQuickAssignFlow()">Assign Items</button>`;
-            const clearBtn = `<button class="${secondaryBtn}" onclick="clearDriveQuickRequestItems()">Clear Rows</button>`;
-            const headerHtml = `<div><div class="text-[10px] font-black text-emerald-700 uppercase tracking-[0.16em]">Drive Action Builder</div><div class="text-lg font-black text-slate-900 mt-1">${count} row${count === 1 ? '' : 's'} ready for action</div></div>`;
-            const flyerTargetPanel = flyerTargetingFolder
-                ? `<div class="rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-indigo-600">Active Flyer Folder</div><div class="text-base font-black text-indigo-900 truncate mt-1">${flyerTargetingFolder}</div><div class="text-[11px] font-semibold text-indigo-500 mt-1">Drive rows will be added into this folder.</div></div><button class="${secondaryBtn}" onclick="clearPendingFlyerFolderTarget()">Choose New Folder</button></div>`
-                : '';
-            const shellClass = 'rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-green-50 p-4 shadow-sm';
-            bar.innerHTML = `<div class="${shellClass}"><div class="flex flex-col gap-4"><div class="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">${headerHtml}<div class="grid grid-cols-1 sm:grid-cols-2 xl:flex gap-2 w-full xl:w-auto xl:min-w-[320px]">${clearBtn}${requestBtn}${flyerBtn}${assignBtn}</div></div>${flyerTargetPanel}${filterPanel}</div></div>`;
-            bar.classList.remove('hidden');
-        }
+                </div>
+                ${activeFiltersHtml}
+                ${getDriveQuickFilterControlsHtml(filterOptions)}
+                <div class="mt-4 grid grid-cols-2 gap-2">
+                    <button type="button" class="min-h-[42px] rounded-xl border border-emerald-200 bg-white px-4 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700" onclick="clearDriveQuickFilters()">Clear</button>
+                    <button type="button" class="min-h-[42px] rounded-xl bg-[#007a4d] px-4 text-[11px] font-black uppercase tracking-[0.12em] text-white shadow-sm" onclick="closeDriveQuickFiltersModal()">Close</button>
+                </div>
+            </div>
+        </div>`;
+    modal.classList.remove('hidden');
+}
 
-        function toggleDriveQuickRequestItem(domId) {
+function openDriveQuickFiltersModal() {
+    driveQuickFiltersModalOpen = true;
+    renderDriveQuickFiltersModal();
+    return false;
+}
+
+function closeDriveQuickFiltersModal() {
+    driveQuickFiltersModalOpen = false;
+    const modal = document.getElementById('drive-quick-filters-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.innerHTML = '';
+    }
+    return false;
+}
+
+function renderDriveQuickRequestBar() {
+    const bar = document.getElementById('drive-quick-request-bar');
+    if (!bar) return;
+    const validIds = Array.from(driveQuickRequestItems).filter(domId => !!findItemByDomId(domId));
+    if (validIds.length !== driveQuickRequestItems.size) driveQuickRequestItems = new Set(validIds);
+    const canUseQuick = canUseDriveQuickRequest() && activeDriveMode === 'ok';
+    const showCardMode = activeDriveTab === 'card';
+    const count = driveQuickRequestItems.size;
+    if (!canUseQuick || !showCardMode) {
+        closeDriveQuickFiltersModal();
+        bar.classList.add('hidden');
+        bar.innerHTML = '';
+        return;
+    }
+
+    const activeFilters = getDriveQuickActiveFilterEntries();
+    const matchingCount = getDriveFilteredItems(true).length;
+    const compactBtnBase = 'shrink-0 min-h-[38px] px-3.5 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.12em] transition-colors duration-150';
+    const primaryBtn = `${compactBtnBase} bg-[#007a4d] text-white shadow-sm hover:bg-[#006341]`;
+    const secondaryBtn = `${compactBtnBase} bg-white border border-emerald-200 text-[#007a4d] shadow-sm hover:bg-emerald-50`;
+    const disabledBtn = `${compactBtnBase} bg-emerald-100 text-emerald-300 shadow-sm cursor-not-allowed`;
+    const flyerTargetingFolder = String(pendingFlyerFolderTarget || '').trim();
+    const flyerActionLabel = flyerTargetingFolder ? 'Add To Folder' : 'Create Flyer';
+    const filtersBtn = `<button class="${secondaryBtn}" onclick="openDriveQuickFiltersModal()">Filters${activeFilters.length ? ` (${activeFilters.length})` : ''}</button>`;
+    const clearFiltersBtn = activeFilters.length ? `<button class="${secondaryBtn}" onclick="clearDriveQuickFilters()">Clear Filters</button>` : '';
+    const requestBtn = count === 0
+        ? `<button class="${disabledBtn}" disabled>Create Request</button>`
+        : `<button class="${primaryBtn}" onclick="openDriveQuickRequestModal()">Create Request</button>`;
+    const flyerBtn = count === 0
+        ? `<button class="${disabledBtn}" disabled>${flyerActionLabel}</button>`
+        : `<button class="${secondaryBtn}" onclick="createDriveQuickFlyers()">${flyerActionLabel}</button>`;
+    const assignBtn = count === 0
+        ? `<button class="${disabledBtn}" disabled>Assign Items</button>`
+        : `<button class="${secondaryBtn}" onclick="startDriveQuickAssignFlow()">Assign Items</button>`;
+    const clearRowsBtn = `<button class="${secondaryBtn}" onclick="clearDriveQuickRequestItems()">Clear Rows</button>`;
+    const headerHtml = `<div class="min-w-0"><div class="text-[10px] font-black text-emerald-700 uppercase tracking-[0.16em]">Card View Tools</div><div class="text-base font-black text-slate-900 mt-1">${matchingCount} matching row${matchingCount === 1 ? '' : 's'} | ${count} row${count === 1 ? '' : 's'} ready</div><div class="text-[11px] font-semibold text-slate-500 mt-1">Filters open only when you need them.</div></div>`;
+    const activeFilterChips = activeFilters.length
+        ? `<div class="flex gap-2 overflow-x-auto scrollbar-none pb-1">${activeFilters.map(filter => `<span class="shrink-0 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-[11px] font-black text-emerald-700 uppercase tracking-[0.08em]">${esc(filter.label)}: ${esc(filter.value)}</span>`).join('')}</div>`
+        : '';
+    const flyerTargetPanel = flyerTargetingFolder
+        ? `<div class="rounded-2xl border border-indigo-200 bg-indigo-50 px-3 py-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-indigo-600">Active Flyer Folder</div><div class="text-sm font-black text-indigo-900 truncate mt-1">${flyerTargetingFolder}</div></div><button class="${secondaryBtn}" onclick="clearPendingFlyerFolderTarget()">Choose Folder</button></div>`
+        : '';
+    const shellClass = 'rounded-2xl border border-emerald-200 bg-white/95 p-3 shadow-sm backdrop-blur-sm';
+    bar.innerHTML = `<div class="${shellClass}"><div class="flex flex-col gap-3"><div class="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">${headerHtml}<div class="flex gap-2 overflow-x-auto scrollbar-none pb-1">${filtersBtn}${clearFiltersBtn}${clearRowsBtn}${requestBtn}${flyerBtn}${assignBtn}</div></div>${flyerTargetPanel}${activeFilterChips}</div></div>`;
+    bar.classList.remove('hidden');
+    if (driveQuickFiltersModalOpen) renderDriveQuickFiltersModal();
+}
+
+function toggleDriveQuickRequestItem(domId) {
             if (!canUseDriveQuickRequest()) return;
             if (!findItemByDomId(domId)) return;
             if (driveQuickRequestItems.has(domId)) driveQuickRequestItems.delete(domId);
@@ -3014,174 +3217,185 @@
         function processAndLoadData(res) {
             if (!res) return;
             const hasKey = (key) => Object.prototype.hasOwnProperty.call(res, key);
-            const merged = {
-                data: hasKey('data') ? (res.data || []) : fullInventory,
-                avOpenData: hasKey('avOpenData') ? (res.avOpenData || []) : avOpenInventory,
-                requestsData: hasKey('requestsData') ? (res.requestsData || []) : requestsInventory,
-                reservesData: hasKey('reservesData') ? (res.reservesData || []) : reservesInventory,
-                socData: hasKey('socData') ? (res.socData || []) : socInventory,
-                salesOfficeData: hasKey('salesOfficeData') ? (res.salesOfficeData || []) : salesOfficeInventory,
-                avNotesData: hasKey('avNotesData') ? (res.avNotesData || []) : avNotesDb
-            };
-            avNotesDb = merged.avNotesData || [];
-            fullInventory = (merged.data || []).map((item,idx)=>{item.DOM_ID='fi_'+idx;return buildSearchIndex(normalizeRowPhotoFields(item));}); 
-            avOpenInventory = (merged.avOpenData || []).map((item,idx)=>{item.DOM_ID='avo_'+(item.UNIQUE_ID || idx);return buildSearchIndex(normalizeRowPhotoFields(item));}); 
-            requestsInventory = (merged.requestsData || []).map((item,idx)=>{item.DOM_ID='req_'+item.UNIQUE_ID;return buildSearchIndex(normalizeRowPhotoFields(item));}); 
-            updateFooterRequestBadge();
-                        salesOfficeInventory = (merged.salesOfficeData || []).map((item, idx) => {
-                item.DOM_ID = 'so_' + item.UNIQUE_ID;
-                normalizeRowPhotoFields(item);
-                buildSearchIndex(item);
-                return item;
-            });
-            socInventory = (merged.socData || []).map(item => buildSearchIndex(normalizeRowPhotoFields(item)));
-            lowStockInventory = fullInventory.filter(i=>{
-                let ptr=parseInt(String(i.PTRAVAILABLE).replace(/,/g,''))||0; 
-                let slts=parseInt(String(i.S_LTS).replace(/,/g,''))||0; 
-                return ptr>0 && ptr<=slts;
-            }).map((item,idx)=>{item.DOM_ID='ls_'+idx;return buildSearchIndex(normalizeRowPhotoFields(item))}); 
-            managerReviewInventory = fullInventory.map((item,idx)=>{item.DOM_ID='mr_'+idx;return buildSearchIndex(normalizeRowPhotoFields(item));}); 
+            const hasMaster = hasKey('data');
+            const hasAvOpen = hasKey('avOpenData');
+            const hasRequests = hasKey('requestsData');
+            const hasReserves = hasKey('reservesData');
+            const hasSoc = hasKey('socData');
+            const hasSalesOffice = hasKey('salesOfficeData');
+            const hasAvNotes = hasKey('avNotesData');
+            const didStructuralDataChange = hasMaster || hasAvOpen || hasRequests || hasReserves || hasSoc || hasSalesOffice;
 
-            let map1 = new Map();
-            let icGroups = {};
-
-            fullInventory.forEach(item => { 
-                let c = String(item.ITEMCODE || "").trim().toUpperCase(); 
-                if(c && !map1.has(c)) map1.set(c, item);
-                let eStr = String(item.END_CAP_FOLDER || "").toUpperCase().trim();
-                let hasEndCap = (eStr !== "" && eStr !== "NULL" && eStr !== "N/A" && eStr !== "-");
-                if(hasEndCap) {
-                    item.APP_TAB_ASSIGNMENT = 'endcap';
-                } else {
-                    let prio = String(item.PRIORITY || "").toUpperCase().trim();
-                    if(prio && prio !== "NULL" && prio !== "N/A" && prio !== "-") {
-                        let ic = String(item.ITEMCODE || "UNKNOWN").trim().toUpperCase();
-                        if(!icGroups[ic]) icGroups[ic] = [];
-                        icGroups[ic].push(item);
-                    } else {
-                        item.APP_TAB_ASSIGNMENT = 'location';
-                    }
-                }
-            });
-
-            for(let ic in icGroups) {
-                let rows = icGroups[ic];
-                let eligible = rows.filter(r => {
-                    let ptr = parseFloat(String(r.PTRAVAILABLE).replace(/,/g,'')) || 0;
-                    let ss = parseFloat(String(r.SEASONSUPPLY || r.SEASON_SUPPLY).replace(/,/g,'')) || 0;
-                    return ptr > (0.10 * ss);
-                });
-                let pool = eligible.length > 0 ? eligible : rows;
-                pool.sort((a,b) => {
-                    let pa = parseFloat(a.PRIORITY); if(isNaN(pa)) pa = 999;
-                    let pb = parseFloat(b.PRIORITY); if(isNaN(pb)) pb = 999;
-                    if(pa !== pb) return pa - pb; 
-                    let ptra = parseFloat(String(a.PTRAVAILABLE).replace(/,/g,'')) || 0;
-                    let ptrb = parseFloat(String(b.PTRAVAILABLE).replace(/,/g,'')) || 0;
-                    return ptrb - ptra; 
-                });
-                let winner = pool[0];
-                rows.forEach(r => {
-                    if(r.UNIQUE_ID === winner.UNIQUE_ID) r.APP_TAB_ASSIGNMENT = 'season';
-                    else r.APP_TAB_ASSIGNMENT = 'location';
-                });
+            if (hasAvNotes) {
+                avNotesDb = res.avNotesData || [];
             }
 
-            const masterById = new Map(fullInventory.map(item => [String(item.UNIQUE_ID || '').trim(), item]).filter(entry => entry[0] !== ''));
-            requestsInventory = requestsInventory.map((item) => {
-                const masterItem = findLinkedMasterRow(item);
-                if (!masterItem) {
+            if (hasMaster) {
+                fullInventory = (res.data || []).map((item,idx)=>{item.DOM_ID='fi_'+idx;return buildSearchIndex(normalizeRowPhotoFields(item));});
+
+                let icGroups = {};
+                fullInventory.forEach(item => {
+                    let eStr = String(item.END_CAP_FOLDER || '').toUpperCase().trim();
+                    let hasEndCap = (eStr !== '' && eStr !== 'NULL' && eStr !== 'N/A' && eStr !== '-');
+                    if(hasEndCap) {
+                        item.APP_TAB_ASSIGNMENT = 'endcap';
+                    } else {
+                        let prio = String(item.PRIORITY || '').toUpperCase().trim();
+                        if(prio && prio !== 'NULL' && prio !== 'N/A' && prio !== '-') {
+                            let ic = String(item.ITEMCODE || 'UNKNOWN').trim().toUpperCase();
+                            if(!icGroups[ic]) icGroups[ic] = [];
+                            icGroups[ic].push(item);
+                        } else {
+                            item.APP_TAB_ASSIGNMENT = 'location';
+                        }
+                    }
+                });
+
+                for(let ic in icGroups) {
+                    let rows = icGroups[ic];
+                    let eligible = rows.filter(r => {
+                        let ptr = parseFloat(String(r.PTRAVAILABLE).replace(/,/g,'')) || 0;
+                        let ss = parseFloat(String(r.SEASONSUPPLY || r.SEASON_SUPPLY).replace(/,/g,'')) || 0;
+                        return ptr > (0.10 * ss);
+                    });
+                    let pool = eligible.length > 0 ? eligible : rows;
+                    pool.sort((a,b) => {
+                        let pa = parseFloat(a.PRIORITY); if(isNaN(pa)) pa = 999;
+                        let pb = parseFloat(b.PRIORITY); if(isNaN(pb)) pb = 999;
+                        if(pa !== pb) return pa - pb;
+                        let ptra = parseFloat(String(a.PTRAVAILABLE).replace(/,/g,'')) || 0;
+                        let ptrb = parseFloat(String(b.PTRAVAILABLE).replace(/,/g,'')) || 0;
+                        return ptrb - ptra;
+                    });
+                    let winner = pool[0];
+                    rows.forEach(r => {
+                        if(r.UNIQUE_ID === winner.UNIQUE_ID) r.APP_TAB_ASSIGNMENT = 'season';
+                        else r.APP_TAB_ASSIGNMENT = 'location';
+                    });
+                }
+
+                rebuildMasterInventoryIndexes();
+                invalidateMasterDerivedInventories();
+            }
+
+            if (hasAvOpen) {
+                avOpenInventory = (res.avOpenData || []).map((item,idx)=>{item.DOM_ID='avo_'+(item.UNIQUE_ID || idx);return buildSearchIndex(normalizeRowPhotoFields(item));});
+            }
+
+            if (hasRequests || (hasMaster && requestsInventory.length)) {
+                const requestSource = hasRequests ? (res.requestsData || []) : requestsInventory;
+                requestsInventory = requestSource.map((item) => {
+                    if (!item.DOM_ID) item.DOM_ID = 'req_' + item.UNIQUE_ID;
+                    const masterItem = findLinkedMasterRow(item);
+                    if (!masterItem) {
+                        normalizeRowPhotoFields(item);
+                        buildSearchIndex(item);
+                        return item;
+                    }
+                    item.MASTER_UNIQUE_ID = masterItem.UNIQUE_ID;
+                    if (!item.MASTER_ID) item.MASTER_ID = masterItem.UNIQUE_ID;
+                    if (!item.master_id) item.master_id = masterItem.UNIQUE_ID;
+                    item.COMMONNAME = item.COMMONNAME || masterItem.COMMONNAME;
+                    item.CONTSIZE = item.CONTSIZE || masterItem.CONTSIZE;
+                    item.LOCATIONCODE = item.LOCATIONCODE || masterItem.LOCATIONCODE;
+                    item.LOTCODE = item.LOTCODE || masterItem.LOTCODE;
+                    item.ITEMCODE = item.ITEMCODE || masterItem.ITEMCODE;
+                    item.PTRAVAILABLE = item.PTRAVAILABLE || masterItem.PTRAVAILABLE;
+                    item.SEASONSUPPLY = item.SEASONSUPPLY || masterItem.SEASONSUPPLY;
+                    item.PRIORITY = item.PRIORITY || masterItem.PRIORITY;
+                    item.QUALITYCODE = item.QUALITYCODE || masterItem.QUALITYCODE;
+                    item.FIELDTAGCOLOR = item.FIELDTAGCOLOR || masterItem.FIELDTAGCOLOR;
+                    item.PLANTGROUPCODE = item.PLANTGROUPCODE || masterItem.PLANTGROUPCODE;
+                    item.BLOCKALPHA = item.BLOCKALPHA || masterItem.BLOCKALPHA;
+                    item.APP_TAB_ASSIGNMENT = item.APP_TAB_ASSIGNMENT || masterItem.APP_TAB_ASSIGNMENT;
+                    item.SEASON = item.SEASON || masterItem.SEASON;
+                    if (String(item.S_LTS || '').trim() === '') item.S_LTS = masterItem.S_LTS;
+                    item.AV_NOTE = firstNonEmptyValue(item.AV_NOTE, masterItem.AV_NOTE);
+                    item.SALES_NOTE = firstNonEmptyValue(item.SALES_NOTE, masterItem.SALES_NOTE);
+                    item.SPEC = firstNonEmptyValue(item.SPEC, masterItem.SPEC);
+                    item.CALIPER = firstNonEmptyValue(item.CALIPER, masterItem.CALIPER);
+                    item.MATCH = firstNonEmptyValue(item.MATCH, masterItem.MATCH);
+                    item.PICK = firstNonEmptyValue(item.PICK, masterItem.PICK);
+                    clonePhotoFields(masterItem, item);
                     normalizeRowPhotoFields(item);
                     buildSearchIndex(item);
                     return item;
-                }
-                item.MASTER_UNIQUE_ID = masterItem.UNIQUE_ID;
-                if (!item.MASTER_ID) item.MASTER_ID = masterItem.UNIQUE_ID;
-                if (!item.master_id) item.master_id = masterItem.UNIQUE_ID;
-                item.COMMONNAME = item.COMMONNAME || masterItem.COMMONNAME;
-                item.CONTSIZE = item.CONTSIZE || masterItem.CONTSIZE;
-                item.LOCATIONCODE = item.LOCATIONCODE || masterItem.LOCATIONCODE;
-                item.LOTCODE = item.LOTCODE || masterItem.LOTCODE;
-                item.ITEMCODE = item.ITEMCODE || masterItem.ITEMCODE;
-                item.PTRAVAILABLE = item.PTRAVAILABLE || masterItem.PTRAVAILABLE;
-                item.SEASONSUPPLY = item.SEASONSUPPLY || masterItem.SEASONSUPPLY;
-                item.PRIORITY = item.PRIORITY || masterItem.PRIORITY;
-                item.QUALITYCODE = item.QUALITYCODE || masterItem.QUALITYCODE;
-                item.FIELDTAGCOLOR = item.FIELDTAGCOLOR || masterItem.FIELDTAGCOLOR;
-                item.PLANTGROUPCODE = item.PLANTGROUPCODE || masterItem.PLANTGROUPCODE;
-                item.BLOCKALPHA = item.BLOCKALPHA || masterItem.BLOCKALPHA;
-                item.APP_TAB_ASSIGNMENT = item.APP_TAB_ASSIGNMENT || masterItem.APP_TAB_ASSIGNMENT;
-                item.SEASON = item.SEASON || masterItem.SEASON;
-                if (String(item.S_LTS || '').trim() === '') item.S_LTS = masterItem.S_LTS;
-                item.AV_NOTE = firstNonEmptyValue(item.AV_NOTE, masterItem.AV_NOTE);
-                item.SALES_NOTE = firstNonEmptyValue(item.SALES_NOTE, masterItem.SALES_NOTE);
-                item.SPEC = firstNonEmptyValue(item.SPEC, masterItem.SPEC);
-                item.CALIPER = firstNonEmptyValue(item.CALIPER, masterItem.CALIPER);
-                item.MATCH = firstNonEmptyValue(item.MATCH, masterItem.MATCH);
-                item.PICK = firstNonEmptyValue(item.PICK, masterItem.PICK);
-                clonePhotoFields(masterItem, item);
-                normalizeRowPhotoFields(item);
-                buildSearchIndex(item);
-                return item;
-            });
-            applyPendingRequestArchives();
-            updateFooterRequestBadge();
-            
-            socInventory.forEach(item=>{ 
-                item.DOCK_NUM=item.DOCK_NUM||item.DOCK||item.dock; 
-                item.SALESREPNAME=item.SALESREPNAME||item.SALESREP||item['SALES_REP']||'Unknown Rep'; 
-                item.CUSTOMERNAME=item.CUSTOMERNAME||item.CUSTOMER||'Unknown Customer'; 
-                item.CONSIGNEENAME=item.CONSIGNEENAME||item.CONSIGNEENAME||item.CONSIGNEE||''; 
-                item._search=`${item.COMMONNAME||''} ${item['PLANT_NAME']||''} ${item.CUSTOMERNAME||''} ${item.SALESREPNAME||''} ${item.STOPNUMBER||''} ${item.TRIPNUMBER||''}`.toLowerCase(); 
-                let tCode=String(item.ITEMCODE||item.ITEM||"").trim().toUpperCase(); 
-                let masterItem=findLinkedMasterRow(item); 
-                                if(masterItem){
-                    item.COMMONNAME=item.COMMONNAME||masterItem.COMMONNAME;
-                    item.CONTSIZE=item.CONTSIZE||masterItem.CONTSIZE;
-                    item.LOCATIONCODE=item.LOCATIONCODE||masterItem.LOCATIONCODE;
-                    item.LOTCODE=item.LOTCODE||masterItem.LOTCODE;
-                    item.ITEMCODE=item.ITEMCODE||masterItem.ITEMCODE;
-                    item.PTRAVAILABLE=item.PTRAVAILABLE||masterItem.PTRAVAILABLE;
-                    item.SEASONSUPPLY=item.SEASONSUPPLY||masterItem.SEASONSUPPLY;
-                    item.PRIORITY=item.PRIORITY||masterItem.PRIORITY;
-                    item.QUALITYCODE=item.QUALITYCODE||masterItem.QUALITYCODE;
-                    item.FIELDTAGCOLOR=item.FIELDTAGCOLOR||masterItem.FIELDTAGCOLOR;
-                    item.MASTER_UNIQUE_ID=masterItem.UNIQUE_ID;
-                }
-                normalizeRowPhotoFields(item);
-                buildSearchIndex(item);
-            });
-            
-            reservesInventory = (merged.reservesData || []).map((item,idx)=>{ 
-                item.DOM_ID='res_'+idx; 
-                item.UNIQUE_ID=item.UNIQUE_ID||'res_uid_'+idx; 
-                let resCode=String(item.ITEMCODE||item.ITEM||"").trim().toUpperCase(); 
-                let masterItem=findLinkedMasterRow(item); 
-                item.CUSTOMERNAME=item.CUSTOMERNAME||item.CUSTOMER||'Unknown Customer'; 
-                item.CONSIGNEENAME=item.CONSIGNEENAME||item.CONSIGNEE||''; 
-                item.SALESREPNAME=item.SALESREPNAME||item.SALESREP||item['SALES_REP']||'Unknown Rep'; 
-                                if(masterItem){
-                    item.COMMONNAME=masterItem.COMMONNAME;
-                    item.CONTSIZE=masterItem.CONTSIZE;
-                    item.LOCATIONCODE=masterItem.LOCATIONCODE;
-                    item.PTRAVAILABLE=masterItem.PTRAVAILABLE;
-                    item.SEASONSUPPLY=masterItem.SEASONSUPPLY;
-                    item.PRIORITY=masterItem.PRIORITY;
-                    item.QUALITYCODE=masterItem.QUALITYCODE;
-                    item.FIELDTAGCOLOR=masterItem.FIELDTAGCOLOR;
-                    item.LOTCODE=masterItem.LOTCODE;
-                    item.MASTER_UNIQUE_ID=masterItem.UNIQUE_ID;
-                }
-                normalizeRowPhotoFields(item);
-                item._search=`${item.COMMONNAME||''} ${item.CUSTOMERNAME||''} ${item.ITEMCODE||''}`.toLowerCase(); 
-                buildSearchIndex(item);
-                return item; 
-            });
-            
-            applyLocalEdits(); 
-            applyPendingRequestArchives();
-            reRenderCurrentView();
-            flushPendingRequestArchives().catch(() => {});
+                });
+                applyPendingRequestArchives();
+                updateFooterRequestBadge();
+            }
+
+            if (hasSalesOffice) {
+                salesOfficeInventory = (res.salesOfficeData || []).map((item, idx) => {
+                    item.DOM_ID = 'so_' + item.UNIQUE_ID;
+                    normalizeRowPhotoFields(item);
+                    buildSearchIndex(item);
+                    return item;
+                });
+            }
+
+            if (hasSoc || (hasMaster && socInventory.length)) {
+                const socSource = hasSoc ? (res.socData || []) : socInventory;
+                socInventory = socSource.map(item=>{
+                    item.DOCK_NUM=item.DOCK_NUM||item.DOCK||item.dock;
+                    item.SALESREPNAME=item.SALESREPNAME||item.SALESREP||item['SALES_REP']||'Unknown Rep';
+                    item.CUSTOMERNAME=item.CUSTOMERNAME||item.CUSTOMER||'Unknown Customer';
+                    item.CONSIGNEENAME=item.CONSIGNEENAME||item.CONSIGNEENAME||item.CONSIGNEE||'';
+                    item._search=`${item.COMMONNAME||''} ${item['PLANT_NAME']||''} ${item.CUSTOMERNAME||''} ${item.SALESREPNAME||''} ${item.STOPNUMBER||''} ${item.TRIPNUMBER||''}`.toLowerCase();
+                    let masterItem=findLinkedMasterRow(item);
+                    if(masterItem){
+                        item.COMMONNAME=item.COMMONNAME||masterItem.COMMONNAME;
+                        item.CONTSIZE=item.CONTSIZE||masterItem.CONTSIZE;
+                        item.LOCATIONCODE=item.LOCATIONCODE||masterItem.LOCATIONCODE;
+                        item.LOTCODE=item.LOTCODE||masterItem.LOTCODE;
+                        item.ITEMCODE=item.ITEMCODE||masterItem.ITEMCODE;
+                        item.PTRAVAILABLE=item.PTRAVAILABLE||masterItem.PTRAVAILABLE;
+                        item.SEASONSUPPLY=item.SEASONSUPPLY||masterItem.SEASONSUPPLY;
+                        item.PRIORITY=item.PRIORITY||masterItem.PRIORITY;
+                        item.QUALITYCODE=item.QUALITYCODE||masterItem.QUALITYCODE;
+                        item.FIELDTAGCOLOR=item.FIELDTAGCOLOR||masterItem.FIELDTAGCOLOR;
+                        item.MASTER_UNIQUE_ID=masterItem.UNIQUE_ID;
+                    }
+                    normalizeRowPhotoFields(item);
+                    buildSearchIndex(item);
+                    return item;
+                });
+            }
+
+            if (hasReserves || (hasMaster && reservesInventory.length)) {
+                const reserveSource = hasReserves ? (res.reservesData || []) : reservesInventory;
+                reservesInventory = reserveSource.map((item,idx)=>{
+                    item.DOM_ID='res_'+idx;
+                    item.UNIQUE_ID=item.UNIQUE_ID||'res_uid_'+idx;
+                    let masterItem=findLinkedMasterRow(item);
+                    item.CUSTOMERNAME=item.CUSTOMERNAME||item.CUSTOMER||'Unknown Customer';
+                    item.CONSIGNEENAME=item.CONSIGNEENAME||item.CONSIGNEE||'';
+                    item.SALESREPNAME=item.SALESREPNAME||item.SALESREP||item['SALES_REP']||'Unknown Rep';
+                    if(masterItem){
+                        item.COMMONNAME=masterItem.COMMONNAME;
+                        item.CONTSIZE=masterItem.CONTSIZE;
+                        item.LOCATIONCODE=masterItem.LOCATIONCODE;
+                        item.PTRAVAILABLE=masterItem.PTRAVAILABLE;
+                        item.SEASONSUPPLY=masterItem.SEASONSUPPLY;
+                        item.PRIORITY=masterItem.PRIORITY;
+                        item.QUALITYCODE=masterItem.QUALITYCODE;
+                        item.FIELDTAGCOLOR=masterItem.FIELDTAGCOLOR;
+                        item.LOTCODE=masterItem.LOTCODE;
+                        item.MASTER_UNIQUE_ID=masterItem.UNIQUE_ID;
+                    }
+                    normalizeRowPhotoFields(item);
+                    item._search=`${item.COMMONNAME||''} ${item.CUSTOMERNAME||''} ${item.ITEMCODE||''}`.toLowerCase();
+                    buildSearchIndex(item);
+                    return item;
+                });
+            }
+
+            if (didStructuralDataChange) {
+                applyLocalEdits();
+                applyPendingRequestArchives();
+                scheduleUiRender('data-refresh', () => reRenderCurrentView(), 24);
+                flushPendingRequestArchives().catch(() => {});
+            }
         }
 
         function applyRolePermissions() {
@@ -3315,14 +3529,173 @@
             state.dirty = false;
         }
 
+        function getCurrentVisibleViewId() {
+            const viewOrder = ['detail', 'home', ...TRACKED_VIEW_IDS];
+            for (const viewId of viewOrder) {
+                const el = document.getElementById('view-' + viewId);
+                if (el && !el.classList.contains('hidden')) return viewId;
+            }
+            return 'home';
+        }
+
+        function updateGlobalBackButton() {
+            const backBtn = document.getElementById('global-back-btn');
+            if (!backBtn) return;
+            backBtn.classList.toggle('hidden', getCurrentVisibleViewId() === 'home');
+        }
+
         function switchView(viewId) { 
-            ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-detail','view-docks','view-request','view-reserves','view-av', 'view-hours'].forEach(id=>{
+            closeDriveQuickFiltersModal();
+['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-detail','view-docks','view-request','view-reserves','view-av', 'view-hours'].forEach(id=>{
                 const el=document.getElementById(id);
                 if(el)el.classList.add('hidden');
             }); 
             const targetView = document.getElementById('view-'+viewId);
             if (targetView) targetView.classList.remove('hidden');
             queueViewRender(viewId);
+            updateGlobalBackButton();
+        }
+
+        function goBackUniversal() {
+            const currentView = getCurrentVisibleViewId();
+            if (currentView === 'detail') {
+                goBackFromDetail();
+                return false;
+            }
+            if (currentView === 'drive') {
+                if (activeDriveMode === 'ok' && activeDriveTab === 'name') {
+                    if (driveViewLevel === 2) {
+                        backToDriveSizes();
+                        updateGlobalBackButton();
+                        return false;
+                    }
+                    if (driveViewLevel === 1) {
+                        driveViewLevel = 0;
+                        selectedDriveName = null;
+                        selectedDriveSize = null;
+                        renderDrive();
+                        updateGlobalBackButton();
+                        return false;
+                    }
+                }
+                if (activeDriveMode === 'ok' && activeDriveTab === 'loc') {
+                    if (driveViewLevel === 2) {
+                        driveViewLevel = 1;
+                        selectedDriveLoc = null;
+                        renderDrive();
+                        updateGlobalBackButton();
+                        return false;
+                    }
+                    if (driveViewLevel === 1) {
+                        driveViewLevel = 0;
+                        selectedDriveBlock = null;
+                        selectedDriveLoc = null;
+                        renderDrive();
+                        updateGlobalBackButton();
+                        return false;
+                    }
+                }
+                switchView('home');
+                return false;
+            }
+            if (currentView === 'tasks') {
+                if (activeTaskTab === 'flyer' && taskViewLevel > 0) {
+                    backToFlyerFolderList();
+                    updateGlobalBackButton();
+                    return false;
+                }
+                if (activeTaskTab === 'endcap' && taskViewLevel > 0) {
+                    taskViewLevel = 0;
+                    selectedEndCapFolder = null;
+                    renderTasks();
+                    updateGlobalBackButton();
+                    return false;
+                }
+                if (taskViewLevel === 2) {
+                    backToTaskLocationList();
+                    updateGlobalBackButton();
+                    return false;
+                }
+                if (taskViewLevel === 1) {
+                    backToTaskBlockList();
+                    updateGlobalBackButton();
+                    return false;
+                }
+                switchView('home');
+                return false;
+            }
+            if (currentView === 'docks') {
+                if (dockViewLevel === 2) {
+                    dockViewLevel = 1;
+                    selectedDockStop = null;
+                    renderDocks();
+                    updateGlobalBackButton();
+                    return false;
+                }
+                if (dockViewLevel === 1) {
+                    resetDockView();
+                    updateGlobalBackButton();
+                    return false;
+                }
+                switchView('home');
+                return false;
+            }
+            if (currentView === 'request') {
+                if (activeReqTab === 'reps') {
+                    if (requestViewLevel === 3) {
+                        backToRequestFolderList();
+                        updateGlobalBackButton();
+                        return false;
+                    }
+                    if (requestViewLevel === 2) {
+                        backToRequestStatusList();
+                        updateGlobalBackButton();
+                        return false;
+                    }
+                    if (requestViewLevel === 1) {
+                        backToRequestRepList();
+                        updateGlobalBackButton();
+                        return false;
+                    }
+                }
+                switchView('home');
+                return false;
+            }
+            if (currentView === 'av') {
+                if (activeAVTab === 'reserves') {
+                    if (avResLevel === 2) {
+                        avResLevel = 1;
+                        selectedAvResSize = null;
+                        renderAV();
+                        updateGlobalBackButton();
+                        return false;
+                    }
+                    if (avResLevel === 1) {
+                        avResLevel = 0;
+                        selectedAvResName = null;
+                        selectedAvResSize = null;
+                        renderAV();
+                        updateGlobalBackButton();
+                        return false;
+                    }
+                }
+                switchView('home');
+                return false;
+            }
+            if (currentView === 'review') {
+                if (typeof reviewViewLevel !== 'undefined' && reviewViewLevel > 0) {
+                    resetReviewView();
+                    updateGlobalBackButton();
+                    return false;
+                }
+                switchView('home');
+                return false;
+            }
+            if (currentView === 'reserves' || currentView === 'sales-office' || currentView === 'reports' || currentView === 'hours' || currentView === 'low-stock') {
+                switchView('home');
+                return false;
+            }
+            return false;
         }
 
         function reRenderCurrentView() { 
@@ -3359,6 +3732,7 @@
         }
 
         function setDriveMode(mode) {
+            closeDriveQuickFiltersModal();
             activeDriveMode = mode;
             resetDriveQuickCardViewState();
             syncDriveModeTabs();
@@ -3369,8 +3743,9 @@
             selectedDriveLoc = null;
             scheduleUiRender('drive-tab', () => renderDrive());
         }
-        function setDriveTab(tab) {
-            activeDriveTab = tab;
+        function setDriveTab(tab) { 
+            if (tab !== 'card') closeDriveQuickFiltersModal();
+activeDriveTab = tab;
             driveQuickRequestCardMode = tab === 'card';
             document.getElementById('tab-drive-name').classList.toggle('active', tab === 'name');
             document.getElementById('tab-drive-loc').classList.toggle('active', tab === 'loc');
@@ -3417,7 +3792,7 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
             avResLevel=0; selectedAvResName=null; selectedAvResSize=null; 
             avOpenLevel=0; selectedAvOpenName=null; selectedAvOpenSize=null; selectedAvOpenSeason=null; selectedAvOpenLot=null;
             document.getElementById('tab-av-open').classList.add('active'); document.getElementById('tab-av-reserves').classList.remove('active'); 
-            document.getElementById('tab-av-open-name').classList.add('active'); document.getElementById('tab-av-open-season').classList.remove('active'); document.getElementById('tab-av-open-lot').classList.remove('active'); document.getElementById('tab-av-open-photos').classList.remove('active');
+            document.getElementById('tab-av-open-name').classList.add('active'); document.getElementById('tab-av-open-photos').classList.remove('active');
             document.getElementById('av-open-sub-tabs').style.display = 'flex';
             document.getElementById('av-search').value=""; document.getElementById('av-search-clear').classList.add('hidden'); 
             renderAV(); 
@@ -3434,11 +3809,9 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
         }
 
         function setAvOpenTab(tab) {
-            activeAvOpenTab = tab;
-            document.getElementById('tab-av-open-name').classList.toggle('active', tab === 'name');
-            document.getElementById('tab-av-open-season').classList.toggle('active', tab === 'season');
-            document.getElementById('tab-av-open-lot').classList.toggle('active', tab === 'lot');
-            document.getElementById('tab-av-open-photos').classList.toggle('active', tab === 'photos');
+            activeAvOpenTab = tab === 'photos' ? 'photos' : 'name';
+            document.getElementById('tab-av-open-name').classList.toggle('active', activeAvOpenTab === 'name');
+            document.getElementById('tab-av-open-photos').classList.toggle('active', activeAvOpenTab === 'photos');
             avOpenLevel = 0;
             selectedAvOpenName=null; selectedAvOpenSize=null; selectedAvOpenSeason=null; selectedAvOpenLot=null;
             scheduleUiRender('av-open-tab', () => renderAV());
@@ -3486,8 +3859,6 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
         function selectAvResSize(size) { selectedAvResSize=size; avResLevel=2; renderAV(); }
         function avItemHasPhotos(item) { return getPhotoUrlList(getRowPhotoLink(item, 'av')).length > 0; }
         function getAvOpenTabLabel(tab=activeAvOpenTab) {
-            if (tab === 'season') return 'By Season';
-            if (tab === 'lot') return 'By Lot';
             if (tab === 'photos') return 'Photos';
             return 'By Name';
         }
@@ -3495,14 +3866,6 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
             const compareText = (left, right) => String(left || '').localeCompare(String(right || ''), undefined, { numeric: true });
             const nextItems = [...items];
             nextItems.sort((a, b) => {
-                if (tab === 'season') {
-                    const seasonCompare = compareText(a.SEASON, b.SEASON);
-                    if (seasonCompare !== 0) return seasonCompare;
-                }
-                if (tab === 'lot') {
-                    const lotCompare = compareText(a.LOTCODE, b.LOTCODE);
-                    if (lotCompare !== 0) return lotCompare;
-                }
                 const nameCompare = compareText(a.COMMONNAME, b.COMMONNAME);
                 if (nameCompare !== 0) return nameCompare;
                 const sizeCompare = compareText(a.CONTSIZE, b.CONTSIZE);
@@ -3544,36 +3907,35 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
                 return;
             }
 
-            if (term.length > 0) {
-                if (activeAVTab === 'open') {
-                    items = sortAvOpenItems(items, activeAvOpenTab);
-                    crumb.innerText = `Search Results (${items.length}) - ${getAvOpenTabLabel()}`;
-                    if (activeAvOpenTab === 'photos') {
-                        container.innerHTML = `<div class="grid grid-cols-1 md:grid-cols-2 gap-3">${items.map(i => generateCard(i, 'av-photo', 'status-teal')).join('')}</div>`;
-                    } else {
-                        container.innerHTML = items.map(i => generateCard(i, 'av', 'status-teal')).join('');
-                    }
-                } else {
+            if (activeAVTab === 'open') {
+                if (activeAvOpenTab === 'photos') {
+                    items = sortAvOpenItems(items, 'name');
+                    crumb.innerText = term.length > 0 ? `Search Results (${items.length})` : `Open Stock Photos (${items.length} items)`;
+                    container.innerHTML = items.map(i => generateCard(i, 'av', 'status-teal')).join('');
+                    return;
+                }
+
+                if (term.length > 0) {
                     crumb.innerText = `Search Results (${items.length})`;
                     items.sort((a,b) => {
                         let priA = parseFloat(a.PRIORITY); let priB = parseFloat(b.PRIORITY);
-                        if (isNaN(priA)) priA = Infinity; if (isNaN(priB)) priB = Infinity;
-                        if (priA !== priB) return priA - priB;
-                        return String(a.LOCATIONCODE || '').localeCompare(String(b.LOCATIONCODE || ''), undefined, { numeric:true });
+                        if(isNaN(priA)) priA = Infinity; if(isNaN(priB)) priB = Infinity;
+                        if(priA !== priB) return priA - priB;
+                        return String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""), undefined, {numeric:true});
                     });
-                    container.innerHTML = items.map(i => generateCard(i, 'reserves_drill', 'status-indigo')).join('');
-                }
-                return;
-            }
-
-            if (activeAVTab === 'open') {
-                items = sortAvOpenItems(items, activeAvOpenTab);
-                crumb.innerText = `Open Stock > ${getAvOpenTabLabel()} (${items.length} items)`;
-                if (activeAvOpenTab === 'photos') {
-                    container.innerHTML = `<div class="grid grid-cols-1 md:grid-cols-2 gap-3">${items.map(i => generateCard(i, 'av-photo', 'status-teal')).join('')}</div>`;
-                } else {
                     container.innerHTML = items.map(i => generateCard(i, 'av', 'status-teal')).join('');
+                    return;
                 }
+
+                crumb.innerText = `Open Stock (${items.length} items)`;
+                items.sort((a,b) => {
+                    const nameCompare = String(a.COMMONNAME || "").localeCompare(String(b.COMMONNAME || ""));
+                    if (nameCompare !== 0) return nameCompare;
+                    const sizeCompare = String(a.CONTSIZE || "").localeCompare(String(b.CONTSIZE || ""), undefined, {numeric:true});
+                    if (sizeCompare !== 0) return sizeCompare;
+                    return String(a.LOCATIONCODE || "").localeCompare(String(b.LOCATIONCODE || ""), undefined, {numeric:true});
+                });
+                container.innerHTML = items.map(i => generateCard(i, 'av', 'status-teal')).join('');
             } else {
                 if(avResLevel===0){ 
                     crumb.innerText='My Reserves > Plants'; 
@@ -3591,7 +3953,7 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
                 else if(avResLevel===2){ 
                     crumb.innerText=`${selectedAvResName} / ${selectedAvResSize}`; 
                     let finalItems=items.filter(i=>i.COMMONNAME===selectedAvResName&&i.CONTSIZE===selectedAvResSize); 
-                    finalItems.sort((a,b)=>(String(a.CUSTOMERNAME)||'').localeCompare(String(b.CUSTOMERNAME)||'')); 
+                    finalItems.sort((a,b)=>(String(a.CUSTOMERNAME)||"").localeCompare(String(b.CUSTOMERNAME)||"")); 
                     container.innerHTML=`<div class="back-btn" onclick="avResLevel=1; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>`+finalItems.map(i=>generateCard(i,'reserves_drill','status-indigo')).join(''); 
                 }
             }
@@ -3922,6 +4284,7 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
                 if(el) el.classList.add('hidden');
             });
             document.getElementById('view-detail').classList.remove('hidden');
+            updateGlobalBackButton();
 
             document.getElementById('det-common').innerText = activeItem.COMMONNAME || '--';
             document.getElementById('det-size').innerText = activeItem.CONTSIZE || '--';
@@ -4160,6 +4523,7 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
             activeItem = null;
             document.getElementById('view-detail').classList.add('hidden');
             document.getElementById('view-' + lastView).classList.remove('hidden');
+            updateGlobalBackButton();
         }
 
         function toggleExpand() {
@@ -4222,13 +4586,14 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
             const container = document.getElementById('low-stock-content');
             const crumb = document.getElementById('low-stock-crumb');
             if (!container) return;
-            if (lowStockInventory.length === 0) {
+            const lowStockItems = ensureLowStockInventoryBuilt();
+            if (lowStockItems.length === 0) {
                 container.innerHTML = `<div class="p-8 text-center text-gray-400">No low stock items found.</div>`;
                 if (crumb) crumb.innerText = "All Clear";
                 return;
             }
             if (crumb) crumb.innerText = "Action Required";
-            let items = [...lowStockInventory];
+            let items = [...lowStockItems];
             items.sort((a, b) => String(a.COMMONNAME || "").localeCompare(String(b.COMMONNAME || "")));
             container.innerHTML = items.map(i => generateCard(i, 'low-stock', 'status-red')).join('');
         }
@@ -5868,8 +6233,8 @@ ${formatRequestItemsText(items)}`;
             crumb.innerText = `${driveModeLabel} > Card View (${finalItems.length} items)`;
             if (finalItems.length === 0) {
                 const emptyMessage = canUseDriveQuickRequest()
-                    ? 'No rows match the current Drive filters.'
-                    : 'No items found matching criteria.';
+                    ? 'No rows match the current Card View filters.'
+                    : 'No items found matching the current search.';
                 container.innerHTML = `<div class="p-8 text-center text-gray-400">${emptyMessage}</div>`;
                 return true;
             }
@@ -5909,8 +6274,8 @@ ${formatRequestItemsText(items)}`;
                 crumb.innerText = `${driveModeLabel} > Card View (${finalItems.length} items)`;
                 if (finalItems.length === 0) {
                     const emptyMessage = canUseDriveQuickRequest()
-                        ? 'No rows match the current Common Name, Location, Cont Size, Lot Code, or s_LTS filters.'
-                        : 'No items found matching criteria.';
+                        ? 'No rows match the current Card View filters.'
+                        : 'No items found matching the current search.';
                     container.innerHTML = `<div class="p-8 text-center text-gray-400">${emptyMessage}</div>`;
                     return;
                 }
@@ -5919,7 +6284,7 @@ ${formatRequestItemsText(items)}`;
             }
 
             if (searchFilteredItems.length === 0) {
-                container.innerHTML = `<div class="p-8 text-center text-gray-400">No items found matching criteria.</div>`;
+                container.innerHTML = `<div class="p-8 text-center text-gray-400">No items found matching the current search.</div>`;
                 crumb.innerText = `${driveModeLabel} > No Results`;
                 return;
             }
@@ -6354,7 +6719,8 @@ function toggleDriveSeason(s) {
             if (ensureViewDataForRender('review')) return;
             const container = document.getElementById('review-content');
             const crumb = document.getElementById('review-crumb');
-            if(managerReviewInventory.length === 0){
+            const reviewItems = ensureManagerReviewInventoryBuilt();
+            if(reviewItems.length === 0){
                 container.innerHTML = `<div class="p-8 text-center text-gray-400">No items require manager review.</div>`;
                 crumb.innerText = "All Clear";
                 return;
@@ -6362,7 +6728,7 @@ function toggleDriveSeason(s) {
             if(reviewViewLevel === 0){
                 crumb.innerText = "Needs Location Priority Review";
                 let groups = {};
-                managerReviewInventory.forEach(i => {
+                reviewItems.forEach(i => {
                     let code = i.ITEMCODE || "UNKNOWN";
                     if(!groups[code]) {
                         groups[code] = {code: code, name: i.COMMONNAME || "Unknown", size: i.CONTSIZE || "-", count: 0};
@@ -6374,12 +6740,12 @@ function toggleDriveSeason(s) {
                 container.innerHTML = html;
             } else if(reviewViewLevel === 1){
                 crumb.innerText = `${selectedReviewCommonName} / ${selectedReviewContSize}`;
-                let items = managerReviewInventory.filter(i => i.ITEMCODE === selectedReviewItemCode);
+                let items = reviewItems.filter(i => i.ITEMCODE === selectedReviewItemCode);
                 items.sort((a,b) => String(a.LOCATIONCODE || "").localeCompare(String(b.LOCATIONCODE || ""), undefined, {numeric: true}));
                 container.innerHTML = `<div class="back-btn" onclick="resetReviewView()"><i class="ph-bold ph-arrow-left"></i> Back to List</div>` + items.map(i => generateCard(i, 'review', 'status-yellow')).join('');
             }
         }
-        
+
         let autoSaveTimer = null;
 
         function saveData(isComplete = false, prefix, isSilentAutoSave = false, specificItem = null) {
@@ -6737,12 +7103,17 @@ function toggleDriveSeason(s) {
             let pendingEdits = JSON.parse(localStorage.getItem('gnc_pending_edits') || '{}');
             let now = new Date().getTime();
             let changed = false;
+            let touchedMasterRows = false;
 
             for (let uid in pendingEdits) {
                 if (now - pendingEdits[uid].timestamp > 900000) { delete pendingEdits[uid]; changed = true; continue; }
                 let item = findItemByUniqueId(uid);
-                if (item) { Object.assign(item, pendingEdits[uid].data); }
+                if (item) {
+                    Object.assign(item, pendingEdits[uid].data);
+                    if (masterInventoryById.has(String(uid || '').trim())) touchedMasterRows = true;
+                }
             }
+            if (touchedMasterRows) invalidateMasterDerivedInventories();
             if (changed) { localStorage.setItem('gnc_pending_edits', JSON.stringify(pendingEdits)); }
         }
 
@@ -6884,21 +7255,3 @@ function toggleDriveSeason(s) {
     </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
