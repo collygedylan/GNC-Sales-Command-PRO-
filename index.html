@@ -33,6 +33,11 @@
         #pull-refresh-indicator.visible{opacity:1}
         #pull-refresh-indicator.ready .pull-refresh-pill{background:#007a4d;color:#fff;border-color:#007a4d}
         #pull-refresh-indicator.refreshing .pull-refresh-pill{background:#111827;color:#fff;border-color:#111827}
+        #photo-modal-gallery{display:flex;align-items:center;gap:0;scroll-behavior:smooth;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;touch-action:pan-x pinch-zoom}
+        #photo-modal-gallery::-webkit-scrollbar{display:none}
+        .photo-modal-slide{flex:0 0 100%;width:100%;scroll-snap-align:center;scroll-snap-stop:always;display:flex;align-items:center;justify-content:center;padding:0 .75rem}
+        .photo-modal-slide img{width:100%;max-height:80vh;object-fit:contain;border-radius:1rem;box-shadow:0 20px 45px rgba(0,0,0,.35);background:rgba(255,255,255,.02);user-select:none;-webkit-user-drag:none}
+        .photo-gallery-clickzone{cursor:pointer}
     </style>
 </head>
 <body class="bg-gray-50 overflow-hidden">
@@ -40,10 +45,15 @@
     <div id="toast-notification"></div>
     <div id="photo-modal" class="hidden fixed inset-0 bg-black bg-opacity-95 z-[15000] flex flex-col items-center justify-center p-4">
         <div class="absolute top-0 left-0 w-full p-6 flex justify-between items-start bg-gradient-to-b from-black/80 to-transparent z-50 pointer-events-none">
-            <div id="photo-modal-caption" class="text-white font-bold text-sm leading-tight drop-shadow-md pr-4 uppercase tracking-wide pointer-events-auto"></div>
+            <div class="min-w-0 pr-4 pointer-events-auto">
+                <div id="photo-modal-caption" class="text-white font-bold text-sm leading-tight drop-shadow-md uppercase tracking-wide"></div>
+                <div id="photo-modal-counter" class="text-white/75 text-[11px] font-black uppercase tracking-[0.18em] mt-1"></div>
+            </div>
             <i class="ph-bold ph-x text-white text-3xl cursor-pointer bg-black/50 p-2 rounded-full active:scale-95 pointer-events-auto" onclick="closePhotoModal()"></i>
         </div>
-        <div id="photo-modal-gallery" class="flex overflow-x-auto snap-x snap-mandatory w-full max-h-[85vh] items-center space-x-4 pb-4 scrollbar-none mt-10"></div>
+        <button id="photo-modal-prev" type="button" class="hidden absolute left-4 top-1/2 -translate-y-1/2 z-50 items-center justify-center w-12 h-12 rounded-full bg-black/45 text-white text-2xl shadow-lg active:scale-95" onclick="event.stopPropagation(); stepPhotoModal(-1)" aria-label="Previous photo"><i class="ph-bold ph-caret-left"></i></button>
+        <div id="photo-modal-gallery" class="w-full max-h-[85vh] mt-10 overflow-x-auto overflow-y-hidden snap-x snap-mandatory scrollbar-none"></div>
+        <button id="photo-modal-next" type="button" class="hidden absolute right-4 top-1/2 -translate-y-1/2 z-50 items-center justify-center w-12 h-12 rounded-full bg-black/45 text-white text-2xl shadow-lg active:scale-95" onclick="event.stopPropagation(); stepPhotoModal(1)" aria-label="Next photo"><i class="ph-bold ph-caret-right"></i></button>
         <div id="photo-swipe-hint" class="absolute bottom-10 text-white text-xs font-bold uppercase tracking-widest opacity-50 hidden pointer-events-none"><i class="ph-bold ph-arrows-left-right mr-1 text-lg align-middle"></i> Swipe for more</div>
     </div>
     <div id="view-login">
@@ -305,6 +315,7 @@
                         <div id="tab-av-open-name" class="task-tab active" onclick="setAvOpenTab('name')">By Name</div>
                         <div id="tab-av-open-season" class="task-tab" onclick="setAvOpenTab('season')">By Season</div>
                         <div id="tab-av-open-lot" class="task-tab" onclick="setAvOpenTab('lot')">By Lot</div>
+                        <div id="tab-av-open-photos" class="task-tab" onclick="setAvOpenTab('photos')">Photos</div>
                     </div>
                     <div id="av-crumb" class="text-xs font-bold text-[#007a4d] mb-3 mt-2 empty:hidden">Open Stock</div>
                     <div id="av-content"></div>
@@ -657,6 +668,7 @@
             return false;
         }
         let lastUiActionAt = 0;
+        let photoModalState = { urls: [], index: 0, scrollTimer: null, galleryClickHandler: null, keyHandler: null };
 
         function blurActiveField() {
             const activeEl = document.activeElement;
@@ -727,7 +739,7 @@
 
         function getRowPhotoLink(item, sourceView='') {
             if (!item) return '';
-            if (sourceView === 'av') return firstNonEmptyValue(item.SAVED_PHOTO_LINK, item.ROW_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']);
+            if (sourceView === 'av' || sourceView === 'av-photo') return firstNonEmptyValue(item.SAVED_PHOTO_LINK, item.ROW_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']);
             if (sourceView === 'request') return firstNonEmptyValue(item.REQ_PHOTO_LINK, item.ROW_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']);
             if (sourceView === 'docks') return firstNonEmptyValue(item.DOCK_PHOTO_LINK, item.ROW_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']);
             if (sourceView === 'flyer') return firstNonEmptyValue(item.FLYER_PHOTO_LINK, item.ROW_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']);
@@ -1693,12 +1705,35 @@
                 || null;
         }
 
+        function getDriveImageId(url='') {
+            if (!url) return '';
+            let match = String(url).match(/id=([a-zA-Z0-9_-]+)/);
+            if (!match) match = String(url).match(/\/d\/([a-zA-Z0-9_-]+)/);
+            return match && match[1] ? match[1] : '';
+        }
         function getDirectImageUrl(url) { 
             if(!url)return""; 
-            let match=url.match(/id=([a-zA-Z0-9_-]+)/); 
-            if(!match)match=url.match(/\/d\/([a-zA-Z0-9_-]+)/); 
-            if(match&&match[1]){ return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w100`; } 
+            const driveId = getDriveImageId(url);
+            if(driveId){ return `https://drive.google.com/thumbnail?id=${driveId}&sz=w100`; } 
             return url; 
+        }
+        function getExpandedImageUrl(url='') {
+            if (!url) return '';
+            const driveId = getDriveImageId(url);
+            if (driveId) return `https://drive.google.com/uc?export=view&id=${driveId}`;
+            return String(url).replace('&sz=w100', '');
+        }
+        function getPhotoUrlList(urlStr='') {
+            return String(urlStr || '')
+                .split(',')
+                .map(part => {
+                    let cleanUrl = String(part || '').trim();
+                    let match = cleanUrl.match(/(https?:\/\/[^"\s>]+)/);
+                    if (match) cleanUrl = match[1];
+                    if (!cleanUrl.startsWith('http')) return '';
+                    return getExpandedImageUrl(cleanUrl);
+                })
+                .filter(Boolean);
         }
 
         async function promptToEnableBiometrics(user,pin) { 
@@ -2640,61 +2675,157 @@
         }
 
         function updatePhotoModalCounter() {
-            const gallery = document.getElementById('photo-modal-gallery');
             const counter = document.getElementById('photo-modal-counter');
-            if (!gallery || !counter) return;
-            const slides = Array.from(gallery.querySelectorAll('img'));
-            const total = slides.length || 1;
-            if (slides.length <= 1) {
-                counter.innerText = `1 / ${total}`;
+            const prevBtn = document.getElementById('photo-modal-prev');
+            const nextBtn = document.getElementById('photo-modal-next');
+            const total = photoModalState.urls.length;
+            if (counter) counter.innerText = total ? `${photoModalState.index + 1} / ${total}` : '';
+            const showNav = total > 1 && !window.matchMedia('(pointer: coarse)').matches;
+            if (prevBtn) prevBtn.classList.toggle('hidden', !showNav);
+            if (nextBtn) nextBtn.classList.toggle('hidden', !showNav);
+        }
+
+        function syncPhotoModalIndexFromScroll() {
+            const gallery = document.getElementById('photo-modal-gallery');
+            if (!gallery) return;
+            const slides = Array.from(gallery.querySelectorAll('.photo-modal-slide'));
+            if (!slides.length) {
+                photoModalState.index = 0;
+                updatePhotoModalCounter();
                 return;
             }
-            const galleryLeft = gallery.getBoundingClientRect().left;
+            const galleryCenter = gallery.scrollLeft + (gallery.clientWidth / 2);
             let bestIndex = 0;
             let bestDistance = Number.POSITIVE_INFINITY;
-            slides.forEach((img, index) => {
-                const distance = Math.abs(img.getBoundingClientRect().left - galleryLeft);
+            slides.forEach((slide, index) => {
+                const slideCenter = slide.offsetLeft + (slide.offsetWidth / 2);
+                const distance = Math.abs(slideCenter - galleryCenter);
                 if (distance < bestDistance) {
                     bestDistance = distance;
                     bestIndex = index;
                 }
             });
-            counter.innerText = `${bestIndex + 1} / ${total}`;
-        }
-
-        function openPhotoModal(urlStr, caption) { 
-            const gallery = document.getElementById('photo-modal-gallery');
-            gallery.innerHTML = '';
-            let urls = String(urlStr).split(',').map(u => u.trim()).filter(Boolean);
-            
-            urls.forEach(u => {
-                let cleanUrl = u;
-                let match = cleanUrl.match(/(https?:\/\/[^"\s>]+)/);
-                if(match) cleanUrl = match[1];
-                if(cleanUrl.startsWith('http')) {
-                    let fullUrl = cleanUrl.replace('&sz=w100', ''); 
-                    gallery.innerHTML += `<img src="${fullUrl}" class="snap-center w-full max-h-[80vh] object-contain flex-shrink-0 rounded-xl shadow-2xl">`;
-                }
-            });
-
-            gallery.onscroll = () => updatePhotoModalCounter();
-            document.getElementById('photo-modal-caption').innerText = caption; 
-            document.getElementById('photo-modal').classList.remove('hidden');
+            photoModalState.index = bestIndex;
             updatePhotoModalCounter();
-            
-            if(urls.length > 1) {
-                document.getElementById('photo-swipe-hint').classList.remove('hidden');
-            } else {
-                document.getElementById('photo-swipe-hint').classList.add('hidden');
-            }
         }
 
-        function closePhotoModal() { 
+        function snapPhotoModalToIndex(index, smooth=true) {
             const gallery = document.getElementById('photo-modal-gallery');
-            if (gallery) gallery.onscroll = null;
-            document.getElementById('photo-modal').classList.add('hidden'); 
+            if (!gallery) return;
+            const slides = Array.from(gallery.querySelectorAll('.photo-modal-slide'));
+            if (!slides.length) return;
+            const boundedIndex = Math.max(0, Math.min(index, slides.length - 1));
+            photoModalState.index = boundedIndex;
+            const left = slides[boundedIndex].offsetLeft;
+            try {
+                gallery.scrollTo({ left, behavior: smooth ? 'smooth' : 'auto' });
+            } catch (err) {
+                gallery.scrollLeft = left;
+            }
+            updatePhotoModalCounter();
         }
 
+        function stepPhotoModal(direction=1) {
+            const total = photoModalState.urls.length;
+            if (total <= 1) return;
+            let nextIndex = photoModalState.index + direction;
+            if (nextIndex >= total) nextIndex = 0;
+            if (nextIndex < 0) nextIndex = total - 1;
+            snapPhotoModalToIndex(nextIndex, true);
+        }
+
+        function openPhotoModal(urlStr, caption) {
+            const modal = document.getElementById('photo-modal');
+            const gallery = document.getElementById('photo-modal-gallery');
+            const swipeHint = document.getElementById('photo-swipe-hint');
+            const urls = getPhotoUrlList(urlStr);
+            if (!modal || !gallery) return;
+            if (!urls.length) {
+                showToast('No Photo', 'There is no photo on file for this item.', true);
+                return;
+            }
+            if (photoModalState.scrollTimer) {
+                clearTimeout(photoModalState.scrollTimer);
+                photoModalState.scrollTimer = null;
+            }
+            if (photoModalState.galleryClickHandler) {
+                gallery.removeEventListener('click', photoModalState.galleryClickHandler);
+            }
+            if (photoModalState.keyHandler) {
+                window.removeEventListener('keydown', photoModalState.keyHandler);
+            }
+
+            photoModalState.urls = urls;
+            photoModalState.index = 0;
+            gallery.innerHTML = urls.map((url, index) => `<div class="photo-modal-slide" data-photo-index="${index}"><img src="${url}" alt="${esc(caption || `Photo ${index + 1}`)}" loading="${index === 0 ? 'eager' : 'lazy'}" draggable="false"></div>`).join('');
+            gallery.onscroll = () => {
+                syncPhotoModalIndexFromScroll();
+                if (photoModalState.scrollTimer) clearTimeout(photoModalState.scrollTimer);
+                photoModalState.scrollTimer = setTimeout(() => {
+                    syncPhotoModalIndexFromScroll();
+                    snapPhotoModalToIndex(photoModalState.index, false);
+                }, 120);
+            };
+            photoModalState.galleryClickHandler = (event) => {
+                if (window.matchMedia('(pointer: coarse)').matches) return;
+                if (photoModalState.urls.length <= 1) return;
+                stepPhotoModal(1);
+            };
+            gallery.addEventListener('click', photoModalState.galleryClickHandler);
+            gallery.classList.toggle('photo-gallery-clickzone', photoModalState.urls.length > 1 && !window.matchMedia('(pointer: coarse)').matches);
+            photoModalState.keyHandler = (event) => {
+                if (modal.classList.contains('hidden')) return;
+                if (event.key === 'ArrowRight') {
+                    event.preventDefault();
+                    stepPhotoModal(1);
+                } else if (event.key === 'ArrowLeft') {
+                    event.preventDefault();
+                    stepPhotoModal(-1);
+                } else if (event.key === 'Escape') {
+                    closePhotoModal();
+                }
+            };
+            window.addEventListener('keydown', photoModalState.keyHandler);
+
+            document.getElementById('photo-modal-caption').innerText = caption || 'Photo Gallery';
+            swipeHint.classList.toggle('hidden', urls.length <= 1);
+            modal.classList.remove('hidden');
+            requestAnimationFrame(() => {
+                snapPhotoModalToIndex(0, false);
+                updatePhotoModalCounter();
+            });
+        }
+
+        function closePhotoModal() {
+            const gallery = document.getElementById('photo-modal-gallery');
+            const modal = document.getElementById('photo-modal');
+            const swipeHint = document.getElementById('photo-swipe-hint');
+            if (photoModalState.scrollTimer) {
+                clearTimeout(photoModalState.scrollTimer);
+                photoModalState.scrollTimer = null;
+            }
+            if (gallery) {
+                gallery.onscroll = null;
+                if (photoModalState.galleryClickHandler) {
+                    gallery.removeEventListener('click', photoModalState.galleryClickHandler);
+                }
+                gallery.classList.remove('photo-gallery-clickzone');
+                gallery.innerHTML = '';
+            }
+            if (photoModalState.keyHandler) {
+                window.removeEventListener('keydown', photoModalState.keyHandler);
+            }
+            photoModalState.urls = [];
+            photoModalState.index = 0;
+            photoModalState.galleryClickHandler = null;
+            photoModalState.keyHandler = null;
+            if (swipeHint) swipeHint.classList.add('hidden');
+            const captionEl = document.getElementById('photo-modal-caption');
+            const counterEl = document.getElementById('photo-modal-counter');
+            if (captionEl) captionEl.innerText = '';
+            if (counterEl) counterEl.innerText = '';
+            if (modal) modal.classList.add('hidden');
+        }
         function handleLogin(isBiometricLogin=false) {
             const rawUser=document.getElementById('username-input').value.trim();
             const inputUser=rawUser.toLowerCase(); 
@@ -3286,8 +3417,8 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
             avResLevel=0; selectedAvResName=null; selectedAvResSize=null; 
             avOpenLevel=0; selectedAvOpenName=null; selectedAvOpenSize=null; selectedAvOpenSeason=null; selectedAvOpenLot=null;
             document.getElementById('tab-av-open').classList.add('active'); document.getElementById('tab-av-reserves').classList.remove('active'); 
-            document.getElementById('tab-av-open-name').classList.add('active'); document.getElementById('tab-av-open-season').classList.remove('active'); document.getElementById('tab-av-open-lot').classList.remove('active');
-            document.getElementById('av-open-sub-tabs').style.display = 'none';
+            document.getElementById('tab-av-open-name').classList.add('active'); document.getElementById('tab-av-open-season').classList.remove('active'); document.getElementById('tab-av-open-lot').classList.remove('active'); document.getElementById('tab-av-open-photos').classList.remove('active');
+            document.getElementById('av-open-sub-tabs').style.display = 'flex';
             document.getElementById('av-search').value=""; document.getElementById('av-search-clear').classList.add('hidden'); 
             renderAV(); 
         }
@@ -3298,7 +3429,7 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
             avOpenLevel=0; selectedAvOpenName=null; selectedAvOpenSize=null; selectedAvOpenSeason=null; selectedAvOpenLot=null;
             document.getElementById('tab-av-open').classList.toggle('active',tab==='open'); document.getElementById('tab-av-reserves').classList.toggle('active',tab==='reserves'); 
             const subTabs = document.getElementById('av-open-sub-tabs');
-            subTabs.style.display = 'none';
+            subTabs.style.display = tab==='open' ? 'flex' : 'none';
             scheduleUiRender('av-tab', () => renderAV()); 
         }
 
@@ -3307,7 +3438,9 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
             document.getElementById('tab-av-open-name').classList.toggle('active', tab === 'name');
             document.getElementById('tab-av-open-season').classList.toggle('active', tab === 'season');
             document.getElementById('tab-av-open-lot').classList.toggle('active', tab === 'lot');
+            document.getElementById('tab-av-open-photos').classList.toggle('active', tab === 'photos');
             avOpenLevel = 0;
+            selectedAvOpenName=null; selectedAvOpenSize=null; selectedAvOpenSeason=null; selectedAvOpenLot=null;
             scheduleUiRender('av-open-tab', () => renderAV());
         }
         
@@ -3351,60 +3484,99 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
 
         function selectAvResName(name) { selectedAvResName=name; avResLevel=1; renderAV(); }
         function selectAvResSize(size) { selectedAvResSize=size; avResLevel=2; renderAV(); }
+        function avItemHasPhotos(item) { return getPhotoUrlList(getRowPhotoLink(item, 'av')).length > 0; }
+        function getAvOpenTabLabel(tab=activeAvOpenTab) {
+            if (tab === 'season') return 'By Season';
+            if (tab === 'lot') return 'By Lot';
+            if (tab === 'photos') return 'Photos';
+            return 'By Name';
+        }
+        function sortAvOpenItems(items, tab=activeAvOpenTab) {
+            const compareText = (left, right) => String(left || '').localeCompare(String(right || ''), undefined, { numeric: true });
+            const nextItems = [...items];
+            nextItems.sort((a, b) => {
+                if (tab === 'season') {
+                    const seasonCompare = compareText(a.SEASON, b.SEASON);
+                    if (seasonCompare !== 0) return seasonCompare;
+                }
+                if (tab === 'lot') {
+                    const lotCompare = compareText(a.LOTCODE, b.LOTCODE);
+                    if (lotCompare !== 0) return lotCompare;
+                }
+                const nameCompare = compareText(a.COMMONNAME, b.COMMONNAME);
+                if (nameCompare !== 0) return nameCompare;
+                const sizeCompare = compareText(a.CONTSIZE, b.CONTSIZE);
+                if (sizeCompare !== 0) return sizeCompare;
+                return compareText(a.LOCATIONCODE, b.LOCATIONCODE);
+            });
+            return nextItems;
+        }
 
         function renderAV() {
             if (ensureViewDataForRender('av')) return;
-            const container = document.getElementById('av-content'); 
-            const crumb = document.getElementById('av-crumb'); 
-            const term = document.getElementById('av-search').value.toLowerCase().trim(); 
+            const container = document.getElementById('av-content');
+            const crumb = document.getElementById('av-crumb');
+            const term = document.getElementById('av-search').value.toLowerCase().trim();
 
             let items = [];
-            if (activeAVTab === 'open') { 
+            if (activeAVTab === 'open') {
                 items = (isDatasetLoaded('avOpen', 'initial') ? avOpenInventory : fullInventory).filter(i => {
                     let lts = Number(String(i.S_LTS || '0').replace(/,/g, ''));
                     let season = String(i.SEASON || '').toUpperCase();
                     return lts > 0 && !season.includes('Y') && !season.includes('Z');
-                }); 
-            } else { 
-                items = reservesInventory; 
-                if(safeRole === 'SALESREP') items = items.filter(i => isMyRep(i.SALESREPNAME)); 
-            }
-            
-            if (term) { 
-                items = filterBySearch(items, term, activeAVTab === 'open' ? 'av_open' : 'av_reserves'); 
-            }
-            
-            if (items.length === 0) { 
-                container.innerHTML = `<div class="p-8 text-center text-gray-400">No ${activeAVTab==='open'?'open stock':'reserves'} found.</div>`; 
-                crumb.innerText = "No Results"; 
-                return; 
-            }
-            
-            if(term.length > 0) { 
-                crumb.innerText = `Search Results (${items.length})`; 
-                items.sort((a,b) => {
-                    let priA = parseFloat(a.PRIORITY); let priB = parseFloat(b.PRIORITY);
-                    if(isNaN(priA)) priA = Infinity; if(isNaN(priB)) priB = Infinity;
-                    if(priA !== priB) return priA - priB;
-                    return String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""), undefined, {numeric:true});
-                }); 
-                container.innerHTML = items.map(i => generateCard(i, activeAVTab === 'open' ? 'av' : 'reserves_drill', activeAVTab === 'open' ? 'status-teal' : 'status-indigo')).join(''); 
-                return; 
-            }
-            
-            if (activeAVTab === 'open') { 
-                crumb.innerText = `Open Stock (${items.length} items)`;
-                items.sort((a,b) => {
-                    const nameCompare = String(a.COMMONNAME || "").localeCompare(String(b.COMMONNAME || ""));
-                    if (nameCompare !== 0) return nameCompare;
-                    const sizeCompare = String(a.CONTSIZE || "").localeCompare(String(b.CONTSIZE || ""), undefined, {numeric:true});
-                    if (sizeCompare !== 0) return sizeCompare;
-                    return String(a.LOCATIONCODE || "").localeCompare(String(b.LOCATIONCODE || ""), undefined, {numeric:true});
                 });
-                container.innerHTML = items.map(i => generateCard(i, 'av', 'status-teal')).join('');
+                if (activeAvOpenTab === 'photos') {
+                    items = items.filter(avItemHasPhotos);
+                }
+            } else {
+                items = reservesInventory;
+                if (safeRole === 'SALESREP') items = items.filter(i => isMyRep(i.SALESREPNAME));
+            }
+
+            if (term) {
+                items = filterBySearch(items, term, activeAVTab === 'open' ? 'av_open' : 'av_reserves');
+            }
+
+            if (items.length === 0) {
+                const emptyLabel = activeAVTab === 'open' ? (activeAvOpenTab === 'photos' ? 'open stock photos' : 'open stock') : 'reserves';
+                container.innerHTML = `<div class="p-8 text-center text-gray-400">No ${emptyLabel} found.</div>`;
+                crumb.innerText = 'No Results';
+                return;
+            }
+
+            if (term.length > 0) {
+                if (activeAVTab === 'open') {
+                    items = sortAvOpenItems(items, activeAvOpenTab);
+                    crumb.innerText = `Search Results (${items.length}) - ${getAvOpenTabLabel()}`;
+                    if (activeAvOpenTab === 'photos') {
+                        container.innerHTML = `<div class="grid grid-cols-1 md:grid-cols-2 gap-3">${items.map(i => generateCard(i, 'av-photo', 'status-teal')).join('')}</div>`;
+                    } else {
+                        container.innerHTML = items.map(i => generateCard(i, 'av', 'status-teal')).join('');
+                    }
+                } else {
+                    crumb.innerText = `Search Results (${items.length})`;
+                    items.sort((a,b) => {
+                        let priA = parseFloat(a.PRIORITY); let priB = parseFloat(b.PRIORITY);
+                        if (isNaN(priA)) priA = Infinity; if (isNaN(priB)) priB = Infinity;
+                        if (priA !== priB) return priA - priB;
+                        return String(a.LOCATIONCODE || '').localeCompare(String(b.LOCATIONCODE || ''), undefined, { numeric:true });
+                    });
+                    container.innerHTML = items.map(i => generateCard(i, 'reserves_drill', 'status-indigo')).join('');
+                }
+                return;
+            }
+
+            if (activeAVTab === 'open') {
+                items = sortAvOpenItems(items, activeAvOpenTab);
+                crumb.innerText = `Open Stock > ${getAvOpenTabLabel()} (${items.length} items)`;
+                if (activeAvOpenTab === 'photos') {
+                    container.innerHTML = `<div class="grid grid-cols-1 md:grid-cols-2 gap-3">${items.map(i => generateCard(i, 'av-photo', 'status-teal')).join('')}</div>`;
+                } else {
+                    container.innerHTML = items.map(i => generateCard(i, 'av', 'status-teal')).join('');
+                }
             } else {
                 if(avResLevel===0){ 
-                    crumb.innerText="My Reserves > Plants"; 
+                    crumb.innerText='My Reserves > Plants'; 
                     const names=[...new Set(items.map(i=>i.COMMONNAME))].sort(); 
                     container.innerHTML=names.map(n=>`<div class="drill-item" onclick="selectAvResName('${esc(n)}')"><span class="font-bold text-lg">${n}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join(''); 
                 } 
@@ -3419,7 +3591,7 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
                 else if(avResLevel===2){ 
                     crumb.innerText=`${selectedAvResName} / ${selectedAvResSize}`; 
                     let finalItems=items.filter(i=>i.COMMONNAME===selectedAvResName&&i.CONTSIZE===selectedAvResSize); 
-                    finalItems.sort((a,b)=>(String(a.CUSTOMERNAME)||"").localeCompare(String(b.CUSTOMERNAME)||"")); 
+                    finalItems.sort((a,b)=>(String(a.CUSTOMERNAME)||'').localeCompare(String(b.CUSTOMERNAME)||'')); 
                     container.innerHTML=`<div class="back-btn" onclick="avResLevel=1; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>`+finalItems.map(i=>generateCard(i,'reserves_drill','status-indigo')).join(''); 
                 }
             }
@@ -3722,7 +3894,7 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
                 } 
             }else{ 
                 let item=findItemByUniqueId(uniqueId); 
-                if(sourceView==='av'){
+                if(sourceView==='av'||sourceView==='av-photo'){
                     openAvGallery(item);
                 }else if(safeRole==='SALESREP'&&sourceView==='drive'){ 
                     if(item){ 
@@ -4639,7 +4811,7 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
                 return `<div class="mt-2 text-[12px] text-sky-800 bg-sky-50 p-2 rounded border border-sky-200 shadow-sm whitespace-pre-wrap"><span class="font-black">SALES NOTE:</span> ${salesNoteText}</div>`;
             };
 
-            if(sourceView === 'av') {
+            if(sourceView === 'av-photo' || sourceView === 'av') {
                 const holdHtml = buildHoldReasonHtml();
                 const salesNoteHtml = buildSalesNoteHtml();
                 let avNoteHtml = "";
@@ -4647,17 +4819,18 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
                     avNoteHtml = `<div class="mt-2 bg-blue-50 border border-blue-200 rounded p-2"><div class="text-[10px] font-black text-blue-600 uppercase tracking-wider mb-0.5">AV NOTE</div><div class="text-[13px] font-bold text-blue-800 leading-snug">${item.AV_NOTE}</div></div>`;
                 }
 
+                const photoUrls = getPhotoUrlList(photoLink);
+                const photoCount = photoUrls.length;
+                const largePreviewUrl = photoCount ? getExpandedImageUrl(photoUrls[0]) : '';
+                const thumbPreviewUrl = photoCount ? getDirectImageUrl(photoUrls[0]) : '';
+
+                if (sourceView === 'av-photo') {
+                    return `<div class="item-row relative bg-white rounded-2xl overflow-hidden ${holdBorderClass} shadow-sm active:scale-[0.99] transition-transform cursor-pointer" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', 'av-photo')"><div class="card-checkbox-container absolute top-3 left-3 z-20 bg-white/95 rounded-xl p-1.5 shadow-sm"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-teal-600 focus:ring-teal-600 shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div>${largePreviewUrl && largePreviewUrl.startsWith('http') ? `<div class="relative aspect-[4/3] bg-slate-100"><img src="${largePreviewUrl}" class="w-full h-full object-cover" loading="lazy"><div class="absolute top-3 right-3 bg-black/70 text-white text-[10px] font-black px-2 py-1 rounded-full">${photoCount} ${photoCount === 1 ? 'PHOTO' : 'PHOTOS'}</div></div>` : `<div class="aspect-[4/3] bg-slate-100 flex items-center justify-center text-xs font-black text-slate-400 uppercase tracking-widest">No Photo</div>`}<div class="p-3"><div class="font-black text-gray-800 text-[14px] leading-tight break-words">${item.COMMONNAME||'Unknown'}</div><div class="font-black text-teal-700 text-[13px] mt-1">${item.CONTSIZE||'-'}</div><div class="grid grid-cols-2 gap-2 mt-3 text-[11px] font-bold text-gray-600 uppercase"><div><span class="block text-[9px] text-gray-400 mb-1">Location</span>${item.LOCATIONCODE||'-'}</div><div><span class="block text-[9px] text-gray-400 mb-1">Lot Code</span>${item.LOTCODE||'-'}</div></div><div class="flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-wider mt-3"><span class="bg-teal-50 text-teal-700 px-2 py-1 rounded border border-teal-100">Loc Ava: ${item.PTRAVAILABLE||'0'}</span><span class="bg-purple-50 text-purple-700 px-2 py-1 rounded border border-purple-100">s_LTS: ${item.S_LTS||'0'}</span>${item.SEASON ? `<span class="bg-amber-50 text-amber-700 px-2 py-1 rounded border border-amber-100">Season: ${item.SEASON}</span>` : ''}</div>${holdHtml}${salesNoteHtml}${avNoteHtml}</div></div>`;
+                }
+
                 let clickThumbHtml = "";
-                if(photoLink) {
-                    let firstUrl = String(photoLink).split(',')[0]; 
-                    let cleanUrl = firstUrl.trim(); 
-                    let urlMatch = cleanUrl.match(/(https?:\/\/[^"\s>]+)/); 
-                    if(urlMatch) cleanUrl = urlMatch[1]; 
-                    let thumbUrl = getDirectImageUrl(cleanUrl); 
-                    if(thumbUrl.startsWith('http')){ 
-                        let photoCount = String(photoLink).split(',').length;
-                        clickThumbHtml = `<div class="ml-3 flex-shrink-0 flex flex-col items-center" onclick="event.stopPropagation(); openPhotoModal('${photoLink}', '${esc(item.COMMONNAME)} - ${esc(item.CONTSIZE)}')"><div class="relative"><img src="${thumbUrl}" class="w-16 h-16 rounded-lg object-cover border-2 border-teal-300 shadow-md active:scale-95 transition-transform" loading="lazy">${photoCount > 1 ? `<div class="absolute -top-2 -right-2 bg-teal-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full border-2 border-white shadow-sm">+${photoCount-1}</div>` : ''}</div><div class="text-center text-[9px] font-black text-teal-600 mt-1.5 uppercase tracking-widest bg-teal-50 px-2 py-0.5 rounded-md border border-teal-100 cursor-pointer active:bg-teal-200">VIEW</div></div>`; 
-                    } 
+                if(thumbPreviewUrl && thumbPreviewUrl.startsWith('http')){
+                    clickThumbHtml = `<div class="ml-3 flex-shrink-0 flex flex-col items-center" onclick="event.stopPropagation(); handleCardClick('${item.DOM_ID}', '${safeUidJs}', 'av')"><div class="relative"><img src="${thumbPreviewUrl}" class="w-16 h-16 rounded-lg object-cover border-2 border-teal-300 shadow-md active:scale-95 transition-transform" loading="lazy">${photoCount > 1 ? `<div class="absolute -top-2 -right-2 bg-teal-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full border-2 border-white shadow-sm">+${photoCount-1}</div>` : ''}</div><div class="text-center text-[9px] font-black text-teal-600 mt-1.5 uppercase tracking-widest bg-teal-50 px-2 py-0.5 rounded-md border border-teal-100 cursor-pointer active:bg-teal-200">VIEW</div></div>`;
                 }
 
                 return `<div class="flex items-start w-full mb-2 item-row relative bg-white p-3 rounded-lg ${holdBorderClass} shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-teal-600 focus:ring-teal-600 shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full"><div class="flex-grow min-w-0 pr-2"><div class="font-black text-gray-800 text-[13px] leading-tight break-words mb-1">${item.COMMONNAME||'Unknown'}</div><div class="font-black text-teal-700 text-[13px] mb-2">${item.CONTSIZE||'-'}</div><div class="grid grid-cols-2 gap-2 mb-2"><div class="text-[11px] font-bold text-gray-500 uppercase"><span class="block text-[8px] text-gray-400 mb-0.5">LOT CODE</span>${item.LOTCODE||'-'}</div><div class="text-[11px] font-bold text-gray-500 uppercase"><span class="block text-[8px] text-gray-400 mb-0.5">LOCATION</span>${item.LOCATIONCODE||'-'}</div></div><div class="flex flex-wrap gap-2 text-[11px] font-bold uppercase tracking-wider mt-1"><span class="bg-gray-100 text-gray-800 px-2 py-1 rounded border border-gray-200">LOC AVA: <span class="font-black">${item.PTRAVAILABLE||'0'}</span></span><span class="bg-purple-50 text-purple-700 px-2 py-1 rounded border border-purple-200">s_LTS: <span class="font-black">${item.S_LTS||'0'}</span></span></div>${holdHtml}${salesNoteHtml}${avNoteHtml}</div>${clickThumbHtml}</div></div></div>`;
@@ -6711,6 +6884,19 @@ function toggleDriveSeason(s) {
     </script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
