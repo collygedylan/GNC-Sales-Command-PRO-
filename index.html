@@ -371,9 +371,10 @@
                         <input type="text" id="drive-search" class="input-field w-full pr-10 !mb-0" placeholder="Search Names or Locs..." oninput="handleDriveSearch()" onkeydown="dismissSearchKeyboard(event)">
                         <i id="drive-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearDriveSearch()"></i>
                     </div>
-                    <div id="drive-drill-tabs" class="task-tabs mb-2">
+                                        <div id="drive-drill-tabs" class="task-tabs mb-2">
                         <div id="tab-drive-name" class="task-tab active" onclick="setDriveTab('name')">By Name</div>
                         <div id="tab-drive-loc" class="task-tab" onclick="setDriveTab('loc')">By Location</div>
+                        <div id="tab-drive-card" class="task-tab" onclick="setDriveTab('card')">Card View</div>
                     </div>
                     <div id="drive-quick-request-bar" class="hidden mb-3"></div>
                     <div class="flex overflow-x-auto scrollbar-none gap-2 mb-3 pb-1" id="drive-season-filters"></div>
@@ -1848,16 +1849,17 @@
             driveQuickFilterLtsMode = '';
             driveQuickFilterLtsValue = '';
         }
-
         function setDriveQuickRequestCardMode(enabled) {
-            driveQuickRequestCardMode = !!enabled;
-            scheduleUiRender('drive-quick-mode', () => renderDrive());
-            return false;
+            if (enabled) {
+                setDriveTab('card');
+                return false;
+            }
+            return disableDriveQuickRequestCardMode();
         }
 
         function disableDriveQuickRequestCardMode() {
             resetDriveQuickCardViewState();
-            scheduleUiRender('drive-quick-mode', () => renderDrive());
+            setDriveTab('name');
             return false;
         }
 
@@ -1996,16 +1998,15 @@
             driveQuickFilterCacheItems = items;
             return items;
         }
-
         function renderDriveQuickRequestBar() {
             const bar = document.getElementById('drive-quick-request-bar');
             if (!bar) return;
             const validIds = Array.from(driveQuickRequestItems).filter(domId => !!findItemByDomId(domId));
             if (validIds.length !== driveQuickRequestItems.size) driveQuickRequestItems = new Set(validIds);
             const canUseQuick = canUseDriveQuickRequest() && activeDriveMode === 'ok';
-            const showCardMode = canUseQuick && driveQuickRequestCardMode;
+            const showCardMode = activeDriveTab === 'card';
             const count = driveQuickRequestItems.size;
-            if (!canUseQuick) {
+            if (!canUseQuick || !showCardMode) {
                 bar.classList.add('hidden');
                 bar.innerHTML = '';
                 return;
@@ -2017,10 +2018,9 @@
             const buttonBase = 'w-full sm:w-auto min-h-[42px] px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-[0.14em] transition-colors duration-150';
             const primaryBtn = `${buttonBase} bg-[#007a4d] text-white shadow-sm hover:bg-[#006341]`;
             const secondaryBtn = `${buttonBase} bg-white border border-emerald-200 text-[#007a4d] shadow-sm hover:bg-emerald-50`;
-            const tertiaryBtn = `${buttonBase} bg-slate-900 text-white shadow-sm hover:bg-slate-800`;
             const disabledBtn = `${buttonBase} bg-emerald-100 text-emerald-300 shadow-sm cursor-not-allowed`;
             const filterInputClass = 'input-field !mb-0 text-sm border-green-200 bg-white mt-1 shadow-sm';
-            const filterPanel = showCardMode ? `
+            const filterPanel = `
                 <div class="mt-1 pt-4 border-t border-emerald-100">
                     <div class="text-[10px] font-black text-emerald-700 uppercase tracking-[0.16em] mb-3">Drive Card View Filters</div>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -2032,13 +2032,12 @@
                         <label class="text-[10px] font-bold text-slate-500 uppercase sm:col-span-2 lg:col-span-1">s_LTS Number<input type="number" class="${filterInputClass}" value="${esc(driveQuickFilterLtsValue)}" placeholder="Enter number" oninput="setDriveQuickFilter('ltsValue', this.value)"></label>
                     </div>
                     <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <span class="text-[11px] font-semibold text-emerald-800">Card view stays on until they switch back.</span>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full sm:w-auto">
+                        <span class="text-[11px] font-semibold text-emerald-800">Use the Drive tabs to switch between drill views and card view.</span>
+                        <div class="grid grid-cols-1 gap-2 w-full sm:w-auto">
                             <button class="${secondaryBtn}" onclick="clearDriveQuickFilters()">Clear Filters</button>
-                            <button class="${tertiaryBtn}" onclick="return disableDriveQuickRequestCardMode()">Drill View</button>
                         </div>
                     </div>
-                </div>` : '';
+                </div>`;
             const flyerTargetingFolder = String(pendingFlyerFolderTarget || '').trim();
             const flyerActionLabel = flyerTargetingFolder ? 'Add To Folder' : 'Create Flyer';
             const requestBtn = count === 0
@@ -2050,20 +2049,13 @@
             const assignBtn = count === 0
                 ? `<button class="${disabledBtn}" disabled>Assign Items</button>`
                 : `<button class="${secondaryBtn}" onclick="startDriveQuickAssignFlow()">Assign Items</button>`;
-            const cardViewBtn = showCardMode
-                ? `<button class="${tertiaryBtn}" onclick="return disableDriveQuickRequestCardMode()">Drill View</button>`
-                : `<button class="${secondaryBtn}" onclick="return setDriveQuickRequestCardMode(true)">Card View</button>`;
             const clearBtn = `<button class="${secondaryBtn}" onclick="clearDriveQuickRequestItems()">Clear Rows</button>`;
-            const headerHtml = showCardMode
-                ? `<div><div class="text-[10px] font-black text-emerald-700 uppercase tracking-[0.16em]">Drive Action Builder</div><div class="text-lg font-black text-slate-900 mt-1">${count} row${count === 1 ? '' : 's'} ready for action</div></div>`
-                : `<div><div class="text-[10px] font-black text-emerald-700 uppercase tracking-[0.16em]">Drive Selection</div><div class="text-base font-black text-slate-900 mt-1">${count} row${count === 1 ? '' : 's'} selected</div></div>`;
+            const headerHtml = `<div><div class="text-[10px] font-black text-emerald-700 uppercase tracking-[0.16em]">Drive Action Builder</div><div class="text-lg font-black text-slate-900 mt-1">${count} row${count === 1 ? '' : 's'} ready for action</div></div>`;
             const flyerTargetPanel = flyerTargetingFolder
                 ? `<div class="rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-indigo-600">Active Flyer Folder</div><div class="text-base font-black text-indigo-900 truncate mt-1">${flyerTargetingFolder}</div><div class="text-[11px] font-semibold text-indigo-500 mt-1">Drive rows will be added into this folder.</div></div><button class="${secondaryBtn}" onclick="clearPendingFlyerFolderTarget()">Choose New Folder</button></div>`
                 : '';
-            const shellClass = showCardMode
-                ? 'rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-green-50 p-4 shadow-sm'
-                : 'rounded-2xl border border-emerald-200 bg-white p-3 shadow-sm';
-            bar.innerHTML = `<div class="${shellClass}"><div class="flex flex-col gap-4"><div class="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">${headerHtml}<div class="grid grid-cols-1 sm:grid-cols-2 xl:flex gap-2 w-full xl:w-auto xl:min-w-[320px]">${cardViewBtn}${clearBtn}${requestBtn}${flyerBtn}${assignBtn}</div></div>${flyerTargetPanel}${filterPanel}</div></div>`;
+            const shellClass = 'rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-green-50 p-4 shadow-sm';
+            bar.innerHTML = `<div class="${shellClass}"><div class="flex flex-col gap-4"><div class="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">${headerHtml}<div class="grid grid-cols-1 sm:grid-cols-2 xl:flex gap-2 w-full xl:w-auto xl:min-w-[320px]">${clearBtn}${requestBtn}${flyerBtn}${assignBtn}</div></div>${flyerTargetPanel}${filterPanel}</div></div>`;
             bar.classList.remove('hidden');
         }
 
@@ -3245,12 +3237,17 @@
             selectedDriveLoc = null;
             scheduleUiRender('drive-tab', () => renderDrive());
         }
-
         function setDriveTab(tab) {
             activeDriveTab = tab;
+            driveQuickRequestCardMode = tab === 'card';
             document.getElementById('tab-drive-name').classList.toggle('active', tab === 'name');
             document.getElementById('tab-drive-loc').classList.toggle('active', tab === 'loc');
+            document.getElementById('tab-drive-card').classList.toggle('active', tab === 'card');
             driveViewLevel = 0;
+            selectedDriveName = null;
+            selectedDriveSize = null;
+            selectedDriveBlock = null;
+            selectedDriveLoc = null;
             scheduleUiRender('drive-tab', () => renderDrive());
         }
 
@@ -3266,7 +3263,6 @@
 
         function selectDriveBlock(block) { selectedDriveBlock = block; driveViewLevel = 1; renderDrive(); }
         function selectDriveLoc(loc) { selectedDriveLoc = loc; driveViewLevel = 2; renderDrive(); }
-
         function resetDriveView() {
             activeDriveMode = 'ok';
             resetDriveQuickCardViewState();
@@ -3274,14 +3270,14 @@
             activeDriveTab = 'name';
             document.getElementById('tab-drive-name').classList.add('active');
             document.getElementById('tab-drive-loc').classList.remove('active');
+            document.getElementById('tab-drive-card').classList.remove('active');
             driveViewLevel = 0; selectedDriveName = null; selectedDriveSize = null; selectedDriveBlock = null; selectedDriveLoc = null;
             document.getElementById('drive-search').value = ""; document.getElementById('drive-search-clear').classList.add('hidden');
             driveSelectedSeasons.clear(); driveSelectedSeasons.add('ALL');
             driveQuickHoldStopOnly = false;
             renderDrive();
         }
-        
-        function clearAVSearch() { document.getElementById('av-search').value=""; document.getElementById('av-search-clear').classList.add('hidden'); avResLevel=0; avOpenLevel=0; renderAV(); }
+function clearAVSearch() { document.getElementById('av-search').value=""; document.getElementById('av-search-clear').classList.add('hidden'); avResLevel=0; avOpenLevel=0; renderAV(); }
         function handleAVSearch() { const term=document.getElementById('av-search').value.toLowerCase(); const clearBtn=document.getElementById('av-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden'); avResLevel=0; avOpenLevel=0;} else{clearBtn.classList.add('hidden'); avResLevel=0; avOpenLevel=0;} scheduleSearchRender('av', () => renderAV()); }
 
         function resetAVView() { 
@@ -5042,17 +5038,27 @@
                 return [];
             }
         }
-        async function confirmRequestArchived(requestId = '') {
+        async function getRequestArchiveStatus(requestId = '') {
             const id = String(requestId || '').trim();
-            if (!id) return false;
+            if (!id) return { known: true, exists: false, archived: false };
             try {
-                const rows = await supabaseFetch('v2_active_request', 'GET', null, `select=unique_id,req_archived&unique_id=eq.${encodeURIComponent(id)}&limit=1`);
-                if (!Array.isArray(rows) || rows.length === 0) return false;
+                const rows = await fetchSupabasePage('v2_active_request', `select=unique_id,req_archived&unique_id=eq.${encodeURIComponent(id)}`, 1, 0);
+                if (!Array.isArray(rows) || rows.length === 0) return { known: true, exists: false, archived: false };
                 const row = rows[0] || {};
-                return String(row.unique_id || row.UNIQUE_ID || '').trim() === id && !!(row.req_archived ?? row.REQ_ARCHIVED);
+                const matches = String(row.unique_id || row.UNIQUE_ID || '').trim() === id;
+                return {
+                    known: true,
+                    exists: matches,
+                    archived: matches && !!(row.req_archived ?? row.REQ_ARCHIVED)
+                };
             } catch (error) {
-                return false;
+                return { known: false, exists: false, archived: false };
             }
+        }
+
+        async function confirmRequestArchived(requestId = '') {
+            const status = await getRequestArchiveStatus(requestId);
+            return !!(status.known && (!status.exists || status.archived));
         }
 
         function clearPendingRequestArchiveFlushTimer() {
@@ -5078,6 +5084,17 @@
             await new Promise((resolve) => setTimeout(resolve, waitMs));
         }
 
+        async function tryHardDeleteRequestClone(requestId = '') {
+            const id = String(requestId || '').trim();
+            if (!id) return false;
+            try {
+                await supabaseFetch('v2_active_request', 'DELETE', null, `unique_id=eq.${encodeURIComponent(id)}`);
+            } catch (error) {
+            }
+            const status = await getRequestArchiveStatus(id);
+            return !!(status.known && !status.exists);
+        }
+
         async function syncRequestArchive(uid, maxAttempts = 1) {
             const id = String(uid || '').trim();
             const attempts = Math.max(1, Number(maxAttempts) || 1);
@@ -5085,13 +5102,19 @@
             for (let attempt = 0; attempt < attempts; attempt++) {
                 try {
                     await supabaseFetch('v2_active_request', 'PATCH', { req_archived: true }, `unique_id=eq.${encodeURIComponent(id)}`);
-                    return true;
                 } catch (error) {
-                    const confirmedArchived = await confirmRequestArchived(id);
-                    if (confirmedArchived) return true;
-                    if (attempt < attempts - 1 && navigator.onLine !== false) {
-                        await waitForRequestArchiveRetry(900 * (attempt + 1));
-                    }
+                }
+
+                const archiveStatus = await getRequestArchiveStatus(id);
+                if (archiveStatus.known && (!archiveStatus.exists || archiveStatus.archived)) return true;
+
+                if (archiveStatus.known && archiveStatus.exists && !archiveStatus.archived) {
+                    const removed = await tryHardDeleteRequestClone(id);
+                    if (removed) return true;
+                }
+
+                if (attempt < attempts - 1 && navigator.onLine !== false) {
+                    await waitForRequestArchiveRetry(900 * (attempt + 1));
                 }
             }
             return false;
@@ -5587,25 +5610,26 @@ ${formatRequestItemsText(items)}`;
                 return String(a.LOCATIONCODE || '').localeCompare(String(b.LOCATIONCODE || ''), undefined, { numeric: true });
             });
         }
-
         function renderDriveQuickCardResultsOnly() {
             const driveView = document.getElementById('view-drive');
             if (!driveView || driveView.classList.contains('hidden')) return false;
-            if (!(canUseDriveQuickRequest() && activeDriveMode === 'ok' && driveQuickRequestCardMode)) return false;
+            if (!(activeDriveMode === 'ok' && activeDriveTab === 'card')) return false;
             const container = document.getElementById('drive-content');
             const crumb = document.getElementById('drive-crumb');
             if (!container || !crumb) return false;
             const driveModeLabel = DRIVE_MODE_LABELS[activeDriveMode] || 'Drive Mode';
-            const finalItems = sortDriveCardItems(getDriveFilteredItems(true));
+            const finalItems = sortDriveCardItems(canUseDriveQuickRequest() ? getDriveFilteredItems(true) : getDriveFilteredItems(false));
             crumb.innerText = `${driveModeLabel} > Card View (${finalItems.length} items)`;
             if (finalItems.length === 0) {
-                container.innerHTML = `<div class="p-8 text-center text-gray-400">No rows match the current Drive filters.</div>`;
+                const emptyMessage = canUseDriveQuickRequest()
+                    ? 'No rows match the current Drive filters.'
+                    : 'No items found matching criteria.';
+                container.innerHTML = `<div class="p-8 text-center text-gray-400">${emptyMessage}</div>`;
                 return true;
             }
             container.innerHTML = finalItems.map(i => generateCard(i, 'drive', 'status-blue')).join('');
             return true;
         }
-
         function renderDrive() {
             if (ensureViewDataForRender('drive')) return;
             syncDriveModeTabs();
@@ -5614,8 +5638,8 @@ ${formatRequestItemsText(items)}`;
             const crumb = document.getElementById('drive-crumb');
             const driveModeLabel = DRIVE_MODE_LABELS[activeDriveMode] || 'Drive Mode';
             const drillTabs = document.getElementById('drive-drill-tabs');
-            const quickCardMode = canUseDriveQuickRequest() && activeDriveMode === 'ok' && driveQuickRequestCardMode;
-            if (drillTabs) drillTabs.classList.toggle('hidden', quickCardMode);
+            const quickCardMode = activeDriveMode === 'ok' && activeDriveTab === 'card';
+            if (drillTabs) drillTabs.classList.remove('hidden');
             renderDriveQuickRequestBar();
 
             if (activeDriveMode !== 'ok') {
@@ -5634,20 +5658,23 @@ ${formatRequestItemsText(items)}`;
             filtersDiv.innerHTML = seasonFiltersHtml + holdStopToggleHtml;
 
             const searchFilteredItems = getDriveFilteredItems(false);
-            if (searchFilteredItems.length === 0) {
-                container.innerHTML = `<div class="p-8 text-center text-gray-400">No items found matching criteria.</div>`;
-                crumb.innerText = `${driveModeLabel} > No Results`;
-                return;
-            }
-
             if (quickCardMode) {
-                const finalItems = sortDriveCardItems(getDriveFilteredItems(true));
+                const finalItems = sortDriveCardItems(canUseDriveQuickRequest() ? getDriveFilteredItems(true) : searchFilteredItems);
                 crumb.innerText = `${driveModeLabel} > Card View (${finalItems.length} items)`;
                 if (finalItems.length === 0) {
-                    container.innerHTML = `<div class="p-8 text-center text-gray-400">No rows match the current Common Name, Location, Cont Size, Lot Code, or s_LTS filters.</div>`;
+                    const emptyMessage = canUseDriveQuickRequest()
+                        ? 'No rows match the current Common Name, Location, Cont Size, Lot Code, or s_LTS filters.'
+                        : 'No items found matching criteria.';
+                    container.innerHTML = `<div class="p-8 text-center text-gray-400">${emptyMessage}</div>`;
                     return;
                 }
                 container.innerHTML = finalItems.map(i => generateCard(i, 'drive', 'status-blue')).join('');
+                return;
+            }
+
+            if (searchFilteredItems.length === 0) {
+                container.innerHTML = `<div class="p-8 text-center text-gray-400">No items found matching criteria.</div>`;
+                crumb.innerText = `${driveModeLabel} > No Results`;
                 return;
             }
 
@@ -5707,8 +5734,7 @@ ${formatRequestItemsText(items)}`;
                 }
             }
         }
-
-                function toggleDriveSeason(s) {
+function toggleDriveSeason(s) {
             if(s === 'ALL'){
                 driveSelectedSeasons.clear();
                 driveSelectedSeasons.add('ALL');
@@ -6612,4 +6638,7 @@ ${formatRequestItemsText(items)}`;
     </script>
 </body>
 </html>
+
+
+
 
