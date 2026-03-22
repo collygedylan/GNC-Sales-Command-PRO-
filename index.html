@@ -17,10 +17,10 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>:root{--bg:#007a4d;--text-color:#111827;--app-height:100vh}html,body{min-height:100%;width:100%;max-width:100%;overflow-x:hidden;overscroll-behavior-x:none}html{background:white}@supports (height:100dvh){:root{--app-height:100dvh}}body{font-family:"Amazon Ember",Arial,sans-serif;background:white;color:var(--text-color);user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior-y:contain;min-height:var(--app-height);height:var(--app-height);width:100%;overflow:hidden}button,[role="button"],.task-tab,.detail-tab,.drawer-item,.drill-item,.menu-btn{touch-action:manipulation}.nav-header{background:var(--bg);color:white;padding-top:max(10px,env(safe-area-inset-top))}#view-login,#view-change-password{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;min-height:var(--app-height)}#view-change-password{display:none;z-index:10000}#app-wrapper{min-height:var(--app-height);height:var(--app-height);width:100%;max-width:100%;overflow:hidden}.login-card{background:white;padding:30px;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,.2);width:100%;max-width:360px;text-align:center}.input-field{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:8px;font-size:16px;margin-bottom:12px}#toast-notification{position:fixed;top:-100px;left:50%;transform:translateX(-50%);background:#16a34a;color:white;padding:16px 24px;border-radius:50px;box-shadow:0 10px 15px -3px rgba(0,0,0,.3);z-index:11000;transition:top .5s;display:flex;align-items:center;gap:12px;pointer-events:none}#toast-notification.show{top:20px}#side-drawer{position:fixed;top:0;left:-280px;width:280px;height:100%;background:white;z-index:2000;box-shadow:2px 0 10px rgba(0,0,0,.2);transition:left .3s;overflow-y:auto;padding-bottom:100px}#side-drawer.open{left:0}#drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1999;display:none}#drawer-overlay.open{display:block}.drawer-header{background:var(--bg);color:white;padding:20px;font-weight:bold;font-size:18px}.drawer-item{padding:16px 20px;border-bottom:1px solid #f3f4f6;cursor:pointer;display:flex;align-items:center;gap:12px;color:#374151;font-weight:500}.drill-item{border-bottom:1px solid #e5e7eb;padding:16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:white;transition:background .1s}.drill-item:active{background:#f3f4f6}.back-btn{display:none !important}.inv-card{border:1px solid #dbe4dc;border-left-width:6px;border-radius:18px;padding:14px;background:white;cursor:pointer;flex-grow:1;box-shadow:0 10px 24px rgba(15,23,42,.06);overflow:hidden}.status-green{border-left-color:#22c55e}.status-purple{border-left-color:#9333ea}.status-orange{border-left-color:#f97316}.status-blue{border-left-color:#3b82f6}.status-indigo{border-left-color:#4f46e5}.status-teal{border-left-color:#0d9488}.status-yellow{border-left-color:#eab308}.status-red{border-left-color:#ef4444}.task-tabs,.detail-tabs{display:flex;border-bottom:1px solid #e5e7eb;background:#f9fafb;margin-bottom:10px}.detail-tabs{overflow-x:auto;scrollbar-width:none}.detail-tabs::-webkit-scrollbar{display:none}.task-tab,.detail-tab{flex:1;text-align:center;padding:12px;font-size:11px;font-weight:700;color:#6b7280;cursor:pointer;border-bottom:3px solid transparent;text-transform:uppercase}.detail-tab{flex:0 0 auto;padding:10px 16px}.task-tab.active,.detail-tab.active{color:var(--bg);border-bottom-color:var(--bg);background:white}.overview-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}.overview-card{background:#f8fafc;padding:10px;border-radius:6px;border:1px solid #e2e8f0}.overview-label{font-size:9px;font-weight:800;color:#64748b;text-transform:uppercase;margin-bottom:2px}.overview-val{font-size:13px;font-weight:600;color:#0f172a;word-break:break-all}.expand-trigger{display:flex;align-items:center;justify-content:space-between;padding:12px;background:#f9fafb;border-radius:6px;cursor:pointer;font-weight:600;font-size:14px;border:1px solid #e5e7eb}.expand-content{display:none;margin-top:12px;padding:12px;background:#f9fafb;border-radius:6px;border:1px solid #e5e7eb}.expanded .expand-content{display:block}.card-checkbox-container{width:0;overflow:hidden;opacity:0;transition:width .3s,opacity .3s,margin .3s}body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-right:12px}body.multi-select-mode .card-checkbox{pointer-events:auto}body.multi-select-mode .item-row{cursor:pointer}.item-row{touch-action:manipulation}.spinner{border:4px solid rgba(255,255,255,.3);border-top:4px solid white;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:0 auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.scrollbar-none::-webkit-scrollbar{display:none}.scrollbar-none{-ms-overflow-style:none;scrollbar-width:none}</style>
+    <style>:root{--bg:#007a4d;--text-color:#111827;--app-height:100vh}html,body{min-height:100%;width:100%;max-width:100%;overflow-x:hidden;overscroll-behavior-x:none}html{background:white}@supports (height:100dvh){:root{--app-height:100dvh}}body{font-family:"Amazon Ember",Arial,sans-serif;background:white;color:var(--text-color);user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior-y:contain;min-height:var(--app-height);height:var(--app-height);width:100%;overflow:hidden}button,[role="button"],.task-tab,.detail-tab,.drawer-item,.drill-item,.menu-btn{touch-action:manipulation}.nav-header{background:var(--bg);color:white;padding-top:max(10px,env(safe-area-inset-top))}#view-login,#view-change-password{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;min-height:var(--app-height)}#view-change-password{display:none;z-index:10000}#app-wrapper{min-height:var(--app-height);height:var(--app-height);width:100%;max-width:100%;overflow:hidden}.login-card{background:white;padding:30px;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,.2);width:100%;max-width:360px;text-align:center}.input-field{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:8px;font-size:16px;margin-bottom:12px}#toast-notification{position:fixed;top:-100px;left:50%;transform:translateX(-50%);background:#16a34a;color:white;padding:16px 24px;border-radius:50px;box-shadow:0 10px 15px -3px rgba(0,0,0,.3);z-index:11000;transition:top .5s;display:flex;align-items:center;gap:12px;pointer-events:none}#toast-notification.show{top:20px}#side-drawer{position:fixed;top:0;left:-280px;width:280px;height:100%;background:white;z-index:2000;box-shadow:2px 0 10px rgba(0,0,0,.2);transition:left .3s;overflow-y:auto;padding-bottom:100px}#side-drawer.open{left:0}#drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1999;display:none}#drawer-overlay.open{display:block}.drawer-header{background:var(--bg);color:white;padding:20px;font-weight:bold;font-size:18px}.drawer-item{padding:16px 20px;border-bottom:1px solid #f3f4f6;cursor:pointer;display:flex;align-items:center;gap:12px;color:#374151;font-weight:500}.drill-item{border-bottom:1px solid #e5e7eb;padding:16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:white;transition:background .1s}.drill-item:active{background:#f3f4f6}.back-btn{display:none !important}.inv-card{border:1px solid #dbe4dc;border-left-width:6px;border-radius:18px;padding:14px;background:white;cursor:pointer;flex-grow:1;box-shadow:0 10px 24px rgba(15,23,42,.06);overflow:hidden}.status-green{border-left-color:#22c55e}.status-purple{border-left-color:#9333ea}.status-orange{border-left-color:#f97316}.status-blue{border-left-color:#3b82f6}.status-indigo{border-left-color:#4f46e5}.status-teal{border-left-color:#0d9488}.status-yellow{border-left-color:#eab308}.status-red{border-left-color:#ef4444}.task-tabs,.detail-tabs{display:flex;border-bottom:1px solid #e5e7eb;background:#f9fafb;margin-bottom:10px}.detail-tabs{overflow-x:auto;scrollbar-width:none}.detail-tabs::-webkit-scrollbar{display:none}.task-tab,.detail-tab{flex:1;text-align:center;padding:12px;font-size:11px;font-weight:700;color:#6b7280;cursor:pointer;border-bottom:3px solid transparent;text-transform:uppercase}.detail-tab{flex:0 0 auto;padding:10px 16px}.task-tab.active,.detail-tab.active{color:var(--bg);border-bottom-color:var(--bg);background:white}.overview-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}.overview-card{background:#f8fafc;padding:10px;border-radius:6px;border:1px solid #e2e8f0}.overview-label{font-size:9px;font-weight:800;color:#64748b;text-transform:uppercase;margin-bottom:2px}.overview-val{font-size:13px;font-weight:600;color:#0f172a;word-break:break-all}.expand-trigger{display:flex;align-items:center;justify-content:space-between;padding:12px;background:#f9fafb;border-radius:6px;cursor:pointer;font-weight:600;font-size:14px;border:1px solid #e5e7eb}.expand-content{display:none;margin-top:12px;padding:12px;background:#f9fafb;border-radius:6px;border:1px solid #e5e7eb}.expanded .expand-content{display:block}.card-checkbox-container{width:42px;min-width:42px;overflow:visible;opacity:1;display:flex;align-items:flex-start;justify-content:center;margin-right:12px;transition:transform .16s ease}.card-checkbox-container.absolute{width:auto;min-width:0;margin-right:0}.card-checkbox{display:none !important}.cart-toggle-btn{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:999px;border:1px solid #a7f3d0;background:#f0fdf4;color:#007a4d;box-shadow:0 6px 16px rgba(7,94,63,.14);transition:transform .16s ease,background .16s ease,color .16s ease,border-color .16s ease}.cart-toggle-btn i{font-size:18px;line-height:1}.cart-toggle-btn:active{transform:scale(.95)}.cart-toggle-btn.active{background:#007a4d;color:#fff;border-color:#007a4d}.item-row.cart-selected{box-shadow:0 0 0 2px rgba(0,122,77,.16) inset}.item-row{touch-action:manipulation}.spinner{border:4px solid rgba(255,255,255,.3);border-top:4px solid white;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:0 auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.scrollbar-none::-webkit-scrollbar{display:none}.scrollbar-none{-ms-overflow-style:none;scrollbar-width:none}</style>
     <style>
         #main-scroll-area{min-height:0;width:100%;max-width:100%;overflow-x:hidden;overscroll-behavior-x:none;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;padding-bottom:calc(10rem + env(safe-area-inset-bottom));background:#f9fafb}
-        #global-action-bar{padding-bottom:calc(.75rem + env(safe-area-inset-bottom))}
+        #global-action-bar{padding-bottom:calc(.75rem + env(safe-area-inset-bottom))}#cart-fab{position:fixed;right:16px;bottom:84px;z-index:46;display:flex;align-items:center;justify-content:center;width:58px;height:58px;border-radius:999px;background:#ecfdf5;color:#007a4d;border:1px solid #a7f3d0;box-shadow:0 16px 30px rgba(7,94,63,.24);transition:transform .16s ease,background .16s ease,color .16s ease,border-color .16s ease,opacity .16s ease}#cart-fab:active{transform:scale(.96)}#cart-fab.active{background:#007a4d;color:#fff;border-color:#007a4d}#cart-fab i{font-size:24px;line-height:1}#cart-fab-count{position:absolute;top:-4px;right:-4px;min-width:22px;height:22px;padding:0 6px;border-radius:999px;background:#ef4444;color:#fff;font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center;border:2px solid #fff}#cart-helper-text{margin-top:.6rem;font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#6b7280}
         #bottom-nav{padding:10px 10px calc(.75rem + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:.5rem;background:rgba(255,255,255,.98);backdrop-filter:saturate(150%) blur(12px)}
         .footer-nav-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.18rem;min-height:52px;border-radius:16px;border:1px solid transparent;background:transparent;color:#6b7280;font-size:10px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;transition:background .16s ease,color .16s ease,border-color .16s ease,transform .16s ease;position:relative}
         .footer-nav-btn i{font-size:22px;line-height:1}
@@ -309,7 +309,7 @@
         <div id="side-drawer">
             <div class="drawer-header">Menu</div>
             <div class="drawer-item" onclick="switchView('home'); toggleMenu();"><i class="ph-bold ph-house"></i> Home</div>
-            <div class="drawer-item text-green-600 font-bold" onclick="fetchBackgroundData(); toggleMenu();"><i class="ph-bold ph-arrows-clockwise"></i> Force Data Sync</div>
+            <div class="drawer-item text-green-600 font-bold" onclick="fetchBackgroundData('force'); toggleMenu();"><i class="ph-bold ph-arrows-clockwise"></i> Force Data Sync</div>
             <hr class="my-2">
             <div class="drawer-item" onclick="switchView('drive'); toggleMenu();"><i class="ph-bold ph-car"></i> Drive Mode</div>
             <div class="drawer-item" onclick="switchView('tasks'); toggleMenu();"><i class="ph-bold ph-clipboard-text"></i> My Tasks</div>
@@ -497,6 +497,11 @@
                         <div id="tab-endcap" class="task-tab" onclick="setTaskTab('endcap')">End Cap</div>
                         <div id="tab-flyer" class="task-tab" onclick="setTaskTab('flyer')">Flyer</div>
                     </div>
+                    <div id="task-subtabs-container" class="task-tabs hidden">
+                        <div id="task-subtab-all" class="task-tab active" onclick="return setTaskSubview('all')">All</div>
+                        <div id="task-subtab-positive-lts" class="task-tab" onclick="return setTaskSubview('positive-lts')">Positive LTS</div>
+                        <div id="task-subtab-hold" class="task-tab" onclick="return setTaskSubview('hold')">Hold</div>
+                    </div>
                     </div>
                     <div id="task-content"></div>
                 </div>
@@ -640,16 +645,19 @@
             </div>
 
             <div id="global-action-bar" class="hidden fixed bottom-[60px] left-0 w-full bg-white p-3 shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.15)] z-[45] border-t border-gray-200">
-                <div class="flex justify-between items-center mb-2 px-1"><span class="text-xs font-bold text-[#007a4d]"><span id="sel-count">0</span> Items Selected</span><span class="text-[10px] font-bold text-red-500 cursor-pointer bg-red-50 px-3 py-1 rounded-md uppercase" onclick="clearSelection()">Clear Selection</span></div>
+                <div class="flex justify-between items-center mb-2 px-1"><span class="text-xs font-bold text-[#007a4d]"><span id="sel-count">0</span> Rows In Bag</span><span class="text-[10px] font-bold text-red-500 cursor-pointer bg-red-50 px-3 py-1 rounded-md uppercase" onclick="clearSelection()">Clear Bag</span></div>
                 <div class="flex gap-1 overflow-x-auto scrollbar-none pb-1">
                     <button onclick="initiateBatchAction('copy')" class="flex-1 min-w-[60px] bg-gray-100 text-gray-700 p-2 rounded-lg text-[10px] font-bold hover:bg-gray-200"><i class="ph-bold ph-copy block text-lg mb-1"></i> Copy</button>
                     <button onclick="initiateBatchAction('email')" class="flex-1 min-w-[60px] bg-blue-100 text-blue-700 p-2 rounded-lg text-[10px] font-bold hover:bg-blue-200"><i class="ph-bold ph-envelope block text-lg mb-1"></i> Email</button>
                     <button onclick="initiateBatchAction('text')" class="flex-1 min-w-[60px] bg-green-100 text-green-700 p-2 rounded-lg text-[10px] font-bold hover:bg-green-200"><i class="ph-bold ph-chat block text-lg mb-1"></i> Text</button>
-                    <button id="batch-btn-assign" onclick="initiateBatchAction('assign')" class="flex-1 min-w-[60px] bg-purple-100 text-purple-700 p-2 rounded-lg text-[10px] font-bold hover:bg-purple-200 admin-csr-only hidden"><i class="ph-bold ph-user-plus block text-lg mb-1"></i> Assign</button>
-                    <button id="batch-btn-request" onclick="initiateBatchAction('request_action')" class="flex-1 min-w-[60px] bg-orange-500 text-white p-2 rounded-lg text-[10px] font-bold shadow-md"><i class="ph-bold ph-warning-circle block text-lg mb-1"></i> Request</button>
-                    <button onclick="initiateBatchAction('endcap')" class="flex-1 min-w-[70px] bg-yellow-100 text-yellow-700 p-2 rounded-lg text-[10px] font-bold hover:bg-yellow-200 shadow-sm"><i class="ph-bold ph-storefront block text-lg mb-1"></i> End Cap</button>
+                    <button id="batch-btn-assign" onclick="initiateBatchAction('assign')" class="flex-1 min-w-[60px] bg-purple-100 text-purple-700 p-2 rounded-lg text-[10px] font-bold hover:bg-purple-200 hidden"><i class="ph-bold ph-user-plus block text-lg mb-1"></i> Assign</button>
+                    <button id="batch-btn-request" onclick="initiateBatchAction('request_action')" class="flex-1 min-w-[60px] bg-orange-500 text-white p-2 rounded-lg text-[10px] font-bold shadow-md hidden"><i class="ph-bold ph-warning-circle block text-lg mb-1"></i> Request</button>
+                    <button id="batch-btn-flyer" onclick="initiateBatchAction('flyer')" class="flex-1 min-w-[60px] bg-indigo-100 text-indigo-700 p-2 rounded-lg text-[10px] font-bold hover:bg-indigo-200 hidden"><i class="ph-bold ph-megaphone block text-lg mb-1"></i> Flyer</button>
+                    <button id="batch-btn-endcap" onclick="initiateBatchAction('endcap')" class="flex-1 min-w-[70px] bg-yellow-100 text-yellow-700 p-2 rounded-lg text-[10px] font-bold hover:bg-yellow-200 shadow-sm hidden"><i class="ph-bold ph-storefront block text-lg mb-1"></i> End Cap</button>
                 </div>
+                <div id="cart-helper-text" class="hidden">Assign, Request, Flyer, and End Cap work on inventory rows.</div>
             </div>
+            <button type="button" id="cart-fab" class="hidden" onclick="toggleCartPanel()" aria-label="Bag"><i class="ph-bold ph-handbag"></i><span id="cart-fab-count" class="hidden">0</span></button>
             
             <nav id="bottom-nav" class="fixed bottom-0 w-full border-t border-green-100 shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.22)] z-50">
                 <button type="button" id="footer-menu-btn" class="footer-nav-btn" onclick="toggleMenu()" aria-label="Menu"><i class="ph-bold ph-list"></i><span>Menu</span></button>
@@ -1358,16 +1366,30 @@
             }catch(e){ return null; } 
         }
 
+        function stripTransientCacheFields(item = {}) {
+            const clean = {};
+            Object.keys(item || {}).forEach((key) => {
+                if (key === 'DOM_ID' || key === '_search' || key === '_searchCandidates' || key === '_searchPrimaryStarts' || key === '_searchWordStarts' || key === '_searchProfileWordStarts') return;
+                clean[key] = item[key];
+            });
+            return clean;
+        }
+
+        function buildCacheRows(items = []) {
+            if (!Array.isArray(items) || !items.length) return [];
+            return items.map((item) => stripTransientCacheFields(item));
+        }
+
         function buildCacheSnapshot() {
             return {
                 status: 'success',
-                data: fullInventory || [],
-                avOpenData: avOpenInventory || [],
-                requestsData: requestsInventory || [],
-                reservesData: reservesInventory || [],
-                socData: socInventory || [],
-                salesOfficeData: salesOfficeInventory || [],
-                avNotesData: avNotesDb || [],
+                data: buildCacheRows(fullInventory),
+                avOpenData: buildCacheRows(avOpenInventory),
+                requestsData: buildCacheRows(requestsInventory),
+                reservesData: buildCacheRows(reservesInventory),
+                socData: buildCacheRows(socInventory),
+                salesOfficeData: buildCacheRows(salesOfficeInventory),
+                avNotesData: buildCacheRows(avNotesDb),
                 meta: {
                     datasetLoadState: serializeDatasetLoadState()
                 }
@@ -1419,15 +1441,18 @@
         let loginPrefetchPromise=null;
         let loginPrefetchMode='';
         let datasetLoadState=createDatasetLoadState();
+        let datasetQueueTimers={};
+        let backgroundRefreshInFlight=false;
+        let lastBackgroundRefreshAt=0;
         let cacheWarmPromise=null;
         let cachePersistTimer=null;
-        let currentUser=""; let currentUserDisplay=""; let currentRole=""; let safeRole=""; let repPermutations=[]; let activeItem=null; let lastView=""; let activeDetailTab="overview"; let selectedItems=new Set(); let isMultiSelectMode=false; let pressTimer=null; let isLongPress=false; let touchStartX=0; let touchStartY=0; let pendingAction=null; let pendingTabType=null; let hasAppliedInitialHomeView=false;
+        let currentUser=""; let currentUserDisplay=""; let currentRole=""; let safeRole=""; let repPermutations=[]; let activeItem=null; let lastView=""; let activeDetailTab="overview"; let selectedItems=new Set(); let cartPanelOpen=false; let cartUiObserver=null; let cartUiRefreshQueued=false; let lastCartToggleAt=0; let lastCartToggleDomId=""; let isMultiSelectMode=false; let pressTimer=null; let isLongPress=false; let touchStartX=0; let touchStartY=0; let pendingAction=null; let pendingTabType=null; let hasAppliedInitialHomeView=false;
         
         const DRIVE_MODE_LABELS = { ok: 'Drive Mode' };
         let activeDriveMode='ok'; let activeDriveTab='name'; let selectedDriveBlock=null; let selectedDriveLoc=null; let driveQuickRequestCardMode=false; let driveQuickFilterName=''; let driveQuickFilterLocation=''; let driveQuickFilterLot=''; let driveQuickFilterSize=''; let driveQuickFilterPriority=''; let driveQuickFilterLtsMode=''; let driveQuickFilterLtsValue=''; let driveQuickHoldStopOnly=false; let driveQuickFilterOptionsCacheKey=''; let driveQuickFilterOptionsCache=null; let driveBaseFilterCacheKey=''; let driveBaseFilterCacheItems=[]; let driveQuickFilterCacheKey=''; let driveQuickFilterCacheItems=[]; let driveQuickFiltersModalOpen=false;
         let driveViewLevel=0; let selectedDriveName=null; let selectedDriveSize=null; let driveSelectedSeasons=new Set(['ALL']); const availableSeasons=["ALL","S1","F1","U1","U2","U3","X","Y","Z"];
         
-        let activeTaskTab="season"; let taskViewTargetUser=null; let taskViewLevel=0; let selectedTaskBlock=null; let selectedTaskLoc=null; let selectedEndCapFolder=null; let selectedFlyerFolder=null; let pendingFlyerFolderTarget=null; let pendingFlyerFolderAssignees="";
+        let activeTaskTab="season"; let activeTaskSubview="all"; let taskViewTargetUser=null; let taskViewLevel=0; let selectedTaskBlock=null; let selectedTaskLoc=null; let selectedEndCapFolder=null; let selectedFlyerFolder=null; let pendingFlyerFolderTarget=null; let pendingFlyerFolderAssignees="";
         
         let activeAVTab='open'; let activeAvOpenTab='name'; let avOpenLevel=0; let selectedAvOpenName=null; let selectedAvOpenSize=null; let selectedAvOpenSeason=null; let selectedAvOpenLot=null; let avResLevel=0; let selectedAvResName=null; let selectedAvResSize=null;
         
@@ -1600,6 +1625,7 @@
             initializeInteractiveChrome();
             installAmazonHeaderChrome();
             updateSyncDiagnostics();
+            initializeCartUi();
         });
         window.addEventListener('online', () => {
             if (currentUser) {
@@ -1693,7 +1719,7 @@
                 obj.SEASONSUPPLY = obj.SEASON_SUPPLY || obj.SEASONSUPPLY || 0;
                 obj.FIELDTAGCOLOR = obj.FIELD_TAG_COLOR || obj.FIELDTAGCOLOR || '-';
                 normalizeRowPhotoFields(obj);
-                return buildSearchIndex(obj);
+                return obj;
             });
         }
 
@@ -1759,7 +1785,7 @@
             cachePersistTimer = setTimeout(() => {
                 cachePersistTimer = null;
                 runPersist();
-            }, 160);
+            }, 2600);
         }
 
         function isDatasetLoaded(key, mode = 'initial') {
@@ -1809,10 +1835,58 @@
             return state.initialPromise;
         }
 
-        function queueDatasetLoad(key, mode = 'full') {
-            setTimeout(() => {
+        function queueDatasetLoad(key, mode = 'full', delayMs = 180) {
+            const queueKey = `${key}:${mode}`;
+            const state = getDatasetState(key);
+            const alreadyLoaded = mode === 'full'
+                ? (state.fullLoaded || !!state.fullPromise)
+                : (state.initialLoaded || state.fullLoaded || !!state.initialPromise || !!state.fullPromise);
+            if (alreadyLoaded) return;
+            if (datasetQueueTimers[queueKey]) clearTimeout(datasetQueueTimers[queueKey]);
+            datasetQueueTimers[queueKey] = setTimeout(() => {
+                delete datasetQueueTimers[queueKey];
                 ensureDatasetLoaded(key, mode).catch(() => {});
-            }, 30);
+            }, delayMs);
+        }
+
+        function isDatasetStale(key, maxAgeMs = 15000) {
+            const state = getDatasetState(key);
+            if (!state.lastLoadedAt) return true;
+            const stamp = new Date(state.lastLoadedAt).getTime();
+            if (!Number.isFinite(stamp) || stamp <= 0) return true;
+            return (Date.now() - stamp) > maxAgeMs;
+        }
+
+        function addRefreshTarget(targetMap, key, mode = 'initial') {
+            const nextMode = mode === 'full' ? 'full' : 'initial';
+            const current = targetMap.get(key);
+            if (!current || (nextMode === 'full' && current.mode !== 'full')) {
+                targetMap.set(key, { key, mode: nextMode });
+            }
+        }
+
+        function getLoadedDatasetRefreshTargets(loadedKeys = []) {
+            const targetMap = new Map();
+            loadedKeys.forEach((key) => {
+                const state = getDatasetState(key);
+                addRefreshTarget(targetMap, key, state.fullLoaded ? 'full' : 'initial');
+            });
+            return Array.from(targetMap.values());
+        }
+
+        function getVisibleRefreshTargets(loadedKeys = []) {
+            const visibleView = TRACKED_VIEW_IDS.find((viewId) => isViewVisible(viewId));
+            const targetMap = new Map();
+            const config = visibleView ? getViewLoadingConfig(visibleView) : null;
+            if (config) {
+                (config.required || []).forEach((item) => addRefreshTarget(targetMap, item.key, item.mode));
+                (config.background || []).forEach((item) => addRefreshTarget(targetMap, item.key, item.mode));
+            }
+            if (!targetMap.size) return getLoadedDatasetRefreshTargets(loadedKeys);
+            return Array.from(targetMap.values()).filter((item) => {
+                const state = getDatasetState(item.key);
+                return state.initialLoaded || state.fullLoaded;
+            });
         }
 
         function getViewLoadingConfig(viewId) {
@@ -1887,6 +1961,7 @@
                 updateSyncDiagnostics('offline');
                 return false;
             }
+            if (backgroundRefreshInFlight) return false;
             const loadedKeys = Object.keys(datasetLoadState).filter((key) => {
                 const state = getDatasetState(key);
                 return state.initialLoaded || state.fullLoaded;
@@ -1896,15 +1971,26 @@
                 const config = visibleView ? getViewLoadingConfig(visibleView) : null;
                 if (!config) return true;
                 await Promise.all(config.required.map((item) => ensureDatasetLoaded(item.key, item.mode, { force })));
+                lastBackgroundRefreshAt = Date.now();
                 return true;
             }
+            const targets = force
+                ? getLoadedDatasetRefreshTargets(loadedKeys)
+                : getVisibleRefreshTargets(loadedKeys).filter((item) => isDatasetStale(item.key, item.mode === 'full' ? 25000 : 15000));
+            if (!targets.length) {
+                updateSyncDiagnostics(liveSyncMode === 'realtime' ? 'realtime' : 'idle');
+                return true;
+            }
+            backgroundRefreshInFlight = true;
             updateSyncDiagnostics('refreshing');
-            await Promise.all(loadedKeys.map((key) => {
-                const state = getDatasetState(key);
-                return ensureDatasetLoaded(key, state.fullLoaded ? 'full' : 'initial', { force });
-            }));
-            updateSyncDiagnostics(liveSyncMode === 'realtime' ? 'realtime' : 'idle');
-            return true;
+            try {
+                await Promise.all(targets.map((item) => ensureDatasetLoaded(item.key, item.mode, { force: true })));
+                lastBackgroundRefreshAt = Date.now();
+                updateSyncDiagnostics(liveSyncMode === 'realtime' ? 'realtime' : 'idle');
+                return true;
+            } finally {
+                backgroundRefreshInFlight = false;
+            }
         }
 
         function findItemByUniqueId(uid) {
@@ -2689,6 +2775,98 @@ function toggleDriveQuickRequestItem(domId) {
             });
             return false;
         }
+        function createCartFlyers() {
+            const domIds = Array.from(selectedItems).filter((domId) => !!findItemByDomId(domId));
+            if (!domIds.length) {
+                showToast('Select Rows', 'Add one or more rows to the bag first.', true);
+                return false;
+            }
+
+            const validItems = domIds.map((domId) => findItemByDomId(domId)).filter((item) => item && !isRequestLikeItem(item) && !isDockLikeItem(item) && !isSalesOfficeLikeItem(item));
+            if (!validItems.length) {
+                showToast('Not Available', 'Flyer works on inventory rows only.', true);
+                return false;
+            }
+
+            const existingTargetFolder = String(pendingFlyerFolderTarget || '').trim();
+            const isAddingToExistingFolder = existingTargetFolder !== '';
+            let flyerFolder = existingTargetFolder;
+            if (!flyerFolder) {
+                const suggestedFolder = `${new Date().toISOString().split('T')[0]} Flyer Folder`;
+                const folderInput = window.prompt('Enter the flyer folder name for these rows.', suggestedFolder);
+                if (folderInput === null) return false;
+                flyerFolder = String(folderInput || '').trim();
+            }
+            if (!flyerFolder) {
+                showToast('Folder Required', 'Enter a flyer folder name before creating the folder.', true);
+                return false;
+            }
+
+            const defaultAssignees = String(pendingFlyerFolderAssignees || getFlyerFolderAssignedNames(flyerFolder).join(', ') || currentUserDisplay || currentUser || '').trim();
+            const assigneePrompt = isAddingToExistingFolder
+                ? `Assign ${flyerFolder} to one or more people. Separate names with commas.`
+                : 'Assign this flyer folder to one or more people. Separate names with commas.';
+            const assigneeInput = window.prompt(assigneePrompt, defaultAssignees);
+            if (assigneeInput === null) return false;
+            const assignees = getFlyerAssigneeList(assigneeInput);
+            if (!assignees.length) {
+                showToast('Assign Someone', 'Enter at least one person for this flyer folder.', true);
+                return false;
+            }
+
+            const flyerAssignedTo = assignees.join(', ');
+            const primaryAssignee = assignees[0] || currentUser;
+            const updates = [];
+            validItems.forEach((item) => {
+                item.APP_TAB_ASSIGNMENT = 'flyer';
+                item.ASSIGNEDTO = primaryAssignee;
+                item.DATE_COMPLETED = '';
+                item.FLYER_COMPLETED = '';
+                item.FLYER_TITLE = flyerFolder;
+                item.FLYER_ASSIGNED = flyerAssignedTo;
+                buildSearchIndex(item);
+                syncRowDataAcrossViews(item);
+                const table = item.SOURCE_TABLE || 'v2_master_inventory';
+                updates.push(supabaseFetch(table, 'PATCH', {
+                    assignedto: primaryAssignee,
+                    date_completed: null,
+                    flyer_title: flyerFolder,
+                    flyer_assigned: flyerAssignedTo || null
+                }, `unique_id=eq.${encodeURIComponent(item.UNIQUE_ID)}`));
+            });
+            if (!updates.length) {
+                showToast('Error', 'No valid inventory rows were available for Flyer.', true);
+                return false;
+            }
+            toggleCartPanel(false);
+            showToast('Processing...', `${isAddingToExistingFolder ? 'Adding rows to' : 'Creating flyer folder'} ${flyerFolder}...`, false);
+            Promise.allSettled(updates).then((results) => {
+                const failed = results.filter((result) => result.status === 'rejected');
+                const succeeded = results.length - failed.length;
+                if (!succeeded) {
+                    const firstError = failed[0] && failed[0].reason && failed[0].reason.message ? failed[0].reason.message : 'Flyer creation failed.';
+                    throw new Error(firstError);
+                }
+                clearPendingFlyerFolderTarget(true);
+                clearSelection();
+                markViewDirty('tasks');
+                reRenderCurrentView();
+                switchView('tasks');
+                setTaskTab('flyer');
+                selectedFlyerFolder = flyerFolder;
+                taskViewLevel = 1;
+                renderTasks();
+                if (failed.length) {
+                    const firstError = failed[0] && failed[0].reason && failed[0].reason.message ? failed[0].reason.message : 'Some rows could not be added.';
+                    showToast('Partial Success', `${succeeded} row${succeeded === 1 ? '' : 's'} added to ${flyerFolder}. ${failed.length} failed. ${firstError}`, true);
+                } else {
+                    showToast('Success', `${validItems.length} row${validItems.length === 1 ? '' : 's'} added to ${flyerFolder}.`);
+                }
+            }).catch((err) => {
+                showToast('Error', err && err.message ? err.message : 'Flyer creation failed.', true);
+            });
+            return false;
+        }
         function openDriveQuickRequestModal() {
             if (!canUseDriveQuickRequest()) return;
             if (!driveQuickRequestItems.size) {
@@ -3315,16 +3493,11 @@ function toggleDriveQuickRequestItem(domId) {
 
         function primeLoginDataLoad() {
             [
-                { key: 'master', mode: 'initial' },
-                { key: 'avOpen', mode: 'initial' },
-                { key: 'requests', mode: 'initial' },
-                { key: 'soc', mode: 'initial' },
-                { key: 'reserves', mode: 'initial' },
-                { key: 'salesOffice', mode: 'initial' }
-            ].forEach((item, index) => {
-                setTimeout(() => {
-                    ensureDatasetLoaded(item.key, item.mode).catch(() => {});
-                }, 40 + (index * 110));
+                { key: 'master', mode: 'initial', delay: 30 },
+                { key: 'avOpen', mode: 'initial', delay: 220 },
+                { key: 'requests', mode: 'initial', delay: 2200 }
+            ].forEach((item) => {
+                queueDatasetLoad(item.key, item.mode, item.delay);
             });
             return true;
         }
@@ -3336,7 +3509,9 @@ function toggleDriveQuickRequestItem(domId) {
             document.getElementById('header-user').innerText=currentUserDisplay || currentUser; 
             syncGlobalHeaderChrome();
             updateSyncDiagnostics();
-            setRepPermutations(currentUser); 
+            initializeCartUi();
+            updateGlobalActionBar();
+            setRepPermutations(currentUser);
             const shouldPromptBiometric = !isBiometricLogin && window.PublicKeyCredential && localStorage.getItem('gnc_bio_enabled')!=='true';
             setLoginProgress(Math.max(currentProgress, 30), 'Preparing your workspace...');
 
@@ -3367,7 +3542,9 @@ function toggleDriveQuickRequestItem(domId) {
                 showToast("Ready", "Fast mode is on. Data is warming in the background.", false);
             }
 
-            queueDatasetLoad('avNotes', 'full');
+            queueDatasetLoad('master', 'full', 9000);
+            queueDatasetLoad('requests', 'full', 17000);
+            queueDatasetLoad('avNotes', 'full', 15000);
             loginPrefetchPromise = null;
             loginPrefetchMode = '';
         }
@@ -3441,7 +3618,7 @@ function toggleDriveQuickRequestItem(domId) {
 
         async function fetchBackgroundData(mode='full') {
             if (mode === 'critical' || mode === 'supplemental') return true;
-            return refreshLoadedDatasets(true);
+            return refreshLoadedDatasets(mode === 'full' || mode === 'force');
         }
         function processAndLoadData(res) {
             if (!res) return;
@@ -3454,6 +3631,13 @@ function toggleDriveQuickRequestItem(domId) {
             const hasSalesOffice = hasKey('salesOfficeData');
             const hasAvNotes = hasKey('avNotesData');
             const didStructuralDataChange = hasMaster || hasAvOpen || hasRequests || hasReserves || hasSoc || hasSalesOffice;
+            const changedDatasetKeys = [];
+            if (hasMaster) changedDatasetKeys.push('master');
+            if (hasAvOpen) changedDatasetKeys.push('avOpen');
+            if (hasRequests) changedDatasetKeys.push('requests');
+            if (hasReserves) changedDatasetKeys.push('reserves');
+            if (hasSoc) changedDatasetKeys.push('soc');
+            if (hasSalesOffice) changedDatasetKeys.push('salesOffice');
 
             if (hasAvNotes) {
                 avNotesDb = res.avNotesData || [];
@@ -3622,8 +3806,8 @@ function toggleDriveQuickRequestItem(domId) {
             if (didStructuralDataChange) {
                 applyLocalEdits();
                 applyPendingRequestArchives();
-                scheduleUiRender('data-refresh', () => reRenderCurrentView(), 24);
-                flushPendingRequestArchives().catch(() => {});
+                refreshAffectedViews(changedDatasetKeys);
+                if (changedDatasetKeys.includes('requests')) flushPendingRequestArchives().catch(() => {});
             }
         }
 
@@ -3661,6 +3845,31 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         const TRACKED_VIEW_IDS = ['drive','tasks','review','sales-office','reports','low-stock','docks','request','reserves','av','hours'];
+
+        function getAffectedViewsForDatasets(changedKeys = []) {
+            const changedSet = new Set((changedKeys || []).filter(Boolean));
+            if (!changedSet.size) return [];
+            return TRACKED_VIEW_IDS.filter((viewId) => {
+                const config = getViewLoadingConfig(viewId);
+                if (!config) return false;
+                const datasetKeys = [...(config.required || []), ...(config.background || [])].map((item) => item.key);
+                return datasetKeys.some((key) => changedSet.has(key));
+            });
+        }
+
+        function refreshAffectedViews(changedKeys = []) {
+            const dirtyViews = getAffectedViewsForDatasets(changedKeys);
+            if (!dirtyViews.length) return;
+            dirtyViews.forEach((viewId) => markViewDirty(viewId));
+            const visibleViewIds = TRACKED_VIEW_IDS.filter((viewId) => {
+                const el = document.getElementById('view-' + viewId);
+                return el && !el.classList.contains('hidden');
+            });
+            if (visibleViewIds.some((viewId) => dirtyViews.includes(viewId))) {
+                scheduleUiRender('data-refresh', () => reRenderCurrentView(), 24);
+            }
+        }
+
         const viewRenderState = {};
 
         function ensureViewRenderState(viewId) {
@@ -3950,11 +4159,13 @@ function toggleDriveQuickRequestItem(domId) {
 
         function setTaskTab(tab) { 
             activeTaskTab=tab; 
+            if (!taskTabUsesBlockDrill(tab)) activeTaskSubview='all';
             document.getElementById('tab-season').classList.toggle('active',tab==='season'); 
             document.getElementById('tab-location').classList.toggle('active',tab==='location'); 
             document.getElementById('tab-colorwalk').classList.toggle('active',tab==='colorwalk'); 
             document.getElementById('tab-endcap').classList.toggle('active',tab==='endcap'); 
             document.getElementById('tab-flyer').classList.toggle('active',tab==='flyer'); 
+            syncTaskSubviewControls(tab);
             taskViewLevel=0; 
             selectedTaskBlock=null;
             selectedTaskLoc=null;
@@ -3965,6 +4176,17 @@ function toggleDriveQuickRequestItem(domId) {
                 return;
             }
             scheduleUiRender('task-tab', () => renderTasks()); 
+        }
+
+        function setTaskSubview(subview) {
+            if (!taskTabUsesBlockDrill(activeTaskTab)) return false;
+            activeTaskSubview = ['positive-lts', 'hold'].includes(subview) ? subview : 'all';
+            syncTaskSubviewControls(activeTaskTab);
+            taskViewLevel = 0;
+            selectedTaskBlock = null;
+            selectedTaskLoc = null;
+            scheduleUiRender('task-subview', () => renderTasks());
+            return false;
         }
 
         function syncDriveModeTabs() {
@@ -4152,7 +4374,7 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
                 if (activeAvOpenTab === 'photos') {
                     items = sortAvOpenItems(items, 'name');
                     crumb.innerText = term.length > 0 ? `Search Results (${items.length})` : `Open Stock Photos (${items.length} items)`;
-                    container.innerHTML = items.map(i => generateCard(i, 'av', 'status-teal')).join('');
+                    container.innerHTML = items.map(i => generateCard(i, 'av-photo', 'status-teal')).join('');
                     return;
                 }
 
@@ -4372,90 +4594,172 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
             } 
         }
 
-        function startPress(e,domId) { 
-            if(isMultiSelectMode)return; 
-            isLongPress=false; 
-            if(e.type==='touchstart' && e.touches && e.touches[0]){ 
-                touchStartX=e.touches[0].clientX; 
-                touchStartY=e.touches[0].clientY; 
-            } else {
-                touchStartX=e.clientX||0;
-                touchStartY=e.clientY||0;
+        function getCartSelectedItems() {
+            const items = [];
+            selectedItems.forEach((domId) => {
+                const item = findItemByDomId(domId);
+                if (item) items.push(item);
+            });
+            return items;
+        }
+
+        function isRequestLikeItem(item) {
+            return !!(item && (item.REQUEST_FOLDER || item.REQ_QTY != null || item.REQ_STATUS != null || item.REQ_CUSTOMER != null));
+        }
+
+        function isDockLikeItem(item) {
+            return !!(item && (item.STOPNUMBER != null || item.TRIPNUMBER != null || item.DOCK_NOTE != null));
+        }
+
+        function isSalesOfficeLikeItem(item) {
+            return !!(item && String(item.APP_TAB_ASSIGNMENT || '').toLowerCase() === 'sales-office');
+        }
+
+        function canUseCartInventoryActions(items = getCartSelectedItems()) {
+            return items.length > 0 && items.every((item) => item && !isRequestLikeItem(item) && !isDockLikeItem(item) && !isSalesOfficeLikeItem(item));
+        }
+
+        function refreshCartButtons() {
+            document.querySelectorAll('.item-row[data-dom-id]').forEach((row) => {
+                const domId = String(row.getAttribute('data-dom-id') || '').trim();
+                if (!domId) return;
+                const button = row.querySelector('.cart-toggle-btn');
+                if (!button) return;
+                const inCart = selectedItems.has(domId);
+                row.classList.toggle('cart-selected', inCart);
+                button.classList.toggle('active', inCart);
+                button.setAttribute('aria-pressed', inCart ? 'true' : 'false');
+                button.setAttribute('aria-label', inCart ? 'Remove from bag' : 'Add to bag');
+                button.title = inCart ? 'Remove from bag' : 'Add to bag';
+                button.innerHTML = `<i class="ph-bold ${inCart ? 'ph-check' : 'ph-handbag'}"></i>`;
+            });
+        }
+
+        function handleCartTogglePress(event, domId) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+                if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
             }
-            if(pressTimer)clearTimeout(pressTimer); 
-            pressTimer=setTimeout(()=>{ 
-                pressTimer=null;
-                isLongPress=true; 
-                if(navigator.vibrate)navigator.vibrate(50); 
-                enableMultiSelect(domId); 
-            },650); 
+            const now = Date.now();
+            if (lastCartToggleDomId === domId && (now - lastCartToggleAt) < 350) return false;
+            lastCartToggleDomId = domId;
+            lastCartToggleAt = now;
+            toggleGlobalItem(domId);
+            return false;
+        }
+        function decorateCartRows() {
+            document.querySelectorAll('.item-row[data-dom-id]').forEach((row) => {
+                const domId = String(row.getAttribute('data-dom-id') || '').trim();
+                if (!domId) return;
+                const container = row.querySelector('.card-checkbox-container');
+                if (!container) return;
+                if (container.getAttribute('data-cart-decorated') === 'true') return;
+                container.setAttribute('data-cart-decorated', 'true');
+                container.innerHTML = '';
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'cart-toggle-btn';
+                button.style.touchAction = 'manipulation';
+                button.onclick = (event) => handleCartTogglePress(event, domId);
+                button.onpointerup = (event) => handleCartTogglePress(event, domId);
+                button.ontouchend = (event) => handleCartTogglePress(event, domId);
+                button.onmousedown = (event) => { event.preventDefault(); event.stopPropagation(); };
+                button.ontouchstart = (event) => { event.preventDefault(); event.stopPropagation(); };
+                container.appendChild(button);
+            });
+            refreshCartButtons();
+        }
+
+        function scheduleCartUiRefresh() {
+            if (cartUiRefreshQueued) return;
+            cartUiRefreshQueued = true;
+            requestAnimationFrame(() => {
+                cartUiRefreshQueued = false;
+                decorateCartRows();
+                updateGlobalActionBar();
+            });
+        }
+
+        function initializeCartUi() {
+            if (cartUiObserver) {
+                scheduleCartUiRefresh();
+                return;
+            }
+            const target = document.getElementById('main-scroll-area') || document.getElementById('app-wrapper') || document.body;
+            if (!target) return;
+            cartUiObserver = new MutationObserver(() => scheduleCartUiRefresh());
+            cartUiObserver.observe(target, { childList: true, subtree: true });
+            scheduleCartUiRefresh();
+        }
+
+        function toggleCartPanel(forceOpen = null) {
+            if (!selectedItems.size) {
+                cartPanelOpen = false;
+                updateGlobalActionBar();
+                if (forceOpen !== false) showToast('Bag Empty', 'Tap the bag on a row to add it first.', true);
+                return false;
+            }
+            cartPanelOpen = forceOpen === null ? !cartPanelOpen : !!forceOpen;
+            updateGlobalActionBar();
+            return false;
+        }
+
+        function startPress(e,domId) { 
+            isLongPress=false; 
+            cancelPress();
+            return false;
         }
 
         function checkMove(e) { 
-            if(!pressTimer)return;
-            let currentX=touchStartX;
-            let currentY=touchStartY;
-            if(e.type==='touchmove' && e.touches && e.touches[0]){ 
-                currentX=e.touches[0].clientX;
-                currentY=e.touches[0].clientY;
-            } else if(e.type==='mousemove') {
-                currentX=e.clientX||0;
-                currentY=e.clientY||0;
-            } else {
-                return;
-            }
-            let dx=Math.abs(currentX-touchStartX); 
-            let dy=Math.abs(currentY-touchStartY); 
-            if(dx>12||dy>12)cancelPress(); 
+            return false;
         }
 
         function cancelPress() { if(pressTimer){clearTimeout(pressTimer); pressTimer=null;} }
 
         function handleCardContextMenu(event,domId) {
+            cancelPress();
             if(event){
                 event.preventDefault();
                 event.stopPropagation();
-            }
-            cancelPress();
-            const row=document.querySelector(`[data-dom-id="${domId}"]`);
-            if(!row)return false;
-            const cb=row.querySelector('.card-checkbox');
-            if(!isMultiSelectMode){
-                enableMultiSelect(domId);
-            }else if(cb){
-                cb.checked=!cb.checked;
-                toggleGlobalItem(domId,cb.checked);
             }
             return false;
         }
 
         function enableMultiSelect(firstDomId) { 
-            isMultiSelectMode=true; 
-            document.body.classList.add('multi-select-mode'); 
-            selectedItems.add(firstDomId); 
-            updateGlobalActionBar(); 
-            const rows=document.querySelectorAll('.item-row'); 
-            rows.forEach(row=>{
-                const domId=row.getAttribute('data-dom-id');
-                const cb=row.querySelector('.card-checkbox');
-                if(cb)cb.checked=selectedItems.has(domId);
-            }); 
+            return false;
         }
 
         function clearSelection() { 
             isMultiSelectMode=false; 
             document.body.classList.remove('multi-select-mode'); 
             selectedItems.clear(); 
+            cartPanelOpen=false;
             updateGlobalActionBar(); 
-            document.querySelectorAll('.card-checkbox').forEach(cb=>{cb.checked=false;}); 
+            refreshCartButtons(); 
         }
 
-        function toggleGlobalItem(domId,isChecked) { 
-            if(isChecked)selectedItems.add(domId); 
+        function toggleGlobalItem(domId,isChecked=null) { 
+            const hadItem = selectedItems.has(domId);
+            if(isChecked===null){
+                if(hadItem)selectedItems.delete(domId); 
+                else selectedItems.add(domId);
+            } else if(isChecked)selectedItems.add(domId); 
             else selectedItems.delete(domId); 
+            const hasItemNow = selectedItems.has(domId);
+            if(!selectedItems.size)cartPanelOpen=false;
             updateGlobalActionBar(); 
+            refreshCartButtons(); 
+            const fab=document.getElementById('cart-fab');
+            if(fab && hasItemNow){
+                fab.classList.remove('hidden');
+            }
+            if(!hadItem && hasItemNow){
+                showToast('Added To Bag', `${selectedItems.size} row${selectedItems.size === 1 ? '' : 's'} in bag.`);
+            } else if(hadItem && !hasItemNow){
+                showToast('Removed', `${selectedItems.size} row${selectedItems.size === 1 ? '' : 's'} left in bag.`);
+            }
         }
-
         function applyCameraPermissions(sourceView) {
             const camSsn = document.getElementById('camera-btn-ssn');
             const camLsn = document.getElementById('camera-btn-lsn');
@@ -4485,33 +4789,23 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
             }
         }
         function handleCardClick(domId,uniqueId,sourceView) {
-            if(isLongPress){ isLongPress=false; return; }
-            if(isMultiSelectMode){ 
-                const row=document.querySelector(`[data-dom-id="${domId}"]`); 
-                if(row){ 
-                    const cb=row.querySelector('.card-checkbox'); 
-                    if(cb){ cb.checked=!cb.checked; toggleGlobalItem(domId,cb.checked); } 
+            let item=findItemByUniqueId(uniqueId); 
+            if(sourceView==='av'||sourceView==='av-photo'){
+                openAvGallery(item);
+            }else if(safeRole==='SALESREP'&&sourceView==='drive'){ 
+                if(item){ 
+                    let pLink=getRowPhotoLink(item, 'drive'); 
+                    if(pLink){ 
+                        openPhotoModal(pLink, `${esc(item.COMMONNAME)} (${esc(item.CONTSIZE)}) - Loc: ${item.LOCATIONCODE||'N/A'}`); 
+                    }else{ 
+                        showToast("No Photo","There is no photo on file for this item.",true); 
+                    } 
                 } 
             }else{ 
-                let item=findItemByUniqueId(uniqueId); 
-                if(sourceView==='av'||sourceView==='av-photo'){
-                    openAvGallery(item);
-                }else if(safeRole==='SALESREP'&&sourceView==='drive'){ 
-                    if(item){ 
-                        let pLink=getRowPhotoLink(item, 'drive'); 
-                        if(pLink){ 
-                            openPhotoModal(pLink, `${esc(item.COMMONNAME)} (${esc(item.CONTSIZE)}) - Loc: ${item.LOCATIONCODE||'N/A'}`); 
-                        }else{ 
-                            showToast("No Photo","There is no photo on file for this item.",true); 
-                        } 
-                    } 
-                }else{ 
-                    applyCameraPermissions(sourceView); 
-                    openDetail(uniqueId,sourceView); 
-                }
+                applyCameraPermissions(sourceView); 
+                openDetail(uniqueId,sourceView); 
             }
         }
-
         function openDetail(uid, sourceView) {
             lastView = sourceView;
             activeItem = findItemByUniqueId(uid);
@@ -5042,7 +5336,13 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
                     else updateSyncDiagnostics('realtime');
                     return;
                 }
-                fetchBackgroundData();
+                const throttleMs = (isIOSDevice() || isStandaloneApp()) ? 14000 : 18000;
+                if (backgroundRefreshInFlight || (lastBackgroundRefreshAt && (Date.now() - lastBackgroundRefreshAt) < throttleMs)) {
+                    updateSyncDiagnostics('idle');
+                    if (liveSyncMode !== 'realtime') initializeRealtime();
+                    return;
+                }
+                fetchBackgroundData('background').catch(() => {});
                 if (liveSyncMode !== 'realtime') initializeRealtime();
             }, delay);
         }
@@ -5204,7 +5504,7 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
             pullRefreshState.refreshing = true;
             setPullRefreshIndicator('refreshing');
             try {
-                await fetchBackgroundData();
+                await fetchBackgroundData('force');
                 reRenderCurrentView();
                 showToast('Updated', 'Data refreshed.');
             } catch (err) {
@@ -5353,24 +5653,34 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
 
         function updateGlobalActionBar() { 
             const bar=document.getElementById('global-action-bar'); 
-            if(selectedItems.size>0){ 
-                bar.classList.remove('hidden'); 
-                document.getElementById('sel-count').innerText=selectedItems.size; 
-                const isDocksView=!document.getElementById('view-docks').classList.contains('hidden'); 
-                const btnAssign=document.getElementById('batch-btn-assign'); 
-                const btnRequest=document.getElementById('batch-btn-request'); 
-                if(isDocksView){ 
-                    if(btnAssign)btnAssign.classList.add('hidden'); 
-                    if(btnRequest)btnRequest.classList.add('hidden'); 
-                }else{ 
-                    if(btnAssign)btnAssign.classList.remove('hidden'); 
-                    if(btnRequest)btnRequest.classList.remove('hidden'); 
-                } 
-            }else{ 
-                bar.classList.add('hidden'); 
-            } 
+            const fab=document.getElementById('cart-fab');
+            const fabCount=document.getElementById('cart-fab-count');
+            const countLabel=document.getElementById('sel-count');
+            const helper=document.getElementById('cart-helper-text');
+            const btnAssign=document.getElementById('batch-btn-assign'); 
+            const btnRequest=document.getElementById('batch-btn-request'); 
+            const btnFlyer=document.getElementById('batch-btn-flyer');
+            const btnEndCap=document.getElementById('batch-btn-endcap');
+            const hasItems=selectedItems.size>0;
+            const items=getCartSelectedItems();
+            const canUseInventoryActions=canUseCartInventoryActions(items);
+            const canAssign=canUseInventoryActions&&(safeRole==='ADMIN'||safeRole==='CSR');
+            if(countLabel)countLabel.innerText=selectedItems.size; 
+            if(fab){
+                fab.classList.toggle('hidden', !currentUser);
+                fab.classList.toggle('active', cartPanelOpen&&hasItems);
+            }
+            if(fabCount){
+                fabCount.innerText=selectedItems.size;
+                fabCount.classList.toggle('hidden', !hasItems);
+            }
+            if(btnAssign)btnAssign.classList.toggle('hidden', !canAssign);
+            if(btnRequest)btnRequest.classList.toggle('hidden', !canUseInventoryActions);
+            if(btnFlyer)btnFlyer.classList.toggle('hidden', !canUseInventoryActions);
+            if(btnEndCap)btnEndCap.classList.toggle('hidden', !canUseInventoryActions);
+            if(helper)helper.classList.toggle('hidden', !hasItems||canUseInventoryActions);
+            if(bar)bar.classList.toggle('hidden', !hasItems||!cartPanelOpen);
         }
-
         function copyTextToClipboard(text,label) { 
             copyTextWithFallback(text).then(()=>{ 
                 showToast("Copied!",`${label} copied to clipboard.`); 
@@ -5426,17 +5736,20 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
                 const photoCount = photoUrls.length;
                 const largePreviewUrl = photoCount ? getExpandedImageUrl(photoUrls[0]) : '';
                 const thumbPreviewUrl = photoCount ? getDirectImageUrl(photoUrls[0]) : '';
+                const seasonChip = item.SEASON ? `<span class="bg-amber-50 text-amber-700 px-2.5 py-1 rounded-full border border-amber-100">Season ${item.SEASON}</span>` : '';
+                const priorityVal = String(item.PRIORITY || '').trim();
+                const priorityChip = priorityVal && priorityVal !== '-' && priorityVal.toUpperCase() !== 'NULL' ? `<span class="bg-orange-50 text-orange-700 px-2.5 py-1 rounded-full border border-orange-100">Pri ${priorityVal}</span>` : '';
 
                 if (sourceView === 'av-photo') {
                     return `<div class="item-row relative app-card-shell overflow-hidden ${holdBorderClass} shadow-sm active:scale-[0.99] transition-transform cursor-pointer" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', 'av-photo')"><div class="card-checkbox-container absolute top-3 left-3 z-20 bg-white/95 rounded-xl p-1.5 shadow-sm"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-teal-600 focus:ring-teal-600 shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div>${largePreviewUrl && largePreviewUrl.startsWith('http') ? `<div class="relative aspect-[4/3] bg-slate-100"><img src="${largePreviewUrl}" class="w-full h-full object-cover" loading="lazy"><div class="absolute top-3 right-3 bg-black/70 text-white text-[10px] font-black px-2 py-1 rounded-full">${photoCount} ${photoCount === 1 ? 'PHOTO' : 'PHOTOS'}</div></div>` : `<div class="aspect-[4/3] bg-slate-100 flex items-center justify-center text-xs font-black text-slate-400 uppercase tracking-widest">No Photo</div>`}<div class="p-3"><div class="font-black text-gray-800 text-[14px] leading-tight break-words">${item.COMMONNAME||'Unknown'}</div><div class="font-black text-teal-700 text-[13px] mt-1">${item.CONTSIZE||'-'}</div><div class="grid grid-cols-2 gap-2 mt-3 text-[11px] font-bold text-gray-600 uppercase"><div><span class="block text-[9px] text-gray-400 mb-1">Location</span>${item.LOCATIONCODE||'-'}</div><div><span class="block text-[9px] text-gray-400 mb-1">Lot Code</span>${item.LOTCODE||'-'}</div></div><div class="flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-wider mt-3"><span class="bg-teal-50 text-teal-700 px-2 py-1 rounded border border-teal-100">Loc Ava: ${item.PTRAVAILABLE||'0'}</span><span class="bg-purple-50 text-purple-700 px-2 py-1 rounded border border-purple-100">s_LTS: ${item.S_LTS||'0'}</span>${item.SEASON ? `<span class="bg-amber-50 text-amber-700 px-2 py-1 rounded border border-amber-100">Season: ${item.SEASON}</span>` : ''}</div>${holdHtml}${salesNoteHtml}${avNoteHtml}</div></div>`;
                 }
 
-                let clickThumbHtml = "";
-                if(thumbPreviewUrl && thumbPreviewUrl.startsWith('http')){
-                    clickThumbHtml = `<div class="ml-3 flex-shrink-0 flex flex-col items-center" onclick="event.stopPropagation(); handleCardClick('${item.DOM_ID}', '${safeUidJs}', 'av')"><div class="relative"><img src="${thumbPreviewUrl}" class="w-16 h-16 rounded-lg object-cover border-2 border-teal-300 shadow-md active:scale-95 transition-transform" loading="lazy">${photoCount > 1 ? `<div class="absolute -top-2 -right-2 bg-teal-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full border-2 border-white shadow-sm">+${photoCount-1}</div>` : ''}</div><div class="text-center text-[9px] font-black text-teal-600 mt-1.5 uppercase tracking-widest bg-teal-50 px-2 py-0.5 rounded-md border border-teal-100 cursor-pointer active:bg-teal-200">VIEW</div></div>`;
-                }
+                const featurePreviewUrl = largePreviewUrl && largePreviewUrl.startsWith('http') ? largePreviewUrl : (thumbPreviewUrl && thumbPreviewUrl.startsWith('http') ? thumbPreviewUrl : '');
+                const mediaHtml = featurePreviewUrl
+                    ? `<div class="relative w-32 sm:w-36 flex-shrink-0 bg-slate-100 border-r border-slate-200 overflow-hidden"><img src="${featurePreviewUrl}" class="w-full h-full min-h-44 object-cover" loading="lazy"><div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent px-2 py-2"><div class="text-[9px] font-black uppercase tracking-[0.18em] text-white">${photoCount === 1 ? '1 Photo' : `${photoCount} Photos`}</div></div></div>`
+                    : `<div class="w-32 sm:w-36 min-h-44 flex-shrink-0 bg-slate-100 border-r border-slate-200 flex items-center justify-center px-3 text-center text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">No Photo</div>`;
 
-                return `<div class="flex items-start w-full mb-2 item-row relative app-card-shell p-3 ${holdBorderClass} shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-teal-600 focus:ring-teal-600 shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full"><div class="flex-grow min-w-0 pr-2"><div class="font-black text-gray-800 text-[13px] leading-tight break-words mb-1">${item.COMMONNAME||'Unknown'}</div><div class="font-black text-teal-700 text-[13px] mb-2">${item.CONTSIZE||'-'}</div><div class="grid grid-cols-2 gap-2 mb-2"><div class="text-[11px] font-bold text-gray-500 uppercase"><span class="block text-[8px] text-gray-400 mb-0.5">LOT CODE</span>${item.LOTCODE||'-'}</div><div class="text-[11px] font-bold text-gray-500 uppercase"><span class="block text-[8px] text-gray-400 mb-0.5">LOCATION</span>${item.LOCATIONCODE||'-'}</div></div><div class="flex flex-wrap gap-2 text-[11px] font-bold uppercase tracking-wider mt-1"><span class="bg-gray-100 text-gray-800 px-2 py-1 rounded border border-gray-200">LOC AVA: <span class="font-black">${item.PTRAVAILABLE||'0'}</span></span><span class="bg-purple-50 text-purple-700 px-2 py-1 rounded border border-purple-200">s_LTS: <span class="font-black">${item.S_LTS||'0'}</span></span></div>${holdHtml}${salesNoteHtml}${avNoteHtml}</div>${clickThumbHtml}</div></div></div>`;
+                return `<div class="flex items-stretch w-full mb-3 item-row relative" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0 mt-3"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-teal-600 focus:ring-teal-600 shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-1 min-w-0 app-card-shell ${holdBorderClass} active:scale-[0.99] transition-transform cursor-pointer overflow-hidden">${mediaHtml}<div class="flex flex-col flex-1 min-w-0 p-3"><div class="flex items-start justify-between gap-3"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-600 mb-1">Open Stock</div><div class="font-black text-slate-900 text-[15px] leading-tight break-words">${item.COMMONNAME||'Unknown'}</div><div class="font-black text-teal-700 text-[13px] mt-1">${item.CONTSIZE||'-'}</div></div><div class="shrink-0 text-right"><div class="text-[9px] font-black uppercase tracking-[0.16em] text-slate-400">Item</div><div class="mt-1 text-[11px] font-mono font-bold text-slate-600 bg-slate-100 px-2 py-1 rounded-lg border border-slate-200">${item.ITEMCODE||'-'}</div></div></div><div class="grid grid-cols-2 gap-2 mt-3 text-[11px] font-bold text-slate-700 uppercase"><div class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2"><div class="text-[9px] font-black tracking-[0.16em] text-slate-400 mb-1">Location</div><div class="text-[13px] font-black text-slate-800">${item.LOCATIONCODE||'-'}</div></div><div class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2"><div class="text-[9px] font-black tracking-[0.16em] text-slate-400 mb-1">Lot Code</div><div class="text-[13px] font-black text-slate-800">${item.LOTCODE||'-'}</div></div></div><div class="flex flex-wrap gap-2 mt-3 text-[10px] font-black uppercase tracking-[0.12em]"><span class="bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full border border-emerald-100">Loc Ava ${item.PTRAVAILABLE||'0'}</span><span class="bg-purple-50 text-purple-700 px-2.5 py-1 rounded-full border border-purple-100">s_LTS ${item.S_LTS||'0'}</span>${seasonChip}${priorityChip}</div>${holdHtml}${salesNoteHtml}${avNoteHtml}</div></div></div>`;
             }
             if(photoLink){ 
                 let firstUrl=String(photoLink).split(',')[0]; 
@@ -5507,17 +5820,24 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
         }
 
         function initiateBatchAction(action) {
+            const items = getCartSelectedItems();
+            if (!items.length) {
+                showToast('Bag Empty', 'Add one or more rows to the bag first.', true);
+                return;
+            }
+            const requestOnly = items.every((item) => isRequestLikeItem(item));
+            const docksOnly = items.every((item) => isDockLikeItem(item));
+            toggleCartPanel(false);
             if(action==='request_action'){openRequestModal();return}
+            if(action==='flyer'){createCartFlyers();return}
             if(action==='endcap'){openEndCapModal();return}
-            const isRequestView=!document.getElementById('view-request').classList.contains('hidden');
-            const isDocksView=!document.getElementById('view-docks').classList.contains('hidden');
-            if(isRequestView){executeBatchAction(action,'request');return}
-            if(isDocksView){executeBatchAction(action,'docks');return}
+            if(requestOnly){executeBatchAction(action,'request');return}
+            if(docksOnly){executeBatchAction(action,'docks');return}
             pendingAction=action;
             document.getElementById('tab-select-modal').classList.remove('hidden')
         }
-
         function openEndCapModal() {
+            toggleCartPanel(false);
             document.getElementById('ec-step-1').classList.remove('hidden');
             document.getElementById('ec-step-2').classList.add('hidden');
             document.getElementById('endcap-modal').classList.remove('hidden');
@@ -5613,6 +5933,7 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
         }
 
         function openRequestModal() {
+            toggleCartPanel(false);
             resetQuickDriveRequestState();
             showRequestModalBase();
             if(safeRole==='SALESREP'){
@@ -6412,7 +6733,7 @@ ${formatRequestItemsText(items)}`;
             }
         }
 
-        function openAssignModal() { document.getElementById('assign-modal').classList.remove('hidden') }
+        function openAssignModal() { toggleCartPanel(false); document.getElementById('assign-modal').classList.remove('hidden') }
         function closeAssignModal() { driveQuickAssignFlow = false; document.getElementById('assign-modal').classList.add('hidden') }
 
         const debouncedDriveSearch = debounce(() => {
@@ -6638,6 +6959,8 @@ function toggleDriveSeason(s) {
                 html += `<div class="bg-white border border-gray-200 p-4 rounded-xl shadow-sm mb-3 cursor-pointer active:scale-95 transition-transform" onclick="selectTaskUser('${esc(u)}')"><div class="flex justify-between items-center"><span class="font-black text-xl text-[#007a4d]">${u}</span><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${userTasks.length} Total</span></div>${htmlCounts}</div>`;
             });
             document.getElementById('task-tabs-container').classList.add('hidden');
+            const subTabs = document.getElementById('task-subtabs-container');
+            if (subTabs) subTabs.classList.add('hidden');
             document.getElementById('task-crumb').innerText = "Team Tasks Overview";
             document.getElementById('task-content').innerHTML = html;
         }
@@ -6694,6 +7017,43 @@ function toggleDriveSeason(s) {
 
         function taskTabUsesBlockDrill(tab = activeTaskTab) {
             return tab === 'season' || tab === 'location' || tab === 'colorwalk';
+        }
+
+        function getTaskSubviewLabel(subview = activeTaskSubview) {
+            if (subview === 'positive-lts') return 'Positive LTS';
+            if (subview === 'hold') return 'Hold';
+            return 'All';
+        }
+
+        function taskRowMatchesSubview(item, subview = activeTaskSubview) {
+            if (subview === 'positive-lts') {
+                const ltsValue = parseFloat(String(firstNonEmptyValue(item && item.S_LTS, '0')).replace(/,/g, '')) || 0;
+                return ltsValue > 1;
+            }
+            if (subview === 'hold') {
+                const holdCode = String(firstNonEmptyValue(item && item.HOLDSTOPCODE, item && item.HOLD_STOP_CODE, item && item.HOLDSTOP, '') || '').trim().toUpperCase();
+                if (!holdCode || holdCode === 'NULL' || holdCode === '-' || holdCode === 'N/A') return false;
+                return holdCode.includes('H') || holdCode.includes('S');
+            }
+            return true;
+        }
+
+        function getTaskSubviewItems(items, tab = activeTaskTab, subview = activeTaskSubview) {
+            if (!taskTabUsesBlockDrill(tab)) return items;
+            return items.filter(item => taskRowMatchesSubview(item, subview));
+        }
+
+        function syncTaskSubviewControls(tab = activeTaskTab) {
+            const container = document.getElementById('task-subtabs-container');
+            if (!container) return;
+            const shouldShow = taskTabUsesBlockDrill(tab);
+            container.classList.toggle('hidden', !shouldShow);
+            const allTab = document.getElementById('task-subtab-all');
+            const positiveTab = document.getElementById('task-subtab-positive-lts');
+            const holdTab = document.getElementById('task-subtab-hold');
+            if (allTab) allTab.classList.toggle('active', activeTaskSubview === 'all');
+            if (positiveTab) positiveTab.classList.toggle('active', activeTaskSubview === 'positive-lts');
+            if (holdTab) holdTab.classList.toggle('active', activeTaskSubview === 'hold');
         }
 
         const COLOR_WALK_LOCATION_BUCKETS = new Set(['C.06', 'C.07', 'D.05', 'D.06', 'D.07', 'D.08', 'D.09', 'D.10']);
@@ -6768,6 +7128,7 @@ function toggleDriveSeason(s) {
             if (ensureViewDataForRender('tasks')) return;
             const tabs = document.getElementById('task-tabs-container');
             if (tabs) tabs.classList.remove('hidden');
+            syncTaskSubviewControls(activeTaskTab);
 
             const useBlockDrill = taskTabUsesBlockDrill(activeTaskTab);
             const useSharedNotesQueue = safeRole === 'ADMIN' && useBlockDrill;
@@ -6777,7 +7138,10 @@ function toggleDriveSeason(s) {
 
             const container = document.getElementById('task-content');
             const crumb = document.getElementById('task-crumb');
-            const notesTitle = getTaskTabLabel(activeTaskTab);
+            const baseNotesTitle = getTaskTabLabel(activeTaskTab);
+            const notesTitle = useBlockDrill && activeTaskSubview !== 'all'
+                ? `${baseNotesTitle} > ${getTaskSubviewLabel(activeTaskSubview)}`
+                : baseNotesTitle;
 
             if (useSharedNotesQueue) {
                 if (taskViewLevel === 0) crumb.innerText = notesTitle;
@@ -6797,7 +7161,7 @@ function toggleDriveSeason(s) {
                 : isSharedFlyerQueue
                     ? fullInventory.filter(i => isFlyerTaskItem(i))
                     : fullInventory.filter(i => i.ASSIGNEDTO === targetUser && (keepCompletedInTaskTab || !i.DATE_COMPLETED));
-            let tabItems = getTaskTabItems(scopedItems, activeTaskTab);
+            let tabItems = getTaskSubviewItems(getTaskTabItems(scopedItems, activeTaskTab), activeTaskTab, activeTaskSubview);
 
             if (tabItems.length === 0) {
                 container.innerHTML = `<div class="p-8 text-center text-gray-400">No active ${notesTitle} rows.</div>`;
@@ -7499,3 +7863,10 @@ function toggleDriveSeason(s) {
     </script>
 </body>
 </html>
+
+
+
+
+
+
+
