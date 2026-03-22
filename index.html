@@ -1,4 +1,3 @@
-<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -311,18 +310,18 @@
             <div class="drawer-item" onclick="switchView('home'); toggleMenu();"><i class="ph-bold ph-house"></i> Home</div>
             <div class="drawer-item text-green-600 font-bold" onclick="fetchBackgroundData('force'); toggleMenu();"><i class="ph-bold ph-arrows-clockwise"></i> Force Data Sync</div>
             <hr class="my-2">
-            <div class="drawer-item" onclick="switchView('drive'); toggleMenu();"><i class="ph-bold ph-car"></i> Drive Mode</div>
-            <div class="drawer-item" onclick="switchView('tasks'); toggleMenu();"><i class="ph-bold ph-clipboard-text"></i> My Tasks</div>
-            <div class="drawer-item text-orange-600 font-bold" onclick="switchView('docks'); toggleMenu();"><i class="ph-bold ph-truck"></i> Docks</div>
-            <div class="drawer-item text-teal-600 font-bold" onclick="switchView('av'); toggleMenu();"><i class="ph-bold ph-notebook"></i> AV</div>
+            <div class="drawer-item role-access role-admin role-qc-supervisor hidden" onclick="switchView('drive'); toggleMenu();"><i class="ph-bold ph-car"></i> Drive Mode</div>
+            <div class="drawer-item role-access role-admin hidden" onclick="switchView('tasks'); toggleMenu();"><i class="ph-bold ph-clipboard-text"></i> My Tasks</div>
+            <div class="drawer-item text-orange-600 font-bold role-access role-admin role-rep role-qc-supervisor role-qc hidden" onclick="switchView('docks'); toggleMenu();"><i class="ph-bold ph-truck"></i> Docks</div>
+            <div class="drawer-item text-teal-600 font-bold role-access role-admin role-rep hidden" onclick="switchView('av'); toggleMenu();"><i class="ph-bold ph-notebook"></i> AV</div>
             <hr class="my-2">
-            <div class="drawer-item text-blue-600 font-bold admin-rep-csr-only hidden" onclick="switchView('request'); toggleMenu();"><i class="ph-bold ph-chat-circle-text"></i> Requests</div>
-            <div class="drawer-item text-indigo-600 font-bold admin-rep-csr-only hidden" onclick="switchView('reserves'); toggleMenu();"><i class="ph-bold ph-bookmark-simple"></i> Reserves</div>
-            <div class="drawer-item text-purple-600 font-bold admin-csr-only hidden" onclick="switchView('sales-office'); toggleMenu();"><i class="ph-bold ph-briefcase"></i> Sales Office</div>
-            <div class="drawer-item text-emerald-600 font-bold admin-only hidden" onclick="switchView('reports'); toggleMenu();"><i class="ph-bold ph-chart-bar"></i> Reports</div>
-            <div class="drawer-item text-emerald-600 font-bold" onclick="switchView('hours'); toggleMenu();"><i class="ph-bold ph-clock"></i> Labor Hours</div>
-            <div class="drawer-item text-red-600 font-bold dylan-only hidden" onclick="switchView('low-stock'); toggleMenu();"><i class="ph-bold ph-trend-down"></i> Low Stock List</div>
-            <div class="drawer-item text-yellow-600 font-bold admin-only hidden" onclick="switchView('review'); toggleMenu();"><i class="ph-bold ph-warning-circle"></i> Manager Review</div>
+            <div class="drawer-item text-blue-600 font-bold role-access role-admin hidden" onclick="switchView('request'); toggleMenu();"><i class="ph-bold ph-chat-circle-text"></i> Requests</div>
+            <div class="drawer-item text-indigo-600 font-bold role-access role-admin hidden" onclick="switchView('reserves'); toggleMenu();"><i class="ph-bold ph-bookmark-simple"></i> Reserves</div>
+            <div class="drawer-item text-purple-600 font-bold role-access role-admin hidden" onclick="switchView('sales-office'); toggleMenu();"><i class="ph-bold ph-briefcase"></i> Sales Office</div>
+            <div class="drawer-item text-emerald-600 font-bold role-access role-admin hidden" onclick="switchView('reports'); toggleMenu();"><i class="ph-bold ph-chart-bar"></i> Reports</div>
+            <div class="drawer-item text-emerald-600 font-bold role-access role-admin hidden" onclick="switchView('hours'); toggleMenu();"><i class="ph-bold ph-clock"></i> Labor Hours</div>
+            <div class="drawer-item text-red-600 font-bold role-access role-admin hidden" onclick="switchView('low-stock'); toggleMenu();"><i class="ph-bold ph-trend-down"></i> Low Stock List</div>
+            <div class="drawer-item text-yellow-600 font-bold role-access role-admin hidden" onclick="switchView('review'); toggleMenu();"><i class="ph-bold ph-warning-circle"></i> Manager Review</div>
             <hr class="my-3 border-gray-200">
             <div class="drawer-item text-red-600 bg-red-50 font-bold justify-center rounded-lg mx-4 mt-2 mb-8" onclick="performLogout()"><i class="ph-bold ph-sign-out text-xl"></i> Log Out</div>
         </div>
@@ -345,17 +344,17 @@
                     </div>
                     <h2 class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3 pl-1">App Modules</h2>
                     <div class="grid grid-cols-2 gap-3 mb-8">
-                        <div onclick="switchView('drive')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-car text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Drive Mode</span></div>
-                        <div onclick="switchView('tasks')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-clipboard-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Tasks</span></div>
-                        <div onclick="switchView('docks')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-truck text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Docks</span></div>
-                        <div onclick="switchView('av')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-notebook text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">AV</span></div>
-                        <div onclick="switchView('request')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer admin-rep-csr-only hidden"><i class="ph-bold ph-chat-circle-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Requests</span></div>
-                        <div onclick="switchView('reserves')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer admin-rep-csr-only hidden"><i class="ph-bold ph-bookmark-simple text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Reserves</span></div>
-                        <div onclick="switchView('sales-office')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer admin-csr-only hidden"><i class="ph-bold ph-briefcase text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Sales Office</span></div>
-                        <div onclick="switchView('reports')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer admin-only hidden"><i class="ph-bold ph-chart-bar text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Reports</span></div>
-                        <div onclick="switchView('hours')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-clock text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Labor Hours</span></div>
-                        <div onclick="switchView('low-stock')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer dylan-only hidden"><i class="ph-bold ph-trend-down text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Low Stock</span></div>
-                        <div onclick="switchView('review')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform col-span-2 cursor-pointer admin-only hidden"><i class="ph-bold ph-warning-circle text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Manager Review</span></div>
+                        <div onclick="switchView('drive')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-qc-supervisor hidden"><i class="ph-bold ph-car text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Drive Mode</span></div>
+                        <div onclick="switchView('tasks')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-clipboard-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Tasks</span></div>
+                        <div onclick="switchView('docks')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep role-qc-supervisor role-qc hidden"><i class="ph-bold ph-truck text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Docks</span></div>
+                        <div onclick="switchView('av')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep hidden"><i class="ph-bold ph-notebook text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">AV</span></div>
+                        <div onclick="switchView('request')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-chat-circle-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Requests</span></div>
+                        <div onclick="switchView('reserves')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-bookmark-simple text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Reserves</span></div>
+                        <div onclick="switchView('sales-office')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-briefcase text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Sales Office</span></div>
+                        <div onclick="switchView('reports')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-chart-bar text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Reports</span></div>
+                        <div onclick="switchView('hours')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-clock text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Labor Hours</span></div>
+                        <div onclick="switchView('low-stock')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-trend-down text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Low Stock</span></div>
+                        <div onclick="switchView('review')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform col-span-2 cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-warning-circle text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Manager Review</span></div>
                     </div>
                 </div>
                 
@@ -398,7 +397,10 @@
 
                         <div id="tab-av-open-photos" class="task-tab" onclick="setAvOpenTab('photos')">Photos</div>
                     </div>
-                    <div id="av-crumb" class="text-xs font-bold text-[#007a4d] mb-3 mt-2 empty:hidden">Open Stock</div>
+                    <div class="flex items-center justify-between gap-2 mb-3 mt-2">
+                        <div id="av-crumb" class="text-xs font-bold text-[#007a4d] mb-0 mt-0 empty:hidden flex-1 min-w-0">Open Stock</div>
+                        <button type="button" id="av-export-btn" class="inline-flex items-center gap-2 rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-95" onclick="exportCurrentAVToExcel()"><i class="ph-bold ph-download-simple text-base"></i><span id="av-export-btn-label">Export Excel</span></button>
+                    </div>
                     </div>
                     <div id="av-content"></div>
                 </div>
@@ -853,6 +855,106 @@
             if (sourceView === 'flyer') return firstNonEmptyValue(item.FLYER_PHOTO_LINK, item.ROW_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']);
             if (sourceView === 'sales-office') return firstNonEmptyValue(item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']);
             return firstNonEmptyValue(item.ROW_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.REQ_PHOTO_LINK, item.DOCK_PHOTO_LINK, item.FLYER_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']);
+        }
+        function getDetailPhotoUrls(item, sourceView='') {
+            if (!item) return [];
+            const urls = [];
+            const seen = new Set();
+            [
+                getRowPhotoLink(item, sourceView || lastView),
+                item.SAVED_PHOTO_LINK || '',
+                item.REQ_PHOTO_LINK || '',
+                item.DOCK_PHOTO_LINK || '',
+                item.FLYER_PHOTO_LINK || ''
+            ].forEach((link) => {
+                getPhotoUrlList(link).forEach((url) => {
+                    const cleanUrl = String(url || '').trim();
+                    if (!cleanUrl || seen.has(cleanUrl)) return;
+                    seen.add(cleanUrl);
+                    urls.push(cleanUrl);
+                });
+            });
+            return urls;
+        }
+        function handleDetailBagToggle(event) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            if (!activeItem || !activeItem.DOM_ID) return false;
+            toggleGlobalItem(activeItem.DOM_ID);
+            return false;
+        }
+        function openDetailRequestAction(event) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            if (!activeItem || !activeItem.DOM_ID) return false;
+            if (!canUseCartInventoryActions([activeItem])) {
+                showToast('Unavailable', 'Requests can only be created from inventory rows.', true);
+                return false;
+            }
+            detailRequestSourceDomIds = [activeItem.DOM_ID];
+            openRequestModal();
+            return false;
+        }
+        function renderDetailOverviewMedia() {
+            const container = document.getElementById('ov-large-photo');
+            if (!container) return;
+            if (!activeItem) {
+                container.innerHTML = '';
+                container.classList.add('hidden');
+                return;
+            }
+
+            const photoUrls = getDetailPhotoUrls(activeItem, lastView);
+            const combinedPhotoLink = photoUrls.join(',');
+            const photoCount = photoUrls.length;
+            const inBag = selectedItems.has(activeItem.DOM_ID);
+            const canRequest = canUseCartInventoryActions([activeItem]);
+            const itemLabel = `${activeItem.COMMONNAME || 'Item'}${activeItem.CONTSIZE ? ` (${activeItem.CONTSIZE})` : ''}`;
+            const bagBtnClass = inBag
+                ? 'bg-[#007a4d] text-white border-[#007a4d] shadow-[0_14px_28px_rgba(0,122,77,0.18)]'
+                : 'bg-white text-[#007a4d] border-green-200';
+            const requestBtnHtml = canRequest
+                ? `<button type="button" class="flex-1 inline-flex items-center justify-center gap-2 rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3 text-[12px] font-black uppercase tracking-[0.12em] text-orange-700 shadow-sm active:scale-[0.98]" onclick="openDetailRequestAction(event)"><i class="ph-bold ph-chat-circle-text text-lg"></i>Make Request</button>`
+                : '';
+            const mediaHtml = photoCount
+                ? `<div class="flex gap-3 overflow-x-auto scrollbar-none snap-x snap-mandatory pb-2">${photoUrls.map((url, index) => `<button type="button" class="relative flex-shrink-0 w-[78vw] max-w-[320px] aspect-[4/3] overflow-hidden rounded-[1.25rem] border border-slate-200 bg-slate-100 shadow-sm snap-center" onclick="openPhotoModal('${esc(combinedPhotoLink)}', '${esc(itemLabel)}')"><img src="${url}" class="h-full w-full object-contain bg-slate-100" loading="${index === 0 ? 'eager' : 'lazy'}"><div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent px-3 py-3 text-left"><div class="text-[10px] font-black uppercase tracking-[0.18em] text-white">${photoCount > 1 ? `Photo ${index + 1} of ${photoCount}` : 'Tap To Expand'}</div></div></button>`).join('')}</div>`
+                : `<div class="flex min-h-[200px] items-center justify-center rounded-[1.25rem] border border-dashed border-slate-300 bg-slate-100 px-6 text-center text-[12px] font-black uppercase tracking-[0.16em] text-slate-400">No Photos On File Yet</div>`;
+            const helperCopy = photoCount > 1
+                ? `Swipe to scroll ${photoCount} photos`
+                : (photoCount === 1 ? 'Tap photo to expand' : 'Use the buttons below to bag it or create a request');
+            const countBadgeHtml = photoCount
+                ? `<div class="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600">${photoCount} photo${photoCount === 1 ? '' : 's'}</div>`
+                : '';
+
+            container.classList.remove('hidden');
+            container.innerHTML = `
+                <div class="app-card-shell overflow-hidden border border-slate-200">
+                    <div class="border-b border-slate-200 bg-gradient-to-r from-slate-50 to-white px-4 py-3">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="min-w-0">
+                                <div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Item Media</div>
+                                <div class="mt-1 text-[13px] font-bold text-slate-500">${photoCount ? `${photoCount} photo${photoCount === 1 ? '' : 's'} available` : 'Photos will show here when they are attached'}</div>
+                            </div>
+                            ${photoCount ? `<button type="button" class="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600 shadow-sm active:scale-[0.98]" onclick="openPhotoModal('${esc(combinedPhotoLink)}', '${esc(itemLabel)}')"><i class="ph-bold ph-arrows-out-simple text-sm"></i>Open</button>` : ''}
+                        </div>
+                    </div>
+                    <div class="p-3">
+                        ${mediaHtml}
+                        <div class="mt-3 flex items-center justify-between gap-3 text-[11px] font-bold text-slate-500">
+                            <div>${helperCopy}</div>
+                            ${countBadgeHtml}
+                        </div>
+                        <div class="mt-3 flex flex-col gap-2 sm:flex-row">
+                            <button type="button" class="flex-1 inline-flex items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-[12px] font-black uppercase tracking-[0.12em] transition active:scale-[0.98] ${bagBtnClass}" onclick="handleDetailBagToggle(event)"><i class="ph-bold ${inBag ? 'ph-check' : 'ph-handbag'} text-lg"></i>${inBag ? 'In Bag' : 'Add To Bag'}</button>
+                            ${requestBtnHtml}
+                        </div>
+                    </div>
+                </div>
+            `;
         }
         function syncRowDataAcrossViews(masterItem) {
             if (!masterItem) return;
@@ -1447,6 +1549,8 @@
         let cacheWarmPromise=null;
         let cachePersistTimer=null;
         let currentUser=""; let currentUserDisplay=""; let currentRole=""; let safeRole=""; let repPermutations=[]; let activeItem=null; let lastView=""; let activeDetailTab="overview"; let selectedItems=new Set(); let cartPanelOpen=false; let cartUiObserver=null; let cartUiRefreshQueued=false; let lastCartToggleAt=0; let lastCartToggleDomId=""; let isMultiSelectMode=false; let pressTimer=null; let isLongPress=false; let touchStartX=0; let touchStartY=0; let pendingAction=null; let pendingTabType=null; let hasAppliedInitialHomeView=false;
+        let dockAssignableUsers=[]; let dockAssignableUsersPromise=null;
+        let detailRequestSourceDomIds=[];
         
         const DRIVE_MODE_LABELS = { ok: 'Drive Mode' };
         let activeDriveMode='ok'; let activeDriveTab='name'; let selectedDriveBlock=null; let selectedDriveLoc=null; let driveQuickRequestCardMode=false; let driveQuickFilterName=''; let driveQuickFilterLocation=''; let driveQuickFilterLot=''; let driveQuickFilterSize=''; let driveQuickFilterPriority=''; let driveQuickFilterLtsMode=''; let driveQuickFilterLtsValue=''; let driveQuickHoldStopOnly=false; let driveQuickFilterOptionsCacheKey=''; let driveQuickFilterOptionsCache=null; let driveBaseFilterCacheKey=''; let driveBaseFilterCacheItems=[]; let driveQuickFilterCacheKey=''; let driveQuickFilterCacheItems=[]; let driveQuickFiltersModalOpen=false;
@@ -1619,8 +1723,7 @@
             if (localStorage.getItem('gnc_bio_enabled')==='true' && window.PublicKeyCredential) {
                 const bioBtn=document.getElementById('btn-fingerprint'); if (bioBtn) bioBtn.classList.remove('hidden');
             }
-            const teamOptions = ["", "Dylan", "Kayla", "Morgan", ...salesRepList].map(n => `<option value="${n}">${n || "Unassigned"}</option>`).join('');
-            ['dock-checker', 'dock-inspector', 'dock-mistake'].forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = teamOptions; });
+            updateDockAssignableTeamOptions();
             initializeViewportHeightSync();
             initializeInteractiveChrome();
             installAmazonHeaderChrome();
@@ -2154,12 +2257,11 @@
         }
 
         function isMyRep(repNameStr) { 
-            if(safeRole!=='SALESREP')return true; 
+            if(!getRoleAccessState().isRep)return true; 
             if(!repNameStr)return false; 
             let str=String(repNameStr).toLowerCase(); 
             return repPermutations.some(p=>str.includes(p)); 
         }
-
         let activeReportTab = 'ALL';
         let protectedEditState = {};
         let protectedUnlockTimers = {};
@@ -2916,11 +3018,11 @@ function toggleDriveQuickRequestItem(domId) {
             tempReqFolder = null;
             tempReqCust = null;
             previousReqStep = '';
+            detailRequestSourceDomIds = [];
             resetQuickDriveRequestState();
             configureRequestCustomerStep();
             renderDriveQuickRequestBar();
         }
-
         function showRequestCustomerStep(fromStepId = 'step-1-rep') {
             previousReqStep = fromStepId;
             document.getElementById('step-1-rep').classList.add('hidden');
@@ -2940,10 +3042,11 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function getRequestSourceDomIds() {
-            const domIds = isQuickDriveRequestMode() ? Array.from(driveQuickRequestItems) : Array.from(selectedItems);
+            const domIds = detailRequestSourceDomIds.length
+                ? [...detailRequestSourceDomIds]
+                : (isQuickDriveRequestMode() ? Array.from(driveQuickRequestItems) : Array.from(selectedItems));
             return domIds.filter(domId => !!findItemByDomId(domId));
         }
-
         function dismissSearchKeyboard(event) {
             if (!event) return;
             const key = event.key || event.code || '';
@@ -3501,50 +3604,6 @@ function toggleDriveQuickRequestItem(domId) {
             });
             return true;
         }
-function performStaleDataSweep() {
-            // Only let ADMIN roles trigger the sweep to prevent 50 iPads doing it at once
-            if (safeRole !== 'ADMIN') return; 
-            
-            const updates = [];
-            const now = Date.now();
-
-            fullInventory.forEach(item => {
-                let needsReset = false;
-
-                // Rule 1: 10 Days Old
-                if (item.DATE_COMPLETED) {
-                    const daysOld = (now - new Date(item.DATE_COMPLETED).getTime()) / (1000 * 3600 * 24);
-                    if (daysOld >= 10) needsReset = true;
-                }
-
-                // Rule 2: LOC MATCH QTY hits 0
-                if (!needsReset && item.LOC_MATCH_QTY && item.INITIAL_PTR) {
-                    let currentPtr = parseInt(String(item.PTRAVAILABLE).replace(/,/g, '')) || 0;
-                    let initialPtr = parseInt(String(item.INITIAL_PTR).replace(/,/g, '')) || 0;
-                    let currentMatchQty = Number(item.LOC_MATCH_QTY) - (initialPtr - currentPtr);
-                    
-                    if (currentMatchQty <= 0) needsReset = true;
-                }
-
-                if (needsReset) {
-                    // Automatically re-evaluate the 10% rule for reassignment
-                    let newAssignment = 'location';
-                    let ptr = parseFloat(String(item.PTRAVAILABLE).replace(/,/g,'')) || 0;
-                    let ss = parseFloat(String(item.SEASONSUPPLY || item.SEASON_SUPPLY).replace(/,/g,'')) || 0;
-                    if (ptr > (0.10 * ss)) newAssignment = 'season';
-
-                    const targetTable = item.SOURCE_TABLE || 'v2_master_inventory';
-                    updates.push(supabaseFetch(targetTable, 'PATCH', {
-                        av_note: null, spec: null, caliper: null, saved_photo_link: null, saved_photo_name: null,
-                        match: null, loc_match_qty: null, initial_ptr: null, date_completed: null, app_tab_assignment: newAssignment
-                    }, `unique_id=eq.${item.UNIQUE_ID}`));
-                }
-            });
-
-            if (updates.length > 0) {
-                Promise.allSettled(updates).then(() => fetchBackgroundData('force'));
-            }
-        }
         async function finalizeLogin(user,pass,isBiometricLogin) { 
             setBootingSession(false);
             localStorage.setItem('gnc_user_v3',user); 
@@ -3556,6 +3615,7 @@ function performStaleDataSweep() {
             initializeCartUi();
             updateGlobalActionBar();
             setRepPermutations(currentUser);
+            ensureDockAssignableUsers().catch(() => {});
             const shouldPromptBiometric = !isBiometricLogin && window.PublicKeyCredential && localStorage.getItem('gnc_bio_enabled')!=='true';
             setLoginProgress(Math.max(currentProgress, 30), 'Preparing your workspace...');
 
@@ -3586,12 +3646,11 @@ function performStaleDataSweep() {
                 showToast("Ready", "Fast mode is on. Data is warming in the background.", false);
             }
 
-           queueDatasetLoad('master', 'full', 9000);
+            queueDatasetLoad('master', 'full', 9000);
             queueDatasetLoad('requests', 'full', 17000);
             queueDatasetLoad('avNotes', 'full', 15000);
-            
-            // Wait 20 seconds after login, then quietly sweep for stale data
-            setTimeout(() => performStaleDataSweep(), 20000);
+            loginPrefetchPromise = null;
+            loginPrefetchMode = '';
         }
         async function silentBackgroundSync() {
             if(!currentUser)return; 
@@ -3856,29 +3915,163 @@ function performStaleDataSweep() {
             }
         }
 
+        function normalizeAppRoleValue(role = '') {
+            return String(role || '').toUpperCase().replace(/\s+/g, '');
+        }
+
+        function isQcSupervisorRoleValue(role = '') {
+            const roleDisplay = String(role || '').toUpperCase();
+            const normalizedRole = normalizeAppRoleValue(role);
+            return normalizedRole.includes('QCSUPERVISOR') || normalizedRole.includes('QCSUP') || roleDisplay.includes('QC SUPERVISOR');
+        }
+
+        function isStandardQcRoleValue(role = '') {
+            const normalizedRole = normalizeAppRoleValue(role);
+            return !isQcSupervisorRoleValue(role) && (normalizedRole === 'QC' || normalizedRole === 'QUALITYCONTROL');
+        }
+
+        function isDockAssignableRoleValue(role = '') {
+            return isStandardQcRoleValue(role) || isQcSupervisorRoleValue(role);
+        }
+
+        function updateDockAssignableTeamOptions(preservedValues = null) {
+            const selectIds = ['dock-checker', 'dock-inspector', 'dock-mistake'];
+            const resolvedValues = preservedValues && typeof preservedValues === 'object' ? {
+                checker: String(preservedValues.checker || ''),
+                inspector: String(preservedValues.inspector || ''),
+                mistake: String(preservedValues.mistake || '')
+            } : {};
+            const baseNames = Array.from(new Set(dockAssignableUsers.map(name => String(name || '').trim()).filter(Boolean)))
+                .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+            selectIds.forEach((id) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                const field = id.replace('dock-', '');
+                const currentValue = Object.prototype.hasOwnProperty.call(resolvedValues, field) ? resolvedValues[field] : String(el.value || '');
+                const optionNames = baseNames.slice();
+                if (currentValue && !optionNames.includes(currentValue)) optionNames.push(currentValue);
+                optionNames.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+                el.innerHTML = '';
+                el.add(new Option('Unassigned', ''));
+                optionNames.forEach((name) => el.add(new Option(name, name)));
+                el.value = currentValue;
+            });
+        }
+
+        async function ensureDockAssignableUsers(forceRefresh = false) {
+            if (!forceRefresh && dockAssignableUsers.length) return dockAssignableUsers;
+            if (!forceRefresh && dockAssignableUsersPromise) return dockAssignableUsersPromise;
+            const previousUsers = dockAssignableUsers.slice();
+            dockAssignableUsersPromise = (async () => {
+                const rows = await supabaseFetch('v2_app_users', 'GET', null, 'select=*');
+                dockAssignableUsers = Array.from(new Set((rows || [])
+                    .filter((user) => isDockAssignableRoleValue(user.role || user.ROLE))
+                    .map((user) => String(user.username || user.USERNAME || '').trim())
+                    .filter(Boolean)
+                )).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+                updateDockAssignableTeamOptions();
+                return dockAssignableUsers;
+            })().catch(() => {
+                dockAssignableUsers = previousUsers;
+                updateDockAssignableTeamOptions();
+                return dockAssignableUsers;
+            }).finally(() => {
+                dockAssignableUsersPromise = null;
+            });
+            return dockAssignableUsersPromise;
+        }
+
+        const ROLE_ACCESS_VIEWS = ['drive','tasks','docks','av','request','reserves','sales-office','reports','hours','low-stock','review'];
+
+        function getRoleAccessState() {
+            const roleDisplay = String(currentRole || safeRole || '').toUpperCase();
+            const normalizedRole = String(safeRole || roleDisplay).toUpperCase().replace(/\s+/g, '');
+            const isRep = normalizedRole === 'REP' || normalizedRole === 'SALESREP' || normalizedRole.includes('SALESREP') || roleDisplay.includes('SALES REP');
+            const isQcSupervisor = normalizedRole.includes('QCSUPERVISOR') || normalizedRole.includes('QCSUP') || roleDisplay.includes('QC SUPERVISOR');
+            const isQc = !isQcSupervisor && (normalizedRole === 'QC' || normalizedRole.startsWith('QC'));
+            const isCsr = normalizedRole === 'CSR' || normalizedRole.includes('CSR');
+            const isAdmin = normalizedRole.includes('ADMIN') || normalizedRole.includes('MANAGER') || isCsr || (!isRep && !isQcSupervisor && !isQc);
+            const allowedViews = new Set(['home']);
+            if (isAdmin) {
+                ROLE_ACCESS_VIEWS.forEach(viewId => allowedViews.add(viewId));
+            } else if (isRep) {
+                ['av', 'docks'].forEach(viewId => allowedViews.add(viewId));
+            } else if (isQcSupervisor) {
+                ['drive', 'docks'].forEach(viewId => allowedViews.add(viewId));
+            } else if (isQc) {
+                ['docks'].forEach(viewId => allowedViews.add(viewId));
+            }
+            return { isAdmin, isRep, isQcSupervisor, isQc, allowedViews };
+        }
+
+        function canAccessView(viewId) {
+            const targetView = String(viewId || '').trim();
+            if (!targetView || targetView === 'home' || targetView === 'detail') return true;
+            return getRoleAccessState().allowedViews.has(targetView);
+        }
+
+        function getAssignmentMatchKeys(value = '') {
+            const raw = String(value || '').toLowerCase().trim();
+            if (!raw) return [];
+            const keys = new Set();
+            const sections = raw.split(/[,&/|]+/).map(part => part.replace(/[^a-z0-9]+/g, ' ').trim()).filter(Boolean);
+            sections.forEach(part => {
+                keys.add(part);
+                part.split(/\s+/).filter(Boolean).forEach(token => keys.add(token));
+            });
+            const full = raw.replace(/[^a-z0-9]+/g, ' ').trim();
+            if (full) {
+                keys.add(full);
+                full.split(/\s+/).filter(Boolean).forEach(token => keys.add(token));
+            }
+            return [...keys];
+        }
+
+        function isAssignedToCurrentUser(assignedValue) {
+            const assignedKeys = getAssignmentMatchKeys(assignedValue);
+            if (!assignedKeys.length) return false;
+            const userKeys = new Set([...getAssignmentMatchKeys(currentUser), ...getAssignmentMatchKeys(currentUserDisplay)]);
+            if (!userKeys.size) return false;
+            return assignedKeys.some(key => userKeys.has(key));
+        }
+
+        function getScopedDocksItems(items = socInventory) {
+            const { isAdmin, isRep, isQcSupervisor, isQc } = getRoleAccessState();
+            let nextItems = Array.isArray(items) ? [...items] : [];
+            if (isRep) {
+                return nextItems.filter(item => isMyRep(firstNonEmptyValue(item && item.SALESREPNAME, item && item.SALESREP, item && item.SALES_REP, item && item.SALESREPID, '')));
+            }
+            if (isQc && !isAdmin && !isQcSupervisor) {
+                return nextItems.filter(item => isAssignedToCurrentUser(item && item.ASSIGNEDTO));
+            }
+            return nextItems;
+        }
+
         function applyRolePermissions() {
-            document.getElementById('view-login').style.display='none'; 
-            document.getElementById('app-wrapper').classList.remove('hidden'); 
-            document.querySelectorAll('.admin-only, .admin-rep-only, .admin-rep-csr-only, .admin-csr-only, .rep-hidden, .csr-hidden, .dylan-only').forEach(el=>{el.classList.remove('hidden');el.style.display='';});
-            let roleStr=String(currentRole).toUpperCase(); 
-            let userStr=String(currentUser).toLowerCase(); 
-            let isRep=roleStr.includes('REP'); 
-            let isCsr=roleStr.includes('CSR'); 
-            let isQc=roleStr.includes('QC'); 
-            let isDylan=userStr.includes('dylan'); 
-            let isAdmin=(!isRep&&!isCsr&&!isQc)||roleStr.includes('ADMIN')||roleStr.includes('MANAGER')||isDylan;
-            if(isAdmin){} 
-            else if(isRep){ document.querySelectorAll('.rep-hidden, .admin-only, .admin-csr-only').forEach(el=>el.classList.add('hidden')); document.querySelectorAll("[onclick*=\"switchView('drive')\"], [onclick*=\"switchView('tasks')\"], [onclick*=\"switchView('reserves')\"], [onclick*=\"switchView('sales-office')\"], [onclick*=\"switchView('hours')\"], [onclick*=\"switchView('low-stock')\"], [onclick*=\"switchView('review')\"]").forEach(el=>el.classList.add('hidden')); document.querySelectorAll("[onclick*=\"switchView('reports')\"]").forEach(el=>el.classList.remove('hidden')); } 
-            else if(isCsr){ document.querySelectorAll('.csr-hidden, .admin-only').forEach(el=>el.classList.add('hidden')); } 
-            else if(isQc){ document.querySelectorAll('.admin-only, .admin-rep-only, .admin-rep-csr-only, .admin-csr-only').forEach(el=>el.classList.add('hidden')); }
-            if(!isDylan&&!isAdmin){ document.querySelectorAll('.dylan-only').forEach(el=>el.classList.add('hidden')); }
+            document.getElementById('view-login').style.display='none';
+            document.getElementById('app-wrapper').classList.remove('hidden');
+            const access = getRoleAccessState();
+            document.querySelectorAll('.role-access').forEach(el => {
+                const isAllowed =
+                    (access.isAdmin && el.classList.contains('role-admin')) ||
+                    (access.isRep && el.classList.contains('role-rep')) ||
+                    (access.isQcSupervisor && el.classList.contains('role-qc-supervisor')) ||
+                    (access.isQc && el.classList.contains('role-qc'));
+                el.classList.toggle('hidden', !isAllowed);
+                el.style.display = '';
+            });
             updateFooterRequestBadge();
-            if(!hasAppliedInitialHomeView){
-                hasAppliedInitialHomeView=true;
+            const currentView = getCurrentVisibleViewId();
+            if (currentView && currentView !== 'home' && !canAccessView(currentView)) {
+                hasAppliedInitialHomeView = true;
+                switchView('home');
+                return;
+            }
+            if (!hasAppliedInitialHomeView) {
+                hasAppliedInitialHomeView = true;
                 switchView('home');
             }
         }
-
         function toggleMenu(forceOpen = null) { const drawer = document.getElementById('side-drawer'); const overlay = document.getElementById('drawer-overlay'); if (!drawer || !overlay) return; const shouldOpen = forceOpen === null ? !drawer.classList.contains('open') : !!forceOpen; drawer.classList.toggle('open', shouldOpen); overlay.classList.toggle('open', shouldOpen); updateFooterNavState(); }
 
         function showToast(title, message, isAlert = false) { 
@@ -4039,18 +4232,19 @@ function performStaleDataSweep() {
 
         function switchView(viewId) { 
             closeDriveQuickFiltersModal();
+            const requestedViewId = String(viewId || 'home').trim();
+            const nextViewId = canAccessView(requestedViewId) ? requestedViewId : 'home';
             ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-detail','view-docks','view-request','view-reserves','view-av', 'view-hours'].forEach(id=>{
                 const el=document.getElementById(id);
                 if(el)el.classList.add('hidden');
             }); 
-            const targetView = document.getElementById('view-'+viewId);
+            const targetView = document.getElementById('view-'+nextViewId);
             if (targetView) targetView.classList.remove('hidden');
-            queueViewRender(viewId);
+            queueViewRender(nextViewId);
             updateGlobalBackButton();
             syncGlobalHeaderChrome();
             updateFooterNavState();
         }
-
         function goBackUniversal() {
             const currentView = getCurrentVisibleViewId();
             if (currentView === 'detail') {
@@ -4383,12 +4577,10 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
             return nextItems;
         }
 
-        function renderAV() {
-            if (ensureViewDataForRender('av')) return;
-            const container = document.getElementById('av-content');
-            const crumb = document.getElementById('av-crumb');
-            const term = document.getElementById('av-search').value.toLowerCase().trim();
-
+        function getCurrentAVBaseItems() {
+            const searchInput = document.getElementById('av-search');
+            const term = String(searchInput ? searchInput.value : '').toLowerCase().trim();
+            const { isRep } = getRoleAccessState();
             let items = [];
             if (activeAVTab === 'open') {
                 items = (isDatasetLoaded('avOpen', 'initial') ? avOpenInventory : fullInventory).filter(i => {
@@ -4396,54 +4588,272 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
                     let season = String(i.SEASON || '').toUpperCase();
                     return lts > 0 && !season.includes('Y') && !season.includes('Z');
                 });
-                if (activeAvOpenTab === 'photos') {
-                    items = items.filter(avItemHasPhotos);
-                }
+                if (activeAvOpenTab === 'photos') items = items.filter(avItemHasPhotos);
             } else {
-                items = reservesInventory;
-                if (safeRole === 'SALESREP') items = items.filter(i => isMyRep(i.SALESREPNAME));
+                items = [...reservesInventory];
+                if (isRep) items = items.filter(i => isMyRep(firstNonEmptyValue(i && i.SALESREPNAME, i && i.SALESREP, i && i.SALES_REP, i && i.SALESREPID, '')));
             }
-
             if (term) {
                 items = filterBySearch(items, term, activeAVTab === 'open' ? 'av_open' : 'av_reserves');
             }
+            return { items, term };
+        }
+        function buildAVExportContext(baseItems = null, term = '') {
+            let rows = Array.isArray(baseItems) ? [...baseItems] : [];
+            const searchTerm = String(term || '').trim();
+            let title = activeAVTab === 'open' ? 'AV Open Stock' : 'AV My Reserves';
+            let fileLabel = activeAVTab === 'open' ? 'av-open-stock' : 'av-my-reserves';
+
+            if (activeAVTab === 'open') {
+                if (activeAvOpenTab === 'photos') {
+                    rows = sortAvOpenItems(rows, 'name');
+                    title = searchTerm ? 'AV Open Stock Photos Search' : 'AV Open Stock Photos';
+                    fileLabel = searchTerm ? 'av-open-photos-search' : 'av-open-photos';
+                } else if (searchTerm) {
+                    rows.sort((a, b) => {
+                        let priA = parseFloat(a.PRIORITY);
+                        let priB = parseFloat(b.PRIORITY);
+                        if (isNaN(priA)) priA = Infinity;
+                        if (isNaN(priB)) priB = Infinity;
+                        if (priA !== priB) return priA - priB;
+                        return String(a.LOCATIONCODE || '').localeCompare(String(b.LOCATIONCODE || ''), undefined, { numeric: true });
+                    });
+                    title = 'AV Open Stock Search';
+                    fileLabel = 'av-open-search';
+                } else {
+                    rows.sort((a, b) => {
+                        const nameCompare = String(a.COMMONNAME || '').localeCompare(String(b.COMMONNAME || ''));
+                        if (nameCompare !== 0) return nameCompare;
+                        const sizeCompare = String(a.CONTSIZE || '').localeCompare(String(b.CONTSIZE || ''), undefined, { numeric: true });
+                        if (sizeCompare !== 0) return sizeCompare;
+                        return String(a.LOCATIONCODE || '').localeCompare(String(b.LOCATIONCODE || ''), undefined, { numeric: true });
+                    });
+                }
+            } else {
+                if (avResLevel >= 1 && selectedAvResName) {
+                    rows = rows.filter(i => i.COMMONNAME === selectedAvResName);
+                    title = `AV My Reserves ${selectedAvResName}`;
+                    fileLabel = `av-my-reserves-${selectedAvResName}`;
+                }
+                if (avResLevel >= 2 && selectedAvResSize) {
+                    rows = rows.filter(i => i.CONTSIZE === selectedAvResSize);
+                    title = `${title} ${selectedAvResSize}`;
+                    fileLabel = `${fileLabel}-${selectedAvResSize}`;
+                    rows.sort((a, b) => String(a.CUSTOMERNAME || '').localeCompare(String(b.CUSTOMERNAME || '')));
+                } else if (avResLevel >= 1) {
+                    rows.sort((a, b) => {
+                        const sizeCompare = String(a.CONTSIZE || '').localeCompare(String(b.CONTSIZE || ''), undefined, { numeric: true });
+                        if (sizeCompare !== 0) return sizeCompare;
+                        return String(a.LOCATIONCODE || '').localeCompare(String(b.LOCATIONCODE || ''), undefined, { numeric: true });
+                    });
+                } else {
+                    rows.sort((a, b) => {
+                        const nameCompare = String(a.COMMONNAME || '').localeCompare(String(b.COMMONNAME || ''));
+                        if (nameCompare !== 0) return nameCompare;
+                        const sizeCompare = String(a.CONTSIZE || '').localeCompare(String(b.CONTSIZE || ''), undefined, { numeric: true });
+                        if (sizeCompare !== 0) return sizeCompare;
+                        const customerCompare = String(a.CUSTOMERNAME || '').localeCompare(String(b.CUSTOMERNAME || ''));
+                        if (customerCompare !== 0) return customerCompare;
+                        return String(a.LOCATIONCODE || '').localeCompare(String(b.LOCATIONCODE || ''), undefined, { numeric: true });
+                    });
+                }
+                if (searchTerm) {
+                    title += ' Search';
+                    fileLabel += '-search';
+                }
+            }
+
+            return {
+                rows,
+                title: title.replace(/\s+/g, ' ').trim(),
+                fileLabel,
+                searchTerm
+            };
+        }
+
+        function getAVExportColumns() {
+            if (activeAVTab === 'open') {
+                return [
+                    { label: 'Common Name', value: (row) => row.COMMONNAME || '' },
+                    { label: 'Container Size', value: (row) => row.CONTSIZE || '' },
+                    { label: 'Location', value: (row) => row.LOCATIONCODE || '' },
+                    { label: 'Lot Code', value: (row) => row.LOTCODE || '' },
+                    { label: 'Item Code', value: (row) => row.ITEMCODE || '' },
+                    { label: 'Qty Available', value: (row) => row.PTRAVAILABLE || '' },
+                    { label: 's_LTS', value: (row) => row.S_LTS || '' },
+                    { label: 'Priority', value: (row) => row.PRIORITY || '' },
+                    { label: 'Season', value: (row) => row.SEASON || '' },
+                    { label: 'Quality Code', value: (row) => row.QUALITYCODE || '' },
+                    { label: 'Field Tag Color', value: (row) => row.FIELDTAGCOLOR || '' },
+                    { label: 'Plant Group', value: (row) => row.PLANTGROUPCODE || '' },
+                    { label: 'Spec', value: (row) => row.SPEC || '' },
+                    { label: 'Caliper', value: (row) => row.CALIPER || '' },
+                    { label: 'AV Note', value: (row) => row.AV_NOTE || '' },
+                    { label: 'Sales Note', value: (row) => firstNonEmptyValue(row.SALES_NOTE, row.SALESNOTE, row.SALES_DESC, row.SALESDESC) || '' },
+                    { label: 'Hold Code', value: (row) => firstNonEmptyValue(row.HOLDSTOPCODE, row.HOLD_STOP_CODE, row.HOLDSTOP) || '' },
+                    { label: 'Hold Reason', value: (row) => firstNonEmptyValue(row.HOLDSTOPREASON, row.HOLD_STOP_REASON, row.HOLDREASON) || '' },
+                    { label: 'Photo Links', value: (row) => getPhotoUrlList(getRowPhotoLink(row, 'av')).join('\n') }
+                ];
+            }
+            return [
+                { label: 'Customer', value: (row) => firstNonEmptyValue(row.CUSTOMERNAME, row.CUSTOMER) || '' },
+                { label: 'Consignee', value: (row) => firstNonEmptyValue(row.CONSIGNEENAME, row.CONSIGNEE) || '' },
+                { label: 'Sales Rep', value: (row) => firstNonEmptyValue(row.SALESREPNAME, row.SALESREP, row.SALES_REP) || '' },
+                { label: 'Common Name', value: (row) => row.COMMONNAME || '' },
+                { label: 'Container Size', value: (row) => row.CONTSIZE || '' },
+                { label: 'Location', value: (row) => row.LOCATIONCODE || '' },
+                { label: 'Lot Code', value: (row) => row.LOTCODE || '' },
+                { label: 'Item Code', value: (row) => row.ITEMCODE || '' },
+                { label: 'Qty Ordered', value: (row) => firstNonEmptyValue(row.QTY_ORDERED, row.QUANTITYORDERED) || '' },
+                { label: 'Qty Shipped', value: (row) => firstNonEmptyValue(row.QTY_SHIPPED, row.QUANTITYSHIPPED) || '' },
+                { label: 'Qty Available', value: (row) => row.PTRAVAILABLE || '' },
+                { label: 'Priority', value: (row) => row.PRIORITY || '' },
+                { label: 'Season Supply', value: (row) => row.SEASONSUPPLY || '' },
+                { label: 'Photo Links', value: (row) => getPhotoUrlList(getRowPhotoLink(row, 'av')).join('\n') }
+            ];
+        }
+
+        function sanitizeAVExportFilePart(value = '') {
+            const cleaned = String(value || '')
+                .trim()
+                .replace(/[^a-z0-9]+/gi, '-')
+                .replace(/^-+|-+$/g, '')
+                .replace(/-+/g, '-')
+                .toLowerCase();
+            return cleaned || 'av-export';
+        }
+
+        function getAVWorksheetName(value = 'AV Export') {
+            const cleaned = String(value || 'AV Export').replace(/[\\/*?:\[\]]/g, ' ').replace(/\s+/g, ' ').trim();
+            return (cleaned || 'AV Export').slice(0, 31);
+        }
+
+        function escapeExcelXml(value = '') {
+            return String(value == null ? '' : value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&apos;');
+        }
+
+        function updateAVExportButton(count = 0) {
+            const button = document.getElementById('av-export-btn');
+            const label = document.getElementById('av-export-btn-label');
+            if (!button || !label) return;
+            label.innerText = count > 0 ? `Export Excel (${count})` : 'Export Excel';
+            button.disabled = count === 0;
+            button.setAttribute('aria-disabled', count === 0 ? 'true' : 'false');
+            button.classList.toggle('opacity-50', count === 0);
+            button.classList.toggle('cursor-not-allowed', count === 0);
+            button.classList.toggle('pointer-events-none', count === 0);
+        }
+
+        function buildAVExcelWorkbookXml(columns, rows, title, searchTerm = '') {
+            const exportedAt = new Date().toLocaleString('en-US');
+            const exportedBy = currentUserDisplay || currentUser || 'Unknown';
+            const mergeAcross = Math.max(columns.length - 1, 0);
+            const headerCells = columns.map((column) => `<Cell ss:StyleID="Header"><Data ss:Type="String">${escapeExcelXml(column.label)}</Data></Cell>`).join('');
+            const bodyRows = rows.map((row) => `<Row>${columns.map((column) => `<Cell><Data ss:Type="String">${escapeExcelXml(column.value(row))}</Data></Cell>`).join('')}</Row>`).join('');
+            return `<?xml version="1.0"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:x="urn:schemas-microsoft-com:office:excel"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:html="http://www.w3.org/TR/REC-html40">
+ <Styles>
+  <Style ss:ID="Default" ss:Name="Normal">
+   <Alignment ss:Vertical="Top" ss:WrapText="1"/>
+   <Font ss:FontName="Calibri" ss:Size="11"/>
+  </Style>
+  <Style ss:ID="Title">
+   <Font ss:Bold="1" ss:Size="14"/>
+  </Style>
+  <Style ss:ID="Header">
+   <Font ss:Bold="1"/>
+   <Interior ss:Color="#E6F6EF" ss:Pattern="Solid"/>
+  </Style>
+  <Style ss:ID="MetaLabel">
+   <Font ss:Bold="1"/>
+  </Style>
+ </Styles>
+ <Worksheet ss:Name="${escapeExcelXml(getAVWorksheetName(title))}">
+  <Table>
+   <Row><Cell ss:StyleID="Title" ss:MergeAcross="${mergeAcross}"><Data ss:Type="String">${escapeExcelXml(title)}</Data></Cell></Row>
+   <Row><Cell ss:StyleID="MetaLabel"><Data ss:Type="String">Search</Data></Cell><Cell ss:MergeAcross="${Math.max(columns.length - 2, 0)}"><Data ss:Type="String">${escapeExcelXml(searchTerm || 'None')}</Data></Cell></Row>
+   <Row><Cell ss:StyleID="MetaLabel"><Data ss:Type="String">Rows</Data></Cell><Cell ss:MergeAcross="${Math.max(columns.length - 2, 0)}"><Data ss:Type="String">${escapeExcelXml(rows.length)}</Data></Cell></Row>
+   <Row><Cell ss:StyleID="MetaLabel"><Data ss:Type="String">Exported By</Data></Cell><Cell ss:MergeAcross="${Math.max(columns.length - 2, 0)}"><Data ss:Type="String">${escapeExcelXml(exportedBy)}</Data></Cell></Row>
+   <Row><Cell ss:StyleID="MetaLabel"><Data ss:Type="String">Exported At</Data></Cell><Cell ss:MergeAcross="${Math.max(columns.length - 2, 0)}"><Data ss:Type="String">${escapeExcelXml(exportedAt)}</Data></Cell></Row>
+   <Row/>
+   <Row>${headerCells}</Row>
+   ${bodyRows}
+  </Table>
+ </Worksheet>
+</Workbook>`;
+        }
+
+        function exportCurrentAVToExcel() {
+            if (ensureViewDataForRender('av')) return false;
+            const { items, term } = getCurrentAVBaseItems();
+            const exportContext = buildAVExportContext(items, term);
+            updateAVExportButton(exportContext.rows.length);
+            if (!exportContext.rows.length) {
+                showToast('No Rows', 'There are no AV rows to export right now.', true);
+                return false;
+            }
+            const columns = getAVExportColumns();
+            const workbookXml = buildAVExcelWorkbookXml(columns, exportContext.rows, exportContext.title, exportContext.searchTerm);
+            const timestamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
+            const filename = `gnc-${sanitizeAVExportFilePart(exportContext.fileLabel)}-${timestamp}.xls`;
+            const blob = new Blob([workbookXml], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            setTimeout(() => {
+                URL.revokeObjectURL(url);
+                link.remove();
+            }, 0);
+            showToast('Export Ready', `Downloading ${exportContext.rows.length} AV row${exportContext.rows.length === 1 ? '' : 's'} as Excel.`);
+            return false;
+        }
+        function renderAV() {
+            if (ensureViewDataForRender('av')) return;
+            const container = document.getElementById('av-content');
+            const crumb = document.getElementById('av-crumb');
+            const avState = getCurrentAVBaseItems();
+            const term = avState.term;
+            let items = [...avState.items];
+            const exportContext = buildAVExportContext(items, term);
 
             if (items.length === 0) {
                 const emptyLabel = activeAVTab === 'open' ? (activeAvOpenTab === 'photos' ? 'open stock photos' : 'open stock') : 'reserves';
+                updateAVExportButton(0);
                 container.innerHTML = `<div class="p-8 text-center text-gray-400">No ${emptyLabel} found.</div>`;
                 crumb.innerText = 'No Results';
                 return;
             }
 
+            updateAVExportButton(exportContext.rows.length);
+
             if (activeAVTab === 'open') {
                 if (activeAvOpenTab === 'photos') {
-                    items = sortAvOpenItems(items, 'name');
-                    crumb.innerText = term.length > 0 ? `Search Results (${items.length})` : `Open Stock Photos (${items.length} items)`;
-                    container.innerHTML = items.map(i => generateCard(i, 'av-photo', 'status-teal')).join('');
+                    crumb.innerText = term.length > 0 ? `Search Results (${exportContext.rows.length})` : `Open Stock Photos (${exportContext.rows.length} items)`;
+                    container.innerHTML = exportContext.rows.map(i => generateCard(i, 'av-photo', 'status-teal')).join('');
                     return;
                 }
 
                 if (term.length > 0) {
-                    crumb.innerText = `Search Results (${items.length})`;
-                    items.sort((a,b) => {
-                        let priA = parseFloat(a.PRIORITY); let priB = parseFloat(b.PRIORITY);
-                        if(isNaN(priA)) priA = Infinity; if(isNaN(priB)) priB = Infinity;
-                        if(priA !== priB) return priA - priB;
-                        return String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""), undefined, {numeric:true});
-                    });
-                    container.innerHTML = items.map(i => generateCard(i, 'av', 'status-teal')).join('');
+                    crumb.innerText = `Search Results (${exportContext.rows.length})`;
+                    container.innerHTML = exportContext.rows.map(i => generateCard(i, 'av', 'status-teal')).join('');
                     return;
                 }
 
-                crumb.innerText = `Open Stock (${items.length} items)`;
-                items.sort((a,b) => {
-                    const nameCompare = String(a.COMMONNAME || "").localeCompare(String(b.COMMONNAME || ""));
-                    if (nameCompare !== 0) return nameCompare;
-                    const sizeCompare = String(a.CONTSIZE || "").localeCompare(String(b.CONTSIZE || ""), undefined, {numeric:true});
-                    if (sizeCompare !== 0) return sizeCompare;
-                    return String(a.LOCATIONCODE || "").localeCompare(String(b.LOCATIONCODE || ""), undefined, {numeric:true});
-                });
-                container.innerHTML = items.map(i => generateCard(i, 'av', 'status-teal')).join('');
+                crumb.innerText = `Open Stock (${exportContext.rows.length} items)`;
+                container.innerHTML = exportContext.rows.map(i => generateCard(i, 'av', 'status-teal')).join('');
             } else {
                 if(avResLevel===0){ 
                     crumb.innerText='My Reserves > Plants'; 
@@ -4460,13 +4870,10 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
                 } 
                 else if(avResLevel===2){ 
                     crumb.innerText=`${selectedAvResName} / ${selectedAvResSize}`; 
-                    let finalItems=items.filter(i=>i.COMMONNAME===selectedAvResName&&i.CONTSIZE===selectedAvResSize); 
-                    finalItems.sort((a,b)=>(String(a.CUSTOMERNAME)||"").localeCompare(String(b.CUSTOMERNAME)||"")); 
-                    container.innerHTML=`<div class="back-btn" onclick="avResLevel=1; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>`+finalItems.map(i=>generateCard(i,'reserves_drill','status-indigo')).join(''); 
+                    container.innerHTML=`<div class="back-btn" onclick="avResLevel=1; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>`+exportContext.rows.map(i=>generateCard(i,'reserves_drill','status-indigo')).join(''); 
                 }
             }
         }
-
         const debouncedDocksSearch=debounce(()=>{requestAnimationFrame(()=>renderDocks())},150);
         function clearDocksSearch(){ document.getElementById('docks-search').value=""; document.getElementById('docks-search-clear').classList.add('hidden'); dockViewLevel=0; selectedDockNum=null; selectedDockStop=null; renderDocks(); }
         function handleDocksSearch(){ const term=document.getElementById('docks-search').value.toLowerCase(); const clearBtn=document.getElementById('docks-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden');dockViewLevel=0;}else{clearBtn.classList.add('hidden');dockViewLevel=0;} scheduleSearchRender('docks', () => renderDocks()); }
@@ -4477,11 +4884,10 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
         function openDockInfoModal(dockNum) {
             pendingDockNum = dockNum; document.getElementById('modal-dock-num').innerText = dockNum;
             let savedInfo = JSON.parse(localStorage.getItem('gnc_dock_team_' + dockNum) || '{"checker":"","inspector":"","mistake":"","status":"Loading"}');
-            document.getElementById('dock-checker').value = savedInfo.checker || "";
-            document.getElementById('dock-inspector').value = savedInfo.inspector || "";
-            document.getElementById('dock-mistake').value = savedInfo.mistake || "";
+            updateDockAssignableTeamOptions(savedInfo);
             document.getElementById('dock-status').value = savedInfo.status || "Loading";
             document.getElementById('dock-info-modal').classList.remove('hidden');
+            ensureDockAssignableUsers().then(() => updateDockAssignableTeamOptions()).catch(() => {});
         }
 
         function saveDockInfoModal() {
@@ -4520,7 +4926,7 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
             const container = document.getElementById('docks-content');
             const crumb = document.getElementById('docks-crumb');
             const term = document.getElementById('docks-search').value.toLowerCase().trim();
-            let items = safeRole === 'SALESREP' ? socInventory.filter(i => isMyRep(i.SALESREPNAME || i.SALESREPID)) : socInventory;
+            let items = getScopedDocksItems(socInventory);
             if(term) items = filterBySearch(items, term, 'docks');
             if (items.length === 0) {
                 container.innerHTML = `<div class="p-8 text-center text-gray-400">No dock items found.</div>`;
@@ -4782,8 +5188,8 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
             cartPanelOpen=false;
             updateGlobalActionBar(); 
             refreshCartButtons(); 
+            if (activeItem) renderDetailOverviewMedia();
         }
-
         function toggleGlobalItem(domId,isChecked=null) { 
             const hadItem = selectedItems.has(domId);
             if(isChecked===null){
@@ -4804,6 +5210,7 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
             } else if(hadItem && !hasItemNow){
                 showToast('Removed', `${selectedItems.size} row${selectedItems.size === 1 ? '' : 's'} left in bag.`);
             }
+            if (activeItem) renderDetailOverviewMedia();
         }
         function applyCameraPermissions(sourceView) {
             const camSsn = document.getElementById('camera-btn-ssn');
@@ -4998,6 +5405,7 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
             makeThumbs(rLink || sLink, 'req-photo-list-container', 'req-photo-preview', 'req-', !!rLink, 'Request Photos');
             makeThumbs(dLink || sLink, 'dock-photo-list-container', 'dock-photo-preview', 'dock-', !!dLink, 'Dock Photos');
             makeThumbs(fLink || sLink, 'flyer-photo-list-container', 'flyer-photo-preview', 'flyer-', !!fLink, 'Flyer Photos');
+            renderDetailOverviewMedia();
             refreshProtectedSections();
         }
 
@@ -5769,25 +6177,6 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
                 return `<div class="app-card-note mt-2 text-[12px] text-sky-800 bg-sky-50 p-2 rounded border border-sky-200 shadow-sm whitespace-pre-wrap"><span class="font-black">SALES NOTE:</span> ${salesNoteText}</div>`;
             };
 
-            const buildMatchQtyHtml = () => {
-                if (item.LOC_MATCH_QTY && String(item.LOC_MATCH_QTY).trim() !== "" && Number(item.LOC_MATCH_QTY) > 0) {
-                    let currentMatchQty = Number(item.LOC_MATCH_QTY);
-                    if (item.INITIAL_PTR) {
-                        let currentPtr = parseInt(String(item.PTRAVAILABLE).replace(/,/g, '')) || 0;
-                        let initialPtr = parseInt(String(item.INITIAL_PTR).replace(/,/g, '')) || 0;
-                        let drop = initialPtr - currentPtr;
-                        if (drop > 0) {
-                            currentMatchQty = Math.max(0, currentMatchQty - drop);
-                        }
-                    }
-                    if (currentMatchQty > 0) {
-                        return `<div class="mt-2 text-[12px] text-green-800 bg-green-100 p-2 rounded border border-green-200 shadow-sm whitespace-pre-wrap"><span class="font-black">LOC MATCH QTY:</span> ${currentMatchQty}</div>`;
-                    }
-                }
-                return '';
-            };
-            const matchQtyHtml = buildMatchQtyHtml();
-
             if(sourceView === 'av-photo' || sourceView === 'av') {
                 const holdHtml = buildHoldReasonHtml();
                 const salesNoteHtml = buildSalesNoteHtml();
@@ -5822,7 +6211,7 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
                 if(urlMatch)cleanUrl=urlMatch[1]; 
                 let thumbUrl=getDirectImageUrl(cleanUrl); 
                 if(thumbUrl.startsWith('http')){ 
-                    thumbHtml=`<div class="ml-3 flex-shrink-0"><img src="${thumbUrl}" class="w-12 h-12 rounded-md object-cover border border-gray-300 shadow-sm" loading="lazy"></div>`; 
+                    thumbHtml=`<div class="order-first mr-3 ml-0 flex-shrink-0 self-start overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 shadow-sm"><img src="${thumbUrl}" class="h-16 w-16 sm:h-20 sm:w-20 object-cover" loading="lazy"></div>`; 
                 } 
             }
 
@@ -5868,7 +6257,7 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
                 if(holdHtml) noteHtml += holdHtml;
                 if(salesNoteHtml) noteHtml += salesNoteHtml;
                 if(item.END_CAP_FOLDER&&String(item.END_CAP_FOLDER).trim()!==""){noteHtml+=`<div class="mt-2 text-[12px] text-yellow-800 bg-yellow-100 p-2 rounded border border-yellow-200 shadow-sm whitespace-pre-wrap"><span class="font-black">END CAP:</span> ${item.END_CAP_FOLDER} | QTY: ${item.END_CAP_QTY||'0'} | Lvl: ${item.END_CAP_LEVEL||'-'}</div>`}
-                if(matchQtyHtml) noteHtml += matchQtyHtml;
+                if(item.LOC_MATCH_QTY&&String(item.LOC_MATCH_QTY).trim()!==""&&Number(item.LOC_MATCH_QTY)>0){noteHtml+=`<div class="mt-2 text-[12px] text-green-800 bg-green-100 p-2 rounded border border-green-200 shadow-sm whitespace-pre-wrap"><span class="font-black">MATCH QTY:</span> ${item.LOC_MATCH_QTY}</div>`}
                 if(item.AV_NOTE&&String(item.AV_NOTE).trim()!==""){noteHtml+=`<div class="mt-2 text-[12px] text-blue-800 bg-blue-100 p-2 rounded border border-blue-200 shadow-sm whitespace-pre-wrap"><span class="font-black">AV NOTE:</span> ${item.AV_NOTE}</div>`}
                 if(item.FLYER_TITLE&&String(item.FLYER_TITLE).trim()!==""){noteHtml+=`<div class="mt-2 text-[12px] text-indigo-800 bg-indigo-100 p-2 rounded border border-indigo-200 shadow-sm whitespace-pre-wrap"><span class="font-black">FOLDER:</span> ${item.FLYER_TITLE}</div>`}
                 let extraData="";if(sourceView==='tasks'||sourceView==='drive'){extraData=`<div class="mt-2 flex gap-2 text-[10px] font-bold text-gray-500 uppercase">${item.SPEC?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Spec: ${item.SPEC}</span>`:''}${item.CALIPER?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Cal: ${item.CALIPER}</span>`:''}${item.MATCH?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Match: ${item.MATCH}%</span>`:''}</div>`}
@@ -6130,7 +6519,7 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
             document.getElementById('step-3-qty').classList.remove('hidden');
             let container=document.getElementById('qty-list-container');
             let html="";
-            selectedItems.forEach(dId=>{
+            getRequestSourceDomIds().forEach(dId=>{
                 let item=findItemByDomId(dId);
                 if(item){
                     let safeUidHtml=esc(item.UNIQUE_ID);
@@ -7631,8 +8020,7 @@ function toggleDriveSeason(s) {
                             priority: String(salesRuleItem.PRIORITY || itemToSave.PRIORITY || ''),
                             photo_link: salesRulePhotoLink || '',
                             completed_by: currentUser,
-                            completed_at: payload.date_completed,
-                            av_note: itemToSave.AV_NOTE || salesRuleItem.AV_NOTE || ''
+                            completed_at: payload.date_completed
                         };
                         artifacts.cloneSO = { ...artifacts.soPayload };
                         for (let key in artifacts.soPayload) { artifacts.cloneSO[key.toUpperCase()] = artifacts.soPayload[key]; }
@@ -7928,6 +8316,8 @@ function toggleDriveSeason(s) {
     </script>
 </body>
 </html>
+
+
 
 
 
