@@ -3501,6 +3501,50 @@ function toggleDriveQuickRequestItem(domId) {
             });
             return true;
         }
+function performStaleDataSweep() {
+            // Only let ADMIN roles trigger the sweep to prevent 50 iPads doing it at once
+            if (safeRole !== 'ADMIN') return; 
+            
+            const updates = [];
+            const now = Date.now();
+
+            fullInventory.forEach(item => {
+                let needsReset = false;
+
+                // Rule 1: 10 Days Old
+                if (item.DATE_COMPLETED) {
+                    const daysOld = (now - new Date(item.DATE_COMPLETED).getTime()) / (1000 * 3600 * 24);
+                    if (daysOld >= 10) needsReset = true;
+                }
+
+                // Rule 2: LOC MATCH QTY hits 0
+                if (!needsReset && item.LOC_MATCH_QTY && item.INITIAL_PTR) {
+                    let currentPtr = parseInt(String(item.PTRAVAILABLE).replace(/,/g, '')) || 0;
+                    let initialPtr = parseInt(String(item.INITIAL_PTR).replace(/,/g, '')) || 0;
+                    let currentMatchQty = Number(item.LOC_MATCH_QTY) - (initialPtr - currentPtr);
+                    
+                    if (currentMatchQty <= 0) needsReset = true;
+                }
+
+                if (needsReset) {
+                    // Automatically re-evaluate the 10% rule for reassignment
+                    let newAssignment = 'location';
+                    let ptr = parseFloat(String(item.PTRAVAILABLE).replace(/,/g,'')) || 0;
+                    let ss = parseFloat(String(item.SEASONSUPPLY || item.SEASON_SUPPLY).replace(/,/g,'')) || 0;
+                    if (ptr > (0.10 * ss)) newAssignment = 'season';
+
+                    const targetTable = item.SOURCE_TABLE || 'v2_master_inventory';
+                    updates.push(supabaseFetch(targetTable, 'PATCH', {
+                        av_note: null, spec: null, caliper: null, saved_photo_link: null, saved_photo_name: null,
+                        match: null, loc_match_qty: null, initial_ptr: null, date_completed: null, app_tab_assignment: newAssignment
+                    }, `unique_id=eq.${item.UNIQUE_ID}`));
+                }
+            });
+
+            if (updates.length > 0) {
+                Promise.allSettled(updates).then(() => fetchBackgroundData('force'));
+            }
+        }
         async function finalizeLogin(user,pass,isBiometricLogin) { 
             setBootingSession(false);
             localStorage.setItem('gnc_user_v3',user); 
@@ -3542,11 +3586,12 @@ function toggleDriveQuickRequestItem(domId) {
                 showToast("Ready", "Fast mode is on. Data is warming in the background.", false);
             }
 
-            queueDatasetLoad('master', 'full', 9000);
+           queueDatasetLoad('master', 'full', 9000);
             queueDatasetLoad('requests', 'full', 17000);
             queueDatasetLoad('avNotes', 'full', 15000);
-            loginPrefetchPromise = null;
-            loginPrefetchMode = '';
+            
+            // Wait 20 seconds after login, then quietly sweep for stale data
+            setTimeout(() => performStaleDataSweep(), 20000);
         }
         async function silentBackgroundSync() {
             if(!currentUser)return; 
