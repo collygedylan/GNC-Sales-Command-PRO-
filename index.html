@@ -17,11 +17,11 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>:root{--bg:#007a4d;--text-color:#111827;--app-height:100vh}html,body{min-height:100%;width:100%;max-width:100%;overflow-x:hidden;overscroll-behavior-x:none}html{background:white}@supports (height:100dvh){:root{--app-height:100dvh}}body{font-family:"Amazon Ember",Arial,sans-serif;background:white;color:var(--text-color);user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior-y:contain;min-height:var(--app-height);height:var(--app-height);width:100%;overflow:hidden}button,[role="button"],.task-tab,.detail-tab,.drawer-item,.drill-item,.menu-btn{touch-action:manipulation}.nav-header{background:var(--bg);color:white;padding-top:max(10px,env(safe-area-inset-top))}#view-login,#view-change-password{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;min-height:var(--app-height)}#view-change-password{display:none;z-index:10000}#app-wrapper{min-height:var(--app-height);height:var(--app-height);width:100%;max-width:100%;overflow:hidden}.login-card{background:white;padding:30px;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,.2);width:100%;max-width:360px;text-align:center}.input-field{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:8px;font-size:16px;margin-bottom:12px}#toast-notification{position:fixed;top:-100px;left:50%;transform:translateX(-50%);background:#16a34a;color:white;padding:16px 24px;border-radius:50px;box-shadow:0 10px 15px -3px rgba(0,0,0,.3);z-index:11000;transition:top .5s;display:flex;align-items:center;gap:12px;pointer-events:none}#toast-notification.show{top:20px}#side-drawer{position:fixed;top:0;left:-280px;width:280px;height:100%;background:white;z-index:2000;box-shadow:2px 0 10px rgba(0,0,0,.2);transition:left .3s;overflow-y:auto;padding-bottom:100px}#side-drawer.open{left:0}#drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1999;display:none}#drawer-overlay.open{display:block}.drawer-header{background:var(--bg);color:white;padding:20px;font-weight:bold;font-size:18px}.drawer-item{padding:16px 20px;border-bottom:1px solid #f3f4f6;cursor:pointer;display:flex;align-items:center;gap:12px;color:#374151;font-weight:500}.drill-item{border-bottom:1px solid #e5e7eb;padding:16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:white;transition:background .1s}.drill-item:active{background:#f3f4f6}.back-btn{display:flex;align-items:center;gap:5px;color:#6b7280;font-size:14px;font-weight:600;margin-bottom:20px;cursor:pointer;padding:10px 0}.inv-card{border:1px solid #dbe4dc;border-left-width:6px;border-radius:18px;padding:14px;background:white;cursor:pointer;flex-grow:1;box-shadow:0 10px 24px rgba(15,23,42,.06);overflow:hidden}.status-green{border-left-color:#22c55e}.status-purple{border-left-color:#9333ea}.status-orange{border-left-color:#f97316}.status-blue{border-left-color:#3b82f6}.status-indigo{border-left-color:#4f46e5}.status-teal{border-left-color:#0d9488}.status-yellow{border-left-color:#eab308}.status-red{border-left-color:#ef4444}.task-tabs,.detail-tabs{display:flex;border-bottom:1px solid #e5e7eb;background:#f9fafb;margin-bottom:10px}.detail-tabs{overflow-x:auto;scrollbar-width:none}.detail-tabs::-webkit-scrollbar{display:none}.task-tab,.detail-tab{flex:1;text-align:center;padding:12px;font-size:11px;font-weight:700;color:#6b7280;cursor:pointer;border-bottom:3px solid transparent;text-transform:uppercase}.detail-tab{flex:0 0 auto;padding:10px 16px}.task-tab.active,.detail-tab.active{color:var(--bg);border-bottom-color:var(--bg);background:white}.overview-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}.overview-card{background:#f8fafc;padding:10px;border-radius:6px;border:1px solid #e2e8f0}.overview-label{font-size:9px;font-weight:800;color:#64748b;text-transform:uppercase;margin-bottom:2px}.overview-val{font-size:13px;font-weight:600;color:#0f172a;word-break:break-all}.expand-trigger{display:flex;align-items:center;justify-content:space-between;padding:12px;background:#f9fafb;border-radius:6px;cursor:pointer;font-weight:600;font-size:14px;border:1px solid #e5e7eb}.expand-content{display:none;margin-top:12px;padding:12px;background:#f9fafb;border-radius:6px;border:1px solid #e5e7eb}.expanded .expand-content{display:block}.card-checkbox-container{width:0;overflow:hidden;opacity:0;transition:width .3s,opacity .3s,margin .3s}body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-right:12px}body.multi-select-mode .card-checkbox{pointer-events:auto}body.multi-select-mode .item-row{cursor:pointer}.item-row{touch-action:manipulation}.spinner{border:4px solid rgba(255,255,255,.3);border-top:4px solid white;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:0 auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.scrollbar-none::-webkit-scrollbar{display:none}.scrollbar-none{-ms-overflow-style:none;scrollbar-width:none}</style>
+    <style>:root{--bg:#007a4d;--text-color:#111827;--app-height:100vh}html,body{min-height:100%;width:100%;max-width:100%;overflow-x:hidden;overscroll-behavior-x:none}html{background:white}@supports (height:100dvh){:root{--app-height:100dvh}}body{font-family:"Amazon Ember",Arial,sans-serif;background:white;color:var(--text-color);user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior-y:contain;min-height:var(--app-height);height:var(--app-height);width:100%;overflow:hidden}button,[role="button"],.task-tab,.detail-tab,.drawer-item,.drill-item,.menu-btn{touch-action:manipulation}.nav-header{background:var(--bg);color:white;padding-top:max(10px,env(safe-area-inset-top))}#view-login,#view-change-password{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;min-height:var(--app-height)}#view-change-password{display:none;z-index:10000}#app-wrapper{min-height:var(--app-height);height:var(--app-height);width:100%;max-width:100%;overflow:hidden}.login-card{background:white;padding:30px;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,.2);width:100%;max-width:360px;text-align:center}.input-field{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:8px;font-size:16px;margin-bottom:12px}#toast-notification{position:fixed;top:-100px;left:50%;transform:translateX(-50%);background:#16a34a;color:white;padding:16px 24px;border-radius:50px;box-shadow:0 10px 15px -3px rgba(0,0,0,.3);z-index:11000;transition:top .5s;display:flex;align-items:center;gap:12px;pointer-events:none}#toast-notification.show{top:20px}#side-drawer{position:fixed;top:0;left:-280px;width:280px;height:100%;background:white;z-index:2000;box-shadow:2px 0 10px rgba(0,0,0,.2);transition:left .3s;overflow-y:auto;padding-bottom:100px}#side-drawer.open{left:0}#drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1999;display:none}#drawer-overlay.open{display:block}.drawer-header{background:var(--bg);color:white;padding:20px;font-weight:bold;font-size:18px}.drawer-item{padding:16px 20px;border-bottom:1px solid #f3f4f6;cursor:pointer;display:flex;align-items:center;gap:12px;color:#374151;font-weight:500}.drill-item{border-bottom:1px solid #e5e7eb;padding:16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:white;transition:background .1s}.drill-item:active{background:#f3f4f6}.back-btn{display:none !important}.inv-card{border:1px solid #dbe4dc;border-left-width:6px;border-radius:18px;padding:14px;background:white;cursor:pointer;flex-grow:1;box-shadow:0 10px 24px rgba(15,23,42,.06);overflow:hidden}.status-green{border-left-color:#22c55e}.status-purple{border-left-color:#9333ea}.status-orange{border-left-color:#f97316}.status-blue{border-left-color:#3b82f6}.status-indigo{border-left-color:#4f46e5}.status-teal{border-left-color:#0d9488}.status-yellow{border-left-color:#eab308}.status-red{border-left-color:#ef4444}.task-tabs,.detail-tabs{display:flex;border-bottom:1px solid #e5e7eb;background:#f9fafb;margin-bottom:10px}.detail-tabs{overflow-x:auto;scrollbar-width:none}.detail-tabs::-webkit-scrollbar{display:none}.task-tab,.detail-tab{flex:1;text-align:center;padding:12px;font-size:11px;font-weight:700;color:#6b7280;cursor:pointer;border-bottom:3px solid transparent;text-transform:uppercase}.detail-tab{flex:0 0 auto;padding:10px 16px}.task-tab.active,.detail-tab.active{color:var(--bg);border-bottom-color:var(--bg);background:white}.overview-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}.overview-card{background:#f8fafc;padding:10px;border-radius:6px;border:1px solid #e2e8f0}.overview-label{font-size:9px;font-weight:800;color:#64748b;text-transform:uppercase;margin-bottom:2px}.overview-val{font-size:13px;font-weight:600;color:#0f172a;word-break:break-all}.expand-trigger{display:flex;align-items:center;justify-content:space-between;padding:12px;background:#f9fafb;border-radius:6px;cursor:pointer;font-weight:600;font-size:14px;border:1px solid #e5e7eb}.expand-content{display:none;margin-top:12px;padding:12px;background:#f9fafb;border-radius:6px;border:1px solid #e5e7eb}.expanded .expand-content{display:block}.card-checkbox-container{width:0;overflow:hidden;opacity:0;transition:width .3s,opacity .3s,margin .3s}body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-right:12px}body.multi-select-mode .card-checkbox{pointer-events:auto}body.multi-select-mode .item-row{cursor:pointer}.item-row{touch-action:manipulation}.spinner{border:4px solid rgba(255,255,255,.3);border-top:4px solid white;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:0 auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.scrollbar-none::-webkit-scrollbar{display:none}.scrollbar-none{-ms-overflow-style:none;scrollbar-width:none}</style>
     <style>
-        #main-scroll-area{min-height:0;width:100%;max-width:100%;overflow-x:hidden;overscroll-behavior-x:none;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;padding-bottom:calc(10rem + env(safe-area-inset-bottom))}
+        #main-scroll-area{min-height:0;width:100%;max-width:100%;overflow-x:hidden;overscroll-behavior-x:none;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;padding-bottom:calc(10rem + env(safe-area-inset-bottom));background:#f9fafb}
         #global-action-bar{padding-bottom:calc(.75rem + env(safe-area-inset-bottom))}
-        #bottom-nav{padding:10px 10px calc(.75rem + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:.55rem;background:rgba(255,255,255,.98);backdrop-filter:saturate(150%) blur(12px)}
+        #bottom-nav{padding:10px 10px calc(.75rem + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:.5rem;background:rgba(255,255,255,.98);backdrop-filter:saturate(150%) blur(12px)}
         .footer-nav-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.18rem;min-height:52px;border-radius:16px;border:1px solid transparent;background:transparent;color:#6b7280;font-size:10px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;transition:background .16s ease,color .16s ease,border-color .16s ease,transform .16s ease;position:relative}
         .footer-nav-btn i{font-size:22px;line-height:1}
         .footer-nav-btn:active{transform:scale(.97)}
@@ -63,13 +63,12 @@
         .nav-version-pill{display:inline-flex;align-items:center;min-height:26px;padding:.32rem .7rem;border-radius:999px;background:rgba(255,255,255,.92);border:1px solid rgba(255,255,255,.28);color:#007a4d;font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;box-shadow:0 6px 14px rgba(7,94,63,.18)}
         #sync-diagnostics-badge{border-radius:999px;box-shadow:0 4px 10px rgba(15,23,42,.12)}
         #sync-diagnostics-detail{font-size:9px;font-weight:800;line-height:1.2;color:rgba(236,253,245,.88);text-align:right;max-width:200px}
-        #global-header-view-shell{display:flex;align-items:center;gap:.65rem;background:rgba(0,0,0,.12);border:1px solid rgba(255,255,255,.14);border-radius:1rem;padding:.5rem .65rem;box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}
-        #global-header-view-shell .amazon-inline-back{width:38px;height:38px;border-radius:12px;margin:0;box-shadow:none}
-        #global-header-view-shell .amazon-inline-back.hidden{display:none}
-        #global-header-view-copy{min-width:0;display:flex;flex-direction:column}
-        #global-header-view-eyebrow{font-size:9px;font-weight:900;letter-spacing:.18em;text-transform:uppercase;color:#d1fae5}
-        #global-header-view-title{font-size:15px;font-weight:900;line-height:1.1;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-        #global-header-search-slot{display:block}
+        #global-header-search-row{display:flex;align-items:center;gap:.55rem;padding:.35rem 12px .45rem;background:#f9fafb;border-bottom:1px solid #d1fae5;box-shadow:0 8px 14px rgba(15,23,42,.04)}
+        #global-header-search-row.hidden{display:none}
+        #global-header-inline-title{flex:1;min-width:0;display:flex;align-items:center;min-height:42px;padding:0 1rem;border-radius:14px;background:#ffffff;border:1px solid #d1fae5;box-shadow:0 8px 18px rgba(15,23,42,.05)}
+        #global-header-inline-title.hidden{display:none}
+        #global-header-view-title{font-size:15px;font-weight:900;line-height:1.1;color:#007a4d;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        #global-header-search-slot{display:block;flex:1;min-width:0}
         #global-header-search-slot.hidden{display:none}
         #global-header-search-slot .amazon-search-host{position:relative;top:auto;z-index:auto;width:100%;background:transparent;padding:0;box-shadow:none;margin:0}
         #global-header-search-slot .input-field{height:42px;margin:0;background:#ffffff;border:1px solid #a7f3d0;border-radius:14px;padding:0 2.5rem 0 .95rem;font-size:15px;font-weight:700;color:#111827;box-shadow:0 8px 18px rgba(7,94,63,.12)}
@@ -77,7 +76,8 @@
         .drive-card-filter-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.5rem}
         .drive-card-filter-grid .drive-card-filter-name{grid-column:span 2}
         .drive-card-filter-grid label{min-width:0}
-        .freeze-panel{position:-webkit-sticky;position:sticky;top:0;z-index:44;background:linear-gradient(180deg,#ecfdf5 0%,#f9fafb 72%);margin:-1rem -1rem .65rem;padding:.22rem .85rem .45rem;border-bottom:1px solid #d1fae5;box-shadow:0 10px 16px rgba(15,23,42,.04)}
+        .freeze-panel{position:-webkit-sticky;position:sticky;top:0;z-index:44;background:#f9fafb;margin:-1rem -1rem .55rem;padding:.1rem .85rem .38rem;border-bottom:1px solid #d1fae5;box-shadow:0 8px 14px rgba(15,23,42,.04);isolation:isolate}
+        .freeze-panel::before{content:"";position:absolute;left:0;right:0;top:-18px;height:18px;background:#f9fafb;pointer-events:none}
         .freeze-panel .sticky-search{position:relative;top:auto;z-index:auto;box-shadow:none}
         .freeze-panel #drive-search-container,.freeze-panel #av-search-container,.freeze-panel #reserves-search-container,.freeze-panel #docks-search-container{position:relative;top:auto;z-index:auto}
         .freeze-panel .task-tabs,.freeze-panel .detail-tabs{background:transparent}
@@ -95,11 +95,11 @@
         .amazon-view-copy{min-width:0;display:flex;flex-direction:column}
         .amazon-view-eyebrow{font-size:9px;font-weight:900;letter-spacing:.18em;text-transform:uppercase;color:#d1fae5}
         .amazon-view-title{font-size:15px;font-weight:900;line-height:1.15;color:white;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-        .amazon-filter-strip{display:flex;gap:.35rem;overflow-x:auto;scrollbar-width:none;background:transparent;border:0;margin:0 0 .45rem;padding:.05rem 0 .08rem}
+        .amazon-filter-strip{display:flex;gap:.35rem;overflow-x:auto;scrollbar-width:none;background:transparent;border:0;margin:0 0 .32rem;padding:.03rem 0 .08rem}
         .amazon-filter-strip::-webkit-scrollbar{display:none}
         .amazon-filter-strip .task-tab,.amazon-filter-strip .detail-tab{flex:0 0 auto;min-width:max-content;padding:.58rem .82rem;border:1px solid #a7f3d0;border-bottom-width:1px;border-radius:999px;background:#ffffff;color:#065f46;box-shadow:0 1px 2px rgba(15,23,42,.08);font-size:10px;line-height:1.05}
         .amazon-filter-strip .task-tab.active,.amazon-filter-strip .detail-tab.active{background:#007a4d;color:#fff;border-color:#007a4d;box-shadow:inset 0 -2px 0 #bbf7d0,0 6px 14px rgba(0,122,77,.18)}
-        .amazon-filter-chip-row{display:flex;overflow-x:auto;gap:.35rem;padding:.05rem 0 .2rem;scrollbar-width:none}
+        .amazon-filter-chip-row{display:flex;overflow-x:auto;gap:.35rem;padding:.02rem 0 .14rem;scrollbar-width:none}
         .amazon-filter-chip-row::-webkit-scrollbar{display:none}
         .amazon-filter-chip-row > *{flex:0 0 auto;box-shadow:0 1px 2px rgba(15,23,42,.08)}
         .amazon-crumb{display:inline-flex;align-items:center;min-height:24px;padding:.28rem .68rem;border-radius:999px;background:#ffffff;border:1px solid #a7f3d0;color:#007a4d !important;font-size:9px !important;font-weight:900 !important;letter-spacing:.08em;text-transform:uppercase;box-shadow:0 1px 2px rgba(15,23,42,.06);margin-bottom:.42rem !important}
@@ -295,16 +295,15 @@
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
                     </div>
                 </div>
-                <div id="global-header-search-slot" class="hidden"></div>
-                <div id="global-header-view-shell">
-                    <button id="global-header-inline-back" type="button" class="amazon-inline-back hidden" aria-label="Back" onclick="goBackUniversal()"><i class="ph-bold ph-arrow-left text-lg"></i></button>
-                    <div id="global-header-view-copy">
-                        <div id="global-header-view-eyebrow">Current View</div>
-                        <div id="global-header-view-title">Home</div>
                     </div>
-                </div>
-            </div>
         </header>
+        <div id="global-header-search-row" class="hidden">
+            <button id="global-header-inline-back" type="button" class="amazon-inline-back hidden" aria-label="Back" onclick="goBackUniversal()"><i class="ph-bold ph-arrow-left text-lg"></i></button>
+            <div id="global-header-search-slot" class="hidden"></div>
+            <div id="global-header-inline-title" class="hidden">
+                <div id="global-header-view-title">Home</div>
+            </div>
+        </div>
         
         <div id="drawer-overlay" onclick="toggleMenu()"></div>
         <div id="side-drawer">
@@ -471,14 +470,11 @@
                 
                 <div id="view-drive" class="hidden">
                     <div class="freeze-panel">
-                    <div class="task-tabs mb-2">
-                        <div id="tab-drive-mode-ok" class="task-tab active">Drive Mode</div>
-                    </div>
                     <div id="drive-search-container" class="sticky-search relative mb-2">
                         <input type="text" id="drive-search" class="input-field w-full pr-10 !mb-0" placeholder="Search Names or Locs..." oninput="handleDriveSearch()" onkeydown="dismissSearchKeyboard(event)">
                         <i id="drive-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearDriveSearch()"></i>
                     </div>
-                                        <div id="drive-drill-tabs" class="task-tabs mb-2">
+                                        <div id="drive-drill-tabs" class="hidden">
                         <div id="tab-drive-name" class="task-tab active" onclick="setDriveTab('name')">By Name</div>
                         <div id="tab-drive-loc" class="task-tab" onclick="setDriveTab('loc')">By Location</div>
                         <div id="tab-drive-card" class="task-tab" onclick="setDriveTab('card')">Card View</div>
@@ -657,6 +653,7 @@
             
             <nav id="bottom-nav" class="fixed bottom-0 w-full border-t border-green-100 shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.22)] z-50">
                 <button type="button" id="footer-menu-btn" class="footer-nav-btn" onclick="toggleMenu()" aria-label="Menu"><i class="ph-bold ph-list"></i><span>Menu</span></button>
+                <button type="button" data-footer-view="home" class="footer-nav-btn" onclick="switchView('home')" aria-label="Home"><i class="ph-bold ph-house"></i><span>Home</span></button>
                 <button type="button" data-footer-view="drive" class="footer-nav-btn" onclick="switchView('drive')" aria-label="Drive Mode"><i class="ph-bold ph-car"></i><span>Drive</span></button>
                 <button type="button" data-footer-view="tasks" class="footer-nav-btn" onclick="switchView('tasks')" aria-label="Tasks"><i class="ph-bold ph-clipboard-text"></i><span>Tasks</span></button>
                 <button type="button" data-footer-view="docks" class="footer-nav-btn" onclick="switchView('docks')" aria-label="Docks"><i class="ph-bold ph-truck"></i><span>Docks</span></button>
@@ -1308,16 +1305,21 @@
         async function fetchLoginUser(username, password) {
             startGlobalProgress();
             try {
-                const url = `${SUPABASE_URL}/rest/v1/v2_app_users?select=*&username=ilike.${encodeURIComponent(username)}&password=eq.${encodeURIComponent(password)}&limit=1`;
+                const normalizedUsername = String(username || '').trim();
+                const normalizedPassword = String(password || '').trim();
+                const url = `${SUPABASE_URL}/rest/v1/v2_app_users?select=*&username=ilike.${encodeURIComponent(normalizedUsername)}&password=eq.${encodeURIComponent(normalizedPassword)}&limit=1`;
                 const response = await fetchWithTimeout(url, {
                     method: 'GET',
                     headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }
                 }, SUPABASE_READ_TIMEOUT_MS, 'Login');
-                if (!response.ok) throw new Error('Supabase Error');
+                if (!response.ok) throw new Error(await getResponseError(response, `Supabase read failed (${response.status})`));
                 const text = await response.text();
-                return text ? JSON.parse(text) : [];
+                const rows = text ? JSON.parse(text) : [];
+                const matchedUser = Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
+                if (!matchedUser) return { ok: false, reason: 'mismatch' };
+                return { ok: true, user: matchedUser };
             } catch (e) {
-                return [];
+                return { ok: false, reason: 'network', error: e };
             } finally {
                 stopGlobalProgress();
             }
@@ -1524,26 +1526,30 @@
             ensureGlobalHeaderSearchPlaceholders();
             restoreGlobalHeaderSearchContainers();
             const currentView = getCurrentVisibleViewId();
-            const meta = AMAZON_HEADER_META[currentView] || { eyebrow: 'Current View', title: formatGlobalHeaderTitle(currentView) };
+            const meta = AMAZON_HEADER_META[currentView] || { title: formatGlobalHeaderTitle(currentView) };
             const headerUser = document.getElementById('header-user');
             const headerVersion = document.getElementById('header-version');
-            const eyebrow = document.getElementById('global-header-view-eyebrow');
+            const searchRow = document.getElementById('global-header-search-row');
             const title = document.getElementById('global-header-view-title');
             const backBtn = document.getElementById('global-header-inline-back');
             const searchSlot = document.getElementById('global-header-search-slot');
+            const inlineTitle = document.getElementById('global-header-inline-title');
             if (headerUser) headerUser.innerText = currentUserDisplay || currentUser || 'User';
             if (headerVersion) headerVersion.innerText = APP_VERSION;
-            if (eyebrow) eyebrow.innerText = meta.eyebrow || 'Current View';
             if (title) title.innerText = meta.title || formatGlobalHeaderTitle(currentView);
             if (backBtn) backBtn.classList.toggle('hidden', currentView === 'home');
-            clearNodeChildren(searchSlot);
+            if (searchSlot) clearNodeChildren(searchSlot);
             const searchContainerId = GLOBAL_HEADER_SEARCH_CONFIG[currentView];
             const searchContainer = searchContainerId ? document.getElementById(searchContainerId) : null;
             if (searchSlot && searchContainer) {
+                if (searchRow) searchRow.classList.remove('hidden');
                 searchSlot.classList.remove('hidden');
                 searchSlot.appendChild(searchContainer);
-            } else if (searchSlot) {
-                searchSlot.classList.add('hidden');
+                if (inlineTitle) inlineTitle.classList.add('hidden');
+            } else {
+                if (searchSlot) searchSlot.classList.add('hidden');
+                if (inlineTitle) inlineTitle.classList.toggle('hidden', currentView === 'home');
+                if (searchRow) searchRow.classList.toggle('hidden', currentView === 'home');
             }
         }
 
@@ -3240,12 +3246,12 @@ function toggleDriveQuickRequestItem(domId) {
             document.getElementById('login-inputs').classList.add('hidden'); 
             document.getElementById('loading-spinner').classList.remove('hidden'); 
             beginInitialAppLoad('Signing in...');
-                fetchLoginUser(rawUser, inputPass).then(data=>{
-                if(data&&data.length>0){
-                    const userRecord=data[0]; 
-                    currentUser=String(userRecord.username || inputUser).trim().toLowerCase(); 
-                    currentUserDisplay=String(userRecord.username || rawUser || currentUser).trim();
-                    currentRole=userRecord.role||'User'; 
+                fetchLoginUser(rawUser, inputPass).then(result=>{
+                if(result && result.ok && result.user){
+                    const userRecord=result.user; 
+                    currentUser=String(userRecord.username || userRecord.USERNAME || inputUser).trim().toLowerCase(); 
+                    currentUserDisplay=String(userRecord.username || userRecord.USERNAME || rawUser || currentUser).trim();
+                    currentRole=userRecord.role||userRecord.ROLE||'User'; 
                     safeRole=String(currentRole).toUpperCase().replace(/\s+/g,'');
                     const isDefaultPassword=['1234','12345','welcome','password',currentUser,currentUserDisplay].includes(inputPass); 
                     const hasChangedLocally=localStorage.getItem('gnc_pw_changed_'+currentUser)==='true';
@@ -3258,18 +3264,26 @@ function toggleDriveQuickRequestItem(domId) {
                     else{ 
                         finalizeLogin(currentUser,inputPass,isBiometricLogin); 
                     }
-                }else{ 
+                } else if (result && result.reason === 'mismatch') { 
                     finishInitialAppLoad();
                     setBootingSession(false);
                     alert("MISMATCH DETECTED!\n\nIncorrect Username or Password."); 
                     document.getElementById('pin-code').value=""; 
                     document.getElementById('login-inputs').classList.remove('hidden'); 
                     document.getElementById('loading-spinner').classList.add('hidden'); 
+                } else {
+                    finishInitialAppLoad();
+                    setBootingSession(false);
+                    const rawError = result && result.error && result.error.message ? String(result.error.message) : '';
+                    showToast('Error', rawError ? `Login failed: ${rawError}` : 'Could not reach the login service.', true); 
+                    document.getElementById('login-inputs').classList.remove('hidden'); 
+                    document.getElementById('loading-spinner').classList.add('hidden'); 
                 }
             }).catch(err=>{ 
                 finishInitialAppLoad();
                 setBootingSession(false);
-                showToast("Error","Network Error.",true); 
+                const rawError = err && err.message ? String(err.message) : '';
+                showToast('Error', rawError ? `Login failed: ${rawError}` : 'Could not reach the login service.', true); 
                 document.getElementById('login-inputs').classList.remove('hidden'); 
                 document.getElementById('loading-spinner').classList.add('hidden'); 
             });
@@ -4332,16 +4346,13 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
             const cust = lead.CUSTOMERNAME || 'Unknown Customer';
             const cons = lead.CONSIGNEENAME || lead.CONSIGNEE || '';
             const state = lead.CONSIGNEESTATE || lead.STATE || 'N/A';
+            const doneCount = stopItems.filter(item => {
+                const savedState = JSON.parse(localStorage.getItem('gnc_dock_item_' + item.UNIQUE_ID) || '{"checker":false,"inspector":false}');
+                return savedState.checker && savedState.inspector;
+            }).length;
             crumb.innerText = `Dock ${selectedDockNum} > Stop ${selectedDockStop}`;
             let html = `<div class="back-btn" onclick="dockViewLevel=1; renderDocks()"><i class="ph-bold ph-arrow-left"></i> Back to Stops</div>`;
-            html += `<div class="bg-gradient-to-r from-[#007a4d] to-[#119b6a] text-white rounded-2xl shadow-lg mb-4 p-4 border border-green-200/40"><div class="flex justify-between items-center mb-2 border-b border-white/20 pb-2"><div class="font-black text-xl tracking-wider">STOP ${selectedDockStop}</div><div class="text-[10px] font-bold bg-white/15 px-2 py-1 rounded text-white uppercase border border-white/15"><i class="ph-bold ph-user mr-1"></i>${rep}</div></div><div class="font-bold text-[15px] leading-tight mb-0.5">${cust}</div>${cons && cons !== cust ? `<div class="text-[12px] text-green-50 font-semibold mb-2 flex items-center gap-1"><i class="ph-bold ph-arrow-bend-down-right"></i> ${cons}</div>` : '<div class="mb-2"></div>'}<div class="text-[10px] font-bold text-green-50 uppercase tracking-wider flex items-center gap-1"><i class="ph-bold ph-map-pin"></i> State: <span class="text-white">${state}</span></div></div>`;
-            html += stopItems.map((item, index) => {
-                const checkerState = JSON.parse(localStorage.getItem('gnc_dock_item_' + item.UNIQUE_ID) || '{"checker":false,"inspector":false}');
-                const statusLabel = checkerState.checker && checkerState.inspector ? 'Ready' : (checkerState.checker || checkerState.inspector ? 'In Progress' : 'Open');
-                const statusClass = checkerState.checker && checkerState.inspector ? 'bg-green-100 text-green-700 border-green-200' : (checkerState.checker || checkerState.inspector ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-gray-100 text-gray-600 border-gray-200');
-
-                return `<details class="bg-white border border-gray-200 rounded-xl shadow-sm mb-3 overflow-hidden" ${index === 0 ? 'open' : ''}><summary class="list-none cursor-pointer px-4 py-3 flex items-center justify-between gap-3 bg-gray-50/80 border-b border-gray-100"><div class="min-w-0"><div class="text-[10px] font-black text-gray-400 uppercase tracking-wider">Dock Item</div><div class="text-sm font-black text-[#007a4d] truncate">${item.ITEMCODE || item.COMMONNAME || 'Open Row'}</div></div><div class="shrink-0 flex items-center gap-2"><span class="text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded border ${statusClass}">${statusLabel}</span><i class="ph-bold ph-caret-down text-gray-300 text-xl"></i></div></summary><div class="px-3 pb-3 pt-3">${generateCard(item, 'docks', 'status-orange')}</div></details>`;
-            }).join('');
+            html += `<details class="bg-white border border-green-200 rounded-2xl shadow-lg mb-4 overflow-hidden" open><summary class="list-none cursor-pointer bg-gradient-to-r from-[#007a4d] to-[#119b6a] text-white p-4 border-b border-green-200/40"><div class="flex justify-between items-center gap-3 mb-2 border-b border-white/20 pb-2"><div><div class="font-black text-xl tracking-wider">STOP ${selectedDockStop}</div><div class="text-[10px] font-bold text-green-50 uppercase tracking-wider mt-1">${stopItems.length} Rows</div></div><div class="flex items-center gap-2"><div class="text-[10px] font-bold bg-white/15 px-2 py-1 rounded text-white uppercase border border-white/15"><i class="ph-bold ph-user mr-1"></i>${rep}</div><div class="text-[10px] font-bold bg-white/15 px-2 py-1 rounded text-white uppercase border border-white/15">${doneCount}/${stopItems.length} Done</div><i class="ph-bold ph-caret-down text-white/80 text-xl"></i></div></div><div class="font-bold text-[15px] leading-tight mb-0.5">${cust}</div>${cons && cons !== cust ? `<div class="text-[12px] text-green-50 font-semibold mb-2 flex items-center gap-1"><i class="ph-bold ph-arrow-bend-down-right"></i> ${cons}</div>` : '<div class="mb-2"></div>'}<div class="text-[10px] font-bold text-green-50 uppercase tracking-wider flex items-center gap-1"><i class="ph-bold ph-map-pin"></i> State: <span class="text-white">${state}</span></div></summary><div class="p-3 bg-gray-50/70">${stopItems.map((item) => generateCard(item, 'docks', 'status-orange')).join('')}</div></details>`;
             container.innerHTML = html;
         }
 
@@ -6477,7 +6488,7 @@ ${formatRequestItemsText(items)}`;
             const driveModeLabel = DRIVE_MODE_LABELS[activeDriveMode] || 'Drive Mode';
             const drillTabs = document.getElementById('drive-drill-tabs');
             const quickCardMode = activeDriveMode === 'ok' && activeDriveTab === 'card';
-            if (drillTabs) drillTabs.classList.remove('hidden');
+            if (drillTabs) drillTabs.classList.add('hidden');
             renderDriveQuickRequestBar();
 
             if (activeDriveMode !== 'ok') {
@@ -6488,12 +6499,18 @@ ${formatRequestItemsText(items)}`;
                 return;
             }
 
+            const driveTabButtonClass = (isActive) => `px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap cursor-pointer transition-colors ${isActive ? 'bg-[#007a4d] text-white shadow-md' : 'bg-white border border-emerald-300 text-emerald-700'}`;
+            const driveTabsHtml = [
+                { key: 'name', label: 'By Name' },
+                { key: 'loc', label: 'By Location' },
+                { key: 'card', label: 'Card View' }
+            ].map(tab => `<button type="button" class="${driveTabButtonClass(activeDriveTab === tab.key)}" onclick="setDriveTab('${tab.key}')">${tab.label}</button>`).join('');
             const seasonFiltersHtml = availableSeasons.map(s => {
                 const active = driveSelectedSeasons.has(s);
-                return `<div class="px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap cursor-pointer transition-colors ${active ? 'bg-[#007a4d] text-white shadow-md' : 'bg-white border border-gray-300 text-gray-600'}" onclick="toggleDriveSeason('${s}')">${s}</div>`;
+                return `<button type="button" class="px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap cursor-pointer transition-colors ${active ? 'bg-[#007a4d] text-white shadow-md' : 'bg-white border border-gray-300 text-gray-600'}" onclick="toggleDriveSeason('${s}')">${s}</button>`;
             }).join('');
-            const holdStopToggleHtml = `<div class="px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap cursor-pointer transition-colors ${driveQuickHoldStopOnly ? 'bg-amber-400 text-amber-950 shadow-md border border-amber-500' : 'bg-white border border-amber-300 text-amber-700'}" onclick="toggleDriveHoldStopOnly()">H/S HOLD</div>`;
-            filtersDiv.innerHTML = seasonFiltersHtml + holdStopToggleHtml;
+            const holdStopToggleHtml = `<button type="button" class="px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap cursor-pointer transition-colors ${driveQuickHoldStopOnly ? 'bg-amber-400 text-amber-950 shadow-md border border-amber-500' : 'bg-white border border-amber-300 text-amber-700'}" onclick="toggleDriveHoldStopOnly()">H/S HOLD</button>`;
+            filtersDiv.innerHTML = driveTabsHtml + seasonFiltersHtml + holdStopToggleHtml;
 
             const searchFilteredItems = getDriveFilteredItems(false);
             if (quickCardMode) {
@@ -6770,7 +6787,7 @@ function toggleDriveSeason(s) {
                 crumb.innerText = taskViewLevel === 0 ? 'Flyer Folders' : `Flyer Folders > ${selectedFlyerFolder || 'Folder'}`;
             } else {
                 crumb.innerHTML = safeRole === 'ADMIN'
-                    ? `<span class="cursor-pointer text-gray-400 hover:text-gray-800" onclick="taskViewTargetUser=null; renderTeamSelector()"><i class="ph-bold ph-arrow-left"></i> Back to Team</span> &bull; <span class="text-[#007a4d]">${targetUser}'s Tasks</span>`
+                    ? `<span class="text-[#007a4d]">${targetUser}'s Tasks</span>`
                     : 'My Tasks';
             }
 
