@@ -5724,6 +5724,25 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
                 return `<div class="app-card-note mt-2 text-[12px] text-sky-800 bg-sky-50 p-2 rounded border border-sky-200 shadow-sm whitespace-pre-wrap"><span class="font-black">SALES NOTE:</span> ${salesNoteText}</div>`;
             };
 
+            const buildMatchQtyHtml = () => {
+                if (item.LOC_MATCH_QTY && String(item.LOC_MATCH_QTY).trim() !== "" && Number(item.LOC_MATCH_QTY) > 0) {
+                    let currentMatchQty = Number(item.LOC_MATCH_QTY);
+                    if (item.INITIAL_PTR) {
+                        let currentPtr = parseInt(String(item.PTRAVAILABLE).replace(/,/g, '')) || 0;
+                        let initialPtr = parseInt(String(item.INITIAL_PTR).replace(/,/g, '')) || 0;
+                        let drop = initialPtr - currentPtr;
+                        if (drop > 0) {
+                            currentMatchQty = Math.max(0, currentMatchQty - drop);
+                        }
+                    }
+                    if (currentMatchQty > 0) {
+                        return `<div class="mt-2 text-[12px] text-green-800 bg-green-100 p-2 rounded border border-green-200 shadow-sm whitespace-pre-wrap"><span class="font-black">LOC MATCH QTY:</span> ${currentMatchQty}</div>`;
+                    }
+                }
+                return '';
+            };
+            const matchQtyHtml = buildMatchQtyHtml();
+
             if(sourceView === 'av-photo' || sourceView === 'av') {
                 const holdHtml = buildHoldReasonHtml();
                 const salesNoteHtml = buildSalesNoteHtml();
@@ -5804,7 +5823,7 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
                 if(holdHtml) noteHtml += holdHtml;
                 if(salesNoteHtml) noteHtml += salesNoteHtml;
                 if(item.END_CAP_FOLDER&&String(item.END_CAP_FOLDER).trim()!==""){noteHtml+=`<div class="mt-2 text-[12px] text-yellow-800 bg-yellow-100 p-2 rounded border border-yellow-200 shadow-sm whitespace-pre-wrap"><span class="font-black">END CAP:</span> ${item.END_CAP_FOLDER} | QTY: ${item.END_CAP_QTY||'0'} | Lvl: ${item.END_CAP_LEVEL||'-'}</div>`}
-                if(item.LOC_MATCH_QTY&&String(item.LOC_MATCH_QTY).trim()!==""&&Number(item.LOC_MATCH_QTY)>0){noteHtml+=`<div class="mt-2 text-[12px] text-green-800 bg-green-100 p-2 rounded border border-green-200 shadow-sm whitespace-pre-wrap"><span class="font-black">MATCH QTY:</span> ${item.LOC_MATCH_QTY}</div>`}
+                if(matchQtyHtml) noteHtml += matchQtyHtml;
                 if(item.AV_NOTE&&String(item.AV_NOTE).trim()!==""){noteHtml+=`<div class="mt-2 text-[12px] text-blue-800 bg-blue-100 p-2 rounded border border-blue-200 shadow-sm whitespace-pre-wrap"><span class="font-black">AV NOTE:</span> ${item.AV_NOTE}</div>`}
                 if(item.FLYER_TITLE&&String(item.FLYER_TITLE).trim()!==""){noteHtml+=`<div class="mt-2 text-[12px] text-indigo-800 bg-indigo-100 p-2 rounded border border-indigo-200 shadow-sm whitespace-pre-wrap"><span class="font-black">FOLDER:</span> ${item.FLYER_TITLE}</div>`}
                 let extraData="";if(sourceView==='tasks'||sourceView==='drive'){extraData=`<div class="mt-2 flex gap-2 text-[10px] font-bold text-gray-500 uppercase">${item.SPEC?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Spec: ${item.SPEC}</span>`:''}${item.CALIPER?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Cal: ${item.CALIPER}</span>`:''}${item.MATCH?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Match: ${item.MATCH}%</span>`:''}</div>`}
@@ -7567,7 +7586,8 @@ function toggleDriveSeason(s) {
                             priority: String(salesRuleItem.PRIORITY || itemToSave.PRIORITY || ''),
                             photo_link: salesRulePhotoLink || '',
                             completed_by: currentUser,
-                            completed_at: payload.date_completed
+                            completed_at: payload.date_completed,
+                            av_note: itemToSave.AV_NOTE || salesRuleItem.AV_NOTE || ''
                         };
                         artifacts.cloneSO = { ...artifacts.soPayload };
                         for (let key in artifacts.soPayload) { artifacts.cloneSO[key.toUpperCase()] = artifacts.soPayload[key]; }
