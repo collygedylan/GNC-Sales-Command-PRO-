@@ -276,6 +276,36 @@
             <button class="text-gray-500 font-bold py-2 px-4 mt-2" onclick="closeRequestModal()">Cancel</button>
         </div>
     </div>
+    <div id="bloom-picker-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-2xl text-left flex flex-col max-h-[90vh] overflow-hidden">
+            <div class="flex items-start justify-between gap-3 mb-4 border-b border-gray-100 pb-3">
+                <div>
+                    <h3 class="font-bold text-lg text-[#007a4d]">Bloom Picker Order</h3>
+                    <div class="text-[10px] font-bold text-gray-500 uppercase tracking-[0.12em] mt-1">Create a customer folder and send AV rows to Sales Office</div>
+                </div>
+                <button type="button" class="text-gray-500 font-bold py-2 px-3" onclick="closeBloomPickerModal()">Close</button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+                <div>
+                    <label class="text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Customer / Consignee</label>
+                    <input type="text" id="bloom-order-customer" class="input-field border-green-200 !mb-0" placeholder="Enter customer name">
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Order Number</label>
+                    <input type="text" id="bloom-order-number" class="input-field border-green-200 !mb-0" placeholder="Enter order number">
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Folder Name</label>
+                    <input type="text" id="bloom-order-folder" class="input-field border-green-200 !mb-0" placeholder="Optional custom folder name">
+                </div>
+            </div>
+            <div id="bloom-picker-list-container" class="flex flex-col gap-3 overflow-y-auto max-h-[48vh] pr-1"></div>
+            <div class="mt-4 flex gap-2">
+                <button type="button" class="w-1/3 bg-gray-100 text-gray-600 font-bold p-3 rounded-lg shadow-sm active:scale-95" onclick="closeBloomPickerModal()">Cancel</button>
+                <button type="button" class="w-2/3 bg-[#007a4d] text-white font-bold p-3 rounded-lg shadow-md active:scale-95" onclick="submitBloomPickerOrder()">Submit Order</button>
+            </div>
+        </div>
+    </div>
     <div id="app-wrapper" class="hidden h-full flex flex-col">
         <header class="nav-header">
             <div class="nav-header-shell">
@@ -465,7 +495,16 @@
                 
                 <div id="view-sales-office" class="hidden">
                     <div class="freeze-panel">
-                    <div class="text-xs font-bold text-[#007a4d] mb-3">Completed Rows</div>
+                        <div class="flex items-start justify-between gap-3 mb-3">
+                            <div class="min-w-0 flex-1">
+                                <div id="sales-office-crumb" class="text-xs font-bold text-[#007a4d] mb-2">Bloom Picker Orders</div>
+                                <div class="flex gap-2 overflow-x-auto scrollbar-none pb-1">
+                                    <button type="button" id="sales-office-tab-orders" class="rounded-full border px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] bg-[#007a4d] text-white border-[#007a4d] shadow-sm" onclick="setSalesOfficeTab('orders')">Bloom Picker Orders</button>
+                                    <button type="button" id="sales-office-tab-season" class="rounded-full border px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] bg-white text-[#007a4d] border-green-200 shadow-sm" onclick="setSalesOfficeTab('season')">Season Sales Notes</button>
+                                </div>
+                            </div>
+                            <button type="button" id="sales-office-export-btn" class="inline-flex items-center gap-2 rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-95" onclick="exportCurrentSalesOfficeToExcel()"><i class="ph-bold ph-download-simple text-base"></i><span id="sales-office-export-label">Export Excel</span></button>
+                        </div>
                     </div>
                     <div id="sales-office-content"></div>
                 </div>
@@ -647,19 +686,20 @@
             </div>
 
             <div id="global-action-bar" class="hidden fixed bottom-[60px] left-0 w-full bg-white p-3 shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.15)] z-[45] border-t border-gray-200">
-                <div class="flex justify-between items-center mb-2 px-1"><span class="text-xs font-bold text-[#007a4d]"><span id="sel-count">0</span> Rows In Bag</span><span class="text-[10px] font-bold text-red-500 cursor-pointer bg-red-50 px-3 py-1 rounded-md uppercase" onclick="clearSelection()">Clear Bag</span></div>
+                <div class="flex justify-between items-center mb-2 px-1"><span class="text-xs font-bold text-[#007a4d]"><span id="sel-count">0</span> Rows In Bloom Picker</span><span class="text-[10px] font-bold text-red-500 cursor-pointer bg-red-50 px-3 py-1 rounded-md uppercase" onclick="clearSelection()">Clear Bloom Picker</span></div>
                 <div class="flex gap-1 overflow-x-auto scrollbar-none pb-1">
                     <button onclick="initiateBatchAction('copy')" class="flex-1 min-w-[60px] bg-gray-100 text-gray-700 p-2 rounded-lg text-[10px] font-bold hover:bg-gray-200"><i class="ph-bold ph-copy block text-lg mb-1"></i> Copy</button>
                     <button onclick="initiateBatchAction('email')" class="flex-1 min-w-[60px] bg-blue-100 text-blue-700 p-2 rounded-lg text-[10px] font-bold hover:bg-blue-200"><i class="ph-bold ph-envelope block text-lg mb-1"></i> Email</button>
                     <button onclick="initiateBatchAction('text')" class="flex-1 min-w-[60px] bg-green-100 text-green-700 p-2 rounded-lg text-[10px] font-bold hover:bg-green-200"><i class="ph-bold ph-chat block text-lg mb-1"></i> Text</button>
                     <button id="batch-btn-assign" onclick="initiateBatchAction('assign')" class="flex-1 min-w-[60px] bg-purple-100 text-purple-700 p-2 rounded-lg text-[10px] font-bold hover:bg-purple-200 hidden"><i class="ph-bold ph-user-plus block text-lg mb-1"></i> Assign</button>
+                    <button id="batch-btn-bloom-order" onclick="initiateBatchAction('bloom_order')" class="flex-1 min-w-[72px] bg-[#007a4d] text-white p-2 rounded-lg text-[10px] font-bold shadow-md hidden"><i class="ph-bold ph-package block text-lg mb-1"></i> Submit Order</button>
                     <button id="batch-btn-request" onclick="initiateBatchAction('request_action')" class="flex-1 min-w-[60px] bg-orange-500 text-white p-2 rounded-lg text-[10px] font-bold shadow-md hidden"><i class="ph-bold ph-warning-circle block text-lg mb-1"></i> Request</button>
                     <button id="batch-btn-flyer" onclick="initiateBatchAction('flyer')" class="flex-1 min-w-[60px] bg-indigo-100 text-indigo-700 p-2 rounded-lg text-[10px] font-bold hover:bg-indigo-200 hidden"><i class="ph-bold ph-megaphone block text-lg mb-1"></i> Flyer</button>
                     <button id="batch-btn-endcap" onclick="initiateBatchAction('endcap')" class="flex-1 min-w-[70px] bg-yellow-100 text-yellow-700 p-2 rounded-lg text-[10px] font-bold hover:bg-yellow-200 shadow-sm hidden"><i class="ph-bold ph-storefront block text-lg mb-1"></i> End Cap</button>
                 </div>
-                <div id="cart-helper-text" class="hidden">Assign, Request, Flyer, and End Cap work on inventory rows.</div>
+                <div id="cart-helper-text" class="hidden">Bloom Picker orders are for AV open stock rows. Assign, Request, Flyer, and End Cap work on inventory rows.</div>
             </div>
-            <button type="button" id="cart-fab" class="hidden" onclick="toggleCartPanel()" aria-label="Bag"><i class="ph-bold ph-handbag"></i><span id="cart-fab-count" class="hidden">0</span></button>
+            <button type="button" id="cart-fab" class="hidden" onclick="toggleCartPanel()" aria-label="Bloom Picker"><i class="ph-bold ph-handbag"></i><span id="cart-fab-count" class="hidden">0</span></button>
             
             <nav id="bottom-nav" class="fixed bottom-0 w-full border-t border-green-100 shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.22)] z-50">
                 <button type="button" id="footer-menu-btn" class="footer-nav-btn" onclick="toggleMenu()" aria-label="Menu"><i class="ph-bold ph-list"></i><span>Menu</span></button>
@@ -985,8 +1025,8 @@
         }
 
         function applyAvRuleTouchPayload(item, payload, changeFlags = {}, nowIso = new Date().toISOString()) {
-            applyAvRuleTouchState(item, changeFlags, nowIso);
             if (avRuleColumnsReady !== true || !payload) return payload;
+            applyAvRuleTouchState(item, changeFlags, nowIso);
             const flags = changeFlags || {};
             const didChange = !!(flags.avNote || flags.spec || flags.match || flags.caliper || flags.photo);
             payload.av_rule_priority_snapshot = item.AV_RULE_PRIORITY_SNAPSHOT || null;
@@ -1148,7 +1188,7 @@
                 : `<div class="flex min-h-[200px] items-center justify-center rounded-[1.25rem] border border-dashed border-slate-300 bg-slate-100 px-6 text-center text-[12px] font-black uppercase tracking-[0.16em] text-slate-400">No Photos On File Yet</div>`;
             const helperCopy = photoCount > 1
                 ? `Swipe to scroll ${photoCount} photos`
-                : (photoCount === 1 ? 'Tap photo to expand' : 'Use the buttons below to bag it or create a request');
+                : (photoCount === 1 ? 'Tap photo to expand' : 'Use the buttons below to add it to Bloom Picker or create a request');
             const countBadgeHtml = photoCount
                 ? `<div class="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600">${photoCount} photo${photoCount === 1 ? '' : 's'}</div>`
                 : '';
@@ -1172,7 +1212,7 @@
                             ${countBadgeHtml}
                         </div>
                         <div class="mt-3 flex flex-col gap-2 sm:flex-row">
-                            <button type="button" class="flex-1 inline-flex items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-[12px] font-black uppercase tracking-[0.12em] transition active:scale-[0.98] ${bagBtnClass}" onclick="handleDetailBagToggle(event)"><i class="ph-bold ${inBag ? 'ph-check' : 'ph-handbag'} text-lg"></i>${inBag ? 'In Bag' : 'Add To Bag'}</button>
+                            <button type="button" class="flex-1 inline-flex items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-[12px] font-black uppercase tracking-[0.12em] transition active:scale-[0.98] ${bagBtnClass}" onclick="handleDetailBagToggle(event)"><i class="ph-bold ${inBag ? 'ph-check' : 'ph-handbag'} text-lg"></i>${inBag ? 'In Bloom Picker' : 'Add To Bloom Picker'}</button>
                             ${requestBtnHtml}
                         </div>
                     </div>
@@ -1325,8 +1365,7 @@
                 }
                 dockTeamStatusLoaded = true;
                 markViewDirty('docks');
-                const docksView = document.getElementById('view-docks');
-                if (docksView && !docksView.classList.contains('hidden')) scheduleUiRender('dock-team-realtime', () => renderDocks(), 24);
+                scheduleDocksRender(72);
                 return true;
             }
 
@@ -1342,8 +1381,7 @@
                 }
                 dockItemProgressLoaded = true;
                 markViewDirty('docks');
-                const docksView = document.getElementById('view-docks');
-                if (docksView && !docksView.classList.contains('hidden')) scheduleUiRender('dock-item-realtime', () => renderDocks(), 24);
+                scheduleDocksRender(72);
                 return true;
             }
 
@@ -1524,6 +1562,14 @@
                 renderViewContent(viewId, forceReset, forceRender);
             });
         }
+
+        function scheduleDocksRender(delay = 32) {
+            scheduleUiRender('docks:render', () => {
+                const docksView = document.getElementById('view-docks');
+                if (!docksView || docksView.classList.contains('hidden')) return;
+                renderDocks();
+            }, delay);
+        }
         
         let activeFetches=0; let fetchProgressInterval; let currentProgress=0;
         let initialAppLoadActive=false;
@@ -1683,7 +1729,7 @@
         function maybeWarnAvRuleSchemaMissing() {
             if (avRuleSchemaWarningShown || !currentUser) return;
             avRuleSchemaWarningShown = true;
-            showToast('Schema Required', 'Run av_rule_retention_migration.sql in Supabase to enable AV retention timing and reset rules.', true);
+            console.warn('AV retention schema is not installed. AV retention timing/reset rules are disabled until av_rule_retention_migration.sql is run in Supabase.');
         }
 
         async function ensureAvRuleColumnsReady(force = false) {
@@ -1725,6 +1771,50 @@
             return avRuleColumnsProbePromise;
         }
 
+        function maybeWarnSalesOfficeOrderSchemaMissing() {
+            if (salesOfficeOrderSchemaWarningShown || !currentUser) return;
+            salesOfficeOrderSchemaWarningShown = true;
+            showToast('Schema Required', 'Run sales_office_bloom_picker_migration.sql in Supabase to enable Bloom Picker order review in Sales Office.', true);
+        }
+
+        async function ensureSalesOfficeOrderColumnsReady(force = false) {
+            if (salesOfficeOrderColumnsReady === true && !force) return true;
+            if (salesOfficeOrderColumnsReady === false && !force) return false;
+            if (salesOfficeOrderSchemaPromise && !force) return salesOfficeOrderSchemaPromise;
+            salesOfficeOrderSchemaPromise = (async () => {
+                if (navigator.onLine === false) return false;
+                try {
+                    const url = `${SUPABASE_URL}/rest/v1/v2_sales_office?select=unique_id,so_source,order_folder,order_number,order_customer,order_qty,order_status&limit=1`;
+                    const response = await fetchWithTimeout(url, {
+                        method: 'GET',
+                        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }
+                    }, SUPABASE_READ_TIMEOUT_MS, 'Sales Office Order Schema');
+                    if (!response.ok) {
+                        const errorText = await getResponseError(response, `Supabase read failed (${response.status})`);
+                        const normalizedError = String(errorText || '').toLowerCase();
+                        if (normalizedError.includes('so_source') || normalizedError.includes('order_folder') || normalizedError.includes('order_number') || normalizedError.includes('order_customer') || normalizedError.includes('order_qty') || normalizedError.includes('order_status') || normalizedError.includes('column')) {
+                            salesOfficeOrderColumnsReady = false;
+                            maybeWarnSalesOfficeOrderSchemaMissing();
+                            return false;
+                        }
+                        return false;
+                    }
+                    salesOfficeOrderColumnsReady = true;
+                    return true;
+                } catch (error) {
+                    const normalizedError = String(error && error.message ? error.message : error || '').toLowerCase();
+                    if (normalizedError.includes('so_source') || normalizedError.includes('order_folder') || normalizedError.includes('order_number') || normalizedError.includes('order_customer') || normalizedError.includes('order_qty') || normalizedError.includes('order_status') || normalizedError.includes('column')) {
+                        salesOfficeOrderColumnsReady = false;
+                        maybeWarnSalesOfficeOrderSchemaMissing();
+                        return false;
+                    }
+                    return false;
+                } finally {
+                    salesOfficeOrderSchemaPromise = null;
+                }
+            })();
+            return salesOfficeOrderSchemaPromise;
+        }
         async function fetchLoginUser(username, password) {
             startGlobalProgress();
             try {
@@ -1867,6 +1957,7 @@
         let dockItemProgressByUid=new Map(); let dockItemProgressPromise=null; let dockItemProgressLoaded=false; let dockItemSchemaReady=null; let dockItemSchemaPromise=null; let dockItemSchemaWarningShown=false;
         let detailRequestSourceDomIds=[];
         let avRuleColumnsReady=null; let avRuleColumnsProbePromise=null; let avRuleSchemaWarningShown=false; let avRuleCleanupInFlight=new Set();
+        let activeSalesOfficeTab='orders'; let salesOfficeOrderColumnsReady=null; let salesOfficeOrderSchemaPromise=null; let salesOfficeOrderSchemaWarningShown=false;
         
         const DRIVE_MODE_LABELS = { ok: 'Drive Mode' };
         let activeDriveMode='ok'; let activeDriveTab='name'; let selectedDriveBlock=null; let selectedDriveLoc=null; let driveQuickRequestCardMode=false; let driveQuickFilterName=''; let driveQuickFilterLocation=''; let driveQuickFilterLot=''; let driveQuickFilterSize=''; let driveQuickFilterPriority=''; let driveQuickFilterLtsMode=''; let driveQuickFilterLtsValue=''; let driveQuickHoldStopOnly=false; let driveQuickFilterOptionsCacheKey=''; let driveQuickFilterOptionsCache=null; let driveBaseFilterCacheKey=''; let driveBaseFilterCacheItems=[]; let driveQuickFilterCacheKey=''; let driveQuickFilterCacheItems=[]; let driveQuickFiltersModalOpen=false;
@@ -3196,7 +3287,7 @@ function toggleDriveQuickRequestItem(domId) {
         function createCartFlyers() {
             const domIds = Array.from(selectedItems).filter((domId) => !!findItemByDomId(domId));
             if (!domIds.length) {
-                showToast('Select Rows', 'Add one or more rows to the bag first.', true);
+                showToast('Select Rows', 'Add one or more rows to Bloom Picker first.', true);
                 return false;
             }
 
@@ -3338,6 +3429,144 @@ function toggleDriveQuickRequestItem(domId) {
             resetQuickDriveRequestState();
             configureRequestCustomerStep();
             renderDriveQuickRequestBar();
+        }
+        function buildBloomPickerFolderName(customer = '', orderNumber = '') {
+            const customerText = String(customer || '').trim();
+            const orderText = String(orderNumber || '').trim();
+            if (customerText && orderText) return `${customerText} - ${orderText}`;
+            return customerText || orderText || `Bloom Picker ${new Date().toLocaleDateString('en-US')}`;
+        }
+
+        function buildBloomPickerOrderRowId(orderNumber = '', item = null, index = 0) {
+            const orderPart = String(orderNumber || 'ORDER').replace(/[^a-z0-9]+/gi, '').toUpperCase().slice(0, 12) || 'ORDER';
+            const masterPart = String(item && (item.UNIQUE_ID || item.ITEMCODE || '') || '').replace(/[^a-z0-9]+/gi, '').toUpperCase().slice(-10) || `ROW${index + 1}`;
+            const stamp = `${Date.now().toString(36)}${index.toString(36)}`.toUpperCase();
+            return `BPO-${orderPart}-${stamp}-${masterPart}`;
+        }
+
+        function closeBloomPickerModal(clearFields = true) {
+            const modal = document.getElementById('bloom-picker-modal');
+            if (modal) modal.classList.add('hidden');
+            if (!clearFields) return false;
+            const customerInput = document.getElementById('bloom-order-customer');
+            const orderInput = document.getElementById('bloom-order-number');
+            const folderInput = document.getElementById('bloom-order-folder');
+            const listContainer = document.getElementById('bloom-picker-list-container');
+            if (customerInput) customerInput.value = '';
+            if (orderInput) orderInput.value = '';
+            if (folderInput) folderInput.value = '';
+            if (listContainer) listContainer.innerHTML = '';
+            return false;
+        }
+
+        function renderBloomPickerOrderList() {
+            const container = document.getElementById('bloom-picker-list-container');
+            if (!container) return;
+            const items = getCartSelectedItems().filter(isAvOpenLikeItem);
+            if (!items.length) {
+                container.innerHTML = `<div class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-[11px] font-black uppercase tracking-[0.16em] text-slate-400">Select AV Open Stock rows to build a Bloom Picker order</div>`;
+                return;
+            }
+            let html = '';
+            items.forEach((item) => {
+                const safeDomId = esc(item.DOM_ID);
+                const isTree = item.PLANTGROUPCODE && String(item.PLANTGROUPCODE).includes('330_TREES');
+                const needsCaliper = isTree && ['#7','#10','#15','#25','#45'].includes(item.CONTSIZE);
+                const orderSpec = firstNonEmptyValue(item.SPEC, item.REQ_SPEC, '');
+                const orderCaliper = firstNonEmptyValue(item.CALIPER, item.REQ_CALIPER, '');
+                html += `<div class="rounded-2xl border border-green-100 bg-[#f6fffb] p-4 shadow-sm"><div class="flex items-start justify-between gap-3"><div class="min-w-0"><div class="text-sm font-black text-slate-900 leading-tight">${item.COMMONNAME || 'Unknown'}</div><div class="mt-1 text-[11px] font-semibold text-slate-500">${item.CONTSIZE || '-'} | Loc: ${item.LOCATIONCODE || '-'} | Lot: ${item.LOTCODE || '-'}</div><div class="mt-2 inline-flex items-center gap-1 rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">Loc Ava ${item.PTRAVAILABLE || '0'}</div></div><div class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-right shadow-sm"><div class="text-[9px] font-black uppercase tracking-[0.16em] text-slate-400">Item</div><div class="mt-1 text-[11px] font-mono font-bold text-slate-700">${item.ITEMCODE || '-'}</div></div></div><div class="mt-3 grid grid-cols-1 md:grid-cols-4 gap-2"><div><label class="text-[9px] font-bold text-gray-500 uppercase ml-1">Order Qty</label><input type="number" min="0" step="1" class="bp-item-qty-input w-full p-2 border border-green-200 rounded-md text-sm font-bold focus:border-[#007a4d] focus:outline-none" placeholder="Qty" data-dom-id="${safeDomId}"></div><div><label class="text-[9px] font-bold text-gray-500 uppercase ml-1">Reserve</label><select class="bp-item-reserve-input w-full p-2 border border-green-200 rounded-md text-sm font-bold focus:border-[#007a4d] focus:outline-none" data-dom-id="${safeDomId}"><option value="NO">NO</option><option value="YES">YES</option></select></div><div class="md:col-span-2"><label class="text-[9px] font-bold text-gray-500 uppercase ml-1">Desired Spec</label><input type="text" class="bp-item-spec-input w-full p-2 border border-green-200 rounded-md text-sm focus:border-[#007a4d] focus:outline-none" placeholder="Enter spec or leave blank" data-dom-id="${safeDomId}" value="${esc(orderSpec)}"></div>${needsCaliper ? `<div class="md:col-span-2"><label class="text-[9px] font-bold text-gray-500 uppercase ml-1">Desired Caliper</label><input type="text" class="bp-item-caliper-input w-full p-2 border border-green-200 rounded-md text-sm focus:border-[#007a4d] focus:outline-none" placeholder="Enter caliper or leave blank" data-dom-id="${safeDomId}" value="${esc(orderCaliper)}"></div>` : ''}</div></div>`;
+            });
+            container.innerHTML = html;
+        }
+
+        function openBloomPickerModal() {
+            const items = getCartSelectedItems();
+            if (!canUseBloomPicker(items)) {
+                showToast('Open Stock Only', 'Bloom Picker orders can only be created from AV Open Stock rows.', true);
+                return false;
+            }
+            toggleCartPanel(false);
+            renderBloomPickerOrderList();
+            const modal = document.getElementById('bloom-picker-modal');
+            if (modal) modal.classList.remove('hidden');
+            return false;
+        }
+
+        async function submitBloomPickerOrder() {
+            const items = getCartSelectedItems().filter(isAvOpenLikeItem);
+            if (!items.length) {
+                showToast('No Rows', 'Select one or more AV Open Stock rows first.', true);
+                closeBloomPickerModal();
+                return false;
+            }
+            const customerInput = document.getElementById('bloom-order-customer');
+            const orderInput = document.getElementById('bloom-order-number');
+            const folderInput = document.getElementById('bloom-order-folder');
+            const customer = String(customerInput && customerInput.value || '').trim();
+            const orderNumber = String(orderInput && orderInput.value || '').trim();
+            let folderName = String(folderInput && folderInput.value || '').trim();
+            if (!customer) { showToast('Required', 'Enter the customer or consignee for this Bloom Picker order.', true); return false; }
+            if (!orderNumber) { showToast('Required', 'Enter an order number before submitting.', true); return false; }
+            if (!folderName) { folderName = buildBloomPickerFolderName(customer, orderNumber); if (folderInput) folderInput.value = folderName; }
+            const schemaReady = await ensureSalesOfficeOrderColumnsReady();
+            if (!schemaReady && salesOfficeOrderColumnsReady === false) return false;
+            if (salesOfficeOrderColumnsReady === false) return false;
+            const lineDrafts = {};
+            document.querySelectorAll('.bp-item-qty-input').forEach((input) => { const domId = String(input.getAttribute('data-dom-id') || '').trim(); if (!lineDrafts[domId]) lineDrafts[domId] = {}; lineDrafts[domId].qty = String(input.value || '').trim(); });
+            document.querySelectorAll('.bp-item-spec-input').forEach((input) => { const domId = String(input.getAttribute('data-dom-id') || '').trim(); if (!lineDrafts[domId]) lineDrafts[domId] = {}; lineDrafts[domId].spec = String(input.value || '').trim(); });
+            document.querySelectorAll('.bp-item-caliper-input').forEach((input) => { const domId = String(input.getAttribute('data-dom-id') || '').trim(); if (!lineDrafts[domId]) lineDrafts[domId] = {}; lineDrafts[domId].caliper = String(input.value || '').trim(); });
+            document.querySelectorAll('.bp-item-reserve-input').forEach((input) => { const domId = String(input.getAttribute('data-dom-id') || '').trim(); if (!lineDrafts[domId]) lineDrafts[domId] = {}; lineDrafts[domId].reserve = String(input.value || '').trim() || 'NO'; });
+            const submittedAt = new Date().toISOString();
+            const submittedBy = currentUserDisplay || currentUser || 'Unknown';
+            const payloads = [];
+            const clones = [];
+            items.forEach((item, index) => {
+                const draft = lineDrafts[item.DOM_ID] || {};
+                const qtyValue = parseAppNumber(draft.qty);
+                if (qtyValue == null || qtyValue <= 0) return;
+                const desiredSpec = String(firstNonEmptyValue(draft.spec, item.SPEC, '') || '').trim();
+                const desiredCaliper = String(firstNonEmptyValue(draft.caliper, item.CALIPER, '') || '').trim();
+                const reserveValue = String(draft.reserve || 'NO').trim() || 'NO';
+                const rowId = buildBloomPickerOrderRowId(orderNumber, item, index);
+                const photoLink = firstNonEmptyValue(item.SAVED_PHOTO_LINK, item.ROW_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']);
+                const photoName = firstNonEmptyValue(item.SAVED_PHOTO_NAME, item.ROW_PHOTO_NAME, item.PHOTO_NAME, item.PHOTONAME, item['PHOTO NAME']);
+                const salesNote = firstNonEmptyValue(item.SALES_NOTE, item.SALESNOTE, item.SALES_DESC, item.SALESDESC, '');
+                const payload = { unique_id: rowId, master_id: item.UNIQUE_ID || '', so_source: 'bloom_picker', order_folder: folderName, order_number: orderNumber, order_customer: customer, order_qty: String(qtyValue), order_desired_spec: desiredSpec || null, order_desired_caliper: desiredCaliper || null, order_reserve: reserveValue, order_submitted_by: submittedBy, order_submitted_at: submittedAt, order_status: 'Pending Review', itemcode: item.ITEMCODE || '', commonname: item.COMMONNAME || '', contsize: item.CONTSIZE || '', locationcode: item.LOCATIONCODE || '', lotcode: item.LOTCODE || '', ptravailable: String(item.PTRAVAILABLE || ''), priority: String(item.PRIORITY || ''), av_note: item.AV_NOTE || '', sales_note: salesNote || null, spec: item.SPEC || null, caliper: item.CALIPER || null, photo_link: photoLink || null, photo_name: photoName || null };
+                payloads.push(payload);
+                const clone = { SOURCE_TABLE: 'v2_sales_office' };
+                Object.keys(payload).forEach((key) => { if (payload[key] !== null && payload[key] !== undefined) clone[key.toUpperCase()] = payload[key]; });
+                clone.DOM_ID = 'so_' + rowId;
+                clone.APP_TAB_ASSIGNMENT = 'sales-office-order';
+                clone.SALES_NOTE = salesNote || '';
+                normalizeRowPhotoFields(clone);
+                buildSearchIndex(clone);
+                clones.push(clone);
+            });
+            if (!payloads.length) { showToast('Qty Required', 'Enter an order quantity for at least one Bloom Picker row.', true); return false; }
+            showToast('Processing...', `Submitting ${payloads.length} Bloom Picker row${payloads.length === 1 ? '' : 's'} to Sales Office...`, false);
+            try {
+                await supabaseFetch('v2_sales_office', 'POST', payloads);
+                clones.forEach((clone) => { const existingIdx = salesOfficeInventory.findIndex((row) => String(row.UNIQUE_ID || '').trim() === String(clone.UNIQUE_ID || '').trim()); if (existingIdx > -1) salesOfficeInventory[existingIdx] = clone; else salesOfficeInventory.push(clone); });
+                activeSalesOfficeTab = 'orders';
+                clearSelection();
+                closeBloomPickerModal();
+                markViewDirty('sales-office');
+                const canOpenSalesOffice = canAccessView('sales-office');
+                if (canOpenSalesOffice) {
+                    switchView('sales-office');
+                    showToast('Order Sent', `${payloads.length} Bloom Picker row${payloads.length === 1 ? '' : 's'} moved to Sales Office.`);
+                } else {
+                    markViewDirty('av');
+                    if (!document.getElementById('view-av').classList.contains('hidden')) renderAV();
+                    showToast('Order Sent', `${payloads.length} Bloom Picker row${payloads.length === 1 ? '' : 's'} submitted. CSR can review it in Sales Office.`);
+                }
+                return false;
+            } catch (error) {
+                const normalizedError = String(error && error.message ? error.message : error || '').toLowerCase();
+                if (normalizedError.includes('order_') || normalizedError.includes('so_source') || normalizedError.includes('column')) { salesOfficeOrderColumnsReady = false; maybeWarnSalesOfficeOrderSchemaMissing(); }
+                else showToast('Error', 'Bloom Picker order submission failed.', true);
+                return false;
+            }
         }
         function showRequestCustomerStep(fromStepId = 'step-1-rep') {
             previousReqStep = fromStepId;
@@ -3932,8 +4161,8 @@ function toggleDriveQuickRequestItem(domId) {
             updateGlobalActionBar();
             setRepPermutations(currentUser);
             ensureDockAssignableUsers().catch(() => {});
-            ensureDockTeamStatusLoaded().then(() => { if (!document.getElementById('view-docks').classList.contains('hidden')) renderDocks(); }).catch(() => {});
-            ensureDockItemStatusLoaded().then(() => { if (!document.getElementById('view-docks').classList.contains('hidden')) renderDocks(); }).catch(() => {});
+            ensureDockTeamStatusLoaded().then(() => { scheduleDocksRender(24); }).catch(() => {});
+            ensureDockItemStatusLoaded().then(() => { scheduleDocksRender(24); }).catch(() => {});
             ensureAvRuleColumnsReady().catch(() => {});
             const shouldPromptBiometric = !isBiometricLogin && window.PublicKeyCredential && localStorage.getItem('gnc_bio_enabled')!=='true';
             setLoginProgress(Math.max(currentProgress, 30), 'Preparing your workspace...');
@@ -4172,7 +4401,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (hasMaster) {
                 fullInventory = (res.data || []).map((item,idx)=>{item.DOM_ID='fi_'+idx;return buildSearchIndex(normalizeRowPhotoFields(item));});
                 applyMasterAppTabAssignments(fullInventory);
-                avRuleClearOps = collectMasterAvRuleClearOps(fullInventory);
+                if (avRuleColumnsReady === true) avRuleClearOps = collectMasterAvRuleClearOps(fullInventory);
                 rebuildMasterInventoryIndexes();
                 invalidateMasterDerivedInventories();
             }
@@ -5583,12 +5812,27 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
             if(!pendingDockNum) return;
             const dockNum = normalizeDockTeamDockKey(pendingDockNum);
             let info = normalizeDockTeamInfo({ checker: document.getElementById('dock-checker').value, inspector: document.getElementById('dock-inspector').value, mistake: document.getElementById('dock-mistake').value, status: document.getElementById('dock-status').value });
-            cacheDockTeamInfo(dockNum, info);
-            document.getElementById('dock-info-modal').classList.add('hidden'); showToast("Saved", "Dock updated.");
-            if (dockViewLevel === 0) { renderDocks(); }
-            if (navigator.onLine === false) return;
+            let appliedLocalDockInfo = false;
+            const applyLocalDockInfo = () => {
+                if (appliedLocalDockInfo) return;
+                appliedLocalDockInfo = true;
+                cacheDockTeamInfo(dockNum, info);
+                scheduleDocksRender(16);
+            };
+            document.getElementById('dock-info-modal').classList.add('hidden');
+            if (navigator.onLine === false) {
+                applyLocalDockInfo();
+                showToast("Saved", "Dock updated on this device. Reconnect to sync the shared dock assignment.");
+                return;
+            }
             ensureDockTeamSchemaReady().then((schemaReady) => {
-                if (!schemaReady) return;
+                if (!schemaReady) {
+                    dockTeamStatusLoaded = false;
+                    scheduleDocksRender(16);
+                    showToast('Schema Required', 'Run dock_team_status_migration.sql in Supabase to share dock team assignments across users.', true);
+                    return false;
+                }
+                applyLocalDockInfo();
                 return supabaseFetch('v2_dock_team_status', 'POST', [{
                     dock_num: dockNum,
                     checker: info.checker || null,
@@ -5598,10 +5842,13 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
                     updated_by: currentUserDisplay || currentUser || null,
                     updated_at: new Date().toISOString()
                 }]);
-            }).then(() => {
+            }).then((result) => {
+                if (result === false) return;
                 dockTeamStatusLoaded = true;
-                if (!document.getElementById('view-docks').classList.contains('hidden')) renderDocks();
+                showToast("Saved", "Dock updated.");
+                scheduleDocksRender(16);
             }).catch(() => {
+                applyLocalDockInfo();
                 showToast("Error", "Dock team saved on this device, but the shared dock assignment update failed.", true);
             });
         }
@@ -5620,7 +5867,7 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
             if (item && item.MASTER_UNIQUE_ID) {
                 item.DOCK_NOTE = text;
                 showToast("Saving...", "Updating mistake...", false);
-                supabaseFetch('v2_master_inventory', 'PATCH', { dock_note: text }, `unique_id=eq.${item.MASTER_UNIQUE_ID}`).then(() => { showToast("Success", "Mistake saved!"); document.getElementById('dock-mistake-modal').classList.add('hidden'); renderDocks(); }).catch(err => { showToast("Error", "Failed to save mistake", true); });
+                supabaseFetch('v2_master_inventory', 'PATCH', { dock_note: text }, `unique_id=eq.${item.MASTER_UNIQUE_ID}`).then(() => { showToast("Success", "Mistake saved!"); document.getElementById('dock-mistake-modal').classList.add('hidden'); scheduleDocksRender(16); }).catch(err => { showToast("Error", "Failed to save mistake", true); });
             }
         }
 
@@ -5644,7 +5891,7 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
             cacheDockItemProgress(uid, nextProgress);
             dockItemProgressLoaded = true;
             markViewDirty('docks');
-            renderDocks();
+            scheduleDocksRender(16);
             if (navigator.onLine === false) return;
             try {
                 const schemaReady = await ensureDockItemSchemaReady();
@@ -5659,7 +5906,7 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
                     updated_at: updatedAt
                 }]);
                 dockItemProgressLoaded = true;
-                if (!document.getElementById('view-docks').classList.contains('hidden')) renderDocks();
+                scheduleDocksRender(16);
             } catch (error) {
                 showToast('Error', 'Dock row progress saved on this device, but the shared dock workflow update failed.', true);
             }
@@ -5682,6 +5929,14 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
             let items = getScopedDocksItems(socInventory);
             if(term) items = filterBySearch(items, term, 'docks');
             if (items.length === 0) {
+                if (access.isQc && !access.isAdmin && !access.isQcSupervisor && (dockTeamSchemaReady === false || dockItemSchemaReady === false)) {
+                    const missingParts = [];
+                    if (dockTeamSchemaReady === false) missingParts.push('dock_team_status_migration.sql');
+                    if (dockItemSchemaReady === false) missingParts.push('dock_item_status_migration.sql');
+                    container.innerHTML = `<div class="p-8 text-center text-gray-400">Run ${missingParts.join(' and ')} in Supabase to share dock assignments and checker/inspector progress with QC users.</div>`;
+                    crumb.innerText = 'Dock Setup Required';
+                    return;
+                }
                 container.innerHTML = `<div class="p-8 text-center text-gray-400">No dock items found.</div>`;
                 crumb.innerText = 'No Results';
                 return;
@@ -5819,7 +6074,26 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
         }
 
         function isSalesOfficeLikeItem(item) {
-            return !!(item && String(item.APP_TAB_ASSIGNMENT || '').toLowerCase() === 'sales-office');
+            if (!item) return false;
+            const sourceTable = String(item.SOURCE_TABLE || '').toLowerCase();
+            const assignment = String(item.APP_TAB_ASSIGNMENT || '').toLowerCase();
+            return sourceTable === 'v2_sales_office' || assignment === 'sales-office' || assignment === 'sales-office-order';
+        }
+
+        function isAvOpenLikeItem(item) {
+            if (!item) return false;
+            const domId = String(item.DOM_ID || '').trim();
+            return domId.startsWith('avo_');
+        }
+
+        function isBloomPickerSalesOfficeItem(item) {
+            if (!item) return false;
+            const soSource = String(firstNonEmptyValue(item.SO_SOURCE, item.so_source, '') || '').toLowerCase().trim();
+            return isSalesOfficeLikeItem(item) && (soSource === 'bloom_picker' || soSource === 'bloom-picker' || firstNonEmptyValue(item.ORDER_FOLDER, item.ORDER_NUMBER, item.ORDER_CUSTOMER) !== '');
+        }
+
+        function canUseBloomPicker(items = getCartSelectedItems()) {
+            return items.length > 0 && items.every((item) => item && isAvOpenLikeItem(item) && !isRequestLikeItem(item) && !isDockLikeItem(item) && !isSalesOfficeLikeItem(item));
         }
 
         function canUseCartInventoryActions(items = getCartSelectedItems()) {
@@ -5836,8 +6110,8 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
                 row.classList.toggle('cart-selected', inCart);
                 button.classList.toggle('active', inCart);
                 button.setAttribute('aria-pressed', inCart ? 'true' : 'false');
-                button.setAttribute('aria-label', inCart ? 'Remove from bag' : 'Add to bag');
-                button.title = inCart ? 'Remove from bag' : 'Add to bag';
+                button.setAttribute('aria-label', inCart ? 'Remove from Bloom Picker' : 'Add to Bloom Picker');
+                button.title = inCart ? 'Remove from Bloom Picker' : 'Add to Bloom Picker';
                 button.innerHTML = `<i class="ph-bold ${inCart ? 'ph-check' : 'ph-handbag'}"></i>`;
             });
         }
@@ -5904,7 +6178,7 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
             if (!selectedItems.size) {
                 cartPanelOpen = false;
                 updateGlobalActionBar();
-                if (forceOpen !== false) showToast('Bag Empty', 'Tap the bag on a row to add it first.', true);
+                if (forceOpen !== false) showToast('Bloom Picker Empty', 'Tap the Bloom Picker button on a row to add it first.', true);
                 return false;
             }
             cartPanelOpen = forceOpen === null ? !cartPanelOpen : !!forceOpen;
@@ -5962,9 +6236,9 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
                 fab.classList.remove('hidden');
             }
             if(!hadItem && hasItemNow){
-                showToast('Added To Bag', `${selectedItems.size} row${selectedItems.size === 1 ? '' : 's'} in bag.`);
+                showToast('Added To Bloom Picker', `${selectedItems.size} row${selectedItems.size === 1 ? '' : 's'} in Bloom Picker.`);
             } else if(hadItem && !hasItemNow){
-                showToast('Removed', `${selectedItems.size} row${selectedItems.size === 1 ? '' : 's'} left in bag.`);
+                showToast('Removed', `${selectedItems.size} row${selectedItems.size === 1 ? '' : 's'} left in Bloom Picker.`);
             }
             if (activeItem) renderDetailOverviewMedia();
         }
@@ -5998,7 +6272,7 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
         }
         function handleCardClick(domId,uniqueId,sourceView) {
             let item=findItemByUniqueId(uniqueId); 
-            if(sourceView==='av'||sourceView==='av-photo'){
+            if(sourceView==='av-photo'){
                 openAvGallery(item);
             }else if(safeRole==='SALESREP'&&sourceView==='drive'){ 
                 if(item){ 
@@ -6052,7 +6326,9 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
                 if (assignment === 'location') document.getElementById('dtab-location').classList.remove('hidden');
                 document.getElementById('dtab-notes').classList.remove('hidden');
                 document.getElementById('dtab-gallery').classList.remove('hidden');
-            } else if (sourceView === 'av' || sourceView === 'low-stock') {
+            } else if (sourceView === 'av') {
+                // AV detail stays focused on Bloom Picker and Request actions in Overview.
+            } else if (sourceView === 'low-stock') {
                 document.getElementById('dtab-season').classList.remove('hidden');
                 document.getElementById('dtab-location').classList.remove('hidden');
                 document.getElementById('dtab-request').classList.remove('hidden');
@@ -6291,30 +6567,208 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
             }
         }
 
+        function formatSalesOfficeDate(value = '') {
+            if (!value) return 'Pending';
+            try {
+                return new Date(value).toLocaleString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+            } catch (error) {
+                return String(value || '').trim() || 'Pending';
+            }
+        }
+
+        function updateSalesOfficeTabButtons() {
+            const baseClass = 'rounded-full border px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] shadow-sm';
+            const ordersBtn = document.getElementById('sales-office-tab-orders');
+            const seasonBtn = document.getElementById('sales-office-tab-season');
+            if (ordersBtn) ordersBtn.className = `${baseClass} ${activeSalesOfficeTab === 'orders' ? 'bg-[#007a4d] text-white border-[#007a4d]' : 'bg-white text-[#007a4d] border-green-200'}`;
+            if (seasonBtn) seasonBtn.className = `${baseClass} ${activeSalesOfficeTab === 'season' ? 'bg-[#007a4d] text-white border-[#007a4d]' : 'bg-white text-[#007a4d] border-green-200'}`;
+        }
+
+        function updateSalesOfficeExportButton(count = 0) {
+            const button = document.getElementById('sales-office-export-btn');
+            const label = document.getElementById('sales-office-export-label');
+            if (!button || !label) return;
+            label.innerText = count > 0 ? `Export Excel (${count})` : 'Export Excel';
+            button.disabled = count === 0;
+            button.setAttribute('aria-disabled', count === 0 ? 'true' : 'false');
+            button.classList.toggle('opacity-50', count === 0);
+            button.classList.toggle('cursor-not-allowed', count === 0);
+            button.classList.toggle('pointer-events-none', count === 0);
+        }
+
+        function setSalesOfficeTab(tab = 'orders') {
+            activeSalesOfficeTab = tab === 'season' ? 'season' : 'orders';
+            if (getCurrentVisibleViewId() === 'sales-office') renderSalesOffice();
+            return false;
+        }
+
+        function getSalesOfficeSeasonItems() {
+            let items = salesOfficeInventory.filter((item) => !isBloomPickerSalesOfficeItem(item));
+            if (fullInventory.length > 0) {
+                const seasonIds = new Set(fullInventory.filter(i => String(i.APP_TAB_ASSIGNMENT || '').toLowerCase() === 'season').map(i => String(i.UNIQUE_ID || '')).filter(Boolean));
+                items = items.filter((item) => seasonIds.has(String(firstNonEmptyValue(item.MASTER_ID, item.UNIQUE_ID) || '')));
+            }
+            items.sort((a, b) => new Date(b.COMPLETED_AT || 0).getTime() - new Date(a.COMPLETED_AT || 0).getTime());
+            return items;
+        }
+
+        function getSalesOfficeOrderItems() {
+            return salesOfficeInventory.filter((item) => isBloomPickerSalesOfficeItem(item)).sort((a, b) => new Date(firstNonEmptyValue(b.ORDER_SUBMITTED_AT, b.UPDATED_AT, b.COMPLETED_AT, 0)).getTime() - new Date(firstNonEmptyValue(a.ORDER_SUBMITTED_AT, a.UPDATED_AT, a.COMPLETED_AT, 0)).getTime());
+        }
+
+        function getSalesOfficeOrderGroupKey(item) {
+            return String(firstNonEmptyValue(item.ORDER_FOLDER, item.ORDER_NUMBER, item.ORDER_CUSTOMER, item.UNIQUE_ID) || 'Bloom Picker Order').trim();
+        }
+
+        function getSalesOfficeOrderGroups(items = []) {
+            const groups = new Map();
+            (items || []).forEach((item) => {
+                const key = getSalesOfficeOrderGroupKey(item);
+                if (!groups.has(key)) {
+                    groups.set(key, { key, folder: key, orderNumber: firstNonEmptyValue(item.ORDER_NUMBER, ''), customer: firstNonEmptyValue(item.ORDER_CUSTOMER, item.CUSTOMERNAME, item.CUSTOMER, ''), status: firstNonEmptyValue(item.ORDER_STATUS, 'Pending Review'), submittedBy: firstNonEmptyValue(item.ORDER_SUBMITTED_BY, item.COMPLETED_BY, ''), submittedAt: firstNonEmptyValue(item.ORDER_SUBMITTED_AT, item.COMPLETED_AT, ''), rows: [] });
+                }
+                const group = groups.get(key);
+                group.orderNumber = firstNonEmptyValue(group.orderNumber, item.ORDER_NUMBER, '');
+                group.customer = firstNonEmptyValue(group.customer, item.ORDER_CUSTOMER, item.CUSTOMERNAME, item.CUSTOMER, '');
+                group.status = firstNonEmptyValue(item.ORDER_STATUS, group.status, 'Pending Review');
+                group.submittedBy = firstNonEmptyValue(group.submittedBy, item.ORDER_SUBMITTED_BY, item.COMPLETED_BY, '');
+                group.submittedAt = firstNonEmptyValue(group.submittedAt, item.ORDER_SUBMITTED_AT, item.COMPLETED_AT, '');
+                group.rows.push(item);
+            });
+            return Array.from(groups.values()).map((group) => {
+                group.rows.sort((a, b) => {
+                    const nameCompare = String(a.COMMONNAME || '').localeCompare(String(b.COMMONNAME || ''));
+                    if (nameCompare !== 0) return nameCompare;
+                    return String(a.CONTSIZE || '').localeCompare(String(b.CONTSIZE || ''), undefined, { numeric: true });
+                });
+                group.lineCount = group.rows.length;
+                group.totalQty = group.rows.reduce((sum, row) => sum + (parseAppNumber(row.ORDER_QTY) || 0), 0);
+                return group;
+            }).sort((a, b) => new Date(b.submittedAt || 0).getTime() - new Date(a.submittedAt || 0).getTime());
+        }
+
+        function getSalesOfficeExportColumns(tab = activeSalesOfficeTab) {
+            if (tab === 'orders') {
+                return [
+                    { label: 'Folder', value: (row) => row.ORDER_FOLDER || '' },
+                    { label: 'Order Number', value: (row) => row.ORDER_NUMBER || '' },
+                    { label: 'Customer', value: (row) => row.ORDER_CUSTOMER || '' },
+                    { label: 'Status', value: (row) => row.ORDER_STATUS || '' },
+                    { label: 'Order Qty', value: (row) => row.ORDER_QTY || '' },
+                    { label: 'Reserve', value: (row) => row.ORDER_RESERVE || '' },
+                    { label: 'Desired Spec', value: (row) => row.ORDER_DESIRED_SPEC || '' },
+                    { label: 'Desired Caliper', value: (row) => row.ORDER_DESIRED_CALIPER || '' },
+                    { label: 'Common Name', value: (row) => row.COMMONNAME || '' },
+                    { label: 'Container Size', value: (row) => row.CONTSIZE || '' },
+                    { label: 'Location', value: (row) => row.LOCATIONCODE || '' },
+                    { label: 'Lot Code', value: (row) => row.LOTCODE || '' },
+                    { label: 'Item Code', value: (row) => row.ITEMCODE || '' },
+                    { label: 'Qty Available', value: (row) => row.PTRAVAILABLE || '' },
+                    { label: 'AV Note', value: (row) => row.AV_NOTE || '' },
+                    { label: 'Sales Note', value: (row) => firstNonEmptyValue(row.SALES_NOTE, row.SALESNOTE, row.SALES_DESC, row.SALESDESC) || '' },
+                    { label: 'Submitted By', value: (row) => row.ORDER_SUBMITTED_BY || '' },
+                    { label: 'Submitted At', value: (row) => row.ORDER_SUBMITTED_AT || '' },
+                    { label: 'Photo Links', value: (row) => getPhotoUrlList(getRowPhotoLink(row, 'sales-office')).join('\n') }
+                ];
+            }
+            return [
+                { label: 'Common Name', value: (row) => row.COMMONNAME || '' },
+                { label: 'Container Size', value: (row) => row.CONTSIZE || '' },
+                { label: 'Location', value: (row) => row.LOCATIONCODE || '' },
+                { label: 'Lot Code', value: (row) => row.LOTCODE || '' },
+                { label: 'Item Code', value: (row) => row.ITEMCODE || '' },
+                { label: 'Qty Available', value: (row) => row.PTRAVAILABLE || '' },
+                { label: 'Priority', value: (row) => row.PRIORITY || '' },
+                { label: 'AV Note', value: (row) => row.AV_NOTE || '' },
+                { label: 'Completed By', value: (row) => row.COMPLETED_BY || '' },
+                { label: 'Completed At', value: (row) => row.COMPLETED_AT || '' },
+                { label: 'Photo Links', value: (row) => getPhotoUrlList(getRowPhotoLink(row, 'sales-office')).join('\n') }
+            ];
+        }
+
+        function buildSalesOfficeExportContext(tab = activeSalesOfficeTab, orderFolder = '') {
+            if (tab === 'orders') {
+                let rows = getSalesOfficeOrderItems();
+                const folderKey = String(orderFolder || '').trim();
+                if (folderKey) rows = rows.filter((row) => getSalesOfficeOrderGroupKey(row) === folderKey);
+                return { rows, title: folderKey ? `Bloom Picker Order ${folderKey}` : 'Sales Office Bloom Picker Orders', fileLabel: folderKey ? `bloom-picker-order-${folderKey}` : 'sales-office-bloom-picker-orders' };
+            }
+            return { rows: getSalesOfficeSeasonItems(), title: 'Sales Office Season Sales Notes', fileLabel: 'sales-office-season-sales-notes' };
+        }
+
+        function exportSalesOfficeRowsToExcel(tab = activeSalesOfficeTab, orderFolder = '') {
+            const exportContext = buildSalesOfficeExportContext(tab, orderFolder);
+            const count = exportContext.rows.length;
+            if (tab === activeSalesOfficeTab) updateSalesOfficeExportButton(count);
+            if (!count) { showToast('No Rows', `There are no ${tab === 'orders' ? 'Bloom Picker order' : 'Season Sales Notes'} rows to export right now.`, true); return false; }
+            const columns = getSalesOfficeExportColumns(tab);
+            const workbookXml = buildAVExcelWorkbookXml(columns, exportContext.rows, exportContext.title, '');
+            const timestamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
+            const filename = `gnc-${sanitizeAVExportFilePart(exportContext.fileLabel)}-${timestamp}.xls`;
+            const blob = new Blob([workbookXml], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            setTimeout(() => { URL.revokeObjectURL(url); link.remove(); }, 0);
+            showToast('Export Ready', `Downloading ${count} Sales Office row${count === 1 ? '' : 's'} as Excel.`);
+            return false;
+        }
+
+        function exportCurrentSalesOfficeToExcel() {
+            if (ensureViewDataForRender('sales-office')) return false;
+            return exportSalesOfficeRowsToExcel(activeSalesOfficeTab);
+        }
+
+        function exportSalesOfficeOrderFolder(folderKey = '') {
+            return exportSalesOfficeRowsToExcel('orders', folderKey);
+        }
         function renderSalesOffice() {
             if (ensureViewDataForRender('sales-office')) return;
             const container = document.getElementById('sales-office-content');
+            const crumb = document.getElementById('sales-office-crumb');
             if (!container) return;
+            updateSalesOfficeTabButtons();
 
-            let items = [...salesOfficeInventory];
-            if (fullInventory.length > 0) {
-                const seasonIds = new Set(fullInventory
-                    .filter(i => String(i.APP_TAB_ASSIGNMENT || '').toLowerCase() === 'season')
-                    .map(i => String(i.UNIQUE_ID || ''))
-                    .filter(Boolean));
-                items = items.filter(i => seasonIds.has(String(i.UNIQUE_ID || '')));
+            if (activeSalesOfficeTab === 'orders' && salesOfficeOrderColumnsReady == null) {
+                ensureSalesOfficeOrderColumnsReady().then(() => {
+                    if (getCurrentVisibleViewId() === 'sales-office') renderSalesOffice();
+                }).catch(() => {});
             }
-            if (items.length === 0) {
-                container.innerHTML = `<div class="p-8 text-center text-gray-400">No Season Sales Notes rows found.</div>`;
+
+            if (activeSalesOfficeTab === 'orders') {
+                if (salesOfficeOrderColumnsReady === false) {
+                    if (crumb) crumb.innerText = 'Bloom Picker Orders';
+                    updateSalesOfficeExportButton(0);
+                    container.innerHTML = `<div class="p-8 text-center text-gray-400">Run sales_office_bloom_picker_migration.sql in Supabase to enable Bloom Picker orders.</div>`;
+                    return;
+                }
+                const items = getSalesOfficeOrderItems();
+                const groups = getSalesOfficeOrderGroups(items);
+                updateSalesOfficeExportButton(items.length);
+                if (crumb) crumb.innerText = groups.length ? `Bloom Picker Orders (${groups.length} folder${groups.length === 1 ? '' : 's'} / ${items.length} row${items.length === 1 ? '' : 's'})` : 'Bloom Picker Orders';
+                if (!groups.length) {
+                    container.innerHTML = `<div class="p-8 text-center text-gray-400">No Bloom Picker orders have been submitted yet.</div>`;
+                    return;
+                }
+                container.innerHTML = groups.map((group) => {
+                    const submittedAtLabel = formatSalesOfficeDate(group.submittedAt);
+                    const exportKey = esc(group.key);
+                    const statusTone = String(group.status || '').toLowerCase().includes('done') ? 'bg-green-100 text-green-700 border-green-200' : 'bg-amber-50 text-amber-700 border-amber-100';
+                    return `<div class="mb-4 overflow-hidden rounded-[1.5rem] border border-emerald-100 bg-white shadow-sm"><div class="border-b border-emerald-100 bg-gradient-to-r from-emerald-50 via-white to-emerald-50 px-4 py-4"><div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.18em] text-[#007a4d]">Bloom Picker Folder</div><div class="mt-1 text-lg font-black text-slate-900 leading-tight break-words">${group.folder}</div><div class="mt-2 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-600">Order ${group.orderNumber || '-'}</span><span class="rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-600">Customer ${group.customer || '-'}</span><span class="rounded-full border px-3 py-1 ${statusTone}">${group.status || 'Pending Review'}</span><span class="rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-600">${group.lineCount} line${group.lineCount === 1 ? '' : 's'}</span><span class="rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-600">Qty ${group.totalQty || 0}</span></div><div class="mt-3 text-[11px] font-semibold text-slate-500">Submitted by ${group.submittedBy || 'Unknown'} on ${submittedAtLabel}</div></div><button type="button" class="inline-flex items-center justify-center gap-2 rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-95" onclick="event.stopPropagation(); exportSalesOfficeOrderFolder('${exportKey}')"><i class="ph-bold ph-download-simple text-base"></i>Export Order</button></div></div><div class="bg-slate-50 px-3 py-3">${group.rows.map((item) => generateCard(item, 'sales-office-order')).join('')}</div></div>`;
+                }).join('');
                 return;
             }
 
-            items.sort((a, b) => {
-                let dateA = new Date(a.COMPLETED_AT || 0).getTime();
-                let dateB = new Date(b.COMPLETED_AT || 0).getTime();
-                return dateB - dateA;
-            });
-
+            const items = getSalesOfficeSeasonItems();
+            updateSalesOfficeExportButton(items.length);
+            if (crumb) crumb.innerText = items.length ? `Season Sales Notes (${items.length} row${items.length === 1 ? '' : 's'})` : 'Season Sales Notes';
+            if (!items.length) {
+                container.innerHTML = `<div class="p-8 text-center text-gray-400">No Season Sales Notes rows found.</div>`;
+                return;
+            }
             container.innerHTML = items.map(i => generateCard(i, 'sales-office')).join('');
         }
         function resetLowStockView() {
@@ -6870,9 +7324,11 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
             const btnRequest=document.getElementById('batch-btn-request'); 
             const btnFlyer=document.getElementById('batch-btn-flyer');
             const btnEndCap=document.getElementById('batch-btn-endcap');
+            const btnBloomOrder=document.getElementById('batch-btn-bloom-order');
             const hasItems=selectedItems.size>0;
             const items=getCartSelectedItems();
             const canUseInventoryActions=canUseCartInventoryActions(items);
+            const canUseBloomOrders=canUseBloomPicker(items);
             const canAssign=canUseInventoryActions&&(safeRole==='ADMIN'||safeRole==='CSR');
             if(countLabel)countLabel.innerText=selectedItems.size; 
             if(fab){
@@ -6887,7 +7343,8 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
             if(btnRequest)btnRequest.classList.toggle('hidden', !canUseInventoryActions);
             if(btnFlyer)btnFlyer.classList.toggle('hidden', !canUseInventoryActions);
             if(btnEndCap)btnEndCap.classList.toggle('hidden', !canUseInventoryActions);
-            if(helper)helper.classList.toggle('hidden', !hasItems||canUseInventoryActions);
+            if(btnBloomOrder)btnBloomOrder.classList.toggle('hidden', !canUseBloomOrders);
+            if(helper)helper.classList.toggle('hidden', !hasItems || canUseInventoryActions || canUseBloomOrders);
             if(bar)bar.classList.toggle('hidden', !hasItems||!cartPanelOpen);
         }
         function copyTextToClipboard(text,label) { 
@@ -6902,7 +7359,15 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
             const uid = String(uniqueId || '').trim();
             if (!uid) return;
             const opts = options || {};
-            salesOfficeInventory = salesOfficeInventory.filter(i => i.UNIQUE_ID !== uid);
+            const removedRows = salesOfficeInventory.filter(i => String(i.UNIQUE_ID || '').trim() === uid);
+            salesOfficeInventory = salesOfficeInventory.filter(i => String(i.UNIQUE_ID || '').trim() !== uid);
+            removedRows.forEach((row) => {
+                if (row && row.DOM_ID) selectedItems.delete(row.DOM_ID);
+            });
+            if (!selectedItems.size) cartPanelOpen = false;
+            updateGlobalActionBar();
+            refreshCartButtons();
+            if (getCurrentVisibleViewId() === 'sales-office') renderSalesOffice();
             if (!opts.silent) showToast("Complete", opts.message || "Removed from Sales Office.");
             if (opts.skipRemote) return;
             supabaseFetch('v2_sales_office','DELETE',null,`unique_id=eq.${encodeURIComponent(uid)}`).catch(() => {
@@ -6911,8 +7376,6 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
         }
 
         function markSalesOfficeComplete(uniqueId,domId) { 
-            const row=document.querySelector(`[data-dom-id="${domId}"]`); 
-            if(row)row.remove(); 
             removeSalesOfficeRowByUniqueId(uniqueId, { message: 'Removed from Sales Office.' }); 
         }
 
@@ -7002,6 +7465,22 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
                 return `<div class="flex items-center w-full mb-2 item-row relative app-card-shell p-3 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${cardOpacity}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-col w-full min-w-0"><div class="flex items-start justify-between w-full"><div class="flex-grow min-w-0 pr-2"><div class="font-black text-gray-800 text-[14px] leading-tight break-words mb-0.5">${item.COMMONNAME||'Unknown'}</div><div class="font-bold text-[#007a4d] text-sm mb-2">${item.CONTSIZE||'-'}</div><div class="text-[11px] font-mono text-gray-500 mb-2 flex items-center bg-gray-100 px-2 py-0.5 rounded w-max"><i class="ph-bold ph-barcode mr-1.5 text-gray-400"></i>${item.ITEMCODE||'-'}</div><div class="flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600"><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Stop: ${stopNum}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Trip: ${tripNum}</span><span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">Loc: ${item.LOCATIONCODE||'No Loc'}</span><span class="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-100">Rep: ${salesRep}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Tag: ${tagColor}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Lot: ${item.LOTCODE||'-'}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Src: ${sourceStr}</span>${queueBadge}</div>${noteHtml}</div>${thumbHtml}</div>${actionBtns}</div></div>`;
             }
 
+            if(sourceView==='sales-office-order'){
+                const orderQty = firstNonEmptyValue(item.ORDER_QTY, item.REQ_QTY, '0');
+                const orderStatus = firstNonEmptyValue(item.ORDER_STATUS, 'Pending Review');
+                const orderReserve = firstNonEmptyValue(item.ORDER_RESERVE, 'NO');
+                const desiredSpec = firstNonEmptyValue(item.ORDER_DESIRED_SPEC, item.SPEC, '');
+                const desiredCaliper = firstNonEmptyValue(item.ORDER_DESIRED_CALIPER, item.CALIPER, '');
+                const submittedAt = formatSalesOfficeDate(firstNonEmptyValue(item.ORDER_SUBMITTED_AT, item.COMPLETED_AT, ''));
+                const avNoteHtml = item.AV_NOTE && String(item.AV_NOTE).trim() !== '' ? `<div class="mt-2 rounded-xl border border-blue-200 bg-blue-50 p-2 text-[12px] font-semibold text-blue-800 whitespace-pre-wrap"><span class="font-black">AV NOTE:</span> ${item.AV_NOTE}</div>` : '';
+                const orderDetailBits = [
+                    desiredSpec ? `<span class="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">Spec: ${desiredSpec}</span>` : '',
+                    desiredCaliper ? `<span class="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">Cal: ${desiredCaliper}</span>` : '',
+                    `<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Reserve: ${orderReserve}</span>`
+                ].filter(Boolean).join('');
+                const statusTone = String(orderStatus || '').toLowerCase().includes('done') ? 'bg-green-100 text-green-700 border-green-200' : 'bg-amber-50 text-amber-700 border-amber-100';
+                return `<div class="flex items-center w-full mb-2 item-row relative app-card-shell p-3 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-col w-full min-w-0"><div class="flex items-start justify-between w-full gap-3"><div class="flex-grow min-w-0 pr-2"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d] mb-1">Bloom Picker</div><div class="font-black text-gray-800 text-[14px] leading-tight break-words">${item.COMMONNAME||'Unknown'}</div><div class="font-bold text-[#007a4d] text-sm mb-2">${item.CONTSIZE||'-'}</div><div class="flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600"><span class="rounded-full border border-emerald-100 bg-emerald-50 px-2 py-1 text-emerald-700">Qty ${orderQty}</span><span class="rounded-full border border-slate-200 bg-white px-2 py-1 text-slate-600">Order ${item.ORDER_NUMBER||'-'}</span><span class="rounded-full border border-slate-200 bg-white px-2 py-1 text-slate-600">Loc ${item.LOCATIONCODE||'-'}</span><span class="rounded-full border border-slate-200 bg-white px-2 py-1 text-slate-600">Lot ${item.LOTCODE||'-'}</span><span class="rounded-full border px-2 py-1 ${statusTone}">${orderStatus}</span></div>${orderDetailBits ? `<div class="mt-2 flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-wider text-gray-600">${orderDetailBits}</div>` : ''}<div class="mt-2 text-[11px] font-semibold text-slate-500">Submitted ${submittedAt}</div>${avNoteHtml}</div>${thumbHtml}</div><div class="flex gap-2 mt-3"><button class="flex-1 bg-[#007a4d] hover:bg-green-700 text-white text-[10px] font-bold py-2 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-md active:scale-95" onclick="event.stopPropagation(); markSalesOfficeComplete('${safeUidJs}', '${item.DOM_ID}')"><i class="ph-bold ph-check-circle text-lg"></i>DONE</button></div></div></div>`;
+            }
             if(sourceView==='sales-office'){
                 let avNoteText = String(item.AV_NOTE || 'No AV Note Provided');
                 let itemCode = item.ITEMCODE || '-'; 
@@ -7041,12 +7520,20 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
         function initiateBatchAction(action) {
             const items = getCartSelectedItems();
             if (!items.length) {
-                showToast('Bag Empty', 'Add one or more rows to the bag first.', true);
+                showToast('Bloom Picker Empty', 'Add one or more rows to Bloom Picker first.', true);
                 return;
             }
             const requestOnly = items.every((item) => isRequestLikeItem(item));
             const docksOnly = items.every((item) => isDockLikeItem(item));
             toggleCartPanel(false);
+            if(action==='bloom_order'){
+                if(!canUseBloomPicker(items)){
+                    showToast('Open Stock Only', 'Bloom Picker orders can only be created from AV Open Stock rows.', true);
+                    return;
+                }
+                openBloomPickerModal();
+                return;
+            }
             if(action==='request_action'){openRequestModal();return}
             if(action==='flyer'){createCartFlyers();return}
             if(action==='endcap'){openEndCapModal();return}
@@ -8871,10 +9358,12 @@ function toggleDriveSeason(s) {
                         supabaseFetch('v2_master_inventory', 'PATCH', artifacts.masterSyncPayload, `unique_id=eq.${encodeURIComponent(artifacts.masterSyncId)}`).catch(() => {});
                     }
 
-                    const immediateCleanupOps = collectMasterAvRuleClearOps([
-                        itemToSave,
-                        artifacts.masterSyncItem
-                    ].filter(Boolean));
+                    const immediateCleanupOps = avRuleColumnsReady === true
+                        ? collectMasterAvRuleClearOps([
+                            itemToSave,
+                            artifacts.masterSyncItem
+                        ].filter(Boolean))
+                        : [];
                     const didImmediateCleanup = immediateCleanupOps.length > 0;
                     if (didImmediateCleanup) {
                         immediateCleanupOps.forEach((entry) => backupLocalItem(entry.item));
@@ -9110,6 +9599,25 @@ function toggleDriveSeason(s) {
     </script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
