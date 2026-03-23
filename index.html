@@ -1983,7 +1983,7 @@
         
         let activeTaskTab="season"; let activeTaskSubview="all"; let taskViewTargetUser=null; let taskViewLevel=0; let selectedTaskBlock=null; let selectedTaskLoc=null; let selectedEndCapFolder=null; let selectedFlyerFolder=null; let selectedColorWalkContSize=""; let selectedColorWalkSearchTerm=""; let pendingFlyerFolderTarget=null; let pendingFlyerFolderAssignees="";
         
-        let activeAVTab='open'; let activeAvOpenTab='name'; let avOpenLevel=0; let selectedAvOpenName=null; let selectedAvOpenSize=null; let selectedAvOpenSeason=null; let selectedAvOpenLot=null; let avResLevel=0; let selectedAvResName=null; let selectedAvResSize=null;
+        let activeAVTab='open'; let activeAvOpenTab='name'; let avOpenLevel=0; let selectedAvOpenName=null; let selectedAvOpenSize=null; let selectedAvOpenSeason=null; let selectedAvOpenLot=null; let avResLevel=0; let selectedAvResRep=null; let selectedAvResDriveUid=null; let selectedAvResItemCode=null; let selectedAvResName=null; let selectedAvResSize=null;
         
         let lowStockViewLevel=0; let selectedLowStockName=null; let selectedLowStockSize=null; let reviewViewLevel=0; let selectedReviewItemCode=null; let selectedReviewCommonName=null; let selectedReviewContSize=null;
         let requestViewLevel=0; let reservesViewLevel=0; let reportViewLevel=0; let activeReqTab="pending"; let selectedReqRep=null; let selectedReqRepStatus=null; let selectedReqFolder=null; let tempSelectedReqRep=""; let tempReqFolder=null; let tempReqCust=null; let previousReqStep=""; let driveQuickRequestItems=new Set(); let driveQuickRequestFlow=false; let driveQuickAssignFlow=false;
@@ -2711,22 +2711,50 @@
             } 
         }
 
+        function normalizeRepMatchToken(value='') {
+            return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+        }
+
         function setRepPermutations(user) { 
-            let parts=user.split('_'); 
-            if(parts.length>=2){ 
-                let first=parts[0]; 
-                let last=parts[parts.length-1]; 
-                repPermutations=[`${first} ${last}`.toLowerCase(),`${last}, ${first}`.toLowerCase(),`${last},${first}`.toLowerCase()]; 
-            }else{ 
-                repPermutations=[user.toLowerCase()]; 
-            } 
+            const rawUser = String(user || '').toLowerCase().trim();
+            const parts = rawUser.split(/[^a-z0-9]+/).filter(Boolean);
+            const variants = new Set();
+            const pushVariant = (value = '') => {
+                const normalized = normalizeRepMatchToken(value);
+                if (!normalized) return;
+                variants.add(normalized);
+                variants.add(normalized.replace(/\s+/g, ''));
+            };
+
+            pushVariant(rawUser);
+            pushVariant(rawUser.replace(/_/g, ' '));
+
+            if (parts.length >= 2) { 
+                let first = parts[0]; 
+                let last = parts[parts.length - 1]; 
+                pushVariant(`${first} ${last}`);
+                pushVariant(`${last} ${first}`);
+                pushVariant(`${last}, ${first}`);
+                pushVariant(`${last},${first}`);
+                pushVariant(`${first}_${last}`);
+                pushVariant(`${first}${last}`);
+                pushVariant(`${last}${first}`);
+            }
+
+            repPermutations = [...variants].filter(Boolean);
+            if (!repPermutations.length && rawUser) repPermutations = [rawUser];
         }
 
         function isMyRep(repNameStr) { 
             if(!getRoleAccessState().isRep)return true; 
             if(!repNameStr)return false; 
-            let str=String(repNameStr).toLowerCase(); 
-            return repPermutations.some(p=>str.includes(p)); 
+            let normalized = normalizeRepMatchToken(repNameStr); 
+            let collapsed = normalized.replace(/\s+/g, '');
+            return repPermutations.some(p => {
+                const candidate = normalizeRepMatchToken(p);
+                const candidateCollapsed = candidate.replace(/\s+/g, '');
+                return normalized.includes(candidate) || collapsed.includes(candidateCollapsed);
+            }); 
         }
         let activeReportTab = 'ALL';
         let protectedEditState = {};
@@ -4655,16 +4683,25 @@ function toggleDriveQuickRequestItem(domId) {
                     item.CUSTOMERNAME=item.CUSTOMERNAME||item.CUSTOMER||'Unknown Customer';
                     item.CONSIGNEENAME=item.CONSIGNEENAME||item.CONSIGNEE||'';
                     item.SALESREPNAME=item.SALESREPNAME||item.SALESREP||item['SALES_REP']||'Unknown Rep';
+                    item.COMMONNAME=firstNonEmptyValue(item.COMMONNAME, item.DESCRIPTION, item.PLANT_NAME, item.ITEMCODE, 'Unknown');
+                    item.CONTSIZE=firstNonEmptyValue(item.CONTSIZE, item.ITEMSPEC, item.contsize, '-');
+                    item.LOCATIONCODE=firstNonEmptyValue(item.LOCATIONCODE, item.LOCATION, 'No Loc');
+                    item.ITEMCODE=firstNonEmptyValue(item.ITEMCODE, item.itemcode, '-');
+                    item.LOTCODE=firstNonEmptyValue(item.LOTCODE, item.lotcode, '-');
+                    item.PTRAVAILABLE=firstNonEmptyValue(item.PTRAVAILABLE, item.ptravailable, 0);
+                    item.SEASONSUPPLY=firstNonEmptyValue(item.SEASONSUPPLY, item.SEASON_SUPPLY, item.season_supply, 0);
+                    item.PRIORITY=firstNonEmptyValue(item.PRIORITY, item.priority, '-');
                     if(masterItem){
-                        item.COMMONNAME=masterItem.COMMONNAME;
-                        item.CONTSIZE=masterItem.CONTSIZE;
-                        item.LOCATIONCODE=masterItem.LOCATIONCODE;
-                        item.PTRAVAILABLE=masterItem.PTRAVAILABLE;
-                        item.SEASONSUPPLY=masterItem.SEASONSUPPLY;
-                        item.PRIORITY=masterItem.PRIORITY;
-                        item.QUALITYCODE=masterItem.QUALITYCODE;
-                        item.FIELDTAGCOLOR=masterItem.FIELDTAGCOLOR;
-                        item.LOTCODE=masterItem.LOTCODE;
+                        item.COMMONNAME=firstNonEmptyValue(masterItem.COMMONNAME, item.COMMONNAME);
+                        item.CONTSIZE=firstNonEmptyValue(masterItem.CONTSIZE, item.CONTSIZE);
+                        item.LOCATIONCODE=firstNonEmptyValue(masterItem.LOCATIONCODE, item.LOCATIONCODE);
+                        item.PTRAVAILABLE=firstNonEmptyValue(masterItem.PTRAVAILABLE, item.PTRAVAILABLE);
+                        item.SEASONSUPPLY=firstNonEmptyValue(masterItem.SEASONSUPPLY, item.SEASONSUPPLY);
+                        item.PRIORITY=firstNonEmptyValue(masterItem.PRIORITY, item.PRIORITY);
+                        item.QUALITYCODE=firstNonEmptyValue(masterItem.QUALITYCODE, item.QUALITYCODE);
+                        item.FIELDTAGCOLOR=firstNonEmptyValue(masterItem.FIELDTAGCOLOR, item.FIELDTAGCOLOR);
+                        item.LOTCODE=firstNonEmptyValue(masterItem.LOTCODE, item.LOTCODE);
+                        item.ITEMCODE=firstNonEmptyValue(masterItem.ITEMCODE, item.ITEMCODE);
                         item.MASTER_UNIQUE_ID=masterItem.UNIQUE_ID;
                     }
                     normalizeRowPhotoFields(item);
@@ -5415,16 +5452,23 @@ function toggleDriveQuickRequestItem(domId) {
                 if (activeAVTab === 'reserves') {
                     if (avResLevel === 2) {
                         avResLevel = 1;
-                        selectedAvResSize = null;
+                        selectedAvResDriveUid = null;
                         renderAV();
                         updateGlobalBackButton();
                         return false;
                     }
                     if (avResLevel === 1) {
                         avResLevel = 0;
+                        selectedAvResDriveUid = null;
+                        selectedAvResItemCode = null;
                         selectedAvResName = null;
                         selectedAvResSize = null;
                         renderAV();
+                        updateGlobalBackButton();
+                        return false;
+                    }
+                    if (selectedAvResRep) {
+                        clearSelectedAvResRep();
                         updateGlobalBackButton();
                         return false;
                     }
@@ -5552,12 +5596,12 @@ activeDriveTab = tab;
             driveQuickHoldStopOnly = false;
             renderDrive();
         }
-function clearAVSearch() { document.getElementById('av-search').value=""; document.getElementById('av-search-clear').classList.add('hidden'); avResLevel=0; avOpenLevel=0; renderAV(); }
-        function handleAVSearch() { const term=document.getElementById('av-search').value.toLowerCase(); const clearBtn=document.getElementById('av-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden'); avResLevel=0; avOpenLevel=0;} else{clearBtn.classList.add('hidden'); avResLevel=0; avOpenLevel=0;} scheduleSearchRender('av', () => renderAV()); }
+        function clearAVSearch() { document.getElementById('av-search').value=""; document.getElementById('av-search-clear').classList.add('hidden'); avResLevel=0; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; avOpenLevel=0; renderAV(); }
+        function handleAVSearch() { const term=document.getElementById('av-search').value.toLowerCase(); const clearBtn=document.getElementById('av-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden'); avResLevel=0; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; avOpenLevel=0;} else{clearBtn.classList.add('hidden'); avResLevel=0; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; avOpenLevel=0;} scheduleSearchRender('av', () => renderAV()); }
 
         function resetAVView() { 
             activeAVTab='open'; activeAvOpenTab='name';
-            avResLevel=0; selectedAvResName=null; selectedAvResSize=null; 
+            avResLevel=0; selectedAvResRep=null; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; 
             avOpenLevel=0; selectedAvOpenName=null; selectedAvOpenSize=null; selectedAvOpenSeason=null; selectedAvOpenLot=null;
             document.getElementById('tab-av-open').classList.add('active'); document.getElementById('tab-av-reserves').classList.remove('active'); 
             document.getElementById('tab-av-open-name').classList.add('active'); document.getElementById('tab-av-open-photos').classList.remove('active');
@@ -5568,7 +5612,7 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
 
         function setAVTab(tab) { 
             activeAVTab=tab; 
-            avResLevel=0; selectedAvResName=null; selectedAvResSize=null; 
+            avResLevel=0; selectedAvResRep=null; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; 
             avOpenLevel=0; selectedAvOpenName=null; selectedAvOpenSize=null; selectedAvOpenSeason=null; selectedAvOpenLot=null;
             document.getElementById('tab-av-open').classList.toggle('active',tab==='open'); document.getElementById('tab-av-reserves').classList.toggle('active',tab==='reserves'); 
             const subTabs = document.getElementById('av-open-sub-tabs');
@@ -5623,8 +5667,181 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
 
         const debouncedAVSearch=debounce(()=>{requestAnimationFrame(()=>renderAV())},150);
 
-        function selectAvResName(name) { selectedAvResName=name; avResLevel=1; renderAV(); }
-        function selectAvResSize(size) { selectedAvResSize=size; avResLevel=2; renderAV(); }
+        function resetAVReserveSearchInput() {
+            const searchInput = document.getElementById('av-search');
+            const clearBtn = document.getElementById('av-search-clear');
+            if (searchInput) searchInput.value = '';
+            if (clearBtn) clearBtn.classList.add('hidden');
+        }
+
+        function getReserveSalesRepLabel(item) {
+            return firstNonEmptyValue(item && item.SALESREPNAME, item && item.SALESREP, item && item.SALES_REP, item && item.SALESREPID, 'Unknown Rep');
+        }
+
+        function canSelectAvReserveRep() {
+            const tokens = getProtectedUserTokens();
+            return tokens.has('dylan_collyge') || tokens.has('jd_jones');
+        }
+
+        function isSelectedAvReserveRep(item, repName = selectedAvResRep) {
+            if (!repName) return true;
+            return normalizeRepMatchToken(getReserveSalesRepLabel(item)) === normalizeRepMatchToken(repName);
+        }
+
+        function getAVReserveRepOptions(items = []) {
+            const repMap = new Map();
+            items.forEach(item => {
+                const label = getReserveSalesRepLabel(item);
+                const key = normalizeRepMatchToken(label);
+                if (!key) return;
+                const entry = repMap.get(key) || { label, count: 0 };
+                if (!repMap.has(key) || String(label).length < String(entry.label).length) entry.label = label;
+                entry.count += 1;
+                repMap.set(key, entry);
+            });
+            return [...repMap.values()].sort((a, b) => String(a.label || '').localeCompare(String(b.label || '')));
+        }
+
+        function getAvReserveGroupFields(item) {
+            return {
+                itemCode: firstNonEmptyValue(item && item.ITEMCODE, 'Unknown Item'),
+                commonName: firstNonEmptyValue(item && item.COMMONNAME, item && item.ITEMCODE, 'Unknown'),
+                contSize: firstNonEmptyValue(item && item.CONTSIZE, '-')
+            };
+        }
+
+        function getAVReserveGroups(items = []) {
+            const groupMap = new Map();
+            items.forEach(item => {
+                const group = getAvReserveGroupFields(item);
+                const key = `${group.itemCode}|||${group.commonName}|||${group.contSize}`;
+                const existing = groupMap.get(key) || { ...group, count: 0 };
+                existing.count += 1;
+                groupMap.set(key, existing);
+            });
+            return [...groupMap.values()].sort((a, b) => {
+                const nameCompare = String(a.commonName || '').localeCompare(String(b.commonName || ''));
+                if (nameCompare !== 0) return nameCompare;
+                const sizeCompare = String(a.contSize || '').localeCompare(String(b.contSize || ''), undefined, { numeric: true });
+                if (sizeCompare !== 0) return sizeCompare;
+                return String(a.itemCode || '').localeCompare(String(b.itemCode || ''), undefined, { numeric: true });
+            });
+        }
+
+        function getAvReserveOpenStockBaseItems() {
+            return (isDatasetLoaded('avOpen', 'initial') ? avOpenInventory : fullInventory).filter(i => {
+                let lts = Number(String(i.S_LTS || '0').replace(/,/g, ''));
+                let season = String(i.SEASON || '').toUpperCase();
+                return lts > 0 && !season.includes('Y') && !season.includes('Z');
+            });
+        }
+
+        function getAvReserveDriveRowsForSelection() {
+            if (!selectedAvResItemCode || !selectedAvResName || !selectedAvResSize) return [];
+            const driveRows = getAvReserveOpenStockBaseItems().filter(i => {
+                const group = getAvReserveGroupFields(i);
+                return group.itemCode === selectedAvResItemCode && group.commonName === selectedAvResName && group.contSize === selectedAvResSize;
+            });
+            return sortDriveCardItems(driveRows);
+        }
+
+        function getSelectedAvReserveDriveRow() {
+            return getAvReserveDriveRowsForSelection().find(i => String(i.UNIQUE_ID || '') === String(selectedAvResDriveUid || '')) || null;
+        }
+
+        function sortAvReserveDemandRows(items = []) {
+            return [...items].sort((a, b) => {
+                const customerCompare = String(firstNonEmptyValue(a.CUSTOMERNAME, a.CUSTOMER, '')).localeCompare(String(firstNonEmptyValue(b.CUSTOMERNAME, b.CUSTOMER, '')));
+                if (customerCompare !== 0) return customerCompare;
+                const consigneeCompare = String(firstNonEmptyValue(a.CONSIGNEENAME, a.CONSIGNEE, '')).localeCompare(String(firstNonEmptyValue(b.CONSIGNEENAME, b.CONSIGNEE, '')));
+                if (consigneeCompare !== 0) return consigneeCompare;
+                return String(firstNonEmptyValue(a.LOCATIONCODE, '')).localeCompare(String(firstNonEmptyValue(b.LOCATIONCODE, '')), undefined, { numeric: true });
+            });
+        }
+
+        function getAvReserveDemandRowsForDriveRow(items = []) {
+            const groupRows = (Array.isArray(items) ? items : []).filter(i => {
+                const group = getAvReserveGroupFields(i);
+                return group.itemCode === selectedAvResItemCode && group.commonName === selectedAvResName && group.contSize === selectedAvResSize;
+            });
+            const driveRow = getSelectedAvReserveDriveRow();
+            if (!driveRow) return sortAvReserveDemandRows(groupRows);
+            const driveLoc = String(firstNonEmptyValue(driveRow.LOCATIONCODE, '')).trim();
+            const driveLot = String(firstNonEmptyValue(driveRow.LOTCODE, '')).trim();
+            const exactRows = groupRows.filter(i => {
+                const rowLoc = String(firstNonEmptyValue(i.LOCATIONCODE, '')).trim();
+                const rowLot = String(firstNonEmptyValue(i.LOTCODE, '')).trim();
+                const locMatch = !driveLoc || rowLoc === driveLoc;
+                const lotMatch = !driveLot || rowLot === driveLot;
+                return locMatch && lotMatch;
+            });
+            return sortAvReserveDemandRows(exactRows.length ? exactRows : groupRows);
+        }
+
+        function generateAvReserveDriveCard(item) {
+            normalizeRowPhotoFields(item);
+            const safeUidJs = esc(item.UNIQUE_ID);
+            let thumbHtml = '';
+            const photoLink = getRowPhotoLink(item, 'drive');
+            if (photoLink) {
+                let firstUrl = String(photoLink).split(',')[0].trim();
+                let urlMatch = firstUrl.match(/(https?:\/\/[^"\s>]+)/);
+                if (urlMatch) firstUrl = urlMatch[1];
+                const thumbUrl = getDirectImageUrl(firstUrl);
+                if (thumbUrl.startsWith('http')) {
+                    thumbHtml = `<div class="ml-3 flex-shrink-0 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 shadow-sm"><img src="${thumbUrl}" class="h-16 w-16 sm:h-20 sm:w-20 object-cover" loading="lazy"></div>`;
+                }
+            }
+            return `<div class="mb-3 rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden" onclick="selectAvReserveDriveRow('${safeUidJs}')"><div class="flex items-start gap-3"><div class="min-w-0 flex-1"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-sky-600">Drive Mode Row</div><div class="mt-1 font-black text-slate-900 text-[15px] leading-tight break-words">${item.COMMONNAME || 'Unknown'}</div><div class="font-bold text-[#007a4d] text-sm mt-1">${item.CONTSIZE || '-'}</div><div class="mt-2 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-100 px-3 py-1 text-[11px] font-mono font-bold text-slate-600"><i class="ph-bold ph-barcode text-slate-400"></i>${item.ITEMCODE || '-'}</div><div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]"><span class="rounded-xl border border-blue-100 bg-blue-50 px-3 py-2 text-blue-700">Loc: ${item.LOCATIONCODE || 'No Loc'}</span><span class="rounded-xl border border-slate-200 bg-slate-100 px-3 py-2 text-slate-700">Lot: ${item.LOTCODE || '-'}</span><span class="rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-emerald-700">Loc Ava: ${item.PTRAVAILABLE || '0'}</span><span class="rounded-xl border border-purple-100 bg-purple-50 px-3 py-2 text-purple-700">s_LTS: ${item.S_LTS || '0'}</span><span class="rounded-xl border border-orange-100 bg-orange-50 px-3 py-2 text-orange-700">Pri: ${item.PRIORITY || '-'}</span></div></div>${thumbHtml}</div></div>`;
+        }
+
+        function generateAvReserveCustomerCard(item) {
+            const safeUidJs = esc(item.UNIQUE_ID);
+            const customer = firstNonEmptyValue(item.CUSTOMERNAME, item.CUSTOMER, 'Unknown Customer');
+            const consignee = firstNonEmptyValue(item.CONSIGNEENAME, item.CONSIGNEE, '');
+            const heading = consignee && consignee !== customer ? `${customer} - ${consignee}` : customer;
+            const ordered = firstNonEmptyValue(item.QTY_ORDERED, item.QUANTITYORDERED, '0');
+            const shipped = firstNonEmptyValue(item.QTY_SHIPPED, item.QUANTITYSHIPPED, '0');
+            const rep = firstNonEmptyValue(item.SALESREPNAME, item.SALESREP, item.SALES_REP, 'Unknown Rep');
+            return `<div class="mb-3 rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', 'av')"><div class="flex items-center gap-4"><div class="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-[#007a4d]"><i class="ph-bold ph-handbag text-[26px]"></i></div><div class="min-w-0 flex-1"><div class="font-black text-[15px] sm:text-[18px] text-indigo-800 leading-tight break-words">${heading}</div><div class="mt-1 text-[13px] sm:text-[15px] font-bold text-slate-600 break-words">${selectedAvResName || item.COMMONNAME || 'Unknown'} | ${selectedAvResSize || item.CONTSIZE || '-'}</div><div class="mt-3 flex flex-wrap gap-2 text-[10px] sm:text-[11px] font-black"><span class="rounded-xl border border-indigo-100 bg-indigo-50 px-3 py-2 text-indigo-700">Ordered: ${ordered}</span><span class="rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-emerald-700">Shipped: ${shipped}</span><span class="rounded-xl border border-slate-200 bg-slate-100 px-3 py-2 text-slate-700 inline-flex items-center gap-1"><i class="ph-bold ph-user"></i>${rep}</span></div></div></div></div>`;
+        }
+
+        function selectAvResRep(repName) {
+            selectedAvResRep = repName;
+            selectedAvResDriveUid = null;
+            selectedAvResItemCode = null;
+            selectedAvResName = null;
+            selectedAvResSize = null;
+            avResLevel = 0;
+            resetAVReserveSearchInput();
+            renderAV();
+        }
+
+        function clearSelectedAvResRep() {
+            selectedAvResRep = null;
+            selectedAvResDriveUid = null;
+            selectedAvResItemCode = null;
+            selectedAvResName = null;
+            selectedAvResSize = null;
+            avResLevel = 0;
+            resetAVReserveSearchInput();
+            renderAV();
+        }
+
+        function selectAvReserveGroup(itemCode, commonName, contSize) {
+            selectedAvResDriveUid = null;
+            selectedAvResItemCode = itemCode;
+            selectedAvResName = commonName;
+            selectedAvResSize = contSize;
+            avResLevel = 1;
+            renderAV();
+        }
+
+        function selectAvReserveDriveRow(uniqueId) {
+            selectedAvResDriveUid = uniqueId;
+            avResLevel = 2;
+            renderAV();
+        }
         function avItemHasPhotos(item) { return getPhotoUrlList(getRowPhotoLink(item, 'av')).length > 0; }
         function getAvOpenTabLabel(tab=activeAvOpenTab) {
             if (tab === 'photos') return 'Photos';
@@ -5657,11 +5874,14 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
                 if (activeAvOpenTab === 'photos') items = items.filter(avItemHasPhotos);
             } else {
                 items = [...reservesInventory];
-                if (isRep) items = items.filter(i => isMyRep(firstNonEmptyValue(i && i.SALESREPNAME, i && i.SALESREP, i && i.SALES_REP, i && i.SALESREPID, '')));
+                if (canSelectAvReserveRep()) {
+                    if (selectedAvResRep) items = items.filter(i => isSelectedAvReserveRep(i, selectedAvResRep));
+                } else if (isRep) {
+                    items = items.filter(i => isMyRep(firstNonEmptyValue(i && i.SALESREPNAME, i && i.SALESREP, i && i.SALES_REP, i && i.SALESREPID, '')));
+                }
             }
-            if (term) {
-                items = filterBySearch(items, term, activeAVTab === 'open' ? 'av_open' : 'av_reserves');
-            }
+            const allowReserveSearch = activeAVTab === 'open' || !canSelectAvReserveRep() || !!selectedAvResRep;
+            if (term && allowReserveSearch) items = filterBySearch(items, term, activeAVTab === 'open' ? 'av_open' : 'av_reserves');
             return { items, term };
         }
         function buildAVExportContext(baseItems = null, term = '') {
@@ -5696,36 +5916,46 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
                     });
                 }
             } else {
-                if (avResLevel >= 1 && selectedAvResName) {
-                    rows = rows.filter(i => i.COMMONNAME === selectedAvResName);
-                    title = `AV My Reserves ${selectedAvResName}`;
-                    fileLabel = `av-my-reserves-${selectedAvResName}`;
-                }
-                if (avResLevel >= 2 && selectedAvResSize) {
-                    rows = rows.filter(i => i.CONTSIZE === selectedAvResSize);
-                    title = `${title} ${selectedAvResSize}`;
-                    fileLabel = `${fileLabel}-${selectedAvResSize}`;
-                    rows.sort((a, b) => String(a.CUSTOMERNAME || '').localeCompare(String(b.CUSTOMERNAME || '')));
-                } else if (avResLevel >= 1) {
-                    rows.sort((a, b) => {
-                        const sizeCompare = String(a.CONTSIZE || '').localeCompare(String(b.CONTSIZE || ''), undefined, { numeric: true });
-                        if (sizeCompare !== 0) return sizeCompare;
-                        return String(a.LOCATIONCODE || '').localeCompare(String(b.LOCATIONCODE || ''), undefined, { numeric: true });
-                    });
+                if (canSelectAvReserveRep() && !selectedAvResRep) {
+                    rows = [];
                 } else {
-                    rows.sort((a, b) => {
-                        const nameCompare = String(a.COMMONNAME || '').localeCompare(String(b.COMMONNAME || ''));
-                        if (nameCompare !== 0) return nameCompare;
-                        const sizeCompare = String(a.CONTSIZE || '').localeCompare(String(b.CONTSIZE || ''), undefined, { numeric: true });
-                        if (sizeCompare !== 0) return sizeCompare;
-                        const customerCompare = String(a.CUSTOMERNAME || '').localeCompare(String(b.CUSTOMERNAME || ''));
-                        if (customerCompare !== 0) return customerCompare;
-                        return String(a.LOCATIONCODE || '').localeCompare(String(b.LOCATIONCODE || ''), undefined, { numeric: true });
-                    });
-                }
-                if (searchTerm) {
-                    title += ' Search';
-                    fileLabel += '-search';
+                    if (selectedAvResRep) {
+                        rows = rows.filter(i => isSelectedAvReserveRep(i, selectedAvResRep));
+                        title = `AV My Reserves ${selectedAvResRep}`;
+                        fileLabel = `av-my-reserves-${selectedAvResRep}`;
+                    }
+                    if (avResLevel >= 1 && selectedAvResItemCode && selectedAvResName && selectedAvResSize) {
+                        title = `${title} ${selectedAvResItemCode} ${selectedAvResName} ${selectedAvResSize}`;
+                        fileLabel = `${fileLabel}-${selectedAvResItemCode}-${selectedAvResName}-${selectedAvResSize}`;
+                    }
+                    if (avResLevel >= 2 && selectedAvResDriveUid) {
+                        const driveRow = getSelectedAvReserveDriveRow();
+                        rows = getAvReserveDemandRowsForDriveRow(rows);
+                        if (driveRow) {
+                            const driveLoc = firstNonEmptyValue(driveRow.LOCATIONCODE, 'No Loc');
+                            const driveLot = firstNonEmptyValue(driveRow.LOTCODE, '-');
+                            title = `${title} ${driveLoc} ${driveLot}`;
+                            fileLabel = `${fileLabel}-${driveLoc}-${driveLot}`;
+                        }
+                    } else if (avResLevel === 1) {
+                        rows = [];
+                    } else {
+                        rows.sort((a, b) => {
+                            const nameCompare = String(firstNonEmptyValue(a.COMMONNAME, a.ITEMCODE, 'Unknown')).localeCompare(String(firstNonEmptyValue(b.COMMONNAME, b.ITEMCODE, 'Unknown')));
+                            if (nameCompare !== 0) return nameCompare;
+                            const sizeCompare = String(firstNonEmptyValue(a.CONTSIZE, '-')).localeCompare(String(firstNonEmptyValue(b.CONTSIZE, '-')), undefined, { numeric: true });
+                            if (sizeCompare !== 0) return sizeCompare;
+                            const itemCompare = String(firstNonEmptyValue(a.ITEMCODE, 'Unknown Item')).localeCompare(String(firstNonEmptyValue(b.ITEMCODE, 'Unknown Item')), undefined, { numeric: true });
+                            if (itemCompare !== 0) return itemCompare;
+                            const customerCompare = String(a.CUSTOMERNAME || '').localeCompare(String(b.CUSTOMERNAME || ''));
+                            if (customerCompare !== 0) return customerCompare;
+                            return String(a.LOCATIONCODE || '').localeCompare(String(b.LOCATIONCODE || ''), undefined, { numeric: true });
+                        });
+                    }
+                    if (searchTerm) {
+                        title += ' Search';
+                        fileLabel += '-search';
+                    }
                 }
             }
 
@@ -5736,7 +5966,6 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
                 searchTerm
             };
         }
-
         function getAVExportColumns() {
             if (activeAVTab === 'open') {
                 return [
@@ -5955,22 +6184,37 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
                 container.innerHTML = exportContext.rows.map(i => generateCard(i, sourceView, 'status-teal')).join('');
                 return;
             }
-            if(avResLevel===0){ 
-                crumb.innerText='My Reserves > Plants'; 
-                const names=[...new Set(items.map(i=>i.COMMONNAME))].sort(); 
-                container.innerHTML=names.map(n=>`<div class="drill-item" onclick="selectAvResName('${esc(n)}')"><span class="font-bold text-lg">${n}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join(''); 
-            } 
-            else if(avResLevel===1){ 
-                crumb.innerText=`My Reserves > ${selectedAvResName}`; 
-                const namedItems=items.filter(i=>i.COMMONNAME===selectedAvResName); 
-                const sizes=[...new Set(namedItems.map(i=>i.CONTSIZE))].sort(); 
-                let html=`<div class="back-btn" onclick="avResLevel=0; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Plants</div>`; 
-                html+=sizes.map(s=>{const count=namedItems.filter(i=>i.CONTSIZE===s).length;return `<div class="drill-item" onclick="selectAvResSize('${esc(s)}')"><span class="font-bold text-lg">${s} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;}).join(''); 
-                container.innerHTML=html; 
-            } 
-            else if(avResLevel===2){ 
-                crumb.innerText=`${selectedAvResName} / ${selectedAvResSize}`; 
-                container.innerHTML=`<div class="back-btn" onclick="avResLevel=1; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>`+exportContext.rows.map(i=>generateCard(i,'reserves_drill','status-indigo')).join(''); 
+            if (canSelectAvReserveRep() && !selectedAvResRep) {
+                const repOptions = getAVReserveRepOptions(items);
+                crumb.innerText = 'My Reserves > Sales Reps';
+                container.innerHTML = repOptions.map(rep => `<div class="drill-item" onclick="selectAvResRep('${esc(rep.label)}')"><span class="font-bold text-lg">${rep.label} <span class="text-gray-400 text-sm font-normal">(${rep.count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
+                return;
+            }
+
+            if (avResLevel === 0) {
+                crumb.innerText = selectedAvResRep ? `My Reserves > ${selectedAvResRep}` : 'My Reserves';
+                const groups = getAVReserveGroups(items);
+                let html = selectedAvResRep ? `<div class="back-btn" onclick="clearSelectedAvResRep()"><i class="ph-bold ph-arrow-left"></i> Back to Sales Reps</div>` : '';
+                html += groups.map(group => `<div class="drill-item" onclick="selectAvReserveGroup('${esc(group.itemCode)}','${esc(group.commonName)}','${esc(group.contSize)}')"><div class="flex flex-1 flex-col gap-1"><span class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">${group.itemCode}</span><span class="font-bold text-lg">${group.commonName}</span><span class="text-sm text-gray-500">${group.contSize}</span></div><span class="text-sm text-gray-400 font-semibold">(${group.count})</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
+                container.innerHTML = html;
+            }
+            else if (avResLevel === 1) {
+                const driveRows = getAvReserveDriveRowsForSelection();
+                crumb.innerText = selectedAvResRep ? `${selectedAvResRep} / ${selectedAvResItemCode} / ${selectedAvResName} / ${selectedAvResSize} / Drive Mode` : `${selectedAvResItemCode} / ${selectedAvResName} / ${selectedAvResSize} / Drive Mode`;
+                let html = `<div class="back-btn" onclick="avResLevel=0; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Groups</div>`;
+                if (!driveRows.length) html += `<div class="p-8 text-center text-gray-400">No Drive Mode rows found for this item.</div>`;
+                else html += driveRows.map(i => generateAvReserveDriveCard(i)).join('');
+                container.innerHTML = html;
+            }
+            else if (avResLevel === 2) {
+                const driveRow = getSelectedAvReserveDriveRow();
+                const driveLabel = driveRow ? `${firstNonEmptyValue(driveRow.LOCATIONCODE, 'No Loc')} / ${firstNonEmptyValue(driveRow.LOTCODE, '-')}` : 'Customers';
+                const demandRows = getAvReserveDemandRowsForDriveRow(items);
+                crumb.innerText = selectedAvResRep ? `${selectedAvResRep} / ${selectedAvResItemCode} / ${selectedAvResName} / ${selectedAvResSize} / ${driveLabel}` : `${selectedAvResItemCode} / ${selectedAvResName} / ${selectedAvResSize} / ${driveLabel}`;
+                let html = `<div class="back-btn" onclick="avResLevel=1; selectedAvResDriveUid=null; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Drive Rows</div>`;
+                if (!demandRows.length) html += `<div class="p-8 text-center text-gray-400">No customer rows found for this Drive Mode row.</div>`;
+                else html += demandRows.map(i => generateAvReserveCustomerCard(i)).join('');
+                container.innerHTML = html;
             }
         }
         const debouncedDocksSearch=debounce(()=>{requestAnimationFrame(()=>renderDocks())},150);
@@ -9920,10 +10164,6 @@ function toggleDriveSeason(s) {
     </script>
 </body>
 </html>
-
-
-
-
 
 
 
