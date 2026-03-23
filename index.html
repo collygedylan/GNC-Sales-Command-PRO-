@@ -1774,7 +1774,7 @@
         function maybeWarnSalesOfficeOrderSchemaMissing() {
             if (salesOfficeOrderSchemaWarningShown || !currentUser) return;
             salesOfficeOrderSchemaWarningShown = true;
-            showToast('Schema Required', 'Run sales_office_bloom_picker_migration.sql in Supabase to enable Bloom Picker order review in Sales Office.', true);
+            showToast('Schema Required', 'Run sales_office_bloom_picker_migration.sql in Supabase to enable Bloom Picker order inserts and review in Sales Office.', true);
         }
 
         async function ensureSalesOfficeOrderColumnsReady(force = false) {
@@ -1784,7 +1784,7 @@
             salesOfficeOrderSchemaPromise = (async () => {
                 if (navigator.onLine === false) return false;
                 try {
-                    const url = `${SUPABASE_URL}/rest/v1/v2_sales_office?select=unique_id,so_source,order_folder,order_number,order_customer,order_qty,order_status&limit=1`;
+                    const url = `${SUPABASE_URL}/rest/v1/v2_sales_office?select=unique_id,master_id,so_source,order_folder,order_number,order_customer,order_qty,order_desired_spec,order_desired_caliper,order_reserve,order_submitted_by,order_submitted_at,order_status,av_note,sales_note,spec,caliper,photo_link,photo_name&limit=1`;
                     const response = await fetchWithTimeout(url, {
                         method: 'GET',
                         headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }
@@ -1792,7 +1792,7 @@
                     if (!response.ok) {
                         const errorText = await getResponseError(response, `Supabase read failed (${response.status})`);
                         const normalizedError = String(errorText || '').toLowerCase();
-                        if (normalizedError.includes('so_source') || normalizedError.includes('order_folder') || normalizedError.includes('order_number') || normalizedError.includes('order_customer') || normalizedError.includes('order_qty') || normalizedError.includes('order_status') || normalizedError.includes('column')) {
+                        if (normalizedError.includes('master_id') || normalizedError.includes('so_source') || normalizedError.includes('order_folder') || normalizedError.includes('order_number') || normalizedError.includes('order_customer') || normalizedError.includes('order_qty') || normalizedError.includes('order_desired_spec') || normalizedError.includes('order_desired_caliper') || normalizedError.includes('order_reserve') || normalizedError.includes('order_submitted_by') || normalizedError.includes('order_submitted_at') || normalizedError.includes('order_status') || normalizedError.includes('av_note') || normalizedError.includes('sales_note') || normalizedError.includes('spec') || normalizedError.includes('caliper') || normalizedError.includes('photo_link') || normalizedError.includes('photo_name') || normalizedError.includes('column')) {
                             salesOfficeOrderColumnsReady = false;
                             maybeWarnSalesOfficeOrderSchemaMissing();
                             return false;
@@ -1803,7 +1803,7 @@
                     return true;
                 } catch (error) {
                     const normalizedError = String(error && error.message ? error.message : error || '').toLowerCase();
-                    if (normalizedError.includes('so_source') || normalizedError.includes('order_folder') || normalizedError.includes('order_number') || normalizedError.includes('order_customer') || normalizedError.includes('order_qty') || normalizedError.includes('order_status') || normalizedError.includes('column')) {
+                    if (normalizedError.includes('master_id') || normalizedError.includes('so_source') || normalizedError.includes('order_folder') || normalizedError.includes('order_number') || normalizedError.includes('order_customer') || normalizedError.includes('order_qty') || normalizedError.includes('order_desired_spec') || normalizedError.includes('order_desired_caliper') || normalizedError.includes('order_reserve') || normalizedError.includes('order_submitted_by') || normalizedError.includes('order_submitted_at') || normalizedError.includes('order_status') || normalizedError.includes('av_note') || normalizedError.includes('sales_note') || normalizedError.includes('spec') || normalizedError.includes('caliper') || normalizedError.includes('photo_link') || normalizedError.includes('photo_name') || normalizedError.includes('column')) {
                         salesOfficeOrderColumnsReady = false;
                         maybeWarnSalesOfficeOrderSchemaMissing();
                         return false;
@@ -3508,7 +3508,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (!customer) { showToast('Required', 'Enter the customer or consignee for this Bloom Picker order.', true); return false; }
             if (!orderNumber) { showToast('Required', 'Enter an order number before submitting.', true); return false; }
             if (!folderName) { folderName = buildBloomPickerFolderName(customer, orderNumber); if (folderInput) folderInput.value = folderName; }
-            const schemaReady = await ensureSalesOfficeOrderColumnsReady();
+            const schemaReady = await ensureSalesOfficeOrderColumnsReady(true);
             if (!schemaReady && salesOfficeOrderColumnsReady === false) return false;
             if (salesOfficeOrderColumnsReady === false) return false;
             const lineDrafts = {};
@@ -3563,7 +3563,7 @@ function toggleDriveQuickRequestItem(domId) {
                 return false;
             } catch (error) {
                 const normalizedError = String(error && error.message ? error.message : error || '').toLowerCase();
-                if (normalizedError.includes('order_') || normalizedError.includes('so_source') || normalizedError.includes('column')) { salesOfficeOrderColumnsReady = false; maybeWarnSalesOfficeOrderSchemaMissing(); }
+                if (normalizedError.includes('master_id') || normalizedError.includes('order_') || normalizedError.includes('so_source') || normalizedError.includes('av_note') || normalizedError.includes('sales_note') || normalizedError.includes('spec') || normalizedError.includes('caliper') || normalizedError.includes('photo_link') || normalizedError.includes('photo_name') || normalizedError.includes('column')) { salesOfficeOrderColumnsReady = false; maybeWarnSalesOfficeOrderSchemaMissing(); }
                 else showToast('Error', 'Bloom Picker order submission failed.', true);
                 return false;
             }
@@ -6598,6 +6598,11 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
 
         function setSalesOfficeTab(tab = 'orders') {
             activeSalesOfficeTab = tab === 'season' ? 'season' : 'orders';
+            if (activeSalesOfficeTab === 'orders' && salesOfficeOrderColumnsReady === false) {
+                ensureSalesOfficeOrderColumnsReady(true).then(() => {
+                    if (getCurrentVisibleViewId() === 'sales-office') renderSalesOffice();
+                }).catch(() => {});
+            }
             if (getCurrentVisibleViewId() === 'sales-office') renderSalesOffice();
             return false;
         }
