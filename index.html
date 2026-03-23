@@ -7437,7 +7437,7 @@ activeDriveTab = tab;
                 }
                 if (requestViewLevel >= 3 && selectedReqFolderView) {
                     items = items.filter(i => {
-                        const groupKey = selectedReqStatus === 'Complete' ? getRequestCustomerConsigneeFolder(i) : (i.REQUEST_FOLDER || 'Unassigned');
+                        const groupKey = (i.REQUEST_FOLDER || 'Unassigned');
                         return groupKey === selectedReqFolderView;
                     });
                 }
@@ -7515,10 +7515,10 @@ activeDriveTab = tab;
                         return;
                     }
 
-                    let folders = [...new Set(statusItems.map(i => selectedReqStatus === 'Complete' ? getRequestCustomerConsigneeFolder(i) : (i.REQUEST_FOLDER || 'Unassigned')))].sort();
+                    let folders = [...new Set(statusItems.map(i => (i.REQUEST_FOLDER || 'Unassigned')))].sort();
                     let html = `<div class="back-btn" onclick="return backToRequestStatusList()"><i class="ph-bold ph-arrow-left"></i> Back to Status</div>`;
                     html += folders.map(f => {
-                        let count = statusItems.filter(i => (selectedReqStatus === 'Complete' ? getRequestCustomerConsigneeFolder(i) : (i.REQUEST_FOLDER || 'Unassigned')) === f).length;
+                        let count = statusItems.filter(i => ((i.REQUEST_FOLDER || 'Unassigned')) === f).length;
                         const folderNote = getRequestFolderNote(f, selectedReqStatus, selectedReqRepView);
                         const noteHtml = folderNote ? `<div class="mt-3 bg-amber-50 border border-amber-200 rounded-lg p-2 text-[11px] font-semibold text-amber-900 whitespace-pre-wrap"><span class="font-black uppercase text-[10px] tracking-wider text-amber-700">Folder Note</span><div class="mt-1">${esc(folderNote)}</div></div>` : '';
                         const shareActions = canShareRequestFolders() ? `<div class="grid grid-cols-4 gap-2 mt-3"><button class="bg-white border border-purple-200 text-purple-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); shareRequestFolder('copy', '${esc(f)}', '${selectedReqStatus}', '${esc(selectedReqRepView)}')">Copy</button><button class="bg-white border border-indigo-200 text-indigo-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); shareRequestFolder('email', '${esc(f)}', '${selectedReqStatus}', '${esc(selectedReqRepView)}')">Email</button><button class="bg-white border border-emerald-200 text-emerald-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); shareRequestFolder('text', '${esc(f)}', '${selectedReqStatus}', '${esc(selectedReqRepView)}')">Text</button><button class="bg-white border border-amber-200 text-amber-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); setRequestFolderNote('${esc(f)}', '${selectedReqStatus}', '${esc(selectedReqRepView)}')">Note</button></div>` : '';
@@ -7528,7 +7528,7 @@ activeDriveTab = tab;
                 } else if (requestViewLevel === 3) {
                     crumb.innerText = selectedReqStatus === 'Complete' ? `${selectedReqRepView} > ${selectedReqFolderView}` : selectedReqFolderView;
                     let folderItems = items.filter(i => getRequestAssignedRep(i) === selectedReqRepView && !i.REQ_ARCHIVED);
-                    folderItems = folderItems.filter(i => (selectedReqStatus === 'Complete' ? getRequestCustomerConsigneeFolder(i) : (i.REQUEST_FOLDER || 'Unassigned')) === selectedReqFolderView);
+                    folderItems = folderItems.filter(i => ((i.REQUEST_FOLDER || 'Unassigned')) === selectedReqFolderView);
                     folderItems = folderItems.filter(i => selectedReqStatus === 'Pending' ? i.REQ_STATUS !== 'Complete' : i.REQ_STATUS === 'Complete');
                     folderItems.sort((a,b) => String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""), undefined, {numeric: true}));
                     
@@ -8819,7 +8819,7 @@ ${i.ITEMCODE||'-'} | Lot: ${i.LOTCODE||'-'}
             if (safeRole === 'SALESREP') items = items.filter(i => isMyRep(i.REQUESTED_BY));
             if (repName) items = items.filter(i => getRequestAssignedRep(i) === repName);
             items = items.filter(i => status === 'Pending' ? i.REQ_STATUS !== 'Complete' : i.REQ_STATUS === 'Complete');
-            items = items.filter(i => (status === 'Complete' ? getRequestCustomerConsigneeFolder(i) : (i.REQUEST_FOLDER || 'Unassigned')) === folderName);
+            items = items.filter(i => ((i.REQUEST_FOLDER || 'Unassigned')) === folderName);
             return items.sort((a,b) => String(a.LOCATIONCODE||'').localeCompare(String(b.LOCATIONCODE||''), undefined, {numeric: true}));
         }
 
