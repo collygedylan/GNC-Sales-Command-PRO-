@@ -1293,7 +1293,16 @@
                 row.BLOCKALPHA = firstNonEmptyValue(row.BLOCKALPHA, masterItem.BLOCKALPHA);
                 row.APP_TAB_ASSIGNMENT = firstNonEmptyValue(row.APP_TAB_ASSIGNMENT, masterItem.APP_TAB_ASSIGNMENT);
                 row.SEASON = firstNonEmptyValue(row.SEASON, masterItem.SEASON);
+                row.AV_NOTE = firstNonEmptyValue(row.AV_NOTE, masterItem.AV_NOTE);
+                row.SALES_NOTE = firstNonEmptyValue(row.SALES_NOTE, masterItem.SALES_NOTE);
+                row.MATCH = firstNonEmptyValue(row.MATCH, masterItem.MATCH);
+                row.SPEC = firstNonEmptyValue(row.SPEC, masterItem.SPEC);
+                row.CALIPER = firstNonEmptyValue(row.CALIPER, masterItem.CALIPER);
+                row.PICK = firstNonEmptyValue(row.PICK, masterItem.PICK);
+                row.LOC_MATCH_QTY = firstNonEmptyValue(row.LOC_MATCH_QTY, masterItem.LOC_MATCH_QTY);
+                row.INITIAL_PTR = firstNonEmptyValue(row.INITIAL_PTR, masterItem.INITIAL_PTR);
                 if (String(row.S_LTS || '').trim() === '') row.S_LTS = masterItem.S_LTS;
+                clonePhotoFields(masterItem, row);
                 normalizeRowPhotoFields(row);
                 buildSearchIndex(row);
             };
@@ -4693,6 +4702,15 @@ function toggleDriveQuickRequestItem(domId) {
                         item.PRIORITY=item.PRIORITY||masterItem.PRIORITY;
                         item.QUALITYCODE=item.QUALITYCODE||masterItem.QUALITYCODE;
                         item.FIELDTAGCOLOR=item.FIELDTAGCOLOR||masterItem.FIELDTAGCOLOR;
+                        item.AV_NOTE=firstNonEmptyValue(item.AV_NOTE, masterItem.AV_NOTE);
+                        item.SALES_NOTE=firstNonEmptyValue(item.SALES_NOTE, masterItem.SALES_NOTE);
+                        item.MATCH=firstNonEmptyValue(item.MATCH, masterItem.MATCH);
+                        item.SPEC=firstNonEmptyValue(item.SPEC, masterItem.SPEC);
+                        item.CALIPER=firstNonEmptyValue(item.CALIPER, masterItem.CALIPER);
+                        item.PICK=firstNonEmptyValue(item.PICK, masterItem.PICK);
+                        item.LOC_MATCH_QTY=firstNonEmptyValue(item.LOC_MATCH_QTY, masterItem.LOC_MATCH_QTY);
+                        item.INITIAL_PTR=firstNonEmptyValue(item.INITIAL_PTR, masterItem.INITIAL_PTR);
+                        clonePhotoFields(masterItem, item);
                         item.MASTER_UNIQUE_ID=masterItem.UNIQUE_ID;
                     }
                     normalizeRowPhotoFields(item);
@@ -4729,6 +4747,15 @@ function toggleDriveQuickRequestItem(domId) {
                         item.FIELDTAGCOLOR=firstNonEmptyValue(masterItem.FIELDTAGCOLOR, item.FIELDTAGCOLOR);
                         item.LOTCODE=firstNonEmptyValue(masterItem.LOTCODE, item.LOTCODE);
                         item.ITEMCODE=firstNonEmptyValue(masterItem.ITEMCODE, item.ITEMCODE);
+                        item.AV_NOTE=firstNonEmptyValue(item.AV_NOTE, masterItem.AV_NOTE);
+                        item.SALES_NOTE=firstNonEmptyValue(item.SALES_NOTE, masterItem.SALES_NOTE);
+                        item.MATCH=firstNonEmptyValue(item.MATCH, masterItem.MATCH);
+                        item.SPEC=firstNonEmptyValue(item.SPEC, masterItem.SPEC);
+                        item.CALIPER=firstNonEmptyValue(item.CALIPER, masterItem.CALIPER);
+                        item.PICK=firstNonEmptyValue(item.PICK, masterItem.PICK);
+                        item.LOC_MATCH_QTY=firstNonEmptyValue(item.LOC_MATCH_QTY, masterItem.LOC_MATCH_QTY);
+                        item.INITIAL_PTR=firstNonEmptyValue(item.INITIAL_PTR, masterItem.INITIAL_PTR);
+                        clonePhotoFields(masterItem, item);
                         item.MASTER_UNIQUE_ID=masterItem.UNIQUE_ID;
                     }
                     normalizeRowPhotoFields(item);
@@ -10196,7 +10223,6 @@ function toggleDriveSeason(s) {
     </script>
 </body>
 </html>
-
 
 
 
