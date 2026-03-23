@@ -1232,8 +1232,8 @@
         function syncRowDataAcrossViews(masterItem) {
             if (!masterItem) return;
             normalizeRowPhotoFields(masterItem);
-            const masterId = String(masterItem.UNIQUE_ID || '');
-            const masterCode = String(masterItem.ITEMCODE || '').trim().toUpperCase();
+            const masterId = String(masterItem.UNIQUE_ID || '').trim();
+            if (!masterId) return;
 
             const applyExactRowData = (row) => {
                 if (!row) return;
@@ -1247,6 +1247,8 @@
                 row.PRIORITY = masterItem.PRIORITY;
                 row.QUALITYCODE = masterItem.QUALITYCODE;
                 row.FIELDTAGCOLOR = masterItem.FIELDTAGCOLOR;
+                row.PLANTGROUPCODE = masterItem.PLANTGROUPCODE;
+                row.BLOCKALPHA = masterItem.BLOCKALPHA;
                 row.AV_NOTE = masterItem.AV_NOTE;
                 row.SALES_NOTE = masterItem.SALES_NOTE;
                 row.MATCH = masterItem.MATCH;
@@ -1257,6 +1259,8 @@
                 row.INITIAL_PTR = masterItem.INITIAL_PTR;
                 row.APP_TAB_ASSIGNMENT = masterItem.APP_TAB_ASSIGNMENT;
                 row.DATE_COMPLETED = masterItem.DATE_COMPLETED;
+                row.SEASON = masterItem.SEASON;
+                row.S_LTS = masterItem.S_LTS;
                 ['SAVED_PHOTO_LINK','SAVED_PHOTO_NAME','REQ_PHOTO_LINK','REQ_PHOTO_NAME','DOCK_PHOTO_LINK','DOCK_PHOTO_NAME','FLYER_PHOTO_LINK','FLYER_PHOTO_NAME','ROW_PHOTO_LINK','ROW_PHOTO_NAME'].forEach((key) => {
                     row[key] = masterItem[key] || '';
                 });
@@ -1267,56 +1271,62 @@
                 row['PHOTO LINK'] = masterItem['PHOTO LINK'] || row.PHOTO_LINK;
                 row['PHOTO NAME'] = masterItem['PHOTO NAME'] || row.PHOTO_NAME;
                 normalizeRowPhotoFields(row);
+                buildSearchIndex(row);
             };
 
             const applyLinkedRowCatalogData = (row) => {
                 if (!row) return;
-                row.COMMONNAME = row.COMMONNAME || masterItem.COMMONNAME;
-                row.CONTSIZE = row.CONTSIZE || masterItem.CONTSIZE;
-                row.LOCATIONCODE = row.LOCATIONCODE || masterItem.LOCATIONCODE;
-                row.LOTCODE = row.LOTCODE || masterItem.LOTCODE;
-                row.ITEMCODE = row.ITEMCODE || masterItem.ITEMCODE;
-                row.PTRAVAILABLE = row.PTRAVAILABLE || masterItem.PTRAVAILABLE;
-                row.SEASONSUPPLY = row.SEASONSUPPLY || masterItem.SEASONSUPPLY;
-                row.PRIORITY = row.PRIORITY || masterItem.PRIORITY;
-                row.QUALITYCODE = row.QUALITYCODE || masterItem.QUALITYCODE;
-                row.FIELDTAGCOLOR = row.FIELDTAGCOLOR || masterItem.FIELDTAGCOLOR;
+                row.MASTER_UNIQUE_ID = masterId;
+                if (!row.MASTER_ID) row.MASTER_ID = masterId;
+                if (!row.master_id) row.master_id = masterId;
+                row.COMMONNAME = firstNonEmptyValue(row.COMMONNAME, masterItem.COMMONNAME);
+                row.CONTSIZE = firstNonEmptyValue(row.CONTSIZE, masterItem.CONTSIZE);
+                row.LOCATIONCODE = firstNonEmptyValue(row.LOCATIONCODE, masterItem.LOCATIONCODE);
+                row.LOTCODE = firstNonEmptyValue(row.LOTCODE, masterItem.LOTCODE);
+                row.ITEMCODE = firstNonEmptyValue(row.ITEMCODE, masterItem.ITEMCODE);
+                row.PTRAVAILABLE = firstNonEmptyValue(row.PTRAVAILABLE, masterItem.PTRAVAILABLE);
+                row.SEASONSUPPLY = firstNonEmptyValue(row.SEASONSUPPLY, masterItem.SEASONSUPPLY);
+                row.PRIORITY = firstNonEmptyValue(row.PRIORITY, masterItem.PRIORITY);
+                row.QUALITYCODE = firstNonEmptyValue(row.QUALITYCODE, masterItem.QUALITYCODE);
+                row.FIELDTAGCOLOR = firstNonEmptyValue(row.FIELDTAGCOLOR, masterItem.FIELDTAGCOLOR);
+                row.PLANTGROUPCODE = firstNonEmptyValue(row.PLANTGROUPCODE, masterItem.PLANTGROUPCODE);
+                row.BLOCKALPHA = firstNonEmptyValue(row.BLOCKALPHA, masterItem.BLOCKALPHA);
+                row.APP_TAB_ASSIGNMENT = firstNonEmptyValue(row.APP_TAB_ASSIGNMENT, masterItem.APP_TAB_ASSIGNMENT);
+                row.SEASON = firstNonEmptyValue(row.SEASON, masterItem.SEASON);
+                if (String(row.S_LTS || '').trim() === '') row.S_LTS = masterItem.S_LTS;
                 normalizeRowPhotoFields(row);
+                buildSearchIndex(row);
             };
 
-            const sameMasterRow = (row) => String(row.UNIQUE_ID || '') === masterId;
-            const sameClonedRow = (row) => {
-                const rowMasterId = String(row.MASTER_UNIQUE_ID || row.MASTER_ID || row.master_id || '').trim();
-                return masterId !== '' && rowMasterId === masterId;
+            const sameMasterRow = (row) => String((row && row.UNIQUE_ID) || '').trim() === masterId;
+            const sameLinkedRow = (row) => {
+                const rowMasterId = String((row && (row.MASTER_UNIQUE_ID || row.MASTER_ID || row.master_id)) || '').trim();
+                return rowMasterId !== '' && rowMasterId === masterId;
             };
+            const isOrderSnapshot = (row) => String(firstNonEmptyValue(row && row.SO_SOURCE, row && row.so_source, '')).toLowerCase() === 'bloom_picker';
 
-            fullInventory.forEach(row => { if (sameMasterRow(row)) applyExactRowData(row); });
-            avOpenInventory.forEach(row => { if (sameMasterRow(row)) applyExactRowData(row); });
-            lowStockInventory.forEach(row => { if (sameMasterRow(row)) applyExactRowData(row); });
-            managerReviewInventory.forEach(row => { if (sameMasterRow(row)) applyExactRowData(row); });
-            socInventory.forEach(row => {
-                if (sameClonedRow(row)) {
-                    applyLinkedRowCatalogData(row);
-                    row.MASTER_UNIQUE_ID = masterId;
-                }
+            fullInventory.forEach((row) => { if (sameMasterRow(row)) applyExactRowData(row); });
+            avOpenInventory.forEach((row) => { if (sameMasterRow(row)) applyExactRowData(row); });
+            lowStockInventory.forEach((row) => { if (sameMasterRow(row)) applyExactRowData(row); });
+            managerReviewInventory.forEach((row) => { if (sameMasterRow(row)) applyExactRowData(row); });
+            salesOfficeInventory.forEach((row) => {
+                if (isOrderSnapshot(row)) return;
+                if (sameMasterRow(row)) applyExactRowData(row);
+                else if (sameLinkedRow(row)) applyLinkedRowCatalogData(row);
             });
-            reservesInventory.forEach(row => {
-                if (sameClonedRow(row)) {
-                    applyLinkedRowCatalogData(row);
-                    row.MASTER_UNIQUE_ID = masterId;
-                }
+            socInventory.forEach((row) => {
+                if (sameLinkedRow(row)) applyLinkedRowCatalogData(row);
             });
-            requestsInventory.forEach(row => {
-                if (sameClonedRow(row)) {
-                    applyLinkedRowCatalogData(row);
-                    row.MASTER_UNIQUE_ID = masterId;
-                }
+            reservesInventory.forEach((row) => {
+                if (sameLinkedRow(row)) applyLinkedRowCatalogData(row);
+            });
+            requestsInventory.forEach((row) => {
+                if (sameLinkedRow(row)) applyLinkedRowCatalogData(row);
             });
 
-            if (masterInventoryById.has(masterId)) invalidateMasterDerivedInventories();
-
-            if (activeItem && sameMasterRow(activeItem)) {
-                applyExactRowData(activeItem);
+            if (activeItem) {
+                if (sameMasterRow(activeItem)) applyExactRowData(activeItem);
+                else if (!isOrderSnapshot(activeItem) && sameLinkedRow(activeItem)) applyLinkedRowCatalogData(activeItem);
             }
         }
         function openAvGallery(item) {
@@ -4607,28 +4617,21 @@ function toggleDriveQuickRequestItem(domId) {
                     item.MASTER_UNIQUE_ID = masterItem.UNIQUE_ID;
                     if (!item.MASTER_ID) item.MASTER_ID = masterItem.UNIQUE_ID;
                     if (!item.master_id) item.master_id = masterItem.UNIQUE_ID;
-                    item.COMMONNAME = item.COMMONNAME || masterItem.COMMONNAME;
-                    item.CONTSIZE = item.CONTSIZE || masterItem.CONTSIZE;
-                    item.LOCATIONCODE = item.LOCATIONCODE || masterItem.LOCATIONCODE;
-                    item.LOTCODE = item.LOTCODE || masterItem.LOTCODE;
-                    item.ITEMCODE = item.ITEMCODE || masterItem.ITEMCODE;
-                    item.PTRAVAILABLE = item.PTRAVAILABLE || masterItem.PTRAVAILABLE;
-                    item.SEASONSUPPLY = item.SEASONSUPPLY || masterItem.SEASONSUPPLY;
-                    item.PRIORITY = item.PRIORITY || masterItem.PRIORITY;
-                    item.QUALITYCODE = item.QUALITYCODE || masterItem.QUALITYCODE;
-                    item.FIELDTAGCOLOR = item.FIELDTAGCOLOR || masterItem.FIELDTAGCOLOR;
-                    item.PLANTGROUPCODE = item.PLANTGROUPCODE || masterItem.PLANTGROUPCODE;
-                    item.BLOCKALPHA = item.BLOCKALPHA || masterItem.BLOCKALPHA;
-                    item.APP_TAB_ASSIGNMENT = item.APP_TAB_ASSIGNMENT || masterItem.APP_TAB_ASSIGNMENT;
-                    item.SEASON = item.SEASON || masterItem.SEASON;
+                    item.COMMONNAME = firstNonEmptyValue(item.COMMONNAME, masterItem.COMMONNAME);
+                    item.CONTSIZE = firstNonEmptyValue(item.CONTSIZE, masterItem.CONTSIZE);
+                    item.LOCATIONCODE = firstNonEmptyValue(item.LOCATIONCODE, masterItem.LOCATIONCODE);
+                    item.LOTCODE = firstNonEmptyValue(item.LOTCODE, masterItem.LOTCODE);
+                    item.ITEMCODE = firstNonEmptyValue(item.ITEMCODE, masterItem.ITEMCODE);
+                    item.PTRAVAILABLE = firstNonEmptyValue(item.PTRAVAILABLE, masterItem.PTRAVAILABLE);
+                    item.SEASONSUPPLY = firstNonEmptyValue(item.SEASONSUPPLY, masterItem.SEASONSUPPLY);
+                    item.PRIORITY = firstNonEmptyValue(item.PRIORITY, masterItem.PRIORITY);
+                    item.QUALITYCODE = firstNonEmptyValue(item.QUALITYCODE, masterItem.QUALITYCODE);
+                    item.FIELDTAGCOLOR = firstNonEmptyValue(item.FIELDTAGCOLOR, masterItem.FIELDTAGCOLOR);
+                    item.PLANTGROUPCODE = firstNonEmptyValue(item.PLANTGROUPCODE, masterItem.PLANTGROUPCODE);
+                    item.BLOCKALPHA = firstNonEmptyValue(item.BLOCKALPHA, masterItem.BLOCKALPHA);
+                    item.APP_TAB_ASSIGNMENT = firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, masterItem.APP_TAB_ASSIGNMENT);
+                    item.SEASON = firstNonEmptyValue(item.SEASON, masterItem.SEASON);
                     if (String(item.S_LTS || '').trim() === '') item.S_LTS = masterItem.S_LTS;
-                    item.AV_NOTE = firstNonEmptyValue(item.AV_NOTE, masterItem.AV_NOTE);
-                    item.SALES_NOTE = firstNonEmptyValue(item.SALES_NOTE, masterItem.SALES_NOTE);
-                    item.SPEC = firstNonEmptyValue(item.SPEC, masterItem.SPEC);
-                    item.CALIPER = firstNonEmptyValue(item.CALIPER, masterItem.CALIPER);
-                    item.MATCH = firstNonEmptyValue(item.MATCH, masterItem.MATCH);
-                    item.PICK = firstNonEmptyValue(item.PICK, masterItem.PICK);
-                    clonePhotoFields(masterItem, item);
                     normalizeRowPhotoFields(item);
                     buildSearchIndex(item);
                     return item;
@@ -4640,6 +4643,30 @@ function toggleDriveQuickRequestItem(domId) {
             if (hasSalesOffice) {
                 salesOfficeInventory = (res.salesOfficeData || []).map((item, idx) => {
                     item.DOM_ID = 'so_' + item.UNIQUE_ID;
+                    const salesOfficeSource = String(firstNonEmptyValue(item.SO_SOURCE, item.so_source, 'season')).toLowerCase();
+                    const salesOfficeMasterId = String(item.MASTER_ID || item.master_id || item.MASTER_UNIQUE_ID || item.UNIQUE_ID || '').trim();
+                    const salesOfficeMasterItem = salesOfficeMasterId ? findItemByUniqueId(salesOfficeMasterId) : null;
+                    const isSalesOfficeExactRow = !!(salesOfficeMasterItem && salesOfficeSource !== 'bloom_picker' && String(item.UNIQUE_ID || '').trim() === salesOfficeMasterId);
+                    if (isSalesOfficeExactRow) {
+                        item.MASTER_UNIQUE_ID = salesOfficeMasterId;
+                        if (!item.MASTER_ID) item.MASTER_ID = salesOfficeMasterId;
+                        if (!item.master_id) item.master_id = salesOfficeMasterId;
+                        item.ITEMCODE = firstNonEmptyValue(item.ITEMCODE, salesOfficeMasterItem.ITEMCODE);
+                        item.COMMONNAME = firstNonEmptyValue(item.COMMONNAME, salesOfficeMasterItem.COMMONNAME);
+                        item.CONTSIZE = firstNonEmptyValue(item.CONTSIZE, salesOfficeMasterItem.CONTSIZE);
+                        item.LOCATIONCODE = firstNonEmptyValue(item.LOCATIONCODE, salesOfficeMasterItem.LOCATIONCODE);
+                        item.LOTCODE = firstNonEmptyValue(item.LOTCODE, salesOfficeMasterItem.LOTCODE);
+                        item.PTRAVAILABLE = firstNonEmptyValue(item.PTRAVAILABLE, salesOfficeMasterItem.PTRAVAILABLE);
+                        item.PRIORITY = firstNonEmptyValue(item.PRIORITY, salesOfficeMasterItem.PRIORITY);
+                        item.AV_NOTE = firstNonEmptyValue(item.AV_NOTE, salesOfficeMasterItem.AV_NOTE);
+                        item.SALES_NOTE = firstNonEmptyValue(item.SALES_NOTE, salesOfficeMasterItem.SALES_NOTE);
+                        item.SPEC = firstNonEmptyValue(item.SPEC, salesOfficeMasterItem.SPEC);
+                        item.CALIPER = firstNonEmptyValue(item.CALIPER, salesOfficeMasterItem.CALIPER);
+                        if (!firstNonEmptyValue(item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK'])) {
+                            item.SAVED_PHOTO_LINK = firstNonEmptyValue(salesOfficeMasterItem.SAVED_PHOTO_LINK, salesOfficeMasterItem.PHOTO_LINK, salesOfficeMasterItem.PHOTOLINK, salesOfficeMasterItem['PHOTO LINK']);
+                            item.SAVED_PHOTO_NAME = firstNonEmptyValue(salesOfficeMasterItem.SAVED_PHOTO_NAME, salesOfficeMasterItem.PHOTO_NAME, salesOfficeMasterItem.PHOTONAME, salesOfficeMasterItem['PHOTO NAME']);
+                        }
+                    }
                     normalizeRowPhotoFields(item);
                     buildSearchIndex(item);
                     return item;
@@ -9838,6 +9865,10 @@ function toggleDriveSeason(s) {
                             : firstNonEmptyValue(itemToSave.SAVED_PHOTO_NAME));
                     const shouldCreateSalesOfficeRow = ['ssn-','lsn-','na-','req-','flyer-'].includes(prefix) && salesRuleAssignment === 'season' && salesRuleId !== '';
                     if (shouldCreateSalesOfficeRow) {
+                        const salesOfficeAvNote = itemToSave.AV_NOTE || salesRuleItem.AV_NOTE || '';
+                        const salesOfficeSalesNote = itemToSave.SALES_NOTE || salesRuleItem.SALES_NOTE || '';
+                        const salesOfficeSpec = itemToSave.REQ_SPEC || itemToSave.SPEC || salesRuleItem.SPEC || '';
+                        const salesOfficeCaliper = itemToSave.REQ_CALIPER || itemToSave.CALIPER || salesRuleItem.CALIPER || '';
                         artifacts.soPayload = {
                             unique_id: salesRuleId,
                             itemcode: salesRuleItem.ITEMCODE || itemToSave.ITEMCODE || '',
@@ -9847,18 +9878,21 @@ function toggleDriveSeason(s) {
                             lotcode: salesRuleItem.LOTCODE || itemToSave.LOTCODE || '',
                             ptravailable: String(salesRuleItem.PTRAVAILABLE || itemToSave.PTRAVAILABLE || ''),
                             priority: String(salesRuleItem.PRIORITY || itemToSave.PRIORITY || ''),
+                            av_note: salesOfficeAvNote,
+                            sales_note: salesOfficeSalesNote,
+                            spec: salesOfficeSpec,
+                            caliper: salesOfficeCaliper,
                             photo_link: salesRulePhotoLink || '',
+                            photo_name: salesRulePhotoName || '',
                             completed_by: currentUser,
                             completed_at: payload.date_completed
                         };
                         artifacts.cloneSO = { ...artifacts.soPayload };
                         for (let key in artifacts.soPayload) { artifacts.cloneSO[key.toUpperCase()] = artifacts.soPayload[key]; }
                         artifacts.cloneSO.DOM_ID = 'so_' + artifacts.cloneSO.UNIQUE_ID;
-                        artifacts.cloneSO.AV_NOTE = itemToSave.AV_NOTE || salesRuleItem.AV_NOTE || '';
-                        artifacts.cloneSO.SALES_NOTE = itemToSave.SALES_NOTE || salesRuleItem.SALES_NOTE || '';
                         artifacts.cloneSO.APP_TAB_ASSIGNMENT = 'season';
                         artifacts.cloneSO.SAVED_PHOTO_LINK = artifacts.soPayload.photo_link;
-                        artifacts.cloneSO.SAVED_PHOTO_NAME = salesRulePhotoName || '';
+                        artifacts.cloneSO.SAVED_PHOTO_NAME = artifacts.soPayload.photo_name || '';
                         normalizeRowPhotoFields(artifacts.cloneSO);
                     }
 
@@ -10009,17 +10043,17 @@ function toggleDriveSeason(s) {
             let pendingEdits = JSON.parse(localStorage.getItem('gnc_pending_edits') || '{}');
             let now = new Date().getTime();
             let changed = false;
-            let touchedMasterRows = false;
 
             for (let uid in pendingEdits) {
                 if (now - pendingEdits[uid].timestamp > 900000) { delete pendingEdits[uid]; changed = true; continue; }
                 let item = findItemByUniqueId(uid);
                 if (item) {
                     Object.assign(item, pendingEdits[uid].data);
-                    if (masterInventoryById.has(String(uid || '').trim())) touchedMasterRows = true;
+                    normalizeRowPhotoFields(item);
+                    buildSearchIndex(item);
+                    if (masterInventoryById.has(String(uid || '').trim())) syncRowDataAcrossViews(item);
                 }
             }
-            if (touchedMasterRows) invalidateMasterDerivedInventories();
             if (changed) { localStorage.setItem('gnc_pending_edits', JSON.stringify(pendingEdits)); }
         }
 
