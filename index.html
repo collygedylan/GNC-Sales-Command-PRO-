@@ -8992,8 +8992,23 @@ function toggleDriveSeason(s) {
             taskViewLevel = 0;
             selectedTaskBlock = null;
             selectedTaskLoc = null;
-            scheduleUiRender('task-colorwalk-search', () => renderTasks());
+            syncColorWalkFilterUi();
+            scheduleUiRender('task-colorwalk-search', () => renderTasks({ skipColorWalkFilterRender: true }));
             return false;
+        }
+
+        function syncColorWalkFilterUi() {
+            const input = document.getElementById('colorwalk-search-input');
+            if (input && document.activeElement !== input && input.value !== selectedColorWalkSearchTerm) {
+                input.value = selectedColorWalkSearchTerm;
+            }
+            const clearBtn = document.getElementById('colorwalk-clear-filters');
+            if (!clearBtn) return;
+            const isActive = String(selectedColorWalkSearchTerm || '').trim() !== '' || String(selectedColorWalkContSize || '').trim() !== '';
+            clearBtn.disabled = !isActive;
+            clearBtn.classList.toggle('opacity-50', !isActive);
+            clearBtn.classList.toggle('cursor-not-allowed', !isActive);
+            clearBtn.classList.toggle('pointer-events-none', !isActive);
         }
 
         function renderColorWalkContSizeFilter(items = []) {
@@ -9012,8 +9027,9 @@ function toggleDriveSeason(s) {
                 .join('');
             const hasSearch = String(selectedColorWalkSearchTerm || '').trim() !== '';
             const hasSize = String(selectedColorWalkContSize || '').trim() !== '';
-            container.innerHTML = `<div class="rounded-2xl border border-indigo-100 bg-white px-3 py-3 shadow-sm"><div class="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)_auto]"><label class="min-w-0 text-[10px] font-black uppercase tracking-[0.14em] text-indigo-700">Search<input type="text" class="input-field !mb-0 mt-2 border-indigo-200 bg-indigo-50/40" value="${esc(selectedColorWalkSearchTerm)}" placeholder="Name, item, loc, lot..." oninput="setColorWalkSearchTerm(this.value)" onkeydown="dismissSearchKeyboard(event)"></label><label class="min-w-0 text-[10px] font-black uppercase tracking-[0.14em] text-indigo-700">Cont Size<select class="input-field !mb-0 mt-2 border-indigo-200 bg-indigo-50/40" onchange="setColorWalkContSizeFilter(this.value)">${optionHtml}</select></label><button type="button" class="min-h-[42px] rounded-xl border border-indigo-200 bg-white px-4 text-[11px] font-black uppercase tracking-[0.12em] text-indigo-700 shadow-sm self-end ${hasSearch || hasSize ? '' : 'opacity-50 cursor-not-allowed pointer-events-none'}" onclick="setColorWalkSearchTerm(''); return setColorWalkContSizeFilter('')">Clear Filters</button></div></div>`;
+            container.innerHTML = `<div class="rounded-2xl border border-indigo-100 bg-white px-3 py-3 shadow-sm"><div class="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)_auto]"><label class="min-w-0 text-[10px] font-black uppercase tracking-[0.14em] text-indigo-700">Search<input id="colorwalk-search-input" type="text" class="input-field !mb-0 mt-2 border-indigo-200 bg-indigo-50/40" value="${esc(selectedColorWalkSearchTerm)}" placeholder="Name, item, loc, lot..." oninput="setColorWalkSearchTerm(this.value)" onkeydown="dismissSearchKeyboard(event)"></label><label class="min-w-0 text-[10px] font-black uppercase tracking-[0.14em] text-indigo-700">Cont Size<select class="input-field !mb-0 mt-2 border-indigo-200 bg-indigo-50/40" onchange="setColorWalkContSizeFilter(this.value)">${optionHtml}</select></label><button id="colorwalk-clear-filters" type="button" class="min-h-[42px] rounded-xl border border-indigo-200 bg-white px-4 text-[11px] font-black uppercase tracking-[0.12em] text-indigo-700 shadow-sm self-end ${hasSearch || hasSize ? '' : 'opacity-50 cursor-not-allowed pointer-events-none'}" onclick="setColorWalkSearchTerm(''); return setColorWalkContSizeFilter('')">Clear Filters</button></div></div>`;
             container.classList.remove('hidden');
+            syncColorWalkFilterUi();
         }
 
         const COLOR_WALK_LOCATION_BUCKETS = new Set(['C.06', 'C.07', 'D.05', 'D.06', 'D.07', 'D.08', 'D.09', 'D.10']);
@@ -9084,7 +9100,8 @@ function toggleDriveSeason(s) {
             return left.raw.localeCompare(right.raw, undefined, { numeric: true });
         }
 
-        function renderTasks() {
+        function renderTasks(options = {}) {
+            const skipColorWalkFilterRender = !!(options && options.skipColorWalkFilterRender);
             if (ensureViewDataForRender('tasks')) return;
             const tabs = document.getElementById('task-tabs-container');
             if (tabs) tabs.classList.remove('hidden');
@@ -9122,8 +9139,9 @@ function toggleDriveSeason(s) {
                     ? fullInventory.filter(i => isFlyerTaskItem(i))
                     : fullInventory.filter(i => i.ASSIGNEDTO === targetUser && (keepCompletedInTaskTab || !i.DATE_COMPLETED));
             let tabItems = getTaskSubviewItems(getTaskTabItems(scopedItems, activeTaskTab), activeTaskTab, activeTaskSubview);
-            renderColorWalkContSizeFilter(tabItems);
             if (activeTaskTab === 'colorwalk') {
+                if (!skipColorWalkFilterRender) renderColorWalkContSizeFilter(tabItems);
+                else syncColorWalkFilterUi();
                 if (selectedColorWalkSearchTerm) tabItems = filterBySearch(tabItems, selectedColorWalkSearchTerm, 'colorwalk');
                 if (selectedColorWalkContSize) {
                     tabItems = tabItems.filter(i => String(i.CONTSIZE || '-').trim() === selectedColorWalkContSize);
