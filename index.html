@@ -1169,7 +1169,7 @@
                 return false;
             }
             detailRequestSourceDomIds = [activeItem.DOM_ID];
-            openRequestModal();
+            openRequestModal('detail');
             return false;
         }
         function renderDetailOverviewMedia() {
@@ -8063,7 +8063,7 @@ activeDriveTab = tab;
                 openBloomPickerModal();
                 return;
             }
-            if(action==='request_action'){openRequestModal();return}
+            if(action==='request_action'){openRequestModal('selection');return}
             if(action==='flyer'){createCartFlyers();return}
             if(action==='endcap'){openEndCapModal();return}
             if(requestOnly){executeBatchAction(action,'request');return}
@@ -8167,8 +8167,9 @@ activeDriveTab = tab;
             }
         }
 
-        function openRequestModal() {
+        function openRequestModal(sourceMode = 'detail') {
             toggleCartPanel(false);
+            if (sourceMode === 'selection') detailRequestSourceDomIds = [];
             resetQuickDriveRequestState();
             showRequestModalBase();
             if(safeRole==='SALESREP'){
@@ -8636,13 +8637,13 @@ activeDriveTab = tab;
                         requested_by:requestedBy,
                         request_folder:folderId,
                         req_customer:cust,
-                        req_qty:dataObj.qty||"",
-                        desired_spec:dataObj.spec||"",
-                        desired_caliper:dataObj.caliper||"",
-                        est_ship:dataObj.estShip||"",
-                        req_reserve:dataObj.reserve||"NO",
-                        req_photo_link:item.SAVED_PHOTO_LINK||item.REQ_PHOTO_LINK||"",
-                        req_photo_name:item.SAVED_PHOTO_NAME||item.REQ_PHOTO_NAME||"",
+                        req_qty:dataObj.qty||'',
+                        req_desired_spec:dataObj.spec||'',
+                        req_desired_caliper:dataObj.caliper||'',
+                        req_est_ship:dataObj.estShip||'',
+                        req_reserve:dataObj.reserve||'NO',
+                        req_photo_link:item.SAVED_PHOTO_LINK||item.REQ_PHOTO_LINK||'',
+                        req_photo_name:item.SAVED_PHOTO_NAME||item.REQ_PHOTO_NAME||'',
                         req_archived:false,
                         req_status:'Pending'
                     };
@@ -10195,6 +10196,7 @@ function toggleDriveSeason(s) {
     </script>
 </body>
 </html>
+
 
 
 
