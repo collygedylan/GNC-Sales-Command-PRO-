@@ -26,12 +26,24 @@
         .footer-nav-btn:active{transform:scale(.97)}
         .footer-nav-btn.active,.footer-nav-btn.menu-open{color:#007a4d;background:#ecfdf5;border-color:#a7f3d0;box-shadow:0 6px 16px rgba(7,94,63,.12)}
         .footer-nav-badge{position:absolute;top:3px;right:8px;min-width:18px;height:18px;padding:0 4px;background:#ef4444;color:#fff;font-size:10px;font-weight:900;border-radius:999px;display:flex;align-items:center;justify-content:center;border:2px solid #fff}
-        .app-card-shell{background:#fff;border:1px solid #dbe4dc;border-radius:18px !important;box-shadow:0 10px 24px rgba(15,23,42,.06);overflow:hidden}
-        .app-card-ready{border-left:6px solid #22c55e !important}
-        .app-card-hold{border-left:6px solid #facc15 !important}
-        .app-card-stop{border-left:6px solid #ef4444 !important}
-        .app-card-note{border-radius:12px}
-        .app-card-actions{display:flex;gap:.55rem;margin-top:.9rem;padding-top:.85rem;border-top:1px solid #e5e7eb}
+        .app-card-shell{position:relative;background:linear-gradient(180deg,#ffffff 0%,#fbfcfd 100%);border:1px solid #d9e1ea;border-radius:16px !important;box-shadow:0 1px 2px rgba(15,23,42,.05),0 10px 22px rgba(15,23,42,.06);overflow:hidden}
+        .app-card-ready{border-left:4px solid #22c55e !important}
+        .app-card-hold{border-left:4px solid #facc15 !important}
+        .app-card-stop{border-left:4px solid #ef4444 !important}
+        .app-card-note{border-radius:10px}
+        .app-card-actions{display:flex;gap:.5rem;margin-top:.75rem;padding-top:.7rem;border-top:1px solid #e5e7eb}
+        .app-card-shell,.inv-card{background:linear-gradient(180deg,#ffffff 0%,#fbfcfd 100%);border-color:#d9e1ea !important;border-radius:16px !important;box-shadow:0 1px 2px rgba(15,23,42,.05),0 10px 22px rgba(15,23,42,.06) !important}
+        .app-card-ready,.app-card-hold,.app-card-stop,.status-green,.status-purple,.status-orange,.status-blue,.status-indigo,.status-teal,.status-yellow,.status-red{border-left-width:4px !important}
+        .app-card-shell .app-card-note,.inv-card .app-card-note{border-radius:10px;box-shadow:none !important}
+        .app-card-shell div[class*="absolute top-3 right-3"],.inv-card div[class*="absolute top-3 right-3"]{top:10px !important;right:10px !important;width:54px !important;height:54px !important;border-radius:12px !important;border-color:#d9e1ea !important;box-shadow:0 4px 12px rgba(15,23,42,.08) !important}
+        .app-card-shell span[class*="bg-"],.inv-card span[class*="bg-"]{background:#f8fafc !important;border-color:#d9e1ea !important;color:#475569 !important;border-radius:999px !important;box-shadow:none !important;font-weight:800 !important;letter-spacing:.02em !important;text-transform:none !important}
+        .app-card-shell [class*="font-mono"],.inv-card [class*="font-mono"]{background:#f8fafc !important;border-color:#d9e1ea !important;border-radius:10px !important;color:#334155 !important}
+        .app-card-shell img,.inv-card img{display:block}
+        .card-checkbox-container{width:26px;min-width:26px;margin-right:8px;align-items:flex-start;justify-content:center;padding-top:3px}
+        #request-content .item-row{margin-bottom:.45rem !important}
+        #request-content .card-checkbox-container{width:20px;min-width:20px;margin-right:6px;padding-top:2px}
+        #request-content .app-card-shell,#request-content .inv-card{padding:.72rem .82rem !important;padding-right:4.65rem !important}
+        #request-content .app-card-actions{margin-top:.55rem;padding-top:.55rem}
         #view-wrapper{width:100%;max-width:100%;overflow:visible}
         .sticky-search{position:-webkit-sticky;position:sticky;top:0;z-index:35;background:#f9fafb;padding-top:max(4px,env(safe-area-inset-top));padding-bottom:10px;box-shadow:0 6px 12px rgba(15,23,42,.05);transform:translateZ(0);-webkit-transform:translateZ(0);backface-visibility:hidden}
         .request-swipe-row{display:block !important;padding:0 !important;position:relative;overflow:hidden;background:linear-gradient(to left,#ef4444 96px,#ffffff 96px) !important;touch-action:pan-y;overscroll-behavior-x:contain;-webkit-user-select:none;user-select:none}
@@ -105,6 +117,16 @@
         #drive-quick-request-bar{margin-bottom:.45rem !important}
         #team-selector{margin-bottom:.55rem !important}
         #view-detail .freeze-panel > .back-btn.amazon-hidden-back{display:none}
+        #view-detail #det-season-content,#view-detail #det-location-content,#view-detail #det-notes-content,#view-detail #det-request-content,#view-detail #det-docks-content,#view-detail #det-flyer-content{max-width:780px;margin:0 auto;padding:.85rem .15rem calc(12rem + env(safe-area-inset-bottom))}
+        #view-detail #det-season-content>div,#view-detail #det-location-content>div,#view-detail #det-notes-content>div,#view-detail #det-request-content>div,#view-detail #det-docks-content>div,#view-detail #det-flyer-content>div{background:#fff;border:1px solid #dbe4dc;border-radius:20px;padding:14px 14px;box-shadow:0 10px 24px rgba(15,23,42,.06);margin-bottom:14px}
+        #view-detail #det-season-content>div:last-child,#view-detail #det-location-content>div:last-child,#view-detail #det-notes-content>div:last-child,#view-detail #det-request-content>div:last-child,#view-detail #det-docks-content>div:last-child,#view-detail #det-flyer-content>div:last-child{margin-bottom:0}
+        #view-detail #ssn-input-container,#view-detail #lsn-input-container,#view-detail #na-input-container,#view-detail #req-input-container,#view-detail #dock-input-container,#view-detail #flyer-input-container{display:grid;gap:.85rem}
+        #view-detail .input-field{min-height:54px;padding:14px 16px;border-radius:14px;font-size:16px;line-height:1.4;margin-bottom:0;box-shadow:inset 0 1px 0 rgba(255,255,255,.8)}
+        #view-detail textarea.input-field{min-height:120px;padding-top:14px;padding-bottom:14px;line-height:1.45;resize:vertical}
+        #view-detail [id^='camera-btn-']{min-height:92px;border-radius:18px}
+        #view-detail #req-comments{min-height:132px}
+        body.detail-field-active #bottom-nav,body.detail-field-active #global-action-bar,body.detail-field-active #cart-fab{opacity:0;pointer-events:none;transform:translateY(120%);transition:transform .18s ease,opacity .18s ease}
+        body.detail-field-active #main-scroll-area{padding-bottom:calc(4rem + env(safe-area-inset-bottom))}
     </style>
 </head>
 <body class="bg-gray-50 overflow-hidden">
@@ -661,7 +683,7 @@
                             <div id="req-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="req-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'req-', true)"></div>
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Reserve</label><select id="req-reserve" class="input-field bg-white" onchange="saveData(false, 'req-', true)"><option value="NO">NO</option><option value="YES">YES</option></select></div>
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="req-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'req-', true)"></div>
-                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Comments</label><input type="text" id="req-comments" class="input-field" placeholder="Any additional comments..." onchange="saveData(false, 'req-', true)"></div>
+                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Comments</label><textarea id="req-comments" class="input-field resize-y" placeholder="Any additional comments..." onblur="saveData(false, 'req-', true)"></textarea></div>
                         </div>
                         <div class="mt-4">
                             <button id="req-btn-save-complete" class="w-full bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform" onclick="saveData(true, 'req-')">MARK DONE</button>
@@ -674,7 +696,7 @@
                         <div id="dock-input-container">
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="dock-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'dock-', true)"></div>
                             <div id="dock-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="dock-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'dock-', true)"></div>
-                            <div class="relative w-full mt-2 mb-2"><label class="text-[10px] font-bold text-orange-700 uppercase flex justify-between"><span>Dock Note</span></label><div class="flex gap-2"><textarea id="dock-sales-desc" class="input-field border-orange-500 bg-orange-50 flex-grow !mb-0 h-28 resize-none" onblur="setTimeout(()=>{saveData(false, 'dock-', true);}, 200)" placeholder="Write dock notes..."></textarea></div></div>
+                            <div class="relative w-full mt-2 mb-2"><label class="text-[10px] font-bold text-orange-700 uppercase flex justify-between"><span>Dock Note</span></label><div class="flex gap-2"><textarea id="dock-sales-desc" class="input-field border-orange-500 bg-orange-50 flex-grow !mb-0 h-36 resize-y" onblur="setTimeout(()=>{saveData(false, 'dock-', true);}, 200)" placeholder="Write dock notes..."></textarea></div></div>
                         </div>
                     </div>
                     <div id="det-flyer-content" class="hidden py-4">
@@ -751,6 +773,8 @@
         const PHOTO_JPEG_QUALITY = 0.72;
         let pendingPhotoUploads = new Map();
         let viewportHeightSyncInitialized = false;
+        let detailFieldFocusResetTimer = null;
+        let detailFormFocusInitialized = false;
         
         function isIOSDevice() {
             return IOS_DEVICE_REGEX.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -778,6 +802,62 @@
             }
         }
 
+        function isDetailEditableField(target) {
+            return !!(target && ['INPUT','TEXTAREA','SELECT'].includes(target.tagName) && target.closest('#view-detail') && !target.disabled && target.type !== 'hidden' && target.type !== 'file');
+        }
+
+        function setDetailEditingChromeState(isActive) {
+            document.body.classList.toggle('detail-field-active', !!isActive);
+        }
+
+        function bringDetailFieldIntoView(target) {
+            if (!isDetailEditableField(target)) return;
+            const freezePanel = document.querySelector('#view-detail .freeze-panel');
+            const topOffset = Math.max(96, Math.round((freezePanel ? freezePanel.getBoundingClientRect().height : 0) + 20));
+            const run = () => {
+                if (!isDetailEditableField(target)) return;
+                const rect = target.getBoundingClientRect();
+                const viewport = window.visualViewport;
+                const visibleBottom = Math.max(220, Math.round(viewport ? viewport.height : window.innerHeight));
+                if (rect.top < topOffset || rect.bottom > (visibleBottom - 28)) {
+                    try {
+                        target.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+                    } catch (err) {
+                        target.scrollIntoView();
+                    }
+                }
+            };
+            requestAnimationFrame(run);
+            setTimeout(run, 140);
+            setTimeout(run, 320);
+        }
+
+        function refreshDetailEditingChromeState() {
+            const active = document.activeElement;
+            const isActive = isDetailEditableField(active);
+            setDetailEditingChromeState(isActive);
+            if (isActive) bringDetailFieldIntoView(active);
+        }
+
+        function initializeDetailFieldFocusSupport() {
+            if (detailFormFocusInitialized) return;
+            detailFormFocusInitialized = true;
+            document.addEventListener('focusin', (event) => {
+                if (!isDetailEditableField(event.target)) return;
+                clearTimeout(detailFieldFocusResetTimer);
+                setDetailEditingChromeState(true);
+                bringDetailFieldIntoView(event.target);
+            });
+            document.addEventListener('focusout', () => {
+                clearTimeout(detailFieldFocusResetTimer);
+                detailFieldFocusResetTimer = setTimeout(refreshDetailEditingChromeState, 160);
+            });
+            if (window.visualViewport) {
+                window.visualViewport.addEventListener('resize', () => {
+                    if (document.body.classList.contains('detail-field-active')) refreshDetailEditingChromeState();
+                }, { passive: true });
+            }
+        }
         async function clearLegacyOfflineState() {
             if (isIOSDevice() || isStandaloneApp()) return;
             if ('serviceWorker' in navigator) {
@@ -2211,6 +2291,7 @@
             updateDockAssignableTeamOptions();
             initializeViewportHeightSync();
             initializeInteractiveChrome();
+            initializeDetailFieldFocusSupport();
             installAmazonHeaderChrome();
             updateSyncDiagnostics();
             initializeCartUi();
@@ -5868,7 +5949,7 @@ activeDriveTab = tab;
                 }
             }
             const cornerThumbHtml = thumbHtml || `<div class="absolute top-3 right-3 flex h-16 w-16 sm:h-[4.5rem] sm:w-[4.5rem] items-center justify-center rounded-2xl border border-slate-200 bg-slate-100 px-1 text-center text-[8px] font-black uppercase tracking-[0.14em] text-slate-400">No Photo</div>`;
-            return `<div class="mb-3 rounded-[20px] border border-slate-200 bg-white p-3 pr-[5.75rem] sm:pr-[6.5rem] shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden relative" onclick="selectAvReserveDriveRow('${safeUidJs}')">${cornerThumbHtml}<div class="text-[9px] font-black uppercase tracking-[0.16em] text-sky-600">Drive Mode Row</div><div class="mt-1 font-black text-slate-900 text-[14px] leading-tight break-words">${item.COMMONNAME || 'Unknown'}</div><div class="font-bold text-[#007a4d] text-[12px] mt-0.5">${item.CONTSIZE || '-'}</div><div class="mt-1.5 inline-flex max-w-full items-center gap-1 rounded-lg border border-slate-200 bg-slate-100 px-2 py-1 text-[10px] font-mono font-bold text-slate-600"><i class="ph-bold ph-barcode text-slate-400"></i><span class="truncate">${item.ITEMCODE || '-'}</span></div><div class="mt-2 flex flex-wrap gap-1.5 text-[9px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-blue-100 bg-blue-50 px-2 py-1 text-blue-700">Loc ${item.LOCATIONCODE || 'No Loc'}</span><span class="rounded-full border border-slate-200 bg-slate-100 px-2 py-1 text-slate-700">Lot ${item.LOTCODE || '-'}</span><span class="rounded-full border border-emerald-100 bg-emerald-50 px-2 py-1 text-emerald-700">Ava ${item.PTRAVAILABLE || '0'}</span><span class="rounded-full border border-purple-100 bg-purple-50 px-2 py-1 text-purple-700">s_LTS ${item.S_LTS || '0'}</span><span class="rounded-full border border-orange-100 bg-orange-50 px-2 py-1 text-orange-700">Pri ${item.PRIORITY || '-'}</span></div></div>`;
+            return `<div class="mb-3 app-card-shell rounded-[20px] border border-slate-200 bg-white p-3 pr-[5.75rem] sm:pr-[6.5rem] shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden relative" onclick="selectAvReserveDriveRow('${safeUidJs}')">${cornerThumbHtml}<div class="text-[9px] font-black uppercase tracking-[0.16em] text-sky-600">Drive Mode Row</div><div class="mt-1 font-black text-slate-900 text-[14px] leading-tight break-words">${item.COMMONNAME || 'Unknown'}</div><div class="font-bold text-[#007a4d] text-[12px] mt-0.5">${item.CONTSIZE || '-'}</div><div class="mt-1.5 inline-flex max-w-full items-center gap-1 rounded-lg border border-slate-200 bg-slate-100 px-2 py-1 text-[10px] font-mono font-bold text-slate-600"><i class="ph-bold ph-barcode text-slate-400"></i><span class="truncate">${item.ITEMCODE || '-'}</span></div><div class="mt-2 flex flex-wrap gap-1.5 text-[9px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-blue-100 bg-blue-50 px-2 py-1 text-blue-700">Loc ${item.LOCATIONCODE || 'No Loc'}</span><span class="rounded-full border border-slate-200 bg-slate-100 px-2 py-1 text-slate-700">Lot ${item.LOTCODE || '-'}</span><span class="rounded-full border border-emerald-100 bg-emerald-50 px-2 py-1 text-emerald-700">Ava ${item.PTRAVAILABLE || '0'}</span><span class="rounded-full border border-purple-100 bg-purple-50 px-2 py-1 text-purple-700">s_LTS ${item.S_LTS || '0'}</span><span class="rounded-full border border-orange-100 bg-orange-50 px-2 py-1 text-orange-700">Pri ${item.PRIORITY || '-'}</span></div></div>`;
         }
 
         function generateAvReserveCustomerCard(item) {
@@ -7097,12 +7178,13 @@ activeDriveTab = tab;
         }
 
         function goBackFromDetail() {
+            if (document.activeElement && ['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) document.activeElement.blur();
+            setDetailEditingChromeState(false);
             activeItem = null;
             document.getElementById('view-detail').classList.add('hidden');
             document.getElementById('view-' + lastView).classList.remove('hidden');
             updateGlobalBackButton();
         }
-
         function toggleExpand() {
             const section = document.getElementById('expand-section');
             if(section) {
@@ -8015,18 +8097,29 @@ activeDriveTab = tab;
             const cornerThumbHtml = thumbHtml || `<div class="absolute top-3 right-3 flex h-16 w-16 sm:h-[4.5rem] sm:w-[4.5rem] items-center justify-center rounded-2xl border border-slate-200 bg-slate-100 px-1 text-center text-[8px] font-black uppercase tracking-[0.14em] text-slate-400">No Photo</div>`;
 
             if(sourceView === 'request') {
-                let reqQty = item.REQ_QTY || '0'; let cust = item.REQ_CUSTOMER || 'Unknown'; let rep = item.REQUESTED_BY || 'Unknown'; let reserve = item.REQ_RESERVE || 'NO'; let desSpec = item.REQ_DESIRED_SPEC || 'N/A'; let loc = item.LOCATIONCODE || 'No Loc'; let origSpec = item.SPEC || '-'; let reserveBadge = reserve === 'YES' ? `<span class="rounded-full border border-red-200 bg-red-100 px-2 py-1 text-red-700">Reserve YES</span>` : `<span class="rounded-full border border-gray-200 bg-gray-100 px-2 py-1 text-gray-700">Reserve NO</span>`;
-                const holdHtml = buildHoldReasonHtml();
-                const salesNoteHtml = buildSalesNoteHtml();
+                let reqQty = item.REQ_QTY || '0'; let cust = item.REQ_CUSTOMER || 'Unknown'; let rep = item.REQUESTED_BY || 'Unknown'; let reserve = item.REQ_RESERVE || 'NO'; let desSpec = item.REQ_DESIRED_SPEC || 'N/A'; let loc = item.LOCATIONCODE || 'No Loc'; let origSpec = item.SPEC || '-';
                 const requestThumbHtml = cornerThumbHtml;
+                const statusChip = item.REQ_STATUS === 'Complete'
+                    ? `<span class="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-[0.34rem] text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700">Complete</span>`
+                    : `<span class="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-[0.34rem] text-[9px] font-black uppercase tracking-[0.12em] text-amber-700">Pending</span>`;
+                const qtyChip = `<span class="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-2 py-[0.34rem] text-[9px] font-black uppercase tracking-[0.12em] text-slate-700">Qty ${reqQty}</span>`;
+                const reserveBadge = reserve === 'YES'
+                    ? `<span class="rounded-full border border-red-200 bg-red-50 px-2 py-[0.34rem] text-red-700">Reserve</span>`
+                    : `<span class="rounded-full border border-slate-200 bg-slate-100 px-2 py-[0.34rem] text-slate-600">Open</span>`;
+                const specBadge = origSpec && origSpec !== '-' ? `<span class="rounded-full border border-slate-200 bg-slate-100 px-2 py-[0.34rem] text-slate-600">Spec ${origSpec}</span>` : '';
+                const desiredSpecBadge = desSpec && desSpec !== 'N/A' ? `<span class="rounded-full border border-sky-200 bg-sky-50 px-2 py-[0.34rem] text-sky-700">Need ${desSpec}</span>` : '';
+                const summaryBits = [];
+                if (cleanHoldCode || holdReasonText) summaryBits.push(`${cleanHoldCode ? cleanHoldCode + ': ' : ''}${holdReasonText || 'Hold in place'}`);
+                if (salesNoteText && String(salesNoteText).trim() !== '') summaryBits.push(`Sales: ${String(salesNoteText).trim()}`);
+                const summaryNoteHtml = summaryBits.length ? `<div class="mt-2 text-[10px] font-medium leading-snug text-slate-500 overflow-hidden text-ellipsis whitespace-nowrap">${summaryBits.join('   ')}</div>` : '';
                 let actionBadge = '';
                 if (item.REQ_STATUS === 'Complete' && !item.REQ_ARCHIVED) {
-                    if (item.REQ_REP_ACTION === 'Approved') { actionBadge = `<div class="mt-3 text-[10px] font-black text-green-700 bg-green-100 text-center py-2 rounded-lg border border-green-200 uppercase tracking-widest">APPROVED</div>`; } 
-                    else if (item.REQ_REP_ACTION === 'Rejected') { actionBadge = `<div class="mt-3 text-[10px] font-black text-red-700 bg-red-100 text-center py-2 rounded-lg border border-red-200 uppercase tracking-widest">REJECTED</div>`; } 
-                    else { actionBadge = `<div class="flex gap-2 mt-3"><button class="flex-1 bg-green-50 text-green-700 border border-green-200 font-bold py-2 rounded-lg shadow-sm hover:bg-green-100 active:scale-95 text-[10px] uppercase tracking-wider" onclick="event.stopPropagation(); setRepRequestAction('${safeUidJs}', 'Approved')">APPROVE</button><button class="flex-1 bg-red-50 text-red-700 border border-red-200 font-bold py-2 rounded-lg shadow-sm hover:bg-red-100 active:scale-95 text-[10px] uppercase tracking-wider" onclick="event.stopPropagation(); setRepRequestAction('${safeUidJs}', 'Rejected')">REJECT</button></div>`; }
+                    if (item.REQ_REP_ACTION === 'Approved') { actionBadge = `<div class="mt-2 inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.14em] text-emerald-700">Approved</div>`; }
+                    else if (item.REQ_REP_ACTION === 'Rejected') { actionBadge = `<div class="mt-2 inline-flex rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.14em] text-red-700">Rejected</div>`; }
+                    else { actionBadge = `<div class="mt-2 grid grid-cols-2 gap-2"><button class="rounded-xl border border-emerald-200 bg-white py-2 text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm active:scale-95" onclick="event.stopPropagation(); setRepRequestAction('${safeUidJs}', 'Approved')">Approve</button><button class="rounded-xl border border-red-200 bg-white py-2 text-[9px] font-black uppercase tracking-[0.12em] text-red-700 shadow-sm active:scale-95" onclick="event.stopPropagation(); setRepRequestAction('${safeUidJs}', 'Rejected')">Reject</button></div>`; }
                 }
-                const desiredSpecBadge = desSpec && desSpec !== 'N/A' ? `<span class="rounded-full border border-orange-100 bg-orange-50 px-2 py-1 text-orange-700">Des ${desSpec}</span>` : '';
-                return `<div class="flex items-start w-full mb-2 item-row relative" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0 mt-2"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="relative flex-1 min-w-0 app-card-shell ${holdBorderClass} p-3 pr-[5.75rem] sm:pr-[6.5rem] shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden">${requestThumbHtml}<div class="text-[9px] font-black uppercase tracking-[0.16em] text-orange-600 mb-1">Request</div><div class="font-black text-slate-900 text-[14px] leading-tight break-words">${item.COMMONNAME||'Unknown'}</div><div class="mt-0.5 font-black text-[#007a4d] text-[12px]">${item.CONTSIZE||'-'}</div><div class="mt-1.5 inline-flex max-w-full items-center gap-1 rounded-lg border border-slate-200 bg-slate-100 px-2 py-1 text-[10px] font-mono font-bold text-slate-600"><i class="ph-bold ph-barcode text-slate-400"></i><span class="truncate">${item.ITEMCODE||'-'}</span></div><div class="mt-2 grid grid-cols-1 gap-1 text-[10px] font-bold text-slate-600"><div class="truncate"><i class="ph-bold ph-storefront mr-1 text-slate-400"></i>${cust}</div><div class="truncate"><i class="ph-bold ph-user mr-1 text-slate-400"></i>${rep}</div></div><div class="mt-2 flex flex-wrap gap-1.5 text-[9px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-purple-100 bg-purple-50 px-2 py-1 text-purple-700">Qty ${reqQty}</span>${reserveBadge}<span class="rounded-full border border-blue-100 bg-blue-50 px-2 py-1 text-blue-700">Loc ${loc}</span><span class="rounded-full border border-slate-200 bg-slate-100 px-2 py-1 text-slate-700">Spec ${origSpec}</span>${desiredSpecBadge}</div>${holdHtml}${salesNoteHtml}${actionBadge}</div></div>`;
+                return `<div class="flex items-start w-full mb-1.5 item-row relative" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0 mt-1.5"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="relative flex-1 min-w-0 app-card-shell ${holdBorderClass} px-3 py-2.5 pr-[4.85rem] sm:pr-[4.85rem] shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden">${requestThumbHtml}<div class="min-w-0 pr-1"><div class="flex items-start justify-between gap-2"><div class="min-w-0 pr-1"><div class="text-[9px] font-black uppercase tracking-[0.16em] text-slate-500">Request Queue</div><div class="mt-0.5 font-black text-slate-900 text-[13px] leading-tight break-words">${item.COMMONNAME||'Unknown'}</div><div class="mt-0.5 text-[11px] font-semibold text-emerald-700">${item.CONTSIZE||'-'} <span class="text-slate-400">|</span> ${item.ITEMCODE||'-'}</div></div><div class="flex flex-col items-end gap-1 pr-1 text-right">${statusChip}${qtyChip}</div></div><div class="mt-2 text-[11px] font-semibold text-slate-800 truncate">${cust}</div><div class="mt-0.5 text-[10px] font-medium text-slate-500 truncate">${rep}</div><div class="mt-2 flex flex-wrap gap-1 text-[9px] font-black uppercase tracking-[0.1em]"><span class="rounded-full border border-slate-200 bg-slate-100 px-2 py-[0.34rem] text-slate-600">Loc ${loc}</span>${reserveBadge}${specBadge}${desiredSpecBadge}</div>${summaryNoteHtml}${actionBadge}</div></div>`;
+            }
             }
 
             if(sourceView === 'docks'){
