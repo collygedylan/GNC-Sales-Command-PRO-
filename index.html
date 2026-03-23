@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -310,18 +311,18 @@
             <div class="drawer-item" onclick="switchView('home'); toggleMenu();"><i class="ph-bold ph-house"></i> Home</div>
             <div class="drawer-item text-green-600 font-bold" onclick="fetchBackgroundData('force'); toggleMenu();"><i class="ph-bold ph-arrows-clockwise"></i> Force Data Sync</div>
             <hr class="my-2">
-            <div class="drawer-item role-access role-admin role-qc-supervisor hidden" onclick="switchView('drive'); toggleMenu();"><i class="ph-bold ph-car"></i> Drive Mode</div>
-            <div class="drawer-item role-access role-admin hidden" onclick="switchView('tasks'); toggleMenu();"><i class="ph-bold ph-clipboard-text"></i> My Tasks</div>
-            <div class="drawer-item text-orange-600 font-bold role-access role-admin role-rep role-qc-supervisor role-qc hidden" onclick="switchView('docks'); toggleMenu();"><i class="ph-bold ph-truck"></i> Docks</div>
-            <div class="drawer-item text-teal-600 font-bold role-access role-admin role-rep hidden" onclick="switchView('av'); toggleMenu();"><i class="ph-bold ph-notebook"></i> AV</div>
+            <div class="drawer-item" onclick="switchView('drive'); toggleMenu();"><i class="ph-bold ph-car"></i> Drive Mode</div>
+            <div class="drawer-item" onclick="switchView('tasks'); toggleMenu();"><i class="ph-bold ph-clipboard-text"></i> My Tasks</div>
+            <div class="drawer-item text-orange-600 font-bold" onclick="switchView('docks'); toggleMenu();"><i class="ph-bold ph-truck"></i> Docks</div>
+            <div class="drawer-item text-teal-600 font-bold" onclick="switchView('av'); toggleMenu();"><i class="ph-bold ph-notebook"></i> AV</div>
             <hr class="my-2">
-            <div class="drawer-item text-blue-600 font-bold role-access role-admin hidden" onclick="switchView('request'); toggleMenu();"><i class="ph-bold ph-chat-circle-text"></i> Requests</div>
-            <div class="drawer-item text-indigo-600 font-bold role-access role-admin hidden" onclick="switchView('reserves'); toggleMenu();"><i class="ph-bold ph-bookmark-simple"></i> Reserves</div>
-            <div class="drawer-item text-purple-600 font-bold role-access role-admin hidden" onclick="switchView('sales-office'); toggleMenu();"><i class="ph-bold ph-briefcase"></i> Sales Office</div>
-            <div class="drawer-item text-emerald-600 font-bold role-access role-admin hidden" onclick="switchView('reports'); toggleMenu();"><i class="ph-bold ph-chart-bar"></i> Reports</div>
-            <div class="drawer-item text-emerald-600 font-bold role-access role-admin hidden" onclick="switchView('hours'); toggleMenu();"><i class="ph-bold ph-clock"></i> Labor Hours</div>
-            <div class="drawer-item text-red-600 font-bold role-access role-admin hidden" onclick="switchView('low-stock'); toggleMenu();"><i class="ph-bold ph-trend-down"></i> Low Stock List</div>
-            <div class="drawer-item text-yellow-600 font-bold role-access role-admin hidden" onclick="switchView('review'); toggleMenu();"><i class="ph-bold ph-warning-circle"></i> Manager Review</div>
+            <div class="drawer-item text-blue-600 font-bold admin-rep-csr-only hidden" onclick="switchView('request'); toggleMenu();"><i class="ph-bold ph-chat-circle-text"></i> Requests</div>
+            <div class="drawer-item text-indigo-600 font-bold admin-rep-csr-only hidden" onclick="switchView('reserves'); toggleMenu();"><i class="ph-bold ph-bookmark-simple"></i> Reserves</div>
+            <div class="drawer-item text-purple-600 font-bold admin-csr-only hidden" onclick="switchView('sales-office'); toggleMenu();"><i class="ph-bold ph-briefcase"></i> Sales Office</div>
+            <div class="drawer-item text-emerald-600 font-bold admin-only hidden" onclick="switchView('reports'); toggleMenu();"><i class="ph-bold ph-chart-bar"></i> Reports</div>
+            <div class="drawer-item text-emerald-600 font-bold" onclick="switchView('hours'); toggleMenu();"><i class="ph-bold ph-clock"></i> Labor Hours</div>
+            <div class="drawer-item text-red-600 font-bold dylan-only hidden" onclick="switchView('low-stock'); toggleMenu();"><i class="ph-bold ph-trend-down"></i> Low Stock List</div>
+            <div class="drawer-item text-yellow-600 font-bold admin-only hidden" onclick="switchView('review'); toggleMenu();"><i class="ph-bold ph-warning-circle"></i> Manager Review</div>
             <hr class="my-3 border-gray-200">
             <div class="drawer-item text-red-600 bg-red-50 font-bold justify-center rounded-lg mx-4 mt-2 mb-8" onclick="performLogout()"><i class="ph-bold ph-sign-out text-xl"></i> Log Out</div>
         </div>
@@ -344,17 +345,17 @@
                     </div>
                     <h2 class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3 pl-1">App Modules</h2>
                     <div class="grid grid-cols-2 gap-3 mb-8">
-                        <div onclick="switchView('drive')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-qc-supervisor hidden"><i class="ph-bold ph-car text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Drive Mode</span></div>
-                        <div onclick="switchView('tasks')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-clipboard-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Tasks</span></div>
-                        <div onclick="switchView('docks')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep role-qc-supervisor role-qc hidden"><i class="ph-bold ph-truck text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Docks</span></div>
-                        <div onclick="switchView('av')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep hidden"><i class="ph-bold ph-notebook text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">AV</span></div>
-                        <div onclick="switchView('request')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-chat-circle-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Requests</span></div>
-                        <div onclick="switchView('reserves')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-bookmark-simple text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Reserves</span></div>
-                        <div onclick="switchView('sales-office')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-briefcase text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Sales Office</span></div>
-                        <div onclick="switchView('reports')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-chart-bar text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Reports</span></div>
-                        <div onclick="switchView('hours')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-clock text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Labor Hours</span></div>
-                        <div onclick="switchView('low-stock')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-trend-down text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Low Stock</span></div>
-                        <div onclick="switchView('review')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform col-span-2 cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-warning-circle text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Manager Review</span></div>
+                        <div onclick="switchView('drive')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-car text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Drive Mode</span></div>
+                        <div onclick="switchView('tasks')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-clipboard-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Tasks</span></div>
+                        <div onclick="switchView('docks')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-truck text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Docks</span></div>
+                        <div onclick="switchView('av')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-notebook text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">AV</span></div>
+                        <div onclick="switchView('request')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer admin-rep-csr-only hidden"><i class="ph-bold ph-chat-circle-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Requests</span></div>
+                        <div onclick="switchView('reserves')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer admin-rep-csr-only hidden"><i class="ph-bold ph-bookmark-simple text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Reserves</span></div>
+                        <div onclick="switchView('sales-office')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer admin-csr-only hidden"><i class="ph-bold ph-briefcase text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Sales Office</span></div>
+                        <div onclick="switchView('reports')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer admin-only hidden"><i class="ph-bold ph-chart-bar text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Reports</span></div>
+                        <div onclick="switchView('hours')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-clock text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Labor Hours</span></div>
+                        <div onclick="switchView('low-stock')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer dylan-only hidden"><i class="ph-bold ph-trend-down text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Low Stock</span></div>
+                        <div onclick="switchView('review')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform col-span-2 cursor-pointer admin-only hidden"><i class="ph-bold ph-warning-circle text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Manager Review</span></div>
                     </div>
                 </div>
                 
@@ -397,10 +398,7 @@
 
                         <div id="tab-av-open-photos" class="task-tab" onclick="setAvOpenTab('photos')">Photos</div>
                     </div>
-                    <div class="flex items-center justify-between gap-2 mb-3 mt-2">
-                        <div id="av-crumb" class="text-xs font-bold text-[#007a4d] mb-0 mt-0 empty:hidden flex-1 min-w-0">Open Stock</div>
-                        <button type="button" id="av-export-btn" class="inline-flex items-center gap-2 rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-95" onclick="exportCurrentAVToExcel()"><i class="ph-bold ph-download-simple text-base"></i><span id="av-export-btn-label">Export Excel</span></button>
-                    </div>
+                    <div id="av-crumb" class="text-xs font-bold text-[#007a4d] mb-3 mt-2 empty:hidden">Open Stock</div>
                     </div>
                     <div id="av-content"></div>
                 </div>
@@ -856,329 +854,6 @@
             if (sourceView === 'sales-office') return firstNonEmptyValue(item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']);
             return firstNonEmptyValue(item.ROW_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.REQ_PHOTO_LINK, item.DOCK_PHOTO_LINK, item.FLYER_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']);
         }
-        const AV_RULE_MAX_AGE_DAYS = 10;
-        const AV_RULE_MAX_AGE_MS = AV_RULE_MAX_AGE_DAYS * 24 * 60 * 60 * 1000;
-
-        function normalizeRuleText(value) {
-            const text = String(value == null ? '' : value).trim();
-            if (!text) return '';
-            const upper = text.toUpperCase();
-            if (upper === 'NULL' || upper === 'N/A' || upper === '-') return '';
-            return text;
-        }
-
-        function normalizeHoldStopSnapshotValue(value) {
-            return normalizeRuleText(value).toUpperCase();
-        }
-
-        function getHoldStopSnapshotFromItem(item) {
-            return normalizeHoldStopSnapshotValue(firstNonEmptyValue(item && item.HOLDSTOPCODE, item && item.HOLD_STOP_CODE, item && item.HOLDSTOP, ''));
-        }
-
-        function hasHoldStopBlockCode(value) {
-            const snapshot = normalizeHoldStopSnapshotValue(value);
-            return snapshot.includes('H') || snapshot.includes('S');
-        }
-
-        function getPrioritySnapshotFromItem(item) {
-            return normalizeRuleText(item && item.PRIORITY);
-        }
-
-        function parseAppNumber(value) {
-            const text = String(value == null ? '' : value).replace(/,/g, '').trim();
-            if (!text) return null;
-            const num = Number(text);
-            return Number.isFinite(num) ? num : null;
-        }
-
-        function calculateLocMatchQtyValue(item, matchOverride = undefined) {
-            const matchVal = parseAppNumber(matchOverride === undefined ? (item && item.MATCH) : matchOverride);
-            if (matchVal == null) return null;
-            const ptr = parseAppNumber(item && item.PTRAVAILABLE);
-            return Math.round((ptr == null ? 0 : ptr) * (matchVal / 100));
-        }
-
-        function hasTrackedAvPayload(item) {
-            if (!item) return false;
-            return [
-                item.AV_NOTE,
-                item.MATCH,
-                item.SPEC,
-                item.CALIPER,
-                item.SAVED_PHOTO_LINK,
-                item.SAVED_PHOTO_NAME,
-                item.LOC_MATCH_QTY,
-                item.INITIAL_PTR
-            ].some(value => normalizeRuleText(value) !== '');
-        }
-
-        function getValidIsoTimestamp(value) {
-            const text = normalizeRuleText(value);
-            if (!text) return '';
-            const stamp = Date.parse(text);
-            return Number.isFinite(stamp) ? new Date(stamp).toISOString() : '';
-        }
-
-        function getEffectiveAvRuleUpdatedAt(item) {
-            if (!item) return '';
-            const candidates = [
-                item.AV_RULE_BUNDLE_UPDATED_AT,
-                item.AV_RULE_AV_NOTE_UPDATED_AT,
-                item.AV_RULE_SPEC_UPDATED_AT,
-                item.AV_RULE_MATCH_UPDATED_AT,
-                item.AV_RULE_CALIPER_UPDATED_AT,
-                item.AV_RULE_PHOTO_UPDATED_AT,
-                item.DATE_COMPLETED,
-                item.LAST_UPDATED
-            ];
-            let winner = '';
-            let winnerMs = -1;
-            candidates.forEach((value) => {
-                const iso = getValidIsoTimestamp(value);
-                if (!iso) return;
-                const stamp = Date.parse(iso);
-                if (stamp > winnerMs) {
-                    winner = iso;
-                    winnerMs = stamp;
-                }
-            });
-            return winner;
-        }
-
-        function captureTrackedAvState(item) {
-            return {
-                avNote: normalizeRuleText(item && item.AV_NOTE),
-                spec: normalizeRuleText(item && item.SPEC),
-                match: normalizeRuleText(item && item.MATCH),
-                caliper: normalizeRuleText(item && item.CALIPER),
-                photoLink: normalizeRuleText(firstNonEmptyValue(item && item.SAVED_PHOTO_LINK, item && item.PHOTO_LINK, item && item.PHOTOLINK, item && item['PHOTO LINK'])),
-                photoName: normalizeRuleText(firstNonEmptyValue(item && item.SAVED_PHOTO_NAME, item && item.PHOTO_NAME, item && item.PHOTONAME, item && item['PHOTO NAME']))
-            };
-        }
-
-        function getTrackedAvChangeFlags(beforeState, afterState, options = {}) {
-            const opts = options || {};
-            return {
-                avNote: beforeState.avNote !== afterState.avNote,
-                spec: beforeState.spec !== afterState.spec,
-                match: beforeState.match !== afterState.match,
-                caliper: beforeState.caliper !== afterState.caliper,
-                photo: !!opts.photoChanged || beforeState.photoLink !== afterState.photoLink || beforeState.photoName !== afterState.photoName
-            };
-        }
-
-        function applyAvRuleTouchState(item, changeFlags = {}, nowIso = new Date().toISOString()) {
-            if (!item) return false;
-            const flags = changeFlags || {};
-            const didChange = !!(flags.avNote || flags.spec || flags.match || flags.caliper || flags.photo);
-            const currentPriority = getPrioritySnapshotFromItem(item);
-            const currentHold = getHoldStopSnapshotFromItem(item);
-            item.AV_RULE_PRIORITY_SNAPSHOT = currentPriority;
-            item.AV_RULE_HOLDSTOP_SNAPSHOT = currentHold;
-            if (flags.avNote) item.AV_RULE_AV_NOTE_UPDATED_AT = nowIso;
-            if (flags.spec) item.AV_RULE_SPEC_UPDATED_AT = nowIso;
-            if (flags.match) item.AV_RULE_MATCH_UPDATED_AT = nowIso;
-            if (flags.caliper) item.AV_RULE_CALIPER_UPDATED_AT = nowIso;
-            if (flags.photo) item.AV_RULE_PHOTO_UPDATED_AT = nowIso;
-            if (didChange) item.AV_RULE_BUNDLE_UPDATED_AT = nowIso;
-            return didChange;
-        }
-
-        function applyAvRuleTouchPayload(item, payload, changeFlags = {}, nowIso = new Date().toISOString()) {
-            applyAvRuleTouchState(item, changeFlags, nowIso);
-            if (avRuleColumnsReady !== true || !payload) return payload;
-            const flags = changeFlags || {};
-            const didChange = !!(flags.avNote || flags.spec || flags.match || flags.caliper || flags.photo);
-            payload.av_rule_priority_snapshot = item.AV_RULE_PRIORITY_SNAPSHOT || null;
-            payload.av_rule_holdstop_snapshot = item.AV_RULE_HOLDSTOP_SNAPSHOT || null;
-            if (flags.avNote) payload.av_rule_av_note_updated_at = nowIso;
-            if (flags.spec) payload.av_rule_spec_updated_at = nowIso;
-            if (flags.match) payload.av_rule_match_updated_at = nowIso;
-            if (flags.caliper) payload.av_rule_caliper_updated_at = nowIso;
-            if (flags.photo) payload.av_rule_photo_updated_at = nowIso;
-            if (didChange) payload.av_rule_bundle_updated_at = nowIso;
-            return payload;
-        }
-
-        function getMasterAvInvalidationReasons(item) {
-            if (!item || !hasTrackedAvPayload(item)) return [];
-            const reasons = [];
-            const holdSnapshot = normalizeHoldStopSnapshotValue(item.AV_RULE_HOLDSTOP_SNAPSHOT);
-            const currentHold = getHoldStopSnapshotFromItem(item);
-            const prioritySnapshot = normalizeRuleText(item.AV_RULE_PRIORITY_SNAPSHOT);
-            const currentPriority = getPrioritySnapshotFromItem(item);
-            const bundleUpdatedAt = getEffectiveAvRuleUpdatedAt(item);
-            const effectiveLocMatchQty = normalizeRuleText(item.LOC_MATCH_QTY) !== '' ? parseAppNumber(item.LOC_MATCH_QTY) : calculateLocMatchQtyValue(item);
-
-            if (effectiveLocMatchQty != null && effectiveLocMatchQty <= 0) reasons.push('loc_match_qty_zero');
-            if (hasHoldStopBlockCode(currentHold)) reasons.push('holdstop_blocked');
-            if (hasHoldStopBlockCode(holdSnapshot) && !currentHold) reasons.push('holdstop_cleared');
-            if (prioritySnapshot && currentPriority && prioritySnapshot !== currentPriority) reasons.push('priority_changed');
-            if (bundleUpdatedAt) {
-                const ageMs = Date.now() - Date.parse(bundleUpdatedAt);
-                if (ageMs > AV_RULE_MAX_AGE_MS) reasons.push('stale_10_day');
-            }
-            return [...new Set(reasons)];
-        }
-
-        function buildMasterAvRuleClearPayload(item, reasonText = '', clearedAt = new Date().toISOString()) {
-            const payload = {
-                av_note: null,
-                match: null,
-                spec: null,
-                caliper: null,
-                photo_link: null,
-                photo_name: null,
-                loc_match_qty: null,
-                initial_ptr: null,
-                date_completed: null
-            };
-            if (avRuleColumnsReady === true) {
-                payload.av_rule_priority_snapshot = getPrioritySnapshotFromItem(item) || null;
-                payload.av_rule_holdstop_snapshot = getHoldStopSnapshotFromItem(item) || null;
-                payload.av_rule_last_clear_reason = reasonText || null;
-                payload.av_rule_last_cleared_at = clearedAt;
-                payload.av_rule_bundle_updated_at = null;
-                payload.av_rule_av_note_updated_at = null;
-                payload.av_rule_spec_updated_at = null;
-                payload.av_rule_match_updated_at = null;
-                payload.av_rule_caliper_updated_at = null;
-                payload.av_rule_photo_updated_at = null;
-            }
-            return payload;
-        }
-
-        function applyMasterAvRuleClearToItem(item, reasonText = '', clearedAt = new Date().toISOString()) {
-            if (!item) return item;
-            item.AV_NOTE = '';
-            item.MATCH = '';
-            item.SPEC = '';
-            item.CALIPER = '';
-            item.LOC_MATCH_QTY = '';
-            item.INITIAL_PTR = '';
-            item.DATE_COMPLETED = '';
-            item.SAVED_PHOTO_LINK = '';
-            item.SAVED_PHOTO_NAME = '';
-            item.PHOTO_LINK = '';
-            item.PHOTO_NAME = '';
-            item.PHOTOLINK = '';
-            item.PHOTONAME = '';
-            item['PHOTO LINK'] = '';
-            item['PHOTO NAME'] = '';
-            item.AV_RULE_BUNDLE_UPDATED_AT = '';
-            item.AV_RULE_AV_NOTE_UPDATED_AT = '';
-            item.AV_RULE_SPEC_UPDATED_AT = '';
-            item.AV_RULE_MATCH_UPDATED_AT = '';
-            item.AV_RULE_CALIPER_UPDATED_AT = '';
-            item.AV_RULE_PHOTO_UPDATED_AT = '';
-            item.AV_RULE_PRIORITY_SNAPSHOT = getPrioritySnapshotFromItem(item);
-            item.AV_RULE_HOLDSTOP_SNAPSHOT = getHoldStopSnapshotFromItem(item);
-            item.AV_RULE_LAST_CLEAR_REASON = reasonText || '';
-            item.AV_RULE_LAST_CLEARED_AT = clearedAt;
-            normalizeRowPhotoFields(item);
-            return item;
-        }
-
-        function getDetailPhotoUrls(item, sourceView='') {
-            if (!item) return [];
-            const urls = [];
-            const seen = new Set();
-            [
-                getRowPhotoLink(item, sourceView || lastView),
-                item.SAVED_PHOTO_LINK || '',
-                item.REQ_PHOTO_LINK || '',
-                item.DOCK_PHOTO_LINK || '',
-                item.FLYER_PHOTO_LINK || ''
-            ].forEach((link) => {
-                getPhotoUrlList(link).forEach((url) => {
-                    const cleanUrl = String(url || '').trim();
-                    if (!cleanUrl || seen.has(cleanUrl)) return;
-                    seen.add(cleanUrl);
-                    urls.push(cleanUrl);
-                });
-            });
-            return urls;
-        }
-        function handleDetailBagToggle(event) {
-            if (event) {
-                event.preventDefault();
-                event.stopPropagation();
-            }
-            if (!activeItem || !activeItem.DOM_ID) return false;
-            toggleGlobalItem(activeItem.DOM_ID);
-            return false;
-        }
-        function openDetailRequestAction(event) {
-            if (event) {
-                event.preventDefault();
-                event.stopPropagation();
-            }
-            if (!activeItem || !activeItem.DOM_ID) return false;
-            if (!canUseCartInventoryActions([activeItem])) {
-                showToast('Unavailable', 'Requests can only be created from inventory rows.', true);
-                return false;
-            }
-            detailRequestSourceDomIds = [activeItem.DOM_ID];
-            openRequestModal();
-            return false;
-        }
-        function renderDetailOverviewMedia() {
-            const container = document.getElementById('ov-large-photo');
-            if (!container) return;
-            if (!activeItem) {
-                container.innerHTML = '';
-                container.classList.add('hidden');
-                return;
-            }
-
-            const photoUrls = getDetailPhotoUrls(activeItem, lastView);
-            const combinedPhotoLink = photoUrls.join(',');
-            const photoCount = photoUrls.length;
-            const inBag = selectedItems.has(activeItem.DOM_ID);
-            const canRequest = canUseCartInventoryActions([activeItem]);
-            const itemLabel = `${activeItem.COMMONNAME || 'Item'}${activeItem.CONTSIZE ? ` (${activeItem.CONTSIZE})` : ''}`;
-            const bagBtnClass = inBag
-                ? 'bg-[#007a4d] text-white border-[#007a4d] shadow-[0_14px_28px_rgba(0,122,77,0.18)]'
-                : 'bg-white text-[#007a4d] border-green-200';
-            const requestBtnHtml = canRequest
-                ? `<button type="button" class="flex-1 inline-flex items-center justify-center gap-2 rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3 text-[12px] font-black uppercase tracking-[0.12em] text-orange-700 shadow-sm active:scale-[0.98]" onclick="openDetailRequestAction(event)"><i class="ph-bold ph-chat-circle-text text-lg"></i>Make Request</button>`
-                : '';
-            const mediaHtml = photoCount
-                ? `<div class="flex gap-3 overflow-x-auto scrollbar-none snap-x snap-mandatory pb-2">${photoUrls.map((url, index) => `<button type="button" class="relative flex-shrink-0 w-[78vw] max-w-[320px] aspect-[4/3] overflow-hidden rounded-[1.25rem] border border-slate-200 bg-slate-100 shadow-sm snap-center" onclick="openPhotoModal('${esc(combinedPhotoLink)}', '${esc(itemLabel)}')"><img src="${url}" class="h-full w-full object-contain bg-slate-100" loading="${index === 0 ? 'eager' : 'lazy'}"><div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent px-3 py-3 text-left"><div class="text-[10px] font-black uppercase tracking-[0.18em] text-white">${photoCount > 1 ? `Photo ${index + 1} of ${photoCount}` : 'Tap To Expand'}</div></div></button>`).join('')}</div>`
-                : `<div class="flex min-h-[200px] items-center justify-center rounded-[1.25rem] border border-dashed border-slate-300 bg-slate-100 px-6 text-center text-[12px] font-black uppercase tracking-[0.16em] text-slate-400">No Photos On File Yet</div>`;
-            const helperCopy = photoCount > 1
-                ? `Swipe to scroll ${photoCount} photos`
-                : (photoCount === 1 ? 'Tap photo to expand' : 'Use the buttons below to bag it or create a request');
-            const countBadgeHtml = photoCount
-                ? `<div class="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600">${photoCount} photo${photoCount === 1 ? '' : 's'}</div>`
-                : '';
-
-            container.classList.remove('hidden');
-            container.innerHTML = `
-                <div class="app-card-shell overflow-hidden border border-slate-200">
-                    <div class="border-b border-slate-200 bg-gradient-to-r from-slate-50 to-white px-4 py-3">
-                        <div class="flex items-start justify-between gap-3">
-                            <div class="min-w-0">
-                                <div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Item Media</div>
-                                <div class="mt-1 text-[13px] font-bold text-slate-500">${photoCount ? `${photoCount} photo${photoCount === 1 ? '' : 's'} available` : 'Photos will show here when they are attached'}</div>
-                            </div>
-                            ${photoCount ? `<button type="button" class="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600 shadow-sm active:scale-[0.98]" onclick="openPhotoModal('${esc(combinedPhotoLink)}', '${esc(itemLabel)}')"><i class="ph-bold ph-arrows-out-simple text-sm"></i>Open</button>` : ''}
-                        </div>
-                    </div>
-                    <div class="p-3">
-                        ${mediaHtml}
-                        <div class="mt-3 flex items-center justify-between gap-3 text-[11px] font-bold text-slate-500">
-                            <div>${helperCopy}</div>
-                            ${countBadgeHtml}
-                        </div>
-                        <div class="mt-3 flex flex-col gap-2 sm:flex-row">
-                            <button type="button" class="flex-1 inline-flex items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-[12px] font-black uppercase tracking-[0.12em] transition active:scale-[0.98] ${bagBtnClass}" onclick="handleDetailBagToggle(event)"><i class="ph-bold ${inBag ? 'ph-check' : 'ph-handbag'} text-lg"></i>${inBag ? 'In Bag' : 'Add To Bag'}</button>
-                            ${requestBtnHtml}
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
         function syncRowDataAcrossViews(masterItem) {
             if (!masterItem) return;
             normalizeRowPhotoFields(masterItem);
@@ -1205,17 +880,7 @@
                 row.PICK = masterItem.PICK;
                 row.LOC_MATCH_QTY = masterItem.LOC_MATCH_QTY;
                 row.INITIAL_PTR = masterItem.INITIAL_PTR;
-                row.APP_TAB_ASSIGNMENT = masterItem.APP_TAB_ASSIGNMENT;
-                row.DATE_COMPLETED = masterItem.DATE_COMPLETED;
-                ['SAVED_PHOTO_LINK','SAVED_PHOTO_NAME','REQ_PHOTO_LINK','REQ_PHOTO_NAME','DOCK_PHOTO_LINK','DOCK_PHOTO_NAME','FLYER_PHOTO_LINK','FLYER_PHOTO_NAME','ROW_PHOTO_LINK','ROW_PHOTO_NAME'].forEach((key) => {
-                    row[key] = masterItem[key] || '';
-                });
-                row.PHOTO_LINK = masterItem.PHOTO_LINK || masterItem.SAVED_PHOTO_LINK || '';
-                row.PHOTO_NAME = masterItem.PHOTO_NAME || masterItem.SAVED_PHOTO_NAME || '';
-                row.PHOTOLINK = masterItem.PHOTOLINK || row.PHOTO_LINK;
-                row.PHOTONAME = masterItem.PHOTONAME || row.PHOTO_NAME;
-                row['PHOTO LINK'] = masterItem['PHOTO LINK'] || row.PHOTO_LINK;
-                row['PHOTO NAME'] = masterItem['PHOTO NAME'] || row.PHOTO_NAME;
+                clonePhotoFields(masterItem, row);
                 normalizeRowPhotoFields(row);
             };
 
@@ -1312,41 +977,6 @@
         function applyRealtimeChange(tableName = '', payload = null) {
             if (!payload || !payload.eventType) return false;
             const eventType = String(payload.eventType || '').toUpperCase();
-
-            if (tableName === 'v2_dock_team_status') {
-                const rawRow = eventType === 'DELETE' ? (payload.old || {}) : (payload.new || {});
-                const dockKey = normalizeDockTeamDockKey(rawRow.dock_num || rawRow.DOCK_NUM || rawRow.dock || rawRow.DOCK);
-                if (!dockKey) return false;
-                if (eventType === 'DELETE') {
-                    dockTeamStatusByDock.delete(dockKey);
-                    try { localStorage.removeItem('gnc_dock_team_' + dockKey); } catch (e) {}
-                } else {
-                    cacheDockTeamInfo(dockKey, rawRow);
-                }
-                dockTeamStatusLoaded = true;
-                markViewDirty('docks');
-                const docksView = document.getElementById('view-docks');
-                if (docksView && !docksView.classList.contains('hidden')) scheduleUiRender('dock-team-realtime', () => renderDocks(), 24);
-                return true;
-            }
-
-            if (tableName === 'v2_dock_item_status') {
-                const rawRow = eventType === 'DELETE' ? (payload.old || {}) : (payload.new || {});
-                const uniqueId = normalizeDockItemUniqueId(rawRow.unique_id || rawRow.UNIQUE_ID);
-                if (!uniqueId) return false;
-                if (eventType === 'DELETE') {
-                    dockItemProgressByUid.delete(uniqueId);
-                    try { localStorage.removeItem('gnc_dock_item_' + uniqueId); } catch (e) {}
-                } else {
-                    cacheDockItemProgress(uniqueId, rawRow);
-                }
-                dockItemProgressLoaded = true;
-                markViewDirty('docks');
-                const docksView = document.getElementById('view-docks');
-                if (docksView && !docksView.classList.contains('hidden')) scheduleUiRender('dock-item-realtime', () => renderDocks(), 24);
-                return true;
-            }
-
             const oldRow = payload.old || {};
             const nextRow = payload.new ? formatFetchedRows([payload.new], tableName)[0] : null;
             const uniqueId = String((nextRow && nextRow.UNIQUE_ID) || oldRow.unique_id || oldRow.UNIQUE_ID || '');
@@ -1459,7 +1089,7 @@
                 updateSyncDiagnostics(navigator.onLine === false ? 'offline' : 'idle');
                 return;
             }
-            ['v2_master_inventory','v2_active_request','v2_reserves','v2_soc_master','v2_sales_office','v2_av_notes','v2_dock_team_status','v2_dock_item_status'].forEach((tableName) => {
+            ['v2_master_inventory','v2_active_request','v2_reserves','v2_soc_master','v2_sales_office','v2_av_notes'].forEach((tableName) => {
                 const channel = supabaseClient
                     .channel(`realtime-${tableName}`)
                     .on('postgres_changes', { event: '*', schema: 'public', table: tableName }, (payload) => {
@@ -1680,51 +1310,6 @@
             } finally { stopGlobalProgress(); }
         }
 
-        function maybeWarnAvRuleSchemaMissing() {
-            if (avRuleSchemaWarningShown || !currentUser) return;
-            avRuleSchemaWarningShown = true;
-            showToast('Schema Required', 'Run av_rule_retention_migration.sql in Supabase to enable AV retention timing and reset rules.', true);
-        }
-
-        async function ensureAvRuleColumnsReady(force = false) {
-            if (avRuleColumnsReady === true && !force) return true;
-            if (avRuleColumnsReady === false && !force) return false;
-            if (avRuleColumnsProbePromise && !force) return avRuleColumnsProbePromise;
-            avRuleColumnsProbePromise = (async () => {
-                if (navigator.onLine === false) return false;
-                try {
-                    const url = `${SUPABASE_URL}/rest/v1/v2_master_inventory?select=unique_id,av_rule_bundle_updated_at,av_rule_priority_snapshot,av_rule_holdstop_snapshot&limit=1`;
-                    const response = await fetchWithTimeout(url, {
-                        method: 'GET',
-                        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }
-                    }, SUPABASE_READ_TIMEOUT_MS, 'AV Rule Schema');
-                    if (!response.ok) {
-                        const errorText = await getResponseError(response, `Supabase read failed (${response.status})`);
-                        const normalizedError = String(errorText || '').toLowerCase();
-                        if (normalizedError.includes('av_rule_') || normalizedError.includes('column')) {
-                            avRuleColumnsReady = false;
-                            maybeWarnAvRuleSchemaMissing();
-                            return false;
-                        }
-                        return false;
-                    }
-                    avRuleColumnsReady = true;
-                    return true;
-                } catch (error) {
-                    const normalizedError = String(error && error.message ? error.message : error || '').toLowerCase();
-                    if (normalizedError.includes('av_rule_') || normalizedError.includes('column')) {
-                        avRuleColumnsReady = false;
-                        maybeWarnAvRuleSchemaMissing();
-                        return false;
-                    }
-                    return false;
-                } finally {
-                    avRuleColumnsProbePromise = null;
-                }
-            })();
-            return avRuleColumnsProbePromise;
-        }
-
         async function fetchLoginUser(username, password) {
             startGlobalProgress();
             try {
@@ -1862,11 +1447,6 @@
         let cacheWarmPromise=null;
         let cachePersistTimer=null;
         let currentUser=""; let currentUserDisplay=""; let currentRole=""; let safeRole=""; let repPermutations=[]; let activeItem=null; let lastView=""; let activeDetailTab="overview"; let selectedItems=new Set(); let cartPanelOpen=false; let cartUiObserver=null; let cartUiRefreshQueued=false; let lastCartToggleAt=0; let lastCartToggleDomId=""; let isMultiSelectMode=false; let pressTimer=null; let isLongPress=false; let touchStartX=0; let touchStartY=0; let pendingAction=null; let pendingTabType=null; let hasAppliedInitialHomeView=false;
-        let dockAssignableUsers=[]; let dockAssignableUsersPromise=null;
-        let dockTeamStatusByDock=new Map(); let dockTeamStatusPromise=null; let dockTeamStatusLoaded=false; let dockTeamSchemaReady=null; let dockTeamSchemaPromise=null; let dockTeamSchemaWarningShown=false;
-        let dockItemProgressByUid=new Map(); let dockItemProgressPromise=null; let dockItemProgressLoaded=false; let dockItemSchemaReady=null; let dockItemSchemaPromise=null; let dockItemSchemaWarningShown=false;
-        let detailRequestSourceDomIds=[];
-        let avRuleColumnsReady=null; let avRuleColumnsProbePromise=null; let avRuleSchemaWarningShown=false; let avRuleCleanupInFlight=new Set();
         
         const DRIVE_MODE_LABELS = { ok: 'Drive Mode' };
         let activeDriveMode='ok'; let activeDriveTab='name'; let selectedDriveBlock=null; let selectedDriveLoc=null; let driveQuickRequestCardMode=false; let driveQuickFilterName=''; let driveQuickFilterLocation=''; let driveQuickFilterLot=''; let driveQuickFilterSize=''; let driveQuickFilterPriority=''; let driveQuickFilterLtsMode=''; let driveQuickFilterLtsValue=''; let driveQuickHoldStopOnly=false; let driveQuickFilterOptionsCacheKey=''; let driveQuickFilterOptionsCache=null; let driveBaseFilterCacheKey=''; let driveBaseFilterCacheItems=[]; let driveQuickFilterCacheKey=''; let driveQuickFilterCacheItems=[]; let driveQuickFiltersModalOpen=false;
@@ -1885,7 +1465,7 @@
         let pendingRequestArchiveFlushTimer = null;
         let pendingRequestArchiveFlushInFlight = false;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Machino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'v2026.03.22';
+        const APP_VERSION = 'v2026.03.21';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -2039,7 +1619,8 @@
             if (localStorage.getItem('gnc_bio_enabled')==='true' && window.PublicKeyCredential) {
                 const bioBtn=document.getElementById('btn-fingerprint'); if (bioBtn) bioBtn.classList.remove('hidden');
             }
-            updateDockAssignableTeamOptions();
+            const teamOptions = ["", "Dylan", "Kayla", "Morgan", ...salesRepList].map(n => `<option value="${n}">${n || "Unassigned"}</option>`).join('');
+            ['dock-checker', 'dock-inspector', 'dock-mistake'].forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = teamOptions; });
             initializeViewportHeightSync();
             initializeInteractiveChrome();
             installAmazonHeaderChrome();
@@ -2573,11 +2154,12 @@
         }
 
         function isMyRep(repNameStr) { 
-            if(!getRoleAccessState().isRep)return true; 
+            if(safeRole!=='SALESREP')return true; 
             if(!repNameStr)return false; 
             let str=String(repNameStr).toLowerCase(); 
             return repPermutations.some(p=>str.includes(p)); 
         }
+
         let activeReportTab = 'ALL';
         let protectedEditState = {};
         let protectedUnlockTimers = {};
@@ -3334,11 +2916,11 @@ function toggleDriveQuickRequestItem(domId) {
             tempReqFolder = null;
             tempReqCust = null;
             previousReqStep = '';
-            detailRequestSourceDomIds = [];
             resetQuickDriveRequestState();
             configureRequestCustomerStep();
             renderDriveQuickRequestBar();
         }
+
         function showRequestCustomerStep(fromStepId = 'step-1-rep') {
             previousReqStep = fromStepId;
             document.getElementById('step-1-rep').classList.add('hidden');
@@ -3358,11 +2940,10 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function getRequestSourceDomIds() {
-            const domIds = detailRequestSourceDomIds.length
-                ? [...detailRequestSourceDomIds]
-                : (isQuickDriveRequestMode() ? Array.from(driveQuickRequestItems) : Array.from(selectedItems));
+            const domIds = isQuickDriveRequestMode() ? Array.from(driveQuickRequestItems) : Array.from(selectedItems);
             return domIds.filter(domId => !!findItemByDomId(domId));
         }
+
         function dismissSearchKeyboard(event) {
             if (!event) return;
             const key = event.key || event.code || '';
@@ -3931,10 +3512,6 @@ function toggleDriveQuickRequestItem(domId) {
             initializeCartUi();
             updateGlobalActionBar();
             setRepPermutations(currentUser);
-            ensureDockAssignableUsers().catch(() => {});
-            ensureDockTeamStatusLoaded().then(() => { if (!document.getElementById('view-docks').classList.contains('hidden')) renderDocks(); }).catch(() => {});
-            ensureDockItemStatusLoaded().then(() => { if (!document.getElementById('view-docks').classList.contains('hidden')) renderDocks(); }).catch(() => {});
-            ensureAvRuleColumnsReady().catch(() => {});
             const shouldPromptBiometric = !isBiometricLogin && window.PublicKeyCredential && localStorage.getItem('gnc_bio_enabled')!=='true';
             setLoginProgress(Math.max(currentProgress, 30), 'Preparing your workspace...');
 
@@ -3990,7 +3567,7 @@ function toggleDriveQuickRequestItem(domId) {
                                 if(activeItem&&activeItem.UNIQUE_ID===updatedRow.unique_id){ Object.assign(activeItem,fullInventory[idx]); }
                             }
                         });
-                        if(updated){ processAndLoadData({ data: fullInventory, avOpenData: buildAvOpenInventoryFromMasterItems(fullInventory) }); if(activeItem&&!document.getElementById('view-detail').classList.contains('hidden')){ openDetail(activeItem.UNIQUE_ID,lastView); } }
+                        if(updated){ reRenderCurrentView(); if(activeItem&&!document.getElementById('view-detail').classList.contains('hidden')){ openDetail(activeItem.UNIQUE_ID,lastView); } }
                     } 
                 }
                 
@@ -4031,19 +3608,6 @@ function toggleDriveQuickRequestItem(domId) {
                         if(!document.getElementById('view-sales-office').classList.contains('hidden')) renderViewContent('sales-office', false, true);
                     }
                 }
-
-                const previousDockTeamSnapshot = JSON.stringify(Array.from(dockTeamStatusByDock.entries()));
-                const previousDockItemSnapshot = JSON.stringify(Array.from(dockItemProgressByUid.entries()));
-                await Promise.allSettled([
-                    ensureDockTeamStatusLoaded(true),
-                    ensureDockItemStatusLoaded(true)
-                ]);
-                const dockWorkflowChanged = previousDockTeamSnapshot !== JSON.stringify(Array.from(dockTeamStatusByDock.entries()))
-                    || previousDockItemSnapshot !== JSON.stringify(Array.from(dockItemProgressByUid.entries()));
-                if (dockWorkflowChanged) {
-                    markViewDirty('docks');
-                    if (!document.getElementById('view-docks').classList.contains('hidden')) renderViewContent('docks', false, true);
-                }
                 
                 lastSyncTime=checkTime;
                 lastSuccessfulSyncTime = checkTime;
@@ -4056,95 +3620,6 @@ function toggleDriveQuickRequestItem(domId) {
             if (mode === 'critical' || mode === 'supplemental') return true;
             return refreshLoadedDatasets(mode === 'full' || mode === 'force');
         }
-        function applyMasterAppTabAssignments(items = []) {
-            let icGroups = {};
-            items.forEach(item => {
-                let eStr = String(item.END_CAP_FOLDER || '').toUpperCase().trim();
-                let hasEndCap = (eStr !== '' && eStr !== 'NULL' && eStr !== 'N/A' && eStr !== '-');
-                if (hasEndCap) {
-                    item.APP_TAB_ASSIGNMENT = 'endcap';
-                } else {
-                    let prio = String(item.PRIORITY || '').toUpperCase().trim();
-                    if (prio && prio !== 'NULL' && prio !== 'N/A' && prio !== '-') {
-                        let ic = String(item.ITEMCODE || 'UNKNOWN').trim().toUpperCase();
-                        if (!icGroups[ic]) icGroups[ic] = [];
-                        icGroups[ic].push(item);
-                    } else {
-                        item.APP_TAB_ASSIGNMENT = 'location';
-                    }
-                }
-            });
-
-            for (let ic in icGroups) {
-                let rows = icGroups[ic];
-                let eligible = rows.filter(r => {
-                    let ptr = parseFloat(String(r.PTRAVAILABLE).replace(/,/g,'')) || 0;
-                    let ss = parseFloat(String(r.SEASONSUPPLY || r.SEASON_SUPPLY).replace(/,/g,'')) || 0;
-                    return ptr > (0.10 * ss);
-                });
-                let pool = eligible.length > 0 ? eligible : rows;
-                pool.sort((a,b) => {
-                    let pa = parseFloat(a.PRIORITY); if (isNaN(pa)) pa = 999;
-                    let pb = parseFloat(b.PRIORITY); if (isNaN(pb)) pb = 999;
-                    if (pa !== pb) return pa - pb;
-                    let ptra = parseFloat(String(a.PTRAVAILABLE).replace(/,/g,'')) || 0;
-                    let ptrb = parseFloat(String(b.PTRAVAILABLE).replace(/,/g,'')) || 0;
-                    return ptrb - ptra;
-                });
-                let winner = pool[0];
-                rows.forEach(r => {
-                    if (r.UNIQUE_ID === winner.UNIQUE_ID) r.APP_TAB_ASSIGNMENT = 'season';
-                    else r.APP_TAB_ASSIGNMENT = 'location';
-                });
-            }
-        }
-
-        function buildAvOpenInventoryFromMasterItems(items = []) {
-            return items.filter((item) => (parseFloat(String(firstNonEmptyValue(item && item.S_LTS, '0')).replace(/,/g,'')) || 0) > 0);
-        }
-
-        function collectMasterAvRuleClearOps(items = []) {
-            const ops = [];
-            items.forEach((item) => {
-                if (!item) return;
-                const sourceTable = String(item.SOURCE_TABLE || 'v2_master_inventory').toLowerCase();
-                if (sourceTable !== 'v2_master_inventory') return;
-                normalizeRowPhotoFields(item);
-                const reasons = getMasterAvInvalidationReasons(item);
-                if (!reasons.length) return;
-                const uniqueId = String(item.UNIQUE_ID || '').trim();
-                if (!uniqueId) return;
-                const reasonText = reasons.join(',');
-                const clearedAt = new Date().toISOString();
-                const payload = buildMasterAvRuleClearPayload(item, reasonText, clearedAt);
-                applyMasterAvRuleClearToItem(item, reasonText, clearedAt);
-                buildSearchIndex(item);
-                ops.push({ item, uniqueId, reasonText, clearedAt, payload });
-            });
-            return ops;
-        }
-
-        function persistMasterAvRuleClearOps(ops = [], options = {}) {
-            if (!Array.isArray(ops) || !ops.length) return [];
-            const opts = options || {};
-            const remoteOps = [];
-            ops.forEach((entry) => {
-                if (!entry || !entry.item || !entry.uniqueId) return;
-                syncRowDataAcrossViews(entry.item);
-                removeSalesOfficeRowByUniqueId(entry.uniqueId, { skipRemote: true, silent: true, suppressErrorToast: true });
-                if (opts.skipRemote) return;
-                if (avRuleCleanupInFlight.has(entry.uniqueId)) return;
-                avRuleCleanupInFlight.add(entry.uniqueId);
-                const patchPromise = supabaseFetch('v2_master_inventory', 'PATCH', entry.payload, `unique_id=eq.${encodeURIComponent(entry.uniqueId)}`);
-                const deletePromise = supabaseFetch('v2_sales_office', 'DELETE', null, `unique_id=eq.${encodeURIComponent(entry.uniqueId)}`).catch(() => {});
-                const combinedPromise = Promise.allSettled([patchPromise, deletePromise]).finally(() => {
-                    avRuleCleanupInFlight.delete(entry.uniqueId);
-                });
-                remoteOps.push(combinedPromise);
-            });
-            return remoteOps;
-        }
-
         function processAndLoadData(res) {
             if (!res) return;
             const hasKey = (key) => Object.prototype.hasOwnProperty.call(res, key);
@@ -4163,7 +3638,6 @@ function toggleDriveQuickRequestItem(domId) {
             if (hasReserves) changedDatasetKeys.push('reserves');
             if (hasSoc) changedDatasetKeys.push('soc');
             if (hasSalesOffice) changedDatasetKeys.push('salesOffice');
-            let avRuleClearOps = [];
 
             if (hasAvNotes) {
                 avNotesDb = res.avNotesData || [];
@@ -4171,8 +3645,48 @@ function toggleDriveQuickRequestItem(domId) {
 
             if (hasMaster) {
                 fullInventory = (res.data || []).map((item,idx)=>{item.DOM_ID='fi_'+idx;return buildSearchIndex(normalizeRowPhotoFields(item));});
-                applyMasterAppTabAssignments(fullInventory);
-                avRuleClearOps = collectMasterAvRuleClearOps(fullInventory);
+
+                let icGroups = {};
+                fullInventory.forEach(item => {
+                    let eStr = String(item.END_CAP_FOLDER || '').toUpperCase().trim();
+                    let hasEndCap = (eStr !== '' && eStr !== 'NULL' && eStr !== 'N/A' && eStr !== '-');
+                    if(hasEndCap) {
+                        item.APP_TAB_ASSIGNMENT = 'endcap';
+                    } else {
+                        let prio = String(item.PRIORITY || '').toUpperCase().trim();
+                        if(prio && prio !== 'NULL' && prio !== 'N/A' && prio !== '-') {
+                            let ic = String(item.ITEMCODE || 'UNKNOWN').trim().toUpperCase();
+                            if(!icGroups[ic]) icGroups[ic] = [];
+                            icGroups[ic].push(item);
+                        } else {
+                            item.APP_TAB_ASSIGNMENT = 'location';
+                        }
+                    }
+                });
+
+                for(let ic in icGroups) {
+                    let rows = icGroups[ic];
+                    let eligible = rows.filter(r => {
+                        let ptr = parseFloat(String(r.PTRAVAILABLE).replace(/,/g,'')) || 0;
+                        let ss = parseFloat(String(r.SEASONSUPPLY || r.SEASON_SUPPLY).replace(/,/g,'')) || 0;
+                        return ptr > (0.10 * ss);
+                    });
+                    let pool = eligible.length > 0 ? eligible : rows;
+                    pool.sort((a,b) => {
+                        let pa = parseFloat(a.PRIORITY); if(isNaN(pa)) pa = 999;
+                        let pb = parseFloat(b.PRIORITY); if(isNaN(pb)) pb = 999;
+                        if(pa !== pb) return pa - pb;
+                        let ptra = parseFloat(String(a.PTRAVAILABLE).replace(/,/g,'')) || 0;
+                        let ptrb = parseFloat(String(b.PTRAVAILABLE).replace(/,/g,'')) || 0;
+                        return ptrb - ptra;
+                    });
+                    let winner = pool[0];
+                    rows.forEach(r => {
+                        if(r.UNIQUE_ID === winner.UNIQUE_ID) r.APP_TAB_ASSIGNMENT = 'season';
+                        else r.APP_TAB_ASSIGNMENT = 'location';
+                    });
+                }
+
                 rebuildMasterInventoryIndexes();
                 invalidateMasterDerivedInventories();
             }
@@ -4289,10 +3803,6 @@ function toggleDriveQuickRequestItem(domId) {
                 });
             }
 
-            if (avRuleClearOps.length) {
-                persistMasterAvRuleClearOps(avRuleClearOps);
-            }
-
             if (didStructuralDataChange) {
                 applyLocalEdits();
                 applyPendingRequestArchives();
@@ -4301,453 +3811,29 @@ function toggleDriveQuickRequestItem(domId) {
             }
         }
 
-        function normalizeAppRoleValue(role = '') {
-            return String(role || '').toUpperCase().replace(/\s+/g, '');
-        }
-
-        function isQcSupervisorRoleValue(role = '') {
-            const roleDisplay = String(role || '').toUpperCase();
-            const normalizedRole = normalizeAppRoleValue(role);
-            return normalizedRole.includes('QCSUPERVISOR') || normalizedRole.includes('QCSUP') || roleDisplay.includes('QC SUPERVISOR');
-        }
-
-        function isStandardQcRoleValue(role = '') {
-            const normalizedRole = normalizeAppRoleValue(role);
-            return !isQcSupervisorRoleValue(role) && (normalizedRole === 'QC' || normalizedRole === 'QUALITYCONTROL');
-        }
-
-        function isDockAssignableRoleValue(role = '') {
-            return isStandardQcRoleValue(role) || isQcSupervisorRoleValue(role);
-        }
-
-        function getDefaultDockTeamInfo() {
-            return { checker: '', inspector: '', mistake: '', status: 'Loading' };
-        }
-
-        function normalizeDockTeamDockKey(dockNum = '') {
-            return String(dockNum || '').trim();
-        }
-
-        function normalizeDockTeamInfo(info = null) {
-            const base = getDefaultDockTeamInfo();
-            const raw = info && typeof info === 'object' ? info : {};
-            return {
-                checker: String(raw.checker || raw.CHECKER || '').trim(),
-                inspector: String(raw.inspector || raw.INSPECTOR || '').trim(),
-                mistake: String(raw.mistake || raw.MISTAKE || '').trim(),
-                status: String(raw.status || raw.STATUS || base.status).trim() || base.status
-            };
-        }
-
-        function readLegacyDockTeamInfo(dockNum = '') {
-            const dockKey = normalizeDockTeamDockKey(dockNum);
-            if (!dockKey) return getDefaultDockTeamInfo();
-            try {
-                return normalizeDockTeamInfo(JSON.parse(localStorage.getItem('gnc_dock_team_' + dockKey) || '{}'));
-            } catch (error) {
-                return getDefaultDockTeamInfo();
-            }
-        }
-
-        function cacheDockTeamInfo(dockNum = '', info = null) {
-            const dockKey = normalizeDockTeamDockKey(dockNum);
-            if (!dockKey) return getDefaultDockTeamInfo();
-            const normalized = normalizeDockTeamInfo(info);
-            dockTeamStatusByDock.set(dockKey, normalized);
-            localStorage.setItem('gnc_dock_team_' + dockKey, JSON.stringify(normalized));
-            return normalized;
-        }
-
-        function getDockTeamInfo(dockNum = '') {
-            const dockKey = normalizeDockTeamDockKey(dockNum);
-            if (!dockKey) return getDefaultDockTeamInfo();
-            if (dockTeamStatusByDock.has(dockKey)) return normalizeDockTeamInfo(dockTeamStatusByDock.get(dockKey));
-            const legacy = readLegacyDockTeamInfo(dockKey);
-            dockTeamStatusByDock.set(dockKey, legacy);
-            return legacy;
-        }
-
-        function maybeWarnDockTeamSchemaMissing() {
-            if (dockTeamSchemaWarningShown || !currentUser) return;
-            dockTeamSchemaWarningShown = true;
-            showToast('Schema Required', 'Run dock_team_status_migration.sql in Supabase to share dock team assignments across users.', true);
-        }
-
-        async function ensureDockTeamSchemaReady(force = false) {
-            if (dockTeamSchemaReady === true && !force) return true;
-            if (dockTeamSchemaReady === false && !force) return false;
-            if (dockTeamSchemaPromise && !force) return dockTeamSchemaPromise;
-            dockTeamSchemaPromise = (async () => {
-                if (navigator.onLine === false) return false;
-                try {
-                    const url = `${SUPABASE_URL}/rest/v1/v2_dock_team_status?select=dock_num,checker&limit=1`;
-                    const response = await fetchWithTimeout(url, {
-                        method: 'GET',
-                        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }
-                    }, SUPABASE_READ_TIMEOUT_MS, 'Dock Team Schema');
-                    if (!response.ok) {
-                        const errorText = await getResponseError(response, `Supabase read failed (${response.status})`);
-                        const normalizedError = String(errorText || '').toLowerCase();
-                        if (normalizedError.includes('v2_dock_team_status') || normalizedError.includes('dock_num') || normalizedError.includes('checker') || normalizedError.includes('relation') || normalizedError.includes('column')) {
-                            dockTeamSchemaReady = false;
-                            maybeWarnDockTeamSchemaMissing();
-                            return false;
-                        }
-                        return false;
-                    }
-                    dockTeamSchemaReady = true;
-                    return true;
-                } catch (error) {
-                    const normalizedError = String(error && error.message ? error.message : error || '').toLowerCase();
-                    if (normalizedError.includes('v2_dock_team_status') || normalizedError.includes('dock_num') || normalizedError.includes('checker') || normalizedError.includes('relation') || normalizedError.includes('column')) {
-                        dockTeamSchemaReady = false;
-                        maybeWarnDockTeamSchemaMissing();
-                        return false;
-                    }
-                    return false;
-                } finally {
-                    dockTeamSchemaPromise = null;
-                }
-            })();
-            return dockTeamSchemaPromise;
-        }
-
-        async function ensureDockTeamStatusLoaded(forceRefresh = false) {
-            if (!forceRefresh && dockTeamStatusLoaded) return dockTeamStatusByDock;
-            if (!forceRefresh && dockTeamStatusPromise) return dockTeamStatusPromise;
-            dockTeamStatusPromise = (async () => {
-                const schemaReady = await ensureDockTeamSchemaReady(forceRefresh);
-                if (!schemaReady) {
-                    dockTeamStatusLoaded = false;
-                    return dockTeamStatusByDock;
-                }
-                const rows = await supabaseFetch('v2_dock_team_status', 'GET', null, 'select=*');
-                const nextMap = new Map();
-                (rows || []).forEach((row) => {
-                    const dockKey = normalizeDockTeamDockKey(row.dock_num || row.DOCK_NUM || row.dock || row.DOCK);
-                    if (!dockKey) return;
-                    nextMap.set(dockKey, normalizeDockTeamInfo(row));
-                });
-                dockTeamStatusByDock = nextMap;
-                dockTeamStatusLoaded = true;
-                return dockTeamStatusByDock;
-            })().catch(() => dockTeamStatusByDock).finally(() => {
-                dockTeamStatusPromise = null;
-            });
-            return dockTeamStatusPromise;
-        }
-
-        function isDockTeamAssignedToCurrentUser(dockNum = '') {
-            const info = getDockTeamInfo(dockNum);
-            return [info.checker, info.inspector, info.mistake].some(value => isAssignedToCurrentUser(value));
-        }
-
-        function getDefaultDockItemProgress() {
-            return { checker: false, inspector: false, checkerCompletedBy: '', inspectorCompletedBy: '', updatedAt: '' };
-        }
-
-        function normalizeDockItemUniqueId(uniqueId = '') {
-            return String(uniqueId || '').trim();
-        }
-
-        function normalizeDockItemProgress(progress = null) {
-            const base = getDefaultDockItemProgress();
-            const raw = progress && typeof progress === 'object' ? progress : {};
-            const toBool = (value) => value === true || value === 'true' || value === 1 || value === '1';
-            let checker = toBool(raw.checker ?? raw.CHECKER ?? raw.checker_done ?? raw.CHECKER_DONE);
-            let inspector = toBool(raw.inspector ?? raw.INSPECTOR ?? raw.inspector_done ?? raw.INSPECTOR_DONE);
-            if (inspector) checker = true;
-            return {
-                checker,
-                inspector,
-                checkerCompletedBy: String(raw.checkerCompletedBy || raw.CHECKERCOMPLETEDBY || raw.checker_completed_by || raw.CHECKER_COMPLETED_BY || '').trim(),
-                inspectorCompletedBy: String(raw.inspectorCompletedBy || raw.INSPECTORCOMPLETEDBY || raw.inspector_completed_by || raw.INSPECTOR_COMPLETED_BY || '').trim(),
-                updatedAt: String(raw.updatedAt || raw.UPDATEDAT || raw.updated_at || raw.UPDATED_AT || '').trim() || base.updatedAt
-            };
-        }
-
-        function readLegacyDockItemProgress(uniqueId = '') {
-            const normalizedUid = normalizeDockItemUniqueId(uniqueId);
-            if (!normalizedUid) return getDefaultDockItemProgress();
-            try {
-                return normalizeDockItemProgress(JSON.parse(localStorage.getItem('gnc_dock_item_' + normalizedUid) || '{}'));
-            } catch (error) {
-                return getDefaultDockItemProgress();
-            }
-        }
-
-        function cacheDockItemProgress(uniqueId = '', progress = null) {
-            const normalizedUid = normalizeDockItemUniqueId(uniqueId);
-            if (!normalizedUid) return getDefaultDockItemProgress();
-            const normalized = normalizeDockItemProgress(progress);
-            dockItemProgressByUid.set(normalizedUid, normalized);
-            localStorage.setItem('gnc_dock_item_' + normalizedUid, JSON.stringify(normalized));
-            return normalized;
-        }
-
-        function getDockItemProgress(uniqueId = '') {
-            const normalizedUid = normalizeDockItemUniqueId(uniqueId);
-            if (!normalizedUid) return getDefaultDockItemProgress();
-            if (dockItemProgressByUid.has(normalizedUid)) return normalizeDockItemProgress(dockItemProgressByUid.get(normalizedUid));
-            const legacy = readLegacyDockItemProgress(normalizedUid);
-            dockItemProgressByUid.set(normalizedUid, legacy);
-            return legacy;
-        }
-
-        function maybeWarnDockItemSchemaMissing() {
-            if (dockItemSchemaWarningShown || !currentUser) return;
-            dockItemSchemaWarningShown = true;
-            showToast('Schema Required', 'Run dock_item_status_migration.sql in Supabase to share dock row check and inspect progress across users.', true);
-        }
-
-        async function ensureDockItemSchemaReady(force = false) {
-            if (dockItemSchemaReady === true && !force) return true;
-            if (dockItemSchemaReady === false && !force) return false;
-            if (dockItemSchemaPromise && !force) return dockItemSchemaPromise;
-            dockItemSchemaPromise = (async () => {
-                if (navigator.onLine === false) return false;
-                try {
-                    const url = `${SUPABASE_URL}/rest/v1/v2_dock_item_status?select=unique_id,checker_done&limit=1`;
-                    const response = await fetchWithTimeout(url, {
-                        method: 'GET',
-                        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }
-                    }, SUPABASE_READ_TIMEOUT_MS, 'Dock Item Schema');
-                    if (!response.ok) {
-                        const errorText = await getResponseError(response, `Supabase read failed (${response.status})`);
-                        const normalizedError = String(errorText || '').toLowerCase();
-                        if (normalizedError.includes('v2_dock_item_status') || normalizedError.includes('unique_id') || normalizedError.includes('checker_done') || normalizedError.includes('relation') || normalizedError.includes('column')) {
-                            dockItemSchemaReady = false;
-                            maybeWarnDockItemSchemaMissing();
-                            return false;
-                        }
-                        return false;
-                    }
-                    dockItemSchemaReady = true;
-                    return true;
-                } catch (error) {
-                    const normalizedError = String(error && error.message ? error.message : error || '').toLowerCase();
-                    if (normalizedError.includes('v2_dock_item_status') || normalizedError.includes('unique_id') || normalizedError.includes('checker_done') || normalizedError.includes('relation') || normalizedError.includes('column')) {
-                        dockItemSchemaReady = false;
-                        maybeWarnDockItemSchemaMissing();
-                        return false;
-                    }
-                    return false;
-                } finally {
-                    dockItemSchemaPromise = null;
-                }
-            })();
-            return dockItemSchemaPromise;
-        }
-
-        async function ensureDockItemStatusLoaded(forceRefresh = false) {
-            if (!forceRefresh && dockItemProgressLoaded) return dockItemProgressByUid;
-            if (!forceRefresh && dockItemProgressPromise) return dockItemProgressPromise;
-            dockItemProgressPromise = (async () => {
-                const schemaReady = await ensureDockItemSchemaReady(forceRefresh);
-                if (!schemaReady) {
-                    dockItemProgressLoaded = false;
-                    return dockItemProgressByUid;
-                }
-                const rows = await supabaseFetch('v2_dock_item_status', 'GET', null, 'select=*');
-                const nextMap = new Map();
-                (rows || []).forEach((row) => {
-                    const normalizedUid = normalizeDockItemUniqueId(row.unique_id || row.UNIQUE_ID);
-                    if (!normalizedUid) return;
-                    nextMap.set(normalizedUid, normalizeDockItemProgress(row));
-                });
-                dockItemProgressByUid = nextMap;
-                dockItemProgressLoaded = true;
-                return dockItemProgressByUid;
-            })().catch(() => dockItemProgressByUid).finally(() => {
-                dockItemProgressPromise = null;
-            });
-            return dockItemProgressPromise;
-        }
-
-        function canEditDockWorkflow() {
-            const access = getRoleAccessState();
-            return !!(access.isAdmin || access.isQcSupervisor);
-        }
-
-        function getDockRowQueueStage(item = null) {
-            const progress = getDockItemProgress(item && item.UNIQUE_ID);
-            if (progress.checker && progress.inspector) return 'complete';
-            if (progress.checker) return 'inspector';
-            return 'checker';
-        }
-
-        function isDockRowComplete(item = null) {
-            return getDockRowQueueStage(item) === 'complete';
-        }
-
-        function getDockRowQueueOwner(item = null) {
-            if (!item) return '';
-            const teamInfo = getDockTeamInfo(item.DOCK_NUM);
-            const queueStage = getDockRowQueueStage(item);
-            if (queueStage === 'checker') return firstNonEmptyValue(teamInfo.checker, item.ASSIGNEDTO, '');
-            if (queueStage === 'inspector') return firstNonEmptyValue(teamInfo.inspector, teamInfo.checker, item.ASSIGNEDTO, '');
-            return '';
-        }
-
-        function isDockRowQueuedForCurrentUser(item = null) {
-            const access = getRoleAccessState();
-            if (access.isAdmin || access.isQcSupervisor) return true;
-            return isAssignedToCurrentUser(getDockRowQueueOwner(item));
-        }
-
-        function canCurrentUserMarkDockStage(item = null, stage = '') {
-            if (!item) return false;
-            const normalizedStage = stage === 'inspector' ? 'inspector' : 'checker';
-            const access = getRoleAccessState();
-            const progress = getDockItemProgress(item.UNIQUE_ID);
-            const queueStage = getDockRowQueueStage(item);
-            if (normalizedStage === 'checker') {
-                if (progress.checker) return false;
-                if (access.isAdmin || access.isQcSupervisor) return true;
-                return queueStage === 'checker' && isDockRowQueuedForCurrentUser(item);
-            }
-            if (progress.inspector || !progress.checker) return false;
-            if (access.isAdmin || access.isQcSupervisor) return true;
-            return queueStage === 'inspector' && isDockRowQueuedForCurrentUser(item);
-        }
-        function updateDockAssignableTeamOptions(preservedValues = null) {
-            const selectIds = ['dock-checker', 'dock-inspector', 'dock-mistake'];
-            const resolvedValues = preservedValues && typeof preservedValues === 'object' ? {
-                checker: String(preservedValues.checker || ''),
-                inspector: String(preservedValues.inspector || ''),
-                mistake: String(preservedValues.mistake || '')
-            } : {};
-            const baseNames = Array.from(new Set(dockAssignableUsers.map(name => String(name || '').trim()).filter(Boolean)))
-                .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
-            selectIds.forEach((id) => {
-                const el = document.getElementById(id);
-                if (!el) return;
-                const field = id.replace('dock-', '');
-                const currentValue = Object.prototype.hasOwnProperty.call(resolvedValues, field) ? resolvedValues[field] : String(el.value || '');
-                const optionNames = baseNames.slice();
-                if (currentValue && !optionNames.includes(currentValue)) optionNames.push(currentValue);
-                optionNames.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
-                el.innerHTML = '';
-                el.add(new Option('Unassigned', ''));
-                optionNames.forEach((name) => el.add(new Option(name, name)));
-                el.value = currentValue;
-            });
-        }
-
-        async function ensureDockAssignableUsers(forceRefresh = false) {
-            if (!forceRefresh && dockAssignableUsers.length) return dockAssignableUsers;
-            if (!forceRefresh && dockAssignableUsersPromise) return dockAssignableUsersPromise;
-            const previousUsers = dockAssignableUsers.slice();
-            dockAssignableUsersPromise = (async () => {
-                const rows = await supabaseFetch('v2_app_users', 'GET', null, 'select=*');
-                dockAssignableUsers = Array.from(new Set((rows || [])
-                    .filter((user) => isDockAssignableRoleValue(user.role || user.ROLE))
-                    .map((user) => String(user.username || user.USERNAME || '').trim())
-                    .filter(Boolean)
-                )).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
-                updateDockAssignableTeamOptions();
-                return dockAssignableUsers;
-            })().catch(() => {
-                dockAssignableUsers = previousUsers;
-                updateDockAssignableTeamOptions();
-                return dockAssignableUsers;
-            }).finally(() => {
-                dockAssignableUsersPromise = null;
-            });
-            return dockAssignableUsersPromise;
-        }
-
-        const ROLE_ACCESS_VIEWS = ['drive','tasks','docks','av','request','reserves','sales-office','reports','hours','low-stock','review'];
-
-        function getRoleAccessState() {
-            const roleDisplay = String(currentRole || safeRole || '').toUpperCase();
-            const normalizedRole = String(safeRole || roleDisplay).toUpperCase().replace(/\s+/g, '');
-            const isRep = normalizedRole === 'REP' || normalizedRole === 'SALESREP' || normalizedRole.includes('SALESREP') || roleDisplay.includes('SALES REP');
-            const isQcSupervisor = normalizedRole.includes('QCSUPERVISOR') || normalizedRole.includes('QCSUP') || roleDisplay.includes('QC SUPERVISOR');
-            const isQc = !isQcSupervisor && (normalizedRole === 'QC' || normalizedRole.startsWith('QC'));
-            const isCsr = normalizedRole === 'CSR' || normalizedRole.includes('CSR');
-            const isAdmin = normalizedRole.includes('ADMIN') || normalizedRole.includes('MANAGER') || isCsr || (!isRep && !isQcSupervisor && !isQc);
-            const allowedViews = new Set(['home']);
-            if (isAdmin) {
-                ROLE_ACCESS_VIEWS.forEach(viewId => allowedViews.add(viewId));
-            } else if (isRep) {
-                ['av', 'docks'].forEach(viewId => allowedViews.add(viewId));
-            } else if (isQcSupervisor) {
-                ['drive', 'docks'].forEach(viewId => allowedViews.add(viewId));
-            } else if (isQc) {
-                ['docks'].forEach(viewId => allowedViews.add(viewId));
-            }
-            return { isAdmin, isRep, isQcSupervisor, isQc, allowedViews };
-        }
-
-        function canAccessView(viewId) {
-            const targetView = String(viewId || '').trim();
-            if (!targetView || targetView === 'home' || targetView === 'detail') return true;
-            return getRoleAccessState().allowedViews.has(targetView);
-        }
-
-        function getAssignmentMatchKeys(value = '') {
-            const raw = String(value || '').toLowerCase().trim();
-            if (!raw) return [];
-            const keys = new Set();
-            const sections = raw.split(/[,&/|]+/).map(part => part.replace(/[^a-z0-9]+/g, ' ').trim()).filter(Boolean);
-            sections.forEach(part => {
-                keys.add(part);
-                part.split(/\s+/).filter(Boolean).forEach(token => keys.add(token));
-            });
-            const full = raw.replace(/[^a-z0-9]+/g, ' ').trim();
-            if (full) {
-                keys.add(full);
-                full.split(/\s+/).filter(Boolean).forEach(token => keys.add(token));
-            }
-            return [...keys];
-        }
-
-        function isAssignedToCurrentUser(assignedValue) {
-            const assignedKeys = getAssignmentMatchKeys(assignedValue);
-            if (!assignedKeys.length) return false;
-            const userKeys = new Set([...getAssignmentMatchKeys(currentUser), ...getAssignmentMatchKeys(currentUserDisplay)]);
-            if (!userKeys.size) return false;
-            return assignedKeys.some(key => userKeys.has(key));
-        }
-
-        function getScopedDocksItems(items = socInventory) {
-            const { isAdmin, isRep, isQcSupervisor, isQc } = getRoleAccessState();
-            let nextItems = Array.isArray(items) ? [...items] : [];
-            if (isRep) {
-                return nextItems.filter(item => isMyRep(firstNonEmptyValue(item && item.SALESREPNAME, item && item.SALESREP, item && item.SALES_REP, item && item.SALESREPID, '')));
-            }
-            if (isQc && !isAdmin && !isQcSupervisor) {
-                return nextItems.filter(item => !isDockRowComplete(item) && isDockRowQueuedForCurrentUser(item));
-            }
-            return nextItems;
-        }
-
         function applyRolePermissions() {
-            document.getElementById('view-login').style.display='none';
-            document.getElementById('app-wrapper').classList.remove('hidden');
-            const access = getRoleAccessState();
-            document.querySelectorAll('.role-access').forEach(el => {
-                const isAllowed =
-                    (access.isAdmin && el.classList.contains('role-admin')) ||
-                    (access.isRep && el.classList.contains('role-rep')) ||
-                    (access.isQcSupervisor && el.classList.contains('role-qc-supervisor')) ||
-                    (access.isQc && el.classList.contains('role-qc'));
-                el.classList.toggle('hidden', !isAllowed);
-                el.style.display = '';
-            });
+            document.getElementById('view-login').style.display='none'; 
+            document.getElementById('app-wrapper').classList.remove('hidden'); 
+            document.querySelectorAll('.admin-only, .admin-rep-only, .admin-rep-csr-only, .admin-csr-only, .rep-hidden, .csr-hidden, .dylan-only').forEach(el=>{el.classList.remove('hidden');el.style.display='';});
+            let roleStr=String(currentRole).toUpperCase(); 
+            let userStr=String(currentUser).toLowerCase(); 
+            let isRep=roleStr.includes('REP'); 
+            let isCsr=roleStr.includes('CSR'); 
+            let isQc=roleStr.includes('QC'); 
+            let isDylan=userStr.includes('dylan'); 
+            let isAdmin=(!isRep&&!isCsr&&!isQc)||roleStr.includes('ADMIN')||roleStr.includes('MANAGER')||isDylan;
+            if(isAdmin){} 
+            else if(isRep){ document.querySelectorAll('.rep-hidden, .admin-only, .admin-csr-only').forEach(el=>el.classList.add('hidden')); document.querySelectorAll("[onclick*=\"switchView('drive')\"], [onclick*=\"switchView('tasks')\"], [onclick*=\"switchView('reserves')\"], [onclick*=\"switchView('sales-office')\"], [onclick*=\"switchView('hours')\"], [onclick*=\"switchView('low-stock')\"], [onclick*=\"switchView('review')\"]").forEach(el=>el.classList.add('hidden')); document.querySelectorAll("[onclick*=\"switchView('reports')\"]").forEach(el=>el.classList.remove('hidden')); } 
+            else if(isCsr){ document.querySelectorAll('.csr-hidden, .admin-only').forEach(el=>el.classList.add('hidden')); } 
+            else if(isQc){ document.querySelectorAll('.admin-only, .admin-rep-only, .admin-rep-csr-only, .admin-csr-only').forEach(el=>el.classList.add('hidden')); }
+            if(!isDylan&&!isAdmin){ document.querySelectorAll('.dylan-only').forEach(el=>el.classList.add('hidden')); }
             updateFooterRequestBadge();
-            const currentView = getCurrentVisibleViewId();
-            if (currentView && currentView !== 'home' && !canAccessView(currentView)) {
-                hasAppliedInitialHomeView = true;
-                switchView('home');
-                return;
-            }
-            if (!hasAppliedInitialHomeView) {
-                hasAppliedInitialHomeView = true;
+            if(!hasAppliedInitialHomeView){
+                hasAppliedInitialHomeView=true;
                 switchView('home');
             }
         }
+
         function toggleMenu(forceOpen = null) { const drawer = document.getElementById('side-drawer'); const overlay = document.getElementById('drawer-overlay'); if (!drawer || !overlay) return; const shouldOpen = forceOpen === null ? !drawer.classList.contains('open') : !!forceOpen; drawer.classList.toggle('open', shouldOpen); overlay.classList.toggle('open', shouldOpen); updateFooterNavState(); }
 
         function showToast(title, message, isAlert = false) { 
@@ -4908,19 +3994,18 @@ function toggleDriveQuickRequestItem(domId) {
 
         function switchView(viewId) { 
             closeDriveQuickFiltersModal();
-            const requestedViewId = String(viewId || 'home').trim();
-            const nextViewId = canAccessView(requestedViewId) ? requestedViewId : 'home';
             ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-detail','view-docks','view-request','view-reserves','view-av', 'view-hours'].forEach(id=>{
                 const el=document.getElementById(id);
                 if(el)el.classList.add('hidden');
             }); 
-            const targetView = document.getElementById('view-'+nextViewId);
+            const targetView = document.getElementById('view-'+viewId);
             if (targetView) targetView.classList.remove('hidden');
-            queueViewRender(nextViewId);
+            queueViewRender(viewId);
             updateGlobalBackButton();
             syncGlobalHeaderChrome();
             updateFooterNavState();
         }
+
         function goBackUniversal() {
             const currentView = getCurrentVisibleViewId();
             if (currentView === 'detail') {
@@ -5253,10 +4338,12 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
             return nextItems;
         }
 
-        function getCurrentAVBaseItems() {
-            const searchInput = document.getElementById('av-search');
-            const term = String(searchInput ? searchInput.value : '').toLowerCase().trim();
-            const { isRep } = getRoleAccessState();
+        function renderAV() {
+            if (ensureViewDataForRender('av')) return;
+            const container = document.getElementById('av-content');
+            const crumb = document.getElementById('av-crumb');
+            const term = document.getElementById('av-search').value.toLowerCase().trim();
+
             let items = [];
             if (activeAVTab === 'open') {
                 items = (isDatasetLoaded('avOpen', 'initial') ? avOpenInventory : fullInventory).filter(i => {
@@ -5264,272 +4351,54 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
                     let season = String(i.SEASON || '').toUpperCase();
                     return lts > 0 && !season.includes('Y') && !season.includes('Z');
                 });
-                if (activeAvOpenTab === 'photos') items = items.filter(avItemHasPhotos);
+                if (activeAvOpenTab === 'photos') {
+                    items = items.filter(avItemHasPhotos);
+                }
             } else {
-                items = [...reservesInventory];
-                if (isRep) items = items.filter(i => isMyRep(firstNonEmptyValue(i && i.SALESREPNAME, i && i.SALESREP, i && i.SALES_REP, i && i.SALESREPID, '')));
+                items = reservesInventory;
+                if (safeRole === 'SALESREP') items = items.filter(i => isMyRep(i.SALESREPNAME));
             }
+
             if (term) {
                 items = filterBySearch(items, term, activeAVTab === 'open' ? 'av_open' : 'av_reserves');
             }
-            return { items, term };
-        }
-        function buildAVExportContext(baseItems = null, term = '') {
-            let rows = Array.isArray(baseItems) ? [...baseItems] : [];
-            const searchTerm = String(term || '').trim();
-            let title = activeAVTab === 'open' ? 'AV Open Stock' : 'AV My Reserves';
-            let fileLabel = activeAVTab === 'open' ? 'av-open-stock' : 'av-my-reserves';
-
-            if (activeAVTab === 'open') {
-                if (activeAvOpenTab === 'photos') {
-                    rows = sortAvOpenItems(rows, 'name');
-                    title = searchTerm ? 'AV Open Stock Photos Search' : 'AV Open Stock Photos';
-                    fileLabel = searchTerm ? 'av-open-photos-search' : 'av-open-photos';
-                } else if (searchTerm) {
-                    rows.sort((a, b) => {
-                        let priA = parseFloat(a.PRIORITY);
-                        let priB = parseFloat(b.PRIORITY);
-                        if (isNaN(priA)) priA = Infinity;
-                        if (isNaN(priB)) priB = Infinity;
-                        if (priA !== priB) return priA - priB;
-                        return String(a.LOCATIONCODE || '').localeCompare(String(b.LOCATIONCODE || ''), undefined, { numeric: true });
-                    });
-                    title = 'AV Open Stock Search';
-                    fileLabel = 'av-open-search';
-                } else {
-                    rows.sort((a, b) => {
-                        const nameCompare = String(a.COMMONNAME || '').localeCompare(String(b.COMMONNAME || ''));
-                        if (nameCompare !== 0) return nameCompare;
-                        const sizeCompare = String(a.CONTSIZE || '').localeCompare(String(b.CONTSIZE || ''), undefined, { numeric: true });
-                        if (sizeCompare !== 0) return sizeCompare;
-                        return String(a.LOCATIONCODE || '').localeCompare(String(b.LOCATIONCODE || ''), undefined, { numeric: true });
-                    });
-                }
-            } else {
-                if (avResLevel >= 1 && selectedAvResName) {
-                    rows = rows.filter(i => i.COMMONNAME === selectedAvResName);
-                    title = `AV My Reserves ${selectedAvResName}`;
-                    fileLabel = `av-my-reserves-${selectedAvResName}`;
-                }
-                if (avResLevel >= 2 && selectedAvResSize) {
-                    rows = rows.filter(i => i.CONTSIZE === selectedAvResSize);
-                    title = `${title} ${selectedAvResSize}`;
-                    fileLabel = `${fileLabel}-${selectedAvResSize}`;
-                    rows.sort((a, b) => String(a.CUSTOMERNAME || '').localeCompare(String(b.CUSTOMERNAME || '')));
-                } else if (avResLevel >= 1) {
-                    rows.sort((a, b) => {
-                        const sizeCompare = String(a.CONTSIZE || '').localeCompare(String(b.CONTSIZE || ''), undefined, { numeric: true });
-                        if (sizeCompare !== 0) return sizeCompare;
-                        return String(a.LOCATIONCODE || '').localeCompare(String(b.LOCATIONCODE || ''), undefined, { numeric: true });
-                    });
-                } else {
-                    rows.sort((a, b) => {
-                        const nameCompare = String(a.COMMONNAME || '').localeCompare(String(b.COMMONNAME || ''));
-                        if (nameCompare !== 0) return nameCompare;
-                        const sizeCompare = String(a.CONTSIZE || '').localeCompare(String(b.CONTSIZE || ''), undefined, { numeric: true });
-                        if (sizeCompare !== 0) return sizeCompare;
-                        const customerCompare = String(a.CUSTOMERNAME || '').localeCompare(String(b.CUSTOMERNAME || ''));
-                        if (customerCompare !== 0) return customerCompare;
-                        return String(a.LOCATIONCODE || '').localeCompare(String(b.LOCATIONCODE || ''), undefined, { numeric: true });
-                    });
-                }
-                if (searchTerm) {
-                    title += ' Search';
-                    fileLabel += '-search';
-                }
-            }
-
-            return {
-                rows,
-                title: title.replace(/\s+/g, ' ').trim(),
-                fileLabel,
-                searchTerm
-            };
-        }
-
-        function getAVExportColumns() {
-            if (activeAVTab === 'open') {
-                return [
-                    { label: 'Common Name', value: (row) => row.COMMONNAME || '' },
-                    { label: 'Container Size', value: (row) => row.CONTSIZE || '' },
-                    { label: 'Location', value: (row) => row.LOCATIONCODE || '' },
-                    { label: 'Lot Code', value: (row) => row.LOTCODE || '' },
-                    { label: 'Item Code', value: (row) => row.ITEMCODE || '' },
-                    { label: 'Qty Available', value: (row) => row.PTRAVAILABLE || '' },
-                    { label: 's_LTS', value: (row) => row.S_LTS || '' },
-                    { label: 'Priority', value: (row) => row.PRIORITY || '' },
-                    { label: 'Season', value: (row) => row.SEASON || '' },
-                    { label: 'Quality Code', value: (row) => row.QUALITYCODE || '' },
-                    { label: 'Field Tag Color', value: (row) => row.FIELDTAGCOLOR || '' },
-                    { label: 'Plant Group', value: (row) => row.PLANTGROUPCODE || '' },
-                    { label: 'Spec', value: (row) => row.SPEC || '' },
-                    { label: 'Caliper', value: (row) => row.CALIPER || '' },
-                    { label: 'AV Note', value: (row) => row.AV_NOTE || '' },
-                    { label: 'Sales Note', value: (row) => firstNonEmptyValue(row.SALES_NOTE, row.SALESNOTE, row.SALES_DESC, row.SALESDESC) || '' },
-                    { label: 'Hold Code', value: (row) => firstNonEmptyValue(row.HOLDSTOPCODE, row.HOLD_STOP_CODE, row.HOLDSTOP) || '' },
-                    { label: 'Hold Reason', value: (row) => firstNonEmptyValue(row.HOLDSTOPREASON, row.HOLD_STOP_REASON, row.HOLDREASON) || '' },
-                    { label: 'Photo Links', value: (row) => getPhotoUrlList(getRowPhotoLink(row, 'av')).join('\n') }
-                ];
-            }
-            return [
-                { label: 'Customer', value: (row) => firstNonEmptyValue(row.CUSTOMERNAME, row.CUSTOMER) || '' },
-                { label: 'Consignee', value: (row) => firstNonEmptyValue(row.CONSIGNEENAME, row.CONSIGNEE) || '' },
-                { label: 'Sales Rep', value: (row) => firstNonEmptyValue(row.SALESREPNAME, row.SALESREP, row.SALES_REP) || '' },
-                { label: 'Common Name', value: (row) => row.COMMONNAME || '' },
-                { label: 'Container Size', value: (row) => row.CONTSIZE || '' },
-                { label: 'Location', value: (row) => row.LOCATIONCODE || '' },
-                { label: 'Lot Code', value: (row) => row.LOTCODE || '' },
-                { label: 'Item Code', value: (row) => row.ITEMCODE || '' },
-                { label: 'Qty Ordered', value: (row) => firstNonEmptyValue(row.QTY_ORDERED, row.QUANTITYORDERED) || '' },
-                { label: 'Qty Shipped', value: (row) => firstNonEmptyValue(row.QTY_SHIPPED, row.QUANTITYSHIPPED) || '' },
-                { label: 'Qty Available', value: (row) => row.PTRAVAILABLE || '' },
-                { label: 'Priority', value: (row) => row.PRIORITY || '' },
-                { label: 'Season Supply', value: (row) => row.SEASONSUPPLY || '' },
-                { label: 'Photo Links', value: (row) => getPhotoUrlList(getRowPhotoLink(row, 'av')).join('\n') }
-            ];
-        }
-
-        function sanitizeAVExportFilePart(value = '') {
-            const cleaned = String(value || '')
-                .trim()
-                .replace(/[^a-z0-9]+/gi, '-')
-                .replace(/^-+|-+$/g, '')
-                .replace(/-+/g, '-')
-                .toLowerCase();
-            return cleaned || 'av-export';
-        }
-
-        function getAVWorksheetName(value = 'AV Export') {
-            const cleaned = String(value || 'AV Export').replace(/[\\/*?:\[\]]/g, ' ').replace(/\s+/g, ' ').trim();
-            return (cleaned || 'AV Export').slice(0, 31);
-        }
-
-        function escapeExcelXml(value = '') {
-            return String(value == null ? '' : value)
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&apos;');
-        }
-
-        function updateAVExportButton(count = 0) {
-            const button = document.getElementById('av-export-btn');
-            const label = document.getElementById('av-export-btn-label');
-            if (!button || !label) return;
-            label.innerText = count > 0 ? `Export Excel (${count})` : 'Export Excel';
-            button.disabled = count === 0;
-            button.setAttribute('aria-disabled', count === 0 ? 'true' : 'false');
-            button.classList.toggle('opacity-50', count === 0);
-            button.classList.toggle('cursor-not-allowed', count === 0);
-            button.classList.toggle('pointer-events-none', count === 0);
-        }
-
-        function buildAVExcelWorkbookXml(columns, rows, title, searchTerm = '') {
-            const exportedAt = new Date().toLocaleString('en-US');
-            const exportedBy = currentUserDisplay || currentUser || 'Unknown';
-            const mergeAcross = Math.max(columns.length - 1, 0);
-            const headerCells = columns.map((column) => `<Cell ss:StyleID="Header"><Data ss:Type="String">${escapeExcelXml(column.label)}</Data></Cell>`).join('');
-            const bodyRows = rows.map((row) => `<Row>${columns.map((column) => `<Cell><Data ss:Type="String">${escapeExcelXml(column.value(row))}</Data></Cell>`).join('')}</Row>`).join('');
-            return `<?xml version="1.0"?>
-<?mso-application progid="Excel.Sheet"?>
-<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
- xmlns:o="urn:schemas-microsoft-com:office:office"
- xmlns:x="urn:schemas-microsoft-com:office:excel"
- xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
- xmlns:html="http://www.w3.org/TR/REC-html40">
- <Styles>
-  <Style ss:ID="Default" ss:Name="Normal">
-   <Alignment ss:Vertical="Top" ss:WrapText="1"/>
-   <Font ss:FontName="Calibri" ss:Size="11"/>
-  </Style>
-  <Style ss:ID="Title">
-   <Font ss:Bold="1" ss:Size="14"/>
-  </Style>
-  <Style ss:ID="Header">
-   <Font ss:Bold="1"/>
-   <Interior ss:Color="#E6F6EF" ss:Pattern="Solid"/>
-  </Style>
-  <Style ss:ID="MetaLabel">
-   <Font ss:Bold="1"/>
-  </Style>
- </Styles>
- <Worksheet ss:Name="${escapeExcelXml(getAVWorksheetName(title))}">
-  <Table>
-   <Row><Cell ss:StyleID="Title" ss:MergeAcross="${mergeAcross}"><Data ss:Type="String">${escapeExcelXml(title)}</Data></Cell></Row>
-   <Row><Cell ss:StyleID="MetaLabel"><Data ss:Type="String">Search</Data></Cell><Cell ss:MergeAcross="${Math.max(columns.length - 2, 0)}"><Data ss:Type="String">${escapeExcelXml(searchTerm || 'None')}</Data></Cell></Row>
-   <Row><Cell ss:StyleID="MetaLabel"><Data ss:Type="String">Rows</Data></Cell><Cell ss:MergeAcross="${Math.max(columns.length - 2, 0)}"><Data ss:Type="String">${escapeExcelXml(rows.length)}</Data></Cell></Row>
-   <Row><Cell ss:StyleID="MetaLabel"><Data ss:Type="String">Exported By</Data></Cell><Cell ss:MergeAcross="${Math.max(columns.length - 2, 0)}"><Data ss:Type="String">${escapeExcelXml(exportedBy)}</Data></Cell></Row>
-   <Row><Cell ss:StyleID="MetaLabel"><Data ss:Type="String">Exported At</Data></Cell><Cell ss:MergeAcross="${Math.max(columns.length - 2, 0)}"><Data ss:Type="String">${escapeExcelXml(exportedAt)}</Data></Cell></Row>
-   <Row/>
-   <Row>${headerCells}</Row>
-   ${bodyRows}
-  </Table>
- </Worksheet>
-</Workbook>`;
-        }
-
-        function exportCurrentAVToExcel() {
-            if (ensureViewDataForRender('av')) return false;
-            const { items, term } = getCurrentAVBaseItems();
-            const exportContext = buildAVExportContext(items, term);
-            updateAVExportButton(exportContext.rows.length);
-            if (!exportContext.rows.length) {
-                showToast('No Rows', 'There are no AV rows to export right now.', true);
-                return false;
-            }
-            const columns = getAVExportColumns();
-            const workbookXml = buildAVExcelWorkbookXml(columns, exportContext.rows, exportContext.title, exportContext.searchTerm);
-            const timestamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
-            const filename = `gnc-${sanitizeAVExportFilePart(exportContext.fileLabel)}-${timestamp}.xls`;
-            const blob = new Blob([workbookXml], { type: 'application/vnd.ms-excel;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = filename;
-            document.body.appendChild(link);
-            link.click();
-            setTimeout(() => {
-                URL.revokeObjectURL(url);
-                link.remove();
-            }, 0);
-            showToast('Export Ready', `Downloading ${exportContext.rows.length} AV row${exportContext.rows.length === 1 ? '' : 's'} as Excel.`);
-            return false;
-        }
-        function renderAV() {
-            if (ensureViewDataForRender('av')) return;
-            const container = document.getElementById('av-content');
-            const crumb = document.getElementById('av-crumb');
-            const avState = getCurrentAVBaseItems();
-            const term = avState.term;
-            let items = [...avState.items];
-            const exportContext = buildAVExportContext(items, term);
 
             if (items.length === 0) {
                 const emptyLabel = activeAVTab === 'open' ? (activeAvOpenTab === 'photos' ? 'open stock photos' : 'open stock') : 'reserves';
-                updateAVExportButton(0);
                 container.innerHTML = `<div class="p-8 text-center text-gray-400">No ${emptyLabel} found.</div>`;
                 crumb.innerText = 'No Results';
                 return;
             }
 
-            updateAVExportButton(exportContext.rows.length);
-
             if (activeAVTab === 'open') {
                 if (activeAvOpenTab === 'photos') {
-                    crumb.innerText = term.length > 0 ? `Search Results (${exportContext.rows.length})` : `Open Stock Photos (${exportContext.rows.length} items)`;
-                    container.innerHTML = exportContext.rows.map(i => generateCard(i, 'av-photo', 'status-teal')).join('');
+                    items = sortAvOpenItems(items, 'name');
+                    crumb.innerText = term.length > 0 ? `Search Results (${items.length})` : `Open Stock Photos (${items.length} items)`;
+                    container.innerHTML = items.map(i => generateCard(i, 'av-photo', 'status-teal')).join('');
                     return;
                 }
 
                 if (term.length > 0) {
-                    crumb.innerText = `Search Results (${exportContext.rows.length})`;
-                    container.innerHTML = exportContext.rows.map(i => generateCard(i, 'av', 'status-teal')).join('');
+                    crumb.innerText = `Search Results (${items.length})`;
+                    items.sort((a,b) => {
+                        let priA = parseFloat(a.PRIORITY); let priB = parseFloat(b.PRIORITY);
+                        if(isNaN(priA)) priA = Infinity; if(isNaN(priB)) priB = Infinity;
+                        if(priA !== priB) return priA - priB;
+                        return String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""), undefined, {numeric:true});
+                    });
+                    container.innerHTML = items.map(i => generateCard(i, 'av', 'status-teal')).join('');
                     return;
                 }
 
-                crumb.innerText = `Open Stock (${exportContext.rows.length} items)`;
-                container.innerHTML = exportContext.rows.map(i => generateCard(i, 'av', 'status-teal')).join('');
+                crumb.innerText = `Open Stock (${items.length} items)`;
+                items.sort((a,b) => {
+                    const nameCompare = String(a.COMMONNAME || "").localeCompare(String(b.COMMONNAME || ""));
+                    if (nameCompare !== 0) return nameCompare;
+                    const sizeCompare = String(a.CONTSIZE || "").localeCompare(String(b.CONTSIZE || ""), undefined, {numeric:true});
+                    if (sizeCompare !== 0) return sizeCompare;
+                    return String(a.LOCATIONCODE || "").localeCompare(String(b.LOCATIONCODE || ""), undefined, {numeric:true});
+                });
+                container.innerHTML = items.map(i => generateCard(i, 'av', 'status-teal')).join('');
             } else {
                 if(avResLevel===0){ 
                     crumb.innerText='My Reserves > Plants'; 
@@ -5546,10 +4415,13 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
                 } 
                 else if(avResLevel===2){ 
                     crumb.innerText=`${selectedAvResName} / ${selectedAvResSize}`; 
-                    container.innerHTML=`<div class="back-btn" onclick="avResLevel=1; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>`+exportContext.rows.map(i=>generateCard(i,'reserves_drill','status-indigo')).join(''); 
+                    let finalItems=items.filter(i=>i.COMMONNAME===selectedAvResName&&i.CONTSIZE===selectedAvResSize); 
+                    finalItems.sort((a,b)=>(String(a.CUSTOMERNAME)||"").localeCompare(String(b.CUSTOMERNAME)||"")); 
+                    container.innerHTML=`<div class="back-btn" onclick="avResLevel=1; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>`+finalItems.map(i=>generateCard(i,'reserves_drill','status-indigo')).join(''); 
                 }
             }
         }
+
         const debouncedDocksSearch=debounce(()=>{requestAnimationFrame(()=>renderDocks())},150);
         function clearDocksSearch(){ document.getElementById('docks-search').value=""; document.getElementById('docks-search-clear').classList.add('hidden'); dockViewLevel=0; selectedDockNum=null; selectedDockStop=null; renderDocks(); }
         function handleDocksSearch(){ const term=document.getElementById('docks-search').value.toLowerCase(); const clearBtn=document.getElementById('docks-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden');dockViewLevel=0;}else{clearBtn.classList.add('hidden');dockViewLevel=0;} scheduleSearchRender('docks', () => renderDocks()); }
@@ -5558,52 +4430,21 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
         function selectDockStop(stop) { selectedDockStop = stop; dockViewLevel = 2; renderDocks(); }
 
         function openDockInfoModal(dockNum) {
-            if (!canEditDockWorkflow()) {
-                showToast('Restricted', 'Only Admin or QC Supervisor can update dock team and status.', true);
-                return;
-            }
             pendingDockNum = dockNum; document.getElementById('modal-dock-num').innerText = dockNum;
-            let savedInfo = getDockTeamInfo(dockNum);
-            updateDockAssignableTeamOptions(savedInfo);
+            let savedInfo = JSON.parse(localStorage.getItem('gnc_dock_team_' + dockNum) || '{"checker":"","inspector":"","mistake":"","status":"Loading"}');
+            document.getElementById('dock-checker').value = savedInfo.checker || "";
+            document.getElementById('dock-inspector').value = savedInfo.inspector || "";
+            document.getElementById('dock-mistake').value = savedInfo.mistake || "";
             document.getElementById('dock-status').value = savedInfo.status || "Loading";
             document.getElementById('dock-info-modal').classList.remove('hidden');
-            ensureDockAssignableUsers().then(() => updateDockAssignableTeamOptions(getDockTeamInfo(dockNum))).catch(() => {});
-            ensureDockTeamStatusLoaded().then(() => {
-                const refreshedInfo = getDockTeamInfo(dockNum);
-                updateDockAssignableTeamOptions(refreshedInfo);
-                document.getElementById('dock-status').value = refreshedInfo.status || 'Loading';
-            }).catch(() => {});
         }
 
         function saveDockInfoModal() {
-            if (!canEditDockWorkflow()) {
-                showToast('Restricted', 'Only Admin or QC Supervisor can update dock team and status.', true);
-                return;
-            }
             if(!pendingDockNum) return;
-            const dockNum = normalizeDockTeamDockKey(pendingDockNum);
-            let info = normalizeDockTeamInfo({ checker: document.getElementById('dock-checker').value, inspector: document.getElementById('dock-inspector').value, mistake: document.getElementById('dock-mistake').value, status: document.getElementById('dock-status').value });
-            cacheDockTeamInfo(dockNum, info);
+            let info = { checker: document.getElementById('dock-checker').value, inspector: document.getElementById('dock-inspector').value, mistake: document.getElementById('dock-mistake').value, status: document.getElementById('dock-status').value };
+            localStorage.setItem('gnc_dock_team_' + pendingDockNum, JSON.stringify(info));
             document.getElementById('dock-info-modal').classList.add('hidden'); showToast("Saved", "Dock updated.");
             if (dockViewLevel === 0) { renderDocks(); }
-            if (navigator.onLine === false) return;
-            ensureDockTeamSchemaReady().then((schemaReady) => {
-                if (!schemaReady) return;
-                return supabaseFetch('v2_dock_team_status', 'POST', [{
-                    dock_num: dockNum,
-                    checker: info.checker || null,
-                    inspector: info.inspector || null,
-                    mistake: info.mistake || null,
-                    status: info.status || 'Loading',
-                    updated_by: currentUserDisplay || currentUser || null,
-                    updated_at: new Date().toISOString()
-                }]);
-            }).then(() => {
-                dockTeamStatusLoaded = true;
-                if (!document.getElementById('view-docks').classList.contains('hidden')) renderDocks();
-            }).catch(() => {
-                showToast("Error", "Dock team saved on this device, but the shared dock assignment update failed.", true);
-            });
         }
 
         function openDockItemMistakeModal(uid) {
@@ -5624,62 +4465,17 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
             }
         }
 
-        async function toggleDockItemState(uid, type) {
-            const item = socInventory.find(i => String(i.UNIQUE_ID || '') === String(uid || ''));
-            if (!item) return;
-            const stage = type === 'inspector' ? 'inspector' : 'checker';
-            if (!canCurrentUserMarkDockStage(item, stage)) {
-                showToast('Restricted', stage === 'checker' ? 'This row is still assigned to a different checker.' : 'This row is not ready for your inspection yet.', true);
-                return;
-            }
-            const previous = getDockItemProgress(uid);
-            const updatedAt = new Date().toISOString();
-            const nextProgress = normalizeDockItemProgress({
-                checker: previous.checker || stage === 'checker' || stage === 'inspector',
-                inspector: previous.inspector || stage === 'inspector',
-                checker_completed_by: previous.checkerCompletedBy || (stage === 'checker' || stage === 'inspector' ? (currentUserDisplay || currentUser || '') : ''),
-                inspector_completed_by: stage === 'inspector' ? (currentUserDisplay || currentUser || '') : previous.inspectorCompletedBy,
-                updated_at: updatedAt
-            });
-            cacheDockItemProgress(uid, nextProgress);
-            dockItemProgressLoaded = true;
-            markViewDirty('docks');
-            renderDocks();
-            if (navigator.onLine === false) return;
-            try {
-                const schemaReady = await ensureDockItemSchemaReady();
-                if (!schemaReady) return;
-                await supabaseFetch('v2_dock_item_status', 'POST', [{
-                    unique_id: String(uid || ''),
-                    checker_done: !!nextProgress.checker,
-                    inspector_done: !!nextProgress.inspector,
-                    checker_completed_by: nextProgress.checkerCompletedBy || null,
-                    inspector_completed_by: nextProgress.inspectorCompletedBy || null,
-                    updated_by: currentUserDisplay || currentUser || null,
-                    updated_at: updatedAt
-                }]);
-                dockItemProgressLoaded = true;
-                if (!document.getElementById('view-docks').classList.contains('hidden')) renderDocks();
-            } catch (error) {
-                showToast('Error', 'Dock row progress saved on this device, but the shared dock workflow update failed.', true);
-            }
+        function toggleDockItemState(uid, type) {
+            let key = 'gnc_dock_item_' + uid; let state = JSON.parse(localStorage.getItem(key) || '{"checker":false,"inspector":false}');
+            state[type] = !state[type]; localStorage.setItem(key, JSON.stringify(state)); renderDocks(); 
         }
 
         function renderDocks() {
             if (ensureViewDataForRender('docks')) return;
             const container = document.getElementById('docks-content');
             const crumb = document.getElementById('docks-crumb');
-            const access = getRoleAccessState();
-            const canEditDockConfig = canEditDockWorkflow();
-            if (access.isQc && !access.isAdmin && !access.isQcSupervisor && (((!dockTeamStatusLoaded) && dockTeamSchemaReady !== false) || ((!dockItemProgressLoaded) && dockItemSchemaReady !== false))) {
-                if (!dockTeamStatusPromise) ensureDockTeamStatusLoaded().then(() => renderDocks()).catch(() => renderDocks());
-                if (!dockItemProgressPromise) ensureDockItemStatusLoaded().then(() => renderDocks()).catch(() => renderDocks());
-                container.innerHTML = `<div class="p-8 text-center text-gray-400">Loading dock workflow...</div>`;
-                crumb.innerText = 'Loading Assignments';
-                return;
-            }
             const term = document.getElementById('docks-search').value.toLowerCase().trim();
-            let items = getScopedDocksItems(socInventory);
+            let items = safeRole === 'SALESREP' ? socInventory.filter(i => isMyRep(i.SALESREPNAME || i.SALESREPID)) : socInventory;
             if(term) items = filterBySearch(items, term, 'docks');
             if (items.length === 0) {
                 container.innerHTML = `<div class="p-8 text-center text-gray-400">No dock items found.</div>`;
@@ -5708,7 +4504,7 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
                 container.innerHTML = docks.map(d => {
                     let dItems = items.filter(i => (i.DOCK_NUM || 'Unassigned') === d);
                     let count = dItems.length;
-                    let savedInfo = getDockTeamInfo(d);
+                    let savedInfo = JSON.parse(localStorage.getItem('gnc_dock_team_' + d) || '{"checker":"","inspector":"","mistake":"","status":"Loading"}');
                     let statusColor = 'text-blue-600 bg-blue-50';
                     if(savedInfo.status.includes('Missing')) statusColor = 'text-red-600 bg-red-50';
                     else if(savedInfo.status === 'Palletize') statusColor = 'text-purple-600 bg-purple-50';
@@ -5721,8 +4517,7 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
                     let borderCls = hasCoUt ? 'border-red-500' : 'border-[#007a4d]';
                     let bgCls = hasCoUt ? 'bg-red-50' : 'bg-green-50';
                     let textCls = hasCoUt ? 'text-red-700' : 'text-[#007a4d]';
-                    const editDockButton = canEditDockConfig ? `<button class="w-full bg-white border border-gray-200 text-gray-600 hover:text-[#007a4d] hover:border-[#007a4d] font-bold py-2 rounded-lg text-xs shadow-sm transition-colors" onclick="openDockInfoModal('${esc(d)}')"><i class="ph-bold ph-pencil-simple mr-1"></i> Edit Team & Status</button>` : '';
-                    return `<div class="bg-white border-2 ${borderCls} rounded-xl shadow-sm mb-4 overflow-hidden"><div class="p-4 flex justify-between items-center cursor-pointer active:${bgCls} transition-colors" onclick="selectDock('${esc(d)}')"><div class="flex items-center gap-3"><div class="${bgCls} p-2 rounded-lg"><i class="ph-fill ph-truck text-2xl ${textCls}"></i></div><div><div class="font-black text-lg ${textCls} leading-tight">Dock ${d}</div><div class="text-[10px] font-bold text-gray-500 uppercase mt-0.5">${count} Items</div></div></div><i class="ph-bold ph-caret-right text-gray-300 text-xl"></i></div><div class="bg-gray-50 p-3 border-t border-gray-100"><div class="flex justify-between items-center mb-2"><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Dock Status</span><span class="text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider ${statusColor}">${savedInfo.status}</span></div><div class="grid grid-cols-3 gap-2 mb-3"><div class="bg-white p-2 rounded border border-gray-200 text-center"><div class="text-[8px] font-bold text-gray-400 uppercase mb-0.5">Checker</div><div class="text-xs font-bold text-gray-700 truncate">${savedInfo.checker || '-'}</div></div><div class="bg-white p-2 rounded border border-gray-200 text-center"><div class="text-[8px] font-bold text-gray-400 uppercase mb-0.5">Inspector</div><div class="text-xs font-bold text-gray-700 truncate">${savedInfo.inspector || '-'}</div></div><div class="bg-white p-2 rounded border border-gray-200 text-center"><div class="text-[8px] font-bold text-gray-400 uppercase mb-0.5">Mistake Guy</div><div class="text-xs font-bold text-gray-700 truncate">${savedInfo.mistake || '-'}</div></div></div>${editDockButton}</div></div>`;
+                    return `<div class="bg-white border-2 ${borderCls} rounded-xl shadow-sm mb-4 overflow-hidden"><div class="p-4 flex justify-between items-center cursor-pointer active:${bgCls} transition-colors" onclick="selectDock('${esc(d)}')"><div class="flex items-center gap-3"><div class="${bgCls} p-2 rounded-lg"><i class="ph-fill ph-truck text-2xl ${textCls}"></i></div><div><div class="font-black text-lg ${textCls} leading-tight">Dock ${d}</div><div class="text-[10px] font-bold text-gray-500 uppercase mt-0.5">${count} Items</div></div></div><i class="ph-bold ph-caret-right text-gray-300 text-xl"></i></div><div class="bg-gray-50 p-3 border-t border-gray-100"><div class="flex justify-between items-center mb-2"><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Dock Status</span><span class="text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider ${statusColor}">${savedInfo.status}</span></div><div class="grid grid-cols-3 gap-2 mb-3"><div class="bg-white p-2 rounded border border-gray-200 text-center"><div class="text-[8px] font-bold text-gray-400 uppercase mb-0.5">Checker</div><div class="text-xs font-bold text-gray-700 truncate">${savedInfo.checker || '-'}</div></div><div class="bg-white p-2 rounded border border-gray-200 text-center"><div class="text-[8px] font-bold text-gray-400 uppercase mb-0.5">Inspector</div><div class="text-xs font-bold text-gray-700 truncate">${savedInfo.inspector || '-'}</div></div><div class="bg-white p-2 rounded border border-gray-200 text-center"><div class="text-[8px] font-bold text-gray-400 uppercase mb-0.5">Mistake Guy</div><div class="text-xs font-bold text-gray-700 truncate">${savedInfo.mistake || '-'}</div></div></div><button class="w-full bg-white border border-gray-200 text-gray-600 hover:text-[#007a4d] hover:border-[#007a4d] font-bold py-2 rounded-lg text-xs shadow-sm transition-colors" onclick="openDockInfoModal('${esc(d)}')"><i class="ph-bold ph-pencil-simple mr-1"></i> Edit Team & Status</button></div></div>`;
                 }).join('');
                 return;
             }
@@ -5753,8 +4548,8 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
                     const cons = lead.CONSIGNEENAME || lead.CONSIGNEE || '';
                     const state = lead.CONSIGNEESTATE || lead.STATE || 'N/A';
                     const doneCount = stopItems.filter(item => {
-                        const progress = getDockItemProgress(item.UNIQUE_ID);
-                        return progress.checker && progress.inspector;
+                        const state = JSON.parse(localStorage.getItem('gnc_dock_item_' + item.UNIQUE_ID) || '{"checker":false,"inspector":false}');
+                        return state.checker && state.inspector;
                     }).length;
                     return `<div class="bg-white border border-gray-200 rounded-xl shadow-sm mb-3 overflow-hidden cursor-pointer active:scale-[0.99] transition-transform" onclick="selectDockStop('${esc(stopNum)}')"><div class="p-4"><div class="flex justify-between items-start gap-3 mb-2"><div><div class="font-black text-xl text-[#007a4d] leading-none">STOP ${stopNum}</div><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-1">${stopItems.length} Rows</div></div><div class="text-right"><div class="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded ${doneCount === stopItems.length ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}">${doneCount}/${stopItems.length} Done</div></div></div><div class="text-sm font-bold text-gray-800 leading-tight">${cust}</div>${cons && cons !== cust ? `<div class="text-xs font-semibold text-gray-500 mt-1">${cons}</div>` : ''}<div class="flex flex-wrap gap-2 mt-3 text-[10px] font-bold uppercase tracking-wider"><span class="bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-100"><i class="ph-bold ph-user mr-1"></i>${rep}</span><span class="bg-gray-100 text-gray-700 px-2 py-1 rounded border border-gray-200"><i class="ph-bold ph-map-pin mr-1"></i>${state}</span></div></div><div class="bg-gray-50 border-t border-gray-100 px-4 py-3 flex items-center justify-between"><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Open Stop</span><i class="ph-bold ph-caret-right text-gray-300 text-xl"></i></div></div>`;
                 }).join('');
@@ -5774,8 +4569,8 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
             const cons = lead.CONSIGNEENAME || lead.CONSIGNEE || '';
             const state = lead.CONSIGNEESTATE || lead.STATE || 'N/A';
             const doneCount = stopItems.filter(item => {
-                const progress = getDockItemProgress(item.UNIQUE_ID);
-                return progress.checker && progress.inspector;
+                const savedState = JSON.parse(localStorage.getItem('gnc_dock_item_' + item.UNIQUE_ID) || '{"checker":false,"inspector":false}');
+                return savedState.checker && savedState.inspector;
             }).length;
             crumb.innerText = `Dock ${selectedDockNum} > Stop ${selectedDockStop}`;
             let html = `<div class="back-btn" onclick="dockViewLevel=1; renderDocks()"><i class="ph-bold ph-arrow-left"></i> Back to Stops</div>`;
@@ -5789,11 +4584,9 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
             let displayEl=document.getElementById(prefix+'match-display'); 
             let valEl=document.getElementById(prefix+'match-qty-val'); 
             if(matchEl&&matchEl.value!==""){ 
-                let qty=calculateLocMatchQtyValue(activeItem, matchEl.value); 
-                if(qty==null){ 
-                    if(displayEl)displayEl.classList.add('hidden'); 
-                    return; 
-                } 
+                let matchVal=parseFloat(matchEl.value); 
+                let ptr=parseInt(String(activeItem.PTRAVAILABLE).replace(/,/g,''))||0; 
+                let qty=Math.round(ptr*(matchVal/100)); 
                 if(valEl)valEl.innerText=qty; 
                 if(displayEl)displayEl.classList.remove('hidden'); 
             }else{ 
@@ -5944,8 +4737,8 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
             cartPanelOpen=false;
             updateGlobalActionBar(); 
             refreshCartButtons(); 
-            if (activeItem) renderDetailOverviewMedia();
         }
+
         function toggleGlobalItem(domId,isChecked=null) { 
             const hadItem = selectedItems.has(domId);
             if(isChecked===null){
@@ -5966,7 +4759,6 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
             } else if(hadItem && !hasItemNow){
                 showToast('Removed', `${selectedItems.size} row${selectedItems.size === 1 ? '' : 's'} left in bag.`);
             }
-            if (activeItem) renderDetailOverviewMedia();
         }
         function applyCameraPermissions(sourceView) {
             const camSsn = document.getElementById('camera-btn-ssn');
@@ -6161,7 +4953,6 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
             makeThumbs(rLink || sLink, 'req-photo-list-container', 'req-photo-preview', 'req-', !!rLink, 'Request Photos');
             makeThumbs(dLink || sLink, 'dock-photo-list-container', 'dock-photo-preview', 'dock-', !!dLink, 'Dock Photos');
             makeThumbs(fLink || sLink, 'flyer-photo-list-container', 'flyer-photo-preview', 'flyer-', !!fLink, 'Flyer Photos');
-            renderDetailOverviewMedia();
             refreshProtectedSections();
         }
 
@@ -6192,7 +4983,7 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
             normalizeRowPhotoFields(activeItem);
             buildSearchIndex(activeItem);
             syncRowDataAcrossViews(activeItem);
-            saveData(false, prefix, true, null, { photoChanged: true });
+            saveData(false, prefix, true);
             renderSavedPhotos();
             renderPhotoGallery();
             showToast('Removed', 'Photo removed from this row.');
@@ -6898,22 +5689,12 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
             }); 
         }
 
-        function removeSalesOfficeRowByUniqueId(uniqueId, options = {}) {
-            const uid = String(uniqueId || '').trim();
-            if (!uid) return;
-            const opts = options || {};
-            salesOfficeInventory = salesOfficeInventory.filter(i => i.UNIQUE_ID !== uid);
-            if (!opts.silent) showToast("Complete", opts.message || "Removed from Sales Office.");
-            if (opts.skipRemote) return;
-            supabaseFetch('v2_sales_office','DELETE',null,`unique_id=eq.${encodeURIComponent(uid)}`).catch(() => {
-                if (!opts.suppressErrorToast) showToast("Error","Network error.",true);
-            });
-        }
-
         function markSalesOfficeComplete(uniqueId,domId) { 
             const row=document.querySelector(`[data-dom-id="${domId}"]`); 
             if(row)row.remove(); 
-            removeSalesOfficeRowByUniqueId(uniqueId, { message: 'Removed from Sales Office.' }); 
+            salesOfficeInventory=salesOfficeInventory.filter(i=>i.UNIQUE_ID!==uniqueId); 
+            showToast("Complete","Removed from Sales Office."); 
+            supabaseFetch('v2_sales_office','DELETE',null,`unique_id=eq.${uniqueId}`).catch(err=>showToast("Error","Network error.",true)); 
         }
 
         function generateCard(item,sourceView,colorClass='status-green') {
@@ -6977,7 +5758,7 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
                 if(urlMatch)cleanUrl=urlMatch[1]; 
                 let thumbUrl=getDirectImageUrl(cleanUrl); 
                 if(thumbUrl.startsWith('http')){ 
-                    thumbHtml=`<div class="order-first mr-3 ml-0 flex-shrink-0 self-start overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 shadow-sm"><img src="${thumbUrl}" class="h-16 w-16 sm:h-20 sm:w-20 object-cover" loading="lazy"></div>`; 
+                    thumbHtml=`<div class="ml-3 flex-shrink-0"><img src="${thumbUrl}" class="w-12 h-12 rounded-md object-cover border border-gray-300 shadow-sm" loading="lazy"></div>`; 
                 } 
             }
 
@@ -6997,9 +5778,9 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
             if(sourceView === 'docks'){
                 let stopNum = item.STOPNUMBER || '-'; let tripNum = item.TRIPNUMBER || '-'; let salesRep = item.SALESREPNAME || item.SALESREPID || '-'; let sourceStr = item.SOURCE || '-'; let noteHtml = "";
                 if(item.DOCK_NOTE && String(item.DOCK_NOTE).trim() !== "") noteHtml += `<div class="mt-2 text-[12px] text-orange-800 bg-orange-100 p-2 rounded border border-orange-200 shadow-sm whitespace-pre-wrap"><span class="font-black">DOCK NOTE:</span> ${item.DOCK_NOTE}</div>`;
-                const progress = getDockItemProgress(item.UNIQUE_ID); const queueStage = getDockRowQueueStage(item); const queueOwner = getDockRowQueueOwner(item); const isDimmed = progress.checker && progress.inspector; const cardOpacity = isDimmed ? "opacity-40 grayscale" : "opacity-100"; const chkClass = progress.checker ? "bg-[#007a4d] text-white border-[#007a4d]" : "bg-gray-50 text-gray-500 border-gray-200"; const inspClass = progress.inspector ? "bg-[#007a4d] text-white border-[#007a4d]" : "bg-gray-50 text-gray-500 border-gray-200"; const canMarkChecker = canCurrentUserMarkDockStage(item, 'checker'); const canMarkInspector = canCurrentUserMarkDockStage(item, 'inspector'); const checkerDisabled = canMarkChecker ? '' : 'opacity-50 cursor-not-allowed'; const inspectorDisabled = canMarkInspector ? '' : 'opacity-50 cursor-not-allowed'; const queueBadge = isDimmed ? `<span class="bg-green-100 text-green-700 px-1.5 py-0.5 rounded border border-green-200">Queue: Complete</span>` : `<span class="bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded border border-amber-100">Queue: ${queueStage === 'checker' ? 'Checker' : 'Inspector'}${queueOwner ? ' - ' + queueOwner : ''}</span>`;
-                let actionBtns = `<div class="flex gap-2 mt-3 pt-3 border-t border-gray-100"><button class="flex-1 py-2 rounded-lg text-[10px] uppercase font-black border shadow-sm transition-colors ${chkClass} ${checkerDisabled} active:scale-95" ${canMarkChecker ? '' : 'disabled'} onclick="event.stopPropagation(); toggleDockItemState('${safeUidJs}', 'checker')"><i class="ph-bold ph-check-square mr-1 text-lg align-middle"></i> Check</button><button class="flex-1 py-2 rounded-lg text-[10px] uppercase font-black border shadow-sm transition-colors ${inspClass} ${inspectorDisabled} active:scale-95" ${canMarkInspector ? '' : 'disabled'} onclick="event.stopPropagation(); toggleDockItemState('${safeUidJs}', 'inspector')"><i class="ph-bold ph-magnifying-glass mr-1 text-lg align-middle"></i> Inspect</button><button class="flex-1 py-2 rounded-lg text-[10px] uppercase font-black border border-red-200 bg-red-50 text-red-600 shadow-sm transition-colors hover:bg-red-100 active:scale-95" onclick="event.stopPropagation(); openDockItemMistakeModal('${safeUidJs}')"><i class="ph-bold ph-warning-circle mr-1 text-lg align-middle"></i> Mistake</button></div>`;
-                return `<div class="flex items-center w-full mb-2 item-row relative app-card-shell p-3 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${cardOpacity}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-col w-full min-w-0"><div class="flex items-start justify-between w-full"><div class="flex-grow min-w-0 pr-2"><div class="font-black text-gray-800 text-[14px] leading-tight break-words mb-0.5">${item.COMMONNAME||'Unknown'}</div><div class="font-bold text-[#007a4d] text-sm mb-2">${item.CONTSIZE||'-'}</div><div class="text-[11px] font-mono text-gray-500 mb-2 flex items-center bg-gray-100 px-2 py-0.5 rounded w-max"><i class="ph-bold ph-barcode mr-1.5 text-gray-400"></i>${item.ITEMCODE||'-'}</div><div class="flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600"><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Stop: ${stopNum}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Trip: ${tripNum}</span><span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">Loc: ${item.LOCATIONCODE||'No Loc'}</span><span class="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-100">Rep: ${salesRep}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Tag: ${tagColor}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Lot: ${item.LOTCODE||'-'}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Src: ${sourceStr}</span>${queueBadge}</div>${noteHtml}</div>${thumbHtml}</div>${actionBtns}</div></div>`;
+                let checkState = JSON.parse(localStorage.getItem('gnc_dock_item_' + item.UNIQUE_ID) || '{"checker":false,"inspector":false}'); let isDimmed = checkState.checker && checkState.inspector; let cardOpacity = isDimmed ? "opacity-40 grayscale" : "opacity-100"; let chkClass = checkState.checker ? "bg-[#007a4d] text-white border-[#007a4d]" : "bg-gray-50 text-gray-500 border-gray-200"; let inspClass = checkState.inspector ? "bg-[#007a4d] text-white border-[#007a4d]" : "bg-gray-50 text-gray-500 border-gray-200";
+                let actionBtns = `<div class="flex gap-2 mt-3 pt-3 border-t border-gray-100"><button class="flex-1 py-2 rounded-lg text-[10px] uppercase font-black border shadow-sm transition-colors ${chkClass} active:scale-95" onclick="event.stopPropagation(); toggleDockItemState('${safeUidJs}', 'checker')"><i class="ph-bold ph-check-square mr-1 text-lg align-middle"></i> Check</button><button class="flex-1 py-2 rounded-lg text-[10px] uppercase font-black border shadow-sm transition-colors ${inspClass} active:scale-95" onclick="event.stopPropagation(); toggleDockItemState('${safeUidJs}', 'inspector')"><i class="ph-bold ph-magnifying-glass mr-1 text-lg align-middle"></i> Inspect</button><button class="flex-1 py-2 rounded-lg text-[10px] uppercase font-black border border-red-200 bg-red-50 text-red-600 shadow-sm transition-colors hover:bg-red-100 active:scale-95" onclick="event.stopPropagation(); openDockItemMistakeModal('${safeUidJs}')"><i class="ph-bold ph-warning-circle mr-1 text-lg align-middle"></i> Mistake</button></div>`;
+                return `<div class="flex items-center w-full mb-2 item-row relative app-card-shell p-3 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${cardOpacity}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-col w-full min-w-0"><div class="flex items-start justify-between w-full"><div class="flex-grow min-w-0 pr-2"><div class="font-black text-gray-800 text-[14px] leading-tight break-words mb-0.5">${item.COMMONNAME||'Unknown'}</div><div class="font-bold text-[#007a4d] text-sm mb-2">${item.CONTSIZE||'-'}</div><div class="text-[11px] font-mono text-gray-500 mb-2 flex items-center bg-gray-100 px-2 py-0.5 rounded w-max"><i class="ph-bold ph-barcode mr-1.5 text-gray-400"></i>${item.ITEMCODE||'-'}</div><div class="flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600"><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Trip: ${tripNum}</span><span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">Loc: ${item.LOCATIONCODE||'No Loc'}</span><span class="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-100">Rep: ${salesRep}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Tag: ${tagColor}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Lot: ${item.LOTCODE||'-'}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Src: ${sourceStr}</span></div>${noteHtml}</div>${thumbHtml}</div>${actionBtns}</div></div>`;
             }
 
             if(sourceView==='sales-office'){
@@ -7285,7 +6066,7 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
             document.getElementById('step-3-qty').classList.remove('hidden');
             let container=document.getElementById('qty-list-container');
             let html="";
-            getRequestSourceDomIds().forEach(dId=>{
+            selectedItems.forEach(dId=>{
                 let item=findItemByDomId(dId);
                 if(item){
                     let safeUidHtml=esc(item.UNIQUE_ID);
@@ -8575,7 +7356,7 @@ function toggleDriveSeason(s) {
 
         let autoSaveTimer = null;
 
-        function saveData(isComplete = false, prefix, isSilentAutoSave = false, specificItem = null, options = {}) {
+        function saveData(isComplete = false, prefix, isSilentAutoSave = false, specificItem = null) {
             if (autoSaveTimer) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
             let itemToSave = specificItem || activeItem;
             if (!itemToSave) return;
@@ -8591,8 +7372,6 @@ function toggleDriveSeason(s) {
                 const detailWasVisible = !!(document.getElementById('view-detail') && !document.getElementById('view-detail').classList.contains('hidden'));
                 const nextRequestId = (prefix === 'req-' && isComplete && isCurrentView && detailWasVisible && lastView === 'request') ? getNextRequestDetailId(itemToSave.UNIQUE_ID) : null;
                 let didOptimisticClose = false;
-                const saveOptions = options || {};
-                const trackedStateBeforeSave = captureTrackedAvState(itemToSave);
 
                 if (!specificItem) {
                     let avEl = document.getElementById(prefix + 'av-note');
@@ -8633,8 +7412,6 @@ function toggleDriveSeason(s) {
                     }
                 }
 
-                const trackedStateAfterSave = captureTrackedAvState(itemToSave);
-                const trackedChangeFlags = getTrackedAvChangeFlags(trackedStateBeforeSave, trackedStateAfterSave, saveOptions);
                 const setVal = (val) => (val === '' || val === undefined) ? null : val;
                 const payload = {};
                 let isAvEligibleRequest = false;
@@ -8726,25 +7503,15 @@ function toggleDriveSeason(s) {
                     }
                 }
 
-                if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-') {
-                    const derivedMatchQty = calculateLocMatchQtyValue(itemToSave);
-                    const ptrVal = parseAppNumber(itemToSave.PTRAVAILABLE);
-                    if (derivedMatchQty == null) {
-                        itemToSave.INITIAL_PTR = '';
-                        itemToSave.LOC_MATCH_QTY = '';
-                        payload.initial_ptr = null;
-                        payload.loc_match_qty = null;
-                    } else {
-                        itemToSave.INITIAL_PTR = ptrVal == null ? 0 : ptrVal;
-                        itemToSave.LOC_MATCH_QTY = derivedMatchQty;
+                if (isComplete && (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-')) {
+                    let matchVal = parseFloat(itemToSave.MATCH);
+                    if (!isNaN(matchVal) && matchVal >= 0) {
+                        let ptr = parseInt(String(itemToSave.PTRAVAILABLE).replace(/,/g,'')) || 0;
+                        itemToSave.INITIAL_PTR = ptr;
+                        itemToSave.LOC_MATCH_QTY = Math.round(ptr * (matchVal / 100));
                         payload.initial_ptr = itemToSave.INITIAL_PTR;
                         payload.loc_match_qty = itemToSave.LOC_MATCH_QTY;
                     }
-                }
-
-                if ((prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-' || prefix === 'flyer-') && String(itemToSave.SOURCE_TABLE || 'v2_master_inventory') === 'v2_master_inventory') {
-                    if (avRuleColumnsReady == null) ensureAvRuleColumnsReady().catch(() => {});
-                    applyAvRuleTouchPayload(itemToSave, payload, trackedChangeFlags);
                 }
 
                 backupLocalItem(itemToSave);
@@ -8824,8 +7591,6 @@ function toggleDriveSeason(s) {
                             artifacts.masterSyncPayload.caliper = setVal(itemToSave.REQ_CALIPER || itemToSave.CALIPER);
                             artifacts.masterSyncPayload.photo_link = setVal(itemToSave.REQ_PHOTO_LINK || itemToSave.SAVED_PHOTO_LINK);
                             artifacts.masterSyncPayload.photo_name = setVal(itemToSave.REQ_PHOTO_NAME || itemToSave.SAVED_PHOTO_NAME);
-                            if (avRuleColumnsReady == null) ensureAvRuleColumnsReady().catch(() => {});
-                            applyAvRuleTouchPayload(artifacts.masterSyncItem || requestMasterItem || itemToSave, artifacts.masterSyncPayload, { avNote: true, spec: true, caliper: true, photo: true });
                         }
                     }
 
@@ -8871,26 +7636,14 @@ function toggleDriveSeason(s) {
                         supabaseFetch('v2_master_inventory', 'PATCH', artifacts.masterSyncPayload, `unique_id=eq.${encodeURIComponent(artifacts.masterSyncId)}`).catch(() => {});
                     }
 
-                    const immediateCleanupOps = collectMasterAvRuleClearOps([
-                        itemToSave,
-                        artifacts.masterSyncItem
-                    ].filter(Boolean));
-                    const didImmediateCleanup = immediateCleanupOps.length > 0;
-                    if (didImmediateCleanup) {
-                        immediateCleanupOps.forEach((entry) => backupLocalItem(entry.item));
-                        persistMasterAvRuleClearOps(immediateCleanupOps);
-                        persistCurrentCache(true);
-                        if (!isSilentAutoSave && isCurrentView) showToast('Reset', 'AV data was cleared and the row returned to the notes queue.');
-                    }
-
                     if (!isComplete && isCurrentView) {
                         renderSavedPhotos();
                         renderPhotoGallery();
                         refreshProtectedSections();
                     }
                     if (isCurrentView && isComplete && btnComp) btnComp.innerText = 'MARK DONE';
-                    if (!isSilentAutoSave && isCurrentView && isComplete && !didImmediateCleanup) showToast('Success', 'Task Completed!');
-                    if (isComplete && !didOptimisticClose && !didImmediateCleanup) {
+                    if (!isSilentAutoSave && isCurrentView && isComplete) showToast('Success', 'Task Completed!');
+                    if (isComplete && !didOptimisticClose) {
                         itemToSave.DATE_COMPLETED = payload.date_completed;
                         if (isCurrentView && detailWasVisible) goBackFromDetail();
                         reRenderCurrentView();
@@ -8993,7 +7746,7 @@ function toggleDriveSeason(s) {
         function selectAvNote(note, prefix) {
             document.getElementById(prefix + 'av-note').value = note;
             document.getElementById(prefix + 'av-dropdown-list').classList.add('hidden');
-            saveData(false, prefix, true, null, { photoChanged: true });
+            saveData(false, prefix, true);
         }
 
         async function handlePhotoUpload(input, prefix) {
@@ -9073,7 +7826,7 @@ function toggleDriveSeason(s) {
 
                                 buildSearchIndex(itemToUpload);
                                 syncRowDataAcrossViews(itemToUpload);
-                                saveData(false, prefix, true, itemToUpload, { photoChanged: true });
+                                saveData(false, prefix, true, itemToUpload);
                                 if (activeItem && activeItem.UNIQUE_ID === itemToUpload.UNIQUE_ID) {
                                     renderSavedPhotos();
                                     renderPhotoGallery();
@@ -9110,8 +7863,6 @@ function toggleDriveSeason(s) {
     </script>
 </body>
 </html>
-
-
 
 
 
