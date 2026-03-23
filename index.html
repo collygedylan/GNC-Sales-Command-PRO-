@@ -276,8 +276,8 @@
             <button class="text-gray-500 font-bold py-2 px-4 mt-2" onclick="closeRequestModal()">Cancel</button>
         </div>
     </div>
-    <div id="bloom-picker-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
-        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-2xl text-left flex flex-col max-h-[90vh] overflow-hidden">
+    <div id="bloom-picker-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-start justify-center overflow-y-auto p-4">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-2xl text-left flex flex-col my-4 max-h-[calc(100vh-2rem)] overflow-hidden">
             <div class="flex items-start justify-between gap-3 mb-4 border-b border-gray-100 pb-3">
                 <div>
                     <h3 class="font-bold text-lg text-[#007a4d]">Bloom Picker Order</h3>
@@ -285,24 +285,32 @@
                 </div>
                 <button type="button" class="text-gray-500 font-bold py-2 px-3" onclick="closeBloomPickerModal()">Close</button>
             </div>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
-                <div>
-                    <label class="text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Customer / Consignee</label>
-                    <input type="text" id="bloom-order-customer" class="input-field border-green-200 !mb-0" placeholder="Enter customer name">
+            <div class="flex-1 min-h-0 flex flex-col">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                    <div>
+                        <label class="text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Customer Name</label>
+                        <input type="text" id="bloom-order-customer" class="input-field border-green-200 !mb-0" placeholder="Enter customer name" oninput="handleBloomPickerPartyInput()">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Consignee Name</label>
+                        <input type="text" id="bloom-order-consignee" class="input-field border-green-200 !mb-0" placeholder="Enter consignee name" oninput="handleBloomPickerPartyInput()">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Order Number</label>
+                        <input type="text" id="bloom-order-number" class="input-field border-green-200 !mb-0" placeholder="Enter order number">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Folder Name</label>
+                        <input type="text" id="bloom-order-folder" class="input-field border-green-200 !mb-0" placeholder="Auto-generated from customer, consignee, and date" oninput="handleBloomPickerFolderInput()">
+                    </div>
                 </div>
-                <div>
-                    <label class="text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Order Number</label>
-                    <input type="text" id="bloom-order-number" class="input-field border-green-200 !mb-0" placeholder="Enter order number">
+                <div class="flex-1 min-h-0 rounded-2xl border border-slate-200 bg-slate-50/60 p-3">
+                    <div id="bloom-picker-list-container" class="flex h-full min-h-[14rem] flex-col gap-3 overflow-y-auto pr-1"></div>
                 </div>
-                <div>
-                    <label class="text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Folder Name</label>
-                    <input type="text" id="bloom-order-folder" class="input-field border-green-200 !mb-0" placeholder="Optional custom folder name">
+                <div class="mt-4 flex gap-2 border-t border-gray-100 pt-3">
+                    <button type="button" class="w-1/3 bg-gray-100 text-gray-600 font-bold p-3 rounded-lg shadow-sm active:scale-95" onclick="closeBloomPickerModal()">Cancel</button>
+                    <button type="button" class="w-2/3 bg-[#007a4d] text-white font-bold p-3 rounded-lg shadow-md active:scale-95" onclick="submitBloomPickerOrder()">Submit Order</button>
                 </div>
-            </div>
-            <div id="bloom-picker-list-container" class="flex flex-col gap-3 overflow-y-auto max-h-[48vh] pr-1"></div>
-            <div class="mt-4 flex gap-2">
-                <button type="button" class="w-1/3 bg-gray-100 text-gray-600 font-bold p-3 rounded-lg shadow-sm active:scale-95" onclick="closeBloomPickerModal()">Cancel</button>
-                <button type="button" class="w-2/3 bg-[#007a4d] text-white font-bold p-3 rounded-lg shadow-md active:scale-95" onclick="submitBloomPickerOrder()">Submit Order</button>
             </div>
         </div>
     </div>
@@ -688,9 +696,9 @@
             <div id="global-action-bar" class="hidden fixed bottom-[60px] left-0 w-full bg-white p-3 shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.15)] z-[45] border-t border-gray-200">
                 <div class="flex justify-between items-center mb-2 px-1"><span class="text-xs font-bold text-[#007a4d]"><span id="sel-count">0</span> Rows In Bloom Picker</span><span class="text-[10px] font-bold text-red-500 cursor-pointer bg-red-50 px-3 py-1 rounded-md uppercase" onclick="clearSelection()">Clear Bloom Picker</span></div>
                 <div class="flex gap-1 overflow-x-auto scrollbar-none pb-1">
-                    <button onclick="initiateBatchAction('copy')" class="flex-1 min-w-[60px] bg-gray-100 text-gray-700 p-2 rounded-lg text-[10px] font-bold hover:bg-gray-200"><i class="ph-bold ph-copy block text-lg mb-1"></i> Copy</button>
-                    <button onclick="initiateBatchAction('email')" class="flex-1 min-w-[60px] bg-blue-100 text-blue-700 p-2 rounded-lg text-[10px] font-bold hover:bg-blue-200"><i class="ph-bold ph-envelope block text-lg mb-1"></i> Email</button>
-                    <button onclick="initiateBatchAction('text')" class="flex-1 min-w-[60px] bg-green-100 text-green-700 p-2 rounded-lg text-[10px] font-bold hover:bg-green-200"><i class="ph-bold ph-chat block text-lg mb-1"></i> Text</button>
+                    <button id="batch-btn-copy" onclick="initiateBatchAction('copy')" class="flex-1 min-w-[60px] bg-gray-100 text-gray-700 p-2 rounded-lg text-[10px] font-bold hover:bg-gray-200"><i class="ph-bold ph-copy block text-lg mb-1"></i> Copy</button>
+                    <button id="batch-btn-email" onclick="initiateBatchAction('email')" class="flex-1 min-w-[60px] bg-blue-100 text-blue-700 p-2 rounded-lg text-[10px] font-bold hover:bg-blue-200"><i class="ph-bold ph-envelope block text-lg mb-1"></i> Email</button>
+                    <button id="batch-btn-text" onclick="initiateBatchAction('text')" class="flex-1 min-w-[60px] bg-green-100 text-green-700 p-2 rounded-lg text-[10px] font-bold hover:bg-green-200"><i class="ph-bold ph-chat block text-lg mb-1"></i> Text</button>
                     <button id="batch-btn-assign" onclick="initiateBatchAction('assign')" class="flex-1 min-w-[60px] bg-purple-100 text-purple-700 p-2 rounded-lg text-[10px] font-bold hover:bg-purple-200 hidden"><i class="ph-bold ph-user-plus block text-lg mb-1"></i> Assign</button>
                     <button id="batch-btn-bloom-order" onclick="initiateBatchAction('bloom_order')" class="flex-1 min-w-[72px] bg-[#007a4d] text-white p-2 rounded-lg text-[10px] font-bold shadow-md hidden"><i class="ph-bold ph-package block text-lg mb-1"></i> Submit Order</button>
                     <button id="batch-btn-request" onclick="initiateBatchAction('request_action')" class="flex-1 min-w-[60px] bg-orange-500 text-white p-2 rounded-lg text-[10px] font-bold shadow-md hidden"><i class="ph-bold ph-warning-circle block text-lg mb-1"></i> Request</button>
@@ -1568,6 +1576,14 @@
                 const docksView = document.getElementById('view-docks');
                 if (!docksView || docksView.classList.contains('hidden')) return;
                 renderDocks();
+            }, delay);
+        }
+
+        function scheduleAVRender(delay = 24) {
+            scheduleUiRender('av:render', () => {
+                const avView = document.getElementById('view-av');
+                if (!avView || avView.classList.contains('hidden')) return;
+                renderAV();
             }, delay);
         }
         
@@ -2676,6 +2692,8 @@
         let photoDeleteLongPressFired = false;
         let searchRenderFrame = {};
         let searchRenderTimer = {};
+        let avRenderChunkToken = 0;
+        let bloomPickerFolderManuallyEdited = false;
         const PROTECTED_UNLOCK_USERS = new Set(['dylan', 'jd', 'morgan', 'kayla']);
         const PROTECTED_EDIT_CONFIG = {
             'ssn-': { containerId: 'det-season-content', cameraId: 'camera-btn-ssn', photoField: 'SAVED_PHOTO_LINK', photoNameField: 'SAVED_PHOTO_NAME', inputIds: ['ssn-av-note', 'ssn-spec', 'ssn-caliper'] },
@@ -3430,11 +3448,78 @@ function toggleDriveQuickRequestItem(domId) {
             configureRequestCustomerStep();
             renderDriveQuickRequestBar();
         }
-        function buildBloomPickerFolderName(customer = '', orderNumber = '') {
-            const customerText = String(customer || '').trim();
-            const orderText = String(orderNumber || '').trim();
-            if (customerText && orderText) return `${customerText} - ${orderText}`;
-            return customerText || orderText || `Bloom Picker ${new Date().toLocaleDateString('en-US')}`;
+        function formatBloomPickerFolderPart(value = '') {
+            return String(value || '')
+                .trim()
+                .replace(/\s+/g, '_')
+                .replace(/[^a-z0-9_-]+/gi, '')
+                .replace(/_+/g, '_')
+                .replace(/^_+|_+$/g, '');
+        }
+
+        function getBloomPickerFolderDateStamp(dateValue = new Date()) {
+            const date = dateValue instanceof Date ? dateValue : new Date(dateValue);
+            const safeDate = Number.isNaN(date.getTime()) ? new Date() : date;
+            return `${safeDate.getFullYear()}-${String(safeDate.getMonth() + 1).padStart(2, '0')}-${String(safeDate.getDate()).padStart(2, '0')}`;
+        }
+
+        function buildBloomPickerOrderCustomerValue(customer = '', consignee = '') {
+            const cleanCustomer = String(customer || '').trim();
+            const cleanConsignee = String(consignee || '').trim();
+            if (cleanCustomer) return buildRequestCustomerValue(cleanCustomer, cleanConsignee);
+            return cleanConsignee;
+        }
+
+        function buildBloomPickerFolderName(customer = '', consignee = '', dateValue = new Date()) {
+            const customerPart = formatBloomPickerFolderPart(customer);
+            const consigneePart = formatBloomPickerFolderPart(consignee);
+            const nameParts = [];
+            if (customerPart) nameParts.push(customerPart);
+            if (consigneePart && consigneePart.toLowerCase() !== customerPart.toLowerCase()) nameParts.push(consigneePart);
+            nameParts.push(getBloomPickerFolderDateStamp(dateValue));
+            return nameParts.filter(Boolean).join('_') || `Bloom_Picker_${getBloomPickerFolderDateStamp(dateValue)}`;
+        }
+
+        function syncBloomPickerFolderName(force = false) {
+            const customerInput = document.getElementById('bloom-order-customer');
+            const consigneeInput = document.getElementById('bloom-order-consignee');
+            const folderInput = document.getElementById('bloom-order-folder');
+            if (!folderInput) return '';
+            const customer = String(customerInput && customerInput.value || '').trim();
+            const consignee = String(consigneeInput && consigneeInput.value || '').trim();
+            const generated = buildBloomPickerFolderName(customer, consignee);
+            const currentValue = String(folderInput.value || '').trim();
+            const currentAutoValue = String(folderInput.dataset.autoValue || '').trim();
+            const canAutoUpdate = force || !bloomPickerFolderManuallyEdited || !currentValue || (currentAutoValue && currentValue === currentAutoValue);
+            if (canAutoUpdate) {
+                folderInput.value = generated;
+                bloomPickerFolderManuallyEdited = false;
+            }
+            folderInput.dataset.autoValue = generated;
+            folderInput.dataset.manual = bloomPickerFolderManuallyEdited ? '1' : '0';
+            return String(folderInput.value || generated || '').trim();
+        }
+
+        function handleBloomPickerPartyInput() {
+            syncBloomPickerFolderName(false);
+        }
+
+        function handleBloomPickerFolderInput() {
+            const folderInput = document.getElementById('bloom-order-folder');
+            if (!folderInput) return;
+            const generated = buildBloomPickerFolderName(
+                String(document.getElementById('bloom-order-customer') && document.getElementById('bloom-order-customer').value || '').trim(),
+                String(document.getElementById('bloom-order-consignee') && document.getElementById('bloom-order-consignee').value || '').trim()
+            );
+            const currentValue = String(folderInput.value || '').trim();
+            if (!currentValue) {
+                bloomPickerFolderManuallyEdited = false;
+                folderInput.value = generated;
+            } else {
+                bloomPickerFolderManuallyEdited = currentValue !== generated;
+            }
+            folderInput.dataset.autoValue = generated;
+            folderInput.dataset.manual = bloomPickerFolderManuallyEdited ? '1' : '0';
         }
 
         function buildBloomPickerOrderRowId(orderNumber = '', item = null, index = 0) {
@@ -3449,13 +3534,24 @@ function toggleDriveQuickRequestItem(domId) {
             if (modal) modal.classList.add('hidden');
             if (!clearFields) return false;
             const customerInput = document.getElementById('bloom-order-customer');
+            const consigneeInput = document.getElementById('bloom-order-consignee');
             const orderInput = document.getElementById('bloom-order-number');
             const folderInput = document.getElementById('bloom-order-folder');
             const listContainer = document.getElementById('bloom-picker-list-container');
+            bloomPickerFolderManuallyEdited = false;
             if (customerInput) customerInput.value = '';
+            if (consigneeInput) consigneeInput.value = '';
             if (orderInput) orderInput.value = '';
-            if (folderInput) folderInput.value = '';
-            if (listContainer) listContainer.innerHTML = '';
+            if (folderInput) {
+                folderInput.value = '';
+                folderInput.dataset.autoValue = '';
+                folderInput.dataset.manual = '0';
+            }
+            if (listContainer) {
+                listContainer.innerHTML = '';
+                listContainer.scrollTop = 0;
+            }
+            if (modal) modal.scrollTop = 0;
             return false;
         }
 
@@ -3486,9 +3582,18 @@ function toggleDriveQuickRequestItem(domId) {
                 return false;
             }
             toggleCartPanel(false);
+            bloomPickerFolderManuallyEdited = false;
             renderBloomPickerOrderList();
+            syncBloomPickerFolderName(true);
             const modal = document.getElementById('bloom-picker-modal');
-            if (modal) modal.classList.remove('hidden');
+            const listContainer = document.getElementById('bloom-picker-list-container');
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.scrollTop = 0;
+            }
+            if (listContainer) listContainer.scrollTop = 0;
+            const customerInput = document.getElementById('bloom-order-customer');
+            if (customerInput) setTimeout(() => { try { customerInput.focus(); } catch (e) {} }, 0);
             return false;
         }
 
@@ -3500,14 +3605,21 @@ function toggleDriveQuickRequestItem(domId) {
                 return false;
             }
             const customerInput = document.getElementById('bloom-order-customer');
+            const consigneeInput = document.getElementById('bloom-order-consignee');
             const orderInput = document.getElementById('bloom-order-number');
             const folderInput = document.getElementById('bloom-order-folder');
             const customer = String(customerInput && customerInput.value || '').trim();
+            const consignee = String(consigneeInput && consigneeInput.value || '').trim();
+            const orderCustomer = buildBloomPickerOrderCustomerValue(customer, consignee);
             const orderNumber = String(orderInput && orderInput.value || '').trim();
             let folderName = String(folderInput && folderInput.value || '').trim();
-            if (!customer) { showToast('Required', 'Enter the customer or consignee for this Bloom Picker order.', true); return false; }
+            if (!orderCustomer) { showToast('Required', 'Enter the customer or consignee for this Bloom Picker order.', true); return false; }
             if (!orderNumber) { showToast('Required', 'Enter an order number before submitting.', true); return false; }
-            if (!folderName) { folderName = buildBloomPickerFolderName(customer, orderNumber); if (folderInput) folderInput.value = folderName; }
+            if (!folderName) folderName = syncBloomPickerFolderName(true);
+            if (!folderName) {
+                folderName = buildBloomPickerFolderName(customer, consignee);
+                if (folderInput) folderInput.value = folderName;
+            }
             const schemaReady = await ensureSalesOfficeOrderColumnsReady(true);
             if (!schemaReady && salesOfficeOrderColumnsReady === false) return false;
             if (salesOfficeOrderColumnsReady === false) return false;
@@ -3531,7 +3643,7 @@ function toggleDriveQuickRequestItem(domId) {
                 const photoLink = firstNonEmptyValue(item.SAVED_PHOTO_LINK, item.ROW_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']);
                 const photoName = firstNonEmptyValue(item.SAVED_PHOTO_NAME, item.ROW_PHOTO_NAME, item.PHOTO_NAME, item.PHOTONAME, item['PHOTO NAME']);
                 const salesNote = firstNonEmptyValue(item.SALES_NOTE, item.SALESNOTE, item.SALES_DESC, item.SALESDESC, '');
-                const payload = { unique_id: rowId, master_id: item.UNIQUE_ID || '', so_source: 'bloom_picker', order_folder: folderName, order_number: orderNumber, order_customer: customer, order_qty: String(qtyValue), order_desired_spec: desiredSpec || null, order_desired_caliper: desiredCaliper || null, order_reserve: reserveValue, order_submitted_by: submittedBy, order_submitted_at: submittedAt, order_status: 'Pending Review', itemcode: item.ITEMCODE || '', commonname: item.COMMONNAME || '', contsize: item.CONTSIZE || '', locationcode: item.LOCATIONCODE || '', lotcode: item.LOTCODE || '', ptravailable: String(item.PTRAVAILABLE || ''), priority: String(item.PRIORITY || ''), av_note: item.AV_NOTE || '', sales_note: salesNote || null, spec: item.SPEC || null, caliper: item.CALIPER || null, photo_link: photoLink || null, photo_name: photoName || null };
+                const payload = { unique_id: rowId, master_id: item.UNIQUE_ID || '', so_source: 'bloom_picker', order_folder: folderName, order_number: orderNumber, order_customer: orderCustomer, order_qty: String(qtyValue), order_desired_spec: desiredSpec || null, order_desired_caliper: desiredCaliper || null, order_reserve: reserveValue, order_submitted_by: submittedBy, order_submitted_at: submittedAt, order_status: 'Pending Review', itemcode: item.ITEMCODE || '', commonname: item.COMMONNAME || '', contsize: item.CONTSIZE || '', locationcode: item.LOCATIONCODE || '', lotcode: item.LOTCODE || '', ptravailable: String(item.PTRAVAILABLE || ''), priority: String(item.PRIORITY || ''), av_note: item.AV_NOTE || '', sales_note: salesNote || null, spec: item.SPEC || null, caliper: item.CALIPER || null, photo_link: photoLink || null, photo_name: photoName || null };
                 payloads.push(payload);
                 const clone = { SOURCE_TABLE: 'v2_sales_office' };
                 Object.keys(payload).forEach((key) => { if (payload[key] !== null && payload[key] !== undefined) clone[key.toUpperCase()] = payload[key]; });
@@ -3557,7 +3669,7 @@ function toggleDriveQuickRequestItem(domId) {
                     showToast('Order Sent', `${payloads.length} Bloom Picker row${payloads.length === 1 ? '' : 's'} moved to Sales Office.`);
                 } else {
                     markViewDirty('av');
-                    if (!document.getElementById('view-av').classList.contains('hidden')) renderAV();
+                    scheduleAVRender(24);
                     showToast('Order Sent', `${payloads.length} Bloom Picker row${payloads.length === 1 ? '' : 's'} submitted. CSR can review it in Sales Office.`);
                 }
                 return false;
@@ -5725,13 +5837,50 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
             showToast('Export Ready', `Downloading ${exportContext.rows.length} AV row${exportContext.rows.length === 1 ? '' : 's'} as Excel.`);
             return false;
         }
+        function shouldUseChunkedAVOpenRender(rows = []) {
+            const { isRep } = getRoleAccessState();
+            return isRep && activeAVTab === 'open' && Array.isArray(rows) && rows.length > 72;
+        }
+
+        function renderAVOpenCardsChunked(container, crumb, rows, sourceView, crumbText) {
+            if (!container || !crumb) return;
+            avRenderChunkToken += 1;
+            const token = avRenderChunkToken;
+            const total = Array.isArray(rows) ? rows.length : 0;
+            const chunkSize = total > 320 ? 24 : (total > 180 ? 32 : 40);
+            let index = 0;
+            let firstChunk = true;
+            crumb.innerText = `${crumbText} Loading...`;
+            container.innerHTML = `<div class="p-6 text-center text-gray-400">Loading ${total} AV row${total === 1 ? '' : 's'}...</div>`;
+            const renderChunk = () => {
+                if (token !== avRenderChunkToken) return;
+                const end = Math.min(index + chunkSize, total);
+                let html = '';
+                for (; index < end; index += 1) html += generateCard(rows[index], sourceView, 'status-teal');
+                if (firstChunk) {
+                    container.innerHTML = html;
+                    firstChunk = false;
+                } else if (html) {
+                    container.insertAdjacentHTML('beforeend', html);
+                }
+                if (index < total) {
+                    crumb.innerText = `${crumbText} Loading ${index}/${total}`;
+                    requestAnimationFrame(renderChunk);
+                } else {
+                    crumb.innerText = crumbText;
+                }
+            };
+            requestAnimationFrame(renderChunk);
+        }
+
         function renderAV() {
+            avRenderChunkToken += 1;
             if (ensureViewDataForRender('av')) return;
             const container = document.getElementById('av-content');
             const crumb = document.getElementById('av-crumb');
             const avState = getCurrentAVBaseItems();
             const term = avState.term;
-            let items = [...avState.items];
+            let items = avState.items;
             const exportContext = buildAVExportContext(items, term);
 
             if (items.length === 0) {
@@ -5745,38 +5894,34 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
             updateAVExportButton(exportContext.rows.length);
 
             if (activeAVTab === 'open') {
-                if (activeAvOpenTab === 'photos') {
-                    crumb.innerText = term.length > 0 ? `Search Results (${exportContext.rows.length})` : `Open Stock Photos (${exportContext.rows.length} items)`;
-                    container.innerHTML = exportContext.rows.map(i => generateCard(i, 'av-photo', 'status-teal')).join('');
+                const sourceView = activeAvOpenTab === 'photos' ? 'av-photo' : 'av';
+                const crumbText = activeAvOpenTab === 'photos'
+                    ? (term.length > 0 ? `Search Results (${exportContext.rows.length})` : `Open Stock Photos (${exportContext.rows.length} items)`)
+                    : (term.length > 0 ? `Search Results (${exportContext.rows.length})` : `Open Stock (${exportContext.rows.length} items)`);
+                if (shouldUseChunkedAVOpenRender(exportContext.rows)) {
+                    renderAVOpenCardsChunked(container, crumb, exportContext.rows, sourceView, crumbText);
                     return;
                 }
-
-                if (term.length > 0) {
-                    crumb.innerText = `Search Results (${exportContext.rows.length})`;
-                    container.innerHTML = exportContext.rows.map(i => generateCard(i, 'av', 'status-teal')).join('');
-                    return;
-                }
-
-                crumb.innerText = `Open Stock (${exportContext.rows.length} items)`;
-                container.innerHTML = exportContext.rows.map(i => generateCard(i, 'av', 'status-teal')).join('');
-            } else {
-                if(avResLevel===0){ 
-                    crumb.innerText='My Reserves > Plants'; 
-                    const names=[...new Set(items.map(i=>i.COMMONNAME))].sort(); 
-                    container.innerHTML=names.map(n=>`<div class="drill-item" onclick="selectAvResName('${esc(n)}')"><span class="font-bold text-lg">${n}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join(''); 
-                } 
-                else if(avResLevel===1){ 
-                    crumb.innerText=`My Reserves > ${selectedAvResName}`; 
-                    const namedItems=items.filter(i=>i.COMMONNAME===selectedAvResName); 
-                    const sizes=[...new Set(namedItems.map(i=>i.CONTSIZE))].sort(); 
-                    let html=`<div class="back-btn" onclick="avResLevel=0; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Plants</div>`; 
-                    html+=sizes.map(s=>{const count=namedItems.filter(i=>i.CONTSIZE===s).length;return `<div class="drill-item" onclick="selectAvResSize('${esc(s)}')"><span class="font-bold text-lg">${s} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;}).join(''); 
-                    container.innerHTML=html; 
-                } 
-                else if(avResLevel===2){ 
-                    crumb.innerText=`${selectedAvResName} / ${selectedAvResSize}`; 
-                    container.innerHTML=`<div class="back-btn" onclick="avResLevel=1; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>`+exportContext.rows.map(i=>generateCard(i,'reserves_drill','status-indigo')).join(''); 
-                }
+                crumb.innerText = crumbText;
+                container.innerHTML = exportContext.rows.map(i => generateCard(i, sourceView, 'status-teal')).join('');
+                return;
+            }
+            if(avResLevel===0){ 
+                crumb.innerText='My Reserves > Plants'; 
+                const names=[...new Set(items.map(i=>i.COMMONNAME))].sort(); 
+                container.innerHTML=names.map(n=>`<div class="drill-item" onclick="selectAvResName('${esc(n)}')"><span class="font-bold text-lg">${n}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join(''); 
+            } 
+            else if(avResLevel===1){ 
+                crumb.innerText=`My Reserves > ${selectedAvResName}`; 
+                const namedItems=items.filter(i=>i.COMMONNAME===selectedAvResName); 
+                const sizes=[...new Set(namedItems.map(i=>i.CONTSIZE))].sort(); 
+                let html=`<div class="back-btn" onclick="avResLevel=0; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Plants</div>`; 
+                html+=sizes.map(s=>{const count=namedItems.filter(i=>i.CONTSIZE===s).length;return `<div class="drill-item" onclick="selectAvResSize('${esc(s)}')"><span class="font-bold text-lg">${s} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;}).join(''); 
+                container.innerHTML=html; 
+            } 
+            else if(avResLevel===2){ 
+                crumb.innerText=`${selectedAvResName} / ${selectedAvResSize}`; 
+                container.innerHTML=`<div class="back-btn" onclick="avResLevel=1; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>`+exportContext.rows.map(i=>generateCard(i,'reserves_drill','status-indigo')).join(''); 
             }
         }
         const debouncedDocksSearch=debounce(()=>{requestAnimationFrame(()=>renderDocks())},150);
@@ -6098,6 +6243,52 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
 
         function canUseCartInventoryActions(items = getCartSelectedItems()) {
             return items.length > 0 && items.every((item) => item && !isRequestLikeItem(item) && !isDockLikeItem(item) && !isSalesOfficeLikeItem(item));
+        }
+
+        function getBloomPickerActionVisibility(items = getCartSelectedItems()) {
+            const access = getRoleAccessState();
+            const canUseInventoryActions = canUseCartInventoryActions(items);
+            const canUseBloomOrders = canUseBloomPicker(items);
+            if (access.isRep) {
+                return {
+                    showCopy: true,
+                    showEmail: true,
+                    showText: true,
+                    showAssign: false,
+                    showRequest: canUseInventoryActions,
+                    showFlyer: false,
+                    showEndCap: false,
+                    showBloomOrder: canUseBloomOrders,
+                    canUseInventoryActions,
+                    canUseBloomOrders
+                };
+            }
+            if (access.isCsr) {
+                return {
+                    showCopy: true,
+                    showEmail: true,
+                    showText: false,
+                    showAssign: false,
+                    showRequest: canUseInventoryActions,
+                    showFlyer: false,
+                    showEndCap: false,
+                    showBloomOrder: canUseBloomOrders,
+                    canUseInventoryActions,
+                    canUseBloomOrders
+                };
+            }
+            return {
+                showCopy: true,
+                showEmail: true,
+                showText: true,
+                showAssign: canUseInventoryActions && safeRole === 'ADMIN',
+                showRequest: canUseInventoryActions,
+                showFlyer: canUseInventoryActions,
+                showEndCap: canUseInventoryActions,
+                showBloomOrder: canUseBloomOrders,
+                canUseInventoryActions,
+                canUseBloomOrders
+            };
         }
 
         function refreshCartButtons() {
@@ -7325,6 +7516,9 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
             const fabCount=document.getElementById('cart-fab-count');
             const countLabel=document.getElementById('sel-count');
             const helper=document.getElementById('cart-helper-text');
+            const btnCopy=document.getElementById('batch-btn-copy');
+            const btnEmail=document.getElementById('batch-btn-email');
+            const btnText=document.getElementById('batch-btn-text');
             const btnAssign=document.getElementById('batch-btn-assign'); 
             const btnRequest=document.getElementById('batch-btn-request'); 
             const btnFlyer=document.getElementById('batch-btn-flyer');
@@ -7332,9 +7526,7 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
             const btnBloomOrder=document.getElementById('batch-btn-bloom-order');
             const hasItems=selectedItems.size>0;
             const items=getCartSelectedItems();
-            const canUseInventoryActions=canUseCartInventoryActions(items);
-            const canUseBloomOrders=canUseBloomPicker(items);
-            const canAssign=canUseInventoryActions&&(safeRole==='ADMIN'||safeRole==='CSR');
+            const actionVisibility=getBloomPickerActionVisibility(items);
             if(countLabel)countLabel.innerText=selectedItems.size; 
             if(fab){
                 fab.classList.toggle('hidden', !currentUser);
@@ -7344,12 +7536,15 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
                 fabCount.innerText=selectedItems.size;
                 fabCount.classList.toggle('hidden', !hasItems);
             }
-            if(btnAssign)btnAssign.classList.toggle('hidden', !canAssign);
-            if(btnRequest)btnRequest.classList.toggle('hidden', !canUseInventoryActions);
-            if(btnFlyer)btnFlyer.classList.toggle('hidden', !canUseInventoryActions);
-            if(btnEndCap)btnEndCap.classList.toggle('hidden', !canUseInventoryActions);
-            if(btnBloomOrder)btnBloomOrder.classList.toggle('hidden', !canUseBloomOrders);
-            if(helper)helper.classList.toggle('hidden', !hasItems || canUseInventoryActions || canUseBloomOrders);
+            if(btnCopy)btnCopy.classList.toggle('hidden', !hasItems || !actionVisibility.showCopy);
+            if(btnEmail)btnEmail.classList.toggle('hidden', !hasItems || !actionVisibility.showEmail);
+            if(btnText)btnText.classList.toggle('hidden', !hasItems || !actionVisibility.showText);
+            if(btnAssign)btnAssign.classList.toggle('hidden', !actionVisibility.showAssign);
+            if(btnRequest)btnRequest.classList.toggle('hidden', !actionVisibility.showRequest);
+            if(btnFlyer)btnFlyer.classList.toggle('hidden', !actionVisibility.showFlyer);
+            if(btnEndCap)btnEndCap.classList.toggle('hidden', !actionVisibility.showEndCap);
+            if(btnBloomOrder)btnBloomOrder.classList.toggle('hidden', !actionVisibility.showBloomOrder);
+            if(helper)helper.classList.toggle('hidden', !hasItems || actionVisibility.canUseInventoryActions || actionVisibility.canUseBloomOrders);
             if(bar)bar.classList.toggle('hidden', !hasItems||!cartPanelOpen);
         }
         function copyTextToClipboard(text,label) { 
@@ -7526,6 +7721,15 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
             const items = getCartSelectedItems();
             if (!items.length) {
                 showToast('Bloom Picker Empty', 'Add one or more rows to Bloom Picker first.', true);
+                return;
+            }
+            const access = getRoleAccessState();
+            if (access.isCsr && action === 'text') {
+                showToast('Restricted', 'CSR users can use Copy or Email from Bloom Picker.', true);
+                return;
+            }
+            if ((access.isRep || access.isCsr) && (action === 'assign' || action === 'flyer' || action === 'endcap')) {
+                showToast('Restricted', access.isRep ? 'REP users can only Copy, Email, Text, Request, and Submit Order from Bloom Picker.' : 'CSR users can only Copy, Email, Request, and Submit Order from Bloom Picker.', true);
                 return;
             }
             const requestOnly = items.every((item) => isRequestLikeItem(item));
