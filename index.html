@@ -1312,6 +1312,41 @@
         function applyRealtimeChange(tableName = '', payload = null) {
             if (!payload || !payload.eventType) return false;
             const eventType = String(payload.eventType || '').toUpperCase();
+
+            if (tableName === 'v2_dock_team_status') {
+                const rawRow = eventType === 'DELETE' ? (payload.old || {}) : (payload.new || {});
+                const dockKey = normalizeDockTeamDockKey(rawRow.dock_num || rawRow.DOCK_NUM || rawRow.dock || rawRow.DOCK);
+                if (!dockKey) return false;
+                if (eventType === 'DELETE') {
+                    dockTeamStatusByDock.delete(dockKey);
+                    try { localStorage.removeItem('gnc_dock_team_' + dockKey); } catch (e) {}
+                } else {
+                    cacheDockTeamInfo(dockKey, rawRow);
+                }
+                dockTeamStatusLoaded = true;
+                markViewDirty('docks');
+                const docksView = document.getElementById('view-docks');
+                if (docksView && !docksView.classList.contains('hidden')) scheduleUiRender('dock-team-realtime', () => renderDocks(), 24);
+                return true;
+            }
+
+            if (tableName === 'v2_dock_item_status') {
+                const rawRow = eventType === 'DELETE' ? (payload.old || {}) : (payload.new || {});
+                const uniqueId = normalizeDockItemUniqueId(rawRow.unique_id || rawRow.UNIQUE_ID);
+                if (!uniqueId) return false;
+                if (eventType === 'DELETE') {
+                    dockItemProgressByUid.delete(uniqueId);
+                    try { localStorage.removeItem('gnc_dock_item_' + uniqueId); } catch (e) {}
+                } else {
+                    cacheDockItemProgress(uniqueId, rawRow);
+                }
+                dockItemProgressLoaded = true;
+                markViewDirty('docks');
+                const docksView = document.getElementById('view-docks');
+                if (docksView && !docksView.classList.contains('hidden')) scheduleUiRender('dock-item-realtime', () => renderDocks(), 24);
+                return true;
+            }
+
             const oldRow = payload.old || {};
             const nextRow = payload.new ? formatFetchedRows([payload.new], tableName)[0] : null;
             const uniqueId = String((nextRow && nextRow.UNIQUE_ID) || oldRow.unique_id || oldRow.UNIQUE_ID || '');
@@ -1424,7 +1459,7 @@
                 updateSyncDiagnostics(navigator.onLine === false ? 'offline' : 'idle');
                 return;
             }
-            ['v2_master_inventory','v2_active_request','v2_reserves','v2_soc_master','v2_sales_office','v2_av_notes'].forEach((tableName) => {
+            ['v2_master_inventory','v2_active_request','v2_reserves','v2_soc_master','v2_sales_office','v2_av_notes','v2_dock_team_status','v2_dock_item_status'].forEach((tableName) => {
                 const channel = supabaseClient
                     .channel(`realtime-${tableName}`)
                     .on('postgres_changes', { event: '*', schema: 'public', table: tableName }, (payload) => {
@@ -1829,6 +1864,7 @@
         let currentUser=""; let currentUserDisplay=""; let currentRole=""; let safeRole=""; let repPermutations=[]; let activeItem=null; let lastView=""; let activeDetailTab="overview"; let selectedItems=new Set(); let cartPanelOpen=false; let cartUiObserver=null; let cartUiRefreshQueued=false; let lastCartToggleAt=0; let lastCartToggleDomId=""; let isMultiSelectMode=false; let pressTimer=null; let isLongPress=false; let touchStartX=0; let touchStartY=0; let pendingAction=null; let pendingTabType=null; let hasAppliedInitialHomeView=false;
         let dockAssignableUsers=[]; let dockAssignableUsersPromise=null;
         let dockTeamStatusByDock=new Map(); let dockTeamStatusPromise=null; let dockTeamStatusLoaded=false; let dockTeamSchemaReady=null; let dockTeamSchemaPromise=null; let dockTeamSchemaWarningShown=false;
+        let dockItemProgressByUid=new Map(); let dockItemProgressPromise=null; let dockItemProgressLoaded=false; let dockItemSchemaReady=null; let dockItemSchemaPromise=null; let dockItemSchemaWarningShown=false;
         let detailRequestSourceDomIds=[];
         let avRuleColumnsReady=null; let avRuleColumnsProbePromise=null; let avRuleSchemaWarningShown=false; let avRuleCleanupInFlight=new Set();
         
@@ -3897,6 +3933,7 @@ function toggleDriveQuickRequestItem(domId) {
             setRepPermutations(currentUser);
             ensureDockAssignableUsers().catch(() => {});
             ensureDockTeamStatusLoaded().then(() => { if (!document.getElementById('view-docks').classList.contains('hidden')) renderDocks(); }).catch(() => {});
+            ensureDockItemStatusLoaded().then(() => { if (!document.getElementById('view-docks').classList.contains('hidden')) renderDocks(); }).catch(() => {});
             ensureAvRuleColumnsReady().catch(() => {});
             const shouldPromptBiometric = !isBiometricLogin && window.PublicKeyCredential && localStorage.getItem('gnc_bio_enabled')!=='true';
             setLoginProgress(Math.max(currentProgress, 30), 'Preparing your workspace...');
@@ -3993,6 +4030,19 @@ function toggleDriveQuickRequestItem(domId) {
                         markViewDirty('sales-office');
                         if(!document.getElementById('view-sales-office').classList.contains('hidden')) renderViewContent('sales-office', false, true);
                     }
+                }
+
+                const previousDockTeamSnapshot = JSON.stringify(Array.from(dockTeamStatusByDock.entries()));
+                const previousDockItemSnapshot = JSON.stringify(Array.from(dockItemProgressByUid.entries()));
+                await Promise.allSettled([
+                    ensureDockTeamStatusLoaded(true),
+                    ensureDockItemStatusLoaded(true)
+                ]);
+                const dockWorkflowChanged = previousDockTeamSnapshot !== JSON.stringify(Array.from(dockTeamStatusByDock.entries()))
+                    || previousDockItemSnapshot !== JSON.stringify(Array.from(dockItemProgressByUid.entries()));
+                if (dockWorkflowChanged) {
+                    markViewDirty('docks');
+                    if (!document.getElementById('view-docks').classList.contains('hidden')) renderViewContent('docks', false, true);
                 }
                 
                 lastSyncTime=checkTime;
@@ -4392,6 +4442,174 @@ function toggleDriveQuickRequestItem(domId) {
             return [info.checker, info.inspector, info.mistake].some(value => isAssignedToCurrentUser(value));
         }
 
+        function getDefaultDockItemProgress() {
+            return { checker: false, inspector: false, checkerCompletedBy: '', inspectorCompletedBy: '', updatedAt: '' };
+        }
+
+        function normalizeDockItemUniqueId(uniqueId = '') {
+            return String(uniqueId || '').trim();
+        }
+
+        function normalizeDockItemProgress(progress = null) {
+            const base = getDefaultDockItemProgress();
+            const raw = progress && typeof progress === 'object' ? progress : {};
+            const toBool = (value) => value === true || value === 'true' || value === 1 || value === '1';
+            let checker = toBool(raw.checker ?? raw.CHECKER ?? raw.checker_done ?? raw.CHECKER_DONE);
+            let inspector = toBool(raw.inspector ?? raw.INSPECTOR ?? raw.inspector_done ?? raw.INSPECTOR_DONE);
+            if (inspector) checker = true;
+            return {
+                checker,
+                inspector,
+                checkerCompletedBy: String(raw.checkerCompletedBy || raw.CHECKERCOMPLETEDBY || raw.checker_completed_by || raw.CHECKER_COMPLETED_BY || '').trim(),
+                inspectorCompletedBy: String(raw.inspectorCompletedBy || raw.INSPECTORCOMPLETEDBY || raw.inspector_completed_by || raw.INSPECTOR_COMPLETED_BY || '').trim(),
+                updatedAt: String(raw.updatedAt || raw.UPDATEDAT || raw.updated_at || raw.UPDATED_AT || '').trim() || base.updatedAt
+            };
+        }
+
+        function readLegacyDockItemProgress(uniqueId = '') {
+            const normalizedUid = normalizeDockItemUniqueId(uniqueId);
+            if (!normalizedUid) return getDefaultDockItemProgress();
+            try {
+                return normalizeDockItemProgress(JSON.parse(localStorage.getItem('gnc_dock_item_' + normalizedUid) || '{}'));
+            } catch (error) {
+                return getDefaultDockItemProgress();
+            }
+        }
+
+        function cacheDockItemProgress(uniqueId = '', progress = null) {
+            const normalizedUid = normalizeDockItemUniqueId(uniqueId);
+            if (!normalizedUid) return getDefaultDockItemProgress();
+            const normalized = normalizeDockItemProgress(progress);
+            dockItemProgressByUid.set(normalizedUid, normalized);
+            localStorage.setItem('gnc_dock_item_' + normalizedUid, JSON.stringify(normalized));
+            return normalized;
+        }
+
+        function getDockItemProgress(uniqueId = '') {
+            const normalizedUid = normalizeDockItemUniqueId(uniqueId);
+            if (!normalizedUid) return getDefaultDockItemProgress();
+            if (dockItemProgressByUid.has(normalizedUid)) return normalizeDockItemProgress(dockItemProgressByUid.get(normalizedUid));
+            const legacy = readLegacyDockItemProgress(normalizedUid);
+            dockItemProgressByUid.set(normalizedUid, legacy);
+            return legacy;
+        }
+
+        function maybeWarnDockItemSchemaMissing() {
+            if (dockItemSchemaWarningShown || !currentUser) return;
+            dockItemSchemaWarningShown = true;
+            showToast('Schema Required', 'Run dock_item_status_migration.sql in Supabase to share dock row check and inspect progress across users.', true);
+        }
+
+        async function ensureDockItemSchemaReady(force = false) {
+            if (dockItemSchemaReady === true && !force) return true;
+            if (dockItemSchemaReady === false && !force) return false;
+            if (dockItemSchemaPromise && !force) return dockItemSchemaPromise;
+            dockItemSchemaPromise = (async () => {
+                if (navigator.onLine === false) return false;
+                try {
+                    const url = `${SUPABASE_URL}/rest/v1/v2_dock_item_status?select=unique_id,checker_done&limit=1`;
+                    const response = await fetchWithTimeout(url, {
+                        method: 'GET',
+                        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }
+                    }, SUPABASE_READ_TIMEOUT_MS, 'Dock Item Schema');
+                    if (!response.ok) {
+                        const errorText = await getResponseError(response, `Supabase read failed (${response.status})`);
+                        const normalizedError = String(errorText || '').toLowerCase();
+                        if (normalizedError.includes('v2_dock_item_status') || normalizedError.includes('unique_id') || normalizedError.includes('checker_done') || normalizedError.includes('relation') || normalizedError.includes('column')) {
+                            dockItemSchemaReady = false;
+                            maybeWarnDockItemSchemaMissing();
+                            return false;
+                        }
+                        return false;
+                    }
+                    dockItemSchemaReady = true;
+                    return true;
+                } catch (error) {
+                    const normalizedError = String(error && error.message ? error.message : error || '').toLowerCase();
+                    if (normalizedError.includes('v2_dock_item_status') || normalizedError.includes('unique_id') || normalizedError.includes('checker_done') || normalizedError.includes('relation') || normalizedError.includes('column')) {
+                        dockItemSchemaReady = false;
+                        maybeWarnDockItemSchemaMissing();
+                        return false;
+                    }
+                    return false;
+                } finally {
+                    dockItemSchemaPromise = null;
+                }
+            })();
+            return dockItemSchemaPromise;
+        }
+
+        async function ensureDockItemStatusLoaded(forceRefresh = false) {
+            if (!forceRefresh && dockItemProgressLoaded) return dockItemProgressByUid;
+            if (!forceRefresh && dockItemProgressPromise) return dockItemProgressPromise;
+            dockItemProgressPromise = (async () => {
+                const schemaReady = await ensureDockItemSchemaReady(forceRefresh);
+                if (!schemaReady) {
+                    dockItemProgressLoaded = false;
+                    return dockItemProgressByUid;
+                }
+                const rows = await supabaseFetch('v2_dock_item_status', 'GET', null, 'select=*');
+                const nextMap = new Map();
+                (rows || []).forEach((row) => {
+                    const normalizedUid = normalizeDockItemUniqueId(row.unique_id || row.UNIQUE_ID);
+                    if (!normalizedUid) return;
+                    nextMap.set(normalizedUid, normalizeDockItemProgress(row));
+                });
+                dockItemProgressByUid = nextMap;
+                dockItemProgressLoaded = true;
+                return dockItemProgressByUid;
+            })().catch(() => dockItemProgressByUid).finally(() => {
+                dockItemProgressPromise = null;
+            });
+            return dockItemProgressPromise;
+        }
+
+        function canEditDockWorkflow() {
+            const access = getRoleAccessState();
+            return !!(access.isAdmin || access.isQcSupervisor);
+        }
+
+        function getDockRowQueueStage(item = null) {
+            const progress = getDockItemProgress(item && item.UNIQUE_ID);
+            if (progress.checker && progress.inspector) return 'complete';
+            if (progress.checker) return 'inspector';
+            return 'checker';
+        }
+
+        function isDockRowComplete(item = null) {
+            return getDockRowQueueStage(item) === 'complete';
+        }
+
+        function getDockRowQueueOwner(item = null) {
+            if (!item) return '';
+            const teamInfo = getDockTeamInfo(item.DOCK_NUM);
+            const queueStage = getDockRowQueueStage(item);
+            if (queueStage === 'checker') return firstNonEmptyValue(teamInfo.checker, item.ASSIGNEDTO, '');
+            if (queueStage === 'inspector') return firstNonEmptyValue(teamInfo.inspector, teamInfo.checker, item.ASSIGNEDTO, '');
+            return '';
+        }
+
+        function isDockRowQueuedForCurrentUser(item = null) {
+            const access = getRoleAccessState();
+            if (access.isAdmin || access.isQcSupervisor) return true;
+            return isAssignedToCurrentUser(getDockRowQueueOwner(item));
+        }
+
+        function canCurrentUserMarkDockStage(item = null, stage = '') {
+            if (!item) return false;
+            const normalizedStage = stage === 'inspector' ? 'inspector' : 'checker';
+            const access = getRoleAccessState();
+            const progress = getDockItemProgress(item.UNIQUE_ID);
+            const queueStage = getDockRowQueueStage(item);
+            if (normalizedStage === 'checker') {
+                if (progress.checker) return false;
+                if (access.isAdmin || access.isQcSupervisor) return true;
+                return queueStage === 'checker' && isDockRowQueuedForCurrentUser(item);
+            }
+            if (progress.inspector || !progress.checker) return false;
+            if (access.isAdmin || access.isQcSupervisor) return true;
+            return queueStage === 'inspector' && isDockRowQueuedForCurrentUser(item);
+        }
         function updateDockAssignableTeamOptions(preservedValues = null) {
             const selectIds = ['dock-checker', 'dock-inspector', 'dock-mistake'];
             const resolvedValues = preservedValues && typeof preservedValues === 'object' ? {
@@ -4500,7 +4718,7 @@ function toggleDriveQuickRequestItem(domId) {
                 return nextItems.filter(item => isMyRep(firstNonEmptyValue(item && item.SALESREPNAME, item && item.SALESREP, item && item.SALES_REP, item && item.SALESREPID, '')));
             }
             if (isQc && !isAdmin && !isQcSupervisor) {
-                return nextItems.filter(item => isAssignedToCurrentUser(item && item.ASSIGNEDTO) || isDockTeamAssignedToCurrentUser(item && item.DOCK_NUM));
+                return nextItems.filter(item => !isDockRowComplete(item) && isDockRowQueuedForCurrentUser(item));
             }
             return nextItems;
         }
@@ -5340,6 +5558,10 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
         function selectDockStop(stop) { selectedDockStop = stop; dockViewLevel = 2; renderDocks(); }
 
         function openDockInfoModal(dockNum) {
+            if (!canEditDockWorkflow()) {
+                showToast('Restricted', 'Only Admin or QC Supervisor can update dock team and status.', true);
+                return;
+            }
             pendingDockNum = dockNum; document.getElementById('modal-dock-num').innerText = dockNum;
             let savedInfo = getDockTeamInfo(dockNum);
             updateDockAssignableTeamOptions(savedInfo);
@@ -5354,6 +5576,10 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
         }
 
         function saveDockInfoModal() {
+            if (!canEditDockWorkflow()) {
+                showToast('Restricted', 'Only Admin or QC Supervisor can update dock team and status.', true);
+                return;
+            }
             if(!pendingDockNum) return;
             const dockNum = normalizeDockTeamDockKey(pendingDockNum);
             let info = normalizeDockTeamInfo({ checker: document.getElementById('dock-checker').value, inspector: document.getElementById('dock-inspector').value, mistake: document.getElementById('dock-mistake').value, status: document.getElementById('dock-status').value });
@@ -5398,9 +5624,45 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
             }
         }
 
-        function toggleDockItemState(uid, type) {
-            let key = 'gnc_dock_item_' + uid; let state = JSON.parse(localStorage.getItem(key) || '{"checker":false,"inspector":false}');
-            state[type] = !state[type]; localStorage.setItem(key, JSON.stringify(state)); renderDocks(); 
+        async function toggleDockItemState(uid, type) {
+            const item = socInventory.find(i => String(i.UNIQUE_ID || '') === String(uid || ''));
+            if (!item) return;
+            const stage = type === 'inspector' ? 'inspector' : 'checker';
+            if (!canCurrentUserMarkDockStage(item, stage)) {
+                showToast('Restricted', stage === 'checker' ? 'This row is still assigned to a different checker.' : 'This row is not ready for your inspection yet.', true);
+                return;
+            }
+            const previous = getDockItemProgress(uid);
+            const updatedAt = new Date().toISOString();
+            const nextProgress = normalizeDockItemProgress({
+                checker: previous.checker || stage === 'checker' || stage === 'inspector',
+                inspector: previous.inspector || stage === 'inspector',
+                checker_completed_by: previous.checkerCompletedBy || (stage === 'checker' || stage === 'inspector' ? (currentUserDisplay || currentUser || '') : ''),
+                inspector_completed_by: stage === 'inspector' ? (currentUserDisplay || currentUser || '') : previous.inspectorCompletedBy,
+                updated_at: updatedAt
+            });
+            cacheDockItemProgress(uid, nextProgress);
+            dockItemProgressLoaded = true;
+            markViewDirty('docks');
+            renderDocks();
+            if (navigator.onLine === false) return;
+            try {
+                const schemaReady = await ensureDockItemSchemaReady();
+                if (!schemaReady) return;
+                await supabaseFetch('v2_dock_item_status', 'POST', [{
+                    unique_id: String(uid || ''),
+                    checker_done: !!nextProgress.checker,
+                    inspector_done: !!nextProgress.inspector,
+                    checker_completed_by: nextProgress.checkerCompletedBy || null,
+                    inspector_completed_by: nextProgress.inspectorCompletedBy || null,
+                    updated_by: currentUserDisplay || currentUser || null,
+                    updated_at: updatedAt
+                }]);
+                dockItemProgressLoaded = true;
+                if (!document.getElementById('view-docks').classList.contains('hidden')) renderDocks();
+            } catch (error) {
+                showToast('Error', 'Dock row progress saved on this device, but the shared dock workflow update failed.', true);
+            }
         }
 
         function renderDocks() {
@@ -5408,9 +5670,11 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
             const container = document.getElementById('docks-content');
             const crumb = document.getElementById('docks-crumb');
             const access = getRoleAccessState();
-            if (access.isQc && !access.isAdmin && !access.isQcSupervisor && !dockTeamStatusLoaded && dockTeamSchemaReady !== false) {
+            const canEditDockConfig = canEditDockWorkflow();
+            if (access.isQc && !access.isAdmin && !access.isQcSupervisor && (((!dockTeamStatusLoaded) && dockTeamSchemaReady !== false) || ((!dockItemProgressLoaded) && dockItemSchemaReady !== false))) {
                 if (!dockTeamStatusPromise) ensureDockTeamStatusLoaded().then(() => renderDocks()).catch(() => renderDocks());
-                container.innerHTML = `<div class="p-8 text-center text-gray-400">Loading dock assignments...</div>`;
+                if (!dockItemProgressPromise) ensureDockItemStatusLoaded().then(() => renderDocks()).catch(() => renderDocks());
+                container.innerHTML = `<div class="p-8 text-center text-gray-400">Loading dock workflow...</div>`;
                 crumb.innerText = 'Loading Assignments';
                 return;
             }
@@ -5457,7 +5721,8 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
                     let borderCls = hasCoUt ? 'border-red-500' : 'border-[#007a4d]';
                     let bgCls = hasCoUt ? 'bg-red-50' : 'bg-green-50';
                     let textCls = hasCoUt ? 'text-red-700' : 'text-[#007a4d]';
-                    return `<div class="bg-white border-2 ${borderCls} rounded-xl shadow-sm mb-4 overflow-hidden"><div class="p-4 flex justify-between items-center cursor-pointer active:${bgCls} transition-colors" onclick="selectDock('${esc(d)}')"><div class="flex items-center gap-3"><div class="${bgCls} p-2 rounded-lg"><i class="ph-fill ph-truck text-2xl ${textCls}"></i></div><div><div class="font-black text-lg ${textCls} leading-tight">Dock ${d}</div><div class="text-[10px] font-bold text-gray-500 uppercase mt-0.5">${count} Items</div></div></div><i class="ph-bold ph-caret-right text-gray-300 text-xl"></i></div><div class="bg-gray-50 p-3 border-t border-gray-100"><div class="flex justify-between items-center mb-2"><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Dock Status</span><span class="text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider ${statusColor}">${savedInfo.status}</span></div><div class="grid grid-cols-3 gap-2 mb-3"><div class="bg-white p-2 rounded border border-gray-200 text-center"><div class="text-[8px] font-bold text-gray-400 uppercase mb-0.5">Checker</div><div class="text-xs font-bold text-gray-700 truncate">${savedInfo.checker || '-'}</div></div><div class="bg-white p-2 rounded border border-gray-200 text-center"><div class="text-[8px] font-bold text-gray-400 uppercase mb-0.5">Inspector</div><div class="text-xs font-bold text-gray-700 truncate">${savedInfo.inspector || '-'}</div></div><div class="bg-white p-2 rounded border border-gray-200 text-center"><div class="text-[8px] font-bold text-gray-400 uppercase mb-0.5">Mistake Guy</div><div class="text-xs font-bold text-gray-700 truncate">${savedInfo.mistake || '-'}</div></div></div><button class="w-full bg-white border border-gray-200 text-gray-600 hover:text-[#007a4d] hover:border-[#007a4d] font-bold py-2 rounded-lg text-xs shadow-sm transition-colors" onclick="openDockInfoModal('${esc(d)}')"><i class="ph-bold ph-pencil-simple mr-1"></i> Edit Team & Status</button></div></div>`;
+                    const editDockButton = canEditDockConfig ? `<button class="w-full bg-white border border-gray-200 text-gray-600 hover:text-[#007a4d] hover:border-[#007a4d] font-bold py-2 rounded-lg text-xs shadow-sm transition-colors" onclick="openDockInfoModal('${esc(d)}')"><i class="ph-bold ph-pencil-simple mr-1"></i> Edit Team & Status</button>` : '';
+                    return `<div class="bg-white border-2 ${borderCls} rounded-xl shadow-sm mb-4 overflow-hidden"><div class="p-4 flex justify-between items-center cursor-pointer active:${bgCls} transition-colors" onclick="selectDock('${esc(d)}')"><div class="flex items-center gap-3"><div class="${bgCls} p-2 rounded-lg"><i class="ph-fill ph-truck text-2xl ${textCls}"></i></div><div><div class="font-black text-lg ${textCls} leading-tight">Dock ${d}</div><div class="text-[10px] font-bold text-gray-500 uppercase mt-0.5">${count} Items</div></div></div><i class="ph-bold ph-caret-right text-gray-300 text-xl"></i></div><div class="bg-gray-50 p-3 border-t border-gray-100"><div class="flex justify-between items-center mb-2"><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Dock Status</span><span class="text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider ${statusColor}">${savedInfo.status}</span></div><div class="grid grid-cols-3 gap-2 mb-3"><div class="bg-white p-2 rounded border border-gray-200 text-center"><div class="text-[8px] font-bold text-gray-400 uppercase mb-0.5">Checker</div><div class="text-xs font-bold text-gray-700 truncate">${savedInfo.checker || '-'}</div></div><div class="bg-white p-2 rounded border border-gray-200 text-center"><div class="text-[8px] font-bold text-gray-400 uppercase mb-0.5">Inspector</div><div class="text-xs font-bold text-gray-700 truncate">${savedInfo.inspector || '-'}</div></div><div class="bg-white p-2 rounded border border-gray-200 text-center"><div class="text-[8px] font-bold text-gray-400 uppercase mb-0.5">Mistake Guy</div><div class="text-xs font-bold text-gray-700 truncate">${savedInfo.mistake || '-'}</div></div></div>${editDockButton}</div></div>`;
                 }).join('');
                 return;
             }
@@ -5488,8 +5753,8 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
                     const cons = lead.CONSIGNEENAME || lead.CONSIGNEE || '';
                     const state = lead.CONSIGNEESTATE || lead.STATE || 'N/A';
                     const doneCount = stopItems.filter(item => {
-                        const state = JSON.parse(localStorage.getItem('gnc_dock_item_' + item.UNIQUE_ID) || '{"checker":false,"inspector":false}');
-                        return state.checker && state.inspector;
+                        const progress = getDockItemProgress(item.UNIQUE_ID);
+                        return progress.checker && progress.inspector;
                     }).length;
                     return `<div class="bg-white border border-gray-200 rounded-xl shadow-sm mb-3 overflow-hidden cursor-pointer active:scale-[0.99] transition-transform" onclick="selectDockStop('${esc(stopNum)}')"><div class="p-4"><div class="flex justify-between items-start gap-3 mb-2"><div><div class="font-black text-xl text-[#007a4d] leading-none">STOP ${stopNum}</div><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-1">${stopItems.length} Rows</div></div><div class="text-right"><div class="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded ${doneCount === stopItems.length ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}">${doneCount}/${stopItems.length} Done</div></div></div><div class="text-sm font-bold text-gray-800 leading-tight">${cust}</div>${cons && cons !== cust ? `<div class="text-xs font-semibold text-gray-500 mt-1">${cons}</div>` : ''}<div class="flex flex-wrap gap-2 mt-3 text-[10px] font-bold uppercase tracking-wider"><span class="bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-100"><i class="ph-bold ph-user mr-1"></i>${rep}</span><span class="bg-gray-100 text-gray-700 px-2 py-1 rounded border border-gray-200"><i class="ph-bold ph-map-pin mr-1"></i>${state}</span></div></div><div class="bg-gray-50 border-t border-gray-100 px-4 py-3 flex items-center justify-between"><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Open Stop</span><i class="ph-bold ph-caret-right text-gray-300 text-xl"></i></div></div>`;
                 }).join('');
@@ -5509,8 +5774,8 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
             const cons = lead.CONSIGNEENAME || lead.CONSIGNEE || '';
             const state = lead.CONSIGNEESTATE || lead.STATE || 'N/A';
             const doneCount = stopItems.filter(item => {
-                const savedState = JSON.parse(localStorage.getItem('gnc_dock_item_' + item.UNIQUE_ID) || '{"checker":false,"inspector":false}');
-                return savedState.checker && savedState.inspector;
+                const progress = getDockItemProgress(item.UNIQUE_ID);
+                return progress.checker && progress.inspector;
             }).length;
             crumb.innerText = `Dock ${selectedDockNum} > Stop ${selectedDockStop}`;
             let html = `<div class="back-btn" onclick="dockViewLevel=1; renderDocks()"><i class="ph-bold ph-arrow-left"></i> Back to Stops</div>`;
@@ -6732,9 +6997,9 @@ function clearAVSearch() { document.getElementById('av-search').value=""; docume
             if(sourceView === 'docks'){
                 let stopNum = item.STOPNUMBER || '-'; let tripNum = item.TRIPNUMBER || '-'; let salesRep = item.SALESREPNAME || item.SALESREPID || '-'; let sourceStr = item.SOURCE || '-'; let noteHtml = "";
                 if(item.DOCK_NOTE && String(item.DOCK_NOTE).trim() !== "") noteHtml += `<div class="mt-2 text-[12px] text-orange-800 bg-orange-100 p-2 rounded border border-orange-200 shadow-sm whitespace-pre-wrap"><span class="font-black">DOCK NOTE:</span> ${item.DOCK_NOTE}</div>`;
-                let checkState = JSON.parse(localStorage.getItem('gnc_dock_item_' + item.UNIQUE_ID) || '{"checker":false,"inspector":false}'); let isDimmed = checkState.checker && checkState.inspector; let cardOpacity = isDimmed ? "opacity-40 grayscale" : "opacity-100"; let chkClass = checkState.checker ? "bg-[#007a4d] text-white border-[#007a4d]" : "bg-gray-50 text-gray-500 border-gray-200"; let inspClass = checkState.inspector ? "bg-[#007a4d] text-white border-[#007a4d]" : "bg-gray-50 text-gray-500 border-gray-200";
-                let actionBtns = `<div class="flex gap-2 mt-3 pt-3 border-t border-gray-100"><button class="flex-1 py-2 rounded-lg text-[10px] uppercase font-black border shadow-sm transition-colors ${chkClass} active:scale-95" onclick="event.stopPropagation(); toggleDockItemState('${safeUidJs}', 'checker')"><i class="ph-bold ph-check-square mr-1 text-lg align-middle"></i> Check</button><button class="flex-1 py-2 rounded-lg text-[10px] uppercase font-black border shadow-sm transition-colors ${inspClass} active:scale-95" onclick="event.stopPropagation(); toggleDockItemState('${safeUidJs}', 'inspector')"><i class="ph-bold ph-magnifying-glass mr-1 text-lg align-middle"></i> Inspect</button><button class="flex-1 py-2 rounded-lg text-[10px] uppercase font-black border border-red-200 bg-red-50 text-red-600 shadow-sm transition-colors hover:bg-red-100 active:scale-95" onclick="event.stopPropagation(); openDockItemMistakeModal('${safeUidJs}')"><i class="ph-bold ph-warning-circle mr-1 text-lg align-middle"></i> Mistake</button></div>`;
-                return `<div class="flex items-center w-full mb-2 item-row relative app-card-shell p-3 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${cardOpacity}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-col w-full min-w-0"><div class="flex items-start justify-between w-full"><div class="flex-grow min-w-0 pr-2"><div class="font-black text-gray-800 text-[14px] leading-tight break-words mb-0.5">${item.COMMONNAME||'Unknown'}</div><div class="font-bold text-[#007a4d] text-sm mb-2">${item.CONTSIZE||'-'}</div><div class="text-[11px] font-mono text-gray-500 mb-2 flex items-center bg-gray-100 px-2 py-0.5 rounded w-max"><i class="ph-bold ph-barcode mr-1.5 text-gray-400"></i>${item.ITEMCODE||'-'}</div><div class="flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600"><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Trip: ${tripNum}</span><span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">Loc: ${item.LOCATIONCODE||'No Loc'}</span><span class="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-100">Rep: ${salesRep}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Tag: ${tagColor}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Lot: ${item.LOTCODE||'-'}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Src: ${sourceStr}</span></div>${noteHtml}</div>${thumbHtml}</div>${actionBtns}</div></div>`;
+                const progress = getDockItemProgress(item.UNIQUE_ID); const queueStage = getDockRowQueueStage(item); const queueOwner = getDockRowQueueOwner(item); const isDimmed = progress.checker && progress.inspector; const cardOpacity = isDimmed ? "opacity-40 grayscale" : "opacity-100"; const chkClass = progress.checker ? "bg-[#007a4d] text-white border-[#007a4d]" : "bg-gray-50 text-gray-500 border-gray-200"; const inspClass = progress.inspector ? "bg-[#007a4d] text-white border-[#007a4d]" : "bg-gray-50 text-gray-500 border-gray-200"; const canMarkChecker = canCurrentUserMarkDockStage(item, 'checker'); const canMarkInspector = canCurrentUserMarkDockStage(item, 'inspector'); const checkerDisabled = canMarkChecker ? '' : 'opacity-50 cursor-not-allowed'; const inspectorDisabled = canMarkInspector ? '' : 'opacity-50 cursor-not-allowed'; const queueBadge = isDimmed ? `<span class="bg-green-100 text-green-700 px-1.5 py-0.5 rounded border border-green-200">Queue: Complete</span>` : `<span class="bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded border border-amber-100">Queue: ${queueStage === 'checker' ? 'Checker' : 'Inspector'}${queueOwner ? ' - ' + queueOwner : ''}</span>`;
+                let actionBtns = `<div class="flex gap-2 mt-3 pt-3 border-t border-gray-100"><button class="flex-1 py-2 rounded-lg text-[10px] uppercase font-black border shadow-sm transition-colors ${chkClass} ${checkerDisabled} active:scale-95" ${canMarkChecker ? '' : 'disabled'} onclick="event.stopPropagation(); toggleDockItemState('${safeUidJs}', 'checker')"><i class="ph-bold ph-check-square mr-1 text-lg align-middle"></i> Check</button><button class="flex-1 py-2 rounded-lg text-[10px] uppercase font-black border shadow-sm transition-colors ${inspClass} ${inspectorDisabled} active:scale-95" ${canMarkInspector ? '' : 'disabled'} onclick="event.stopPropagation(); toggleDockItemState('${safeUidJs}', 'inspector')"><i class="ph-bold ph-magnifying-glass mr-1 text-lg align-middle"></i> Inspect</button><button class="flex-1 py-2 rounded-lg text-[10px] uppercase font-black border border-red-200 bg-red-50 text-red-600 shadow-sm transition-colors hover:bg-red-100 active:scale-95" onclick="event.stopPropagation(); openDockItemMistakeModal('${safeUidJs}')"><i class="ph-bold ph-warning-circle mr-1 text-lg align-middle"></i> Mistake</button></div>`;
+                return `<div class="flex items-center w-full mb-2 item-row relative app-card-shell p-3 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${cardOpacity}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-col w-full min-w-0"><div class="flex items-start justify-between w-full"><div class="flex-grow min-w-0 pr-2"><div class="font-black text-gray-800 text-[14px] leading-tight break-words mb-0.5">${item.COMMONNAME||'Unknown'}</div><div class="font-bold text-[#007a4d] text-sm mb-2">${item.CONTSIZE||'-'}</div><div class="text-[11px] font-mono text-gray-500 mb-2 flex items-center bg-gray-100 px-2 py-0.5 rounded w-max"><i class="ph-bold ph-barcode mr-1.5 text-gray-400"></i>${item.ITEMCODE||'-'}</div><div class="flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600"><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Stop: ${stopNum}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Trip: ${tripNum}</span><span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">Loc: ${item.LOCATIONCODE||'No Loc'}</span><span class="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-100">Rep: ${salesRep}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Tag: ${tagColor}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Lot: ${item.LOTCODE||'-'}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Src: ${sourceStr}</span>${queueBadge}</div>${noteHtml}</div>${thumbHtml}</div>${actionBtns}</div></div>`;
             }
 
             if(sourceView==='sales-office'){
