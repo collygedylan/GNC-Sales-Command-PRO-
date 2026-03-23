@@ -2306,6 +2306,11 @@
                 obj.PTRAVAILABLE = obj.PTRAVAILABLE || 0;
                 obj.SEASONSUPPLY = obj.SEASON_SUPPLY || obj.SEASONSUPPLY || 0;
                 obj.FIELDTAGCOLOR = obj.FIELD_TAG_COLOR || obj.FIELDTAGCOLOR || '-';
+                if (sourceTable === 'v2_active_request') {
+                    obj.REQ_DESIRED_SPEC = firstNonEmptyValue(obj.REQ_DESIRED_SPEC, obj.DESIRED_SPEC, '');
+                    obj.REQ_DESIRED_CALIPER = firstNonEmptyValue(obj.REQ_DESIRED_CALIPER, obj.DESIRED_CALIPER, '');
+                    obj.REQ_EST_SHIP = firstNonEmptyValue(obj.REQ_EST_SHIP, obj.EST_SHIP, '');
+                }
                 normalizeRowPhotoFields(obj);
                 return obj;
             });
@@ -8676,13 +8681,10 @@ activeDriveTab = tab;
                         qualitycode:item.QUALITYCODE,
                         field_tag_color:item.FIELDTAGCOLOR,
                         plantgroupcode:item.PLANTGROUPCODE,
-                        requested_by:requestedBy,
-                        request_folder:folderId,
-                        req_customer:cust,
+                        desired_spec:dataObj.spec||'',
+                        desired_caliper:dataObj.caliper||'',
+                        est_ship:dataObj.estShip||'',
                         req_qty:dataObj.qty||'',
-                        req_desired_spec:dataObj.spec||'',
-                        req_desired_caliper:dataObj.caliper||'',
-                        req_est_ship:dataObj.estShip||'',
                         req_reserve:dataObj.reserve||'NO',
                         req_photo_link:item.SAVED_PHOTO_LINK||item.REQ_PHOTO_LINK||'',
                         req_photo_name:item.SAVED_PHOTO_NAME||item.REQ_PHOTO_NAME||'',
