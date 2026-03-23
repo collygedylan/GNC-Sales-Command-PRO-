@@ -326,6 +326,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
+                            <button id="run-google-script-btn" type="button" class="hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/25 bg-white/10 text-white text-[10px] font-black uppercase tracking-[0.14em] whitespace-nowrap shadow-sm active:scale-95" onclick="return runGoogleAppsScriptTrigger()"><i class="ph-bold ph-lightning text-sm"></i><span data-run-script-label>Run Script</span></button>
                             <div id="header-version" class="nav-version-pill">v2026.03.21</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2075,6 +2076,52 @@
             return String(viewId || 'home').replace(/-/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
         }
 
+        function isDylanCollygeUser() {
+            return [currentUser, currentUserDisplay].some(value => String(value || '').trim().toLowerCase() === 'dylan_collyge');
+        }
+
+        function syncGoogleScriptButton() {
+            const button = document.getElementById('run-google-script-btn');
+            if (!button) return;
+            const label = button.querySelector('[data-run-script-label]');
+            const isVisible = isDylanCollygeUser();
+            button.classList.toggle('hidden', !isVisible);
+            button.disabled = !!window.googleScriptRunInFlight;
+            button.classList.toggle('opacity-60', !!window.googleScriptRunInFlight);
+            button.classList.toggle('cursor-wait', !!window.googleScriptRunInFlight);
+            if (label) label.innerText = window.googleScriptRunInFlight ? 'Running...' : 'Run Script';
+        }
+
+        async function runGoogleAppsScriptTrigger() {
+            if (!isDylanCollygeUser() || window.googleScriptRunInFlight) return false;
+            window.googleScriptRunInFlight = true;
+            syncGoogleScriptButton();
+            showToast('Processing...', 'Starting Google Apps Script...', false);
+            try {
+                const payload = {
+                    type: 'manual_run',
+                    trigger: 'header_button',
+                    requested_by: currentUserDisplay || currentUser || 'Unknown',
+                    requested_at: new Date().toISOString()
+                };
+                const response = await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) });
+                if (response && 'ok' in response && !response.ok) throw new Error(`HTTP ${response.status}`);
+                let message = 'Google Apps Script started.';
+                try {
+                    const resultText = String(await response.text() || '').trim();
+                    if (resultText) message = resultText.length > 140 ? 'Google Apps Script started.' : resultText;
+                } catch (readErr) {}
+                showToast('Success', message);
+            } catch (err) {
+                console.error(err);
+                showToast('Error', 'Failed to run Google Apps Script.', true);
+            } finally {
+                window.googleScriptRunInFlight = false;
+                syncGoogleScriptButton();
+            }
+            return false;
+        }
+
         function syncGlobalHeaderChrome() {
             ensureGlobalHeaderSearchPlaceholders();
             restoreGlobalHeaderSearchContainers();
@@ -2089,6 +2136,7 @@
             const inlineTitle = document.getElementById('global-header-inline-title');
             if (headerUser) headerUser.innerText = currentUserDisplay || currentUser || 'User';
             if (headerVersion) headerVersion.innerText = APP_VERSION;
+            syncGoogleScriptButton();
             if (title) title.innerText = meta.title || formatGlobalHeaderTitle(currentView);
             if (backBtn) backBtn.classList.toggle('hidden', currentView === 'home');
             if (searchSlot) clearNodeChildren(searchSlot);
