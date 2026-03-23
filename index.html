@@ -551,6 +551,7 @@
                         <div id="task-subtab-positive-lts" class="task-tab" onclick="return setTaskSubview('positive-lts')">Positive LTS</div>
                         <div id="task-subtab-hold" class="task-tab" onclick="return setTaskSubview('hold')">Hold</div>
                     </div>
+                    <div id="task-colorwalk-filters" class="hidden mb-3"></div>
                     </div>
                     <div id="task-content"></div>
                 </div>
@@ -1979,7 +1980,7 @@
         let activeDriveMode='ok'; let activeDriveTab='name'; let selectedDriveBlock=null; let selectedDriveLoc=null; let driveQuickRequestCardMode=false; let driveQuickFilterName=''; let driveQuickFilterLocation=''; let driveQuickFilterLot=''; let driveQuickFilterSize=''; let driveQuickFilterPriority=''; let driveQuickFilterLtsMode=''; let driveQuickFilterLtsValue=''; let driveQuickHoldStopOnly=false; let driveQuickFilterOptionsCacheKey=''; let driveQuickFilterOptionsCache=null; let driveBaseFilterCacheKey=''; let driveBaseFilterCacheItems=[]; let driveQuickFilterCacheKey=''; let driveQuickFilterCacheItems=[]; let driveQuickFiltersModalOpen=false;
         let driveViewLevel=0; let selectedDriveName=null; let selectedDriveSize=null; let driveSelectedSeasons=new Set(['ALL']); const availableSeasons=["ALL","S1","F1","U1","U2","U3","X","Y","Z"];
         
-        let activeTaskTab="season"; let activeTaskSubview="all"; let taskViewTargetUser=null; let taskViewLevel=0; let selectedTaskBlock=null; let selectedTaskLoc=null; let selectedEndCapFolder=null; let selectedFlyerFolder=null; let pendingFlyerFolderTarget=null; let pendingFlyerFolderAssignees="";
+        let activeTaskTab="season"; let activeTaskSubview="all"; let taskViewTargetUser=null; let taskViewLevel=0; let selectedTaskBlock=null; let selectedTaskLoc=null; let selectedEndCapFolder=null; let selectedFlyerFolder=null; let selectedColorWalkContSize=""; let pendingFlyerFolderTarget=null; let pendingFlyerFolderAssignees="";
         
         let activeAVTab='open'; let activeAvOpenTab='name'; let avOpenLevel=0; let selectedAvOpenName=null; let selectedAvOpenSize=null; let selectedAvOpenSeason=null; let selectedAvOpenLot=null; let avResLevel=0; let selectedAvResName=null; let selectedAvResSize=null;
         
@@ -5414,8 +5415,10 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function setTaskTab(tab) { 
+            const previousTaskTab = activeTaskTab;
             activeTaskTab=tab; 
             if (!taskTabUsesBlockDrill(tab)) activeTaskSubview='all';
+            if (tab !== 'colorwalk' && previousTaskTab === 'colorwalk') selectedColorWalkContSize='';
             document.getElementById('tab-season').classList.toggle('active',tab==='season'); 
             document.getElementById('tab-location').classList.toggle('active',tab==='location'); 
             document.getElementById('tab-colorwalk').classList.toggle('active',tab==='colorwalk'); 
@@ -8971,6 +8974,33 @@ function toggleDriveSeason(s) {
             if (holdTab) holdTab.classList.toggle('active', activeTaskSubview === 'hold');
         }
 
+        function setColorWalkContSizeFilter(value = '') {
+            selectedColorWalkContSize = String(value || '').trim();
+            taskViewLevel = 0;
+            selectedTaskBlock = null;
+            selectedTaskLoc = null;
+            scheduleUiRender('task-colorwalk-filter', () => renderTasks());
+            return false;
+        }
+
+        function renderColorWalkContSizeFilter(items = []) {
+            const container = document.getElementById('task-colorwalk-filters');
+            if (!container) return;
+            if (activeTaskTab !== 'colorwalk') {
+                container.classList.add('hidden');
+                container.innerHTML = '';
+                return;
+            }
+            const options = [...new Set(items.map(item => String(item.CONTSIZE || '-').trim() || '-'))]
+                .sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true }));
+            if (selectedColorWalkContSize && !options.includes(selectedColorWalkContSize)) selectedColorWalkContSize = '';
+            const optionHtml = [`<option value="">All Sizes</option>`]
+                .concat(options.map(size => `<option value="${esc(size)}" ${selectedColorWalkContSize === size ? 'selected' : ''}>${size}</option>`))
+                .join('');
+            container.innerHTML = `<div class="rounded-2xl border border-indigo-100 bg-white px-3 py-3 shadow-sm"><div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between"><label class="min-w-0 flex-1 text-[10px] font-black uppercase tracking-[0.14em] text-indigo-700">Cont Size<select class="input-field !mb-0 mt-2 border-indigo-200 bg-indigo-50/40" onchange="setColorWalkContSizeFilter(this.value)">${optionHtml}</select></label><button type="button" class="min-h-[42px] rounded-xl border border-indigo-200 bg-white px-4 text-[11px] font-black uppercase tracking-[0.12em] text-indigo-700 shadow-sm ${selectedColorWalkContSize ? '' : 'opacity-50 cursor-not-allowed pointer-events-none'}" onclick="return setColorWalkContSizeFilter('')">Clear Size</button></div></div>`;
+            container.classList.remove('hidden');
+        }
+
         const COLOR_WALK_LOCATION_BUCKETS = new Set(['C.06', 'C.07', 'D.05', 'D.06', 'D.07', 'D.08', 'D.09', 'D.10']);
         const COLOR_WALK_PLANT_GROUPS = new Set(['150_ANNUAL', '151_PEREN', '155_SUCCUL', '160_TROPIC']);
 
@@ -9077,6 +9107,10 @@ function toggleDriveSeason(s) {
                     ? fullInventory.filter(i => isFlyerTaskItem(i))
                     : fullInventory.filter(i => i.ASSIGNEDTO === targetUser && (keepCompletedInTaskTab || !i.DATE_COMPLETED));
             let tabItems = getTaskSubviewItems(getTaskTabItems(scopedItems, activeTaskTab), activeTaskTab, activeTaskSubview);
+            renderColorWalkContSizeFilter(tabItems);
+            if (activeTaskTab === 'colorwalk' && selectedColorWalkContSize) {
+                tabItems = tabItems.filter(i => String(i.CONTSIZE || '-').trim() === selectedColorWalkContSize);
+            }
 
             if (tabItems.length === 0) {
                 container.innerHTML = `<div class="p-8 text-center text-gray-400">No active ${notesTitle} rows.</div>`;
