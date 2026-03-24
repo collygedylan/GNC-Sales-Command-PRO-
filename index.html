@@ -619,7 +619,7 @@
                         <div id="global-av-container" class="relative w-full mb-3 hidden">
                             <label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label>
                             <div class="flex gap-2 relative">
-                                <input type="text" id="global-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); filterAvNotes()" onfocus="filterAvNotes()" onblur="setTimeout(()=>{if(document.getElementById('global-av-dropdown-list'))document.getElementById('global-av-dropdown-list').classList.add('hidden'); saveData(false, 'global-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT...">
+                                <input type="text" id="global-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); filterAvNotes()" onfocus="filterAvNotes()" onblur="setTimeout(()=>{if(document.getElementById('global-av-dropdown-list'))document.getElementById('global-av-dropdown-list').classList.add('hidden'); saveData(false, 'global-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT..."><button type="button" class="shrink-0 h-[48px] w-[48px] rounded-xl border border-blue-300 bg-blue-100 text-blue-700 text-2xl font-black shadow-sm active:scale-95" onmousedown="event.preventDefault()" onclick="appendSpecCaliperToAvNote('global-')">+</button>
                             </div>
                             <div id="global-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div>
                         </div>
@@ -655,7 +655,7 @@
                     <div id="det-season-content" class="hidden py-4">
                         <div id="ssn-photo-preview" class="mb-4 hidden"><p class="text-[10px] font-bold text-blue-600 mb-2 uppercase">Photos on file</p><div id="ssn-photo-list-container" class="space-y-2"></div></div>
                         <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-ssn" class="bg-green-50 border-2 border-dashed border-green-500 text-green-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="handlePhotoUpload(this, 'ssn-')"></label></div>
-                        <div class="relative w-full mb-3"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2 relative"><input type="text" id="ssn-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); filterAvNotes('ssn-')" onfocus="filterAvNotes('ssn-')" onblur="setTimeout(()=>{if(document.getElementById('ssn-av-dropdown-list'))document.getElementById('ssn-av-dropdown-list').classList.add('hidden'); saveData(false, 'ssn-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT..."></div><div id="ssn-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div></div>
+                        <div class="relative w-full mb-3"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2 relative"><input type="text" id="ssn-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); filterAvNotes('ssn-')" onfocus="filterAvNotes('ssn-')" onblur="setTimeout(()=>{if(document.getElementById('ssn-av-dropdown-list'))document.getElementById('ssn-av-dropdown-list').classList.add('hidden'); saveData(false, 'ssn-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT..."><button type="button" class="shrink-0 h-[48px] w-[48px] rounded-xl border border-blue-300 bg-blue-100 text-blue-700 text-2xl font-black shadow-sm active:scale-95" onmousedown="event.preventDefault()" onclick="appendSpecCaliperToAvNote('ssn-')">+</button></div><div id="ssn-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div></div>
                         <div id="ssn-input-container">
                             <div class="mb-3"><label class="text-[10px] font-bold text-gray-500 uppercase">Loc Match %</label><input type="number" id="ssn-match" class="input-field !mb-1" placeholder="e.g. 40" oninput="calculateMatchQty('ssn-')"><div id="ssn-match-display" class="text-[10px] font-bold text-[#007a4d] text-right mb-2 hidden">LOC Match QTY: <span id="ssn-match-qty-val">0</span></div></div>
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="ssn-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'ssn-', true)"></div>
@@ -667,7 +667,7 @@
                     <div id="det-location-content" class="hidden py-4">
                         <div id="lsn-photo-preview" class="mb-4 hidden"><p class="text-[10px] font-bold text-blue-600 mb-2 uppercase">Photos on file</p><div id="lsn-photo-list-container" class="space-y-2"></div></div>
                         <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-lsn" class="bg-green-50 border-2 border-dashed border-green-500 text-green-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="handlePhotoUpload(this, 'lsn-')"></label></div>
-                        <div class="relative w-full mb-3"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2 relative"><input type="text" id="lsn-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); filterAvNotes('lsn-')" onfocus="filterAvNotes('lsn-')" onblur="setTimeout(()=>{if(document.getElementById('lsn-av-dropdown-list'))document.getElementById('lsn-av-dropdown-list').classList.add('hidden'); saveData(false, 'lsn-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT..."></div><div id="lsn-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div></div>
+                        <div class="relative w-full mb-3"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2 relative"><input type="text" id="lsn-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); filterAvNotes('lsn-')" onfocus="filterAvNotes('lsn-')" onblur="setTimeout(()=>{if(document.getElementById('lsn-av-dropdown-list'))document.getElementById('lsn-av-dropdown-list').classList.add('hidden'); saveData(false, 'lsn-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT..."><button type="button" class="shrink-0 h-[48px] w-[48px] rounded-xl border border-blue-300 bg-blue-100 text-blue-700 text-2xl font-black shadow-sm active:scale-95" onmousedown="event.preventDefault()" onclick="appendSpecCaliperToAvNote('lsn-')">+</button></div><div id="lsn-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div></div>
                         <div id="lsn-input-container">
                             <div class="mb-3"><label class="text-[10px] font-bold text-gray-500 uppercase">Loc Match %</label><input type="number" id="lsn-match" class="input-field !mb-1" placeholder="e.g. 95" oninput="calculateMatchQty('lsn-')"><div id="lsn-match-display" class="text-[10px] font-bold text-[#007a4d] text-right mb-2 hidden">LOC Match QTY: <span id="lsn-match-qty-val">0</span></div></div>
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="lsn-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'lsn-', true)"></div>
@@ -679,7 +679,7 @@
                     <div id="det-notes-content" class="hidden py-4">
                         <div id="na-photo-preview" class="mb-4 hidden"><p class="text-[10px] font-bold text-blue-600 mb-2 uppercase">Photos on file</p><div id="na-photo-list-container" class="space-y-2"></div></div>
                         <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-na" class="bg-green-50 border-2 border-dashed border-green-500 text-green-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="handlePhotoUpload(this, 'na-')"></label></div>
-                        <div class="relative w-full mb-3"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2 relative"><input type="text" id="na-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); filterAvNotes('na-')" onfocus="filterAvNotes('na-')" onblur="setTimeout(()=>{if(document.getElementById('na-av-dropdown-list'))document.getElementById('na-av-dropdown-list').classList.add('hidden'); saveData(false, 'na-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT..."></div><div id="na-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div></div>
+                        <div class="relative w-full mb-3"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2 relative"><input type="text" id="na-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); filterAvNotes('na-')" onfocus="filterAvNotes('na-')" onblur="setTimeout(()=>{if(document.getElementById('na-av-dropdown-list'))document.getElementById('na-av-dropdown-list').classList.add('hidden'); saveData(false, 'na-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT..."><button type="button" class="shrink-0 h-[48px] w-[48px] rounded-xl border border-blue-300 bg-blue-100 text-blue-700 text-2xl font-black shadow-sm active:scale-95" onmousedown="event.preventDefault()" onclick="appendSpecCaliperToAvNote('na-')">+</button></div><div id="na-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div></div>
                         <div id="na-input-container">
                             <div class="mb-3"><label class="text-[10px] font-bold text-gray-500 uppercase">Loc Match %</label><input type="number" id="na-match" class="input-field !mb-1" placeholder="e.g. 95" oninput="calculateMatchQty('na-')"><div id="na-match-display" class="text-[10px] font-bold text-[#007a4d] text-right mb-2 hidden">LOC Match QTY: <span id="na-match-qty-val">0</span></div></div>
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="na-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'na-', true)"></div>
@@ -698,7 +698,7 @@
                         <div id="req-photo-preview" class="mb-4 hidden"><p class="text-[10px] font-bold text-purple-600 mb-2 uppercase">Request Photos</p><div id="req-photo-list-container" class="space-y-2"></div></div>
                         <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-req" class="bg-purple-50 border-2 border-dashed border-purple-500 text-purple-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="handlePhotoUpload(this, 'req-')"></label></div>
                         <div id="req-input-container">
-                            <div class="relative w-full mb-3"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2 relative"><input type="text" id="req-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); filterAvNotes('req-')" onfocus="filterAvNotes('req-')" onblur="setTimeout(()=>{if(document.getElementById('req-av-dropdown-list'))document.getElementById('req-av-dropdown-list').classList.add('hidden'); saveData(false, 'req-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT..."></div><div id="req-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div></div>
+                            <div class="relative w-full mb-3"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2 relative"><input type="text" id="req-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); filterAvNotes('req-')" onfocus="filterAvNotes('req-')" onblur="setTimeout(()=>{if(document.getElementById('req-av-dropdown-list'))document.getElementById('req-av-dropdown-list').classList.add('hidden'); saveData(false, 'req-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT..."><button type="button" class="shrink-0 h-[48px] w-[48px] rounded-xl border border-blue-300 bg-blue-100 text-blue-700 text-2xl font-black shadow-sm active:scale-95" onmousedown="event.preventDefault()" onclick="appendSpecCaliperToAvNote('req-')">+</button></div><div id="req-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div></div>
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Match %</label><input type="number" id="req-match" class="input-field" placeholder="e.g. 95" onchange="saveData(false, 'req-', true)"></div>
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="req-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'req-', true)"></div>
                             <div id="req-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="req-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'req-', true)"></div>
@@ -724,7 +724,7 @@
                         <div id="flyer-photo-preview" class="mb-4 hidden"><p class="text-[10px] font-bold text-indigo-600 mb-2 uppercase">Photos on file</p><div id="flyer-photo-list-container" class="space-y-2"></div></div>
                         <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-flyer" class="bg-indigo-50 border-2 border-dashed border-indigo-500 text-indigo-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="handlePhotoUpload(this, 'flyer-')"></label></div>
                         <div id="flyer-input-container">
-                            <div class="relative w-full mb-3"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2 relative"><input type="text" id="flyer-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); filterAvNotes('flyer-')" onfocus="filterAvNotes('flyer-')" onblur="setTimeout(()=>{if(document.getElementById('flyer-av-dropdown-list'))document.getElementById('flyer-av-dropdown-list').classList.add('hidden'); saveData(false, 'flyer-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT..."></div><div id="flyer-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div></div>
+                            <div class="relative w-full mb-3"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2 relative"><input type="text" id="flyer-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); filterAvNotes('flyer-')" onfocus="filterAvNotes('flyer-')" onblur="setTimeout(()=>{if(document.getElementById('flyer-av-dropdown-list'))document.getElementById('flyer-av-dropdown-list').classList.add('hidden'); saveData(false, 'flyer-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT..."><button type="button" class="shrink-0 h-[48px] w-[48px] rounded-xl border border-blue-300 bg-blue-100 text-blue-700 text-2xl font-black shadow-sm active:scale-95" onmousedown="event.preventDefault()" onclick="appendSpecCaliperToAvNote('flyer-')">+</button></div><div id="flyer-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div></div>
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="flyer-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'flyer-', true)"></div>
                             <div id="flyer-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="flyer-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'flyer-', true)"></div>
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Flyer Category</label><input type="text" id="flyer-cat" class="input-field" placeholder="e.g. Spring Sale" onchange="saveData(false, 'flyer-', true)"></div>
@@ -985,6 +985,70 @@
             }
 
             return true;
+        }
+
+        function getAvNoteSpecCaliperValues(prefix = '') {
+            const normalizedPrefix = String(prefix || '').trim();
+            const currentItem = activeItem || {};
+
+            if (normalizedPrefix === 'req-') {
+                const reqSpecEl = document.getElementById('req-spec');
+                const reqCalEl = document.getElementById('req-caliper');
+                return {
+                    spec: String((reqSpecEl && reqSpecEl.value) || currentItem.REQ_SPEC || currentItem.SPEC || '').trim(),
+                    caliper: String((reqCalEl && reqCalEl.value) || currentItem.REQ_CALIPER || currentItem.CALIPER || '').trim()
+                };
+            }
+
+            if (normalizedPrefix === 'global-') {
+                return {
+                    spec: String(currentItem.REQ_SPEC || currentItem.SPEC || '').trim(),
+                    caliper: String(currentItem.REQ_CALIPER || currentItem.CALIPER || '').trim()
+                };
+            }
+
+            const specEl = document.getElementById(normalizedPrefix + 'spec');
+            const calEl = document.getElementById(normalizedPrefix + 'caliper');
+            return {
+                spec: String((specEl && specEl.value) || currentItem.SPEC || '').trim(),
+                caliper: String((calEl && calEl.value) || currentItem.CALIPER || '').trim()
+            };
+        }
+
+        function appendSpecCaliperToAvNote(prefix = '') {
+            const normalizedPrefix = String(prefix || '').trim();
+            const avInputId = normalizedPrefix === 'global-' ? 'global-av-note' : `${normalizedPrefix}av-note`;
+            const avInput = document.getElementById(avInputId);
+            if (!avInput) return;
+
+            const values = getAvNoteSpecCaliperValues(normalizedPrefix);
+            const additions = [values.spec, values.caliper].map((value) => String(value || '').trim()).filter(Boolean);
+            if (!additions.length) {
+                showToast('Nothing To Add', 'Spec and caliper are blank for this row.', true);
+                return;
+            }
+
+            const existingParts = String(avInput.value || '').split('/').map((part) => String(part || '').trim()).filter(Boolean);
+            const existingSet = new Set(existingParts.map((part) => part.toUpperCase()));
+            let addedCount = 0;
+
+            additions.forEach((part) => {
+                const normalizedPart = part.toUpperCase();
+                if (existingSet.has(normalizedPart)) return;
+                existingParts.push(normalizedPart);
+                existingSet.add(normalizedPart);
+                addedCount++;
+            });
+
+            if (!addedCount) {
+                showToast('Already Added', 'Spec and caliper are already in AV Note.', false);
+                return;
+            }
+
+            avInput.value = existingParts.join(' / ').toUpperCase();
+            if (normalizedPrefix === 'global-') filterAvNotes();
+            else filterAvNotes(normalizedPrefix);
+            saveData(false, normalizedPrefix, true);
         }
 
         function fallbackCopyText(text) {
@@ -10481,6 +10545,9 @@ function toggleDriveSeason(s) {
     </script>
 </body>
 </html>
+
+
+
 
 
 
