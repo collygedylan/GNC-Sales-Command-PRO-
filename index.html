@@ -35,10 +35,11 @@
         .app-card-shell img,.inv-card img{display:block}
         #view-wrapper{width:100%;max-width:100%;overflow:visible}
         .sticky-search{position:-webkit-sticky;position:sticky;top:0;z-index:35;background:#f9fafb;padding-top:max(4px,env(safe-area-inset-top));padding-bottom:10px;box-shadow:0 6px 12px rgba(15,23,42,.05);transform:translateZ(0);-webkit-transform:translateZ(0);backface-visibility:hidden}
-        .request-swipe-row{display:block !important;padding:0 !important;position:relative;overflow:hidden;background:linear-gradient(to left,#ef4444 96px,#ffffff 96px) !important;touch-action:pan-y;overscroll-behavior-x:contain;-webkit-user-select:none;user-select:none}
-        .request-swipe-surface{position:relative;z-index:2;background:#fff;border-radius:inherit;padding:1rem;transition:transform .18s ease;will-change:transform}
-        .request-swipe-action{position:absolute;top:0;right:0;bottom:0;width:96px;display:flex;align-items:center;justify-content:center;background:#ef4444;color:#fff;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;z-index:1}
-        .request-swipe-row.swipe-open .request-swipe-surface{transform:translateX(-96px)}
+        .request-swipe-row{display:block !important;padding:0 !important;position:relative;overflow:hidden;background:#ffffff !important;touch-action:pan-y;overscroll-behavior-x:contain;-webkit-user-select:none;user-select:none}
+        .request-swipe-row{display:block !important;padding:0 !important;position:relative;overflow:hidden;background:#ffffff !important;touch-action:pan-y;overscroll-behavior-x:contain;-webkit-user-select:none;user-select:none}
+        .request-swipe-surface{position:relative;z-index:2;width:100%;background:#ffffff;border-radius:inherit;padding:0;transition:transform .18s ease;will-change:transform}
+        .request-swipe-action{position:absolute;top:0;right:0;bottom:0;width:88px;display:flex;align-items:center;justify-content:center;background:#ffffff;color:#dc2626;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;z-index:1}
+        .request-swipe-row.swipe-open .request-swipe-surface{transform:translateX(-88px)}
         #pull-refresh-indicator{transform:translateY(-120%);opacity:0;transition:transform .16s ease,opacity .16s ease;padding-top:max(0px,env(safe-area-inset-top))}
         #pull-refresh-indicator .pull-refresh-pill{backdrop-filter:saturate(140%) blur(8px)}
         #pull-refresh-indicator.visible{opacity:1}
@@ -367,7 +368,7 @@
             <hr class="my-2">
             <div class="drawer-item text-blue-600 font-bold role-access role-admin hidden" onclick="switchView('request'); toggleMenu();"><i class="ph-bold ph-chat-circle-text"></i> Requests</div>
             <div class="drawer-item text-indigo-600 font-bold role-access role-admin hidden" onclick="switchView('reserves'); toggleMenu();"><i class="ph-bold ph-bookmark-simple"></i> Reserves</div>
-            <div class="drawer-item text-purple-600 font-bold role-access role-admin hidden" onclick="switchView('sales-office'); toggleMenu();"><i class="ph-bold ph-briefcase"></i> Sales Office</div>
+            <div class="drawer-item text-purple-600 font-bold role-access role-admin hidden" onclick="activeSalesOfficeTab='season'; switchView('sales-office'); toggleMenu();"><i class="ph-bold ph-briefcase"></i> Sales Office</div>
             <div class="drawer-item text-emerald-600 font-bold role-access role-admin hidden" onclick="switchView('reports'); toggleMenu();"><i class="ph-bold ph-chart-bar"></i> Reports</div>
             <div class="drawer-item text-emerald-600 font-bold role-access role-admin hidden" onclick="switchView('hours'); toggleMenu();"><i class="ph-bold ph-clock"></i> Labor Hours</div>
             <div class="drawer-item text-red-600 font-bold role-access role-admin hidden" onclick="switchView('low-stock'); toggleMenu();"><i class="ph-bold ph-trend-down"></i> Low Stock List</div>
@@ -400,7 +401,7 @@
                         <div onclick="switchView('av')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep hidden"><i class="ph-bold ph-notebook text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">AV</span></div>
                         <div onclick="switchView('request')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-chat-circle-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Requests</span></div>
                         <div onclick="switchView('reserves')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-bookmark-simple text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Reserves</span></div>
-                        <div onclick="switchView('sales-office')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-briefcase text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Sales Office</span></div>
+                        <div onclick="activeSalesOfficeTab='season'; switchView('sales-office')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-briefcase text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Sales Office</span></div>
                         <div onclick="switchView('reports')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-chart-bar text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Reports</span></div>
                         <div onclick="switchView('hours')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-clock text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Labor Hours</span></div>
                         <div onclick="switchView('low-stock')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-trend-down text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Low Stock</span></div>
@@ -517,10 +518,10 @@
                     <div class="freeze-panel">
                         <div class="flex items-start justify-between gap-3 mb-3">
                             <div class="min-w-0 flex-1">
-                                <div id="sales-office-crumb" class="text-xs font-bold text-[#007a4d] mb-2">Bloom Picker Orders</div>
+                                <div id="sales-office-crumb" class="text-xs font-bold text-[#007a4d] mb-2">Season Sales Notes</div>
                                 <div class="flex gap-2 overflow-x-auto scrollbar-none pb-1">
-                                    <button type="button" id="sales-office-tab-orders" class="rounded-full border px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] bg-[#007a4d] text-white border-[#007a4d] shadow-sm" onclick="setSalesOfficeTab('orders')">Bloom Picker Orders</button>
-                                    <button type="button" id="sales-office-tab-season" class="rounded-full border px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] bg-white text-[#007a4d] border-green-200 shadow-sm" onclick="setSalesOfficeTab('season')">Season Sales Notes</button>
+                                    <button type="button" id="sales-office-tab-orders" class="rounded-full border px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] bg-white text-[#007a4d] border-green-200 shadow-sm" onclick="setSalesOfficeTab('orders')">Bloom Picker Orders</button>
+                                    <button type="button" id="sales-office-tab-season" class="rounded-full border px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] bg-[#007a4d] text-white border-[#007a4d] shadow-sm" onclick="setSalesOfficeTab('season')">Season Sales Notes</button>
                                 </div>
                             </div>
                             <button type="button" id="sales-office-export-btn" class="inline-flex items-center gap-2 rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-95" onclick="exportCurrentSalesOfficeToExcel()"><i class="ph-bold ph-download-simple text-base"></i><span id="sales-office-export-label">Export Excel</span></button>
@@ -2063,7 +2064,7 @@
         let dockItemProgressByUid=new Map(); let dockItemProgressPromise=null; let dockItemProgressLoaded=false; let dockItemSchemaReady=null; let dockItemSchemaPromise=null; let dockItemSchemaWarningShown=false;
         let detailRequestSourceDomIds=[];
         let avRuleColumnsReady=null; let avRuleColumnsProbePromise=null; let avRuleSchemaWarningShown=false; let avRuleCleanupInFlight=new Set();
-        let activeSalesOfficeTab='orders'; let salesOfficeOrderColumnsReady=null; let salesOfficeOrderSchemaPromise=null; let salesOfficeOrderSchemaWarningShown=false;
+        let activeSalesOfficeTab='season'; let salesOfficeOrderColumnsReady=null; let salesOfficeOrderSchemaPromise=null; let salesOfficeOrderSchemaWarningShown=false;
         
         const DRIVE_MODE_LABELS = { ok: 'Drive Mode' };
         let activeDriveMode='ok'; let activeDriveTab='name'; let selectedDriveBlock=null; let selectedDriveLoc=null; let driveQuickRequestCardMode=false; let driveQuickFilterName=''; let driveQuickFilterLocation=''; let driveQuickFilterLot=''; let driveQuickFilterSize=''; let driveQuickFilterPriority=''; let driveQuickFilterLtsMode=''; let driveQuickFilterLtsValue=''; let driveQuickHoldStopOnly=false; let driveQuickFilterOptionsCacheKey=''; let driveQuickFilterOptionsCache=null; let driveBaseFilterCacheKey=''; let driveBaseFilterCacheItems=[]; let driveQuickFilterCacheKey=''; let driveQuickFilterCacheItems=[]; let driveQuickFiltersModalOpen=false;
@@ -7023,6 +7024,8 @@ activeDriveTab = tab;
 
             if (sourceView === 'tasks' && activeTaskTab) {
                 switchDetailTab(activeTaskTab === 'colorwalk' ? 'location' : activeTaskTab);
+            } else if (sourceView === 'request') {
+                switchDetailTab('request');
             } else {
                 switchDetailTab('overview');
             }
@@ -7227,7 +7230,7 @@ activeDriveTab = tab;
             button.classList.toggle('pointer-events-none', count === 0);
         }
 
-        function setSalesOfficeTab(tab = 'orders') {
+        function setSalesOfficeTab(tab = 'season') {
             activeSalesOfficeTab = tab === 'season' ? 'season' : 'orders';
             if (activeSalesOfficeTab === 'orders' && salesOfficeOrderColumnsReady === false) {
                 ensureSalesOfficeOrderColumnsReady(true).then(() => {
@@ -7896,7 +7899,7 @@ activeDriveTab = tab;
                 ['ontouchstart', 'ontouchmove', 'ontouchend', 'ontouchcancel'].forEach((attr) => row.removeAttribute(attr));
 
                 const surface = document.createElement('div');
-                surface.className = 'request-swipe-surface flex items-center w-full h-full';
+                surface.className = 'request-swipe-surface';
                 while (row.firstChild) {
                     surface.appendChild(row.firstChild);
                 }
@@ -8085,41 +8088,43 @@ activeDriveTab = tab;
             }
             const cornerThumbHtml = thumbHtml || `<div class="absolute top-3 right-3 flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-xl border border-slate-200 bg-slate-100 px-1 text-center text-[8px] font-black uppercase tracking-[0.14em] text-slate-400">No Photo</div>`;
             if(sourceView === 'request') {
-                let reqQty = item.REQ_QTY || '0'; let cust = item.REQ_CUSTOMER || 'Unknown'; let rep = item.REQUESTED_BY || 'Unknown'; let reserve = item.REQ_RESERVE || 'NO'; let desSpec = item.REQ_DESIRED_SPEC || 'N/A'; let loc = item.LOCATIONCODE || 'No Loc'; let origSpec = item.SPEC || '-';
+                let reqQty = item.REQ_QTY || '0';
+                let loc = item.LOCATIONCODE || 'No Loc';
+                let lot = item.LOTCODE || '-';
+                let priority = item.PRIORITY || '-';
                 const holdHtml = buildHoldReasonHtml();
-                const salesNoteHtml = buildSalesNoteHtml();
+                const requestSalesNoteHtml = !salesNoteText || String(salesNoteText).trim() === '' ? '' : `<div class="min-w-0 rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-[12px] font-semibold text-sky-800 shadow-sm truncate"><span class="font-black uppercase tracking-[0.08em] text-sky-700">Sales Note:</span> ${salesNoteText}</div>`;
                 const statusChip = item.REQ_STATUS === 'Complete'
-                    ? `<span class="bg-emerald-50 text-emerald-700 px-2 py-1 rounded border border-emerald-200">Complete</span>`
-                    : `<span class="bg-amber-50 text-amber-700 px-2 py-1 rounded border border-amber-200">Pending</span>`;
-                const reserveBadge = reserve === 'YES'
-                    ? `<span class="bg-red-100 text-red-700 px-1.5 py-0.5 rounded border border-red-200">Reserve: YES</span>`
-                    : `<span class="bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded border border-gray-200">Reserve: NO</span>`;
-                const desiredSpecBadge = desSpec && desSpec !== 'N/A'
-                    ? `<span class="bg-orange-50 text-orange-700 px-1.5 py-0.5 rounded border border-orange-100">Des Spec: ${desSpec}</span>`
-                    : '';
-                let requestThumbHtml = `<div class="order-first mr-3 ml-0 flex h-14 w-14 sm:h-16 sm:w-16 flex-shrink-0 items-center justify-center self-start rounded-2xl border border-slate-200 bg-slate-100 px-1 text-center text-[8px] font-black uppercase tracking-[0.14em] text-slate-400">No Photo</div>`;
+                    ? `<span class="bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded border border-emerald-200 text-[10px] font-black uppercase tracking-[0.1em]">Complete</span>`
+                    : `<span class="bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded border border-amber-200 text-[10px] font-black uppercase tracking-[0.1em]">Pending</span>`;
+                const contsizeBadge = `<span class="inline-flex items-center rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.08em] text-emerald-700">${item.CONTSIZE||'-'}</span>`;
+                const locBadge = `<span class="inline-flex items-center rounded-xl border border-blue-100 bg-blue-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.08em] text-blue-700">Loc ${loc}</span>`;
+                const lotBadge = `<span class="inline-flex items-center rounded-xl border border-slate-200 bg-slate-100 px-3 py-1 text-[10px] font-black uppercase tracking-[0.08em] text-slate-700">Lot ${lot}</span>`;
+                const priorityBadge = `<span class="inline-flex items-center rounded-xl border border-orange-100 bg-orange-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.08em] text-orange-700">Pri ${priority}</span>`;
+                const requestAmountHtml = `<div class="mt-2 flex items-center gap-3 flex-wrap"><span class="inline-flex items-center rounded-xl border border-purple-100 bg-purple-50 px-3 py-2 text-[12px] font-black uppercase tracking-[0.1em] text-purple-700">Request Amount: ${reqQty}</span>${statusChip}</div>`;
+                const footerMetaHtml = requestSalesNoteHtml ? `<div class="mt-2 min-w-0 sm:max-w-[70%]">${requestSalesNoteHtml}</div>` : '';
+                let requestThumbHtml = `<div class="ml-4 flex w-[1.4in] min-w-[1.4in] self-stretch min-h-[1.4in] flex-shrink-0 items-center justify-center overflow-hidden rounded-3xl border border-slate-200 bg-slate-100 px-2 text-center text-[10px] font-black uppercase tracking-[0.12em] leading-tight text-slate-400 shadow-sm">No Photo</div>`;
                 if (photoLink) {
                     let requestFirstUrl = String(photoLink).split(',')[0].trim();
                     let requestMatch = requestFirstUrl.match(/(https?:\/\/[^"\s>]+)/);
                     if (requestMatch) requestFirstUrl = requestMatch[1];
                     const requestThumbUrl = getDirectImageUrl(requestFirstUrl);
                     if (requestThumbUrl.startsWith('http')) {
-                        requestThumbHtml = `<div class="order-first mr-3 ml-0 flex-shrink-0 self-start overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 shadow-sm"><img src="${requestThumbUrl}" class="h-14 w-14 sm:h-16 sm:w-16 object-cover" loading="lazy"></div>`;
+                        requestThumbHtml = `<div class="ml-4 w-[1.4in] min-w-[1.4in] self-stretch min-h-[1.4in] flex-shrink-0 overflow-hidden rounded-3xl border border-slate-200 bg-slate-50 shadow-sm"><img src="${requestThumbUrl}" class="h-full w-full object-cover" loading="lazy"></div>`;
                     }
                 }
                 let actionBadge = '';
                 if (item.REQ_STATUS === 'Complete' && !item.REQ_ARCHIVED) {
                     if (item.REQ_REP_ACTION === 'Approved') {
-                        actionBadge = `<div class="mt-3 text-[10px] font-black text-green-700 bg-green-100 text-center py-2 rounded-lg border border-green-200 uppercase tracking-widest">APPROVED</div>`;
+                        actionBadge = `<div class="mt-2 text-[9px] font-black text-green-700 bg-green-100 text-center py-1.5 rounded-lg border border-green-200 uppercase tracking-[0.14em]">APPROVED</div>`;
                     } else if (item.REQ_REP_ACTION === 'Rejected') {
-                        actionBadge = `<div class="mt-3 text-[10px] font-black text-red-700 bg-red-100 text-center py-2 rounded-lg border border-red-200 uppercase tracking-widest">REJECTED</div>`;
+                        actionBadge = `<div class="mt-2 text-[9px] font-black text-red-700 bg-red-100 text-center py-1.5 rounded-lg border border-red-200 uppercase tracking-[0.14em]">REJECTED</div>`;
                     } else {
-                        actionBadge = `<div class="flex gap-2 mt-3"><button class="flex-1 bg-green-50 text-green-700 border border-green-200 font-bold py-2 rounded-lg shadow-sm hover:bg-green-100 active:scale-95 text-[10px] uppercase tracking-wider" onclick="event.stopPropagation(); setRepRequestAction('${safeUidJs}', 'Approved')">APPROVE</button><button class="flex-1 bg-red-50 text-red-700 border border-red-200 font-bold py-2 rounded-lg shadow-sm hover:bg-red-100 active:scale-95 text-[10px] uppercase tracking-wider" onclick="event.stopPropagation(); setRepRequestAction('${safeUidJs}', 'Rejected')">REJECT</button></div>`;
+                        actionBadge = `<div class="flex gap-2 mt-2"><button class="flex-1 bg-green-50 text-green-700 border border-green-200 font-bold py-1.5 rounded-lg shadow-sm hover:bg-green-100 active:scale-95 text-[9px] uppercase tracking-[0.12em]" onclick="event.stopPropagation(); setRepRequestAction('${safeUidJs}', 'Approved')">APPROVE</button><button class="flex-1 bg-red-50 text-red-700 border border-red-200 font-bold py-1.5 rounded-lg shadow-sm hover:bg-red-100 active:scale-95 text-[9px] uppercase tracking-[0.12em]" onclick="event.stopPropagation(); setRepRequestAction('${safeUidJs}', 'Rejected')">REJECT</button></div>`;
                     }
                 }
-                return `<div class="flex items-center w-full mb-2 item-row relative app-card-shell p-3 ${holdBorderClass} shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full">${requestThumbHtml}<div class="flex-grow min-w-0 pr-2"><div class="text-[9px] font-black uppercase tracking-[0.16em] text-[#007a4d] mb-1">Request</div><div class="flex justify-between items-start gap-2 mb-1"><div class="font-black text-gray-800 text-[14px] leading-tight break-words">${item.COMMONNAME||'Unknown'}</div><div class="flex flex-col items-end gap-1 shrink-0"><div class="font-black text-purple-700 bg-purple-50 px-2 py-1 rounded text-[10px] whitespace-nowrap border border-purple-100">QTY ${reqQty}</div>${statusChip}</div></div><div class="font-bold text-[#007a4d] text-sm mb-2">${item.CONTSIZE||'-'}</div><div class="mt-1.5 inline-flex max-w-full items-center gap-1 rounded-lg border border-slate-200 bg-slate-100 px-2 py-1 text-[10px] font-mono font-bold text-slate-600"><i class="ph-bold ph-barcode text-slate-400"></i><span class="truncate">${item.ITEMCODE||'-'}</span></div><div class="grid grid-cols-2 gap-x-2 gap-y-1 mb-2 mt-2 text-[11px] font-bold text-gray-600"><div class="truncate"><i class="ph-bold ph-user mr-1"></i>${rep}</div><div class="truncate"><i class="ph-bold ph-storefront mr-1"></i>${cust}</div></div><div class="flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600">${reserveBadge}<span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">Loc: ${loc}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Spec: ${origSpec}</span>${desiredSpecBadge}</div>${holdHtml}${salesNoteHtml}${actionBadge}</div></div></div></div>`;
-            }
-            if(sourceView==='sales-office-order'){
+                return `<div class="flex items-start w-full mb-2 item-row relative app-card-shell p-4 ${holdBorderClass} shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden min-h-[1.4in]" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="flex w-full min-w-0 items-stretch gap-4"><div class="min-w-0 flex-1 pr-1 pl-3 sm:pl-4"><div class="flex flex-wrap items-center gap-x-3 gap-y-2"><div class="min-w-0 font-black text-gray-800 text-[22px] leading-tight break-words">${item.COMMONNAME||'Unknown'}</div>${contsizeBadge}${locBadge}${lotBadge}${priorityBadge}</div>${requestAmountHtml}${holdHtml}${footerMetaHtml}<div class="mt-3 text-[11px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Request</div>${actionBadge}</div>${requestThumbHtml}</div></div>`;
+            }            if(sourceView==='sales-office-order'){
                 const orderQty = firstNonEmptyValue(item.ORDER_QTY, item.REQ_QTY, '0');
                 const orderStatus = firstNonEmptyValue(item.ORDER_STATUS, 'Pending Review');
                 const orderReserve = firstNonEmptyValue(item.ORDER_RESERVE, 'NO');
@@ -10337,6 +10342,13 @@ function toggleDriveSeason(s) {
     </script>
 </body>
 </html>
+
+
+
+
+
+
+
 
 
 
