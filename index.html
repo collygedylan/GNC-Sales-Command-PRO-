@@ -1,19 +1,17 @@
-WHEN in DOUBT.txt
+web Sockets.txt
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-    <title>GREENLEAF</title>
+    <title>Greenleaf Nursery Company</title>
     <meta name="theme-color" content="#007a4d">
     <link rel="manifest" href="manifest.json">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="application-name" content="GREENLEAF">
-    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="Greenleaf Nursery Company">    <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>:root{--bg:#007a4d;--tx:#111827}body{font-family:"Amazon Ember",Arial,sans-serif;background:white;color:var(--tx);user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior-y:contain}.nav-header{background:var(--bg);color:white;padding-top:max(10px,env(safe-area-inset-top))}#view-login,#view-change-password{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px}#view-change-password{display:none;z-index:10000}.login-card{background:white;padding:30px;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,.2);width:100%;max-width:360px;text-align:center}.input-field{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:8px;font-size:15px;margin-bottom:12px}#toast-notification{position:fixed;top:-100px;left:50%;transform:translateX(-50%);background:#16a34a;color:white;padding:16px 24px;border-radius:50px;box-shadow:0 10px 15px -3px rgba(0,0,0,.3);z-index:11000;transition:top .5s;display:flex;align-items:center;gap:12px;pointer-events:none}#toast-notification.show{top:20px}#side-drawer{position:fixed;top:0;left:-280px;width:280px;height:100%;background:white;z-index:2000;box-shadow:2px 0 10px rgba(0,0,0,.2);transition:left .3s;overflow-y:auto;padding-bottom:100px}#side-drawer.open{left:0}#drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1999;display:none}#drawer-overlay.open{display:block}.drawer-header{background:var(--bg);color:white;padding:20px;font-weight:bold;font-size:18px}.drawer-item{padding:16px 20px;border-bottom:1px solid #f3f4f6;cursor:pointer;display:flex;align-items:center;gap:12px;color:#374151;font-weight:500}.drill-item{border-bottom:1px solid #e5e7eb;padding:16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:white;transition:background .1s}.drill-item:active{background:#f3f4f6}.back-btn{display:flex;align-items:center;gap:5px;color:#6b7280;font-size:14px;font-weight:600;margin-bottom:20px;cursor:pointer;padding:10px 0}.inv-card{border:1px solid #e5e7eb;border-left-width:6px;border-radius:8px;padding:12px;background:white;cursor:pointer;flex-grow:1}.status-green{border-left-color:#22c55e}.status-purple{border-left-color:#9333ea}.status-orange{border-left-color:#f97316}.status-blue{border-left-color:#3b82f6}.status-indigo{border-left-color:#4f46e5}.status-teal{border-left-color:#0d9488}.status-yellow{border-left-color:#eab308}.status-red{border-left-color:#ef4444}.task-tabs,.detail-tabs{display:flex;border-bottom:1px solid #e5e7eb;background:#f9fafb;margin-bottom:10px}.detail-tabs{overflow-x:auto;scrollbar-width:none}.detail-tabs::-webkit-scrollbar{display:none}.task-tab,.detail-tab{flex:1;text-align:center;padding:12px;font-size:11px;font-weight:700;color:#6b7280;cursor:pointer;border-bottom:3px solid transparent;text-transform:uppercase}.detail-tab{flex:0 0 auto;padding:10px 16px}.task-tab.active,.detail-tab.active{color:var(--bg);border-bottom-color:var(--bg);background:white}.overview-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}.overview-card{background:#f8fafc;padding:10px;border-radius:6px;border:1px solid #e2e8f0}.overview-label{font-size:9px;font-weight:800;color:#64748b;text-transform:uppercase;margin-bottom:2px}.overview-val{font-size:13px;font-weight:600;color:#0f172a;word-break:break-all}.expand-trigger{display:flex;align-items:center;justify-content:space-between;padding:12px;background:#f9fafb;border-radius:6px;cursor:pointer;font-weight:600;font-size:14px;border:1px solid #e5e7eb}.expand-content{display:none;margin-top:12px;padding:12px;background:#f9fafb;border-radius:6px;border:1px solid #e5e7eb}.expanded .expand-content{display:block}.card-checkbox-container{width:0;overflow:hidden;opacity:0;transition:width .3s,opacity .3s,margin .3s}body.multi-select-mode .card-checkbox-container{width:24px;opacity:1;margin-right:12px}.item-row{touch-action:manipulation}.spinner{border:4px solid rgba(255,255,255,.3);border-top:4px solid white;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:0 auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.scrollbar-none::-webkit-scrollbar{display:none}.scrollbar-none{-ms-overflow-style:none;scrollbar-width:none}</style>
 </head>
 <body class="bg-gray-50 h-screen overflow-hidden">
@@ -40,7 +38,7 @@ WHEN in DOUBT.txt
     <div id="view-login">
         <div class="login-card">
             <div class="flex flex-col items-center mb-8 w-full relative">
-                <div class="text-2xl text-[#007a4d] font-black tracking-tighter mb-1 text-center leading-none">GREENLEAF</div>                <div class="flex flex-col items-center gap-0.5 mt-5">
+                <div class="text-2xl text-[#007a4d] font-black tracking-tighter mb-1 text-center leading-none">Greenleaf Nursery Company</div>                <div class="flex flex-col items-center gap-0.5 mt-5">
                     <span class="text-[9px] font-bold text-gray-400 uppercase tracking-[0.3em]">Powered By</span>
                     <span class="text-[17px] font-black text-gray-800 tracking-[0.2em] uppercase border-b-[3px] border-[#007a4d] pb-0.5">Ag Metric</span>
                 </div>
@@ -48,7 +46,7 @@ WHEN in DOUBT.txt
             <div id="login-inputs">
                 <input type="text" id="username-input" class="input-field mb-4 text-center border-2" placeholder="USERNAME">
                 <input type="password" id="pin-code" class="input-field mb-4 text-center border-2 tracking-widest" placeholder="PASSWORD">
-                <button type="button" class="w-full bg-[#007a4d] text-white font-bold py-3 rounded-lg shadow-md" onclick="handleLogin()">LOGIN</button>
+                <button class="w-full bg-[#007a4d] text-white font-bold py-3 rounded-lg shadow-md" onclick="handleLogin()">LOGIN</button>
                 <button id="btn-fingerprint" class="hidden w-full bg-gray-50 text-[#007a4d] border-2 border-[#007a4d] font-bold py-3 rounded-lg shadow-md mt-4 flex items-center justify-center gap-2" onclick="loginWithBiometric()"><i class="ph-bold ph-fingerprint text-2xl"></i> LOGIN WITH FINGERPRINT</button>
             </div>
             <div id="loading-spinner" class="hidden mt-6 flex flex-col items-center"><div class="spinner"></div><div id="loading-text" class="text-white font-bold text-sm mt-3 text-center">Syncing Database...</div></div>
@@ -185,7 +183,8 @@ WHEN in DOUBT.txt
                 <i class="ph-bold ph-list menu-btn text-2xl cursor-pointer" onclick="toggleMenu()"></i>
                 <div class="flex flex-col">
                     <div class="font-bold text-lg leading-tight"><span id="header-user">User</span></div>
-                    <div class="text-[10px] opacity-80 leading-tight">GREENLEAF</div>                </div>
+                    <div class="text-[10px] opacity-80 leading-tight">Greenleaf Nursery Company</div>
+                </div>
             </div>
         </header>
         
@@ -267,7 +266,7 @@ WHEN in DOUBT.txt
                         <p class="text-green-100 text-[10px] font-bold mb-5 uppercase tracking-[0.2em] z-10 relative">Dashboard</p>
                         
                         <div class="flex flex-col items-center pt-4 border-t border-white/20 w-full mt-1 z-10 relative">
-                            <div class="text-[14px] font-black tracking-wide text-white uppercase drop-shadow-sm mb-3 text-center leading-tight">GREENLEAF</div>
+                            <div class="text-[14px] font-black tracking-wide text-white uppercase drop-shadow-sm mb-3 text-center leading-tight">Greenleaf Nursery Company</div>
                             <span class="text-[8px] font-bold text-white/70 uppercase tracking-[0.3em] mb-1">Powered By</span>
                             <div class="text-[12px] font-black tracking-[0.2em] text-white uppercase drop-shadow-sm">Ag Metric</div>
                         </div>
@@ -433,13 +432,10 @@ WHEN in DOUBT.txt
                         <div class="detail-tab hidden" onclick="switchDetailTab('request')" id="dtab-request">Request</div>
                         <div class="detail-tab hidden" onclick="switchDetailTab('notes')" id="dtab-notes">Notes & Actions</div>
                         <div class="detail-tab hidden" onclick="switchDetailTab('docks')" id="dtab-docks">Docks</div>
-                            <div class="detail-tab hidden" onclick="switchDetailTab('flyer')" id="dtab-flyer">Flyer</div>
-                            <div class="detail-tab hidden" onclick="switchDetailTab('gallery')" id="dtab-gallery">Gallery</div>
-                            <div class="detail-tab hidden" onclick="switchDetailTab('all-loc')" id="dtab-all-loc">All Locations</div>
-                        </div>
-                        <div id="det-gallery-content" class="hidden py-4"></div>
-                        <div id="det-all-loc-content" class="hidden py-4 px-1"></div>
-                        <div id="det-overview-content" class="py-4">                        <div class="overview-grid">
+                        <div class="detail-tab hidden" onclick="switchDetailTab('flyer')" id="dtab-flyer">Flyer</div>
+                    </div>
+                    <div id="det-overview-content" class="py-4">
+                        <div class="overview-grid">
                             <div class="overview-card"><div class="overview-label">Location</div><div id="ov-loc" class="overview-val">--</div></div>
                             <div class="overview-card"><div class="overview-label">Qty Avail</div><div id="ov-avail" class="overview-val">--</div></div>
                             <div class="overview-card"><div class="overview-label">Item Code</div><div id="ov-item" class="overview-val">--</div></div>
@@ -499,32 +495,23 @@ WHEN in DOUBT.txt
                     <div id="det-request-content" class="hidden py-4">
                         <div id="req-photo-preview" class="mb-4 hidden"><p class="text-[10px] font-bold text-purple-600 mb-2 uppercase">Request Photos</p><div id="req-photo-list-container" class="space-y-2"></div></div>
                         <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-req" class="bg-purple-50 border-2 border-dashed border-purple-500 text-purple-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" multiple capture="environment" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="handlePhotoUpload(this, 'req-')"></label></div>
-                        
-                        <div class="relative w-full mb-3">
-                            <label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label>
-                            <div class="flex gap-2 relative">
-                                <input type="text" id="req-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); filterAvNotes('req-')" onfocus="filterAvNotes('req-')" onblur="setTimeout(()=>{if(document.getElementById('req-av-dropdown-list'))document.getElementById('req-av-dropdown-list').classList.add('hidden'); saveData(false, 'req-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT...">
-                            </div>
-                            <div id="req-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div>
-                        </div>
-
                         <div id="req-input-container">
-                            <div class="mb-3">
-                                <label class="text-[10px] font-bold text-gray-500 uppercase">Match %</label>
-                                <input type="number" id="req-match" class="input-field !mb-1" placeholder="e.g. 95" oninput="calculateMatchQty('req-'); saveData(false, 'req-', true)">
-                                <div id="req-match-display" class="text-[10px] font-bold text-[#007a4d] text-right mb-2 hidden">LOC Match QTY: <span id="req-match-qty-val">0</span></div>
-                            </div>
+                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Match %</label><input type="number" id="req-match" class="input-field" placeholder="e.g. 95" onchange="saveData(false, 'req-', true)"></div>
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="req-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'req-', true)"></div>
                             <div id="req-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="req-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'req-', true)"></div>
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Reserve</label><select id="req-reserve" class="input-field bg-white" onchange="saveData(false, 'req-', true)"><option value="NO">NO</option><option value="YES">YES</option></select></div>
+                            <div class="relative w-full mt-2 mb-2"><label class="text-[10px] font-bold text-purple-700 uppercase flex justify-between"><span>Request Sales Description</span></label><div class="flex gap-2"><input type="text" id="req-sales-desc" class="input-field border-purple-500 bg-purple-50 uppercase flex-grow !mb-0" placeholder="TYPE NOTES OR SEARCH..." onchange="saveData(false, 'req-', true)"></div></div>
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="req-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'req-', true)"></div>
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Comments</label><input type="text" id="req-comments" class="input-field" placeholder="Any additional comments..." onchange="saveData(false, 'req-', true)"></div>
                         </div>
                         <div class="flex flex-col gap-3 mt-4">
+                            <button id="req-btn-save-draft" class="w-full bg-purple-600 text-white font-bold py-4 rounded-xl shadow-lg" onclick="saveData(false, 'req-')">SAVE REQUEST DATA</button>
                             <button id="req-btn-save-complete" class="w-full bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform" onclick="saveData(true, 'req-')">MARK DONE</button>
+                            <button class="w-full bg-orange-50 text-orange-700 border border-orange-200 font-bold py-4 rounded-xl shadow-sm flex justify-center items-center gap-2 admin-csr-only hidden" onclick="removeFromRequest()"><i class="ph-bold ph-minus-circle text-xl"></i> REMOVE FROM REQUEST</button>
                         </div>
                         <div id="req-matching-inventory-container"></div>
-                    </div>                    <div id="det-docks-content" class="hidden py-4">
+                    </div>
+                    <div id="det-docks-content" class="hidden py-4">
                         <div id="dock-photo-preview" class="mb-4 hidden"><p class="text-[10px] font-bold text-orange-600 mb-2 uppercase">Photos on file</p><div id="dock-photo-list-container" class="space-y-2"></div></div>
                         <div class="grid grid-cols-1 gap-2 mb-4"><label class="bg-orange-50 border-2 border-dashed border-orange-500 text-orange-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" multiple capture="environment" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="handlePhotoUpload(this, 'dock-')"></label></div>
                         <div id="dock-input-container">
@@ -577,10 +564,6 @@ WHEN in DOUBT.txt
         <script>
         const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6cm55anNvc3J5ZWpqZWpsaWlpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzAyNzM1NywiZXhwIjoyMDg4NjAzMzU3fQ.Bc46UfJ1N4AgAS1PgfhFg6S4BEyybR6g_TUnPZsE2t0";
-        
-        // ADDED: Initialize the Supabase client for WebSockets
-        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwhH-eB5Py3xCwhmWReOAcAfl9Zu6mkw0hZYnAbIP9lLANoE4iebK1hXa6-ogU4_1AURA/exec"; 
         const esc = (s) => String(s || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
         const DB_NAME="GNC_DDC_DB_V2"; const STORE_NAME="inventory_cache";
@@ -709,20 +692,8 @@ WHEN in DOUBT.txt
         window.onload=async function() {
             if ('serviceWorker' in navigator) { const registrations = await navigator.serviceWorker.getRegistrations(); for(let registration of registrations) { await registration.unregister(); } }
             if ('caches' in window) { const keys = await caches.keys(); for (let key of keys) { await caches.delete(key); } }
-            
-            const savedUser=localStorage.getItem('gnc_user_v3'); 
-            
-            if(savedUser){ 
-                // Pre-fill the username
-                document.getElementById('username-input').value=savedUser; 
-                
-                // Pre-load the heavy data into memory instantly
-                const cachedRes=await loadFromCache(); 
-                if(cachedRes&&fullInventory.length===0){ 
-                    processAndLoadData(cachedRes); 
-                } 
-            }
-            // Notice: No auto-fill for pin-code and no handleLogin() trigger here!
+            const savedUser=localStorage.getItem('gnc_user_v3'); const savedPin=localStorage.getItem('gnc_pin_v3');
+            if(savedUser&&savedPin){ document.getElementById('username-input').value=savedUser; document.getElementById('pin-code').value=savedPin; const cachedRes=await loadFromCache(); if(cachedRes&&fullInventory.length===0){ processAndLoadData(cachedRes); } handleLogin(true); }
         };
 
         window.addEventListener('DOMContentLoaded', () => {
@@ -740,10 +711,11 @@ WHEN in DOUBT.txt
             if(match&&match[1]){ return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w100`; } 
             return url; 
         }
+
         async function promptToEnableBiometrics(user,pin) { 
             if(!confirm("Would you like to enable Fingerprint/FaceID login for future use?"))return; 
             try{ 
-                const publicKey={challenge:new Uint8Array(32),rp:{name:"GREENLEAF"},user:{id:new Uint8Array(16),name:user,displayName:user},pubKeyCredParams:[{type:"public-key",alg:-7}],authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required"},timeout:60000}; 
+                const publicKey={challenge:new Uint8Array(32),rp:{name:"Greenleaf Nursery Company"},user:{id:new Uint8Array(16),name:user,displayName:user},pubKeyCredParams:[{type:"public-key",alg:-7}],authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required"},timeout:60000}; 
                 await navigator.credentials.create({publicKey}); 
                 localStorage.setItem('gnc_bio_enabled','true'); 
                 localStorage.setItem('gnc_bio_user',user); 
@@ -879,7 +851,7 @@ WHEN in DOUBT.txt
                     currentUser=inputUser; 
                     currentRole=userRecord.role||'User'; 
                     safeRole=String(currentRole).toUpperCase().replace(/\s+/g,'');
-                    const isDefaultPassword=['1234','12345','welcome','password','GREENLEAF25',inputUser].includes(inputPass); 
+                    const isDefaultPassword=['1234','12345','welcome','password',inputUser].includes(inputPass); 
                     const hasChangedLocally=localStorage.getItem('gnc_pw_changed_'+currentUser)==='true';
                     if(isDefaultPassword&&!hasChangedLocally&&!isBiometricLogin){ 
                         document.getElementById('view-login').style.display='none'; 
@@ -931,122 +903,32 @@ WHEN in DOUBT.txt
             if(!isBiometricLogin&&window.PublicKeyCredential&&localStorage.getItem('gnc_bio_enabled')!=='true'){ promptToEnableBiometrics(user,pass); } 
             applyRolePermissions(); 
             fetchBackgroundData(); 
-            
-            // ADDED: Replaced standard polling with live WebSockets
-            setupWebSockets();
+            setInterval(silentBackgroundSync, 1000); 
         }
-
-        // ADDED: Setup live WebSocket listeners for instant updates
-        function setupWebSockets() {
-            // 1. Listen for ANY updates to the Master Inventory
-            supabaseClient.channel('inventory-changes')
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'v2_master_inventory' }, payload => {
-                    console.log('Instant Inventory Update Detected!', payload);
-                    silentBackgroundSync(); // Instantly grab the new data
-                })
-                .subscribe();
-
-            // 2. Listen for NEW Chat Messages
-            supabaseClient.channel('chat-messages')
-                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'v2_chat_messages' }, payload => {
-                    console.log('Instant Chat Message Detected!', payload);
-                    
-                    // If we are currently looking at the chat room, inject the message instantly!
-                    if (activeChatRoomId && payload.new.room_id === activeChatRoomId) {
-                        const msg = payload.new;
-                        const container = document.getElementById('chat-messages-container');
-                        
-                        // Don't duplicate our own optimistic messages
-                        if (msg.sender.toLowerCase() === currentUser.toLowerCase()) {
-                            let optMsg = document.getElementById('optimistic-msg');
-                            if(optMsg) optMsg.remove();
-                        }
-                        
-                        let isMe = msg.sender.toLowerCase() === currentUser.toLowerCase();
-                        let msgDate = new Date(msg.created_at);
-                        let timeStr = msgDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                        
-                        let html = '';
-                        if (isMe) {
-                            html = `<div class="flex flex-col items-end w-full">
-                                        <div class="bg-[#007a4d] text-white px-4 py-2.5 rounded-2xl rounded-br-none shadow-sm max-w-[80%] break-words text-[15px] leading-snug">
-                                            ${msg.message}
-                                        </div>
-                                        <span class="text-[9px] text-gray-400 font-bold mt-1 mr-1">${timeStr}</span>
-                                    </div>`;
-                        } else {
-                            html = `<div class="flex flex-col items-start w-full">
-                                        <span class="text-[10px] font-bold text-gray-500 ml-2 mb-0.5 uppercase tracking-wide">${msg.sender}</span>
-                                        <div class="bg-white border border-gray-200 text-gray-800 px-4 py-2.5 rounded-2xl rounded-bl-none shadow-sm max-w-[80%] break-words text-[15px] leading-snug">
-                                            ${msg.message}
-                                        </div>
-                                        <span class="text-[9px] text-gray-400 font-bold mt-1 ml-1">${timeStr}</span>
-                                    </div>`;
-                        }
-                        
-                        container.innerHTML += html;
-                        container.scrollTop = container.scrollHeight;
-                        
-                    } else {
-                        // Otherwise, refresh the inbox so the preview updates
-                        loadChatInbox();
-                    }
-                })
-                .subscribe();                
-            // 3. Listen for Request changes
-            supabaseClient.channel('request-changes')
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'v2_active_request' }, payload => {
-                    console.log('Instant Request Update Detected!', payload);
-                    silentBackgroundSync(); 
-                })
-                .subscribe();
-        }
-
-        async function silentBackgroundSync(directPayload = null) {
+        async function silentBackgroundSync() {
             if(!currentUser)return; 
             const checkTime=new Date().toISOString();
             try {
-                // If the websocket handed us the data directly, skip the fetch!
-                let data = directPayload ? [directPayload] : null;
-                
-                if (!data) {
-                    const response=await fetch(`${SUPABASE_URL}/rest/v1/v2_master_inventory?select=*&last_updated=gt.${lastSyncTime}`,{method:'GET',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
-                    if(response.ok) data = await response.json();
+                const response=await fetch(`${SUPABASE_URL}/rest/v1/v2_master_inventory?select=*&last_updated=gt.${lastSyncTime}`,{method:'GET',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+                if(response.ok) {
+                    const data=await response.json();
+                    if(data&&data.length>0){
+                        let updated=false;
+                        data.forEach(updatedRow=>{
+                            let idx=fullInventory.findIndex(i=>i.UNIQUE_ID===updatedRow.unique_id);
+                            if(idx>-1){
+                                for(let k in updatedRow){ if(updatedRow[k]!==null) fullInventory[idx][k.toUpperCase()]=updatedRow[k]; }
+                                fullInventory[idx].SAVED_PHOTO_LINK=fullInventory[idx].PHOTO_LINK||fullInventory[idx].PHOTOLINK||""; 
+                                fullInventory[idx].SAVED_PHOTO_NAME=fullInventory[idx].PHOTO_NAME||fullInventory[idx].PHOTONAME||""; 
+                                updated=true; 
+                                if(activeItem&&activeItem.UNIQUE_ID===updatedRow.unique_id){ Object.assign(activeItem,fullInventory[idx]); }
+                            }
+                        });
+                        if(updated){ reRenderCurrentView(); if(activeItem&&!document.getElementById('view-detail').classList.contains('hidden')){ openDetail(activeItem.UNIQUE_ID,lastView); } }
+                    } 
                 }
-
-                if(data&&data.length>0){
-                    let updated=false;
-                    data.forEach(updatedRow=>{
-                        let idx=fullInventory.findIndex(i=>i.UNIQUE_ID===updatedRow.unique_id);
-                        if(idx>-1){
-                            for(let k in updatedRow){ if(updatedRow[k]!==null) fullInventory[idx][k.toUpperCase()]=updatedRow[k]; }
-                            fullInventory[idx].SAVED_PHOTO_LINK=fullInventory[idx].PHOTO_LINK||fullInventory[idx].PHOTOLINK||""; 
-                            fullInventory[idx].SAVED_PHOTO_NAME=fullInventory[idx].PHOTO_NAME||fullInventory[idx].PHOTONAME||""; 
-                            updated=true; 
-                            
-                            // NEW: Cascade this update to Docks, Reserves, and Low Stock tabs immediately!
-                            let mItem = fullInventory[idx];
-                            socInventory.forEach(soc => {
-                                if(soc.MASTER_UNIQUE_ID === mItem.UNIQUE_ID) {
-                                    soc.SAVED_PHOTO_LINK = mItem.SAVED_PHOTO_LINK; soc.DOCK_PHOTO_LINK = mItem.DOCK_PHOTO_LINK;
-                                    soc.AV_NOTE = mItem.AV_NOTE; soc.SALES_NOTE = mItem.SALES_NOTE; soc.DOCK_NOTE = mItem.DOCK_NOTE;
-                                }
-                            });
-                            reservesInventory.forEach(res => {
-                                if(res.MASTER_UNIQUE_ID === mItem.UNIQUE_ID) {
-                                    res.SAVED_PHOTO_LINK = mItem.SAVED_PHOTO_LINK; res.AV_NOTE = mItem.AV_NOTE; res.SALES_NOTE = mItem.SALES_NOTE;
-                                }
-                            });
-                            let lsIdx = lowStockInventory.findIndex(ls => ls.UNIQUE_ID === mItem.UNIQUE_ID);
-                            if(lsIdx > -1) Object.assign(lowStockInventory[lsIdx], mItem);
-
-                            if(activeItem&&activeItem.UNIQUE_ID===updatedRow.unique_id){ Object.assign(activeItem,fullInventory[idx]); }
-                        }
-                    });
-                    if(updated){ reRenderCurrentView(); if(activeItem&&!document.getElementById('view-detail').classList.contains('hidden')){ openDetail(activeItem.UNIQUE_ID,lastView); } }
-                }                
-                // --- UPDATED REQ BLOCK WITH CACHE-BUSTER AND applyLocalEdits() ---
-                const reqRes = await fetch(`${SUPABASE_URL}/rest/v1/v2_active_request?select=*&_t=${Date.now()}`, {method:'GET', headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+                
+                const reqRes = await fetch(`${SUPABASE_URL}/rest/v1/v2_active_request?select=*`, {method:'GET', headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
                 if(reqRes.ok) {
                     const reqData = await reqRes.json();
                     let hash = JSON.stringify(reqData);
@@ -1062,16 +944,11 @@ WHEN in DOUBT.txt
                             return obj;
                         });
                         localStorage.setItem('last_req_hash', hash);
-                        
-                        // MAGIC FIX: Re-apply local edits to protect UI state
-                        applyLocalEdits();
-                        
                         if(!document.getElementById('view-request').classList.contains('hidden')) renderRequest();
                     }
                 }
 
-                // --- UPDATED SO BLOCK WITH CACHE-BUSTER AND applyLocalEdits() ---
-                const soRes = await fetch(`${SUPABASE_URL}/rest/v1/v2_sales_office?select=*&_t=${Date.now()}`, {method:'GET', headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+                const soRes = await fetch(`${SUPABASE_URL}/rest/v1/v2_sales_office?select=*`, {method:'GET', headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
                 if(soRes.ok) {
                     const soData = await soRes.json();
                     let soHash = JSON.stringify(soData);
@@ -1085,10 +962,6 @@ WHEN in DOUBT.txt
                             return obj;
                         });
                         localStorage.setItem('last_so_hash', soHash);
-                        
-                        // Protect local state here too
-                        applyLocalEdits();
-                        
                         if(!document.getElementById('view-sales-office').classList.contains('hidden')) renderSalesOffice();
                     }
                 }
@@ -1096,6 +969,7 @@ WHEN in DOUBT.txt
                 lastSyncTime=checkTime;
             } catch(e){}
         }
+
         async function fetchBackgroundData() {
             const cachedRes=await loadFromCache(); 
             if(cachedRes&&fullInventory.length===0){ setTimeout(()=>{ processAndLoadData(cachedRes); },50); } 
@@ -1286,27 +1160,28 @@ WHEN in DOUBT.txt
         }
 
         function switchView(viewId) { 
-    ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-detail','view-docks','view-request','view-reserves','view-av', 'view-hours', 'view-chat-inbox'].forEach(id=>{
-        const el=document.getElementById(id);
-        if(el)el.classList.add('hidden');
-    }); 
-    document.getElementById('view-'+viewId).classList.remove('hidden'); 
-    requestAnimationFrame(()=>{
-        setTimeout(()=>{
-            if(viewId==='drive')resetDriveView();
-            if(viewId==='tasks'){ if(safeRole==='ADMIN'&&!taskViewTargetUser)renderTeamSelector(); else renderTasks(); }
-            if(viewId==='reports')resetReportsView();
-            if(viewId==='review')resetReviewView();
-            if(viewId==='request'){requestViewLevel=0;renderRequest();}
-            if(viewId==='reserves')resetReservesView();
-            if(viewId==='sales-office')renderSalesOffice();
-            if(viewId==='low-stock')resetLowStockView();
-            if(viewId==='docks')resetDockView();
-            if(viewId==='av')resetAVView();
-            if(viewId==='hours')resetHoursView();
-        },0)
-    }); 
-}
+            ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-detail','view-docks','view-request','view-reserves','view-av', 'view-hours'].forEach(id=>{
+                const el=document.getElementById(id);
+                if(el)el.classList.add('hidden');
+            }); 
+            document.getElementById('view-'+viewId).classList.remove('hidden'); 
+            requestAnimationFrame(()=>{
+                setTimeout(()=>{
+                    if(viewId==='drive')resetDriveView();
+                    if(viewId==='tasks'){ if(safeRole==='ADMIN'&&!taskViewTargetUser)renderTeamSelector(); else renderTasks(); }
+                    if(viewId==='reports')resetReportsView();
+                    if(viewId==='review')resetReviewView();
+                    if(viewId==='request'){requestViewLevel=0;renderRequest();}
+                    if(viewId==='reserves')resetReservesView();
+                    if(viewId==='sales-office')renderSalesOffice();
+                    if(viewId==='low-stock')resetLowStockView();
+                    if(viewId==='docks')resetDockView();
+                    if(viewId==='av')resetAVView();
+                    if(viewId==='hours')resetHoursView();
+                },0)
+            }); 
+        }
+
         function reRenderCurrentView() { 
             if(!document.getElementById('view-drive').classList.contains('hidden'))renderDrive(); 
             if(!document.getElementById('view-tasks').classList.contains('hidden'))renderTasks(); 
@@ -1356,7 +1231,7 @@ WHEN in DOUBT.txt
 
         function resetAVView() { 
             activeAVTab='open'; 
-            avResLevel=0; selectedAvResName=null; selectedAvResSize=null; activeAvReservesTab='customers'; 
+            avResLevel=0; selectedAvResName=null; selectedAvResSize=null; 
             avOpenLevel=0; selectedAvGroup=null; selectedAvItemCode=null; 
             document.getElementById('tab-av-open').classList.add('active'); document.getElementById('tab-av-reserves').classList.remove('active'); 
             document.getElementById('av-search').value=""; document.getElementById('av-search-clear').classList.add('hidden'); 
@@ -1365,11 +1240,12 @@ WHEN in DOUBT.txt
 
         function setAVTab(tab) { 
             activeAVTab=tab; 
-            avResLevel=0; selectedAvResName=null; selectedAvResSize=null; activeAvReservesTab='customers'; 
+            avResLevel=0; selectedAvResName=null; selectedAvResSize=null; 
             avOpenLevel=0; selectedAvGroup=null; selectedAvItemCode=null; 
             document.getElementById('tab-av-open').classList.toggle('active',tab==='open'); document.getElementById('tab-av-reserves').classList.toggle('active',tab==='reserves'); 
             renderAV(); 
-        }        
+        }
+        
         function setReqTab(tab) {
             activeReqTab = tab;
             document.getElementById('tab-req-pending').classList.toggle('active', tab === 'pending');
@@ -1407,15 +1283,8 @@ WHEN in DOUBT.txt
         function handleReservesSearch() { const term=document.getElementById('reserves-search').value.toLowerCase(); const clearBtn=document.getElementById('reserves-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden');reservesViewLevel=0;} else{clearBtn.classList.add('hidden');reservesViewLevel=0;} debouncedReservesSearch(); }
 
        const debouncedAVSearch=debounce(()=>{requestAnimationFrame(()=>renderAV())}, 400);        
-let activeAvReservesTab = 'customers'; // Tracks which tab is open
-
-        function selectAvResGroup(name, size) { 
-            selectedAvResName = name; 
-            selectedAvResSize = size; 
-            activeAvReservesTab = 'customers'; // Default to Customers tab
-            avResLevel = 1; 
-            renderAV(); 
-        }
+function selectAvResName(name) { selectedAvResName=name; avResLevel=1; renderAV(); }
+        function selectAvResSize(size) { selectedAvResSize=size; avResLevel=2; renderAV(); }
 
         function renderAV() {
             const container = document.getElementById('av-content'); 
@@ -1503,72 +1372,28 @@ let activeAvReservesTab = 'customers'; // Tracks which tab is open
                 container.innerHTML = html;
                 
             } else {
-                // It's the "My Reserves" tab
-                if(avResLevel === 0) { 
-                    crumb.innerText = "My Reserves > Grouped by Plant"; 
-                    
-                    // Group items by COMMONNAME + CONTSIZE to make the cards
-                    let groups = {};
-                    items.forEach(i => {
-                        let key = (i.COMMONNAME || 'Unknown') + '|||' + (i.CONTSIZE || '-');
-                        if (!groups[key]) {
-                            groups[key] = {
-                                name: i.COMMONNAME || 'Unknown',
-                                size: i.CONTSIZE || '-',
-                                count: 0,
-                                totalQty: 0
-                            };
-                        }
-                        groups[key].count++;
-                        groups[key].totalQty += (parseFloat(String(i.QTY_ORDERED || i.QUANTITYORDERED || '0').replace(/,/g,'')) || 0);
-                    });
-                    
-                    let sortedKeys = Object.keys(groups).sort();
-                    
-                    // Render the new Grouped Cards
-                    container.innerHTML = sortedKeys.map(k => {
-                        let g = groups[k];
-                        return `
-                        <div class="bg-white border border-indigo-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectAvResGroup('${esc(g.name)}', '${esc(g.size)}')">
-                            <div class="flex-grow min-w-0 pr-3">
-                                <div class="font-black text-[17px] text-indigo-900 leading-tight mb-1 truncate">${g.name}</div>
-                                <div class="text-sm font-bold text-indigo-600">${g.size}</div>
-                            </div>
-                            <div class="flex flex-col items-end flex-shrink-0">
-                                <span class="bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-lg text-sm font-black whitespace-nowrap border border-indigo-100 mb-1">Qty: ${g.totalQty}</span>
-                                <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">${g.count} Customers</span>
-                            </div>
-                        </div>`;
-                    }).join('');
-                    
-                } else if(avResLevel === 1) { 
-                    crumb.innerText = `My Reserves > ${selectedAvResName} (${selectedAvResSize})`; 
-                    
-                    let html = `<div class="back-btn" onclick="avResLevel=0; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Plants</div>`; 
-                    
-                    // Inject the new Sub-Tabs
-                    html += `
-                    <div class="task-tabs mb-4">
-                        <div class="task-tab ${activeAvReservesTab === 'customers' ? 'active' : ''}" onclick="activeAvReservesTab='customers'; renderAV()">Customers</div>
-                        <div class="task-tab ${activeAvReservesTab === 'locations' ? 'active' : ''}" onclick="activeAvReservesTab='locations'; renderAV()">All Locations</div>
-                    </div>`;
-
-                    if (activeAvReservesTab === 'customers') {
-                        // CUSTOMERS TAB: Show the specific reserve orders
-                        let finalItems = items.filter(i => i.COMMONNAME === selectedAvResName && i.CONTSIZE === selectedAvResSize); 
-                        finalItems.sort((a,b) => (String(a.CUSTOMERNAME) || "").localeCompare(String(b.CUSTOMERNAME) || "")); 
-                        html += finalItems.length > 0 ? finalItems.map(i => generateCard(i, 'reserves_drill', 'status-indigo')).join('') : `<div class="p-8 text-center text-gray-400">No customers found.</div>`;
-                    } else {
-                        // ALL LOCATIONS TAB: Search fullInventory and use the AV Open Stock style card
-                        let matchingLocs = fullInventory.filter(i => i.COMMONNAME === selectedAvResName && i.CONTSIZE === selectedAvResSize);
-                        matchingLocs.sort((a,b) => String(a.LOCATIONCODE || "").localeCompare(String(b.LOCATIONCODE || ""), undefined, {numeric: true}));
-                        html += matchingLocs.length > 0 ? matchingLocs.map(i => generateCard(i, 'av', 'status-teal')).join('') : `<div class="p-8 text-center text-gray-400">No locations found.</div>`;
-                    }
-                    
-                    container.innerHTML = html; 
+                if(avResLevel===0){ 
+                    crumb.innerText="My Reserves > Plants"; 
+                    const names=[...new Set(items.map(i=>i.COMMONNAME))].sort(); 
+                    container.innerHTML=names.map(n=>`<div class="drill-item" onclick="selectAvResName('${esc(n)}')"><span class="font-bold text-lg">${n}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join(''); 
+                } 
+                else if(avResLevel===1){ 
+                    crumb.innerText=`My Reserves > ${selectedAvResName}`; 
+                    const namedItems=items.filter(i=>i.COMMONNAME===selectedAvResName); 
+                    const sizes=[...new Set(namedItems.map(i=>i.CONTSIZE))].sort(); 
+                    let html=`<div class="back-btn" onclick="avResLevel=0; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Plants</div>`; 
+                    html+=sizes.map(s=>{const count=namedItems.filter(i=>i.CONTSIZE===s).length;return `<div class="drill-item" onclick="selectAvResSize('${esc(s)}')"><span class="font-bold text-lg">${s} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;}).join(''); 
+                    container.innerHTML=html; 
+                } 
+                else if(avResLevel===2){ 
+                    crumb.innerText=`${selectedAvResName} / ${selectedAvResSize}`; 
+                    let finalItems=items.filter(i=>i.COMMONNAME===selectedAvResName&&i.CONTSIZE===selectedAvResSize); 
+                    finalItems.sort((a,b)=>(String(a.CUSTOMERNAME)||"").localeCompare(String(b.CUSTOMERNAME)||"")); 
+                    container.innerHTML=`<div class="back-btn" onclick="avResLevel=1; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>`+finalItems.map(i=>generateCard(i,'reserves_drill','status-indigo')).join(''); 
                 }
             }
-        }        function setDocksMainTab(tab) {
+        }
+        function setDocksMainTab(tab) {
             activeDocksMainTab = tab;
             document.getElementById('tab-docks-all').classList.toggle('active', tab === 'all');
             document.getElementById('tab-docks-my').classList.toggle('active', tab === 'my');
@@ -1882,15 +1707,15 @@ let activeAvReservesTab = 'customers'; // Tracks which tab is open
         }
 
         function openDetail(uid, sourceView) {
-    lastView = sourceView;
-    activeItem = fullInventory.find(i=>i.UNIQUE_ID===uid) || lowStockInventory.find(i=>i.UNIQUE_ID===uid) || reservesInventory.find(i=>i.UNIQUE_ID===uid) || requestsInventory.find(i=>i.UNIQUE_ID===uid) || socInventory.find(i=>i.UNIQUE_ID===uid);
-    if(!activeItem) return;
+            lastView = sourceView;
+            activeItem = fullInventory.find(i=>i.UNIQUE_ID===uid) || lowStockInventory.find(i=>i.UNIQUE_ID===uid) || reservesInventory.find(i=>i.UNIQUE_ID===uid) || requestsInventory.find(i=>i.UNIQUE_ID===uid) || socInventory.find(i=>i.UNIQUE_ID===uid);
+            if(!activeItem) return;
 
-    ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-docks','view-request','view-reserves','view-av', 'view-hours', 'view-chat-inbox'].forEach(id=>{
-        const el = document.getElementById(id);
-        if(el) el.classList.add('hidden');
-    });
-    document.getElementById('view-detail').classList.remove('hidden');
+            ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-docks','view-request','view-reserves','view-av', 'view-hours'].forEach(id=>{
+                const el = document.getElementById(id);
+                if(el) el.classList.add('hidden');
+            });
+            document.getElementById('view-detail').classList.remove('hidden');
 
             document.getElementById('det-common').innerText = activeItem.COMMONNAME || '--';
             document.getElementById('det-size').innerText = activeItem.CONTSIZE || '--';
@@ -1928,34 +1753,8 @@ let activeAvReservesTab = 'customers'; // Tracks which tab is open
                 if(t) t.classList.remove('hidden');
             } else if (sourceView === 'docks') {
                 document.getElementById('dtab-docks').classList.remove('hidden');
-                let dtabGal = document.getElementById('dtab-gallery'); if(dtabGal) dtabGal.classList.remove('hidden');
-                let dtabLoc = document.getElementById('dtab-all-loc'); if(dtabLoc) dtabLoc.classList.remove('hidden');
-                
-                // 1. Build the Gallery dynamically from all available photo links
-                let allLinks = [];
-                if(activeItem.SAVED_PHOTO_LINK) allLinks.push(...activeItem.SAVED_PHOTO_LINK.split(','));
-                if(activeItem.DOCK_PHOTO_LINK) allLinks.push(...activeItem.DOCK_PHOTO_LINK.split(','));
-                
-                // Clean up empty strings and ensure uniqueness
-                let uniqueLinks = [...new Set(allLinks.map(l => l.trim()).filter(Boolean))];
-                
-                let galHtml = uniqueLinks.length ? `<div class="grid grid-cols-2 gap-2">` + uniqueLinks.map(link => {
-                    let clean = link.match(/(https?:\/\/[^"\s>]+)/)?.[1] || link;
-                    let thumb = getDirectImageUrl(clean);
-                    return `<img src="${thumb}" class="w-full h-32 object-cover rounded-lg shadow-sm active:scale-95 transition-transform" onclick="openPhotoModal('${link}', 'Gallery')">`;
-                }).join('') + `</div>` : `<div class="text-center text-gray-400 p-8 font-bold">No photos on file.</div>`;
-                
-                let galContent = document.getElementById('det-gallery-content'); if(galContent) galContent.innerHTML = galHtml;
-
-                // 2. Build the "All Locations" tab using Drive Mode cards!
-                if(activeItem.ITEMCODE) {
-                    let matchingLocs = fullInventory.filter(i => i.ITEMCODE === activeItem.ITEMCODE);
-                    matchingLocs.sort((a,b) => String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""), undefined, {numeric: true}));
-                    
-                    let locHtml = matchingLocs.length ? matchingLocs.map(i => generateCard(i, 'drive', 'status-blue')).join('') : `<div class="text-center text-gray-400 p-8 font-bold">No other locations found.</div>`;
-                    let locContent = document.getElementById('det-all-loc-content'); if(locContent) locContent.innerHTML = locHtml;
-                }
-            } else if (sourceView === 'request') {                document.getElementById('dtab-request').classList.remove('hidden');
+            } else if (sourceView === 'request') {
+                document.getElementById('dtab-request').classList.remove('hidden');
                 
                 // Show Season or Location tabs inside the Request view if applicable
                 if (activeItem.APP_TAB_ASSIGNMENT === 'season') {
@@ -2006,14 +1805,12 @@ let activeAvReservesTab = 'customers'; // Tracks which tab is open
 
             if (sourceView === 'tasks' && activeTaskTab) {
                 switchDetailTab(activeTaskTab);
-            } else if (sourceView === 'request') {
-                // Instantly open to the camera/request tab!
-                switchDetailTab('request');
             } else {
                 switchDetailTab('overview');
             }
 
-            if(typeof validateSsnForm === 'function') validateSsnForm();        }
+            if(typeof validateSsnForm === 'function') validateSsnForm();
+        }
         function renderSavedPhotos() {
             let sLink = activeItem.SAVED_PHOTO_LINK || "";
             let rLink = activeItem.REQ_PHOTO_LINK || "";
@@ -2132,15 +1929,12 @@ let activeAvReservesTab = 'customers'; // Tracks which tab is open
             document.getElementById('det-season-content').classList.add('hidden');
             document.getElementById('det-location-content').classList.add('hidden');
             document.getElementById('det-request-content').classList.add('hidden');
-           document.getElementById('det-notes-content').classList.add('hidden');
+            document.getElementById('det-notes-content').classList.add('hidden');
             document.getElementById('det-docks-content').classList.add('hidden');
             document.getElementById('det-flyer-content').classList.add('hidden');
-            
-            let galContent = document.getElementById('det-gallery-content'); if(galContent) galContent.classList.add('hidden');
-            let locContent = document.getElementById('det-all-loc-content'); if(locContent) locContent.classList.add('hidden');
 
-            const contentEl = document.getElementById('det-' + tab + '-content');            
-           if(contentEl) contentEl.classList.remove('hidden');
+            const contentEl = document.getElementById('det-' + tab + '-content');
+            if(contentEl) contentEl.classList.remove('hidden');
         }
 
         function goBackFromDetail() {
@@ -2245,7 +2039,7 @@ let activeAvReservesTab = 'customers'; // Tracks which tab is open
                     crumb.innerText = `${selectedReqRepView} > Status`;
                     let repItems = items.filter(i => (i.REQUESTED_BY || 'Unknown Rep') === selectedReqRepView && !i.REQ_ARCHIVED);
                     let pendingCount = repItems.filter(i => i.REQ_STATUS !== 'Complete').length;
-                    let completeCount = repItems.filter(i => i.REQ_STATUS === 'Complete').length;                 
+                    let completeCount = repItems.filter(i => i.REQ_STATUS === 'Complete').length;                  
                     container.innerHTML = `
                         <div class="back-btn" onclick="requestViewLevel=0; renderRequest()"><i class="ph-bold ph-arrow-left"></i> Back to Reps</div>
                         <div class="bg-orange-50 border border-orange-200 rounded-xl shadow-sm mb-4 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectedReqStatus='Pending'; requestViewLevel=2; renderRequest()">
@@ -2355,16 +2149,14 @@ let activeAvReservesTab = 'customers'; // Tracks which tab is open
                         clickThumbHtml = `<div class="ml-3 flex-shrink-0 flex flex-col items-center" onclick="event.stopPropagation(); openPhotoModal('${photoLink}', '${esc(item.COMMONNAME)} - ${esc(item.CONTSIZE)}')"><div class="relative"><img src="${thumbUrl}" class="w-24 h-24 rounded-lg object-cover border-2 border-teal-300 shadow-md active:scale-95 transition-transform" loading="lazy">${photoCount > 1 ? `<div class="absolute -top-2 -right-2 bg-teal-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full border-2 border-white shadow-sm">+${photoCount-1}</div>` : ''}</div><div class="text-center text-[9px] font-black text-teal-600 mt-1.5 uppercase tracking-widest bg-teal-50 px-2 py-0.5 rounded-md border border-teal-100 cursor-pointer active:bg-teal-200">VIEW</div></div>`; 
                     } 
                 }
-let specCaliperHtml = "";
-                if (item.SPEC || item.CALIPER) {
-                    specCaliperHtml = `<div class="mt-2 text-[11px] font-bold text-gray-600 bg-gray-50 px-2 py-1 rounded border border-gray-100 w-max">Spec: ${item.SPEC || 'N/A'} | Caliper: ${item.CALIPER || 'N/A'}</div>`;
-                }
+
                 // --- Calculate dynamic Loc Photo Match ---
                 let ptr = parseInt(String(item.PTRAVAILABLE).replace(/,/g, '')) || 0;
                 let matchPct = parseFloat(item.MATCH || item.MATCHPCT);
                 let locPhotoMatch = !isNaN(matchPct) ? Math.round(ptr * (matchPct / 100)) : 'N/A';
 
-               return `<div class="flex items-start w-full mb-3 item-row relative bg-white p-4 rounded-xl border-2 border-teal-100 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-teal-600 focus:ring-teal-600 shadow-sm pointer-events-none" ${isChecked}></div><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full"><div class="flex-grow min-w-0 pr-2"><div class="font-black text-gray-800 text-[18px] leading-tight break-words mb-1">${item.COMMONNAME||'Unknown'}</div><div class="font-black text-teal-700 text-[15px] mb-2">${item.CONTSIZE||'-'}</div><div class="grid grid-cols-2 gap-2 mb-2"><div class="text-[11px] font-bold text-gray-500 uppercase"><span class="block text-[8px] text-gray-400 mb-0.5">LOT CODE</span>${item.LOTCODE||'-'}</div><div class="text-[11px] font-bold text-gray-500 uppercase"><span class="block text-[8px] text-gray-400 mb-0.5">LOCATION</span>${item.LOCATIONCODE||'-'}</div></div><div class="flex flex-wrap gap-2 text-[11px] font-bold uppercase tracking-wider mt-1"><span class="bg-gray-100 text-gray-800 px-2 py-1 rounded border border-gray-200">LOC AVA: <span class="font-black">${item.PTRAVAILABLE||'0'}</span></span><span class="bg-purple-50 text-purple-700 px-2 py-1 rounded border border-purple-200">s_LTS: <span class="font-black">${item.S_LTS||'0'}</span></span><span class="bg-green-50 text-green-700 px-2 py-1 rounded border border-green-200">LOC PHOTO MATCH: <span class="font-black">${locPhotoMatch}</span></span></div>${specCaliperHtml}${holdHtml}${avNoteHtml}</div>${clickThumbHtml}</div></div></div>`;             }
+                return `<div class="flex items-start w-full mb-3 item-row relative bg-white p-4 rounded-xl border-2 border-teal-100 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-teal-600 focus:ring-teal-600 shadow-sm pointer-events-none" ${isChecked}></div><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full"><div class="flex-grow min-w-0 pr-2"><div class="font-black text-gray-800 text-[18px] leading-tight break-words mb-1">${item.COMMONNAME||'Unknown'}</div><div class="font-black text-teal-700 text-[15px] mb-2">${item.CONTSIZE||'-'}</div><div class="grid grid-cols-2 gap-2 mb-2"><div class="text-[11px] font-bold text-gray-500 uppercase"><span class="block text-[8px] text-gray-400 mb-0.5">LOT CODE</span>${item.LOTCODE||'-'}</div><div class="text-[11px] font-bold text-gray-500 uppercase"><span class="block text-[8px] text-gray-400 mb-0.5">LOCATION</span>${item.LOCATIONCODE||'-'}</div></div><div class="flex flex-wrap gap-2 text-[11px] font-bold uppercase tracking-wider mt-1"><span class="bg-gray-100 text-gray-800 px-2 py-1 rounded border border-gray-200">LOC AVA: <span class="font-black">${item.PTRAVAILABLE||'0'}</span></span><span class="bg-purple-50 text-purple-700 px-2 py-1 rounded border border-purple-200">s_LTS: <span class="font-black">${item.S_LTS||'0'}</span></span><span class="bg-green-50 text-green-700 px-2 py-1 rounded border border-green-200">LOC PHOTO MATCH: <span class="font-black">${locPhotoMatch}</span></span></div>${holdHtml}${avNoteHtml}</div>${clickThumbHtml}</div></div></div>`;
+            }
             
             if(photoLink){ 
                 let firstUrl=String(photoLink).split(',')[0]; 
@@ -2441,6 +2233,11 @@ let specCaliperHtml = "";
                 return `<div class="flex items-center w-full mb-3 item-row relative" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm pointer-events-none" ${isChecked}></div><div class="inv-card status-purple flex-grow !mb-0 bg-purple-50/40 border border-purple-200 transition-transform active:scale-[0.99]"><div class="flex justify-between items-start mb-3"><div class="font-bold text-lg text-[#007a4d] leading-tight pr-2 select-text" style="-webkit-user-select: text; user-select: text;">${item.COMMONNAME||'Unknown'}<br><span class="text-sm text-gray-500 font-semibold">${item.CONTSIZE||'-'}</span></div>${thumbHtml}</div><div class="bg-white p-3 rounded-lg border border-purple-200 shadow-sm mb-3 select-text cursor-text" style="-webkit-user-select: text; user-select: text;" onclick="event.stopPropagation();"><div class="flex justify-between items-center mb-1"><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Item Code</span><span class="font-black text-purple-700 font-mono tracking-wide text-sm">${itemCode}</span></div><div class="flex justify-between items-center mb-1 border-b border-gray-100 pb-1"><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Location / Lot</span><span class="font-bold text-gray-600 text-xs">${locCode} / ${lotCode}</span></div><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5 mt-2">AV Note</div><div class="text-[14px] font-bold text-blue-800 leading-snug mb-2">${avNoteText}</div><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Sales Note</div><div class="text-[14px] font-bold text-green-800 leading-snug">${salesNoteText}</div></div><div class="flex gap-2"><button class="flex-1 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-700 text-[10px] font-bold py-2.5 rounded-lg transition-colors flex flex-col items-center justify-center gap-1 active:bg-indigo-200" onclick="event.stopPropagation(); copyTextToClipboard('${itemCode}', 'ITEM CODE')"><i class="ph-bold ph-barcode text-xl"></i> COPY ITEMCODE</button><button class="flex-1 bg-purple-50 border border-purple-200 hover:bg-purple-100 text-purple-700 text-[10px] font-bold py-2.5 rounded-lg transition-colors flex flex-col items-center justify-center gap-1 active:bg-purple-200" onclick="event.stopPropagation(); copyTextToClipboard('${safeAvNote}', 'AV NOTE')"><i class="ph-bold ph-chat-text text-xl"></i> COPY AV NOTE</button><button class="flex-1 bg-[#007a4d] hover:bg-green-700 text-white text-[10px] font-bold py-2.5 rounded-lg transition-colors flex flex-col items-center justify-center gap-1 shadow-md active:scale-95" onclick="event.stopPropagation(); markSalesOfficeComplete('${safeUidJs}', '${item.DOM_ID}')"><i class="ph-bold ph-check-circle text-xl"></i> DONE</button></div></div></div>`;
             }
 
+            if(sourceView==='reserves_drill'){
+                let custStr=item.CUSTOMERNAME||'Unknown Customer';if(item.CONSIGNEENAME&&String(item.CONSIGNEENAME).trim()!=='')custStr+=` - ${item.CONSIGNEENAME}`;let qtyOrd=item.QTY_ORDERED||item.QUANTITYORDERED||'0';let qtyShip=item.QTY_SHIPPED||item.QUANTITYSHIPPED||'0';let repStr=item.SALESREPNAME||item.SALESREP||'Unknown Rep';
+                return `<div class="flex items-center w-full mb-3 item-row relative bg-white p-4 rounded-xl border border-indigo-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', 'av')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm pointer-events-none" ${isChecked}></div><div class="flex-grow min-w-0"><div class="font-black text-indigo-800 text-[16px] leading-tight mb-1 truncate">${custStr}</div><div class="text-[12px] font-bold text-gray-600 mb-2 truncate">${item.COMMONNAME} • ${item.CONTSIZE}</div><div class="flex flex-wrap gap-2 text-[10px] font-bold"><span class="bg-indigo-50 text-indigo-700 px-2 py-1 rounded border border-indigo-100">Ordered: ${qtyOrd}</span><span class="bg-green-50 text-green-700 px-2 py-1 rounded border border-green-100">Shipped: ${qtyShip}</span><span class="bg-gray-100 text-gray-700 px-2 py-1 rounded border border-gray-200 flex items-center gap-1"><i class="ph-bold ph-user"></i>${repStr}</span></div></div></div>`;
+            }
+
             if(sourceView==='drive'||sourceView==='tasks'){
                 let noteHtml="";if(item.END_CAP_FOLDER&&String(item.END_CAP_FOLDER).trim()!==""){noteHtml+=`<div class="mt-2 text-[12px] text-yellow-800 bg-yellow-100 p-2 rounded border border-yellow-200 shadow-sm whitespace-pre-wrap"><span class="font-black">END CAP:</span> ${item.END_CAP_FOLDER} | QTY: ${item.END_CAP_QTY||'0'} | Lvl: ${item.END_CAP_LEVEL||'-'}</div>`}if(item.LOC_MATCH_QTY&&String(item.LOC_MATCH_QTY).trim()!==""&&Number(item.LOC_MATCH_QTY)>0){noteHtml+=`<div class="mt-2 text-[12px] text-green-800 bg-green-100 p-2 rounded border border-green-200 shadow-sm whitespace-pre-wrap"><span class="font-black">MATCH QTY:</span> ${item.LOC_MATCH_QTY}</div>`}if(item.AV_NOTE&&String(item.AV_NOTE).trim()!==""){noteHtml+=`<div class="mt-2 text-[12px] text-blue-800 bg-blue-100 p-2 rounded border border-blue-200 shadow-sm whitespace-pre-wrap"><span class="font-black">AV NOTE:</span> ${item.AV_NOTE}</div>`}if(item.SALES_NOTE&&String(item.SALES_NOTE).trim()!==""){noteHtml+=`<div class="mt-2 text-[12px] text-green-800 bg-green-100 p-2 rounded border border-green-200 shadow-sm whitespace-pre-wrap"><span class="font-black">SALES NOTE:</span> ${item.SALES_NOTE}</div>`}if(item.FLYER_TITLE&&String(item.FLYER_TITLE).trim()!==""){noteHtml+=`<div class="mt-2 text-[12px] text-indigo-800 bg-indigo-100 p-2 rounded border border-indigo-200 shadow-sm whitespace-pre-wrap"><span class="font-black">FLYER:</span> ${item.FLYER_TITLE}</div>`}
                 let extraData="";if(sourceView==='tasks'||sourceView==='drive'){extraData=`<div class="mt-2 flex gap-2 text-[10px] font-bold text-gray-500 uppercase">${item.SPEC?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Spec: ${item.SPEC}</span>`:''}${item.CALIPER?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Cal: ${item.CALIPER}</span>`:''}${item.MATCH?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Match: ${item.MATCH}%</span>`:''}</div>`}
@@ -2449,7 +2246,6 @@ let specCaliperHtml = "";
             
             return `<div class="flex items-center w-full mb-2 item-row overflow-hidden" data-dom-id="${item.DOM_ID}" oncontextmenu="event.preventDefault(); return false;" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm pointer-events-none" ${isChecked}></div><div class="inv-card ${colorClass} flex items-start justify-between flex-grow !mb-0 transition-transform active:scale-[0.99]"><div class="flex-grow min-w-0 text-[#007a4d]"><div class="flex justify-between font-bold text-sm mb-1"><span class="truncate pr-2">${item.COMMONNAME||'Unknown'} • ${item.CONTSIZE||'-'} • Loc: ${item.LOCATIONCODE||'No Loc'}</span><span class="whitespace-nowrap bg-[#007a4d]/10 px-1.5 py-0.5 rounded text-xs border border-[#007a4d]/20 h-max">Pri: ${item.PRIORITY||'-'}</span></div><div class="text-[11px] font-semibold truncate mt-0.5">Tag: ${tagColor} | Lot: ${item.LOTCODE||'-'} | PTR-Ava: ${item.PTRAVAILABLE||'0'} | s_LTS: ${item.S_LTS||'0'} | Supply: ${item.SEASONSUPPLY||'0'}</div><div class="text-[11px] font-semibold truncate mt-0.5">Item: ${item.ITEMCODE||'-'}</div></div>${thumbHtml}</div></div>`;
         }
-
         function initiateBatchAction(action) {
             if(action==='request_action'){openRequestModal();return}
             if(action==='endcap'){openEndCapModal();return}
@@ -2625,7 +2421,6 @@ let specCaliperHtml = "";
         }
 
         const debouncedPopulateCustomerList=debounce(()=>requestAnimationFrame(populateCustomerList), 400);
-
         function populateCustomerList() {
             const val=document.getElementById('cust-search-input').value.toLowerCase().trim();
             const container=document.getElementById('cust-list-container');
@@ -2779,34 +2574,28 @@ let specCaliperHtml = "";
                         req_status:'Pending'
                     };
                     insertPayloads.push(newReq);
-                    let clone = JSON.parse(JSON.stringify(item));
-			clone.UNIQUE_ID = newReqId;
-			clone.DOM_ID = 'req_' + newReqId;
-			clone.SOURCE_TABLE = 'v2_active_request';
-			clone.REQUESTED_BY = tempSelectedReqRep;
-			clone.REQUEST_FOLDER = folderId;
-			clone.REQ_CUSTOMER = cust;
-			clone.REQ_QTY = dataObj.qty || "";
-			clone.REQ_DESIRED_SPEC = dataObj.spec || "";
-			clone.REQ_DESIRED_CALIPER = dataObj.caliper || "";
-			clone.REQ_EST_SHIP = dataObj.estShip || "";
-			clone.REQ_RESERVE = dataObj.reserve || "NO";
-			clone.REQ_ARCHIVED = false;
-			clone.REQ_STATUS = 'Pending';
-			clone.REQ_PHOTO_LINK = newReq.req_photo_link;
-			clone.REQ_PHOTO_NAME = newReq.req_photo_name;
-			requestsInventory.push(clone);
-                    
-                    // NEW: Backup the newly created clone locally so the race condition doesn't eat it!
-                    backupLocalItem(clone); 
+                    let clone=JSON.parse(JSON.stringify(item));
+                    clone.UNIQUE_ID=newReqId;
+                    clone.DOM_ID='req_'+newReqId;
+                    clone.REQUESTED_BY=tempSelectedReqRep;
+                    clone.REQUEST_FOLDER=folderId;
+                    clone.REQ_CUSTOMER=cust;
+                    clone.REQ_QTY=dataObj.qty||"";
+                    clone.REQ_DESIRED_SPEC=dataObj.spec||"";
+                    clone.REQ_DESIRED_CALIPER=dataObj.caliper||"";
+                    clone.REQ_EST_SHIP=dataObj.estShip||"";
+                    clone.REQ_RESERVE=dataObj.reserve||"NO";
+                    clone.REQ_ARCHIVED=false;
+                    clone.REQ_STATUS='Pending';
+                    clone.REQ_PHOTO_LINK=newReq.req_photo_link;
+                    clone.REQ_PHOTO_NAME=newReq.req_photo_name;
+                    requestsInventory.push(clone)
                 }
             });
             showToast("Processing...",`Creating Clone Tickets...`,false);
             clearSelection();
             switchView('request');
-            
-            // NEW: Passed 'select=*' and 'true' to completely silence the green loading bar
-            supabaseFetch('v2_active_request','POST',insertPayloads, 'select=*', true).then(()=>{
+            supabaseFetch('v2_active_request','POST',insertPayloads).then(()=>{
                 showToast("Success","Request tickets cloned!",false);
                 sendEmailNotification('new_request', folderId, tempSelectedReqRep, cust, insertPayloads.length);
             }).catch(err=>showToast("Error","Network error.",true))
@@ -2937,7 +2726,7 @@ let specCaliperHtml = "";
         function selectDriveSize(size) { selectedDriveSize = size; driveViewLevel = 2; renderDrive() }
         function backToDriveSizes() { driveViewLevel = 1; selectedDriveSize = null; renderDrive() }
 
-      function renderDrive() {
+       function renderDrive() {
             const container = document.getElementById('drive-content'); 
             const filtersDiv = document.getElementById('drive-season-filters'); 
             const crumb = document.getElementById('drive-crumb'); 
@@ -3028,7 +2817,7 @@ let specCaliperHtml = "";
             }
         }
 
-        function toggleDriveSeason(s) {
+       function toggleDriveSeason(s) {
             if(s === 'ALL'){
                 driveSelectedSeasons.clear();
                 driveSelectedSeasons.add('ALL');
@@ -3195,21 +2984,15 @@ let specCaliperHtml = "";
         function saveData(isComplete = false, prefix, isSilentAutoSave = false, specificItem = null) {
             if (autoSaveTimer) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
             let itemToSave = specificItem || activeItem; if (!itemToSave) return;
+            let btnDraft = document.getElementById(prefix + 'btn-save-draft'); 
             let btnComp = document.getElementById(prefix + 'btn-save-complete'); 
             let isCurrentView = (activeItem && activeItem.UNIQUE_ID === itemToSave.UNIQUE_ID);
             
-            // Ask if it should be pushed to AV (Synchronous pop-up)
-            let pushToAv = false;
-            if (isCurrentView && isComplete && prefix === 'req-' && !isSilentAutoSave) {
-                pushToAv = confirm("Do you want to show in AV?");
-            }
+            if (isCurrentView && isComplete) { if(btnComp) btnComp.innerText = "SAVING..."; }
             
-            const executeSave = async () => {
+           const executeSave = () => {
                 let wasAlreadyComplete = itemToSave.REQ_STATUS === 'Complete';
-                const nowIso = new Date().toISOString();
 
-                // --- STEP 1: OPTIMISTIC LOCAL UPDATE ---
-                // We instantly grab the UI values and update the local object in memory
                 if (!specificItem) {
                     let avEl = document.getElementById(prefix + 'av-note');
                     if (avEl) { itemToSave.AV_NOTE = avEl.value.toUpperCase(); }
@@ -3218,4 +3001,148 @@ let specCaliperHtml = "";
                     if (descEl) { let textBoxVal = descEl.value.toUpperCase(); itemToSave.SALES_NOTE = textBoxVal; if (lastView === 'tasks') itemToSave._NEW_SALES_NOTE = textBoxVal; }
 
                     if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-') { 
-                        let matchEl = document.getElement
+                        let matchEl = document.getElementById(prefix + 'match'); if(matchEl) itemToSave.MATCH = matchEl.value; 
+                        let specEl = document.getElementById(prefix + 'spec'); if(specEl) itemToSave.SPEC = specEl.value; 
+                        let calEl = document.getElementById(prefix + 'caliper'); if(calEl) itemToSave.CALIPER = calEl.value; 
+                        let pickEl = document.getElementById(prefix + 'pick'); if(pickEl) itemToSave.PICK = pickEl.value; 
+                    } else if (prefix === 'req-') { 
+                        itemToSave.REQ_MATCH = document.getElementById('req-match').value; itemToSave.REQ_SPEC = document.getElementById('req-spec').value; itemToSave.REQ_CALIPER = document.getElementById('req-caliper').value; itemToSave.REQ_PICK = document.getElementById('req-pick').value; itemToSave.REQ_COMMENTS = document.getElementById('req-comments').value; let reserveEl = document.getElementById('req-reserve'); if (reserveEl) itemToSave.REQ_RESERVE = reserveEl.value;
+                    } else if (prefix === 'dock-') { 
+                        itemToSave.DOCK_SPEC = document.getElementById('dock-spec').value; itemToSave.DOCK_CALIPER = document.getElementById('dock-caliper').value; itemToSave.DOCK_NOTE = document.getElementById('dock-sales-desc').value.toUpperCase(); 
+                    } else if (prefix === 'flyer-') {
+                        itemToSave.FLYER_CAT = document.getElementById('flyer-cat').value; itemToSave.FLYER_TITLE = document.getElementById('flyer-title').value; itemToSave.FLYER_INST = document.getElementById('flyer-inst').value; itemToSave.FLYER_ASSIGNED = document.getElementById('flyer-assigned').value; itemToSave.FLYER_NOTES = document.getElementById('flyer-notes').value;
+                    }
+                }
+                
+                const setVal = (val) => (val === "" || val === undefined) ? null : val;
+                const payload = {};
+                
+                if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-') { 
+                    payload.match = (itemToSave.MATCH === "" || itemToSave.MATCH == null) ? null : parseFloat(itemToSave.MATCH); 
+                    payload.spec = setVal(itemToSave.SPEC); payload.caliper = setVal(itemToSave.CALIPER); payload.pic_note = setVal(itemToSave.PICK); 
+                    payload.sales_note = setVal(itemToSave.SALES_NOTE || itemToSave._NEW_SALES_NOTE); payload.av_note = setVal(itemToSave.AV_NOTE);
+                } else if (prefix === 'req-') { 
+                    payload.req_match = (itemToSave.REQ_MATCH === "" || itemToSave.REQ_MATCH == null) ? null : parseFloat(itemToSave.REQ_MATCH); 
+                    payload.req_spec = setVal(itemToSave.REQ_SPEC); payload.req_caliper = setVal(itemToSave.REQ_CALIPER); payload.req_pic_note = setVal(itemToSave.REQ_PICK); 
+                    payload.req_sales_note = setVal(itemToSave.REQ_SALES_NOTE); payload.req_comments = setVal(itemToSave.REQ_COMMENTS); 
+                    payload.req_reserve = setVal(itemToSave.REQ_RESERVE); payload.av_note = setVal(itemToSave.AV_NOTE);
+                } else if (prefix === 'dock-') { 
+                    payload.dock_spec = setVal(itemToSave.DOCK_SPEC); payload.dock_caliper = setVal(itemToSave.DOCK_CALIPER); payload.dock_note = setVal(itemToSave.DOCK_NOTE); 
+                } else if (prefix === 'flyer-') {
+                    payload.flyer_cat = setVal(itemToSave.FLYER_CAT); payload.flyer_title = setVal(itemToSave.FLYER_TITLE); payload.flyer_inst = setVal(itemToSave.FLYER_INST); 
+                    payload.flyer_assigned = setVal(itemToSave.FLYER_ASSIGNED); payload.flyer_notes = setVal(itemToSave.FLYER_NOTES);
+                }
+
+                if (isComplete && (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-')) {
+                    let matchVal = parseFloat(itemToSave.MATCH);
+                    if (!isNaN(matchVal) && matchVal >= 0) {
+                        let ptr = parseInt(String(itemToSave.PTRAVAILABLE).replace(/,/g, '')) || 0;
+                        itemToSave.INITIAL_PTR = ptr; itemToSave.LOC_MATCH_QTY = Math.round(ptr * (matchVal / 100));
+                        payload.initial_ptr = itemToSave.INITIAL_PTR; payload.loc_match_qty = itemToSave.LOC_MATCH_QTY;
+                    }
+                }
+
+                backupLocalItem(itemToSave);
+
+                if (itemToSave.SAVED_PHOTO_LINK) payload.photo_link = itemToSave.SAVED_PHOTO_LINK; 
+                if (itemToSave.SAVED_PHOTO_NAME) payload.photo_name = itemToSave.SAVED_PHOTO_NAME;
+                if (itemToSave.REQ_PHOTO_LINK) payload.req_photo_link = itemToSave.REQ_PHOTO_LINK; 
+                if (itemToSave.REQ_PHOTO_NAME) payload.req_photo_name = itemToSave.REQ_PHOTO_NAME;
+                if (itemToSave.DOCK_PHOTO_LINK) payload.dock_photo_link = itemToSave.DOCK_PHOTO_LINK; 
+                if (itemToSave.DOCK_PHOTO_NAME) payload.dock_photo_name = itemToSave.DOCK_PHOTO_NAME;
+                if (itemToSave.FLYER_PHOTO_LINK) payload.flyer_photo_link = itemToSave.FLYER_PHOTO_LINK; 
+                if (itemToSave.FLYER_PHOTO_NAME) payload.flyer_photo_name = itemToSave.FLYER_PHOTO_NAME;
+
+                if (isComplete) { 
+                    payload.date_completed = new Date().toISOString(); 
+                    if (prefix === 'flyer-') payload.flyer_completed = payload.date_completed;
+                    
+                    // Force complete for Requests, regardless of which tab they clicked Mark Done from
+                    if (itemToSave.SOURCE_TABLE === 'v2_active_request') {
+                        payload.req_status = 'Complete';
+                        itemToSave.REQ_STATUS = 'Complete';
+                    }
+                    
+                    // Logic to Push to Sales Office
+                    let isSeasonNote = (itemToSave.APP_TAB_ASSIGNMENT === 'season');
+                    let shouldPushToSO = false;
+                    
+                    if (prefix !== 'flyer-' && prefix !== 'req-') {
+                        shouldPushToSO = true; // Normal flow
+                    } else if (itemToSave.SOURCE_TABLE === 'v2_active_request' && isSeasonNote) {
+                        shouldPushToSO = true; // Request flow that is ALSO a Season Note
+                    }
+
+                    if (shouldPushToSO) {
+                        let masterUid = itemToSave.MASTER_ID || itemToSave.UNIQUE_ID; // Link to master item if Request
+                        let sNote = payload.sales_note || payload.req_sales_note || itemToSave.SALES_NOTE || itemToSave.REQ_SALES_NOTE || itemToSave._NEW_SALES_NOTE || "";
+                        
+                        let soPayload = { 
+                            unique_id: masterUid, 
+                            itemcode: itemToSave.ITEMCODE || "", 
+                            commonname: itemToSave.COMMONNAME || "", 
+                            contsize: itemToSave.CONTSIZE || "", 
+                            locationcode: itemToSave.LOCATIONCODE || "", 
+                            lotcode: itemToSave.LOTCODE || "", 
+                            ptravailable: String(itemToSave.PTRAVAILABLE || ""), 
+                            priority: String(itemToSave.PRIORITY || ""), 
+                            sales_note: sNote, 
+                            photo_link: itemToSave.NA_PHOTO_LINK || itemToSave.SAVED_PHOTO_LINK || itemToSave.REQ_PHOTO_LINK || "", 
+                            completed_by: currentUser, 
+                            completed_at: payload.date_completed 
+                        };
+                        
+                        supabaseFetch('v2_sales_office', 'POST', soPayload).catch(e => console.log(e));
+                        
+                        let cloneSO = { ...soPayload };
+                        for(let key in soPayload) { cloneSO[key.toUpperCase()] = soPayload[key]; }
+                        cloneSO.DOM_ID = 'so_' + cloneSO.UNIQUE_ID;
+                        cloneSO.AV_NOTE = itemToSave.AV_NOTE;
+                        cloneSO.SAVED_PHOTO_LINK = soPayload.photo_link; 
+                        let existingIdx = salesOfficeInventory.findIndex(s => s.UNIQUE_ID === cloneSO.UNIQUE_ID);
+                        if (existingIdx > -1) salesOfficeInventory[existingIdx] = cloneSO;
+                        else salesOfficeInventory.push(cloneSO);
+                    }
+                }
+
+                // If editing a request, send back to v2_active_request. Otherwise master DB.
+                const targetTable = (itemToSave.SOURCE_TABLE === 'v2_active_request') ? 'v2_active_request' : (itemToSave.SOURCE_TABLE || 'v2_master_inventory');
+
+                supabaseFetch(targetTable, 'PATCH', payload, `unique_id=eq.${encodeURIComponent(itemToSave.UNIQUE_ID)}`).then(data => {
+                    if (isCurrentView && isComplete) { if(btnComp) btnComp.innerText = "MARK DONE"; }
+                    if (!isSilentAutoSave && isCurrentView && isComplete) showToast("Success", "Task Completed!"); 
+                    if (isComplete && isCurrentView) { 
+                        itemToSave.DATE_COMPLETED = payload.date_completed; 
+                        goBackFromDetail(); 
+                        reRenderCurrentView();
+                    } else if (isComplete && !isCurrentView) { 
+                        itemToSave.DATE_COMPLETED = payload.date_completed; 
+                    }
+
+                    if ((prefix === 'req-' || itemToSave.SOURCE_TABLE === 'v2_active_request') && isComplete && !wasAlreadyComplete) {
+                        let folderItems = requestsInventory.filter(i => i.REQUEST_FOLDER === itemToSave.REQUEST_FOLDER);
+                        let allComplete = folderItems.every(i => i.REQ_STATUS === 'Complete' || i.UNIQUE_ID === itemToSave.UNIQUE_ID);
+                        if (allComplete) { sendEmailNotification('request_complete', itemToSave.REQUEST_FOLDER, itemToSave.REQUESTED_BY, itemToSave.REQ_CUSTOMER, folderItems.length); }
+                    }
+                }).catch(err => { if (isCurrentView && isComplete) { if(btnComp) btnComp.innerText = "MARK DONE"; if (!isSilentAutoSave) showToast("Network Error", "Could not reach database.", true); } });
+            };
+            if (isSilentAutoSave && !isComplete && !specificItem) { autoSaveTimer = setTimeout(() => { executeSave(); }, 1000); } else { executeSave(); }
+        }
+        function backupLocalItem(item) {
+            if (!item) return;
+            let pendingEdits = JSON.parse(localStorage.getItem('gnc_pending_edits') || '{}');
+            pendingEdits[item.UNIQUE_ID] = { timestamp: new Date().getTime(), data: item };
+            localStorage.setItem('gnc_pending_edits', JSON.stringify(pendingEdits));
+        }
+
+        function applyLocalEdits() {
+            let pendingEdits = JSON.parse(localStorage.getItem('gnc_pending_edits') || '{}');
+            let now = new Date().getTime();
+            let changed = false;
+
+            for (let uid in pendingEdits) {
+                if (now - pendingEdits[uid].timestamp > 900000) { delete pendingEdits[uid]; changed = true; continue; }
+                let item = fullInventory.find(i => i.UNIQUE_ID === uid) || lowStockInventory.find(i => i.UNIQUE_ID === uid) || reservesInventory.find(i => i.UNIQUE_ID === uid) || requestsInventory.find(i => i.UNIQUE_ID === uid) || managerReviewInventory.find(i => i.UNIQUE_ID === uid) || socInventory.find(i => i.UNIQUE_ID === uid);
+                if (item) { Object.assign(item, pendingEdits[uid].data); }
+            }
+            if (changed) { localStorage.setItem('gnc_pending_edits', J
