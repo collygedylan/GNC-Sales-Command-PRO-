@@ -108,7 +108,7 @@
         .drive-card-filter-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.5rem}
         .drive-card-filter-grid .drive-card-filter-name{grid-column:span 2}
         .drive-card-filter-grid label{min-width:0}
-        .freeze-panel{position:-webkit-sticky;position:sticky;top:0;z-index:44;background:#f9fafb;margin:-1rem -1rem .55rem;padding:.1rem .85rem .38rem;border-bottom:1px solid #d1fae5;box-shadow:0 8px 14px rgba(15,23,42,.04);isolation:isolate}
+        .freeze-panel{position:-webkit-sticky;position:sticky;top:0;z-index:44;background:#f9fafb;margin:-1rem -1rem .55rem;padding:.1rem 1.05rem .38rem;border-bottom:1px solid #d1fae5;box-shadow:0 8px 14px rgba(15,23,42,.04);isolation:isolate}
         .freeze-panel::before{content:"";position:absolute;left:0;right:0;top:-18px;height:18px;background:#f9fafb;pointer-events:none}
         .freeze-panel .sticky-search{position:relative;top:auto;z-index:auto;box-shadow:none}
         .freeze-panel #drive-search-container,.freeze-panel #av-search-container,.freeze-panel #reserves-search-container,.freeze-panel #docks-search-container{position:relative;top:auto;z-index:auto}
@@ -127,14 +127,14 @@
         .amazon-view-copy{min-width:0;display:flex;flex-direction:column}
         .amazon-view-eyebrow{font-size:9px;font-weight:900;letter-spacing:.18em;text-transform:uppercase;color:#d1fae5}
         .amazon-view-title{font-size:15px;font-weight:900;line-height:1.15;color:white;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-        .amazon-filter-strip{display:flex;gap:.35rem;overflow-x:auto;scrollbar-width:none;background:transparent;border:0;margin:0 0 .32rem;padding:.03rem 0 .08rem}
+        .amazon-filter-strip{display:flex;gap:.35rem;overflow-x:auto;scrollbar-width:none;background:transparent;border:0;margin:0 0 .32rem;padding:.03rem .08rem .08rem .12rem}
         .amazon-filter-strip::-webkit-scrollbar{display:none}
         .amazon-filter-strip .task-tab,.amazon-filter-strip .detail-tab{flex:0 0 auto;min-width:max-content;padding:.58rem .82rem;border:1px solid #a7f3d0;border-bottom-width:1px;border-radius:999px;background:#ffffff;color:#065f46;box-shadow:0 1px 2px rgba(15,23,42,.08);font-size:10px;line-height:1.05}
         .amazon-filter-strip .task-tab.active,.amazon-filter-strip .detail-tab.active{background:#007a4d;color:#fff;border-color:#007a4d;box-shadow:inset 0 -2px 0 #bbf7d0,0 6px 14px rgba(0,122,77,.18)}
         .amazon-filter-chip-row{display:flex;overflow-x:auto;gap:.35rem;padding:.02rem 0 .14rem;scrollbar-width:none}
         .amazon-filter-chip-row::-webkit-scrollbar{display:none}
         .amazon-filter-chip-row > *{flex:0 0 auto;box-shadow:0 1px 2px rgba(15,23,42,.08)}
-        .amazon-crumb{display:inline-flex;align-items:center;min-height:24px;padding:.28rem .68rem;border-radius:999px;background:#ffffff;border:1px solid #a7f3d0;color:#007a4d !important;font-size:9px !important;font-weight:900 !important;letter-spacing:.08em;text-transform:uppercase;box-shadow:0 1px 2px rgba(15,23,42,.06);margin-bottom:.42rem !important}
+        .amazon-crumb{display:inline-flex;align-items:center;min-height:24px;padding:.28rem .68rem;border-radius:999px;background:#ffffff;border:1px solid #a7f3d0;color:#007a4d !important;font-size:9px !important;font-weight:900 !important;letter-spacing:.08em;text-transform:uppercase;box-shadow:0 1px 2px rgba(15,23,42,.06);margin:.02rem 0 .42rem .12rem !important}
         #drive-quick-request-bar{margin-bottom:.45rem !important}
         #team-selector{margin-bottom:.55rem !important}
         #view-detail .freeze-panel > .back-btn.amazon-hidden-back{display:none}
@@ -397,7 +397,7 @@
             <div class="drawer-item text-orange-600 font-bold role-access role-admin role-rep role-qc-supervisor role-qc hidden" onclick="switchView('docks'); toggleMenu();"><i class="ph-bold ph-truck"></i> Docks</div>
             <div class="drawer-item text-teal-600 font-bold role-access role-admin role-rep hidden" onclick="switchView('av'); toggleMenu();"><i class="ph-bold ph-notebook"></i> AV</div>
             <hr class="my-2">
-            <div class="drawer-item text-blue-600 font-bold role-access role-admin hidden" onclick="switchView('request'); toggleMenu();"><i class="ph-bold ph-chat-circle-text"></i> Requests</div>
+            <div class="drawer-item text-blue-600 font-bold role-access role-admin role-rep hidden" onclick="switchView('request'); toggleMenu();"><i class="ph-bold ph-chat-circle-text"></i> Requests</div>
             <div class="drawer-item text-indigo-600 font-bold role-access role-admin hidden" onclick="switchView('reserves'); toggleMenu();"><i class="ph-bold ph-bookmark-simple"></i> Reserves</div>
             <div class="drawer-item text-purple-600 font-bold role-access role-admin hidden" onclick="activeSalesOfficeTab='season'; switchView('sales-office'); toggleMenu();"><i class="ph-bold ph-briefcase"></i> Sales Office</div>
             <div class="drawer-item text-emerald-600 font-bold role-access role-admin hidden" onclick="switchView('reports'); toggleMenu();"><i class="ph-bold ph-chart-bar"></i> Reports</div>
@@ -430,7 +430,7 @@
                         <div onclick="switchView('tasks')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-clipboard-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Tasks</span></div>
                         <div onclick="switchView('docks')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep role-qc-supervisor role-qc hidden"><i class="ph-bold ph-truck text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Docks</span></div>
                         <div onclick="switchView('av')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep hidden"><i class="ph-bold ph-notebook text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">AV</span></div>
-                        <div onclick="switchView('request')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-chat-circle-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Requests</span></div>
+                        <div onclick="switchView('request')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep hidden"><i class="ph-bold ph-chat-circle-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Requests</span></div>
                         <div onclick="switchView('reserves')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-bookmark-simple text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Reserves</span></div>
                         <div onclick="activeSalesOfficeTab='season'; switchView('sales-office')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-briefcase text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Sales Office</span></div>
                         <div onclick="switchView('reports')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-chart-bar text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Reports</span></div>
@@ -3122,12 +3122,12 @@
         }
 
         function canUseFooterRequestShortcut() {
-            return canShareRequestFolders();
+            return canAccessView('request');
         }
 
         function getPendingRequestCount() {
-            let items = requestsInventory.filter(i => i && !i.REQ_ARCHIVED && String(i.REQ_STATUS || '').toUpperCase() !== 'COMPLETE');
-            if (safeRole === 'SALESREP') items = items.filter(i => isMyRep(i.REQUESTED_BY));
+            let items = getScopedRequestItems(requestsInventory);
+            items = items.filter(i => i && !i.REQ_ARCHIVED && String(i.REQ_STATUS || '').toUpperCase() !== 'COMPLETE');
             return items.length;
         }
 
@@ -5446,7 +5446,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (isAdmin) {
                 ROLE_ACCESS_VIEWS.forEach(viewId => allowedViews.add(viewId));
             } else if (isRep) {
-                ['av', 'docks'].forEach(viewId => allowedViews.add(viewId));
+                ['av', 'docks', 'request'].forEach(viewId => allowedViews.add(viewId));
             } else if (isQcSupervisor) {
                 ['drive', 'docks'].forEach(viewId => allowedViews.add(viewId));
             } else if (isQc) {
@@ -7128,7 +7128,7 @@ activeDriveTab = tab;
             let item=findItemByUniqueId(uniqueId); 
             if(sourceView==='av-photo'){
                 openAvGallery(item);
-            }else if(safeRole==='SALESREP'&&sourceView==='drive'){ 
+            }else if(getRoleAccessState().isRep&&sourceView==='drive'){ 
                 if(item){ 
                     let pLink=getRowPhotoLink(item, 'drive'); 
                     if(pLink){ 
@@ -7659,6 +7659,12 @@ activeDriveTab = tab;
             return String(item.REQUESTED_BY || item.SALESREPNAME || item.SALESREP || item.SALESREPID || 'Unknown Rep').trim() || 'Unknown Rep';
         }
 
+        function getScopedRequestItems(items = requestsInventory) {
+            let nextItems = Array.isArray(items) ? [...items] : [];
+            if (!getRoleAccessState().isRep) return nextItems;
+            return nextItems.filter(item => isMyRep(getRequestAssignedRep(item)));
+        }
+
         function getRequestCustomerConsigneeFolder(item) {
             const clean = (value) => String(value || '').trim();
             const reqCustomer = clean(item.REQ_CUSTOMER || '');
@@ -7723,8 +7729,7 @@ activeDriveTab = tab;
         }
 
         function getCurrentRequestDetailItems() {
-            let items = requestsInventory;
-            if (safeRole === 'SALESREP') items = items.filter(i => isMyRep(i.REQUESTED_BY));
+            let items = getScopedRequestItems(requestsInventory);
 
             if (activeReqTab === 'pending') {
                 items = items.filter(i => i.REQ_STATUS !== 'Complete' && !i.REQ_ARCHIVED);
@@ -7759,10 +7764,7 @@ activeDriveTab = tab;
             const container = document.getElementById('request-content');
             const crumb = document.getElementById('request-crumb');
             
-            let items = requestsInventory;
-            if(safeRole === 'SALESREP') {
-                items = items.filter(i => isMyRep(i.REQUESTED_BY));
-            }
+            let items = getScopedRequestItems(requestsInventory);
 
             if (activeReqTab === 'pending') {
                 crumb.innerText = "All Pending Requests";
@@ -9139,8 +9141,7 @@ ${i.ITEMCODE||'-'} | Lot: ${i.LOTCODE||'-'}
         }
 
         function getRequestFolderItems(folderName, status = selectedReqStatus, repName = selectedReqRepView) {
-            let items = requestsInventory.filter(i => !i.REQ_ARCHIVED);
-            if (safeRole === 'SALESREP') items = items.filter(i => isMyRep(i.REQUESTED_BY));
+            let items = getScopedRequestItems(requestsInventory).filter(i => !i.REQ_ARCHIVED);
             if (repName) items = items.filter(i => getRequestAssignedRep(i) === repName);
             items = items.filter(i => status === 'Pending' ? i.REQ_STATUS !== 'Complete' : i.REQ_STATUS === 'Complete');
             items = items.filter(i => ((i.REQUEST_FOLDER || 'Unassigned')) === folderName);
