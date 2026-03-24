@@ -8,7 +8,15 @@
     <link rel="preconnect" href="https://unpkg.com" crossorigin>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
-    <link rel="manifest" href="manifest.json">
+    <script>
+        window.__APP_SHELL_BUILD__ = String(document.lastModified || '').replace(/[^0-9A-Za-z_-]/g, '') || 'local-shell';
+        (function() {
+            const manifestLink = document.createElement('link');
+            manifestLink.rel = 'manifest';
+            manifestLink.href = 'manifest.json?v=' + encodeURIComponent(window.__APP_SHELL_BUILD__);
+            document.head.appendChild(manifestLink);
+        })();
+    </script>
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="application-name" content="GREENLEAF NURSERY COMPANY">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -768,6 +776,10 @@
             'default': 'flyer_photos'
         };
         const esc = (s) => String(s || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
+        const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || '').trim() || 'local-shell';
+        const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
+        const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
+        const APP_SHELL_QUERY_PARAM = 'shellv';
         const DB_NAME="GNC_DDC_DB_V2"; const STORE_NAME="inventory_cache";
         const IOS_DEVICE_REGEX = /iPad|iPhone|iPod/;
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
@@ -890,8 +902,8 @@
                 }, { passive: true });
             }
         }
-        async function clearLegacyOfflineState() {
-            if (isIOSDevice() || isStandaloneApp()) return;
+        async function clearLegacyOfflineState(force = false) {
+            if (!force && (isIOSDevice() || isStandaloneApp())) return;
             if ('serviceWorker' in navigator) {
                 const registrations = await navigator.serviceWorker.getRegistrations();
                 for (let registration of registrations) {
@@ -904,6 +916,75 @@
                     await caches.delete(key);
                 }
             }
+        }
+
+        function syncShellBuildUrl(build) {
+            if (!build) return;
+            try {
+                const nextUrl = new URL(window.location.href);
+                if (nextUrl.searchParams.get(APP_SHELL_QUERY_PARAM) === build) return;
+                nextUrl.searchParams.set(APP_SHELL_QUERY_PARAM, build);
+                window.history.replaceState(null, '', nextUrl.toString());
+            } catch (e) {}
+        }
+
+        function deleteAppCacheDatabase() {
+            return new Promise((resolve) => {
+                try {
+                    const request = indexedDB.deleteDatabase(DB_NAME);
+                    request.onsuccess = () => resolve(true);
+                    request.onerror = () => resolve(false);
+                    request.onblocked = () => resolve(false);
+                } catch (e) {
+                    resolve(false);
+                }
+            });
+        }
+
+        async function clearBootCacheForShellUpdate() {
+            cacheWarmPromise = null;
+            if (cachePersistTimer) {
+                clearTimeout(cachePersistTimer);
+                cachePersistTimer = null;
+            }
+            await deleteAppCacheDatabase();
+        }
+
+        async function ensureCurrentShellBuild() {
+            const currentBuild = APP_SHELL_BUILD;
+            if (!currentBuild) return false;
+
+            const previousBuild = localStorage.getItem(APP_SHELL_BUILD_STORAGE_KEY) || '';
+            const refreshedBuild = sessionStorage.getItem(APP_SHELL_REFRESH_STORAGE_KEY) || '';
+            localStorage.setItem(APP_SHELL_BUILD_STORAGE_KEY, currentBuild);
+
+            if (!previousBuild || previousBuild === currentBuild) {
+                if (refreshedBuild === currentBuild) {
+                    sessionStorage.removeItem(APP_SHELL_REFRESH_STORAGE_KEY);
+                }
+                syncShellBuildUrl(currentBuild);
+                return false;
+            }
+
+            if (refreshedBuild === currentBuild) {
+                sessionStorage.removeItem(APP_SHELL_REFRESH_STORAGE_KEY);
+                syncShellBuildUrl(currentBuild);
+                return false;
+            }
+
+            sessionStorage.setItem(APP_SHELL_REFRESH_STORAGE_KEY, currentBuild);
+            await clearBootCacheForShellUpdate();
+            await clearLegacyOfflineState(true);
+
+            try {
+                const nextUrl = new URL(window.location.href);
+                nextUrl.searchParams.set(APP_SHELL_QUERY_PARAM, currentBuild);
+                window.location.replace(nextUrl.toString());
+            } catch (e) {
+                window.location.reload();
+            }
+
+            return true;
         }
 
         function fallbackCopyText(text) {
@@ -2296,6 +2377,8 @@
 
         window.onload=async function() {
             try {
+                const shellUpdated = await ensureCurrentShellBuild();
+                if (shellUpdated) return;
                 await clearLegacyOfflineState();
                 const savedUser=localStorage.getItem('gnc_user_v3'); const savedPin=localStorage.getItem('gnc_pin_v3');
                 document.getElementById('login-inputs').classList.remove('hidden');
