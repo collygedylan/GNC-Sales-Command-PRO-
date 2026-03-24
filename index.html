@@ -8924,8 +8924,9 @@ ${i.ITEMCODE||'-'} | Lot: ${i.LOTCODE||'-'}
 ${folderNote ? `Folder Note: ${folderNote}
 ` : ''}
 ${formatRequestItemsText(items)}`;
+            const copyText = formatRequestItemsText(items);
             if (action === 'copy') {
-                copyTextWithFallback(text).then(() => {
+                copyTextWithFallback(copyText).then(() => {
                     showToast('Success', 'Folder copied to clipboard!');
                 }).catch(() => {
                     showToast('Error', 'Could not copy folder text.', true);
