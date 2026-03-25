@@ -2697,9 +2697,11 @@
             if (!wantsFull && state.initialPromise) return state.initialPromise;
 
             const runLoad = async () => {
+                const resolvedInitialQuery = key === 'reserves' ? getRepScopedReservesQuery(definition.initialQuery || 'select=*') : (definition.initialQuery || 'select=*');
+                const resolvedFullQuery = key === 'reserves' ? getRepScopedReservesQuery(definition.fullQuery || definition.initialQuery || 'select=*') : (definition.fullQuery || definition.initialQuery || 'select=*');
                 const rows = wantsFull
-                    ? await fetchAllSupabaseRows(definition.table, definition.fullQuery || definition.initialQuery || 'select=*')
-                    : await fetchSupabasePage(definition.table, definition.initialQuery || 'select=*', definition.initialLimit || INITIAL_PAGE_LIMIT, 0);
+                    ? await fetchAllSupabaseRows(definition.table, resolvedFullQuery)
+                    : await fetchSupabasePage(definition.table, resolvedInitialQuery, definition.initialLimit || INITIAL_PAGE_LIMIT, 0);
                 state.initialLoaded = true;
                 state.fullLoaded = wantsFull ? true : state.fullLoaded;
                 state.lastLoadedAt = new Date().toISOString();
@@ -2780,6 +2782,10 @@
             if (viewId === 'drive') return { required: [{ key: 'master', mode: 'initial' }], background: [{ key: 'master', mode: 'full' }], label: 'Loading Drive rows...' };
             if (viewId === 'av') {
                 if (activeAVTab === 'reserves') {
+                    const access = getRoleAccessState();
+                    if (access.isRep) {
+                        return { required: [{ key: 'reserves', mode: 'full' }], background: [{ key: 'master', mode: 'full' }, { key: 'avNotes', mode: 'full' }], label: 'Loading My Reserves...' };
+                    }
                     return { required: [{ key: 'reserves', mode: 'initial' }], background: [{ key: 'reserves', mode: 'full' }, { key: 'master', mode: 'full' }, { key: 'avNotes', mode: 'full' }], label: 'Loading AV reserves...' };
                 }
                 return { required: [{ key: 'avOpen', mode: 'initial' }], background: [{ key: 'avOpen', mode: 'full' }, { key: 'avNotes', mode: 'full' }], label: 'Loading AV open stock...' };
@@ -3061,6 +3067,26 @@
 
             repPermutations = [...variants].filter(Boolean);
             if (!repPermutations.length && rawUser) repPermutations = [rawUser];
+        }
+
+        function getRepScopedReservesQuery(baseQuery = 'select=*') {
+            if (!getRoleAccessState().isRep) return baseQuery;
+            const variants = new Set();
+            repPermutations.forEach((value) => {
+                const normalized = normalizeRepMatchToken(value);
+                if (!normalized) return;
+                variants.add(normalized);
+                normalized.split(/\s+/).filter(token => token.length >= 2).forEach(token => variants.add(token));
+            });
+            const queryVariants = [...variants].slice(0, 12);
+            if (!queryVariants.length) return baseQuery;
+            const filters = [];
+            queryVariants.forEach((value) => {
+                const encoded = encodeURIComponent(value);
+                filters.push(`salesrepname.ilike.*${encoded}*`);
+                filters.push(`salesrepid.ilike.*${encoded}*`);
+            });
+            return `${baseQuery}&or=(${filters.join(',')})`;
         }
 
         function isMyRep(repNameStr) { 
@@ -5024,17 +5050,17 @@ function toggleDriveQuickRequestItem(domId) {
                     item.DOM_ID='res_'+idx;
                     item.UNIQUE_ID=item.UNIQUE_ID||'res_uid_'+idx;
                     let masterItem=findLinkedMasterRow(item);
-                    item.CUSTOMERNAME=item.CUSTOMERNAME||item.CUSTOMER||'Unknown Customer';
-                    item.CONSIGNEENAME=item.CONSIGNEENAME||item.CONSIGNEE||'';
-                    item.SALESREPNAME=item.SALESREPNAME||item.SALESREP||item['SALES_REP']||'Unknown Rep';
-                    item.COMMONNAME=firstNonEmptyValue(item.COMMONNAME, item.DESCRIPTION, item.PLANT_NAME, item.ITEMCODE, 'Unknown');
-                    item.CONTSIZE=firstNonEmptyValue(item.CONTSIZE, item.ITEMSPEC, item.contsize, '-');
-                    item.LOCATIONCODE=firstNonEmptyValue(item.LOCATIONCODE, item.LOCATION, 'No Loc');
+                    item.CUSTOMERNAME=firstNonEmptyValue(item.CUSTOMERNAME, item.customername, item.CUSTOMER, item.customer, 'Unknown Customer');
+                    item.CONSIGNEENAME=firstNonEmptyValue(item.CONSIGNEENAME, item.consigneename, item.CONSIGNEE, item.consignee, '');
+                    item.SALESREPNAME=firstNonEmptyValue(item.SALESREPNAME, item.salesrepname, item.SALESREP, item.salesrep, item['SALES_REP'], item.sales_rep, item.SALESREPID, item.salesrepid, 'Unknown Rep');
+                    item.COMMONNAME=firstNonEmptyValue(item.COMMONNAME, item.commonname, item.DESCRIPTION, item.description, item.PLANT_NAME, item.plant_name, item.ITEMCODE, item.itemcode, 'Unknown');
+                    item.CONTSIZE=firstNonEmptyValue(item.CONTSIZE, item.contsize, item.ITEMSPEC, item.itemspec, '-');
+                    item.LOCATIONCODE=firstNonEmptyValue(item.LOCATIONCODE, item.locationcode, item.LOCATION, item.location, 'No Loc');
                     item.ITEMCODE=firstNonEmptyValue(item.ITEMCODE, item.itemcode, '-');
-                    item.LOTCODE=firstNonEmptyValue(item.LOTCODE, item.lotcode, '-');
+                    item.LOTCODE=firstNonEmptyValue(item.LOTCODE, item.lotcode, '');
                     item.PTRAVAILABLE=firstNonEmptyValue(item.PTRAVAILABLE, item.ptravailable, 0);
                     item.SEASONSUPPLY=firstNonEmptyValue(item.SEASONSUPPLY, item.SEASON_SUPPLY, item.season_supply, 0);
-                    item.PRIORITY=firstNonEmptyValue(item.PRIORITY, item.priority, '-');
+                    item.PRIORITY=firstNonEmptyValue(item.PRIORITY, item.priority, '-'); item.QTY_ORDERED=firstNonEmptyValue(item.QTY_ORDERED, item.qty_ordered, item.QUANTITYORDERED, item.quantityordered, '0'); item.QTY_SHIPPED=firstNonEmptyValue(item.QTY_SHIPPED, item.qty_shipped, item.QUANTITYSHIPPED, item.quantityshipped, '0'); item.QUANTITYORDERED=firstNonEmptyValue(item.QUANTITYORDERED, item.quantityordered, item.QTY_ORDERED, item.qty_ordered, '0'); item.QUANTITYSHIPPED=firstNonEmptyValue(item.QUANTITYSHIPPED, item.quantityshipped, item.QTY_SHIPPED, item.qty_shipped, '0');
                     if(masterItem){
                         item.COMMONNAME=firstNonEmptyValue(masterItem.COMMONNAME, item.COMMONNAME);
                         item.CONTSIZE=firstNonEmptyValue(masterItem.CONTSIZE, item.CONTSIZE);
@@ -5058,7 +5084,7 @@ function toggleDriveQuickRequestItem(domId) {
                         item.MASTER_UNIQUE_ID=masterItem.UNIQUE_ID;
                     }
                     normalizeRowPhotoFields(item);
-                    item._search=`${item.COMMONNAME||''} ${item.CUSTOMERNAME||''} ${item.ITEMCODE||''}`.toLowerCase();
+                    item._search=`${item.COMMONNAME||''} ${item.CUSTOMERNAME||''} ${item.CONSIGNEENAME||''} ${item.SALESREPNAME||''} ${item.ITEMCODE||''} ${item.LOCATIONCODE||''} ${item.LOTCODE||''}`.toLowerCase();
                     buildSearchIndex(item);
                     return item;
                 });
@@ -6247,7 +6273,7 @@ activeDriveTab = tab;
                 if (canSelectAvReserveRep()) {
                     if (selectedAvResRep) items = items.filter(i => isSelectedAvReserveRep(i, selectedAvResRep));
                 } else if (isRep) {
-                    items = items.filter(i => isMyRep(firstNonEmptyValue(i && i.SALESREPNAME, i && i.SALESREP, i && i.SALES_REP, i && i.SALESREPID, '')));
+                    items = items.filter(i => isMyRep(getReserveSalesRepLabel(i)));
                 }
             }
             const allowReserveSearch = activeAVTab === 'open' || !canSelectAvReserveRep() || !!selectedAvResRep;
@@ -6520,7 +6546,6 @@ activeDriveTab = tab;
             };
             requestAnimationFrame(renderChunk);
         }
-
         function renderAV() {
             avRenderChunkToken += 1;
             if (ensureViewDataForRender('av')) return;
@@ -6529,6 +6554,10 @@ activeDriveTab = tab;
             const avState = getCurrentAVBaseItems();
             const term = avState.term;
             let items = avState.items;
+            const access = getRoleAccessState();
+            const reservesState = getDatasetState('reserves');
+            const isAdminReserveWarmLoading = activeAVTab === 'reserves' && !access.isRep && !!reservesState.initialLoaded && !reservesState.fullLoaded;
+            const reserveLoadingSuffix = isAdminReserveWarmLoading ? ' Loading more...' : '';
             const exportContext = buildAVExportContext(items, term);
 
             if (items.length === 0) {
@@ -6556,13 +6585,13 @@ activeDriveTab = tab;
             }
             if (canSelectAvReserveRep() && !selectedAvResRep) {
                 const repOptions = getAVReserveRepOptions(items);
-                crumb.innerText = 'My Reserves > Sales Reps';
+                crumb.innerText = `My Reserves > Sales Reps${reserveLoadingSuffix}`;
                 container.innerHTML = repOptions.map(rep => `<div class="drill-item" onclick="selectAvResRep('${esc(rep.label)}')"><span class="font-bold text-lg">${rep.label} <span class="text-gray-400 text-sm font-normal">(${rep.count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
                 return;
             }
 
             if (avResLevel === 0) {
-                crumb.innerText = selectedAvResRep ? `My Reserves > ${selectedAvResRep}` : 'My Reserves';
+                crumb.innerText = selectedAvResRep ? `My Reserves > ${selectedAvResRep}${reserveLoadingSuffix}` : `My Reserves${reserveLoadingSuffix}`;
                 const groups = getAVReserveGroups(items);
                 let html = selectedAvResRep ? `<div class="back-btn" onclick="clearSelectedAvResRep()"><i class="ph-bold ph-arrow-left"></i> Back to Sales Reps</div>` : '';
                 html += groups.map(group => `<div class="drill-item" onclick="selectAvReserveGroup('${esc(group.itemCode)}','${esc(group.commonName)}','${esc(group.contSize)}')"><div class="flex flex-1 flex-col gap-1"><span class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">${group.itemCode}</span><span class="font-bold text-lg">${group.commonName}</span><span class="text-sm text-gray-500">${group.contSize}</span></div><span class="text-sm text-gray-400 font-semibold">(${group.count})</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
@@ -9918,13 +9947,13 @@ function toggleDriveSeason(s) {
             const crumb = document.getElementById('reserves-crumb');
             if (!container || !crumb) return;
 
-            let items = reservesInventory;
-            if (safeRole === 'SALESREP') items = items.filter(i => isMyRep(i.SALESREPNAME));
+            const access = getRoleAccessState(); let items = reservesInventory;
+            if (access.isRep) items = items.filter(i => isMyRep(getReserveSalesRepLabel(i)));
             const term = document.getElementById('reserves-search') ? document.getElementById('reserves-search').value.toLowerCase().trim() : '';
             if (term) items = filterBySearch(items, term, 'reserves');
 
             if (!items.length) {
-                crumb.innerText = safeRole === 'SALESREP' ? 'My Reserves' : 'Reserves';
+                crumb.innerText = access.isRep ? 'My Reserves' : 'Reserves';
                 container.innerHTML = `<div class="p-8 text-center text-gray-400">No reserves found.</div>`;
                 return;
             }
@@ -9937,7 +9966,7 @@ function toggleDriveSeason(s) {
                 return String(a.CONTSIZE || '').localeCompare(String(b.CONTSIZE || ''), undefined, {numeric:true});
             });
 
-            crumb.innerText = safeRole === 'SALESREP' ? `My Reserves (${items.length})` : `Reserves (${items.length})`;
+            crumb.innerText = access.isRep ? `My Reserves (${items.length})` : `Reserves (${items.length})`;
             container.innerHTML = items.map(i => generateCard(i, 'reserves_drill', 'status-indigo')).join('');
         }
 
