@@ -24,11 +24,11 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>:root{--bg:#007a4d;--text-color:#111827;--app-height:100vh;--visual-height:100vh;--keyboard-offset:0px}html,body{min-height:100%;width:100%;max-width:100%;overflow:hidden;overscroll-behavior:none;position:relative}html{background:white}@supports (height:100dvh){:root{--app-height:100dvh}}body{font-family:"Amazon Ember",Arial,sans-serif;background:white;color:var(--text-color);user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior:none;min-height:var(--app-height);height:var(--app-height);width:100%;overflow:hidden;position:fixed;inset:0;touch-action:pan-y pinch-zoom}button,[role="button"],.task-tab,.detail-tab,.drawer-item,.drill-item,.menu-btn{touch-action:manipulation}.nav-header{background:var(--bg);color:white;padding-top:max(10px,env(safe-area-inset-top))}#view-login,#view-change-password{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;min-height:var(--app-height)}#view-change-password{display:none;z-index:10000}#app-wrapper{min-height:var(--app-height);height:var(--app-height);width:100%;max-width:100%;overflow:hidden;position:fixed;inset:0}.login-card{background:white;padding:30px;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,.2);width:100%;max-width:360px;text-align:center}.input-field{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:8px;font-size:16px;margin-bottom:12px}#toast-notification{position:fixed;top:-100px;left:50%;transform:translateX(-50%);background:#16a34a;color:white;padding:16px 24px;border-radius:50px;box-shadow:0 10px 15px -3px rgba(0,0,0,.3);z-index:11000;transition:top .5s;display:flex;align-items:center;gap:12px;pointer-events:none}#toast-notification.show{top:20px}#side-drawer{position:fixed;top:0;left:-280px;width:280px;height:100%;background:white;z-index:2000;box-shadow:2px 0 10px rgba(0,0,0,.2);transition:left .3s;overflow-y:auto;padding-bottom:100px}#side-drawer.open{left:0}#drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1999;display:none}#drawer-overlay.open{display:block}.drawer-header{background:var(--bg);color:white;padding:20px;font-weight:bold;font-size:18px}.drawer-item{padding:16px 20px;border-bottom:1px solid #f3f4f6;cursor:pointer;display:flex;align-items:center;gap:12px;color:#374151;font-weight:500}.drill-item{border-bottom:1px solid #e5e7eb;padding:16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:white;transition:background .1s}.drill-item:active{background:#f3f4f6}.back-btn{display:none !important}.inv-card{border:1px solid #dbe4dc;border-left-width:6px;border-radius:18px;padding:14px;background:white;cursor:pointer;flex-grow:1;box-shadow:0 10px 24px rgba(15,23,42,.06);overflow:hidden}.status-green{border-left-color:#22c55e}.status-purple{border-left-color:#9333ea}.status-orange{border-left-color:#f97316}.status-blue{border-left-color:#3b82f6}.status-indigo{border-left-color:#4f46e5}.status-teal{border-left-color:#0d9488}.status-yellow{border-left-color:#eab308}.status-red{border-left-color:#ef4444}.task-tabs,.detail-tabs{display:flex;border-bottom:1px solid #e5e7eb;background:#f9fafb;margin-bottom:10px}.detail-tabs{overflow-x:auto;scrollbar-width:none}.detail-tabs::-webkit-scrollbar{display:none}.task-tab,.detail-tab{flex:1;text-align:center;padding:12px;font-size:11px;font-weight:700;color:#6b7280;cursor:pointer;border-bottom:3px solid transparent;text-transform:uppercase}.detail-tab{flex:0 0 auto;padding:10px 16px}.task-tab.active,.detail-tab.active{color:var(--bg);border-bottom-color:var(--bg);background:white}.overview-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}.overview-card{background:#f8fafc;padding:10px;border-radius:6px;border:1px solid #e2e8f0}.overview-label{font-size:9px;font-weight:800;color:#64748b;text-transform:uppercase;margin-bottom:2px}.overview-val{font-size:13px;font-weight:600;color:#0f172a;word-break:break-all}.expand-trigger{display:flex;align-items:center;justify-content:space-between;padding:12px;background:#f9fafb;border-radius:6px;cursor:pointer;font-weight:600;font-size:14px;border:1px solid #e5e7eb}.expand-content{display:none;margin-top:12px;padding:12px;background:#f9fafb;border-radius:6px;border:1px solid #e5e7eb}.expanded .expand-content{display:block}.card-checkbox-container{width:42px;min-width:42px;overflow:visible;opacity:1;display:flex;align-items:flex-start;justify-content:center;margin-right:12px;transition:transform .16s ease}.card-checkbox-container.absolute{width:auto;min-width:0;margin-right:0}.card-checkbox{display:none !important}.cart-toggle-btn{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:999px;border:1px solid #a7f3d0;background:#f0fdf4;color:#007a4d;box-shadow:0 6px 16px rgba(7,94,63,.14);transition:transform .16s ease,background .16s ease,color .16s ease,border-color .16s ease}.cart-toggle-btn i{font-size:18px;line-height:1}.cart-toggle-btn:active{transform:scale(.95)}.cart-toggle-btn.active{background:#007a4d;color:#fff;border-color:#007a4d}.item-row.cart-selected{box-shadow:0 0 0 2px rgba(0,122,77,.16) inset}.item-row{touch-action:manipulation}.spinner{border:4px solid rgba(255,255,255,.3);border-top:4px solid white;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:0 auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.scrollbar-none::-webkit-scrollbar{display:none}.scrollbar-none{-ms-overflow-style:none;scrollbar-width:none}</style>
+    <style>:root{--bg:#007a4d;--text-color:#111827;--app-height:100vh;--visual-height:100vh;--keyboard-offset:0px}html,body{min-height:100%;width:100%;max-width:100%;overflow:hidden;overscroll-behavior:none;position:relative}html{background:white}@supports (height:100dvh){:root{--app-height:100dvh}}body{font-family:"Amazon Ember",Arial,sans-serif;background:white;color:var(--text-color);user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior:none;min-height:var(--app-height);height:var(--app-height);width:100%;overflow:hidden;position:fixed;inset:0;touch-action:pan-y pinch-zoom}button,[role="button"],.task-tab,.detail-tab,.drawer-item,.drill-item,.menu-btn{touch-action:manipulation}.nav-header{background:var(--bg);color:white;padding-top:max(10px,env(safe-area-inset-top))}#view-login,#view-change-password{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;min-height:var(--app-height)}#view-change-password{display:none;z-index:10000}#app-wrapper{min-height:var(--app-height);height:var(--app-height);width:100%;max-width:100%;overflow:hidden;position:fixed;inset:0}.login-card{background:white;padding:30px;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,.2);width:100%;max-width:360px;text-align:center}.input-field{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:8px;font-size:16px;margin-bottom:12px}#toast-notification{position:fixed;top:-100px;left:50%;transform:translateX(-50%);background:#16a34a;color:white;padding:16px 24px;border-radius:50px;box-shadow:0 10px 15px -3px rgba(0,0,0,.3);z-index:11000;transition:top .5s;display:flex;align-items:center;gap:12px;pointer-events:none}#toast-notification.show{top:20px}#side-drawer{position:fixed;top:0;left:-280px;width:280px;height:100%;background:white;z-index:2000;box-shadow:2px 0 10px rgba(0,0,0,.2);transition:left .3s;overflow-y:auto;padding-bottom:100px}#side-drawer.open{left:0}#drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1999;display:none}#drawer-overlay.open{display:block}.drawer-header{background:var(--bg);color:white;padding:20px;font-weight:bold;font-size:18px}.drawer-item{padding:16px 20px;border-bottom:1px solid #f3f4f6;cursor:pointer;display:flex;align-items:center;gap:12px;color:#374151;font-weight:500}.drill-item{border-bottom:1px solid #e5e7eb;padding:16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:white;transition:background .1s}.drill-item:active{background:#f3f4f6}.back-btn{display:none !important}.inv-card{border:1px solid #dbe4dc;border-left-width:6px;border-radius:18px;padding:14px;background:white;cursor:pointer;flex-grow:1;box-shadow:0 10px 24px rgba(15,23,42,.06);overflow:hidden}.status-green{border-left-color:#22c55e}.status-purple{border-left-color:#9333ea}.status-orange{border-left-color:#f97316}.status-blue{border-left-color:#3b82f6}.status-indigo{border-left-color:#4f46e5}.status-teal{border-left-color:#0d9488}.status-yellow{border-left-color:#eab308}.status-red{border-left-color:#ef4444}.task-tabs,.detail-tabs{display:flex;border-bottom:1px solid #e5e7eb;background:#f9fafb;margin-bottom:10px}.detail-tabs{overflow-x:auto;scrollbar-width:none}.detail-tabs::-webkit-scrollbar{display:none}.task-tab,.detail-tab{flex:1;text-align:center;padding:12px;font-size:11px;font-weight:700;color:#6b7280;cursor:pointer;border-bottom:3px solid transparent;text-transform:uppercase}.detail-tab{flex:0 0 auto;padding:10px 16px}.task-tab.active,.detail-tab.active{color:var(--bg);border-bottom-color:var(--bg);background:white}.overview-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}.overview-card{background:#f8fafc;padding:10px;border-radius:6px;border:1px solid #e2e8f0}.overview-label{font-size:9px;font-weight:800;color:#64748b;text-transform:uppercase;margin-bottom:2px}.overview-val{font-size:13px;font-weight:600;color:#0f172a;word-break:break-all}.expand-trigger{display:flex;align-items:center;justify-content:space-between;padding:12px;background:#f9fafb;border-radius:6px;cursor:pointer;font-weight:600;font-size:14px;border:1px solid #e5e7eb}.expand-content{display:none;margin-top:12px;padding:12px;background:#f9fafb;border-radius:6px;border:1px solid #e5e7eb}.expanded .expand-content{display:block}.card-checkbox-container{width:42px;min-width:42px;overflow:visible;opacity:1;display:flex;align-items:flex-start;justify-content:center;margin-right:12px;transition:transform .16s ease}.card-checkbox-container.absolute{width:auto;min-width:0;margin-right:0}.card-checkbox{display:none !important}.cart-toggle-btn{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:999px;border:1px solid #a7f3d0;background:#f0fdf4;color:#007a4d;box-shadow:0 6px 16px rgba(7,94,63,.14);transition:transform .16s ease,background .16s ease,color .16s ease,border-color .16s ease}.cart-toggle-btn i{font-size:18px;line-height:1}.cart-toggle-btn:active{transform:scale(.95)}.cart-toggle-btn.active{background:#007a4d;color:#fff;border-color:#007a4d}.item-row.cart-selected{box-shadow:0 0 0 2px rgba(0,122,77,.16) inset}.item-row{touch-action:manipulation}@supports (content-visibility:auto){.item-row,.drill-item{content-visibility:auto;contain-intrinsic-size:180px 220px}}.spinner{border:4px solid rgba(255,255,255,.3);border-top:4px solid white;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:0 auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.scrollbar-none::-webkit-scrollbar{display:none}.scrollbar-none{-ms-overflow-style:none;scrollbar-width:none}</style>
     <style>
-        #main-scroll-area{min-height:0;width:100%;max-width:100%;min-width:0;overflow-x:hidden;overflow-y:auto;overscroll-behavior-x:none;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;scroll-padding-top:calc(5.5rem + env(safe-area-inset-top));scroll-padding-bottom:calc(7rem + env(safe-area-inset-bottom));padding-bottom:calc(10rem + env(safe-area-inset-bottom));background:#f9fafb}
-        #global-action-bar{padding-bottom:calc(.75rem + env(safe-area-inset-bottom))}#cart-fab{position:fixed;right:16px;bottom:84px;z-index:46;display:flex;align-items:center;justify-content:center;width:58px;height:58px;border-radius:999px;background:#ecfdf5;color:#007a4d;border:1px solid #a7f3d0;box-shadow:0 16px 30px rgba(7,94,63,.24);transition:transform .16s ease,background .16s ease,color .16s ease,border-color .16s ease,opacity .16s ease}#cart-fab:active{transform:scale(.96)}#cart-fab.active{background:#007a4d;color:#fff;border-color:#007a4d}#cart-fab i{font-size:24px;line-height:1}#cart-fab-count{position:absolute;top:-4px;right:-4px;min-width:22px;height:22px;padding:0 6px;border-radius:999px;background:#ef4444;color:#fff;font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center;border:2px solid #fff}#cart-helper-text{margin-top:.6rem;font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#6b7280}
-        body.app-standalone #app-wrapper{height:var(--app-height);min-height:var(--app-height)}body.app-standalone #main-scroll-area{padding-bottom:calc(10rem + env(safe-area-inset-bottom))}body.app-standalone.keyboard-open #bottom-nav,body.app-standalone.keyboard-open #global-action-bar,body.app-standalone.keyboard-open #cart-fab{opacity:0;pointer-events:none;transform:translateY(140%);transition:transform .18s ease,opacity .18s ease}body.app-standalone.keyboard-open #main-scroll-area{padding-bottom:calc(1.5rem + var(--keyboard-offset));scroll-padding-bottom:calc(1.5rem + var(--keyboard-offset))}#bottom-nav{padding:10px 10px calc(.75rem + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:.5rem;background:rgba(255,255,255,.98);backdrop-filter:saturate(150%) blur(12px)}
+        :root{--bottom-nav-height:84px;--bottom-nav-cols:6;--bottom-nav-gap:18px}#main-scroll-area{min-height:0;width:100%;max-width:100%;min-width:0;overflow-x:hidden;overflow-y:auto;overscroll-behavior-x:none;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;scroll-padding-top:calc(5.5rem + env(safe-area-inset-top));scroll-padding-bottom:calc(var(--bottom-nav-height) + 2.5rem);padding-bottom:calc(var(--bottom-nav-height) + 5rem);background:#f9fafb}
+        #global-action-bar{bottom:calc(var(--bottom-nav-height) - 8px);padding-bottom:calc(.75rem + env(safe-area-inset-bottom))}#cart-fab{position:fixed;right:16px;bottom:calc(var(--bottom-nav-height) + var(--bottom-nav-gap));z-index:46;display:flex;align-items:center;justify-content:center;width:58px;height:58px;border-radius:999px;background:#ecfdf5;color:#007a4d;border:1px solid #a7f3d0;box-shadow:0 16px 30px rgba(7,94,63,.24);transition:transform .16s ease,background .16s ease,color .16s ease,border-color .16s ease,opacity .16s ease}#cart-fab:active{transform:scale(.96)}#cart-fab.active{background:#007a4d;color:#fff;border-color:#007a4d}#cart-fab i{font-size:24px;line-height:1}#cart-fab-count{position:absolute;top:-4px;right:-4px;min-width:22px;height:22px;padding:0 6px;border-radius:999px;background:#ef4444;color:#fff;font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center;border:2px solid #fff}#cart-helper-text{margin-top:.6rem;font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#6b7280}
+        body.app-standalone #app-wrapper{height:var(--app-height);min-height:var(--app-height)}body.app-standalone #main-scroll-area{padding-bottom:calc(var(--bottom-nav-height) + 5rem)}body.app-standalone.keyboard-open #bottom-nav,body.app-standalone.keyboard-open #global-action-bar,body.app-standalone.keyboard-open #cart-fab{opacity:0;pointer-events:none;transform:translateY(140%);transition:transform .18s ease,opacity .18s ease}body.app-standalone.keyboard-open #main-scroll-area{padding-bottom:calc(1.5rem + var(--keyboard-offset));scroll-padding-bottom:calc(1.5rem + var(--keyboard-offset))}#bottom-nav{padding:10px 10px calc(.75rem + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(var(--bottom-nav-cols),minmax(0,1fr));gap:.5rem;background:rgba(255,255,255,.98);backdrop-filter:saturate(150%) blur(12px)}
         .footer-nav-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.18rem;min-height:52px;border-radius:16px;border:1px solid transparent;background:transparent;color:#6b7280;font-size:10px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;transition:background .16s ease,color .16s ease,border-color .16s ease,transform .16s ease;position:relative}
         .footer-nav-btn i{font-size:22px;line-height:1}
         .footer-nav-btn:active{transform:scale(.97)}
@@ -756,10 +756,11 @@
             
             <nav id="bottom-nav" class="fixed bottom-0 w-full border-t border-green-100 shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.22)] z-50">
                 <button type="button" id="footer-menu-btn" class="footer-nav-btn" onclick="toggleMenu()" aria-label="Menu"><i class="ph-bold ph-list"></i><span>Menu</span></button>
-                <button type="button" data-footer-view="home" class="footer-nav-btn" onclick="switchView('home')" aria-label="Home"><i class="ph-bold ph-house"></i><span>Home</span></button>
-                <button type="button" data-footer-view="drive" class="footer-nav-btn" onclick="switchView('drive')" aria-label="Drive Mode"><i class="ph-bold ph-car"></i><span>Drive</span></button>
-                <button type="button" data-footer-view="tasks" class="footer-nav-btn" onclick="switchView('tasks')" aria-label="Tasks"><i class="ph-bold ph-clipboard-text"></i><span>Tasks</span></button>
-                <button type="button" data-footer-view="docks" class="footer-nav-btn" onclick="switchView('docks')" aria-label="Docks"><i class="ph-bold ph-truck"></i><span>Docks</span></button>
+                <button type="button" id="footer-home-btn" data-footer-view="home" class="footer-nav-btn" onclick="switchView('home')" aria-label="Home"><i class="ph-bold ph-house"></i><span>Home</span></button>
+                <button type="button" id="footer-drive-btn" data-footer-view="drive" class="footer-nav-btn" onclick="switchView('drive')" aria-label="Drive Mode"><i class="ph-bold ph-car"></i><span>Drive</span></button>
+                <button type="button" id="footer-tasks-btn" data-footer-view="tasks" class="footer-nav-btn" onclick="switchView('tasks')" aria-label="Tasks"><i class="ph-bold ph-clipboard-text"></i><span>Tasks</span></button>
+                <button type="button" id="footer-av-btn" data-footer-view="av" class="footer-nav-btn hidden" onclick="switchView('av')" aria-label="AV"><i class="ph-bold ph-notebook"></i><span>AV</span></button>
+                <button type="button" id="footer-docks-btn" data-footer-view="docks" class="footer-nav-btn" onclick="switchView('docks')" aria-label="Docks"><i class="ph-bold ph-truck"></i><span>Docks</span></button>
                 <button type="button" id="footer-request-btn" data-footer-view="request" class="footer-nav-btn hidden" onclick="switchView('request')" aria-label="Requests"><i class="ph-bold ph-chat-circle-text"></i><span>Reqs</span><span id="footer-request-badge" class="footer-nav-badge hidden">0</span></button>
             </nav>
         </div>
@@ -1464,16 +1465,25 @@
         }
         function renderDetailOverviewMedia() {
             const container = document.getElementById('ov-large-photo');
+            const overviewGrid = document.querySelector('#det-overview-content .overview-grid');
             if (!container) return;
             if (!activeItem) {
                 container.innerHTML = '';
                 container.classList.add('hidden');
+                if (overviewGrid) overviewGrid.classList.remove('hidden');
                 return;
             }
 
-            const photoUrls = getDetailPhotoUrls(activeItem, lastView);
-            const combinedPhotoLink = photoUrls.join(',');
-            const photoCount = photoUrls.length;
+            const isAvOverview = lastView === 'av';
+            if (overviewGrid) overviewGrid.classList.toggle('hidden', isAvOverview);
+
+            const basePhotoEntries = getPhotoEntriesForKind(activeItem, 'saved');
+            const fallbackPhotoUrls = getDetailPhotoUrls(activeItem, lastView);
+            const displayEntries = isAvOverview
+                ? (basePhotoEntries.length ? basePhotoEntries : fallbackPhotoUrls.map((url) => ({ rawUrl: url, url, name: '' })))
+                : fallbackPhotoUrls.map((url) => ({ rawUrl: url, url, name: '' }));
+            const combinedPhotoLink = displayEntries.map((entry) => String(entry.rawUrl || entry.url || '').trim()).filter(Boolean).join(',');
+            const photoCount = displayEntries.length;
             const inBag = selectedItems.has(activeItem.DOM_ID);
             const canRequest = canUseCartInventoryActions([activeItem]);
             const itemLabel = `${activeItem.COMMONNAME || 'Item'}${activeItem.CONTSIZE ? ` (${activeItem.CONTSIZE})` : ''}`;
@@ -1483,15 +1493,90 @@
             const requestBtnHtml = canRequest
                 ? `<button type="button" class="flex-1 inline-flex items-center justify-center gap-2 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-[12px] font-black uppercase tracking-[0.12em] text-orange-700 shadow-sm active:scale-[0.98]" onclick="openDetailRequestAction(event)"><i class="ph-bold ph-chat-circle-text text-lg"></i>Make Request</button>`
                 : '';
+            const countBadgeHtml = photoCount
+                ? `<div class="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600">${photoCount} photo${photoCount === 1 ? '' : 's'}</div>`
+                : '';
+
+            if (isAvOverview) {
+                const commonNameDisplay = esc(activeItem.COMMONNAME || '--');
+                const contSizeDisplay = esc(activeItem.CONTSIZE || '--');
+                const sLtsDisplay = esc(firstNonEmptyValue(activeItem.S_LTS, '0'));
+                const locMatchQtyValue = activeItem.LOC_MATCH_QTY !== '' && activeItem.LOC_MATCH_QTY != null
+                    ? activeItem.LOC_MATCH_QTY
+                    : calculateLocMatchQtyValue(activeItem);
+                const locMatchQtyDisplay = locMatchQtyValue == null ? '--' : esc(locMatchQtyValue);
+                const avNoteText = String(activeItem.AV_NOTE || '').trim();
+                const itemCodeDisplay = esc(activeItem.ITEMCODE || '--');
+                const canArrangeOrder = canUnlockProtectedData() && basePhotoEntries.length > 1;
+                const mediaHtml = photoCount
+                    ? `<div class="flex gap-3 overflow-x-auto scrollbar-none snap-x snap-mandatory pb-2">${displayEntries.map((entry, index) => `<div class="flex-shrink-0 w-[82vw] max-w-[360px] snap-center"><button type="button" class="relative block w-full aspect-[4/3] overflow-hidden rounded-[1.35rem] border border-slate-200 bg-slate-100 shadow-sm" onclick="openPhotoModal('${esc(combinedPhotoLink)}', '${esc(itemLabel)}', ${index})"><img src="${entry.url}" class="h-full w-full object-contain bg-slate-100" loading="${index === 0 ? 'eager' : 'lazy'}"><div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent px-3 py-3 text-left"><div class="text-[10px] font-black uppercase tracking-[0.18em] text-white">${photoCount > 1 ? `Photo ${index + 1} of ${photoCount}` : 'Tap To Expand'}</div></div></button>${canArrangeOrder ? `<div class="mt-2 flex items-center justify-between gap-2 rounded-[1rem] border border-slate-200 bg-slate-50 px-3 py-2"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">View Order ${index + 1}</div><div class="flex gap-2"><button type="button" class="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600 ${index === 0 ? 'opacity-40 cursor-not-allowed' : 'active:scale-[0.98]'}" ${index === 0 ? 'disabled' : ''} onclick="event.stopPropagation(); return movePhotoEntry('saved', ${index}, -1)">Earlier</button><button type="button" class="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600 ${index === photoCount - 1 ? 'opacity-40 cursor-not-allowed' : 'active:scale-[0.98]'}" ${index === photoCount - 1 ? 'disabled' : ''} onclick="event.stopPropagation(); return movePhotoEntry('saved', ${index}, 1)">Later</button></div></div>` : ''}</div>`).join('')}</div>`
+                    : `<div class="flex min-h-[220px] items-center justify-center rounded-[1.35rem] border border-dashed border-slate-300 bg-slate-100 px-6 text-center text-[12px] font-black uppercase tracking-[0.16em] text-slate-400">No Photos On File Yet</div>`;
+                const helperCopy = canArrangeOrder
+                    ? 'Swipe photos. Use Earlier and Later to set viewing order.'
+                    : (photoCount > 1 ? `Swipe to scroll ${photoCount} photos` : (photoCount === 1 ? 'Tap photo to expand' : 'Add a photo to set the viewing order.'));
+                const avNoteHtml = avNoteText
+                    ? `<div class="rounded-[1.25rem] border border-blue-200 bg-blue-50 px-4 py-4"><div class="text-[10px] font-black uppercase tracking-[0.18em] text-blue-700">AV Note</div><div class="mt-2 text-[15px] font-black leading-snug text-blue-900 whitespace-pre-wrap">${esc(avNoteText)}</div></div>`
+                    : `<div class="rounded-[1.25rem] border border-dashed border-blue-200 bg-blue-50/60 px-4 py-4"><div class="text-[10px] font-black uppercase tracking-[0.18em] text-blue-700">AV Note</div><div class="mt-2 text-[13px] font-bold leading-snug text-blue-400">No AV Note Yet</div></div>`;
+
+                container.classList.remove('hidden');
+                container.innerHTML = `
+                    <div class="app-card-shell overflow-hidden border border-slate-200">
+                        <div class="border-b border-slate-200 bg-gradient-to-r from-teal-50 via-white to-cyan-50 px-4 py-3">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="min-w-0">
+                                    <div class="text-[10px] font-black uppercase tracking-[0.16em] text-teal-700">Open Stock Photos</div>
+                                    <div class="mt-1 text-[13px] font-bold text-slate-500">${photoCount ? `${photoCount} photo${photoCount === 1 ? '' : 's'} ready to view` : 'Photos will show here when they are attached'}</div>
+                                </div>
+                                ${photoCount ? `<button type="button" class="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600 shadow-sm active:scale-[0.98]" onclick="openPhotoModal('${esc(combinedPhotoLink)}', '${esc(itemLabel)}', 0)"><i class="ph-bold ph-arrows-out-simple text-sm"></i>Open</button>` : ''}
+                            </div>
+                        </div>
+                        <div class="p-3">
+                            ${mediaHtml}
+                            <div class="mt-3 flex items-center justify-between gap-3 text-[11px] font-bold text-slate-500">
+                                <div>${helperCopy}</div>
+                                ${countBadgeHtml}
+                            </div>
+                            <div class="mt-4 space-y-3">
+                                <div class="rounded-[1.25rem] border border-emerald-100 bg-emerald-50/60 px-4 py-4">
+                                    <div class="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-700">Common Name</div>
+                                    <div class="mt-2 text-[20px] font-black leading-tight text-slate-900 break-words">${commonNameDisplay}</div>
+                                </div>
+                                <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                                    <div class="rounded-[1.1rem] border border-slate-200 bg-white px-4 py-4">
+                                        <div class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Cont Size</div>
+                                        <div class="mt-2 text-[15px] font-black text-slate-900">${contSizeDisplay}</div>
+                                    </div>
+                                    <div class="rounded-[1.1rem] border border-slate-200 bg-white px-4 py-4">
+                                        <div class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">s_LTS</div>
+                                        <div class="mt-2 text-[15px] font-black text-slate-900">${sLtsDisplay}</div>
+                                    </div>
+                                    <div class="rounded-[1.1rem] border border-slate-200 bg-white px-4 py-4">
+                                        <div class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Loc Match Qty</div>
+                                        <div class="mt-2 text-[15px] font-black text-slate-900">${locMatchQtyDisplay}</div>
+                                    </div>
+                                </div>
+                                ${avNoteHtml}
+                                <div class="rounded-[1.25rem] border border-slate-200 bg-white px-4 py-4">
+                                    <div class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Item Code</div>
+                                    <div class="mt-2 break-all rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 font-mono text-[14px] font-black tracking-[0.08em] text-slate-800">${itemCodeDisplay}</div>
+                                </div>
+                            </div>
+                            <div class="mt-4 flex flex-col gap-2 sm:flex-row">
+                                <button type="button" class="flex-1 inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-[12px] font-black uppercase tracking-[0.12em] transition active:scale-[0.98] ${bagBtnClass}" onclick="handleDetailBagToggle(event)"><i class="ph-bold ${inBag ? 'ph-check' : 'ph-handbag'} text-lg"></i>${inBag ? 'In Bloom Picker' : 'Add To Bloom Picker'}</button>
+                                ${requestBtnHtml}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
             const mediaHtml = photoCount
-                ? `<div class="flex gap-3 overflow-x-auto scrollbar-none snap-x snap-mandatory pb-2">${photoUrls.map((url, index) => `<button type="button" class="relative flex-shrink-0 w-[78vw] max-w-[320px] aspect-[4/3] overflow-hidden rounded-[1.25rem] border border-slate-200 bg-slate-100 shadow-sm snap-center" onclick="openPhotoModal('${esc(combinedPhotoLink)}', '${esc(itemLabel)}')"><img src="${url}" class="h-full w-full object-contain bg-slate-100" loading="${index === 0 ? 'eager' : 'lazy'}"><div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent px-3 py-3 text-left"><div class="text-[10px] font-black uppercase tracking-[0.18em] text-white">${photoCount > 1 ? `Photo ${index + 1} of ${photoCount}` : 'Tap To Expand'}</div></div></button>`).join('')}</div>`
+                ? `<div class="flex gap-3 overflow-x-auto scrollbar-none snap-x snap-mandatory pb-2">${displayEntries.map((entry, index) => `<button type="button" class="relative flex-shrink-0 w-[78vw] max-w-[320px] aspect-[4/3] overflow-hidden rounded-[1.25rem] border border-slate-200 bg-slate-100 shadow-sm snap-center" onclick="openPhotoModal('${esc(combinedPhotoLink)}', '${esc(itemLabel)}', ${index})"><img src="${entry.url}" class="h-full w-full object-contain bg-slate-100" loading="${index === 0 ? 'eager' : 'lazy'}"><div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent px-3 py-3 text-left"><div class="text-[10px] font-black uppercase tracking-[0.18em] text-white">${photoCount > 1 ? `Photo ${index + 1} of ${photoCount}` : 'Tap To Expand'}</div></div></button>`).join('')}</div>`
                 : `<div class="flex min-h-[200px] items-center justify-center rounded-[1.25rem] border border-dashed border-slate-300 bg-slate-100 px-6 text-center text-[12px] font-black uppercase tracking-[0.16em] text-slate-400">No Photos On File Yet</div>`;
             const helperCopy = photoCount > 1
                 ? `Swipe to scroll ${photoCount} photos`
                 : (photoCount === 1 ? 'Tap photo to expand' : 'Use the buttons below to add it to Bloom Picker or create a request');
-            const countBadgeHtml = photoCount
-                ? `<div class="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600">${photoCount} photo${photoCount === 1 ? '' : 's'}</div>`
-                : '';
 
             container.classList.remove('hidden');
             container.innerHTML = `
@@ -1502,7 +1587,7 @@
                                 <div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Item Media</div>
                                 <div class="mt-1 text-[13px] font-bold text-slate-500">${photoCount ? `${photoCount} photo${photoCount === 1 ? '' : 's'} available` : 'Photos will show here when they are attached'}</div>
                             </div>
-                            ${photoCount ? `<button type="button" class="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600 shadow-sm active:scale-[0.98]" onclick="openPhotoModal('${esc(combinedPhotoLink)}', '${esc(itemLabel)}')"><i class="ph-bold ph-arrows-out-simple text-sm"></i>Open</button>` : ''}
+                            ${photoCount ? `<button type="button" class="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600 shadow-sm active:scale-[0.98]" onclick="openPhotoModal('${esc(combinedPhotoLink)}', '${esc(itemLabel)}', 0)"><i class="ph-bold ph-arrows-out-simple text-sm"></i>Open</button>` : ''}
                         </div>
                     </div>
                     <div class="p-3">
@@ -1796,13 +1881,55 @@
             updateSyncDiagnostics();
         }
 
+        function runFallbackSyncPass(reason = 'interval') {
+            if (!currentUser) return Promise.resolve(false);
+            if (navigator.onLine === false) {
+                liveSyncMode = 'offline';
+                updateSyncDiagnostics('offline');
+                return Promise.resolve(false);
+            }
+            if (liveSyncMode === 'realtime' && shouldUseRealtime()) {
+                updateSyncDiagnostics('realtime');
+                return Promise.resolve(true);
+            }
+            if (backgroundRefreshInFlight) {
+                if (liveSyncMode !== 'realtime') {
+                    liveSyncMode = 'polling';
+                    updateSyncDiagnostics('polling');
+                }
+                return Promise.resolve(false);
+            }
+            liveSyncMode = 'polling';
+            updateSyncDiagnostics('polling');
+            return fetchBackgroundData('background')
+                .then(() => true)
+                .catch(() => {
+                    updateSyncDiagnostics('idle');
+                    return false;
+                });
+        }
+
         function startFallbackSync(intervalMs = getFallbackSyncInterval()) {
             if (fallbackSyncInterval) {
                 clearInterval(fallbackSyncInterval);
                 fallbackSyncInterval = null;
             }
-            liveSyncMode = navigator.onLine === false ? 'offline' : 'idle';
-            updateSyncDiagnostics(navigator.onLine === false ? 'offline' : 'idle');
+            const normalizedInterval = Math.max(4000, Number(intervalMs) || getFallbackSyncInterval());
+            if (navigator.onLine === false) {
+                liveSyncMode = 'offline';
+                updateSyncDiagnostics('offline');
+            } else if (liveSyncMode !== 'realtime') {
+                liveSyncMode = 'polling';
+                updateSyncDiagnostics('polling');
+            } else {
+                updateSyncDiagnostics('realtime');
+            }
+            fallbackSyncInterval = setInterval(() => {
+                runFallbackSyncPass('interval').catch(() => {});
+            }, normalizedInterval);
+            setTimeout(() => {
+                runFallbackSyncPass('startup').catch(() => {});
+            }, Math.min(1200, normalizedInterval));
         }
 
         function shouldUseRealtime() {
@@ -1812,8 +1939,7 @@
         function initializeRealtime() {
             cleanupRealtime();
             if (!shouldUseRealtime()) {
-                liveSyncMode = navigator.onLine === false ? 'offline' : 'idle';
-                updateSyncDiagnostics(navigator.onLine === false ? 'offline' : 'idle');
+                startFallbackSync();
                 return;
             }
             ['v2_master_inventory','v2_active_request','v2_reserves','v2_soc_master','v2_sales_office','v2_av_notes','v2_dock_team_status','v2_dock_item_status'].forEach((tableName) => {
@@ -1828,12 +1954,13 @@
                             updateSyncDiagnostics();
                         }
                         if (status === 'TIMED_OUT' || status === 'CHANNEL_ERROR' || status === 'CLOSED') {
-                            liveSyncMode = navigator.onLine === false ? 'offline' : 'idle';
-                            updateSyncDiagnostics(navigator.onLine === false ? 'offline' : 'idle');
+                            liveSyncMode = navigator.onLine === false ? 'offline' : 'polling';
+                            updateSyncDiagnostics(navigator.onLine === false ? 'offline' : 'polling');
                         }
                     });
                 realtimeChannels.push(channel);
             });
+            startFallbackSync();
         }
 
         function performLogout() { 
@@ -1874,12 +2001,105 @@
             }
         }
 
+                function runAfterNextPaint(renderFn) {
+            requestAnimationFrame(() => requestAnimationFrame(renderFn));
+        }
+
+        let cardListRenderTokens = {};
+        let detailRenderToken = 0;
+
+        function cancelCardListRender(key) {
+            const normalizedKey = String(key || 'cards').trim() || 'cards';
+            cardListRenderTokens[normalizedKey] = (cardListRenderTokens[normalizedKey] || 0) + 1;
+            return cardListRenderTokens[normalizedKey];
+        }
+
+        function beginCardListRender(key) {
+            return cancelCardListRender(key);
+        }
+
+        function getCardListChunkSize(total = 0) {
+            const compact = isCompactViewport() || window.matchMedia('(pointer: coarse)').matches;
+            if (compact) return total > 240 ? 10 : (total > 120 ? 12 : 14);
+            return total > 420 ? 18 : (total > 220 ? 24 : 32);
+        }
+
+        function shouldUseChunkedCardRender(rows = [], viewKey = '') {
+            const total = Array.isArray(rows) ? rows.length : 0;
+            if (!total) return false;
+            const compact = isCompactViewport() || window.matchMedia('(pointer: coarse)').matches;
+            const thresholds = { drive: compact ? 18 : 60, request: compact ? 14 : 42, reserves: compact ? 14 : 48, 'sales-office': compact ? 18 : 54, 'low-stock': compact ? 18 : 54, tasks: compact ? 16 : 48, review: compact ? 16 : 48 };
+            return total > (thresholds[String(viewKey || '').trim()] || (compact ? 20 : 64));
+        }
+
+        function renderCardListChunked(options = {}) {
+            const { key = 'cards', container, crumb = null, crumbText = '', rows = [], sourceView = 'drive', colorClass = 'status-blue', prefixHtml = '', loadingNoun = 'rows', onComplete = null } = options;
+            if (!container) return false;
+            const total = Array.isArray(rows) ? rows.length : 0;
+            if (!shouldUseChunkedCardRender(rows, key)) return false;
+            const token = beginCardListRender(key);
+            const chunkSize = getCardListChunkSize(total);
+            const hostId = `chunk-host-${String(key).replace(/[^a-z0-9_-]/gi, '-')}-${token}`;
+            if (crumb && crumbText) crumb.innerText = `${crumbText} Loading...`;
+            container.innerHTML = `${prefixHtml}<div id="${hostId}" class="min-h-[3rem]"><div class="p-6 text-center text-gray-400">Loading ${Math.min(total, chunkSize)} of ${total} ${loadingNoun}...</div></div>`;
+            let index = 0; let firstChunk = true;
+            const renderChunk = () => {
+                if (token !== cardListRenderTokens[key]) return;
+                const host = document.getElementById(hostId);
+                if (!host) return;
+                const end = Math.min(index + chunkSize, total);
+                let html = '';
+                for (; index < end; index += 1) html += generateCard(rows[index], sourceView, colorClass);
+                if (firstChunk) { host.innerHTML = html; firstChunk = false; } else if (html) { host.insertAdjacentHTML('beforeend', html); }
+                if (index < total) {
+                    if (crumb && crumbText) crumb.innerText = `${crumbText} Loading ${index}/${total}`;
+                    requestAnimationFrame(renderChunk);
+                } else {
+                    if (crumb && crumbText) crumb.innerText = crumbText;
+                    if (typeof onComplete === 'function') requestAnimationFrame(onComplete);
+                }
+            };
+            requestAnimationFrame(renderChunk);
+            return true;
+        }
+
+        function renderCardList(options = {}) {
+            const { key = 'cards', container, crumb = null, crumbText = '', rows = [], sourceView = 'drive', colorClass = 'status-blue', prefixHtml = '', loadingNoun = 'rows', onComplete = null } = options;
+            if (!container) return false;
+            cancelCardListRender(key);
+            if (crumb && crumbText) crumb.innerText = crumbText;
+            if (renderCardListChunked({ key, container, crumb, crumbText, rows, sourceView, colorClass, prefixHtml, loadingNoun, onComplete })) return true;
+            container.innerHTML = `${prefixHtml}${rows.map(row => generateCard(row, sourceView, colorClass)).join('')}`;
+            if (typeof onComplete === 'function') requestAnimationFrame(onComplete);
+            return true;
+        }
+
+        function getViewContainerId(viewId) {
+            const map = { drive: 'drive-content', tasks: 'tasks-content', review: 'review-content', 'sales-office': 'sales-office-content', reports: 'reports-content', 'low-stock': 'low-stock-content', docks: 'docks-content', request: 'request-content', reserves: 'reserves-content', av: 'av-content', hours: 'hours-content' };
+            return map[String(viewId || '').trim()] || '';
+        }
+
+        function seedViewLoadingState(viewId) {
+            const state = ensureViewRenderState(viewId);
+            if (state.initialized) return;
+            const container = document.getElementById(getViewContainerId(viewId));
+            if (!container || String(container.innerHTML || '').trim()) return;
+            container.innerHTML = `<div class="p-8 text-center text-gray-400">Loading...</div>`;
+        }
+
         function queueViewRender(viewId, forceReset = false, forceRender = false) {
+            const deferHeavyView = !forceRender && ['drive','tasks','review','sales-office','low-stock','request','reserves','av'].includes(viewId);
+            if (deferHeavyView) seedViewLoadingState(viewId);
             scheduleUiRender(`view:${viewId}`, () => {
-                const targetView = document.getElementById('view-' + viewId);
-                if (!targetView || targetView.classList.contains('hidden')) return;
-                renderViewContent(viewId, forceReset, forceRender);
-            });
+                const runRender = () => {
+                    const targetView = document.getElementById('view-' + viewId);
+                    if (!targetView || targetView.classList.contains('hidden')) return;
+                    renderViewContent(viewId, forceReset, forceRender);
+                    restoreScrollPositionForContext(getScrollContextForView(viewId), 0);
+                };
+                if (deferHeavyView) runAfterNextPaint(runRender);
+                else runRender();
+            }, deferHeavyView ? 10 : 0);
         }
 
         function scheduleDocksRender(delay = 32) {
@@ -2269,6 +2489,7 @@
         }
 
         let fullInventory=[]; let avOpenInventory=[]; let lowStockInventory=[]; let socInventory=[]; let reservesInventory=[]; let requestsInventory=[]; let managerReviewInventory=[]; let salesOfficeInventory=[]; let avNotesDb=[];
+        let reserveRepOptionsCache=[]; let reserveRepOptionsLoaded=false;
         let masterInventoryById=new Map(); let masterInventoryByExactKey=new Map(); let lowStockInventoryDirty=true; let managerReviewInventoryDirty=true;
         let loginPrefetchPromise=null;
         let loginPrefetchMode='';
@@ -2697,9 +2918,11 @@
             if (!wantsFull && state.initialPromise) return state.initialPromise;
 
             const runLoad = async () => {
+                const resolvedInitialQuery = key === 'reserves' ? getRepScopedReservesQuery(definition.initialQuery || 'select=*') : (definition.initialQuery || 'select=*');
+                const resolvedFullQuery = key === 'reserves' ? getRepScopedReservesQuery(definition.fullQuery || definition.initialQuery || 'select=*') : (definition.fullQuery || definition.initialQuery || 'select=*');
                 const rows = wantsFull
-                    ? await fetchAllSupabaseRows(definition.table, definition.fullQuery || definition.initialQuery || 'select=*')
-                    : await fetchSupabasePage(definition.table, definition.initialQuery || 'select=*', definition.initialLimit || INITIAL_PAGE_LIMIT, 0);
+                    ? await fetchAllSupabaseRows(definition.table, resolvedFullQuery)
+                    : await fetchSupabasePage(definition.table, resolvedInitialQuery, definition.initialLimit || INITIAL_PAGE_LIMIT, 0);
                 state.initialLoaded = true;
                 state.fullLoaded = wantsFull ? true : state.fullLoaded;
                 state.lastLoadedAt = new Date().toISOString();
@@ -2780,6 +3003,10 @@
             if (viewId === 'drive') return { required: [{ key: 'master', mode: 'initial' }], background: [{ key: 'master', mode: 'full' }], label: 'Loading Drive rows...' };
             if (viewId === 'av') {
                 if (activeAVTab === 'reserves') {
+                    const access = getRoleAccessState();
+                    if (access.isRep) {
+                        return { required: [{ key: 'reserves', mode: 'full' }], background: [{ key: 'master', mode: 'full' }, { key: 'avNotes', mode: 'full' }], label: 'Loading My Reserves...' };
+                    }
                     return { required: [{ key: 'reserves', mode: 'initial' }], background: [{ key: 'reserves', mode: 'full' }, { key: 'master', mode: 'full' }, { key: 'avNotes', mode: 'full' }], label: 'Loading AV reserves...' };
                 }
                 return { required: [{ key: 'avOpen', mode: 'initial' }], background: [{ key: 'avOpen', mode: 'full' }, { key: 'avNotes', mode: 'full' }], label: 'Loading AV open stock...' };
@@ -2986,17 +3213,74 @@
             if (driveId) return `https://drive.google.com/uc?export=view&id=${driveId}`;
             return String(url).replace('&sz=w100', '');
         }
-        function getPhotoUrlList(urlStr='') {
+        function getRawPhotoUrlList(urlStr='') {
             return String(urlStr || '')
                 .split(',')
                 .map(part => {
                     let cleanUrl = String(part || '').trim();
                     let match = cleanUrl.match(/(https?:\/\/[^"\s>]+)/);
                     if (match) cleanUrl = match[1];
-                    if (!cleanUrl.startsWith('http')) return '';
-                    return getExpandedImageUrl(cleanUrl);
+                    return cleanUrl.startsWith('http') ? cleanUrl : '';
                 })
                 .filter(Boolean);
+        }
+        function getPhotoUrlList(urlStr='') {
+            return getRawPhotoUrlList(urlStr).map(getExpandedImageUrl).filter(Boolean);
+        }
+
+        function getPhotoOrderConfig(kind = 'saved') {
+            if (kind === 'saved') return { linkKey: 'SAVED_PHOTO_LINK', nameKey: 'SAVED_PHOTO_NAME', persistPrefix: 'ssn-' };
+            if (kind === 'req') return { linkKey: 'REQ_PHOTO_LINK', nameKey: 'REQ_PHOTO_NAME', persistPrefix: 'req-' };
+            if (kind === 'dock') return { linkKey: 'DOCK_PHOTO_LINK', nameKey: 'DOCK_PHOTO_NAME', persistPrefix: 'dock-' };
+            if (kind === 'flyer') return { linkKey: 'FLYER_PHOTO_LINK', nameKey: 'FLYER_PHOTO_NAME', persistPrefix: 'flyer-' };
+            return null;
+        }
+
+        function getPhotoEntriesForKind(item, kind = 'saved') {
+            const config = getPhotoOrderConfig(kind);
+            if (!config || !item) return [];
+            const rawUrls = getRawPhotoUrlList(item[config.linkKey] || '');
+            const rawNames = String(item[config.nameKey] || '').split(',').map((name) => String(name || '').trim());
+            return rawUrls.map((rawUrl, index) => ({
+                rawUrl,
+                url: getExpandedImageUrl(rawUrl),
+                name: rawNames[index] || ''
+            }));
+        }
+
+        function setPhotoEntriesForKind(item, kind = 'saved', entries = []) {
+            const config = getPhotoOrderConfig(kind);
+            if (!config || !item) return false;
+            const safeEntries = Array.isArray(entries) ? entries.filter((entry) => entry && (entry.rawUrl || entry.url)) : [];
+            item[config.linkKey] = safeEntries.map((entry) => String(entry.rawUrl || entry.url || '').trim()).filter(Boolean).join(',');
+            if (config.nameKey) item[config.nameKey] = safeEntries.map((entry) => String(entry.name || '').trim()).join(',');
+            normalizeRowPhotoFields(item);
+            buildSearchIndex(item);
+            syncRowDataAcrossViews(item);
+            return true;
+        }
+
+        function movePhotoEntry(kind = 'saved', index = 0, direction = 1) {
+            if (!activeItem) return false;
+            if (!canUnlockProtectedData()) {
+                showToast('Restricted', 'Only Dylan, JD, Morgan, or Kayla can arrange photo viewing order.', true);
+                return false;
+            }
+            const config = getPhotoOrderConfig(kind);
+            if (!config) return false;
+            const entries = getPhotoEntriesForKind(activeItem, kind);
+            if (entries.length <= 1) return false;
+            const fromIndex = Number(index);
+            const toIndex = fromIndex + Number(direction);
+            if (!Number.isFinite(fromIndex) || fromIndex < 0 || fromIndex >= entries.length) return false;
+            if (toIndex < 0 || toIndex >= entries.length) return false;
+            const moved = entries.splice(fromIndex, 1)[0];
+            entries.splice(toIndex, 0, moved);
+            setPhotoEntriesForKind(activeItem, kind, entries);
+            saveData(false, config.persistPrefix, true, activeItem, { photoChanged: true });
+            renderSavedPhotos();
+            renderPhotoGallery();
+            return false;
         }
 
         async function promptToEnableBiometrics(user,pin) { 
@@ -3061,6 +3345,26 @@
 
             repPermutations = [...variants].filter(Boolean);
             if (!repPermutations.length && rawUser) repPermutations = [rawUser];
+        }
+
+        function getRepScopedReservesQuery(baseQuery = 'select=*') {
+            if (!getRoleAccessState().isRep) return baseQuery;
+            const variants = new Set();
+            repPermutations.forEach((value) => {
+                const normalized = normalizeRepMatchToken(value);
+                if (!normalized) return;
+                variants.add(normalized);
+                normalized.split(/\s+/).filter(token => token.length >= 2).forEach(token => variants.add(token));
+            });
+            const queryVariants = [...variants].slice(0, 12);
+            if (!queryVariants.length) return baseQuery;
+            const filters = [];
+            queryVariants.forEach((value) => {
+                const encoded = encodeURIComponent(value);
+                filters.push(`salesrepname.ilike.*${encoded}*`);
+                filters.push(`salesrepid.ilike.*${encoded}*`);
+            });
+            return `${baseQuery}&or=(${filters.join(',')})`;
         }
 
         function isMyRep(repNameStr) { 
@@ -4467,8 +4771,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (nextIndex < 0) nextIndex = total - 1;
             snapPhotoModalToIndex(nextIndex, true);
         }
-
-        function openPhotoModal(urlStr, caption) {
+        function openPhotoModal(urlStr, caption, startIndex = 0) {
             const modal = document.getElementById('photo-modal');
             const gallery = document.getElementById('photo-modal-gallery');
             const swipeHint = document.getElementById('photo-swipe-hint');
@@ -4478,6 +4781,10 @@ function toggleDriveQuickRequestItem(domId) {
                 showToast('No Photo', 'There is no photo on file for this item.', true);
                 return;
             }
+            const parsedStartIndex = Number(startIndex);
+            const boundedStartIndex = Number.isFinite(parsedStartIndex)
+                ? Math.max(0, Math.min(Math.trunc(parsedStartIndex), urls.length - 1))
+                : 0;
             if (photoModalState.scrollTimer) {
                 clearTimeout(photoModalState.scrollTimer);
                 photoModalState.scrollTimer = null;
@@ -4490,8 +4797,8 @@ function toggleDriveQuickRequestItem(domId) {
             }
 
             photoModalState.urls = urls;
-            photoModalState.index = 0;
-            gallery.innerHTML = urls.map((url, index) => `<div class="photo-modal-slide" data-photo-index="${index}"><img src="${url}" alt="${esc(caption || `Photo ${index + 1}`)}" loading="${index === 0 ? 'eager' : 'lazy'}" draggable="false"></div>`).join('');
+            photoModalState.index = boundedStartIndex;
+            gallery.innerHTML = urls.map((url, index) => `<div class="photo-modal-slide" data-photo-index="${index}"><img src="${url}" alt="${esc(caption || `Photo ${index + 1}`)}" loading="${index === boundedStartIndex ? 'eager' : 'lazy'}" draggable="false"></div>`).join('');
             gallery.onscroll = () => {
                 syncPhotoModalIndexFromScroll();
                 if (photoModalState.scrollTimer) clearTimeout(photoModalState.scrollTimer);
@@ -4525,7 +4832,7 @@ function toggleDriveQuickRequestItem(domId) {
             swipeHint.classList.toggle('hidden', urls.length <= 1);
             modal.classList.remove('hidden');
             requestAnimationFrame(() => {
-                snapPhotoModalToIndex(0, false);
+                snapPhotoModalToIndex(boundedStartIndex, false);
                 updatePhotoModalCounter();
             });
         }
@@ -5024,17 +5331,17 @@ function toggleDriveQuickRequestItem(domId) {
                     item.DOM_ID='res_'+idx;
                     item.UNIQUE_ID=item.UNIQUE_ID||'res_uid_'+idx;
                     let masterItem=findLinkedMasterRow(item);
-                    item.CUSTOMERNAME=item.CUSTOMERNAME||item.CUSTOMER||'Unknown Customer';
-                    item.CONSIGNEENAME=item.CONSIGNEENAME||item.CONSIGNEE||'';
-                    item.SALESREPNAME=item.SALESREPNAME||item.SALESREP||item['SALES_REP']||'Unknown Rep';
-                    item.COMMONNAME=firstNonEmptyValue(item.COMMONNAME, item.DESCRIPTION, item.PLANT_NAME, item.ITEMCODE, 'Unknown');
-                    item.CONTSIZE=firstNonEmptyValue(item.CONTSIZE, item.ITEMSPEC, item.contsize, '-');
-                    item.LOCATIONCODE=firstNonEmptyValue(item.LOCATIONCODE, item.LOCATION, 'No Loc');
+                    item.CUSTOMERNAME=firstNonEmptyValue(item.CUSTOMERNAME, item.customername, item.CUSTOMER, item.customer, 'Unknown Customer');
+                    item.CONSIGNEENAME=firstNonEmptyValue(item.CONSIGNEENAME, item.consigneename, item.CONSIGNEE, item.consignee, '');
+                    item.SALESREPNAME=firstNonEmptyValue(item.SALESREPNAME, item.salesrepname, item.SALESREP, item.salesrep, item['SALES_REP'], item.sales_rep, item.SALESREPID, item.salesrepid, 'Unknown Rep');
+                    item.COMMONNAME=firstNonEmptyValue(item.COMMONNAME, item.commonname, item.DESCRIPTION, item.description, item.PLANT_NAME, item.plant_name, item.ITEMCODE, item.itemcode, 'Unknown');
+                    item.CONTSIZE=firstNonEmptyValue(item.CONTSIZE, item.contsize, item.ITEMSPEC, item.itemspec, '-');
+                    item.LOCATIONCODE=firstNonEmptyValue(item.LOCATIONCODE, item.locationcode, item.LOCATION, item.location, 'No Loc');
                     item.ITEMCODE=firstNonEmptyValue(item.ITEMCODE, item.itemcode, '-');
-                    item.LOTCODE=firstNonEmptyValue(item.LOTCODE, item.lotcode, '-');
+                    item.LOTCODE=firstNonEmptyValue(item.LOTCODE, item.lotcode, '');
                     item.PTRAVAILABLE=firstNonEmptyValue(item.PTRAVAILABLE, item.ptravailable, 0);
                     item.SEASONSUPPLY=firstNonEmptyValue(item.SEASONSUPPLY, item.SEASON_SUPPLY, item.season_supply, 0);
-                    item.PRIORITY=firstNonEmptyValue(item.PRIORITY, item.priority, '-');
+                    item.PRIORITY=firstNonEmptyValue(item.PRIORITY, item.priority, '-'); item.QTY_ORDERED=firstNonEmptyValue(item.QTY_ORDERED, item.qty_ordered, item.QUANTITYORDERED, item.quantityordered, '0'); item.QTY_SHIPPED=firstNonEmptyValue(item.QTY_SHIPPED, item.qty_shipped, item.QUANTITYSHIPPED, item.quantityshipped, '0'); item.QUANTITYORDERED=firstNonEmptyValue(item.QUANTITYORDERED, item.quantityordered, item.QTY_ORDERED, item.qty_ordered, '0'); item.QUANTITYSHIPPED=firstNonEmptyValue(item.QUANTITYSHIPPED, item.quantityshipped, item.QTY_SHIPPED, item.qty_shipped, '0');
                     if(masterItem){
                         item.COMMONNAME=firstNonEmptyValue(masterItem.COMMONNAME, item.COMMONNAME);
                         item.CONTSIZE=firstNonEmptyValue(masterItem.CONTSIZE, item.CONTSIZE);
@@ -5058,11 +5365,15 @@ function toggleDriveQuickRequestItem(domId) {
                         item.MASTER_UNIQUE_ID=masterItem.UNIQUE_ID;
                     }
                     normalizeRowPhotoFields(item);
-                    item._search=`${item.COMMONNAME||''} ${item.CUSTOMERNAME||''} ${item.ITEMCODE||''}`.toLowerCase();
+                    item._search=`${item.COMMONNAME||''} ${item.CUSTOMERNAME||''} ${item.CONSIGNEENAME||''} ${item.SALESREPNAME||''} ${item.ITEMCODE||''} ${item.LOCATIONCODE||''} ${item.LOTCODE||''}`.toLowerCase();
                     buildSearchIndex(item);
                     return item;
                 });
             }
+
+                const reservesState = getDatasetState('reserves');
+                reserveRepOptionsCache = getAVReserveRepOptions(reservesInventory);
+                reserveRepOptionsLoaded = !!reservesState.fullLoaded;
 
             if (avRuleClearOps.length) {
                 persistMasterAvRuleClearOps(avRuleClearOps);
@@ -5461,6 +5772,34 @@ function toggleDriveQuickRequestItem(domId) {
             return getRoleAccessState().allowedViews.has(targetView);
         }
 
+        function applyFooterNavLayout() {
+            const access = getRoleAccessState();
+            const buttonVisibility = {
+                'footer-home-btn': true,
+                'footer-drive-btn': access.isAdmin || access.isQcSupervisor,
+                'footer-tasks-btn': access.isAdmin,
+                'footer-av-btn': access.isRep,
+                'footer-docks-btn': access.isAdmin || access.isRep || access.isQcSupervisor || access.isQc
+            };
+            Object.entries(buttonVisibility).forEach(([id, shouldShow]) => {
+                const button = document.getElementById(id);
+                if (button) button.classList.toggle('hidden', !shouldShow);
+            });
+            syncFooterNavMetrics();
+        }
+
+        function syncFooterNavMetrics() {
+            const nav = document.getElementById('bottom-nav');
+            if (!nav) return;
+            const visibleButtons = Array.from(nav.querySelectorAll('.footer-nav-btn')).filter((button) => !button.classList.contains('hidden'));
+            const visibleCount = Math.max(1, visibleButtons.length);
+            document.documentElement.style.setProperty('--bottom-nav-cols', String(visibleCount));
+            requestAnimationFrame(() => {
+                const navHeight = Math.max(72, Math.ceil(nav.getBoundingClientRect().height || 0));
+                document.documentElement.style.setProperty('--bottom-nav-height', navHeight + 'px');
+            });
+        }
+
         function getAssignmentMatchKeys(value = '') {
             const raw = String(value || '').toLowerCase().trim();
             if (!raw) return [];
@@ -5511,6 +5850,7 @@ function toggleDriveQuickRequestItem(domId) {
                 el.classList.toggle('hidden', !isAllowed);
                 el.style.display = '';
             });
+            applyFooterNavLayout();
             updateFooterRequestBadge();
             const currentView = getCurrentVisibleViewId();
             if (currentView && currentView !== 'home' && !canAccessView(currentView)) {
@@ -5665,6 +6005,101 @@ function toggleDriveQuickRequestItem(domId) {
             return 'home';
         }
 
+        let scrollPositionsByContext = {};
+        let scrollRestoreTimers = [];
+        let detailReturnScrollContext = '';
+
+        function getMainScrollArea() {
+            return document.getElementById('main-scroll-area');
+        }
+
+        function clearScheduledScrollRestore() {
+            scrollRestoreTimers.forEach((timer) => clearTimeout(timer));
+            scrollRestoreTimers = [];
+        }
+
+        function scheduleMainScrollTop(targetTop = 0) {
+            const top = Math.max(0, Number(targetTop) || 0);
+            const apply = () => {
+                const scrollArea = getMainScrollArea();
+                if (!scrollArea) return;
+                scrollArea.scrollTop = top;
+            };
+            clearScheduledScrollRestore();
+            requestAnimationFrame(apply);
+            scrollRestoreTimers.push(setTimeout(apply, 48));
+            scrollRestoreTimers.push(setTimeout(apply, 180));
+        }
+
+        function getScrollContextInputValue(id) {
+            const el = document.getElementById(id);
+            return el ? String(el.value || '').trim() : '';
+        }
+
+        function getScrollContextForView(viewId = getCurrentVisibleViewId()) {
+            const view = String(viewId || '').trim() || 'home';
+            if (view === 'detail') return ['detail', lastView || '', activeItem && activeItem.UNIQUE_ID ? activeItem.UNIQUE_ID : '', activeDetailTab || 'overview'].join('|');
+            if (view === 'drive') return ['drive', activeDriveMode || '', activeDriveTab || '', driveViewLevel || 0, selectedDriveName || '', selectedDriveSize || '', selectedDriveBlock || '', selectedDriveLoc || '', getScrollContextInputValue('drive-search')].join('|');
+            if (view === 'tasks') return ['tasks', activeTaskTab || '', activeTaskSubview || '', taskViewTargetUser || '', taskViewLevel || 0, selectedTaskBlock || '', selectedTaskLoc || '', selectedEndCapFolder || '', selectedFlyerFolder || '', selectedColorWalkContSize || '', selectedColorWalkSearchTerm || ''].join('|');
+            if (view === 'docks') return ['docks', dockViewLevel || 0, selectedDockNum || '', selectedDockStop || '', getScrollContextInputValue('docks-search')].join('|');
+            if (view === 'request') return ['request', activeReqTab || '', requestViewLevel || 0, selectedReqRepView || '', selectedReqStatus || '', selectedReqFolderView || ''].join('|');
+            if (view === 'reserves') return ['reserves', reservesViewLevel || 0, getScrollContextInputValue('reserves-search')].join('|');
+            if (view === 'av') return ['av', activeAVTab || '', activeAvOpenTab || '', avOpenLevel || 0, selectedAvOpenName || '', selectedAvOpenSize || '', selectedAvOpenSeason || '', selectedAvOpenLot || '', avResLevel || 0, selectedAvResRep || '', selectedAvResDriveUid || '', selectedAvResItemCode || '', selectedAvResName || '', selectedAvResSize || '', getScrollContextInputValue('av-search')].join('|');
+            if (view === 'sales-office') return ['sales-office', activeSalesOfficeTab || ''].join('|');
+            if (view === 'review') return ['review', reviewViewLevel || 0, selectedReviewItemCode || '', selectedReviewCommonName || '', selectedReviewContSize || ''].join('|');
+            if (view === 'reports') return ['reports', activeReportTab || '', reportViewLevel || 0, selectedReqRep || '', selectedReqRepStatus || '', selectedReqFolder || ''].join('|');
+            if (view === 'low-stock') return ['low-stock', lowStockViewLevel || 0, selectedLowStockName || '', selectedLowStockSize || ''].join('|');
+            return view;
+        }
+
+        function rememberScrollPositionForCurrentContext(viewId = getCurrentVisibleViewId()) {
+            const scrollArea = getMainScrollArea();
+            if (!scrollArea) return '';
+            const key = getScrollContextForView(viewId);
+            if (!key) return '';
+            scrollPositionsByContext[key] = scrollArea.scrollTop;
+            return key;
+        }
+
+        function restoreScrollPositionForContext(contextKey = '', defaultTop = 0) {
+            const key = String(contextKey || '').trim();
+            if (!key) {
+                scheduleMainScrollTop(defaultTop);
+                return;
+            }
+            const hasSaved = Object.prototype.hasOwnProperty.call(scrollPositionsByContext, key);
+            scheduleMainScrollTop(hasSaved ? scrollPositionsByContext[key] : defaultTop);
+        }
+
+        function restoreScrollPositionForCurrentContext(defaultTop = 0, viewId = getCurrentVisibleViewId()) {
+            restoreScrollPositionForContext(getScrollContextForView(viewId), defaultTop);
+        }
+
+        function wrapRenderWithScrollMemory(fnName, expectedViewId) {
+            const original = window[fnName];
+            if (typeof original !== 'function' || original._scrollMemoryWrapped) return;
+            const wrapped = function(...args) {
+                const result = original.apply(this, args);
+                if (getCurrentVisibleViewId() === expectedViewId) restoreScrollPositionForCurrentContext(0, expectedViewId);
+                return result;
+            };
+            wrapped._scrollMemoryWrapped = true;
+            window[fnName] = wrapped;
+        }
+
+        [
+            ['renderDrive', 'drive'],
+            ['renderTasks', 'tasks'],
+            ['renderTeamSelector', 'tasks'],
+            ['renderDocks', 'docks'],
+            ['renderRequest', 'request'],
+            ['renderReserves', 'reserves'],
+            ['renderAV', 'av'],
+            ['renderSalesOffice', 'sales-office'],
+            ['renderLowStock', 'low-stock'],
+            ['renderReview', 'review'],
+            ['renderReports', 'reports']
+        ].forEach(([fnName, viewId]) => wrapRenderWithScrollMemory(fnName, viewId));
         function updateGlobalBackButton() {
             const backBtn = document.getElementById('global-back-btn');
             if (!backBtn) return;
@@ -5679,9 +6114,11 @@ function toggleDriveQuickRequestItem(domId) {
             const menuBtn = document.getElementById('footer-menu-btn');
             const drawer = document.getElementById('side-drawer');
             if (menuBtn && drawer) menuBtn.classList.toggle('menu-open', drawer.classList.contains('open'));
+            syncFooterNavMetrics();
         }
 
         function switchView(viewId) { 
+            rememberScrollPositionForCurrentContext();
             closeDriveQuickFiltersModal();
             const requestedViewId = String(viewId || 'home').trim();
             const nextViewId = canAccessView(requestedViewId) ? requestedViewId : 'home';
@@ -6071,6 +6508,7 @@ activeDriveTab = tab;
             return [...repMap.values()].sort((a, b) => String(a.label || '').localeCompare(String(b.label || '')));
         }
 
+
         function getAvReserveGroupFields(item) {
             return {
                 itemCode: firstNonEmptyValue(item && item.ITEMCODE, 'Unknown Item'),
@@ -6247,7 +6685,7 @@ activeDriveTab = tab;
                 if (canSelectAvReserveRep()) {
                     if (selectedAvResRep) items = items.filter(i => isSelectedAvReserveRep(i, selectedAvResRep));
                 } else if (isRep) {
-                    items = items.filter(i => isMyRep(firstNonEmptyValue(i && i.SALESREPNAME, i && i.SALESREP, i && i.SALES_REP, i && i.SALESREPID, '')));
+                    items = items.filter(i => isMyRep(getReserveSalesRepLabel(i)));
                 }
             }
             const allowReserveSearch = activeAVTab === 'open' || !canSelectAvReserveRep() || !!selectedAvResRep;
@@ -6485,11 +6923,12 @@ activeDriveTab = tab;
             showToast('Export Ready', `Downloading ${exportContext.rows.length} AV row${exportContext.rows.length === 1 ? '' : 's'} as Excel.`);
             return false;
         }
-        function shouldUseChunkedAVOpenRender(rows = []) {
-            const { isRep } = getRoleAccessState();
-            return isRep && activeAVTab === 'open' && Array.isArray(rows) && rows.length > 72;
+                function shouldUseChunkedAVOpenRender(rows = []) {
+            const total = Array.isArray(rows) ? rows.length : 0;
+            if (activeAVTab !== 'open' || !total) return false;
+            const compact = isCompactViewport() || window.matchMedia('(pointer: coarse)').matches;
+            return total > (compact ? 36 : 120);
         }
-
         function renderAVOpenCardsChunked(container, crumb, rows, sourceView, crumbText) {
             if (!container || !crumb) return;
             avRenderChunkToken += 1;
@@ -6520,7 +6959,6 @@ activeDriveTab = tab;
             };
             requestAnimationFrame(renderChunk);
         }
-
         function renderAV() {
             avRenderChunkToken += 1;
             if (ensureViewDataForRender('av')) return;
@@ -6529,6 +6967,10 @@ activeDriveTab = tab;
             const avState = getCurrentAVBaseItems();
             const term = avState.term;
             let items = avState.items;
+            const access = getRoleAccessState();
+            const reservesState = getDatasetState('reserves');
+            const isAdminReserveWarmLoading = activeAVTab === 'reserves' && !access.isRep && !!reservesState.initialLoaded && !reservesState.fullLoaded;
+            const reserveLoadingSuffix = isAdminReserveWarmLoading ? ' Loading more...' : '';
             const exportContext = buildAVExportContext(items, term);
 
             if (items.length === 0) {
@@ -6555,14 +6997,18 @@ activeDriveTab = tab;
                 return;
             }
             if (canSelectAvReserveRep() && !selectedAvResRep) {
-                const repOptions = getAVReserveRepOptions(items);
-                crumb.innerText = 'My Reserves > Sales Reps';
+                const shouldUseRepDirectory = !access.isRep;
+                const repOptions = shouldUseRepDirectory && reserveRepOptionsCache.length
+                    ? reserveRepOptionsCache
+                    : getAVReserveRepOptions(items);
+                const repStatusSuffix = shouldUseRepDirectory && !reserveRepOptionsLoaded ? ' Loading reps...' : reserveLoadingSuffix;
+                crumb.innerText = `My Reserves > Sales Reps${repStatusSuffix}`;
                 container.innerHTML = repOptions.map(rep => `<div class="drill-item" onclick="selectAvResRep('${esc(rep.label)}')"><span class="font-bold text-lg">${rep.label} <span class="text-gray-400 text-sm font-normal">(${rep.count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
                 return;
             }
 
             if (avResLevel === 0) {
-                crumb.innerText = selectedAvResRep ? `My Reserves > ${selectedAvResRep}` : 'My Reserves';
+                crumb.innerText = selectedAvResRep ? `My Reserves > ${selectedAvResRep}${reserveLoadingSuffix}` : `My Reserves${reserveLoadingSuffix}`;
                 const groups = getAVReserveGroups(items);
                 let html = selectedAvResRep ? `<div class="back-btn" onclick="clearSelectedAvResRep()"><i class="ph-bold ph-arrow-left"></i> Back to Sales Reps</div>` : '';
                 html += groups.map(group => `<div class="drill-item" onclick="selectAvReserveGroup('${esc(group.itemCode)}','${esc(group.commonName)}','${esc(group.contSize)}')"><div class="flex flex-1 flex-col gap-1"><span class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">${group.itemCode}</span><span class="font-bold text-lg">${group.commonName}</span><span class="text-sm text-gray-500">${group.contSize}</span></div><span class="text-sm text-gray-400 font-semibold">(${group.count})</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
@@ -7143,6 +7589,10 @@ activeDriveTab = tab;
             }
         }
         function openDetail(uid, sourceView) {
+            const currentView = getCurrentVisibleViewId();
+            if (currentView !== 'detail') {
+                detailReturnScrollContext = rememberScrollPositionForCurrentContext(currentView) || getScrollContextForView(currentView);
+            }
             lastView = sourceView;
             activeItem = findItemByUniqueId(uid);
             if(!activeItem) return;
@@ -7153,6 +7603,7 @@ activeDriveTab = tab;
             });
             document.getElementById('view-detail').classList.remove('hidden');
             updateGlobalBackButton();
+            restoreScrollPositionForCurrentContext(0, 'detail');
 
             document.getElementById('det-common').innerText = activeItem.COMMONNAME || '--';
             document.getElementById('det-size').innerText = activeItem.CONTSIZE || '--';
@@ -7395,10 +7846,13 @@ activeDriveTab = tab;
         function goBackFromDetail() {
             if (document.activeElement && ['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) document.activeElement.blur();
             setDetailEditingChromeState(false);
+            const returnContext = detailReturnScrollContext || getScrollContextForView(lastView);
             activeItem = null;
             document.getElementById('view-detail').classList.add('hidden');
             document.getElementById('view-' + lastView).classList.remove('hidden');
             updateGlobalBackButton();
+            restoreScrollPositionForContext(returnContext, 0);
+            detailReturnScrollContext = '';
         }
         function toggleExpand() {
             const section = document.getElementById('expand-section');
@@ -7937,19 +8391,23 @@ activeDriveTab = tab;
             scrollArea.addEventListener('touchend', handlePullRefreshEnd, { passive: true });
             scrollArea.addEventListener('touchcancel', handlePullRefreshEnd, { passive: true });
             scrollArea.addEventListener('scroll', () => {
+                rememberScrollPositionForCurrentContext();
                 if (scrollArea.scrollTop > 8) closeAllRequestSwipes();
             }, { passive: true });
             window.addEventListener('pageshow', () => {
                 syncViewportHeight();
+                syncFooterNavMetrics();
                 queueForegroundRefresh(120);
             }, { passive: true });
             window.addEventListener('focus', () => {
                 syncViewportHeight();
+                syncFooterNavMetrics();
                 queueForegroundRefresh(120);
             }, { passive: true });
             window.addEventListener('orientationchange', () => {
                 syncViewportHeight();
                 syncViewportMode();
+                syncFooterNavMetrics();
                 closeAllRequestSwipes();
                 setPullRefreshIndicator('hidden');
                 queueForegroundRefresh(350);
@@ -9537,33 +9995,54 @@ function toggleDriveSeason(s) {
         }
 
         function renderTeamSelector() {
-            let uSet = new Set();
-            fullInventory.forEach(i => {
-                if (isFlyerTaskItem(i)) {
-                    getFlyerAssigneeList(i.FLYER_ASSIGNED || i.ASSIGNEDTO || '').forEach(name => uSet.add(name));
+            const teamSummary = new Map();
+            const getSummary = (userName) => {
+                const key = String(userName || '').trim();
+                if (!key) return null;
+                if (!teamSummary.has(key)) {
+                    teamSummary.set(key, { total: 0, season: 0, location: 0, colorwalk: 0, endcap: 0, flyer: 0 });
+                }
+                return teamSummary.get(key);
+            };
+
+            fullInventory.forEach((item) => {
+                if (!item) return;
+                if (isFlyerTaskItem(item)) {
+                    getFlyerAssigneeList(item.FLYER_ASSIGNED || item.ASSIGNEDTO || '').forEach((name) => {
+                        const summary = getSummary(name);
+                        if (!summary) return;
+                        summary.total++;
+                        summary.flyer++;
+                    });
                     return;
                 }
-                if(i.ASSIGNEDTO && !i.DATE_COMPLETED) uSet.add(i.ASSIGNEDTO);
+                const assignedTo = String(item.ASSIGNEDTO || '').trim();
+                if (!assignedTo || item.DATE_COMPLETED) return;
+                const summary = getSummary(assignedTo);
+                if (!summary) return;
+                summary.total++;
+                if (item.APP_TAB_ASSIGNMENT === 'season') summary.season++;
+                if (item.APP_TAB_ASSIGNMENT === 'location') summary.location++;
+                if (item.APP_TAB_ASSIGNMENT === 'endcap') summary.endcap++;
+                if (isColorWalkTaskItem(item)) summary.colorwalk++;
             });
-            if(uSet.size === 0) { 
-                document.getElementById('task-content').innerHTML = `<div class="p-8 text-center text-gray-400">No active tasks for any team member.</div>`; 
-                return; 
+
+            if (teamSummary.size === 0) {
+                document.getElementById('task-content').innerHTML = `<div class="p-8 text-center text-gray-400">No active tasks for any team member.</div>`;
+                return;
             }
-            let sorted = Array.from(uSet).sort();
+
+            const sorted = Array.from(teamSummary.keys()).sort();
             let html = `<h2 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Select Team Member</h2>`;
-            sorted.forEach(u => {
-                let userTasks = fullInventory.filter(i => {
-                    if (isFlyerTaskItem(i)) return isFlyerAssignedToUser(i, u);
-                    return i.ASSIGNEDTO === u && !i.DATE_COMPLETED;
-                });
+            sorted.forEach((userName) => {
+                const summary = teamSummary.get(userName) || { total: 0, season: 0, location: 0, colorwalk: 0, endcap: 0, flyer: 0 };
                 let htmlCounts = `<div class="flex gap-2 mt-2">`;
-                ['season','location','colorwalk','endcap','flyer'].forEach(t => {
-                    let c = getTaskTabItems(userTasks, t).length;
-                    const label = t === 'colorwalk' ? 'color' : t;
-                    if(c > 0) htmlCounts += `<span class="text-[10px] font-bold px-2 py-1 rounded bg-gray-100 text-gray-600 uppercase">${label}: ${c}</span>`;
+                [['season', 'season'], ['location', 'location'], ['colorwalk', 'color'], ['endcap', 'endcap'], ['flyer', 'flyer']].forEach(([key, label]) => {
+                    const count = summary[key] || 0;
+                    if (count > 0) htmlCounts += `<span class="text-[10px] font-bold px-2 py-1 rounded bg-gray-100 text-gray-600 uppercase">${label}: ${count}</span>`;
                 });
                 htmlCounts += `</div>`;
-                html += `<div class="bg-white border border-gray-200 p-4 rounded-xl shadow-sm mb-3 cursor-pointer active:scale-95 transition-transform" onclick="selectTaskUser('${esc(u)}')"><div class="flex justify-between items-center"><span class="font-black text-xl text-[#007a4d]">${u}</span><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${userTasks.length} Total</span></div>${htmlCounts}</div>`;
+                html += `<div class="bg-white border border-gray-200 p-4 rounded-xl shadow-sm mb-3 cursor-pointer active:scale-95 transition-transform" onclick="selectTaskUser('${esc(userName)}')"><div class="flex justify-between items-center"><span class="font-black text-xl text-[#007a4d]">${userName}</span><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${summary.total} Total</span></div>${htmlCounts}</div>`;
             });
             document.getElementById('task-tabs-container').classList.add('hidden');
             const subTabs = document.getElementById('task-subtabs-container');
@@ -9918,13 +10397,13 @@ function toggleDriveSeason(s) {
             const crumb = document.getElementById('reserves-crumb');
             if (!container || !crumb) return;
 
-            let items = reservesInventory;
-            if (safeRole === 'SALESREP') items = items.filter(i => isMyRep(i.SALESREPNAME));
+            const access = getRoleAccessState(); let items = reservesInventory;
+            if (access.isRep) items = items.filter(i => isMyRep(getReserveSalesRepLabel(i)));
             const term = document.getElementById('reserves-search') ? document.getElementById('reserves-search').value.toLowerCase().trim() : '';
             if (term) items = filterBySearch(items, term, 'reserves');
 
             if (!items.length) {
-                crumb.innerText = safeRole === 'SALESREP' ? 'My Reserves' : 'Reserves';
+                crumb.innerText = access.isRep ? 'My Reserves' : 'Reserves';
                 container.innerHTML = `<div class="p-8 text-center text-gray-400">No reserves found.</div>`;
                 return;
             }
@@ -9937,7 +10416,7 @@ function toggleDriveSeason(s) {
                 return String(a.CONTSIZE || '').localeCompare(String(b.CONTSIZE || ''), undefined, {numeric:true});
             });
 
-            crumb.innerText = safeRole === 'SALESREP' ? `My Reserves (${items.length})` : `Reserves (${items.length})`;
+            crumb.innerText = access.isRep ? `My Reserves (${items.length})` : `Reserves (${items.length})`;
             container.innerHTML = items.map(i => generateCard(i, 'reserves_drill', 'status-indigo')).join('');
         }
 
