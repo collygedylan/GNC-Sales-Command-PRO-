@@ -1838,7 +1838,6 @@
 
         function performLogout() { 
             cleanupRealtime();
-            clearAdminRequestLiveRefresh();
             localStorage.clear(); 
             sessionStorage.clear(); 
             try { indexedDB.deleteDatabase(DB_NAME); } catch(e){} 
@@ -2515,19 +2514,15 @@
                 flushPendingRequestArchives().catch(() => {});
                 schedulePendingRequestArchiveFlush(2800);
                 queueForegroundRefresh(80);
-                syncAdminRequestLiveRefresh(180);
             }
         });
 
         window.addEventListener('offline', () => {
-            clearAdminRequestLiveRefresh();
             updateSyncDiagnostics('offline');
         });
 
         document.addEventListener('visibilitychange', () => {
             if (!document.hidden && currentUser) queueForegroundRefresh(isIOSDevice() ? 60 : 120);
-            if (!document.hidden) syncAdminRequestLiveRefresh(180);
-            else clearAdminRequestLiveRefresh();
             if (!document.hidden) updateSyncDiagnostics();
         });
 
@@ -5700,7 +5695,6 @@ function toggleDriveQuickRequestItem(domId) {
             updateGlobalBackButton();
             syncGlobalHeaderChrome();
             updateFooterNavState();
-            syncAdminRequestLiveRefresh(nextViewId === 'request' ? 180 : 0);
         }
         function goBackUniversal() {
             const currentView = getCurrentVisibleViewId();
@@ -7848,48 +7842,9 @@ activeDriveTab = tab;
         let pullRefreshState = { active: false, armed: false, refreshing: false, startX: 0, startY: 0, distance: 0 };
         let interactiveChromeInitialized = false;
         let foregroundRefreshTimer = null;
-        let adminRequestLiveRefreshTimer = null;
-        let adminRequestLiveRefreshInFlight = false;
 
         function getFallbackSyncInterval() {
             return (isIOSDevice() || isStandaloneApp()) ? 12000 : 30000;
-        }
-
-        function clearAdminRequestLiveRefresh() {
-            if (adminRequestLiveRefreshTimer) {
-                clearTimeout(adminRequestLiveRefreshTimer);
-                adminRequestLiveRefreshTimer = null;
-            }
-        }
-
-        function shouldUseAdminRequestLiveRefresh() {
-            if (!currentUser || safeRole !== 'ADMIN') return false;
-            if (navigator.onLine === false || document.hidden) return false;
-            return getCurrentVisibleViewId() === 'request';
-        }
-
-        function syncAdminRequestLiveRefresh(delay = 1200) {
-            clearAdminRequestLiveRefresh();
-            if (!shouldUseAdminRequestLiveRefresh()) return;
-            const nextDelay = Math.max(250, Number(delay) || 0);
-            adminRequestLiveRefreshTimer = setTimeout(async () => {
-                adminRequestLiveRefreshTimer = null;
-                if (!shouldUseAdminRequestLiveRefresh()) return;
-                if (adminRequestLiveRefreshInFlight) {
-                    syncAdminRequestLiveRefresh(900);
-                    return;
-                }
-                try {
-                    adminRequestLiveRefreshInFlight = true;
-                    const requestState = getDatasetState('requests');
-                    const requestMode = requestState.fullLoaded ? 'full' : 'initial';
-                    await ensureDatasetLoaded('requests', requestMode, { force: true });
-                } catch (error) {
-                } finally {
-                    adminRequestLiveRefreshInFlight = false;
-                    syncAdminRequestLiveRefresh(1500);
-                }
-            }, nextDelay);
         }
 
         function queueForegroundRefresh(delay = 220) {
