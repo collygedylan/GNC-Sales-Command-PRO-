@@ -1,8 +1,9 @@
 /* GREENLEAF PROFESSIONAL SERVICE WORKER
-  Optimized for: Instant Load, Offline Stability, and Push Notifications
+  Optimized for: Instant Load, Offline Stability, Push Notifications, and AGGRESSIVE UPDATES
 */
 
-const CACHE_NAME = 'greenleaf-v3.5'; // Increment this whenever you push big UI changes
+// BUMP THIS VERSION slightly (e.g., v3.6) to trigger the first massive update for all devices
+const CACHE_NAME = 'greenleaf-v3.6'; 
 
 // Assets to store in the phone's local memory
 const ASSETS_TO_CACHE = [
@@ -13,7 +14,7 @@ const ASSETS_TO_CACHE = [
     'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'
 ];
 
-// 1. INSTALL: Save the app structure to the device
+// 1. INSTALL: Save the app structure and forcefully skip the waiting phase
 self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME).then((cache) => {
@@ -21,10 +22,11 @@ self.addEventListener('install', (event) => {
             return cache.addAll(ASSETS_TO_CACHE);
         })
     );
+    // Force the new code to install immediately
     self.skipWaiting();
 });
 
-// 2. ACTIVATE: Clean up old versions so the app stays fast
+// 2. ACTIVATE: Clean up old versions and immediately claim control of the screen
 self.addEventListener('activate', (event) => {
     event.waitUntil(
         caches.keys().then((keys) => {
@@ -36,34 +38,32 @@ self.addEventListener('activate', (event) => {
                     }
                 })
             );
+        }).then(() => {
+            // Take immediate control of all open windows/tabs to trigger the reload
+            return self.clients.claim();
         })
     );
-    return self.clients.claim();
 });
 
-// 3. FETCH: The Speed Engine. 
-// Serves files from cache instantly while checking for updates in the background.
+// 3. FETCH: The Aggressive Speed Engine (Network-First Strategy)
+// Always checks GitHub for the newest code first. Falls back to cache ONLY if offline.
 self.addEventListener('fetch', (event) => {
-    // Only intercept standard GET requests (don't cache DB updates)
+    // Only intercept standard GET requests
     if (event.request.method !== 'GET' || !event.request.url.startsWith('http')) return;
 
     event.respondWith(
-        caches.open(CACHE_NAME).then((cache) => {
-            return cache.match(event.request).then((cachedResponse) => {
-                const fetchedResponse = fetch(event.request).then((networkResponse) => {
-                    // Update the cache with the newest version for next time
-                    if (networkResponse.status === 200) {
-                        cache.put(event.request, networkResponse.clone());
-                    }
-                    return networkResponse;
-                }).catch(() => {
-                    // If network fails, we already returned cachedResponse
+        fetch(event.request).then((networkResponse) => {
+            // If network is successful, update the cache with the newest version
+            if (networkResponse.status === 200) {
+                const responseClone = networkResponse.clone();
+                caches.open(CACHE_NAME).then((cache) => {
+                    cache.put(event.request, responseClone);
                 });
-
-                // Return the cached version immediately (Amazon Speed), 
-                // or wait for network if not in cache.
-                return cachedResponse || fetchedResponse;
-            });
+            }
+            return networkResponse;
+        }).catch(() => {
+            // If network fails (offline in the field), pull the backup from the cache
+            return caches.match(event.request);
         })
     );
 });
