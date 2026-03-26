@@ -10595,5 +10595,28 @@ function toggleDriveSeason(s) {
             }
         })();
     </script>
+<script>
+        if ('serviceWorker' in navigator) {
+            // Register the service worker
+            navigator.serviceWorker.register('/sw.js').then(reg => {
+                console.log('Service Worker Registered');
+                
+                // Optional: Tell the app to silently check GitHub for updates every 30 minutes 
+                // in case the reps leave the app open on their screen all day.
+                setInterval(() => {
+                    reg.update();
+                }, 1000 * 60 * 30); 
+            }).catch(err => console.error('Service Worker Error:', err));
+
+            // THE TRIGGER: As soon as the aggressive Service Worker takes over, force a hard reload.
+            let refreshing = false;
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (!refreshing) {
+                    refreshing = true;
+                    window.location.reload(true); // The 'true' forces it to ignore local cache
+                }
+            });
+        }
+    </script>
 </body>
 </html>
