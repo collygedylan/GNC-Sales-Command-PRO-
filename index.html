@@ -1758,22 +1758,6 @@
                 if (typeof renderRequest === 'function' && !document.getElementById('view-request').classList.contains('hidden')) {
                     renderRequest();
                 }
-
-                // ====================================================================
-                // NEW: Make the request "come across the screen" as a toast popup
-                // ====================================================================
-                if (eventType === 'INSERT' && nextRow) {
-                    const reqRep = nextRow.REQUESTED_BY || 'A Rep';
-                    const reqCust = nextRow.REQ_CUSTOMER || 'Customer';
-                    
-                    // Don't show the popup to the person who just submitted it, 
-                    // only show it to the other users who have their screens open.
-                    if (reqRep !== currentUser && reqRep !== currentUserDisplay) {
-                        showToast("New Request", `${reqRep} just submitted a request for ${reqCust}.`, false);
-                    }
-                }
-                // ====================================================================
-
             } else if (tableName === 'v2_reserves') {
                 processAndLoadData({ reservesData: reservesInventory });
                 markViewDirty('reserves');
