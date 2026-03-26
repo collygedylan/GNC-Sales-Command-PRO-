@@ -1,4 +1,4 @@
-﻿<html lang="en">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
@@ -28,7 +28,7 @@
     <style>
         #main-scroll-area{min-height:0;width:100%;max-width:100%;min-width:0;overflow-x:hidden;overflow-y:auto;overscroll-behavior-x:none;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;scroll-padding-top:calc(5.5rem + env(safe-area-inset-top));scroll-padding-bottom:calc(7rem + env(safe-area-inset-bottom));padding-bottom:calc(10rem + env(safe-area-inset-bottom));background:#f9fafb}
         #global-action-bar{padding-bottom:calc(.75rem + env(safe-area-inset-bottom))}#cart-fab{position:fixed;right:16px;bottom:84px;z-index:46;display:flex;align-items:center;justify-content:center;width:58px;height:58px;border-radius:999px;background:#ecfdf5;color:#007a4d;border:1px solid #a7f3d0;box-shadow:0 16px 30px rgba(7,94,63,.24);transition:transform .16s ease,background .16s ease,color .16s ease,border-color .16s ease,opacity .16s ease}#cart-fab:active{transform:scale(.96)}#cart-fab.active{background:#007a4d;color:#fff;border-color:#007a4d}#cart-fab i{font-size:24px;line-height:1}#cart-fab-count{position:absolute;top:-4px;right:-4px;min-width:22px;height:22px;padding:0 6px;border-radius:999px;background:#ef4444;color:#fff;font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center;border:2px solid #fff}#cart-helper-text{margin-top:.6rem;font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#6b7280}
-        body.app-standalone #app-wrapper{height:var(--app-height);min-height:var(--app-height)}body.app-standalone #main-scroll-area{padding-bottom:calc(10rem + env(safe-area-inset-bottom))}body.app-standalone.keyboard-open #bottom-nav,body.app-standalone.keyboard-open #global-action-bar,body.app-standalone.keyboard-open #cart-fab{opacity:0;pointer-events:none;transform:translateY(140%);transition:transform .18s ease,opacity .18s ease}body.app-standalone.keyboard-open #main-scroll-area{padding-bottom:calc(1.5rem + var(--keyboard-offset));scroll-padding-bottom:calc(1.5rem + var(--keyboard-offset))}#bottom-nav{padding:10px 10px calc(.75rem + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:.5rem;background:rgba(255,255,255,.98);backdrop-filter:saturate(150%) blur(12px)}
+        body.app-standalone #app-wrapper{height:var(--app-height);min-height:var(--app-height)}body.app-standalone #main-scroll-area{padding-bottom:calc(10rem + env(safe-area-inset-bottom))}body.app-standalone.keyboard-open #bottom-nav,body.app-standalone.keyboard-open #global-action-bar,body.app-standalone.keyboard-open #cart-fab{opacity:0;pointer-events:none;transform:translateY(140%);transition:transform .18s ease,opacity .18s ease}body.app-standalone.keyboard-open #main-scroll-area{padding-bottom:calc(1.5rem + var(--keyboard-offset));scroll-padding-bottom:calc(1.5rem + var(--keyboard-offset))}#bottom-nav{padding:10px 10px calc(.75rem + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:.5rem;background:rgba(255,255,255,.98);backdrop-filter:saturate(150%) blur(12px)}
         .footer-nav-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.18rem;min-height:52px;border-radius:16px;border:1px solid transparent;background:transparent;color:#6b7280;font-size:10px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;transition:background .16s ease,color .16s ease,border-color .16s ease,transform .16s ease;position:relative}
         .footer-nav-btn i{font-size:22px;line-height:1}
         .footer-nav-btn:active{transform:scale(.97)}
@@ -752,6 +752,7 @@
                 </div>
                 <div id="cart-helper-text" class="hidden">Bloom Picker orders are for AV open stock rows. Assign, Request, Flyer, and End Cap work on inventory rows.</div>
             </div>
+            <button type="button" id="cart-fab" class="hidden" onclick="toggleCartPanel()" aria-label="Bloom Picker"><i class="ph-bold ph-handbag"></i><span id="cart-fab-count" class="hidden">0</span></button>
             
             <nav id="bottom-nav" class="fixed bottom-0 w-full border-t border-green-100 shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.22)] z-50">
                 <button type="button" id="footer-menu-btn" class="footer-nav-btn" onclick="toggleMenu()" aria-label="Menu"><i class="ph-bold ph-list"></i><span>Menu</span></button>
@@ -759,7 +760,6 @@
                 <button type="button" data-footer-view="drive" class="footer-nav-btn" onclick="switchView('drive')" aria-label="Drive Mode"><i class="ph-bold ph-car"></i><span>Drive</span></button>
                 <button type="button" data-footer-view="tasks" class="footer-nav-btn" onclick="switchView('tasks')" aria-label="Tasks"><i class="ph-bold ph-clipboard-text"></i><span>Tasks</span></button>
                 <button type="button" data-footer-view="docks" class="footer-nav-btn" onclick="switchView('docks')" aria-label="Docks"><i class="ph-bold ph-truck"></i><span>Docks</span></button>
-                <button type="button" id="footer-cart-btn" class="footer-nav-btn" onclick="toggleCartPanel(); return false;" aria-label="Bloom Picker"><i class="ph-bold ph-handbag"></i><span>Bloom</span><span id="footer-cart-badge" class="footer-nav-badge hidden">0</span></button>
                 <button type="button" id="footer-request-btn" data-footer-view="request" class="footer-nav-btn hidden" onclick="switchView('request')" aria-label="Requests"><i class="ph-bold ph-chat-circle-text"></i><span>Reqs</span><span id="footer-request-badge" class="footer-nav-badge hidden">0</span></button>
             </nav>
         </div>
@@ -1743,20 +1743,53 @@
             }
 
             if (!changed) return false;
-
+            
             if (tableName === 'v2_master_inventory') {
                 processAndLoadData({ data: fullInventory, avOpenData: avOpenInventory });
+                markViewDirty('drive'); markViewDirty('av');
+                queueViewRender('drive', false, true);
+                scheduleAVRender(24);
             } else if (tableName === 'v2_active_request') {
                 processAndLoadData({ requestsData: requestsInventory });
+                
+                // FIX: Force immediate render of the Requests tab so it auto-populates for Reps/Admins
+                markViewDirty('request');
+                queueViewRender('request', false, true);
+                if (typeof renderRequest === 'function' && !document.getElementById('view-request').classList.contains('hidden')) {
+                    renderRequest();
+                }
+
+                // ====================================================================
+                // NEW: Make the request "come across the screen" as a toast popup
+                // ====================================================================
+                if (eventType === 'INSERT' && nextRow) {
+                    const reqRep = nextRow.REQUESTED_BY || 'A Rep';
+                    const reqCust = nextRow.REQ_CUSTOMER || 'Customer';
+                    
+                    // Don't show the popup to the person who just submitted it, 
+                    // only show it to the other users who have their screens open.
+                    if (reqRep !== currentUser && reqRep !== currentUserDisplay) {
+                        showToast("New Request", `${reqRep} just submitted a request for ${reqCust}.`, false);
+                    }
+                }
+                // ====================================================================
+
             } else if (tableName === 'v2_reserves') {
                 processAndLoadData({ reservesData: reservesInventory });
+                markViewDirty('reserves');
+                queueViewRender('reserves', false, true);
             } else if (tableName === 'v2_soc_master') {
                 processAndLoadData({ socData: socInventory });
+                markViewDirty('docks');
+                queueViewRender('docks', false, true);
             } else if (tableName === 'v2_sales_office') {
                 processAndLoadData({ salesOfficeData: salesOfficeInventory });
+                markViewDirty('sales-office');
+                queueViewRender('sales-office', false, true);
             } else if (tableName === 'v2_av_notes') {
                 processAndLoadData({ avNotesData: avNotesDb });
             }
+            
             return true;
         }
 
@@ -1838,7 +1871,6 @@
 
         function performLogout() { 
             cleanupRealtime();
-            clearAdminRequestLiveRefresh();
             localStorage.clear(); 
             sessionStorage.clear(); 
             try { indexedDB.deleteDatabase(DB_NAME); } catch(e){} 
@@ -2515,19 +2547,15 @@
                 flushPendingRequestArchives().catch(() => {});
                 schedulePendingRequestArchiveFlush(2800);
                 queueForegroundRefresh(80);
-                syncAdminRequestLiveRefresh(180);
             }
         });
 
         window.addEventListener('offline', () => {
-            clearAdminRequestLiveRefresh();
             updateSyncDiagnostics('offline');
         });
 
         document.addEventListener('visibilitychange', () => {
             if (!document.hidden && currentUser) queueForegroundRefresh(isIOSDevice() ? 60 : 120);
-            if (!document.hidden) syncAdminRequestLiveRefresh(180);
-            else clearAdminRequestLiveRefresh();
             if (!document.hidden) updateSyncDiagnostics();
         });
 
@@ -4647,21 +4675,11 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function primeLoginDataLoad() {
-            const access = getRoleAccessState();
-            const preloadQueue = [
+            [
                 { key: 'master', mode: 'initial', delay: 30 },
                 { key: 'avOpen', mode: 'initial', delay: 220 },
                 { key: 'requests', mode: 'initial', delay: 2200 }
-            ];
-            if (access.isRep) {
-                preloadQueue.push(
-                    { key: 'avOpen', mode: 'full', delay: 650 },
-                    { key: 'requests', mode: 'full', delay: 1300 },
-                    { key: 'soc', mode: 'initial', delay: 950 },
-                    { key: 'soc', mode: 'full', delay: 3600 }
-                );
-            }
-            preloadQueue.forEach((item) => {
+            ].forEach((item) => {
                 queueDatasetLoad(item.key, item.mode, item.delay);
             });
             return true;
@@ -4711,16 +4729,9 @@ function toggleDriveQuickRequestItem(domId) {
                 showToast("Ready", "Fast mode is on. Data is warming in the background.", false);
             }
 
-            const access = getRoleAccessState();
-            queueDatasetLoad('master', 'full', access.isRep ? 6500 : 9000);
-            if (access.isRep) {
-                queueDatasetLoad('avOpen', 'full', 900);
-                queueDatasetLoad('requests', 'full', 1300);
-                queueDatasetLoad('soc', 'full', 3600);
-            } else {
-                queueDatasetLoad('requests', 'full', 17000);
-            }
-            queueDatasetLoad('avNotes', 'full', access.isRep ? 18000 : 15000);
+            queueDatasetLoad('master', 'full', 9000);
+            queueDatasetLoad('requests', 'full', 17000);
+            queueDatasetLoad('avNotes', 'full', 15000);
             loginPrefetchPromise = null;
             loginPrefetchMode = '';
         }
@@ -5701,8 +5712,6 @@ function toggleDriveQuickRequestItem(domId) {
             const menuBtn = document.getElementById('footer-menu-btn');
             const drawer = document.getElementById('side-drawer');
             if (menuBtn && drawer) menuBtn.classList.toggle('menu-open', drawer.classList.contains('open'));
-            const cartBtn = document.getElementById('footer-cart-btn');
-            if (cartBtn) cartBtn.classList.toggle('active', cartPanelOpen && selectedItems.size > 0);
         }
 
         function switchView(viewId) { 
@@ -5719,7 +5728,6 @@ function toggleDriveQuickRequestItem(domId) {
             updateGlobalBackButton();
             syncGlobalHeaderChrome();
             updateFooterNavState();
-            syncAdminRequestLiveRefresh(nextViewId === 'request' ? 180 : 0);
         }
         function goBackUniversal() {
             const currentView = getCurrentVisibleViewId();
@@ -6511,8 +6519,9 @@ activeDriveTab = tab;
             return false;
         }
         function shouldUseChunkedAVOpenRender(rows = []) {
-            const { isRep } = getRoleAccessState();
-            return isRep && activeAVTab === 'open' && Array.isArray(rows) && rows.length > 72;
+            // FIX: Disabling chunked rendering makes the AV Open Stock tab behave for Reps 
+            // exactly like it does for Admins, stopping the constant reloads on movement.
+            return false;
         }
 
         function renderAVOpenCardsChunked(container, crumb, rows, sourceView, crumbText) {
@@ -7110,6 +7119,10 @@ activeDriveTab = tab;
             if(!selectedItems.size)cartPanelOpen=false;
             updateGlobalActionBar(); 
             refreshCartButtons(); 
+            const fab=document.getElementById('cart-fab');
+            if(fab && hasItemNow){
+                fab.classList.remove('hidden');
+            }
             if(!hadItem && hasItemNow){
                 showToast('Added To Bloom Picker', `${selectedItems.size} row${selectedItems.size === 1 ? '' : 's'} in Bloom Picker.`);
             } else if(hadItem && !hasItemNow){
@@ -7863,28 +7876,11 @@ activeDriveTab = tab;
         let pullRefreshState = { active: false, armed: false, refreshing: false, startX: 0, startY: 0, distance: 0 };
         let interactiveChromeInitialized = false;
         let foregroundRefreshTimer = null;
-        let adminRequestLiveRefreshTimer = null;
-        let adminRequestLiveRefreshInFlight = false;
 
         function getFallbackSyncInterval() {
             return (isIOSDevice() || isStandaloneApp()) ? 12000 : 30000;
         }
 
-        function clearAdminRequestLiveRefresh() {
-            if (adminRequestLiveRefreshTimer) {
-                clearTimeout(adminRequestLiveRefreshTimer);
-                adminRequestLiveRefreshTimer = null;
-            }
-            adminRequestLiveRefreshInFlight = false;
-        }
-
-        function shouldUseAdminRequestLiveRefresh() {
-            return false;
-        }
-
-        function syncAdminRequestLiveRefresh() {
-            clearAdminRequestLiveRefresh();
-        }
         function queueForegroundRefresh(delay = 220) {
             if (!currentUser) return;
             if (foregroundRefreshTimer) clearTimeout(foregroundRefreshTimer);
@@ -7901,10 +7897,7 @@ activeDriveTab = tab;
                     else updateSyncDiagnostics('realtime');
                     return;
                 }
-                const access = getRoleAccessState();
-                const throttleMs = access.isRep
-                    ? ((isIOSDevice() || isStandaloneApp()) ? 45000 : 30000)
-                    : ((isIOSDevice() || isStandaloneApp()) ? 14000 : 18000);
+                const throttleMs = (isIOSDevice() || isStandaloneApp()) ? 14000 : 18000;
                 if (backgroundRefreshInFlight || (lastBackgroundRefreshAt && (Date.now() - lastBackgroundRefreshAt) < throttleMs)) {
                     updateSyncDiagnostics('idle');
                     if (liveSyncMode !== 'realtime') initializeRealtime();
@@ -8222,8 +8215,8 @@ activeDriveTab = tab;
 
         function updateGlobalActionBar() { 
             const bar=document.getElementById('global-action-bar'); 
-            const cartBtn=document.getElementById('footer-cart-btn');
-            const cartBadge=document.getElementById('footer-cart-badge');
+            const fab=document.getElementById('cart-fab');
+            const fabCount=document.getElementById('cart-fab-count');
             const countLabel=document.getElementById('sel-count');
             const helper=document.getElementById('cart-helper-text');
             const btnCopy=document.getElementById('batch-btn-copy');
@@ -8238,14 +8231,13 @@ activeDriveTab = tab;
             const items=getCartSelectedItems();
             const actionVisibility=getBloomPickerActionVisibility(items);
             if(countLabel)countLabel.innerText=selectedItems.size; 
-            if(cartBtn){
-                cartBtn.classList.toggle('hidden', !currentUser);
-                cartBtn.classList.toggle('active', cartPanelOpen&&hasItems);
-                cartBtn.classList.toggle('opacity-60', !hasItems);
+            if(fab){
+                fab.classList.toggle('hidden', !currentUser);
+                fab.classList.toggle('active', cartPanelOpen&&hasItems);
             }
-            if(cartBadge){
-                cartBadge.innerText=selectedItems.size;
-                cartBadge.classList.toggle('hidden', !hasItems);
+            if(fabCount){
+                fabCount.innerText=selectedItems.size;
+                fabCount.classList.toggle('hidden', !hasItems);
             }
             if(btnCopy)btnCopy.classList.toggle('hidden', !hasItems || !actionVisibility.showCopy);
             if(btnEmail)btnEmail.classList.toggle('hidden', !hasItems || !actionVisibility.showEmail);
@@ -10618,6 +10610,29 @@ function toggleDriveSeason(s) {
                 console.error('App bootstrap failed', error);
             }
         })();
+    </script>
+<script>
+        if ('serviceWorker' in navigator) {
+            // Register the service worker
+            navigator.serviceWorker.register('/sw.js').then(reg => {
+                console.log('Service Worker Registered');
+                
+                // Optional: Tell the app to silently check GitHub for updates every 30 minutes 
+                // in case the reps leave the app open on their screen all day.
+                setInterval(() => {
+                    reg.update();
+                }, 1000 * 60 * 30); 
+            }).catch(err => console.error('Service Worker Error:', err));
+
+            // THE TRIGGER: As soon as the aggressive Service Worker takes over, force a hard reload.
+            let refreshing = false;
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (!refreshing) {
+                    refreshing = true;
+                    window.location.reload(true); // The 'true' forces it to ignore local cache
+                }
+            });
+        }
     </script>
 </body>
 </html>
