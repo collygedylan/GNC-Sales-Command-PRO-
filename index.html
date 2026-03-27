@@ -7143,11 +7143,17 @@ activeDriveTab = tab;
         function startPress(e,domId) { 
             isLongPress=false; 
             cancelPress();
-            return false;
+            const point = e && e.touches && e.touches[0] ? e.touches[0] : e;
+            touchStartX = point && Number.isFinite(point.clientX) ? point.clientX : 0;
+            touchStartY = point && Number.isFinite(point.clientY) ? point.clientY : 0;
         }
 
         function checkMove(e) { 
-            return false;
+            const point = e && e.touches && e.touches[0] ? e.touches[0] : e;
+            if (!point) return;
+            const moveX = Math.abs((Number.isFinite(point.clientX) ? point.clientX : 0) - touchStartX);
+            const moveY = Math.abs((Number.isFinite(point.clientY) ? point.clientY : 0) - touchStartY);
+            if (moveX > 8 || moveY > 8) cancelPress();
         }
 
         function cancelPress() { if(pressTimer){clearTimeout(pressTimer); pressTimer=null;} }
