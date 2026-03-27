@@ -1743,37 +1743,20 @@
             }
 
             if (!changed) return false;
-            
+
             if (tableName === 'v2_master_inventory') {
                 processAndLoadData({ data: fullInventory, avOpenData: avOpenInventory });
-                markViewDirty('drive'); markViewDirty('av');
-                queueViewRender('drive', false, true);
-                scheduleAVRender(24);
             } else if (tableName === 'v2_active_request') {
                 processAndLoadData({ requestsData: requestsInventory });
-                
-                // FIX: Force immediate render of the Requests tab so it auto-populates for Reps/Admins
-                markViewDirty('request');
-                queueViewRender('request', false, true);
-                if (typeof renderRequest === 'function' && !document.getElementById('view-request').classList.contains('hidden')) {
-                    renderRequest();
-                }
             } else if (tableName === 'v2_reserves') {
                 processAndLoadData({ reservesData: reservesInventory });
-                markViewDirty('reserves');
-                queueViewRender('reserves', false, true);
             } else if (tableName === 'v2_soc_master') {
                 processAndLoadData({ socData: socInventory });
-                markViewDirty('docks');
-                queueViewRender('docks', false, true);
             } else if (tableName === 'v2_sales_office') {
                 processAndLoadData({ salesOfficeData: salesOfficeInventory });
-                markViewDirty('sales-office');
-                queueViewRender('sales-office', false, true);
             } else if (tableName === 'v2_av_notes') {
                 processAndLoadData({ avNotesData: avNotesDb });
             }
-            
             return true;
         }
 
@@ -1855,6 +1838,7 @@
 
         function performLogout() { 
             cleanupRealtime();
+            clearAdminRequestLiveRefresh();
             localStorage.clear(); 
             sessionStorage.clear(); 
             try { indexedDB.deleteDatabase(DB_NAME); } catch(e){} 
@@ -2531,15 +2515,19 @@
                 flushPendingRequestArchives().catch(() => {});
                 schedulePendingRequestArchiveFlush(2800);
                 queueForegroundRefresh(80);
+                syncAdminRequestLiveRefresh(180);
             }
         });
 
         window.addEventListener('offline', () => {
+            clearAdminRequestLiveRefresh();
             updateSyncDiagnostics('offline');
         });
 
         document.addEventListener('visibilitychange', () => {
             if (!document.hidden && currentUser) queueForegroundRefresh(isIOSDevice() ? 60 : 120);
+            if (!document.hidden) syncAdminRequestLiveRefresh(180);
+            else clearAdminRequestLiveRefresh();
             if (!document.hidden) updateSyncDiagnostics();
         });
 
@@ -5712,6 +5700,7 @@ function toggleDriveQuickRequestItem(domId) {
             updateGlobalBackButton();
             syncGlobalHeaderChrome();
             updateFooterNavState();
+            syncAdminRequestLiveRefresh(nextViewId === 'request' ? 180 : 0);
         }
         function goBackUniversal() {
             const currentView = getCurrentVisibleViewId();
@@ -6503,9 +6492,8 @@ activeDriveTab = tab;
             return false;
         }
         function shouldUseChunkedAVOpenRender(rows = []) {
-            // FIX: Disabling chunked rendering makes the AV Open Stock tab behave for Reps 
-            // exactly like it does for Admins, stopping the constant reloads on movement.
-            return false;
+            const { isRep } = getRoleAccessState();
+            return isRep && activeAVTab === 'open' && Array.isArray(rows) && rows.length > 72;
         }
 
         function renderAVOpenCardsChunked(container, crumb, rows, sourceView, crumbText) {
@@ -7860,9 +7848,48 @@ activeDriveTab = tab;
         let pullRefreshState = { active: false, armed: false, refreshing: false, startX: 0, startY: 0, distance: 0 };
         let interactiveChromeInitialized = false;
         let foregroundRefreshTimer = null;
+        let adminRequestLiveRefreshTimer = null;
+        let adminRequestLiveRefreshInFlight = false;
 
         function getFallbackSyncInterval() {
             return (isIOSDevice() || isStandaloneApp()) ? 12000 : 30000;
+        }
+
+        function clearAdminRequestLiveRefresh() {
+            if (adminRequestLiveRefreshTimer) {
+                clearTimeout(adminRequestLiveRefreshTimer);
+                adminRequestLiveRefreshTimer = null;
+            }
+        }
+
+        function shouldUseAdminRequestLiveRefresh() {
+            if (!currentUser || safeRole !== 'ADMIN') return false;
+            if (navigator.onLine === false || document.hidden) return false;
+            return getCurrentVisibleViewId() === 'request';
+        }
+
+        function syncAdminRequestLiveRefresh(delay = 1200) {
+            clearAdminRequestLiveRefresh();
+            if (!shouldUseAdminRequestLiveRefresh()) return;
+            const nextDelay = Math.max(250, Number(delay) || 0);
+            adminRequestLiveRefreshTimer = setTimeout(async () => {
+                adminRequestLiveRefreshTimer = null;
+                if (!shouldUseAdminRequestLiveRefresh()) return;
+                if (adminRequestLiveRefreshInFlight) {
+                    syncAdminRequestLiveRefresh(900);
+                    return;
+                }
+                try {
+                    adminRequestLiveRefreshInFlight = true;
+                    const requestState = getDatasetState('requests');
+                    const requestMode = requestState.fullLoaded ? 'full' : 'initial';
+                    await ensureDatasetLoaded('requests', requestMode, { force: true });
+                } catch (error) {
+                } finally {
+                    adminRequestLiveRefreshInFlight = false;
+                    syncAdminRequestLiveRefresh(1500);
+                }
+            }, nextDelay);
         }
 
         function queueForegroundRefresh(delay = 220) {
@@ -10594,29 +10621,6 @@ function toggleDriveSeason(s) {
                 console.error('App bootstrap failed', error);
             }
         })();
-    </script>
-<script>
-        if ('serviceWorker' in navigator) {
-            // Register the service worker
-            navigator.serviceWorker.register('/sw.js').then(reg => {
-                console.log('Service Worker Registered');
-                
-                // Optional: Tell the app to silently check GitHub for updates every 30 minutes 
-                // in case the reps leave the app open on their screen all day.
-                setInterval(() => {
-                    reg.update();
-                }, 1000 * 60 * 30); 
-            }).catch(err => console.error('Service Worker Error:', err));
-
-            // THE TRIGGER: As soon as the aggressive Service Worker takes over, force a hard reload.
-            let refreshing = false;
-            navigator.serviceWorker.addEventListener('controllerchange', () => {
-                if (!refreshing) {
-                    refreshing = true;
-                    window.location.reload(true); // The 'true' forces it to ignore local cache
-                }
-            });
-        }
     </script>
 </body>
 </html>
