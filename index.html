@@ -9075,34 +9075,54 @@ activeDriveTab = tab;
             if (!quickMode) clearSelection();
             markViewDirty('request');
             switchView('request');
-            supabaseFetch('v2_active_request','POST',insertPayloads).then(()=>{
-                showToast("Success","Request tickets cloned!",false);
-                sendEmailNotification('new_request', folderId, requestedBy, cust, insertPayloads.length);
-            }).catch(async err=>{
-                const confirmedIds = await confirmRequestInsertIds(optimisticIds);
-                if (confirmedIds.length === optimisticIds.length && optimisticIds.length > 0) {
+            (async () => {
+                const restoreQuickModeRows = (ids = []) => {
+                    if (!quickMode) return;
+                    ids.map(id => optimisticSourceMap[id]).filter(Boolean).forEach((domId) => driveQuickRequestItems.add(domId));
+                    renderDriveQuickRequestBar();
+                };
+                const savedIdSet = new Set();
+                let firstError = null;
+                for (const payload of insertPayloads) {
+                    const payloadId = String(payload.unique_id || '').trim();
+                    if (!payloadId) continue;
+                    let didSave = false;
+                    for (let attempt = 0; attempt < 2 && !didSave; attempt++) {
+                        try {
+                            await supabaseFetch('v2_active_request', 'POST', payload);
+                            didSave = true;
+                        } catch (err) {
+                            if (!firstError) firstError = err;
+                            const confirmedIds = await confirmRequestInsertIds([payloadId]);
+                            if (confirmedIds.includes(payloadId)) {
+                                didSave = true;
+                                break;
+                            }
+                            if (attempt === 0) await new Promise((resolve) => setTimeout(resolve, 450));
+                        }
+                    }
+                    if (didSave) savedIdSet.add(payloadId);
+                }
+                const savedCount = savedIdSet.size;
+                const missingIds = optimisticIds.filter(id => !savedIdSet.has(id));
+                if (!missingIds.length && savedCount > 0) {
                     showToast("Success","Request tickets cloned!",false);
-                    sendEmailNotification('new_request', folderId, requestedBy, cust, insertPayloads.length);
+                    sendEmailNotification('new_request', folderId, requestedBy, cust, savedCount);
                     return;
                 }
-                if (confirmedIds.length > 0) {
-                    const confirmedSet = new Set(confirmedIds);
-                    const missingIds = optimisticIds.filter(id => !confirmedSet.has(id));
+                if (savedCount > 0) {
                     rollbackOptimisticRequestIds(missingIds);
-                    if (quickMode) {
-                        missingIds.map(id => optimisticSourceMap[id]).filter(Boolean).forEach(domId => driveQuickRequestItems.add(domId));
-                        renderDriveQuickRequestBar();
-                    }
+                    restoreQuickModeRows(missingIds);
                     showToast("Partial Save","Some requests saved. Retry the missing rows.",true);
+                    sendEmailNotification('new_request', folderId, requestedBy, cust, savedCount);
                     return;
                 }
                 rollbackOptimisticRequestIds(optimisticIds);
-                if (quickMode) {
-                    restoredDriveIds.forEach(domId => driveQuickRequestItems.add(domId));
-                    renderDriveQuickRequestBar();
-                }
-                showToast("Error","Network error. Request did not save.",true);
-            })
+                restoreQuickModeRows(optimisticIds);
+                const errorText = String(firstError && firstError.message ? firstError.message : '').toLowerCase();
+                const errorMessage = errorText.includes('timed out') ? 'Request save timed out. Please retry.' : 'Request did not save. Please retry.';
+                showToast("Error", errorMessage, true);
+            })();
         }
 
         function processTabSelection(tab) {
