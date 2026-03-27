@@ -2600,6 +2600,18 @@
             updateSyncDiagnostics(liveSyncMode === 'realtime' ? 'realtime' : 'idle');
         }
 
+        function normalizeRequestStatus(status = '') {
+            const normalized = String(status || '').trim();
+            const upper = normalized.toUpperCase();
+            if (upper === 'COMPLETE') return 'Complete';
+            if (upper === 'PENDING') return 'Pending';
+            return normalized;
+        }
+
+        function isRequestComplete(item) {
+            return normalizeRequestStatus(item && item.REQ_STATUS) === 'Complete';
+        }
+
         function formatFetchedRows(items, sourceTable) {
             if (!Array.isArray(items)) return [];
             return items.map((item, idx) => {
@@ -2616,6 +2628,7 @@
                     obj.REQ_DESIRED_SPEC = firstNonEmptyValue(obj.REQ_DESIRED_SPEC, obj.DESIRED_SPEC, '');
                     obj.REQ_DESIRED_CALIPER = firstNonEmptyValue(obj.REQ_DESIRED_CALIPER, obj.DESIRED_CALIPER, '');
                     obj.REQ_EST_SHIP = firstNonEmptyValue(obj.REQ_EST_SHIP, obj.EST_SHIP, '');
+                    obj.REQ_STATUS = normalizeRequestStatus(firstNonEmptyValue(obj.REQ_STATUS, obj.STATUS, 'Pending')) || 'Pending';
                 }
                 normalizeRowPhotoFields(obj);
                 return obj;
@@ -4252,7 +4265,7 @@ function toggleDriveQuickRequestItem(domId) {
 
         function isProtectedSectionCompleted(prefix, item = activeItem) {
             if (!item) return false;
-            if (prefix === 'req-') return String(item.REQ_STATUS || '').toUpperCase() === 'COMPLETE';
+            if (prefix === 'req-') return isRequestComplete(item);
             if (prefix === 'flyer-') return String(item.FLYER_COMPLETED || item.DATE_COMPLETED || '').trim() !== '';
             return String(item.DATE_COMPLETED || '').trim() !== '';
         }
@@ -4928,6 +4941,7 @@ function toggleDriveQuickRequestItem(domId) {
                 const requestSource = hasRequests ? (res.requestsData || []) : requestsInventory;
                 requestsInventory = requestSource.map((item) => {
                     if (!item.DOM_ID) item.DOM_ID = 'req_' + item.UNIQUE_ID;
+                    item.REQ_STATUS = normalizeRequestStatus(firstNonEmptyValue(item.REQ_STATUS, item.req_status, item.STATUS, 'Pending')) || 'Pending';
                     const masterItem = findLinkedMasterRow(item);
                     if (!masterItem) {
                         normalizeRowPhotoFields(item);
@@ -7750,11 +7764,11 @@ activeDriveTab = tab;
             let items = getScopedRequestItems(requestsInventory);
 
             if (activeReqTab === 'pending') {
-                items = items.filter(i => i.REQ_STATUS !== 'Complete' && !i.REQ_ARCHIVED);
+                items = items.filter(i => !isRequestComplete(i) && !i.REQ_ARCHIVED);
             } else if (activeReqTab === 'reps') {
                 items = items.filter(i => getRequestAssignedRep(i) === selectedReqRepView && !i.REQ_ARCHIVED);
                 if (selectedReqStatus) {
-                    items = items.filter(i => selectedReqStatus === 'Pending' ? i.REQ_STATUS !== 'Complete' : i.REQ_STATUS === 'Complete');
+                    items = items.filter(i => selectedReqStatus === 'Pending' ? !isRequestComplete(i) : isRequestComplete(i));
                 }
                 if (requestViewLevel >= 3 && selectedReqFolderView) {
                     items = items.filter(i => {
@@ -7786,7 +7800,7 @@ activeDriveTab = tab;
 
             if (activeReqTab === 'pending') {
                 crumb.innerText = "All Pending Requests";
-                let pendingItems = items.filter(i => i.REQ_STATUS !== 'Complete' && !i.REQ_ARCHIVED);
+                let pendingItems = items.filter(i => !isRequestComplete(i) && !i.REQ_ARCHIVED);
                 
                 if (pendingItems.length === 0) {
                     container.innerHTML = `<div class="p-8 text-center text-gray-400">No pending requests.</div>`;
@@ -7809,8 +7823,8 @@ activeDriveTab = tab;
                 } else if (requestViewLevel === 1) {
                     crumb.innerText = `${selectedReqRepView} > Status`;
                     let repItems = items.filter(i => getRequestAssignedRep(i) === selectedReqRepView && !i.REQ_ARCHIVED);
-                    let pendingCount = repItems.filter(i => i.REQ_STATUS !== 'Complete').length;
-                    let completeCount = repItems.filter(i => i.REQ_STATUS === 'Complete').length;
+                    let pendingCount = repItems.filter(i => !isRequestComplete(i)).length;
+                    let completeCount = repItems.filter(i => isRequestComplete(i)).length;
                     
                     container.innerHTML = `
                         <div class="back-btn" onclick="return backToRequestRepList()"><i class="ph-bold ph-arrow-left"></i> Back to Reps</div>
@@ -7826,7 +7840,7 @@ activeDriveTab = tab;
                 } else if (requestViewLevel === 2) {
                     crumb.innerText = `${selectedReqRepView} > ${selectedReqStatus}`;
                     let repItems = items.filter(i => getRequestAssignedRep(i) === selectedReqRepView && !i.REQ_ARCHIVED);
-                    let statusItems = repItems.filter(i => selectedReqStatus === 'Pending' ? i.REQ_STATUS !== 'Complete' : i.REQ_STATUS === 'Complete');
+                    let statusItems = repItems.filter(i => selectedReqStatus === 'Pending' ? !isRequestComplete(i) : isRequestComplete(i));
                     
                     if (statusItems.length === 0) {
                         container.innerHTML = `<div class="back-btn" onclick="return backToRequestStatusList()"><i class="ph-bold ph-arrow-left"></i> Back to Status</div><div class="p-8 text-center text-gray-400">No ${selectedReqStatus.toLowerCase()} requests.</div>`;
@@ -7847,7 +7861,7 @@ activeDriveTab = tab;
                     crumb.innerText = selectedReqStatus === 'Complete' ? `${selectedReqRepView} > ${selectedReqFolderView}` : selectedReqFolderView;
                     let folderItems = items.filter(i => getRequestAssignedRep(i) === selectedReqRepView && !i.REQ_ARCHIVED);
                     folderItems = folderItems.filter(i => ((i.REQUEST_FOLDER || 'Unassigned')) === selectedReqFolderView);
-                    folderItems = folderItems.filter(i => selectedReqStatus === 'Pending' ? i.REQ_STATUS !== 'Complete' : i.REQ_STATUS === 'Complete');
+                    folderItems = folderItems.filter(i => selectedReqStatus === 'Pending' ? !isRequestComplete(i) : isRequestComplete(i));
                     folderItems.sort((a,b) => String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""), undefined, {numeric: true}));
                     
                     container.innerHTML = `<div class="back-btn" onclick="return backToRequestFolderList()"><i class="ph-bold ph-arrow-left"></i> Back to Folders</div>` + folderItems.map(i => generateCard(i, 'request', selectedReqStatus === 'Complete' ? 'status-green' : 'status-purple')).join('');
@@ -8344,14 +8358,15 @@ activeDriveTab = tab;
                 let priority = item.PRIORITY || '-';
                 const holdHtml = buildHoldReasonHtml();
                 const requestSalesNoteHtml = buildSalesNoteHtml();
-                const statusChip = item.REQ_STATUS === 'Complete'
+                const requestDone = isRequestComplete(item);
+                const statusChip = requestDone
                     ? `<span class="bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded border border-emerald-200">Complete</span>`
                     : `<span class="bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded border border-amber-200">Pending</span>`;
                 const reserveBadge = reserve === 'YES'
                     ? `<span class="bg-red-100 text-red-700 px-1.5 py-0.5 rounded border border-red-200">Reserve: YES</span>`
                     : `<span class="bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded border border-gray-200">Reserve: NO</span>`;
                 let actionBadge = '';
-                if (item.REQ_STATUS === 'Complete' && !item.REQ_ARCHIVED) {
+                if (requestDone && !item.REQ_ARCHIVED) {
                     if (item.REQ_REP_ACTION === 'Approved') {
                         actionBadge = `<div class="mt-3 text-[10px] font-black text-green-700 bg-green-100 text-center py-2 rounded-lg border border-green-200 uppercase tracking-widest">APPROVED</div>`;
                     } else if (item.REQ_REP_ACTION === 'Rejected') {
@@ -8541,7 +8556,7 @@ activeDriveTab = tab;
 
         function checkFolderCompletion(folderId) {
             let fItems = requestsInventory.filter(i => i.REQUEST_FOLDER === folderId);
-            let remainingToReview = fItems.filter(i => i.REQ_STATUS === 'Complete' && !i.REQ_ARCHIVED);
+            let remainingToReview = fItems.filter(i => isRequestComplete(i) && !i.REQ_ARCHIVED);
             
             if (remainingToReview.length === 0) {
                 let approvedItems = fItems.filter(i => i.REQ_REP_ACTION === 'Approved');
@@ -9181,7 +9196,7 @@ ${i.ITEMCODE||'-'} | Lot: ${i.LOTCODE||'-'}
         function getRequestFolderItems(folderName, status = selectedReqStatus, repName = selectedReqRepView) {
             let items = getScopedRequestItems(requestsInventory).filter(i => !i.REQ_ARCHIVED);
             if (repName) items = items.filter(i => getRequestAssignedRep(i) === repName);
-            items = items.filter(i => status === 'Pending' ? i.REQ_STATUS !== 'Complete' : i.REQ_STATUS === 'Complete');
+            items = items.filter(i => status === 'Pending' ? !isRequestComplete(i) : isRequestComplete(i));
             items = items.filter(i => ((i.REQUEST_FOLDER || 'Unassigned')) === folderName);
             return items.sort((a,b) => String(a.LOCATIONCODE||'').localeCompare(String(b.LOCATIONCODE||''), undefined, {numeric: true}));
         }
@@ -10074,7 +10089,7 @@ function toggleDriveSeason(s) {
             if (isCurrentView && isComplete && btnComp) btnComp.innerText = 'SAVING...';
 
             const executeSave = () => {
-                let wasAlreadyComplete = itemToSave.REQ_STATUS === 'Complete';
+                let wasAlreadyComplete = isRequestComplete(itemToSave);
                 const previousDateCompleted = itemToSave.DATE_COMPLETED || '';
                 const previousReqStatus = itemToSave.REQ_STATUS;
                 const detailWasVisible = !!(document.getElementById('view-detail') && !document.getElementById('view-detail').classList.contains('hidden'));
@@ -10409,7 +10424,7 @@ function toggleDriveSeason(s) {
 
                     if (prefix === 'req-' && isComplete && !wasAlreadyComplete) {
                         let folderItems = requestsInventory.filter(i => i.REQUEST_FOLDER === itemToSave.REQUEST_FOLDER);
-                        let allComplete = folderItems.every(i => i.REQ_STATUS === 'Complete' || i.UNIQUE_ID === itemToSave.UNIQUE_ID);
+                        let allComplete = folderItems.every(i => isRequestComplete(i) || i.UNIQUE_ID === itemToSave.UNIQUE_ID);
                         if (allComplete) sendEmailNotification('request_complete', itemToSave.REQUEST_FOLDER, itemToSave.REQUESTED_BY, itemToSave.REQ_CUSTOMER, folderItems.length);
                     }
                 };
