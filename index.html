@@ -2526,15 +2526,22 @@
                 flushPendingRequestArchives().catch(() => {});
                 schedulePendingRequestArchiveFlush(2800);
                 queueForegroundRefresh(80);
+                syncRequestViewLiveSync(120);
             }
         });
 
         window.addEventListener('offline', () => {
+            clearRequestViewLiveSync();
             updateSyncDiagnostics('offline');
         });
 
         document.addEventListener('visibilitychange', () => {
-            if (!document.hidden && currentUser) queueForegroundRefresh(isIOSDevice() ? 60 : 120);
+            if (!document.hidden && currentUser) {
+                queueForegroundRefresh(isIOSDevice() ? 60 : 120);
+                syncRequestViewLiveSync(120);
+            } else {
+                clearRequestViewLiveSync();
+            }
             if (!document.hidden) updateSyncDiagnostics();
         });
 
@@ -2612,6 +2619,21 @@
             return normalizeRequestStatus(item && item.REQ_STATUS) === 'Complete';
         }
 
+        function buildRequestLiveSyncSignature(rows = []) {
+            return (Array.isArray(rows) ? rows : []).map((row) => {
+                const uniqueId = String(firstNonEmptyValue(row.UNIQUE_ID, row.unique_id, '')).trim();
+                const status = normalizeRequestStatus(firstNonEmptyValue(row.REQ_STATUS, row.req_status, row.STATUS, row.status, 'Pending')) || 'Pending';
+                const archivedRaw = firstNonEmptyValue(row.REQ_ARCHIVED, row.req_archived, false);
+                const archived = archivedRaw === true || archivedRaw === 1 || archivedRaw === '1' || String(archivedRaw || '').trim().toLowerCase() === 'true';
+                const repAction = String(firstNonEmptyValue(row.REQ_REP_ACTION, row.req_rep_action, '')).trim();
+                const folder = String(firstNonEmptyValue(row.REQUEST_FOLDER, row.request_folder, '')).trim();
+                const customer = String(firstNonEmptyValue(row.REQ_CUSTOMER, row.req_customer, '')).trim();
+                const qty = String(firstNonEmptyValue(row.REQ_QTY, row.req_qty, '')).trim();
+                const completedAt = String(firstNonEmptyValue(row.DATE_COMPLETED, row.date_completed, '')).trim();
+                return [uniqueId, status, archived ? '1' : '0', repAction, folder, customer, qty, completedAt].join('|');
+            }).sort().join('||');
+        }
+
         function formatFetchedRows(items, sourceTable) {
             if (!Array.isArray(items)) return [];
             return items.map((item, idx) => {
@@ -2629,6 +2651,7 @@
                     obj.REQ_DESIRED_CALIPER = firstNonEmptyValue(obj.REQ_DESIRED_CALIPER, obj.DESIRED_CALIPER, '');
                     obj.REQ_EST_SHIP = firstNonEmptyValue(obj.REQ_EST_SHIP, obj.EST_SHIP, '');
                     obj.REQ_STATUS = normalizeRequestStatus(firstNonEmptyValue(obj.REQ_STATUS, obj.STATUS, 'Pending')) || 'Pending';
+                    obj.REQ_ARCHIVED = obj.REQ_ARCHIVED === true || obj.REQ_ARCHIVED === 1 || obj.REQ_ARCHIVED === '1' || String(obj.REQ_ARCHIVED || '').trim().toLowerCase() === 'true';
                 }
                 normalizeRowPhotoFields(obj);
                 return obj;
@@ -4942,6 +4965,7 @@ function toggleDriveQuickRequestItem(domId) {
                 requestsInventory = requestSource.map((item) => {
                     if (!item.DOM_ID) item.DOM_ID = 'req_' + item.UNIQUE_ID;
                     item.REQ_STATUS = normalizeRequestStatus(firstNonEmptyValue(item.REQ_STATUS, item.req_status, item.STATUS, 'Pending')) || 'Pending';
+                    item.REQ_ARCHIVED = item.REQ_ARCHIVED === true || item.REQ_ARCHIVED === 1 || item.REQ_ARCHIVED === '1' || String(item.REQ_ARCHIVED || '').trim().toLowerCase() === 'true';
                     const masterItem = findLinkedMasterRow(item);
                     if (!masterItem) {
                         normalizeRowPhotoFields(item);
@@ -4972,6 +4996,7 @@ function toggleDriveQuickRequestItem(domId) {
                 });
                 applyPendingRequestArchives();
                 updateFooterRequestBadge();
+                requestViewLiveSyncSignature = buildRequestLiveSyncSignature(requestsInventory);
             }
 
             if (hasSalesOffice) {
@@ -5729,6 +5754,7 @@ function toggleDriveQuickRequestItem(domId) {
             updateGlobalBackButton();
             syncGlobalHeaderChrome();
             updateFooterNavState();
+            syncRequestViewLiveSync(nextViewId === 'request' ? 120 : 0);
         }
         function goBackUniversal() {
             const currentView = getCurrentVisibleViewId();
@@ -7875,6 +7901,64 @@ activeDriveTab = tab;
         let interactiveChromeInitialized = false;
         let foregroundRefreshTimer = null;
 
+        let requestViewLiveSyncTimer = null;
+        let requestViewLiveSyncInFlight = false;
+        let requestViewLiveSyncSignature = '';
+        let requestViewLiveSyncPausedUntil = 0;
+
+        function pauseRequestViewLiveSync(delayMs = 4500) {
+            requestViewLiveSyncPausedUntil = Math.max(requestViewLiveSyncPausedUntil, Date.now() + Math.max(0, Number(delayMs) || 0));
+        }
+
+        function clearRequestViewLiveSync() {
+            if (requestViewLiveSyncTimer) {
+                clearTimeout(requestViewLiveSyncTimer);
+                requestViewLiveSyncTimer = null;
+            }
+        }
+
+        function shouldRunRequestViewLiveSync() {
+            return !!(currentUser && navigator.onLine !== false && !document.hidden && isViewVisible('request'));
+        }
+
+        async function runRequestViewLiveSync() {
+            if (requestViewLiveSyncInFlight) return;
+            if (!shouldRunRequestViewLiveSync()) {
+                clearRequestViewLiveSync();
+                return;
+            }
+            const pauseDelay = requestViewLiveSyncPausedUntil - Date.now();
+            if (pauseDelay > 0) {
+                syncRequestViewLiveSync(pauseDelay + 120);
+                return;
+            }
+            requestViewLiveSyncInFlight = true;
+            try {
+                const rows = await supabaseFetch('v2_active_request', 'GET', null, 'select=*');
+                const nextSignature = buildRequestLiveSyncSignature(rows);
+                if (nextSignature === requestViewLiveSyncSignature) return;
+                const formattedRows = formatFetchedRows(rows, 'v2_active_request');
+                processAndLoadData({ requestsData: formattedRows });
+                requestViewLiveSyncSignature = buildRequestLiveSyncSignature(formattedRows);
+                markViewDirty('request');
+                if (isViewVisible('request')) queueViewRender('request', false, true);
+            } catch (error) {
+            } finally {
+                requestViewLiveSyncInFlight = false;
+                if (shouldRunRequestViewLiveSync()) syncRequestViewLiveSync(1200);
+            }
+        }
+
+        function syncRequestViewLiveSync(delay = 0) {
+            clearRequestViewLiveSync();
+            if (!shouldRunRequestViewLiveSync()) return;
+            const pauseDelay = Math.max(0, requestViewLiveSyncPausedUntil - Date.now());
+            const nextDelay = Math.max(Math.max(0, Number(delay) || 0), pauseDelay);
+            requestViewLiveSyncTimer = setTimeout(() => {
+                requestViewLiveSyncTimer = null;
+                runRequestViewLiveSync().catch(() => {});
+            }, nextDelay);
+        }
         function getFallbackSyncInterval() {
             return (isIOSDevice() || isStandaloneApp()) ? 12000 : 30000;
         }
@@ -9001,6 +9085,7 @@ activeDriveTab = tab;
             if (activeItem && idSet.has(String(activeItem.UNIQUE_ID || '').trim())) activeItem = null;
             updateFooterRequestBadge();
             markViewDirty('request');
+            requestViewLiveSyncSignature = buildRequestLiveSyncSignature(requestsInventory);
             if (isViewVisible('request')) queueViewRender('request', false, true);
         }
 
@@ -9077,6 +9162,7 @@ activeDriveTab = tab;
                 }
             });
             updateFooterRequestBadge();
+            requestViewLiveSyncSignature = buildRequestLiveSyncSignature(requestsInventory);
             if(!insertPayloads.length){
                 if (quickMode) {
                     restoredDriveIds.forEach(domId => driveQuickRequestItems.add(domId));
@@ -9085,6 +9171,7 @@ activeDriveTab = tab;
                 showToast("Error","No valid drive rows were available for that request.",true);
                 return;
             }
+            pauseRequestViewLiveSync(6500);
             if (quickMode) clearDriveQuickRequestItems(true);
             showToast("Processing...",`Creating Clone Tickets...`,false);
             if (!quickMode) clearSelection();
@@ -10441,6 +10528,10 @@ function toggleDriveSeason(s) {
                         .catch((err) => { restoreFromFailedSave(err && err.message ? err.message : 'Could not reach database.'); });
                 };
 
+                if (prefix === 'req-' && isComplete) {
+                    pauseRequestViewLiveSync(4200);
+                }
+
                 if (isComplete) {
                     itemToSave.DATE_COMPLETED = payload.date_completed;
                     if (isCurrentView && detailWasVisible) {
@@ -10655,3 +10746,5 @@ function toggleDriveSeason(s) {
     </script>
 </body>
 </html>
+
+
