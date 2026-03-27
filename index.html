@@ -6626,31 +6626,18 @@ activeDriveTab = tab;
                 return;
             }
 
-            if (avResLevel === 0) {
-                crumb.innerText = selectedAvResRep ? `My Reserves > ${selectedAvResRep}` : 'My Reserves';
-                const groups = getAVReserveGroups(items);
-                let html = selectedAvResRep ? `<div class="back-btn" onclick="clearSelectedAvResRep()"><i class="ph-bold ph-arrow-left"></i> Back to Sales Reps</div>` : '';
-                html += groups.map(group => `<div class="drill-item" onclick="selectAvReserveGroup('${esc(group.itemCode)}','${esc(group.commonName)}','${esc(group.contSize)}')"><div class="flex flex-1 flex-col gap-1"><span class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">${group.itemCode}</span><span class="font-bold text-lg">${group.commonName}</span><span class="text-sm text-gray-500">${group.contSize}</span></div><span class="text-sm text-gray-400 font-semibold">(${group.count})</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
-                container.innerHTML = html;
-            }
-            else if (avResLevel === 1) {
-                const driveRows = getAvReserveDriveRowsForSelection();
-                crumb.innerText = selectedAvResRep ? `${selectedAvResRep} / ${selectedAvResItemCode} / ${selectedAvResName} / ${selectedAvResSize} / Drive Mode` : `${selectedAvResItemCode} / ${selectedAvResName} / ${selectedAvResSize} / Drive Mode`;
-                let html = `<div class="back-btn" onclick="avResLevel=0; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Groups</div>`;
-                if (!driveRows.length) html += `<div class="p-8 text-center text-gray-400">No Drive Mode rows found for this item.</div>`;
-                else html += driveRows.map(i => generateAvReserveDriveCard(i)).join('');
-                container.innerHTML = html;
-            }
-            else if (avResLevel === 2) {
-                const driveRow = getSelectedAvReserveDriveRow();
-                const driveLabel = driveRow ? `${firstNonEmptyValue(driveRow.LOCATIONCODE, 'No Loc')} / ${firstNonEmptyValue(driveRow.LOTCODE, '-')}` : 'Customers';
-                const demandRows = getAvReserveDemandRowsForDriveRow(items);
-                crumb.innerText = selectedAvResRep ? `${selectedAvResRep} / ${selectedAvResItemCode} / ${selectedAvResName} / ${selectedAvResSize} / ${driveLabel}` : `${selectedAvResItemCode} / ${selectedAvResName} / ${selectedAvResSize} / ${driveLabel}`;
-                let html = `<div class="back-btn" onclick="avResLevel=1; selectedAvResDriveUid=null; renderAV()"><i class="ph-bold ph-arrow-left"></i> Back to Drive Rows</div>`;
-                if (!demandRows.length) html += `<div class="p-8 text-center text-gray-400">No customer rows found for this Drive Mode row.</div>`;
-                else html += demandRows.map(i => generateAvReserveCustomerCard(i)).join('');
-                container.innerHTML = html;
-            }
+            const reserveRows = [...items].sort((a, b) => {
+                const customerCompare = String(firstNonEmptyValue(a.CUSTOMERNAME, a.CUSTOMER, '')).localeCompare(String(firstNonEmptyValue(b.CUSTOMERNAME, b.CUSTOMER, '')));
+                if (customerCompare !== 0) return customerCompare;
+                const nameCompare = String(firstNonEmptyValue(a.COMMONNAME, '')).localeCompare(String(firstNonEmptyValue(b.COMMONNAME, '')));
+                if (nameCompare !== 0) return nameCompare;
+                return String(firstNonEmptyValue(a.CONTSIZE, '')).localeCompare(String(firstNonEmptyValue(b.CONTSIZE, '')), undefined, { numeric: true });
+            });
+            const reserveCrumbBase = selectedAvResRep ? `My Reserves > ${selectedAvResRep}` : 'My Reserves';
+            crumb.innerText = term.length > 0 ? `${reserveCrumbBase} Search (${reserveRows.length})` : `${reserveCrumbBase} (${reserveRows.length})`;
+            let html = selectedAvResRep ? `<div class="back-btn" onclick="clearSelectedAvResRep()"><i class="ph-bold ph-arrow-left"></i> Back to Sales Reps</div>` : '';
+            html += reserveRows.map(i => generateCard(i, 'reserves_drill', 'status-indigo')).join('');
+            container.innerHTML = html;
         }
         const debouncedDocksSearch=debounce(()=>{requestAnimationFrame(()=>renderDocks())},150);
         function clearDocksSearch(){ document.getElementById('docks-search').value=""; document.getElementById('docks-search-clear').classList.add('hidden'); dockViewLevel=0; selectedDockNum=null; selectedDockStop=null; renderDocks(); }
