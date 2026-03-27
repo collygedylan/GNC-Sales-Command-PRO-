@@ -1751,13 +1751,8 @@
                 scheduleAVRender(24);
             } else if (tableName === 'v2_active_request') {
                 processAndLoadData({ requestsData: requestsInventory });
-                
-                // FIX: Force immediate render of the Requests tab so it auto-populates for Reps/Admins
                 markViewDirty('request');
                 queueViewRender('request', false, true);
-                if (typeof renderRequest === 'function' && !document.getElementById('view-request').classList.contains('hidden')) {
-                    renderRequest();
-                }
             } else if (tableName === 'v2_reserves') {
                 processAndLoadData({ reservesData: reservesInventory });
                 markViewDirty('reserves');
@@ -5563,17 +5558,25 @@ function toggleDriveQuickRequestItem(domId) {
             });
         }
 
+        function getVisibleTrackedViewIds() {
+            return TRACKED_VIEW_IDS.filter((viewId) => {
+                const el = document.getElementById('view-' + viewId);
+                return el && !el.classList.contains('hidden');
+            });
+        }
+
         function refreshAffectedViews(changedKeys = []) {
             const dirtyViews = getAffectedViewsForDatasets(changedKeys);
             if (!dirtyViews.length) return;
             dirtyViews.forEach((viewId) => markViewDirty(viewId));
-            const visibleViewIds = TRACKED_VIEW_IDS.filter((viewId) => {
-                const el = document.getElementById('view-' + viewId);
-                return el && !el.classList.contains('hidden');
+            const visibleDirtyViewIds = getVisibleTrackedViewIds().filter((viewId) => dirtyViews.includes(viewId));
+            if (!visibleDirtyViewIds.length) return;
+            visibleDirtyViewIds.forEach((viewId) => {
+                scheduleUiRender(`data-refresh:${viewId}`, () => {
+                    if (!isViewVisible(viewId)) return;
+                    renderViewContent(viewId, false, true);
+                }, 24);
             });
-            if (visibleViewIds.some((viewId) => dirtyViews.includes(viewId))) {
-                scheduleUiRender('data-refresh', () => reRenderCurrentView(), 24);
-            }
         }
 
         const viewRenderState = {};
@@ -5863,10 +5866,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function reRenderCurrentView() { 
-            const visibleViewIds = TRACKED_VIEW_IDS.filter((viewId) => {
-                const el = document.getElementById('view-' + viewId);
-                return el && !el.classList.contains('hidden');
-            });
+            const visibleViewIds = getVisibleTrackedViewIds();
             visibleViewIds.forEach((viewId) => renderViewContent(viewId, false, true));
             markHiddenViewsDirty(visibleViewIds);
         }
@@ -8986,7 +8986,7 @@ activeDriveTab = tab;
             if (activeItem && idSet.has(String(activeItem.UNIQUE_ID || '').trim())) activeItem = null;
             updateFooterRequestBadge();
             markViewDirty('request');
-            reRenderCurrentView();
+            if (isViewVisible('request')) queueViewRender('request', false, true);
         }
 
         function finalizeRequestAction(existingFolderId,existingCust,itemsDataObj) {
