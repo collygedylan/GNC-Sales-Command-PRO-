@@ -5874,7 +5874,9 @@ function toggleDriveQuickRequestItem(domId) {
             const requestedViewId = String(viewId || 'home').trim();
             const nextViewId = canAccessView(requestedViewId) ? requestedViewId : 'home';
             const currentViewId = getCurrentVisibleViewId();
-            if (currentViewId === nextViewId) {
+            const currentTargetView = document.getElementById('view-' + nextViewId);
+            const targetAlreadyVisible = !!(currentTargetView && !currentTargetView.classList.contains('hidden'));
+            if (currentViewId === nextViewId && targetAlreadyVisible) {
                 syncGlobalHeaderChrome();
                 updateFooterNavState();
                 syncRequestViewLiveSync(nextViewId === 'request' ? 120 : 0);
