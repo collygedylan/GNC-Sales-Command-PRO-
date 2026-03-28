@@ -1,4 +1,4 @@
-<html lang="en">
+﻿<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
@@ -26,9 +26,10 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>:root{--bg:#007a4d;--text-color:#111827;--app-height:100vh;--visual-height:100vh;--keyboard-offset:0px}html,body{min-height:100%;width:100%;max-width:100%;overflow:hidden;overscroll-behavior:none;position:relative}html{background:white}@supports (height:100dvh){:root{--app-height:100dvh}}body{font-family:"Amazon Ember",Arial,sans-serif;background:white;color:var(--text-color);user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior:none;min-height:var(--app-height);height:var(--app-height);width:100%;overflow:hidden;position:fixed;inset:0;touch-action:pan-y pinch-zoom}button,[role="button"],.task-tab,.detail-tab,.drawer-item,.drill-item,.menu-btn{touch-action:manipulation}.nav-header{background:var(--bg);color:white;padding-top:max(10px,env(safe-area-inset-top))}#view-login,#view-change-password{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;min-height:var(--app-height)}#view-change-password{display:none;z-index:10000}#app-wrapper{min-height:var(--app-height);height:var(--app-height);width:100%;max-width:100%;overflow:hidden;position:fixed;inset:0}.login-card{background:white;padding:30px;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,.2);width:100%;max-width:360px;text-align:center}.input-field{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:8px;font-size:16px;margin-bottom:12px}#toast-notification{position:fixed;top:-100px;left:50%;transform:translateX(-50%);background:#16a34a;color:white;padding:16px 24px;border-radius:50px;box-shadow:0 10px 15px -3px rgba(0,0,0,.3);z-index:11000;transition:top .5s;display:flex;align-items:center;gap:12px;pointer-events:none}#toast-notification.show{top:20px}#side-drawer{position:fixed;top:0;left:-280px;width:280px;height:100%;background:white;z-index:2000;box-shadow:2px 0 10px rgba(0,0,0,.2);transition:left .3s;overflow-y:auto;padding-bottom:100px}#side-drawer.open{left:0}#drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1999;display:none}#drawer-overlay.open{display:block}.drawer-header{background:var(--bg);color:white;padding:20px;font-weight:bold;font-size:18px}.drawer-item{padding:16px 20px;border-bottom:1px solid #f3f4f6;cursor:pointer;display:flex;align-items:center;gap:12px;color:#374151;font-weight:500}.drill-item{border-bottom:1px solid #e5e7eb;padding:16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:white;transition:background .1s}.drill-item:active{background:#f3f4f6}.back-btn{display:none !important}.inv-card{border:1px solid #dbe4dc;border-left-width:6px;border-radius:18px;padding:14px;background:white;cursor:pointer;flex-grow:1;box-shadow:0 10px 24px rgba(15,23,42,.06);overflow:hidden}.status-green{border-left-color:#22c55e}.status-purple{border-left-color:#9333ea}.status-orange{border-left-color:#f97316}.status-blue{border-left-color:#3b82f6}.status-indigo{border-left-color:#4f46e5}.status-teal{border-left-color:#0d9488}.status-yellow{border-left-color:#eab308}.status-red{border-left-color:#ef4444}.task-tabs,.detail-tabs{display:flex;border-bottom:1px solid #e5e7eb;background:#f9fafb;margin-bottom:10px}.detail-tabs{overflow-x:auto;scrollbar-width:none}.detail-tabs::-webkit-scrollbar{display:none}.task-tab,.detail-tab{flex:1;text-align:center;padding:12px;font-size:11px;font-weight:700;color:#6b7280;cursor:pointer;border-bottom:3px solid transparent;text-transform:uppercase}.detail-tab{flex:0 0 auto;padding:10px 16px}.task-tab.active,.detail-tab.active{color:var(--bg);border-bottom-color:var(--bg);background:white}.overview-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}.overview-card{background:#f8fafc;padding:10px;border-radius:6px;border:1px solid #e2e8f0}.overview-label{font-size:9px;font-weight:800;color:#64748b;text-transform:uppercase;margin-bottom:2px}.overview-val{font-size:13px;font-weight:600;color:#0f172a;word-break:break-all}.expand-trigger{display:flex;align-items:center;justify-content:space-between;padding:12px;background:#f9fafb;border-radius:6px;cursor:pointer;font-weight:600;font-size:14px;border:1px solid #e5e7eb}.expand-content{display:none;margin-top:12px;padding:12px;background:#f9fafb;border-radius:6px;border:1px solid #e5e7eb}.expanded .expand-content{display:block}.card-checkbox-container{width:42px;min-width:42px;overflow:visible;opacity:1;display:flex;align-items:flex-start;justify-content:center;margin-right:12px;transition:transform .16s ease}.card-checkbox-container.absolute{width:auto;min-width:0;margin-right:0}.card-checkbox{display:none !important}.cart-toggle-btn{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:999px;border:1px solid #a7f3d0;background:#f0fdf4;color:#007a4d;box-shadow:0 6px 16px rgba(7,94,63,.14);transition:transform .16s ease,background .16s ease,color .16s ease,border-color .16s ease}.cart-toggle-btn i{font-size:18px;line-height:1}.cart-toggle-btn:active{transform:scale(.95)}.cart-toggle-btn.active{background:#007a4d;color:#fff;border-color:#007a4d}.item-row.cart-selected{box-shadow:0 0 0 2px rgba(0,122,77,.16) inset}.item-row{touch-action:manipulation}.spinner{border:4px solid rgba(255,255,255,.3);border-top:4px solid white;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:0 auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.scrollbar-none::-webkit-scrollbar{display:none}.scrollbar-none{-ms-overflow-style:none;scrollbar-width:none}</style>
     <style>
-        #main-scroll-area{min-height:0;width:100%;max-width:100%;min-width:0;overflow-x:hidden;overflow-y:auto;overscroll-behavior-x:none;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;scroll-padding-top:calc(5.5rem + env(safe-area-inset-top));scroll-padding-bottom:calc(7rem + env(safe-area-inset-bottom));padding-bottom:calc(10rem + env(safe-area-inset-bottom));background:#f9fafb}
+        #main-scroll-area{min-height:0;width:100%;max-width:100%;min-width:0;overflow-x:hidden;overflow-y:auto;overscroll-behavior-x:none;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;scroll-padding-top:calc(5.5rem + env(safe-area-inset-top));scroll-padding-bottom:calc(7.5rem + env(safe-area-inset-bottom));padding-bottom:calc(10.5rem + env(safe-area-inset-bottom));background:#f9fafb}
         #global-action-bar{padding-bottom:calc(.75rem + env(safe-area-inset-bottom))}#cart-helper-text{margin-top:.6rem;font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#6b7280}
-        body.app-standalone #app-wrapper{height:var(--app-height);min-height:var(--app-height)}body.app-standalone #main-scroll-area{padding-bottom:calc(10rem + env(safe-area-inset-bottom))}body.app-standalone.keyboard-open #bottom-nav,body.app-standalone.keyboard-open #global-action-bar{opacity:0;pointer-events:none;transform:translateY(140%);transition:transform .18s ease,opacity .18s ease}body.app-standalone.keyboard-open #main-scroll-area{padding-bottom:calc(1.5rem + var(--keyboard-offset));scroll-padding-bottom:calc(1.5rem + var(--keyboard-offset))}#bottom-nav{padding:10px 10px calc(.75rem + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:.5rem;background:rgba(255,255,255,.98);backdrop-filter:saturate(150%) blur(12px)}
+        body.app-standalone #app-wrapper{height:var(--app-height);min-height:var(--app-height)}body.app-standalone #main-scroll-area{padding-bottom:calc(10.5rem + env(safe-area-inset-bottom))}body.app-standalone.keyboard-open #bottom-nav{opacity:0;pointer-events:none;transform:translateX(-50%) translateY(140%);transition:transform .18s ease,opacity .18s ease}body.app-standalone.keyboard-open #global-action-bar{opacity:0;pointer-events:none;transform:translateY(140%);transition:transform .18s ease,opacity .18s ease}body.app-standalone.keyboard-open #main-scroll-area{padding-bottom:calc(1.5rem + var(--keyboard-offset));scroll-padding-bottom:calc(1.5rem + var(--keyboard-offset))}#bottom-nav{left:50%;bottom:0;transform:translateX(-50%);width:min(calc(100% - 16px),980px);max-width:calc(100% - 16px);padding:10px 12px calc(.75rem + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:.5rem;background:rgba(255,255,255,.98);backdrop-filter:saturate(150%) blur(12px);border-top-left-radius:24px;border-top-right-radius:24px;box-sizing:border-box;will-change:transform}
+        body.viewport-wide #bottom-nav{width:min(calc(100% - 24px),980px);max-width:min(calc(100% - 24px),980px)}body.viewport-compact #bottom-nav{width:calc(100% - 10px);max-width:calc(100% - 10px);border-top-left-radius:20px;border-top-right-radius:20px}
         .footer-nav-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.18rem;min-height:52px;border-radius:16px;border:1px solid transparent;background:transparent;color:#6b7280;font-size:10px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;transition:background .16s ease,color .16s ease,border-color .16s ease,transform .16s ease;position:relative}
         .footer-nav-btn i{font-size:22px;line-height:1}
         .footer-nav-btn:active{transform:scale(.97)}
@@ -146,7 +147,7 @@
         #view-detail textarea.input-field{min-height:120px;padding-top:14px;padding-bottom:14px;line-height:1.45;resize:vertical}
         #view-detail [id^='camera-btn-']{min-height:92px;border-radius:18px}
         #view-detail #req-comments{min-height:132px}
-        body.detail-field-active #bottom-nav,body.detail-field-active #global-action-bar{opacity:0;pointer-events:none;transform:translateY(120%);transition:transform .18s ease,opacity .18s ease}
+        body.detail-field-active #bottom-nav{opacity:0;pointer-events:none;transform:translateX(-50%) translateY(120%);transition:transform .18s ease,opacity .18s ease}body.detail-field-active #global-action-bar{opacity:0;pointer-events:none;transform:translateY(120%);transition:transform .18s ease,opacity .18s ease}
         body.detail-field-active #main-scroll-area{padding-bottom:calc(4rem + env(safe-area-inset-bottom))}
     </style>
 </head>
@@ -1667,7 +1668,25 @@
             return true;
         }
 
-        function applyRealtimeChange(tableName = '', payload = null) {
+        function flushRealtimeDatasetUpdates(changedTables = []) {
+            const tableSet = new Set((changedTables || []).filter(Boolean));
+            if (!tableSet.size) return false;
+            const syncPayload = {};
+            if (tableSet.has('v2_master_inventory')) {
+                syncPayload.data = fullInventory;
+                syncPayload.avOpenData = avOpenInventory;
+            }
+            if (tableSet.has('v2_active_request')) syncPayload.requestsData = requestsInventory;
+            if (tableSet.has('v2_reserves')) syncPayload.reservesData = reservesInventory;
+            if (tableSet.has('v2_soc_master')) syncPayload.socData = socInventory;
+            if (tableSet.has('v2_sales_office')) syncPayload.salesOfficeData = salesOfficeInventory;
+            if (tableSet.has('v2_av_notes')) syncPayload.avNotesData = avNotesDb;
+            if (!Object.keys(syncPayload).length) return false;
+            processAndLoadData(syncPayload);
+            return true;
+        }
+
+        function applyRealtimeChange(tableName = '', payload = null, deferVisualSync = false) {
             if (!payload || !payload.eventType) return false;
             const eventType = String(payload.eventType || '').toUpperCase();
 
@@ -1742,32 +1761,7 @@
             }
 
             if (!changed) return false;
-            
-            if (tableName === 'v2_master_inventory') {
-                processAndLoadData({ data: fullInventory, avOpenData: avOpenInventory });
-                markViewDirty('drive'); markViewDirty('av');
-                queueViewRender('drive', false, true);
-                scheduleAVRender(24);
-            } else if (tableName === 'v2_active_request') {
-                processAndLoadData({ requestsData: requestsInventory });
-                markViewDirty('request');
-                queueViewRender('request', false, true);
-            } else if (tableName === 'v2_reserves') {
-                processAndLoadData({ reservesData: reservesInventory });
-                markViewDirty('reserves');
-                queueViewRender('reserves', false, true);
-            } else if (tableName === 'v2_soc_master') {
-                processAndLoadData({ socData: socInventory });
-                markViewDirty('docks');
-                queueViewRender('docks', false, true);
-            } else if (tableName === 'v2_sales_office') {
-                processAndLoadData({ salesOfficeData: salesOfficeInventory });
-                markViewDirty('sales-office');
-                queueViewRender('sales-office', false, true);
-            } else if (tableName === 'v2_av_notes') {
-                processAndLoadData({ avNotesData: avNotesDb });
-            }
-            
+            if (!deferVisualSync) flushRealtimeDatasetUpdates([tableName]);
             return true;
         }
 
@@ -1778,15 +1772,20 @@
                 const pending = realtimeChangeQueue.splice(0);
                 realtimeChangeTimer = null;
                 let changed = false;
+                const changedTables = new Set();
                 pending.forEach((entry) => {
-                    if (applyRealtimeChange(entry.tableName, entry.payload)) changed = true;
+                    if (applyRealtimeChange(entry.tableName, entry.payload, true)) {
+                        changed = true;
+                        changedTables.add(entry.tableName);
+                    }
                 });
+                if (changedTables.size) flushRealtimeDatasetUpdates(Array.from(changedTables));
                 if (changed) {
                     persistCurrentCache();
                     touchSyncTimestamp();
                     updateSyncDiagnostics('realtime');
                 }
-            }, 180);
+            }, 90);
         }
 
         function cleanupRealtime() {
@@ -1803,8 +1802,22 @@
                 clearInterval(fallbackSyncInterval);
                 fallbackSyncInterval = null;
             }
+            if (syncCatchupTimer) {
+                clearTimeout(syncCatchupTimer);
+                syncCatchupTimer = null;
+            }
             liveSyncMode = 'idle';
             updateSyncDiagnostics();
+        }
+
+        function queueVisibleDatasetCatchup(delay = 0) {
+            if (syncCatchupTimer) clearTimeout(syncCatchupTimer);
+            if (!currentUser) return;
+            syncCatchupTimer = setTimeout(() => {
+                syncCatchupTimer = null;
+                if (!currentUser || document.hidden || navigator.onLine === false || backgroundRefreshInFlight) return;
+                refreshLoadedDatasets(false).catch(() => {});
+            }, Math.max(0, Number(delay) || 0));
         }
 
         function startFallbackSync(intervalMs = getFallbackSyncInterval()) {
@@ -1812,8 +1825,20 @@
                 clearInterval(fallbackSyncInterval);
                 fallbackSyncInterval = null;
             }
-            liveSyncMode = navigator.onLine === false ? 'offline' : 'idle';
-            updateSyncDiagnostics(navigator.onLine === false ? 'offline' : 'idle');
+            if (!currentUser) return;
+            if (navigator.onLine === false) {
+                liveSyncMode = 'offline';
+                updateSyncDiagnostics('offline');
+                return;
+            }
+            liveSyncMode = 'polling';
+            updateSyncDiagnostics('polling');
+            const pollMs = Math.max(2500, Number(intervalMs) || getFallbackSyncInterval());
+            fallbackSyncInterval = setInterval(() => {
+                if (!currentUser || document.hidden || navigator.onLine === false || backgroundRefreshInFlight) return;
+                refreshLoadedDatasets(false).catch(() => {});
+            }, pollMs);
+            queueVisibleDatasetCatchup(80);
         }
 
         function shouldUseRealtime() {
@@ -1823,8 +1848,7 @@
         function initializeRealtime() {
             cleanupRealtime();
             if (!shouldUseRealtime()) {
-                liveSyncMode = navigator.onLine === false ? 'offline' : 'idle';
-                updateSyncDiagnostics(navigator.onLine === false ? 'offline' : 'idle');
+                startFallbackSync();
                 return;
             }
             ['v2_master_inventory','v2_active_request','v2_reserves','v2_soc_master','v2_sales_office','v2_av_notes','v2_dock_team_status','v2_dock_item_status'].forEach((tableName) => {
@@ -1837,16 +1861,16 @@
                         if (status === 'SUBSCRIBED') {
                             liveSyncMode = 'realtime';
                             updateSyncDiagnostics();
+                            if (fallbackSyncInterval) { clearInterval(fallbackSyncInterval); fallbackSyncInterval = null; }
+                            queueVisibleDatasetCatchup(140);
                         }
                         if (status === 'TIMED_OUT' || status === 'CHANNEL_ERROR' || status === 'CLOSED') {
-                            liveSyncMode = navigator.onLine === false ? 'offline' : 'idle';
-                            updateSyncDiagnostics(navigator.onLine === false ? 'offline' : 'idle');
+                            startFallbackSync();
                         }
                     });
                 realtimeChannels.push(channel);
             });
         }
-
         function performLogout() { 
             cleanupRealtime();
             localStorage.clear(); 
@@ -2254,6 +2278,7 @@
                         salesOffice: { initialLoaded: Array.isArray(cachedRes.salesOfficeData) && cachedRes.salesOfficeData.length > 0, fullLoaded: Array.isArray(cachedRes.salesOfficeData) && cachedRes.salesOfficeData.length > 0 },
                         avNotes: { initialLoaded: Array.isArray(cachedRes.avNotesData) && cachedRes.avNotesData.length > 0, fullLoaded: Array.isArray(cachedRes.avNotesData) && cachedRes.avNotesData.length > 0 }
                     };
+                    cachedMeta.reserves = { initialLoaded: false, fullLoaded: false, lastLoadedAt: '' };
                     hydrateDatasetLoadState(cachedMeta);
                     return true;
                 }).catch(() => false);
@@ -2287,9 +2312,10 @@
         let datasetQueueTimers={};
         let backgroundRefreshInFlight=false;
         let lastBackgroundRefreshAt=0;
+        let syncCatchupTimer=null;
         let cacheWarmPromise=null;
         let cachePersistTimer=null;
-        let currentUser=""; let currentUserDisplay=""; let currentRole=""; let safeRole=""; let repPermutations=[]; let activeItem=null; let lastView=""; let activeDetailTab="overview"; let selectedItems=new Set(); let cartPanelOpen=false; let cartUiObserver=null; let cartUiRefreshQueued=false; let lastCartToggleAt=0; let lastCartToggleDomId=""; let isMultiSelectMode=false; let pressTimer=null; let isLongPress=false; let touchStartX=0; let touchStartY=0; let pendingAction=null; let pendingTabType=null; let hasAppliedInitialHomeView=false;
+        let currentUser=""; let currentUserDisplay=""; let currentRole=""; let safeRole=""; let repPermutations=[]; let activeItem=null; let lastView=""; let activeDetailTab="overview"; let selectedItems=new Set(); let cartPanelOpen=false; let cartUiObserver=null; let cartUiRefreshQueued=false; let lastCartToggleAt=0; let lastCartToggleDomId=""; let isMultiSelectMode=false; let pressTimer=null; let isLongPress=false; let touchStartX=0; let touchStartY=0; let pendingAction=null; let pendingTabType=null; let hasAppliedInitialHomeView=false; let reserveScopeKey='';
         let dockAssignableUsers=[]; let dockAssignableUsersPromise=null;
         let dockTeamStatusByDock=new Map(); let dockTeamStatusPromise=null; let dockTeamStatusLoaded=false; let dockTeamSchemaReady=null; let dockTeamSchemaPromise=null; let dockTeamSchemaWarningShown=false;
         let dockItemProgressByUid=new Map(); let dockItemProgressPromise=null; let dockItemProgressLoaded=false; let dockItemSchemaReady=null; let dockItemSchemaPromise=null; let dockItemSchemaWarningShown=false;
@@ -2548,7 +2574,7 @@
             master: { table: 'v2_master_inventory', sourceTable: 'v2_master_inventory', initialQuery: 'select=*', fullQuery: 'select=*' },
             avOpen: { table: 'v2_master_inventory', sourceTable: 'v2_master_inventory', initialQuery: 'select=*&s_lts=gt.0', fullQuery: 'select=*&s_lts=gt.0' },
             requests: { table: 'v2_active_request', sourceTable: 'v2_active_request', initialQuery: 'select=*', fullQuery: 'select=*' },
-            reserves: { table: 'v2_reserves', sourceTable: 'v2_reserves', initialQuery: 'select=*', fullQuery: 'select=*' },
+            reserves: { table: 'v2_reserves', sourceTable: 'v2_reserves', initialQuery: buildReserveDatasetQuery, fullQuery: buildReserveDatasetQuery, initialLimit: getReserveDatasetInitialLimit },
             soc: { table: 'v2_soc_master', sourceTable: 'v2_soc_master', initialQuery: 'select=*', fullQuery: 'select=*' },
             salesOffice: { table: 'v2_sales_office', sourceTable: 'v2_sales_office', initialQuery: 'select=*', fullQuery: 'select=*' },
             avNotes: { table: 'v2_av_notes', sourceTable: 'v2_av_notes', initialQuery: 'select=*', fullQuery: 'select=*' }
@@ -2597,6 +2623,31 @@
                 state.lastLoadedAt = saved.lastLoadedAt || '';
             });
         }
+        function resetDatasetLoadState(key, options = {}) {
+            const state = getDatasetState(key);
+            state.initialLoaded = false;
+            state.fullLoaded = false;
+            state.initialPromise = null;
+            state.fullPromise = null;
+            state.lastLoadedAt = '';
+            if (options && options.clearRows && key === 'reserves') reservesInventory = [];
+        }
+
+        function getReserveDatasetScopeKey() {
+            const access = getRoleAccessState();
+            if (access.isRep) return `rep:${normalizeRepMatchToken(currentUserDisplay || currentUser || '')}`;
+            return 'all';
+        }
+
+        function refreshReserveDatasetScope(force = false) {
+            const scopeKey = getReserveDatasetScopeKey();
+            if (!scopeKey) return false;
+            if (!force && reserveScopeKey === scopeKey) return false;
+            reserveScopeKey = scopeKey;
+            resetDatasetLoadState('reserves', { clearRows: true });
+            return true;
+        }
+
 
         function touchSyncTimestamp() {
             const stamp = new Date().toISOString();
@@ -2733,7 +2784,7 @@
             const wantsFull = mode === 'full';
             const state = getDatasetState(key);
 
-            if (options.force && !wantsFull && state.fullLoaded) {
+            if (options.force && !wantsFull && state.fullLoaded && options.upgradeToFull === true) {
                 return ensureDatasetLoaded(key, 'full', options);
             }
             if (!options.force) {
@@ -2744,13 +2795,23 @@
             if (!wantsFull && state.initialPromise) return state.initialPromise;
 
             const runLoad = async () => {
+                const modeLabel = wantsFull ? 'full' : 'initial';
+                const querySource = wantsFull ? definition.fullQuery : definition.initialQuery;
+                const resolvedQuery = typeof querySource === 'function' ? querySource(modeLabel, options) : (querySource || 'select=*');
+                const initialLimitSource = definition.initialLimit;
+                const resolvedInitialLimit = typeof initialLimitSource === 'function' ? initialLimitSource(modeLabel, options) : (initialLimitSource || INITIAL_PAGE_LIMIT);
                 const rows = wantsFull
-                    ? await fetchAllSupabaseRows(definition.table, definition.fullQuery || definition.initialQuery || 'select=*')
-                    : await fetchSupabasePage(definition.table, definition.initialQuery || 'select=*', definition.initialLimit || INITIAL_PAGE_LIMIT, 0);
+                    ? await fetchAllSupabaseRows(definition.table, resolvedQuery)
+                    : await fetchSupabasePage(definition.table, resolvedQuery, resolvedInitialLimit, 0);
                 state.initialLoaded = true;
                 state.fullLoaded = wantsFull ? true : state.fullLoaded;
                 state.lastLoadedAt = new Date().toISOString();
                 processAndLoadData(buildDatasetPayload(key, rows));
+                if (key === 'reserves') {
+                    if (isViewVisible('av') && activeAVTab === 'reserves') scheduleAVRender(wantsFull ? 18 : 8);
+                    if (isViewVisible('reserves')) queueViewRender('reserves', false, true);
+                    if (isViewVisible('reports')) queueViewRender('reports', false, true);
+                }
                 persistCurrentCache();
                 touchSyncTimestamp();
                 return true;
@@ -2791,6 +2852,21 @@
             return (Date.now() - stamp) > maxAgeMs;
         }
 
+        function getDatasetRefreshMaxAge(key, mode = 'initial') {
+            const normalizedMode = mode === 'full' ? 'full' : 'initial';
+            const fastDataset = key === 'requests' || key === 'salesOffice' || key === 'soc';
+            if (liveSyncMode === 'realtime') {
+                return normalizedMode === 'full' ? 16000 : 10000;
+            }
+            if (isIOSDevice() || isStandaloneApp()) {
+                return normalizedMode === 'full'
+                    ? (fastDataset ? 5000 : 6500)
+                    : (fastDataset ? 3000 : 4500);
+            }
+            return normalizedMode === 'full'
+                ? (fastDataset ? 6500 : 8500)
+                : (fastDataset ? 4000 : 5500);
+        }
         function addRefreshTarget(targetMap, key, mode = 'initial') {
             const nextMode = mode === 'full' ? 'full' : 'initial';
             const current = targetMap.get(key);
@@ -2808,13 +2884,14 @@
             return Array.from(targetMap.values());
         }
 
-        function getVisibleRefreshTargets(loadedKeys = []) {
+        function getVisibleRefreshTargets(loadedKeys = [], options = {}) {
             const visibleView = TRACKED_VIEW_IDS.find((viewId) => isViewVisible(viewId));
             const targetMap = new Map();
             const config = visibleView ? getViewLoadingConfig(visibleView) : null;
+            const includeBackground = !!(options && options.includeBackground);
             if (config) {
                 (config.required || []).forEach((item) => addRefreshTarget(targetMap, item.key, item.mode));
-                (config.background || []).forEach((item) => addRefreshTarget(targetMap, item.key, item.mode));
+                if (includeBackground) (config.background || []).forEach((item) => addRefreshTarget(targetMap, item.key, item.mode));
             }
             if (!targetMap.size) return getLoadedDatasetRefreshTargets(loadedKeys);
             return Array.from(targetMap.values()).filter((item) => {
@@ -2827,13 +2904,21 @@
             if (viewId === 'drive') return { required: [{ key: 'master', mode: 'initial' }], background: [{ key: 'master', mode: 'full' }], label: 'Loading Drive rows...' };
             if (viewId === 'av') {
                 if (activeAVTab === 'reserves') {
-                    return { required: [{ key: 'reserves', mode: 'initial' }], background: [{ key: 'reserves', mode: 'full' }, { key: 'master', mode: 'full' }, { key: 'avNotes', mode: 'full' }], label: 'Loading AV reserves...' };
+                    if (getRoleAccessState().isRep) {
+                        return { required: [{ key: 'reserves', mode: 'full' }], label: 'Loading all of your reserve rows...' };
+                    }
+                    return { required: [{ key: 'reserves', mode: 'initial' }], label: 'Loading AV reserves...' };
                 }
                 return { required: [{ key: 'avOpen', mode: 'initial' }], background: [{ key: 'avOpen', mode: 'full' }, { key: 'avNotes', mode: 'full' }], label: 'Loading AV open stock...' };
             }
             if (viewId === 'docks') return { required: [{ key: 'soc', mode: 'initial' }], background: [{ key: 'soc', mode: 'full' }, { key: 'master', mode: 'full' }], label: 'Loading dock rows...' };
             if (viewId === 'request') return { required: [{ key: 'requests', mode: 'initial' }], background: [{ key: 'requests', mode: 'full' }], label: 'Loading requests...' };
-            if (viewId === 'reserves') return { required: [{ key: 'reserves', mode: 'initial' }], background: [{ key: 'reserves', mode: 'full' }, { key: 'master', mode: 'full' }], label: 'Loading reserves...' };
+            if (viewId === 'reserves') {
+                if (getRoleAccessState().isRep) {
+                    return { required: [{ key: 'reserves', mode: 'full' }], background: [{ key: 'master', mode: 'full' }], label: 'Loading all of your reserve rows...' };
+                }
+                return { required: [{ key: 'reserves', mode: 'initial' }], background: [{ key: 'reserves', mode: 'full' }, { key: 'master', mode: 'full' }], label: 'Loading reserves...' };
+            }
             if (viewId === 'sales-office') return { required: [{ key: 'salesOffice', mode: 'initial' }], background: [{ key: 'salesOffice', mode: 'full' }, { key: 'master', mode: 'full' }], label: 'Loading sales office...' };
             if (viewId === 'tasks') return { required: [{ key: 'master', mode: 'full' }], background: [{ key: 'avNotes', mode: 'full' }], label: 'Loading full task inventory...' };
             if (viewId === 'low-stock') return { required: [{ key: 'master', mode: 'full' }], label: 'Loading low stock...' };
@@ -2910,7 +2995,7 @@
             }
             const targets = force
                 ? getLoadedDatasetRefreshTargets(loadedKeys)
-                : getVisibleRefreshTargets(loadedKeys).filter((item) => isDatasetStale(item.key, item.mode === 'full' ? 25000 : 15000));
+                : getVisibleRefreshTargets(loadedKeys, { includeBackground: false }).filter((item) => isDatasetStale(item.key, getDatasetRefreshMaxAge(item.key, item.mode)));
             if (!targets.length) {
                 updateSyncDiagnostics(liveSyncMode === 'realtime' ? 'realtime' : 'idle');
                 return true;
@@ -2992,13 +3077,23 @@
             if (!item) return null;
             const masterId = String(item.MASTER_ID || item.MASTER_UNIQUE_ID || item.master_id || '').trim();
             if (masterId) {
-                const linkedById = masterInventoryById.get(masterId) || fullInventory.find(i => String(i.UNIQUE_ID || '').trim() === masterId);
-                if (linkedById) return linkedById;
+                if (masterInventoryById.size) {
+                    const linkedById = masterInventoryById.get(masterId);
+                    if (linkedById) return linkedById;
+                } else {
+                    const linkedById = fullInventory.find(i => String(i.UNIQUE_ID || '').trim() === masterId);
+                    if (linkedById) return linkedById;
+                }
             }
             const exactKey = getMasterInventoryExactKey(item);
             if (exactKey) {
-                const exactRow = masterInventoryByExactKey.get(exactKey) || fullInventory.find(i => getMasterInventoryExactKey(i) === exactKey);
-                if (exactRow) return exactRow;
+                if (masterInventoryByExactKey.size) {
+                    const exactRow = masterInventoryByExactKey.get(exactKey);
+                    if (exactRow) return exactRow;
+                } else {
+                    const exactRow = fullInventory.find(i => getMasterInventoryExactKey(i) === exactKey);
+                    if (exactRow) return exactRow;
+                }
             }
             return null;
         }
@@ -3097,6 +3192,8 @@
             if (parts.length >= 2) { 
                 let first = parts[0]; 
                 let last = parts[parts.length - 1]; 
+                let firstInitial = first.charAt(0);
+                let lastInitial = last.charAt(0);
                 pushVariant(`${first} ${last}`);
                 pushVariant(`${last} ${first}`);
                 pushVariant(`${last}, ${first}`);
@@ -3104,22 +3201,49 @@
                 pushVariant(`${first}_${last}`);
                 pushVariant(`${first}${last}`);
                 pushVariant(`${last}${first}`);
+                pushVariant(`${firstInitial} ${last}`);
+                pushVariant(`${firstInitial}${last}`);
+                pushVariant(`${last} ${firstInitial}`);
+                pushVariant(`${last}, ${firstInitial}`);
+                pushVariant(`${last},${firstInitial}`);
+                pushVariant(`${last}${firstInitial}`);
+                pushVariant(`${first} ${lastInitial}`);
+                pushVariant(`${lastInitial} ${first}`);
             }
 
             repPermutations = [...variants].filter(Boolean);
             if (!repPermutations.length && rawUser) repPermutations = [rawUser];
         }
 
-        function isMyRep(repNameStr) { 
+        function doesCurrentRepMatchValue(repNameStr) {
             if(!getRoleAccessState().isRep)return true; 
             if(!repNameStr)return false; 
             let normalized = normalizeRepMatchToken(repNameStr); 
             let collapsed = normalized.replace(/\s+/g, '');
             return repPermutations.some(p => {
                 const candidate = normalizeRepMatchToken(p);
+                if (!candidate) return false;
                 const candidateCollapsed = candidate.replace(/\s+/g, '');
                 return normalized.includes(candidate) || collapsed.includes(candidateCollapsed);
             }); 
+        }
+
+        function isMyRep(repNameStr) { 
+            return doesCurrentRepMatchValue(repNameStr);
+        }
+
+        function isCurrentRepOwnerItem(item) {
+            if (!getRoleAccessState().isRep) return true;
+            if (!item) return false;
+            const repValues = [
+                item.SALESREPNAME,
+                item.SALESREP,
+                item.SALES_REP,
+                item.SALESREPID,
+                item.REQUESTED_BY,
+                item.REP_NAME
+            ];
+            return repValues.some(value => doesCurrentRepMatchValue(value));
         }
         let activeReportTab = 'ALL';
         let protectedEditState = {};
@@ -4689,11 +4813,14 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function primeLoginDataLoad() {
-            [
+            const loginLoadPlan = [
                 { key: 'master', mode: 'initial', delay: 30 },
                 { key: 'avOpen', mode: 'initial', delay: 220 },
-                { key: 'requests', mode: 'initial', delay: 2200 }
-            ].forEach((item) => {
+                { key: 'soc', mode: 'initial', delay: 420 },
+                { key: 'requests', mode: 'initial', delay: 820 }
+            ];
+            if (getRoleAccessState().isAdmin) loginLoadPlan.push({ key: 'salesOffice', mode: 'initial', delay: 1180 });
+            loginLoadPlan.forEach((item) => {
                 queueDatasetLoad(item.key, item.mode, item.delay);
             });
             return true;
@@ -4709,6 +4836,7 @@ function toggleDriveQuickRequestItem(domId) {
             initializeCartUi();
             updateGlobalActionBar();
             setRepPermutations(currentUser);
+            refreshReserveDatasetScope(true);
             ensureDockAssignableUsers().catch(() => {});
             ensureDockTeamStatusLoaded().then(() => { scheduleDocksRender(24); }).catch(() => {});
             ensureDockItemStatusLoaded().then(() => { scheduleDocksRender(24); }).catch(() => {});
@@ -4739,6 +4867,7 @@ function toggleDriveQuickRequestItem(domId) {
             const openedFromCache = fullInventory.length > 0;
             openApp(openedFromCache);
             primeLoginDataLoad();
+            if (getRoleAccessState().isRep) queueDatasetLoad('reserves', 'full', 600);
             if (!openedFromCache) {
                 showToast("Ready", "Fast mode is on. Data is warming in the background.", false);
             }
@@ -5540,7 +5669,7 @@ function toggleDriveQuickRequestItem(domId) {
             const { isAdmin, isRep, isQcSupervisor, isQc } = getRoleAccessState();
             let nextItems = Array.isArray(items) ? [...items] : [];
             if (isRep) {
-                return nextItems.filter(item => isMyRep(firstNonEmptyValue(item && item.SALESREPNAME, item && item.SALESREP, item && item.SALES_REP, item && item.SALESREPID, '')));
+                return nextItems.filter(item => isCurrentRepOwnerItem(item));
             }
             if (isQc && !isAdmin && !isQcSupervisor) {
                 return nextItems.filter(item => !isDockRowComplete(item) && isDockRowQueuedForCurrentUser(item));
@@ -5744,17 +5873,29 @@ function toggleDriveQuickRequestItem(domId) {
             closeDriveQuickFiltersModal();
             const requestedViewId = String(viewId || 'home').trim();
             const nextViewId = canAccessView(requestedViewId) ? requestedViewId : 'home';
+            const currentViewId = getCurrentVisibleViewId();
+            if (currentViewId === nextViewId) {
+                syncGlobalHeaderChrome();
+                updateFooterNavState();
+                syncRequestViewLiveSync(nextViewId === 'request' ? 120 : 0);
+                return false;
+            }
+            closeAllRequestSwipes();
+            setPullRefreshIndicator('hidden');
             ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-detail','view-docks','view-request','view-reserves','view-av', 'view-hours'].forEach(id=>{
                 const el=document.getElementById(id);
                 if(el)el.classList.add('hidden');
             }); 
             const targetView = document.getElementById('view-'+nextViewId);
             if (targetView) targetView.classList.remove('hidden');
-            queueViewRender(nextViewId);
             updateGlobalBackButton();
             syncGlobalHeaderChrome();
             updateFooterNavState();
-            syncRequestViewLiveSync(nextViewId === 'request' ? 120 : 0);
+            requestAnimationFrame(() => {
+                queueViewRender(nextViewId);
+                syncRequestViewLiveSync(nextViewId === 'request' ? 120 : 0);
+            });
+            return false;
         }
         function goBackUniversal() {
             const currentView = getCurrentVisibleViewId();
@@ -6071,6 +6212,61 @@ activeDriveTab = tab;
             return parts.map(formatPart).filter(Boolean).join(' ').trim();
         }
 
+        function getReserveRepQueryPatterns() {
+            if (!getRoleAccessState().isRep) return [];
+            const patterns = new Set();
+            const addPattern = (value = '') => {
+                const normalized = normalizeRepMatchToken(value);
+                if (!normalized) return;
+                const parts = normalized.split(/\s+/).filter(Boolean);
+                if (parts.length >= 2) {
+                    const first = parts[0];
+                    const last = parts[parts.length - 1];
+                    const addFullNamePair = (left = '', right = '') => {
+                        if (!left || !right) return;
+                        patterns.add(`*${left}*${right}*`);
+                        patterns.add(`*${left}${right}*`);
+                    };
+                    addFullNamePair(last, first);
+                    addFullNamePair(first, last);
+                    return;
+                }
+                if (parts[0] && parts[0].length >= 4) patterns.add(`*${parts[0]}*`);
+            };
+            const values = new Set([
+                currentUser,
+                currentUserDisplay,
+                getDefaultRequestRepName(),
+                ...repPermutations
+            ]);
+            values.forEach(value => addPattern(value));
+            return [...patterns].filter(Boolean);
+        }
+
+        function buildReserveDatasetQuery() {
+            if (!getRoleAccessState().isRep) return 'select=*';
+            const columns = ['salesrepname'];
+            const patterns = getReserveRepQueryPatterns();
+            if (!patterns.length) return 'select=*';
+            const conditions = [];
+            const seen = new Set();
+            patterns.forEach(pattern => {
+                const encodedPattern = encodeURIComponent(pattern);
+                columns.forEach(column => {
+                    const condition = `${column}.ilike.${encodedPattern}`;
+                    if (seen.has(condition)) return;
+                    seen.add(condition);
+                    conditions.push(condition);
+                });
+            });
+            return conditions.length ? `select=*&or=(${conditions.join(',')})` : 'select=*';
+        }
+
+        function getReserveDatasetInitialLimit() {
+            if (getRoleAccessState().isRep) return 1000;
+            if (isViewVisible('av') && activeAVTab === 'reserves') return 1000;
+            return INITIAL_PAGE_LIMIT;
+        }
         function resetHoursView() {
             let yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
             document.getElementById('hours-date').value = yesterday.toISOString().split('T')[0];
@@ -6105,6 +6301,8 @@ activeDriveTab = tab;
         }
 
         function canSelectAvReserveRep() {
+            const access = getRoleAccessState();
+            if (access.isAdmin) return false;
             const tokens = getProtectedUserTokens();
             return tokens.has('dylan_collyge') || tokens.has('jd_jones');
         }
@@ -6141,11 +6339,35 @@ activeDriveTab = tab;
             items.forEach(item => {
                 const group = getAvReserveGroupFields(item);
                 const key = `${group.itemCode}|||${group.commonName}|||${group.contSize}`;
-                const existing = groupMap.get(key) || { ...group, count: 0 };
+                const existing = groupMap.get(key) || {
+                    ...group,
+                    count: 0,
+                    customerCount: 0,
+                    repCount: 0,
+                    _customers: new Set(),
+                    _reps: new Set()
+                };
                 existing.count += 1;
+                const customer = firstNonEmptyValue(item && item.CUSTOMERNAME, item && item.CUSTOMER, 'Unknown Customer');
+                if (customer && !existing._customers.has(customer)) {
+                    existing._customers.add(customer);
+                    existing.customerCount += 1;
+                }
+                const rep = getReserveSalesRepLabel(item);
+                if (rep && !existing._reps.has(rep)) {
+                    existing._reps.add(rep);
+                    existing.repCount += 1;
+                }
                 groupMap.set(key, existing);
             });
-            return [...groupMap.values()].sort((a, b) => {
+            return [...groupMap.values()].map((group) => ({
+                itemCode: group.itemCode,
+                commonName: group.commonName,
+                contSize: group.contSize,
+                count: group.count,
+                customerCount: group.customerCount,
+                repCount: group.repCount
+            })).sort((a, b) => {
                 const nameCompare = String(a.commonName || '').localeCompare(String(b.commonName || ''));
                 if (nameCompare !== 0) return nameCompare;
                 const sizeCompare = String(a.contSize || '').localeCompare(String(b.contSize || ''), undefined, { numeric: true });
@@ -6240,6 +6462,15 @@ activeDriveTab = tab;
             return `<div class="mb-3 rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', 'av')"><div class="flex items-center gap-4"><div class="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-[#007a4d]"><i class="ph-bold ph-handbag text-[26px]"></i></div><div class="min-w-0 flex-1"><div class="font-black text-[15px] sm:text-[18px] text-indigo-800 leading-tight break-words">${heading}</div><div class="mt-1 text-[13px] sm:text-[15px] font-bold text-slate-600 break-words">${selectedAvResName || item.COMMONNAME || 'Unknown'} | ${selectedAvResSize || item.CONTSIZE || '-'}</div><div class="mt-3 flex flex-wrap gap-2 text-[10px] sm:text-[11px] font-black"><span class="rounded-xl border border-indigo-100 bg-indigo-50 px-3 py-2 text-indigo-700">Ordered: ${ordered}</span><span class="rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-emerald-700">Shipped: ${shipped}</span><span class="rounded-xl border border-slate-200 bg-slate-100 px-3 py-2 text-slate-700 inline-flex items-center gap-1"><i class="ph-bold ph-user"></i>${rep}</span></div></div></div></div>`;
         }
 
+        function generateAvReserveGroupCard(group) {
+            const itemCode = firstNonEmptyValue(group && group.itemCode, 'Unknown Item');
+            const commonName = firstNonEmptyValue(group && group.commonName, itemCode, 'Unknown');
+            const contSize = firstNonEmptyValue(group && group.contSize, '-');
+            const reserveRows = Math.max(0, Number(group && group.count) || 0);
+            const customerCount = Math.max(0, Number(group && group.customerCount) || 0);
+            const repCount = Math.max(0, Number(group && group.repCount) || 0);
+            return `<div class="mb-3 rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden" onclick="selectAvReserveGroup('${esc(itemCode)}', '${esc(commonName)}', '${esc(contSize)}')"><div class="flex items-start gap-4"><div class="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-full border border-indigo-200 bg-indigo-50 text-indigo-700"><i class="ph-bold ph-stack text-[24px]"></i></div><div class="min-w-0 flex-1"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Item Code</div><div class="mt-1 font-mono text-[14px] font-black text-slate-700 break-all">${itemCode}</div><div class="mt-2 font-black text-[16px] sm:text-[18px] text-slate-900 leading-tight break-words">${commonName}</div><div class="mt-1 text-[13px] sm:text-[15px] font-bold text-[#007a4d] break-words">${contSize}</div><div class="mt-3 flex flex-wrap gap-2 text-[10px] sm:text-[11px] font-black"><span class="rounded-xl border border-indigo-100 bg-indigo-50 px-3 py-2 text-indigo-700">${reserveRows} Row${reserveRows === 1 ? '' : 's'}</span><span class="rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-emerald-700">${customerCount} Customer${customerCount === 1 ? '' : 's'}</span><span class="rounded-xl border border-slate-200 bg-slate-100 px-3 py-2 text-slate-700">${repCount} Rep${repCount === 1 ? '' : 's'}</span></div></div><div class="pt-1 text-slate-300"><i class="ph-bold ph-caret-right text-[20px]"></i></div></div></div>`;
+        }
         function selectAvResRep(repName) {
             selectedAvResRep = repName;
             selectedAvResDriveUid = null;
@@ -6262,6 +6493,14 @@ activeDriveTab = tab;
             renderAV();
         }
 
+        function backToAvReserveGroups() {
+            selectedAvResDriveUid = null;
+            selectedAvResItemCode = null;
+            selectedAvResName = null;
+            selectedAvResSize = null;
+            avResLevel = 0;
+            renderAV();
+        }
         function selectAvReserveGroup(itemCode, commonName, contSize) {
             selectedAvResDriveUid = null;
             selectedAvResItemCode = itemCode;
@@ -6307,11 +6546,11 @@ activeDriveTab = tab;
                 });
                 if (activeAvOpenTab === 'photos') items = items.filter(avItemHasPhotos);
             } else {
-                items = [...reservesInventory];
+                items = reservesInventory;
                 if (canSelectAvReserveRep()) {
                     if (selectedAvResRep) items = items.filter(i => isSelectedAvReserveRep(i, selectedAvResRep));
                 } else if (isRep) {
-                    items = items.filter(i => isMyRep(firstNonEmptyValue(i && i.SALESREPNAME, i && i.SALESREP, i && i.SALES_REP, i && i.SALESREPID, '')));
+                    items = items.filter(i => isCurrentRepOwnerItem(i));
                 }
             }
             const allowReserveSearch = activeAVTab === 'open' || !canSelectAvReserveRep() || !!selectedAvResRep;
@@ -6361,18 +6600,16 @@ activeDriveTab = tab;
                     if (avResLevel >= 1 && selectedAvResItemCode && selectedAvResName && selectedAvResSize) {
                         title = `${title} ${selectedAvResItemCode} ${selectedAvResName} ${selectedAvResSize}`;
                         fileLabel = `${fileLabel}-${selectedAvResItemCode}-${selectedAvResName}-${selectedAvResSize}`;
+                        rows = getAvReserveDemandRowsForDriveRow(rows);
                     }
                     if (avResLevel >= 2 && selectedAvResDriveUid) {
                         const driveRow = getSelectedAvReserveDriveRow();
-                        rows = getAvReserveDemandRowsForDriveRow(rows);
                         if (driveRow) {
                             const driveLoc = firstNonEmptyValue(driveRow.LOCATIONCODE, 'No Loc');
                             const driveLot = firstNonEmptyValue(driveRow.LOTCODE, '-');
                             title = `${title} ${driveLoc} ${driveLot}`;
                             fileLabel = `${fileLabel}-${driveLoc}-${driveLot}`;
                         }
-                    } else if (avResLevel === 1) {
-                        rows = [];
                     } else {
                         rows.sort((a, b) => {
                             const nameCompare = String(firstNonEmptyValue(a.COMMONNAME, a.ITEMCODE, 'Unknown')).localeCompare(String(firstNonEmptyValue(b.COMMONNAME, b.ITEMCODE, 'Unknown')));
@@ -6585,6 +6822,46 @@ activeDriveTab = tab;
             };
             requestAnimationFrame(renderChunk);
         }
+        function renderChunkedHtmlList(container, crumb, items, buildHtml, crumbText, options = {}) {
+            if (!container || !crumb) return;
+            const list = Array.isArray(items) ? items : [];
+            const prefixHtml = String(options.prefixHtml || '');
+            const emptyHtml = String(options.emptyHtml || `<div class="p-8 text-center text-gray-400">No rows found.</div>`);
+            const noun = String(options.noun || 'row');
+            const chunkSize = Math.max(12, Number(options.chunkSize) || (list.length > 1800 ? 18 : (list.length > 900 ? 24 : (list.length > 360 ? 32 : 48))));
+            const token = `chunk-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+            let index = 0;
+            let firstChunk = true;
+            container.dataset.chunkRenderToken = token;
+            if (!list.length) {
+                crumb.innerText = crumbText;
+                container.innerHTML = prefixHtml + emptyHtml;
+                return;
+            }
+            crumb.innerText = `${crumbText} Loading...`;
+            container.innerHTML = `${prefixHtml}<div class="p-6 text-center text-gray-400">Loading ${list.length} ${noun}${list.length === 1 ? '' : 's'}...</div>`;
+            const renderChunk = () => {
+                if (container.dataset.chunkRenderToken !== token) return;
+                const hostView = container.closest('[id^="view-"]');
+                if (hostView && hostView.classList.contains('hidden')) return;
+                const end = Math.min(index + chunkSize, list.length);
+                let html = '';
+                for (; index < end; index += 1) html += buildHtml(list[index]);
+                if (firstChunk) {
+                    container.innerHTML = prefixHtml + html;
+                    firstChunk = false;
+                } else if (html) {
+                    container.insertAdjacentHTML('beforeend', html);
+                }
+                if (index < list.length) {
+                    crumb.innerText = `${crumbText} Loading ${index}/${list.length}`;
+                    requestAnimationFrame(renderChunk);
+                } else {
+                    crumb.innerText = crumbText;
+                }
+            };
+            requestAnimationFrame(renderChunk);
+        }
 
         function renderAV() {
             avRenderChunkToken += 1;
@@ -6594,7 +6871,8 @@ activeDriveTab = tab;
             const avState = getCurrentAVBaseItems();
             const term = avState.term;
             let items = avState.items;
-            const exportContext = buildAVExportContext(items, term);
+            const shouldBuildExportContext = activeAVTab === 'open' || (activeAVTab === 'reserves' && avResLevel >= 1);
+            const exportContext = shouldBuildExportContext ? buildAVExportContext(items, term) : null;
 
             if (items.length === 0) {
                 const emptyLabel = activeAVTab === 'open' ? (activeAvOpenTab === 'photos' ? 'open stock photos' : 'open stock') : 'reserves';
@@ -6604,7 +6882,7 @@ activeDriveTab = tab;
                 return;
             }
 
-            updateAVExportButton(exportContext.rows.length);
+            updateAVExportButton(exportContext ? exportContext.rows.length : items.length);
 
             if (activeAVTab === 'open') {
                 const sourceView = activeAvOpenTab === 'photos' ? 'av-photo' : 'av';
@@ -6626,17 +6904,50 @@ activeDriveTab = tab;
                 return;
             }
 
-            const reserveRows = [...items].sort((a, b) => {
-                const customerCompare = String(firstNonEmptyValue(a.CUSTOMERNAME, a.CUSTOMER, '')).localeCompare(String(firstNonEmptyValue(b.CUSTOMERNAME, b.CUSTOMER, '')));
-                if (customerCompare !== 0) return customerCompare;
-                const nameCompare = String(firstNonEmptyValue(a.COMMONNAME, '')).localeCompare(String(firstNonEmptyValue(b.COMMONNAME, '')));
-                if (nameCompare !== 0) return nameCompare;
-                return String(firstNonEmptyValue(a.CONTSIZE, '')).localeCompare(String(firstNonEmptyValue(b.CONTSIZE, '')), undefined, { numeric: true });
-            });
             const reserveCrumbBase = selectedAvResRep ? `My Reserves > ${selectedAvResRep}` : 'My Reserves';
-            crumb.innerText = term.length > 0 ? `${reserveCrumbBase} Search (${reserveRows.length})` : `${reserveCrumbBase} (${reserveRows.length})`;
-            let html = selectedAvResRep ? `<div class="back-btn" onclick="clearSelectedAvResRep()"><i class="ph-bold ph-arrow-left"></i> Back to Sales Reps</div>` : '';
-            html += reserveRows.map(i => generateCard(i, 'reserves_drill', 'status-indigo')).join('');
+            const selectedGroupLabel = selectedAvResItemCode && selectedAvResName && selectedAvResSize
+                ? `${selectedAvResItemCode} | ${selectedAvResName} | ${selectedAvResSize}`
+                : '';
+            if (avResLevel >= 1 && selectedAvResItemCode && selectedAvResName && selectedAvResSize) {
+                const detailRows = getAvReserveDemandRowsForDriveRow(items);
+                const detailCrumbText = term.length > 0
+                    ? `${reserveCrumbBase} > ${selectedGroupLabel} Search (${detailRows.length})`
+                    : `${reserveCrumbBase} > ${selectedGroupLabel} (${detailRows.length})`;
+                crumb.innerText = detailCrumbText;
+                const detailPrefixHtml = `<div class="back-btn" onclick="backToAvReserveGroups()"><i class="ph-bold ph-arrow-left"></i> Back to Items</div>`;
+                if (detailRows.length > 120) {
+                    renderChunkedHtmlList(container, crumb, detailRows, (row) => generateAvReserveCustomerCard(row), detailCrumbText, {
+                        prefixHtml: detailPrefixHtml,
+                        emptyHtml: `<div class="p-8 text-center text-gray-400">No reserve demand rows found for this item.</div>`,
+                        noun: 'reserve row'
+                    });
+                    return;
+                }
+                let html = detailPrefixHtml;
+                if (!detailRows.length) {
+                    html += `<div class="p-8 text-center text-gray-400">No reserve demand rows found for this item.</div>`;
+                } else {
+                    html += detailRows.map(i => generateAvReserveCustomerCard(i)).join('');
+                }
+                container.innerHTML = html;
+                return;
+            }
+
+            const reserveGroups = getAVReserveGroups(items);
+            const reserveCrumbText = term.length > 0
+                ? `${reserveCrumbBase} Search (${reserveGroups.length} items)`
+                : `${reserveCrumbBase} (${reserveGroups.length} items)`;
+            crumb.innerText = reserveCrumbText;
+            const reservePrefixHtml = selectedAvResRep ? `<div class="back-btn" onclick="clearSelectedAvResRep()"><i class="ph-bold ph-arrow-left"></i> Back to Sales Reps</div>` : '';
+            if (reserveGroups.length > 140) {
+                renderChunkedHtmlList(container, crumb, reserveGroups, (group) => generateAvReserveGroupCard(group), reserveCrumbText, {
+                    prefixHtml: reservePrefixHtml,
+                    noun: 'reserve item'
+                });
+                return;
+            }
+            let html = reservePrefixHtml;
+            html += reserveGroups.map(group => generateAvReserveGroupCard(group)).join('');
             container.innerHTML = html;
         }
         const debouncedDocksSearch=debounce(()=>{requestAnimationFrame(()=>renderDocks())},150);
@@ -7948,7 +8259,7 @@ activeDriveTab = tab;
         }
 
         function shouldRunRequestViewLiveSync() {
-            return !!(currentUser && navigator.onLine !== false && !document.hidden && isViewVisible('request'));
+            return !!(currentUser && navigator.onLine !== false && !document.hidden && isViewVisible('request') && liveSyncMode !== 'realtime');
         }
 
         async function runRequestViewLiveSync() {
@@ -7964,18 +8275,17 @@ activeDriveTab = tab;
             }
             requestViewLiveSyncInFlight = true;
             try {
-                const rows = await supabaseFetch('v2_active_request', 'GET', null, 'select=*');
-                const nextSignature = buildRequestLiveSyncSignature(rows);
+                const signatureRows = await supabaseFetch('v2_active_request', 'GET', null, 'select=unique_id,req_status,req_archived,req_rep_action,request_folder,req_customer,req_qty,date_completed');
+                const nextSignature = buildRequestLiveSyncSignature(signatureRows);
                 if (nextSignature === requestViewLiveSyncSignature) return;
+                const rows = await supabaseFetch('v2_active_request', 'GET', null, 'select=*');
                 const formattedRows = formatFetchedRows(rows, 'v2_active_request');
                 processAndLoadData({ requestsData: formattedRows });
                 requestViewLiveSyncSignature = buildRequestLiveSyncSignature(formattedRows);
-                markViewDirty('request');
-                if (isViewVisible('request')) queueViewRender('request', false, true);
             } catch (error) {
             } finally {
                 requestViewLiveSyncInFlight = false;
-                if (shouldRunRequestViewLiveSync()) syncRequestViewLiveSync(1200);
+                if (shouldRunRequestViewLiveSync()) syncRequestViewLiveSync(2200);
             }
         }
 
@@ -7990,7 +8300,18 @@ activeDriveTab = tab;
             }, nextDelay);
         }
         function getFallbackSyncInterval() {
-            return (isIOSDevice() || isStandaloneApp()) ? 12000 : 30000;
+            return (isIOSDevice() || isStandaloneApp()) ? 5000 : 7000;
+        }
+
+        function getForegroundSyncThrottle() {
+            return (isIOSDevice() || isStandaloneApp()) ? 4500 : 6500;
+        }
+
+        function isSyncTimestampStale(maxAgeMs = getForegroundSyncThrottle()) {
+            if (!lastSuccessfulSyncTime) return true;
+            const stamp = new Date(lastSuccessfulSyncTime).getTime();
+            if (!Number.isFinite(stamp) || stamp <= 0) return true;
+            return (Date.now() - stamp) > maxAgeMs;
         }
 
         function queueForegroundRefresh(delay = 220) {
@@ -8004,13 +8325,15 @@ activeDriveTab = tab;
                     updateSyncDiagnostics('offline');
                     return;
                 }
+                const shouldCatchUp = !backgroundRefreshInFlight && isSyncTimestampStale();
                 if (shouldUseRealtime()) {
                     if (liveSyncMode !== 'realtime') initializeRealtime();
                     else updateSyncDiagnostics('realtime');
+                    if (shouldCatchUp) queueVisibleDatasetCatchup(60);
                     return;
                 }
-                const throttleMs = (isIOSDevice() || isStandaloneApp()) ? 14000 : 18000;
-                if (backgroundRefreshInFlight || (lastBackgroundRefreshAt && (Date.now() - lastBackgroundRefreshAt) < throttleMs)) {
+                const throttleMs = getForegroundSyncThrottle();
+                if (backgroundRefreshInFlight || (!shouldCatchUp && lastBackgroundRefreshAt && (Date.now() - lastBackgroundRefreshAt) < throttleMs)) {
                     updateSyncDiagnostics('idle');
                     if (liveSyncMode !== 'realtime') initializeRealtime();
                     return;
@@ -8020,8 +8343,7 @@ activeDriveTab = tab;
             }, delay);
         }
 
-        function formatDiagnosticsTime(value) {
-            if (!value) return 'Awaiting first sync';
+        function formatDiagnosticsTime(value) {            if (!value) return 'Awaiting first sync';
             try {
                 return new Date(value).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' });
             } catch (err) {
@@ -8078,10 +8400,8 @@ activeDriveTab = tab;
             interactiveChromeInitialized = true;
             const scrollArea = document.getElementById('main-scroll-area');
             if (!scrollArea) return;
-            scrollArea.addEventListener('touchstart', handlePullRefreshStart, { passive: true });
-            scrollArea.addEventListener('touchmove', handlePullRefreshMove, { passive: false });
-            scrollArea.addEventListener('touchend', handlePullRefreshEnd, { passive: true });
-            scrollArea.addEventListener('touchcancel', handlePullRefreshEnd, { passive: true });
+            // Native scrolling is more reliable cross-platform than the custom pull-to-refresh touch interception.
+            setPullRefreshIndicator('hidden');
             scrollArea.addEventListener('scroll', () => {
                 if (scrollArea.scrollTop > 8) closeAllRequestSwipes();
             }, { passive: true });
@@ -10090,13 +10410,14 @@ function toggleDriveSeason(s) {
             const crumb = document.getElementById('reserves-crumb');
             if (!container || !crumb) return;
 
+            const reserveAccess = getRoleAccessState();
             let items = reservesInventory;
-            if (safeRole === 'SALESREP') items = items.filter(i => isMyRep(i.SALESREPNAME));
+            if (reserveAccess.isRep) items = items.filter(i => isCurrentRepOwnerItem(i));
             const term = document.getElementById('reserves-search') ? document.getElementById('reserves-search').value.toLowerCase().trim() : '';
             if (term) items = filterBySearch(items, term, 'reserves');
 
             if (!items.length) {
-                crumb.innerText = safeRole === 'SALESREP' ? 'My Reserves' : 'Reserves';
+                crumb.innerText = reserveAccess.isRep ? 'My Reserves' : 'Reserves';
                 container.innerHTML = `<div class="p-8 text-center text-gray-400">No reserves found.</div>`;
                 return;
             }
@@ -10109,7 +10430,12 @@ function toggleDriveSeason(s) {
                 return String(a.CONTSIZE || '').localeCompare(String(b.CONTSIZE || ''), undefined, {numeric:true});
             });
 
-            crumb.innerText = safeRole === 'SALESREP' ? `My Reserves (${items.length})` : `Reserves (${items.length})`;
+            const crumbText = reserveAccess.isRep ? `My Reserves (${items.length})` : `Reserves (${items.length})`;
+            crumb.innerText = crumbText;
+            if (items.length > 180) {
+                renderChunkedHtmlList(container, crumb, items, (item) => generateCard(item, 'reserves_drill', 'status-indigo'), crumbText, { noun: 'reserve row' });
+                return;
+            }
             container.innerHTML = items.map(i => generateCard(i, 'reserves_drill', 'status-indigo')).join('');
         }
 
@@ -10130,15 +10456,16 @@ function toggleDriveSeason(s) {
             const crumb = document.getElementById('reports-crumb');
             if (!container) return;
 
+            const reportAccess = getRoleAccessState();
             let seasonItems = fullInventory.filter(i => activeReportTab === 'ALL' ? true : String(i.SEASON || '').toUpperCase() === activeReportTab);
             let reserveItems = reservesInventory;
             let requestItems = requestsInventory.filter(i => !i.REQ_ARCHIVED);
             let dockItems = socInventory;
 
-            if (safeRole === 'SALESREP') {
-                reserveItems = reserveItems.filter(i => isMyRep(i.SALESREPNAME));
+            if (reportAccess.isRep) {
+                reserveItems = reserveItems.filter(i => isCurrentRepOwnerItem(i));
                 requestItems = requestItems.filter(i => isMyRep(i.REQUESTED_BY));
-                dockItems = dockItems.filter(i => isMyRep(i.SALESREPNAME || i.SALESREPID));
+                dockItems = dockItems.filter(i => isCurrentRepOwnerItem(i));
             }
 
             const sumField = (arr, key) => arr.reduce((sum, item) => sum + (parseInt(String(item[key] || 0).replace(/,/g, '')) || 0), 0);
@@ -10146,9 +10473,9 @@ function toggleDriveSeason(s) {
                 { label: activeReportTab === 'ALL' ? 'Open Stock Rows' : `${activeReportTab} Rows`, value: seasonItems.length },
                 { label: 'PTR Available', value: sumField(seasonItems, 'PTRAVAILABLE').toLocaleString() },
                 { label: 'Season Supply', value: sumField(seasonItems, 'SEASONSUPPLY').toLocaleString() },
-                { label: safeRole === 'SALESREP' ? 'My Reserves' : 'Reserves', value: reserveItems.length.toLocaleString() },
-                { label: safeRole === 'SALESREP' ? 'My Requests' : 'Requests', value: requestItems.length.toLocaleString() },
-                { label: safeRole === 'SALESREP' ? 'My Dock Rows' : 'Dock Rows', value: dockItems.length.toLocaleString() }
+                { label: reportAccess.isRep ? 'My Reserves' : 'Reserves', value: reserveItems.length.toLocaleString() },
+                { label: reportAccess.isRep ? 'My Requests' : 'Requests', value: requestItems.length.toLocaleString() },
+                { label: reportAccess.isRep ? 'My Dock Rows' : 'Dock Rows', value: dockItems.length.toLocaleString() }
             ];
 
             const topPlants = Object.values(seasonItems.reduce((acc, item) => {
@@ -10785,5 +11112,3 @@ function toggleDriveSeason(s) {
     </script>
 </body>
 </html>
-
-
