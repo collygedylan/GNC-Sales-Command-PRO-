@@ -320,7 +320,7 @@
         </div>
     </div>
     <div id="bloom-picker-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-start justify-center overflow-y-auto p-4">
-        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-2xl text-left flex flex-col my-4 max-h-[calc(100vh-2rem)] overflow-hidden">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-2xl text-left flex flex-col my-4 max-h-[calc(100vh-2rem)] overflow-y-auto overscroll-contain">
             <div class="flex items-start justify-between gap-3 mb-4 border-b border-gray-100 pb-3">
                 <div>
                     <h3 class="font-bold text-lg text-[#007a4d]">Bloom Picker Order</h3>
@@ -328,15 +328,23 @@
                 </div>
                 <button type="button" class="text-gray-500 font-bold py-2 px-3" onclick="closeBloomPickerModal()">Close</button>
             </div>
-            <div class="flex-1 min-h-0 flex flex-col">
+            <div class="flex flex-col gap-4">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                    <div id="bloom-order-reserve-picker" class="hidden md:col-span-2">
+                        <label class="text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">My Reserves Quick Filter</label>
+                        <input type="text" id="bloom-order-party-quick-filter" class="input-field border-green-200 !mb-0" placeholder="Choose a customer and consignee from My Reserves" list="bloom-order-party-options" oninput="handleBloomPickerReserveQuickPickInput()">
+                        <datalist id="bloom-order-party-options"></datalist>
+                        <div id="bloom-order-reserve-picker-hint" class="mt-1 ml-1 text-[10px] font-semibold text-slate-400">Only this rep&apos;s My Reserves customer and consignee pairs appear here.</div>
+                    </div>
                     <div>
                         <label class="text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Customer Name</label>
-                        <input type="text" id="bloom-order-customer" class="input-field border-green-200 !mb-0" placeholder="Enter customer name" oninput="handleBloomPickerPartyInput()">
+                        <input type="text" id="bloom-order-customer" class="input-field border-green-200 !mb-0" placeholder="Enter customer name" list="bloom-order-customer-options" oninput="handleBloomPickerPartyInput()">
+                        <datalist id="bloom-order-customer-options"></datalist>
                     </div>
                     <div>
                         <label class="text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Consignee Name</label>
-                        <input type="text" id="bloom-order-consignee" class="input-field border-green-200 !mb-0" placeholder="Enter consignee name" oninput="handleBloomPickerPartyInput()">
+                        <input type="text" id="bloom-order-consignee" class="input-field border-green-200 !mb-0" placeholder="Enter consignee name" list="bloom-order-consignee-options" oninput="handleBloomPickerPartyInput()">
+                        <datalist id="bloom-order-consignee-options"></datalist>
                     </div>
                     <div>
                         <label class="text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Order Number</label>
@@ -347,6 +355,46 @@
                         <input type="text" id="bloom-order-folder" class="input-field border-green-200 !mb-0" placeholder="Auto-generated from customer, consignee, and date" oninput="handleBloomPickerFolderInput()">
                     </div>
                 </div>
+                <details class="rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+                    <summary class="flex cursor-pointer list-none items-center justify-between gap-3 text-[11px] font-black uppercase tracking-[0.14em] text-slate-600">
+                        <span>Reserve Metadata</span>
+                        <span class="text-[10px] font-bold text-slate-400">Open if needed</span>
+                    </summary>
+                    <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Sales Rep Name</label>
+                            <input type="text" id="bloom-meta-salesrepname" class="input-field border-slate-200 bg-slate-50 text-slate-700 !mb-0" placeholder="Auto-filled from My Reserves" readonly>
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Customer Identity ID</label>
+                            <input type="text" id="bloom-meta-customeridentityid" class="input-field border-slate-200 bg-slate-50 text-slate-700 !mb-0" placeholder="Auto-filled from My Reserves" readonly>
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Consignee Identity ID</label>
+                            <input type="text" id="bloom-meta-consigneeidentityid" class="input-field border-slate-200 bg-slate-50 text-slate-700 !mb-0" placeholder="Auto-filled from My Reserves" readonly>
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Consignee City / State</label>
+                            <input type="text" id="bloom-meta-citystate" class="input-field border-slate-200 bg-slate-50 text-slate-700 !mb-0" placeholder="Auto-filled from My Reserves" readonly>
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Consignee Zip</label>
+                            <input type="text" id="bloom-meta-consigneezip" class="input-field border-slate-200 bg-slate-50 text-slate-700 !mb-0" placeholder="Auto-filled from My Reserves" readonly>
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Zone Code</label>
+                            <input type="text" id="bloom-meta-zonecode" class="input-field border-slate-200 bg-slate-50 text-slate-700 !mb-0" placeholder="Auto-filled from My Reserves" readonly>
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Tag Code</label>
+                            <input type="text" id="bloom-meta-tagcode" class="input-field border-slate-200 bg-slate-50 text-slate-700 !mb-0" placeholder="Auto-filled from My Reserves" readonly>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Consignee Address 1</label>
+                            <input type="text" id="bloom-meta-consigneeaddress1" class="input-field border-slate-200 bg-slate-50 text-slate-700 !mb-0" placeholder="Auto-filled from My Reserves" readonly>
+                        </div>
+                    </div>
+                </details>
                 <div class="flex-1 min-h-0 rounded-xl border border-slate-200 bg-slate-50/60 p-3">
                     <div id="bloom-picker-list-container" class="flex h-full min-h-[14rem] flex-col gap-3 overflow-y-auto pr-1"></div>
                 </div>
@@ -3238,6 +3286,10 @@
         let searchRenderTimer = {};
         let avRenderChunkToken = 0;
         let bloomPickerFolderManuallyEdited = false;
+        let bloomPickerReservePartyOptions = [];
+        let bloomPickerSelectedReservePartyKey = '';
+        const BLOOM_PICKER_ORDER_META_FIELDS = ['salesrepname','customername','customeridentityid','consigneename','consigneeidentityid','consigneecity','consigneestate','consigneezip','zonecode','tagcode','consigneeaddress_1'];
+        const BLOOM_PICKER_ORDER_META_TOKEN = '||BP_META||';
         const PROTECTED_UNLOCK_USERS = new Set(['dylan', 'jd', 'morgan', 'kayla']);
         const PROTECTED_EDIT_CONFIG = {
             'ssn-': { containerId: 'det-season-content', cameraId: 'camera-btn-ssn', photoField: 'SAVED_PHOTO_LINK', photoNameField: 'SAVED_PHOTO_NAME', inputIds: ['ssn-av-note', 'ssn-spec', 'ssn-caliper'] },
@@ -3992,6 +4044,42 @@ function toggleDriveQuickRequestItem(domId) {
             configureRequestCustomerStep();
             renderDriveQuickRequestBar();
         }
+        function encodeBloomPickerOrderMeta(meta = null) {
+            if (!meta || typeof meta !== 'object') return '';
+            const safeMeta = {};
+            Object.keys(meta).forEach((key) => {
+                const normalizedKey = String(key || '').trim().toLowerCase();
+                const value = String(meta[key] || '').trim();
+                if (!normalizedKey || !value) return;
+                safeMeta[normalizedKey] = value;
+            });
+            const keys = Object.keys(safeMeta);
+            if (!keys.length) return '';
+            try {
+                return encodeURIComponent(JSON.stringify(safeMeta));
+            } catch (error) {
+                return '';
+            }
+        }
+
+        function decodeBloomPickerOrderMeta(value = '') {
+            const raw = String(value || '').trim();
+            if (!raw) return {};
+            try {
+                const parsed = JSON.parse(decodeURIComponent(raw));
+                if (!parsed || typeof parsed !== 'object') return {};
+                const safeMeta = {};
+                Object.keys(parsed).forEach((key) => {
+                    const normalizedKey = String(key || '').trim().toLowerCase();
+                    const metaValue = String(parsed[key] || '').trim();
+                    if (!normalizedKey || !metaValue) return;
+                    safeMeta[normalizedKey] = metaValue;
+                });
+                return safeMeta;
+            } catch (error) {
+                return {};
+            }
+        }
         function formatBloomPickerFolderPart(value = '') {
             return String(value || '')
                 .trim()
@@ -4007,11 +4095,13 @@ function toggleDriveQuickRequestItem(domId) {
             return `${safeDate.getFullYear()}-${String(safeDate.getMonth() + 1).padStart(2, '0')}-${String(safeDate.getDate()).padStart(2, '0')}`;
         }
 
-        function buildBloomPickerOrderCustomerValue(customer = '', consignee = '') {
+        function buildBloomPickerOrderCustomerValue(customer = '', consignee = '', meta = null) {
             const cleanCustomer = String(customer || '').trim();
             const cleanConsignee = String(consignee || '').trim();
-            if (cleanCustomer) return buildRequestCustomerValue(cleanCustomer, cleanConsignee);
-            return cleanConsignee;
+            const visibleValue = cleanCustomer ? buildRequestCustomerValue(cleanCustomer, cleanConsignee) : cleanConsignee;
+            const encodedMeta = encodeBloomPickerOrderMeta(meta);
+            if (!encodedMeta) return visibleValue;
+            return `${visibleValue}${BLOOM_PICKER_ORDER_META_TOKEN}${encodedMeta}`;
         }
 
         function buildBloomPickerFolderName(customer = '', consignee = '', dateValue = new Date()) {
@@ -4024,6 +4114,266 @@ function toggleDriveQuickRequestItem(domId) {
             return nameParts.filter(Boolean).join('_') || `Bloom_Picker_${getBloomPickerFolderDateStamp(dateValue)}`;
         }
 
+        function getBloomPickerReserveFieldValue(item = {}, fields = []) {
+            return firstNonEmptyValue(...fields.map((field) => item && item[field]), '');
+        }
+
+        function mergeBloomPickerMetaValue(currentValue = '', nextValue = '') {
+            const current = String(currentValue || '').trim();
+            const next = String(nextValue || '').trim();
+            if (!next) return current;
+            if (!current) return next;
+            return normalizeRepMatchToken(current) === normalizeRepMatchToken(next) ? current : 'Multiple';
+        }
+
+        function formatBloomPickerCityState(city = '', state = '') {
+            const cityText = String(city || '').trim();
+            const stateText = String(state || '').trim();
+            if (cityText && stateText) return `${cityText} - ${stateText}`;
+            return cityText || stateText;
+        }
+
+        function buildBloomPickerReservePartyKey(customer = '', consignee = '') {
+            return `${normalizeRepMatchToken(customer)}|||${normalizeRepMatchToken(consignee || customer)}`;
+        }
+
+        function getBloomPickerReservePartyOptions() {
+            if (!getRoleAccessState().isRep) return [];
+            const optionMap = new Map();
+            reservesInventory
+                .filter((item) => isMyRep(firstNonEmptyValue(item && item.SALESREPNAME, item && item.SALESREP, item && item.SALES_REP, item && item.SALESREPID, '')))
+                .forEach((item) => {
+                    const customerName = String(getBloomPickerReserveFieldValue(item, ['CUSTOMERNAME', 'CUSTOMER']) || '').trim();
+                    const consigneeName = String(getBloomPickerReserveFieldValue(item, ['CONSIGNEENAME', 'CONSIGNEE']) || '').trim();
+                    const resolvedCustomer = customerName || consigneeName;
+                    if (!resolvedCustomer) return;
+                    const key = buildBloomPickerReservePartyKey(resolvedCustomer, consigneeName);
+                    const existing = optionMap.get(key) || {
+                        key,
+                        customerName: resolvedCustomer,
+                        consigneeName,
+                        salesRepName: '',
+                        customerIdentityId: '',
+                        consigneeIdentityId: '',
+                        consigneeCity: '',
+                        consigneeState: '',
+                        consigneeZip: '',
+                        zoneCode: '',
+                        tagCode: '',
+                        consigneeAddress1: '',
+                        rowCount: 0
+                    };
+                    existing.customerName = firstNonEmptyValue(existing.customerName, resolvedCustomer, '');
+                    existing.consigneeName = firstNonEmptyValue(existing.consigneeName, consigneeName, '');
+                    existing.salesRepName = mergeBloomPickerMetaValue(existing.salesRepName, getBloomPickerReserveFieldValue(item, ['SALESREPNAME', 'SALESREP', 'SALES_REP', 'SALESREPID']));
+                    existing.customerIdentityId = mergeBloomPickerMetaValue(existing.customerIdentityId, getBloomPickerReserveFieldValue(item, ['CUSTOMERIDENTITYID', 'CUSTOMER_IDENTITY_ID', 'CUSTOMERID', 'CUSTOMER_ID']));
+                    existing.consigneeIdentityId = mergeBloomPickerMetaValue(existing.consigneeIdentityId, getBloomPickerReserveFieldValue(item, ['CONSIGNEEIDENTITYID', 'CONSIGNEE_IDENTITY_ID', 'CONSIGNEEID', 'CONSIGNEE_ID']));
+                    existing.consigneeCity = mergeBloomPickerMetaValue(existing.consigneeCity, getBloomPickerReserveFieldValue(item, ['CONSIGNEECITY', 'CITY']));
+                    existing.consigneeState = mergeBloomPickerMetaValue(existing.consigneeState, getBloomPickerReserveFieldValue(item, ['CONSIGNEESTATE', 'STATE']));
+                    existing.consigneeZip = mergeBloomPickerMetaValue(existing.consigneeZip, getBloomPickerReserveFieldValue(item, ['CONSIGNEEZIP', 'ZIPCODE', 'ZIP_CODE', 'ZIP']));
+                    existing.zoneCode = mergeBloomPickerMetaValue(existing.zoneCode, getBloomPickerReserveFieldValue(item, ['ZONECODE', 'ZONE_CODE']));
+                    existing.tagCode = mergeBloomPickerMetaValue(existing.tagCode, getBloomPickerReserveFieldValue(item, ['TAGCODE', 'TAG_CODE']));
+                    existing.consigneeAddress1 = mergeBloomPickerMetaValue(existing.consigneeAddress1, getBloomPickerReserveFieldValue(item, ['CONSIGNEEADDRESS_1', 'CONSIGNEEADDRESS1', 'ADDRESS_1', 'ADDRESS1']));
+                    existing.rowCount += 1;
+                    optionMap.set(key, existing);
+                });
+            return [...optionMap.values()]
+                .map((option) => ({
+                    ...option,
+                    label: buildRequestCustomerValue(option.customerName, option.consigneeName) || option.customerName || option.consigneeName || 'Unknown',
+                    cityState: formatBloomPickerCityState(option.consigneeCity, option.consigneeState)
+                }))
+                .sort((a, b) => {
+                    const customerCompare = String(a.customerName || '').localeCompare(String(b.customerName || ''));
+                    if (customerCompare !== 0) return customerCompare;
+                    return String(a.consigneeName || '').localeCompare(String(b.consigneeName || ''));
+                });
+        }
+
+        function populateBloomPickerDatalist(listId, values = []) {
+            const list = document.getElementById(listId);
+            if (!list) return;
+            list.innerHTML = '';
+            [...new Set((values || []).map((value) => String(value || '').trim()).filter(Boolean))].forEach((value) => {
+                const option = document.createElement('option');
+                option.value = value;
+                list.appendChild(option);
+            });
+        }
+
+        function updateBloomPickerMetaFields(option = null) {
+            const setValue = (id, value = '') => {
+                const input = document.getElementById(id);
+                if (input) input.value = String(value || '').trim();
+            };
+            const access = getRoleAccessState();
+            setValue('bloom-meta-salesrepname', firstNonEmptyValue(option && option.salesRepName, access.isRep ? (currentUserDisplay || currentUser || '') : '', ''));
+            setValue('bloom-meta-customeridentityid', option && option.customerIdentityId);
+            setValue('bloom-meta-consigneeidentityid', option && option.consigneeIdentityId);
+            setValue('bloom-meta-citystate', option && option.cityState);
+            setValue('bloom-meta-consigneezip', option && option.consigneeZip);
+            setValue('bloom-meta-zonecode', option && option.zoneCode);
+            setValue('bloom-meta-tagcode', option && option.tagCode);
+            setValue('bloom-meta-consigneeaddress1', option && option.consigneeAddress1);
+        }
+
+        function refreshBloomPickerReserveDatalists() {
+            const customerInput = document.getElementById('bloom-order-customer');
+            const consigneeInput = document.getElementById('bloom-order-consignee');
+            const quickInput = document.getElementById('bloom-order-party-quick-filter');
+            const quickWrap = document.getElementById('bloom-order-reserve-picker');
+            const hint = document.getElementById('bloom-order-reserve-picker-hint');
+            const isRep = getRoleAccessState().isRep;
+            if (quickWrap) quickWrap.classList.toggle('hidden', !isRep);
+            if (!isRep) {
+                populateBloomPickerDatalist('bloom-order-party-options', []);
+                populateBloomPickerDatalist('bloom-order-customer-options', []);
+                populateBloomPickerDatalist('bloom-order-consignee-options', []);
+                if (quickInput) quickInput.value = '';
+                return;
+            }
+            const customerToken = normalizeRepMatchToken(customerInput && customerInput.value);
+            const customerOptions = bloomPickerReservePartyOptions.map((option) => option.customerName);
+            const consigneeOptions = bloomPickerReservePartyOptions
+                .filter((option) => !customerToken || normalizeRepMatchToken(option.customerName) === customerToken)
+                .map((option) => option.consigneeName)
+                .filter(Boolean);
+            populateBloomPickerDatalist('bloom-order-party-options', bloomPickerReservePartyOptions.map((option) => option.label));
+            populateBloomPickerDatalist('bloom-order-customer-options', customerOptions);
+            populateBloomPickerDatalist('bloom-order-consignee-options', consigneeOptions.length ? consigneeOptions : bloomPickerReservePartyOptions.map((option) => option.consigneeName).filter(Boolean));
+            if (customerInput) customerInput.placeholder = bloomPickerReservePartyOptions.length ? 'Choose or type customer name' : 'Enter customer name';
+            if (consigneeInput) consigneeInput.placeholder = bloomPickerReservePartyOptions.length ? 'Choose or type consignee name' : 'Enter consignee name';
+            if (hint) {
+                hint.textContent = bloomPickerReservePartyOptions.length
+                    ? `${bloomPickerReservePartyOptions.length} customer folder${bloomPickerReservePartyOptions.length === 1 ? '' : 's'} from this rep's My Reserves.`
+                    : 'No My Reserves customer folders are loaded for this rep yet. You can still type manually.';
+            }
+        }
+
+        function applyBloomPickerReservePartyOption(option = null) {
+            const customerInput = document.getElementById('bloom-order-customer');
+            const consigneeInput = document.getElementById('bloom-order-consignee');
+            const quickInput = document.getElementById('bloom-order-party-quick-filter');
+            if (!option) {
+                bloomPickerSelectedReservePartyKey = '';
+                if (quickInput) quickInput.value = '';
+                updateBloomPickerMetaFields(null);
+                refreshBloomPickerReserveDatalists();
+                syncBloomPickerFolderName(false);
+                return null;
+            }
+            bloomPickerSelectedReservePartyKey = option.key;
+            if (customerInput) customerInput.value = option.customerName || '';
+            if (consigneeInput) consigneeInput.value = option.consigneeName || '';
+            if (quickInput) quickInput.value = option.label || '';
+            updateBloomPickerMetaFields(option);
+            refreshBloomPickerReserveDatalists();
+            syncBloomPickerFolderName(false);
+            return option;
+        }
+
+        function getBloomPickerSelectedReservePartyOption() {
+            if (!bloomPickerReservePartyOptions.length) return null;
+            const customerInput = document.getElementById('bloom-order-customer');
+            const consigneeInput = document.getElementById('bloom-order-consignee');
+            const customer = String(customerInput && customerInput.value || '').trim();
+            const consignee = String(consigneeInput && consigneeInput.value || '').trim();
+            const customerToken = normalizeRepMatchToken(customer);
+            const consigneeToken = normalizeRepMatchToken(consignee);
+            if (bloomPickerSelectedReservePartyKey) {
+                const selected = bloomPickerReservePartyOptions.find((option) => option.key === bloomPickerSelectedReservePartyKey);
+                if (selected) return selected;
+            }
+            if (customerToken && consigneeToken) {
+                const exactMatch = bloomPickerReservePartyOptions.find((option) => normalizeRepMatchToken(option.customerName) === customerToken && normalizeRepMatchToken(option.consigneeName) === consigneeToken);
+                if (exactMatch) return exactMatch;
+            }
+            if (customerToken) {
+                const customerMatches = bloomPickerReservePartyOptions.filter((option) => normalizeRepMatchToken(option.customerName) === customerToken);
+                if (customerMatches.length === 1) return customerMatches[0];
+            }
+            if (consigneeToken) {
+                const consigneeMatches = bloomPickerReservePartyOptions.filter((option) => normalizeRepMatchToken(option.consigneeName) === consigneeToken);
+                if (consigneeMatches.length === 1) return consigneeMatches[0];
+            }
+            return null;
+        }
+
+        function syncBloomPickerReserveSelectionFromInputs() {
+            const customerInput = document.getElementById('bloom-order-customer');
+            const consigneeInput = document.getElementById('bloom-order-consignee');
+            const quickInput = document.getElementById('bloom-order-party-quick-filter');
+            const matchedOption = getBloomPickerSelectedReservePartyOption();
+            if (matchedOption) {
+                bloomPickerSelectedReservePartyKey = matchedOption.key;
+                if (customerInput && !String(customerInput.value || '').trim()) customerInput.value = matchedOption.customerName || '';
+                if (consigneeInput && !String(consigneeInput.value || '').trim()) consigneeInput.value = matchedOption.consigneeName || '';
+                if (quickInput) quickInput.value = matchedOption.label || '';
+                updateBloomPickerMetaFields(matchedOption);
+            } else {
+                bloomPickerSelectedReservePartyKey = '';
+                if (quickInput && !String(customerInput && customerInput.value || '').trim() && !String(consigneeInput && consigneeInput.value || '').trim()) quickInput.value = '';
+                updateBloomPickerMetaFields(null);
+            }
+            refreshBloomPickerReserveDatalists();
+            return matchedOption;
+        }
+
+        function handleBloomPickerReserveQuickPickInput() {
+            const quickInput = document.getElementById('bloom-order-party-quick-filter');
+            const quickValue = String(quickInput && quickInput.value || '').trim();
+            const quickToken = normalizeRepMatchToken(quickValue);
+            if (!quickToken) {
+                bloomPickerSelectedReservePartyKey = '';
+                updateBloomPickerMetaFields(null);
+                refreshBloomPickerReserveDatalists();
+                syncBloomPickerFolderName(false);
+                return null;
+            }
+            const matchedOption = bloomPickerReservePartyOptions.find((option) => normalizeRepMatchToken(option.label) === quickToken);
+            if (matchedOption) return applyBloomPickerReservePartyOption(matchedOption);
+            syncBloomPickerReserveSelectionFromInputs();
+            syncBloomPickerFolderName(false);
+            return null;
+        }
+
+        function loadBloomPickerReservePartyOptions() {
+            bloomPickerReservePartyOptions = getBloomPickerReservePartyOptions();
+            bloomPickerSelectedReservePartyKey = '';
+            refreshBloomPickerReserveDatalists();
+            updateBloomPickerMetaFields(null);
+        }
+
+        function buildBloomPickerOrderMetaPayload(option = null, customer = '', consignee = '') {
+            const payload = {
+                salesrepname: firstNonEmptyValue(option && option.salesRepName, getRoleAccessState().isRep ? (currentUserDisplay || currentUser || '') : '', ''),
+                customername: String(customer || '').trim(),
+                consigneename: String(consignee || '').trim(),
+                customeridentityid: firstNonEmptyValue(option && option.customerIdentityId, ''),
+                consigneeidentityid: firstNonEmptyValue(option && option.consigneeIdentityId, ''),
+                consigneecity: firstNonEmptyValue(option && option.consigneeCity, ''),
+                consigneestate: firstNonEmptyValue(option && option.consigneeState, ''),
+                consigneezip: firstNonEmptyValue(option && option.consigneeZip, ''),
+                zonecode: firstNonEmptyValue(option && option.zoneCode, ''),
+                tagcode: firstNonEmptyValue(option && option.tagCode, ''),
+                consigneeaddress_1: firstNonEmptyValue(option && option.consigneeAddress1, '')
+            };
+            Object.keys(payload).forEach((key) => {
+                if (!String(payload[key] || '').trim()) delete payload[key];
+            });
+            return payload;
+        }
+
+        function stripBloomPickerOrderMetaFields(record = {}, uppercase = false) {
+            const nextRecord = { ...(record || {}) };
+            BLOOM_PICKER_ORDER_META_FIELDS.forEach((field) => delete nextRecord[uppercase ? field.toUpperCase() : field]);
+            return nextRecord;
+        }
+
+        function isBloomPickerOrderMetaSchemaError(error) {
+            const normalizedError = String(error && error.message ? error.message : error || '').toLowerCase();
+            return normalizedError.includes('column') && BLOOM_PICKER_ORDER_META_FIELDS.some((field) => normalizedError.includes(String(field).toLowerCase()));
+        }
         function syncBloomPickerFolderName(force = false) {
             const customerInput = document.getElementById('bloom-order-customer');
             const consigneeInput = document.getElementById('bloom-order-consignee');
@@ -4045,9 +4395,9 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function handleBloomPickerPartyInput() {
+            syncBloomPickerReserveSelectionFromInputs();
             syncBloomPickerFolderName(false);
         }
-
         function handleBloomPickerFolderInput() {
             const folderInput = document.getElementById('bloom-order-folder');
             if (!folderInput) return;
@@ -4079,18 +4429,26 @@ function toggleDriveQuickRequestItem(domId) {
             if (!clearFields) return false;
             const customerInput = document.getElementById('bloom-order-customer');
             const consigneeInput = document.getElementById('bloom-order-consignee');
+            const quickInput = document.getElementById('bloom-order-party-quick-filter');
             const orderInput = document.getElementById('bloom-order-number');
             const folderInput = document.getElementById('bloom-order-folder');
             const listContainer = document.getElementById('bloom-picker-list-container');
             bloomPickerFolderManuallyEdited = false;
+            bloomPickerReservePartyOptions = [];
+            bloomPickerSelectedReservePartyKey = '';
             if (customerInput) customerInput.value = '';
             if (consigneeInput) consigneeInput.value = '';
+            if (quickInput) quickInput.value = '';
             if (orderInput) orderInput.value = '';
             if (folderInput) {
                 folderInput.value = '';
                 folderInput.dataset.autoValue = '';
                 folderInput.dataset.manual = '0';
             }
+            populateBloomPickerDatalist('bloom-order-party-options', []);
+            populateBloomPickerDatalist('bloom-order-customer-options', []);
+            populateBloomPickerDatalist('bloom-order-consignee-options', []);
+            updateBloomPickerMetaFields(null);
             if (listContainer) {
                 listContainer.innerHTML = '';
                 listContainer.scrollTop = 0;
@@ -4098,7 +4456,6 @@ function toggleDriveQuickRequestItem(domId) {
             if (modal) modal.scrollTop = 0;
             return false;
         }
-
         function renderBloomPickerOrderList() {
             const container = document.getElementById('bloom-picker-list-container');
             if (!container) return;
@@ -4128,6 +4485,7 @@ function toggleDriveQuickRequestItem(domId) {
             toggleCartPanel(false);
             bloomPickerFolderManuallyEdited = false;
             renderBloomPickerOrderList();
+            loadBloomPickerReservePartyOptions();
             syncBloomPickerFolderName(true);
             const modal = document.getElementById('bloom-picker-modal');
             const listContainer = document.getElementById('bloom-picker-list-container');
@@ -4136,11 +4494,10 @@ function toggleDriveQuickRequestItem(domId) {
                 modal.scrollTop = 0;
             }
             if (listContainer) listContainer.scrollTop = 0;
-            const customerInput = document.getElementById('bloom-order-customer');
-            if (customerInput) setTimeout(() => { try { customerInput.focus(); } catch (e) {} }, 0);
+            const preferredInput = getRoleAccessState().isRep ? document.getElementById('bloom-order-party-quick-filter') : document.getElementById('bloom-order-customer');
+            if (preferredInput) setTimeout(() => { try { preferredInput.focus(); } catch (e) {} }, 0);
             return false;
         }
-
         async function submitBloomPickerOrder() {
             const items = getCartSelectedItems().filter(isAvOpenLikeItem);
             if (!items.length) {
@@ -4154,7 +4511,9 @@ function toggleDriveQuickRequestItem(domId) {
             const folderInput = document.getElementById('bloom-order-folder');
             const customer = String(customerInput && customerInput.value || '').trim();
             const consignee = String(consigneeInput && consigneeInput.value || '').trim();
-            const orderCustomer = buildBloomPickerOrderCustomerValue(customer, consignee);
+            const selectedReserveParty = syncBloomPickerReserveSelectionFromInputs();
+            const orderMetaPayload = buildBloomPickerOrderMetaPayload(selectedReserveParty, customer, consignee);
+            const orderCustomer = buildBloomPickerOrderCustomerValue(customer, consignee, orderMetaPayload);
             const orderNumber = String(orderInput && orderInput.value || '').trim();
             let folderName = String(folderInput && folderInput.value || '').trim();
             if (!orderCustomer) { showToast('Required', 'Enter the customer or consignee for this Bloom Picker order.', true); return false; }
@@ -4187,7 +4546,7 @@ function toggleDriveQuickRequestItem(domId) {
                 const photoLink = firstNonEmptyValue(item.SAVED_PHOTO_LINK, item.ROW_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']);
                 const photoName = firstNonEmptyValue(item.SAVED_PHOTO_NAME, item.ROW_PHOTO_NAME, item.PHOTO_NAME, item.PHOTONAME, item['PHOTO NAME']);
                 const salesNote = firstNonEmptyValue(item.SALES_NOTE, item.SALESNOTE, item.SALES_DESC, item.SALESDESC, '');
-                const payload = { unique_id: rowId, master_id: item.UNIQUE_ID || '', so_source: 'bloom_picker', order_folder: folderName, order_number: orderNumber, order_customer: orderCustomer, order_qty: String(qtyValue), order_desired_spec: desiredSpec || null, order_desired_caliper: desiredCaliper || null, order_reserve: reserveValue, order_submitted_by: submittedBy, order_submitted_at: submittedAt, order_status: 'Pending Review', itemcode: item.ITEMCODE || '', commonname: item.COMMONNAME || '', contsize: item.CONTSIZE || '', locationcode: item.LOCATIONCODE || '', lotcode: item.LOTCODE || '', ptravailable: String(item.PTRAVAILABLE || ''), priority: String(item.PRIORITY || ''), av_note: item.AV_NOTE || '', sales_note: salesNote || null, spec: item.SPEC || null, caliper: item.CALIPER || null, photo_link: photoLink || null, photo_name: photoName || null };
+                const payload = { unique_id: rowId, master_id: item.UNIQUE_ID || '', so_source: 'bloom_picker', order_folder: folderName, order_number: orderNumber, order_customer: orderCustomer, order_qty: String(qtyValue), order_desired_spec: desiredSpec || null, order_desired_caliper: desiredCaliper || null, order_reserve: reserveValue, order_submitted_by: submittedBy, order_submitted_at: submittedAt, order_status: 'Pending Review', itemcode: item.ITEMCODE || '', commonname: item.COMMONNAME || '', contsize: item.CONTSIZE || '', locationcode: item.LOCATIONCODE || '', lotcode: item.LOTCODE || '', ptravailable: String(item.PTRAVAILABLE || ''), priority: String(item.PRIORITY || ''), av_note: item.AV_NOTE || '', sales_note: salesNote || null, spec: item.SPEC || null, caliper: item.CALIPER || null, photo_link: photoLink || null, photo_name: photoName || null, ...orderMetaPayload };
                 payloads.push(payload);
                 const clone = { SOURCE_TABLE: 'v2_sales_office' };
                 Object.keys(payload).forEach((key) => { if (payload[key] !== null && payload[key] !== undefined) clone[key.toUpperCase()] = payload[key]; });
@@ -4201,8 +4560,17 @@ function toggleDriveQuickRequestItem(domId) {
             if (!payloads.length) { showToast('Qty Required', 'Enter an order quantity for at least one Bloom Picker row.', true); return false; }
             showToast('Processing...', `Submitting ${payloads.length} Bloom Picker row${payloads.length === 1 ? '' : 's'} to Sales Office...`, false);
             try {
-                await supabaseFetch('v2_sales_office', 'POST', payloads);
-                clones.forEach((clone) => { const existingIdx = salesOfficeInventory.findIndex((row) => String(row.UNIQUE_ID || '').trim() === String(clone.UNIQUE_ID || '').trim()); if (existingIdx > -1) salesOfficeInventory[existingIdx] = clone; else salesOfficeInventory.push(clone); });
+                let payloadBatch = payloads;
+                let cloneBatch = clones;
+                try {
+                    await supabaseFetch('v2_sales_office', 'POST', payloadBatch);
+                } catch (error) {
+                    if (!isBloomPickerOrderMetaSchemaError(error)) throw error;
+                    payloadBatch = payloads.map((payload) => stripBloomPickerOrderMetaFields(payload));
+                    cloneBatch = clones.map((clone) => stripBloomPickerOrderMetaFields(clone, true));
+                    await supabaseFetch('v2_sales_office', 'POST', payloadBatch);
+                }
+                cloneBatch.forEach((clone) => { const existingIdx = salesOfficeInventory.findIndex((row) => String(row.UNIQUE_ID || '').trim() === String(clone.UNIQUE_ID || '').trim()); if (existingIdx > -1) salesOfficeInventory[existingIdx] = clone; else salesOfficeInventory.push(clone); });
                 activeSalesOfficeTab = 'orders';
                 clearSelection();
                 closeBloomPickerModal();
@@ -4218,6 +4586,10 @@ function toggleDriveQuickRequestItem(domId) {
                 }
                 return false;
             } catch (error) {
+                if (isBloomPickerOrderMetaSchemaError(error)) {
+                    showToast('Error', 'Bloom Picker order metadata fields could not be saved. Run the optional order metadata migration, then try again.', true);
+                    return false;
+                }
                 const normalizedError = String(error && error.message ? error.message : error || '').toLowerCase();
                 if (normalizedError.includes('master_id') || normalizedError.includes('order_') || normalizedError.includes('so_source') || normalizedError.includes('av_note') || normalizedError.includes('sales_note') || normalizedError.includes('spec') || normalizedError.includes('caliper') || normalizedError.includes('photo_link') || normalizedError.includes('photo_name') || normalizedError.includes('column')) { salesOfficeOrderColumnsReady = false; maybeWarnSalesOfficeOrderSchemaMissing(); }
                 else showToast('Error', 'Bloom Picker order submission failed.', true);
@@ -6693,48 +7065,279 @@ activeDriveTab = tab;
             button.classList.toggle('pointer-events-none', count === 0);
         }
 
-        function buildAVExcelWorkbookXml(columns, rows, title, searchTerm = '') {
+        const XLSX_MIME_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+        const excelZipTextEncoder = typeof TextEncoder !== 'undefined' ? new TextEncoder() : null;
+        let zipCrcTable = null;
+
+        function encodeExcelZipText(value = '') {
+            const text = String(value == null ? '' : value);
+            if (excelZipTextEncoder) return excelZipTextEncoder.encode(text);
+            const utf8 = unescape(encodeURIComponent(text));
+            const bytes = new Uint8Array(utf8.length);
+            for (let i = 0; i < utf8.length; i++) bytes[i] = utf8.charCodeAt(i);
+            return bytes;
+        }
+
+        function getZipCrcTable() {
+            if (zipCrcTable) return zipCrcTable;
+            const table = new Uint32Array(256);
+            for (let n = 0; n < 256; n++) {
+                let crc = n;
+                for (let k = 0; k < 8; k++) {
+                    crc = (crc & 1) ? (0xEDB88320 ^ (crc >>> 1)) : (crc >>> 1);
+                }
+                table[n] = crc >>> 0;
+            }
+            zipCrcTable = table;
+            return table;
+        }
+
+        function crc32(bytes) {
+            const table = getZipCrcTable();
+            let crc = 0xFFFFFFFF;
+            for (let i = 0; i < bytes.length; i++) {
+                crc = table[(crc ^ bytes[i]) & 0xFF] ^ (crc >>> 8);
+            }
+            return (crc ^ 0xFFFFFFFF) >>> 0;
+        }
+
+        function normalizeZipEntryBytes(data = '') {
+            return data instanceof Uint8Array ? data : encodeExcelZipText(data);
+        }
+
+        function setZipUint16(view, offset, value) {
+            view.setUint16(offset, Number(value) & 0xFFFF, true);
+        }
+
+        function setZipUint32(view, offset, value) {
+            view.setUint32(offset, Number(value) >>> 0, true);
+        }
+
+        function getZipDosDateTime(dateValue = new Date()) {
+            const date = dateValue instanceof Date ? dateValue : new Date(dateValue);
+            const safeDate = Number.isNaN(date.getTime()) ? new Date() : date;
+            const year = Math.max(safeDate.getFullYear(), 1980);
+            const month = safeDate.getMonth() + 1;
+            const day = safeDate.getDate();
+            const hours = safeDate.getHours();
+            const minutes = safeDate.getMinutes();
+            const seconds = Math.floor(safeDate.getSeconds() / 2);
+            return {
+                time: ((hours & 31) << 11) | ((minutes & 63) << 5) | (seconds & 31),
+                date: (((year - 1980) & 127) << 9) | ((month & 15) << 5) | (day & 31)
+            };
+        }
+
+        function buildStoredZipBlob(files = [], mimeType = XLSX_MIME_TYPE) {
+            const parts = [];
+            const centralDirectoryParts = [];
+            let offset = 0;
+            const stamp = getZipDosDateTime(new Date());
+            files.forEach((file) => {
+                const nameBytes = encodeExcelZipText(file && file.name ? file.name : 'file');
+                const dataBytes = normalizeZipEntryBytes(file && Object.prototype.hasOwnProperty.call(file, 'data') ? file.data : '');
+                const checksum = crc32(dataBytes);
+                const localHeader = new Uint8Array(30 + nameBytes.length);
+                const localView = new DataView(localHeader.buffer);
+                setZipUint32(localView, 0, 0x04034B50);
+                setZipUint16(localView, 4, 20);
+                setZipUint16(localView, 6, 0);
+                setZipUint16(localView, 8, 0);
+                setZipUint16(localView, 10, stamp.time);
+                setZipUint16(localView, 12, stamp.date);
+                setZipUint32(localView, 14, checksum);
+                setZipUint32(localView, 18, dataBytes.length);
+                setZipUint32(localView, 22, dataBytes.length);
+                setZipUint16(localView, 26, nameBytes.length);
+                setZipUint16(localView, 28, 0);
+                localHeader.set(nameBytes, 30);
+                parts.push(localHeader, dataBytes);
+
+                const centralHeader = new Uint8Array(46 + nameBytes.length);
+                const centralView = new DataView(centralHeader.buffer);
+                setZipUint32(centralView, 0, 0x02014B50);
+                setZipUint16(centralView, 4, 20);
+                setZipUint16(centralView, 6, 20);
+                setZipUint16(centralView, 8, 0);
+                setZipUint16(centralView, 10, 0);
+                setZipUint16(centralView, 12, stamp.time);
+                setZipUint16(centralView, 14, stamp.date);
+                setZipUint32(centralView, 16, checksum);
+                setZipUint32(centralView, 20, dataBytes.length);
+                setZipUint32(centralView, 24, dataBytes.length);
+                setZipUint16(centralView, 28, nameBytes.length);
+                setZipUint16(centralView, 30, 0);
+                setZipUint16(centralView, 32, 0);
+                setZipUint16(centralView, 34, 0);
+                setZipUint16(centralView, 36, 0);
+                setZipUint32(centralView, 38, 0);
+                setZipUint32(centralView, 42, offset);
+                centralHeader.set(nameBytes, 46);
+                centralDirectoryParts.push(centralHeader);
+                offset += localHeader.length + dataBytes.length;
+            });
+            const centralDirectoryOffset = offset;
+            centralDirectoryParts.forEach((chunk) => {
+                parts.push(chunk);
+                offset += chunk.length;
+            });
+            const endHeader = new Uint8Array(22);
+            const endView = new DataView(endHeader.buffer);
+            setZipUint32(endView, 0, 0x06054B50);
+            setZipUint16(endView, 4, 0);
+            setZipUint16(endView, 6, 0);
+            setZipUint16(endView, 8, files.length);
+            setZipUint16(endView, 10, files.length);
+            setZipUint32(endView, 12, offset - centralDirectoryOffset);
+            setZipUint32(endView, 16, centralDirectoryOffset);
+            setZipUint16(endView, 20, 0);
+            parts.push(endHeader);
+            return new Blob(parts, { type: mimeType });
+        }
+
+        function sanitizeExcelCellValue(value = '') {
+            return String(value == null ? '' : value).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '');
+        }
+
+        function getExcelColumnName(index = 0) {
+            let value = Math.max(0, Math.floor(Number(index) || 0));
+            let name = '';
+            do {
+                name = String.fromCharCode(65 + (value % 26)) + name;
+                value = Math.floor(value / 26) - 1;
+            } while (value >= 0);
+            return name;
+        }
+
+        function buildExcelInlineStringCell(ref = 'A1', value = '', styleId = 0) {
+            return `<c r="${ref}" s="${styleId}" t="inlineStr"><is><t xml:space="preserve">${escapeExcelXml(sanitizeExcelCellValue(value))}</t></is></c>`;
+        }
+
+        function buildExcelWorkbookStylesXml() {
+            return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <fonts count="3">
+    <font><sz val="11"/><name val="Calibri"/></font>
+    <font><b/><sz val="14"/><name val="Calibri"/></font>
+    <font><b/><sz val="11"/><name val="Calibri"/></font>
+  </fonts>
+  <fills count="3">
+    <fill><patternFill patternType="none"/></fill>
+    <fill><patternFill patternType="gray125"/></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFE6F6EF"/><bgColor indexed="64"/></patternFill></fill>
+  </fills>
+  <borders count="1">
+    <border><left/><right/><top/><bottom/><diagonal/></border>
+  </borders>
+  <cellStyleXfs count="1">
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="0"/>
+  </cellStyleXfs>
+  <cellXfs count="4">
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>
+    <xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>
+    <xf numFmtId="0" fontId="2" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>
+    <xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>
+  </cellXfs>
+  <cellStyles count="1">
+    <cellStyle name="Normal" xfId="0" builtinId="0"/>
+  </cellStyles>
+</styleSheet>`;
+        }
+
+        function buildExcelWorksheetXml(columns, rows, title, searchTerm = '', metaRows = null) {
             const exportedAt = new Date().toLocaleString('en-US');
             const exportedBy = currentUserDisplay || currentUser || 'Unknown';
-            const mergeAcross = Math.max(columns.length - 1, 0);
-            const headerCells = columns.map((column) => `<Cell ss:StyleID="Header"><Data ss:Type="String">${escapeExcelXml(column.label)}</Data></Cell>`).join('');
-            const bodyRows = rows.map((row) => `<Row>${columns.map((column) => `<Cell><Data ss:Type="String">${escapeExcelXml(column.value(row))}</Data></Cell>`).join('')}</Row>`).join('');
-            return `<?xml version="1.0"?>
-<?mso-application progid="Excel.Sheet"?>
-<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
- xmlns:o="urn:schemas-microsoft-com:office:office"
- xmlns:x="urn:schemas-microsoft-com:office:excel"
- xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
- xmlns:html="http://www.w3.org/TR/REC-html40">
- <Styles>
-  <Style ss:ID="Default" ss:Name="Normal">
-   <Alignment ss:Vertical="Top" ss:WrapText="1"/>
-   <Font ss:FontName="Calibri" ss:Size="11"/>
-  </Style>
-  <Style ss:ID="Title">
-   <Font ss:Bold="1" ss:Size="14"/>
-  </Style>
-  <Style ss:ID="Header">
-   <Font ss:Bold="1"/>
-   <Interior ss:Color="#E6F6EF" ss:Pattern="Solid"/>
-  </Style>
-  <Style ss:ID="MetaLabel">
-   <Font ss:Bold="1"/>
-  </Style>
- </Styles>
- <Worksheet ss:Name="${escapeExcelXml(getAVWorksheetName(title))}">
-  <Table>
-   <Row><Cell ss:StyleID="Title" ss:MergeAcross="${mergeAcross}"><Data ss:Type="String">${escapeExcelXml(title)}</Data></Cell></Row>
-   <Row><Cell ss:StyleID="MetaLabel"><Data ss:Type="String">Search</Data></Cell><Cell ss:MergeAcross="${Math.max(columns.length - 2, 0)}"><Data ss:Type="String">${escapeExcelXml(searchTerm || 'None')}</Data></Cell></Row>
-   <Row><Cell ss:StyleID="MetaLabel"><Data ss:Type="String">Rows</Data></Cell><Cell ss:MergeAcross="${Math.max(columns.length - 2, 0)}"><Data ss:Type="String">${escapeExcelXml(rows.length)}</Data></Cell></Row>
-   <Row><Cell ss:StyleID="MetaLabel"><Data ss:Type="String">Exported By</Data></Cell><Cell ss:MergeAcross="${Math.max(columns.length - 2, 0)}"><Data ss:Type="String">${escapeExcelXml(exportedBy)}</Data></Cell></Row>
-   <Row><Cell ss:StyleID="MetaLabel"><Data ss:Type="String">Exported At</Data></Cell><Cell ss:MergeAcross="${Math.max(columns.length - 2, 0)}"><Data ss:Type="String">${escapeExcelXml(exportedAt)}</Data></Cell></Row>
-   <Row/>
-   <Row>${headerCells}</Row>
-   ${bodyRows}
-  </Table>
- </Worksheet>
-</Workbook>`;
+            const dataColumns = Array.isArray(columns) && columns.length ? columns : [{ label: 'Value', value: (row) => row }];
+            const renderColumnCount = Math.max(dataColumns.length, 2);
+            const lastColumnName = getExcelColumnName(renderColumnCount - 1);
+            const columnDefs = Array.from({ length: renderColumnCount }, (_, index) => `<col min="${index + 1}" max="${index + 1}" width="${index === 0 ? 22 : 24}" customWidth="1"/>`).join('');
+            const mergeRefs = [];
+            const rowXml = [];
+            let rowNumber = 1;
+            rowXml.push(`<row r="${rowNumber}">${buildExcelInlineStringCell(`A${rowNumber}`, title, 1)}</row>`);
+            if (renderColumnCount > 1) mergeRefs.push(`A${rowNumber}:${lastColumnName}${rowNumber}`);
+            const defaultMetaRows = [
+                ['Search', searchTerm || 'None'],
+                ['Rows', String(rows.length)],
+                ['Exported By', exportedBy],
+                ['Exported At', exportedAt]
+            ];
+            const extraMetaRows = Array.isArray(metaRows) ? metaRows.filter((row) => Array.isArray(row) && row.length) : [];
+            const metadataRows = [...extraMetaRows, ...defaultMetaRows];
+            metadataRows.forEach(([label, value]) => {
+                rowNumber += 1;
+                rowXml.push(`<row r="${rowNumber}">${buildExcelInlineStringCell(`A${rowNumber}`, label, 3)}${buildExcelInlineStringCell(`B${rowNumber}`, value, 0)}</row>`);
+                if (renderColumnCount > 2) mergeRefs.push(`B${rowNumber}:${lastColumnName}${rowNumber}`);
+            });
+            rowNumber += 1;
+            rowXml.push(`<row r="${rowNumber}"/>`);
+            rowNumber += 1;
+            rowXml.push(`<row r="${rowNumber}">${dataColumns.map((column, index) => buildExcelInlineStringCell(`${getExcelColumnName(index)}${rowNumber}`, column.label, 2)).join('')}</row>`);
+            rows.forEach((row) => {
+                rowNumber += 1;
+                rowXml.push(`<row r="${rowNumber}">${dataColumns.map((column, index) => buildExcelInlineStringCell(`${getExcelColumnName(index)}${rowNumber}`, column && typeof column.value === 'function' ? column.value(row) : '', 0)).join('')}</row>`);
+            });
+            const mergeCellsXml = mergeRefs.length ? `<mergeCells count="${mergeRefs.length}">${mergeRefs.map((ref) => `<mergeCell ref="${ref}"/>`).join('')}</mergeCells>` : '';
+            return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <sheetViews><sheetView workbookViewId="0"/></sheetViews>
+  <sheetFormatPr defaultRowHeight="15"/>
+  <cols>${columnDefs}</cols>
+  <sheetData>${rowXml.join('')}</sheetData>
+  ${mergeCellsXml}
+</worksheet>`;
+        }
+
+        function buildExcelWorkbookBlob(columns, rows, title, searchTerm = '', metaRows = null) {
+            const worksheetName = getAVWorksheetName(title);
+            const worksheetXml = buildExcelWorksheetXml(columns, rows, title, searchTerm, metaRows);
+            const workbookXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheets>
+    <sheet name="${escapeExcelXml(worksheetName)}" sheetId="1" r:id="rId1"/>
+  </sheets>
+</workbook>`;
+            const workbookRelsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>`;
+            const rootRelsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`;
+            const contentTypesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+  <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+  <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+</Types>`;
+            return buildStoredZipBlob([
+                { name: '[Content_Types].xml', data: contentTypesXml },
+                { name: '_rels/.rels', data: rootRelsXml },
+                { name: 'xl/workbook.xml', data: workbookXml },
+                { name: 'xl/_rels/workbook.xml.rels', data: workbookRelsXml },
+                { name: 'xl/styles.xml', data: buildExcelWorkbookStylesXml() },
+                { name: 'xl/worksheets/sheet1.xml', data: worksheetXml }
+            ]);
+        }
+
+        function downloadExcelWorkbook(columns, rows, title, searchTerm = '', fileLabel = 'export', metaRows = null) {
+            const workbookBlob = buildExcelWorkbookBlob(columns, rows, title, searchTerm, metaRows);
+            const timestamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
+            const filename = `gnc-${sanitizeAVExportFilePart(fileLabel)}-${timestamp}.xlsx`;
+            const url = URL.createObjectURL(workbookBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            setTimeout(() => {
+                URL.revokeObjectURL(url);
+                link.remove();
+            }, 0);
         }
 
         function exportCurrentAVToExcel() {
@@ -6747,20 +7350,7 @@ activeDriveTab = tab;
                 return false;
             }
             const columns = getAVExportColumns();
-            const workbookXml = buildAVExcelWorkbookXml(columns, exportContext.rows, exportContext.title, exportContext.searchTerm);
-            const timestamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
-            const filename = `gnc-${sanitizeAVExportFilePart(exportContext.fileLabel)}-${timestamp}.xls`;
-            const blob = new Blob([workbookXml], { type: 'application/vnd.ms-excel;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = filename;
-            document.body.appendChild(link);
-            link.click();
-            setTimeout(() => {
-                URL.revokeObjectURL(url);
-                link.remove();
-            }, 0);
+            downloadExcelWorkbook(columns, exportContext.rows, exportContext.title, exportContext.searchTerm, exportContext.fileLabel);
             showToast('Export Ready', `Downloading ${exportContext.rows.length} AV row${exportContext.rows.length === 1 ? '' : 's'} as Excel.`);
             return false;
         }
@@ -7802,11 +8392,11 @@ activeDriveTab = tab;
             (items || []).forEach((item) => {
                 const key = getSalesOfficeOrderGroupKey(item);
                 if (!groups.has(key)) {
-                    groups.set(key, { key, folder: key, orderNumber: firstNonEmptyValue(item.ORDER_NUMBER, ''), customer: firstNonEmptyValue(item.ORDER_CUSTOMER, item.CUSTOMERNAME, item.CUSTOMER, ''), status: firstNonEmptyValue(item.ORDER_STATUS, 'Pending Review'), submittedBy: firstNonEmptyValue(item.ORDER_SUBMITTED_BY, item.COMPLETED_BY, ''), submittedAt: firstNonEmptyValue(item.ORDER_SUBMITTED_AT, item.COMPLETED_AT, ''), rows: [] });
+                    groups.set(key, { key, folder: key, orderNumber: firstNonEmptyValue(item.ORDER_NUMBER, ''), customer: firstNonEmptyValue(getSalesOfficeOrderDisplayCustomer(item), item.CUSTOMERNAME, item.CUSTOMER, ''), status: firstNonEmptyValue(item.ORDER_STATUS, 'Pending Review'), submittedBy: firstNonEmptyValue(item.ORDER_SUBMITTED_BY, item.COMPLETED_BY, ''), submittedAt: firstNonEmptyValue(item.ORDER_SUBMITTED_AT, item.COMPLETED_AT, ''), rows: [] });
                 }
                 const group = groups.get(key);
                 group.orderNumber = firstNonEmptyValue(group.orderNumber, item.ORDER_NUMBER, '');
-                group.customer = firstNonEmptyValue(group.customer, item.ORDER_CUSTOMER, item.CUSTOMERNAME, item.CUSTOMER, '');
+                group.customer = firstNonEmptyValue(getSalesOfficeOrderDisplayCustomer(item), group.customer, item.CUSTOMERNAME, item.CUSTOMER, '');
                 group.status = firstNonEmptyValue(item.ORDER_STATUS, group.status, 'Pending Review');
                 group.submittedBy = firstNonEmptyValue(group.submittedBy, item.ORDER_SUBMITTED_BY, item.COMPLETED_BY, '');
                 group.submittedAt = firstNonEmptyValue(group.submittedAt, item.ORDER_SUBMITTED_AT, item.COMPLETED_AT, '');
@@ -7824,28 +8414,146 @@ activeDriveTab = tab;
             }).sort((a, b) => new Date(b.submittedAt || 0).getTime() - new Date(a.submittedAt || 0).getTime());
         }
 
+        function getSalesOfficeOrderExportMasterRow(row = null) {
+            return row ? (findLinkedMasterRow(row) || {}) : {};
+        }
+
+        function getSalesOfficeOrderExportHoldNotes(row = null) {
+            const masterRow = getSalesOfficeOrderExportMasterRow(row);
+            const notes = [
+                firstNonEmptyValue(row && row.HOLD_REASON, row && row.HOLDREASON, row && row.HOLDSTOPREASON, masterRow.HOLD_REASON, masterRow.HOLDREASON, masterRow.HOLDSTOPREASON, ''),
+                firstNonEmptyValue(row && row.AV_NOTE, masterRow.AV_NOTE, ''),
+                firstNonEmptyValue(row && row.SALES_NOTE, row && row.SALESNOTE, row && row.SALES_DESC, row && row.SALESDESC, masterRow.SALES_NOTE, masterRow.SALESNOTE, masterRow.SALES_DESC, masterRow.SALESDESC, '')
+            ].map((value) => String(value || '').trim()).filter(Boolean);
+            return [...new Set(notes)].join(' | ');
+        }
+
+        function getSalesOfficeOrderExportExtItemTotal(row = null) {
+            const masterRow = getSalesOfficeOrderExportMasterRow(row);
+            const qty = parseAppNumber(firstNonEmptyValue(row && row.ORDER_QTY, row && row.REQ_QTY, ''));
+            const priceSource = firstNonEmptyValue(
+                row && row.UNIT_PRICE,
+                row && row.UNITPRICE,
+                row && row.LISTPRICE,
+                row && row.LISTPRI,
+                masterRow.UNIT_PRICE,
+                masterRow.UNITPRICE,
+                masterRow.LISTPRICE,
+                masterRow.LISTPRI,
+                row && row.HOT_PRICE,
+                row && row.HOTPRICE,
+                masterRow.HOT_PRICE,
+                masterRow.HOTPRICE,
+                ''
+            );
+            const price = parseFloat(String(priceSource || '').replace(/[^0-9.-]/g, ''));
+            if (!Number.isFinite(qty) || !Number.isFinite(price)) return '';
+            return (qty * price).toFixed(2);
+        }
+
+        function parseSalesOfficeOrderCustomerParts(value = '') {
+            const raw = String(value || '').trim();
+            if (!raw) return { customer: '', consignee: '', meta: {} };
+            let visibleValue = raw;
+            let meta = {};
+            const tokenIndex = raw.indexOf(BLOOM_PICKER_ORDER_META_TOKEN);
+            if (tokenIndex > -1) {
+                visibleValue = raw.slice(0, tokenIndex).trim();
+                meta = decodeBloomPickerOrderMeta(raw.slice(tokenIndex + BLOOM_PICKER_ORDER_META_TOKEN.length));
+            }
+            const parts = visibleValue.split('|').map((part) => String(part || '').trim()).filter(Boolean);
+            return {
+                customer: parts[0] || visibleValue,
+                consignee: parts[1] || '',
+                meta
+            };
+        }
+
+        function getSalesOfficeOrderDisplayCustomer(item = null) {
+            const parts = parseSalesOfficeOrderCustomerParts(firstNonEmptyValue(item && item.ORDER_CUSTOMER, ''));
+            const customer = String(parts.customer || firstNonEmptyValue(item && item.CUSTOMERNAME, item && item.CUSTOMER, '') || '').trim();
+            const consignee = String(parts.consignee || firstNonEmptyValue(item && item.CONSIGNEENAME, item && item.CONSIGNEE, '') || '').trim();
+            if (!customer) return consignee;
+            return consignee && consignee.toLowerCase() !== customer.toLowerCase() ? `${customer} | ${consignee}` : customer;
+        }
+
+        function getSalesOfficeOrderExportFieldCandidates(field = '') {
+            const raw = String(field || '').trim();
+            if (!raw) return [];
+            const variants = new Set([raw]);
+            variants.add(raw.toUpperCase());
+            variants.add(raw.toLowerCase());
+            return [...variants];
+        }
+        function formatSalesOfficeOrderExportPair(primary = '', secondary = '') {
+            const left = String(primary || '').trim();
+            const right = String(secondary || '').trim();
+            if (left && right) return left + '-' + right;
+            return left || right;
+        }
+
+        function getSalesOfficeOrderExportResolvedValue(row = null, rowFields = [], masterFields = []) {
+            const safeRowFields = Array.isArray(rowFields) ? rowFields : [];
+            const safeMasterFields = Array.isArray(masterFields) ? masterFields : [];
+            const masterRow = getSalesOfficeOrderExportMasterRow(row);
+            const orderParts = parseSalesOfficeOrderCustomerParts(firstNonEmptyValue(row && row.ORDER_CUSTOMER, ''));
+            const meta = orderParts.meta || {};
+            const rowValues = safeRowFields.flatMap((field) => getSalesOfficeOrderExportFieldCandidates(field).map((candidate) => row && candidate ? row[candidate] : ''));
+            const metaValues = safeRowFields.map((field) => meta[String(field || '').trim().toLowerCase()] || '');
+            const masterValues = safeMasterFields.flatMap((field) => getSalesOfficeOrderExportFieldCandidates(field).map((candidate) => masterRow && candidate ? masterRow[candidate] : ''));
+            return firstNonEmptyValue(...rowValues, ...metaValues, ...masterValues, '');
+        }
+
+        function getSalesOfficeOrderExportDistinctValue(rows = [], resolver = null) {
+            if (!Array.isArray(rows) || !rows.length || typeof resolver !== 'function') return '';
+            const values = [...new Set(rows.map((row) => String(resolver(row) || '').trim()).filter(Boolean))];
+            if (!values.length) return '';
+            return values.length === 1 ? values[0] : 'Multiple';
+        }
+
+        function getSalesOfficeOrderExportMetaRows(rows = []) {
+            const safeRows = Array.isArray(rows) ? rows : [];
+            return [
+                ['SALESREPNAME', getSalesOfficeOrderExportDistinctValue(safeRows, (row) => getSalesOfficeOrderExportResolvedValue(row, ['SALESREPNAME','SALESREP','SALES_REP','ORDER_SUBMITTED_BY'], ['SALESREPNAME','SALESREP','SALES_REP']))],
+                ['CUSTOMERNAME-CUSTOMERIDENTITYID', getSalesOfficeOrderExportDistinctValue(safeRows, (row) => {
+                    const parts = parseSalesOfficeOrderCustomerParts(firstNonEmptyValue(row && row.ORDER_CUSTOMER, ''));
+                    const customerName = firstNonEmptyValue(getSalesOfficeOrderExportResolvedValue(row, ['CUSTOMERNAME','CUSTOMER'], ['CUSTOMERNAME','CUSTOMER']), parts.customer, '');
+                    const customerIdentityId = getSalesOfficeOrderExportResolvedValue(row, ['CUSTOMERIDENTITYID','CUSTOMER_IDENTITY_ID','CUSTOMERID','CUSTOMER_ID'], ['CUSTOMERIDENTITYID','CUSTOMER_IDENTITY_ID','CUSTOMERID','CUSTOMER_ID']);
+                    return formatSalesOfficeOrderExportPair(customerName, customerIdentityId);
+                })],
+                ['CONSIGNEENAME-CONSIGNEEIDENTITYID', getSalesOfficeOrderExportDistinctValue(safeRows, (row) => {
+                    const parts = parseSalesOfficeOrderCustomerParts(firstNonEmptyValue(row && row.ORDER_CUSTOMER, ''));
+                    const consigneeName = firstNonEmptyValue(getSalesOfficeOrderExportResolvedValue(row, ['CONSIGNEENAME','CONSIGNEE'], ['CONSIGNEENAME','CONSIGNEE']), parts.consignee, '');
+                    const consigneeIdentityId = getSalesOfficeOrderExportResolvedValue(row, ['CONSIGNEEIDENTITYID','CONSIGNEE_IDENTITY_ID','CONSIGNEEID','CONSIGNEE_ID'], ['CONSIGNEEIDENTITYID','CONSIGNEE_IDENTITY_ID','CONSIGNEEID','CONSIGNEE_ID']);
+                    return formatSalesOfficeOrderExportPair(consigneeName, consigneeIdentityId);
+                })],
+                ['CONSIGNEECITY-CONSIGNEESTATE', getSalesOfficeOrderExportDistinctValue(safeRows, (row) => formatSalesOfficeOrderExportPair(getSalesOfficeOrderExportResolvedValue(row, ['CONSIGNEECITY','CITY'], ['CONSIGNEECITY','CITY']), getSalesOfficeOrderExportResolvedValue(row, ['CONSIGNEESTATE','STATE'], ['CONSIGNEESTATE','STATE'])))],
+                ['CONSIGNEEZIP', getSalesOfficeOrderExportDistinctValue(safeRows, (row) => getSalesOfficeOrderExportResolvedValue(row, ['CONSIGNEEZIP','ZIPCODE','ZIP_CODE','ZIP'], ['CONSIGNEEZIP','ZIPCODE','ZIP_CODE','ZIP']))],
+                ['ZONECODE', getSalesOfficeOrderExportDistinctValue(safeRows, (row) => getSalesOfficeOrderExportResolvedValue(row, ['ZONECODE','ZONE_CODE'], ['ZONECODE','ZONE_CODE']))],
+                ['TAGCODE', getSalesOfficeOrderExportDistinctValue(safeRows, (row) => getSalesOfficeOrderExportResolvedValue(row, ['TAGCODE','TAG_CODE'], ['TAGCODE','TAG_CODE']))],
+                ['CONSIGNEEADDRESS_1', getSalesOfficeOrderExportDistinctValue(safeRows, (row) => getSalesOfficeOrderExportResolvedValue(row, ['CONSIGNEEADDRESS_1','CONSIGNEEADDRESS1','ADDRESS_1','ADDRESS1'], ['CONSIGNEEADDRESS_1','CONSIGNEEADDRESS1','ADDRESS_1','ADDRESS1']))]
+            ];
+        }
+
         function getSalesOfficeExportColumns(tab = activeSalesOfficeTab) {
             if (tab === 'orders') {
                 return [
-                    { label: 'Folder', value: (row) => row.ORDER_FOLDER || '' },
-                    { label: 'Order Number', value: (row) => row.ORDER_NUMBER || '' },
-                    { label: 'Customer', value: (row) => row.ORDER_CUSTOMER || '' },
-                    { label: 'Status', value: (row) => row.ORDER_STATUS || '' },
-                    { label: 'Order Qty', value: (row) => row.ORDER_QTY || '' },
-                    { label: 'Reserve', value: (row) => row.ORDER_RESERVE || '' },
-                    { label: 'Desired Spec', value: (row) => row.ORDER_DESIRED_SPEC || '' },
-                    { label: 'Desired Caliper', value: (row) => row.ORDER_DESIRED_CALIPER || '' },
-                    { label: 'Common Name', value: (row) => row.COMMONNAME || '' },
-                    { label: 'Container Size', value: (row) => row.CONTSIZE || '' },
-                    { label: 'Location', value: (row) => row.LOCATIONCODE || '' },
-                    { label: 'Lot Code', value: (row) => row.LOTCODE || '' },
-                    { label: 'Item Code', value: (row) => row.ITEMCODE || '' },
-                    { label: 'Qty Available', value: (row) => row.PTRAVAILABLE || '' },
-                    { label: 'AV Note', value: (row) => row.AV_NOTE || '' },
-                    { label: 'Sales Note', value: (row) => firstNonEmptyValue(row.SALES_NOTE, row.SALESNOTE, row.SALES_DESC, row.SALESDESC) || '' },
-                    { label: 'Submitted By', value: (row) => row.ORDER_SUBMITTED_BY || '' },
-                    { label: 'Submitted At', value: (row) => row.ORDER_SUBMITTED_AT || '' },
-                    { label: 'Photo Links', value: (row) => getPhotoUrlList(getRowPhotoLink(row, 'sales-office')).join('\n') }
+                    { label: 'Item #', value: (row) => { const masterRow = getSalesOfficeOrderExportMasterRow(row); return firstNonEmptyValue(row && row.ITEMCODE, masterRow.ITEMCODE, ''); } },
+                    { label: 'Product Description', value: (row) => { const masterRow = getSalesOfficeOrderExportMasterRow(row); return firstNonEmptyValue(row && row.PRODUCT_DESCRIPTION, row && row.PRODUCTDESCRIPTION, row && row.COMMONNAME, masterRow.PRODUCT_DESCRIPTION, masterRow.PRODUCTDESCRIPTION, masterRow.COMMONNAME, ''); } },
+                    { label: 'Brand Code', value: (row) => { const masterRow = getSalesOfficeOrderExportMasterRow(row); return firstNonEmptyValue(row && row.BRAND_CODE, row && row.BRANDCODE, row && row.BRAND, masterRow.BRAND_CODE, masterRow.BRANDCODE, masterRow.BRAND, ''); } },
+                    { label: 'Size', value: (row) => { const masterRow = getSalesOfficeOrderExportMasterRow(row); return firstNonEmptyValue(row && row.CONTSIZE, masterRow.CONTSIZE, ''); } },
+                    { label: 'H', value: (row) => { const masterRow = getSalesOfficeOrderExportMasterRow(row); return firstNonEmptyValue(row && row.H, row && row.HEIGHT, row && row.HEIGHT_CODE, masterRow.H, masterRow.HEIGHT, masterRow.HEIGHT_CODE, ''); } },
+                    { label: '*Season', value: (row) => { const masterRow = getSalesOfficeOrderExportMasterRow(row); return firstNonEmptyValue(row && row.SEASON, masterRow.SEASON, ''); } },
+                    { label: 'Available', value: (row) => { const masterRow = getSalesOfficeOrderExportMasterRow(row); return firstNonEmptyValue(row && row.PTRAVAILABLE, masterRow.PTRAVAILABLE, ''); } },
+                    { label: 'Reserved Qty', value: (row) => { const masterRow = getSalesOfficeOrderExportMasterRow(row); return firstNonEmptyValue(row && row.RESERVED_QTY, row && row.RESERVEDQTY, row && row.QTY_RESERVED, masterRow.RESERVED_QTY, masterRow.RESERVEDQTY, masterRow.QTY_RESERVED, row && row.ORDER_RESERVE, ''); } },
+                    { label: 'Order Qty', value: (row) => firstNonEmptyValue(row && row.ORDER_QTY, row && row.REQ_QTY, '') },
+                    { label: 'Unit Price', value: (row) => { const masterRow = getSalesOfficeOrderExportMasterRow(row); return firstNonEmptyValue(row && row.UNIT_PRICE, row && row.UNITPRICE, row && row.LISTPRICE, row && row.LISTPRI, masterRow.UNIT_PRICE, masterRow.UNITPRICE, masterRow.LISTPRICE, masterRow.LISTPRI, ''); } },
+                    { label: 'N*', value: (row) => { const masterRow = getSalesOfficeOrderExportMasterRow(row); return firstNonEmptyValue(row && row.N_STAR, row && row.NSTAR, row && row.N, masterRow.N_STAR, masterRow.NSTAR, masterRow.N, ''); } },
+                    { label: 'Hot Price', value: (row) => { const masterRow = getSalesOfficeOrderExportMasterRow(row); return firstNonEmptyValue(row && row.HOT_PRICE, row && row.HOTPRICE, masterRow.HOT_PRICE, masterRow.HOTPRICE, ''); } },
+                    { label: 'Hold Reason/Notes/Comments', value: (row) => getSalesOfficeOrderExportHoldNotes(row) },
+                    { label: 'Spec', value: (row) => { const masterRow = getSalesOfficeOrderExportMasterRow(row); return firstNonEmptyValue(row && row.ORDER_DESIRED_SPEC, row && row.SPEC, masterRow.SPEC, ''); } },
+                    { label: 'HZ', value: (row) => { const masterRow = getSalesOfficeOrderExportMasterRow(row); return firstNonEmptyValue(row && row.HZ, row && row.HZ_CODE, masterRow.HZ, masterRow.HZ_CODE, ''); } },
+                    { label: 'Ext. Item Total', value: (row) => getSalesOfficeOrderExportExtItemTotal(row) }
                 ];
             }
             return [
@@ -7879,17 +8587,8 @@ activeDriveTab = tab;
             if (tab === activeSalesOfficeTab) updateSalesOfficeExportButton(count);
             if (!count) { showToast('No Rows', `There are no ${tab === 'orders' ? 'Bloom Picker order' : 'Season Sales Notes'} rows to export right now.`, true); return false; }
             const columns = getSalesOfficeExportColumns(tab);
-            const workbookXml = buildAVExcelWorkbookXml(columns, exportContext.rows, exportContext.title, '');
-            const timestamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
-            const filename = `gnc-${sanitizeAVExportFilePart(exportContext.fileLabel)}-${timestamp}.xls`;
-            const blob = new Blob([workbookXml], { type: 'application/vnd.ms-excel;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = filename;
-            document.body.appendChild(link);
-            link.click();
-            setTimeout(() => { URL.revokeObjectURL(url); link.remove(); }, 0);
+            const metaRows = tab === 'orders' ? getSalesOfficeOrderExportMetaRows(exportContext.rows) : null;
+            downloadExcelWorkbook(columns, exportContext.rows, exportContext.title, '', exportContext.fileLabel, metaRows);
             showToast('Export Ready', `Downloading ${count} Sales Office row${count === 1 ? '' : 's'} as Excel.`);
             return false;
         }
@@ -11028,7 +11727,3 @@ function toggleDriveSeason(s) {
     </script>
 </body>
 </html>
-
-
-
-
