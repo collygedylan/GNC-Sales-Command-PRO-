@@ -28,7 +28,7 @@
     <style>
         #main-scroll-area{min-height:0;width:100%;max-width:100%;min-width:0;overflow-x:hidden;overflow-y:auto;overscroll-behavior-x:none;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;scroll-padding-top:calc(5.5rem + env(safe-area-inset-top));scroll-padding-bottom:calc(7rem + env(safe-area-inset-bottom));padding-bottom:calc(10rem + env(safe-area-inset-bottom));background:#f9fafb}
         #global-action-bar{padding-bottom:calc(.75rem + env(safe-area-inset-bottom))}#cart-helper-text{margin-top:.6rem;font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#6b7280}
-        body.app-standalone #app-wrapper{height:var(--app-height);min-height:var(--app-height)}body.app-standalone #main-scroll-area{padding-bottom:calc(10rem + env(safe-area-inset-bottom))}body.app-standalone.keyboard-open #bottom-nav,body.app-standalone.keyboard-open #global-action-bar{opacity:0;pointer-events:none;transform:translateY(140%);transition:transform .18s ease,opacity .18s ease}body.app-standalone.keyboard-open #main-scroll-area{padding-bottom:calc(1.5rem + var(--keyboard-offset));scroll-padding-bottom:calc(1.5rem + var(--keyboard-offset))}#bottom-nav{left:50%;right:auto;transform:translateX(-50%);width:min(760px,calc(100% - 12px));max-width:calc(100% - 12px);padding:10px 10px calc(.75rem + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:.5rem;background:rgba(255,255,255,.98);backdrop-filter:saturate(150%) blur(12px);border-top-left-radius:22px;border-top-right-radius:22px;box-sizing:border-box}
+        body.app-standalone #app-wrapper{height:var(--app-height);min-height:var(--app-height)}body.app-standalone #main-scroll-area{padding-bottom:calc(10rem + env(safe-area-inset-bottom))}body.app-standalone.keyboard-open #bottom-nav,body.app-standalone.keyboard-open #global-action-bar{opacity:0;pointer-events:none;transform:translateY(140%);transition:transform .18s ease,opacity .18s ease}body.app-standalone.keyboard-open #main-scroll-area{padding-bottom:calc(1.5rem + var(--keyboard-offset));scroll-padding-bottom:calc(1.5rem + var(--keyboard-offset))}#bottom-nav{left:50%;right:auto;bottom:0;transform:translateX(-50%);width:min(760px,calc(100% - 12px));max-width:calc(100% - 12px);padding:10px 10px calc(.75rem + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:.5rem;background:rgba(255,255,255,.98);backdrop-filter:saturate(150%) blur(12px);border-top-left-radius:22px;border-top-right-radius:22px;box-sizing:border-box}body.app-standalone.ios-device #bottom-nav{padding-top:.45rem;padding-bottom:max(.2rem, env(safe-area-inset-bottom));align-items:end}
         .footer-nav-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.18rem;min-height:52px;border-radius:16px;border:1px solid transparent;background:transparent;color:#6b7280;font-size:10px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;transition:background .16s ease,color .16s ease,border-color .16s ease,transform .16s ease;position:relative}
         .footer-nav-btn i{font-size:22px;line-height:1}
         .footer-nav-btn:active{transform:scale(.97)}
@@ -909,6 +909,7 @@
             document.documentElement.style.setProperty('--visual-height', `${visualHeight}px`);
             document.documentElement.style.setProperty('--keyboard-offset', `${keyboardOpen ? keyboardOffset : 0}px`);
             document.body.classList.toggle('app-standalone', standalone);
+            document.body.classList.toggle('ios-device', isIOSDevice());
             document.body.classList.toggle('keyboard-open', keyboardOpen);
         }
 
@@ -2976,19 +2977,19 @@
                     if (getRoleAccessState().isRep) {
                         return { required: [{ key: 'reserves', mode: 'full' }], label: 'Loading all of your reserve rows...' };
                     }
-                    return { required: [{ key: 'reserves', mode: 'initial' }], background: [{ key: 'reserves', mode: 'full' }, { key: 'master', mode: 'full' }, { key: 'avNotes', mode: 'full' }], label: 'Loading AV reserves...' };
+                    return { required: [{ key: 'reserves', mode: 'initial' }], background: [{ key: 'reserves', mode: 'full' }], label: 'Loading AV reserves...' };
                 }
-                return { required: [{ key: 'avOpen', mode: 'initial' }], background: [{ key: 'avOpen', mode: 'full' }, { key: 'avNotes', mode: 'full' }], label: 'Loading AV open stock...' };
+                return { required: [{ key: 'avOpen', mode: 'initial' }], background: [{ key: 'avOpen', mode: 'full' }], label: 'Loading AV open stock...' };
             }
-            if (viewId === 'docks') return { required: [{ key: 'soc', mode: 'initial' }], background: [{ key: 'soc', mode: 'full' }, { key: 'master', mode: 'full' }], label: 'Loading dock rows...' };
+            if (viewId === 'docks') return { required: [{ key: 'soc', mode: 'initial' }], background: [{ key: 'soc', mode: 'full' }], label: 'Loading dock rows...' };
             if (viewId === 'request') return { required: [{ key: 'requests', mode: 'initial' }], background: [{ key: 'requests', mode: 'full' }], label: 'Loading requests...' };
             if (viewId === 'reserves') {
                 if (getRoleAccessState().isRep) {
-                    return { required: [{ key: 'reserves', mode: 'full' }], background: [{ key: 'master', mode: 'full' }], label: 'Loading all of your reserve rows...' };
+                    return { required: [{ key: 'reserves', mode: 'full' }], label: 'Loading all of your reserve rows...' };
                 }
-                return { required: [{ key: 'reserves', mode: 'initial' }], background: [{ key: 'reserves', mode: 'full' }, { key: 'master', mode: 'full' }], label: 'Loading reserves...' };
+                return { required: [{ key: 'reserves', mode: 'initial' }], background: [{ key: 'reserves', mode: 'full' }], label: 'Loading reserves...' };
             }
-            if (viewId === 'sales-office') return { required: [{ key: 'salesOffice', mode: 'initial' }], background: [{ key: 'salesOffice', mode: 'full' }, { key: 'master', mode: 'full' }], label: 'Loading sales office...' };
+            if (viewId === 'sales-office') return { required: [{ key: 'salesOffice', mode: 'initial' }], background: [{ key: 'salesOffice', mode: 'full' }], label: 'Loading sales office...' };
             if (viewId === 'tasks') return { required: [{ key: 'master', mode: 'full' }], background: [{ key: 'avNotes', mode: 'full' }], label: 'Loading full task inventory...' };
             if (viewId === 'low-stock') return { required: [{ key: 'master', mode: 'full' }], label: 'Loading low stock...' };
             if (viewId === 'review') return { required: [{ key: 'master', mode: 'full' }], label: 'Loading review rows...' };
@@ -5223,9 +5224,9 @@ function toggleDriveQuickRequestItem(domId) {
                 showToast("Ready", "Fast mode is on. Data is warming in the background.", false);
             }
 
-            queueDatasetLoad('master', 'full', 9000);
-            queueDatasetLoad('requests', 'full', 17000);
-            queueDatasetLoad('avNotes', 'full', 15000);
+            queueDatasetLoad('master', 'full', 18000);
+            queueDatasetLoad('requests', 'full', 26000);
+            queueDatasetLoad('avNotes', 'full', 32000);
             loginPrefetchPromise = null;
             loginPrefetchMode = '';
         }
@@ -6919,7 +6920,7 @@ activeDriveTab = tab;
                 });
                 if (activeAvOpenTab === 'photos') items = items.filter(avItemHasPhotos);
             } else {
-                items = [...reservesInventory];
+                items = reservesInventory;
                 if (canSelectAvReserveRep()) {
                     if (selectedAvResRep) items = items.filter(i => isSelectedAvReserveRep(i, selectedAvResRep));
                 } else if (isRep) {
@@ -6970,7 +6971,7 @@ activeDriveTab = tab;
                         title = `AV My Reserves ${selectedAvResRep}`;
                         fileLabel = `av-my-reserves-${selectedAvResRep}`;
                     }
-                    rows = sortAvReserveDemandRows(rows);
+                    if ((selectedAvResItemCode && selectedAvResName && selectedAvResSize) || searchTerm) rows = sortAvReserveDemandRows(rows);
                     if (selectedAvResItemCode && selectedAvResName && selectedAvResSize) {
                         rows = getSelectedAvReserveGroupRows(rows);
                         title = `${title} ${selectedAvResItemCode} ${selectedAvResName} ${selectedAvResSize}`;
@@ -8878,7 +8879,7 @@ activeDriveTab = tab;
         }
 
         function getRequestViewLiveSyncInterval() {
-            return isRealtimeTableHealthy('v2_active_request') ? 900 : 450;
+            return isRealtimeTableHealthy('v2_active_request') ? 1600 : 900;
         }
 
         async function runRequestViewLiveSync() {
