@@ -1962,9 +1962,10 @@
 
         function performLogout() { 
             cleanupRealtime();
-            localStorage.clear(); 
+            ['gnc_user_v3','gnc_pin_v3','gnc_role_v3'].forEach((key) => {
+                try { localStorage.removeItem(key); } catch (e) {}
+            });
             sessionStorage.clear(); 
-            try { indexedDB.deleteDatabase(DB_NAME); } catch(e){} 
             location.reload(); 
         }
 
