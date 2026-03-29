@@ -2353,7 +2353,7 @@
             return items.map((item) => stripTransientCacheFields(item));
         }
 
-        const CACHE_SCHEMA_VERSION = 2;
+        const CACHE_SCHEMA_VERSION = 3;
         function buildCacheSnapshot() {
             return {
                 status: 'success',
@@ -2928,12 +2928,8 @@
                     const data = text ? JSON.parse(text) : [];
                     if (Array.isArray(data) && data.length > 0) {
                         allData = allData.concat(data);
-                        offset += limit;
-                        if (data.length < limit) {
-                            hasMore = false;
-                        } else {
-                            await yieldToUiFrame();
-                        }
+                        offset += data.length;
+                        await yieldToUiFrame();
                     } else {
                         hasMore = false;
                     }
