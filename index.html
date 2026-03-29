@@ -447,7 +447,7 @@
             <hr class="my-2">
             <div class="drawer-item text-blue-600 font-bold role-access role-admin role-rep hidden" onclick="switchView('request'); toggleMenu();"><i class="ph-bold ph-chat-circle-text"></i> Requests</div>
             <div class="drawer-item text-indigo-600 font-bold role-access role-admin hidden" onclick="switchView('reserves'); toggleMenu();"><i class="ph-bold ph-bookmark-simple"></i> Reserves</div>
-            <div class="drawer-item text-purple-600 font-bold role-access role-admin hidden" onclick="activeSalesOfficeTab='season'; switchView('sales-office'); toggleMenu();"><i class="ph-bold ph-briefcase"></i> Sales Office</div>
+            <div class="drawer-item text-purple-600 font-bold role-access role-admin role-rep hidden" onclick="openSalesOfficeView(); toggleMenu();"><i class="ph-bold ph-briefcase"></i> Sales Office</div>
             <div class="drawer-item text-emerald-600 font-bold role-access role-admin hidden" onclick="switchView('reports'); toggleMenu();"><i class="ph-bold ph-chart-bar"></i> Reports</div>
             <div class="drawer-item text-emerald-600 font-bold role-access role-admin hidden" onclick="switchView('hours'); toggleMenu();"><i class="ph-bold ph-clock"></i> Labor Hours</div>
             <div class="drawer-item text-red-600 font-bold role-access role-admin hidden" onclick="switchView('low-stock'); toggleMenu();"><i class="ph-bold ph-trend-down"></i> Low Stock List</div>
@@ -480,7 +480,7 @@
                         <div onclick="switchView('av')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep hidden"><i class="ph-bold ph-notebook text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">AV</span></div>
                         <div onclick="switchView('request')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep hidden"><i class="ph-bold ph-chat-circle-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Requests</span></div>
                         <div onclick="switchView('reserves')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-bookmark-simple text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Reserves</span></div>
-                        <div onclick="activeSalesOfficeTab='season'; switchView('sales-office')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-briefcase text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Sales Office</span></div>
+                        <div onclick="openSalesOfficeView()" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep hidden"><i class="ph-bold ph-briefcase text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Sales Office</span></div>
                         <div onclick="switchView('reports')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-chart-bar text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Reports</span></div>
                         <div onclick="switchView('hours')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-clock text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Labor Hours</span></div>
                         <div onclick="switchView('low-stock')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-trend-down text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Low Stock</span></div>
@@ -3457,7 +3457,7 @@
         let bloomPickerFolderManuallyEdited = false;
         let bloomPickerReservePartyOptions = [];
         let bloomPickerSelectedReservePartyKey = '';
-        const BLOOM_PICKER_ORDER_META_FIELDS = ['salesrepname','customername','customeridentityid','consigneename','consigneeidentityid','consigneecity','consigneestate','consigneezip','zonecode','tagcode','consigneeaddress_1'];
+        const BLOOM_PICKER_ORDER_META_FIELDS = ['salesrepname','customername','customeridentityid','consigneename','consigneeidentityid','consigneecity','consigneestate','consigneezip','zonecode','tagcode','consigneeaddress_1','pic_note'];
         const BLOOM_PICKER_ORDER_META_TOKEN = '||BP_META||';
         const PROTECTED_UNLOCK_USERS = new Set(['dylan', 'dylan_collyge', 'jd', 'jd_jones', 'morgan', 'morgan_anderson', 'kayla', 'kayla_knepp']);
         const PROTECTED_EDIT_CONFIG = {
@@ -4736,10 +4736,14 @@ function toggleDriveQuickRequestItem(domId) {
                 const desiredCaliper = String(firstNonEmptyValue(draft.caliper, item.CALIPER, '') || '').trim();
                 const reserveValue = String(draft.reserve || 'NO').trim() || 'NO';
                 const rowId = buildBloomPickerOrderRowId(orderNumber, item, index);
+                const locationCode = String(firstNonEmptyValue(item.LOCATIONCODE, item.LOCATION, '') || '').trim();
+                const priorityNumber = parseAppNumber(item.PRIORITY);
+                const autoPicNote = priorityNumber != null && priorityNumber > 1 && locationCode ? `${locationCode} PIC APPROVED.` : '';
+                const picNote = String(firstNonEmptyValue(autoPicNote, item.PIC_NOTE, item.PICKNOTE, item.PICK, '') || '').trim();
                 const photoLink = firstNonEmptyValue(item.SAVED_PHOTO_LINK, item.ROW_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']);
                 const photoName = firstNonEmptyValue(item.SAVED_PHOTO_NAME, item.ROW_PHOTO_NAME, item.PHOTO_NAME, item.PHOTONAME, item['PHOTO NAME']);
                 const salesNote = firstNonEmptyValue(item.SALES_NOTE, item.SALESNOTE, item.SALES_DESC, item.SALESDESC, '');
-                const payload = { unique_id: rowId, master_id: item.UNIQUE_ID || '', so_source: 'bloom_picker', order_folder: folderName, order_number: orderNumber, order_customer: orderCustomer, order_qty: String(qtyValue), order_desired_spec: desiredSpec || null, order_desired_caliper: desiredCaliper || null, order_reserve: reserveValue, order_submitted_by: submittedBy, order_submitted_at: submittedAt, order_status: 'Pending Review', itemcode: item.ITEMCODE || '', commonname: item.COMMONNAME || '', contsize: item.CONTSIZE || '', locationcode: item.LOCATIONCODE || '', lotcode: item.LOTCODE || '', ptravailable: String(item.PTRAVAILABLE || ''), priority: String(item.PRIORITY || ''), av_note: item.AV_NOTE || '', sales_note: salesNote || null, spec: item.SPEC || null, caliper: item.CALIPER || null, photo_link: photoLink || null, photo_name: photoName || null, ...orderMetaPayload };
+                const payload = { unique_id: rowId, master_id: item.UNIQUE_ID || '', so_source: 'bloom_picker', order_folder: folderName, order_number: orderNumber, order_customer: orderCustomer, order_qty: String(qtyValue), order_desired_spec: desiredSpec || null, order_desired_caliper: desiredCaliper || null, order_reserve: reserveValue, order_submitted_by: submittedBy, order_submitted_at: submittedAt, order_status: 'Pending Review', itemcode: item.ITEMCODE || '', commonname: item.COMMONNAME || '', contsize: item.CONTSIZE || '', locationcode: item.LOCATIONCODE || '', lotcode: item.LOTCODE || '', ptravailable: String(item.PTRAVAILABLE || ''), priority: String(item.PRIORITY || ''), pic_note: picNote || null, av_note: item.AV_NOTE || '', sales_note: salesNote || null, spec: item.SPEC || null, caliper: item.CALIPER || null, photo_link: photoLink || null, photo_name: photoName || null, ...orderMetaPayload };
                 payloads.push(payload);
                 const clone = { SOURCE_TABLE: 'v2_sales_office' };
                 Object.keys(payload).forEach((key) => { if (payload[key] !== null && payload[key] !== undefined) clone[key.toUpperCase()] = payload[key]; });
@@ -5388,28 +5392,85 @@ function toggleDriveQuickRequestItem(domId) {
             initializeRealtime();
         }
 
-        function primeLoginDataLoad() {
-            const access = getRoleAccessState();
-            const queue = [
-                { key: 'master', mode: 'initial', delay: 30 },
-                { key: 'avOpen', mode: 'initial', delay: 140 },
-                { key: 'requests', mode: 'initial', delay: 280 },
-                { key: 'soc', mode: 'initial', delay: 420 }
-            ];
-            if (access.isAdmin) {
-                queue.push(
-                    { key: 'salesOffice', mode: 'initial', delay: 560 },
-                    { key: 'avNotes', mode: 'initial', delay: 760 },
-                    { key: 'cav', mode: 'initial', delay: 980 },
-                    { key: 'reserves', mode: 'initial', delay: 1280 }
-                );
-            } else if (access.isRep) {
-                queue.push({ key: 'reserves', mode: 'full', delay: 700 });
+                function addLoginWarmupTarget(targetMap, key, mode = 'initial') {
+            const nextMode = mode === 'full' ? 'full' : 'initial';
+            const current = targetMap.get(key);
+            if (!current || (nextMode === 'full' && current.mode !== 'full')) {
+                targetMap.set(key, { key, mode: nextMode });
             }
-            queue.forEach((item) => {
+        }
+
+        function getLoginWarmupPlan(openedFromCache = false) {
+            const access = getRoleAccessState();
+            const allowedViews = access.allowedViews instanceof Set ? access.allowedViews : new Set(access.allowedViews || []);
+            const initialTargets = new Map();
+            const fullTargets = new Map();
+            const reserveInitialMode = access.isRep ? 'full' : 'initial';
+
+            addLoginWarmupTarget(initialTargets, 'master', 'initial');
+            addLoginWarmupTarget(fullTargets, 'master', 'full');
+
+            if (allowedViews.has('av')) {
+                addLoginWarmupTarget(initialTargets, 'avOpen', 'initial');
+                addLoginWarmupTarget(fullTargets, 'avOpen', 'full');
+                addLoginWarmupTarget(initialTargets, 'reserves', reserveInitialMode);
+                if (access.isRep) addLoginWarmupTarget(fullTargets, 'reserves', 'full');
+            }
+            if (allowedViews.has('request') || allowedViews.has('reports')) {
+                addLoginWarmupTarget(initialTargets, 'requests', 'initial');
+                addLoginWarmupTarget(fullTargets, 'requests', 'full');
+            }
+            if (allowedViews.has('docks') || allowedViews.has('reports')) {
+                addLoginWarmupTarget(initialTargets, 'soc', 'initial');
+                addLoginWarmupTarget(fullTargets, 'soc', 'full');
+            }
+            if (allowedViews.has('sales-office')) {
+                addLoginWarmupTarget(initialTargets, 'salesOffice', 'initial');
+                addLoginWarmupTarget(fullTargets, 'salesOffice', 'full');
+            }
+            if (allowedViews.has('tasks')) {
+                addLoginWarmupTarget(initialTargets, 'avNotes', 'initial');
+                addLoginWarmupTarget(initialTargets, 'cav', 'initial');
+                addLoginWarmupTarget(fullTargets, 'avNotes', 'full');
+                addLoginWarmupTarget(fullTargets, 'cav', 'full');
+            }
+            if (allowedViews.has('reserves')) {
+                addLoginWarmupTarget(initialTargets, 'reserves', reserveInitialMode);
+                if (access.isRep) addLoginWarmupTarget(fullTargets, 'reserves', 'full');
+            }
+
+            const initialPriority = ['master', 'avOpen', 'requests', 'soc', 'salesOffice', 'avNotes', 'cav', 'reserves'];
+            const initialKeys = initialPriority.concat(Array.from(initialTargets.keys()).filter((key) => !initialPriority.includes(key)));
+            const initialQueue = [];
+            const initialStart = 30;
+            const initialStep = 140;
+            initialKeys.forEach((key) => {
+                const target = initialTargets.get(key);
+                if (!target) return;
+                initialQueue.push({ key, mode: target.mode, delay: initialStart + (initialQueue.length * initialStep) });
+            });
+
+            const fullPriority = ['requests', 'soc', 'avOpen', 'salesOffice', 'avNotes', 'cav', 'reserves', 'master'];
+            const fullKeys = fullPriority.concat(Array.from(fullTargets.keys()).filter((key) => !fullPriority.includes(key)));
+            const fullQueue = [];
+            const fullStart = openedFromCache ? 2400 : 900;
+            const fullStep = openedFromCache ? 1900 : 900;
+            fullKeys.forEach((key) => {
+                const target = fullTargets.get(key);
+                if (!target) return;
+                const extraDelay = key === 'reserves' && (isIOSDevice() || isStandaloneApp()) ? (openedFromCache ? 500 : 250) : 0;
+                fullQueue.push({ key, mode: target.mode, delay: fullStart + (fullQueue.length * fullStep) + extraDelay });
+            });
+
+            return { initialQueue, fullQueue };
+        }
+
+        function primeLoginDataLoad(openedFromCache = false) {
+            const warmupPlan = getLoginWarmupPlan(openedFromCache);
+            warmupPlan.initialQueue.forEach((item) => {
                 queueDatasetLoad(item.key, item.mode, item.delay);
             });
-            return true;
+            return warmupPlan;
         }
         async function finalizeLogin(user,pass,isBiometricLogin) { 
             setBootingSession(false);
@@ -5450,26 +5511,15 @@ function toggleDriveQuickRequestItem(domId) {
             }
 
             const openedFromCache = fullInventory.length > 0;
-            const access = getRoleAccessState();
             openApp(openedFromCache);
-            primeLoginDataLoad();
+            const warmupPlan = primeLoginDataLoad(openedFromCache);
             if (!openedFromCache) {
                 showToast("Ready", "Fast mode is on. Data is warming in the background.", false);
             }
 
-            const masterFullDelay = openedFromCache ? 24000 : 9000;
-            const requestFullDelay = openedFromCache ? 12000 : 4000;
-            queueDatasetLoad('master', 'full', masterFullDelay);
-            queueDatasetLoad('requests', 'full', requestFullDelay);
-            if (access.isAdmin) {
-                queueDatasetLoad('soc', 'full', openedFromCache ? 15000 : 5500);
-                queueDatasetLoad('salesOffice', 'full', openedFromCache ? 18000 : 7000);
-                queueDatasetLoad('avNotes', 'full', openedFromCache ? 22000 : 8500);
-                queueDatasetLoad('cav', 'full', openedFromCache ? 26000 : 10500);
-            } else if (access.isRep) {
-                queueDatasetLoad('soc', 'full', openedFromCache ? 7000 : 2200);
-                queueDatasetLoad('reserves', 'full', openedFromCache ? 2400 : 1200);
-            }
+            warmupPlan.fullQueue.forEach((item) => {
+                queueDatasetLoad(item.key, item.mode, item.delay);
+            });
             loginPrefetchPromise = null;
             loginPrefetchMode = '';
         }
@@ -6200,7 +6250,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (isAdmin) {
                 ROLE_ACCESS_VIEWS.forEach(viewId => allowedViews.add(viewId));
             } else if (isRep) {
-                ['av', 'docks', 'request'].forEach(viewId => allowedViews.add(viewId));
+                ['av', 'docks', 'request', 'sales-office'].forEach(viewId => allowedViews.add(viewId));
             } else if (isQcSupervisor) {
                 ['drive', 'docks'].forEach(viewId => allowedViews.add(viewId));
             } else if (isQc) {
@@ -7072,7 +7122,8 @@ activeDriveTab = tab;
         }
 
         function isAdminAvReserveDetailTabsEnabled() {
-            return !!getRoleAccessState().isAdmin;
+            const access = getRoleAccessState();
+            return !!(access.isAdmin || access.isRep);
         }
 
         function getSelectedAvReserveLocationRows() {
@@ -7882,7 +7933,7 @@ activeDriveTab = tab;
             if (selectedAvResItemCode && selectedAvResName && selectedAvResSize) {
                 const detailCrumb = `${reserveCrumbBase} > ${selectedAvResItemCode} | ${selectedAvResName} | ${selectedAvResSize}`;
                 const showAdminDetailTabs = isAdminAvReserveDetailTabsEnabled() && activeAvReserveMode === 'cards';
-                const showRepDetailTab = showAdminDetailTabs && canSeeAvReserveRepTab();
+                const showRepDetailTab = showAdminDetailTabs && !!getRoleAccessState().isAdmin && canSeeAvReserveRepTab();
                 const activeDetailTab = showAdminDetailTabs
                     ? (activeAvReserveDetailTab === 'location' ? 'location' : (showRepDetailTab && activeAvReserveDetailTab === 'rep' ? 'rep' : 'customer'))
                     : 'customer';
@@ -8885,12 +8936,39 @@ activeDriveTab = tab;
             }
         }
 
+        function openSalesOfficeView() {
+            activeSalesOfficeTab = getRoleAccessState().isRep ? 'orders' : 'season';
+            switchView('sales-office');
+            return false;
+        }
+
+        function isSalesOfficeSubmittedByCurrentRep(value = '') {
+            if (!getRoleAccessState().isRep) return true;
+            const normalized = normalizeRepMatchToken(value);
+            if (!normalized) return false;
+            const collapsed = normalized.replace(/\s+/g, '');
+            const candidates = new Set([currentUser, currentUserDisplay, getDefaultRequestRepName(), ...repPermutations].map((entry) => normalizeRepMatchToken(entry)).filter(Boolean));
+            for (const candidate of candidates) {
+                const candidateCollapsed = candidate.replace(/\s+/g, '');
+                if (normalized === candidate || collapsed === candidateCollapsed || normalized.includes(candidate) || collapsed.includes(candidateCollapsed)) return true;
+            }
+            return false;
+        }
+
         function updateSalesOfficeTabButtons() {
+            const access = getRoleAccessState();
+            if (access.isRep) activeSalesOfficeTab = 'orders';
             const baseClass = 'rounded-full border px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] shadow-sm';
             const ordersBtn = document.getElementById('sales-office-tab-orders');
             const seasonBtn = document.getElementById('sales-office-tab-season');
-            if (ordersBtn) ordersBtn.className = `${baseClass} ${activeSalesOfficeTab === 'orders' ? 'bg-[#007a4d] text-white border-[#007a4d]' : 'bg-white text-[#007a4d] border-green-200'}`;
-            if (seasonBtn) seasonBtn.className = `${baseClass} ${activeSalesOfficeTab === 'season' ? 'bg-[#007a4d] text-white border-[#007a4d]' : 'bg-white text-[#007a4d] border-green-200'}`;
+            if (ordersBtn) {
+                ordersBtn.className = baseClass + ' ' + (activeSalesOfficeTab === 'orders' ? 'bg-[#007a4d] text-white border-[#007a4d]' : 'bg-white text-[#007a4d] border-green-200');
+                ordersBtn.classList.remove('hidden');
+            }
+            if (seasonBtn) {
+                seasonBtn.className = baseClass + ' ' + (activeSalesOfficeTab === 'season' ? 'bg-[#007a4d] text-white border-[#007a4d]' : 'bg-white text-[#007a4d] border-green-200');
+                seasonBtn.classList.toggle('hidden', !!access.isRep);
+            }
         }
 
         function updateSalesOfficeExportButton(count = 0) {
@@ -8906,7 +8984,8 @@ activeDriveTab = tab;
         }
 
         function setSalesOfficeTab(tab = 'season') {
-            activeSalesOfficeTab = tab === 'season' ? 'season' : 'orders';
+            const access = getRoleAccessState();
+            activeSalesOfficeTab = access.isRep ? 'orders' : (tab === 'season' ? 'season' : 'orders');
             if (activeSalesOfficeTab === 'orders' && salesOfficeOrderColumnsReady === false) {
                 ensureSalesOfficeOrderColumnsReady(true).then(() => {
                     if (getCurrentVisibleViewId() === 'sales-office') renderSalesOffice();
@@ -8928,7 +9007,11 @@ activeDriveTab = tab;
         }
 
         function getSalesOfficeOrderItems() {
-            return salesOfficeInventory.filter((item) => isBloomPickerSalesOfficeItem(item)).sort((a, b) => new Date(firstNonEmptyValue(b.ORDER_SUBMITTED_AT, b.UPDATED_AT, b.COMPLETED_AT, 0)).getTime() - new Date(firstNonEmptyValue(a.ORDER_SUBMITTED_AT, a.UPDATED_AT, a.COMPLETED_AT, 0)).getTime());
+            let items = salesOfficeInventory.filter((item) => isBloomPickerSalesOfficeItem(item));
+            if (getRoleAccessState().isRep) {
+                items = items.filter((item) => isSalesOfficeSubmittedByCurrentRep(firstNonEmptyValue(item.ORDER_SUBMITTED_BY, item.SALESREPNAME, item.SALESREP, item.SALES_REP, item.SALESREPID, '')));
+            }
+            return items.sort((a, b) => new Date(firstNonEmptyValue(b.ORDER_SUBMITTED_AT, b.UPDATED_AT, b.COMPLETED_AT, 0)).getTime() - new Date(firstNonEmptyValue(a.ORDER_SUBMITTED_AT, a.UPDATED_AT, a.COMPLETED_AT, 0)).getTime());
         }
 
         function getSalesOfficeOrderGroupKey(item) {
@@ -9151,6 +9234,8 @@ activeDriveTab = tab;
         }
         function renderSalesOffice() {
             if (ensureViewDataForRender('sales-office')) return;
+            const access = getRoleAccessState();
+            if (access.isRep) activeSalesOfficeTab = 'orders';
             const container = document.getElementById('sales-office-content');
             const crumb = document.getElementById('sales-office-crumb');
             if (!container) return;
@@ -9174,7 +9259,7 @@ activeDriveTab = tab;
                 updateSalesOfficeExportButton(items.length);
                 if (crumb) crumb.innerText = groups.length ? `Bloom Picker Orders (${groups.length} folder${groups.length === 1 ? '' : 's'} / ${items.length} row${items.length === 1 ? '' : 's'})` : 'Bloom Picker Orders';
                 if (!groups.length) {
-                    container.innerHTML = `<div class="p-8 text-center text-gray-400">No Bloom Picker orders have been submitted yet.</div>`;
+                    container.innerHTML = `<div class="p-8 text-center text-gray-400">${access.isRep ? 'No Bloom Picker orders submitted by you yet.' : 'No Bloom Picker orders have been submitted yet.'}</div>`;
                     return;
                 }
                 container.innerHTML = groups.map((group) => {
