@@ -642,6 +642,7 @@
                         <div id="task-subtab-all" class="task-tab active" onclick="return setTaskSubview('all')">All</div>
                         <div id="task-subtab-positive-lts" class="task-tab" onclick="return setTaskSubview('positive-lts')">Positive LTS</div>
                         <div id="task-subtab-hold" class="task-tab" onclick="return setTaskSubview('hold')">Hold</div>
+                        <div id="task-subtab-av-blanks" class="task-tab hidden" onclick="return setTaskSubview('av-blanks')">AV Blanks</div>
                     </div>
                     <div id="task-colorwalk-filters" class="hidden mb-3"></div>
                     </div>
@@ -1715,6 +1716,7 @@
             if (tableName === 'v2_reserves') return ['reserves'];
             if (tableName === 'v2_soc_master') return ['soc'];
             if (tableName === 'v2_sales_office') return ['salesOffice'];
+            if (tableName === 'v2_cav') return ['cav'];
             if (tableName === 'v2_av_notes') return ['avNotes'];
             return [];
         }
@@ -1751,6 +1753,7 @@
             if (tableSet.has('v2_reserves')) syncPayload.reservesData = reservesInventory;
             if (tableSet.has('v2_soc_master')) syncPayload.socData = socInventory;
             if (tableSet.has('v2_sales_office')) syncPayload.salesOfficeData = salesOfficeInventory;
+            if (tableSet.has('v2_cav')) syncPayload.cavData = cavInventory;
             if (tableSet.has('v2_av_notes')) syncPayload.avNotesData = avNotesDb;
             if (!Object.keys(syncPayload).length) return false;
             processAndLoadData(syncPayload);
@@ -1825,6 +1828,10 @@
                 changed = eventType === 'DELETE'
                     ? removeRealtimeRow(salesOfficeInventory, uniqueId)
                     : upsertRealtimeRow(salesOfficeInventory, nextRow);
+            } else if (tableName === 'v2_cav') {
+                changed = eventType === 'DELETE'
+                    ? removeRealtimeRow(cavInventory, uniqueId)
+                    : upsertRealtimeRow(cavInventory, nextRow);
             } else if (tableName === 'v2_av_notes') {
                 changed = eventType === 'DELETE'
                     ? removeRealtimeRow(avNotesDb, uniqueId)
@@ -1924,7 +1931,7 @@
                 startFallbackSync();
                 return;
             }
-            ['v2_master_inventory','v2_active_request','v2_reserves','v2_soc_master','v2_sales_office','v2_av_notes','v2_dock_team_status','v2_dock_item_status'].forEach((tableName) => {
+            ['v2_master_inventory','v2_active_request','v2_reserves','v2_soc_master','v2_sales_office','v2_cav','v2_av_notes','v2_dock_team_status','v2_dock_item_status'].forEach((tableName) => {
                 const channel = supabaseClient
                     .channel(`realtime-${tableName}`)
                     .on('postgres_changes', { event: '*', schema: 'public', table: tableName }, (payload) => {
@@ -2337,6 +2344,7 @@
                 reservesData: buildCacheRows(reservesInventory),
                 socData: buildCacheRows(socInventory),
                 salesOfficeData: buildCacheRows(salesOfficeInventory),
+                cavData: buildCacheRows(cavInventory),
                 avNotesData: buildCacheRows(avNotesDb),
                 meta: {
                     datasetLoadState: serializeDatasetLoadState()
@@ -2357,6 +2365,7 @@
                         reserves: { initialLoaded: Array.isArray(cachedRes.reservesData) && cachedRes.reservesData.length > 0, fullLoaded: Array.isArray(cachedRes.reservesData) && cachedRes.reservesData.length > 0 },
                         soc: { initialLoaded: Array.isArray(cachedRes.socData) && cachedRes.socData.length > 0, fullLoaded: Array.isArray(cachedRes.socData) && cachedRes.socData.length > 0 },
                         salesOffice: { initialLoaded: Array.isArray(cachedRes.salesOfficeData) && cachedRes.salesOfficeData.length > 0, fullLoaded: Array.isArray(cachedRes.salesOfficeData) && cachedRes.salesOfficeData.length > 0 },
+                        cav: { initialLoaded: Array.isArray(cachedRes.cavData) && cachedRes.cavData.length > 0, fullLoaded: Array.isArray(cachedRes.cavData) && cachedRes.cavData.length > 0 },
                         avNotes: { initialLoaded: Array.isArray(cachedRes.avNotesData) && cachedRes.avNotesData.length > 0, fullLoaded: Array.isArray(cachedRes.avNotesData) && cachedRes.avNotesData.length > 0 }
                     };
                     hydrateDatasetLoadState(cachedMeta);
@@ -2380,11 +2389,12 @@
                 reserves: createDatasetLoadEntry(),
                 soc: createDatasetLoadEntry(),
                 salesOffice: createDatasetLoadEntry(),
+                cav: createDatasetLoadEntry(),
                 avNotes: createDatasetLoadEntry()
             };
         }
 
-        let fullInventory=[]; let avOpenInventory=[]; let lowStockInventory=[]; let socInventory=[]; let reservesInventory=[]; let requestsInventory=[]; let managerReviewInventory=[]; let salesOfficeInventory=[]; let avNotesDb=[];
+        let fullInventory=[]; let avOpenInventory=[]; let lowStockInventory=[]; let socInventory=[]; let reservesInventory=[]; let requestsInventory=[]; let managerReviewInventory=[]; let salesOfficeInventory=[]; let cavInventory=[]; let avNotesDb=[];
         let masterInventoryById=new Map(); let masterInventoryByExactKey=new Map(); let lowStockInventoryDirty=true; let managerReviewInventoryDirty=true;
         let loginPrefetchPromise=null;
         let loginPrefetchMode='';
@@ -2656,6 +2666,7 @@
             reserves: { table: 'v2_reserves', sourceTable: 'v2_reserves', initialQuery: buildReserveDatasetQuery, fullQuery: buildReserveDatasetQuery, initialLimit: getReserveDatasetInitialLimit },
             soc: { table: 'v2_soc_master', sourceTable: 'v2_soc_master', initialQuery: 'select=*', fullQuery: 'select=*' },
             salesOffice: { table: 'v2_sales_office', sourceTable: 'v2_sales_office', initialQuery: 'select=*', fullQuery: 'select=*' },
+            cav: { table: 'v2_cav', sourceTable: 'v2_cav', initialQuery: 'select=*', fullQuery: 'select=*' },
             avNotes: { table: 'v2_av_notes', sourceTable: 'v2_av_notes', initialQuery: 'select=*', fullQuery: 'select=*' }
         };
 
@@ -2826,6 +2837,7 @@
             if (key === 'reserves') return { reservesData: formatted };
             if (key === 'soc') return { socData: formatted };
             if (key === 'salesOffice') return { salesOfficeData: formatted };
+            if (key === 'cav') return { cavData: formatted };
             if (key === 'avNotes') return { avNotesData: formatted };
             return {};
         }
@@ -2878,6 +2890,9 @@
                     if (isViewVisible('av') && activeAVTab === 'reserves') scheduleUiRender('av-reserves-refresh', () => renderAV(), wantsFull ? 18 : 8);
                     if (isViewVisible('reserves')) queueViewRender('reserves', false, true);
                     if (isViewVisible('reports')) queueViewRender('reports', false, true);
+                }
+                if (key === 'cav') {
+                    if (isViewVisible('tasks') && activeTaskTab === 'season') scheduleUiRender('tasks-cav-refresh', () => renderTasks(), wantsFull ? 18 : 8);
                 }
                 persistCurrentCache();
                 touchSyncTimestamp();
@@ -2990,10 +3005,20 @@
                 return { required: [{ key: 'reserves', mode: 'initial' }], background: [{ key: 'reserves', mode: 'full' }], label: 'Loading reserves...' };
             }
             if (viewId === 'sales-office') return { required: [{ key: 'salesOffice', mode: 'initial' }], background: [{ key: 'salesOffice', mode: 'full' }], label: 'Loading sales office...' };
-            if (viewId === 'tasks') return { required: [{ key: 'master', mode: 'full' }], background: [{ key: 'avNotes', mode: 'full' }], label: 'Loading full task inventory...' };
-            if (viewId === 'low-stock') return { required: [{ key: 'master', mode: 'full' }], label: 'Loading low stock...' };
-            if (viewId === 'review') return { required: [{ key: 'master', mode: 'full' }], label: 'Loading review rows...' };
-            if (viewId === 'reports') return { required: [{ key: 'master', mode: 'full' }, { key: 'requests', mode: 'full' }, { key: 'reserves', mode: 'full' }, { key: 'soc', mode: 'full' }], label: 'Loading reports...' };
+            if (viewId === 'tasks') {
+                const required = [{ key: 'master', mode: 'initial' }];
+                const background = [{ key: 'master', mode: 'full' }, { key: 'avNotes', mode: 'full' }];
+                if (activeTaskTab === 'season' && activeTaskSubview === 'av-blanks') {
+                    required.push({ key: 'cav', mode: 'initial' });
+                    background.push({ key: 'cav', mode: 'full' });
+                    return { required, background, label: 'Loading AV Blank rows...' };
+                }
+                if (activeTaskTab === 'season') background.push({ key: 'cav', mode: 'full' });
+                return { required, background, label: 'Loading task inventory...' };
+            }
+            if (viewId === 'low-stock') return { required: [{ key: 'master', mode: 'initial' }], background: [{ key: 'master', mode: 'full' }], label: 'Loading low stock...' };
+            if (viewId === 'review') return { required: [{ key: 'master', mode: 'initial' }], background: [{ key: 'master', mode: 'full' }], label: 'Loading review rows...' };
+            if (viewId === 'reports') return { required: [{ key: 'master', mode: 'initial' }, { key: 'requests', mode: 'initial' }, { key: 'reserves', mode: 'initial' }, { key: 'soc', mode: 'initial' }], background: [{ key: 'master', mode: 'full' }, { key: 'requests', mode: 'full' }, { key: 'reserves', mode: 'full' }, { key: 'soc', mode: 'full' }], label: 'Loading reports...' };
             return null;
         }
 
@@ -3091,6 +3116,7 @@
             return avOpenInventory.find(i=>i.UNIQUE_ID===uid)
                 || lowStockInventory.find(i=>i.UNIQUE_ID===uid)
                 || reservesInventory.find(i=>i.UNIQUE_ID===uid)
+                || cavInventory.find(i=>i.UNIQUE_ID===uid)
                 || requestsInventory.find(i=>i.UNIQUE_ID===uid)
                 || socInventory.find(i=>i.UNIQUE_ID===uid)
                 || managerReviewInventory.find(i=>i.UNIQUE_ID===uid)
@@ -3165,6 +3191,7 @@
                 || avOpenInventory.find(i=>i.DOM_ID===domId)
                 || lowStockInventory.find(i=>i.DOM_ID===domId)
                 || reservesInventory.find(i=>i.DOM_ID===domId)
+                || cavInventory.find(i=>i.DOM_ID===domId)
                 || requestsInventory.find(i=>i.DOM_ID===domId)
                 || socInventory.find(i=>i.DOM_ID===domId)
                 || managerReviewInventory.find(i=>i.DOM_ID===domId)
@@ -5170,11 +5197,24 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function primeLoginDataLoad() {
-            [
+            const access = getRoleAccessState();
+            const queue = [
                 { key: 'master', mode: 'initial', delay: 30 },
-                { key: 'avOpen', mode: 'initial', delay: 220 },
-                { key: 'requests', mode: 'initial', delay: 2200 }
-            ].forEach((item) => {
+                { key: 'avOpen', mode: 'initial', delay: 140 },
+                { key: 'requests', mode: 'initial', delay: 280 },
+                { key: 'soc', mode: 'initial', delay: 420 }
+            ];
+            if (access.isAdmin) {
+                queue.push(
+                    { key: 'salesOffice', mode: 'initial', delay: 560 },
+                    { key: 'avNotes', mode: 'initial', delay: 760 },
+                    { key: 'cav', mode: 'initial', delay: 980 },
+                    { key: 'reserves', mode: 'initial', delay: 1280 }
+                );
+            } else if (access.isRep) {
+                queue.push({ key: 'reserves', mode: 'full', delay: 700 });
+            }
+            queue.forEach((item) => {
                 queueDatasetLoad(item.key, item.mode, item.delay);
             });
             return true;
@@ -5218,15 +5258,26 @@ function toggleDriveQuickRequestItem(domId) {
             }
 
             const openedFromCache = fullInventory.length > 0;
+            const access = getRoleAccessState();
             openApp(openedFromCache);
             primeLoginDataLoad();
             if (!openedFromCache) {
                 showToast("Ready", "Fast mode is on. Data is warming in the background.", false);
             }
 
-            queueDatasetLoad('master', 'full', 18000);
-            queueDatasetLoad('requests', 'full', 26000);
-            queueDatasetLoad('avNotes', 'full', 32000);
+            const masterFullDelay = openedFromCache ? 24000 : 9000;
+            const requestFullDelay = openedFromCache ? 12000 : 4000;
+            queueDatasetLoad('master', 'full', masterFullDelay);
+            queueDatasetLoad('requests', 'full', requestFullDelay);
+            if (access.isAdmin) {
+                queueDatasetLoad('soc', 'full', openedFromCache ? 15000 : 5500);
+                queueDatasetLoad('salesOffice', 'full', openedFromCache ? 18000 : 7000);
+                queueDatasetLoad('avNotes', 'full', openedFromCache ? 22000 : 8500);
+                queueDatasetLoad('cav', 'full', openedFromCache ? 26000 : 10500);
+            } else if (access.isRep) {
+                queueDatasetLoad('soc', 'full', openedFromCache ? 7000 : 2200);
+                queueDatasetLoad('reserves', 'full', openedFromCache ? 2400 : 1200);
+            }
             loginPrefetchPromise = null;
             loginPrefetchMode = '';
         }
@@ -5413,8 +5464,9 @@ function toggleDriveQuickRequestItem(domId) {
             const hasReserves = hasKey('reservesData');
             const hasSoc = hasKey('socData');
             const hasSalesOffice = hasKey('salesOfficeData');
+            const hasCav = hasKey('cavData');
             const hasAvNotes = hasKey('avNotesData');
-            const didStructuralDataChange = hasMaster || hasAvOpen || hasRequests || hasReserves || hasSoc || hasSalesOffice;
+            const didStructuralDataChange = hasMaster || hasAvOpen || hasRequests || hasReserves || hasSoc || hasSalesOffice || hasCav;
             const changedDatasetKeys = [];
             if (hasMaster) changedDatasetKeys.push('master');
             if (hasAvOpen) changedDatasetKeys.push('avOpen');
@@ -5422,6 +5474,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (hasReserves) changedDatasetKeys.push('reserves');
             if (hasSoc) changedDatasetKeys.push('soc');
             if (hasSalesOffice) changedDatasetKeys.push('salesOffice');
+            if (hasCav) changedDatasetKeys.push('cav');
             let avRuleClearOps = [];
 
             if (hasAvNotes) {
@@ -5590,6 +5643,22 @@ function toggleDriveQuickRequestItem(domId) {
                     }
                     normalizeRowPhotoFields(item);
                     item._search=`${item.COMMONNAME||''} ${item.CUSTOMERNAME||''} ${item.ITEMCODE||''}`.toLowerCase();
+                    buildSearchIndex(item);
+                    return item;
+                });
+            }
+
+            if (hasCav) {
+                cavInventory = (res.cavData || []).map((item, idx) => {
+                    item.DOM_ID = 'cav_' + (item.UNIQUE_ID || idx);
+                    item.UNIQUE_ID = item.UNIQUE_ID || ('cav_uid_' + idx);
+                    item.LOCATIONCODE = firstNonEmptyValue(item.LOCATIONCODE, item.LOCATION, item.LOC, 'No Loc');
+                    item.ITEMCODE = firstNonEmptyValue(item.ITEMCODE, item.itemcode, item.ITEM, '');
+                    item.COMMONNAME = firstNonEmptyValue(item.COMMONNAME, item.DESCRIPTION, item.PLANT_NAME, item.ITEMCODE, 'AV Blank');
+                    item.CONTSIZE = firstNonEmptyValue(item.CONTSIZE, item.ITEMSPEC, item.SIZE, item.contsize, '-');
+                    item.SEASON = firstNonEmptyValue(item.SEASON, item.season, '');
+                    item._search = `${item.LOCATIONCODE || ''} ${item.ITEMCODE || ''} ${item.COMMONNAME || ''} ${item.CONTSIZE || ''} ${item.SEASON || ''}`.toLowerCase();
+                    normalizeRowPhotoFields(item);
                     buildSearchIndex(item);
                     return item;
                 });
@@ -6405,7 +6474,7 @@ function toggleDriveQuickRequestItem(domId) {
         function setTaskTab(tab) { 
             const previousTaskTab = activeTaskTab;
             activeTaskTab=tab; 
-            if (!taskTabUsesBlockDrill(tab)) activeTaskSubview='all';
+            if (!taskTabUsesBlockDrill(tab) || (tab !== 'season' && activeTaskSubview === 'av-blanks')) activeTaskSubview='all';
             if (tab !== 'colorwalk' && previousTaskTab === 'colorwalk') {
                 selectedColorWalkContSize='';
                 selectedColorWalkSearchTerm='';
@@ -6430,7 +6499,10 @@ function toggleDriveQuickRequestItem(domId) {
 
         function setTaskSubview(subview) {
             if (!taskTabUsesBlockDrill(activeTaskTab)) return false;
-            activeTaskSubview = ['positive-lts', 'hold'].includes(subview) ? subview : 'all';
+            const allowedSubviews = activeTaskTab === 'season'
+                ? ['all', 'positive-lts', 'hold', 'av-blanks']
+                : ['all', 'positive-lts', 'hold'];
+            activeTaskSubview = allowedSubviews.includes(subview) ? subview : 'all';
             syncTaskSubviewControls(activeTaskTab);
             taskViewLevel = 0;
             selectedTaskBlock = null;
@@ -7366,30 +7438,42 @@ activeDriveTab = tab;
             avRenderChunkToken += 1;
             const token = avRenderChunkToken;
             const total = Array.isArray(rows) ? rows.length : 0;
-            const chunkSize = total > 320 ? 24 : (total > 180 ? 32 : 40);
+            const touchOptimized = isIOSDevice() || isStandaloneApp() || window.matchMedia('(pointer: coarse)').matches;
+            const viewportHeight = Math.max(640, Math.round((window.visualViewport && window.visualViewport.height) || window.innerHeight || document.documentElement.clientHeight || 640));
+            const approxCardHeight = sourceView === 'reserves_drill' ? 170 : (activeAvOpenTab === 'photos' ? 160 : 185);
+            const chunkSize = touchOptimized
+                ? (total > 1600 ? 56 : (total > 800 ? 64 : 72))
+                : (total > 1200 ? 32 : (total > 600 ? 40 : 48));
+            const initialScreens = touchOptimized ? 14 : 8;
+            const initialTarget = Math.min(total, Math.max(chunkSize * 2, Math.ceil((viewportHeight * initialScreens) / approxCardHeight)));
+            const perFrameLimit = touchOptimized ? Math.max(chunkSize * 2, 128) : Math.max(chunkSize, 72);
+            const frameBudgetMs = touchOptimized ? 10 : 7;
             let index = 0;
-            let firstChunk = true;
-            crumb.innerText = `${crumbText} Loading...`;
-            container.innerHTML = `<div class="p-6 text-center text-gray-400">Loading ${total} row${total === 1 ? '' : 's'}...</div>`;
-            const renderChunk = () => {
-                if (token !== avRenderChunkToken) return;
-                const end = Math.min(index + chunkSize, total);
+            crumb.innerText = crumbText;
+            if (!total) {
+                container.innerHTML = `<div class="p-6 text-center text-gray-400">No rows found.</div>`;
+                return;
+            }
+            const renderBatch = (targetCount, useBudget) => {
                 let html = '';
-                for (; index < end; index += 1) html += generateCard(rows[index], sourceView, 'status-teal');
-                if (firstChunk) {
-                    container.innerHTML = html;
-                    firstChunk = false;
-                } else if (html) {
-                    container.insertAdjacentHTML('beforeend', html);
+                let rendered = 0;
+                const startTime = useBudget && typeof performance !== 'undefined' && performance.now ? performance.now() : 0;
+                while (index < total && rendered < targetCount) {
+                    html += generateCard(rows[index], sourceView, 'status-teal');
+                    index += 1;
+                    rendered += 1;
+                    if (useBudget && rendered >= chunkSize && typeof performance !== 'undefined' && performance.now && (performance.now() - startTime) >= frameBudgetMs) break;
                 }
-                if (index < total) {
-                    crumb.innerText = `${crumbText} Loading ${index}/${total}`;
-                    requestAnimationFrame(renderChunk);
-                } else {
-                    crumb.innerText = crumbText;
-                }
+                return html;
             };
-            requestAnimationFrame(renderChunk);
+            container.innerHTML = renderBatch(initialTarget, false);
+            const renderNextChunk = () => {
+                if (token !== avRenderChunkToken) return;
+                const html = renderBatch(perFrameLimit, true);
+                if (html) container.insertAdjacentHTML('beforeend', html);
+                if (index < total) requestAnimationFrame(renderNextChunk);
+            };
+            if (index < total) requestAnimationFrame(renderNextChunk);
         }
 
         function renderAV() {
@@ -10740,6 +10824,7 @@ function toggleDriveSeason(s) {
         function getTaskSubviewLabel(subview = activeTaskSubview) {
             if (subview === 'positive-lts') return 'Positive LTS';
             if (subview === 'hold') return 'Hold';
+            if (subview === 'av-blanks') return 'AV Blanks';
             return 'All';
         }
 
@@ -10753,6 +10838,7 @@ function toggleDriveSeason(s) {
                 if (!holdCode || holdCode === 'NULL' || holdCode === '-' || holdCode === 'N/A') return false;
                 return holdCode.includes('H') || holdCode.includes('S');
             }
+            if (subview === 'av-blanks') return true;
             return true;
         }
 
@@ -10769,9 +10855,15 @@ function toggleDriveSeason(s) {
             const allTab = document.getElementById('task-subtab-all');
             const positiveTab = document.getElementById('task-subtab-positive-lts');
             const holdTab = document.getElementById('task-subtab-hold');
+            const avBlanksTab = document.getElementById('task-subtab-av-blanks');
             if (allTab) allTab.classList.toggle('active', activeTaskSubview === 'all');
             if (positiveTab) positiveTab.classList.toggle('active', activeTaskSubview === 'positive-lts');
             if (holdTab) holdTab.classList.toggle('active', activeTaskSubview === 'hold');
+            if (avBlanksTab) {
+                const showAvBlanks = tab === 'season';
+                avBlanksTab.classList.toggle('hidden', !showAvBlanks);
+                avBlanksTab.classList.toggle('active', activeTaskSubview === 'av-blanks');
+            }
         }
 
         function setColorWalkContSizeFilter(value = '') {
@@ -10896,6 +10988,31 @@ function toggleDriveSeason(s) {
             return left.raw.localeCompare(right.raw, undefined, { numeric: true });
         }
 
+        function normalizeSeasonTaskValue(value = '') {
+            return String(value || '').trim().toUpperCase();
+        }
+
+        function getSeasonAvBlankItems(seasonTaskItems = []) {
+            const allowedSeasons = new Set((Array.isArray(seasonTaskItems) ? seasonTaskItems : [])
+                .map(item => normalizeSeasonTaskValue(firstNonEmptyValue(item && item.SEASON, '')))
+                .filter(Boolean));
+            if (!allowedSeasons.size) return [];
+            return cavInventory.filter((item) => {
+                const seasonValue = normalizeSeasonTaskValue(firstNonEmptyValue(item && item.SEASON, item && item.season, ''));
+                const locationValue = String(firstNonEmptyValue(item && item.LOCATIONCODE, item && item.LOCATION, item && item.LOC, '')).trim();
+                return !!locationValue && !!seasonValue && allowedSeasons.has(seasonValue);
+            });
+        }
+
+        function renderTaskAvBlankCard(item) {
+            const locationCode = String(firstNonEmptyValue(item && item.LOCATIONCODE, item && item.LOCATION, item && item.LOC, 'No Loc')).trim() || 'No Loc';
+            const itemCode = String(firstNonEmptyValue(item && item.ITEMCODE, item && item.itemcode, '')).trim();
+            const commonName = String(firstNonEmptyValue(item && item.COMMONNAME, item && item.DESCRIPTION, itemCode, 'AV Blank')).trim();
+            const contSize = String(firstNonEmptyValue(item && item.CONTSIZE, item && item.ITEMSPEC, item && item.SIZE, '-')).trim() || '-';
+            const seasonValue = String(firstNonEmptyValue(item && item.SEASON, item && item.season, '-')).trim() || '-';
+            return `<div class="bg-white border border-emerald-200 rounded-xl shadow-sm mb-3 p-4"><div class="flex items-start justify-between gap-3"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-600">AV Blank</div><div class="mt-1 font-black text-lg text-slate-900">${esc(locationCode)}</div><div class="mt-2 text-sm font-bold text-slate-700 break-words">${esc(commonName)}</div><div class="mt-1 text-xs font-semibold text-slate-500">${esc(contSize)}${itemCode ? `   ${esc(itemCode)}` : ''}</div></div><div class="shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">Season ${esc(seasonValue)}</div></div></div>`;
+        }
+
         function renderTasks(options = {}) {
             const skipColorWalkFilterRender = !!(options && options.skipColorWalkFilterRender);
             if (ensureViewDataForRender('tasks')) return;
@@ -10934,7 +11051,11 @@ function toggleDriveSeason(s) {
                 : isSharedFlyerQueue
                     ? fullInventory.filter(i => isFlyerTaskItem(i))
                     : fullInventory.filter(i => i.ASSIGNEDTO === targetUser && (keepCompletedInTaskTab || !i.DATE_COMPLETED));
+            const seasonTaskItems = activeTaskTab === 'season' ? getTaskTabItems(scopedItems, 'season') : [];
             let tabItems = getTaskSubviewItems(getTaskTabItems(scopedItems, activeTaskTab), activeTaskTab, activeTaskSubview);
+            if (activeTaskTab === 'season' && activeTaskSubview === 'av-blanks') {
+                tabItems = getSeasonAvBlankItems(seasonTaskItems);
+            }
             if (activeTaskTab === 'colorwalk') {
                 if (!skipColorWalkFilterRender) renderColorWalkContSizeFilter(tabItems);
                 else syncColorWalkFilterUi();
@@ -11018,7 +11139,10 @@ function toggleDriveSeason(s) {
                         return String(a.CONTSIZE || '').localeCompare(String(b.CONTSIZE || ''), undefined, { numeric: true });
                     });
                     const colorClass = activeTaskTab === 'season' ? 'status-green' : (activeTaskTab === 'colorwalk' ? 'status-indigo' : 'status-blue');
-                    container.innerHTML = `<div class="back-btn" onclick="return backToTaskLocationList()"><i class="ph-bold ph-arrow-left"></i> Back to Locations</div>` + fItems.map(i => generateCard(i, 'tasks', colorClass)).join('');
+                    const detailHtml = activeTaskTab === 'season' && activeTaskSubview === 'av-blanks'
+                        ? fItems.map(i => renderTaskAvBlankCard(i)).join('')
+                        : fItems.map(i => generateCard(i, 'tasks', colorClass)).join('');
+                    container.innerHTML = `<div class="back-btn" onclick="return backToTaskLocationList()"><i class="ph-bold ph-arrow-left"></i> Back to Locations</div>` + detailHtml;
                 }
             }
         }
