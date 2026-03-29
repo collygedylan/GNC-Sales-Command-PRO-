@@ -2459,12 +2459,16 @@
             const reserveRows = reserveCache && Array.isArray(reserveCache.rows) ? reserveCache.rows : [];
             if (reserveRows.length) {
                 const reserveState = getDatasetState('reserves');
-                const cachedLastLoadedAt = String(firstNonEmptyValue(reserveCache.meta && reserveCache.meta.lastLoadedAt, reserveCache.meta && reserveCache.meta.savedAt, '') || '').trim();
-                const shouldApply = !reserveState.fullLoaded || reserveRows.length > reservesInventory.length;
+                const reserveMeta = reserveCache && reserveCache.meta ? reserveCache.meta : {};
+                const cachedLastLoadedAt = String(firstNonEmptyValue(reserveMeta.lastLoadedAt, reserveMeta.savedAt, '') || '').trim();
+                const isRepCache = !!getRoleAccessState().isRep;
+                const looksLikePartialAdminCache = !isRepCache && reserveRows.length <= 1000;
+                const canTrustAsFull = !!reserveMeta.fullLoaded && !looksLikePartialAdminCache;
+                const shouldApply = reserveRows.length > reservesInventory.length || (!reserveState.initialLoaded && reserveRows.length > 0);
                 if (shouldApply) {
                     processAndLoadData({ reservesData: reserveRows, _fromCache: true });
                     reserveState.initialLoaded = true;
-                    reserveState.fullLoaded = true;
+                    reserveState.fullLoaded = canTrustAsFull;
                     reserveState.lastLoadedAt = cachedLastLoadedAt || reserveState.lastLoadedAt || new Date().toISOString();
                     warmed = true;
                 }
