@@ -2747,6 +2747,7 @@
                 schedulePendingRequestArchiveFlush(2800);
                 queueForegroundRefresh(80);
                 syncRequestViewLiveSync(120);
+                schedulePushSubscriptionSync('online', { immediate: true, force: false });
             }
         });
 
@@ -2759,12 +2760,14 @@
             if (!document.hidden && currentUser) {
                 queueForegroundRefresh(isIOSDevice() ? 60 : 120);
                 syncRequestViewLiveSync(120);
+                schedulePushSubscriptionSync('visible', { delay: 180, force: false });
             } else {
                 clearRequestViewLiveSync();
             }
             if (!document.hidden) updateSyncDiagnostics();
         });
 
+        const DATASET_DEFINITIONS = {
         const DATASET_DEFINITIONS = {
             master: { table: 'v2_master_inventory', sourceTable: 'v2_master_inventory', initialQuery: 'select=*', fullQuery: 'select=*' },
             avOpen: { table: 'v2_master_inventory', sourceTable: 'v2_master_inventory', initialQuery: 'select=*&s_lts=gt.0', fullQuery: 'select=*&s_lts=gt.0' },
@@ -5598,10 +5601,9 @@ function toggleDriveQuickRequestItem(domId) {
                 queueDatasetLoad(item.key, item.mode, item.delay);
             });
             if (roleAccess.allowedViews && roleAccess.allowedViews.has('request')) {
-                setTimeout(() => {
-                    subscribeCurrentDeviceForPush({ prompt: false }).catch(() => {});
-                }, openedFromCache ? 450 : 1200);
+                schedulePushSubscriptionSync('login', { delay: openedFromCache ? 450 : 1200, prompt: false });
             }
+            loginPrefetchPromise = null;
             loginPrefetchPromise = null;
             loginPrefetchMode = '';
         }
@@ -6424,6 +6426,12 @@ function toggleDriveQuickRequestItem(domId) {
         let pushSchemaReady = null;
         let pushSchemaProbePromise = null;
         let pushSchemaWarningShown = false;
+        let pushSchemaLastCheckedAt = 0;
+        let pushSubscriptionSyncTimer = null;
+        let pushSubscriptionSyncAttempts = 0;
+        let pushSubscriptionSyncInFlight = false;
+        const PUSH_SCHEMA_RETRY_MS = 15000;
+        const PUSH_SUBSCRIPTION_SYNC_DELAYS = [0, 900, 2500, 5000, 15000, 30000, 60000];
 
         function normalizePushUsername(value = '') {
             return String(value || '').trim().toLowerCase().replace(/@.*$/, '').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
@@ -6445,10 +6453,12 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         async function ensurePushSubscriptionSchemaReady(force = false) {
+            const now = Date.now();
             if (pushSchemaReady === true && !force) return true;
-            if (pushSchemaReady === false && !force) return false;
+            if (pushSchemaReady === false && !force && (now - pushSchemaLastCheckedAt) < PUSH_SCHEMA_RETRY_MS) return false;
             if (pushSchemaProbePromise && !force) return pushSchemaProbePromise;
             pushSchemaProbePromise = (async () => {
+                pushSchemaLastCheckedAt = Date.now();
                 if (navigator.onLine === false) return false;
                 try {
                     const url = `${SUPABASE_URL}/rest/v1/${PUSH_SUBSCRIPTIONS_TABLE}?select=id,username,endpoint,wants_new_request,wants_request_complete&limit=1`;
@@ -6531,6 +6541,58 @@ function toggleDriveQuickRequestItem(domId) {
             }
         }
 
+        function clearPushSubscriptionSyncTimer() {
+            if (pushSubscriptionSyncTimer) {
+                clearTimeout(pushSubscriptionSyncTimer);
+                pushSubscriptionSyncTimer = null;
+            }
+        }
+
+        function getPushSubscriptionSyncDelay(attemptIndex = 0) {
+            const index = Math.max(0, Math.min(PUSH_SUBSCRIPTION_SYNC_DELAYS.length - 1, Number(attemptIndex) || 0));
+            return PUSH_SUBSCRIPTION_SYNC_DELAYS[index];
+        }
+
+        async function syncCurrentDevicePushSubscription(options = {}) {
+            if (pushSubscriptionSyncInFlight) return false;
+            const opts = options && typeof options === 'object' ? options : {};
+            if (!isPushSupported() || !currentUser || !getPushPromptUserScope()) return false;
+            if (Notification.permission === 'denied') return false;
+            pushSubscriptionSyncInFlight = true;
+            try {
+                const saved = await subscribeCurrentDeviceForPush(opts);
+                if (saved) pushSubscriptionSyncAttempts = 0;
+                return !!saved;
+            } catch (error) {
+                console.warn('Push subscription sync failed', error);
+                return false;
+            } finally {
+                pushSubscriptionSyncInFlight = false;
+            }
+        }
+
+        function schedulePushSubscriptionSync(reason = '', options = {}) {
+            const opts = options && typeof options === 'object' ? options : {};
+            clearPushSubscriptionSyncTimer();
+            if (!isPushSupported() || !currentUser || !getPushPromptUserScope()) return;
+            if (Notification.permission === 'denied') return;
+            const parsedAttempt = Number(opts.attemptIndex);
+            const attemptIndex = Number.isFinite(parsedAttempt) ? Math.max(0, parsedAttempt) : pushSubscriptionSyncAttempts;
+            const delay = opts.immediate ? 0 : Math.max(0, Number(opts.delay) || getPushSubscriptionSyncDelay(attemptIndex));
+            pushSubscriptionSyncTimer = setTimeout(async () => {
+                const saved = await syncCurrentDevicePushSubscription({
+                    prompt: !!opts.prompt && Notification.permission === 'default',
+                    force: !!opts.force
+                });
+                if (saved) return;
+                if (Notification.permission !== 'granted') return;
+                const nextAttempt = attemptIndex + 1;
+                pushSubscriptionSyncAttempts = nextAttempt;
+                schedulePushSubscriptionSync(reason, { attemptIndex: nextAttempt });
+            }, delay);
+        }
+
+        async function subscribeCurrentDeviceForPush(options = {}) {
         async function subscribeCurrentDeviceForPush(options = {}) {
             const opts = options && typeof options === 'object' ? options : {};
             if (!isPushSupported() || !currentUser || !getPushPromptUserScope()) return false;
@@ -11831,7 +11893,7 @@ function toggleDriveSeason(s) {
             const commonName = String(firstNonEmptyValue(item && item.COMMONNAME, item && item.DESCRIPTION, itemCode, 'AV Blank')).trim();
             const contSize = String(firstNonEmptyValue(item && item.CONTSIZE, item && item.ITEMSPEC, item && item.SIZE, '-')).trim() || '-';
             const seasonValue = String(firstNonEmptyValue(item && item.SEASON, item && item.season, '-')).trim() || '-';
-            return `<div class="bg-white border border-emerald-200 rounded-xl shadow-sm mb-3 p-4"><div class="flex items-start justify-between gap-3"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-600">AV Blank</div><div class="mt-1 font-black text-lg text-slate-900">${esc(locationCode)}</div><div class="mt-2 text-sm font-bold text-slate-700 break-words">${esc(commonName)}</div><div class="mt-1 text-xs font-semibold text-slate-500">${esc(contSize)}${itemCode ? ` • ${esc(itemCode)}` : ''}</div></div><div class="shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">Season ${esc(seasonValue)}</div></div></div>`;
+            return `<div class="bg-white border border-emerald-200 rounded-xl shadow-sm mb-3 p-4"><div class="flex items-start justify-between gap-3"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-600">AV Blank</div><div class="mt-1 font-black text-lg text-slate-900">${esc(locationCode)}</div><div class="mt-2 text-sm font-bold text-slate-700 break-words">${esc(commonName)}</div><div class="mt-1 text-xs font-semibold text-slate-500">${esc(contSize)}${itemCode ? ` ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ ${esc(itemCode)}` : ''}</div></div><div class="shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">Season ${esc(seasonValue)}</div></div></div>`;
         }
 
         function renderTasks(options = {}) {
@@ -12690,6 +12752,7 @@ function toggleDriveSeason(s) {
             };
             navigator.serviceWorker.register('./sw.js?v=' + encodeURIComponent(APP_SHELL_BUILD), { scope: './' }).then(reg => {
                 console.log('Service Worker Registered');
+                schedulePushSubscriptionSync('sw-register', { delay: 600, force: false });
                 if (reg.waiting) markShellUpdateReady();
                 reg.addEventListener('updatefound', () => {
                     const installing = reg.installing;
@@ -12708,11 +12771,12 @@ function toggleDriveSeason(s) {
                 if (data.type === 'GNC_OPEN_VIEW') {
                     try { openViewFromPushMessage(data.viewId || 'request'); } catch (e) {}
                 } else if (data.type === 'GNC_RESUBSCRIBE_PUSH') {
-                    subscribeCurrentDeviceForPush({ prompt: false, force: true }).catch(() => {});
+                    schedulePushSubscriptionSync('sw-resubscribe', { immediate: true, force: true });
                 }
             });
             navigator.serviceWorker.addEventListener('controllerchange', () => {
                 markShellUpdateReady();
+                schedulePushSubscriptionSync('sw-controllerchange', { delay: 240, force: false });
                 tryApplyShellUpdateSilently();
             });
             document.addEventListener('visibilitychange', () => {
