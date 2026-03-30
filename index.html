@@ -1180,12 +1180,26 @@
             return copied;
         }
 
-        async function copyTextWithFallback(text) {
+        async function copyClipboardContent(content = {}) {
+            const plainText = typeof content === 'string' ? content : String(content.text || '');
+            const htmlText = typeof content === 'object' ? String(content.html || '').trim() : '';
             if (navigator.clipboard && window.isSecureContext) {
-                await navigator.clipboard.writeText(text);
+                if (htmlText && typeof ClipboardItem !== 'undefined' && typeof navigator.clipboard.write === 'function') {
+                    const clipboardItem = new ClipboardItem({
+                        'text/plain': new Blob([plainText], { type: 'text/plain' }),
+                        'text/html': new Blob([htmlText], { type: 'text/html' })
+                    });
+                    await navigator.clipboard.write([clipboardItem]);
+                    return true;
+                }
+                await navigator.clipboard.writeText(plainText);
                 return true;
             }
-            return fallbackCopyText(text);
+            return fallbackCopyText(plainText);
+        }
+
+        async function copyTextWithFallback(text) {
+            return copyClipboardContent({ text });
         }
 
         async function handleMobileShare(action, subject, text) {
@@ -4993,6 +5007,9 @@ function toggleDriveQuickRequestItem(domId) {
             reserves: (item) => [item.COMMONNAME, item.CUSTOMERNAME, item.CONSIGNEENAME, item.SALESREPNAME || item.SALESREPID, item.ITEMCODE, item.CONTSIZE, item.LOCATIONCODE],
             colorwalk: (item) => [item.COMMONNAME, item.LOCATIONCODE, item.ITEMCODE, item.CONTSIZE, item.LOTCODE, item.PRIORITY]
         };
+        const SEARCH_RESULT_CACHE_LIMIT = 18;
+        const searchResultCache = new Map();
+
         function buildSearchIndex(item) {
             if (!item) return item;
             const primaryFields = [
@@ -5048,6 +5065,39 @@ function toggleDriveQuickRequestItem(domId) {
             return wordStarts;
         }
 
+        function getSearchCacheItemKey(item) {
+            if (!item) return '';
+            return String(
+                item.UNIQUE_ID ||
+                item.unique_id ||
+                item.REQUEST_ID ||
+                item.request_id ||
+                item.ITEMCODE ||
+                item.LOCATIONCODE ||
+                item.CUSTOMERNAME ||
+                item.CONSIGNEENAME ||
+                ''
+            );
+        }
+
+        function getSearchCacheSignature(items, profileName = '') {
+            if (!Array.isArray(items) || !items.length) return `${profileName}|0`;
+            const firstKey = getSearchCacheItemKey(items[0]);
+            const lastKey = getSearchCacheItemKey(items[items.length - 1]);
+            return `${profileName}|${items.length}|${firstKey}|${lastKey}`;
+        }
+
+        function setSearchResultCache(signature, term, result) {
+            if (!signature) return;
+            if (searchResultCache.has(signature)) searchResultCache.delete(signature);
+            searchResultCache.set(signature, { term, result });
+            while (searchResultCache.size > SEARCH_RESULT_CACHE_LIMIT) {
+                const oldestKey = searchResultCache.keys().next().value;
+                if (!oldestKey) break;
+                searchResultCache.delete(oldestKey);
+            }
+        }
+
         function matchesItemSearch(item, rawTerm, profileName = '') {
             const terms = tokenizeSearchValue(rawTerm);
             if (!terms.length) return true;
@@ -5059,10 +5109,31 @@ function toggleDriveQuickRequestItem(domId) {
 
         function filterBySearch(items, rawTerm, profileName = '') {
             if (!rawTerm) return items;
-            return items.filter(item => matchesItemSearch(item, rawTerm, profileName));
+            const normalizedTerm = normalizeSearchValue(rawTerm);
+            if (!normalizedTerm) return items;
+            if (!Array.isArray(items) || !items.length) return [];
+
+            const signature = getSearchCacheSignature(items, profileName);
+            const cached = searchResultCache.get(signature);
+            if (cached && cached.term === normalizedTerm && Array.isArray(cached.result)) return cached.result;
+
+            let baseItems = items;
+            if (cached && cached.term && normalizedTerm.startsWith(cached.term) && cached.term.length < normalizedTerm.length && Array.isArray(cached.result)) {
+                baseItems = cached.result;
+            }
+
+            const result = baseItems.filter(item => matchesItemSearch(item, normalizedTerm, profileName));
+            setSearchResultCache(signature, normalizedTerm, result);
+            return result;
         }
 
-        function scheduleSearchRender(key, renderFn) {
+        function getSearchRenderDelay(kind = 'default') {
+            const isTouchSearch = isIOSDevice() || isStandaloneApp() || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+            if (kind === 'heavy') return isTouchSearch ? 280 : 120;
+            return isTouchSearch ? 120 : 70;
+        }
+
+        function scheduleSearchRender(key, renderFn, delayMs = getSearchRenderDelay()) {
             if (searchRenderTimer[key]) clearTimeout(searchRenderTimer[key]);
             if (searchRenderFrame[key]) cancelAnimationFrame(searchRenderFrame[key]);
             searchRenderTimer[key] = setTimeout(() => {
@@ -5071,8 +5142,9 @@ function toggleDriveQuickRequestItem(domId) {
                     delete searchRenderFrame[key];
                     renderFn();
                 });
-            }, 70);
+            }, Math.max(0, Number(delayMs) || 0));
         }
+
         function getProtectedEditConfig(prefix) {
             return PROTECTED_EDIT_CONFIG[prefix] || null;
         }
@@ -7167,7 +7239,7 @@ activeDriveTab = tab;
             renderDrive();
         }
         function clearAVSearch() { document.getElementById('av-search').value=""; document.getElementById('av-search-clear').classList.add('hidden'); avResLevel=0; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; avOpenLevel=0; renderAV(); }
-        function handleAVSearch() { const term=document.getElementById('av-search').value.toLowerCase(); const clearBtn=document.getElementById('av-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden'); avResLevel=0; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; avOpenLevel=0;} else{clearBtn.classList.add('hidden'); avResLevel=0; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; avOpenLevel=0;} scheduleSearchRender('av', () => renderAV()); }
+        function handleAVSearch() { const term=document.getElementById('av-search').value.toLowerCase(); const clearBtn=document.getElementById('av-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden'); avResLevel=0; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; avOpenLevel=0;} else{clearBtn.classList.add('hidden'); avResLevel=0; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; avOpenLevel=0;} debouncedAVSearch(); }
 
         function resetAVView() { 
             activeAVTab='open'; activeAvOpenTab='name';
@@ -7250,11 +7322,11 @@ activeDriveTab = tab;
             supabaseFetch('v2_labor_hours', 'POST', payload).then(() => { showToast("Success", "Hours submitted successfully!"); document.getElementById('hours-amount').value = ""; }).catch(err => { showToast("Error", "Failed to submit hours.", true); });
         }
 
-        const debouncedReservesSearch=debounce(()=>{requestAnimationFrame(()=>renderReserves())},150);
+        const debouncedReservesSearch=debounce(()=>{scheduleUiRender('reserves-search', () => renderReserves());}, getSearchRenderDelay('heavy'));
         function clearReservesSearch() { document.getElementById('reserves-search').value=""; document.getElementById('reserves-search-clear').classList.add('hidden'); reservesViewLevel=0; renderReserves(); }
-        function handleReservesSearch() { const term=document.getElementById('reserves-search').value.toLowerCase(); const clearBtn=document.getElementById('reserves-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden');reservesViewLevel=0;} else{clearBtn.classList.add('hidden');reservesViewLevel=0;} if (typeof renderReserves === 'function') scheduleSearchRender('reserves', () => renderReserves()); }
+        function handleReservesSearch() { const term=document.getElementById('reserves-search').value.toLowerCase(); const clearBtn=document.getElementById('reserves-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden');reservesViewLevel=0;} else{clearBtn.classList.add('hidden');reservesViewLevel=0;} if (typeof renderReserves === 'function') debouncedReservesSearch(); }
 
-        const debouncedAVSearch=debounce(()=>{requestAnimationFrame(()=>renderAV())},150);
+        const debouncedAVSearch=debounce(()=>{scheduleUiRender('av-search', () => renderAV());}, getSearchRenderDelay('heavy'));
 
         function resetAVReserveSearchInput() {
             const searchInput = document.getElementById('av-search');
@@ -8401,9 +8473,9 @@ activeDriveTab = tab;
                 container.innerHTML = html;
             }
         }
-        const debouncedDocksSearch=debounce(()=>{requestAnimationFrame(()=>renderDocks())},150);
+        const debouncedDocksSearch=debounce(()=>{scheduleUiRender('docks-search', () => renderDocks());}, getSearchRenderDelay('heavy'));
         function clearDocksSearch(){ document.getElementById('docks-search').value=""; document.getElementById('docks-search-clear').classList.add('hidden'); dockViewLevel=0; selectedDockNum=null; selectedDockStop=null; renderDocks(); }
-        function handleDocksSearch(){ const term=document.getElementById('docks-search').value.toLowerCase(); const clearBtn=document.getElementById('docks-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden');dockViewLevel=0;}else{clearBtn.classList.add('hidden');dockViewLevel=0;} scheduleSearchRender('docks', () => renderDocks()); }
+        function handleDocksSearch(){ const term=document.getElementById('docks-search').value.toLowerCase(); const clearBtn=document.getElementById('docks-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden');dockViewLevel=0;}else{clearBtn.classList.add('hidden');dockViewLevel=0;} debouncedDocksSearch(); }
         function resetDockView() { dockViewLevel = 0; selectedDockNum = null; selectedDockStop = null; document.getElementById('docks-search').value = ""; document.getElementById('docks-search-clear').classList.add('hidden'); renderDocks(); }
         function selectDock(dock) { selectedDockNum = dock; selectedDockStop = null; dockViewLevel = 1; renderDocks(); queueScrollMainAreaToTop(`dock:${dock}`); }
         function selectDockStop(stop) { selectedDockStop = stop; dockViewLevel = 2; renderDocks(); queueScrollMainAreaToTop(`dock-stop:${stop}`); }
@@ -11271,15 +11343,25 @@ activeDriveTab = tab;
             else{executeBatchAction(pendingAction,pendingTabType)}
         }
 
+        function getRequestCopyLocPhotoMatch(item) {
+            const matchValue = firstNonEmptyValue(item && item.LOC_MATCH_QTY, getAvOpenStockLocPhotoMatch(item), '-');
+            const normalized = String(matchValue == null ? '-' : matchValue).trim();
+            return normalized || '-';
+        }
+
         function formatRequestItemsText(items, headerLabel = '') {
             let returnText = headerLabel ? `${headerLabel}
 
 ` : '';
             items.forEach(i => {
+                const locPhotoMatch = getRequestCopyLocPhotoMatch(i);
                 returnText += `${i.REQUEST_FOLDER||'No Folder'}
 ID: ${i.UNIQUE_ID} | ${i.REQ_CUSTOMER||'N/A'}
-${i.COMMONNAME||'Unknown'} ${i.CONTSIZE||'-'} Loc: ${i.LOCATIONCODE||'No Loc'}
-${i.ITEMCODE||'-'} | Lot: ${i.LOTCODE||'-'}
+${i.COMMONNAME||'Unknown'}
+${i.CONTSIZE||'-'}
+Lot Code: ${i.LOTCODE||'-'}
+Location Code: ${i.LOCATIONCODE||'No Loc'}
+Item Code: ${i.ITEMCODE||'-'}
 `;
                 if(i.REQ_QTY)returnText += `  Requested Qty: ${i.REQ_QTY}
 `;
@@ -11287,11 +11369,11 @@ ${i.ITEMCODE||'-'} | Lot: ${i.LOTCODE||'-'}
 `;
                 if(i.REQ_DESIRED_CALIPER)returnText += `  Desired Caliper: ${i.REQ_DESIRED_CALIPER}
 `;
-                if(i.REQ_EST_SHIP)returnText += `  Est Ship: ${i.REQ_EST_SHIP}
+                if(i.REQ_EST_SHIP)returnText += `  EST Ship: ${i.REQ_EST_SHIP}
 `;
-                if(i.REQ_RESERVE)returnText += `  Reserve: ${i.REQ_RESERVE}
+                if(i.REQ_RESERVE)returnText += `  Reserves: ${i.REQ_RESERVE}
 `;
-                if(i.REQ_MATCH)returnText += `  Match: ${i.REQ_MATCH}%
+                if(locPhotoMatch && locPhotoMatch !== '-')returnText += `  LOC PHOTO MATCH: ${locPhotoMatch}
 `;
                 if(i.REQ_SPEC)returnText += `  Spec: ${i.REQ_SPEC}
 `;
@@ -11300,7 +11382,7 @@ ${i.ITEMCODE||'-'} | Lot: ${i.LOTCODE||'-'}
                 if(i.REQ_PICK)returnText += `  Pick Note: ${i.REQ_PICK}
 `;
                 let photo=i.REQ_PHOTO_LINK||i.SAVED_PHOTO_LINK||i['PHOTO LINK']||i.PHOTOLINK;
-                if(photo&&String(photo).trim()!==""){
+                if(photo&&String(photo).trim()!==''){
                     let urls=String(photo).split(',');
                     let counter=1;
                     urls.forEach(url=>{
@@ -11315,6 +11397,55 @@ ${i.ITEMCODE||'-'} | Lot: ${i.LOTCODE||'-'}
 `;
             });
             return returnText
+        }
+
+        function buildRequestItemsCopyPayload(items, headerLabel = '') {
+            const text = formatRequestItemsText(items, headerLabel);
+            const headerHtml = headerLabel ? `<div style="margin:0 0 18px 0;font:800 20px/1.2 Arial,sans-serif;color:#0f172a;">${esc(headerLabel)}</div>` : '';
+            const cardsHtml = items.map((item) => {
+                const locPhotoMatch = getRequestCopyLocPhotoMatch(item);
+                const photo = item.REQ_PHOTO_LINK||item.SAVED_PHOTO_LINK||item['PHOTO LINK']||item.PHOTOLINK;
+                let photoHtml = '';
+                if (photo && String(photo).trim() !== '') {
+                    let counter = 1;
+                    photoHtml = String(photo).split(',').map((url) => {
+                        let cleanUrl = String(url || '').trim();
+                        let match = cleanUrl.match(/(https?:\/\/[^"\s>]+)/);
+                        if (match) cleanUrl = match[1];
+                        if (!cleanUrl.startsWith('http')) return '';
+                        const rowHtml = `<div style="margin-top:6px;font:600 13px/1.45 Arial,sans-serif;color:#334155;"><strong>Photo ${counter}:</strong> ${esc(cleanUrl)}</div>`;
+                        counter++;
+                        return rowHtml;
+                    }).join('');
+                }
+                return `<div style="margin:0 0 18px 0;padding:16px 18px;border:1px solid #cbd5e1;border-radius:16px;background:#ffffff;">
+<div style="font:700 11px/1.4 Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#64748b;">Request Folder</div>
+<div style="margin-top:4px;font:700 14px/1.35 Arial,sans-serif;color:#0f172a;">${esc(item.REQUEST_FOLDER||'No Folder')}</div>
+<div style="margin-top:4px;font:600 12px/1.35 Arial,sans-serif;color:#475569;">ID: ${esc(item.UNIQUE_ID||'')} | ${esc(item.REQ_CUSTOMER||'N/A')}</div>
+<div style="margin-top:14px;font:800 28px/1.08 Arial,sans-serif;color:#0f172a;">${esc(item.COMMONNAME||'Unknown')}</div>
+<div style="margin-top:6px;font:800 20px/1.12 Arial,sans-serif;color:#047857;">${esc(item.CONTSIZE||'-')}</div>
+<div style="margin-top:10px;">
+<div style="font:700 11px/1.4 Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#64748b;">Lot Code</div>
+<div style="font:800 18px/1.15 Arial,sans-serif;color:#0f172a;">${esc(item.LOTCODE||'-')}</div>
+</div>
+<div style="margin-top:10px;">
+<div style="font:700 11px/1.4 Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#64748b;">Location Code</div>
+<div style="font:800 18px/1.15 Arial,sans-serif;color:#0f172a;">${esc(item.LOCATIONCODE||'No Loc')}</div>
+</div>
+<div style="margin-top:10px;font:600 13px/1.45 Arial,sans-serif;color:#334155;"><strong>Item Code:</strong> ${esc(item.ITEMCODE||'-')}</div>
+${item.REQ_QTY ? `<div style="margin-top:8px;font:600 13px/1.45 Arial,sans-serif;color:#334155;"><strong>Requested Qty:</strong> ${esc(item.REQ_QTY)}</div>` : ''}
+${item.REQ_DESIRED_SPEC ? `<div style="margin-top:8px;font:600 13px/1.45 Arial,sans-serif;color:#334155;"><strong>Desired Spec:</strong> ${esc(item.REQ_DESIRED_SPEC)}</div>` : ''}
+${item.REQ_DESIRED_CALIPER ? `<div style="margin-top:8px;font:600 13px/1.45 Arial,sans-serif;color:#334155;"><strong>Desired Caliper:</strong> ${esc(item.REQ_DESIRED_CALIPER)}</div>` : ''}
+${item.REQ_EST_SHIP ? `<div style="margin-top:8px;font:600 13px/1.45 Arial,sans-serif;color:#334155;"><strong>EST Ship:</strong> ${esc(item.REQ_EST_SHIP)}</div>` : ''}
+${item.REQ_RESERVE ? `<div style="margin-top:8px;font:600 13px/1.45 Arial,sans-serif;color:#334155;"><strong>Reserves:</strong> ${esc(item.REQ_RESERVE)}</div>` : ''}
+${locPhotoMatch && locPhotoMatch !== '-' ? `<div style="margin-top:8px;font:600 13px/1.45 Arial,sans-serif;color:#334155;"><strong>LOC PHOTO MATCH:</strong> ${esc(locPhotoMatch)}</div>` : ''}
+${item.REQ_SPEC ? `<div style="margin-top:8px;font:600 13px/1.45 Arial,sans-serif;color:#334155;"><strong>Spec:</strong> ${esc(item.REQ_SPEC)}</div>` : ''}
+${item.REQ_CALIPER ? `<div style="margin-top:8px;font:600 13px/1.45 Arial,sans-serif;color:#334155;"><strong>Caliper:</strong> ${esc(item.REQ_CALIPER)}</div>` : ''}
+${item.REQ_PICK ? `<div style="margin-top:8px;font:600 13px/1.45 Arial,sans-serif;color:#334155;"><strong>Pick Note:</strong> ${esc(item.REQ_PICK)}</div>` : ''}
+${photoHtml}
+</div>`;
+            }).join('');
+            return { text, html: `<div style="font-family:Arial,sans-serif;color:#0f172a;">${headerHtml}${cardsHtml}</div>` };
         }
 
         function getRequestFolderItems(folderName, status = selectedReqStatus, repName = selectedReqRepView) {
@@ -11337,9 +11468,9 @@ ${i.ITEMCODE||'-'} | Lot: ${i.LOTCODE||'-'}
 ${folderNote ? `Folder Note: ${folderNote}
 ` : ''}
 ${formatRequestItemsText(items)}`;
-            const copyText = formatRequestItemsText(items);
+            const copyPayload = buildRequestItemsCopyPayload(items);
             if (action === 'copy') {
-                copyTextWithFallback(copyText).then(() => {
+                copyClipboardContent(copyPayload).then(() => {
                     showToast('Success', 'Folder copied to clipboard!');
                 }).catch(() => {
                     showToast('Error', 'Could not copy folder text.', true);
@@ -11478,8 +11609,10 @@ ${formatRequestItemsText(items)}`;
 
         async function executeBatchAction(action,tabType) {
             const text=getSelectedItemsText(tabType);
+            const requestCopyPayload = tabType==='request' ? buildRequestItemsCopyPayload(Array.from(selectedItems).map(domId=>findItemByDomId(domId)).filter(Boolean)) : null;
             if(action==='copy'){
-                copyTextWithFallback(text).then(()=>{showToast("Success","Copied to clipboard!");clearSelection()}).catch(()=>{showToast("Error","Could not copy text.",true);})
+                const copyPromise = requestCopyPayload ? copyClipboardContent(requestCopyPayload) : copyTextWithFallback(text);
+                copyPromise.then(()=>{showToast("Success","Copied to clipboard!");clearSelection()}).catch(()=>{showToast("Error","Could not copy text.",true);})
             }else if(action==='email'){
                 let sub='Selected Rows';
                 if(tabType==='request')sub='Request Data';
@@ -11525,7 +11658,7 @@ ${formatRequestItemsText(items)}`;
 
         const debouncedDriveSearch = debounce(() => {
             scheduleUiRender('drive-search', () => renderDrive());
-        }, 120);
+        }, getSearchRenderDelay('heavy'));
         
         function clearDriveSearch() {
             document.getElementById('drive-search').value = "";
