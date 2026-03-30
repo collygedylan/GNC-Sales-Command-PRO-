@@ -66,11 +66,10 @@
         body.viewport-compact .app-smart-card .app-smart-thumb--feature{width:4.55rem;height:4.55rem;border-radius:.95rem !important}
         #view-wrapper{width:100%;max-width:100%;min-width:0;overflow-x:hidden;overflow-y:visible}
         .sticky-search{position:-webkit-sticky;position:sticky;top:0;z-index:35;background:#f9fafb;padding-top:max(4px,env(safe-area-inset-top));padding-bottom:10px;box-shadow:0 6px 12px rgba(15,23,42,.05);transform:translateZ(0);-webkit-transform:translateZ(0);backface-visibility:hidden}
-        .request-swipe-row{display:block !important;padding:0 !important;position:relative;overflow:hidden;background:#ffffff !important;touch-action:pan-y;overscroll-behavior-x:contain;-webkit-user-select:none;user-select:none}
-        .request-swipe-row{display:block !important;padding:0 !important;position:relative;overflow:hidden;background:#ffffff !important;touch-action:pan-y;overscroll-behavior-x:contain;-webkit-user-select:none;user-select:none}
-        .request-swipe-surface{position:relative;z-index:2;width:100%;background:#ffffff;border-radius:inherit;padding:0;transition:transform .18s ease;will-change:transform}
-        .request-swipe-action{position:absolute;top:0;right:0;bottom:0;width:88px;display:flex;align-items:center;justify-content:center;background:#ffffff;color:#dc2626;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;z-index:1}
-        .request-swipe-row.swipe-open .request-swipe-surface{transform:translateX(-88px)}
+        .request-swipe-row,.flyer-swipe-row{display:block !important;padding:0 !important;position:relative;overflow:hidden;background:#ffffff !important;touch-action:pan-y;overscroll-behavior-x:contain;-webkit-user-select:none;user-select:none}
+        .request-swipe-surface,.flyer-swipe-surface{position:relative;z-index:2;width:100%;background:#ffffff;border-radius:inherit;padding:0;transition:transform .18s ease;will-change:transform}
+        .request-swipe-action,.flyer-swipe-action{position:absolute;top:0;right:0;bottom:0;width:88px;display:flex;align-items:center;justify-content:center;background:#ffffff;color:#dc2626;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;z-index:1}
+        .request-swipe-row.swipe-open .request-swipe-surface,.flyer-swipe-row.swipe-open .flyer-swipe-surface{transform:translateX(-88px)}
         #pull-refresh-indicator{transform:translateY(-120%);opacity:0;transition:transform .16s ease,opacity .16s ease;padding-top:max(0px,env(safe-area-inset-top))}
         #pull-refresh-indicator .pull-refresh-pill{backdrop-filter:saturate(140%) blur(8px)}
         #pull-refresh-indicator.visible{opacity:1}
@@ -9992,6 +9991,7 @@ activeDriveTab = tab;
         }
 
         let requestSwipeState = { row: null, surface: null, startX: 0, startY: 0, deltaX: 0, startOffset: 0, dragging: false };
+        let flyerSwipeState = { row: null, surface: null, startX: 0, startY: 0, deltaX: 0, startOffset: 0, dragging: false };
         let pullRefreshState = { active: false, armed: false, refreshing: false, startX: 0, startY: 0, distance: 0 };
         let interactiveChromeInitialized = false;
         let foregroundRefreshTimer = null;
@@ -10400,6 +10400,237 @@ activeDriveTab = tab;
             updatePendingRequestArchiveRetry(uid, 1, retryDelay);
             schedulePendingRequestArchiveFlush(retryDelay);
             showToast('Retrying', 'Request removal will keep retrying automatically.', false);
+        }
+        function captureFlyerTaskSnapshot(item) {
+            return {
+                UNIQUE_ID: item.UNIQUE_ID,
+                APP_TAB_ASSIGNMENT: item.APP_TAB_ASSIGNMENT || '',
+                FLYER_CAT: item.FLYER_CAT || '',
+                FLYER_TITLE: item.FLYER_TITLE || '',
+                FLYER_INST: item.FLYER_INST || '',
+                FLYER_ASSIGNED: item.FLYER_ASSIGNED || '',
+                FLYER_NOTES: item.FLYER_NOTES || '',
+                FLYER_PHOTO_LINK: item.FLYER_PHOTO_LINK || '',
+                FLYER_PHOTO_NAME: item.FLYER_PHOTO_NAME || '',
+                FLYER_COMPLETED: item.FLYER_COMPLETED || ''
+            };
+        }
+
+        function restoreFlyerTaskSnapshot(item, snapshot) {
+            if (!item || !snapshot) return;
+            item.APP_TAB_ASSIGNMENT = snapshot.APP_TAB_ASSIGNMENT || '';
+            item.FLYER_CAT = snapshot.FLYER_CAT || '';
+            item.FLYER_TITLE = snapshot.FLYER_TITLE || '';
+            item.FLYER_INST = snapshot.FLYER_INST || '';
+            item.FLYER_ASSIGNED = snapshot.FLYER_ASSIGNED || '';
+            item.FLYER_NOTES = snapshot.FLYER_NOTES || '';
+            item.FLYER_PHOTO_LINK = snapshot.FLYER_PHOTO_LINK || '';
+            item.FLYER_PHOTO_NAME = snapshot.FLYER_PHOTO_NAME || '';
+            item.FLYER_COMPLETED = snapshot.FLYER_COMPLETED || '';
+            normalizeRowPhotoFields(item);
+            buildSearchIndex(item);
+        }
+
+        function clearFlyerTaskFields(item) {
+            if (!item) return;
+            if (String(item.APP_TAB_ASSIGNMENT || '').toLowerCase() === 'flyer') item.APP_TAB_ASSIGNMENT = '';
+            item.FLYER_CAT = '';
+            item.FLYER_TITLE = '';
+            item.FLYER_INST = '';
+            item.FLYER_ASSIGNED = '';
+            item.FLYER_NOTES = '';
+            item.FLYER_PHOTO_LINK = '';
+            item.FLYER_PHOTO_NAME = '';
+            item.FLYER_COMPLETED = '';
+            normalizeRowPhotoFields(item);
+            buildSearchIndex(item);
+        }
+
+        function getFlyerTaskClearPayload() {
+            return {
+                flyer_cat: null,
+                flyer_title: null,
+                flyer_inst: null,
+                flyer_assigned: null,
+                flyer_notes: null,
+                flyer_photo_link: null,
+                flyer_photo_name: null
+            };
+        }
+
+        function refreshFlyerTaskViewAfterRemoval() {
+            closeAllFlyerSwipes();
+            if (activeTaskTab === 'flyer' && taskViewLevel === 1 && selectedFlyerFolder) {
+                const folderStillHasRows = fullInventory.some((entry) => isFlyerTaskItem(entry) && getFlyerFolderName(entry) === selectedFlyerFolder);
+                if (!folderStillHasRows) {
+                    backToFlyerFolderList();
+                    markViewDirty('tasks');
+                    persistCurrentCache();
+                    return;
+                }
+            }
+            renderTasks();
+            markViewDirty('tasks');
+            persistCurrentCache();
+        }
+
+        function closeFlyerSwipe(row) {
+            if (!row) return;
+            row.classList.remove('swipe-open');
+            const surface = row.querySelector('.flyer-swipe-surface');
+            if (surface) surface.style.transform = '';
+            if (flyerSwipeState.row === row) {
+                flyerSwipeState = { row: null, surface: null, startX: 0, startY: 0, deltaX: 0, startOffset: 0, dragging: false };
+            }
+        }
+
+        function closeAllFlyerSwipes(exceptRow = null) {
+            const container = document.getElementById('task-content');
+            if (!container) return;
+            container.querySelectorAll('.flyer-swipe-row.swipe-open').forEach((row) => {
+                if (row !== exceptRow) closeFlyerSwipe(row);
+            });
+        }
+
+        function handleFlyerSwipeStart(event) {
+            if (!event.touches || event.touches.length !== 1) return;
+            const row = event.currentTarget;
+            const surface = row.querySelector('.flyer-swipe-surface');
+            if (!surface) return;
+            closeAllFlyerSwipes(row);
+            const touch = event.touches[0];
+            flyerSwipeState = {
+                row,
+                surface,
+                startX: touch.clientX,
+                startY: touch.clientY,
+                deltaX: row.classList.contains('swipe-open') ? -96 : 0,
+                startOffset: row.classList.contains('swipe-open') ? -96 : 0,
+                dragging: true
+            };
+        }
+
+        function handleFlyerSwipeMove(event) {
+            if (!flyerSwipeState.dragging || flyerSwipeState.row !== event.currentTarget || !event.touches || event.touches.length !== 1) return;
+            const touch = event.touches[0];
+            const dx = touch.clientX - flyerSwipeState.startX;
+            const dy = touch.clientY - flyerSwipeState.startY;
+            if (Math.abs(dy) > 18 && Math.abs(dy) > Math.abs(dx)) {
+                flyerSwipeState.dragging = false;
+                closeFlyerSwipe(flyerSwipeState.row);
+                return;
+            }
+            const nextOffset = Math.max(-96, Math.min(0, flyerSwipeState.startOffset + dx));
+            if (nextOffset === 0 && dx > 0 && flyerSwipeState.startOffset === 0) return;
+            event.preventDefault();
+            flyerSwipeState.deltaX = nextOffset;
+            flyerSwipeState.surface.style.transform = `translateX(${nextOffset}px)`;
+        }
+
+        function handleFlyerSwipeEnd(event) {
+            if (flyerSwipeState.row !== event.currentTarget) return;
+            const row = flyerSwipeState.row;
+            const shouldOpen = flyerSwipeState.deltaX <= -56;
+            if (shouldOpen) {
+                row.classList.add('swipe-open');
+                if (flyerSwipeState.surface) flyerSwipeState.surface.style.transform = 'translateX(-96px)';
+            } else {
+                closeFlyerSwipe(row);
+            }
+            flyerSwipeState.dragging = false;
+        }
+
+        function decorateFlyerRows() {
+            if (activeTaskTab !== 'flyer') return;
+            const container = document.getElementById('task-content');
+            if (!container) return;
+            const candidateRows = taskViewLevel === 0
+                ? Array.from(container.querySelectorAll('.flyer-folder-card'))
+                : Array.from(container.querySelectorAll('.item-row[data-dom-id]'));
+            candidateRows.forEach((row) => {
+                if (row.dataset.swipeEnhanced === 'true') return;
+                const folderName = String(row.dataset.flyerFolder || '').trim();
+                const flyerUid = String(row.dataset.domId || row.getAttribute('data-dom-id') || '').trim();
+                if (!folderName && !flyerUid) return;
+                row.dataset.swipeEnhanced = 'true';
+                if (folderName) row.dataset.flyerFolder = folderName;
+                if (flyerUid) row.dataset.flyerUid = flyerUid;
+                row.classList.add('flyer-swipe-row');
+                ['ontouchstart', 'ontouchmove', 'ontouchend', 'ontouchcancel'].forEach((attr) => row.removeAttribute(attr));
+
+                const surface = document.createElement('div');
+                surface.className = 'flyer-swipe-surface';
+                while (row.firstChild) {
+                    surface.appendChild(row.firstChild);
+                }
+
+                const action = document.createElement('button');
+                action.type = 'button';
+                action.className = 'flyer-swipe-action';
+                action.innerText = 'Delete';
+                action.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    if (row.dataset.flyerFolder) removeFlyerFolder(row.dataset.flyerFolder);
+                    else if (row.dataset.flyerUid) removeFlyerRow(row.dataset.flyerUid);
+                });
+
+                row.appendChild(action);
+                row.appendChild(surface);
+                row.addEventListener('touchstart', handleFlyerSwipeStart, { passive: true });
+                row.addEventListener('touchmove', handleFlyerSwipeMove, { passive: false });
+                row.addEventListener('touchend', handleFlyerSwipeEnd, { passive: true });
+                row.addEventListener('touchcancel', handleFlyerSwipeEnd, { passive: true });
+                row.addEventListener('click', (event) => {
+                    if (event.target && event.target.closest('.flyer-swipe-action')) return;
+                    if (!row.classList.contains('swipe-open')) return;
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+                    closeFlyerSwipe(row);
+                }, true);
+            });
+        }
+
+        async function removeFlyerItems(items, successMessage) {
+            const validItems = Array.isArray(items) ? items.filter(Boolean) : [];
+            if (!validItems.length) return;
+            const snapshots = new Map();
+            validItems.forEach((item) => {
+                snapshots.set(item.UNIQUE_ID, captureFlyerTaskSnapshot(item));
+                clearFlyerTaskFields(item);
+            });
+            refreshFlyerTaskViewAfterRemoval();
+            showToast('Removing', 'Updating flyer...', false);
+            const results = await Promise.allSettled(validItems.map((item) => supabaseFetch('v2_master_inventory', 'PATCH', getFlyerTaskClearPayload(), `unique_id=eq.${encodeURIComponent(item.UNIQUE_ID)}`)));
+            const failedItems = [];
+            results.forEach((result, index) => {
+                if (result.status === 'rejected') failedItems.push(validItems[index]);
+            });
+            if (!failedItems.length) {
+                showToast('Removed', successMessage);
+                return;
+            }
+            failedItems.forEach((item) => restoreFlyerTaskSnapshot(item, snapshots.get(item.UNIQUE_ID)));
+            refreshFlyerTaskViewAfterRemoval();
+            const succeeded = validItems.length - failedItems.length;
+            const partialMessage = succeeded > 0
+                ? `${succeeded} removed. ${failedItems.length} could not be deleted.`
+                : 'Flyer delete failed. Please try again.';
+            showToast('Error', partialMessage, true);
+        }
+
+        async function removeFlyerRow(uid) {
+            const item = fullInventory.find((entry) => entry.UNIQUE_ID === uid);
+            if (!item) return;
+            await removeFlyerItems([item], 'Flyer row removed.');
+        }
+
+        async function removeFlyerFolder(folderName) {
+            const normalizedFolder = String(folderName || '').trim();
+            if (!normalizedFolder) return;
+            const folderItems = fullInventory.filter((entry) => isFlyerTaskItem(entry) && getFlyerFolderName(entry) === normalizedFolder);
+            if (!folderItems.length) return;
+            await removeFlyerItems(folderItems, `${normalizedFolder} removed from Flyer.`);
         }
 
         function updateGlobalActionBar() { 
@@ -12214,10 +12445,15 @@ function toggleDriveSeason(s) {
                     container.innerHTML = Object.keys(folderMap).sort().map(folderName => {
                         const meta = folderMap[folderName];
                         const assignees = Array.from(meta.assignees).join(', ') || 'Unassigned';
-                        return `<div class="bg-white border border-indigo-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="return openFlyerFolder('${esc(folderName)}')"><div class="min-w-0 pr-3"><div class="font-bold text-lg text-indigo-800 truncate">${folderName}</div><div class="text-xs font-semibold text-indigo-500 mt-1 truncate">${assignees}</div></div><div class="text-right shrink-0"><div class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${meta.count} Rows</div><div class="text-[11px] font-semibold text-gray-500 mt-2">${meta.complete} Complete</div></div></div>`;
+                        return `<div class="item-row flyer-folder-card bg-white border border-indigo-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" data-flyer-folder="${esc(folderName)}" onclick="return openFlyerFolder('${esc(folderName)}')"><div class="min-w-0 pr-3"><div class="font-bold text-lg text-indigo-800 truncate">${folderName}</div><div class="text-xs font-semibold text-indigo-500 mt-1 truncate">${assignees}</div></div><div class="text-right shrink-0"><div class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${meta.count} Rows</div><div class="text-[11px] font-semibold text-gray-500 mt-2">${meta.complete} Complete</div></div></div>`;
                     }).join('');
+                    requestAnimationFrame(decorateFlyerRows);
                 } else if (taskViewLevel === 1) {
                     let folderItems = tabItems.filter(i => getFlyerFolderName(i) === selectedFlyerFolder);
+                    if (folderItems.length === 0) {
+                        backToFlyerFolderList();
+                        return;
+                    }
                     folderItems.sort((a,b) => {
                         const locationCompare = compareLocationCodeValues(a.LOCATIONCODE, b.LOCATIONCODE);
                         if (locationCompare !== 0) return locationCompare;
@@ -12228,6 +12464,7 @@ function toggleDriveSeason(s) {
                     const folderAssignees = getFlyerFolderAssignedNames(selectedFlyerFolder, folderItems).join(', ') || 'Unassigned';
                     const folderHeader = `<div class="mb-3 rounded-xl border border-indigo-200 bg-indigo-50 p-4"><div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-indigo-600">Flyer Folder</div><div class="text-lg font-black text-indigo-900 truncate mt-1">${selectedFlyerFolder || ''}</div><div class="text-[11px] font-semibold text-indigo-500 mt-1">${folderItems.length} row${folderItems.length === 1 ? '' : 's'} | ${folderAssignees}</div></div><button class="w-full sm:w-auto min-h-[42px] px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-[0.14em] transition-colors duration-150 bg-white border border-indigo-200 text-indigo-700 shadow-sm hover:bg-indigo-100" onclick="return startAddRowsToFlyerFolder('${esc(selectedFlyerFolder || '')}')">Add Rows To Folder</button></div></div>`;
                     container.innerHTML = `<div class="back-btn" onclick="return backToFlyerFolderList()"><i class="ph-bold ph-arrow-left"></i> Back to Folders</div>${folderHeader}` + folderItems.map(i => generateCard(i, 'tasks', 'status-indigo')).join('');
+                    requestAnimationFrame(decorateFlyerRows);
                 }
             } else {
                 if (taskViewLevel === 0) {
