@@ -2390,6 +2390,7 @@
 
         const CACHE_SCHEMA_VERSION = 4;
         const INLINE_CACHE_RESERVE_LIMIT = 180;
+        const LEGACY_FULL_RESERVE_CACHE_TRUST_MIN_ROWS = 20000;
         function buildCacheSnapshot() {
             const inlineReserveRows = buildCacheRows(reservesInventory.slice(0, INLINE_CACHE_RESERVE_LIMIT));
             return {
@@ -2507,8 +2508,10 @@
                 const reserveMeta = reserveCache && reserveCache.meta ? reserveCache.meta : {};
                 const cachedLastLoadedAt = String(firstNonEmptyValue(reserveMeta.lastLoadedAt, reserveMeta.savedAt, '') || '').trim();
                 const isRepCache = !!getRoleAccessState().isRep;
+                const metaRowCount = Number(reserveMeta.rowCount || 0);
                 const looksLikePartialAdminCache = !isRepCache && reserveRows.length <= 1000;
-                const canTrustAsFull = !!reserveMeta.fullLoaded && !looksLikePartialAdminCache;
+                const looksLikeLegacyFullAdminCache = !isRepCache && !reserveMeta.fullLoaded && reserveRows.length >= LEGACY_FULL_RESERVE_CACHE_TRUST_MIN_ROWS && metaRowCount >= reserveRows.length;
+                const canTrustAsFull = (!!reserveMeta.fullLoaded || looksLikeLegacyFullAdminCache) && !looksLikePartialAdminCache;
                 const shouldApply = reserveRows.length > reservesInventory.length || (!reserveState.initialLoaded && reserveRows.length > 0);
                 if (shouldApply) {
                     processAndLoadData({ reservesData: reserveRows, _fromCache: true });
@@ -2516,6 +2519,12 @@
                     reserveState.fullLoaded = canTrustAsFull;
                     reserveState.lastLoadedAt = cachedLastLoadedAt || reserveState.lastLoadedAt || new Date().toISOString();
                     warmed = true;
+                    if (looksLikeLegacyFullAdminCache) {
+                        const silentRefreshAgeMs = (isIOSDevice() || isStandaloneApp()) ? 5400000 : 3600000;
+                        if (isDatasetStale('reserves', silentRefreshAgeMs)) {
+                            queueDatasetLoad('reserves', 'full', (isIOSDevice() || isStandaloneApp()) ? 18000 : 9000);
+                        }
+                    }
                 }
             }
             return warmed;
@@ -2849,15 +2858,26 @@
         }
 
         function hydrateDatasetLoadState(meta = {}) {
+            const previousState = datasetLoadState || createDatasetLoadState();
+            const previousSnapshot = {};
+            Object.keys(previousState).forEach((key) => {
+                const prev = previousState[key] || {};
+                previousSnapshot[key] = {
+                    initialLoaded: !!prev.initialLoaded,
+                    fullLoaded: !!prev.fullLoaded,
+                    lastLoadedAt: prev.lastLoadedAt || ''
+                };
+            });
             datasetLoadState = createDatasetLoadState();
             Object.keys(datasetLoadState).forEach((key) => {
                 const saved = meta[key] || {};
+                const prev = previousSnapshot[key] || {};
                 const state = getDatasetState(key);
-                state.initialLoaded = !!saved.initialLoaded;
-                state.fullLoaded = !!saved.fullLoaded;
+                state.initialLoaded = !!(saved.initialLoaded || prev.initialLoaded || prev.fullLoaded);
+                state.fullLoaded = !!(saved.fullLoaded || prev.fullLoaded);
                 state.initialPromise = null;
                 state.fullPromise = null;
-                state.lastLoadedAt = saved.lastLoadedAt || '';
+                state.lastLoadedAt = firstNonEmptyValue(saved.lastLoadedAt, prev.lastLoadedAt, '');
             });
         }
 
@@ -5517,6 +5537,7 @@ function toggleDriveQuickRequestItem(domId) {
             const initialTargets = new Map();
             const fullTargets = new Map();
             const reserveInitialMode = access.isRep ? 'full' : 'initial';
+            const touchWarmup = isIOSDevice() || isStandaloneApp() || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
 
             addLoginWarmupTarget(initialTargets, 'master', 'initial');
             addLoginWarmupTarget(fullTargets, 'master', 'full');
@@ -5553,8 +5574,8 @@ function toggleDriveQuickRequestItem(domId) {
             const initialPriority = ['master', 'avOpen', 'requests', 'soc', 'salesOffice', 'avNotes', 'cav', 'reserves'];
             const initialKeys = initialPriority.concat(Array.from(initialTargets.keys()).filter((key) => !initialPriority.includes(key)));
             const initialQueue = [];
-            const initialStart = 30;
-            const initialStep = 140;
+            const initialStart = touchWarmup ? 60 : 30;
+            const initialStep = touchWarmup ? 180 : 140;
             initialKeys.forEach((key) => {
                 const target = initialTargets.get(key);
                 if (!target) return;
@@ -5564,8 +5585,8 @@ function toggleDriveQuickRequestItem(domId) {
             const fullPriority = ['requests', 'soc', 'avOpen', 'salesOffice', 'avNotes', 'cav', 'reserves', 'master'];
             const fullKeys = fullPriority.concat(Array.from(fullTargets.keys()).filter((key) => !fullPriority.includes(key)));
             const fullQueue = [];
-            const fullStart = openedFromCache ? 2400 : 900;
-            const fullStep = openedFromCache ? 1900 : 900;
+            const fullStart = openedFromCache ? (touchWarmup ? 4200 : 2400) : (touchWarmup ? 1600 : 900);
+            const fullStep = openedFromCache ? (touchWarmup ? 2400 : 1900) : (touchWarmup ? 1400 : 900);
             fullKeys.forEach((key) => {
                 const target = fullTargets.get(key);
                 if (!target) return;
@@ -8174,6 +8195,8 @@ activeDriveTab = tab;
             const initialTarget = Math.min(total, Math.max(chunkSize * 2, Math.ceil((viewportHeight * initialScreens) / approxCardHeight)));
             const perFrameLimit = iosOptimized ? Math.max(chunkSize * 2, 220) : (touchOptimized ? Math.max(chunkSize * 2, 144) : Math.max(chunkSize, 72));
             const frameBudgetMs = iosOptimized ? 13 : (touchOptimized ? 10 : 7);
+            const afterChunk = null;
+            const afterComplete = null;
             let index = 0;
             crumb.innerText = crumbText;
             if (!total) {
@@ -8193,11 +8216,17 @@ activeDriveTab = tab;
                 return html;
             };
             container.innerHTML = renderBatch(initialTarget, false);
+            if (afterChunk) afterChunk(index, total, container);
+            if (index >= total && afterComplete) afterComplete(container, total);
             const renderNextChunk = () => {
                 if (token !== avRenderChunkToken) return;
                 const html = renderBatch(perFrameLimit, true);
-                if (html) container.insertAdjacentHTML('beforeend', html);
+                if (html) {
+                    container.insertAdjacentHTML('beforeend', html);
+                    if (afterChunk) afterChunk(index, total, container);
+                }
                 if (index < total) requestAnimationFrame(renderNextChunk);
+                else if (afterComplete) afterComplete(container, total);
             };
             if (index < total) requestAnimationFrame(renderNextChunk);
         }
@@ -8212,6 +8241,8 @@ activeDriveTab = tab;
             const viewportHeight = Math.max(640, Math.round((window.visualViewport && window.visualViewport.height) || window.innerHeight || document.documentElement.clientHeight || 640));
             const approxCardHeight = Math.max(120, Number(options.approxCardHeight) || 185);
             const emptyHtml = options.emptyHtml || `<div class="p-6 text-center text-gray-400">No rows found.</div>`;
+            const afterChunk = typeof options.afterChunk === 'function' ? options.afterChunk : null;
+            const afterComplete = typeof options.afterComplete === 'function' ? options.afterComplete : null;
             const chunkSize = touchOptimized
                 ? (iosOptimized ? (total > 2200 ? 96 : (total > 1200 ? 112 : 128)) : (total > 1600 ? 72 : (total > 800 ? 84 : 96)))
                 : (total > 1200 ? 32 : (total > 600 ? 40 : 48));
@@ -8238,11 +8269,17 @@ activeDriveTab = tab;
                 return html;
             };
             container.innerHTML = renderBatch(initialTarget, false);
+            if (afterChunk) afterChunk(index, total, container);
+            if (index >= total && afterComplete) afterComplete(container, total);
             const renderNextChunk = () => {
                 if (token !== avRenderChunkToken) return;
                 const html = renderBatch(perFrameLimit, true);
-                if (html) container.insertAdjacentHTML('beforeend', html);
+                if (html) {
+                    container.insertAdjacentHTML('beforeend', html);
+                    if (afterChunk) afterChunk(index, total, container);
+                }
                 if (index < total) requestAnimationFrame(renderNextChunk);
+                else if (afterComplete) afterComplete(container, total);
             };
             if (index < total) requestAnimationFrame(renderNextChunk);
         }
@@ -9645,6 +9682,11 @@ activeDriveTab = tab;
                 container.innerHTML = `<div class="p-8 text-center text-gray-400">No Season Sales Notes rows found.</div>`;
                 return;
             }
+            const salesOfficeSeasonChunkThreshold = (isIOSDevice() || isStandaloneApp()) ? 48 : 96;
+            if (items.length > salesOfficeSeasonChunkThreshold) {
+                renderAVMarkupChunked(container, crumb, items, crumb.innerText, (row) => generateCard(row, 'sales-office'), { approxCardHeight: 210 });
+                return;
+            }
             container.innerHTML = items.map(i => generateCard(i, 'sales-office')).join('');
         }
         function resetLowStockView() {
@@ -9666,6 +9708,11 @@ activeDriveTab = tab;
             if (crumb) crumb.innerText = "Action Required";
             let items = [...lowStockItems];
             items.sort((a, b) => String(a.COMMONNAME || "").localeCompare(String(b.COMMONNAME || "")));
+            const lowStockChunkThreshold = (isIOSDevice() || isStandaloneApp()) ? 56 : 110;
+            if (items.length > lowStockChunkThreshold) {
+                renderAVMarkupChunked(container, crumb, items, 'Action Required', (row) => generateCard(row, 'low-stock', 'status-red'), { approxCardHeight: 210 });
+                return;
+            }
             container.innerHTML = items.map(i => generateCard(i, 'low-stock', 'status-red')).join('');
         }
 
@@ -9793,6 +9840,14 @@ activeDriveTab = tab;
                 }
                 
                 pendingItems.sort((a,b) => String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""), undefined, {numeric: true}));
+                const pendingCrumbText = "All Pending Requests";
+                crumb.innerText = pendingCrumbText;
+                const requestChunkThreshold = (isIOSDevice() || isStandaloneApp()) ? 36 : 72;
+                const decoratePendingRows = () => requestAnimationFrame(decorateRequestRows);
+                if (pendingItems.length > requestChunkThreshold) {
+                    renderAVMarkupChunked(container, crumb, pendingItems, pendingCrumbText, (row) => generateCard(row, 'request', 'status-purple'), { approxCardHeight: 210, afterChunk: decoratePendingRows, afterComplete: decoratePendingRows });
+                    return;
+                }
                 container.innerHTML = pendingItems.map(i => generateCard(i, 'request', 'status-purple')).join('');
                 requestAnimationFrame(decorateRequestRows);
                 
@@ -9843,13 +9898,22 @@ activeDriveTab = tab;
                     }).join('');
                     container.innerHTML = html;
                 } else if (requestViewLevel === 3) {
-                    crumb.innerText = selectedReqStatus === 'Complete' ? `${selectedReqRepView} > ${selectedReqFolderView}` : selectedReqFolderView;
+                    const folderCrumbText = selectedReqStatus === 'Complete' ? `${selectedReqRepView} > ${selectedReqFolderView}` : selectedReqFolderView;
+                    crumb.innerText = folderCrumbText;
                     let folderItems = items.filter(i => getRequestAssignedRep(i) === selectedReqRepView && !i.REQ_ARCHIVED);
                     folderItems = folderItems.filter(i => ((i.REQUEST_FOLDER || 'Unassigned')) === selectedReqFolderView);
                     folderItems = folderItems.filter(i => selectedReqStatus === 'Pending' ? !isRequestComplete(i) : isRequestComplete(i));
                     folderItems.sort((a,b) => String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""), undefined, {numeric: true}));
-                    
-                    container.innerHTML = `<div class="back-btn" onclick="return backToRequestFolderList()"><i class="ph-bold ph-arrow-left"></i> Back to Folders</div>` + folderItems.map(i => generateCard(i, 'request', selectedReqStatus === 'Complete' ? 'status-green' : 'status-purple')).join('');
+                    const folderBackHtml = `<div class="back-btn" onclick="return backToRequestFolderList()"><i class="ph-bold ph-arrow-left"></i> Back to Folders</div>`;
+                    const requestChunkThreshold = (isIOSDevice() || isStandaloneApp()) ? 36 : 72;
+                    const decorateFolderRows = () => requestAnimationFrame(decorateRequestRows);
+                    if (folderItems.length > requestChunkThreshold) {
+                        container.innerHTML = folderBackHtml + `<div id="request-folder-stream"></div>`;
+                        const streamHost = document.getElementById('request-folder-stream');
+                        renderAVMarkupChunked(streamHost, crumb, folderItems, folderCrumbText, (row) => generateCard(row, 'request', selectedReqStatus === 'Complete' ? 'status-green' : 'status-purple'), { approxCardHeight: 210, afterChunk: decorateFolderRows, afterComplete: decorateFolderRows });
+                        return;
+                    }
+                    container.innerHTML = folderBackHtml + folderItems.map(i => generateCard(i, 'request', selectedReqStatus === 'Complete' ? 'status-green' : 'status-purple')).join('');
                     requestAnimationFrame(decorateRequestRows);
                 }
             }
@@ -9881,7 +9945,7 @@ activeDriveTab = tab;
         }
 
         function getRequestViewLiveSyncInterval() {
-            return isRealtimeTableHealthy('v2_active_request') ? 1600 : 900;
+            return isRealtimeTableHealthy('v2_active_request') ? 4500 : 1200;
         }
 
         async function runRequestViewLiveSync() {
@@ -9922,7 +9986,7 @@ activeDriveTab = tab;
             }, nextDelay);
         }
         function getFallbackSyncInterval() {
-            return (isIOSDevice() || isStandaloneApp()) ? 12000 : 30000;
+            return (isIOSDevice() || isStandaloneApp()) ? 20000 : 30000;
         }
 
         function queueForegroundRefresh(delay = 220) {
@@ -9941,7 +10005,7 @@ activeDriveTab = tab;
                     else updateSyncDiagnostics('realtime');
                     return;
                 }
-                const throttleMs = (isIOSDevice() || isStandaloneApp()) ? 14000 : 18000;
+                const throttleMs = (isIOSDevice() || isStandaloneApp()) ? 32000 : 18000;
                 if (backgroundRefreshInFlight || (lastBackgroundRefreshAt && (Date.now() - lastBackgroundRefreshAt) < throttleMs)) {
                     updateSyncDiagnostics('idle');
                     if (liveSyncMode !== 'realtime') initializeRealtime();
@@ -11932,7 +11996,7 @@ function toggleDriveSeason(s) {
             const commonName = String(firstNonEmptyValue(item && item.COMMONNAME, item && item.DESCRIPTION, itemCode, 'AV Blank')).trim();
             const contSize = String(firstNonEmptyValue(item && item.CONTSIZE, item && item.ITEMSPEC, item && item.SIZE, '-')).trim() || '-';
             const seasonValue = String(firstNonEmptyValue(item && item.SEASON, item && item.season, '-')).trim() || '-';
-            return `<div class="bg-white border border-emerald-200 rounded-xl shadow-sm mb-3 p-4"><div class="flex items-start justify-between gap-3"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-600">AV Blank</div><div class="mt-1 font-black text-lg text-slate-900">${esc(locationCode)}</div><div class="mt-2 text-sm font-bold text-slate-700 break-words">${esc(commonName)}</div><div class="mt-1 text-xs font-semibold text-slate-500">${esc(contSize)}${itemCode ? ` ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ ${esc(itemCode)}` : ''}</div></div><div class="shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">Season ${esc(seasonValue)}</div></div></div>`;
+            return `<div class="bg-white border border-emerald-200 rounded-xl shadow-sm mb-3 p-4"><div class="flex items-start justify-between gap-3"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-600">AV Blank</div><div class="mt-1 font-black text-lg text-slate-900">${esc(locationCode)}</div><div class="mt-2 text-sm font-bold text-slate-700 break-words">${esc(commonName)}</div><div class="mt-1 text-xs font-semibold text-slate-500">${esc(contSize)}${itemCode ? ` ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¾ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ ${esc(itemCode)}` : ''}</div></div><div class="shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">Season ${esc(seasonValue)}</div></div></div>`;
         }
 
         function renderTasks(options = {}) {
