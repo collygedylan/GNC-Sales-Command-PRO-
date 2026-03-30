@@ -815,6 +815,10 @@
         const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6cm55anNvc3J5ZWpqZWpsaWlpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzAyNzM1NywiZXhwIjoyMDg4NjAzMzU3fQ.Bc46UfJ1N4AgAS1PgfhFg6S4BEyybR6g_TUnPZsE2t0";
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwhH-eB5Py3xCwhmWReOAcAfl9Zu6mkw0hZYnAbIP9lLANoE4iebK1hXa6-ogU4_1AURA/exec"; 
+        const PUSH_SUBSCRIPTIONS_TABLE = 'v2_push_subscriptions';
+        const PUSH_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/send-push-alert`;
+        const PUSH_VAPID_PUBLIC_KEY = 'BAnr5wnptNgeqol-aJzw1eW_4CnuHpQNlvJ3vmo4VGVfuRsHNO5bRZdT-8NN8qUL5bTlUxYrx592fbG26EYjEN4';
+        const PUSH_ALERT_NEW_REQUEST_USERS = new Set(['dylan_collyge','jd_jones']);
         const PHOTO_BUCKETS = {
             'ssn-': 'season_sales_notes_photos',
             'lsn-': 'location_sales_notes_photos',
@@ -5405,7 +5409,9 @@ function toggleDriveQuickRequestItem(domId) {
                         document.getElementById('view-change-password').style.display='flex'; 
                     }
                     else{ 
-                        finalizeLogin(currentUser,inputPass,isBiometricLogin); 
+                        primePushPermissionFromLoginGesture().finally(() => {
+                            finalizeLogin(currentUser,inputPass,isBiometricLogin); 
+                        });
                     }
                 } else if (result && result.reason === 'mismatch') { 
                     finishInitialAppLoad();
@@ -5591,6 +5597,11 @@ function toggleDriveQuickRequestItem(domId) {
             warmupPlan.fullQueue.forEach((item) => {
                 queueDatasetLoad(item.key, item.mode, item.delay);
             });
+            if (roleAccess.allowedViews && roleAccess.allowedViews.has('request')) {
+                setTimeout(() => {
+                    subscribeCurrentDeviceForPush({ prompt: false }).catch(() => {});
+                }, openedFromCache ? 450 : 1200);
+            }
             loginPrefetchPromise = null;
             loginPrefetchMode = '';
         }
@@ -6408,6 +6419,188 @@ function toggleDriveQuickRequestItem(domId) {
             toast.innerHTML = `<div class="font-bold text-sm">${title}</div><div class="text-xs">${message}</div>`; 
             toast.classList.add('show'); 
             setTimeout(() => toast.classList.remove('show'), 3000); 
+        }
+
+        let pushSchemaReady = null;
+        let pushSchemaProbePromise = null;
+        let pushSchemaWarningShown = false;
+
+        function normalizePushUsername(value = '') {
+            return String(value || '').trim().toLowerCase().replace(/@.*$/, '').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+        }
+
+        function isPushSupported() {
+            return typeof window !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+        }
+
+        function getPushPromptUserScope() {
+            const access = getRoleAccessState();
+            return !!(currentUser && access.allowedViews && access.allowedViews.has('request'));
+        }
+
+        function maybeWarnPushSchemaMissing() {
+            if (pushSchemaWarningShown || !currentUser) return;
+            pushSchemaWarningShown = true;
+            showToast('Schema Required', 'Run push_notifications_migration.sql and deploy send-push-alert before using push notifications.', true);
+        }
+
+        async function ensurePushSubscriptionSchemaReady(force = false) {
+            if (pushSchemaReady === true && !force) return true;
+            if (pushSchemaReady === false && !force) return false;
+            if (pushSchemaProbePromise && !force) return pushSchemaProbePromise;
+            pushSchemaProbePromise = (async () => {
+                if (navigator.onLine === false) return false;
+                try {
+                    const url = `${SUPABASE_URL}/rest/v1/${PUSH_SUBSCRIPTIONS_TABLE}?select=id,username,endpoint,wants_new_request,wants_request_complete&limit=1`;
+                    const response = await fetchWithTimeout(url, {
+                        method: 'GET',
+                        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }
+                    }, SUPABASE_READ_TIMEOUT_MS, 'Push Subscription Schema');
+                    if (!response.ok) {
+                        pushSchemaReady = false;
+                        maybeWarnPushSchemaMissing();
+                        return false;
+                    }
+                    pushSchemaReady = true;
+                    return true;
+                } catch (error) {
+                    pushSchemaReady = false;
+                    maybeWarnPushSchemaMissing();
+                    return false;
+                } finally {
+                    pushSchemaProbePromise = null;
+                }
+            })();
+            return pushSchemaProbePromise;
+        }
+
+        function pushPublicKeyToUint8Array(publicKey = '') {
+            const normalized = String(publicKey || '').trim().replace(/-/g, '+').replace(/_/g, '/');
+            const padded = normalized + '='.repeat((4 - normalized.length % 4) % 4);
+            const raw = atob(padded);
+            return Uint8Array.from(raw, (char) => char.charCodeAt(0));
+        }
+
+        function buildPushPreferenceFlags() {
+            const normalizedUser = normalizePushUsername(currentUser || currentUserDisplay || '');
+            return {
+                wants_new_request: PUSH_ALERT_NEW_REQUEST_USERS.has(normalizedUser),
+                wants_request_complete: getPushPromptUserScope()
+            };
+        }
+
+        function buildPushSubscriptionRecord(subscription) {
+            const json = subscription && typeof subscription.toJSON === 'function' ? subscription.toJSON() : (subscription || {});
+            const keys = json && json.keys ? json.keys : {};
+            const flags = buildPushPreferenceFlags();
+            const normalizedUser = normalizePushUsername(currentUser || currentUserDisplay || '');
+            const deviceLabel = [
+                /Android/i.test(navigator.userAgent) ? 'Android' : (isIOSDevice() ? 'iOS' : 'Desktop'),
+                isStandaloneApp() ? 'Standalone' : 'Browser'
+            ].join(' ');
+            return {
+                username: normalizedUser,
+                display_name: String(currentUserDisplay || currentUser || '').trim(),
+                role: String(currentRole || '').trim(),
+                endpoint: String(json.endpoint || subscription.endpoint || '').trim(),
+                p256dh: String(keys.p256dh || '').trim(),
+                auth: String(keys.auth || '').trim(),
+                device_label: deviceLabel,
+                user_agent: String(navigator.userAgent || '').trim(),
+                app_build: APP_SHELL_BUILD,
+                notifications_enabled: true,
+                wants_new_request: !!flags.wants_new_request,
+                wants_request_complete: !!flags.wants_request_complete,
+                last_seen: new Date().toISOString(),
+                subscription_json: json
+            };
+        }
+
+        async function persistPushSubscription(subscription) {
+            if (!subscription) return false;
+            const canPersist = await ensurePushSubscriptionSchemaReady();
+            if (!canPersist) return false;
+            const payload = buildPushSubscriptionRecord(subscription);
+            if (!payload.username || !payload.endpoint || !payload.p256dh || !payload.auth) return false;
+            try {
+                await supabaseFetch(PUSH_SUBSCRIPTIONS_TABLE, 'POST', payload, 'on_conflict=endpoint');
+                return true;
+            } catch (error) {
+                console.warn('Push subscription save failed', error);
+                return false;
+            }
+        }
+
+        async function subscribeCurrentDeviceForPush(options = {}) {
+            const opts = options && typeof options === 'object' ? options : {};
+            if (!isPushSupported() || !currentUser || !getPushPromptUserScope()) return false;
+            if (!PUSH_VAPID_PUBLIC_KEY) {
+                console.warn('Push notifications are not configured. Add a VAPID public key first.');
+                return false;
+            }
+            const reg = await navigator.serviceWorker.ready;
+            let permission = Notification.permission;
+            if (permission === 'default' && opts.prompt) {
+                permission = await Notification.requestPermission();
+            }
+            if (permission !== 'granted') return false;
+            let subscription = await reg.pushManager.getSubscription();
+            if (!subscription || opts.force) {
+                if (subscription && opts.force) {
+                    try { await subscription.unsubscribe(); } catch (error) {}
+                }
+                subscription = await reg.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: pushPublicKeyToUint8Array(PUSH_VAPID_PUBLIC_KEY)
+                });
+            }
+            return await persistPushSubscription(subscription);
+        }
+
+        function primePushPermissionFromLoginGesture() {
+            if (!isPushSupported() || !currentUser || !getPushPromptUserScope()) return Promise.resolve(false);
+            if (Notification.permission !== 'default') return Promise.resolve(Notification.permission === 'granted');
+            return Notification.requestPermission().then((permission) => permission === 'granted').catch(() => false);
+        }
+
+        function sendPushNotification(type, folderId, repName, customer, itemsCount) {
+            if (!currentUser || !PUSH_FUNCTION_URL) return;
+            const payload = {
+                eventType: type,
+                folderId: String(folderId || '').trim(),
+                repName: String(repName || '').trim(),
+                customer: String(customer || '').trim(),
+                itemsCount: Number(itemsCount) || 0,
+                requestedBy: String(repName || '').trim(),
+                requestedByUsername: normalizePushUsername(repName || ''),
+                sentBy: String(currentUserDisplay || currentUser || '').trim(),
+                sentByUsername: normalizePushUsername(currentUser || currentUserDisplay || ''),
+                appBuild: APP_SHELL_BUILD
+            };
+            fetch(PUSH_FUNCTION_URL, {
+                method: 'POST',
+                headers: {
+                    'apikey': SUPABASE_KEY,
+                    'Authorization': 'Bearer ' + SUPABASE_KEY,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            }).catch((error) => console.log(error));
+        }
+
+        function notifyRequestEvent(type, folderId, repName, customer, itemsCount) {
+            sendEmailNotification(type, folderId, repName, customer, itemsCount);
+            sendPushNotification(type, folderId, repName, customer, itemsCount);
+        }
+
+        function openViewFromPushMessage(viewId = '') {
+            const target = String(viewId || '').trim().toLowerCase();
+            if (!target || !currentUser) return;
+            if (target === 'sales-office') {
+                openSalesOfficeView();
+                return;
+            }
+            if (canAccessView(target)) switchView(target);
         }
 
         const TRACKED_VIEW_IDS = ['drive','tasks','review','sales-office','reports','low-stock','docks','request','reserves','av','hours'];
@@ -10888,14 +11081,14 @@ activeDriveTab = tab;
                 const missingIds = optimisticIds.filter(id => !savedIdSet.has(id));
                 if (!missingIds.length && savedCount > 0) {
                     showToast("Success","Request tickets cloned!",false);
-                    sendEmailNotification('new_request', folderId, requestedBy, cust, savedCount);
+                    notifyRequestEvent('new_request', folderId, requestedBy, cust, savedCount);
                     return;
                 }
                 if (savedCount > 0) {
                     rollbackOptimisticRequestIds(missingIds);
                     restoreQuickModeRows(missingIds);
                     showToast("Partial Save","Some requests saved. Retry the missing rows.",true);
-                    sendEmailNotification('new_request', folderId, requestedBy, cust, savedCount);
+                    notifyRequestEvent('new_request', folderId, requestedBy, cust, savedCount);
                     return;
                 }
                 rollbackOptimisticRequestIds(optimisticIds);
@@ -12253,7 +12446,7 @@ function toggleDriveSeason(s) {
                     if (prefix === 'req-' && isComplete && !wasAlreadyComplete) {
                         let folderItems = requestsInventory.filter(i => i.REQUEST_FOLDER === itemToSave.REQUEST_FOLDER);
                         let allComplete = folderItems.every(i => isRequestComplete(i) || i.UNIQUE_ID === itemToSave.UNIQUE_ID);
-                        if (allComplete) sendEmailNotification('request_complete', itemToSave.REQUEST_FOLDER, itemToSave.REQUESTED_BY, itemToSave.REQ_CUSTOMER, folderItems.length);
+                        if (allComplete) notifyRequestEvent('request_complete', itemToSave.REQUEST_FOLDER, itemToSave.REQUESTED_BY, itemToSave.REQ_CUSTOMER, folderItems.length);
                     }
                 };
 
@@ -12495,7 +12688,7 @@ function toggleDriveSeason(s) {
                     window.location.reload();
                 }
             };
-            navigator.serviceWorker.register('/sw.js').then(reg => {
+            navigator.serviceWorker.register('./sw.js?v=' + encodeURIComponent(APP_SHELL_BUILD), { scope: './' }).then(reg => {
                 console.log('Service Worker Registered');
                 if (reg.waiting) markShellUpdateReady();
                 reg.addEventListener('updatefound', () => {
@@ -12509,6 +12702,15 @@ function toggleDriveSeason(s) {
                     reg.update();
                 }, 1000 * 60 * 30);
             }).catch(err => console.error('Service Worker Error:', err));
+            navigator.serviceWorker.addEventListener('message', (event) => {
+                const data = event && event.data ? event.data : {};
+                if (!data || typeof data !== 'object') return;
+                if (data.type === 'GNC_OPEN_VIEW') {
+                    try { openViewFromPushMessage(data.viewId || 'request'); } catch (e) {}
+                } else if (data.type === 'GNC_RESUBSCRIBE_PUSH') {
+                    subscribeCurrentDeviceForPush({ prompt: false, force: true }).catch(() => {});
+                }
+            });
             navigator.serviceWorker.addEventListener('controllerchange', () => {
                 markShellUpdateReady();
                 tryApplyShellUpdateSilently();
