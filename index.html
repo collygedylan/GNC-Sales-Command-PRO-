@@ -1012,7 +1012,7 @@
             }
         }
         async function clearLegacyOfflineState(force = false) {
-            if (!force && (isIOSDevice() || isStandaloneApp())) return;
+            if (!force) return;
             if ('serviceWorker' in navigator) {
                 const registrations = await navigator.serviceWorker.getRegistrations();
                 for (let registration of registrations) {
