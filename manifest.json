@@ -1,7 +1,8 @@
 {
-  "name": "AgriOps",
-  "short_name": "AgriOps",
-  "start_url": "./index.html",
+  "name": "Greenleaf Nursery Company",
+  "short_name": "Greenleaf",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#007a4d",
