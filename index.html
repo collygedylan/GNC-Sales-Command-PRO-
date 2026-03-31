@@ -5231,7 +5231,7 @@ function toggleDriveQuickRequestItem(domId) {
             }
             bar.classList.remove('hidden');
             if (isProtectedUnlocked(prefix)) {
-                bar.innerHTML = `<div class="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center justify-between gap-3"><div><div class="text-[10px] font-black text-amber-700 uppercase tracking-wider">Protected Data Unlocked</div><div class="text-xs font-semibold text-amber-900">Completed data stays editable for 90 seconds.</div></div><button class="bg-amber-600 text-white text-[10px] font-black uppercase tracking-wider px-4 py-2 rounded-lg shadow-sm" onclick="lockProtectedSection('${prefix}')">LOCK NOW</button></div>`;
+                bar.innerHTML = `<div class="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center justify-between gap-3"><div><div class="text-[10px] font-black text-amber-700 uppercase tracking-wider">Protected Data Unlocked</div><div class="text-xs font-semibold text-amber-900">Completed data stays editable for 2 minutes.</div></div><button class="bg-amber-600 text-white text-[10px] font-black uppercase tracking-wider px-4 py-2 rounded-lg shadow-sm" onclick="lockProtectedSection('${prefix}')">LOCK NOW</button></div>`;
             } else if (!canUnlockProtectedData()) {
                 bar.innerHTML = `<div class="bg-gray-50 border border-gray-200 rounded-xl p-3"><div class="text-[10px] font-black text-gray-600 uppercase tracking-wider">Protected After Done</div><div class="text-xs font-semibold text-gray-700 mt-1">Only Dylan, JD, Morgan, or Kayla can unlock completed data. Photos can be removed with a long press before Done.</div></div>`;
             } else {
@@ -5284,9 +5284,9 @@ function toggleDriveQuickRequestItem(domId) {
             }
             protectedEditState[prefix] = true;
             clearProtectedTimers(prefix);
-            protectedUnlockTimers[prefix] = setTimeout(() => lockProtectedSection(prefix, true), 90000);
+            protectedUnlockTimers[prefix] = setTimeout(() => lockProtectedSection(prefix, true), 120000);
             applyProtectedEditState(prefix);
-            showToast('Unlocked', 'Protected fields are editable for 90 seconds.');
+            showToast('Unlocked', 'Protected fields are editable for 2 minutes.');
         }
 
         function lockProtectedSection(prefix, silent = false) {
@@ -11633,6 +11633,13 @@ Item Code: ${i.ITEMCODE||'-'}
         function buildRequestItemsCopyPayload(items, headerLabel = '') {
             const text = formatRequestItemsText(items, headerLabel);
             const headerHtml = headerLabel ? `<div style="margin:0 0 18px 0;font:800 20px/1.2 Arial,sans-serif;color:#0f172a;">${esc(headerLabel)}</div>` : '';
+            const renderCopyField = (label, value) => {
+                if (value === undefined || value === null || String(value).trim() === '') return '';
+                return `<div style="margin-top:10px;">
+<div style="font:800 16px/1.2 Arial,sans-serif;color:#0f172a;">${esc(label)}</div>
+<div style="margin-top:2px;font:400 14px/1.45 Arial,sans-serif;color:#334155;">${esc(value)}</div>
+</div>`;
+            };
             const cardsHtml = items.map((item) => {
                 const locPhotoMatch = getRequestCopyLocPhotoMatch(item);
                 const photo = item.REQ_PHOTO_LINK||item.SAVED_PHOTO_LINK||item['PHOTO LINK']||item.PHOTOLINK;
@@ -11653,32 +11660,34 @@ Item Code: ${i.ITEMCODE||'-'}
 <div style="font:700 11px/1.4 Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#64748b;">Request Folder</div>
 <div style="margin-top:4px;font:700 14px/1.35 Arial,sans-serif;color:#0f172a;">${esc(item.REQUEST_FOLDER||'No Folder')}</div>
 <div style="margin-top:4px;font:600 12px/1.35 Arial,sans-serif;color:#475569;">ID: ${esc(item.UNIQUE_ID||'')} | ${esc(item.REQ_CUSTOMER||'N/A')}</div>
-<div style="margin-top:14px;font:800 28px/1.08 Arial,sans-serif;color:#0f172a;">${esc(item.COMMONNAME||'Unknown')}</div>
-<div style="margin-top:6px;font:800 20px/1.12 Arial,sans-serif;color:#047857;">${esc(item.CONTSIZE||'-')}</div>
+<div style="margin-top:14px;font:800 30px/1.08 Arial,sans-serif;color:#0f172a;">${esc(item.COMMONNAME||'Unknown')}</div>
+<div style="margin-top:6px;font:800 22px/1.12 Arial,sans-serif;color:#047857;">${esc(item.CONTSIZE||'-')}</div>
 <div style="margin-top:10px;">
-<div style="font:700 11px/1.4 Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#64748b;">Lot Code</div>
-<div style="font:800 18px/1.15 Arial,sans-serif;color:#0f172a;">${esc(item.LOTCODE||'-')}</div>
+<div style="font:700 12px/1.35 Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#64748b;">Item Code</div>
+<div style="font:800 20px/1.15 Arial,sans-serif;color:#0f172a;">${esc(item.ITEMCODE||'-')}</div>
 </div>
 <div style="margin-top:10px;">
-<div style="font:700 11px/1.4 Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#64748b;">Location Code</div>
-<div style="font:800 18px/1.15 Arial,sans-serif;color:#0f172a;">${esc(item.LOCATIONCODE||'No Loc')}</div>
+<div style="font:700 12px/1.35 Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#64748b;">Lot Code</div>
+<div style="font:800 20px/1.15 Arial,sans-serif;color:#0f172a;">${esc(item.LOTCODE||'-')}</div>
 </div>
-<div style="margin-top:10px;font:600 13px/1.45 Arial,sans-serif;color:#334155;"><strong>Item Code:</strong> ${esc(item.ITEMCODE||'-')}</div>
-${item.REQ_QTY ? `<div style="margin-top:8px;font:600 13px/1.45 Arial,sans-serif;color:#334155;"><strong>Requested Qty:</strong> ${esc(item.REQ_QTY)}</div>` : ''}
-${item.REQ_DESIRED_SPEC ? `<div style="margin-top:8px;font:600 13px/1.45 Arial,sans-serif;color:#334155;"><strong>Desired Spec:</strong> ${esc(item.REQ_DESIRED_SPEC)}</div>` : ''}
-${item.REQ_DESIRED_CALIPER ? `<div style="margin-top:8px;font:600 13px/1.45 Arial,sans-serif;color:#334155;"><strong>Desired Caliper:</strong> ${esc(item.REQ_DESIRED_CALIPER)}</div>` : ''}
-${item.REQ_EST_SHIP ? `<div style="margin-top:8px;font:600 13px/1.45 Arial,sans-serif;color:#334155;"><strong>EST Ship:</strong> ${esc(item.REQ_EST_SHIP)}</div>` : ''}
-${item.REQ_RESERVE ? `<div style="margin-top:8px;font:600 13px/1.45 Arial,sans-serif;color:#334155;"><strong>Reserves:</strong> ${esc(item.REQ_RESERVE)}</div>` : ''}
-${locPhotoMatch && locPhotoMatch !== '-' ? `<div style="margin-top:8px;font:600 13px/1.45 Arial,sans-serif;color:#334155;"><strong>LOC PHOTO MATCH:</strong> ${esc(locPhotoMatch)}</div>` : ''}
-${item.REQ_SPEC ? `<div style="margin-top:8px;font:600 13px/1.45 Arial,sans-serif;color:#334155;"><strong>Spec:</strong> ${esc(item.REQ_SPEC)}</div>` : ''}
-${item.REQ_CALIPER ? `<div style="margin-top:8px;font:600 13px/1.45 Arial,sans-serif;color:#334155;"><strong>Caliper:</strong> ${esc(item.REQ_CALIPER)}</div>` : ''}
-${item.REQ_PICK ? `<div style="margin-top:8px;font:600 13px/1.45 Arial,sans-serif;color:#334155;"><strong>Pick Note:</strong> ${esc(item.REQ_PICK)}</div>` : ''}
+<div style="margin-top:10px;">
+<div style="font:700 12px/1.35 Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#64748b;">Location Code</div>
+<div style="font:800 20px/1.15 Arial,sans-serif;color:#0f172a;">${esc(item.LOCATIONCODE||'No Loc')}</div>
+</div>
+${renderCopyField('Requested Qty', item.REQ_QTY)}
+${renderCopyField('Desired Spec', item.REQ_DESIRED_SPEC)}
+${renderCopyField('Desired Caliper', item.REQ_DESIRED_CALIPER)}
+${renderCopyField('EST Ship', item.REQ_EST_SHIP)}
+${renderCopyField('Reserves', item.REQ_RESERVE)}
+${renderCopyField('LOC PHOTO MATCH', locPhotoMatch && locPhotoMatch !== '-' ? locPhotoMatch : '')}
+${renderCopyField('Spec', item.REQ_SPEC)}
+${renderCopyField('Caliper', item.REQ_CALIPER)}
+${renderCopyField('Pick Note', item.REQ_PICK)}
 ${photoHtml}
 </div>`;
             }).join('');
             return { text, html: `<div style="font-family:Arial,sans-serif;color:#0f172a;">${headerHtml}${cardsHtml}</div>` };
         }
-
         function getRequestFolderItems(folderName, status = selectedReqStatus, repName = selectedReqRepView) {
             let items = getScopedRequestItems(requestsInventory).filter(i => !i.REQ_ARCHIVED);
             if (repName) items = items.filter(i => getRequestAssignedRep(i) === repName);
@@ -13262,4 +13271,3 @@ function toggleDriveSeason(s) {
     </script>
 </body>
 </html>
-
