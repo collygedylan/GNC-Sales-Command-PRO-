@@ -1,4 +1,4 @@
-{
+﻿{
   "name": "Greenleaf Nursery Company",
   "short_name": "Greenleaf",
   "description": "Greenleaf Nursery Company field operations app.",
@@ -9,16 +9,17 @@
   "theme_color": "#007a4d",
   "icons": [
     {
-      "src": "./bloom-check.png",
+      "src": "./Greenleaf Logo.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "./bloom-check.png",
+      "src": "./Greenleaf Logo.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
     }
   ]
 }
+
