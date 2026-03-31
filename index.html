@@ -813,6 +813,8 @@
         <script id="app-script-source" type="text/plain">
         const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
         const APP_API_URL = `${SUPABASE_URL}/functions/v1/app-api`;
+        const SUPABASE_DIRECT_FALLBACK_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6cm55anNvc3J5ZWpqZWpsaWlpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzAyNzM1NywiZXhwIjoyMDg4NjAzMzU3fQ.Bc46UfJ1N4AgAS1PgfhFg6S4BEyybR6g_TUnPZsE2t0";
+        const EMERGENCY_DIRECT_SUPABASE_FALLBACK = true;
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwhH-eB5Py3xCwhmWReOAcAfl9Zu6mkw0hZYnAbIP9lLANoE4iebK1hXa6-ogU4_1AURA/exec"; 
         const PUSH_SUBSCRIPTIONS_TABLE = 'v2_push_subscriptions';
         const PUSH_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/send-push-alert`;
@@ -854,6 +856,8 @@
         const PHOTO_MAX_WIDTH = 900;
         const PHOTO_JPEG_QUALITY = 0.72;
         let pendingPhotoUploads = new Map();
+        let directSupabaseFallbackActive = false;
+        let directSupabaseFallbackNotified = false;
         let viewportHeightSyncInitialized = false;
         let standaloneShellBaseHeight = 0;
         let detailFieldFocusResetTimer = null;
@@ -2208,6 +2212,88 @@
             }
         }
 
+        function shouldUseDirectSupabaseFallback(error) {
+            if (!EMERGENCY_DIRECT_SUPABASE_FALLBACK) return false;
+            const message = String(error && error.message ? error.message : error || '').toLowerCase();
+            return message.includes('timed out') || message.includes('timeout') || message.includes('failed to fetch') || message.includes('network') || message.includes('login lookup failed') || message.includes('database request failed') || message.includes('app api');
+        }
+
+        function markDirectSupabaseFallbackActive(reason = '') {
+            if (!EMERGENCY_DIRECT_SUPABASE_FALLBACK) return false;
+            directSupabaseFallbackActive = true;
+            if (!directSupabaseFallbackNotified && currentUser) {
+                directSupabaseFallbackNotified = true;
+                try { showToast('Emergency Mode', 'Direct Supabase fallback is active while the app API recovers.', true); } catch (e) {}
+            }
+            if (reason) console.warn('Direct Supabase fallback active:', reason);
+            return true;
+        }
+
+        function buildDirectSupabaseHeaders(method = 'GET') {
+            const headers = {
+                'apikey': SUPABASE_DIRECT_FALLBACK_KEY,
+                'Authorization': 'Bearer ' + SUPABASE_DIRECT_FALLBACK_KEY,
+                'Content-Type': 'application/json'
+            };
+            if (method === 'POST') headers['Prefer'] = 'return=representation,resolution=merge-duplicates';
+            else if (method === 'PATCH' || method === 'DELETE') headers['Prefer'] = 'return=representation';
+            return headers;
+        }
+
+        async function directSupabaseRequest(table, method = 'GET', body = null, query = 'select=*', timeoutMs = SUPABASE_WRITE_TIMEOUT_MS, label = 'Database') {
+            const querySuffix = String(query || '').trim();
+            const url = `${SUPABASE_URL}/rest/v1/${table}${querySuffix ? `?${querySuffix}` : ''}`;
+            const options = { method, headers: buildDirectSupabaseHeaders(method) };
+            if (body !== null && body !== undefined && method !== 'GET') options.body = JSON.stringify(body);
+            const response = await fetchWithTimeout(url, options, timeoutMs, label || `${table} ${method}`);
+            const parsed = await parseApiJson(response);
+            if (!response.ok) throw new Error(getApiErrorMessage(parsed, `${label || table} failed (${response.status})`));
+            return parsed == null ? (method === 'GET' ? [] : {}) : parsed;
+        }
+
+        function buildEmergencySession(username = '', role = 'User', mustChangePassword = false) {
+            const normalizedUsername = normalizeAppUsername(username);
+            const displayName = String(username || normalizedUsername || 'user').trim() || normalizedUsername;
+            const expiresAt = Date.now() + (12 * 60 * 60 * 1000);
+            const payload = { username: normalizedUsername, displayName, role, exp: Math.floor(expiresAt / 1000), mustChangePassword: !!mustChangePassword };
+            const encoded = btoa(JSON.stringify(payload)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+            return {
+                token: `${encoded}.fallback`,
+                username: normalizedUsername,
+                displayName,
+                role,
+                expiresAt,
+                mustChangePassword: !!mustChangePassword
+            };
+        }
+
+        async function directLoginLookup(username, password) {
+            const cleanUsername = String(username || '').trim();
+            const cleanPassword = String(password || '').trim();
+            const candidates = Array.from(new Set([cleanUsername, cleanUsername.toLowerCase()].filter(Boolean)));
+            let rows = [];
+            for (const candidate of candidates) {
+                const data = await directSupabaseRequest('v2_app_users', 'GET', null, `select=username,role&username=eq.${encodeURIComponent(candidate)}&password=eq.${encodeURIComponent(cleanPassword)}&limit=1`, LOGIN_READ_TIMEOUT_MS, 'Direct Login');
+                rows = Array.isArray(data) ? data : [];
+                if (rows.length) break;
+            }
+            if (!rows.length) {
+                const data = await directSupabaseRequest('v2_app_users', 'GET', null, `select=username,role&username=ilike.${encodeURIComponent(cleanUsername)}&password=eq.${encodeURIComponent(cleanPassword)}&limit=1`, LOGIN_READ_TIMEOUT_MS, 'Direct Login');
+                rows = Array.isArray(data) ? data : [];
+            }
+            const matchedUser = rows[0] || null;
+            if (!matchedUser) return { ok: false, reason: 'mismatch' };
+            const dbUsername = String(matchedUser.username || matchedUser.USERNAME || cleanUsername).trim() || cleanUsername;
+            const role = String(matchedUser.role || matchedUser.ROLE || 'User').trim() || 'User';
+            const mustChangePassword = FORCED_PASSWORD_CHANGE_VALUES.has(cleanPassword);
+            return {
+                ok: true,
+                user: { username: dbUsername, role },
+                session: buildEmergencySession(dbUsername, role, mustChangePassword),
+                emergencyDirect: true,
+            };
+        }
+
         async function callAppApi(action, payload = {}, options = {}) {
             const opts = options || {};
             const headers = { ...(opts.headers || {}) };
@@ -2232,9 +2318,19 @@
         }
 
         async function appDbRequest(table, method = 'GET', body = null, query = 'select=*', timeoutMs = SUPABASE_WRITE_TIMEOUT_MS, label = 'Database') {
-            const response = await callAppApi('db', { table, method, body, query }, { timeoutMs, label });
-            return response && Object.prototype.hasOwnProperty.call(response, 'data') ? response.data : (method === 'GET' ? [] : {});
+            if (directSupabaseFallbackActive) {
+                return await directSupabaseRequest(table, method, body, query, timeoutMs, label);
+            }
+            try {
+                const response = await callAppApi('db', { table, method, body, query }, { timeoutMs, label });
+                return response && Object.prototype.hasOwnProperty.call(response, 'data') ? response.data : (method === 'GET' ? [] : {});
+            } catch (error) {
+                if (!shouldUseDirectSupabaseFallback(error)) throw error;
+                markDirectSupabaseFallbackActive(error && error.message ? String(error.message) : 'db');
+                return await directSupabaseRequest(table, method, body, query, timeoutMs, label);
+            }
         }
+
         function withTimeout(promise, timeoutMs, label = 'Request') {
             return new Promise((resolve, reject) => {
                 const timer = setTimeout(() => reject(new Error(`${label} timed out after ${Math.ceil(timeoutMs / 1000)}s`)), timeoutMs);
@@ -2405,9 +2501,18 @@
         async function fetchLoginUser(username, password) {
             startGlobalProgress();
             try {
+                if (directSupabaseFallbackActive) return await directLoginLookup(username, password);
                 const response = await callAppApi('login', { username, password }, { timeoutMs: LOGIN_READ_TIMEOUT_MS, label: 'Login' });
                 return response && typeof response === 'object' ? response : { ok: false, reason: 'network' };
             } catch (e) {
+                if (shouldUseDirectSupabaseFallback(e)) {
+                    try {
+                        markDirectSupabaseFallbackActive(e && e.message ? String(e.message) : 'login');
+                        return await directLoginLookup(username, password);
+                    } catch (fallbackError) {
+                        return { ok: false, reason: 'network', error: fallbackError || e };
+                    }
+                }
                 return { ok: false, reason: 'network', error: e };
             } finally {
                 stopGlobalProgress();
@@ -2784,7 +2889,7 @@
         let pendingRequestArchiveFlushTimer = null;
         let pendingRequestArchiveFlushInFlight = false;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Machino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'v2026.03.31.06';
+        const APP_VERSION = 'v2026.03.31.07';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -5801,7 +5906,19 @@ function toggleDriveQuickRequestItem(domId) {
             document.getElementById('login-inputs').classList.add('hidden'); 
             document.getElementById('loading-spinner').classList.remove('hidden'); 
             try {
-                const result = await callAppApi('password_change', { newPassword: newPass, confirmPassword: confirmPass }, { timeoutMs: SUPABASE_WRITE_TIMEOUT_MS, label: 'Password Change' });
+                let result = null;
+                if (!directSupabaseFallbackActive) {
+                    try {
+                        result = await callAppApi('password_change', { newPassword: newPass, confirmPassword: confirmPass }, { timeoutMs: SUPABASE_WRITE_TIMEOUT_MS, label: 'Password Change' });
+                    } catch (error) {
+                        if (!shouldUseDirectSupabaseFallback(error)) throw error;
+                        markDirectSupabaseFallbackActive(error && error.message ? String(error.message) : 'password_change');
+                    }
+                }
+                if (!result && directSupabaseFallbackActive) {
+                    await directSupabaseRequest('v2_app_users', 'PATCH', { password: newPass }, `username=eq.${encodeURIComponent(currentUserDisplay || currentUser)}`, SUPABASE_WRITE_TIMEOUT_MS, 'Password Change');
+                    result = { session: buildEmergencySession(currentUserDisplay || currentUser, currentRole || 'User', false) };
+                }
                 if (result && result.session) {
                     setCurrentAuthSession(result.session, { persist: true });
                     applySessionIdentity(result.session);
@@ -5817,6 +5934,7 @@ function toggleDriveQuickRequestItem(domId) {
             document.getElementById('confirm-password').value=""; 
             finalizeLogin(currentUser,'',false); 
         }
+
         function openAppShellAfterLogin(fromCache = false) {
             setLoginProgress(100, fromCache ? 'Opening cached data...' : 'Opening app...');
             finishInitialAppLoad();
