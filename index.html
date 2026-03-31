@@ -1,3 +1,4 @@
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -23,8 +24,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>:root{--bg:#007a4d;--text-color:#111827;--app-height:100vh;--visual-height:100vh;--keyboard-offset:0px}html,body{min-height:100%;width:100%;max-width:100%;overflow:hidden;overscroll-behavior:none;position:relative}html{background:white}@supports (height:100dvh){:root{--app-height:100dvh}}body{font-family:"Amazon Ember",Arial,sans-serif;background:white;color:var(--text-color);user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior:none;min-height:var(--app-height);height:var(--app-height);width:100%;overflow:hidden;position:fixed;inset:0;touch-action:pan-y pinch-zoom}button,[role="button"],.task-tab,.detail-tab,.drawer-item,.drill-item,.menu-btn{touch-action:manipulation}.nav-header{background:var(--bg);color:white;padding-top:max(10px,env(safe-area-inset-top))}#view-login,#view-change-password{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;min-height:var(--app-height)}#view-change-password{display:none;z-index:10000}#app-wrapper{min-height:var(--app-height);height:var(--app-height);width:100%;max-width:100%;overflow:hidden;position:fixed;inset:0}.login-card{background:white;padding:30px;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,.2);width:100%;max-width:360px;text-align:center}.input-field{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:8px;font-size:16px;margin-bottom:12px}#toast-notification{position:fixed;top:-100px;left:50%;transform:translateX(-50%);background:#16a34a;color:white;padding:16px 24px;border-radius:50px;box-shadow:0 10px 15px -3px rgba(0,0,0,.3);z-index:11000;transition:top .5s;display:flex;align-items:center;gap:12px;pointer-events:none}#toast-notification.show{top:20px}#side-drawer{position:fixed;top:0;left:-280px;width:280px;height:100%;background:white;z-index:2000;box-shadow:2px 0 10px rgba(0,0,0,.2);transition:left .3s;overflow-y:auto;padding-bottom:100px}#side-drawer.open{left:0}#drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1999;display:none}#drawer-overlay.open{display:block}.drawer-header{background:var(--bg);color:white;padding:20px;font-weight:bold;font-size:18px}.drawer-item{padding:16px 20px;border-bottom:1px solid #f3f4f6;cursor:pointer;display:flex;align-items:center;gap:12px;color:#374151;font-weight:500}.drill-item{border-bottom:1px solid #e5e7eb;padding:16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:white;transition:background .1s}.drill-item:active{background:#f3f4f6}.back-btn{display:none !important}.inv-card{border:1px solid #dbe4dc;border-left-width:6px;border-radius:18px;padding:14px;background:white;cursor:pointer;flex-grow:1;box-shadow:0 10px 24px rgba(15,23,42,.06);overflow:hidden}.status-green{border-left-color:#22c55e}.status-purple{border-left-color:#9333ea}.status-orange{border-left-color:#f97316}.status-blue{border-left-color:#3b82f6}.status-indigo{border-left-color:#4f46e5}.status-teal{border-left-color:#0d9488}.status-yellow{border-left-color:#eab308}.status-red{border-left-color:#ef4444}.task-tabs,.detail-tabs{display:flex;border-bottom:1px solid #e5e7eb;background:#f9fafb;margin-bottom:10px}.detail-tabs{overflow-x:auto;scrollbar-width:none}.detail-tabs::-webkit-scrollbar{display:none}.task-tab,.detail-tab{flex:1;text-align:center;padding:12px;font-size:11px;font-weight:700;color:#6b7280;cursor:pointer;border-bottom:3px solid transparent;text-transform:uppercase}.detail-tab{flex:0 0 auto;padding:10px 16px}.task-tab.active,.detail-tab.active{color:var(--bg);border-bottom-color:var(--bg);background:white}.overview-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}.overview-card{background:#f8fafc;padding:10px;border-radius:6px;border:1px solid #e2e8f0}.overview-label{font-size:9px;font-weight:800;color:#64748b;text-transform:uppercase;margin-bottom:2px}.overview-val{font-size:13px;font-weight:600;color:#0f172a;word-break:break-all}.expand-trigger{display:flex;align-items:center;justify-content:space-between;padding:12px;background:#f9fafb;border-radius:6px;cursor:pointer;font-weight:600;font-size:14px;border:1px solid #e5e7eb}.expand-content{display:none;margin-top:12px;padding:12px;background:#f9fafb;border-radius:6px;border:1px solid #e5e7eb}.expanded .expand-content{display:block}.card-checkbox-container{width:42px;min-width:42px;overflow:visible;opacity:1;display:flex;align-items:flex-start;justify-content:center;margin-right:12px;transition:transform .16s ease}.card-checkbox-container.absolute{width:auto;min-width:0;margin-right:0}.card-checkbox{display:none !important}.cart-toggle-btn{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:999px;border:1px solid #a7f3d0;background:#f0fdf4;color:#007a4d;box-shadow:0 6px 16px rgba(7,94,63,.14);transition:transform .16s ease,background .16s ease,color .16s ease,border-color .16s ease}.cart-toggle-btn i{font-size:18px;line-height:1}.cart-toggle-btn:active{transform:scale(.95)}.cart-toggle-btn.active{background:#007a4d;color:#fff;border-color:#007a4d}.item-row.cart-selected{box-shadow:0 0 0 2px rgba(0,122,77,.16) inset}.item-row{touch-action:manipulation}.spinner{border:4px solid rgba(255,255,255,.3);border-top:4px solid white;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:0 auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.scrollbar-none::-webkit-scrollbar{display:none}.scrollbar-none{-ms-overflow-style:none;scrollbar-width:none}</style>
+        <style>:root{--bg:#007a4d;--text-color:#111827;--app-height:100vh;--visual-height:100vh;--keyboard-offset:0px}html,body{min-height:100%;width:100%;max-width:100%;overflow:hidden;overscroll-behavior:none;position:relative}html{background:white}@supports (height:100dvh){:root{--app-height:100dvh}}body{font-family:"Amazon Ember",Arial,sans-serif;background:white;color:var(--text-color);user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior:none;min-height:var(--app-height);height:var(--app-height);width:100%;overflow:hidden;position:fixed;inset:0;touch-action:pan-y pinch-zoom}button,[role="button"],.task-tab,.detail-tab,.drawer-item,.drill-item,.menu-btn{touch-action:manipulation}.nav-header{background:var(--bg);color:white;padding-top:max(10px,env(safe-area-inset-top))}#view-login,#view-change-password{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;min-height:var(--app-height)}#view-change-password{display:none;z-index:10000}#app-wrapper{min-height:var(--app-height);height:var(--app-height);width:100%;max-width:100%;overflow:hidden;position:fixed;inset:0}.login-card{background:white;padding:30px;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,.2);width:100%;max-width:360px;text-align:center}.input-field{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:8px;font-size:16px;margin-bottom:12px}#toast-notification{position:fixed;top:-100px;left:50%;transform:translateX(-50%);background:#16a34a;color:white;padding:16px 24px;border-radius:50px;box-shadow:0 10px 15px -3px rgba(0,0,0,.3);z-index:11000;transition:top .5s;display:flex;align-items:center;gap:12px;pointer-events:none}#toast-notification.show{top:20px}#side-drawer{position:fixed;top:0;left:-280px;width:280px;height:100%;background:white;z-index:2000;box-shadow:2px 0 10px rgba(0,0,0,.2);transition:left .3s;overflow-y:auto;padding-bottom:100px}#side-drawer.open{left:0}#drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1999;display:none}#drawer-overlay.open{display:block}.drawer-header{background:var(--bg);color:white;padding:20px;font-weight:bold;font-size:18px}.drawer-item{padding:16px 20px;border-bottom:1px solid #f3f4f6;cursor:pointer;display:flex;align-items:center;gap:12px;color:#374151;font-weight:500}.drill-item{border-bottom:1px solid #e5e7eb;padding:16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:white;transition:background .1s}.drill-item:active{background:#f3f4f6}.back-btn{display:none !important}.inv-card{border:1px solid #dbe4dc;border-left-width:6px;border-radius:18px;padding:14px;background:white;cursor:pointer;flex-grow:1;box-shadow:0 10px 24px rgba(15,23,42,.06);overflow:hidden}.status-green{border-left-color:#22c55e}.status-purple{border-left-color:#9333ea}.status-orange{border-left-color:#f97316}.status-blue{border-left-color:#3b82f6}.status-indigo{border-left-color:#4f46e5}.status-teal{border-left-color:#0d9488}.status-yellow{border-left-color:#eab308}.status-red{border-left-color:#ef4444}.task-tabs,.detail-tabs{display:flex;border-bottom:1px solid #e5e7eb;background:#f9fafb;margin-bottom:10px}.detail-tabs{overflow-x:auto;scrollbar-width:none}.detail-tabs::-webkit-scrollbar{display:none}.task-tab,.detail-tab{flex:1;text-align:center;padding:12px;font-size:11px;font-weight:700;color:#6b7280;cursor:pointer;border-bottom:3px solid transparent;text-transform:uppercase}.detail-tab{flex:0 0 auto;padding:10px 16px}.task-tab.active,.detail-tab.active{color:var(--bg);border-bottom-color:var(--bg);background:white}.overview-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}.overview-card{background:#f8fafc;padding:10px;border-radius:6px;border:1px solid #e2e8f0}.overview-label{font-size:9px;font-weight:800;color:#64748b;text-transform:uppercase;margin-bottom:2px}.overview-val{font-size:13px;font-weight:600;color:#0f172a;word-break:break-all}.expand-trigger{display:flex;align-items:center;justify-content:space-between;padding:12px;background:#f9fafb;border-radius:6px;cursor:pointer;font-weight:600;font-size:14px;border:1px solid #e5e7eb}.expand-content{display:none;margin-top:12px;padding:12px;background:#f9fafb;border-radius:6px;border:1px solid #e5e7eb}.expanded .expand-content{display:block}.card-checkbox-container{width:42px;min-width:42px;overflow:visible;opacity:1;display:flex;align-items:flex-start;justify-content:center;margin-right:12px;transition:transform .16s ease}.card-checkbox-container.absolute{width:auto;min-width:0;margin-right:0}.card-checkbox{display:none !important}.cart-toggle-btn{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:999px;border:1px solid #a7f3d0;background:#f0fdf4;color:#007a4d;box-shadow:0 6px 16px rgba(7,94,63,.14);transition:transform .16s ease,background .16s ease,color .16s ease,border-color .16s ease}.cart-toggle-btn i{font-size:18px;line-height:1}.cart-toggle-btn:active{transform:scale(.95)}.cart-toggle-btn.active{background:#007a4d;color:#fff;border-color:#007a4d}.item-row.cart-selected{box-shadow:0 0 0 2px rgba(0,122,77,.16) inset}.item-row{touch-action:manipulation}.spinner{border:4px solid rgba(255,255,255,.3);border-top:4px solid white;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:0 auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.scrollbar-none::-webkit-scrollbar{display:none}.scrollbar-none{-ms-overflow-style:none;scrollbar-width:none}</style>
     <style>
         #main-scroll-area{min-height:0;width:100%;max-width:100%;min-width:0;overflow-x:hidden;overflow-y:auto;overscroll-behavior-x:none;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;scroll-padding-top:calc(5.5rem + env(safe-area-inset-top));scroll-padding-bottom:calc(7rem + env(safe-area-inset-bottom));padding-bottom:calc(10rem + env(safe-area-inset-bottom));background:#f9fafb}
         #global-action-bar{padding-bottom:calc(.75rem + env(safe-area-inset-bottom))}#cart-helper-text{margin-top:.6rem;font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#6b7280}
@@ -66,11 +66,10 @@
         body.viewport-compact .app-smart-card .app-smart-thumb--feature{width:4.55rem;height:4.55rem;border-radius:.95rem !important}
         #view-wrapper{width:100%;max-width:100%;min-width:0;overflow-x:hidden;overflow-y:visible}
         .sticky-search{position:-webkit-sticky;position:sticky;top:0;z-index:35;background:#f9fafb;padding-top:max(4px,env(safe-area-inset-top));padding-bottom:10px;box-shadow:0 6px 12px rgba(15,23,42,.05);transform:translateZ(0);-webkit-transform:translateZ(0);backface-visibility:hidden}
-        .request-swipe-row{display:block !important;padding:0 !important;position:relative;overflow:hidden;background:#ffffff !important;touch-action:pan-y;overscroll-behavior-x:contain;-webkit-user-select:none;user-select:none}
-        .request-swipe-row{display:block !important;padding:0 !important;position:relative;overflow:hidden;background:#ffffff !important;touch-action:pan-y;overscroll-behavior-x:contain;-webkit-user-select:none;user-select:none}
-        .request-swipe-surface{position:relative;z-index:2;width:100%;background:#ffffff;border-radius:inherit;padding:0;transition:transform .18s ease;will-change:transform}
-        .request-swipe-action{position:absolute;top:0;right:0;bottom:0;width:88px;display:flex;align-items:center;justify-content:center;background:#ffffff;color:#dc2626;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;z-index:1}
-        .request-swipe-row.swipe-open .request-swipe-surface{transform:translateX(-88px)}
+        .request-swipe-row,.flyer-swipe-row{display:block !important;padding:0 !important;position:relative;overflow:hidden;background:#ffffff !important;touch-action:pan-y;overscroll-behavior-x:contain;-webkit-user-select:none;user-select:none}
+        .request-swipe-surface,.flyer-swipe-surface{position:relative;z-index:2;width:100%;background:#ffffff;border-radius:inherit;padding:0;transition:transform .18s ease;will-change:transform}
+        .request-swipe-action,.flyer-swipe-action{position:absolute;top:0;right:0;bottom:0;width:88px;display:flex;align-items:center;justify-content:center;background:#ffffff;color:#dc2626;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;z-index:1}
+        .request-swipe-row.swipe-open .request-swipe-surface,.flyer-swipe-row.swipe-open .flyer-swipe-surface{transform:translateX(-88px)}
         #pull-refresh-indicator{transform:translateY(-120%);opacity:0;transition:transform .16s ease,opacity .16s ease;padding-top:max(0px,env(safe-area-inset-top))}
         #pull-refresh-indicator .pull-refresh-pill{backdrop-filter:saturate(140%) blur(8px)}
         #pull-refresh-indicator.visible{opacity:1}
@@ -813,12 +812,18 @@
         </div>
         <script id="app-script-source" type="text/plain">
         const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
-        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6cm55anNvc3J5ZWpqZWpsaWlpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzAyNzM1NywiZXhwIjoyMDg4NjAzMzU3fQ.Bc46UfJ1N4AgAS1PgfhFg6S4BEyybR6g_TUnPZsE2t0";
+        const APP_API_URL = `${SUPABASE_URL}/functions/v1/app-api`;
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwhH-eB5Py3xCwhmWReOAcAfl9Zu6mkw0hZYnAbIP9lLANoE4iebK1hXa6-ogU4_1AURA/exec"; 
         const PUSH_SUBSCRIPTIONS_TABLE = 'v2_push_subscriptions';
         const PUSH_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/send-push-alert`;
-        const PUSH_VAPID_PUBLIC_KEY = 'BAnr5wnptNgeqol-aJzw1eW_4CnuHpQNlvJ3vmo4VGVfuRsHNO5bRZdT-8NN8qUL5bTlUxYrx592fbG26EYjEN4';
+        const PUSH_VAPID_PUBLIC_KEY = 'BMRl28efgvhy4fAauTr3Wq-3-_EokaqMk1CWj6JKIU0_8fgSWfidaEa5vQoIk8EiaU3u8CeM8a9wvYis_891KHs';
         const PUSH_ALERT_NEW_REQUEST_USERS = new Set(['dylan_collyge','jd_jones']);
+        const FORCED_PASSWORD_CHANGE_VALUES = new Set(['GREENLEAF25','1234','12345','welcome','password']);
+        const APP_SESSION_STORAGE_KEY = 'gnc_app_session_v1';
+        const APP_BIO_SESSION_STORAGE_KEY = 'gnc_bio_session_v1';
+        const APP_LAST_USER_STORAGE_KEY = 'gnc_user_v4';
+        const APP_LAST_ROLE_STORAGE_KEY = 'gnc_role_v4';
+        const REALTIME_ENABLED = false;
         const PHOTO_BUCKETS = {
             'ssn-': 'season_sales_notes_photos',
             'lsn-': 'location_sales_notes_photos',
@@ -834,10 +839,7 @@
         const APP_SHELL_QUERY_PARAM = 'shellv';
         const DB_NAME="GNC_DDC_DB_V2"; const STORE_NAME="inventory_cache";
         const IOS_DEVICE_REGEX = /iPad|iPhone|iPod/;
-        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-            auth: { persistSession: false, autoRefreshToken: false },
-            realtime: { params: { eventsPerSecond: 8 } }
-        });
+        const supabaseClient = null;
         let realtimeChannels = [];
         let realtimeChangeTimer = null;
         let realtimeChangeQueue = [];
@@ -846,6 +848,7 @@
         let liveSyncMode = 'idle';
         let realtimeTableStatus = Object.create(null);
         const SUPABASE_READ_TIMEOUT_MS = 20000;
+        const LOGIN_READ_TIMEOUT_MS = 60000;
         const SUPABASE_WRITE_TIMEOUT_MS = 22000;
         const SUPABASE_UPLOAD_TIMEOUT_MS = 45000;
         const PHOTO_MAX_WIDTH = 900;
@@ -883,6 +886,10 @@
 
         function isRealtimeTableHealthy(tableName = '') {
             return getRealtimeTableStatus(tableName) === 'SUBSCRIBED';
+        }
+
+        function hasHealthyRealtimeSubscription() {
+            return Object.values(realtimeTableStatus).some((status) => String(status || '').trim().toUpperCase() === 'SUBSCRIBED');
         }
 
         function isEditableTextEntryTarget(target) {
@@ -1012,7 +1019,7 @@
             }
         }
         async function clearLegacyOfflineState(force = false) {
-            if (!force && (isIOSDevice() || isStandaloneApp())) return;
+            if (!force) return;
             if ('serviceWorker' in navigator) {
                 const registrations = await navigator.serviceWorker.getRegistrations();
                 for (let registration of registrations) {
@@ -1176,12 +1183,26 @@
             return copied;
         }
 
-        async function copyTextWithFallback(text) {
+        async function copyClipboardContent(content = {}) {
+            const plainText = typeof content === 'string' ? content : String(content.text || '');
+            const htmlText = typeof content === 'object' ? String(content.html || '').trim() : '';
             if (navigator.clipboard && window.isSecureContext) {
-                await navigator.clipboard.writeText(text);
+                if (htmlText && typeof ClipboardItem !== 'undefined' && typeof navigator.clipboard.write === 'function') {
+                    const clipboardItem = new ClipboardItem({
+                        'text/plain': new Blob([plainText], { type: 'text/plain' }),
+                        'text/html': new Blob([htmlText], { type: 'text/html' })
+                    });
+                    await navigator.clipboard.write([clipboardItem]);
+                    return true;
+                }
+                await navigator.clipboard.writeText(plainText);
                 return true;
             }
-            return fallbackCopyText(text);
+            return fallbackCopyText(plainText);
+        }
+
+        async function copyTextWithFallback(text) {
+            return copyClipboardContent({ text });
         }
 
         async function handleMobileShare(action, subject, text) {
@@ -1230,6 +1251,36 @@
             return runUiActionOnce(() => submitNewPassword());
         }
 
+
+        function bindPrimaryTouchAction(elementId, handler) {
+            const button = document.getElementById(elementId);
+            if (!button || button.dataset.primaryTouchBound === 'true') return;
+            button.dataset.primaryTouchBound = 'true';
+            button.onclick = null;
+            const run = (event) => {
+                if (event) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                return handler(event);
+            };
+            button.addEventListener('click', run, { passive: false });
+            button.addEventListener('touchend', run, { passive: false });
+            button.addEventListener('pointerup', run, { passive: false });
+        }
+
+        function initializeAuthActionBindings() {
+            bindPrimaryTouchAction('login-button', triggerLoginFromUI);
+            bindPrimaryTouchAction('save-password-button', triggerPasswordChangeFromUI);
+            bindPrimaryTouchAction('btn-fingerprint', (event) => {
+                if (event) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                blurActiveField();
+                return runUiActionOnce(() => loginWithBiometric());
+            });
+        }
         function setBootingSession(isBooting) {
             document.documentElement.classList.toggle('booting-session', !!isBooting);
         }
@@ -1916,6 +1967,12 @@
                 updateSyncDiagnostics('offline');
                 return;
             }
+            if (shouldUseRealtime() && hasHealthyRealtimeSubscription()) {
+                liveSyncMode = 'realtime';
+                updateSyncDiagnostics('realtime');
+                queueVisibleDatasetCatchup(220);
+                return;
+            }
             liveSyncMode = 'polling';
             updateSyncDiagnostics('polling');
             const pollMs = Math.max(12000, Number(intervalMs) || getFallbackSyncInterval());
@@ -1927,7 +1984,7 @@
         }
 
         function shouldUseRealtime() {
-            return 'WebSocket' in window && navigator.onLine !== false;
+            return REALTIME_ENABLED && 'WebSocket' in window && navigator.onLine !== false;
         }
 
         function initializeRealtime() {
@@ -1966,13 +2023,11 @@
 
         function performLogout() { 
             cleanupRealtime();
-            ['gnc_user_v3','gnc_pin_v3','gnc_role_v3'].forEach((key) => {
-                try { localStorage.removeItem(key); } catch (e) {}
-            });
+            clearSavedAppSessions();
+            try { localStorage.removeItem('gnc_bio_enabled'); } catch (e) {}
             sessionStorage.clear(); 
             location.reload(); 
         }
-
         function debounce(func,wait) { 
             let timeout; 
             return function(...args){ 
@@ -2134,6 +2189,52 @@
             }
         }
 
+        function getApiErrorMessage(payload, fallback = 'App API request failed') {
+            if (!payload) return fallback;
+            if (typeof payload === 'string') return payload || fallback;
+            if (payload.error) return String(payload.error || fallback);
+            if (payload.details && typeof payload.details === 'object' && payload.details.message) return String(payload.details.message || fallback);
+            if (payload.details && typeof payload.details === 'string') return String(payload.details || fallback);
+            return fallback;
+        }
+
+        async function parseApiJson(response) {
+            const text = await response.text();
+            if (!text) return {};
+            try {
+                return JSON.parse(text);
+            } catch (error) {
+                return { error: text };
+            }
+        }
+
+        async function callAppApi(action, payload = {}, options = {}) {
+            const opts = options || {};
+            const headers = { ...(opts.headers || {}) };
+            if (action !== 'login' && appSessionToken) headers['x-gnc-session'] = appSessionToken;
+            let body = opts.formData || null;
+            if (!body) {
+                headers['Content-Type'] = 'application/json';
+                body = JSON.stringify({ action, ...(payload || {}) });
+            }
+            const response = await fetchWithTimeout(APP_API_URL, {
+                method: 'POST',
+                headers,
+                body,
+            }, Number(opts.timeoutMs || SUPABASE_WRITE_TIMEOUT_MS), opts.label || 'App API');
+            const parsed = await parseApiJson(response);
+            if (!response.ok) {
+                if (response.status === 401) clearSavedAppSessions();
+                if (parsed && parsed.code === 'PASSWORD_CHANGE_REQUIRED') appSessionMustChangePassword = true;
+                throw new Error(getApiErrorMessage(parsed, `App API failed (${response.status})`));
+            }
+            return parsed;
+        }
+
+        async function appDbRequest(table, method = 'GET', body = null, query = 'select=*', timeoutMs = SUPABASE_WRITE_TIMEOUT_MS, label = 'Database') {
+            const response = await callAppApi('db', { table, method, body, query }, { timeoutMs, label });
+            return response && Object.prototype.hasOwnProperty.call(response, 'data') ? response.data : (method === 'GET' ? [] : {});
+        }
         function withTimeout(promise, timeoutMs, label = 'Request') {
             return new Promise((resolve, reject) => {
                 const timer = setTimeout(() => reject(new Error(`${label} timed out after ${Math.ceil(timeoutMs / 1000)}s`)), timeoutMs);
@@ -2176,29 +2277,18 @@
                 if(method==='GET'){
                     while(hasMore){
                         let queryString = query ? `${query}&limit=${limit}&offset=${offset}` : `limit=${limit}&offset=${offset}`;
-                        const url=`${SUPABASE_URL}/rest/v1/${table}?${queryString}`;
-                        const response=await fetchWithTimeout(url,{method:'GET',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json'}}, SUPABASE_READ_TIMEOUT_MS, `${table} read`);
-                        if(!response.ok) throw new Error(await getResponseError(response, `Supabase read failed (${response.status})`));
-                        const text=await response.text(); const data=text?JSON.parse(text):[];
+                        const data = await appDbRequest(table, 'GET', null, queryString, SUPABASE_READ_TIMEOUT_MS, `${table} read`);
                         if(Array.isArray(data)&&data.length>0){ allData=allData.concat(data); offset+=limit; if(data.length<limit) hasMore=false; }
                         else { hasMore=false; }
                     } return allData;
                 } else {
-                    const options={method:method,headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json'}};
-                    if(method==='POST') options.headers['Prefer']=table==='v2_active_request' ? 'return=minimal' : 'return=minimal,resolution=merge-duplicates';
-                    else if(method==='PATCH' || method==='DELETE') options.headers['Prefer']='return=minimal';
-                    else options.headers['Prefer']='return=representation';
-                    if(body)options.body=JSON.stringify(body);
-                    const response=await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/${table}${query?'?'+query:''}`,options,SUPABASE_WRITE_TIMEOUT_MS, `${table} ${method}`);
-                    if(!response.ok) throw new Error(await getResponseError(response, `Supabase write failed (${response.status})`));
-                    const text=await response.text(); return text?JSON.parse(text):{};
+                    return await appDbRequest(table, method, body, query, SUPABASE_WRITE_TIMEOUT_MS, `${table} ${method}`) || {};
                 }
             } catch(e){
                 if(method==='GET') return [];
                 throw e;
             } finally { stopGlobalProgress(); }
         }
-
         function maybeWarnAvRuleSchemaMissing() {
             if (avRuleSchemaWarningShown || !currentUser) return;
             avRuleSchemaWarningShown = true;
@@ -2212,21 +2302,7 @@
             avRuleColumnsProbePromise = (async () => {
                 if (navigator.onLine === false) return false;
                 try {
-                    const url = `${SUPABASE_URL}/rest/v1/v2_master_inventory?select=unique_id,av_rule_bundle_updated_at,av_rule_priority_snapshot,av_rule_holdstop_snapshot&limit=1`;
-                    const response = await fetchWithTimeout(url, {
-                        method: 'GET',
-                        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }
-                    }, SUPABASE_READ_TIMEOUT_MS, 'AV Rule Schema');
-                    if (!response.ok) {
-                        const errorText = await getResponseError(response, `Supabase read failed (${response.status})`);
-                        const normalizedError = String(errorText || '').toLowerCase();
-                        if (normalizedError.includes('av_rule_') || normalizedError.includes('column')) {
-                            avRuleColumnsReady = false;
-                            maybeWarnAvRuleSchemaMissing();
-                            return false;
-                        }
-                        return false;
-                    }
+                    await appDbRequest('v2_master_inventory', 'GET', null, 'select=unique_id,av_rule_bundle_updated_at,av_rule_priority_snapshot,av_rule_holdstop_snapshot&limit=1', SUPABASE_READ_TIMEOUT_MS, 'AV Rule Schema');
                     avRuleColumnsReady = true;
                     return true;
                 } catch (error) {
@@ -2243,7 +2319,6 @@
             })();
             return avRuleColumnsProbePromise;
         }
-
         function maybeWarnSalesOfficeOrderSchemaMissing() {
             if (salesOfficeOrderSchemaWarningShown || !currentUser) return;
             salesOfficeOrderSchemaWarningShown = true;
@@ -2257,21 +2332,7 @@
             salesOfficeOrderSchemaPromise = (async () => {
                 if (navigator.onLine === false) return false;
                 try {
-                    const url = `${SUPABASE_URL}/rest/v1/v2_sales_office?select=unique_id,master_id,so_source,order_folder,order_number,order_customer,order_qty,order_desired_spec,order_desired_caliper,order_reserve,order_submitted_by,order_submitted_at,order_status,av_note,sales_note,spec,caliper,photo_link,photo_name&limit=1`;
-                    const response = await fetchWithTimeout(url, {
-                        method: 'GET',
-                        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }
-                    }, SUPABASE_READ_TIMEOUT_MS, 'Sales Office Order Schema');
-                    if (!response.ok) {
-                        const errorText = await getResponseError(response, `Supabase read failed (${response.status})`);
-                        const normalizedError = String(errorText || '').toLowerCase();
-                        if (normalizedError.includes('master_id') || normalizedError.includes('so_source') || normalizedError.includes('order_folder') || normalizedError.includes('order_number') || normalizedError.includes('order_customer') || normalizedError.includes('order_qty') || normalizedError.includes('order_desired_spec') || normalizedError.includes('order_desired_caliper') || normalizedError.includes('order_reserve') || normalizedError.includes('order_submitted_by') || normalizedError.includes('order_submitted_at') || normalizedError.includes('order_status') || normalizedError.includes('av_note') || normalizedError.includes('sales_note') || normalizedError.includes('spec') || normalizedError.includes('caliper') || normalizedError.includes('photo_link') || normalizedError.includes('photo_name') || normalizedError.includes('column')) {
-                            salesOfficeOrderColumnsReady = false;
-                            maybeWarnSalesOfficeOrderSchemaMissing();
-                            return false;
-                        }
-                        return false;
-                    }
+                    await appDbRequest('v2_sales_office', 'GET', null, 'select=unique_id,master_id,so_source,order_folder,order_number,order_customer,order_qty,order_desired_spec,order_desired_caliper,order_reserve,order_submitted_by,order_submitted_at,order_status,av_note,sales_note,spec,caliper,photo_link,photo_name&limit=1', SUPABASE_READ_TIMEOUT_MS, 'Sales Office Order Schema');
                     salesOfficeOrderColumnsReady = true;
                     return true;
                 } catch (error) {
@@ -2288,27 +2349,154 @@
             })();
             return salesOfficeOrderSchemaPromise;
         }
+
         async function fetchLoginUser(username, password) {
             startGlobalProgress();
             try {
-                const normalizedUsername = String(username || '').trim();
-                const normalizedPassword = String(password || '').trim();
-                const url = `${SUPABASE_URL}/rest/v1/v2_app_users?select=*&username=ilike.${encodeURIComponent(normalizedUsername)}&password=eq.${encodeURIComponent(normalizedPassword)}&limit=1`;
-                const response = await fetchWithTimeout(url, {
-                    method: 'GET',
-                    headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }
-                }, SUPABASE_READ_TIMEOUT_MS, 'Login');
-                if (!response.ok) throw new Error(await getResponseError(response, `Supabase read failed (${response.status})`));
-                const text = await response.text();
-                const rows = text ? JSON.parse(text) : [];
-                const matchedUser = Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
-                if (!matchedUser) return { ok: false, reason: 'mismatch' };
-                return { ok: true, user: matchedUser };
+                const response = await callAppApi('login', { username, password }, { timeoutMs: LOGIN_READ_TIMEOUT_MS, label: 'Login' });
+                return response && typeof response === 'object' ? response : { ok: false, reason: 'network' };
             } catch (e) {
                 return { ok: false, reason: 'network', error: e };
             } finally {
                 stopGlobalProgress();
             }
+        }
+
+        function normalizeAppUsername(value = '') {
+            return String(value || '')
+                .trim()
+                .toLowerCase()
+                .replace(/@.*$/, '')
+                .replace(/[^a-z0-9]+/g, '_')
+                .replace(/^_+|_+$/g, '');
+        }
+
+        function decodeBase64UrlToString(value = '') {
+            const normalized = String(value || '').replace(/-/g, '+').replace(/_/g, '/');
+            const padded = normalized + '='.repeat((4 - normalized.length % 4) % 4);
+            return atob(padded);
+        }
+
+        function parseStoredJson(value, fallback = null) {
+            try {
+                return value ? JSON.parse(value) : fallback;
+            } catch (e) {
+                return fallback;
+            }
+        }
+
+        function decodeSessionTokenPayload(token = '') {
+            const parts = String(token || '').trim().split('.');
+            if (parts.length !== 2) return null;
+            try {
+                return JSON.parse(decodeBase64UrlToString(parts[0]));
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function buildSessionRecord(session = null) {
+            const raw = session && typeof session === 'object' ? session : null;
+            if (!raw) return null;
+            const token = String(raw.token || '').trim();
+            if (!token) return null;
+            const payload = decodeSessionTokenPayload(token) || {};
+            const username = normalizeAppUsername(raw.username || payload.username || raw.displayName || payload.displayName || '');
+            const displayName = String(raw.displayName || payload.displayName || raw.username || payload.username || '').trim() || username;
+            const role = String(raw.role || payload.role || 'User').trim() || 'User';
+            const expiresAt = Number(raw.expiresAt || ((payload && payload.exp) ? (Number(payload.exp) * 1000) : 0) || 0);
+            const mustChangePassword = raw.mustChangePassword === true || payload.mustChangePassword === true;
+            if (!token || !displayName || !role) return null;
+            return { token, username, displayName, role, expiresAt, mustChangePassword };
+        }
+
+        function clearLegacySensitiveAuthStorage() {
+            ['gnc_user_v3', 'gnc_pin_v3', 'gnc_bio_user', 'gnc_bio_pin'].forEach((key) => {
+                try { localStorage.removeItem(key); } catch (e) {}
+            });
+        }
+
+        function clearSavedSessionRecord(storageKey) {
+            try { localStorage.removeItem(storageKey); } catch (e) {}
+        }
+
+        function clearSavedAppSessions() {
+            appSessionToken = '';
+            appSessionExpiresAt = 0;
+            appSessionMustChangePassword = false;
+            clearSavedSessionRecord(APP_SESSION_STORAGE_KEY);
+            clearSavedSessionRecord(APP_BIO_SESSION_STORAGE_KEY);
+        }
+
+        function loadSavedSessionRecord(storageKey = APP_SESSION_STORAGE_KEY) {
+            return buildSessionRecord(parseStoredJson(localStorage.getItem(storageKey), null));
+        }
+
+        function persistSessionRecord(record, storageKey = APP_SESSION_STORAGE_KEY) {
+            if (!record) return null;
+            try { localStorage.setItem(storageKey, JSON.stringify(record)); } catch (e) {}
+            return record;
+        }
+
+        function setCurrentAuthSession(session = null, options = {}) {
+            const opts = options || {};
+            const record = buildSessionRecord(session);
+            if (!record) return null;
+            appSessionToken = record.token;
+            appSessionExpiresAt = Number(record.expiresAt || 0);
+            appSessionMustChangePassword = !!record.mustChangePassword;
+            if (opts.persist !== false) persistSessionRecord(record, APP_SESSION_STORAGE_KEY);
+            if (opts.persistBiometric) {
+                try { localStorage.setItem('gnc_bio_enabled', 'true'); } catch (e) {}
+                persistSessionRecord(record, APP_BIO_SESSION_STORAGE_KEY);
+            }
+            try { localStorage.setItem(APP_LAST_USER_STORAGE_KEY, record.displayName || record.username || ''); } catch (e) {}
+            try { localStorage.setItem(APP_LAST_ROLE_STORAGE_KEY, record.role || 'User'); } catch (e) {}
+            clearLegacySensitiveAuthStorage();
+            return record;
+        }
+
+        function applySessionIdentity(record = null) {
+            const sessionRecord = buildSessionRecord(record);
+            if (!sessionRecord) return false;
+            currentUser = normalizeAppUsername(sessionRecord.username || sessionRecord.displayName || '');
+            currentUserDisplay = String(sessionRecord.displayName || sessionRecord.username || currentUser).trim() || currentUser;
+            currentRole = String(sessionRecord.role || 'User').trim() || 'User';
+            safeRole = String(currentRole).toUpperCase().replace(/\s+/g,'');
+            return true;
+        }
+
+        function showPasswordChangeScreen() {
+            finishInitialAppLoad();
+            setBootingSession(false);
+            document.getElementById('view-login').style.display='none';
+            document.getElementById('view-change-password').style.display='flex';
+            const newPasswordInput = document.getElementById('new-password');
+            if (newPasswordInput) setTimeout(() => { try { newPasswordInput.focus(); } catch (e) {} }, 0);
+        }
+
+        function tryRestoreSavedSession(username = '', isBiometricLogin = false, options = {}) {
+            const opts = options || {};
+            const storageKey = opts.storageKey || APP_SESSION_STORAGE_KEY;
+            const sessionRecord = buildSessionRecord(opts.session || loadSavedSessionRecord(storageKey));
+            if (!sessionRecord) return false;
+            if (sessionRecord.expiresAt && sessionRecord.expiresAt <= Date.now()) {
+                clearSavedSessionRecord(storageKey);
+                if (storageKey === APP_SESSION_STORAGE_KEY) clearSavedSessionRecord(APP_BIO_SESSION_STORAGE_KEY);
+                return false;
+            }
+            const expectedUser = normalizeAppUsername(username || '');
+            const recordUser = normalizeAppUsername(sessionRecord.username || sessionRecord.displayName || '');
+            if (expectedUser && recordUser && expectedUser !== recordUser) return false;
+            if (!applySessionIdentity(sessionRecord)) return false;
+            setCurrentAuthSession(sessionRecord, { persist: true, persistBiometric: false });
+            if (sessionRecord.mustChangePassword) {
+                showPasswordChangeScreen();
+                return true;
+            }
+            finalizeLogin(currentUser, '', isBiometricLogin);
+            if (!opts.silent) showToast('Offline Login', 'Opened from saved device session while live data catches up.', false);
+            return true;
         }
 
         function openDB() { 
@@ -2350,6 +2538,7 @@
 
         const CACHE_SCHEMA_VERSION = 4;
         const INLINE_CACHE_RESERVE_LIMIT = 180;
+        const LEGACY_FULL_RESERVE_CACHE_TRUST_MIN_ROWS = 20000;
         function buildCacheSnapshot() {
             const inlineReserveRows = buildCacheRows(reservesInventory.slice(0, INLINE_CACHE_RESERVE_LIMIT));
             return {
@@ -2467,8 +2656,10 @@
                 const reserveMeta = reserveCache && reserveCache.meta ? reserveCache.meta : {};
                 const cachedLastLoadedAt = String(firstNonEmptyValue(reserveMeta.lastLoadedAt, reserveMeta.savedAt, '') || '').trim();
                 const isRepCache = !!getRoleAccessState().isRep;
+                const metaRowCount = Number(reserveMeta.rowCount || 0);
                 const looksLikePartialAdminCache = !isRepCache && reserveRows.length <= 1000;
-                const canTrustAsFull = !!reserveMeta.fullLoaded && !looksLikePartialAdminCache;
+                const looksLikeLegacyFullAdminCache = !isRepCache && !reserveMeta.fullLoaded && reserveRows.length >= LEGACY_FULL_RESERVE_CACHE_TRUST_MIN_ROWS && metaRowCount >= reserveRows.length;
+                const canTrustAsFull = (!!reserveMeta.fullLoaded || looksLikeLegacyFullAdminCache) && !looksLikePartialAdminCache;
                 const shouldApply = reserveRows.length > reservesInventory.length || (!reserveState.initialLoaded && reserveRows.length > 0);
                 if (shouldApply) {
                     processAndLoadData({ reservesData: reserveRows, _fromCache: true });
@@ -2476,6 +2667,12 @@
                     reserveState.fullLoaded = canTrustAsFull;
                     reserveState.lastLoadedAt = cachedLastLoadedAt || reserveState.lastLoadedAt || new Date().toISOString();
                     warmed = true;
+                    if (looksLikeLegacyFullAdminCache) {
+                        const silentRefreshAgeMs = (isIOSDevice() || isStandaloneApp()) ? 5400000 : 3600000;
+                        if (isDatasetStale('reserves', silentRefreshAgeMs)) {
+                            queueDatasetLoad('reserves', 'full', (isIOSDevice() || isStandaloneApp()) ? 18000 : 9000);
+                        }
+                    }
                 }
             }
             return warmed;
@@ -2510,7 +2707,7 @@
         let lastBackgroundRefreshAt=0;
         let cacheWarmPromise=null;
         let cachePersistTimer=null;
-        let currentUser=""; let currentUserDisplay=""; let currentRole=""; let safeRole=""; let repPermutations=[]; let activeItem=null; let lastView=""; let activeDetailTab="overview"; let selectedItems=new Set(); let cartPanelOpen=false; let cartUiObserver=null; let cartUiRefreshQueued=false; let lastCartToggleAt=0; let lastCartToggleDomId=""; let isMultiSelectMode=false; let pressTimer=null; let isLongPress=false; let touchStartX=0; let touchStartY=0; let pendingAction=null; let pendingTabType=null; let hasAppliedInitialHomeView=false;
+        let currentUser=""; let currentUserDisplay=""; let currentRole=""; let safeRole=""; let appSessionToken=""; let appSessionExpiresAt=0; let appSessionMustChangePassword=false; let repPermutations=[]; let activeItem=null; let lastView=""; let activeDetailTab="overview"; let selectedItems=new Set(); let cartPanelOpen=false; let cartUiObserver=null; let cartUiRefreshQueued=false; let lastCartToggleAt=0; let lastCartToggleDomId=""; let isMultiSelectMode=false; let pressTimer=null; let isLongPress=false; let touchStartX=0; let touchStartY=0; let pendingAction=null; let pendingTabType=null; let hasAppliedInitialHomeView=false;
         let dockAssignableUsers=[]; let dockAssignableUsersPromise=null;
         let dockTeamStatusByDock=new Map(); let dockTeamStatusPromise=null; let dockTeamStatusLoaded=false; let dockTeamSchemaReady=null; let dockTeamSchemaPromise=null; let dockTeamSchemaWarningShown=false;
         let dockItemProgressByUid=new Map(); let dockItemProgressPromise=null; let dockItemProgressLoaded=false; let dockItemSchemaReady=null; let dockItemSchemaPromise=null; let dockItemSchemaWarningShown=false;
@@ -2709,16 +2906,24 @@
                 const shellUpdated = await ensureCurrentShellBuild();
                 if (shellUpdated) return;
                 await clearLegacyOfflineState();
-                const savedUser=localStorage.getItem('gnc_user_v3'); const savedPin=localStorage.getItem('gnc_pin_v3');
+                const savedSession = loadSavedSessionRecord(APP_SESSION_STORAGE_KEY);
+                const savedUser = String(localStorage.getItem(APP_LAST_USER_STORAGE_KEY) || (savedSession && (savedSession.displayName || savedSession.username)) || '').trim();
                 document.getElementById('login-inputs').classList.remove('hidden');
                 document.getElementById('loading-spinner').classList.add('hidden');
+                finishInitialAppLoad();
                 warmCachedInventory().catch(() => {});
-                if(savedUser&&savedPin){
-                    document.getElementById('username-input').value=savedUser;
-                    document.getElementById('pin-code').value=savedPin;
+                if (savedUser) {
+                    document.getElementById('username-input').value = savedUser;
+                }
+                if (savedSession) {
                     document.getElementById('login-inputs').classList.add('hidden');
                     document.getElementById('loading-spinner').classList.remove('hidden');
-                    setTimeout(()=>handleLogin(true),0);
+                    setTimeout(() => {
+                        if (!tryRestoreSavedSession(savedSession.displayName || savedSession.username, false, { session: savedSession, silent: true })) {
+                            document.getElementById('login-inputs').classList.remove('hidden');
+                            document.getElementById('loading-spinner').classList.add('hidden');
+                        }
+                    }, 0);
                 }
             } catch (err) {
                 console.error('Startup failed', err);
@@ -2727,11 +2932,11 @@
                 showToast("Error","Startup failed. Please log in again.",true);
             }
         };
-
         window.addEventListener('DOMContentLoaded', () => {
-            if (localStorage.getItem('gnc_bio_enabled')==='true' && window.PublicKeyCredential) {
+            if (localStorage.getItem('gnc_bio_enabled')==='true' && loadSavedSessionRecord(APP_BIO_SESSION_STORAGE_KEY) && window.PublicKeyCredential) {
                 const bioBtn=document.getElementById('btn-fingerprint'); if (bioBtn) bioBtn.classList.remove('hidden');
             }
+            initializeAuthActionBindings();
             updateDockAssignableTeamOptions();
             initializeViewportHeightSync();
             initializeViewportModeSync();
@@ -2747,6 +2952,7 @@
                 schedulePendingRequestArchiveFlush(2800);
                 queueForegroundRefresh(80);
                 syncRequestViewLiveSync(120);
+                schedulePushSubscriptionSync('online', { immediate: true, force: false });
             }
         });
 
@@ -2759,6 +2965,7 @@
             if (!document.hidden && currentUser) {
                 queueForegroundRefresh(isIOSDevice() ? 60 : 120);
                 syncRequestViewLiveSync(120);
+                schedulePushSubscriptionSync('visible', { delay: 180, force: false });
             } else {
                 clearRequestViewLiveSync();
             }
@@ -2808,15 +3015,26 @@
         }
 
         function hydrateDatasetLoadState(meta = {}) {
+            const previousState = datasetLoadState || createDatasetLoadState();
+            const previousSnapshot = {};
+            Object.keys(previousState).forEach((key) => {
+                const prev = previousState[key] || {};
+                previousSnapshot[key] = {
+                    initialLoaded: !!prev.initialLoaded,
+                    fullLoaded: !!prev.fullLoaded,
+                    lastLoadedAt: prev.lastLoadedAt || ''
+                };
+            });
             datasetLoadState = createDatasetLoadState();
             Object.keys(datasetLoadState).forEach((key) => {
                 const saved = meta[key] || {};
+                const prev = previousSnapshot[key] || {};
                 const state = getDatasetState(key);
-                state.initialLoaded = !!saved.initialLoaded;
-                state.fullLoaded = !!saved.fullLoaded;
+                state.initialLoaded = !!(saved.initialLoaded || prev.initialLoaded || prev.fullLoaded);
+                state.fullLoaded = !!(saved.fullLoaded || prev.fullLoaded);
                 state.initialPromise = null;
                 state.fullPromise = null;
-                state.lastLoadedAt = saved.lastLoadedAt || '';
+                state.lastLoadedAt = firstNonEmptyValue(saved.lastLoadedAt, prev.lastLoadedAt, '');
             });
         }
 
@@ -2980,42 +3198,17 @@
         async function fetchAllSupabaseRows(table, query = 'select=*') {
             startGlobalProgress();
             try {
-                let allData = [];
-                let offset = 0;
-                const limit = table === 'v2_reserves'
-                    ? ((isIOSDevice() || isStandaloneApp()) ? 2500 : 3000)
-                    : 1000;
-                let hasMore = true;
-                while (hasMore) {
-                    const queryString = query ? `${query}&limit=${limit}&offset=${offset}` : `limit=${limit}&offset=${offset}`;
-                    const url = `${SUPABASE_URL}/rest/v1/${table}?${queryString}`;
-                    const response = await fetchWithTimeout(url, { method: 'GET', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' } }, SUPABASE_READ_TIMEOUT_MS, `${table} read`);
-                    if (!response.ok) throw new Error(await getResponseError(response, `Supabase read failed (${response.status})`));
-                    const text = await response.text();
-                    const data = text ? JSON.parse(text) : [];
-                    if (Array.isArray(data) && data.length > 0) {
-                        allData = allData.concat(data);
-                        offset += data.length;
-                        await yieldToUiFrame();
-                    } else {
-                        hasMore = false;
-                    }
-                }
-                return allData;
+                return await supabaseFetch(table, 'GET', null, query);
             } finally {
                 stopGlobalProgress();
             }
         }
-
         async function fetchSupabasePage(table, query = 'select=*', limit = INITIAL_PAGE_LIMIT, offset = 0) {
             startGlobalProgress();
             try {
                 const queryString = query ? `${query}&limit=${limit}&offset=${offset}` : `limit=${limit}&offset=${offset}`;
-                const url = `${SUPABASE_URL}/rest/v1/${table}?${queryString}`;
-                const response = await fetchWithTimeout(url, { method: 'GET', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' } }, SUPABASE_READ_TIMEOUT_MS, `${table} read`);
-                if (!response.ok) throw new Error(await getResponseError(response, `Supabase read failed (${response.status})`));
-                const text = await response.text();
-                return text ? JSON.parse(text) : [];
+                const data = await appDbRequest(table, 'GET', null, queryString, SUPABASE_READ_TIMEOUT_MS, `${table} read`);
+                return Array.isArray(data) ? data : [];
             } finally {
                 stopGlobalProgress();
             }
@@ -3439,14 +3632,17 @@
                 .filter(Boolean);
         }
 
-        async function promptToEnableBiometrics(user,pin) { 
+        async function promptToEnableBiometrics(user) { 
+            if(!appSessionToken) return;
             if(!confirm("Would you like to enable Fingerprint/FaceID login for future use?"))return; 
             try{ 
                 const publicKey={challenge:new Uint8Array(32),rp:{name:"GREENLEAF NURSERY COMPANY"},user:{id:new Uint8Array(16),name:user,displayName:user},pubKeyCredParams:[{type:"public-key",alg:-7}],authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required"},timeout:60000}; 
                 await navigator.credentials.create({publicKey}); 
-                localStorage.setItem('gnc_bio_enabled','true'); 
-                localStorage.setItem('gnc_bio_user',user); 
-                localStorage.setItem('gnc_bio_pin',pin); 
+                const sessionRecord = loadSavedSessionRecord(APP_SESSION_STORAGE_KEY);
+                if (sessionRecord) {
+                    localStorage.setItem('gnc_bio_enabled','true');
+                    persistSessionRecord(sessionRecord, APP_BIO_SESSION_STORAGE_KEY);
+                }
                 showToast("Success","Fingerprint login enabled!"); 
             }catch(err){} 
         }
@@ -3455,20 +3651,23 @@
             try{ 
                 const publicKey={challenge:new Uint8Array(32),timeout:60000,userVerification:"required"}; 
                 await navigator.credentials.get({publicKey}); 
-                const savedUser=localStorage.getItem('gnc_bio_user'); 
-                const savedPin=localStorage.getItem('gnc_bio_pin'); 
-                if(savedUser&&savedPin){ 
-                    document.getElementById('username-input').value=savedUser; 
-                    document.getElementById('pin-code').value=savedPin; 
-                    handleLogin(true); 
+                const savedSession = loadSavedSessionRecord(APP_BIO_SESSION_STORAGE_KEY);
+                if(savedSession){ 
+                    document.getElementById('username-input').value=savedSession.displayName || savedSession.username || '';
+                    document.getElementById('login-inputs').classList.add('hidden');
+                    document.getElementById('loading-spinner').classList.remove('hidden');
+                    if (!tryRestoreSavedSession(savedSession.displayName || savedSession.username, true, { session: savedSession, storageKey: APP_BIO_SESSION_STORAGE_KEY, silent: true })) {
+                        document.getElementById('login-inputs').classList.remove('hidden');
+                        document.getElementById('loading-spinner').classList.add('hidden');
+                        showToast("Error","Saved biometric session expired. Please log in again.",true);
+                    }
                 }else{ 
-                    showToast("Error","Credentials lost.",true); 
+                    showToast("Error","Saved biometric session not found.",true); 
                 } 
             }catch(err){ 
                 showToast("Error","Fingerprint cancelled.",true); 
             } 
         }
-
         function normalizeRepMatchToken(value='') {
             return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
         }
@@ -4932,6 +5131,9 @@ function toggleDriveQuickRequestItem(domId) {
             reserves: (item) => [item.COMMONNAME, item.CUSTOMERNAME, item.CONSIGNEENAME, item.SALESREPNAME || item.SALESREPID, item.ITEMCODE, item.CONTSIZE, item.LOCATIONCODE],
             colorwalk: (item) => [item.COMMONNAME, item.LOCATIONCODE, item.ITEMCODE, item.CONTSIZE, item.LOTCODE, item.PRIORITY]
         };
+        const SEARCH_RESULT_CACHE_LIMIT = 18;
+        const searchResultCache = new Map();
+
         function buildSearchIndex(item) {
             if (!item) return item;
             const primaryFields = [
@@ -4987,6 +5189,39 @@ function toggleDriveQuickRequestItem(domId) {
             return wordStarts;
         }
 
+        function getSearchCacheItemKey(item) {
+            if (!item) return '';
+            return String(
+                item.UNIQUE_ID ||
+                item.unique_id ||
+                item.REQUEST_ID ||
+                item.request_id ||
+                item.ITEMCODE ||
+                item.LOCATIONCODE ||
+                item.CUSTOMERNAME ||
+                item.CONSIGNEENAME ||
+                ''
+            );
+        }
+
+        function getSearchCacheSignature(items, profileName = '') {
+            if (!Array.isArray(items) || !items.length) return `${profileName}|0`;
+            const firstKey = getSearchCacheItemKey(items[0]);
+            const lastKey = getSearchCacheItemKey(items[items.length - 1]);
+            return `${profileName}|${items.length}|${firstKey}|${lastKey}`;
+        }
+
+        function setSearchResultCache(signature, term, result) {
+            if (!signature) return;
+            if (searchResultCache.has(signature)) searchResultCache.delete(signature);
+            searchResultCache.set(signature, { term, result });
+            while (searchResultCache.size > SEARCH_RESULT_CACHE_LIMIT) {
+                const oldestKey = searchResultCache.keys().next().value;
+                if (!oldestKey) break;
+                searchResultCache.delete(oldestKey);
+            }
+        }
+
         function matchesItemSearch(item, rawTerm, profileName = '') {
             const terms = tokenizeSearchValue(rawTerm);
             if (!terms.length) return true;
@@ -4998,10 +5233,31 @@ function toggleDriveQuickRequestItem(domId) {
 
         function filterBySearch(items, rawTerm, profileName = '') {
             if (!rawTerm) return items;
-            return items.filter(item => matchesItemSearch(item, rawTerm, profileName));
+            const normalizedTerm = normalizeSearchValue(rawTerm);
+            if (!normalizedTerm) return items;
+            if (!Array.isArray(items) || !items.length) return [];
+
+            const signature = getSearchCacheSignature(items, profileName);
+            const cached = searchResultCache.get(signature);
+            if (cached && cached.term === normalizedTerm && Array.isArray(cached.result)) return cached.result;
+
+            let baseItems = items;
+            if (cached && cached.term && normalizedTerm.startsWith(cached.term) && cached.term.length < normalizedTerm.length && Array.isArray(cached.result)) {
+                baseItems = cached.result;
+            }
+
+            const result = baseItems.filter(item => matchesItemSearch(item, normalizedTerm, profileName));
+            setSearchResultCache(signature, normalizedTerm, result);
+            return result;
         }
 
-        function scheduleSearchRender(key, renderFn) {
+        function getSearchRenderDelay(kind = 'default') {
+            const isTouchSearch = isIOSDevice() || isStandaloneApp() || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+            if (kind === 'heavy') return isTouchSearch ? 280 : 120;
+            return isTouchSearch ? 120 : 70;
+        }
+
+        function scheduleSearchRender(key, renderFn, delayMs = getSearchRenderDelay()) {
             if (searchRenderTimer[key]) clearTimeout(searchRenderTimer[key]);
             if (searchRenderFrame[key]) cancelAnimationFrame(searchRenderFrame[key]);
             searchRenderTimer[key] = setTimeout(() => {
@@ -5010,8 +5266,9 @@ function toggleDriveQuickRequestItem(domId) {
                     delete searchRenderFrame[key];
                     renderFn();
                 });
-            }, 70);
+            }, Math.max(0, Number(delayMs) || 0));
         }
+
         function getProtectedEditConfig(prefix) {
             return PROTECTED_EDIT_CONFIG[prefix] || null;
         }
@@ -5393,25 +5650,22 @@ function toggleDriveQuickRequestItem(domId) {
             document.getElementById('login-inputs').classList.add('hidden'); 
             document.getElementById('loading-spinner').classList.remove('hidden'); 
             beginInitialAppLoad('Signing in...');
-                fetchLoginUser(rawUser, inputPass).then(result=>{
-                if(result && result.ok && result.user){
+            fetchLoginUser(rawUser, inputPass).then(result=>{
+                if(result && result.ok && result.user && result.session){
                     const userRecord=result.user; 
                     currentUser=String(userRecord.username || userRecord.USERNAME || inputUser).trim().toLowerCase(); 
                     currentUserDisplay=String(userRecord.username || userRecord.USERNAME || rawUser || currentUser).trim();
                     currentRole=userRecord.role||userRecord.ROLE||'User'; 
                     safeRole=String(currentRole).toUpperCase().replace(/\s+/g,'');
-                    const isDefaultPassword=['1234','12345','welcome','password',currentUser,currentUserDisplay].includes(inputPass); 
-                    const hasChangedLocally=localStorage.getItem('gnc_pw_changed_'+currentUser)==='true';
-                    if(isDefaultPassword&&!hasChangedLocally&&!isBiometricLogin){ 
-                        finishInitialAppLoad();
-                        setBootingSession(false);
-                        document.getElementById('view-login').style.display='none'; 
-                        document.getElementById('view-change-password').style.display='flex'; 
+                    setCurrentAuthSession(result.session, { persist: true });
+                    if(result.session.mustChangePassword && !isBiometricLogin){ 
+                        showPasswordChangeScreen();
                     }
                     else{ 
-                        primePushPermissionFromLoginGesture().finally(() => {
-                            finalizeLogin(currentUser,inputPass,isBiometricLogin); 
-                        });
+                        finalizeLogin(currentUser,'',isBiometricLogin); 
+                        setTimeout(() => {
+                            primePushPermissionFromLoginGesture().catch(() => false);
+                        }, 0);
                     }
                 } else if (result && result.reason === 'mismatch') { 
                     finishInitialAppLoad();
@@ -5424,17 +5678,25 @@ function toggleDriveQuickRequestItem(domId) {
                     finishInitialAppLoad();
                     setBootingSession(false);
                     const rawError = result && result.error && result.error.message ? String(result.error.message) : '';
-                    showToast('Error', rawError ? `Login failed: ${rawError}` : 'Could not reach the login service.', true); 
-                    document.getElementById('login-inputs').classList.remove('hidden'); 
-                    document.getElementById('loading-spinner').classList.add('hidden'); 
+                    if (tryRestoreSavedSession(rawUser, isBiometricLogin, { silent: false })) {
+                        document.getElementById('loading-spinner').classList.add('hidden');
+                    } else {
+                        showToast('Error', rawError ? `Login failed: ${rawError}` : 'Could not reach the login service.', true); 
+                        document.getElementById('login-inputs').classList.remove('hidden'); 
+                        document.getElementById('loading-spinner').classList.add('hidden'); 
+                    }
                 }
             }).catch(err=>{ 
                 finishInitialAppLoad();
                 setBootingSession(false);
                 const rawError = err && err.message ? String(err.message) : '';
-                showToast('Error', rawError ? `Login failed: ${rawError}` : 'Could not reach the login service.', true); 
-                document.getElementById('login-inputs').classList.remove('hidden'); 
-                document.getElementById('loading-spinner').classList.add('hidden'); 
+                if (tryRestoreSavedSession(rawUser, isBiometricLogin, { silent: false })) {
+                    document.getElementById('loading-spinner').classList.add('hidden');
+                } else {
+                    showToast('Error', rawError ? `Login failed: ${rawError}` : 'Could not reach the login service.', true); 
+                    document.getElementById('login-inputs').classList.remove('hidden'); 
+                    document.getElementById('loading-spinner').classList.add('hidden'); 
+                }
             });
         }
 
@@ -5443,17 +5705,28 @@ function toggleDriveQuickRequestItem(domId) {
             const confirmPass=document.getElementById('confirm-password').value.trim(); 
             if(!newPass||newPass.length<4){ alert("Password must be at least 4 characters!"); return; } 
             if(newPass!==confirmPass){ alert("Passwords do not match!"); return; } 
+            if(FORCED_PASSWORD_CHANGE_VALUES.has(newPass)){ alert("Choose a password other than GREENLEAF25."); return; }
             document.getElementById('view-change-password').style.display='none'; 
             document.getElementById('view-login').style.display='flex'; 
             document.getElementById('login-inputs').classList.add('hidden'); 
             document.getElementById('loading-spinner').classList.remove('hidden'); 
-            try{ await supabaseFetch('v2_app_users','PATCH',{password:newPass},`username=ilike.*${encodeURIComponent(currentUser)}*`); }catch(e){} 
-            localStorage.setItem('gnc_pw_changed_'+currentUser,'true'); 
+            try {
+                const result = await callAppApi('password_change', { newPassword: newPass, confirmPassword: confirmPass }, { timeoutMs: SUPABASE_WRITE_TIMEOUT_MS, label: 'Password Change' });
+                if (result && result.session) {
+                    setCurrentAuthSession(result.session, { persist: true });
+                    applySessionIdentity(result.session);
+                }
+            } catch (e) {
+                document.getElementById('loading-spinner').classList.add('hidden');
+                document.getElementById('login-inputs').classList.remove('hidden');
+                showPasswordChangeScreen();
+                showToast('Error', e && e.message ? String(e.message) : 'Password change failed.', true);
+                return;
+            }
             document.getElementById('new-password').value=""; 
             document.getElementById('confirm-password').value=""; 
-            finalizeLogin(currentUser,newPass,false); 
+            finalizeLogin(currentUser,'',false); 
         }
-
         function openAppShellAfterLogin(fromCache = false) {
             setLoginProgress(100, fromCache ? 'Opening cached data...' : 'Opening app...');
             finishInitialAppLoad();
@@ -5476,6 +5749,7 @@ function toggleDriveQuickRequestItem(domId) {
             const initialTargets = new Map();
             const fullTargets = new Map();
             const reserveInitialMode = access.isRep ? 'full' : 'initial';
+            const touchWarmup = isIOSDevice() || isStandaloneApp() || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
 
             addLoginWarmupTarget(initialTargets, 'master', 'initial');
             addLoginWarmupTarget(fullTargets, 'master', 'full');
@@ -5512,8 +5786,8 @@ function toggleDriveQuickRequestItem(domId) {
             const initialPriority = ['master', 'avOpen', 'requests', 'soc', 'salesOffice', 'avNotes', 'cav', 'reserves'];
             const initialKeys = initialPriority.concat(Array.from(initialTargets.keys()).filter((key) => !initialPriority.includes(key)));
             const initialQueue = [];
-            const initialStart = 30;
-            const initialStep = 140;
+            const initialStart = touchWarmup ? 60 : 30;
+            const initialStep = touchWarmup ? 180 : 140;
             initialKeys.forEach((key) => {
                 const target = initialTargets.get(key);
                 if (!target) return;
@@ -5523,8 +5797,8 @@ function toggleDriveQuickRequestItem(domId) {
             const fullPriority = ['requests', 'soc', 'avOpen', 'salesOffice', 'avNotes', 'cav', 'reserves', 'master'];
             const fullKeys = fullPriority.concat(Array.from(fullTargets.keys()).filter((key) => !fullPriority.includes(key)));
             const fullQueue = [];
-            const fullStart = openedFromCache ? 2400 : 900;
-            const fullStep = openedFromCache ? 1900 : 900;
+            const fullStart = openedFromCache ? (touchWarmup ? 4200 : 2400) : (touchWarmup ? 1600 : 900);
+            const fullStep = openedFromCache ? (touchWarmup ? 2400 : 1900) : (touchWarmup ? 1400 : 900);
             fullKeys.forEach((key) => {
                 const target = fullTargets.get(key);
                 if (!target) return;
@@ -5542,11 +5816,18 @@ function toggleDriveQuickRequestItem(domId) {
             });
             return warmupPlan;
         }
-        async function finalizeLogin(user,pass,isBiometricLogin) { 
+                async function finalizeLogin(user,pass,isBiometricLogin) { 
             setBootingSession(false);
-            localStorage.setItem('gnc_user_v3',user); 
-            localStorage.setItem('gnc_pin_v3',pass); 
-            localStorage.setItem('gnc_role_v3',currentRole); 
+            if (appSessionToken) {
+                setCurrentAuthSession({
+                    token: appSessionToken,
+                    username: currentUser,
+                    displayName: currentUserDisplay,
+                    role: currentRole,
+                    expiresAt: appSessionExpiresAt,
+                    mustChangePassword: appSessionMustChangePassword,
+                }, { persist: true });
+            }
             document.getElementById('header-user').innerText=currentUserDisplay || currentUser; 
             syncGlobalHeaderChrome();
             updateSyncDiagnostics();
@@ -5555,16 +5836,11 @@ function toggleDriveQuickRequestItem(domId) {
             setRepPermutations(currentUser);
             const roleAccess = getRoleAccessState();
             const shouldWarmReserveCache = roleAccess.allowedViews && typeof roleAccess.allowedViews.has === 'function' && (roleAccess.allowedViews.has('av') || roleAccess.allowedViews.has('reserves') || roleAccess.allowedViews.has('reports'));
-            let warmedScopedDatasetCache = false;
-            if (shouldWarmReserveCache) {
-                setLoginProgress(Math.max(currentProgress, 34), 'Restoring cached reserve data...');
-                warmedScopedDatasetCache = await warmUserScopedDatasetCaches().catch(() => false);
-            }
             ensureDockAssignableUsers().catch(() => {});
             ensureDockTeamStatusLoaded().then(() => { scheduleDocksRender(24); }).catch(() => {});
             ensureDockItemStatusLoaded().then(() => { scheduleDocksRender(24); }).catch(() => {});
             ensureAvRuleColumnsReady().catch(() => {});
-            const shouldPromptBiometric = !isBiometricLogin && window.PublicKeyCredential && localStorage.getItem('gnc_bio_enabled')!=='true';
+            const shouldPromptBiometric = !isBiometricLogin && window.PublicKeyCredential && localStorage.getItem('gnc_bio_enabled')!=='true' && !!appSessionToken;
             setLoginProgress(Math.max(currentProgress, 30), 'Preparing your workspace...');
 
             let appOpened = false;
@@ -5573,7 +5849,7 @@ function toggleDriveQuickRequestItem(domId) {
                 appOpened = true;
                 openAppShellAfterLogin(fromCache);
                 if (shouldPromptBiometric) {
-                    setTimeout(() => promptToEnableBiometrics(user,pass), fromCache ? 900 : 400);
+                    setTimeout(() => promptToEnableBiometrics(user), fromCache ? 900 : 400);
                 }
             };
 
@@ -5587,8 +5863,18 @@ function toggleDriveQuickRequestItem(domId) {
                 }).catch(() => {});
             }
 
-            const openedFromCache = fullInventory.length > 0 || warmedScopedDatasetCache;
+            const openedFromCache = fullInventory.length > 0;
             openApp(openedFromCache);
+            if (shouldWarmReserveCache) {
+                setLoginProgress(Math.max(currentProgress, 34), 'Restoring cached reserve data...');
+                warmUserScopedDatasetCaches().then((warmedScopedDatasetCache) => {
+                    if (warmedScopedDatasetCache) {
+                        setTimeout(() => reRenderCurrentView(), 40);
+                        syncGlobalHeaderChrome();
+                        updateFooterNavState();
+                    }
+                }).catch(() => {});
+            }
             const warmupPlan = primeLoginDataLoad(openedFromCache);
             if (!openedFromCache) {
                 showToast("Ready", "Fast mode is on. Data is warming in the background.", false);
@@ -5598,9 +5884,7 @@ function toggleDriveQuickRequestItem(domId) {
                 queueDatasetLoad(item.key, item.mode, item.delay);
             });
             if (roleAccess.allowedViews && roleAccess.allowedViews.has('request')) {
-                setTimeout(() => {
-                    subscribeCurrentDeviceForPush({ prompt: false }).catch(() => {});
-                }, openedFromCache ? 450 : 1200);
+                schedulePushSubscriptionSync('login', { delay: openedFromCache ? 450 : 1200, prompt: false });
             }
             loginPrefetchPromise = null;
             loginPrefetchMode = '';
@@ -5610,27 +5894,23 @@ function toggleDriveQuickRequestItem(domId) {
             if (liveSyncMode === 'realtime' && shouldUseRealtime()) return;
             const checkTime=new Date().toISOString();
             try {
-                const response=await fetch(`${SUPABASE_URL}/rest/v1/v2_master_inventory?select=*&last_updated=gt.${lastSyncTime}`,{method:'GET',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
-                if(response.ok) {
-                    const data=await response.json();
-                    if(data&&data.length>0){
-                        let updated=false;
-                        data.forEach(updatedRow=>{
-                            let idx=fullInventory.findIndex(i=>i.UNIQUE_ID===updatedRow.unique_id);
-                            if(idx>-1){
-                                for(let k in updatedRow){ if(updatedRow[k]!==null) fullInventory[idx][k.toUpperCase()]=updatedRow[k]; }
-                                normalizeRowPhotoFields(fullInventory[idx]);
-                                updated=true; 
-                                if(activeItem&&activeItem.UNIQUE_ID===updatedRow.unique_id){ Object.assign(activeItem,fullInventory[idx]); }
-                            }
-                        });
-                        if(updated){ processAndLoadData({ data: fullInventory, avOpenData: buildAvOpenInventoryFromMasterItems(fullInventory) }); if(activeItem&&!document.getElementById('view-detail').classList.contains('hidden')){ openDetail(activeItem.UNIQUE_ID,lastView); } }
-                    } 
+                const data = await appDbRequest('v2_master_inventory', 'GET', null, `select=*&last_updated=gt.${lastSyncTime}`, SUPABASE_READ_TIMEOUT_MS, 'v2_master_inventory read');
+                if(Array.isArray(data) && data.length>0) {
+                    let updated=false;
+                    data.forEach(updatedRow=>{
+                        let idx=fullInventory.findIndex(i=>i.UNIQUE_ID===updatedRow.unique_id);
+                        if(idx>-1){
+                            for(let k in updatedRow){ if(updatedRow[k]!==null) fullInventory[idx][k.toUpperCase()]=updatedRow[k]; }
+                            normalizeRowPhotoFields(fullInventory[idx]);
+                            updated=true; 
+                            if(activeItem&&activeItem.UNIQUE_ID===updatedRow.unique_id){ Object.assign(activeItem,fullInventory[idx]); }
+                        }
+                    });
+                    if(updated){ processAndLoadData({ data: fullInventory, avOpenData: buildAvOpenInventoryFromMasterItems(fullInventory) }); if(activeItem&&!document.getElementById('view-detail').classList.contains('hidden')){ openDetail(activeItem.UNIQUE_ID,lastView); } }
                 }
                 
-                const reqRes = await fetch(`${SUPABASE_URL}/rest/v1/v2_active_request?select=*`, {method:'GET', headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
-                if(reqRes.ok) {
-                    const reqData = await reqRes.json();
+                const reqData = await appDbRequest('v2_active_request', 'GET', null, 'select=*', SUPABASE_READ_TIMEOUT_MS, 'v2_active_request read');
+                if(Array.isArray(reqData)) {
                     let hash = JSON.stringify(reqData);
                     if(hash !== localStorage.getItem('last_req_hash')) {
                         requestsInventory = reqData.map(item => {
@@ -5648,12 +5928,11 @@ function toggleDriveQuickRequestItem(domId) {
                     }
                 }
 
-                const soRes = await fetch(`${SUPABASE_URL}/rest/v1/v2_sales_office?select=*`, {method:'GET', headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
-                if(soRes.ok) {
-                    const soData = await soRes.json();
+                const soData = await appDbRequest('v2_sales_office', 'GET', null, 'select=*', SUPABASE_READ_TIMEOUT_MS, 'v2_sales_office read');
+                if(Array.isArray(soData)) {
                     let soHash = JSON.stringify(soData);
                     if(soHash !== localStorage.getItem('last_so_hash')) {
-                                                salesOfficeInventory = soData.map((item, idx) => {
+                        salesOfficeInventory = soData.map((item, idx) => {
                             let obj = {SOURCE_TABLE: 'v2_sales_office'};
                             for(let k in item) { if(item[k]!==null) obj[k.toUpperCase()] = item[k]; }
                             obj.DOM_ID = 'so_' + obj.UNIQUE_ID;
@@ -5666,30 +5945,13 @@ function toggleDriveQuickRequestItem(domId) {
                     }
                 }
 
-                const previousDockTeamSnapshot = JSON.stringify(Array.from(dockTeamStatusByDock.entries()));
-                const previousDockItemSnapshot = JSON.stringify(Array.from(dockItemProgressByUid.entries()));
-                await Promise.allSettled([
-                    ensureDockTeamStatusLoaded(true),
-                    ensureDockItemStatusLoaded(true)
-                ]);
-                const dockWorkflowChanged = previousDockTeamSnapshot !== JSON.stringify(Array.from(dockTeamStatusByDock.entries()))
-                    || previousDockItemSnapshot !== JSON.stringify(Array.from(dockItemProgressByUid.entries()));
-                if (dockWorkflowChanged) {
-                    markViewDirty('docks');
-                    if (!document.getElementById('view-docks').classList.contains('hidden')) renderViewContent('docks', false, true);
-                }
-                
-                lastSyncTime=checkTime;
+                updateSyncDiagnostics('polling');
                 lastSuccessfulSyncTime = checkTime;
-                syncDiagnosticsOverride = '';
-                updateSyncDiagnostics();
-            } catch(e){}
+            } catch(e) {
+                updateSyncDiagnostics('offline');
+            }
         }
 
-        async function fetchBackgroundData(mode='full') {
-            if (mode === 'critical' || mode === 'supplemental') return true;
-            return refreshLoadedDatasets(mode === 'full' || mode === 'force');
-        }
         function applyMasterAppTabAssignments(items = []) {
             let icGroups = {};
             items.forEach(item => {
@@ -6043,21 +6305,7 @@ function toggleDriveQuickRequestItem(domId) {
             dockTeamSchemaPromise = (async () => {
                 if (navigator.onLine === false) return false;
                 try {
-                    const url = `${SUPABASE_URL}/rest/v1/v2_dock_team_status?select=dock_num,checker&limit=1`;
-                    const response = await fetchWithTimeout(url, {
-                        method: 'GET',
-                        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }
-                    }, SUPABASE_READ_TIMEOUT_MS, 'Dock Team Schema');
-                    if (!response.ok) {
-                        const errorText = await getResponseError(response, `Supabase read failed (${response.status})`);
-                        const normalizedError = String(errorText || '').toLowerCase();
-                        if (normalizedError.includes('v2_dock_team_status') || normalizedError.includes('dock_num') || normalizedError.includes('checker') || normalizedError.includes('relation') || normalizedError.includes('column')) {
-                            dockTeamSchemaReady = false;
-                            maybeWarnDockTeamSchemaMissing();
-                            return false;
-                        }
-                        return false;
-                    }
+                    await appDbRequest('v2_dock_team_status', 'GET', null, 'select=dock_num,checker&limit=1', SUPABASE_READ_TIMEOUT_MS, 'Dock Team Schema');
                     dockTeamSchemaReady = true;
                     return true;
                 } catch (error) {
@@ -6074,7 +6322,6 @@ function toggleDriveQuickRequestItem(domId) {
             })();
             return dockTeamSchemaPromise;
         }
-
         async function ensureDockTeamStatusLoaded(forceRefresh = false) {
             if (!forceRefresh && dockTeamStatusLoaded) return dockTeamStatusByDock;
             if (!forceRefresh && dockTeamStatusPromise) return dockTeamStatusPromise;
@@ -6170,21 +6417,7 @@ function toggleDriveQuickRequestItem(domId) {
             dockItemSchemaPromise = (async () => {
                 if (navigator.onLine === false) return false;
                 try {
-                    const url = `${SUPABASE_URL}/rest/v1/v2_dock_item_status?select=unique_id,checker_done&limit=1`;
-                    const response = await fetchWithTimeout(url, {
-                        method: 'GET',
-                        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }
-                    }, SUPABASE_READ_TIMEOUT_MS, 'Dock Item Schema');
-                    if (!response.ok) {
-                        const errorText = await getResponseError(response, `Supabase read failed (${response.status})`);
-                        const normalizedError = String(errorText || '').toLowerCase();
-                        if (normalizedError.includes('v2_dock_item_status') || normalizedError.includes('unique_id') || normalizedError.includes('checker_done') || normalizedError.includes('relation') || normalizedError.includes('column')) {
-                            dockItemSchemaReady = false;
-                            maybeWarnDockItemSchemaMissing();
-                            return false;
-                        }
-                        return false;
-                    }
+                    await appDbRequest('v2_dock_item_status', 'GET', null, 'select=unique_id,checker_done&limit=1', SUPABASE_READ_TIMEOUT_MS, 'Dock Item Schema');
                     dockItemSchemaReady = true;
                     return true;
                 } catch (error) {
@@ -6201,7 +6434,6 @@ function toggleDriveQuickRequestItem(domId) {
             })();
             return dockItemSchemaPromise;
         }
-
         async function ensureDockItemStatusLoaded(forceRefresh = false) {
             if (!forceRefresh && dockItemProgressLoaded) return dockItemProgressByUid;
             if (!forceRefresh && dockItemProgressPromise) return dockItemProgressPromise;
@@ -6302,7 +6534,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (!forceRefresh && dockAssignableUsersPromise) return dockAssignableUsersPromise;
             const previousUsers = dockAssignableUsers.slice();
             dockAssignableUsersPromise = (async () => {
-                const rows = await supabaseFetch('v2_app_users', 'GET', null, 'select=*');
+                const rows = await supabaseFetch('v2_app_users', 'GET', null, 'select=username,role');
                 dockAssignableUsers = Array.from(new Set((rows || [])
                     .filter((user) => isDockAssignableRoleValue(user.role || user.ROLE))
                     .map((user) => String(user.username || user.USERNAME || '').trim())
@@ -6424,6 +6656,12 @@ function toggleDriveQuickRequestItem(domId) {
         let pushSchemaReady = null;
         let pushSchemaProbePromise = null;
         let pushSchemaWarningShown = false;
+        let pushSchemaLastCheckedAt = 0;
+        let pushSubscriptionSyncTimer = null;
+        let pushSubscriptionSyncAttempts = 0;
+        let pushSubscriptionSyncInFlight = false;
+        const PUSH_SCHEMA_RETRY_MS = 15000;
+        const PUSH_SUBSCRIPTION_SYNC_DELAYS = [0, 900, 2500, 5000, 15000, 30000, 60000];
 
         function normalizePushUsername(value = '') {
             return String(value || '').trim().toLowerCase().replace(/@.*$/, '').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
@@ -6445,22 +6683,15 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         async function ensurePushSubscriptionSchemaReady(force = false) {
+            const now = Date.now();
             if (pushSchemaReady === true && !force) return true;
-            if (pushSchemaReady === false && !force) return false;
+            if (pushSchemaReady === false && !force && (now - pushSchemaLastCheckedAt) < PUSH_SCHEMA_RETRY_MS) return false;
             if (pushSchemaProbePromise && !force) return pushSchemaProbePromise;
             pushSchemaProbePromise = (async () => {
+                pushSchemaLastCheckedAt = Date.now();
                 if (navigator.onLine === false) return false;
                 try {
-                    const url = `${SUPABASE_URL}/rest/v1/${PUSH_SUBSCRIPTIONS_TABLE}?select=id,username,endpoint,wants_new_request,wants_request_complete&limit=1`;
-                    const response = await fetchWithTimeout(url, {
-                        method: 'GET',
-                        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }
-                    }, SUPABASE_READ_TIMEOUT_MS, 'Push Subscription Schema');
-                    if (!response.ok) {
-                        pushSchemaReady = false;
-                        maybeWarnPushSchemaMissing();
-                        return false;
-                    }
+                    await appDbRequest(PUSH_SUBSCRIPTIONS_TABLE, 'GET', null, 'select=id,username,endpoint,wants_new_request,wants_request_complete&limit=1', SUPABASE_READ_TIMEOUT_MS, 'Push Subscription Schema');
                     pushSchemaReady = true;
                     return true;
                 } catch (error) {
@@ -6531,6 +6762,57 @@ function toggleDriveQuickRequestItem(domId) {
             }
         }
 
+        function clearPushSubscriptionSyncTimer() {
+            if (pushSubscriptionSyncTimer) {
+                clearTimeout(pushSubscriptionSyncTimer);
+                pushSubscriptionSyncTimer = null;
+            }
+        }
+
+        function getPushSubscriptionSyncDelay(attemptIndex = 0) {
+            const index = Math.max(0, Math.min(PUSH_SUBSCRIPTION_SYNC_DELAYS.length - 1, Number(attemptIndex) || 0));
+            return PUSH_SUBSCRIPTION_SYNC_DELAYS[index];
+        }
+
+        async function syncCurrentDevicePushSubscription(options = {}) {
+            if (pushSubscriptionSyncInFlight) return false;
+            const opts = options && typeof options === 'object' ? options : {};
+            if (!isPushSupported() || !currentUser || !getPushPromptUserScope()) return false;
+            if (Notification.permission === 'denied') return false;
+            pushSubscriptionSyncInFlight = true;
+            try {
+                const saved = await subscribeCurrentDeviceForPush(opts);
+                if (saved) pushSubscriptionSyncAttempts = 0;
+                return !!saved;
+            } catch (error) {
+                console.warn('Push subscription sync failed', error);
+                return false;
+            } finally {
+                pushSubscriptionSyncInFlight = false;
+            }
+        }
+
+        function schedulePushSubscriptionSync(reason = '', options = {}) {
+            const opts = options && typeof options === 'object' ? options : {};
+            clearPushSubscriptionSyncTimer();
+            if (!isPushSupported() || !currentUser || !getPushPromptUserScope()) return;
+            if (Notification.permission === 'denied') return;
+            const parsedAttempt = Number(opts.attemptIndex);
+            const attemptIndex = Number.isFinite(parsedAttempt) ? Math.max(0, parsedAttempt) : pushSubscriptionSyncAttempts;
+            const delay = opts.immediate ? 0 : Math.max(0, Number(opts.delay) || getPushSubscriptionSyncDelay(attemptIndex));
+            pushSubscriptionSyncTimer = setTimeout(async () => {
+                const saved = await syncCurrentDevicePushSubscription({
+                    prompt: !!opts.prompt && Notification.permission === 'default',
+                    force: !!opts.force
+                });
+                if (saved) return;
+                if (Notification.permission !== 'granted') return;
+                const nextAttempt = attemptIndex + 1;
+                pushSubscriptionSyncAttempts = nextAttempt;
+                schedulePushSubscriptionSync(reason, { attemptIndex: nextAttempt });
+            }, delay);
+        }
+
         async function subscribeCurrentDeviceForPush(options = {}) {
             const opts = options && typeof options === 'object' ? options : {};
             if (!isPushSupported() || !currentUser || !getPushPromptUserScope()) return false;
@@ -6580,8 +6862,7 @@ function toggleDriveQuickRequestItem(domId) {
             fetch(PUSH_FUNCTION_URL, {
                 method: 'POST',
                 headers: {
-                    'apikey': SUPABASE_KEY,
-                    'Authorization': 'Bearer ' + SUPABASE_KEY,
+                    'x-gnc-session': appSessionToken,
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(payload)
@@ -7047,7 +7328,7 @@ activeDriveTab = tab;
             renderDrive();
         }
         function clearAVSearch() { document.getElementById('av-search').value=""; document.getElementById('av-search-clear').classList.add('hidden'); avResLevel=0; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; avOpenLevel=0; renderAV(); }
-        function handleAVSearch() { const term=document.getElementById('av-search').value.toLowerCase(); const clearBtn=document.getElementById('av-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden'); avResLevel=0; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; avOpenLevel=0;} else{clearBtn.classList.add('hidden'); avResLevel=0; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; avOpenLevel=0;} scheduleSearchRender('av', () => renderAV()); }
+        function handleAVSearch() { const term=document.getElementById('av-search').value.toLowerCase(); const clearBtn=document.getElementById('av-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden'); avResLevel=0; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; avOpenLevel=0;} else{clearBtn.classList.add('hidden'); avResLevel=0; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; avOpenLevel=0;} debouncedAVSearch(); }
 
         function resetAVView() { 
             activeAVTab='open'; activeAvOpenTab='name';
@@ -7130,11 +7411,11 @@ activeDriveTab = tab;
             supabaseFetch('v2_labor_hours', 'POST', payload).then(() => { showToast("Success", "Hours submitted successfully!"); document.getElementById('hours-amount').value = ""; }).catch(err => { showToast("Error", "Failed to submit hours.", true); });
         }
 
-        const debouncedReservesSearch=debounce(()=>{requestAnimationFrame(()=>renderReserves())},150);
+        const debouncedReservesSearch=debounce(()=>{scheduleUiRender('reserves-search', () => renderReserves());}, getSearchRenderDelay('heavy'));
         function clearReservesSearch() { document.getElementById('reserves-search').value=""; document.getElementById('reserves-search-clear').classList.add('hidden'); reservesViewLevel=0; renderReserves(); }
-        function handleReservesSearch() { const term=document.getElementById('reserves-search').value.toLowerCase(); const clearBtn=document.getElementById('reserves-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden');reservesViewLevel=0;} else{clearBtn.classList.add('hidden');reservesViewLevel=0;} if (typeof renderReserves === 'function') scheduleSearchRender('reserves', () => renderReserves()); }
+        function handleReservesSearch() { const term=document.getElementById('reserves-search').value.toLowerCase(); const clearBtn=document.getElementById('reserves-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden');reservesViewLevel=0;} else{clearBtn.classList.add('hidden');reservesViewLevel=0;} if (typeof renderReserves === 'function') debouncedReservesSearch(); }
 
-        const debouncedAVSearch=debounce(()=>{requestAnimationFrame(()=>renderAV())},150);
+        const debouncedAVSearch=debounce(()=>{scheduleUiRender('av-search', () => renderAV());}, getSearchRenderDelay('heavy'));
 
         function resetAVReserveSearchInput() {
             const searchInput = document.getElementById('av-search');
@@ -8064,16 +8345,19 @@ activeDriveTab = tab;
             avRenderChunkToken += 1;
             const token = avRenderChunkToken;
             const total = Array.isArray(rows) ? rows.length : 0;
-            const touchOptimized = isIOSDevice() || isStandaloneApp() || window.matchMedia('(pointer: coarse)').matches;
+            const iosOptimized = isIOSDevice() || isStandaloneApp();
+            const touchOptimized = iosOptimized || window.matchMedia('(pointer: coarse)').matches;
             const viewportHeight = Math.max(640, Math.round((window.visualViewport && window.visualViewport.height) || window.innerHeight || document.documentElement.clientHeight || 640));
             const approxCardHeight = sourceView === 'reserves_drill' ? 170 : (activeAvOpenTab === 'photos' ? 160 : 185);
             const chunkSize = touchOptimized
-                ? (total > 1600 ? 56 : (total > 800 ? 64 : 72))
+                ? (iosOptimized ? (total > 2200 ? 96 : (total > 1200 ? 112 : 128)) : (total > 1600 ? 72 : (total > 800 ? 84 : 96)))
                 : (total > 1200 ? 32 : (total > 600 ? 40 : 48));
-            const initialScreens = touchOptimized ? 14 : 8;
+            const initialScreens = iosOptimized ? 20 : (touchOptimized ? 16 : 8);
             const initialTarget = Math.min(total, Math.max(chunkSize * 2, Math.ceil((viewportHeight * initialScreens) / approxCardHeight)));
-            const perFrameLimit = touchOptimized ? Math.max(chunkSize * 2, 128) : Math.max(chunkSize, 72);
-            const frameBudgetMs = touchOptimized ? 10 : 7;
+            const perFrameLimit = iosOptimized ? Math.max(chunkSize * 2, 220) : (touchOptimized ? Math.max(chunkSize * 2, 144) : Math.max(chunkSize, 72));
+            const frameBudgetMs = iosOptimized ? 13 : (touchOptimized ? 10 : 7);
+            const afterChunk = null;
+            const afterComplete = null;
             let index = 0;
             crumb.innerText = crumbText;
             if (!total) {
@@ -8093,11 +8377,17 @@ activeDriveTab = tab;
                 return html;
             };
             container.innerHTML = renderBatch(initialTarget, false);
+            if (afterChunk) afterChunk(index, total, container);
+            if (index >= total && afterComplete) afterComplete(container, total);
             const renderNextChunk = () => {
                 if (token !== avRenderChunkToken) return;
                 const html = renderBatch(perFrameLimit, true);
-                if (html) container.insertAdjacentHTML('beforeend', html);
+                if (html) {
+                    container.insertAdjacentHTML('beforeend', html);
+                    if (afterChunk) afterChunk(index, total, container);
+                }
                 if (index < total) requestAnimationFrame(renderNextChunk);
+                else if (afterComplete) afterComplete(container, total);
             };
             if (index < total) requestAnimationFrame(renderNextChunk);
         }
@@ -8107,17 +8397,20 @@ activeDriveTab = tab;
             avRenderChunkToken += 1;
             const token = avRenderChunkToken;
             const total = Array.isArray(rows) ? rows.length : 0;
-            const touchOptimized = isIOSDevice() || isStandaloneApp() || window.matchMedia('(pointer: coarse)').matches;
+            const iosOptimized = isIOSDevice() || isStandaloneApp();
+            const touchOptimized = iosOptimized || window.matchMedia('(pointer: coarse)').matches;
             const viewportHeight = Math.max(640, Math.round((window.visualViewport && window.visualViewport.height) || window.innerHeight || document.documentElement.clientHeight || 640));
             const approxCardHeight = Math.max(120, Number(options.approxCardHeight) || 185);
             const emptyHtml = options.emptyHtml || `<div class="p-6 text-center text-gray-400">No rows found.</div>`;
+            const afterChunk = typeof options.afterChunk === 'function' ? options.afterChunk : null;
+            const afterComplete = typeof options.afterComplete === 'function' ? options.afterComplete : null;
             const chunkSize = touchOptimized
-                ? (total > 1600 ? 56 : (total > 800 ? 64 : 72))
+                ? (iosOptimized ? (total > 2200 ? 96 : (total > 1200 ? 112 : 128)) : (total > 1600 ? 72 : (total > 800 ? 84 : 96)))
                 : (total > 1200 ? 32 : (total > 600 ? 40 : 48));
-            const initialScreens = touchOptimized ? 14 : 8;
+            const initialScreens = iosOptimized ? 20 : (touchOptimized ? 16 : 8);
             const initialTarget = Math.min(total, Math.max(chunkSize * 2, Math.ceil((viewportHeight * initialScreens) / approxCardHeight)));
-            const perFrameLimit = touchOptimized ? Math.max(chunkSize * 2, 128) : Math.max(chunkSize, 72);
-            const frameBudgetMs = touchOptimized ? 10 : 7;
+            const perFrameLimit = iosOptimized ? Math.max(chunkSize * 2, 220) : (touchOptimized ? Math.max(chunkSize * 2, 144) : Math.max(chunkSize, 72));
+            const frameBudgetMs = iosOptimized ? 13 : (touchOptimized ? 10 : 7);
             let index = 0;
             crumb.innerText = crumbText;
             if (!total) {
@@ -8137,11 +8430,17 @@ activeDriveTab = tab;
                 return html;
             };
             container.innerHTML = renderBatch(initialTarget, false);
+            if (afterChunk) afterChunk(index, total, container);
+            if (index >= total && afterComplete) afterComplete(container, total);
             const renderNextChunk = () => {
                 if (token !== avRenderChunkToken) return;
                 const html = renderBatch(perFrameLimit, true);
-                if (html) container.insertAdjacentHTML('beforeend', html);
+                if (html) {
+                    container.insertAdjacentHTML('beforeend', html);
+                    if (afterChunk) afterChunk(index, total, container);
+                }
                 if (index < total) requestAnimationFrame(renderNextChunk);
+                else if (afterComplete) afterComplete(container, total);
             };
             if (index < total) requestAnimationFrame(renderNextChunk);
         }
@@ -8263,9 +8562,9 @@ activeDriveTab = tab;
                 container.innerHTML = html;
             }
         }
-        const debouncedDocksSearch=debounce(()=>{requestAnimationFrame(()=>renderDocks())},150);
+        const debouncedDocksSearch=debounce(()=>{scheduleUiRender('docks-search', () => renderDocks());}, getSearchRenderDelay('heavy'));
         function clearDocksSearch(){ document.getElementById('docks-search').value=""; document.getElementById('docks-search-clear').classList.add('hidden'); dockViewLevel=0; selectedDockNum=null; selectedDockStop=null; renderDocks(); }
-        function handleDocksSearch(){ const term=document.getElementById('docks-search').value.toLowerCase(); const clearBtn=document.getElementById('docks-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden');dockViewLevel=0;}else{clearBtn.classList.add('hidden');dockViewLevel=0;} scheduleSearchRender('docks', () => renderDocks()); }
+        function handleDocksSearch(){ const term=document.getElementById('docks-search').value.toLowerCase(); const clearBtn=document.getElementById('docks-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden');dockViewLevel=0;}else{clearBtn.classList.add('hidden');dockViewLevel=0;} debouncedDocksSearch(); }
         function resetDockView() { dockViewLevel = 0; selectedDockNum = null; selectedDockStop = null; document.getElementById('docks-search').value = ""; document.getElementById('docks-search-clear').classList.add('hidden'); renderDocks(); }
         function selectDock(dock) { selectedDockNum = dock; selectedDockStop = null; dockViewLevel = 1; renderDocks(); queueScrollMainAreaToTop(`dock:${dock}`); }
         function selectDockStop(stop) { selectedDockStop = stop; dockViewLevel = 2; renderDocks(); queueScrollMainAreaToTop(`dock-stop:${stop}`); }
@@ -9544,6 +9843,11 @@ activeDriveTab = tab;
                 container.innerHTML = `<div class="p-8 text-center text-gray-400">No Season Sales Notes rows found.</div>`;
                 return;
             }
+            const salesOfficeSeasonChunkThreshold = (isIOSDevice() || isStandaloneApp()) ? 48 : 96;
+            if (items.length > salesOfficeSeasonChunkThreshold) {
+                renderAVMarkupChunked(container, crumb, items, crumb.innerText, (row) => generateCard(row, 'sales-office'), { approxCardHeight: 210 });
+                return;
+            }
             container.innerHTML = items.map(i => generateCard(i, 'sales-office')).join('');
         }
         function resetLowStockView() {
@@ -9565,6 +9869,11 @@ activeDriveTab = tab;
             if (crumb) crumb.innerText = "Action Required";
             let items = [...lowStockItems];
             items.sort((a, b) => String(a.COMMONNAME || "").localeCompare(String(b.COMMONNAME || "")));
+            const lowStockChunkThreshold = (isIOSDevice() || isStandaloneApp()) ? 56 : 110;
+            if (items.length > lowStockChunkThreshold) {
+                renderAVMarkupChunked(container, crumb, items, 'Action Required', (row) => generateCard(row, 'low-stock', 'status-red'), { approxCardHeight: 210 });
+                return;
+            }
             container.innerHTML = items.map(i => generateCard(i, 'low-stock', 'status-red')).join('');
         }
 
@@ -9692,6 +10001,14 @@ activeDriveTab = tab;
                 }
                 
                 pendingItems.sort((a,b) => String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""), undefined, {numeric: true}));
+                const pendingCrumbText = "All Pending Requests";
+                crumb.innerText = pendingCrumbText;
+                const requestChunkThreshold = (isIOSDevice() || isStandaloneApp()) ? 36 : 72;
+                const decoratePendingRows = () => requestAnimationFrame(decorateRequestRows);
+                if (pendingItems.length > requestChunkThreshold) {
+                    renderAVMarkupChunked(container, crumb, pendingItems, pendingCrumbText, (row) => generateCard(row, 'request', 'status-purple'), { approxCardHeight: 210, afterChunk: decoratePendingRows, afterComplete: decoratePendingRows });
+                    return;
+                }
                 container.innerHTML = pendingItems.map(i => generateCard(i, 'request', 'status-purple')).join('');
                 requestAnimationFrame(decorateRequestRows);
                 
@@ -9742,19 +10059,29 @@ activeDriveTab = tab;
                     }).join('');
                     container.innerHTML = html;
                 } else if (requestViewLevel === 3) {
-                    crumb.innerText = selectedReqStatus === 'Complete' ? `${selectedReqRepView} > ${selectedReqFolderView}` : selectedReqFolderView;
+                    const folderCrumbText = selectedReqStatus === 'Complete' ? `${selectedReqRepView} > ${selectedReqFolderView}` : selectedReqFolderView;
+                    crumb.innerText = folderCrumbText;
                     let folderItems = items.filter(i => getRequestAssignedRep(i) === selectedReqRepView && !i.REQ_ARCHIVED);
                     folderItems = folderItems.filter(i => ((i.REQUEST_FOLDER || 'Unassigned')) === selectedReqFolderView);
                     folderItems = folderItems.filter(i => selectedReqStatus === 'Pending' ? !isRequestComplete(i) : isRequestComplete(i));
                     folderItems.sort((a,b) => String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""), undefined, {numeric: true}));
-                    
-                    container.innerHTML = `<div class="back-btn" onclick="return backToRequestFolderList()"><i class="ph-bold ph-arrow-left"></i> Back to Folders</div>` + folderItems.map(i => generateCard(i, 'request', selectedReqStatus === 'Complete' ? 'status-green' : 'status-purple')).join('');
+                    const folderBackHtml = `<div class="back-btn" onclick="return backToRequestFolderList()"><i class="ph-bold ph-arrow-left"></i> Back to Folders</div>`;
+                    const requestChunkThreshold = (isIOSDevice() || isStandaloneApp()) ? 36 : 72;
+                    const decorateFolderRows = () => requestAnimationFrame(decorateRequestRows);
+                    if (folderItems.length > requestChunkThreshold) {
+                        container.innerHTML = folderBackHtml + `<div id="request-folder-stream"></div>`;
+                        const streamHost = document.getElementById('request-folder-stream');
+                        renderAVMarkupChunked(streamHost, crumb, folderItems, folderCrumbText, (row) => generateCard(row, 'request', selectedReqStatus === 'Complete' ? 'status-green' : 'status-purple'), { approxCardHeight: 210, afterChunk: decorateFolderRows, afterComplete: decorateFolderRows });
+                        return;
+                    }
+                    container.innerHTML = folderBackHtml + folderItems.map(i => generateCard(i, 'request', selectedReqStatus === 'Complete' ? 'status-green' : 'status-purple')).join('');
                     requestAnimationFrame(decorateRequestRows);
                 }
             }
         }
 
         let requestSwipeState = { row: null, surface: null, startX: 0, startY: 0, deltaX: 0, startOffset: 0, dragging: false };
+        let flyerSwipeState = { row: null, surface: null, startX: 0, startY: 0, deltaX: 0, startOffset: 0, dragging: false };
         let pullRefreshState = { active: false, armed: false, refreshing: false, startX: 0, startY: 0, distance: 0 };
         let interactiveChromeInitialized = false;
         let foregroundRefreshTimer = null;
@@ -9780,7 +10107,7 @@ activeDriveTab = tab;
         }
 
         function getRequestViewLiveSyncInterval() {
-            return isRealtimeTableHealthy('v2_active_request') ? 1600 : 900;
+            return isRealtimeTableHealthy('v2_active_request') ? 4500 : 1200;
         }
 
         async function runRequestViewLiveSync() {
@@ -9821,7 +10148,7 @@ activeDriveTab = tab;
             }, nextDelay);
         }
         function getFallbackSyncInterval() {
-            return (isIOSDevice() || isStandaloneApp()) ? 12000 : 30000;
+            return (isIOSDevice() || isStandaloneApp()) ? 20000 : 30000;
         }
 
         function queueForegroundRefresh(delay = 220) {
@@ -9840,7 +10167,7 @@ activeDriveTab = tab;
                     else updateSyncDiagnostics('realtime');
                     return;
                 }
-                const throttleMs = (isIOSDevice() || isStandaloneApp()) ? 14000 : 18000;
+                const throttleMs = (isIOSDevice() || isStandaloneApp()) ? 32000 : 18000;
                 if (backgroundRefreshInFlight || (lastBackgroundRefreshAt && (Date.now() - lastBackgroundRefreshAt) < throttleMs)) {
                     updateSyncDiagnostics('idle');
                     if (liveSyncMode !== 'realtime') initializeRealtime();
@@ -9876,7 +10203,7 @@ activeDriveTab = tab;
             badge.classList.toggle('hidden', !show);
             detail.classList.toggle('hidden', !show);
             if (!show) return;
-            const effectiveMode = !navigator.onLine ? 'offline' : (modeOverride || syncDiagnosticsOverride || liveSyncMode || 'idle');
+            const effectiveMode = !navigator.onLine ? 'offline' : ((navigator.onLine !== false && hasHealthyRealtimeSubscription()) ? 'realtime' : (modeOverride || syncDiagnosticsOverride || liveSyncMode || 'idle'));
             const labelMap = { realtime: 'REALTIME', polling: 'POLLING', refreshing: 'REFRESH', queued: 'QUEUED', offline: 'OFFLINE', idle: 'IDLE' };
             const styleMap = {
                 realtime: 'border-emerald-200 bg-emerald-300 text-emerald-950',
@@ -10163,6 +10490,237 @@ activeDriveTab = tab;
             updatePendingRequestArchiveRetry(uid, 1, retryDelay);
             schedulePendingRequestArchiveFlush(retryDelay);
             showToast('Retrying', 'Request removal will keep retrying automatically.', false);
+        }
+        function captureFlyerTaskSnapshot(item) {
+            return {
+                UNIQUE_ID: item.UNIQUE_ID,
+                APP_TAB_ASSIGNMENT: item.APP_TAB_ASSIGNMENT || '',
+                FLYER_CAT: item.FLYER_CAT || '',
+                FLYER_TITLE: item.FLYER_TITLE || '',
+                FLYER_INST: item.FLYER_INST || '',
+                FLYER_ASSIGNED: item.FLYER_ASSIGNED || '',
+                FLYER_NOTES: item.FLYER_NOTES || '',
+                FLYER_PHOTO_LINK: item.FLYER_PHOTO_LINK || '',
+                FLYER_PHOTO_NAME: item.FLYER_PHOTO_NAME || '',
+                FLYER_COMPLETED: item.FLYER_COMPLETED || ''
+            };
+        }
+
+        function restoreFlyerTaskSnapshot(item, snapshot) {
+            if (!item || !snapshot) return;
+            item.APP_TAB_ASSIGNMENT = snapshot.APP_TAB_ASSIGNMENT || '';
+            item.FLYER_CAT = snapshot.FLYER_CAT || '';
+            item.FLYER_TITLE = snapshot.FLYER_TITLE || '';
+            item.FLYER_INST = snapshot.FLYER_INST || '';
+            item.FLYER_ASSIGNED = snapshot.FLYER_ASSIGNED || '';
+            item.FLYER_NOTES = snapshot.FLYER_NOTES || '';
+            item.FLYER_PHOTO_LINK = snapshot.FLYER_PHOTO_LINK || '';
+            item.FLYER_PHOTO_NAME = snapshot.FLYER_PHOTO_NAME || '';
+            item.FLYER_COMPLETED = snapshot.FLYER_COMPLETED || '';
+            normalizeRowPhotoFields(item);
+            buildSearchIndex(item);
+        }
+
+        function clearFlyerTaskFields(item) {
+            if (!item) return;
+            if (String(item.APP_TAB_ASSIGNMENT || '').toLowerCase() === 'flyer') item.APP_TAB_ASSIGNMENT = '';
+            item.FLYER_CAT = '';
+            item.FLYER_TITLE = '';
+            item.FLYER_INST = '';
+            item.FLYER_ASSIGNED = '';
+            item.FLYER_NOTES = '';
+            item.FLYER_PHOTO_LINK = '';
+            item.FLYER_PHOTO_NAME = '';
+            item.FLYER_COMPLETED = '';
+            normalizeRowPhotoFields(item);
+            buildSearchIndex(item);
+        }
+
+        function getFlyerTaskClearPayload() {
+            return {
+                flyer_cat: null,
+                flyer_title: null,
+                flyer_inst: null,
+                flyer_assigned: null,
+                flyer_notes: null,
+                flyer_photo_link: null,
+                flyer_photo_name: null
+            };
+        }
+
+        function refreshFlyerTaskViewAfterRemoval() {
+            closeAllFlyerSwipes();
+            if (activeTaskTab === 'flyer' && taskViewLevel === 1 && selectedFlyerFolder) {
+                const folderStillHasRows = fullInventory.some((entry) => isFlyerTaskItem(entry) && getFlyerFolderName(entry) === selectedFlyerFolder);
+                if (!folderStillHasRows) {
+                    backToFlyerFolderList();
+                    markViewDirty('tasks');
+                    persistCurrentCache();
+                    return;
+                }
+            }
+            renderTasks();
+            markViewDirty('tasks');
+            persistCurrentCache();
+        }
+
+        function closeFlyerSwipe(row) {
+            if (!row) return;
+            row.classList.remove('swipe-open');
+            const surface = row.querySelector('.flyer-swipe-surface');
+            if (surface) surface.style.transform = '';
+            if (flyerSwipeState.row === row) {
+                flyerSwipeState = { row: null, surface: null, startX: 0, startY: 0, deltaX: 0, startOffset: 0, dragging: false };
+            }
+        }
+
+        function closeAllFlyerSwipes(exceptRow = null) {
+            const container = document.getElementById('task-content');
+            if (!container) return;
+            container.querySelectorAll('.flyer-swipe-row.swipe-open').forEach((row) => {
+                if (row !== exceptRow) closeFlyerSwipe(row);
+            });
+        }
+
+        function handleFlyerSwipeStart(event) {
+            if (!event.touches || event.touches.length !== 1) return;
+            const row = event.currentTarget;
+            const surface = row.querySelector('.flyer-swipe-surface');
+            if (!surface) return;
+            closeAllFlyerSwipes(row);
+            const touch = event.touches[0];
+            flyerSwipeState = {
+                row,
+                surface,
+                startX: touch.clientX,
+                startY: touch.clientY,
+                deltaX: row.classList.contains('swipe-open') ? -96 : 0,
+                startOffset: row.classList.contains('swipe-open') ? -96 : 0,
+                dragging: true
+            };
+        }
+
+        function handleFlyerSwipeMove(event) {
+            if (!flyerSwipeState.dragging || flyerSwipeState.row !== event.currentTarget || !event.touches || event.touches.length !== 1) return;
+            const touch = event.touches[0];
+            const dx = touch.clientX - flyerSwipeState.startX;
+            const dy = touch.clientY - flyerSwipeState.startY;
+            if (Math.abs(dy) > 18 && Math.abs(dy) > Math.abs(dx)) {
+                flyerSwipeState.dragging = false;
+                closeFlyerSwipe(flyerSwipeState.row);
+                return;
+            }
+            const nextOffset = Math.max(-96, Math.min(0, flyerSwipeState.startOffset + dx));
+            if (nextOffset === 0 && dx > 0 && flyerSwipeState.startOffset === 0) return;
+            event.preventDefault();
+            flyerSwipeState.deltaX = nextOffset;
+            flyerSwipeState.surface.style.transform = `translateX(${nextOffset}px)`;
+        }
+
+        function handleFlyerSwipeEnd(event) {
+            if (flyerSwipeState.row !== event.currentTarget) return;
+            const row = flyerSwipeState.row;
+            const shouldOpen = flyerSwipeState.deltaX <= -56;
+            if (shouldOpen) {
+                row.classList.add('swipe-open');
+                if (flyerSwipeState.surface) flyerSwipeState.surface.style.transform = 'translateX(-96px)';
+            } else {
+                closeFlyerSwipe(row);
+            }
+            flyerSwipeState.dragging = false;
+        }
+
+        function decorateFlyerRows() {
+            if (activeTaskTab !== 'flyer') return;
+            const container = document.getElementById('task-content');
+            if (!container) return;
+            const candidateRows = taskViewLevel === 0
+                ? Array.from(container.querySelectorAll('.flyer-folder-card'))
+                : Array.from(container.querySelectorAll('.item-row[data-dom-id]'));
+            candidateRows.forEach((row) => {
+                if (row.dataset.swipeEnhanced === 'true') return;
+                const folderName = String(row.dataset.flyerFolder || '').trim();
+                const flyerUid = String(row.dataset.domId || row.getAttribute('data-dom-id') || '').trim();
+                if (!folderName && !flyerUid) return;
+                row.dataset.swipeEnhanced = 'true';
+                if (folderName) row.dataset.flyerFolder = folderName;
+                if (flyerUid) row.dataset.flyerUid = flyerUid;
+                row.classList.add('flyer-swipe-row');
+                ['ontouchstart', 'ontouchmove', 'ontouchend', 'ontouchcancel'].forEach((attr) => row.removeAttribute(attr));
+
+                const surface = document.createElement('div');
+                surface.className = 'flyer-swipe-surface';
+                while (row.firstChild) {
+                    surface.appendChild(row.firstChild);
+                }
+
+                const action = document.createElement('button');
+                action.type = 'button';
+                action.className = 'flyer-swipe-action';
+                action.innerText = 'Delete';
+                action.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    if (row.dataset.flyerFolder) removeFlyerFolder(row.dataset.flyerFolder);
+                    else if (row.dataset.flyerUid) removeFlyerRow(row.dataset.flyerUid);
+                });
+
+                row.appendChild(action);
+                row.appendChild(surface);
+                row.addEventListener('touchstart', handleFlyerSwipeStart, { passive: true });
+                row.addEventListener('touchmove', handleFlyerSwipeMove, { passive: false });
+                row.addEventListener('touchend', handleFlyerSwipeEnd, { passive: true });
+                row.addEventListener('touchcancel', handleFlyerSwipeEnd, { passive: true });
+                row.addEventListener('click', (event) => {
+                    if (event.target && event.target.closest('.flyer-swipe-action')) return;
+                    if (!row.classList.contains('swipe-open')) return;
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+                    closeFlyerSwipe(row);
+                }, true);
+            });
+        }
+
+        async function removeFlyerItems(items, successMessage) {
+            const validItems = Array.isArray(items) ? items.filter(Boolean) : [];
+            if (!validItems.length) return;
+            const snapshots = new Map();
+            validItems.forEach((item) => {
+                snapshots.set(item.UNIQUE_ID, captureFlyerTaskSnapshot(item));
+                clearFlyerTaskFields(item);
+            });
+            refreshFlyerTaskViewAfterRemoval();
+            showToast('Removing', 'Updating flyer...', false);
+            const results = await Promise.allSettled(validItems.map((item) => supabaseFetch('v2_master_inventory', 'PATCH', getFlyerTaskClearPayload(), `unique_id=eq.${encodeURIComponent(item.UNIQUE_ID)}`)));
+            const failedItems = [];
+            results.forEach((result, index) => {
+                if (result.status === 'rejected') failedItems.push(validItems[index]);
+            });
+            if (!failedItems.length) {
+                showToast('Removed', successMessage);
+                return;
+            }
+            failedItems.forEach((item) => restoreFlyerTaskSnapshot(item, snapshots.get(item.UNIQUE_ID)));
+            refreshFlyerTaskViewAfterRemoval();
+            const succeeded = validItems.length - failedItems.length;
+            const partialMessage = succeeded > 0
+                ? `${succeeded} removed. ${failedItems.length} could not be deleted.`
+                : 'Flyer delete failed. Please try again.';
+            showToast('Error', partialMessage, true);
+        }
+
+        async function removeFlyerRow(uid) {
+            const item = fullInventory.find((entry) => entry.UNIQUE_ID === uid);
+            if (!item) return;
+            await removeFlyerItems([item], 'Flyer row removed.');
+        }
+
+        async function removeFlyerFolder(folderName) {
+            const normalizedFolder = String(folderName || '').trim();
+            if (!normalizedFolder) return;
+            const folderItems = fullInventory.filter((entry) => isFlyerTaskItem(entry) && getFlyerFolderName(entry) === normalizedFolder);
+            if (!folderItems.length) return;
+            await removeFlyerItems(folderItems, `${normalizedFolder} removed from Flyer.`);
         }
 
         function updateGlobalActionBar() { 
@@ -11106,15 +11664,25 @@ activeDriveTab = tab;
             else{executeBatchAction(pendingAction,pendingTabType)}
         }
 
+        function getRequestCopyLocPhotoMatch(item) {
+            const matchValue = firstNonEmptyValue(item && item.LOC_MATCH_QTY, getAvOpenStockLocPhotoMatch(item), '-');
+            const normalized = String(matchValue == null ? '-' : matchValue).trim();
+            return normalized || '-';
+        }
+
         function formatRequestItemsText(items, headerLabel = '') {
             let returnText = headerLabel ? `${headerLabel}
 
 ` : '';
             items.forEach(i => {
+                const locPhotoMatch = getRequestCopyLocPhotoMatch(i);
                 returnText += `${i.REQUEST_FOLDER||'No Folder'}
 ID: ${i.UNIQUE_ID} | ${i.REQ_CUSTOMER||'N/A'}
-${i.COMMONNAME||'Unknown'} ${i.CONTSIZE||'-'} Loc: ${i.LOCATIONCODE||'No Loc'}
-${i.ITEMCODE||'-'} | Lot: ${i.LOTCODE||'-'}
+${i.COMMONNAME||'Unknown'}
+${i.CONTSIZE||'-'}
+Lot Code: ${i.LOTCODE||'-'}
+Location Code: ${i.LOCATIONCODE||'No Loc'}
+Item Code: ${i.ITEMCODE||'-'}
 `;
                 if(i.REQ_QTY)returnText += `  Requested Qty: ${i.REQ_QTY}
 `;
@@ -11122,11 +11690,11 @@ ${i.ITEMCODE||'-'} | Lot: ${i.LOTCODE||'-'}
 `;
                 if(i.REQ_DESIRED_CALIPER)returnText += `  Desired Caliper: ${i.REQ_DESIRED_CALIPER}
 `;
-                if(i.REQ_EST_SHIP)returnText += `  Est Ship: ${i.REQ_EST_SHIP}
+                if(i.REQ_EST_SHIP)returnText += `  EST Ship: ${i.REQ_EST_SHIP}
 `;
-                if(i.REQ_RESERVE)returnText += `  Reserve: ${i.REQ_RESERVE}
+                if(i.REQ_RESERVE)returnText += `  Reserves: ${i.REQ_RESERVE}
 `;
-                if(i.REQ_MATCH)returnText += `  Match: ${i.REQ_MATCH}%
+                if(locPhotoMatch && locPhotoMatch !== '-')returnText += `  LOC PHOTO MATCH: ${locPhotoMatch}
 `;
                 if(i.REQ_SPEC)returnText += `  Spec: ${i.REQ_SPEC}
 `;
@@ -11135,7 +11703,7 @@ ${i.ITEMCODE||'-'} | Lot: ${i.LOTCODE||'-'}
                 if(i.REQ_PICK)returnText += `  Pick Note: ${i.REQ_PICK}
 `;
                 let photo=i.REQ_PHOTO_LINK||i.SAVED_PHOTO_LINK||i['PHOTO LINK']||i.PHOTOLINK;
-                if(photo&&String(photo).trim()!==""){
+                if(photo&&String(photo).trim()!==''){
                     let urls=String(photo).split(',');
                     let counter=1;
                     urls.forEach(url=>{
@@ -11150,6 +11718,55 @@ ${i.ITEMCODE||'-'} | Lot: ${i.LOTCODE||'-'}
 `;
             });
             return returnText
+        }
+
+        function buildRequestItemsCopyPayload(items, headerLabel = '') {
+            const text = formatRequestItemsText(items, headerLabel);
+            const headerHtml = headerLabel ? `<div style="margin:0 0 18px 0;font:800 20px/1.2 Arial,sans-serif;color:#0f172a;">${esc(headerLabel)}</div>` : '';
+            const cardsHtml = items.map((item) => {
+                const locPhotoMatch = getRequestCopyLocPhotoMatch(item);
+                const photo = item.REQ_PHOTO_LINK||item.SAVED_PHOTO_LINK||item['PHOTO LINK']||item.PHOTOLINK;
+                let photoHtml = '';
+                if (photo && String(photo).trim() !== '') {
+                    let counter = 1;
+                    photoHtml = String(photo).split(',').map((url) => {
+                        let cleanUrl = String(url || '').trim();
+                        let match = cleanUrl.match(/(https?:\/\/[^"\s>]+)/);
+                        if (match) cleanUrl = match[1];
+                        if (!cleanUrl.startsWith('http')) return '';
+                        const rowHtml = `<div style="margin-top:6px;font:600 13px/1.45 Arial,sans-serif;color:#334155;"><strong>Photo ${counter}:</strong> ${esc(cleanUrl)}</div>`;
+                        counter++;
+                        return rowHtml;
+                    }).join('');
+                }
+                return `<div style="margin:0 0 18px 0;padding:16px 18px;border:1px solid #cbd5e1;border-radius:16px;background:#ffffff;">
+<div style="font:700 11px/1.4 Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#64748b;">Request Folder</div>
+<div style="margin-top:4px;font:700 14px/1.35 Arial,sans-serif;color:#0f172a;">${esc(item.REQUEST_FOLDER||'No Folder')}</div>
+<div style="margin-top:4px;font:600 12px/1.35 Arial,sans-serif;color:#475569;">ID: ${esc(item.UNIQUE_ID||'')} | ${esc(item.REQ_CUSTOMER||'N/A')}</div>
+<div style="margin-top:14px;font:800 28px/1.08 Arial,sans-serif;color:#0f172a;">${esc(item.COMMONNAME||'Unknown')}</div>
+<div style="margin-top:6px;font:800 20px/1.12 Arial,sans-serif;color:#047857;">${esc(item.CONTSIZE||'-')}</div>
+<div style="margin-top:10px;">
+<div style="font:700 11px/1.4 Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#64748b;">Lot Code</div>
+<div style="font:800 18px/1.15 Arial,sans-serif;color:#0f172a;">${esc(item.LOTCODE||'-')}</div>
+</div>
+<div style="margin-top:10px;">
+<div style="font:700 11px/1.4 Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#64748b;">Location Code</div>
+<div style="font:800 18px/1.15 Arial,sans-serif;color:#0f172a;">${esc(item.LOCATIONCODE||'No Loc')}</div>
+</div>
+<div style="margin-top:10px;font:600 13px/1.45 Arial,sans-serif;color:#334155;"><strong>Item Code:</strong> ${esc(item.ITEMCODE||'-')}</div>
+${item.REQ_QTY ? `<div style="margin-top:8px;font:600 13px/1.45 Arial,sans-serif;color:#334155;"><strong>Requested Qty:</strong> ${esc(item.REQ_QTY)}</div>` : ''}
+${item.REQ_DESIRED_SPEC ? `<div style="margin-top:8px;font:600 13px/1.45 Arial,sans-serif;color:#334155;"><strong>Desired Spec:</strong> ${esc(item.REQ_DESIRED_SPEC)}</div>` : ''}
+${item.REQ_DESIRED_CALIPER ? `<div style="margin-top:8px;font:600 13px/1.45 Arial,sans-serif;color:#334155;"><strong>Desired Caliper:</strong> ${esc(item.REQ_DESIRED_CALIPER)}</div>` : ''}
+${item.REQ_EST_SHIP ? `<div style="margin-top:8px;font:600 13px/1.45 Arial,sans-serif;color:#334155;"><strong>EST Ship:</strong> ${esc(item.REQ_EST_SHIP)}</div>` : ''}
+${item.REQ_RESERVE ? `<div style="margin-top:8px;font:600 13px/1.45 Arial,sans-serif;color:#334155;"><strong>Reserves:</strong> ${esc(item.REQ_RESERVE)}</div>` : ''}
+${locPhotoMatch && locPhotoMatch !== '-' ? `<div style="margin-top:8px;font:600 13px/1.45 Arial,sans-serif;color:#334155;"><strong>LOC PHOTO MATCH:</strong> ${esc(locPhotoMatch)}</div>` : ''}
+${item.REQ_SPEC ? `<div style="margin-top:8px;font:600 13px/1.45 Arial,sans-serif;color:#334155;"><strong>Spec:</strong> ${esc(item.REQ_SPEC)}</div>` : ''}
+${item.REQ_CALIPER ? `<div style="margin-top:8px;font:600 13px/1.45 Arial,sans-serif;color:#334155;"><strong>Caliper:</strong> ${esc(item.REQ_CALIPER)}</div>` : ''}
+${item.REQ_PICK ? `<div style="margin-top:8px;font:600 13px/1.45 Arial,sans-serif;color:#334155;"><strong>Pick Note:</strong> ${esc(item.REQ_PICK)}</div>` : ''}
+${photoHtml}
+</div>`;
+            }).join('');
+            return { text, html: `<div style="font-family:Arial,sans-serif;color:#0f172a;">${headerHtml}${cardsHtml}</div>` };
         }
 
         function getRequestFolderItems(folderName, status = selectedReqStatus, repName = selectedReqRepView) {
@@ -11172,9 +11789,9 @@ ${i.ITEMCODE||'-'} | Lot: ${i.LOTCODE||'-'}
 ${folderNote ? `Folder Note: ${folderNote}
 ` : ''}
 ${formatRequestItemsText(items)}`;
-            const copyText = formatRequestItemsText(items);
+            const copyPayload = buildRequestItemsCopyPayload(items);
             if (action === 'copy') {
-                copyTextWithFallback(copyText).then(() => {
+                copyClipboardContent(copyPayload).then(() => {
                     showToast('Success', 'Folder copied to clipboard!');
                 }).catch(() => {
                     showToast('Error', 'Could not copy folder text.', true);
@@ -11313,8 +11930,10 @@ ${formatRequestItemsText(items)}`;
 
         async function executeBatchAction(action,tabType) {
             const text=getSelectedItemsText(tabType);
+            const requestCopyPayload = tabType==='request' ? buildRequestItemsCopyPayload(Array.from(selectedItems).map(domId=>findItemByDomId(domId)).filter(Boolean)) : null;
             if(action==='copy'){
-                copyTextWithFallback(text).then(()=>{showToast("Success","Copied to clipboard!");clearSelection()}).catch(()=>{showToast("Error","Could not copy text.",true);})
+                const copyPromise = requestCopyPayload ? copyClipboardContent(requestCopyPayload) : copyTextWithFallback(text);
+                copyPromise.then(()=>{showToast("Success","Copied to clipboard!");clearSelection()}).catch(()=>{showToast("Error","Could not copy text.",true);})
             }else if(action==='email'){
                 let sub='Selected Rows';
                 if(tabType==='request')sub='Request Data';
@@ -11360,7 +11979,7 @@ ${formatRequestItemsText(items)}`;
 
         const debouncedDriveSearch = debounce(() => {
             scheduleUiRender('drive-search', () => renderDrive());
-        }, 120);
+        }, getSearchRenderDelay('heavy'));
         
         function clearDriveSearch() {
             document.getElementById('drive-search').value = "";
@@ -11831,7 +12450,7 @@ function toggleDriveSeason(s) {
             const commonName = String(firstNonEmptyValue(item && item.COMMONNAME, item && item.DESCRIPTION, itemCode, 'AV Blank')).trim();
             const contSize = String(firstNonEmptyValue(item && item.CONTSIZE, item && item.ITEMSPEC, item && item.SIZE, '-')).trim() || '-';
             const seasonValue = String(firstNonEmptyValue(item && item.SEASON, item && item.season, '-')).trim() || '-';
-            return `<div class="bg-white border border-emerald-200 rounded-xl shadow-sm mb-3 p-4"><div class="flex items-start justify-between gap-3"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-600">AV Blank</div><div class="mt-1 font-black text-lg text-slate-900">${esc(locationCode)}</div><div class="mt-2 text-sm font-bold text-slate-700 break-words">${esc(commonName)}</div><div class="mt-1 text-xs font-semibold text-slate-500">${esc(contSize)}${itemCode ? ` • ${esc(itemCode)}` : ''}</div></div><div class="shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">Season ${esc(seasonValue)}</div></div></div>`;
+            return `<div class="bg-white border border-emerald-200 rounded-xl shadow-sm mb-3 p-4"><div class="flex items-start justify-between gap-3"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-600">AV Blank</div><div class="mt-1 font-black text-lg text-slate-900">${esc(locationCode)}</div><div class="mt-2 text-sm font-bold text-slate-700 break-words">${esc(commonName)}</div><div class="mt-1 text-xs font-semibold text-slate-500">${esc(contSize)}${itemCode ? ` ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¾ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¾ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¾ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ ${esc(itemCode)}` : ''}</div></div><div class="shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">Season ${esc(seasonValue)}</div></div></div>`;
         }
 
         function renderTasks(options = {}) {
@@ -11916,10 +12535,15 @@ function toggleDriveSeason(s) {
                     container.innerHTML = Object.keys(folderMap).sort().map(folderName => {
                         const meta = folderMap[folderName];
                         const assignees = Array.from(meta.assignees).join(', ') || 'Unassigned';
-                        return `<div class="bg-white border border-indigo-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="return openFlyerFolder('${esc(folderName)}')"><div class="min-w-0 pr-3"><div class="font-bold text-lg text-indigo-800 truncate">${folderName}</div><div class="text-xs font-semibold text-indigo-500 mt-1 truncate">${assignees}</div></div><div class="text-right shrink-0"><div class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${meta.count} Rows</div><div class="text-[11px] font-semibold text-gray-500 mt-2">${meta.complete} Complete</div></div></div>`;
+                        return `<div class="item-row flyer-folder-card bg-white border border-indigo-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" data-flyer-folder="${esc(folderName)}" onclick="return openFlyerFolder('${esc(folderName)}')"><div class="min-w-0 pr-3"><div class="font-bold text-lg text-indigo-800 truncate">${folderName}</div><div class="text-xs font-semibold text-indigo-500 mt-1 truncate">${assignees}</div></div><div class="text-right shrink-0"><div class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${meta.count} Rows</div><div class="text-[11px] font-semibold text-gray-500 mt-2">${meta.complete} Complete</div></div></div>`;
                     }).join('');
+                    requestAnimationFrame(decorateFlyerRows);
                 } else if (taskViewLevel === 1) {
                     let folderItems = tabItems.filter(i => getFlyerFolderName(i) === selectedFlyerFolder);
+                    if (folderItems.length === 0) {
+                        backToFlyerFolderList();
+                        return;
+                    }
                     folderItems.sort((a,b) => {
                         const locationCompare = compareLocationCodeValues(a.LOCATIONCODE, b.LOCATIONCODE);
                         if (locationCompare !== 0) return locationCompare;
@@ -11930,6 +12554,7 @@ function toggleDriveSeason(s) {
                     const folderAssignees = getFlyerFolderAssignedNames(selectedFlyerFolder, folderItems).join(', ') || 'Unassigned';
                     const folderHeader = `<div class="mb-3 rounded-xl border border-indigo-200 bg-indigo-50 p-4"><div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-indigo-600">Flyer Folder</div><div class="text-lg font-black text-indigo-900 truncate mt-1">${selectedFlyerFolder || ''}</div><div class="text-[11px] font-semibold text-indigo-500 mt-1">${folderItems.length} row${folderItems.length === 1 ? '' : 's'} | ${folderAssignees}</div></div><button class="w-full sm:w-auto min-h-[42px] px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-[0.14em] transition-colors duration-150 bg-white border border-indigo-200 text-indigo-700 shadow-sm hover:bg-indigo-100" onclick="return startAddRowsToFlyerFolder('${esc(selectedFlyerFolder || '')}')">Add Rows To Folder</button></div></div>`;
                     container.innerHTML = `<div class="back-btn" onclick="return backToFlyerFolderList()"><i class="ph-bold ph-arrow-left"></i> Back to Folders</div>${folderHeader}` + folderItems.map(i => generateCard(i, 'tasks', 'status-indigo')).join('');
+                    requestAnimationFrame(decorateFlyerRows);
                 }
             } else {
                 if (taskViewLevel === 0) {
@@ -12603,19 +13228,17 @@ function toggleDriveSeason(s) {
                                 const fileName = `${clean(itemToUpload.COMMONNAME)}-${clean(itemToUpload.CONTSIZE)}-${Date.now()}.jpg`;
                                 const filePath = `${new Date().toISOString().split('T')[0]}/${fileName}`;
 
-                                const uploadResult = await withTimeout(
-                                    supabaseClient.storage.from(bucketName).upload(filePath, blob, {
-                                        contentType: 'image/jpeg',
-                                        upsert: true
-                                    }),
-                                    SUPABASE_UPLOAD_TIMEOUT_MS,
-                                    'Photo upload'
-                                );
-                                const uploadError = uploadResult && uploadResult.error ? uploadResult.error : null;
-                                if (uploadError) throw uploadError;
-
-                                const { data: publicUrlData } = supabaseClient.storage.from(bucketName).getPublicUrl(filePath);
-                                const publicUrl = publicUrlData.publicUrl;
+                                const formData = new FormData();
+                                formData.append('prefix', prefix);
+                                formData.append('fileName', fileName);
+                                formData.append('file', new File([blob], fileName, { type: 'image/jpeg' }));
+                                const uploadResult = await callAppApi('upload_photo', {}, {
+                                    formData,
+                                    timeoutMs: SUPABASE_UPLOAD_TIMEOUT_MS,
+                                    label: 'Photo upload'
+                                });
+                                const publicUrl = String(uploadResult && uploadResult.publicUrl || '').trim();
+                                if (!publicUrl) throw new Error('Photo upload failed.');
 
                                 if (prefix === 'req-') {
                                     itemToUpload.REQ_PHOTO_LINK = itemToUpload.REQ_PHOTO_LINK ? `${itemToUpload.REQ_PHOTO_LINK},${publicUrl}` : publicUrl;
@@ -12665,10 +13288,13 @@ function toggleDriveSeason(s) {
         })();
     </script>
 <script>
+        const APP_SHELL_BUILD_RUNTIME = String(window.__APP_SHELL_BUILD__ || '').trim() || 'local-shell';
+        const APP_SHELL_REFRESH_STORAGE_KEY_RUNTIME = 'gnc_app_shell_refresh_v1';
+        const APP_SHELL_QUERY_PARAM_RUNTIME = 'shellv';
         if ('serviceWorker' in navigator) {
             const markShellUpdateReady = () => {
                 window.__gncShellUpdateReady = true;
-                try { sessionStorage.setItem(APP_SHELL_REFRESH_STORAGE_KEY, APP_SHELL_BUILD); } catch (e) {}
+                try { sessionStorage.setItem(APP_SHELL_REFRESH_STORAGE_KEY_RUNTIME, APP_SHELL_BUILD_RUNTIME); } catch (e) {}
                 if (currentUser && !document.hidden && !window.__gncShellUpdateToastShown) {
                     window.__gncShellUpdateToastShown = true;
                     try { showToast('Update Ready', 'New code is staged and will apply when the app is backgrounded or reopened.', false); } catch (e) {}
@@ -12682,14 +13308,15 @@ function toggleDriveSeason(s) {
                 window.__gncShellUpdateToastShown = false;
                 try {
                     const nextUrl = new URL(window.location.href);
-                    nextUrl.searchParams.set(APP_SHELL_QUERY_PARAM, APP_SHELL_BUILD);
+                    nextUrl.searchParams.set(APP_SHELL_QUERY_PARAM_RUNTIME, APP_SHELL_BUILD_RUNTIME);
                     window.location.replace(nextUrl.toString());
                 } catch (e) {
                     window.location.reload();
                 }
             };
-            navigator.serviceWorker.register('./sw.js?v=' + encodeURIComponent(APP_SHELL_BUILD), { scope: './' }).then(reg => {
+            navigator.serviceWorker.register('./sw.js?v=' + encodeURIComponent(APP_SHELL_BUILD_RUNTIME), { scope: './' }).then(reg => {
                 console.log('Service Worker Registered');
+                schedulePushSubscriptionSync('sw-register', { delay: 600, force: false });
                 if (reg.waiting) markShellUpdateReady();
                 reg.addEventListener('updatefound', () => {
                     const installing = reg.installing;
@@ -12708,11 +13335,12 @@ function toggleDriveSeason(s) {
                 if (data.type === 'GNC_OPEN_VIEW') {
                     try { openViewFromPushMessage(data.viewId || 'request'); } catch (e) {}
                 } else if (data.type === 'GNC_RESUBSCRIBE_PUSH') {
-                    subscribeCurrentDeviceForPush({ prompt: false, force: true }).catch(() => {});
+                    schedulePushSubscriptionSync('sw-resubscribe', { immediate: true, force: true });
                 }
             });
             navigator.serviceWorker.addEventListener('controllerchange', () => {
                 markShellUpdateReady();
+                schedulePushSubscriptionSync('sw-controllerchange', { delay: 240, force: false });
                 tryApplyShellUpdateSilently();
             });
             document.addEventListener('visibilitychange', () => {
@@ -12725,5 +13353,61 @@ function toggleDriveSeason(s) {
     </script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
