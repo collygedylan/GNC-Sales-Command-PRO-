@@ -28,7 +28,7 @@
     <style>
         #main-scroll-area{min-height:0;width:100%;max-width:100%;min-width:0;overflow-x:hidden;overflow-y:auto;overscroll-behavior-x:none;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;scroll-padding-top:calc(5.5rem + env(safe-area-inset-top));scroll-padding-bottom:calc(7rem + env(safe-area-inset-bottom));padding-bottom:calc(10rem + env(safe-area-inset-bottom));background:#f9fafb}
         #global-action-bar{padding-bottom:calc(.75rem + env(safe-area-inset-bottom))}#cart-helper-text{margin-top:.6rem;font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#6b7280}
-        body.app-standalone #app-wrapper{height:var(--app-height);min-height:var(--app-height)}body.app-standalone #main-scroll-area{padding-bottom:calc(10rem + env(safe-area-inset-bottom))}body.app-standalone.keyboard-open #bottom-nav,body.app-standalone.keyboard-open #global-action-bar{opacity:0;pointer-events:none;transform:translateY(140%);transition:transform .18s ease,opacity .18s ease}body.app-standalone.keyboard-open #main-scroll-area{padding-bottom:calc(1.5rem + var(--keyboard-offset));scroll-padding-bottom:calc(1.5rem + var(--keyboard-offset))}#bottom-nav{left:50%;right:auto;bottom:0;transform:translateX(-50%);width:min(760px,calc(100% - 12px));max-width:calc(100% - 12px);padding:10px 10px calc(.75rem + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:.5rem;background:rgba(255,255,255,.98);backdrop-filter:saturate(150%) blur(12px);border-top-left-radius:22px;border-top-right-radius:22px;box-sizing:border-box}body.app-standalone.ios-device #bottom-nav{padding-top:.45rem;padding-bottom:max(.2rem, env(safe-area-inset-bottom));align-items:end}
+        body.app-standalone #app-wrapper{height:var(--app-height);min-height:var(--app-height)}body.app-standalone #main-scroll-area{padding-bottom:calc(10rem + env(safe-area-inset-bottom))}body.app-standalone.keyboard-open #bottom-nav,body.app-standalone.keyboard-open #global-action-bar{opacity:0;pointer-events:none;transform:translateY(140%);transition:transform .18s ease,opacity .18s ease}body.app-standalone.keyboard-open #main-scroll-area{padding-bottom:calc(1.5rem + var(--keyboard-offset));scroll-padding-bottom:calc(1.5rem + var(--keyboard-offset))}#bottom-nav{left:50%;right:auto;transform:translateX(-50%);width:min(760px,calc(100% - 12px));max-width:calc(100% - 12px);padding:10px 10px calc(.75rem + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:.5rem;background:rgba(255,255,255,.98);backdrop-filter:saturate(150%) blur(12px);border-top-left-radius:22px;border-top-right-radius:22px;box-sizing:border-box}
         .footer-nav-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.18rem;min-height:52px;border-radius:16px;border:1px solid transparent;background:transparent;color:#6b7280;font-size:10px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;transition:background .16s ease,color .16s ease,border-color .16s ease,transform .16s ease;position:relative}
         .footer-nav-btn i{font-size:22px;line-height:1}
         .footer-nav-btn:active{transform:scale(.97)}
@@ -642,7 +642,6 @@
                         <div id="task-subtab-all" class="task-tab active" onclick="return setTaskSubview('all')">All</div>
                         <div id="task-subtab-positive-lts" class="task-tab" onclick="return setTaskSubview('positive-lts')">Positive LTS</div>
                         <div id="task-subtab-hold" class="task-tab" onclick="return setTaskSubview('hold')">Hold</div>
-                        <div id="task-subtab-av-blanks" class="task-tab hidden" onclick="return setTaskSubview('av-blanks')">AV Blanks</div>
                     </div>
                     <div id="task-colorwalk-filters" class="hidden mb-3"></div>
                     </div>
@@ -910,7 +909,6 @@
             document.documentElement.style.setProperty('--visual-height', `${visualHeight}px`);
             document.documentElement.style.setProperty('--keyboard-offset', `${keyboardOpen ? keyboardOffset : 0}px`);
             document.body.classList.toggle('app-standalone', standalone);
-            document.body.classList.toggle('ios-device', isIOSDevice());
             document.body.classList.toggle('keyboard-open', keyboardOpen);
         }
 
@@ -1122,10 +1120,6 @@
 
         function appendSpecCaliperToAvNote(prefix = '') {
             const normalizedPrefix = String(prefix || '').trim();
-            if (!canEditRowDetails(normalizedPrefix)) {
-                showRowEditRestrictedToast(normalizedPrefix);
-                return;
-            }
             const avInputId = normalizedPrefix === 'global-' ? 'global-av-note' : `${normalizedPrefix}av-note`;
             const avInput = document.getElementById(avInputId);
             if (!avInput) return;
@@ -1720,7 +1714,6 @@
             if (tableName === 'v2_reserves') return ['reserves'];
             if (tableName === 'v2_soc_master') return ['soc'];
             if (tableName === 'v2_sales_office') return ['salesOffice'];
-            if (tableName === 'v2_cav') return ['cav'];
             if (tableName === 'v2_av_notes') return ['avNotes'];
             return [];
         }
@@ -1757,7 +1750,6 @@
             if (tableSet.has('v2_reserves')) syncPayload.reservesData = reservesInventory;
             if (tableSet.has('v2_soc_master')) syncPayload.socData = socInventory;
             if (tableSet.has('v2_sales_office')) syncPayload.salesOfficeData = salesOfficeInventory;
-            if (tableSet.has('v2_cav')) syncPayload.cavData = cavInventory;
             if (tableSet.has('v2_av_notes')) syncPayload.avNotesData = avNotesDb;
             if (!Object.keys(syncPayload).length) return false;
             processAndLoadData(syncPayload);
@@ -1832,10 +1824,6 @@
                 changed = eventType === 'DELETE'
                     ? removeRealtimeRow(salesOfficeInventory, uniqueId)
                     : upsertRealtimeRow(salesOfficeInventory, nextRow);
-            } else if (tableName === 'v2_cav') {
-                changed = eventType === 'DELETE'
-                    ? removeRealtimeRow(cavInventory, uniqueId)
-                    : upsertRealtimeRow(cavInventory, nextRow);
             } else if (tableName === 'v2_av_notes') {
                 changed = eventType === 'DELETE'
                     ? removeRealtimeRow(avNotesDb, uniqueId)
@@ -1935,7 +1923,7 @@
                 startFallbackSync();
                 return;
             }
-            ['v2_master_inventory','v2_active_request','v2_reserves','v2_soc_master','v2_sales_office','v2_cav','v2_av_notes','v2_dock_team_status','v2_dock_item_status'].forEach((tableName) => {
+            ['v2_master_inventory','v2_active_request','v2_reserves','v2_soc_master','v2_sales_office','v2_av_notes','v2_dock_team_status','v2_dock_item_status'].forEach((tableName) => {
                 const channel = supabaseClient
                     .channel(`realtime-${tableName}`)
                     .on('postgres_changes', { event: '*', schema: 'public', table: tableName }, (payload) => {
@@ -1999,23 +1987,6 @@
             } else {
                 run();
             }
-        }
-
-        function scrollMainAreaToTop() {
-            const scrollArea = document.getElementById('main-scroll-area');
-            if (scrollArea) scrollArea.scrollTop = 0;
-            const wrapper = document.getElementById('view-wrapper');
-            if (wrapper) wrapper.scrollTop = 0;
-            if (document.documentElement) document.documentElement.scrollTop = 0;
-            if (document.body) document.body.scrollTop = 0;
-            try { window.scrollTo(0, 0); } catch (err) {}
-        }
-
-        function queueScrollMainAreaToTop(key = 'global') {
-            scheduleUiRender(`scroll-top:${key}`, () => {
-                scrollMainAreaToTop();
-                requestAnimationFrame(() => scrollMainAreaToTop());
-            });
         }
 
         function queueViewRender(viewId, forceReset = false, forceRender = false) {
@@ -2356,7 +2327,6 @@
             return items.map((item) => stripTransientCacheFields(item));
         }
 
-        const CACHE_SCHEMA_VERSION = 2;
         function buildCacheSnapshot() {
             return {
                 status: 'success',
@@ -2366,51 +2336,29 @@
                 reservesData: buildCacheRows(reservesInventory),
                 socData: buildCacheRows(socInventory),
                 salesOfficeData: buildCacheRows(salesOfficeInventory),
-                cavData: buildCacheRows(cavInventory),
                 avNotesData: buildCacheRows(avNotesDb),
                 meta: {
-                    cacheSchemaVersion: CACHE_SCHEMA_VERSION,
                     datasetLoadState: serializeDatasetLoadState()
                 }
             };
         }
-        function buildFallbackCacheDatasetLoadState(cachedRes = {}) {
-            const hasRows = (rows) => Array.isArray(rows) && rows.length > 0;
-            return {
-                master: { initialLoaded: hasRows(cachedRes.data), fullLoaded: false },
-                avOpen: { initialLoaded: hasRows(cachedRes.avOpenData), fullLoaded: false },
-                requests: { initialLoaded: hasRows(cachedRes.requestsData), fullLoaded: false },
-                reserves: { initialLoaded: hasRows(cachedRes.reservesData), fullLoaded: false },
-                soc: { initialLoaded: hasRows(cachedRes.socData), fullLoaded: false },
-                salesOffice: { initialLoaded: hasRows(cachedRes.salesOfficeData), fullLoaded: false },
-                cav: { initialLoaded: hasRows(cachedRes.cavData), fullLoaded: false },
-                avNotes: { initialLoaded: hasRows(cachedRes.avNotesData), fullLoaded: false }
-            };
-        }
-        function getCachedDatasetLoadState(cachedRes = {}) {
-            const cachedMeta = cachedRes && cachedRes.meta ? cachedRes.meta : {};
-            const schemaVersion = Number(cachedMeta.cacheSchemaVersion || 0);
-            const fallback = buildFallbackCacheDatasetLoadState(cachedRes);
-            const source = cachedMeta.datasetLoadState || {};
-            const next = {};
-            Object.keys(fallback).forEach((key) => {
-                const saved = source[key] || {};
-                const fallbackEntry = fallback[key] || {};
-                next[key] = {
-                    initialLoaded: !!(saved.initialLoaded || fallbackEntry.initialLoaded),
-                    fullLoaded: schemaVersion >= CACHE_SCHEMA_VERSION ? !!saved.fullLoaded : false,
-                    lastLoadedAt: schemaVersion >= CACHE_SCHEMA_VERSION ? (saved.lastLoadedAt || '') : ''
-                };
-            });
-            return next;
-        }
+
         function warmCachedInventory(force = false) {
             if (force) cacheWarmPromise = null;
             if (!cacheWarmPromise) {
                 cacheWarmPromise = loadFromCache().then((cachedRes) => {
                     if (!cachedRes) return false;
                     processAndLoadData(cachedRes);
-                    hydrateDatasetLoadState(getCachedDatasetLoadState(cachedRes));
+                    const cachedMeta = cachedRes.meta && cachedRes.meta.datasetLoadState ? cachedRes.meta.datasetLoadState : {
+                        master: { initialLoaded: Array.isArray(cachedRes.data) && cachedRes.data.length > 0, fullLoaded: Array.isArray(cachedRes.data) && cachedRes.data.length > 0 },
+                        avOpen: { initialLoaded: Array.isArray(cachedRes.avOpenData) && cachedRes.avOpenData.length > 0, fullLoaded: Array.isArray(cachedRes.avOpenData) && cachedRes.avOpenData.length > 0 },
+                        requests: { initialLoaded: Array.isArray(cachedRes.requestsData) && cachedRes.requestsData.length > 0, fullLoaded: Array.isArray(cachedRes.requestsData) && cachedRes.requestsData.length > 0 },
+                        reserves: { initialLoaded: Array.isArray(cachedRes.reservesData) && cachedRes.reservesData.length > 0, fullLoaded: Array.isArray(cachedRes.reservesData) && cachedRes.reservesData.length > 0 },
+                        soc: { initialLoaded: Array.isArray(cachedRes.socData) && cachedRes.socData.length > 0, fullLoaded: Array.isArray(cachedRes.socData) && cachedRes.socData.length > 0 },
+                        salesOffice: { initialLoaded: Array.isArray(cachedRes.salesOfficeData) && cachedRes.salesOfficeData.length > 0, fullLoaded: Array.isArray(cachedRes.salesOfficeData) && cachedRes.salesOfficeData.length > 0 },
+                        avNotes: { initialLoaded: Array.isArray(cachedRes.avNotesData) && cachedRes.avNotesData.length > 0, fullLoaded: Array.isArray(cachedRes.avNotesData) && cachedRes.avNotesData.length > 0 }
+                    };
+                    hydrateDatasetLoadState(cachedMeta);
                     return true;
                 }).catch(() => false);
             }
@@ -2431,12 +2379,11 @@
                 reserves: createDatasetLoadEntry(),
                 soc: createDatasetLoadEntry(),
                 salesOffice: createDatasetLoadEntry(),
-                cav: createDatasetLoadEntry(),
                 avNotes: createDatasetLoadEntry()
             };
         }
 
-        let fullInventory=[]; let avOpenInventory=[]; let lowStockInventory=[]; let socInventory=[]; let reservesInventory=[]; let requestsInventory=[]; let managerReviewInventory=[]; let salesOfficeInventory=[]; let cavInventory=[]; let avNotesDb=[];
+        let fullInventory=[]; let avOpenInventory=[]; let lowStockInventory=[]; let socInventory=[]; let reservesInventory=[]; let requestsInventory=[]; let managerReviewInventory=[]; let salesOfficeInventory=[]; let avNotesDb=[];
         let masterInventoryById=new Map(); let masterInventoryByExactKey=new Map(); let lowStockInventoryDirty=true; let managerReviewInventoryDirty=true;
         let loginPrefetchPromise=null;
         let loginPrefetchMode='';
@@ -2460,7 +2407,7 @@
         
         let activeTaskTab="season"; let activeTaskSubview="all"; let taskViewTargetUser=null; let taskViewLevel=0; let selectedTaskBlock=null; let selectedTaskLoc=null; let selectedEndCapFolder=null; let selectedFlyerFolder=null; let selectedColorWalkContSize=""; let selectedColorWalkSearchTerm=""; let pendingFlyerFolderTarget=null; let pendingFlyerFolderAssignees="";
         
-        let activeAVTab='open'; let activeAvOpenTab='name'; let avOpenLevel=0; let selectedAvOpenName=null; let selectedAvOpenSize=null; let selectedAvOpenSeason=null; let selectedAvOpenLot=null; let avResLevel=0; let selectedAvResRep=null; let selectedAvResDriveUid=null; let selectedAvResItemCode=null; let selectedAvResName=null; let selectedAvResSize=null; let activeAvReserveMode='current'; let activeAvReserveDetailTab='customer';
+        let activeAVTab='open'; let activeAvOpenTab='name'; let avOpenLevel=0; let selectedAvOpenName=null; let selectedAvOpenSize=null; let selectedAvOpenSeason=null; let selectedAvOpenLot=null; let avResLevel=0; let selectedAvResRep=null; let selectedAvResDriveUid=null; let selectedAvResItemCode=null; let selectedAvResName=null; let selectedAvResSize=null;
         
         let lowStockViewLevel=0; let selectedLowStockName=null; let selectedLowStockSize=null; let reviewViewLevel=0; let selectedReviewItemCode=null; let selectedReviewCommonName=null; let selectedReviewContSize=null;
         let requestViewLevel=0; let reservesViewLevel=0; let reportViewLevel=0; let activeReqTab="pending"; let selectedReqRep=null; let selectedReqRepStatus=null; let selectedReqFolder=null; let tempSelectedReqRep=""; let tempReqFolder=null; let tempReqCust=null; let previousReqStep=""; let driveQuickRequestItems=new Set(); let driveQuickRequestFlow=false; let driveQuickAssignFlow=false;
@@ -2708,7 +2655,6 @@
             reserves: { table: 'v2_reserves', sourceTable: 'v2_reserves', initialQuery: buildReserveDatasetQuery, fullQuery: buildReserveDatasetQuery, initialLimit: getReserveDatasetInitialLimit },
             soc: { table: 'v2_soc_master', sourceTable: 'v2_soc_master', initialQuery: 'select=*', fullQuery: 'select=*' },
             salesOffice: { table: 'v2_sales_office', sourceTable: 'v2_sales_office', initialQuery: 'select=*', fullQuery: 'select=*' },
-            cav: { table: 'v2_cav', sourceTable: 'v2_cav', initialQuery: 'select=*', fullQuery: 'select=*' },
             avNotes: { table: 'v2_av_notes', sourceTable: 'v2_av_notes', initialQuery: 'select=*', fullQuery: 'select=*' }
         };
 
@@ -2824,65 +2770,6 @@
                 setTimeout(resolve, 0);
             });
         }
-
-        function hydrateReserveInventoryRow(item, idx) {
-            item.DOM_ID='res_'+idx;
-            item.UNIQUE_ID=item.UNIQUE_ID||'res_uid_'+idx;
-            let masterItem=findLinkedMasterRow(item);
-            item.CUSTOMERNAME=item.CUSTOMERNAME||item.CUSTOMER||'Unknown Customer';
-            item.CONSIGNEENAME=item.CONSIGNEENAME||item.CONSIGNEE||'';
-            item.SALESREPNAME=item.SALESREPNAME||item.SALESREP||item['SALES_REP']||'Unknown Rep';
-            item.COMMONNAME=firstNonEmptyValue(item.COMMONNAME, item.DESCRIPTION, item.PLANT_NAME, item.ITEMCODE, 'Unknown');
-            item.CONTSIZE=firstNonEmptyValue(item.CONTSIZE, item.ITEMSPEC, item.contsize, '-');
-            item.LOCATIONCODE=firstNonEmptyValue(item.LOCATIONCODE, item.LOCATION, 'No Loc');
-            item.ITEMCODE=firstNonEmptyValue(item.ITEMCODE, item.itemcode, '-');
-            item.LOTCODE=firstNonEmptyValue(item.LOTCODE, item.lotcode, '-');
-            item.PTRAVAILABLE=firstNonEmptyValue(item.PTRAVAILABLE, item.ptravailable, 0);
-            item.SEASONSUPPLY=firstNonEmptyValue(item.SEASONSUPPLY, item.SEASON_SUPPLY, item.season_supply, 0);
-            item.PRIORITY=firstNonEmptyValue(item.PRIORITY, item.priority, '-');
-            if(masterItem){
-                item.COMMONNAME=firstNonEmptyValue(masterItem.COMMONNAME, item.COMMONNAME);
-                item.CONTSIZE=firstNonEmptyValue(masterItem.CONTSIZE, item.CONTSIZE);
-                item.LOCATIONCODE=firstNonEmptyValue(masterItem.LOCATIONCODE, item.LOCATIONCODE);
-                item.PTRAVAILABLE=firstNonEmptyValue(masterItem.PTRAVAILABLE, item.PTRAVAILABLE);
-                item.SEASONSUPPLY=firstNonEmptyValue(masterItem.SEASONSUPPLY, item.SEASONSUPPLY);
-                item.PRIORITY=firstNonEmptyValue(masterItem.PRIORITY, item.PRIORITY);
-                item.QUALITYCODE=firstNonEmptyValue(masterItem.QUALITYCODE, item.QUALITYCODE);
-                item.FIELDTAGCOLOR=firstNonEmptyValue(masterItem.FIELDTAGCOLOR, item.FIELDTAGCOLOR);
-                item.LOTCODE=firstNonEmptyValue(masterItem.LOTCODE, item.LOTCODE);
-                item.ITEMCODE=firstNonEmptyValue(masterItem.ITEMCODE, item.ITEMCODE);
-                item.AV_NOTE=firstNonEmptyValue(item.AV_NOTE, masterItem.AV_NOTE);
-                item.SALES_NOTE=firstNonEmptyValue(item.SALES_NOTE, masterItem.SALES_NOTE);
-                item.MATCH=firstNonEmptyValue(item.MATCH, masterItem.MATCH);
-                item.SPEC=firstNonEmptyValue(item.SPEC, masterItem.SPEC);
-                item.CALIPER=firstNonEmptyValue(item.CALIPER, masterItem.CALIPER);
-                item.PICK=firstNonEmptyValue(item.PICK, masterItem.PICK);
-                item.LOC_MATCH_QTY=firstNonEmptyValue(item.LOC_MATCH_QTY, masterItem.LOC_MATCH_QTY);
-                item.INITIAL_PTR=firstNonEmptyValue(item.INITIAL_PTR, masterItem.INITIAL_PTR);
-                clonePhotoFields(masterItem, item);
-                item.MASTER_UNIQUE_ID=masterItem.UNIQUE_ID;
-            }
-            normalizeRowPhotoFields(item);
-            item._search=`${item.COMMONNAME||''} ${item.CUSTOMERNAME||''} ${item.ITEMCODE||''}`.toLowerCase();
-            item._searchCandidates = null;
-            item._searchPrimaryStarts = null;
-            item._searchWordStarts = null;
-            item._searchProfileWordStarts = null;
-            return item;
-        }
-
-        async function buildReserveInventoryRowsAsync(items = []) {
-            const source = Array.isArray(items) ? items : [];
-            const nextItems = new Array(source.length);
-            const chunkSize = source.length > 50000 ? 300 : 500;
-            for (let start = 0; start < source.length; start += chunkSize) {
-                const end = Math.min(source.length, start + chunkSize);
-                for (let idx = start; idx < end; idx += 1) nextItems[idx] = hydrateReserveInventoryRow(source[idx], idx);
-                if (end < source.length) await yieldToUiFrame();
-            }
-            return nextItems;
-        }
-
         async function fetchAllSupabaseRows(table, query = 'select=*') {
             startGlobalProgress();
             try {
@@ -2938,7 +2825,6 @@
             if (key === 'reserves') return { reservesData: formatted };
             if (key === 'soc') return { socData: formatted };
             if (key === 'salesOffice') return { salesOfficeData: formatted };
-            if (key === 'cav') return { cavData: formatted };
             if (key === 'avNotes') return { avNotesData: formatted };
             return {};
         }
@@ -2986,19 +2872,11 @@
                 state.initialLoaded = true;
                 state.fullLoaded = wantsFull ? true : state.fullLoaded;
                 state.lastLoadedAt = new Date().toISOString();
-                if (key === 'reserves' && wantsFull) {
-                    const formattedRows = formatFetchedRows(rows, definition.sourceTable);
-                    reservesInventory = await buildReserveInventoryRowsAsync(formattedRows);
-                } else {
-                    processAndLoadData(buildDatasetPayload(key, rows));
-                }
+                processAndLoadData(buildDatasetPayload(key, rows));
                 if (key === 'reserves') {
                     if (isViewVisible('av') && activeAVTab === 'reserves') scheduleUiRender('av-reserves-refresh', () => renderAV(), wantsFull ? 18 : 8);
                     if (isViewVisible('reserves')) queueViewRender('reserves', false, true);
                     if (isViewVisible('reports')) queueViewRender('reports', false, true);
-                }
-                if (key === 'cav') {
-                    if (isViewVisible('tasks') && activeTaskTab === 'season') scheduleUiRender('tasks-cav-refresh', () => renderTasks(), wantsFull ? 18 : 8);
                 }
                 persistCurrentCache();
                 touchSyncTimestamp();
@@ -3098,33 +2976,23 @@
                     if (getRoleAccessState().isRep) {
                         return { required: [{ key: 'reserves', mode: 'full' }], label: 'Loading all of your reserve rows...' };
                     }
-                    return { required: [{ key: 'reserves', mode: 'initial' }], background: [{ key: 'reserves', mode: 'full' }], label: 'Loading AV reserves...' };
+                    return { required: [{ key: 'reserves', mode: 'initial' }], background: [{ key: 'reserves', mode: 'full' }, { key: 'master', mode: 'full' }, { key: 'avNotes', mode: 'full' }], label: 'Loading AV reserves...' };
                 }
-                return { required: [{ key: 'avOpen', mode: 'initial' }], background: [{ key: 'avOpen', mode: 'full' }], label: 'Loading AV open stock...' };
+                return { required: [{ key: 'avOpen', mode: 'initial' }], background: [{ key: 'avOpen', mode: 'full' }, { key: 'avNotes', mode: 'full' }], label: 'Loading AV open stock...' };
             }
-            if (viewId === 'docks') return { required: [{ key: 'soc', mode: 'initial' }], background: [{ key: 'soc', mode: 'full' }], label: 'Loading dock rows...' };
+            if (viewId === 'docks') return { required: [{ key: 'soc', mode: 'initial' }], background: [{ key: 'soc', mode: 'full' }, { key: 'master', mode: 'full' }], label: 'Loading dock rows...' };
             if (viewId === 'request') return { required: [{ key: 'requests', mode: 'initial' }], background: [{ key: 'requests', mode: 'full' }], label: 'Loading requests...' };
             if (viewId === 'reserves') {
                 if (getRoleAccessState().isRep) {
-                    return { required: [{ key: 'reserves', mode: 'full' }], label: 'Loading all of your reserve rows...' };
+                    return { required: [{ key: 'reserves', mode: 'full' }], background: [{ key: 'master', mode: 'full' }], label: 'Loading all of your reserve rows...' };
                 }
-                return { required: [{ key: 'reserves', mode: 'initial' }], background: [{ key: 'reserves', mode: 'full' }], label: 'Loading reserves...' };
+                return { required: [{ key: 'reserves', mode: 'initial' }], background: [{ key: 'reserves', mode: 'full' }, { key: 'master', mode: 'full' }], label: 'Loading reserves...' };
             }
-            if (viewId === 'sales-office') return { required: [{ key: 'salesOffice', mode: 'initial' }], background: [{ key: 'salesOffice', mode: 'full' }], label: 'Loading sales office...' };
-            if (viewId === 'tasks') {
-                const required = [{ key: 'master', mode: 'initial' }];
-                const background = [{ key: 'master', mode: 'full' }, { key: 'avNotes', mode: 'full' }];
-                if (activeTaskTab === 'season' && activeTaskSubview === 'av-blanks') {
-                    required.push({ key: 'cav', mode: 'initial' });
-                    background.push({ key: 'cav', mode: 'full' });
-                    return { required, background, label: 'Loading AV Blank rows...' };
-                }
-                if (activeTaskTab === 'season') background.push({ key: 'cav', mode: 'full' });
-                return { required, background, label: 'Loading task inventory...' };
-            }
-            if (viewId === 'low-stock') return { required: [{ key: 'master', mode: 'initial' }], background: [{ key: 'master', mode: 'full' }], label: 'Loading low stock...' };
-            if (viewId === 'review') return { required: [{ key: 'master', mode: 'initial' }], background: [{ key: 'master', mode: 'full' }], label: 'Loading review rows...' };
-            if (viewId === 'reports') return { required: [{ key: 'master', mode: 'initial' }, { key: 'requests', mode: 'initial' }, { key: 'reserves', mode: 'initial' }, { key: 'soc', mode: 'initial' }], background: [{ key: 'master', mode: 'full' }, { key: 'requests', mode: 'full' }, { key: 'reserves', mode: 'full' }, { key: 'soc', mode: 'full' }], label: 'Loading reports...' };
+            if (viewId === 'sales-office') return { required: [{ key: 'salesOffice', mode: 'initial' }], background: [{ key: 'salesOffice', mode: 'full' }, { key: 'master', mode: 'full' }], label: 'Loading sales office...' };
+            if (viewId === 'tasks') return { required: [{ key: 'master', mode: 'full' }], background: [{ key: 'avNotes', mode: 'full' }], label: 'Loading full task inventory...' };
+            if (viewId === 'low-stock') return { required: [{ key: 'master', mode: 'full' }], label: 'Loading low stock...' };
+            if (viewId === 'review') return { required: [{ key: 'master', mode: 'full' }], label: 'Loading review rows...' };
+            if (viewId === 'reports') return { required: [{ key: 'master', mode: 'full' }, { key: 'requests', mode: 'full' }, { key: 'reserves', mode: 'full' }, { key: 'soc', mode: 'full' }], label: 'Loading reports...' };
             return null;
         }
 
@@ -3222,7 +3090,6 @@
             return avOpenInventory.find(i=>i.UNIQUE_ID===uid)
                 || lowStockInventory.find(i=>i.UNIQUE_ID===uid)
                 || reservesInventory.find(i=>i.UNIQUE_ID===uid)
-                || cavInventory.find(i=>i.UNIQUE_ID===uid)
                 || requestsInventory.find(i=>i.UNIQUE_ID===uid)
                 || socInventory.find(i=>i.UNIQUE_ID===uid)
                 || managerReviewInventory.find(i=>i.UNIQUE_ID===uid)
@@ -3279,15 +3146,14 @@
 
         function findLinkedMasterRow(item) {
             if (!item) return null;
-            if (!masterInventoryById.size && fullInventory.length) rebuildMasterInventoryIndexes();
             const masterId = String(item.MASTER_ID || item.MASTER_UNIQUE_ID || item.master_id || '').trim();
             if (masterId) {
-                const linkedById = masterInventoryById.get(masterId);
+                const linkedById = masterInventoryById.get(masterId) || fullInventory.find(i => String(i.UNIQUE_ID || '').trim() === masterId);
                 if (linkedById) return linkedById;
             }
             const exactKey = getMasterInventoryExactKey(item);
             if (exactKey) {
-                const exactRow = masterInventoryByExactKey.get(exactKey);
+                const exactRow = masterInventoryByExactKey.get(exactKey) || fullInventory.find(i => getMasterInventoryExactKey(i) === exactKey);
                 if (exactRow) return exactRow;
             }
             return null;
@@ -3298,7 +3164,6 @@
                 || avOpenInventory.find(i=>i.DOM_ID===domId)
                 || lowStockInventory.find(i=>i.DOM_ID===domId)
                 || reservesInventory.find(i=>i.DOM_ID===domId)
-                || cavInventory.find(i=>i.DOM_ID===domId)
                 || requestsInventory.find(i=>i.DOM_ID===domId)
                 || socInventory.find(i=>i.DOM_ID===domId)
                 || managerReviewInventory.find(i=>i.DOM_ID===domId)
@@ -3425,13 +3290,13 @@
         let bloomPickerSelectedReservePartyKey = '';
         const BLOOM_PICKER_ORDER_META_FIELDS = ['salesrepname','customername','customeridentityid','consigneename','consigneeidentityid','consigneecity','consigneestate','consigneezip','zonecode','tagcode','consigneeaddress_1'];
         const BLOOM_PICKER_ORDER_META_TOKEN = '||BP_META||';
-        const PROTECTED_UNLOCK_USERS = new Set(['dylan', 'dylan_collyge', 'jd', 'jd_jones', 'morgan', 'morgan_anderson', 'kayla', 'kayla_knepp']);
+        const PROTECTED_UNLOCK_USERS = new Set(['dylan', 'jd', 'morgan', 'kayla']);
         const PROTECTED_EDIT_CONFIG = {
-            'ssn-': { containerId: 'det-season-content', cameraId: 'camera-btn-ssn', photoField: 'SAVED_PHOTO_LINK', photoNameField: 'SAVED_PHOTO_NAME', inputIds: ['ssn-av-note', 'ssn-match', 'ssn-spec', 'ssn-caliper', 'ssn-pick'] },
-            'lsn-': { containerId: 'det-location-content', cameraId: 'camera-btn-lsn', photoField: 'SAVED_PHOTO_LINK', photoNameField: 'SAVED_PHOTO_NAME', inputIds: ['lsn-av-note', 'lsn-match', 'lsn-spec', 'lsn-caliper', 'lsn-pick'] },
-            'na-': { containerId: 'det-notes-content', cameraId: 'camera-btn-na', photoField: 'SAVED_PHOTO_LINK', photoNameField: 'SAVED_PHOTO_NAME', inputIds: ['na-av-note', 'na-match', 'na-spec', 'na-caliper', 'na-pick'] },
-            'req-': { containerId: 'det-request-content', cameraId: 'camera-btn-req', photoField: 'REQ_PHOTO_LINK', photoNameField: 'REQ_PHOTO_NAME', inputIds: ['req-av-note', 'req-match', 'req-spec', 'req-caliper', 'req-reserve', 'req-pick', 'req-comments'] },
-            'dock-': { containerId: 'det-docks-content', cameraId: 'camera-btn-dock', photoField: 'DOCK_PHOTO_LINK', photoNameField: 'DOCK_PHOTO_NAME', inputIds: ['dock-spec', 'dock-caliper', 'dock-sales-desc'] },
+            'ssn-': { containerId: 'det-season-content', cameraId: 'camera-btn-ssn', photoField: 'SAVED_PHOTO_LINK', photoNameField: 'SAVED_PHOTO_NAME', inputIds: ['ssn-av-note', 'ssn-spec', 'ssn-caliper'] },
+            'lsn-': { containerId: 'det-location-content', cameraId: 'camera-btn-lsn', photoField: 'SAVED_PHOTO_LINK', photoNameField: 'SAVED_PHOTO_NAME', inputIds: ['lsn-av-note', 'lsn-spec', 'lsn-caliper'] },
+            'na-': { containerId: 'det-notes-content', cameraId: 'camera-btn-na', photoField: 'SAVED_PHOTO_LINK', photoNameField: 'SAVED_PHOTO_NAME', inputIds: ['na-av-note', 'na-spec', 'na-caliper'] },
+            'req-': { containerId: 'det-request-content', cameraId: 'camera-btn-req', photoField: 'REQ_PHOTO_LINK', photoNameField: 'REQ_PHOTO_NAME', inputIds: ['req-av-note', 'req-spec', 'req-caliper'] },
+            'dock-': { containerId: 'det-docks-content', cameraId: 'camera-btn-dock', photoField: 'DOCK_PHOTO_LINK', photoNameField: 'DOCK_PHOTO_NAME', inputIds: ['dock-spec', 'dock-caliper'] },
             'flyer-': { containerId: 'det-flyer-content', cameraId: 'camera-btn-flyer', photoField: 'FLYER_PHOTO_LINK', photoNameField: 'FLYER_PHOTO_NAME', inputIds: ['flyer-av-note', 'flyer-spec', 'flyer-caliper', 'flyer-cat', 'flyer-title', 'flyer-inst', 'flyer-assigned', 'flyer-notes'] }
         };
 
@@ -3465,30 +3330,6 @@
 
         function canUseFooterRequestShortcut() {
             return canAccessView('request');
-        }
-
-        function isRepReadOnlyUser() {
-            return !!getRoleAccessState().isRep;
-        }
-
-        function canEditRowDetails(prefix = '') {
-            const normalizedPrefix = String(prefix || '').trim();
-            if (isRepReadOnlyUser()) return false;
-            if (normalizedPrefix === 'dock-') return canEditDockWorkflow();
-            return true;
-        }
-
-        function showRowEditRestrictedToast(prefix = '') {
-            const normalizedPrefix = String(prefix || '').trim();
-            if (isRepReadOnlyUser()) {
-                showToast('Read Only', 'REP users cannot take photos or update rows.', true);
-                return;
-            }
-            if (normalizedPrefix === 'dock-') {
-                showToast('Restricted', 'Only Admin or QC Supervisor can update dock rows.', true);
-                return;
-            }
-            showToast('Restricted', 'You cannot update this row.', true);
         }
 
         function getPendingRequestCount() {
@@ -4937,14 +4778,7 @@ function toggleDriveQuickRequestItem(domId) {
 
         function canRemoveProtectedPhoto(prefix, item = activeItem) {
             if (!item) return false;
-            if (isRepReadOnlyUser()) return false;
             if (!isProtectedSectionCompleted(prefix, item)) return true;
-            return canUnlockProtectedData();
-        }
-
-        function canReorderProtectedPhoto(prefix, item = activeItem) {
-            if (!item) return false;
-            if (isRepReadOnlyUser()) return false;
             return canUnlockProtectedData();
         }
 
@@ -4982,11 +4816,6 @@ function toggleDriveQuickRequestItem(domId) {
         function renderProtectedControls(prefix) {
             const bar = ensureProtectedControl(prefix);
             if (!bar) return;
-            if (isRepReadOnlyUser()) {
-                bar.classList.remove('hidden');
-                bar.innerHTML = `<div class="bg-slate-50 border border-slate-200 rounded-xl p-3"><div class="text-[10px] font-black text-slate-600 uppercase tracking-wider">REP View Only</div><div class="text-xs font-semibold text-slate-700 mt-1">REP users can view row details, but cannot take photos or update rows.</div></div>`;
-                return;
-            }
             if (!isProtectedSectionLocked(prefix)) {
                 bar.classList.add('hidden');
                 return;
@@ -5004,8 +4833,7 @@ function toggleDriveQuickRequestItem(domId) {
         function applyProtectedEditState(prefix) {
             const config = getProtectedEditConfig(prefix);
             if (!config) return;
-            const readOnlyByRole = !canEditRowDetails(prefix);
-            const locked = readOnlyByRole || (isProtectedSectionLocked(prefix) && !isProtectedUnlocked(prefix));
+            const locked = isProtectedSectionLocked(prefix) && !isProtectedUnlocked(prefix);
             renderProtectedControls(prefix);
             config.inputIds.forEach(id => {
                 const el = document.getElementById(id);
@@ -5014,24 +4842,11 @@ function toggleDriveQuickRequestItem(domId) {
                 if ('readOnly' in el) el.readOnly = locked;
                 el.classList.toggle('opacity-60', locked);
             });
-            const container = document.getElementById(config.containerId);
-            if (container) {
-                container.querySelectorAll('button').forEach((el) => {
-                    const onClick = String(el.getAttribute('onclick') || '');
-                    const isProtectedButton = el.id === `${prefix}btn-save-complete` || onClick.includes(`appendSpecCaliperToAvNote('${prefix}')`);
-                    if (!isProtectedButton) return;
-                    el.disabled = locked;
-                    el.classList.toggle('opacity-50', locked);
-                    el.classList.toggle('pointer-events-none', locked);
-                });
-            }
             const cameraEl = document.getElementById(config.cameraId);
             if (cameraEl) {
-                cameraEl.classList.toggle('hidden', readOnlyByRole);
-                cameraEl.classList.toggle('opacity-50', locked && !readOnlyByRole);
-                cameraEl.classList.toggle('pointer-events-none', locked);
+                cameraEl.classList.remove('opacity-50', 'pointer-events-none');
                 const fileInput = cameraEl.querySelector('input[type="file"]');
-                if (fileInput) fileInput.disabled = locked;
+                if (fileInput) fileInput.disabled = false;
             }
         }
 
@@ -5112,8 +4927,7 @@ function toggleDriveQuickRequestItem(domId) {
         function promptPhotoDelete(prefix, photoIndex) {
             if (!activeItem) return;
             if (!canRemoveProtectedPhoto(prefix)) {
-                if (isRepReadOnlyUser()) showRowEditRestrictedToast(prefix);
-                else showToast('Restricted', 'Only Dylan, JD, Morgan, or Kayla can remove photos after Done.', true);
+                showToast('Restricted', 'Only Dylan, JD, Morgan, or Kayla can remove photos after Done.', true);
                 return;
             }
             if (confirm('Delete this photo from this row?')) {
@@ -5355,24 +5169,11 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function primeLoginDataLoad() {
-            const access = getRoleAccessState();
-            const queue = [
+            [
                 { key: 'master', mode: 'initial', delay: 30 },
-                { key: 'avOpen', mode: 'initial', delay: 140 },
-                { key: 'requests', mode: 'initial', delay: 280 },
-                { key: 'soc', mode: 'initial', delay: 420 }
-            ];
-            if (access.isAdmin) {
-                queue.push(
-                    { key: 'salesOffice', mode: 'initial', delay: 560 },
-                    { key: 'avNotes', mode: 'initial', delay: 760 },
-                    { key: 'cav', mode: 'initial', delay: 980 },
-                    { key: 'reserves', mode: 'initial', delay: 1280 }
-                );
-            } else if (access.isRep) {
-                queue.push({ key: 'reserves', mode: 'full', delay: 700 });
-            }
-            queue.forEach((item) => {
+                { key: 'avOpen', mode: 'initial', delay: 220 },
+                { key: 'requests', mode: 'initial', delay: 2200 }
+            ].forEach((item) => {
                 queueDatasetLoad(item.key, item.mode, item.delay);
             });
             return true;
@@ -5416,26 +5217,15 @@ function toggleDriveQuickRequestItem(domId) {
             }
 
             const openedFromCache = fullInventory.length > 0;
-            const access = getRoleAccessState();
             openApp(openedFromCache);
             primeLoginDataLoad();
             if (!openedFromCache) {
                 showToast("Ready", "Fast mode is on. Data is warming in the background.", false);
             }
 
-            const masterFullDelay = openedFromCache ? 24000 : 9000;
-            const requestFullDelay = openedFromCache ? 12000 : 4000;
-            queueDatasetLoad('master', 'full', masterFullDelay);
-            queueDatasetLoad('requests', 'full', requestFullDelay);
-            if (access.isAdmin) {
-                queueDatasetLoad('soc', 'full', openedFromCache ? 15000 : 5500);
-                queueDatasetLoad('salesOffice', 'full', openedFromCache ? 18000 : 7000);
-                queueDatasetLoad('avNotes', 'full', openedFromCache ? 22000 : 8500);
-                queueDatasetLoad('cav', 'full', openedFromCache ? 26000 : 10500);
-            } else if (access.isRep) {
-                queueDatasetLoad('soc', 'full', openedFromCache ? 7000 : 2200);
-                queueDatasetLoad('reserves', 'full', openedFromCache ? 2400 : 1200);
-            }
+            queueDatasetLoad('master', 'full', 9000);
+            queueDatasetLoad('requests', 'full', 17000);
+            queueDatasetLoad('avNotes', 'full', 15000);
             loginPrefetchPromise = null;
             loginPrefetchMode = '';
         }
@@ -5622,9 +5412,8 @@ function toggleDriveQuickRequestItem(domId) {
             const hasReserves = hasKey('reservesData');
             const hasSoc = hasKey('socData');
             const hasSalesOffice = hasKey('salesOfficeData');
-            const hasCav = hasKey('cavData');
             const hasAvNotes = hasKey('avNotesData');
-            const didStructuralDataChange = hasMaster || hasAvOpen || hasRequests || hasReserves || hasSoc || hasSalesOffice || hasCav;
+            const didStructuralDataChange = hasMaster || hasAvOpen || hasRequests || hasReserves || hasSoc || hasSalesOffice;
             const changedDatasetKeys = [];
             if (hasMaster) changedDatasetKeys.push('master');
             if (hasAvOpen) changedDatasetKeys.push('avOpen');
@@ -5632,7 +5421,6 @@ function toggleDriveQuickRequestItem(domId) {
             if (hasReserves) changedDatasetKeys.push('reserves');
             if (hasSoc) changedDatasetKeys.push('soc');
             if (hasSalesOffice) changedDatasetKeys.push('salesOffice');
-            if (hasCav) changedDatasetKeys.push('cav');
             let avRuleClearOps = [];
 
             if (hasAvNotes) {
@@ -5762,20 +5550,45 @@ function toggleDriveQuickRequestItem(domId) {
 
             if (hasReserves || (hasMaster && reservesInventory.length)) {
                 const reserveSource = hasReserves ? (res.reservesData || []) : reservesInventory;
-                reservesInventory = reserveSource.map((item,idx)=>hydrateReserveInventoryRow(item, idx));
-            }
-
-            if (hasCav) {
-                cavInventory = (res.cavData || []).map((item, idx) => {
-                    item.DOM_ID = 'cav_' + (item.UNIQUE_ID || idx);
-                    item.UNIQUE_ID = item.UNIQUE_ID || ('cav_uid_' + idx);
-                    item.LOCATIONCODE = firstNonEmptyValue(item.LOCATIONCODE, item.LOCATION, item.LOC, 'No Loc');
-                    item.ITEMCODE = firstNonEmptyValue(item.ITEMCODE, item.itemcode, item.ITEM, '');
-                    item.COMMONNAME = firstNonEmptyValue(item.COMMONNAME, item.DESCRIPTION, item.PLANT_NAME, item.ITEMCODE, 'AV Blank');
-                    item.CONTSIZE = firstNonEmptyValue(item.CONTSIZE, item.ITEMSPEC, item.SIZE, item.contsize, '-');
-                    item.SEASON = firstNonEmptyValue(item.SEASON, item.season, '');
-                    item._search = `${item.LOCATIONCODE || ''} ${item.ITEMCODE || ''} ${item.COMMONNAME || ''} ${item.CONTSIZE || ''} ${item.SEASON || ''}`.toLowerCase();
+                reservesInventory = reserveSource.map((item,idx)=>{
+                    item.DOM_ID='res_'+idx;
+                    item.UNIQUE_ID=item.UNIQUE_ID||'res_uid_'+idx;
+                    let masterItem=findLinkedMasterRow(item);
+                    item.CUSTOMERNAME=item.CUSTOMERNAME||item.CUSTOMER||'Unknown Customer';
+                    item.CONSIGNEENAME=item.CONSIGNEENAME||item.CONSIGNEE||'';
+                    item.SALESREPNAME=item.SALESREPNAME||item.SALESREP||item['SALES_REP']||'Unknown Rep';
+                    item.COMMONNAME=firstNonEmptyValue(item.COMMONNAME, item.DESCRIPTION, item.PLANT_NAME, item.ITEMCODE, 'Unknown');
+                    item.CONTSIZE=firstNonEmptyValue(item.CONTSIZE, item.ITEMSPEC, item.contsize, '-');
+                    item.LOCATIONCODE=firstNonEmptyValue(item.LOCATIONCODE, item.LOCATION, 'No Loc');
+                    item.ITEMCODE=firstNonEmptyValue(item.ITEMCODE, item.itemcode, '-');
+                    item.LOTCODE=firstNonEmptyValue(item.LOTCODE, item.lotcode, '-');
+                    item.PTRAVAILABLE=firstNonEmptyValue(item.PTRAVAILABLE, item.ptravailable, 0);
+                    item.SEASONSUPPLY=firstNonEmptyValue(item.SEASONSUPPLY, item.SEASON_SUPPLY, item.season_supply, 0);
+                    item.PRIORITY=firstNonEmptyValue(item.PRIORITY, item.priority, '-');
+                    if(masterItem){
+                        item.COMMONNAME=firstNonEmptyValue(masterItem.COMMONNAME, item.COMMONNAME);
+                        item.CONTSIZE=firstNonEmptyValue(masterItem.CONTSIZE, item.CONTSIZE);
+                        item.LOCATIONCODE=firstNonEmptyValue(masterItem.LOCATIONCODE, item.LOCATIONCODE);
+                        item.PTRAVAILABLE=firstNonEmptyValue(masterItem.PTRAVAILABLE, item.PTRAVAILABLE);
+                        item.SEASONSUPPLY=firstNonEmptyValue(masterItem.SEASONSUPPLY, item.SEASONSUPPLY);
+                        item.PRIORITY=firstNonEmptyValue(masterItem.PRIORITY, item.PRIORITY);
+                        item.QUALITYCODE=firstNonEmptyValue(masterItem.QUALITYCODE, item.QUALITYCODE);
+                        item.FIELDTAGCOLOR=firstNonEmptyValue(masterItem.FIELDTAGCOLOR, item.FIELDTAGCOLOR);
+                        item.LOTCODE=firstNonEmptyValue(masterItem.LOTCODE, item.LOTCODE);
+                        item.ITEMCODE=firstNonEmptyValue(masterItem.ITEMCODE, item.ITEMCODE);
+                        item.AV_NOTE=firstNonEmptyValue(item.AV_NOTE, masterItem.AV_NOTE);
+                        item.SALES_NOTE=firstNonEmptyValue(item.SALES_NOTE, masterItem.SALES_NOTE);
+                        item.MATCH=firstNonEmptyValue(item.MATCH, masterItem.MATCH);
+                        item.SPEC=firstNonEmptyValue(item.SPEC, masterItem.SPEC);
+                        item.CALIPER=firstNonEmptyValue(item.CALIPER, masterItem.CALIPER);
+                        item.PICK=firstNonEmptyValue(item.PICK, masterItem.PICK);
+                        item.LOC_MATCH_QTY=firstNonEmptyValue(item.LOC_MATCH_QTY, masterItem.LOC_MATCH_QTY);
+                        item.INITIAL_PTR=firstNonEmptyValue(item.INITIAL_PTR, masterItem.INITIAL_PTR);
+                        clonePhotoFields(masterItem, item);
+                        item.MASTER_UNIQUE_ID=masterItem.UNIQUE_ID;
+                    }
                     normalizeRowPhotoFields(item);
+                    item._search=`${item.COMMONNAME||''} ${item.CUSTOMERNAME||''} ${item.ITEMCODE||''}`.toLowerCase();
                     buildSearchIndex(item);
                     return item;
                 });
@@ -6316,7 +6129,6 @@ function toggleDriveQuickRequestItem(domId) {
             selectedReviewContSize = contSize;
             reviewViewLevel = 1;
             renderReview();
-            queueScrollMainAreaToTop(`review-item:${itemCode}`);
         }
 
         function resetRequestView() {
@@ -6428,7 +6240,6 @@ function toggleDriveQuickRequestItem(domId) {
             const targetView = document.getElementById('view-'+nextViewId);
             if (targetView) targetView.classList.remove('hidden');
             queueViewRender(nextViewId);
-            queueScrollMainAreaToTop(`view:${nextViewId}`);
             updateGlobalBackButton();
             syncGlobalHeaderChrome();
             updateFooterNavState();
@@ -6593,7 +6404,7 @@ function toggleDriveQuickRequestItem(domId) {
         function setTaskTab(tab) { 
             const previousTaskTab = activeTaskTab;
             activeTaskTab=tab; 
-            if (!taskTabUsesBlockDrill(tab) || (tab !== 'season' && activeTaskSubview === 'av-blanks')) activeTaskSubview='all';
+            if (!taskTabUsesBlockDrill(tab)) activeTaskSubview='all';
             if (tab !== 'colorwalk' && previousTaskTab === 'colorwalk') {
                 selectedColorWalkContSize='';
                 selectedColorWalkSearchTerm='';
@@ -6611,25 +6422,19 @@ function toggleDriveQuickRequestItem(domId) {
             selectedFlyerFolder=null;
             if (safeRole === 'ADMIN' && tab !== 'flyer' && !taskViewTargetUser && !taskTabUsesBlockDrill(tab)) {
                 scheduleUiRender('task-tab', () => renderTeamSelector());
-                queueScrollMainAreaToTop(`task-tab:${tab}`);
                 return;
             }
             scheduleUiRender('task-tab', () => renderTasks()); 
-            queueScrollMainAreaToTop(`task-tab:${tab}`);
         }
 
         function setTaskSubview(subview) {
             if (!taskTabUsesBlockDrill(activeTaskTab)) return false;
-            const allowedSubviews = activeTaskTab === 'season'
-                ? ['all', 'positive-lts', 'hold', 'av-blanks']
-                : ['all', 'positive-lts', 'hold'];
-            activeTaskSubview = allowedSubviews.includes(subview) ? subview : 'all';
+            activeTaskSubview = ['positive-lts', 'hold'].includes(subview) ? subview : 'all';
             syncTaskSubviewControls(activeTaskTab);
             taskViewLevel = 0;
             selectedTaskBlock = null;
             selectedTaskLoc = null;
             scheduleUiRender('task-subview', () => renderTasks());
-            queueScrollMainAreaToTop(`task-subview:${activeTaskTab}:${activeTaskSubview}`);
             return false;
         }
 
@@ -6649,7 +6454,6 @@ function toggleDriveQuickRequestItem(domId) {
             selectedDriveBlock = null;
             selectedDriveLoc = null;
             scheduleUiRender('drive-tab', () => renderDrive());
-            queueScrollMainAreaToTop(`drive-mode:${mode}`);
         }
         function setDriveTab(tab) { 
             if (tab !== 'card') closeDriveQuickFiltersModal();
@@ -6664,7 +6468,6 @@ activeDriveTab = tab;
             selectedDriveBlock = null;
             selectedDriveLoc = null;
             scheduleUiRender('drive-tab', () => renderDrive());
-            queueScrollMainAreaToTop(`drive-tab:${tab}`);
         }
 
         function toggleDriveHoldStopOnly() {
@@ -6677,8 +6480,8 @@ activeDriveTab = tab;
             scheduleUiRender('drive-holdstop-filter', () => renderDrive());
         }
 
-        function selectDriveBlock(block) { selectedDriveBlock = block; driveViewLevel = 1; renderDrive(); queueScrollMainAreaToTop(`drive-block:${block}`); }
-        function selectDriveLoc(loc) { selectedDriveLoc = loc; driveViewLevel = 2; renderDrive(); queueScrollMainAreaToTop(`drive-loc:${loc}`); }
+        function selectDriveBlock(block) { selectedDriveBlock = block; driveViewLevel = 1; renderDrive(); }
+        function selectDriveLoc(loc) { selectedDriveLoc = loc; driveViewLevel = 2; renderDrive(); }
         function resetDriveView() {
             activeDriveMode = 'ok';
             resetDriveQuickCardViewState();
@@ -6698,7 +6501,7 @@ activeDriveTab = tab;
 
         function resetAVView() { 
             activeAVTab='open'; activeAvOpenTab='name';
-            avResLevel=0; selectedAvResRep=null; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; activeAvReserveMode='current'; activeAvReserveDetailTab='customer'; 
+            avResLevel=0; selectedAvResRep=null; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; 
             avOpenLevel=0; selectedAvOpenName=null; selectedAvOpenSize=null; selectedAvOpenSeason=null; selectedAvOpenLot=null;
             document.getElementById('tab-av-open').classList.add('active'); document.getElementById('tab-av-reserves').classList.remove('active'); 
             document.getElementById('tab-av-open-name').classList.add('active'); document.getElementById('tab-av-open-photos').classList.remove('active');
@@ -6709,13 +6512,12 @@ activeDriveTab = tab;
 
         function setAVTab(tab) { 
             activeAVTab=tab; 
-            avResLevel=0; selectedAvResRep=null; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; activeAvReserveMode='current'; activeAvReserveDetailTab='customer'; 
+            avResLevel=0; selectedAvResRep=null; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; 
             avOpenLevel=0; selectedAvOpenName=null; selectedAvOpenSize=null; selectedAvOpenSeason=null; selectedAvOpenLot=null;
             document.getElementById('tab-av-open').classList.toggle('active',tab==='open'); document.getElementById('tab-av-reserves').classList.toggle('active',tab==='reserves'); 
             const subTabs = document.getElementById('av-open-sub-tabs');
             subTabs.style.display = tab==='open' ? 'flex' : 'none';
             scheduleUiRender('av-tab', () => renderAV()); 
-            queueScrollMainAreaToTop(`av-tab:${tab}`);
         }
 
         function setAvOpenTab(tab) {
@@ -6725,7 +6527,6 @@ activeDriveTab = tab;
             avOpenLevel = 0;
             selectedAvOpenName=null; selectedAvOpenSize=null; selectedAvOpenSeason=null; selectedAvOpenLot=null;
             scheduleUiRender('av-open-tab', () => renderAV());
-            queueScrollMainAreaToTop(`av-open-tab:${tab}`);
         }
         
         function setReqTab(tab) {
@@ -6733,7 +6534,6 @@ activeDriveTab = tab;
             document.getElementById('tab-req-pending').classList.toggle('active', tab === 'pending');
             document.getElementById('tab-req-reps').classList.toggle('active', tab === 'reps');
             requestViewLevel = 0; selectedReqFolder = null; selectedReqRepView = null; selectedReqCustView = null; selectedReqFolderView = null; clearSelection(); scheduleUiRender('request-tab', () => renderRequest());
-            queueScrollMainAreaToTop(`request-tab:${tab}`);
         }
 
         function sendEmailNotification(type, folderId, repName, customer, itemsCount) {
@@ -6797,31 +6597,6 @@ activeDriveTab = tab;
         function canSelectAvReserveRep() {
             const tokens = getProtectedUserTokens();
             return tokens.has('dylan_collyge') || tokens.has('jd_jones');
-        }
-
-        function canUseAvReserveCardsMode() {
-            const tokens = getProtectedUserTokens();
-            return !!getRoleAccessState().isAdmin || tokens.has('dylan') || tokens.has('dylan_collyge') || tokens.has('jd') || tokens.has('jd_jones');
-        }
-
-        function setAvReserveMode(mode = 'current') {
-            activeAvReserveMode = mode === 'cards' ? 'cards' : 'current';
-            selectedAvResRep = null;
-            selectedAvResDriveUid = null;
-            selectedAvResItemCode = null;
-            selectedAvResName = null;
-            selectedAvResSize = null;
-            activeAvReserveDetailTab = 'customer';
-            avResLevel = 0;
-            resetAVReserveSearchInput();
-            renderAV();
-            queueScrollMainAreaToTop(`av-reserve-mode:${activeAvReserveMode}`);
-            return false;
-        }
-
-        function getAvReserveModeTabsHtml() {
-            if (!canUseAvReserveCardsMode()) return '';
-            return `<div class="flex flex-wrap gap-2 mb-3"><button class="task-tab ${activeAvReserveMode === 'current' ? 'active' : ''}" onclick="return setAvReserveMode('current')">Current</button><button class="task-tab ${activeAvReserveMode === 'cards' ? 'active' : ''}" onclick="return setAvReserveMode('cards')">Item Cards</button></div>`;
         }
 
         function isSelectedAvReserveRep(item, repName = selectedAvResRep) {
@@ -7033,46 +6808,10 @@ activeDriveTab = tab;
                 });
         }
 
-        function isAdminAvReserveDetailTabsEnabled() {
-            return !!getRoleAccessState().isAdmin;
-        }
-
-        function getSelectedAvReserveLocationRows() {
-            return getAvReserveDriveRowsForSelection();
-        }
-
-        function canSeeAvReserveRepTab() {
-            const tokens = getProtectedUserTokens();
-            return tokens.has('dylan') || tokens.has('dylan_collyge') || tokens.has('jd') || tokens.has('jd_jones');
-        }
-
-        function getSelectedAvReserveRepGroups(items = []) {
-            const repMap = new Map();
-            getSelectedAvReserveGroupRows(items).forEach((item) => {
-                const label = getReserveSalesRepLabel(item);
-                const key = normalizeRepMatchToken(label) || String(label || '').trim();
-                if (!key) return;
-                const entry = repMap.get(key) || { label, count: 0 };
-                entry.count += 1;
-                repMap.set(key, entry);
-            });
-            return [...repMap.values()].sort((a, b) => String(a.label || '').localeCompare(String(b.label || '')));
-        }
-
-        function setAvReserveDetailTab(tab = 'customer') {
-            activeAvReserveDetailTab = tab === 'location' ? 'location' : (tab === 'rep' ? 'rep' : 'customer');
-            selectedAvResDriveUid = null;
-            renderAV();
-            queueScrollMainAreaToTop(`av-reserve-detail:${activeAvReserveDetailTab}`);
-            return false;
-        }
-
         function backToAvReserveGroupList() {
             selectedAvResDriveUid = null;
-            activeAvReserveDetailTab = 'customer';
             avResLevel = 0;
             renderAV();
-            queueScrollMainAreaToTop('av-reserve-groups');
             return false;
         }
 
@@ -7112,35 +6851,15 @@ activeDriveTab = tab;
             return `<div class="flex items-center w-full mb-3 item-row app-smart-card relative bg-white p-4 rounded-xl border border-indigo-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', 'av')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-grow items-start justify-between min-w-0"><div class="app-card-main flex-grow min-w-0 pr-2"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-indigo-600">Item Code</div><div class="mt-1 font-mono font-black text-[16px] text-indigo-800 break-all">${esc(itemCode)}</div><div class="mt-3 font-black text-slate-900 text-[20px] leading-tight break-words">${esc(commonName)}</div><div class="mt-1 text-[14px] font-bold text-[#007a4d]">${esc(contSize)}</div><div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">${detailCell('Customer Name', customerName)}${detailCell('Consignee Name', consigneeName)}${detailCell('Request Date', requestDate)}${detailCell('Lot Code', lotCode)}${detailCell('Quantity Ordered', qtyOrdered)}${detailCell('Quantity Shipped', qtyShipped)}</div></div>${inlineThumbHtml}</div></div>`;
         }
 
-        function generateAvReserveLocationCard(item) {
-            const itemCode = firstNonEmptyValue(item.ITEMCODE, '-');
-            const commonName = firstNonEmptyValue(item.COMMONNAME, item.ITEMCODE, 'Unknown');
-            const contSize = firstNonEmptyValue(item.CONTSIZE, '-');
-            const locationCode = firstNonEmptyValue(item.LOCATIONCODE, 'No Loc');
-            const lotCode = firstNonEmptyValue(item.LOTCODE, '-');
-            const ptrAvailable = firstNonEmptyValue(item.PTRAVAILABLE, '0');
-            const sLts = firstNonEmptyValue(item.S_LTS, '0');
-            const priority = firstNonEmptyValue(item.PRIORITY, '-');
-            return `<div class="mb-3 rounded-[22px] border border-sky-200 bg-white p-4 shadow-sm overflow-hidden"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-sky-600">Drive Mode Location</div><div class="mt-1 font-black text-[20px] text-slate-900 break-words">${esc(locationCode)}</div><div class="mt-3 font-black text-[18px] leading-tight text-slate-900 break-words">${esc(commonName)}</div><div class="mt-1 text-[14px] font-bold text-[#007a4d]">${esc(contSize)}</div><div class="mt-2 inline-flex max-w-full items-center gap-1 rounded-lg border border-slate-200 bg-slate-100 px-2 py-1 text-[10px] font-mono font-bold text-slate-600"><i class="ph-bold ph-barcode text-slate-400"></i><span class="truncate">${esc(itemCode)}</span></div><div class="mt-3 flex flex-wrap gap-1.5 text-[10px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-slate-200 bg-slate-100 px-2 py-1 text-slate-700">Lot ${esc(lotCode)}</span><span class="rounded-full border border-emerald-100 bg-emerald-50 px-2 py-1 text-emerald-700">Loc Ava ${esc(ptrAvailable)}</span><span class="rounded-full border border-purple-100 bg-purple-50 px-2 py-1 text-purple-700">s_LTS ${esc(sLts)}</span><span class="rounded-full border border-orange-100 bg-orange-50 px-2 py-1 text-orange-700">Pri ${esc(priority)}</span></div></div>`;
-        }
-
-        function generateAvReserveRepCard(rep) {
-            const label = firstNonEmptyValue(rep && rep.label, 'Unknown Rep');
-            const count = Number(rep && rep.count || 0);
-            return `<div class="mb-3 rounded-[22px] border border-amber-200 bg-white p-4 shadow-sm overflow-hidden"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-amber-600">Sales Rep</div><div class="mt-2 font-black text-[22px] leading-tight text-slate-900 break-words">${esc(label)}</div><div class="mt-3 inline-flex items-center rounded-full border border-amber-100 bg-amber-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-amber-700">${count} Row${count === 1 ? '' : 's'}</div></div>`;
-        }
-
         function selectAvResRep(repName) {
             selectedAvResRep = repName;
             selectedAvResDriveUid = null;
             selectedAvResItemCode = null;
             selectedAvResName = null;
             selectedAvResSize = null;
-            activeAvReserveDetailTab = 'customer';
             avResLevel = 0;
             resetAVReserveSearchInput();
             renderAV();
-            queueScrollMainAreaToTop(`av-reserve-rep:${repName}`);
         }
 
         function clearSelectedAvResRep() {
@@ -7149,11 +6868,9 @@ activeDriveTab = tab;
             selectedAvResItemCode = null;
             selectedAvResName = null;
             selectedAvResSize = null;
-            activeAvReserveDetailTab = 'customer';
             avResLevel = 0;
             resetAVReserveSearchInput();
             renderAV();
-            queueScrollMainAreaToTop('av-reserve-reps');
         }
 
         function selectAvReserveGroup(itemCode, commonName, contSize) {
@@ -7161,10 +6878,8 @@ activeDriveTab = tab;
             selectedAvResItemCode = itemCode;
             selectedAvResName = commonName;
             selectedAvResSize = contSize;
-            activeAvReserveDetailTab = 'customer';
             avResLevel = 1;
             renderAV();
-            queueScrollMainAreaToTop(`av-reserve-group:${itemCode}`);
             return false;
         }
 
@@ -7172,7 +6887,6 @@ activeDriveTab = tab;
             selectedAvResDriveUid = uniqueId;
             avResLevel = 2;
             renderAV();
-            queueScrollMainAreaToTop(`av-reserve-drive:${uniqueId}`);
         }
         function avItemHasPhotos(item) { return getPhotoUrlList(getRowPhotoLink(item, 'av')).length > 0; }
         function getAvOpenTabLabel(tab=activeAvOpenTab) {
@@ -7196,7 +6910,6 @@ activeDriveTab = tab;
             const searchInput = document.getElementById('av-search');
             const term = String(searchInput ? searchInput.value : '').toLowerCase().trim();
             const { isRep } = getRoleAccessState();
-            const useRepDrill = activeAVTab === 'reserves' && activeAvReserveMode !== 'cards' && canSelectAvReserveRep();
             let items = [];
             if (activeAVTab === 'open') {
                 items = (isDatasetLoaded('avOpen', 'initial') ? avOpenInventory : fullInventory).filter(i => {
@@ -7206,14 +6919,14 @@ activeDriveTab = tab;
                 });
                 if (activeAvOpenTab === 'photos') items = items.filter(avItemHasPhotos);
             } else {
-                items = reservesInventory;
-                if (useRepDrill) {
+                items = [...reservesInventory];
+                if (canSelectAvReserveRep()) {
                     if (selectedAvResRep) items = items.filter(i => isSelectedAvReserveRep(i, selectedAvResRep));
                 } else if (isRep) {
                     items = items.filter(i => isMyRep(firstNonEmptyValue(i && i.SALESREPNAME, i && i.SALESREP, i && i.SALES_REP, i && i.SALESREPID, '')));
                 }
             }
-            const allowReserveSearch = activeAVTab === 'open' || !useRepDrill || !!selectedAvResRep;
+            const allowReserveSearch = activeAVTab === 'open' || !canSelectAvReserveRep() || !!selectedAvResRep;
             if (term && allowReserveSearch) items = filterBySearch(items, term, activeAVTab === 'open' ? 'av_open' : 'av_reserves');
             return { items, term };
         }
@@ -7249,7 +6962,7 @@ activeDriveTab = tab;
                     });
                 }
             } else {
-                if (activeAvReserveMode !== 'cards' && canSelectAvReserveRep() && !selectedAvResRep) {
+                if (canSelectAvReserveRep() && !selectedAvResRep) {
                     rows = [];
                 } else {
                     if (selectedAvResRep) {
@@ -7257,7 +6970,7 @@ activeDriveTab = tab;
                         title = `AV My Reserves ${selectedAvResRep}`;
                         fileLabel = `av-my-reserves-${selectedAvResRep}`;
                     }
-                    if ((selectedAvResItemCode && selectedAvResName && selectedAvResSize) || searchTerm) rows = sortAvReserveDemandRows(rows);
+                    rows = sortAvReserveDemandRows(rows);
                     if (selectedAvResItemCode && selectedAvResName && selectedAvResSize) {
                         rows = getSelectedAvReserveGroupRows(rows);
                         title = `${title} ${selectedAvResItemCode} ${selectedAvResName} ${selectedAvResSize}`;
@@ -7276,13 +6989,6 @@ activeDriveTab = tab;
                 fileLabel,
                 searchTerm
             };
-        }
-        function getAVVisibleExportCount(baseItems = []) {
-            const rows = Array.isArray(baseItems) ? baseItems : [];
-            if (activeAVTab === 'open') return rows.length;
-            if (activeAvReserveMode !== 'cards' && canSelectAvReserveRep() && !selectedAvResRep) return 0;
-            if (selectedAvResItemCode && selectedAvResName && selectedAvResSize) return getSelectedAvReserveGroupRows(rows).length;
-            return rows.length;
         }
         function getAVExportColumns() {
             if (activeAVTab === 'open') {
@@ -7659,98 +7365,41 @@ activeDriveTab = tab;
             avRenderChunkToken += 1;
             const token = avRenderChunkToken;
             const total = Array.isArray(rows) ? rows.length : 0;
-            const touchOptimized = isIOSDevice() || isStandaloneApp() || window.matchMedia('(pointer: coarse)').matches;
-            const viewportHeight = Math.max(640, Math.round((window.visualViewport && window.visualViewport.height) || window.innerHeight || document.documentElement.clientHeight || 640));
-            const approxCardHeight = sourceView === 'reserves_drill' ? 170 : (activeAvOpenTab === 'photos' ? 160 : 185);
-            const chunkSize = touchOptimized
-                ? (total > 1600 ? 56 : (total > 800 ? 64 : 72))
-                : (total > 1200 ? 32 : (total > 600 ? 40 : 48));
-            const initialScreens = touchOptimized ? 14 : 8;
-            const initialTarget = Math.min(total, Math.max(chunkSize * 2, Math.ceil((viewportHeight * initialScreens) / approxCardHeight)));
-            const perFrameLimit = touchOptimized ? Math.max(chunkSize * 2, 128) : Math.max(chunkSize, 72);
-            const frameBudgetMs = touchOptimized ? 10 : 7;
+            const chunkSize = total > 320 ? 24 : (total > 180 ? 32 : 40);
             let index = 0;
-            crumb.innerText = crumbText;
-            if (!total) {
-                container.innerHTML = `<div class="p-6 text-center text-gray-400">No rows found.</div>`;
-                return;
-            }
-            const renderBatch = (targetCount, useBudget) => {
-                let html = '';
-                let rendered = 0;
-                const startTime = useBudget && typeof performance !== 'undefined' && performance.now ? performance.now() : 0;
-                while (index < total && rendered < targetCount) {
-                    html += generateCard(rows[index], sourceView, 'status-teal');
-                    index += 1;
-                    rendered += 1;
-                    if (useBudget && rendered >= chunkSize && typeof performance !== 'undefined' && performance.now && (performance.now() - startTime) >= frameBudgetMs) break;
-                }
-                return html;
-            };
-            container.innerHTML = renderBatch(initialTarget, false);
-            const renderNextChunk = () => {
+            let firstChunk = true;
+            crumb.innerText = `${crumbText} Loading...`;
+            container.innerHTML = `<div class="p-6 text-center text-gray-400">Loading ${total} row${total === 1 ? '' : 's'}...</div>`;
+            const renderChunk = () => {
                 if (token !== avRenderChunkToken) return;
-                const html = renderBatch(perFrameLimit, true);
-                if (html) container.insertAdjacentHTML('beforeend', html);
-                if (index < total) requestAnimationFrame(renderNextChunk);
-            };
-            if (index < total) requestAnimationFrame(renderNextChunk);
-        }
-
-        function renderAVMarkupChunked(container, crumb, rows, crumbText, renderRow, options = {}) {
-            if (!container || !crumb) return;
-            avRenderChunkToken += 1;
-            const token = avRenderChunkToken;
-            const total = Array.isArray(rows) ? rows.length : 0;
-            const touchOptimized = isIOSDevice() || isStandaloneApp() || window.matchMedia('(pointer: coarse)').matches;
-            const viewportHeight = Math.max(640, Math.round((window.visualViewport && window.visualViewport.height) || window.innerHeight || document.documentElement.clientHeight || 640));
-            const approxCardHeight = Math.max(120, Number(options.approxCardHeight) || 185);
-            const emptyHtml = options.emptyHtml || `<div class="p-6 text-center text-gray-400">No rows found.</div>`;
-            const chunkSize = touchOptimized
-                ? (total > 1600 ? 56 : (total > 800 ? 64 : 72))
-                : (total > 1200 ? 32 : (total > 600 ? 40 : 48));
-            const initialScreens = touchOptimized ? 14 : 8;
-            const initialTarget = Math.min(total, Math.max(chunkSize * 2, Math.ceil((viewportHeight * initialScreens) / approxCardHeight)));
-            const perFrameLimit = touchOptimized ? Math.max(chunkSize * 2, 128) : Math.max(chunkSize, 72);
-            const frameBudgetMs = touchOptimized ? 10 : 7;
-            let index = 0;
-            crumb.innerText = crumbText;
-            if (!total) {
-                container.innerHTML = emptyHtml;
-                return;
-            }
-            const renderBatch = (targetCount, useBudget) => {
+                const end = Math.min(index + chunkSize, total);
                 let html = '';
-                let rendered = 0;
-                const startTime = useBudget && typeof performance !== 'undefined' && performance.now ? performance.now() : 0;
-                while (index < total && rendered < targetCount) {
-                    html += renderRow(rows[index], index);
-                    index += 1;
-                    rendered += 1;
-                    if (useBudget && rendered >= chunkSize && typeof performance !== 'undefined' && performance.now && (performance.now() - startTime) >= frameBudgetMs) break;
+                for (; index < end; index += 1) html += generateCard(rows[index], sourceView, 'status-teal');
+                if (firstChunk) {
+                    container.innerHTML = html;
+                    firstChunk = false;
+                } else if (html) {
+                    container.insertAdjacentHTML('beforeend', html);
                 }
-                return html;
+                if (index < total) {
+                    crumb.innerText = `${crumbText} Loading ${index}/${total}`;
+                    requestAnimationFrame(renderChunk);
+                } else {
+                    crumb.innerText = crumbText;
+                }
             };
-            container.innerHTML = renderBatch(initialTarget, false);
-            const renderNextChunk = () => {
-                if (token !== avRenderChunkToken) return;
-                const html = renderBatch(perFrameLimit, true);
-                if (html) container.insertAdjacentHTML('beforeend', html);
-                if (index < total) requestAnimationFrame(renderNextChunk);
-            };
-            if (index < total) requestAnimationFrame(renderNextChunk);
+            requestAnimationFrame(renderChunk);
         }
 
         function renderAV() {
             avRenderChunkToken += 1;
             if (ensureViewDataForRender('av')) return;
-            if (activeAVTab === 'reserves' && !isDatasetLoaded('reserves', 'full')) ensureDatasetLoaded('reserves', 'full').catch(() => {});
             const container = document.getElementById('av-content');
             const crumb = document.getElementById('av-crumb');
             const avState = getCurrentAVBaseItems();
             const term = avState.term;
             let items = avState.items;
-            const exportCount = getAVVisibleExportCount(items);
+            const exportContext = buildAVExportContext(items, term);
 
             if (items.length === 0) {
                 const emptyLabel = activeAVTab === 'open' ? (activeAvOpenTab === 'photos' ? 'open stock photos' : 'open stock') : 'reserves';
@@ -7760,28 +7409,25 @@ activeDriveTab = tab;
                 return;
             }
 
-            updateAVExportButton(exportCount);
+            updateAVExportButton(exportContext.rows.length);
 
             if (activeAVTab === 'open') {
                 const sourceView = activeAvOpenTab === 'photos' ? 'av-photo' : 'av';
-                const openExportContext = buildAVExportContext(items, term);
-                const openRows = openExportContext.rows;
                 const crumbText = activeAvOpenTab === 'photos'
-                    ? (term.length > 0 ? `Search Results (${openRows.length})` : `Open Stock Photos (${openRows.length} items)`)
-                    : (term.length > 0 ? `Search Results (${openRows.length})` : `Open Stock (${openRows.length} items)`);
-                if (shouldUseChunkedAVOpenRender(openRows)) {
-                    renderAVOpenCardsChunked(container, crumb, openRows, sourceView, crumbText);
+                    ? (term.length > 0 ? `Search Results (${exportContext.rows.length})` : `Open Stock Photos (${exportContext.rows.length} items)`)
+                    : (term.length > 0 ? `Search Results (${exportContext.rows.length})` : `Open Stock (${exportContext.rows.length} items)`);
+                if (shouldUseChunkedAVOpenRender(exportContext.rows)) {
+                    renderAVOpenCardsChunked(container, crumb, exportContext.rows, sourceView, crumbText);
                     return;
                 }
                 crumb.innerText = crumbText;
-                container.innerHTML = openRows.map(i => generateCard(i, sourceView, 'status-teal')).join('');
+                container.innerHTML = exportContext.rows.map(i => generateCard(i, sourceView, 'status-teal')).join('');
                 return;
             }
-            const reserveModeTabsHtml = getAvReserveModeTabsHtml();
-            if (activeAvReserveMode !== 'cards' && canSelectAvReserveRep() && !selectedAvResRep) {
+            if (canSelectAvReserveRep() && !selectedAvResRep) {
                 const repOptions = getAVReserveRepOptions(items);
                 crumb.innerText = 'My Reserves > Sales Reps';
-                container.innerHTML = reserveModeTabsHtml + repOptions.map(rep => `<div class="drill-item" onclick="selectAvResRep('${esc(rep.label)}')"><span class="font-bold text-lg">${rep.label} <span class="text-gray-400 text-sm font-normal">(${rep.count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
+                container.innerHTML = repOptions.map(rep => `<div class="drill-item" onclick="selectAvResRep('${esc(rep.label)}')"><span class="font-bold text-lg">${rep.label} <span class="text-gray-400 text-sm font-normal">(${rep.count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
                 return;
             }
 
@@ -7793,77 +7439,29 @@ activeDriveTab = tab;
 
             if (selectedAvResItemCode && selectedAvResName && selectedAvResSize) {
                 const detailCrumb = `${reserveCrumbBase} > ${selectedAvResItemCode} | ${selectedAvResName} | ${selectedAvResSize}`;
-                const showAdminDetailTabs = isAdminAvReserveDetailTabsEnabled() && activeAvReserveMode === 'cards';
-                const showRepDetailTab = showAdminDetailTabs && canSeeAvReserveRepTab();
-                const activeDetailTab = showAdminDetailTabs
-                    ? (activeAvReserveDetailTab === 'location' ? 'location' : (showRepDetailTab && activeAvReserveDetailTab === 'rep' ? 'rep' : 'customer'))
-                    : 'customer';
-                const customerRows = selectedGroupRows;
-                const locationRows = showAdminDetailTabs ? getSelectedAvReserveLocationRows() : [];
-                const repGroups = showRepDetailTab ? getSelectedAvReserveRepGroups(items) : [];
-                const activeRowCount = activeDetailTab === 'location' ? locationRows.length : (activeDetailTab === 'rep' ? repGroups.length : customerRows.length);
-                const activeLabel = activeDetailTab === 'location' ? 'Location' : (activeDetailTab === 'rep' ? 'Reps' : 'Customer');
-                crumb.innerText = term.length > 0 ? `${detailCrumb} > ${activeLabel} Search (${activeRowCount} cards)` : `${detailCrumb} > ${activeLabel} (${activeRowCount} cards)`;
-                let html = `${reserveModeTabsHtml}<div class="back-btn" onclick="backToAvReserveGroupList()"><i class="ph-bold ph-arrow-left"></i> Back to Item Cards</div>`;
+                crumb.innerText = term.length > 0 ? `${detailCrumb} Search (${selectedGroupRows.length} rows)` : `${detailCrumb} (${selectedGroupRows.length} rows)`;
+                let html = `<div class="back-btn" onclick="backToAvReserveGroupList()"><i class="ph-bold ph-arrow-left"></i> Back to Item Cards</div>`;
                 if (selectedAvResRep) html += `<div class="back-btn" onclick="clearSelectedAvResRep()"><i class="ph-bold ph-users"></i> Back to Sales Reps</div>`;
-                if (showAdminDetailTabs) {
-                    html += `<div class="flex flex-wrap gap-2 mb-3"><button class="task-tab ${activeDetailTab === 'customer' ? 'active' : ''}" onclick="return setAvReserveDetailTab('customer')">Customer</button><button class="task-tab ${activeDetailTab === 'location' ? 'active' : ''}" onclick="return setAvReserveDetailTab('location')">Location</button>${showRepDetailTab ? `<button class="task-tab ${activeDetailTab === 'rep' ? 'active' : ''}" onclick="return setAvReserveDetailTab('rep')">Reps</button>` : ''}</div>`;
-                }
-                if (showAdminDetailTabs && activeDetailTab === 'location') {
-                    const introHtml = `${reserveModeTabsHtml}<div class="back-btn" onclick="backToAvReserveGroupList()"><i class="ph-bold ph-arrow-left"></i> Back to Item Cards</div>${selectedAvResRep ? `<div class="back-btn" onclick="clearSelectedAvResRep()"><i class="ph-bold ph-users"></i> Back to Sales Reps</div>` : ''}<div class="flex flex-wrap gap-2 mb-3"><button class="task-tab ${activeDetailTab === 'customer' ? 'active' : ''}" onclick="return setAvReserveDetailTab('customer')">Customer</button><button class="task-tab ${activeDetailTab === 'location' ? 'active' : ''}" onclick="return setAvReserveDetailTab('location')">Location</button>${showRepDetailTab ? `<button class="task-tab ${activeDetailTab === 'rep' ? 'active' : ''}" onclick="return setAvReserveDetailTab('rep')">Reps</button>` : ''}</div>`;
-                    if (locationRows.length > 160) {
-                        renderAVMarkupChunked(container, crumb, locationRows, crumb.innerText, (row) => generateAvReserveLocationCard(row), { approxCardHeight: 165, emptyHtml: `<div class="p-8 text-center text-gray-400">No Drive Mode locations found for this item.</div>` });
-                        container.insertAdjacentHTML('afterbegin', introHtml);
-                    } else {
-                        html += locationRows.length
-                            ? locationRows.map(i => generateAvReserveLocationCard(i)).join('')
-                            : `<div class="p-8 text-center text-gray-400">No Drive Mode locations found for this item.</div>`;
-                        container.innerHTML = html;
-                    }
-                } else if (showRepDetailTab && activeDetailTab === 'rep') {
-                    const introHtml = `${reserveModeTabsHtml}<div class="back-btn" onclick="backToAvReserveGroupList()"><i class="ph-bold ph-arrow-left"></i> Back to Item Cards</div>${selectedAvResRep ? `<div class="back-btn" onclick="clearSelectedAvResRep()"><i class="ph-bold ph-users"></i> Back to Sales Reps</div>` : ''}<div class="flex flex-wrap gap-2 mb-3"><button class="task-tab ${activeDetailTab === 'customer' ? 'active' : ''}" onclick="return setAvReserveDetailTab('customer')">Customer</button><button class="task-tab ${activeDetailTab === 'location' ? 'active' : ''}" onclick="return setAvReserveDetailTab('location')">Location</button>${showRepDetailTab ? `<button class="task-tab ${activeDetailTab === 'rep' ? 'active' : ''}" onclick="return setAvReserveDetailTab('rep')">Reps</button>` : ''}</div>`;
-                    if (repGroups.length > 200) {
-                        renderAVMarkupChunked(container, crumb, repGroups, crumb.innerText, (row) => generateAvReserveRepCard(row), { approxCardHeight: 120, emptyHtml: `<div class="p-8 text-center text-gray-400">No sales reps found for this item.</div>` });
-                        container.insertAdjacentHTML('afterbegin', introHtml);
-                    } else {
-                        html += repGroups.length
-                            ? repGroups.map(rep => generateAvReserveRepCard(rep)).join('')
-                            : `<div class="p-8 text-center text-gray-400">No sales reps found for this item.</div>`;
-                        container.innerHTML = html;
-                    }
-                } else {
-                    const introHtml = `${reserveModeTabsHtml}<div class="back-btn" onclick="backToAvReserveGroupList()"><i class="ph-bold ph-arrow-left"></i> Back to Item Cards</div>${selectedAvResRep ? `<div class="back-btn" onclick="clearSelectedAvResRep()"><i class="ph-bold ph-users"></i> Back to Sales Reps</div>` : ''}${showAdminDetailTabs ? `<div class="flex flex-wrap gap-2 mb-3"><button class="task-tab ${activeDetailTab === 'customer' ? 'active' : ''}" onclick="return setAvReserveDetailTab('customer')">Customer</button><button class="task-tab ${activeDetailTab === 'location' ? 'active' : ''}" onclick="return setAvReserveDetailTab('location')">Location</button>${showRepDetailTab ? `<button class="task-tab ${activeDetailTab === 'rep' ? 'active' : ''}" onclick="return setAvReserveDetailTab('rep')">Reps</button>` : ''}</div>` : ''}`;
-                    if (customerRows.length > 180) {
-                        renderAVMarkupChunked(container, crumb, customerRows, crumb.innerText, (row) => generateAvReserveRowCard(row), { approxCardHeight: 235, emptyHtml: `<div class="p-8 text-center text-gray-400">No reserve rows found for this item.</div>` });
-                        container.insertAdjacentHTML('afterbegin', introHtml);
-                    } else {
-                        html += customerRows.length
-                            ? customerRows.map(i => generateAvReserveRowCard(i)).join('')
-                            : `<div class="p-8 text-center text-gray-400">No reserve rows found for this item.</div>`;
-                        container.innerHTML = html;
-                    }
-                }
+                html += selectedGroupRows.length
+                    ? selectedGroupRows.map(i => generateAvReserveRowCard(i)).join('')
+                    : `<div class="p-8 text-center text-gray-400">No reserve rows found for this item.</div>`;
+                container.innerHTML = html;
                 return;
             }
 
             crumb.innerText = term.length > 0
                 ? `${reserveCrumbBase} Search (${reserveGroups.length} item cards)`
                 : `${reserveCrumbBase} (${reserveGroups.length} item cards)`;
-            let html = reserveModeTabsHtml + (selectedAvResRep ? `<div class="back-btn" onclick="clearSelectedAvResRep()"><i class="ph-bold ph-arrow-left"></i> Back to Sales Reps</div>` : '');
-            if (reserveGroups.length > 220) {
-                renderAVMarkupChunked(container, crumb, reserveGroups, crumb.innerText, (group) => generateAvReserveGroupCard(group), { approxCardHeight: 165 });
-                container.insertAdjacentHTML('afterbegin', html);
-            } else {
-                html += reserveGroups.map(group => generateAvReserveGroupCard(group)).join('');
-                container.innerHTML = html;
-            }
+            let html = selectedAvResRep ? `<div class="back-btn" onclick="clearSelectedAvResRep()"><i class="ph-bold ph-arrow-left"></i> Back to Sales Reps</div>` : '';
+            html += reserveGroups.map(group => generateAvReserveGroupCard(group)).join('');
+            container.innerHTML = html;
         }
         const debouncedDocksSearch=debounce(()=>{requestAnimationFrame(()=>renderDocks())},150);
         function clearDocksSearch(){ document.getElementById('docks-search').value=""; document.getElementById('docks-search-clear').classList.add('hidden'); dockViewLevel=0; selectedDockNum=null; selectedDockStop=null; renderDocks(); }
         function handleDocksSearch(){ const term=document.getElementById('docks-search').value.toLowerCase(); const clearBtn=document.getElementById('docks-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden');dockViewLevel=0;}else{clearBtn.classList.add('hidden');dockViewLevel=0;} scheduleSearchRender('docks', () => renderDocks()); }
         function resetDockView() { dockViewLevel = 0; selectedDockNum = null; selectedDockStop = null; document.getElementById('docks-search').value = ""; document.getElementById('docks-search-clear').classList.add('hidden'); renderDocks(); }
-        function selectDock(dock) { selectedDockNum = dock; selectedDockStop = null; dockViewLevel = 1; renderDocks(); queueScrollMainAreaToTop(`dock:${dock}`); }
-        function selectDockStop(stop) { selectedDockStop = stop; dockViewLevel = 2; renderDocks(); queueScrollMainAreaToTop(`dock-stop:${stop}`); }
+        function selectDock(dock) { selectedDockNum = dock; selectedDockStop = null; dockViewLevel = 1; renderDocks(); }
+        function selectDockStop(stop) { selectedDockStop = stop; dockViewLevel = 2; renderDocks(); }
 
         function openDockInfoModal(dockNum) {
             if (!canEditDockWorkflow()) {
@@ -8408,19 +8006,11 @@ activeDriveTab = tab;
             const camLsn = document.getElementById('camera-btn-lsn');
             const camNa = document.getElementById('camera-btn-na');
             const camReq = document.getElementById('camera-btn-req');
-            const camDock = document.getElementById('camera-btn-dock');
-            const camFlyer = document.getElementById('camera-btn-flyer');
 
-            [camSsn, camLsn, camNa, camReq, camDock, camFlyer].forEach((el) => {
-                if (el) el.style.display = 'flex';
-            });
-
-            if (isRepReadOnlyUser()) {
-                [camSsn, camLsn, camNa, camReq, camDock, camFlyer].forEach((el) => {
-                    if (el) el.style.display = 'none';
-                });
-                return;
-            }
+            if(camSsn) camSsn.style.display = 'flex';
+            if(camLsn) camLsn.style.display = 'flex';
+            if(camNa) camNa.style.display = 'flex';
+            if(camReq) camReq.style.display = 'flex';
 
             if (sourceView === 'tasks') {
                 if (activeTaskTab === 'season') {
@@ -8567,7 +8157,6 @@ activeDriveTab = tab;
             } else {
                 switchDetailTab('overview');
             }
-            queueScrollMainAreaToTop(`detail:${sourceView}:${uid}`);
         }
 
         function renderSavedPhotos() {
@@ -8575,7 +8164,6 @@ activeDriveTab = tab;
             let rLink = activeItem.REQ_PHOTO_LINK || "";
             let dLink = activeItem.DOCK_PHOTO_LINK || "";
             let fLink = activeItem.FLYER_PHOTO_LINK || "";
-            const allowRepPhotoEdits = !isRepReadOnlyUser();
 
             const makeThumbs = (link, containerId, wrapperId, prefix, allowRemove = false, title = 'Saved Photo') => {
                 let el = document.getElementById(containerId);
@@ -8583,7 +8171,6 @@ activeDriveTab = tab;
                 if(!el || !wrap) return;
                 if(link && String(link).trim() !== "") {
                     let urls = String(link).split(',').map(url => url.trim()).filter(Boolean);
-                    const allowReorder = canReorderProtectedPhoto(prefix);
                     let html = `<div class="flex gap-2 overflow-x-auto pb-2">`;
                     urls.forEach((u, idx) => {
                         let c = u;
@@ -8593,8 +8180,7 @@ activeDriveTab = tab;
                             let thumb = getDirectImageUrl(c);
                             const pressAttrs = allowRemove ? ` oncontextmenu="event.preventDefault(); return false;" onmousedown="startPhotoDeletePress(event, '${prefix}', ${idx})" onmouseup="cancelPhotoDeletePress('${prefix}', ${idx})" onmouseleave="cancelPhotoDeletePress('${prefix}', ${idx})" ontouchstart="startPhotoDeletePress(event, '${prefix}', ${idx})" ontouchend="cancelPhotoDeletePress('${prefix}', ${idx})" ontouchcancel="cancelPhotoDeletePress('${prefix}', ${idx})" ontouchmove="cancelPhotoDeletePress('${prefix}', ${idx})"` : '';
                             const hintHtml = allowRemove ? `<div class="mt-1 text-[9px] font-bold text-gray-400 uppercase text-center">Hold to Delete</div>` : '';
-                            const reorderHtml = allowReorder && urls.length > 1 ? `<div class="mt-1 flex items-center justify-center gap-1"><button class="px-2 py-1 text-[10px] font-black rounded-md border border-gray-300 bg-white text-slate-700 ${idx === 0 ? 'opacity-30 pointer-events-none' : ''}" onclick="event.stopPropagation(); movePhotoInSet('${prefix}', ${idx}, -1)">LEFT</button><button class="px-2 py-1 text-[10px] font-black rounded-md border border-gray-300 bg-white text-slate-700 ${idx === urls.length - 1 ? 'opacity-30 pointer-events-none' : ''}" onclick="event.stopPropagation(); movePhotoInSet('${prefix}', ${idx}, 1)">RIGHT</button></div>` : '';
-                            html += `<div class="relative shrink-0"><img src="${thumb}" class="w-20 h-20 object-cover rounded-lg border border-gray-300 cursor-pointer shadow-sm active:scale-95" onclick="handlePhotoThumbClick('${link}', '${title}')"${pressAttrs}>${hintHtml}${reorderHtml}</div>`;
+                            html += `<div class="relative shrink-0"><img src="${thumb}" class="w-20 h-20 object-cover rounded-lg border border-gray-300 cursor-pointer shadow-sm active:scale-95" onclick="handlePhotoThumbClick('${link}', '${title}')"${pressAttrs}>${hintHtml}</div>`;
                         }
                     });
                     html += `</div>`;
@@ -8606,12 +8192,12 @@ activeDriveTab = tab;
                 }
             };
 
-            makeThumbs(sLink, 'ssn-photo-list-container', 'ssn-photo-preview', 'ssn-', allowRepPhotoEdits, 'Base Photos');
-            makeThumbs(sLink, 'lsn-photo-list-container', 'lsn-photo-preview', 'lsn-', allowRepPhotoEdits, 'Base Photos');
-            makeThumbs(sLink, 'na-photo-list-container', 'na-photo-preview', 'na-', allowRepPhotoEdits, 'Base Photos');
-            makeThumbs(rLink || sLink, 'req-photo-list-container', 'req-photo-preview', 'req-', allowRepPhotoEdits && !!rLink, 'Request Photos');
-            makeThumbs(dLink || sLink, 'dock-photo-list-container', 'dock-photo-preview', 'dock-', allowRepPhotoEdits && !!dLink, 'Dock Photos');
-            makeThumbs(fLink || sLink, 'flyer-photo-list-container', 'flyer-photo-preview', 'flyer-', allowRepPhotoEdits && !!fLink, 'Flyer Photos');
+            makeThumbs(sLink, 'ssn-photo-list-container', 'ssn-photo-preview', 'ssn-', true, 'Base Photos');
+            makeThumbs(sLink, 'lsn-photo-list-container', 'lsn-photo-preview', 'lsn-', true, 'Base Photos');
+            makeThumbs(sLink, 'na-photo-list-container', 'na-photo-preview', 'na-', true, 'Base Photos');
+            makeThumbs(rLink || sLink, 'req-photo-list-container', 'req-photo-preview', 'req-', !!rLink, 'Request Photos');
+            makeThumbs(dLink || sLink, 'dock-photo-list-container', 'dock-photo-preview', 'dock-', !!dLink, 'Dock Photos');
+            makeThumbs(fLink || sLink, 'flyer-photo-list-container', 'flyer-photo-preview', 'flyer-', !!fLink, 'Flyer Photos');
             renderDetailOverviewMedia();
             refreshProtectedSections();
         }
@@ -8620,10 +8206,6 @@ activeDriveTab = tab;
             if (!activeItem) return;
             const config = getProtectedEditConfig(prefix);
             if (!config) return;
-            if (!skipPermissionCheck && isRepReadOnlyUser()) {
-                showRowEditRestrictedToast(prefix);
-                return;
-            }
             if (!skipPermissionCheck && !canRemoveProtectedPhoto(prefix)) {
                 showToast('Restricted', 'Only Dylan, JD, Morgan, or Kayla can remove photos after Done.', true);
                 return;
@@ -8651,45 +8233,6 @@ activeDriveTab = tab;
             renderSavedPhotos();
             renderPhotoGallery();
             showToast('Removed', 'Photo removed from this row.');
-        }
-
-        function movePhotoInSet(prefix, photoIndex, direction = 0) {
-            if (!activeItem) return;
-            const config = getProtectedEditConfig(prefix);
-            if (!config) return;
-            if (!canReorderProtectedPhoto(prefix)) {
-                showToast('Restricted', 'Only Dylan, JD, Morgan, or Kayla can reorder photos.', true);
-                return;
-            }
-            const step = Number(direction) || 0;
-            if (!step) return;
-            const photoField = config.photoField;
-            const photoNameField = config.photoNameField;
-            let links = String(activeItem[photoField] || '').split(',').map(v => v.trim()).filter(Boolean);
-            if (links.length < 2) return;
-            const targetIndex = photoIndex + step;
-            if (photoIndex < 0 || photoIndex >= links.length || targetIndex < 0 || targetIndex >= links.length) return;
-
-            const movedLink = links.splice(photoIndex, 1)[0];
-            links.splice(targetIndex, 0, movedLink);
-            activeItem[photoField] = links.join(',');
-
-            if (photoNameField) {
-                let names = String(activeItem[photoNameField] || '').split(',').map(v => v.trim());
-                if (names.length > photoIndex) {
-                    const movedName = names.splice(photoIndex, 1)[0];
-                    names.splice(targetIndex, 0, movedName);
-                    activeItem[photoNameField] = names.filter((_, idx) => idx < links.length).join(',');
-                }
-            }
-
-            normalizeRowPhotoFields(activeItem);
-            buildSearchIndex(activeItem);
-            syncRowDataAcrossViews(activeItem);
-            saveData(false, prefix, true, null, { photoChanged: true });
-            renderSavedPhotos();
-            renderPhotoGallery();
-            showToast('Updated', 'Photo order updated.');
         }
         function renderPhotoGallery() {
             const gallerySections = document.getElementById('gallery-sections');
@@ -8752,7 +8295,6 @@ activeDriveTab = tab;
 
             const contentEl = document.getElementById('det-' + tab + '-content');
             if(contentEl) contentEl.classList.remove('hidden');
-            queueScrollMainAreaToTop(`detail-tab:${tab}`);
         }
 
         function goBackFromDetail() {
@@ -8824,7 +8366,6 @@ activeDriveTab = tab;
                 }).catch(() => {});
             }
             if (getCurrentVisibleViewId() === 'sales-office') renderSalesOffice();
-            queueScrollMainAreaToTop(`sales-office-tab:${activeSalesOfficeTab}`);
             return false;
         }
 
@@ -9162,7 +8703,6 @@ activeDriveTab = tab;
             selectedReqFolderView = null;
             requestViewLevel = 1;
             renderRequest();
-            queueScrollMainAreaToTop(`request-rep:${selectedReqRepView}`);
             return false;
         }
 
@@ -9171,7 +8711,6 @@ activeDriveTab = tab;
             selectedReqFolderView = null;
             requestViewLevel = 2;
             renderRequest();
-            queueScrollMainAreaToTop(`request-status:${selectedReqStatus}`);
             return false;
         }
 
@@ -9179,7 +8718,6 @@ activeDriveTab = tab;
             selectedReqFolderView = String(folderName || '').trim() || 'Unassigned';
             requestViewLevel = 3;
             renderRequest();
-            queueScrollMainAreaToTop(`request-folder:${selectedReqFolderView}`);
             return false;
         }
 
@@ -9340,7 +8878,7 @@ activeDriveTab = tab;
         }
 
         function getRequestViewLiveSyncInterval() {
-            return isRealtimeTableHealthy('v2_active_request') ? 1600 : 900;
+            return isRealtimeTableHealthy('v2_active_request') ? 900 : 450;
         }
 
         async function runRequestViewLiveSync() {
@@ -10942,9 +10480,9 @@ ${formatRequestItemsText(items)}`;
             debouncedDriveSearch();
         }
 
-        function selectDriveName(name) { selectedDriveName = name; driveViewLevel = 1; renderDrive(); queueScrollMainAreaToTop(`drive-name:${name}`); }
-        function selectDriveSize(size) { selectedDriveSize = size; driveViewLevel = 2; renderDrive(); queueScrollMainAreaToTop(`drive-size:${size}`); }
-        function backToDriveSizes() { driveViewLevel = 1; selectedDriveSize = null; renderDrive(); queueScrollMainAreaToTop('drive-name'); }
+        function selectDriveName(name) { selectedDriveName = name; driveViewLevel = 1; renderDrive() }
+        function selectDriveSize(size) { selectedDriveSize = size; driveViewLevel = 2; renderDrive() }
+        function backToDriveSizes() { driveViewLevel = 1; selectedDriveSize = null; renderDrive() }
 
        function sortDriveCardItems(items) {
             return [...items].sort((a, b) => {
@@ -11148,7 +10686,6 @@ function toggleDriveSeason(s) {
             taskViewTargetUser = u;
             document.getElementById('task-tabs-container').classList.remove('hidden');
             renderTasks();
-            queueScrollMainAreaToTop(`task-user:${u}`);
         }
 
         function openTaskBlockView(block) {
@@ -11156,7 +10693,6 @@ function toggleDriveSeason(s) {
             selectedTaskLoc = null;
             taskViewLevel = 1;
             renderTasks();
-            queueScrollMainAreaToTop(`task-block:${block}`);
             return false;
         }
 
@@ -11164,7 +10700,6 @@ function toggleDriveSeason(s) {
             selectedTaskLoc = loc;
             taskViewLevel = 2;
             renderTasks();
-            queueScrollMainAreaToTop(`task-loc:${loc}`);
             return false;
         }
 
@@ -11187,7 +10722,6 @@ function toggleDriveSeason(s) {
             selectedFlyerFolder = String(folderName || '');
             taskViewLevel = 1;
             renderTasks();
-            queueScrollMainAreaToTop(`flyer-folder:${selectedFlyerFolder}`);
             return false;
         }
 
@@ -11205,7 +10739,6 @@ function toggleDriveSeason(s) {
         function getTaskSubviewLabel(subview = activeTaskSubview) {
             if (subview === 'positive-lts') return 'Positive LTS';
             if (subview === 'hold') return 'Hold';
-            if (subview === 'av-blanks') return 'AV Blanks';
             return 'All';
         }
 
@@ -11219,7 +10752,6 @@ function toggleDriveSeason(s) {
                 if (!holdCode || holdCode === 'NULL' || holdCode === '-' || holdCode === 'N/A') return false;
                 return holdCode.includes('H') || holdCode.includes('S');
             }
-            if (subview === 'av-blanks') return true;
             return true;
         }
 
@@ -11236,15 +10768,9 @@ function toggleDriveSeason(s) {
             const allTab = document.getElementById('task-subtab-all');
             const positiveTab = document.getElementById('task-subtab-positive-lts');
             const holdTab = document.getElementById('task-subtab-hold');
-            const avBlanksTab = document.getElementById('task-subtab-av-blanks');
             if (allTab) allTab.classList.toggle('active', activeTaskSubview === 'all');
             if (positiveTab) positiveTab.classList.toggle('active', activeTaskSubview === 'positive-lts');
             if (holdTab) holdTab.classList.toggle('active', activeTaskSubview === 'hold');
-            if (avBlanksTab) {
-                const showAvBlanks = tab === 'season';
-                avBlanksTab.classList.toggle('hidden', !showAvBlanks);
-                avBlanksTab.classList.toggle('active', activeTaskSubview === 'av-blanks');
-            }
         }
 
         function setColorWalkContSizeFilter(value = '') {
@@ -11369,31 +10895,6 @@ function toggleDriveSeason(s) {
             return left.raw.localeCompare(right.raw, undefined, { numeric: true });
         }
 
-        function normalizeSeasonTaskValue(value = '') {
-            return String(value || '').trim().toUpperCase();
-        }
-
-        function getSeasonAvBlankItems(seasonTaskItems = []) {
-            const allowedSeasons = new Set((Array.isArray(seasonTaskItems) ? seasonTaskItems : [])
-                .map(item => normalizeSeasonTaskValue(firstNonEmptyValue(item && item.SEASON, '')))
-                .filter(Boolean));
-            if (!allowedSeasons.size) return [];
-            return cavInventory.filter((item) => {
-                const seasonValue = normalizeSeasonTaskValue(firstNonEmptyValue(item && item.SEASON, item && item.season, ''));
-                const locationValue = String(firstNonEmptyValue(item && item.LOCATIONCODE, item && item.LOCATION, item && item.LOC, '')).trim();
-                return !!locationValue && !!seasonValue && allowedSeasons.has(seasonValue);
-            });
-        }
-
-        function renderTaskAvBlankCard(item) {
-            const locationCode = String(firstNonEmptyValue(item && item.LOCATIONCODE, item && item.LOCATION, item && item.LOC, 'No Loc')).trim() || 'No Loc';
-            const itemCode = String(firstNonEmptyValue(item && item.ITEMCODE, item && item.itemcode, '')).trim();
-            const commonName = String(firstNonEmptyValue(item && item.COMMONNAME, item && item.DESCRIPTION, itemCode, 'AV Blank')).trim();
-            const contSize = String(firstNonEmptyValue(item && item.CONTSIZE, item && item.ITEMSPEC, item && item.SIZE, '-')).trim() || '-';
-            const seasonValue = String(firstNonEmptyValue(item && item.SEASON, item && item.season, '-')).trim() || '-';
-            return `<div class="bg-white border border-emerald-200 rounded-xl shadow-sm mb-3 p-4"><div class="flex items-start justify-between gap-3"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-600">AV Blank</div><div class="mt-1 font-black text-lg text-slate-900">${esc(locationCode)}</div><div class="mt-2 text-sm font-bold text-slate-700 break-words">${esc(commonName)}</div><div class="mt-1 text-xs font-semibold text-slate-500">${esc(contSize)}${itemCode ? `   ${esc(itemCode)}` : ''}</div></div><div class="shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">Season ${esc(seasonValue)}</div></div></div>`;
-        }
-
         function renderTasks(options = {}) {
             const skipColorWalkFilterRender = !!(options && options.skipColorWalkFilterRender);
             if (ensureViewDataForRender('tasks')) return;
@@ -11432,11 +10933,7 @@ function toggleDriveSeason(s) {
                 : isSharedFlyerQueue
                     ? fullInventory.filter(i => isFlyerTaskItem(i))
                     : fullInventory.filter(i => i.ASSIGNEDTO === targetUser && (keepCompletedInTaskTab || !i.DATE_COMPLETED));
-            const seasonTaskItems = activeTaskTab === 'season' ? getTaskTabItems(scopedItems, 'season') : [];
             let tabItems = getTaskSubviewItems(getTaskTabItems(scopedItems, activeTaskTab), activeTaskTab, activeTaskSubview);
-            if (activeTaskTab === 'season' && activeTaskSubview === 'av-blanks') {
-                tabItems = getSeasonAvBlankItems(seasonTaskItems);
-            }
             if (activeTaskTab === 'colorwalk') {
                 if (!skipColorWalkFilterRender) renderColorWalkContSizeFilter(tabItems);
                 else syncColorWalkFilterUi();
@@ -11520,10 +11017,7 @@ function toggleDriveSeason(s) {
                         return String(a.CONTSIZE || '').localeCompare(String(b.CONTSIZE || ''), undefined, { numeric: true });
                     });
                     const colorClass = activeTaskTab === 'season' ? 'status-green' : (activeTaskTab === 'colorwalk' ? 'status-indigo' : 'status-blue');
-                    const detailHtml = activeTaskTab === 'season' && activeTaskSubview === 'av-blanks'
-                        ? fItems.map(i => renderTaskAvBlankCard(i)).join('')
-                        : fItems.map(i => generateCard(i, 'tasks', colorClass)).join('');
-                    container.innerHTML = `<div class="back-btn" onclick="return backToTaskLocationList()"><i class="ph-bold ph-arrow-left"></i> Back to Locations</div>` + detailHtml;
+                    container.innerHTML = `<div class="back-btn" onclick="return backToTaskLocationList()"><i class="ph-bold ph-arrow-left"></i> Back to Locations</div>` + fItems.map(i => generateCard(i, 'tasks', colorClass)).join('');
                 }
             }
         }
@@ -11570,7 +11064,6 @@ function toggleDriveSeason(s) {
                 el.classList.toggle('text-[#007a4d]', isActive);
             });
             scheduleUiRender('report-tab', () => renderReports());
-            queueScrollMainAreaToTop(`report-tab:${tab}`);
         }
 
         function renderReports() {
@@ -11653,12 +11146,6 @@ function toggleDriveSeason(s) {
             if (!itemToSave) return;
             let btnComp = document.getElementById(prefix + 'btn-save-complete');
             let isCurrentView = !!(activeItem && activeItem.UNIQUE_ID === itemToSave.UNIQUE_ID);
-
-            if (!canEditRowDetails(prefix)) {
-                if (isCurrentView && isComplete && btnComp) btnComp.innerText = 'MARK DONE';
-                if (!isSilentAutoSave) showRowEditRestrictedToast(prefix);
-                return;
-            }
 
             if (isCurrentView && isComplete && btnComp) btnComp.innerText = 'SAVING...';
 
@@ -12098,10 +11585,6 @@ function toggleDriveSeason(s) {
         }
 
         function selectAvNote(note, prefix) {
-            if (!canEditRowDetails(prefix)) {
-                showRowEditRestrictedToast(prefix);
-                return;
-            }
             document.getElementById(prefix + 'av-note').value = note;
             document.getElementById(prefix + 'av-dropdown-list').classList.add('hidden');
             saveData(false, prefix, true, null, { photoChanged: true });
@@ -12109,11 +11592,6 @@ function toggleDriveSeason(s) {
 
         async function handlePhotoUpload(input, prefix) {
             if (!input.files || input.files.length === 0 || !activeItem) return;
-            if (!canEditRowDetails(prefix)) {
-                showRowEditRestrictedToast(prefix);
-                input.value = '';
-                return;
-            }
             const itemToUpload = activeItem;
             if ((isIOSDevice() || isStandaloneApp()) && document.activeElement && ['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) {
                 document.activeElement.blur();
@@ -12249,22 +11727,6 @@ function toggleDriveSeason(s) {
     </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
