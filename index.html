@@ -5831,7 +5831,7 @@ function toggleDriveQuickRequestItem(domId) {
             const allowedViews = access.allowedViews instanceof Set ? access.allowedViews : new Set(access.allowedViews || []);
             const initialTargets = new Map();
             const fullTargets = new Map();
-            const reserveInitialMode = access.isRep ? 'full' : 'initial';
+            const reserveInitialMode = 'initial';
             const touchWarmup = isIOSDevice() || isStandaloneApp() || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
 
             addLoginWarmupTarget(initialTargets, 'master', 'initial');
@@ -5937,17 +5937,23 @@ function toggleDriveQuickRequestItem(domId) {
             };
 
             let openedFromCache = fullInventory.length > 0;
+            const applyOpenedCacheState = (didWarm) => {
+                if (!didWarm) return false;
+                setTimeout(() => reRenderCurrentView(), 40);
+                syncGlobalHeaderChrome();
+                updateFooterNavState();
+                return true;
+            };
             if (!openedFromCache) {
                 setLoginProgress(Math.max(currentProgress, 32), 'Restoring cached data...');
-                openedFromCache = await warmCachedInventory().catch(() => false);
-                if (openedFromCache) {
-                    setTimeout(() => reRenderCurrentView(), 40);
-                    syncGlobalHeaderChrome();
-                    updateFooterNavState();
-                }
+                const cacheWarmJob = cacheWarmPromise || warmCachedInventory();
+                Promise.resolve(cacheWarmJob).then((didWarm) => {
+                    if (applyOpenedCacheState(!!didWarm)) openedFromCache = true;
+                }).catch(() => {});
             }
 
             openApp(openedFromCache);
+            if (openedFromCache) applyOpenedCacheState(true);
             if (shouldWarmReserveCache) {
                 setLoginProgress(Math.max(currentProgress, 34), openedFromCache ? 'Restoring cached reserve data...' : 'Restoring reserve data...');
                 warmUserScopedDatasetCaches().then((warmedScopedDatasetCache) => {
