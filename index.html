@@ -2936,16 +2936,17 @@
             if (!isDylanCollygeUser() || window.googleScriptRunInFlight) return false;
             window.googleScriptRunInFlight = true;
             syncGoogleScriptButton();
-            showToast('Processing...', 'Starting Google Apps Script...', false);
+            showToast('Processing...', 'Queueing Drive > SOC > Reserves sync...', false);
             try {
                 const payload = {
                     type: 'manual_run',
+                    job: 'drive_soc_reserves',
                     trigger: 'header_button',
                     requested_by: currentUserDisplay || currentUser || 'Unknown',
                     requested_at: new Date().toISOString()
                 };
                 await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) });
-                showToast('Started', 'Google Apps Script trigger sent.');
+                showToast('Queued', 'Drive > SOC > Reserves sync queued. Open Apps Script and run showManualSyncStatus() to see the current stage.');
             } catch (err) {
                 console.error(err);
                 showToast('Error', 'Could not send the Google Apps Script request.', true);
