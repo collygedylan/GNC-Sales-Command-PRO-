@@ -847,11 +847,14 @@
                 realtime: { params: { eventsPerSecond: 8 } }
             })
             : null;
+        const REALTIME_TABLES = ['v2_master_inventory','v2_active_request','v2_reserves','v2_soc_master','v2_sales_office','v2_cav','v2_av_notes','v2_dock_team_status','v2_dock_item_status'];
         let realtimeChannels = [];
         let realtimeChangeTimer = null;
         let realtimeChangeQueue = [];
         let fallbackSyncInterval = null;
         let syncCatchupTimer = null;
+        let realtimeStartupTimer = null;
+        let lastRealtimeInitAt = 0;
         let liveSyncMode = 'idle';
         let realtimeTableStatus = Object.create(null);
         const SUPABASE_READ_TIMEOUT_MS = 20000;
@@ -2002,6 +2005,10 @@
                 clearTimeout(syncCatchupTimer);
                 syncCatchupTimer = null;
             }
+            if (realtimeStartupTimer) {
+                clearTimeout(realtimeStartupTimer);
+                realtimeStartupTimer = null;
+            }
             clearRequestViewLiveSync();
             realtimeTableStatus = Object.create(null);
             liveSyncMode = 'idle';
@@ -2016,6 +2023,18 @@
                 if (!currentUser || document.hidden || navigator.onLine === false || backgroundRefreshInFlight) return;
                 refreshLoadedDatasets(false).catch(() => {});
             }, Math.max(0, Number(delay) || 0));
+        }
+
+        function setRealtimeStatusForTrackedTables(status = '') {
+            REALTIME_TABLES.forEach((tableName) => setRealtimeTableStatus(tableName, status));
+        }
+
+        function maybeRecoverRealtime(minDelay = 15000) {
+            if (!currentUser || document.hidden || navigator.onLine === false || !shouldUseRealtime()) return;
+            if (hasHealthyRealtimeSubscription()) return;
+            const threshold = Math.max(4000, Number(minDelay) || 15000);
+            if ((Date.now() - lastRealtimeInitAt) < threshold) return;
+            initializeRealtime();
         }
 
         function startFallbackSync(intervalMs = getFallbackSyncInterval()) {
@@ -2040,9 +2059,19 @@
             const pollMs = Math.max(12000, Number(intervalMs) || getFallbackSyncInterval());
             fallbackSyncInterval = setInterval(() => {
                 if (!currentUser || document.hidden || navigator.onLine === false || backgroundRefreshInFlight) return;
+                if (shouldUseRealtime() && hasHealthyRealtimeSubscription()) {
+                    liveSyncMode = 'realtime';
+                    updateSyncDiagnostics('realtime');
+                    clearInterval(fallbackSyncInterval);
+                    fallbackSyncInterval = null;
+                    queueVisibleDatasetCatchup(220);
+                    return;
+                }
+                maybeRecoverRealtime(pollMs);
                 refreshLoadedDatasets(false).catch(() => {});
             }, pollMs);
             queueVisibleDatasetCatchup(180);
+            maybeRecoverRealtime(Math.min(pollMs, 12000));
         }
 
         function shouldUseRealtime() {
@@ -2051,36 +2080,47 @@
 
         function initializeRealtime() {
             cleanupRealtime();
+            lastRealtimeInitAt = Date.now();
             if (!shouldUseRealtime() || !supabaseClient) {
                 startFallbackSync();
                 return;
             }
-            ['v2_master_inventory','v2_active_request','v2_reserves','v2_soc_master','v2_sales_office','v2_cav','v2_av_notes','v2_dock_team_status','v2_dock_item_status'].forEach((tableName) => {
-                const channel = supabaseClient
-                    .channel(`realtime-${tableName}`)
-                    .on('postgres_changes', { event: '*', schema: 'public', table: tableName }, (payload) => {
-                        queueRealtimeChange(tableName, payload);
-                    })
-                    .subscribe((status) => {
-                        const channelStatus = String(status || '').trim().toUpperCase();
-                        setRealtimeTableStatus(tableName, channelStatus);
-                        if (channelStatus === 'SUBSCRIBED') {
-                            liveSyncMode = 'realtime';
-                            updateSyncDiagnostics();
-                            if (fallbackSyncInterval) {
-                                clearInterval(fallbackSyncInterval);
-                                fallbackSyncInterval = null;
-                            }
-                            if (tableName === 'v2_active_request') syncRequestViewLiveSync(isViewVisible('request') ? 140 : 0);
-                            queueVisibleDatasetCatchup(160);
-                        }
-                        if (channelStatus === 'TIMED_OUT' || channelStatus === 'CHANNEL_ERROR' || channelStatus === 'CLOSED') {
-                            if (tableName === 'v2_active_request' && isViewVisible('request')) syncRequestViewLiveSync(140);
-                            startFallbackSync();
-                        }
-                    });
-                realtimeChannels.push(channel);
+            const channel = REALTIME_TABLES.reduce((builder, tableName) => {
+                return builder.on('postgres_changes', { event: '*', schema: 'public', table: tableName }, (payload) => {
+                    queueRealtimeChange(tableName, payload);
+                });
+            }, supabaseClient.channel('realtime-gnc-app'));
+            channel.subscribe((status) => {
+                const channelStatus = String(status || '').trim().toUpperCase();
+                setRealtimeStatusForTrackedTables(channelStatus);
+                if (channelStatus === 'SUBSCRIBED') {
+                    if (realtimeStartupTimer) {
+                        clearTimeout(realtimeStartupTimer);
+                        realtimeStartupTimer = null;
+                    }
+                    liveSyncMode = 'realtime';
+                    updateSyncDiagnostics('realtime');
+                    if (fallbackSyncInterval) {
+                        clearInterval(fallbackSyncInterval);
+                        fallbackSyncInterval = null;
+                    }
+                    if (isViewVisible('request')) syncRequestViewLiveSync(140);
+                    queueVisibleDatasetCatchup(160);
+                }
+                if (channelStatus === 'TIMED_OUT' || channelStatus === 'CHANNEL_ERROR' || channelStatus === 'CLOSED') {
+                    if (realtimeStartupTimer) {
+                        clearTimeout(realtimeStartupTimer);
+                        realtimeStartupTimer = null;
+                    }
+                    if (isViewVisible('request')) syncRequestViewLiveSync(140);
+                    startFallbackSync();
+                }
             });
+            realtimeChannels.push(channel);
+            realtimeStartupTimer = setTimeout(() => {
+                realtimeStartupTimer = null;
+                if (!hasHealthyRealtimeSubscription()) startFallbackSync();
+            }, 6500);
         }
 
         function performLogout() { 
