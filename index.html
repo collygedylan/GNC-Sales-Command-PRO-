@@ -1320,7 +1320,7 @@
             if (sourceView === 'sales-office') return firstNonEmptyValue(item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']);
             return firstNonEmptyValue(item.ROW_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.REQ_PHOTO_LINK, item.DOCK_PHOTO_LINK, item.FLYER_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']);
         }
-        const AV_RULE_MAX_AGE_DAYS = 10;
+        const AV_RULE_MAX_AGE_DAYS = 12;
         const AV_RULE_MAX_AGE_MS = AV_RULE_MAX_AGE_DAYS * 24 * 60 * 60 * 1000;
 
         function normalizeRuleText(value) {
@@ -1480,7 +1480,7 @@
             if (prioritySnapshot && currentPriority && prioritySnapshot !== currentPriority) reasons.push('priority_changed');
             if (bundleUpdatedAt) {
                 const ageMs = Date.now() - Date.parse(bundleUpdatedAt);
-                if (ageMs > AV_RULE_MAX_AGE_MS) reasons.push('stale_10_day');
+                if (ageMs > AV_RULE_MAX_AGE_MS) reasons.push('stale_12_day');
             }
             return [...new Set(reasons)];
         }
@@ -5878,6 +5878,8 @@ function toggleDriveQuickRequestItem(domId) {
                 normalizeRowPhotoFields(item);
                 const reasons = getMasterAvInvalidationReasons(item);
                 if (!reasons.length) return;
+                const currentHoldValue = getHoldStopSnapshotFromItem(item);
+                if (currentHoldValue) return;
                 const uniqueId = String(item.UNIQUE_ID || '').trim();
                 if (!uniqueId) return;
                 const reasonText = reasons.join(',');
@@ -11584,50 +11586,57 @@ activeDriveTab = tab;
             let returnText = headerLabel ? `${headerLabel}
 
 ` : '';
+            const appendField = (label, value) => {
+                if (value === undefined || value === null || String(value).trim() === '') return '';
+                return `
+${label}
+${value}
+`;
+            };
             items.forEach(i => {
                 const locPhotoMatch = getRequestCopyLocPhotoMatch(i);
+                const summaryLine = [
+                    i.COMMONNAME || 'Unknown',
+                    i.CONTSIZE || '-',
+                    i.LOCATIONCODE || 'No Loc',
+                    i.LOTCODE || '-',
+                    i.ITEMCODE || '-'
+                ].map(value => String(value == null ? '' : value).trim()).filter(Boolean).join(' / ');
                 returnText += `${i.REQUEST_FOLDER||'No Folder'}
 ID: ${i.UNIQUE_ID} | ${i.REQ_CUSTOMER||'N/A'}
-${i.COMMONNAME||'Unknown'}
-${i.CONTSIZE||'-'}
-Lot Code: ${i.LOTCODE||'-'}
-Location Code: ${i.LOCATIONCODE||'No Loc'}
-Item Code: ${i.ITEMCODE||'-'}
+${summaryLine || 'Unknown'}
 `;
-                if(i.REQ_QTY)returnText += `  Requested Qty: ${i.REQ_QTY}
+                returnText += appendField('Requested Qty', i.REQ_QTY);
+                returnText += appendField('Desired Spec', i.REQ_DESIRED_SPEC);
+                returnText += appendField('Desired Caliper', i.REQ_DESIRED_CALIPER);
+                returnText += appendField('EST Ship', i.REQ_EST_SHIP);
+                returnText += appendField('Reserves', i.REQ_RESERVE);
+                returnText += appendField('LOC PHOTO MATCH', locPhotoMatch && locPhotoMatch !== '-' ? locPhotoMatch : '');
+                returnText += appendField('Spec', i.REQ_SPEC);
+                returnText += appendField('Caliper', i.REQ_CALIPER);
+                returnText += appendField('Pick Note', i.REQ_PICK);
+                returnText += appendField('Notes', i.REQ_COMMENTS);
+                let photo = i.REQ_PHOTO_LINK||i.SAVED_PHOTO_LINK||i['PHOTO LINK']||i.PHOTOLINK;
+                if (photo && String(photo).trim() !== '') {
+                    let urls = String(photo).split(',');
+                    let counter = 1;
+                    urls.forEach(url => {
+                        let cleanUrl = url.trim();
+                        let match = cleanUrl.match(/(https?:\/\/[^"\s>]+)/);
+                        if (match) cleanUrl = match[1];
+                        if (cleanUrl.startsWith('http')) {
+                            returnText += `
+Photo${counter}:
+${cleanUrl}
 `;
-                if(i.REQ_DESIRED_SPEC)returnText += `  Desired Spec: ${i.REQ_DESIRED_SPEC}
-`;
-                if(i.REQ_DESIRED_CALIPER)returnText += `  Desired Caliper: ${i.REQ_DESIRED_CALIPER}
-`;
-                if(i.REQ_EST_SHIP)returnText += `  EST Ship: ${i.REQ_EST_SHIP}
-`;
-                if(i.REQ_RESERVE)returnText += `  Reserves: ${i.REQ_RESERVE}
-`;
-                if(locPhotoMatch && locPhotoMatch !== '-')returnText += `  LOC PHOTO MATCH: ${locPhotoMatch}
-`;
-                if(i.REQ_SPEC)returnText += `  Spec: ${i.REQ_SPEC}
-`;
-                if(i.REQ_CALIPER)returnText += `  Caliper: ${i.REQ_CALIPER}
-`;
-                if(i.REQ_PICK)returnText += `  Pick Note: ${i.REQ_PICK}
-`;
-                let photo=i.REQ_PHOTO_LINK||i.SAVED_PHOTO_LINK||i['PHOTO LINK']||i.PHOTOLINK;
-                if(photo&&String(photo).trim()!==''){
-                    let urls=String(photo).split(',');
-                    let counter=1;
-                    urls.forEach(url=>{
-                        let cleanUrl=url.trim();
-                        let match=cleanUrl.match(/(https?:\/\/[^"\s>]+)/);
-                        if(match)cleanUrl=match[1];
-                        if(cleanUrl.startsWith('http')){returnText += `  Photo ${counter}: ${cleanUrl}
-`;counter++}
-                    })
+                            counter++;
+                        }
+                    });
                 }
                 returnText += `
 `;
             });
-            return returnText
+            return returnText;
         }
 
         function buildRequestItemsCopyPayload(items, headerLabel = '') {
@@ -11635,13 +11644,20 @@ Item Code: ${i.ITEMCODE||'-'}
             const headerHtml = headerLabel ? `<div style="margin:0 0 18px 0;font:800 20px/1.2 Arial,sans-serif;color:#0f172a;">${esc(headerLabel)}</div>` : '';
             const renderCopyField = (label, value) => {
                 if (value === undefined || value === null || String(value).trim() === '') return '';
-                return `<div style="margin-top:10px;">
-<div style="font:800 16px/1.2 Arial,sans-serif;color:#0f172a;">${esc(label)}</div>
-<div style="margin-top:2px;font:400 14px/1.45 Arial,sans-serif;color:#334155;">${esc(value)}</div>
+                return `<div style="margin-top:12px;">
+<div style="font:800 18px/1.2 Arial,sans-serif;color:#0f172a;">${esc(label)}</div>
+<div style="margin-top:3px;font:400 15px/1.45 Arial,sans-serif;color:#334155;">${esc(value)}</div>
 </div>`;
             };
             const cardsHtml = items.map((item) => {
                 const locPhotoMatch = getRequestCopyLocPhotoMatch(item);
+                const summaryLine = [
+                    item.COMMONNAME || 'Unknown',
+                    item.CONTSIZE || '-',
+                    item.LOCATIONCODE || 'No Loc',
+                    item.LOTCODE || '-',
+                    item.ITEMCODE || '-'
+                ].map(value => String(value == null ? '' : value).trim()).filter(Boolean).join(' / ');
                 const photo = item.REQ_PHOTO_LINK||item.SAVED_PHOTO_LINK||item['PHOTO LINK']||item.PHOTOLINK;
                 let photoHtml = '';
                 if (photo && String(photo).trim() !== '') {
@@ -11651,7 +11667,10 @@ Item Code: ${i.ITEMCODE||'-'}
                         let match = cleanUrl.match(/(https?:\/\/[^"\s>]+)/);
                         if (match) cleanUrl = match[1];
                         if (!cleanUrl.startsWith('http')) return '';
-                        const rowHtml = `<div style="margin-top:6px;font:600 13px/1.45 Arial,sans-serif;color:#334155;"><strong>Photo ${counter}:</strong> ${esc(cleanUrl)}</div>`;
+                        const rowHtml = `<div style="margin-top:16px;">
+<div style="font:800 18px/1.2 Arial,sans-serif;color:#0f172a;">Photo${counter}:</div>
+<div style="margin-top:3px;font:400 15px/1.45 Arial,sans-serif;color:#334155;word-break:break-all;">${esc(cleanUrl)}</div>
+</div>`;
                         counter++;
                         return rowHtml;
                     }).join('');
@@ -11660,20 +11679,7 @@ Item Code: ${i.ITEMCODE||'-'}
 <div style="font:700 11px/1.4 Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#64748b;">Request Folder</div>
 <div style="margin-top:4px;font:700 14px/1.35 Arial,sans-serif;color:#0f172a;">${esc(item.REQUEST_FOLDER||'No Folder')}</div>
 <div style="margin-top:4px;font:600 12px/1.35 Arial,sans-serif;color:#475569;">ID: ${esc(item.UNIQUE_ID||'')} | ${esc(item.REQ_CUSTOMER||'N/A')}</div>
-<div style="margin-top:14px;font:800 30px/1.08 Arial,sans-serif;color:#0f172a;">${esc(item.COMMONNAME||'Unknown')}</div>
-<div style="margin-top:6px;font:800 22px/1.12 Arial,sans-serif;color:#047857;">${esc(item.CONTSIZE||'-')}</div>
-<div style="margin-top:10px;">
-<div style="font:700 12px/1.35 Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#64748b;">Item Code</div>
-<div style="font:800 20px/1.15 Arial,sans-serif;color:#0f172a;">${esc(item.ITEMCODE||'-')}</div>
-</div>
-<div style="margin-top:10px;">
-<div style="font:700 12px/1.35 Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#64748b;">Lot Code</div>
-<div style="font:800 20px/1.15 Arial,sans-serif;color:#0f172a;">${esc(item.LOTCODE||'-')}</div>
-</div>
-<div style="margin-top:10px;">
-<div style="font:700 12px/1.35 Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#64748b;">Location Code</div>
-<div style="font:800 20px/1.15 Arial,sans-serif;color:#0f172a;">${esc(item.LOCATIONCODE||'No Loc')}</div>
-</div>
+<div style="margin-top:18px;font:800 24px/1.32 Arial,sans-serif;color:#0f172a;word-break:break-word;">${esc(summaryLine || 'Unknown')}</div>
 ${renderCopyField('Requested Qty', item.REQ_QTY)}
 ${renderCopyField('Desired Spec', item.REQ_DESIRED_SPEC)}
 ${renderCopyField('Desired Caliper', item.REQ_DESIRED_CALIPER)}
@@ -11683,6 +11689,7 @@ ${renderCopyField('LOC PHOTO MATCH', locPhotoMatch && locPhotoMatch !== '-' ? lo
 ${renderCopyField('Spec', item.REQ_SPEC)}
 ${renderCopyField('Caliper', item.REQ_CALIPER)}
 ${renderCopyField('Pick Note', item.REQ_PICK)}
+${renderCopyField('Notes', item.REQ_COMMENTS)}
 ${photoHtml}
 </div>`;
             }).join('');
@@ -13271,3 +13278,4 @@ function toggleDriveSeason(s) {
     </script>
 </body>
 </html>
+
