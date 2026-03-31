@@ -1,9 +1,24 @@
 {
   "name": "Greenleaf Nursery Company",
   "short_name": "Greenleaf",
-  "start_url": "./",
+  "description": "Greenleaf Nursery Company field operations app.",
+  "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#007a4d"
+  "theme_color": "#007a4d",
+  "icons": [
+    {
+      "src": "./bloom-check.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./bloom-check.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
 }
