@@ -2,12 +2,12 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const CACHE_NAME = 'greenleaf-v3.7';
+const CACHE_NAME = 'greenleaf-v3.8';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './manifest.json',
-  './Greenleaf Logo.png',
+  './bloom-check.png',
   'https://cdn.tailwindcss.com',
   'https://unpkg.com/@phosphor-icons/web',
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'
@@ -22,17 +22,12 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(
-        keys.map((key) => key !== CACHE_NAME ? caches.delete(key) : Promise.resolve())
-      )
-    ).then(() => self.clients.claim())
+    caches.keys().then((keys) => Promise.all(keys.map((key) => key !== CACHE_NAME ? caches.delete(key) : Promise.resolve()))).then(() => self.clients.claim())
   );
 });
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET' || !event.request.url.startsWith('http')) return;
-
   event.respondWith(
     fetch(event.request).then((networkResponse) => {
       if (networkResponse && networkResponse.status === 200) {
@@ -46,7 +41,6 @@ self.addEventListener('fetch', (event) => {
 
 self.addEventListener('push', (event) => {
   let data = {};
-
   if (event.data) {
     try {
       data = event.data.json();
@@ -58,8 +52,8 @@ self.addEventListener('push', (event) => {
   const title = data.title || 'Greenleaf Message';
   const options = {
     body: data.body || 'You have a new message.',
-    icon: data.icon || './Greenleaf Logo.png',
-    badge: data.badge || './Greenleaf Logo.png',
+    icon: data.icon || './bloom-check.png',
+    badge: data.badge || './bloom-check.png',
     data: {
       url: data.url || './',
       viewId: data.viewId || 'request'
@@ -101,14 +95,12 @@ self.addEventListener('notificationclick', (event) => {
 
 self.addEventListener('pushsubscriptionchange', (event) => {
   event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) =>
-      Promise.all(clientList.map((client) => {
-        try {
-          return client.postMessage({ type: 'GNC_RESUBSCRIBE_PUSH' });
-        } catch (error) {
-          return Promise.resolve();
-        }
-      }))
-    )
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => Promise.all(clientList.map((client) => {
+      try {
+        return client.postMessage({ type: 'GNC_RESUBSCRIBE_PUSH' });
+      } catch (error) {
+        return Promise.resolve();
+      }
+    })))
   );
 });
