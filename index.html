@@ -905,7 +905,7 @@
         }
 
         function shouldLockIosShellOverscroll() {
-            return isStandaloneApp();
+            return isIOSDevice() && isStandaloneApp();
         }
 
         function canElementScrollVertically(node) {
@@ -949,10 +949,7 @@
             if (Math.abs(deltaXFromStart) > (Math.abs(deltaY) + 6)) return;
             const container = getTouchScrollContainer(event.target) || iosShellScrollLockState.container;
             iosShellScrollLockState.container = container;
-            if (!canElementScrollVertically(container)) {
-                event.preventDefault();
-                return;
-            }
+            if (!canElementScrollVertically(container)) return;
             const atTop = container.scrollTop <= 0;
             const atBottom = Math.ceil(container.scrollTop + container.clientHeight) >= (container.scrollHeight - 1);
             if ((deltaY > 0 && atTop) || (deltaY < 0 && atBottom)) {
