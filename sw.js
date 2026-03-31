@@ -2,15 +2,14 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const CACHE_NAME = 'greenleaf-v3.7';
+const CACHE_NAME = 'greenleaf-v4.0-secure';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './manifest.json',
   './bloom-check.png',
   'https://cdn.tailwindcss.com',
-  'https://unpkg.com/@phosphor-icons/web',
-  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'
+  'https://unpkg.com/@phosphor-icons/web'
 ];
 
 self.addEventListener('install', (event) => {
