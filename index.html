@@ -2248,6 +2248,52 @@
             });
         }
 
+        function getDatasetReadTimeoutMs(table = '', mode = 'initial') {
+            const normalizedMode = mode === 'full' ? 'full' : 'initial';
+            if (table === 'v2_master_inventory') return normalizedMode === 'full' ? 45000 : 35000;
+            if (table === 'v2_reserves') return normalizedMode === 'full' ? 35000 : 25000;
+            if (table === 'v2_active_request' || table === 'v2_sales_office') return normalizedMode === 'full' ? 30000 : 22000;
+            return normalizedMode === 'full' ? Math.max(SUPABASE_READ_TIMEOUT_MS, 25000) : SUPABASE_READ_TIMEOUT_MS;
+        }
+
+        function getDatasetPageLimit(table = '', mode = 'full') {
+            const normalizedMode = mode === 'full' ? 'full' : 'initial';
+            const compactMode = isIOSDevice() || isStandaloneApp();
+            if (table === 'v2_master_inventory') return normalizedMode === 'full' ? (compactMode ? 350 : 650) : (compactMode ? 60 : 120);
+            if (table === 'v2_reserves') return normalizedMode === 'full' ? (compactMode ? 300 : 500) : (compactMode ? 90 : 160);
+            if (table === 'v2_active_request' || table === 'v2_sales_office' || table === 'v2_soc_master') return normalizedMode === 'full' ? (compactMode ? 350 : 600) : (compactMode ? 100 : 180);
+            if (normalizedMode !== 'full') return compactMode ? 90 : 160;
+            return compactMode ? 450 : 800;
+        }
+
+        function isReadTimeoutError(error) {
+            const message = String(error && error.message ? error.message : error || '').toLowerCase();
+            return message.includes('timed out') || message.includes('timeout');
+        }
+
+        function getInitialPageLimitAttempts(table = '', requestedLimit = INITIAL_PAGE_LIMIT) {
+            const safeRequested = Math.max(1, Number(requestedLimit) || INITIAL_PAGE_LIMIT);
+            const attempts = [];
+            const addAttempt = (value) => {
+                const nextValue = Math.max(20, Math.floor(Number(value) || 0));
+                if (!attempts.includes(nextValue)) attempts.push(nextValue);
+            };
+            addAttempt(safeRequested);
+            if (table === 'v2_master_inventory') {
+                addAttempt(Math.min(safeRequested, getDatasetPageLimit(table, 'initial')));
+                addAttempt(80);
+                addAttempt(40);
+                return attempts;
+            }
+            if (table === 'v2_reserves') {
+                addAttempt(Math.min(safeRequested, 120));
+                addAttempt(60);
+                return attempts;
+            }
+            addAttempt(Math.ceil(safeRequested / 2));
+            return attempts;
+        }
+
         function getPendingPhotoUploadKey(item, prefix = '') {
             return item ? `${item.UNIQUE_ID}::${prefix}` : '';
         }
@@ -2273,14 +2319,19 @@
         async function supabaseFetch(table, method='GET', body=null, query='select=*') {
             startGlobalProgress();
             try {
-                let allData=[]; let offset=0; const limit=1000; let hasMore=true;
+                let allData=[];
+                let offset=0;
+                const limit=getDatasetPageLimit(table, 'full');
+                const timeoutMs=getDatasetReadTimeoutMs(table, 'full');
+                let hasMore=true;
                 if(method==='GET'){
                     while(hasMore){
                         let queryString = query ? `${query}&limit=${limit}&offset=${offset}` : `limit=${limit}&offset=${offset}`;
-                        const data = await appDbRequest(table, 'GET', null, queryString, SUPABASE_READ_TIMEOUT_MS, `${table} read`);
+                        const data = await appDbRequest(table, 'GET', null, queryString, timeoutMs, `${table} read`);
                         if(Array.isArray(data)&&data.length>0){ allData=allData.concat(data); offset+=limit; if(data.length<limit) hasMore=false; }
                         else { hasMore=false; }
-                    } return allData;
+                    }
+                    return allData;
                 } else {
                     return await appDbRequest(table, method, body, query, SUPABASE_WRITE_TIMEOUT_MS, `${table} ${method}`) || {};
                 }
@@ -2289,6 +2340,7 @@
                 throw e;
             } finally { stopGlobalProgress(); }
         }
+
         function maybeWarnAvRuleSchemaMissing() {
             if (avRuleSchemaWarningShown || !currentUser) return;
             avRuleSchemaWarningShown = true;
@@ -2732,7 +2784,7 @@
         let pendingRequestArchiveFlushTimer = null;
         let pendingRequestArchiveFlushInFlight = false;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Machino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'v2026.03.22';
+        const APP_VERSION = 'v2026.03.31.06';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -3206,9 +3258,26 @@
         async function fetchSupabasePage(table, query = 'select=*', limit = INITIAL_PAGE_LIMIT, offset = 0) {
             startGlobalProgress();
             try {
-                const queryString = query ? `${query}&limit=${limit}&offset=${offset}` : `limit=${limit}&offset=${offset}`;
-                const data = await appDbRequest(table, 'GET', null, queryString, SUPABASE_READ_TIMEOUT_MS, `${table} read`);
-                return Array.isArray(data) ? data : [];
+                const requestedLimit = Math.max(1, Number(limit) || 0);
+                const baselineLimit = requestedLimit === INITIAL_PAGE_LIMIT
+                    ? getDatasetPageLimit(table, 'initial')
+                    : requestedLimit;
+                const safeLimit = Math.max(1, baselineLimit || getDatasetPageLimit(table, 'initial'));
+                const safeOffset = Math.max(0, Number(offset) || 0);
+                const attemptLimits = getInitialPageLimitAttempts(table, safeLimit);
+                let lastError = null;
+                for (const attemptLimit of attemptLimits) {
+                    const queryString = query ? `${query}&limit=${attemptLimit}&offset=${safeOffset}` : `limit=${attemptLimit}&offset=${safeOffset}`;
+                    try {
+                        const data = await appDbRequest(table, 'GET', null, queryString, getDatasetReadTimeoutMs(table, 'initial'), `${table} read`);
+                        return Array.isArray(data) ? data : [];
+                    } catch (error) {
+                        lastError = error;
+                        if (!isReadTimeoutError(error) || attemptLimit === attemptLimits[attemptLimits.length - 1]) throw error;
+                        await yieldToUiFrame();
+                    }
+                }
+                throw lastError || new Error(`${table} read failed.`);
             } finally {
                 stopGlobalProgress();
             }
