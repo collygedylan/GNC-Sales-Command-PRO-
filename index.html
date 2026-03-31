@@ -854,6 +854,8 @@
         let standaloneShellBaseHeight = 0;
         let detailFieldFocusResetTimer = null;
         let detailFormFocusInitialized = false;
+        let userInteractionBusyUntil = 0;
+        let realtimeBootstrapUntil = 0;
         
         function isIOSDevice() {
             return IOS_DEVICE_REGEX.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -890,6 +892,34 @@
 
         function isEditableTextEntryTarget(target) {
             return !!(target && ['INPUT','TEXTAREA','SELECT'].includes(target.tagName) && !target.disabled && !target.readOnly && target.type !== 'hidden' && target.type !== 'file');
+        }
+
+        function isTouchPerformanceMode() {
+            return isIOSDevice() || isStandaloneApp() || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+        }
+
+        function getUiYieldDelay() {
+            return isTouchPerformanceMode() ? 160 : 90;
+        }
+
+        function getTypingBusyDuration() {
+            return isTouchPerformanceMode() ? 1200 : 700;
+        }
+
+        function markUserInteractionBusy(durationMs = getTypingBusyDuration()) {
+            userInteractionBusyUntil = Math.max(userInteractionBusyUntil, Date.now() + Math.max(0, Number(durationMs) || 0));
+        }
+
+        function isUserInteractionBusy() {
+            if (pendingPhotoUploads && pendingPhotoUploads.size) return true;
+            if (Date.now() < userInteractionBusyUntil) return true;
+            return !!(isTouchPerformanceMode() && isEditableTextEntryTarget(document.activeElement));
+        }
+
+        function getPhotoUploadTuning() {
+            return isTouchPerformanceMode()
+                ? { maxWidth: 768, quality: 0.64 }
+                : { maxWidth: PHOTO_MAX_WIDTH, quality: PHOTO_JPEG_QUALITY };
         }
 
         function syncViewportHeight() {
@@ -1969,6 +1999,11 @@
                 queueVisibleDatasetCatchup(220);
                 return;
             }
+            if (shouldUseRealtime() && Date.now() < realtimeBootstrapUntil) {
+                liveSyncMode = 'idle';
+                updateSyncDiagnostics('idle');
+                return;
+            }
             liveSyncMode = 'polling';
             updateSyncDiagnostics('polling');
             const pollMs = Math.max(12000, Number(intervalMs) || getFallbackSyncInterval());
@@ -1985,6 +2020,7 @@
 
         function initializeRealtime() {
             cleanupRealtime();
+            realtimeBootstrapUntil = Date.now() + 7000;
             if (!shouldUseRealtime()) {
                 startFallbackSync();
                 return;
@@ -1999,6 +2035,7 @@
                         const channelStatus = String(status || '').trim().toUpperCase();
                         setRealtimeTableStatus(tableName, channelStatus);
                         if (channelStatus === 'SUBSCRIBED') {
+                            realtimeBootstrapUntil = 0;
                             liveSyncMode = 'realtime';
                             updateSyncDiagnostics();
                             if (fallbackSyncInterval) {
@@ -2590,7 +2627,7 @@
         
         let lowStockViewLevel=0; let selectedLowStockName=null; let selectedLowStockSize=null; let reviewViewLevel=0; let selectedReviewItemCode=null; let selectedReviewCommonName=null; let selectedReviewContSize=null;
         let requestViewLevel=0; let reservesViewLevel=0; let reportViewLevel=0; let activeReqTab="pending"; let selectedReqRep=null; let selectedReqRepStatus=null; let selectedReqFolder=null; let tempSelectedReqRep=""; let tempReqFolder=null; let tempReqCust=null; let previousReqStep=""; let driveQuickRequestItems=new Set(); let driveQuickRequestFlow=false; let driveQuickAssignFlow=false;
-        let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqFolderView=null; let selectedReqStatus='Pending';
+        let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqFolderView=null; let selectedReqStatus='Pending'; let requestFolderSearchTerm=''; let flyerFolderSearchTerm='';
         let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pendingDockNum=null; let selectedDockName=null; let selectedDockSize=null; let selectedDockItemCode=null; let selectedDockCustomer=""; let selectedDockTrip=""; let selectedDockRep=""; let lastSyncTime=new Date().toISOString();
         let lastSuccessfulSyncTime = "";
         let syncDiagnosticsOverride = "";
@@ -2806,6 +2843,7 @@
             if (currentUser) {
                 flushPendingRequestArchives().catch(() => {});
                 schedulePendingRequestArchiveFlush(2800);
+                markUserInteractionBusy(240);
                 queueForegroundRefresh(80);
                 syncRequestViewLiveSync(120);
                 schedulePushSubscriptionSync('online', { immediate: true, force: false });
@@ -2819,6 +2857,7 @@
 
         document.addEventListener('visibilitychange', () => {
             if (!document.hidden && currentUser) {
+                markUserInteractionBusy(240);
                 queueForegroundRefresh(isIOSDevice() ? 60 : 120);
                 syncRequestViewLiveSync(120);
                 schedulePushSubscriptionSync('visible', { delay: 180, force: false });
@@ -2963,6 +3002,13 @@
             });
         }
 
+
+        async function yieldForBusyUi(extraDelay = 0) {
+            await yieldToUiFrame();
+            if (isUserInteractionBusy()) {
+                await new Promise((resolve) => setTimeout(resolve, Math.max(getUiYieldDelay(), Number(extraDelay) || 0)));
+            }
+        }
         function hydrateReserveInventoryRow(item, idx) {
             item.DOM_ID='res_'+idx;
             item.UNIQUE_ID=item.UNIQUE_ID||'res_uid_'+idx;
@@ -3046,7 +3092,7 @@
             for (let start = 0; start < source.length; start += chunkSize) {
                 const end = Math.min(source.length, start + chunkSize);
                 for (let idx = start; idx < end; idx += 1) nextItems[idx] = hydrateReserveInventoryRow(source[idx], idx);
-                if (end < source.length) await yieldToUiFrame();
+                if (end < source.length) await yieldForBusyUi();
             }
             return nextItems;
         }
@@ -3070,7 +3116,7 @@
                     if (Array.isArray(data) && data.length > 0) {
                         allData = allData.concat(data);
                         offset += data.length;
-                        await yieldToUiFrame();
+                        await yieldForBusyUi();
                     } else {
                         hasMore = false;
                     }
@@ -3185,7 +3231,7 @@
             return state.initialPromise;
         }
 
-        function queueDatasetLoad(key, mode = 'full', delayMs = 180) {
+        function queueDatasetLoad(key, mode = 'full', delayMs = (isTouchPerformanceMode() ? 420 : 180)) {
             const queueKey = `${key}:${mode}`;
             const state = getDatasetState(key);
             const alreadyLoaded = mode === 'full'
@@ -3195,6 +3241,10 @@
             if (datasetQueueTimers[queueKey]) clearTimeout(datasetQueueTimers[queueKey]);
             datasetQueueTimers[queueKey] = setTimeout(() => {
                 delete datasetQueueTimers[queueKey];
+                if (isUserInteractionBusy()) {
+                    queueDatasetLoad(key, mode, isTouchPerformanceMode() ? 700 : 360);
+                    return;
+                }
                 ensureDatasetLoaded(key, mode).catch(() => {});
             }, delayMs);
         }
@@ -3358,6 +3408,10 @@
                 return false;
             }
             if (backgroundRefreshInFlight) return false;
+            if (!force && isUserInteractionBusy()) {
+                updateSyncDiagnostics(liveSyncMode === 'realtime' ? 'realtime' : 'idle');
+                return false;
+            }
             const loadedKeys = Object.keys(datasetLoadState).filter((key) => {
                 const state = getDatasetState(key);
                 return state.initialLoaded || state.fullLoaded;
@@ -3703,6 +3757,33 @@
             const cleanConsignee = String(consignee || '').trim();
             if (!cleanCustomer) return '';
             return cleanConsignee && cleanConsignee.toLowerCase() !== cleanCustomer.toLowerCase() ? `${cleanCustomer} | ${cleanConsignee}` : cleanCustomer;
+        }
+
+        function parseRequestCustomerValueParts(value = '') {
+            const raw = String(value || '').trim();
+            if (!raw) return { customer: '', consignee: '' };
+            const parts = raw.split('|').map(part => String(part || '').trim()).filter(Boolean);
+            const customer = parts[0] || raw;
+            const consignee = parts[1] || '';
+            return { customer, consignee };
+        }
+
+        function sanitizeRequestFolderPart(value = '') {
+            return String(value || '')
+                .replace(/[\\/:*?"<>|]+/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+        }
+
+        function buildRequestFolderName(customerValue = '', dateValue = new Date()) {
+            const parts = parseRequestCustomerValueParts(customerValue);
+            const customer = sanitizeRequestFolderPart(parts.customer || 'Unknown Customer');
+            const consigneeRaw = sanitizeRequestFolderPart(parts.consignee || '');
+            const consignee = consigneeRaw && consigneeRaw.toLowerCase() !== customer.toLowerCase() ? consigneeRaw : '';
+            const stampDate = dateValue instanceof Date ? dateValue : new Date(dateValue || Date.now());
+            const safeDate = Number.isFinite(stampDate.getTime()) ? stampDate : new Date();
+            const dateText = `${safeDate.getFullYear()}-${String(safeDate.getMonth() + 1).padStart(2, '0')}-${String(safeDate.getDate()).padStart(2, '0')}`;
+            return [customer, consignee, dateText].filter(Boolean).join(' ');
         }
 
         function resetQuickDriveRequestState() {
@@ -5127,9 +5208,9 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function getSearchRenderDelay(kind = 'default') {
-            const isTouchSearch = isIOSDevice() || isStandaloneApp() || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
-            if (kind === 'heavy') return isTouchSearch ? 280 : 120;
-            return isTouchSearch ? 120 : 70;
+            const isTouchSearch = isTouchPerformanceMode();
+            if (kind === 'heavy') return isTouchSearch ? 170 : 90;
+            return isTouchSearch ? 70 : 45;
         }
 
         function scheduleSearchRender(key, renderFn, delayMs = getSearchRenderDelay()) {
@@ -7240,7 +7321,7 @@ activeDriveTab = tab;
             renderDrive();
         }
         function clearAVSearch() { document.getElementById('av-search').value=""; document.getElementById('av-search-clear').classList.add('hidden'); avResLevel=0; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; avOpenLevel=0; renderAV(); }
-        function handleAVSearch() { const term=document.getElementById('av-search').value.toLowerCase(); const clearBtn=document.getElementById('av-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden'); avResLevel=0; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; avOpenLevel=0;} else{clearBtn.classList.add('hidden'); avResLevel=0; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; avOpenLevel=0;} debouncedAVSearch(); }
+        function handleAVSearch() { markUserInteractionBusy(); const term=document.getElementById('av-search').value.toLowerCase(); const clearBtn=document.getElementById('av-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden'); avResLevel=0; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; avOpenLevel=0;} else{clearBtn.classList.add('hidden'); avResLevel=0; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; avOpenLevel=0;} debouncedAVSearch(); }
 
         function resetAVView() { 
             activeAVTab='open'; activeAvOpenTab='name';
@@ -7325,7 +7406,7 @@ activeDriveTab = tab;
 
         const debouncedReservesSearch=debounce(()=>{scheduleUiRender('reserves-search', () => renderReserves());}, getSearchRenderDelay('heavy'));
         function clearReservesSearch() { document.getElementById('reserves-search').value=""; document.getElementById('reserves-search-clear').classList.add('hidden'); reservesViewLevel=0; renderReserves(); }
-        function handleReservesSearch() { const term=document.getElementById('reserves-search').value.toLowerCase(); const clearBtn=document.getElementById('reserves-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden');reservesViewLevel=0;} else{clearBtn.classList.add('hidden');reservesViewLevel=0;} if (typeof renderReserves === 'function') debouncedReservesSearch(); }
+        function handleReservesSearch() { markUserInteractionBusy(); const term=document.getElementById('reserves-search').value.toLowerCase(); const clearBtn=document.getElementById('reserves-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden');reservesViewLevel=0;} else{clearBtn.classList.add('hidden');reservesViewLevel=0;} if (typeof renderReserves === 'function') debouncedReservesSearch(); }
 
         const debouncedAVSearch=debounce(()=>{scheduleUiRender('av-search', () => renderAV());}, getSearchRenderDelay('heavy'));
 
@@ -8262,12 +8343,12 @@ activeDriveTab = tab;
             const viewportHeight = Math.max(640, Math.round((window.visualViewport && window.visualViewport.height) || window.innerHeight || document.documentElement.clientHeight || 640));
             const approxCardHeight = sourceView === 'reserves_drill' ? 170 : (activeAvOpenTab === 'photos' ? 160 : 185);
             const chunkSize = touchOptimized
-                ? (iosOptimized ? (total > 2200 ? 96 : (total > 1200 ? 112 : 128)) : (total > 1600 ? 72 : (total > 800 ? 84 : 96)))
-                : (total > 1200 ? 32 : (total > 600 ? 40 : 48));
-            const initialScreens = iosOptimized ? 20 : (touchOptimized ? 16 : 8);
+                ? (iosOptimized ? (total > 2200 ? 112 : (total > 1200 ? 128 : 144)) : (total > 1600 ? 84 : (total > 800 ? 96 : 112)))
+                : (total > 1200 ? 36 : (total > 600 ? 44 : 52));
+            const initialScreens = iosOptimized ? 24 : (touchOptimized ? 18 : 8);
             const initialTarget = Math.min(total, Math.max(chunkSize * 2, Math.ceil((viewportHeight * initialScreens) / approxCardHeight)));
-            const perFrameLimit = iosOptimized ? Math.max(chunkSize * 2, 220) : (touchOptimized ? Math.max(chunkSize * 2, 144) : Math.max(chunkSize, 72));
-            const frameBudgetMs = iosOptimized ? 13 : (touchOptimized ? 10 : 7);
+            const perFrameLimit = iosOptimized ? Math.max(chunkSize * 3, 300) : (touchOptimized ? Math.max(chunkSize * 2, 180) : Math.max(chunkSize, 80));
+            const frameBudgetMs = iosOptimized ? 15 : (touchOptimized ? 12 : 8);
             const afterChunk = null;
             const afterComplete = null;
             let index = 0;
@@ -8317,12 +8398,12 @@ activeDriveTab = tab;
             const afterChunk = typeof options.afterChunk === 'function' ? options.afterChunk : null;
             const afterComplete = typeof options.afterComplete === 'function' ? options.afterComplete : null;
             const chunkSize = touchOptimized
-                ? (iosOptimized ? (total > 2200 ? 96 : (total > 1200 ? 112 : 128)) : (total > 1600 ? 72 : (total > 800 ? 84 : 96)))
-                : (total > 1200 ? 32 : (total > 600 ? 40 : 48));
-            const initialScreens = iosOptimized ? 20 : (touchOptimized ? 16 : 8);
+                ? (iosOptimized ? (total > 2200 ? 112 : (total > 1200 ? 128 : 144)) : (total > 1600 ? 84 : (total > 800 ? 96 : 112)))
+                : (total > 1200 ? 36 : (total > 600 ? 44 : 52));
+            const initialScreens = iosOptimized ? 24 : (touchOptimized ? 18 : 8);
             const initialTarget = Math.min(total, Math.max(chunkSize * 2, Math.ceil((viewportHeight * initialScreens) / approxCardHeight)));
-            const perFrameLimit = iosOptimized ? Math.max(chunkSize * 2, 220) : (touchOptimized ? Math.max(chunkSize * 2, 144) : Math.max(chunkSize, 72));
-            const frameBudgetMs = iosOptimized ? 13 : (touchOptimized ? 10 : 7);
+            const perFrameLimit = iosOptimized ? Math.max(chunkSize * 3, 300) : (touchOptimized ? Math.max(chunkSize * 2, 180) : Math.max(chunkSize, 80));
+            const frameBudgetMs = iosOptimized ? 15 : (touchOptimized ? 12 : 8);
             let index = 0;
             crumb.innerText = crumbText;
             if (!total) {
@@ -8476,7 +8557,7 @@ activeDriveTab = tab;
         }
         const debouncedDocksSearch=debounce(()=>{scheduleUiRender('docks-search', () => renderDocks());}, getSearchRenderDelay('heavy'));
         function clearDocksSearch(){ document.getElementById('docks-search').value=""; document.getElementById('docks-search-clear').classList.add('hidden'); dockViewLevel=0; selectedDockNum=null; selectedDockStop=null; renderDocks(); }
-        function handleDocksSearch(){ const term=document.getElementById('docks-search').value.toLowerCase(); const clearBtn=document.getElementById('docks-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden');dockViewLevel=0;}else{clearBtn.classList.add('hidden');dockViewLevel=0;} debouncedDocksSearch(); }
+        function handleDocksSearch(){ markUserInteractionBusy(); const term=document.getElementById('docks-search').value.toLowerCase(); const clearBtn=document.getElementById('docks-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden');dockViewLevel=0;}else{clearBtn.classList.add('hidden');dockViewLevel=0;} debouncedDocksSearch(); }
         function resetDockView() { dockViewLevel = 0; selectedDockNum = null; selectedDockStop = null; document.getElementById('docks-search').value = ""; document.getElementById('docks-search-clear').classList.add('hidden'); renderDocks(); }
         function selectDock(dock) { selectedDockNum = dock; selectedDockStop = null; dockViewLevel = 1; renderDocks(); queueScrollMainAreaToTop(`dock:${dock}`); }
         function selectDockStop(stop) { selectedDockStop = stop; dockViewLevel = 2; renderDocks(); queueScrollMainAreaToTop(`dock-stop:${stop}`); }
@@ -9817,10 +9898,66 @@ activeDriveTab = tab;
             return consignee && consignee !== customer ? `${customer}-${consignee}` : customer;
         }
 
+        function parseRequestFolderCreatedAtMs(folderName = '') {
+            const raw = String(folderName || '').trim();
+            const legacyMatch = raw.match(/^REQ-(\d{4})-(\d{2})-(\d{2})-(\d{6})/i);
+            if (legacyMatch) {
+                const [, year, month, day, time] = legacyMatch;
+                const hour = Number(time.slice(0, 2));
+                const minute = Number(time.slice(2, 4));
+                const second = Number(time.slice(4, 6));
+                const stamp = new Date(Number(year), Number(month) - 1, Number(day), hour, minute, second).getTime();
+                return Number.isFinite(stamp) ? stamp : 0;
+            }
+            const dateMatches = raw.match(/(\d{4})-(\d{2})-(\d{2})/g);
+            if (!dateMatches || !dateMatches.length) return 0;
+            const latestDate = dateMatches[dateMatches.length - 1].match(/(\d{4})-(\d{2})-(\d{2})/);
+            if (!latestDate) return 0;
+            const [, year, month, day] = latestDate;
+            const stamp = new Date(Number(year), Number(month) - 1, Number(day), 12, 0, 0).getTime();
+            return Number.isFinite(stamp) ? stamp : 0;
+        }
+
+        function getItemActivityTimestampMs(item) {
+            if (!item) return 0;
+            const candidates = [
+                item.REQUESTED_AT,
+                item.requested_at,
+                item.LAST_UPDATED,
+                item.UPDATED_AT,
+                item.updated_at,
+                item.CREATED_AT,
+                item.created_at,
+                item.DATE_COMPLETED,
+                item.FLYER_COMPLETED,
+                item.COMPLETED_AT
+            ];
+            let winner = 0;
+            candidates.forEach((value) => {
+                const text = String(value || '').trim();
+                if (!text) return;
+                const stamp = Date.parse(text);
+                if (Number.isFinite(stamp) && stamp > winner) winner = stamp;
+            });
+            return winner;
+        }
+
+        function setRequestFolderSearchTerm(value = '') {
+            requestFolderSearchTerm = String(value || '');
+            renderRequest();
+            return false;
+        }
+
+        function setFlyerFolderSearchTerm(value = '') {
+            flyerFolderSearchTerm = String(value || '');
+            renderTasks();
+            return false;
+        }
         function openRequestRepView(repName) {
             selectedReqRepView = String(repName || '').trim() || 'Unknown Rep';
             selectedReqStatus = 'Pending';
             selectedReqFolderView = null;
+            requestFolderSearchTerm = '';
             requestViewLevel = 1;
             renderRequest();
             queueScrollMainAreaToTop(`request-rep:${selectedReqRepView}`);
@@ -9830,6 +9967,7 @@ activeDriveTab = tab;
         function openRequestStatusView(status) {
             selectedReqStatus = status === 'Complete' ? 'Complete' : 'Pending';
             selectedReqFolderView = null;
+            requestFolderSearchTerm = '';
             requestViewLevel = 2;
             renderRequest();
             queueScrollMainAreaToTop(`request-status:${selectedReqStatus}`);
@@ -9848,6 +9986,7 @@ activeDriveTab = tab;
             requestViewLevel = 0;
             selectedReqRepView = null;
             selectedReqFolderView = null;
+            requestFolderSearchTerm = '';
             renderRequest();
             return false;
         }
@@ -9855,6 +9994,7 @@ activeDriveTab = tab;
         function backToRequestStatusList() {
             requestViewLevel = 1;
             selectedReqFolderView = null;
+            requestFolderSearchTerm = '';
             renderRequest();
             return false;
         }
@@ -9960,11 +10100,40 @@ activeDriveTab = tab;
                         return;
                     }
 
-                    let folders = [...new Set(statusItems.map(i => (i.REQUEST_FOLDER || 'Unassigned')))].sort();
-                    let html = `<div class="back-btn" onclick="return backToRequestStatusList()"><i class="ph-bold ph-arrow-left"></i> Back to Status</div>`;
-                    html += folders.map(f => {
-                        let count = statusItems.filter(i => ((i.REQUEST_FOLDER || 'Unassigned')) === f).length;
-                        const folderNote = getRequestFolderNote(f, selectedReqStatus, selectedReqRepView);
+                    const folderMap = new Map();
+                    statusItems.forEach((item) => {
+                        const folderName = String(item.REQUEST_FOLDER || 'Unassigned');
+                        if (!folderMap.has(folderName)) {
+                            folderMap.set(folderName, {
+                                folderName,
+                                count: 0,
+                                latestMs: parseRequestFolderCreatedAtMs(folderName),
+                                note: getRequestFolderNote(folderName, selectedReqStatus, selectedReqRepView)
+                            });
+                        }
+                        const meta = folderMap.get(folderName);
+                        meta.count++;
+                        meta.latestMs = Math.max(meta.latestMs || 0, getItemActivityTimestampMs(item));
+                    });
+                    let folderGroups = Array.from(folderMap.values()).sort((a, b) => {
+                        const recency = (b.latestMs || 0) - (a.latestMs || 0);
+                        if (recency !== 0) return recency;
+                        return String(a.folderName || '').localeCompare(String(b.folderName || ''));
+                    });
+                    const requestFolderSearchHtml = `<div class="mb-3"><input type="search" class="input-field !mb-0 border-purple-200 focus:border-purple-500" placeholder="Search request folders..." value="${esc(requestFolderSearchTerm)}" oninput="setRequestFolderSearchTerm(this.value)"></div>`;
+                    const requestFolderSearchValue = normalizeSearchValue(requestFolderSearchTerm);
+                    if (requestFolderSearchValue) {
+                        folderGroups = folderGroups.filter(group => normalizeSearchValue(group.folderName).includes(requestFolderSearchValue) || normalizeSearchValue(group.note).includes(requestFolderSearchValue));
+                    }
+                    let html = `<div class="back-btn" onclick="return backToRequestStatusList()"><i class="ph-bold ph-arrow-left"></i> Back to Status</div>${requestFolderSearchHtml}`;
+                    if (!folderGroups.length) {
+                        container.innerHTML = html + `<div class="p-8 text-center text-gray-400">No matching folders found.</div>`;
+                        return;
+                    }
+                    html += folderGroups.map(group => {
+                        const f = group.folderName;
+                        const count = group.count;
+                        const folderNote = group.note;
                         const noteHtml = folderNote ? `<div class="mt-3 bg-amber-50 border border-amber-200 rounded-lg p-2 text-[11px] font-semibold text-amber-900 whitespace-pre-wrap"><span class="font-black uppercase text-[10px] tracking-wider text-amber-700">Folder Note</span><div class="mt-1">${esc(folderNote)}</div></div>` : '';
                         const shareActions = canShareRequestFolders() ? `<div class="grid grid-cols-4 gap-2 mt-3"><button class="bg-white border border-purple-200 text-purple-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); shareRequestFolder('copy', '${esc(f)}', '${selectedReqStatus}', '${esc(selectedReqRepView)}')">Copy</button><button class="bg-white border border-indigo-200 text-indigo-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); shareRequestFolder('email', '${esc(f)}', '${selectedReqStatus}', '${esc(selectedReqRepView)}')">Email</button><button class="bg-white border border-emerald-200 text-emerald-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); shareRequestFolder('text', '${esc(f)}', '${selectedReqStatus}', '${esc(selectedReqRepView)}')">Text</button><button class="bg-white border border-amber-200 text-amber-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); setRequestFolderNote('${esc(f)}', '${selectedReqStatus}', '${esc(selectedReqRepView)}')">Note</button></div>` : '';
                         return `<div class="bg-white border border-purple-200 rounded-xl shadow-sm mb-3 p-4 cursor-pointer active:scale-95 transition-transform" onclick="return openRequestFolderView('${esc(f)}')"><div class="flex justify-between items-center"><div class="flex items-center gap-3 min-w-0"><div class="bg-purple-50 p-2 rounded-lg"><i class="ph-fill ph-folder text-2xl text-purple-500"></i></div><span class="font-bold text-sm text-purple-800 break-all">${f}</span></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg min-w-max ml-2">${count} Items</span></div>${noteHtml}${shareActions}</div>`;
@@ -10019,7 +10188,7 @@ activeDriveTab = tab;
         }
 
         function getRequestViewLiveSyncInterval() {
-            return isRealtimeTableHealthy('v2_active_request') ? 4500 : 1200;
+            return isRealtimeTableHealthy('v2_active_request') ? 9000 : 2400;
         }
 
         async function runRequestViewLiveSync() {
@@ -10031,6 +10200,10 @@ activeDriveTab = tab;
             const pauseDelay = requestViewLiveSyncPausedUntil - Date.now();
             if (pauseDelay > 0) {
                 syncRequestViewLiveSync(pauseDelay + 120);
+                return;
+            }
+            if (isUserInteractionBusy()) {
+                syncRequestViewLiveSync(isRealtimeTableHealthy('v2_active_request') ? 1800 : 900);
                 return;
             }
             requestViewLiveSyncInFlight = true;
@@ -10156,8 +10329,17 @@ activeDriveTab = tab;
             scrollArea.addEventListener('touchend', handlePullRefreshEnd, { passive: true });
             scrollArea.addEventListener('touchcancel', handlePullRefreshEnd, { passive: true });
             scrollArea.addEventListener('scroll', () => {
+                markUserInteractionBusy(isTouchPerformanceMode() ? 240 : 120);
                 if (scrollArea.scrollTop > 8) closeAllRequestSwipes();
             }, { passive: true });
+            const inputBusyHandler = (event) => {
+                if (isEditableTextEntryTarget(event.target)) markUserInteractionBusy();
+            };
+            document.addEventListener('beforeinput', inputBusyHandler, true);
+            document.addEventListener('input', inputBusyHandler, true);
+            document.addEventListener('keydown', inputBusyHandler, true);
+            scrollArea.addEventListener('touchmove', () => markUserInteractionBusy(isTouchPerformanceMode() ? 320 : 140), { passive: true });
+            scrollArea.addEventListener('wheel', () => markUserInteractionBusy(160), { passive: true });
             window.addEventListener('pageshow', () => {
                 syncViewportHeight();
                 queueForegroundRefresh(120);
@@ -11438,11 +11620,10 @@ activeDriveTab = tab;
             const sourceDomIds=getRequestSourceDomIds();
             if(!sourceDomIds.length){showToast("Required","Please select a row first.",true);return}
             if(!requestedBy){showToast("Required","Please choose a sales rep for this request.",true);return}
+            const requestCreatedAt = new Date();
+            const requestCreatedAtIso = requestCreatedAt.toISOString();
             if(!existingFolderId){
-                const dateStr=new Date().toISOString().split('T')[0];
-                const shortTime=new Date().toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'}).replace(/:/g,'');
-                let safeCustName=cust.replace(/[^a-zA-Z0-9 ]/g,"").trim().replace(/\s+/g,'-');
-                folderId=`REQ-${dateStr}-${shortTime}-${safeCustName}`
+                folderId = buildRequestFolderName(cust, requestCreatedAt)
             }
             const restoredDriveIds = quickMode ? Array.from(driveQuickRequestItems) : [];
             closeRequestModal();
@@ -11481,6 +11662,8 @@ activeDriveTab = tab;
                         req_archived:false,
                         req_status:'Pending'
                     };
+                    newReq.REQUESTED_AT = requestCreatedAtIso;
+                    newReq.requested_at = requestCreatedAtIso;
                     insertPayloads.push(newReq);
                     optimisticIds.push(newReqId);
                     optimisticSourceMap[newReqId]=dId;
@@ -11499,6 +11682,8 @@ activeDriveTab = tab;
                     clone.REQ_STATUS='Pending';
                     clone.REQ_PHOTO_LINK=newReq.req_photo_link;
                     clone.REQ_PHOTO_NAME=newReq.req_photo_name;
+                    clone.REQUESTED_AT=requestCreatedAtIso;
+                    clone.requested_at=requestCreatedAtIso;
                     normalizeRowPhotoFields(clone);
                     requestsInventory.push(clone)
                 }
@@ -11915,6 +12100,7 @@ ${formatRequestItemsText(items)}`;
         }
 
         function handleDriveSearch() {
+            markUserInteractionBusy();
             const term = document.getElementById('drive-search').value.toLowerCase();
             const clearBtn = document.getElementById('drive-search-clear');
             if(term.length > 0) {
@@ -12453,14 +12639,30 @@ function toggleDriveSeason(s) {
                     let folderMap = {};
                     tabItems.forEach(i => {
                         const folderName = getFlyerFolderName(i);
-                        if (!folderMap[folderName]) folderMap[folderName] = { count: 0, complete: 0, assignees: new Set() };
+                        if (!folderMap[folderName]) folderMap[folderName] = { count: 0, complete: 0, assignees: new Set(), latestMs: 0 };
                         folderMap[folderName].count++;
+                        folderMap[folderName].latestMs = Math.max(folderMap[folderName].latestMs || 0, getItemActivityTimestampMs(i));
                         if (String(i.FLYER_COMPLETED || i.DATE_COMPLETED || '').trim() !== '') folderMap[folderName].complete++;
                         getFlyerAssigneeList(i.FLYER_ASSIGNED || i.ASSIGNEDTO || '').forEach(name => folderMap[folderName].assignees.add(name));
                     });
-                    container.innerHTML = Object.keys(folderMap).sort().map(folderName => {
+                    const flyerFolderSearchHtml = `<div class="mb-3"><input type="search" class="input-field !mb-0 border-indigo-200 focus:border-indigo-500" placeholder="Search flyer folders..." value="${esc(flyerFolderSearchTerm)}" oninput="setFlyerFolderSearchTerm(this.value)"></div>`;
+                    const flyerFolderSearchValue = normalizeSearchValue(flyerFolderSearchTerm);
+                    let flyerFolderGroups = Object.keys(folderMap).map(folderName => {
                         const meta = folderMap[folderName];
-                        const assignees = Array.from(meta.assignees).join(', ') || 'Unassigned';
+                        return { folderName, meta, assignees: Array.from(meta.assignees).join(', ') || 'Unassigned' };
+                    }).filter(group => !flyerFolderSearchValue || normalizeSearchValue(group.folderName).includes(flyerFolderSearchValue) || normalizeSearchValue(group.assignees).includes(flyerFolderSearchValue)).sort((a, b) => {
+                        const recency = (b.meta.latestMs || 0) - (a.meta.latestMs || 0);
+                        if (recency !== 0) return recency;
+                        return String(a.folderName || '').localeCompare(String(b.folderName || ''));
+                    });
+                    if (!flyerFolderGroups.length) {
+                        container.innerHTML = flyerFolderSearchHtml + `<div class="p-8 text-center text-gray-400">No matching flyer folders found.</div>`;
+                        return;
+                    }
+                    container.innerHTML = flyerFolderSearchHtml + flyerFolderGroups.map(group => {
+                        const folderName = group.folderName;
+                        const meta = group.meta;
+                        const assignees = group.assignees;
                         return `<div class="item-row flyer-folder-card bg-white border border-indigo-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" data-flyer-folder="${esc(folderName)}" onclick="return openFlyerFolder('${esc(folderName)}')"><div class="min-w-0 pr-3"><div class="font-bold text-lg text-indigo-800 truncate">${folderName}</div><div class="text-xs font-semibold text-indigo-500 mt-1 truncate">${assignees}</div></div><div class="text-right shrink-0"><div class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${meta.count} Rows</div><div class="text-[11px] font-semibold text-gray-500 mt-2">${meta.complete} Complete</div></div></div>`;
                     }).join('');
                     requestAnimationFrame(decorateFlyerRows);
@@ -13109,6 +13311,7 @@ function toggleDriveSeason(s) {
             if ((isIOSDevice() || isStandaloneApp()) && document.activeElement && ['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) {
                 document.activeElement.blur();
             }
+            markUserInteractionBusy(1800);
             if (navigator.onLine === false) {
                 showToast('Offline', 'No service. Photo could not upload.', true);
                 input.value = '';
@@ -13133,7 +13336,8 @@ function toggleDriveSeason(s) {
                     img.src = event.target.result;
                     img.onload = function() {
                         const canvas = document.createElement('canvas');
-                        const scaleSize = img.width > PHOTO_MAX_WIDTH ? PHOTO_MAX_WIDTH / img.width : 1;
+                        const photoUploadTuning = getPhotoUploadTuning();
+                        const scaleSize = img.width > photoUploadTuning.maxWidth ? photoUploadTuning.maxWidth / img.width : 1;
 
                         canvas.width = Math.max(1, Math.round(img.width * scaleSize));
                         canvas.height = Math.max(1, Math.round(img.height * scaleSize));
@@ -13194,7 +13398,7 @@ function toggleDriveSeason(s) {
                             } finally {
                                 input.value = '';
                             }
-                        }, 'image/jpeg', PHOTO_JPEG_QUALITY);
+                        }, 'image/jpeg', photoUploadTuning.quality);
                     };
                 };
                 reader.readAsDataURL(file);
