@@ -856,7 +856,7 @@
         const PHOTO_MAX_WIDTH = 900;
         const PHOTO_JPEG_QUALITY = 0.72;
         let pendingPhotoUploads = new Map();
-        let directSupabaseFallbackActive = false;
+        let directSupabaseFallbackActive = EMERGENCY_DIRECT_SUPABASE_FALLBACK === true;
         let directSupabaseFallbackNotified = false;
         let viewportHeightSyncInitialized = false;
         let standaloneShellBaseHeight = 0;
@@ -2270,18 +2270,27 @@
         async function directLoginLookup(username, password) {
             const cleanUsername = String(username || '').trim();
             const cleanPassword = String(password || '').trim();
-            const candidates = Array.from(new Set([cleanUsername, cleanUsername.toLowerCase()].filter(Boolean)));
-            let rows = [];
+            const candidates = Array.from(new Set([cleanUsername, cleanUsername.toLowerCase(), normalizeAppUsername(cleanUsername)].filter(Boolean)));
+            let matchedUser = null;
             for (const candidate of candidates) {
-                const data = await directSupabaseRequest('v2_app_users', 'GET', null, `select=username,role&username=eq.${encodeURIComponent(candidate)}&password=eq.${encodeURIComponent(cleanPassword)}&limit=1`, LOGIN_READ_TIMEOUT_MS, 'Direct Login');
-                rows = Array.isArray(data) ? data : [];
-                if (rows.length) break;
+                const data = await directSupabaseRequest('v2_app_users', 'GET', null, `select=username,role,password&username=eq.${encodeURIComponent(candidate)}&limit=1`, LOGIN_READ_TIMEOUT_MS, 'Direct Login');
+                const rows = Array.isArray(data) ? data : [];
+                const row = rows.find((entry) => String(entry && (entry.password || entry.PASSWORD) || '').trim() === cleanPassword) || null;
+                if (row) {
+                    matchedUser = row;
+                    break;
+                }
             }
-            if (!rows.length) {
-                const data = await directSupabaseRequest('v2_app_users', 'GET', null, `select=username,role&username=ilike.${encodeURIComponent(cleanUsername)}&password=eq.${encodeURIComponent(cleanPassword)}&limit=1`, LOGIN_READ_TIMEOUT_MS, 'Direct Login');
-                rows = Array.isArray(data) ? data : [];
+            if (!matchedUser && cleanUsername) {
+                const fallbackRows = await directSupabaseRequest('v2_app_users', 'GET', null, `select=username,role,password&limit=200`, LOGIN_READ_TIMEOUT_MS, 'Direct Login');
+                const rows = Array.isArray(fallbackRows) ? fallbackRows : [];
+                const normalizedInput = normalizeAppUsername(cleanUsername);
+                matchedUser = rows.find((entry) => {
+                    const dbUsername = String(entry && (entry.username || entry.USERNAME) || '').trim();
+                    const dbPassword = String(entry && (entry.password || entry.PASSWORD) || '').trim();
+                    return dbPassword === cleanPassword && normalizeAppUsername(dbUsername) === normalizedInput;
+                }) || null;
             }
-            const matchedUser = rows[0] || null;
             if (!matchedUser) return { ok: false, reason: 'mismatch' };
             const dbUsername = String(matchedUser.username || matchedUser.USERNAME || cleanUsername).trim() || cleanUsername;
             const role = String(matchedUser.role || matchedUser.ROLE || 'User').trim() || 'User';
@@ -2293,7 +2302,6 @@
                 emergencyDirect: true,
             };
         }
-
         async function callAppApi(action, payload = {}, options = {}) {
             const opts = options || {};
             const headers = { ...(opts.headers || {}) };
@@ -2355,7 +2363,7 @@
         function getDatasetPageLimit(table = '', mode = 'full') {
             const normalizedMode = mode === 'full' ? 'full' : 'initial';
             const compactMode = isIOSDevice() || isStandaloneApp();
-            if (table === 'v2_master_inventory') return normalizedMode === 'full' ? (compactMode ? 350 : 650) : (compactMode ? 60 : 120);
+            if (table === 'v2_master_inventory') return normalizedMode === 'full' ? (compactMode ? 250 : 500) : (compactMode ? 40 : 80);
             if (table === 'v2_reserves') return normalizedMode === 'full' ? (compactMode ? 300 : 500) : (compactMode ? 90 : 160);
             if (table === 'v2_active_request' || table === 'v2_sales_office' || table === 'v2_soc_master') return normalizedMode === 'full' ? (compactMode ? 350 : 600) : (compactMode ? 100 : 180);
             if (normalizedMode !== 'full') return compactMode ? 90 : 160;
@@ -2377,8 +2385,9 @@
             addAttempt(safeRequested);
             if (table === 'v2_master_inventory') {
                 addAttempt(Math.min(safeRequested, getDatasetPageLimit(table, 'initial')));
-                addAttempt(80);
+                addAttempt(60);
                 addAttempt(40);
+                addAttempt(20);
                 return attempts;
             }
             if (table === 'v2_reserves') {
@@ -2889,7 +2898,7 @@
         let pendingRequestArchiveFlushTimer = null;
         let pendingRequestArchiveFlushInFlight = false;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Machino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'v2026.03.31.07';
+        const APP_VERSION = 'v2026.03.31.08';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',

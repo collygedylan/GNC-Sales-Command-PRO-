@@ -1,11 +1,13 @@
-﻿/* GREENLEAF PROFESSIONAL SERVICE WORKER
+/* GREENLEAF PROFESSIONAL SERVICE WORKER
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const CACHE_NAME = 'greenleaf-v4.0-secure';
+const APP_SHELL_URL = './index.html?shellv=v2026.03.31.08';
+const CACHE_NAME = 'greenleaf-v4.1-clean-v2026.03.31.08';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
+  APP_SHELL_URL,
   './manifest.json',
   './Greenleaf Logo.png',
   'https://cdn.tailwindcss.com',
@@ -54,7 +56,7 @@ self.addEventListener('push', (event) => {
     icon: data.icon || './Greenleaf Logo.png',
     badge: data.badge || './Greenleaf Logo.png',
     data: {
-      url: data.url || './',
+      url: data.url || APP_SHELL_URL,
       viewId: data.viewId || 'request'
     },
     vibrate: [200, 100, 200],
@@ -68,7 +70,7 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const payload = event.notification && event.notification.data ? event.notification.data : {};
-  const targetUrl = payload.url || './';
+  const targetUrl = payload.url || APP_SHELL_URL;
   const targetView = payload.viewId || 'request';
 
   event.waitUntil(
@@ -103,4 +105,3 @@ self.addEventListener('pushsubscriptionchange', (event) => {
     })))
   );
 });
-
