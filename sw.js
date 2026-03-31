@@ -1,4 +1,4 @@
-/* GREENLEAF PROFESSIONAL SERVICE WORKER
+﻿/* GREENLEAF PROFESSIONAL SERVICE WORKER
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
@@ -7,7 +7,7 @@ const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './manifest.json',
-  './bloom-check.png',
+  './Greenleaf Logo.png',
   'https://cdn.tailwindcss.com',
   'https://unpkg.com/@phosphor-icons/web'
 ];
@@ -51,8 +51,8 @@ self.addEventListener('push', (event) => {
   const title = data.title || 'Greenleaf Message';
   const options = {
     body: data.body || 'You have a new message.',
-    icon: data.icon || './bloom-check.png',
-    badge: data.badge || './bloom-check.png',
+    icon: data.icon || './Greenleaf Logo.png',
+    badge: data.badge || './Greenleaf Logo.png',
     data: {
       url: data.url || './',
       viewId: data.viewId || 'request'
@@ -103,3 +103,4 @@ self.addEventListener('pushsubscriptionchange', (event) => {
     })))
   );
 });
+
