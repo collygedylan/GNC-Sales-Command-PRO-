@@ -1,8 +1,9 @@
-﻿/* GREENLEAF PROFESSIONAL SERVICE WORKER
+/* GREENLEAF PROFESSIONAL SERVICE WORKER
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const CACHE_NAME = 'greenleaf-v4.0-secure';
+const SHELL_BUILD = new URL(self.location.href).searchParams.get('v') || 'local-shell';
+const CACHE_NAME = 'greenleaf-' + SHELL_BUILD;
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
