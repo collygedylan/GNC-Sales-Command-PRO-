@@ -2719,7 +2719,7 @@
         let activeDriveMode='ok'; let activeDriveTab='name'; let selectedDriveBlock=null; let selectedDriveLoc=null; let driveQuickRequestCardMode=false; let driveQuickFilterName=''; let driveQuickFilterLocation=''; let driveQuickFilterLot=''; let driveQuickFilterSize=''; let driveQuickFilterPriority=''; let driveQuickFilterLtsMode=''; let driveQuickFilterLtsValue=''; let driveQuickHoldStopOnly=false; let driveQuickFilterOptionsCacheKey=''; let driveQuickFilterOptionsCache=null; let driveBaseFilterCacheKey=''; let driveBaseFilterCacheItems=[]; let driveQuickFilterCacheKey=''; let driveQuickFilterCacheItems=[]; let driveQuickFiltersModalOpen=false;
         let driveViewLevel=0; let selectedDriveName=null; let selectedDriveSize=null; let driveSelectedSeasons=new Set(['ALL']); const availableSeasons=["ALL","S1","F1","U1","U2","U3","X","Y","Z"];
         
-        let activeTaskTab="season"; let activeTaskSubview="all"; let taskViewTargetUser=null; let taskViewLevel=0; let selectedTaskBlock=null; let selectedTaskLoc=null; let selectedEndCapFolder=null; let selectedFlyerFolder=null; let selectedColorWalkContSize=""; let selectedColorWalkSearchTerm=""; let pendingFlyerFolderTarget=null; let pendingFlyerFolderAssignees="";
+        let activeTaskTab="season"; let activeTaskSubview="all"; let taskViewTargetUser=null; let taskViewLevel=0; let selectedTaskBlock=null; let selectedTaskLoc=null; let selectedEndCapFolder=null; let selectedFlyerFolder=null; let selectedColorWalkContSize=""; let selectedColorWalkSearchTerm=""; let pendingFlyerFolderTarget=null; let pendingFlyerFolderAssignees=""; let activeFlyerFolderTab="active";
         
         let activeAVTab='open'; let activeAvOpenTab='name'; let avOpenLevel=0; let selectedAvOpenName=null; let selectedAvOpenSize=null; let selectedAvOpenSeason=null; let selectedAvOpenLot=null; let avResLevel=0; let selectedAvResRep=null; let selectedAvResDriveUid=null; let selectedAvResItemCode=null; let selectedAvResName=null; let selectedAvResSize=null; let activeAvReserveMode='current'; let activeAvReserveDetailTab='customer';
         
@@ -4201,13 +4201,32 @@ function toggleDriveQuickRequestItem(domId) {
             return String(item && item.FLYER_TITLE || '').trim();
         }
 
+        function getFlyerAssignmentState(item) {
+            const rawValue = String(item && item.APP_TAB_ASSIGNMENT || '').trim().toLowerCase();
+            if (rawValue === 'flyer-archived' || rawValue === 'flyer_archived' || rawValue === 'flyer archived') return 'archive';
+            if (rawValue === 'flyer') return 'active';
+            return '';
+        }
+
+        function isFlyerArchivedItem(item) {
+            return getFlyerAssignmentState(item) === 'archive';
+        }
+
         function isFlyerTaskItem(item) {
             if (!item) return false;
             const folderName = getFlyerFolderName(item);
             if (!folderName) return false;
-            const legacyAssignment = String(item.APP_TAB_ASSIGNMENT || '').toLowerCase() === 'flyer';
+            const assignmentState = getFlyerAssignmentState(item);
             const hasFlyerMetadata = [item.FLYER_ASSIGNED, item.FLYER_CAT, item.FLYER_INST, item.FLYER_NOTES, item.FLYER_PHOTO_LINK].some(value => String(value || '').trim() !== '');
-            return legacyAssignment || hasFlyerMetadata;
+            return assignmentState === 'active' || assignmentState === 'archive' || hasFlyerMetadata;
+        }
+
+        function getFlyerItemsForTab(items = fullInventory, mode = activeFlyerFolderTab) {
+            const normalizedMode = String(mode || '').trim().toLowerCase() === 'archive' ? 'archive' : 'active';
+            return (Array.isArray(items) ? items : []).filter((item) => {
+                if (!isFlyerTaskItem(item)) return false;
+                return normalizedMode === 'archive' ? isFlyerArchivedItem(item) : !isFlyerArchivedItem(item);
+            });
         }
 
         function isFlyerAssignedToUser(item, userName = '') {
@@ -4344,6 +4363,7 @@ function toggleDriveQuickRequestItem(domId) {
                 reRenderCurrentView();
                 switchView('tasks');
                 setTaskTab('flyer');
+                activeFlyerFolderTab = 'active';
                 selectedFlyerFolder = flyerFolder;
                 taskViewLevel = 1;
                 renderTasks();
@@ -4436,6 +4456,7 @@ function toggleDriveQuickRequestItem(domId) {
                 reRenderCurrentView();
                 switchView('tasks');
                 setTaskTab('flyer');
+                activeFlyerFolderTab = 'active';
                 selectedFlyerFolder = flyerFolder;
                 taskViewLevel = 1;
                 renderTasks();
@@ -7227,6 +7248,7 @@ function toggleDriveQuickRequestItem(domId) {
         function setTaskTab(tab) { 
             const previousTaskTab = activeTaskTab;
             activeTaskTab=tab; 
+            if (tab === 'flyer' && previousTaskTab !== 'flyer') activeFlyerFolderTab = 'active';
             if (!taskTabUsesBlockDrill(tab) || (tab !== 'season' && activeTaskSubview === 'av-blanks')) activeTaskSubview='all';
             if (tab !== 'colorwalk' && previousTaskTab === 'colorwalk') {
                 selectedColorWalkContSize='';
@@ -10523,7 +10545,7 @@ activeDriveTab = tab;
 
         function clearFlyerTaskFields(item) {
             if (!item) return;
-            if (String(item.APP_TAB_ASSIGNMENT || '').toLowerCase() === 'flyer') item.APP_TAB_ASSIGNMENT = '';
+            if (getFlyerAssignmentState(item)) item.APP_TAB_ASSIGNMENT = '';
             item.FLYER_CAT = '';
             item.FLYER_TITLE = '';
             item.FLYER_INST = '';
@@ -10538,6 +10560,7 @@ activeDriveTab = tab;
 
         function getFlyerTaskClearPayload() {
             return {
+                app_tab_assignment: null,
                 flyer_cat: null,
                 flyer_title: null,
                 flyer_inst: null,
@@ -10657,11 +10680,21 @@ activeDriveTab = tab;
                 const action = document.createElement('button');
                 action.type = 'button';
                 action.className = 'flyer-swipe-action';
-                action.innerText = 'Delete';
+                const isFolderCard = !!row.dataset.flyerFolder && !row.dataset.flyerUid;
+                action.innerText = isFolderCard
+                    ? (normalizeFlyerFolderTab(activeFlyerFolderTab) === 'archive' ? 'Restore' : 'Archive')
+                    : 'Delete';
                 action.addEventListener('click', (event) => {
                     event.preventDefault();
                     event.stopPropagation();
-                    if (row.dataset.flyerFolder) removeFlyerFolder(row.dataset.flyerFolder);
+                    if (row.dataset.flyerFolder) {
+                        if (taskViewLevel === 0) {
+                            if (normalizeFlyerFolderTab(activeFlyerFolderTab) === 'archive') restoreFlyerFolder(row.dataset.flyerFolder);
+                            else archiveFlyerFolder(row.dataset.flyerFolder);
+                        } else {
+                            removeFlyerFolder(row.dataset.flyerFolder);
+                        }
+                    }
                     else if (row.dataset.flyerUid) removeFlyerRow(row.dataset.flyerUid);
                 });
 
@@ -10679,6 +10712,66 @@ activeDriveTab = tab;
                     closeFlyerSwipe(row);
                 }, true);
             });
+        }
+
+        function applyFlyerFolderArchiveState(item, archived = false) {
+            if (!item) return;
+            item.APP_TAB_ASSIGNMENT = archived ? 'flyer-archived' : 'flyer';
+            buildSearchIndex(item);
+        }
+
+        function refreshFlyerTaskViewAfterArchiveState(folderName = '', nextTab = '') {
+            closeAllFlyerSwipes();
+            const normalizedFolder = String(folderName || '').trim();
+            const normalizedTab = nextTab ? normalizeFlyerFolderTab(nextTab) : '';
+            if (normalizedTab === 'archive' && normalizedFolder && String(pendingFlyerFolderTarget || '').trim() === normalizedFolder) {
+                clearPendingFlyerFolderTarget(true);
+            }
+            if (normalizedTab && activeTaskTab === 'flyer' && normalizedFolder && selectedFlyerFolder === normalizedFolder) {
+                activeFlyerFolderTab = normalizedTab;
+            }
+            if (activeTaskTab === 'flyer') renderTasks();
+            markViewDirty('tasks');
+            persistCurrentCache();
+        }
+
+        async function setFlyerFolderArchivedState(folderName, archived = true) {
+            const normalizedFolder = String(folderName || '').trim();
+            if (!normalizedFolder) return;
+            const folderItems = fullInventory.filter((entry) => isFlyerTaskItem(entry) && getFlyerFolderName(entry) === normalizedFolder);
+            if (!folderItems.length) return;
+            const snapshots = new Map();
+            folderItems.forEach((item) => {
+                snapshots.set(item.UNIQUE_ID, captureFlyerTaskSnapshot(item));
+                applyFlyerFolderArchiveState(item, archived);
+            });
+            refreshFlyerTaskViewAfterArchiveState(normalizedFolder, archived ? 'archive' : 'active');
+            showToast(archived ? 'Archiving' : 'Restoring', archived ? `Moving ${normalizedFolder} to Flyer Archive...` : `Returning ${normalizedFolder} to active Flyer folders...`, false);
+            const payload = { app_tab_assignment: archived ? 'flyer-archived' : 'flyer' };
+            const results = await Promise.allSettled(folderItems.map((item) => supabaseFetch('v2_master_inventory', 'PATCH', payload, `unique_id=eq.${encodeURIComponent(item.UNIQUE_ID)}`)));
+            const failedItems = [];
+            results.forEach((result, index) => {
+                if (result.status === 'rejected') failedItems.push(folderItems[index]);
+            });
+            if (!failedItems.length) {
+                showToast(archived ? 'Archived' : 'Restored', archived ? `${normalizedFolder} moved to Flyer Archive.` : `${normalizedFolder} moved back to active Flyer folders.`);
+                return;
+            }
+            failedItems.forEach((item) => restoreFlyerTaskSnapshot(item, snapshots.get(item.UNIQUE_ID)));
+            refreshFlyerTaskViewAfterArchiveState(normalizedFolder);
+            const succeeded = folderItems.length - failedItems.length;
+            const partialMessage = succeeded > 0
+                ? `${succeeded} row${succeeded === 1 ? '' : 's'} updated. ${failedItems.length} could not be moved.`
+                : archived ? 'Flyer archive failed. Please try again.' : 'Flyer restore failed. Please try again.';
+            showToast('Error', partialMessage, true);
+        }
+
+        function archiveFlyerFolder(folderName) {
+            return setFlyerFolderArchivedState(folderName, true);
+        }
+
+        function restoreFlyerFolder(folderName) {
+            return setFlyerFolderArchivedState(folderName, false);
         }
 
         async function removeFlyerItems(items, successMessage) {
@@ -12257,6 +12350,24 @@ function toggleDriveSeason(s) {
             return false;
         }
 
+        function normalizeFlyerFolderTab(tab = 'active') {
+            return String(tab || '').trim().toLowerCase() === 'archive' ? 'archive' : 'active';
+        }
+
+        function setFlyerFolderTab(tab = 'active') {
+            activeFlyerFolderTab = normalizeFlyerFolderTab(tab);
+            taskViewLevel = 0;
+            selectedFlyerFolder = null;
+            renderTasks();
+            queueScrollMainAreaToTop(`flyer-tab:${activeFlyerFolderTab}`);
+            return false;
+        }
+
+        function getFlyerFolderTabsHtml() {
+            const normalizedTab = normalizeFlyerFolderTab(activeFlyerFolderTab);
+            return `<div class="flex flex-wrap gap-2 mb-3"><button class="task-tab ${normalizedTab === 'active' ? 'active' : ''}" onclick="return setFlyerFolderTab('active')">Active</button><button class="task-tab ${normalizedTab === 'archive' ? 'active' : ''}" onclick="return setFlyerFolderTab('archive')">Archive</button></div>`;
+        }
+
         function taskTabUsesBlockDrill(tab = activeTaskTab) {
             return tab === 'season' || tab === 'location' || tab === 'colorwalk';
         }
@@ -12478,7 +12589,8 @@ function toggleDriveSeason(s) {
                 else if (taskViewLevel === 1) crumb.innerText = `${notesTitle} > Block ${selectedTaskBlock}`;
                 else crumb.innerText = `${notesTitle} > ${selectedTaskLoc}`;
             } else if (isSharedFlyerQueue) {
-                crumb.innerText = taskViewLevel === 0 ? 'Flyer Folders' : `Flyer Folders > ${selectedFlyerFolder || 'Folder'}`;
+                const flyerCrumbBase = activeFlyerFolderTab === 'archive' ? 'Flyer Archive' : 'Flyer Folders';
+                crumb.innerText = taskViewLevel === 0 ? flyerCrumbBase : `${flyerCrumbBase} > ${selectedFlyerFolder || 'Folder'}`;
             } else {
                 crumb.innerHTML = safeRole === 'ADMIN'
                     ? `<span class="text-[#007a4d]">${targetUser}'s Tasks</span>`
@@ -12505,7 +12617,7 @@ function toggleDriveSeason(s) {
                 }
             }
 
-            if (tabItems.length === 0) {
+            if (tabItems.length === 0 && activeTaskTab !== 'flyer') {
                 container.innerHTML = `<div class="p-8 text-center text-gray-400">No active ${notesTitle} rows.</div>`;
                 return;
             }
@@ -12523,7 +12635,43 @@ function toggleDriveSeason(s) {
                     container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=0; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to End Caps</div>` + fItems.map(i => generateCard(i, 'tasks', 'status-yellow')).join('');
                 }
             } else if (activeTaskTab === 'flyer') {
+                const flyerMode = normalizeFlyerFolderTab(activeFlyerFolderTab);
+                const flyerTabsHtml = getFlyerFolderTabsHtml();
+                const flyerTone = flyerMode === 'archive'
+                    ? {
+                        cardBorder: 'border-slate-200',
+                        cardTitle: 'text-slate-800',
+                        cardSubtitle: 'text-slate-500',
+                        headerBorder: 'border-slate-200',
+                        headerBg: 'bg-slate-50',
+                        headerEyebrow: 'text-slate-600',
+                        headerTitle: 'text-slate-900',
+                        headerMeta: 'text-slate-500',
+                        buttonBorder: 'border-slate-300',
+                        buttonText: 'text-slate-700',
+                        buttonBg: 'bg-white',
+                        buttonHover: 'hover:bg-slate-100'
+                    }
+                    : {
+                        cardBorder: 'border-indigo-200',
+                        cardTitle: 'text-indigo-800',
+                        cardSubtitle: 'text-indigo-500',
+                        headerBorder: 'border-indigo-200',
+                        headerBg: 'bg-indigo-50',
+                        headerEyebrow: 'text-indigo-600',
+                        headerTitle: 'text-indigo-900',
+                        headerMeta: 'text-indigo-500',
+                        buttonBorder: 'border-indigo-200',
+                        buttonText: 'text-indigo-700',
+                        buttonBg: 'bg-white',
+                        buttonHover: 'hover:bg-indigo-100'
+                    };
+                tabItems = getFlyerItemsForTab(tabItems, flyerMode);
                 if (taskViewLevel === 0) {
+                    if (!tabItems.length) {
+                        container.innerHTML = `${flyerTabsHtml}<div class="p-8 text-center text-gray-400">No ${flyerMode === 'archive' ? 'archived' : 'active'} flyer folders.</div>`;
+                        return;
+                    }
                     let folderMap = {};
                     tabItems.forEach(i => {
                         const folderName = getFlyerFolderName(i);
@@ -12532,10 +12680,13 @@ function toggleDriveSeason(s) {
                         if (String(i.FLYER_COMPLETED || i.DATE_COMPLETED || '').trim() !== '') folderMap[folderName].complete++;
                         getFlyerAssigneeList(i.FLYER_ASSIGNED || i.ASSIGNEDTO || '').forEach(name => folderMap[folderName].assignees.add(name));
                     });
-                    container.innerHTML = Object.keys(folderMap).sort().map(folderName => {
+                    container.innerHTML = flyerTabsHtml + Object.keys(folderMap).sort().map(folderName => {
                         const meta = folderMap[folderName];
                         const assignees = Array.from(meta.assignees).join(', ') || 'Unassigned';
-                        return `<div class="item-row flyer-folder-card bg-white border border-indigo-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" data-flyer-folder="${esc(folderName)}" onclick="return openFlyerFolder('${esc(folderName)}')"><div class="min-w-0 pr-3"><div class="font-bold text-lg text-indigo-800 truncate">${folderName}</div><div class="text-xs font-semibold text-indigo-500 mt-1 truncate">${assignees}</div></div><div class="text-right shrink-0"><div class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${meta.count} Rows</div><div class="text-[11px] font-semibold text-gray-500 mt-2">${meta.complete} Complete</div></div></div>`;
+                        const footerMeta = flyerMode === 'archive'
+                            ? `<div class="text-[11px] font-semibold text-slate-500 mt-2">Archived Folder</div>`
+                            : `<div class="text-[11px] font-semibold text-gray-500 mt-2">${meta.complete} Complete</div>`;
+                        return `<div class="item-row flyer-folder-card bg-white border ${flyerTone.cardBorder} rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" data-flyer-folder="${esc(folderName)}" onclick="return openFlyerFolder('${esc(folderName)}')"><div class="min-w-0 pr-3"><div class="font-bold text-lg ${flyerTone.cardTitle} truncate">${folderName}</div><div class="text-xs font-semibold ${flyerTone.cardSubtitle} mt-1 truncate">${assignees}</div></div><div class="text-right shrink-0"><div class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${meta.count} Rows</div>${footerMeta}</div></div>`;
                     }).join('');
                     requestAnimationFrame(decorateFlyerRows);
                 } else if (taskViewLevel === 1) {
@@ -12552,8 +12703,13 @@ function toggleDriveSeason(s) {
                         return String(a.COMMONNAME || '').localeCompare(String(b.COMMONNAME || ''));
                     });
                     const folderAssignees = getFlyerFolderAssignedNames(selectedFlyerFolder, folderItems).join(', ') || 'Unassigned';
-                    const folderHeader = `<div class="mb-3 rounded-xl border border-indigo-200 bg-indigo-50 p-4"><div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-indigo-600">Flyer Folder</div><div class="text-lg font-black text-indigo-900 truncate mt-1">${selectedFlyerFolder || ''}</div><div class="text-[11px] font-semibold text-indigo-500 mt-1">${folderItems.length} row${folderItems.length === 1 ? '' : 's'} | ${folderAssignees}</div></div><button class="w-full sm:w-auto min-h-[42px] px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-[0.14em] transition-colors duration-150 bg-white border border-indigo-200 text-indigo-700 shadow-sm hover:bg-indigo-100" onclick="return startAddRowsToFlyerFolder('${esc(selectedFlyerFolder || '')}')">Add Rows To Folder</button></div></div>`;
-                    container.innerHTML = `<div class="back-btn" onclick="return backToFlyerFolderList()"><i class="ph-bold ph-arrow-left"></i> Back to Folders</div>${folderHeader}` + folderItems.map(i => generateCard(i, 'tasks', 'status-indigo')).join('');
+                    const folderActionButton = flyerMode === 'archive'
+                        ? `<button class="w-full sm:w-auto min-h-[42px] px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-[0.14em] transition-colors duration-150 ${flyerTone.buttonBg} border ${flyerTone.buttonBorder} ${flyerTone.buttonText} shadow-sm ${flyerTone.buttonHover}" onclick="return restoreFlyerFolder('${esc(selectedFlyerFolder || '')}')">Restore Folder</button>`
+                        : `<button class="w-full sm:w-auto min-h-[42px] px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-[0.14em] transition-colors duration-150 ${flyerTone.buttonBg} border ${flyerTone.buttonBorder} ${flyerTone.buttonText} shadow-sm ${flyerTone.buttonHover}" onclick="return startAddRowsToFlyerFolder('${esc(selectedFlyerFolder || '')}')">Add Rows To Folder</button>`;
+                    const folderStatusLabel = flyerMode === 'archive' ? 'Archived Flyer Folder' : 'Flyer Folder';
+                    const folderHeader = `<div class="mb-3 rounded-xl border ${flyerTone.headerBorder} ${flyerTone.headerBg} p-4"><div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] ${flyerTone.headerEyebrow}">${folderStatusLabel}</div><div class="text-lg font-black ${flyerTone.headerTitle} truncate mt-1">${selectedFlyerFolder || ''}</div><div class="text-[11px] font-semibold ${flyerTone.headerMeta} mt-1">${folderItems.length} row${folderItems.length === 1 ? '' : 's'} | ${folderAssignees}</div></div>${folderActionButton}</div></div>`;
+                    const backLabel = flyerMode === 'archive' ? 'Back to Archive' : 'Back to Folders';
+                    container.innerHTML = `${flyerTabsHtml}<div class="back-btn" onclick="return backToFlyerFolderList()"><i class="ph-bold ph-arrow-left"></i> ${backLabel}</div>${folderHeader}` + folderItems.map(i => generateCard(i, 'tasks', 'status-indigo')).join('');
                     requestAnimationFrame(decorateFlyerRows);
                 }
             } else {
