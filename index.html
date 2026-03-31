@@ -5874,20 +5874,20 @@ function toggleDriveQuickRequestItem(domId) {
                 }
             };
 
-            if (fullInventory.length === 0) {
-                warmCachedInventory().then((hasCache) => {
-                    if (hasCache) {
-                        setTimeout(() => reRenderCurrentView(), 40);
-                        syncGlobalHeaderChrome();
-                        updateFooterNavState();
-                    }
-                }).catch(() => {});
+            let openedFromCache = fullInventory.length > 0;
+            if (!openedFromCache) {
+                setLoginProgress(Math.max(currentProgress, 32), 'Restoring cached data...');
+                openedFromCache = await warmCachedInventory().catch(() => false);
+                if (openedFromCache) {
+                    setTimeout(() => reRenderCurrentView(), 40);
+                    syncGlobalHeaderChrome();
+                    updateFooterNavState();
+                }
             }
 
-            const openedFromCache = fullInventory.length > 0;
             openApp(openedFromCache);
             if (shouldWarmReserveCache) {
-                setLoginProgress(Math.max(currentProgress, 34), 'Restoring cached reserve data...');
+                setLoginProgress(Math.max(currentProgress, 34), openedFromCache ? 'Restoring cached reserve data...' : 'Restoring reserve data...');
                 warmUserScopedDatasetCaches().then((warmedScopedDatasetCache) => {
                     if (warmedScopedDatasetCache) {
                         setTimeout(() => reRenderCurrentView(), 40);
