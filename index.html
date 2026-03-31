@@ -10830,6 +10830,7 @@ activeDriveTab = tab;
             if (!item) return;
             item.APP_TAB_ASSIGNMENT = archived ? 'flyer-archived' : 'flyer';
             buildSearchIndex(item);
+            syncRowDataAcrossViews(item);
         }
 
         function refreshFlyerTaskViewAfterArchiveState(folderName = '', nextTab = '') {
@@ -10839,7 +10840,7 @@ activeDriveTab = tab;
             if (normalizedTab === 'archive' && normalizedFolder && String(pendingFlyerFolderTarget || '').trim() === normalizedFolder) {
                 clearPendingFlyerFolderTarget(true);
             }
-            if (normalizedTab && activeTaskTab === 'flyer' && normalizedFolder && selectedFlyerFolder === normalizedFolder) {
+            if (normalizedTab && activeTaskTab === 'flyer') {
                 activeFlyerFolderTab = normalizedTab;
             }
             if (activeTaskTab === 'flyer') renderTasks();
