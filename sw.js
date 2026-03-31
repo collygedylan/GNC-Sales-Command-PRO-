@@ -2,7 +2,7 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const CACHE_NAME = 'greenleaf-v3.8';
+const CACHE_NAME = 'greenleaf-v3.7';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -104,4 +104,3 @@ self.addEventListener('pushsubscriptionchange', (event) => {
     })))
   );
 });
-s
