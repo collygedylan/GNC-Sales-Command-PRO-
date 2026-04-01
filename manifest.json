@@ -3,7 +3,7 @@
   "short_name": "Greenleaf",
   "description": "Greenleaf Nursery Company field operations app.",
   "id": "./index.html",
-  "start_url": "./index.html?shellv=v2026.03.31.08",
+  "start_url": "./index.html?shellv=V2026.03.31.09",
   "scope": "./",
   "display": "standalone",
   "background_color": "#ffffff",

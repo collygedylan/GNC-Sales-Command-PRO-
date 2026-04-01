@@ -2270,27 +2270,14 @@
         async function directLoginLookup(username, password) {
             const cleanUsername = String(username || '').trim();
             const cleanPassword = String(password || '').trim();
-            const candidates = Array.from(new Set([cleanUsername, cleanUsername.toLowerCase(), normalizeAppUsername(cleanUsername)].filter(Boolean)));
-            let matchedUser = null;
-            for (const candidate of candidates) {
-                const data = await directSupabaseRequest('v2_app_users', 'GET', null, `select=username,role,password&username=eq.${encodeURIComponent(candidate)}&limit=1`, LOGIN_READ_TIMEOUT_MS, 'Direct Login');
-                const rows = Array.isArray(data) ? data : [];
-                const row = rows.find((entry) => String(entry && (entry.password || entry.PASSWORD) || '').trim() === cleanPassword) || null;
-                if (row) {
-                    matchedUser = row;
-                    break;
-                }
-            }
-            if (!matchedUser && cleanUsername) {
-                const fallbackRows = await directSupabaseRequest('v2_app_users', 'GET', null, `select=username,role,password&limit=200`, LOGIN_READ_TIMEOUT_MS, 'Direct Login');
-                const rows = Array.isArray(fallbackRows) ? fallbackRows : [];
-                const normalizedInput = normalizeAppUsername(cleanUsername);
-                matchedUser = rows.find((entry) => {
-                    const dbUsername = String(entry && (entry.username || entry.USERNAME) || '').trim();
-                    const dbPassword = String(entry && (entry.password || entry.PASSWORD) || '').trim();
-                    return dbPassword === cleanPassword && normalizeAppUsername(dbUsername) === normalizedInput;
-                }) || null;
-            }
+            const rows = await directSupabaseRequest('v2_app_users', 'GET', null, `select=username,role,password&limit=200`, LOGIN_READ_TIMEOUT_MS, 'Direct Login');
+            const candidates = Array.isArray(rows) ? rows : [];
+            const normalizedInput = normalizeAppUsername(cleanUsername);
+            const matchedUser = candidates.find((entry) => {
+                const dbUsername = String(entry && (entry.username || entry.USERNAME) || '').trim();
+                const dbPassword = String(entry && (entry.password || entry.PASSWORD) || '').trim();
+                return dbPassword === cleanPassword && normalizeAppUsername(dbUsername) === normalizedInput;
+            }) || null;
             if (!matchedUser) return { ok: false, reason: 'mismatch' };
             const dbUsername = String(matchedUser.username || matchedUser.USERNAME || cleanUsername).trim() || cleanUsername;
             const role = String(matchedUser.role || matchedUser.ROLE || 'User').trim() || 'User';
@@ -2641,6 +2628,28 @@
             if (newPasswordInput) setTimeout(() => { try { newPasswordInput.focus(); } catch (e) {} }, 0);
         }
 
+        function hasAnyCachedWorkspaceData() {
+            return [fullInventory, avOpenInventory, requestsInventory, reservesInventory, socInventory, salesOfficeInventory, cavInventory, avNotesDb].some((rows) => Array.isArray(rows) && rows.length > 0);
+        }
+
+        async function tryRestoreEmergencyCachedAccess(username = '', isBiometricLogin = false) {
+            const requestedUser = normalizeAppUsername(username || '');
+            const savedUserLabel = String(localStorage.getItem(APP_LAST_USER_STORAGE_KEY) || '').trim();
+            const savedRole = String(localStorage.getItem(APP_LAST_ROLE_STORAGE_KEY) || 'User').trim() || 'User';
+            const savedNormalizedUser = normalizeAppUsername(savedUserLabel || '');
+            if (!savedUserLabel || !savedRole) return false;
+            if (requestedUser && savedNormalizedUser && requestedUser !== savedNormalizedUser) return false;
+            if (!hasAnyCachedWorkspaceData()) {
+                await warmCachedInventory().catch(() => false);
+            }
+            if (!hasAnyCachedWorkspaceData()) return false;
+            const emergencySession = buildEmergencySession(savedUserLabel, savedRole, false);
+            if (!applySessionIdentity(emergencySession)) return false;
+            setCurrentAuthSession(emergencySession, { persist: true, persistBiometric: false });
+            finalizeLogin(currentUser, '', isBiometricLogin);
+            showToast('Offline Cache', 'Opened from saved device data while live services recover.', false);
+            return true;
+        }
         function tryRestoreSavedSession(username = '', isBiometricLogin = false, options = {}) {
             const opts = options || {};
             const storageKey = opts.storageKey || APP_SESSION_STORAGE_KEY;
@@ -2898,7 +2907,7 @@
         let pendingRequestArchiveFlushTimer = null;
         let pendingRequestArchiveFlushInFlight = false;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Machino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'v2026.03.31.08';
+        const APP_VERSION = 'V2026.03.31.09';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -5840,6 +5849,22 @@ function toggleDriveQuickRequestItem(domId) {
             if (counterEl) counterEl.innerText = '';
             if (modal) modal.classList.add('hidden');
         }
+        async function recoverFromLoginFailure(rawUser, isBiometricLogin, rawError = '') {
+            finishInitialAppLoad();
+            setBootingSession(false);
+            if (tryRestoreSavedSession(rawUser, isBiometricLogin, { silent: false })) {
+                document.getElementById('loading-spinner').classList.add('hidden');
+                return true;
+            }
+            if (await tryRestoreEmergencyCachedAccess(rawUser, isBiometricLogin)) {
+                document.getElementById('loading-spinner').classList.add('hidden');
+                return true;
+            }
+            showToast('Error', rawError ? `Login failed: ${rawError}` : 'Could not reach the login service.', true);
+            document.getElementById('login-inputs').classList.remove('hidden');
+            document.getElementById('loading-spinner').classList.add('hidden');
+            return false;
+        }
         function handleLogin(isBiometricLogin=false) {
             const rawUser=document.getElementById('username-input').value.trim();
             const inputUser=rawUser.toLowerCase(); 
@@ -5854,7 +5879,7 @@ function toggleDriveQuickRequestItem(domId) {
             document.getElementById('login-inputs').classList.add('hidden'); 
             document.getElementById('loading-spinner').classList.remove('hidden'); 
             beginInitialAppLoad('Signing in...');
-            fetchLoginUser(rawUser, inputPass).then(result=>{
+            fetchLoginUser(rawUser, inputPass).then(async result=>{
                 if(result && result.ok && result.user && result.session){
                     const userRecord=result.user; 
                     currentUser=String(userRecord.username || userRecord.USERNAME || inputUser).trim().toLowerCase(); 

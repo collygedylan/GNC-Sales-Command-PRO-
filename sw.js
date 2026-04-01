@@ -2,8 +2,8 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_URL = './index.html?shellv=v2026.03.31.08';
-const CACHE_NAME = 'greenleaf-v4.1-clean-v2026.03.31.08';
+const APP_SHELL_URL = './index.html?shellv=V2026.03.31.09';
+const CACHE_NAME = 'greenleaf-v4.2-recovery-V2026.03.31.09';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -43,27 +43,18 @@ self.addEventListener('fetch', (event) => {
 self.addEventListener('push', (event) => {
   let data = {};
   if (event.data) {
-    try {
-      data = event.data.json();
-    } catch (error) {
-      data = { title: 'Greenleaf Message', body: event.data.text() };
-    }
+    try { data = event.data.json(); } catch (error) { data = { title: 'Greenleaf Message', body: event.data.text() }; }
   }
-
   const title = data.title || 'Greenleaf Message';
   const options = {
     body: data.body || 'You have a new message.',
     icon: data.icon || './Greenleaf Logo.png',
     badge: data.badge || './Greenleaf Logo.png',
-    data: {
-      url: data.url || APP_SHELL_URL,
-      viewId: data.viewId || 'request'
-    },
+    data: { url: data.url || APP_SHELL_URL, viewId: data.viewId || 'request' },
     vibrate: [200, 100, 200],
     tag: data.tag || 'greenleaf-alert',
     renotify: true
   };
-
   event.waitUntil(self.registration.showNotification(title, options));
 });
 
@@ -72,7 +63,6 @@ self.addEventListener('notificationclick', (event) => {
   const payload = event.notification && event.notification.data ? event.notification.data : {};
   const targetUrl = payload.url || APP_SHELL_URL;
   const targetView = payload.viewId || 'request';
-
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async (clientList) => {
       for (const client of clientList) {
@@ -97,11 +87,7 @@ self.addEventListener('notificationclick', (event) => {
 self.addEventListener('pushsubscriptionchange', (event) => {
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => Promise.all(clientList.map((client) => {
-      try {
-        return client.postMessage({ type: 'GNC_RESUBSCRIBE_PUSH' });
-      } catch (error) {
-        return Promise.resolve();
-      }
+      try { return client.postMessage({ type: 'GNC_RESUBSCRIBE_PUSH' }); } catch (error) { return Promise.resolve(); }
     })))
   );
 });
