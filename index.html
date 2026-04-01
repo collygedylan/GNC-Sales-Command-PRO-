@@ -847,6 +847,7 @@
         let liveSyncMode = 'idle';
         let realtimeTableStatus = Object.create(null);
         const SUPABASE_READ_TIMEOUT_MS = 30000;
+        const LOGIN_READ_TIMEOUT_MS = 8000;
         const SUPABASE_WRITE_TIMEOUT_MS = 22000;
         const SUPABASE_UPLOAD_TIMEOUT_MS = 45000;
         const PHOTO_MAX_WIDTH = 900;
@@ -2289,16 +2290,32 @@
             })();
             return salesOfficeOrderSchemaPromise;
         }
+        async function tryLocalCachedLoginRecord(username, password) {
+            const normalizedUsername = String(username || '').trim().toLowerCase();
+            const normalizedPassword = String(password || '').trim();
+            const savedUser = String(localStorage.getItem('gnc_user_v3') || '').trim();
+            const savedPassword = String(localStorage.getItem('gnc_pin_v3') || '').trim();
+            const savedRole = String(localStorage.getItem('gnc_role_v3') || '').trim();
+            if (!savedUser || !savedPassword || !savedRole) return null;
+            if (savedUser.toLowerCase() !== normalizedUsername) return null;
+            if (savedPassword !== normalizedPassword) return null;
+            const hasCache = await warmCachedInventory(true).catch(() => false);
+            if (!hasCache || fullInventory.length === 0) return null;
+            return { username: savedUser, role: savedRole, _fromLocalCache: true };
+        }
+
         async function fetchLoginUser(username, password) {
             startGlobalProgress();
             try {
                 const normalizedUsername = String(username || '').trim().toLowerCase();
                 const normalizedPassword = String(password || '').trim();
-                const url = `${SUPABASE_URL}/rest/v1/v2_app_users?select=username,role,password&username=ilike.*${encodeURIComponent(normalizedUsername)}*&limit=25`;
+                const cachedUser = await tryLocalCachedLoginRecord(normalizedUsername, normalizedPassword);
+                if (cachedUser) return { ok: true, user: cachedUser, source: 'local-cache' };
+                const url = `${SUPABASE_URL}/rest/v1/v2_app_users?select=username,role,password&username=ilike.${encodeURIComponent(normalizedUsername)}&limit=1`;
                 const response = await fetchWithTimeout(url, {
                     method: 'GET',
                     headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }
-                }, SUPABASE_READ_TIMEOUT_MS, 'Login');
+                }, LOGIN_READ_TIMEOUT_MS, 'Login');
                 if (!response.ok) throw new Error(await getResponseError(response, `Supabase read failed (${response.status})`));
                 const text = await response.text();
                 const rows = text ? JSON.parse(text) : [];
@@ -2538,7 +2555,7 @@
         let pendingRequestArchiveFlushTimer = null;
         let pendingRequestArchiveFlushInFlight = false;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Machino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'V2026.03.31.10';
+        const APP_VERSION = 'V2026.03.31.11';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -11846,7 +11863,7 @@ function toggleDriveSeason(s) {
             const commonName = String(firstNonEmptyValue(item && item.COMMONNAME, item && item.DESCRIPTION, itemCode, 'AV Blank')).trim();
             const contSize = String(firstNonEmptyValue(item && item.CONTSIZE, item && item.ITEMSPEC, item && item.SIZE, '-')).trim() || '-';
             const seasonValue = String(firstNonEmptyValue(item && item.SEASON, item && item.season, '-')).trim() || '-';
-            return `<div class="bg-white border border-emerald-200 rounded-xl shadow-sm mb-3 p-4"><div class="flex items-start justify-between gap-3"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-600">AV Blank</div><div class="mt-1 font-black text-lg text-slate-900">${esc(locationCode)}</div><div class="mt-2 text-sm font-bold text-slate-700 break-words">${esc(commonName)}</div><div class="mt-1 text-xs font-semibold text-slate-500">${esc(contSize)}${itemCode ? ` â€¢ ${esc(itemCode)}` : ''}</div></div><div class="shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">Season ${esc(seasonValue)}</div></div></div>`;
+            return `<div class="bg-white border border-emerald-200 rounded-xl shadow-sm mb-3 p-4"><div class="flex items-start justify-between gap-3"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-600">AV Blank</div><div class="mt-1 font-black text-lg text-slate-900">${esc(locationCode)}</div><div class="mt-2 text-sm font-bold text-slate-700 break-words">${esc(commonName)}</div><div class="mt-1 text-xs font-semibold text-slate-500">${esc(contSize)}${itemCode ? ` Ã¢â‚¬Â¢ ${esc(itemCode)}` : ''}</div></div><div class="shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">Season ${esc(seasonValue)}</div></div></div>`;
         }
 
         function renderTasks(options = {}) {
