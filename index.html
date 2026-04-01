@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -447,7 +448,7 @@
             <hr class="my-2">
             <div class="drawer-item text-blue-600 font-bold role-access role-admin role-rep hidden" onclick="switchView('request'); toggleMenu();"><i class="ph-bold ph-chat-circle-text"></i> Requests</div>
             <div class="drawer-item text-indigo-600 font-bold role-access role-admin hidden" onclick="switchView('reserves'); toggleMenu();"><i class="ph-bold ph-bookmark-simple"></i> Reserves</div>
-            <div class="drawer-item text-purple-600 font-bold role-access role-admin hidden" onclick="activeSalesOfficeTab='season'; switchView('sales-office'); toggleMenu();"><i class="ph-bold ph-briefcase"></i> Sales Office</div>
+            <div class="drawer-item text-purple-600 font-bold role-access role-admin role-rep hidden" onclick="openSalesOfficeView(); toggleMenu();"><i class="ph-bold ph-briefcase"></i> Sales Office</div>
             <div class="drawer-item text-emerald-600 font-bold role-access role-admin hidden" onclick="switchView('reports'); toggleMenu();"><i class="ph-bold ph-chart-bar"></i> Reports</div>
             <div class="drawer-item text-emerald-600 font-bold role-access role-admin hidden" onclick="switchView('hours'); toggleMenu();"><i class="ph-bold ph-clock"></i> Labor Hours</div>
             <div class="drawer-item text-red-600 font-bold role-access role-admin hidden" onclick="switchView('low-stock'); toggleMenu();"><i class="ph-bold ph-trend-down"></i> Low Stock List</div>
@@ -480,7 +481,7 @@
                         <div onclick="switchView('av')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep hidden"><i class="ph-bold ph-notebook text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">AV</span></div>
                         <div onclick="switchView('request')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep hidden"><i class="ph-bold ph-chat-circle-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Requests</span></div>
                         <div onclick="switchView('reserves')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-bookmark-simple text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Reserves</span></div>
-                        <div onclick="activeSalesOfficeTab='season'; switchView('sales-office')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-briefcase text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Sales Office</span></div>
+                        <div onclick="openSalesOfficeView()" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep hidden"><i class="ph-bold ph-briefcase text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Sales Office</span></div>
                         <div onclick="switchView('reports')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-chart-bar text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Reports</span></div>
                         <div onclick="switchView('hours')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-clock text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Labor Hours</span></div>
                         <div onclick="switchView('low-stock')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-trend-down text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Low Stock</span></div>
@@ -815,6 +816,10 @@
         const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6cm55anNvc3J5ZWpqZWpsaWlpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzAyNzM1NywiZXhwIjoyMDg4NjAzMzU3fQ.Bc46UfJ1N4AgAS1PgfhFg6S4BEyybR6g_TUnPZsE2t0";
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwhH-eB5Py3xCwhmWReOAcAfl9Zu6mkw0hZYnAbIP9lLANoE4iebK1hXa6-ogU4_1AURA/exec"; 
+        const PUSH_SUBSCRIPTIONS_TABLE = 'v2_push_subscriptions';
+        const PUSH_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/send-push-alert`;
+        const PUSH_VAPID_PUBLIC_KEY = 'BAnr5wnptNgeqol-aJzw1eW_4CnuHpQNlvJ3vmo4VGVfuRsHNO5bRZdT-8NN8qUL5bTlUxYrx592fbG26EYjEN4';
+        const PUSH_ALERT_NEW_REQUEST_USERS = new Set(['dylan_collyge','jd_jones']);
         const PHOTO_BUCKETS = {
             'ssn-': 'season_sales_notes_photos',
             'lsn-': 'location_sales_notes_photos',
@@ -841,7 +846,7 @@
         let syncCatchupTimer = null;
         let liveSyncMode = 'idle';
         let realtimeTableStatus = Object.create(null);
-        const SUPABASE_READ_TIMEOUT_MS = 20000;
+        const SUPABASE_READ_TIMEOUT_MS = 30000;
         const SUPABASE_WRITE_TIMEOUT_MS = 22000;
         const SUPABASE_UPLOAD_TIMEOUT_MS = 45000;
         const PHOTO_MAX_WIDTH = 900;
@@ -1078,18 +1083,15 @@
             }
 
             sessionStorage.setItem(APP_SHELL_REFRESH_STORAGE_KEY, currentBuild);
-            await clearBootCacheForShellUpdate();
-            await clearLegacyOfflineState(true);
-
-            try {
-                const nextUrl = new URL(window.location.href);
-                nextUrl.searchParams.set(APP_SHELL_QUERY_PARAM, currentBuild);
-                window.location.replace(nextUrl.toString());
-            } catch (e) {
-                window.location.reload();
-            }
-
-            return true;
+            syncShellBuildUrl(currentBuild);
+            setTimeout(() => {
+                try {
+                    if (sessionStorage.getItem(APP_SHELL_REFRESH_STORAGE_KEY) === currentBuild) {
+                        sessionStorage.removeItem(APP_SHELL_REFRESH_STORAGE_KEY);
+                    }
+                } catch (e) {}
+            }, 0);
+            return false;
         }
 
         function getAvNoteSpecCaliperValues(prefix = '') {
@@ -1122,6 +1124,10 @@
 
         function appendSpecCaliperToAvNote(prefix = '') {
             const normalizedPrefix = String(prefix || '').trim();
+            if (!canEditRowDetails(normalizedPrefix)) {
+                showRowEditRestrictedToast(normalizedPrefix);
+                return;
+            }
             const avInputId = normalizedPrefix === 'global-' ? 'global-av-note' : `${normalizedPrefix}av-note`;
             const avInput = document.getElementById(avInputId);
             if (!avInput) return;
@@ -1961,9 +1967,10 @@
 
         function performLogout() { 
             cleanupRealtime();
-            localStorage.clear(); 
+            ['gnc_user_v3','gnc_pin_v3','gnc_role_v3'].forEach((key) => {
+                try { localStorage.removeItem(key); } catch (e) {}
+            });
             sessionStorage.clear(); 
-            try { indexedDB.deleteDatabase(DB_NAME); } catch(e){} 
             location.reload(); 
         }
 
@@ -1995,6 +2002,23 @@
             } else {
                 run();
             }
+        }
+
+        function scrollMainAreaToTop() {
+            const scrollArea = document.getElementById('main-scroll-area');
+            if (scrollArea) scrollArea.scrollTop = 0;
+            const wrapper = document.getElementById('view-wrapper');
+            if (wrapper) wrapper.scrollTop = 0;
+            if (document.documentElement) document.documentElement.scrollTop = 0;
+            if (document.body) document.body.scrollTop = 0;
+            try { window.scrollTo(0, 0); } catch (err) {}
+        }
+
+        function queueScrollMainAreaToTop(key = 'global') {
+            scheduleUiRender(`scroll-top:${key}`, () => {
+                scrollMainAreaToTop();
+                requestAnimationFrame(() => scrollMainAreaToTop());
+            });
         }
 
         function queueViewRender(viewId, forceReset = false, forceRender = false) {
@@ -2268,9 +2292,9 @@
         async function fetchLoginUser(username, password) {
             startGlobalProgress();
             try {
-                const normalizedUsername = String(username || '').trim();
+                const normalizedUsername = String(username || '').trim().toLowerCase();
                 const normalizedPassword = String(password || '').trim();
-                const url = `${SUPABASE_URL}/rest/v1/v2_app_users?select=*&username=ilike.${encodeURIComponent(normalizedUsername)}&password=eq.${encodeURIComponent(normalizedPassword)}&limit=1`;
+                const url = `${SUPABASE_URL}/rest/v1/v2_app_users?select=username,role,password&username=ilike.*${encodeURIComponent(normalizedUsername)}*&limit=25`;
                 const response = await fetchWithTimeout(url, {
                     method: 'GET',
                     headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }
@@ -2278,7 +2302,9 @@
                 if (!response.ok) throw new Error(await getResponseError(response, `Supabase read failed (${response.status})`));
                 const text = await response.text();
                 const rows = text ? JSON.parse(text) : [];
-                const matchedUser = Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
+                const matchedUser = Array.isArray(rows)
+                    ? rows.find((row) => String(row.username || '').trim().toLowerCase() === normalizedUsername && String(row.password || '').trim() === normalizedPassword)
+                    : null;
                 if (!matchedUser) return { ok: false, reason: 'mismatch' };
                 return { ok: true, user: matchedUser };
             } catch (e) {
@@ -2300,56 +2326,91 @@
             }); 
         }
 
-        async function saveToCache(data) { 
+        async function saveCacheValue(cacheKey, data) { 
             try{ 
                 const db=await openDB(); 
                 const tx=db.transaction(STORE_NAME,"readwrite"); 
-                tx.objectStore(STORE_NAME).put(data,"latest_data"); 
+                tx.objectStore(STORE_NAME).put(data,cacheKey); 
                 return new Promise((resolve)=>{ tx.oncomplete=()=>resolve(true); tx.onerror=()=>resolve(false); }); 
-            }catch(e){} 
+            }catch(e){ return false; } 
         }
 
-        async function loadFromCache() { 
+        async function loadCacheValue(cacheKey) { 
             try{ 
                 const db=await openDB(); 
                 return new Promise((resolve,reject)=>{ 
                     const tx=db.transaction(STORE_NAME,"readonly"); 
-                    const request=tx.objectStore(STORE_NAME).get("latest_data"); 
+                    const request=tx.objectStore(STORE_NAME).get(cacheKey); 
                     request.onsuccess=()=>resolve(request.result); 
                     request.onerror=()=>resolve(null); 
                 }); 
             }catch(e){ return null; } 
         }
 
-        function stripTransientCacheFields(item = {}) {
-            const clean = {};
-            Object.keys(item || {}).forEach((key) => {
-                if (key === 'DOM_ID' || key === '_search' || key === '_searchCandidates' || key === '_searchPrimaryStarts' || key === '_searchWordStarts' || key === '_searchProfileWordStarts') return;
-                clean[key] = item[key];
-            });
-            return clean;
-        }
+        async function saveToCache(data) { return saveCacheValue("latest_data", data); }
 
-        function buildCacheRows(items = []) {
-            if (!Array.isArray(items) || !items.length) return [];
-            return items.map((item) => stripTransientCacheFields(item));
-        }
+        async function loadFromCache() { return loadCacheValue("latest_data"); }
 
+        const CACHE_SCHEMA_VERSION = 4;
+        const INLINE_CACHE_RESERVE_LIMIT = 180;
         function buildCacheSnapshot() {
+            const inlineReserveRows = buildCacheRows(reservesInventory.slice(0, INLINE_CACHE_RESERVE_LIMIT));
             return {
                 status: 'success',
                 data: buildCacheRows(fullInventory),
                 avOpenData: buildCacheRows(avOpenInventory),
                 requestsData: buildCacheRows(requestsInventory),
-                reservesData: buildCacheRows(reservesInventory),
+                reservesData: inlineReserveRows,
                 socData: buildCacheRows(socInventory),
                 salesOfficeData: buildCacheRows(salesOfficeInventory),
                 cavData: buildCacheRows(cavInventory),
                 avNotesData: buildCacheRows(avNotesDb),
                 meta: {
-                    datasetLoadState: serializeDatasetLoadState()
+                    cacheSchemaVersion: CACHE_SCHEMA_VERSION,
+                    datasetLoadState: serializeDatasetLoadState(),
+                    inlineDatasetMeta: {
+                        reserves: {
+                            rowCount: inlineReserveRows.length,
+                            totalCount: Array.isArray(reservesInventory) ? reservesInventory.length : 0,
+                            truncated: Array.isArray(reservesInventory) && reservesInventory.length > inlineReserveRows.length
+                        }
+                    }
                 }
             };
+        }
+
+        function buildFallbackCacheDatasetLoadState(cachedRes = {}) {
+            const hasRows = (rows) => Array.isArray(rows) && rows.length > 0;
+            return {
+                master: { initialLoaded: hasRows(cachedRes.data), fullLoaded: false },
+                avOpen: { initialLoaded: hasRows(cachedRes.avOpenData), fullLoaded: false },
+                requests: { initialLoaded: hasRows(cachedRes.requestsData), fullLoaded: false },
+                reserves: { initialLoaded: hasRows(cachedRes.reservesData), fullLoaded: false },
+                soc: { initialLoaded: hasRows(cachedRes.socData), fullLoaded: false },
+                salesOffice: { initialLoaded: hasRows(cachedRes.salesOfficeData), fullLoaded: false },
+                cav: { initialLoaded: hasRows(cachedRes.cavData), fullLoaded: false },
+                avNotes: { initialLoaded: hasRows(cachedRes.avNotesData), fullLoaded: false }
+            };
+        }
+        function getCachedDatasetLoadState(cachedRes = {}) {
+            const cachedMeta = cachedRes && cachedRes.meta ? cachedRes.meta : {};
+            const schemaVersion = Number(cachedMeta.cacheSchemaVersion || 0);
+            const fallback = buildFallbackCacheDatasetLoadState(cachedRes);
+            const source = cachedMeta.datasetLoadState || {};
+            const inlineDatasetMeta = cachedMeta.inlineDatasetMeta || {};
+            const next = {};
+            Object.keys(fallback).forEach((key) => {
+                const saved = source[key] || {};
+                const fallbackEntry = fallback[key] || {};
+                const inlineMeta = inlineDatasetMeta[key] || {};
+                const fullInlineCacheIsTruncated = !!inlineMeta.truncated;
+                next[key] = {
+                    initialLoaded: !!(saved.initialLoaded || fallbackEntry.initialLoaded),
+                    fullLoaded: schemaVersion >= CACHE_SCHEMA_VERSION ? (!!saved.fullLoaded && !fullInlineCacheIsTruncated) : false,
+                    lastLoadedAt: schemaVersion >= CACHE_SCHEMA_VERSION ? (saved.lastLoadedAt || '') : ''
+                };
+            });
+            return next;
         }
 
         function warmCachedInventory(force = false) {
@@ -2357,25 +2418,73 @@
             if (!cacheWarmPromise) {
                 cacheWarmPromise = loadFromCache().then((cachedRes) => {
                     if (!cachedRes) return false;
-                    processAndLoadData(cachedRes);
-                    const cachedMeta = cachedRes.meta && cachedRes.meta.datasetLoadState ? cachedRes.meta.datasetLoadState : {
-                        master: { initialLoaded: Array.isArray(cachedRes.data) && cachedRes.data.length > 0, fullLoaded: Array.isArray(cachedRes.data) && cachedRes.data.length > 0 },
-                        avOpen: { initialLoaded: Array.isArray(cachedRes.avOpenData) && cachedRes.avOpenData.length > 0, fullLoaded: Array.isArray(cachedRes.avOpenData) && cachedRes.avOpenData.length > 0 },
-                        requests: { initialLoaded: Array.isArray(cachedRes.requestsData) && cachedRes.requestsData.length > 0, fullLoaded: Array.isArray(cachedRes.requestsData) && cachedRes.requestsData.length > 0 },
-                        reserves: { initialLoaded: Array.isArray(cachedRes.reservesData) && cachedRes.reservesData.length > 0, fullLoaded: Array.isArray(cachedRes.reservesData) && cachedRes.reservesData.length > 0 },
-                        soc: { initialLoaded: Array.isArray(cachedRes.socData) && cachedRes.socData.length > 0, fullLoaded: Array.isArray(cachedRes.socData) && cachedRes.socData.length > 0 },
-                        salesOffice: { initialLoaded: Array.isArray(cachedRes.salesOfficeData) && cachedRes.salesOfficeData.length > 0, fullLoaded: Array.isArray(cachedRes.salesOfficeData) && cachedRes.salesOfficeData.length > 0 },
-                        cav: { initialLoaded: Array.isArray(cachedRes.cavData) && cachedRes.cavData.length > 0, fullLoaded: Array.isArray(cachedRes.cavData) && cachedRes.cavData.length > 0 },
-                        avNotes: { initialLoaded: Array.isArray(cachedRes.avNotesData) && cachedRes.avNotesData.length > 0, fullLoaded: Array.isArray(cachedRes.avNotesData) && cachedRes.avNotesData.length > 0 }
-                    };
-                    hydrateDatasetLoadState(cachedMeta);
+                    processAndLoadData({ ...cachedRes, _fromCache: true });
+                    hydrateDatasetLoadState(getCachedDatasetLoadState(cachedRes));
                     return true;
                 }).catch(() => false);
             }
             return cacheWarmPromise;
         }
 
-        const INITIAL_PAGE_LIMIT = 250;
+        function getUserScopedDatasetCacheKey(datasetKey = '') {
+            const normalizedDatasetKey = String(datasetKey || '').trim().toLowerCase() || 'unknown';
+            const normalizedRole = String(safeRole || currentRole || 'guest').trim().toLowerCase().replace(/[^a-z0-9_-]+/g, '_') || 'guest';
+            const normalizedUser = String(currentUser || currentUserDisplay || 'guest').trim().toLowerCase().replace(/[^a-z0-9_-]+/g, '_') || 'guest';
+            return `dataset:${normalizedDatasetKey}:${normalizedRole}:${normalizedUser}`;
+        }
+
+        function buildUserScopedDatasetCacheSnapshot(datasetKey = '') {
+            if (datasetKey === 'reserves') {
+                const state = getDatasetState('reserves');
+                return {
+                    rows: buildCacheRows(reservesInventory),
+                    meta: {
+                        cacheSchemaVersion: CACHE_SCHEMA_VERSION,
+                        datasetKey: 'reserves',
+                        scopedRole: String(safeRole || currentRole || '').trim(),
+                        scopedUser: String(currentUser || currentUserDisplay || '').trim(),
+                        fullLoaded: !!state.fullLoaded,
+                        lastLoadedAt: state.lastLoadedAt || '',
+                        rowCount: Array.isArray(reservesInventory) ? reservesInventory.length : 0,
+                        savedAt: new Date().toISOString()
+                    }
+                };
+            }
+            return null;
+        }
+
+        async function persistUserScopedDatasetCache(datasetKey = '') {
+            if (!currentUser || !datasetKey) return false;
+            const snapshot = buildUserScopedDatasetCacheSnapshot(datasetKey);
+            if (!snapshot) return false;
+            return saveCacheValue(getUserScopedDatasetCacheKey(datasetKey), snapshot);
+        }
+
+        async function warmUserScopedDatasetCaches() {
+            if (!currentUser) return false;
+            let warmed = false;
+            const reserveCache = await loadCacheValue(getUserScopedDatasetCacheKey('reserves')).catch(() => null);
+            const reserveRows = reserveCache && Array.isArray(reserveCache.rows) ? reserveCache.rows : [];
+            if (reserveRows.length) {
+                const reserveState = getDatasetState('reserves');
+                const reserveMeta = reserveCache && reserveCache.meta ? reserveCache.meta : {};
+                const cachedLastLoadedAt = String(firstNonEmptyValue(reserveMeta.lastLoadedAt, reserveMeta.savedAt, '') || '').trim();
+                const isRepCache = !!getRoleAccessState().isRep;
+                const looksLikePartialAdminCache = !isRepCache && reserveRows.length <= 1000;
+                const canTrustAsFull = !!reserveMeta.fullLoaded && !looksLikePartialAdminCache;
+                const shouldApply = reserveRows.length > reservesInventory.length || (!reserveState.initialLoaded && reserveRows.length > 0);
+                if (shouldApply) {
+                    processAndLoadData({ reservesData: reserveRows, _fromCache: true });
+                    reserveState.initialLoaded = true;
+                    reserveState.fullLoaded = canTrustAsFull;
+                    reserveState.lastLoadedAt = cachedLastLoadedAt || reserveState.lastLoadedAt || new Date().toISOString();
+                    warmed = true;
+                }
+            }
+            return warmed;
+        }
+
+        const INITIAL_PAGE_LIMIT = ((/iPhone|iPad|Android/i.test(navigator.userAgent) || window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) ? 150 : 250);
 
         function createDatasetLoadEntry() {
             return { initialLoaded: false, fullLoaded: false, initialPromise: null, fullPromise: null, lastLoadedAt: '' };
@@ -2418,7 +2527,7 @@
         
         let activeTaskTab="season"; let activeTaskSubview="all"; let taskViewTargetUser=null; let taskViewLevel=0; let selectedTaskBlock=null; let selectedTaskLoc=null; let selectedEndCapFolder=null; let selectedFlyerFolder=null; let selectedColorWalkContSize=""; let selectedColorWalkSearchTerm=""; let pendingFlyerFolderTarget=null; let pendingFlyerFolderAssignees="";
         
-        let activeAVTab='open'; let activeAvOpenTab='name'; let avOpenLevel=0; let selectedAvOpenName=null; let selectedAvOpenSize=null; let selectedAvOpenSeason=null; let selectedAvOpenLot=null; let avResLevel=0; let selectedAvResRep=null; let selectedAvResDriveUid=null; let selectedAvResItemCode=null; let selectedAvResName=null; let selectedAvResSize=null;
+        let activeAVTab='open'; let activeAvOpenTab='name'; let avOpenLevel=0; let selectedAvOpenName=null; let selectedAvOpenSize=null; let selectedAvOpenSeason=null; let selectedAvOpenLot=null; let avResLevel=0; let selectedAvResRep=null; let selectedAvResDriveUid=null; let selectedAvResItemCode=null; let selectedAvResName=null; let selectedAvResSize=null; let activeAvReserveMode='current'; let activeAvReserveDetailTab='customer';
         
         let lowStockViewLevel=0; let selectedLowStockName=null; let selectedLowStockSize=null; let reviewViewLevel=0; let selectedReviewItemCode=null; let selectedReviewCommonName=null; let selectedReviewContSize=null;
         let requestViewLevel=0; let reservesViewLevel=0; let reportViewLevel=0; let activeReqTab="pending"; let selectedReqRep=null; let selectedReqRepStatus=null; let selectedReqFolder=null; let tempSelectedReqRep=""; let tempReqFolder=null; let tempReqCust=null; let previousReqStep=""; let driveQuickRequestItems=new Set(); let driveQuickRequestFlow=false; let driveQuickAssignFlow=false;
@@ -2429,7 +2538,7 @@
         let pendingRequestArchiveFlushTimer = null;
         let pendingRequestArchiveFlushInFlight = false;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Machino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'v2026.03.22';
+        const APP_VERSION = 'V2026.03.31.10';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -2607,13 +2716,8 @@
                 document.getElementById('login-inputs').classList.remove('hidden');
                 document.getElementById('loading-spinner').classList.add('hidden');
                 warmCachedInventory().catch(() => {});
-                if(savedUser&&savedPin){
-                    document.getElementById('username-input').value=savedUser;
-                    document.getElementById('pin-code').value=savedPin;
-                    document.getElementById('login-inputs').classList.add('hidden');
-                    document.getElementById('loading-spinner').classList.remove('hidden');
-                    setTimeout(()=>handleLogin(true),0);
-                }
+                if(savedUser) document.getElementById('username-input').value=savedUser;
+                if(savedPin) document.getElementById('pin-code').value=savedPin;
             } catch (err) {
                 console.error('Startup failed', err);
                 document.getElementById('login-inputs').classList.remove('hidden');
@@ -2782,12 +2886,105 @@
                 setTimeout(resolve, 0);
             });
         }
+
+        function hydrateReserveInventoryRow(item, idx) {
+            item.DOM_ID='res_'+idx;
+            item.UNIQUE_ID=item.UNIQUE_ID||'res_uid_'+idx;
+            let masterItem=findLinkedMasterRow(item);
+            item.CUSTOMERNAME=item.CUSTOMERNAME||item.CUSTOMER||'Unknown Customer';
+            item.CONSIGNEENAME=item.CONSIGNEENAME||item.CONSIGNEE||'';
+            item.SALESREPNAME=item.SALESREPNAME||item.SALESREP||item['SALES_REP']||'Unknown Rep';
+            item.COMMONNAME=firstNonEmptyValue(item.COMMONNAME, item.DESCRIPTION, item.PLANT_NAME, item.ITEMCODE, 'Unknown');
+            item.CONTSIZE=firstNonEmptyValue(item.CONTSIZE, item.ITEMSPEC, item.contsize, '-');
+            item.LOCATIONCODE=firstNonEmptyValue(item.LOCATIONCODE, item.LOCATION, 'No Loc');
+            item.ITEMCODE=firstNonEmptyValue(item.ITEMCODE, item.itemcode, '-');
+            item.LOTCODE=firstNonEmptyValue(item.LOTCODE, item.lotcode, '-');
+            item.PTRAVAILABLE=firstNonEmptyValue(item.PTRAVAILABLE, item.ptravailable, 0);
+            item.SEASONSUPPLY=firstNonEmptyValue(item.SEASONSUPPLY, item.SEASON_SUPPLY, item.season_supply, 0);
+            item.PRIORITY=firstNonEmptyValue(item.PRIORITY, item.priority, '-');
+            if(masterItem){
+                item.COMMONNAME=firstNonEmptyValue(masterItem.COMMONNAME, item.COMMONNAME);
+                item.CONTSIZE=firstNonEmptyValue(masterItem.CONTSIZE, item.CONTSIZE);
+                item.LOCATIONCODE=firstNonEmptyValue(masterItem.LOCATIONCODE, item.LOCATIONCODE);
+                item.PTRAVAILABLE=firstNonEmptyValue(masterItem.PTRAVAILABLE, item.PTRAVAILABLE);
+                item.SEASONSUPPLY=firstNonEmptyValue(masterItem.SEASONSUPPLY, item.SEASONSUPPLY);
+                item.PRIORITY=firstNonEmptyValue(masterItem.PRIORITY, item.PRIORITY);
+                item.QUALITYCODE=firstNonEmptyValue(masterItem.QUALITYCODE, item.QUALITYCODE);
+                item.FIELDTAGCOLOR=firstNonEmptyValue(masterItem.FIELDTAGCOLOR, item.FIELDTAGCOLOR);
+                item.LOTCODE=firstNonEmptyValue(masterItem.LOTCODE, item.LOTCODE);
+                item.ITEMCODE=firstNonEmptyValue(masterItem.ITEMCODE, item.ITEMCODE);
+                item.AV_NOTE=firstNonEmptyValue(item.AV_NOTE, masterItem.AV_NOTE);
+                item.SALES_NOTE=firstNonEmptyValue(item.SALES_NOTE, masterItem.SALES_NOTE);
+                item.MATCH=firstNonEmptyValue(item.MATCH, masterItem.MATCH);
+                item.SPEC=firstNonEmptyValue(item.SPEC, masterItem.SPEC);
+                item.CALIPER=firstNonEmptyValue(item.CALIPER, masterItem.CALIPER);
+                item.PICK=firstNonEmptyValue(item.PICK, masterItem.PICK);
+                item.LOC_MATCH_QTY=firstNonEmptyValue(item.LOC_MATCH_QTY, masterItem.LOC_MATCH_QTY);
+                item.INITIAL_PTR=firstNonEmptyValue(item.INITIAL_PTR, masterItem.INITIAL_PTR);
+                clonePhotoFields(masterItem, item);
+                item.MASTER_UNIQUE_ID=masterItem.UNIQUE_ID;
+            }
+            normalizeRowPhotoFields(item);
+            item._search=`${item.COMMONNAME||''} ${item.CUSTOMERNAME||''} ${item.ITEMCODE||''}`.toLowerCase();
+            item._searchCandidates = null;
+            item._searchPrimaryStarts = null;
+            item._searchWordStarts = null;
+            item._searchProfileWordStarts = null;
+            return item;
+        }
+
+        function hydrateReserveInventoryRowFast(item, idx) {
+            item.DOM_ID='res_'+idx;
+            item.UNIQUE_ID=item.UNIQUE_ID||'res_uid_'+idx;
+            item.CUSTOMERNAME=firstNonEmptyValue(item.CUSTOMERNAME, item.CUSTOMER, 'Unknown Customer');
+            item.CONSIGNEENAME=firstNonEmptyValue(item.CONSIGNEENAME, item.CONSIGNEE, '');
+            item.SALESREPNAME=firstNonEmptyValue(item.SALESREPNAME, item.SALESREP, item['SALES_REP'], 'Unknown Rep');
+            item.COMMONNAME=firstNonEmptyValue(item.COMMONNAME, item.DESCRIPTION, item.PLANT_NAME, item.ITEMCODE, 'Unknown');
+            item.CONTSIZE=firstNonEmptyValue(item.CONTSIZE, item.ITEMSPEC, item.contsize, '-');
+            item.LOCATIONCODE=firstNonEmptyValue(item.LOCATIONCODE, item.LOCATION, 'No Loc');
+            item.ITEMCODE=firstNonEmptyValue(item.ITEMCODE, item.itemcode, '-');
+            item.LOTCODE=firstNonEmptyValue(item.LOTCODE, item.lotcode, '-');
+            item.PTRAVAILABLE=firstNonEmptyValue(item.PTRAVAILABLE, item.ptravailable, 0);
+            item.SEASONSUPPLY=firstNonEmptyValue(item.SEASONSUPPLY, item.SEASON_SUPPLY, item.season_supply, 0);
+            item.PRIORITY=firstNonEmptyValue(item.PRIORITY, item.priority, '-');
+            normalizeRowPhotoFields(item);
+            item._search=`${item.COMMONNAME||''} ${item.CUSTOMERNAME||''} ${item.CONSIGNEENAME||''} ${item.SALESREPNAME||''} ${item.ITEMCODE||''} ${item.CONTSIZE||''} ${item.LOCATIONCODE||''}`.toLowerCase();
+            item._searchCandidates = null;
+            item._searchPrimaryStarts = null;
+            item._searchWordStarts = null;
+            item._searchProfileWordStarts = null;
+            return item;
+        }
+
+        function buildReserveInventoryRowsFast(items = []) {
+            const source = Array.isArray(items) ? items : [];
+            const nextItems = new Array(source.length);
+            for (let idx = 0; idx < source.length; idx += 1) nextItems[idx] = hydrateReserveInventoryRowFast(source[idx], idx);
+            return nextItems;
+        }
+
+        async function buildReserveInventoryRowsAsync(items = []) {
+            const source = Array.isArray(items) ? items : [];
+            const nextItems = new Array(source.length);
+            const chunkSize = (isIOSDevice() || isStandaloneApp()) ? (source.length > 50000 ? 700 : 900) : (source.length > 50000 ? 900 : 1200);
+            for (let start = 0; start < source.length; start += chunkSize) {
+                const end = Math.min(source.length, start + chunkSize);
+                for (let idx = start; idx < end; idx += 1) nextItems[idx] = hydrateReserveInventoryRow(source[idx], idx);
+                if (end < source.length) await yieldToUiFrame();
+            }
+            return nextItems;
+        }
+
         async function fetchAllSupabaseRows(table, query = 'select=*') {
             startGlobalProgress();
             try {
                 let allData = [];
                 let offset = 0;
-                const limit = 1000;
+                const limit = table === 'v2_master_inventory'
+                    ? ((isIOSDevice() || isStandaloneApp()) ? 500 : 700)
+                    : (table === 'v2_reserves'
+                        ? ((isIOSDevice() || isStandaloneApp()) ? 2500 : 3000)
+                        : 1000);
                 let hasMore = true;
                 while (hasMore) {
                     const queryString = query ? `${query}&limit=${limit}&offset=${offset}` : `limit=${limit}&offset=${offset}`;
@@ -2798,12 +2995,8 @@
                     const data = text ? JSON.parse(text) : [];
                     if (Array.isArray(data) && data.length > 0) {
                         allData = allData.concat(data);
-                        offset += limit;
-                        if (data.length < limit) {
-                            hasMore = false;
-                        } else {
-                            await yieldToUiFrame();
-                        }
+                        offset += data.length;
+                        await yieldToUiFrame();
                     } else {
                         hasMore = false;
                     }
@@ -2817,12 +3010,27 @@
         async function fetchSupabasePage(table, query = 'select=*', limit = INITIAL_PAGE_LIMIT, offset = 0) {
             startGlobalProgress();
             try {
-                const queryString = query ? `${query}&limit=${limit}&offset=${offset}` : `limit=${limit}&offset=${offset}`;
-                const url = `${SUPABASE_URL}/rest/v1/${table}?${queryString}`;
-                const response = await fetchWithTimeout(url, { method: 'GET', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' } }, SUPABASE_READ_TIMEOUT_MS, `${table} read`);
-                if (!response.ok) throw new Error(await getResponseError(response, `Supabase read failed (${response.status})`));
-                const text = await response.text();
-                return text ? JSON.parse(text) : [];
+                const attemptLimits = table === 'v2_master_inventory'
+                    ? Array.from(new Set([limit, Math.min(limit, 100), Math.min(limit, 60)].filter((value) => Number(value) > 0)))
+                    : [limit];
+                let lastError = null;
+                for (const attemptLimit of attemptLimits) {
+                    try {
+                        const queryString = query ? `${query}&limit=${attemptLimit}&offset=${offset}` : `limit=${attemptLimit}&offset=${offset}`;
+                        const url = `${SUPABASE_URL}/rest/v1/${table}?${queryString}`;
+                        const response = await fetchWithTimeout(url, { method: 'GET', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' } }, SUPABASE_READ_TIMEOUT_MS, `${table} read`);
+                        if (!response.ok) throw new Error(await getResponseError(response, `Supabase read failed (${response.status})`));
+                        const text = await response.text();
+                        return text ? JSON.parse(text) : [];
+                    } catch (error) {
+                        lastError = error;
+                        const message = String(error && error.message || '');
+                        const canRetrySmaller = table === 'v2_master_inventory' && /timed out/i.test(message) && attemptLimit > 60;
+                        if (!canRetrySmaller) throw error;
+                        await yieldToUiFrame();
+                    }
+                }
+                throw lastError || new Error(`${table} read failed`);
             } finally {
                 stopGlobalProgress();
             }
@@ -2885,7 +3093,13 @@
                 state.initialLoaded = true;
                 state.fullLoaded = wantsFull ? true : state.fullLoaded;
                 state.lastLoadedAt = new Date().toISOString();
-                processAndLoadData(buildDatasetPayload(key, rows));
+                if (key === 'reserves' && wantsFull) {
+                    const formattedRows = formatFetchedRows(rows, definition.sourceTable);
+                    reservesInventory = await buildReserveInventoryRowsAsync(formattedRows);
+                    persistUserScopedDatasetCache('reserves').catch(() => {});
+                } else {
+                    processAndLoadData(buildDatasetPayload(key, rows));
+                }
                 if (key === 'reserves') {
                     if (isViewVisible('av') && activeAVTab === 'reserves') scheduleUiRender('av-reserves-refresh', () => renderAV(), wantsFull ? 18 : 8);
                     if (isViewVisible('reserves')) queueViewRender('reserves', false, true);
@@ -2953,6 +3167,15 @@
 
         function getDatasetRefreshMaxAge(key, mode = 'initial') {
             const normalizedMode = mode === 'full' ? 'full' : 'initial';
+            if (key === 'reserves') {
+                if (liveSyncMode === 'realtime') {
+                    return normalizedMode === 'full' ? 1200000 : 480000;
+                }
+                if (isIOSDevice() || isStandaloneApp()) {
+                    return normalizedMode === 'full' ? 180000 : 120000;
+                }
+                return normalizedMode === 'full' ? 240000 : 180000;
+            }
             const fastDataset = key === 'requests' || key === 'salesOffice' || key === 'soc';
             if (liveSyncMode === 'realtime') {
                 return normalizedMode === 'full'
@@ -3173,14 +3396,15 @@
 
         function findLinkedMasterRow(item) {
             if (!item) return null;
+            if (!masterInventoryById.size && fullInventory.length) rebuildMasterInventoryIndexes();
             const masterId = String(item.MASTER_ID || item.MASTER_UNIQUE_ID || item.master_id || '').trim();
             if (masterId) {
-                const linkedById = masterInventoryById.get(masterId) || fullInventory.find(i => String(i.UNIQUE_ID || '').trim() === masterId);
+                const linkedById = masterInventoryById.get(masterId);
                 if (linkedById) return linkedById;
             }
             const exactKey = getMasterInventoryExactKey(item);
             if (exactKey) {
-                const exactRow = masterInventoryByExactKey.get(exactKey) || fullInventory.find(i => getMasterInventoryExactKey(i) === exactKey);
+                const exactRow = masterInventoryByExactKey.get(exactKey);
                 if (exactRow) return exactRow;
             }
             return null;
@@ -3316,15 +3540,15 @@
         let bloomPickerFolderManuallyEdited = false;
         let bloomPickerReservePartyOptions = [];
         let bloomPickerSelectedReservePartyKey = '';
-        const BLOOM_PICKER_ORDER_META_FIELDS = ['salesrepname','customername','customeridentityid','consigneename','consigneeidentityid','consigneecity','consigneestate','consigneezip','zonecode','tagcode','consigneeaddress_1'];
+        const BLOOM_PICKER_ORDER_META_FIELDS = ['salesrepname','customername','customeridentityid','consigneename','consigneeidentityid','consigneecity','consigneestate','consigneezip','zonecode','tagcode','consigneeaddress_1','pic_note'];
         const BLOOM_PICKER_ORDER_META_TOKEN = '||BP_META||';
-        const PROTECTED_UNLOCK_USERS = new Set(['dylan', 'jd', 'morgan', 'kayla']);
+        const PROTECTED_UNLOCK_USERS = new Set(['dylan', 'dylan_collyge', 'jd', 'jd_jones', 'morgan', 'morgan_anderson', 'kayla', 'kayla_knepp']);
         const PROTECTED_EDIT_CONFIG = {
-            'ssn-': { containerId: 'det-season-content', cameraId: 'camera-btn-ssn', photoField: 'SAVED_PHOTO_LINK', photoNameField: 'SAVED_PHOTO_NAME', inputIds: ['ssn-av-note', 'ssn-spec', 'ssn-caliper'] },
-            'lsn-': { containerId: 'det-location-content', cameraId: 'camera-btn-lsn', photoField: 'SAVED_PHOTO_LINK', photoNameField: 'SAVED_PHOTO_NAME', inputIds: ['lsn-av-note', 'lsn-spec', 'lsn-caliper'] },
-            'na-': { containerId: 'det-notes-content', cameraId: 'camera-btn-na', photoField: 'SAVED_PHOTO_LINK', photoNameField: 'SAVED_PHOTO_NAME', inputIds: ['na-av-note', 'na-spec', 'na-caliper'] },
-            'req-': { containerId: 'det-request-content', cameraId: 'camera-btn-req', photoField: 'REQ_PHOTO_LINK', photoNameField: 'REQ_PHOTO_NAME', inputIds: ['req-av-note', 'req-spec', 'req-caliper'] },
-            'dock-': { containerId: 'det-docks-content', cameraId: 'camera-btn-dock', photoField: 'DOCK_PHOTO_LINK', photoNameField: 'DOCK_PHOTO_NAME', inputIds: ['dock-spec', 'dock-caliper'] },
+            'ssn-': { containerId: 'det-season-content', cameraId: 'camera-btn-ssn', photoField: 'SAVED_PHOTO_LINK', photoNameField: 'SAVED_PHOTO_NAME', inputIds: ['ssn-av-note', 'ssn-match', 'ssn-spec', 'ssn-caliper', 'ssn-pick'] },
+            'lsn-': { containerId: 'det-location-content', cameraId: 'camera-btn-lsn', photoField: 'SAVED_PHOTO_LINK', photoNameField: 'SAVED_PHOTO_NAME', inputIds: ['lsn-av-note', 'lsn-match', 'lsn-spec', 'lsn-caliper', 'lsn-pick'] },
+            'na-': { containerId: 'det-notes-content', cameraId: 'camera-btn-na', photoField: 'SAVED_PHOTO_LINK', photoNameField: 'SAVED_PHOTO_NAME', inputIds: ['na-av-note', 'na-match', 'na-spec', 'na-caliper', 'na-pick'] },
+            'req-': { containerId: 'det-request-content', cameraId: 'camera-btn-req', photoField: 'REQ_PHOTO_LINK', photoNameField: 'REQ_PHOTO_NAME', inputIds: ['req-av-note', 'req-match', 'req-spec', 'req-caliper', 'req-reserve', 'req-pick', 'req-comments'] },
+            'dock-': { containerId: 'det-docks-content', cameraId: 'camera-btn-dock', photoField: 'DOCK_PHOTO_LINK', photoNameField: 'DOCK_PHOTO_NAME', inputIds: ['dock-spec', 'dock-caliper', 'dock-sales-desc'] },
             'flyer-': { containerId: 'det-flyer-content', cameraId: 'camera-btn-flyer', photoField: 'FLYER_PHOTO_LINK', photoNameField: 'FLYER_PHOTO_NAME', inputIds: ['flyer-av-note', 'flyer-spec', 'flyer-caliper', 'flyer-cat', 'flyer-title', 'flyer-inst', 'flyer-assigned', 'flyer-notes'] }
         };
 
@@ -3358,6 +3582,30 @@
 
         function canUseFooterRequestShortcut() {
             return canAccessView('request');
+        }
+
+        function isRepReadOnlyUser() {
+            return !!getRoleAccessState().isRep;
+        }
+
+        function canEditRowDetails(prefix = '') {
+            const normalizedPrefix = String(prefix || '').trim();
+            if (isRepReadOnlyUser()) return false;
+            if (normalizedPrefix === 'dock-') return canEditDockWorkflow();
+            return true;
+        }
+
+        function showRowEditRestrictedToast(prefix = '') {
+            const normalizedPrefix = String(prefix || '').trim();
+            if (isRepReadOnlyUser()) {
+                showToast('Read Only', 'REP users cannot take photos or update rows.', true);
+                return;
+            }
+            if (normalizedPrefix === 'dock-') {
+                showToast('Restricted', 'Only Admin or QC Supervisor can update dock rows.', true);
+                return;
+            }
+            showToast('Restricted', 'You cannot update this row.', true);
         }
 
         function getPendingRequestCount() {
@@ -4571,10 +4819,14 @@ function toggleDriveQuickRequestItem(domId) {
                 const desiredCaliper = String(firstNonEmptyValue(draft.caliper, item.CALIPER, '') || '').trim();
                 const reserveValue = String(draft.reserve || 'NO').trim() || 'NO';
                 const rowId = buildBloomPickerOrderRowId(orderNumber, item, index);
+                const locationCode = String(firstNonEmptyValue(item.LOCATIONCODE, item.LOCATION, '') || '').trim();
+                const priorityNumber = parseAppNumber(item.PRIORITY);
+                const autoPicNote = priorityNumber != null && priorityNumber > 1 && locationCode ? `${locationCode} PIC APPROVED.` : '';
+                const picNote = String(firstNonEmptyValue(autoPicNote, item.PIC_NOTE, item.PICKNOTE, item.PICK, '') || '').trim();
                 const photoLink = firstNonEmptyValue(item.SAVED_PHOTO_LINK, item.ROW_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']);
                 const photoName = firstNonEmptyValue(item.SAVED_PHOTO_NAME, item.ROW_PHOTO_NAME, item.PHOTO_NAME, item.PHOTONAME, item['PHOTO NAME']);
                 const salesNote = firstNonEmptyValue(item.SALES_NOTE, item.SALESNOTE, item.SALES_DESC, item.SALESDESC, '');
-                const payload = { unique_id: rowId, master_id: item.UNIQUE_ID || '', so_source: 'bloom_picker', order_folder: folderName, order_number: orderNumber, order_customer: orderCustomer, order_qty: String(qtyValue), order_desired_spec: desiredSpec || null, order_desired_caliper: desiredCaliper || null, order_reserve: reserveValue, order_submitted_by: submittedBy, order_submitted_at: submittedAt, order_status: 'Pending Review', itemcode: item.ITEMCODE || '', commonname: item.COMMONNAME || '', contsize: item.CONTSIZE || '', locationcode: item.LOCATIONCODE || '', lotcode: item.LOTCODE || '', ptravailable: String(item.PTRAVAILABLE || ''), priority: String(item.PRIORITY || ''), av_note: item.AV_NOTE || '', sales_note: salesNote || null, spec: item.SPEC || null, caliper: item.CALIPER || null, photo_link: photoLink || null, photo_name: photoName || null, ...orderMetaPayload };
+                const payload = { unique_id: rowId, master_id: item.UNIQUE_ID || '', so_source: 'bloom_picker', order_folder: folderName, order_number: orderNumber, order_customer: orderCustomer, order_qty: String(qtyValue), order_desired_spec: desiredSpec || null, order_desired_caliper: desiredCaliper || null, order_reserve: reserveValue, order_submitted_by: submittedBy, order_submitted_at: submittedAt, order_status: 'Pending Review', itemcode: item.ITEMCODE || '', commonname: item.COMMONNAME || '', contsize: item.CONTSIZE || '', locationcode: item.LOCATIONCODE || '', lotcode: item.LOTCODE || '', ptravailable: String(item.PTRAVAILABLE || ''), priority: String(item.PRIORITY || ''), pic_note: picNote || null, av_note: item.AV_NOTE || '', sales_note: salesNote || null, spec: item.SPEC || null, caliper: item.CALIPER || null, photo_link: photoLink || null, photo_name: photoName || null, ...orderMetaPayload };
                 payloads.push(payload);
                 const clone = { SOURCE_TABLE: 'v2_sales_office' };
                 Object.keys(payload).forEach((key) => { if (payload[key] !== null && payload[key] !== undefined) clone[key.toUpperCase()] = payload[key]; });
@@ -4806,7 +5058,14 @@ function toggleDriveQuickRequestItem(domId) {
 
         function canRemoveProtectedPhoto(prefix, item = activeItem) {
             if (!item) return false;
+            if (isRepReadOnlyUser()) return false;
             if (!isProtectedSectionCompleted(prefix, item)) return true;
+            return canUnlockProtectedData();
+        }
+
+        function canReorderProtectedPhoto(prefix, item = activeItem) {
+            if (!item) return false;
+            if (isRepReadOnlyUser()) return false;
             return canUnlockProtectedData();
         }
 
@@ -4844,6 +5103,11 @@ function toggleDriveQuickRequestItem(domId) {
         function renderProtectedControls(prefix) {
             const bar = ensureProtectedControl(prefix);
             if (!bar) return;
+            if (isRepReadOnlyUser()) {
+                bar.classList.remove('hidden');
+                bar.innerHTML = `<div class="bg-slate-50 border border-slate-200 rounded-xl p-3"><div class="text-[10px] font-black text-slate-600 uppercase tracking-wider">REP View Only</div><div class="text-xs font-semibold text-slate-700 mt-1">REP users can view row details, but cannot take photos or update rows.</div></div>`;
+                return;
+            }
             if (!isProtectedSectionLocked(prefix)) {
                 bar.classList.add('hidden');
                 return;
@@ -4861,7 +5125,8 @@ function toggleDriveQuickRequestItem(domId) {
         function applyProtectedEditState(prefix) {
             const config = getProtectedEditConfig(prefix);
             if (!config) return;
-            const locked = isProtectedSectionLocked(prefix) && !isProtectedUnlocked(prefix);
+            const readOnlyByRole = !canEditRowDetails(prefix);
+            const locked = readOnlyByRole || (isProtectedSectionLocked(prefix) && !isProtectedUnlocked(prefix));
             renderProtectedControls(prefix);
             config.inputIds.forEach(id => {
                 const el = document.getElementById(id);
@@ -4870,11 +5135,24 @@ function toggleDriveQuickRequestItem(domId) {
                 if ('readOnly' in el) el.readOnly = locked;
                 el.classList.toggle('opacity-60', locked);
             });
+            const container = document.getElementById(config.containerId);
+            if (container) {
+                container.querySelectorAll('button').forEach((el) => {
+                    const onClick = String(el.getAttribute('onclick') || '');
+                    const isProtectedButton = el.id === `${prefix}btn-save-complete` || onClick.includes(`appendSpecCaliperToAvNote('${prefix}')`);
+                    if (!isProtectedButton) return;
+                    el.disabled = locked;
+                    el.classList.toggle('opacity-50', locked);
+                    el.classList.toggle('pointer-events-none', locked);
+                });
+            }
             const cameraEl = document.getElementById(config.cameraId);
             if (cameraEl) {
-                cameraEl.classList.remove('opacity-50', 'pointer-events-none');
+                cameraEl.classList.toggle('hidden', readOnlyByRole);
+                cameraEl.classList.toggle('opacity-50', locked && !readOnlyByRole);
+                cameraEl.classList.toggle('pointer-events-none', locked);
                 const fileInput = cameraEl.querySelector('input[type="file"]');
-                if (fileInput) fileInput.disabled = false;
+                if (fileInput) fileInput.disabled = locked;
             }
         }
 
@@ -4955,7 +5233,8 @@ function toggleDriveQuickRequestItem(domId) {
         function promptPhotoDelete(prefix, photoIndex) {
             if (!activeItem) return;
             if (!canRemoveProtectedPhoto(prefix)) {
-                showToast('Restricted', 'Only Dylan, JD, Morgan, or Kayla can remove photos after Done.', true);
+                if (isRepReadOnlyUser()) showRowEditRestrictedToast(prefix);
+                else showToast('Restricted', 'Only Dylan, JD, Morgan, or Kayla can remove photos after Done.', true);
                 return;
             }
             if (confirm('Delete this photo from this row?')) {
@@ -5145,7 +5424,9 @@ function toggleDriveQuickRequestItem(domId) {
                         document.getElementById('view-change-password').style.display='flex'; 
                     }
                     else{ 
-                        finalizeLogin(currentUser,inputPass,isBiometricLogin); 
+                        primePushPermissionFromLoginGesture().finally(() => {
+                            finalizeLogin(currentUser,inputPass,isBiometricLogin); 
+                        });
                     }
                 } else if (result && result.reason === 'mismatch') { 
                     finishInitialAppLoad();
@@ -5196,28 +5477,85 @@ function toggleDriveQuickRequestItem(domId) {
             initializeRealtime();
         }
 
-        function primeLoginDataLoad() {
-            const access = getRoleAccessState();
-            const queue = [
-                { key: 'master', mode: 'initial', delay: 30 },
-                { key: 'avOpen', mode: 'initial', delay: 140 },
-                { key: 'requests', mode: 'initial', delay: 280 },
-                { key: 'soc', mode: 'initial', delay: 420 }
-            ];
-            if (access.isAdmin) {
-                queue.push(
-                    { key: 'salesOffice', mode: 'initial', delay: 560 },
-                    { key: 'avNotes', mode: 'initial', delay: 760 },
-                    { key: 'cav', mode: 'initial', delay: 980 },
-                    { key: 'reserves', mode: 'initial', delay: 1280 }
-                );
-            } else if (access.isRep) {
-                queue.push({ key: 'reserves', mode: 'full', delay: 700 });
+                function addLoginWarmupTarget(targetMap, key, mode = 'initial') {
+            const nextMode = mode === 'full' ? 'full' : 'initial';
+            const current = targetMap.get(key);
+            if (!current || (nextMode === 'full' && current.mode !== 'full')) {
+                targetMap.set(key, { key, mode: nextMode });
             }
-            queue.forEach((item) => {
+        }
+
+        function getLoginWarmupPlan(openedFromCache = false) {
+            const access = getRoleAccessState();
+            const allowedViews = access.allowedViews instanceof Set ? access.allowedViews : new Set(access.allowedViews || []);
+            const initialTargets = new Map();
+            const fullTargets = new Map();
+            const reserveInitialMode = access.isRep ? 'full' : 'initial';
+
+            addLoginWarmupTarget(initialTargets, 'master', 'initial');
+            addLoginWarmupTarget(fullTargets, 'master', 'full');
+
+            if (allowedViews.has('av')) {
+                addLoginWarmupTarget(initialTargets, 'avOpen', 'initial');
+                addLoginWarmupTarget(fullTargets, 'avOpen', 'full');
+                addLoginWarmupTarget(initialTargets, 'reserves', reserveInitialMode);
+                if (access.isRep) addLoginWarmupTarget(fullTargets, 'reserves', 'full');
+            }
+            if (allowedViews.has('request') || allowedViews.has('reports')) {
+                addLoginWarmupTarget(initialTargets, 'requests', 'initial');
+                addLoginWarmupTarget(fullTargets, 'requests', 'full');
+            }
+            if (allowedViews.has('docks') || allowedViews.has('reports')) {
+                addLoginWarmupTarget(initialTargets, 'soc', 'initial');
+                addLoginWarmupTarget(fullTargets, 'soc', 'full');
+            }
+            if (allowedViews.has('sales-office')) {
+                addLoginWarmupTarget(initialTargets, 'salesOffice', 'initial');
+                addLoginWarmupTarget(fullTargets, 'salesOffice', 'full');
+            }
+            if (allowedViews.has('tasks')) {
+                addLoginWarmupTarget(initialTargets, 'avNotes', 'initial');
+                addLoginWarmupTarget(initialTargets, 'cav', 'initial');
+                addLoginWarmupTarget(fullTargets, 'avNotes', 'full');
+                addLoginWarmupTarget(fullTargets, 'cav', 'full');
+            }
+            if (allowedViews.has('reserves')) {
+                addLoginWarmupTarget(initialTargets, 'reserves', reserveInitialMode);
+                if (access.isRep) addLoginWarmupTarget(fullTargets, 'reserves', 'full');
+            }
+
+            const initialPriority = ['master', 'avOpen', 'requests', 'soc', 'salesOffice', 'avNotes', 'cav', 'reserves'];
+            const initialKeys = initialPriority.concat(Array.from(initialTargets.keys()).filter((key) => !initialPriority.includes(key)));
+            const initialQueue = [];
+            const initialStart = 30;
+            const initialStep = 140;
+            initialKeys.forEach((key) => {
+                const target = initialTargets.get(key);
+                if (!target) return;
+                initialQueue.push({ key, mode: target.mode, delay: initialStart + (initialQueue.length * initialStep) });
+            });
+
+            const fullPriority = ['requests', 'soc', 'avOpen', 'salesOffice', 'avNotes', 'cav', 'reserves', 'master'];
+            const fullKeys = fullPriority.concat(Array.from(fullTargets.keys()).filter((key) => !fullPriority.includes(key)));
+            const fullQueue = [];
+            const fullStart = openedFromCache ? 2400 : 900;
+            const fullStep = openedFromCache ? 1900 : 900;
+            fullKeys.forEach((key) => {
+                const target = fullTargets.get(key);
+                if (!target) return;
+                const extraDelay = key === 'reserves' && (isIOSDevice() || isStandaloneApp()) ? (openedFromCache ? 500 : 250) : 0;
+                fullQueue.push({ key, mode: target.mode, delay: fullStart + (fullQueue.length * fullStep) + extraDelay });
+            });
+
+            return { initialQueue, fullQueue };
+        }
+
+        function primeLoginDataLoad(openedFromCache = false) {
+            const warmupPlan = getLoginWarmupPlan(openedFromCache);
+            warmupPlan.initialQueue.forEach((item) => {
                 queueDatasetLoad(item.key, item.mode, item.delay);
             });
-            return true;
+            return warmupPlan;
         }
         async function finalizeLogin(user,pass,isBiometricLogin) { 
             setBootingSession(false);
@@ -5230,6 +5568,13 @@ function toggleDriveQuickRequestItem(domId) {
             initializeCartUi();
             updateGlobalActionBar();
             setRepPermutations(currentUser);
+            const roleAccess = getRoleAccessState();
+            const shouldWarmReserveCache = roleAccess.allowedViews && typeof roleAccess.allowedViews.has === 'function' && (roleAccess.allowedViews.has('av') || roleAccess.allowedViews.has('reserves') || roleAccess.allowedViews.has('reports'));
+            let warmedScopedDatasetCache = false;
+            if (shouldWarmReserveCache) {
+                setLoginProgress(Math.max(currentProgress, 34), 'Restoring cached reserve data...');
+                warmedScopedDatasetCache = await warmUserScopedDatasetCaches().catch(() => false);
+            }
             ensureDockAssignableUsers().catch(() => {});
             ensureDockTeamStatusLoaded().then(() => { scheduleDocksRender(24); }).catch(() => {});
             ensureDockItemStatusLoaded().then(() => { scheduleDocksRender(24); }).catch(() => {});
@@ -5257,26 +5602,20 @@ function toggleDriveQuickRequestItem(domId) {
                 }).catch(() => {});
             }
 
-            const openedFromCache = fullInventory.length > 0;
-            const access = getRoleAccessState();
+            const openedFromCache = fullInventory.length > 0 || warmedScopedDatasetCache;
             openApp(openedFromCache);
-            primeLoginDataLoad();
+            const warmupPlan = primeLoginDataLoad(openedFromCache);
             if (!openedFromCache) {
                 showToast("Ready", "Fast mode is on. Data is warming in the background.", false);
             }
 
-            const masterFullDelay = openedFromCache ? 24000 : 9000;
-            const requestFullDelay = openedFromCache ? 12000 : 4000;
-            queueDatasetLoad('master', 'full', masterFullDelay);
-            queueDatasetLoad('requests', 'full', requestFullDelay);
-            if (access.isAdmin) {
-                queueDatasetLoad('soc', 'full', openedFromCache ? 15000 : 5500);
-                queueDatasetLoad('salesOffice', 'full', openedFromCache ? 18000 : 7000);
-                queueDatasetLoad('avNotes', 'full', openedFromCache ? 22000 : 8500);
-                queueDatasetLoad('cav', 'full', openedFromCache ? 26000 : 10500);
-            } else if (access.isRep) {
-                queueDatasetLoad('soc', 'full', openedFromCache ? 7000 : 2200);
-                queueDatasetLoad('reserves', 'full', openedFromCache ? 2400 : 1200);
+            warmupPlan.fullQueue.forEach((item) => {
+                queueDatasetLoad(item.key, item.mode, item.delay);
+            });
+            if (roleAccess.allowedViews && roleAccess.allowedViews.has('request')) {
+                setTimeout(() => {
+                    subscribeCurrentDeviceForPush({ prompt: false }).catch(() => {});
+                }, openedFromCache ? 450 : 1200);
             }
             loginPrefetchPromise = null;
             loginPrefetchMode = '';
@@ -5603,49 +5942,13 @@ function toggleDriveQuickRequestItem(domId) {
             }
 
             if (hasReserves || (hasMaster && reservesInventory.length)) {
-                const reserveSource = hasReserves ? (res.reservesData || []) : reservesInventory;
-                reservesInventory = reserveSource.map((item,idx)=>{
-                    item.DOM_ID='res_'+idx;
-                    item.UNIQUE_ID=item.UNIQUE_ID||'res_uid_'+idx;
-                    let masterItem=findLinkedMasterRow(item);
-                    item.CUSTOMERNAME=item.CUSTOMERNAME||item.CUSTOMER||'Unknown Customer';
-                    item.CONSIGNEENAME=item.CONSIGNEENAME||item.CONSIGNEE||'';
-                    item.SALESREPNAME=item.SALESREPNAME||item.SALESREP||item['SALES_REP']||'Unknown Rep';
-                    item.COMMONNAME=firstNonEmptyValue(item.COMMONNAME, item.DESCRIPTION, item.PLANT_NAME, item.ITEMCODE, 'Unknown');
-                    item.CONTSIZE=firstNonEmptyValue(item.CONTSIZE, item.ITEMSPEC, item.contsize, '-');
-                    item.LOCATIONCODE=firstNonEmptyValue(item.LOCATIONCODE, item.LOCATION, 'No Loc');
-                    item.ITEMCODE=firstNonEmptyValue(item.ITEMCODE, item.itemcode, '-');
-                    item.LOTCODE=firstNonEmptyValue(item.LOTCODE, item.lotcode, '-');
-                    item.PTRAVAILABLE=firstNonEmptyValue(item.PTRAVAILABLE, item.ptravailable, 0);
-                    item.SEASONSUPPLY=firstNonEmptyValue(item.SEASONSUPPLY, item.SEASON_SUPPLY, item.season_supply, 0);
-                    item.PRIORITY=firstNonEmptyValue(item.PRIORITY, item.priority, '-');
-                    if(masterItem){
-                        item.COMMONNAME=firstNonEmptyValue(masterItem.COMMONNAME, item.COMMONNAME);
-                        item.CONTSIZE=firstNonEmptyValue(masterItem.CONTSIZE, item.CONTSIZE);
-                        item.LOCATIONCODE=firstNonEmptyValue(masterItem.LOCATIONCODE, item.LOCATIONCODE);
-                        item.PTRAVAILABLE=firstNonEmptyValue(masterItem.PTRAVAILABLE, item.PTRAVAILABLE);
-                        item.SEASONSUPPLY=firstNonEmptyValue(masterItem.SEASONSUPPLY, item.SEASONSUPPLY);
-                        item.PRIORITY=firstNonEmptyValue(masterItem.PRIORITY, item.PRIORITY);
-                        item.QUALITYCODE=firstNonEmptyValue(masterItem.QUALITYCODE, item.QUALITYCODE);
-                        item.FIELDTAGCOLOR=firstNonEmptyValue(masterItem.FIELDTAGCOLOR, item.FIELDTAGCOLOR);
-                        item.LOTCODE=firstNonEmptyValue(masterItem.LOTCODE, item.LOTCODE);
-                        item.ITEMCODE=firstNonEmptyValue(masterItem.ITEMCODE, item.ITEMCODE);
-                        item.AV_NOTE=firstNonEmptyValue(item.AV_NOTE, masterItem.AV_NOTE);
-                        item.SALES_NOTE=firstNonEmptyValue(item.SALES_NOTE, masterItem.SALES_NOTE);
-                        item.MATCH=firstNonEmptyValue(item.MATCH, masterItem.MATCH);
-                        item.SPEC=firstNonEmptyValue(item.SPEC, masterItem.SPEC);
-                        item.CALIPER=firstNonEmptyValue(item.CALIPER, masterItem.CALIPER);
-                        item.PICK=firstNonEmptyValue(item.PICK, masterItem.PICK);
-                        item.LOC_MATCH_QTY=firstNonEmptyValue(item.LOC_MATCH_QTY, masterItem.LOC_MATCH_QTY);
-                        item.INITIAL_PTR=firstNonEmptyValue(item.INITIAL_PTR, masterItem.INITIAL_PTR);
-                        clonePhotoFields(masterItem, item);
-                        item.MASTER_UNIQUE_ID=masterItem.UNIQUE_ID;
-                    }
-                    normalizeRowPhotoFields(item);
-                    item._search=`${item.COMMONNAME||''} ${item.CUSTOMERNAME||''} ${item.ITEMCODE||''}`.toLowerCase();
-                    buildSearchIndex(item);
-                    return item;
-                });
+                const incomingReserveSource = hasReserves ? (res.reservesData || []) : reservesInventory;
+                const keepExistingFullReserveWarm = !!res._fromCache && getDatasetState('reserves').fullLoaded && Array.isArray(reservesInventory) && reservesInventory.length > incomingReserveSource.length;
+                const reserveSource = keepExistingFullReserveWarm ? reservesInventory : incomingReserveSource;
+                const canUseFastReserveWarm = !!res._fromCache && Array.isArray(reserveSource) && reserveSource.length > 12000;
+                reservesInventory = canUseFastReserveWarm
+                    ? buildReserveInventoryRowsFast(reserveSource)
+                    : reserveSource.map((item,idx)=>hydrateReserveInventoryRow(item, idx));
             }
 
             if (hasCav) {
@@ -6046,7 +6349,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (isAdmin) {
                 ROLE_ACCESS_VIEWS.forEach(viewId => allowedViews.add(viewId));
             } else if (isRep) {
-                ['av', 'docks', 'request'].forEach(viewId => allowedViews.add(viewId));
+                ['av', 'docks', 'request', 'sales-office'].forEach(viewId => allowedViews.add(viewId));
             } else if (isQcSupervisor) {
                 ['drive', 'docks'].forEach(viewId => allowedViews.add(viewId));
             } else if (isQc) {
@@ -6133,6 +6436,188 @@ function toggleDriveQuickRequestItem(domId) {
             setTimeout(() => toast.classList.remove('show'), 3000); 
         }
 
+        let pushSchemaReady = null;
+        let pushSchemaProbePromise = null;
+        let pushSchemaWarningShown = false;
+
+        function normalizePushUsername(value = '') {
+            return String(value || '').trim().toLowerCase().replace(/@.*$/, '').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+        }
+
+        function isPushSupported() {
+            return typeof window !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+        }
+
+        function getPushPromptUserScope() {
+            const access = getRoleAccessState();
+            return !!(currentUser && access.allowedViews && access.allowedViews.has('request'));
+        }
+
+        function maybeWarnPushSchemaMissing() {
+            if (pushSchemaWarningShown || !currentUser) return;
+            pushSchemaWarningShown = true;
+            showToast('Schema Required', 'Run push_notifications_migration.sql and deploy send-push-alert before using push notifications.', true);
+        }
+
+        async function ensurePushSubscriptionSchemaReady(force = false) {
+            if (pushSchemaReady === true && !force) return true;
+            if (pushSchemaReady === false && !force) return false;
+            if (pushSchemaProbePromise && !force) return pushSchemaProbePromise;
+            pushSchemaProbePromise = (async () => {
+                if (navigator.onLine === false) return false;
+                try {
+                    const url = `${SUPABASE_URL}/rest/v1/${PUSH_SUBSCRIPTIONS_TABLE}?select=id,username,endpoint,wants_new_request,wants_request_complete&limit=1`;
+                    const response = await fetchWithTimeout(url, {
+                        method: 'GET',
+                        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }
+                    }, SUPABASE_READ_TIMEOUT_MS, 'Push Subscription Schema');
+                    if (!response.ok) {
+                        pushSchemaReady = false;
+                        maybeWarnPushSchemaMissing();
+                        return false;
+                    }
+                    pushSchemaReady = true;
+                    return true;
+                } catch (error) {
+                    pushSchemaReady = false;
+                    maybeWarnPushSchemaMissing();
+                    return false;
+                } finally {
+                    pushSchemaProbePromise = null;
+                }
+            })();
+            return pushSchemaProbePromise;
+        }
+
+        function pushPublicKeyToUint8Array(publicKey = '') {
+            const normalized = String(publicKey || '').trim().replace(/-/g, '+').replace(/_/g, '/');
+            const padded = normalized + '='.repeat((4 - normalized.length % 4) % 4);
+            const raw = atob(padded);
+            return Uint8Array.from(raw, (char) => char.charCodeAt(0));
+        }
+
+        function buildPushPreferenceFlags() {
+            const normalizedUser = normalizePushUsername(currentUser || currentUserDisplay || '');
+            return {
+                wants_new_request: PUSH_ALERT_NEW_REQUEST_USERS.has(normalizedUser),
+                wants_request_complete: getPushPromptUserScope()
+            };
+        }
+
+        function buildPushSubscriptionRecord(subscription) {
+            const json = subscription && typeof subscription.toJSON === 'function' ? subscription.toJSON() : (subscription || {});
+            const keys = json && json.keys ? json.keys : {};
+            const flags = buildPushPreferenceFlags();
+            const normalizedUser = normalizePushUsername(currentUser || currentUserDisplay || '');
+            const deviceLabel = [
+                /Android/i.test(navigator.userAgent) ? 'Android' : (isIOSDevice() ? 'iOS' : 'Desktop'),
+                isStandaloneApp() ? 'Standalone' : 'Browser'
+            ].join(' ');
+            return {
+                username: normalizedUser,
+                display_name: String(currentUserDisplay || currentUser || '').trim(),
+                role: String(currentRole || '').trim(),
+                endpoint: String(json.endpoint || subscription.endpoint || '').trim(),
+                p256dh: String(keys.p256dh || '').trim(),
+                auth: String(keys.auth || '').trim(),
+                device_label: deviceLabel,
+                user_agent: String(navigator.userAgent || '').trim(),
+                app_build: APP_SHELL_BUILD,
+                notifications_enabled: true,
+                wants_new_request: !!flags.wants_new_request,
+                wants_request_complete: !!flags.wants_request_complete,
+                last_seen: new Date().toISOString(),
+                subscription_json: json
+            };
+        }
+
+        async function persistPushSubscription(subscription) {
+            if (!subscription) return false;
+            const canPersist = await ensurePushSubscriptionSchemaReady();
+            if (!canPersist) return false;
+            const payload = buildPushSubscriptionRecord(subscription);
+            if (!payload.username || !payload.endpoint || !payload.p256dh || !payload.auth) return false;
+            try {
+                await supabaseFetch(PUSH_SUBSCRIPTIONS_TABLE, 'POST', payload, 'on_conflict=endpoint');
+                return true;
+            } catch (error) {
+                console.warn('Push subscription save failed', error);
+                return false;
+            }
+        }
+
+        async function subscribeCurrentDeviceForPush(options = {}) {
+            const opts = options && typeof options === 'object' ? options : {};
+            if (!isPushSupported() || !currentUser || !getPushPromptUserScope()) return false;
+            if (!PUSH_VAPID_PUBLIC_KEY) {
+                console.warn('Push notifications are not configured. Add a VAPID public key first.');
+                return false;
+            }
+            const reg = await navigator.serviceWorker.ready;
+            let permission = Notification.permission;
+            if (permission === 'default' && opts.prompt) {
+                permission = await Notification.requestPermission();
+            }
+            if (permission !== 'granted') return false;
+            let subscription = await reg.pushManager.getSubscription();
+            if (!subscription || opts.force) {
+                if (subscription && opts.force) {
+                    try { await subscription.unsubscribe(); } catch (error) {}
+                }
+                subscription = await reg.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: pushPublicKeyToUint8Array(PUSH_VAPID_PUBLIC_KEY)
+                });
+            }
+            return await persistPushSubscription(subscription);
+        }
+
+        function primePushPermissionFromLoginGesture() {
+            if (!isPushSupported() || !currentUser || !getPushPromptUserScope()) return Promise.resolve(false);
+            if (Notification.permission !== 'default') return Promise.resolve(Notification.permission === 'granted');
+            return Notification.requestPermission().then((permission) => permission === 'granted').catch(() => false);
+        }
+
+        function sendPushNotification(type, folderId, repName, customer, itemsCount) {
+            if (!currentUser || !PUSH_FUNCTION_URL) return;
+            const payload = {
+                eventType: type,
+                folderId: String(folderId || '').trim(),
+                repName: String(repName || '').trim(),
+                customer: String(customer || '').trim(),
+                itemsCount: Number(itemsCount) || 0,
+                requestedBy: String(repName || '').trim(),
+                requestedByUsername: normalizePushUsername(repName || ''),
+                sentBy: String(currentUserDisplay || currentUser || '').trim(),
+                sentByUsername: normalizePushUsername(currentUser || currentUserDisplay || ''),
+                appBuild: APP_SHELL_BUILD
+            };
+            fetch(PUSH_FUNCTION_URL, {
+                method: 'POST',
+                headers: {
+                    'apikey': SUPABASE_KEY,
+                    'Authorization': 'Bearer ' + SUPABASE_KEY,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            }).catch((error) => console.log(error));
+        }
+
+        function notifyRequestEvent(type, folderId, repName, customer, itemsCount) {
+            sendEmailNotification(type, folderId, repName, customer, itemsCount);
+            sendPushNotification(type, folderId, repName, customer, itemsCount);
+        }
+
+        function openViewFromPushMessage(viewId = '') {
+            const target = String(viewId || '').trim().toLowerCase();
+            if (!target || !currentUser) return;
+            if (target === 'sales-office') {
+                openSalesOfficeView();
+                return;
+            }
+            if (canAccessView(target)) switchView(target);
+        }
+
         const TRACKED_VIEW_IDS = ['drive','tasks','review','sales-office','reports','low-stock','docks','request','reserves','av','hours'];
 
         function getAffectedViewsForDatasets(changedKeys = []) {
@@ -6199,6 +6684,7 @@ function toggleDriveQuickRequestItem(domId) {
             selectedReviewContSize = contSize;
             reviewViewLevel = 1;
             renderReview();
+            queueScrollMainAreaToTop(`review-item:${itemCode}`);
         }
 
         function resetRequestView() {
@@ -6310,6 +6796,7 @@ function toggleDriveQuickRequestItem(domId) {
             const targetView = document.getElementById('view-'+nextViewId);
             if (targetView) targetView.classList.remove('hidden');
             queueViewRender(nextViewId);
+            queueScrollMainAreaToTop(`view:${nextViewId}`);
             updateGlobalBackButton();
             syncGlobalHeaderChrome();
             updateFooterNavState();
@@ -6492,9 +6979,11 @@ function toggleDriveQuickRequestItem(domId) {
             selectedFlyerFolder=null;
             if (safeRole === 'ADMIN' && tab !== 'flyer' && !taskViewTargetUser && !taskTabUsesBlockDrill(tab)) {
                 scheduleUiRender('task-tab', () => renderTeamSelector());
+                queueScrollMainAreaToTop(`task-tab:${tab}`);
                 return;
             }
             scheduleUiRender('task-tab', () => renderTasks()); 
+            queueScrollMainAreaToTop(`task-tab:${tab}`);
         }
 
         function setTaskSubview(subview) {
@@ -6508,6 +6997,7 @@ function toggleDriveQuickRequestItem(domId) {
             selectedTaskBlock = null;
             selectedTaskLoc = null;
             scheduleUiRender('task-subview', () => renderTasks());
+            queueScrollMainAreaToTop(`task-subview:${activeTaskTab}:${activeTaskSubview}`);
             return false;
         }
 
@@ -6527,6 +7017,7 @@ function toggleDriveQuickRequestItem(domId) {
             selectedDriveBlock = null;
             selectedDriveLoc = null;
             scheduleUiRender('drive-tab', () => renderDrive());
+            queueScrollMainAreaToTop(`drive-mode:${mode}`);
         }
         function setDriveTab(tab) { 
             if (tab !== 'card') closeDriveQuickFiltersModal();
@@ -6541,6 +7032,7 @@ activeDriveTab = tab;
             selectedDriveBlock = null;
             selectedDriveLoc = null;
             scheduleUiRender('drive-tab', () => renderDrive());
+            queueScrollMainAreaToTop(`drive-tab:${tab}`);
         }
 
         function toggleDriveHoldStopOnly() {
@@ -6553,8 +7045,8 @@ activeDriveTab = tab;
             scheduleUiRender('drive-holdstop-filter', () => renderDrive());
         }
 
-        function selectDriveBlock(block) { selectedDriveBlock = block; driveViewLevel = 1; renderDrive(); }
-        function selectDriveLoc(loc) { selectedDriveLoc = loc; driveViewLevel = 2; renderDrive(); }
+        function selectDriveBlock(block) { selectedDriveBlock = block; driveViewLevel = 1; renderDrive(); queueScrollMainAreaToTop(`drive-block:${block}`); }
+        function selectDriveLoc(loc) { selectedDriveLoc = loc; driveViewLevel = 2; renderDrive(); queueScrollMainAreaToTop(`drive-loc:${loc}`); }
         function resetDriveView() {
             activeDriveMode = 'ok';
             resetDriveQuickCardViewState();
@@ -6574,7 +7066,7 @@ activeDriveTab = tab;
 
         function resetAVView() { 
             activeAVTab='open'; activeAvOpenTab='name';
-            avResLevel=0; selectedAvResRep=null; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; 
+            avResLevel=0; selectedAvResRep=null; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; activeAvReserveMode='current'; activeAvReserveDetailTab='customer'; 
             avOpenLevel=0; selectedAvOpenName=null; selectedAvOpenSize=null; selectedAvOpenSeason=null; selectedAvOpenLot=null;
             document.getElementById('tab-av-open').classList.add('active'); document.getElementById('tab-av-reserves').classList.remove('active'); 
             document.getElementById('tab-av-open-name').classList.add('active'); document.getElementById('tab-av-open-photos').classList.remove('active');
@@ -6585,12 +7077,13 @@ activeDriveTab = tab;
 
         function setAVTab(tab) { 
             activeAVTab=tab; 
-            avResLevel=0; selectedAvResRep=null; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; 
+            avResLevel=0; selectedAvResRep=null; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; activeAvReserveMode='current'; activeAvReserveDetailTab='customer'; 
             avOpenLevel=0; selectedAvOpenName=null; selectedAvOpenSize=null; selectedAvOpenSeason=null; selectedAvOpenLot=null;
             document.getElementById('tab-av-open').classList.toggle('active',tab==='open'); document.getElementById('tab-av-reserves').classList.toggle('active',tab==='reserves'); 
             const subTabs = document.getElementById('av-open-sub-tabs');
             subTabs.style.display = tab==='open' ? 'flex' : 'none';
             scheduleUiRender('av-tab', () => renderAV()); 
+            queueScrollMainAreaToTop(`av-tab:${tab}`);
         }
 
         function setAvOpenTab(tab) {
@@ -6600,6 +7093,7 @@ activeDriveTab = tab;
             avOpenLevel = 0;
             selectedAvOpenName=null; selectedAvOpenSize=null; selectedAvOpenSeason=null; selectedAvOpenLot=null;
             scheduleUiRender('av-open-tab', () => renderAV());
+            queueScrollMainAreaToTop(`av-open-tab:${tab}`);
         }
         
         function setReqTab(tab) {
@@ -6607,6 +7101,7 @@ activeDriveTab = tab;
             document.getElementById('tab-req-pending').classList.toggle('active', tab === 'pending');
             document.getElementById('tab-req-reps').classList.toggle('active', tab === 'reps');
             requestViewLevel = 0; selectedReqFolder = null; selectedReqRepView = null; selectedReqCustView = null; selectedReqFolderView = null; clearSelection(); scheduleUiRender('request-tab', () => renderRequest());
+            queueScrollMainAreaToTop(`request-tab:${tab}`);
         }
 
         function sendEmailNotification(type, folderId, repName, customer, itemsCount) {
@@ -6670,6 +7165,31 @@ activeDriveTab = tab;
         function canSelectAvReserveRep() {
             const tokens = getProtectedUserTokens();
             return tokens.has('dylan_collyge') || tokens.has('jd_jones');
+        }
+
+        function canUseAvReserveCardsMode() {
+            const tokens = getProtectedUserTokens();
+            return !!getRoleAccessState().isAdmin || tokens.has('dylan') || tokens.has('dylan_collyge') || tokens.has('jd') || tokens.has('jd_jones');
+        }
+
+        function setAvReserveMode(mode = 'current') {
+            activeAvReserveMode = mode === 'cards' ? 'cards' : 'current';
+            selectedAvResRep = null;
+            selectedAvResDriveUid = null;
+            selectedAvResItemCode = null;
+            selectedAvResName = null;
+            selectedAvResSize = null;
+            activeAvReserveDetailTab = 'customer';
+            avResLevel = 0;
+            resetAVReserveSearchInput();
+            renderAV();
+            queueScrollMainAreaToTop(`av-reserve-mode:${activeAvReserveMode}`);
+            return false;
+        }
+
+        function getAvReserveModeTabsHtml() {
+            if (!canUseAvReserveCardsMode()) return '';
+            return `<div class="flex flex-wrap gap-2 mb-3"><button class="task-tab ${activeAvReserveMode === 'current' ? 'active' : ''}" onclick="return setAvReserveMode('current')">Current</button><button class="task-tab ${activeAvReserveMode === 'cards' ? 'active' : ''}" onclick="return setAvReserveMode('cards')">Item Cards</button></div>`;
         }
 
         function isSelectedAvReserveRep(item, repName = selectedAvResRep) {
@@ -6768,8 +7288,9 @@ activeDriveTab = tab;
         }
 
         function getReserveDatasetInitialLimit() {
-            if (getRoleAccessState().isRep) return 1000;
-            if (isViewVisible('av') && activeAVTab === 'reserves') return 1000;
+            if (getRoleAccessState().isRep) return 1200;
+            const reserveViewOpen = (isViewVisible('av') && activeAVTab === 'reserves') || isViewVisible('reserves');
+            if (reserveViewOpen) return (isIOSDevice() || isStandaloneApp()) ? 2200 : 2800;
             return INITIAL_PAGE_LIMIT;
         }
 
@@ -6881,10 +7402,64 @@ activeDriveTab = tab;
                 });
         }
 
+        function isAdminAvReserveDetailTabsEnabled() {
+            const access = getRoleAccessState();
+            return !!(access.isAdmin || access.isRep);
+        }
+
+        function getSelectedAvReserveLocationRows() {
+            return getAvReserveDriveRowsForSelection();
+        }
+
+        function canSeeAvReserveRepTab() {
+            const tokens = getProtectedUserTokens();
+            return tokens.has('dylan') || tokens.has('dylan_collyge') || tokens.has('jd') || tokens.has('jd_jones');
+        }
+
+        function getAvOpenStockLocPhotoMatch(item = null) {
+            if (!item) return '-';
+            const ptrRaw = firstNonEmptyValue(item.PTRAVAILABLE, item.LOC_AVAIL, '0');
+            const matchRaw = firstNonEmptyValue(item.MATCH, item.MATCHPCT, item.REQ_MATCH, '');
+            const ptr = parseInt(String(ptrRaw).replace(/,/g, ''), 10) || 0;
+            const matchPct = parseFloat(String(matchRaw).replace(/[%\s]+/g, ''));
+            if (!isNaN(matchPct)) return String(Math.round(ptr * (matchPct / 100)));
+            return firstNonEmptyValue(item.LOC_MATCH_QTY, '-');
+        }
+
+        function avReserveNeedsCaliper(item = null) {
+            if (!item) return false;
+            const plantGroup = String(firstNonEmptyValue(item.PLANTGROUPCODE, '') || '').trim().toUpperCase();
+            const contSize = String(firstNonEmptyValue(item.CONTSIZE, '') || '').trim().toUpperCase();
+            return plantGroup.includes('330_TREES') && ['#7','#10','#15','#25','#45'].includes(contSize);
+        }
+
+        function getSelectedAvReserveRepGroups(items = []) {
+            const repMap = new Map();
+            getSelectedAvReserveGroupRows(items).forEach((item) => {
+                const label = getReserveSalesRepLabel(item);
+                const key = normalizeRepMatchToken(label) || String(label || '').trim();
+                if (!key) return;
+                const entry = repMap.get(key) || { label, count: 0 };
+                entry.count += 1;
+                repMap.set(key, entry);
+            });
+            return [...repMap.values()].sort((a, b) => String(a.label || '').localeCompare(String(b.label || '')));
+        }
+
+        function setAvReserveDetailTab(tab = 'customer') {
+            activeAvReserveDetailTab = tab === 'location' ? 'location' : (tab === 'rep' ? 'rep' : 'customer');
+            selectedAvResDriveUid = null;
+            renderAV();
+            queueScrollMainAreaToTop(`av-reserve-detail:${activeAvReserveDetailTab}`);
+            return false;
+        }
+
         function backToAvReserveGroupList() {
             selectedAvResDriveUid = null;
+            activeAvReserveDetailTab = 'customer';
             avResLevel = 0;
             renderAV();
+            queueScrollMainAreaToTop('av-reserve-groups');
             return false;
         }
 
@@ -6904,13 +7479,23 @@ activeDriveTab = tab;
             const contSize = firstNonEmptyValue(item.CONTSIZE, '-');
             const customerName = firstNonEmptyValue(item.CUSTOMERNAME, item.CUSTOMER, 'Unknown Customer');
             const consigneeName = firstNonEmptyValue(item.CONSIGNEENAME, item.CONSIGNEE, '-');
+            const salesRepName = firstNonEmptyValue(item.SALESREPNAME, item.SALESREP, item.SALES_REP, '-');
+            const locationCode = firstNonEmptyValue(item.LOCATIONCODE, 'No Loc');
             const requestDate = getAvReserveRequestDateLabel(item);
             const lotCode = firstNonEmptyValue(item.LOTCODE, '-');
             const qtyOrdered = firstNonEmptyValue(item.QTY_ORDERED, item.QUANTITYORDERED, '0');
             const qtyShipped = firstNonEmptyValue(item.QTY_SHIPPED, item.QUANTITYSHIPPED, '0');
-            const detailCell = (label, value) => `<div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2"><div class="text-[9px] font-black uppercase tracking-[0.14em] text-slate-400">${label}</div><div class="mt-1 text-[13px] font-bold text-slate-700 break-words">${esc(value || '-')}</div></div>`;
+            const locPhotoMatch = getAvOpenStockLocPhotoMatch(item);
+            const specText = firstNonEmptyValue(item.REQ_SPEC, item.SPEC, '-');
+            const caliperText = firstNonEmptyValue(item.REQ_CALIPER, item.CALIPER, '-');
+            const avNote = firstNonEmptyValue(item.AV_NOTE, '-');
+            const showSpecFields = avReserveNeedsCaliper(item);
+            const detailCell = (label, value) => {
+                const displayValue = value == null || String(value).trim() === '' ? '-' : String(value);
+                return `<div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2"><div class="text-[9px] font-black uppercase tracking-[0.14em] text-slate-400">${label}</div><div class="mt-1 text-[13px] font-bold text-slate-700 break-words">${esc(displayValue)}</div></div>`;
+            };
             let thumbHtml = '';
-            const photoLink = getRowPhotoLink(item, 'av');
+            const photoLink = getRowPhotoLink(item);
             if (photoLink) {
                 let firstUrl = String(photoLink).split(',')[0].trim();
                 let urlMatch = firstUrl.match(/(https?:\/\/[^"\s>]+)/);
@@ -6921,7 +7506,48 @@ activeDriveTab = tab;
                 }
             }
             const inlineThumbHtml = thumbHtml || `<div class="ml-3 flex-shrink-0"><div class="app-smart-thumb w-16 h-16 rounded-md border border-gray-300 bg-slate-100 shadow-sm flex items-center justify-center text-[8px] font-black uppercase tracking-[0.12em] text-slate-400">No Photo</div></div>`;
-            return `<div class="flex items-center w-full mb-3 item-row app-smart-card relative bg-white p-4 rounded-xl border border-indigo-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', 'av')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-grow items-start justify-between min-w-0"><div class="app-card-main flex-grow min-w-0 pr-2"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-indigo-600">Item Code</div><div class="mt-1 font-mono font-black text-[16px] text-indigo-800 break-all">${esc(itemCode)}</div><div class="mt-3 font-black text-slate-900 text-[20px] leading-tight break-words">${esc(commonName)}</div><div class="mt-1 text-[14px] font-bold text-[#007a4d]">${esc(contSize)}</div><div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">${detailCell('Customer Name', customerName)}${detailCell('Consignee Name', consigneeName)}${detailCell('Request Date', requestDate)}${detailCell('Lot Code', lotCode)}${detailCell('Quantity Ordered', qtyOrdered)}${detailCell('Quantity Shipped', qtyShipped)}</div></div>${inlineThumbHtml}</div></div>`;
+            return `<div class="flex items-start w-full mb-3 item-row app-smart-card relative bg-white p-4 rounded-xl border border-indigo-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', 'av')"><div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-grow items-start justify-between min-w-0"><div class="app-card-main flex-grow min-w-0 pr-2"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-indigo-600">Item Code</div><div class="mt-1 font-mono font-black text-[16px] text-indigo-800 break-all">${esc(itemCode)}</div><div class="mt-3 font-black text-slate-900 text-[20px] leading-tight break-words">${esc(commonName)}</div><div class="mt-1 text-[14px] font-bold text-[#007a4d]">${esc(contSize)}</div><div class="mt-3 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">${detailCell('Customer Name', customerName)}${detailCell('Consignee Name', consigneeName)}${detailCell('Sales Rep Name', salesRepName)}${detailCell('Location', locationCode)}${detailCell('Request Date', requestDate)}${detailCell('Lot Code', lotCode)}${detailCell('Quantity Ordered', qtyOrdered)}${detailCell('Quantity Shipped', qtyShipped)}${detailCell('LOC PHOTO MATCH', locPhotoMatch)}${showSpecFields ? detailCell('Spec', specText) : ''}${showSpecFields ? detailCell('Caliper', caliperText) : ''}${detailCell('AV Note', avNote)}</div></div>${inlineThumbHtml}</div></div>`;
+        }
+
+        function generateAvReserveLocationCard(item) {
+            const safeUidJs = esc(item.UNIQUE_ID || '');
+            const itemCode = firstNonEmptyValue(item.ITEMCODE, '-');
+            const commonName = firstNonEmptyValue(item.COMMONNAME, item.ITEMCODE, 'Unknown');
+            const contSize = firstNonEmptyValue(item.CONTSIZE, '-');
+            const locationCode = firstNonEmptyValue(item.LOCATIONCODE, 'No Loc');
+            const lotCode = firstNonEmptyValue(item.LOTCODE, '-');
+            const ptrAvailable = firstNonEmptyValue(item.PTRAVAILABLE, '0');
+            const sLts = firstNonEmptyValue(item.S_LTS, '0');
+            const priority = firstNonEmptyValue(item.PRIORITY, '-');
+            const locPhotoMatch = getAvOpenStockLocPhotoMatch(item);
+            const specText = firstNonEmptyValue(item.SPEC, '-');
+            const caliperText = firstNonEmptyValue(item.CALIPER, '-');
+            const avNote = firstNonEmptyValue(item.AV_NOTE, '-');
+            const showSpecFields = avReserveNeedsCaliper(item);
+            const detailCell = (label, value) => {
+                const displayValue = value == null || String(value).trim() === '' ? '-' : String(value);
+                return `<div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2"><div class="text-[9px] font-black uppercase tracking-[0.14em] text-slate-400">${label}</div><div class="mt-1 text-[13px] font-bold text-slate-700 break-words">${esc(displayValue)}</div></div>`;
+            };
+            let thumbHtml = '';
+            const photoLink = getRowPhotoLink(item);
+            if (photoLink) {
+                let firstUrl = String(photoLink).split(',')[0].trim();
+                let urlMatch = firstUrl.match(/(https?:\/\/[^"\s>]+)/);
+                if (urlMatch) firstUrl = urlMatch[1];
+                const thumbUrl = getDirectImageUrl(firstUrl);
+                if (thumbUrl.startsWith('http')) {
+                    thumbHtml = `<div class="absolute top-3 right-3 flex h-14 w-14 items-center justify-center rounded-xl overflow-hidden border border-gray-300 shadow-sm bg-white" onclick="event.stopPropagation(); openPhotoModal('${photoLink}', '${esc(commonName)} - ${esc(contSize)}')"><img src="${thumbUrl}" class="app-smart-thumb h-full w-full object-cover active:scale-95 transition-transform" loading="lazy"></div>`;
+                }
+            }
+            const cornerThumbHtml = thumbHtml || `<div class="absolute top-3 right-3 flex h-14 w-14 items-center justify-center rounded-xl border border-slate-200 bg-slate-100 px-1 text-center text-[8px] font-black uppercase tracking-[0.14em] text-slate-400">No Photo</div>`;
+            return `<div class="mb-3 rounded-[22px] border border-sky-200 bg-white p-4 pr-[5.25rem] shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden relative" onclick="handleCardClick('${item.DOM_ID || ''}', '${safeUidJs}', 'drive')">${cornerThumbHtml}<div class="text-[10px] font-black uppercase tracking-[0.16em] text-sky-600">Drive Mode Location</div><div class="mt-1 font-black text-[20px] text-slate-900 break-words">${esc(locationCode)}</div><div class="mt-3 font-black text-[18px] leading-tight text-slate-900 break-words">${esc(commonName)}</div><div class="mt-1 text-[14px] font-bold text-[#007a4d]">${esc(contSize)}</div><div class="mt-2 inline-flex max-w-full items-center gap-1 rounded-lg border border-slate-200 bg-slate-100 px-2 py-1 text-[10px] font-mono font-bold text-slate-600"><i class="ph-bold ph-barcode text-slate-400"></i><span class="truncate">${esc(itemCode)}</span></div><div class="mt-3 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">${detailCell('Lot Code', lotCode)}${detailCell('Loc Avail', ptrAvailable)}${detailCell('s_LTS', sLts)}${detailCell('Priority', priority)}${detailCell('LOC PHOTO MATCH', locPhotoMatch)}${showSpecFields ? detailCell('Spec', specText) : ''}${showSpecFields ? detailCell('Caliper', caliperText) : ''}${detailCell('AV Note', avNote)}</div></div>`;
+        }
+
+        function generateAvReserveRepCard(rep) {
+
+            const label = firstNonEmptyValue(rep && rep.label, 'Unknown Rep');
+            const count = Number(rep && rep.count || 0);
+            return `<div class="mb-3 rounded-[22px] border border-amber-200 bg-white p-4 shadow-sm overflow-hidden"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-amber-600">Sales Rep</div><div class="mt-2 font-black text-[22px] leading-tight text-slate-900 break-words">${esc(label)}</div><div class="mt-3 inline-flex items-center rounded-full border border-amber-100 bg-amber-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-amber-700">${count} Row${count === 1 ? '' : 's'}</div></div>`;
         }
 
         function selectAvResRep(repName) {
@@ -6930,9 +7556,11 @@ activeDriveTab = tab;
             selectedAvResItemCode = null;
             selectedAvResName = null;
             selectedAvResSize = null;
+            activeAvReserveDetailTab = 'customer';
             avResLevel = 0;
             resetAVReserveSearchInput();
             renderAV();
+            queueScrollMainAreaToTop(`av-reserve-rep:${repName}`);
         }
 
         function clearSelectedAvResRep() {
@@ -6941,9 +7569,11 @@ activeDriveTab = tab;
             selectedAvResItemCode = null;
             selectedAvResName = null;
             selectedAvResSize = null;
+            activeAvReserveDetailTab = 'customer';
             avResLevel = 0;
             resetAVReserveSearchInput();
             renderAV();
+            queueScrollMainAreaToTop('av-reserve-reps');
         }
 
         function selectAvReserveGroup(itemCode, commonName, contSize) {
@@ -6951,8 +7581,10 @@ activeDriveTab = tab;
             selectedAvResItemCode = itemCode;
             selectedAvResName = commonName;
             selectedAvResSize = contSize;
+            activeAvReserveDetailTab = 'customer';
             avResLevel = 1;
             renderAV();
+            queueScrollMainAreaToTop(`av-reserve-group:${itemCode}`);
             return false;
         }
 
@@ -6960,6 +7592,7 @@ activeDriveTab = tab;
             selectedAvResDriveUid = uniqueId;
             avResLevel = 2;
             renderAV();
+            queueScrollMainAreaToTop(`av-reserve-drive:${uniqueId}`);
         }
         function avItemHasPhotos(item) { return getPhotoUrlList(getRowPhotoLink(item, 'av')).length > 0; }
         function getAvOpenTabLabel(tab=activeAvOpenTab) {
@@ -6983,6 +7616,7 @@ activeDriveTab = tab;
             const searchInput = document.getElementById('av-search');
             const term = String(searchInput ? searchInput.value : '').toLowerCase().trim();
             const { isRep } = getRoleAccessState();
+            const useRepDrill = activeAVTab === 'reserves' && activeAvReserveMode !== 'cards' && canSelectAvReserveRep();
             let items = [];
             if (activeAVTab === 'open') {
                 items = (isDatasetLoaded('avOpen', 'initial') ? avOpenInventory : fullInventory).filter(i => {
@@ -6993,13 +7627,13 @@ activeDriveTab = tab;
                 if (activeAvOpenTab === 'photos') items = items.filter(avItemHasPhotos);
             } else {
                 items = reservesInventory;
-                if (canSelectAvReserveRep()) {
+                if (useRepDrill) {
                     if (selectedAvResRep) items = items.filter(i => isSelectedAvReserveRep(i, selectedAvResRep));
                 } else if (isRep) {
                     items = items.filter(i => isMyRep(firstNonEmptyValue(i && i.SALESREPNAME, i && i.SALESREP, i && i.SALES_REP, i && i.SALESREPID, '')));
                 }
             }
-            const allowReserveSearch = activeAVTab === 'open' || !canSelectAvReserveRep() || !!selectedAvResRep;
+            const allowReserveSearch = activeAVTab === 'open' || !useRepDrill || !!selectedAvResRep;
             if (term && allowReserveSearch) items = filterBySearch(items, term, activeAVTab === 'open' ? 'av_open' : 'av_reserves');
             return { items, term };
         }
@@ -7035,7 +7669,7 @@ activeDriveTab = tab;
                     });
                 }
             } else {
-                if (canSelectAvReserveRep() && !selectedAvResRep) {
+                if (activeAvReserveMode !== 'cards' && canSelectAvReserveRep() && !selectedAvResRep) {
                     rows = [];
                 } else {
                     if (selectedAvResRep) {
@@ -7062,6 +7696,13 @@ activeDriveTab = tab;
                 fileLabel,
                 searchTerm
             };
+        }
+        function getAVVisibleExportCount(baseItems = []) {
+            const rows = Array.isArray(baseItems) ? baseItems : [];
+            if (activeAVTab === 'open') return rows.length;
+            if (activeAvReserveMode !== 'cards' && canSelectAvReserveRep() && !selectedAvResRep) return 0;
+            if (selectedAvResItemCode && selectedAvResName && selectedAvResSize) return getSelectedAvReserveGroupRows(rows).length;
+            return rows.length;
         }
         function getAVExportColumns() {
             if (activeAVTab === 'open') {
@@ -7438,41 +8079,98 @@ activeDriveTab = tab;
             avRenderChunkToken += 1;
             const token = avRenderChunkToken;
             const total = Array.isArray(rows) ? rows.length : 0;
-            const chunkSize = total > 320 ? 24 : (total > 180 ? 32 : 40);
+            const touchOptimized = isIOSDevice() || isStandaloneApp() || window.matchMedia('(pointer: coarse)').matches;
+            const viewportHeight = Math.max(640, Math.round((window.visualViewport && window.visualViewport.height) || window.innerHeight || document.documentElement.clientHeight || 640));
+            const approxCardHeight = sourceView === 'reserves_drill' ? 170 : (activeAvOpenTab === 'photos' ? 160 : 185);
+            const chunkSize = touchOptimized
+                ? (total > 1600 ? 56 : (total > 800 ? 64 : 72))
+                : (total > 1200 ? 32 : (total > 600 ? 40 : 48));
+            const initialScreens = touchOptimized ? 14 : 8;
+            const initialTarget = Math.min(total, Math.max(chunkSize * 2, Math.ceil((viewportHeight * initialScreens) / approxCardHeight)));
+            const perFrameLimit = touchOptimized ? Math.max(chunkSize * 2, 128) : Math.max(chunkSize, 72);
+            const frameBudgetMs = touchOptimized ? 10 : 7;
             let index = 0;
-            let firstChunk = true;
-            crumb.innerText = `${crumbText} Loading...`;
-            container.innerHTML = `<div class="p-6 text-center text-gray-400">Loading ${total} row${total === 1 ? '' : 's'}...</div>`;
-            const renderChunk = () => {
-                if (token !== avRenderChunkToken) return;
-                const end = Math.min(index + chunkSize, total);
+            crumb.innerText = crumbText;
+            if (!total) {
+                container.innerHTML = `<div class="p-6 text-center text-gray-400">No rows found.</div>`;
+                return;
+            }
+            const renderBatch = (targetCount, useBudget) => {
                 let html = '';
-                for (; index < end; index += 1) html += generateCard(rows[index], sourceView, 'status-teal');
-                if (firstChunk) {
-                    container.innerHTML = html;
-                    firstChunk = false;
-                } else if (html) {
-                    container.insertAdjacentHTML('beforeend', html);
+                let rendered = 0;
+                const startTime = useBudget && typeof performance !== 'undefined' && performance.now ? performance.now() : 0;
+                while (index < total && rendered < targetCount) {
+                    html += generateCard(rows[index], sourceView, 'status-teal');
+                    index += 1;
+                    rendered += 1;
+                    if (useBudget && rendered >= chunkSize && typeof performance !== 'undefined' && performance.now && (performance.now() - startTime) >= frameBudgetMs) break;
                 }
-                if (index < total) {
-                    crumb.innerText = `${crumbText} Loading ${index}/${total}`;
-                    requestAnimationFrame(renderChunk);
-                } else {
-                    crumb.innerText = crumbText;
-                }
+                return html;
             };
-            requestAnimationFrame(renderChunk);
+            container.innerHTML = renderBatch(initialTarget, false);
+            const renderNextChunk = () => {
+                if (token !== avRenderChunkToken) return;
+                const html = renderBatch(perFrameLimit, true);
+                if (html) container.insertAdjacentHTML('beforeend', html);
+                if (index < total) requestAnimationFrame(renderNextChunk);
+            };
+            if (index < total) requestAnimationFrame(renderNextChunk);
+        }
+
+        function renderAVMarkupChunked(container, crumb, rows, crumbText, renderRow, options = {}) {
+            if (!container || !crumb) return;
+            avRenderChunkToken += 1;
+            const token = avRenderChunkToken;
+            const total = Array.isArray(rows) ? rows.length : 0;
+            const touchOptimized = isIOSDevice() || isStandaloneApp() || window.matchMedia('(pointer: coarse)').matches;
+            const viewportHeight = Math.max(640, Math.round((window.visualViewport && window.visualViewport.height) || window.innerHeight || document.documentElement.clientHeight || 640));
+            const approxCardHeight = Math.max(120, Number(options.approxCardHeight) || 185);
+            const emptyHtml = options.emptyHtml || `<div class="p-6 text-center text-gray-400">No rows found.</div>`;
+            const chunkSize = touchOptimized
+                ? (total > 1600 ? 56 : (total > 800 ? 64 : 72))
+                : (total > 1200 ? 32 : (total > 600 ? 40 : 48));
+            const initialScreens = touchOptimized ? 14 : 8;
+            const initialTarget = Math.min(total, Math.max(chunkSize * 2, Math.ceil((viewportHeight * initialScreens) / approxCardHeight)));
+            const perFrameLimit = touchOptimized ? Math.max(chunkSize * 2, 128) : Math.max(chunkSize, 72);
+            const frameBudgetMs = touchOptimized ? 10 : 7;
+            let index = 0;
+            crumb.innerText = crumbText;
+            if (!total) {
+                container.innerHTML = emptyHtml;
+                return;
+            }
+            const renderBatch = (targetCount, useBudget) => {
+                let html = '';
+                let rendered = 0;
+                const startTime = useBudget && typeof performance !== 'undefined' && performance.now ? performance.now() : 0;
+                while (index < total && rendered < targetCount) {
+                    html += renderRow(rows[index], index);
+                    index += 1;
+                    rendered += 1;
+                    if (useBudget && rendered >= chunkSize && typeof performance !== 'undefined' && performance.now && (performance.now() - startTime) >= frameBudgetMs) break;
+                }
+                return html;
+            };
+            container.innerHTML = renderBatch(initialTarget, false);
+            const renderNextChunk = () => {
+                if (token !== avRenderChunkToken) return;
+                const html = renderBatch(perFrameLimit, true);
+                if (html) container.insertAdjacentHTML('beforeend', html);
+                if (index < total) requestAnimationFrame(renderNextChunk);
+            };
+            if (index < total) requestAnimationFrame(renderNextChunk);
         }
 
         function renderAV() {
             avRenderChunkToken += 1;
             if (ensureViewDataForRender('av')) return;
+            if (activeAVTab === 'reserves' && !isDatasetLoaded('reserves', 'full')) ensureDatasetLoaded('reserves', 'full').catch(() => {});
             const container = document.getElementById('av-content');
             const crumb = document.getElementById('av-crumb');
             const avState = getCurrentAVBaseItems();
             const term = avState.term;
             let items = avState.items;
-            const exportContext = buildAVExportContext(items, term);
+            const exportCount = getAVVisibleExportCount(items);
 
             if (items.length === 0) {
                 const emptyLabel = activeAVTab === 'open' ? (activeAvOpenTab === 'photos' ? 'open stock photos' : 'open stock') : 'reserves';
@@ -7482,25 +8180,28 @@ activeDriveTab = tab;
                 return;
             }
 
-            updateAVExportButton(exportContext.rows.length);
+            updateAVExportButton(exportCount);
 
             if (activeAVTab === 'open') {
                 const sourceView = activeAvOpenTab === 'photos' ? 'av-photo' : 'av';
+                const openExportContext = buildAVExportContext(items, term);
+                const openRows = openExportContext.rows;
                 const crumbText = activeAvOpenTab === 'photos'
-                    ? (term.length > 0 ? `Search Results (${exportContext.rows.length})` : `Open Stock Photos (${exportContext.rows.length} items)`)
-                    : (term.length > 0 ? `Search Results (${exportContext.rows.length})` : `Open Stock (${exportContext.rows.length} items)`);
-                if (shouldUseChunkedAVOpenRender(exportContext.rows)) {
-                    renderAVOpenCardsChunked(container, crumb, exportContext.rows, sourceView, crumbText);
+                    ? (term.length > 0 ? `Search Results (${openRows.length})` : `Open Stock Photos (${openRows.length} items)`)
+                    : (term.length > 0 ? `Search Results (${openRows.length})` : `Open Stock (${openRows.length} items)`);
+                if (shouldUseChunkedAVOpenRender(openRows)) {
+                    renderAVOpenCardsChunked(container, crumb, openRows, sourceView, crumbText);
                     return;
                 }
                 crumb.innerText = crumbText;
-                container.innerHTML = exportContext.rows.map(i => generateCard(i, sourceView, 'status-teal')).join('');
+                container.innerHTML = openRows.map(i => generateCard(i, sourceView, 'status-teal')).join('');
                 return;
             }
-            if (canSelectAvReserveRep() && !selectedAvResRep) {
+            const reserveModeTabsHtml = getAvReserveModeTabsHtml();
+            if (activeAvReserveMode !== 'cards' && canSelectAvReserveRep() && !selectedAvResRep) {
                 const repOptions = getAVReserveRepOptions(items);
                 crumb.innerText = 'My Reserves > Sales Reps';
-                container.innerHTML = repOptions.map(rep => `<div class="drill-item" onclick="selectAvResRep('${esc(rep.label)}')"><span class="font-bold text-lg">${rep.label} <span class="text-gray-400 text-sm font-normal">(${rep.count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
+                container.innerHTML = reserveModeTabsHtml + repOptions.map(rep => `<div class="drill-item" onclick="selectAvResRep('${esc(rep.label)}')"><span class="font-bold text-lg">${rep.label} <span class="text-gray-400 text-sm font-normal">(${rep.count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
                 return;
             }
 
@@ -7512,29 +8213,77 @@ activeDriveTab = tab;
 
             if (selectedAvResItemCode && selectedAvResName && selectedAvResSize) {
                 const detailCrumb = `${reserveCrumbBase} > ${selectedAvResItemCode} | ${selectedAvResName} | ${selectedAvResSize}`;
-                crumb.innerText = term.length > 0 ? `${detailCrumb} Search (${selectedGroupRows.length} rows)` : `${detailCrumb} (${selectedGroupRows.length} rows)`;
-                let html = `<div class="back-btn" onclick="backToAvReserveGroupList()"><i class="ph-bold ph-arrow-left"></i> Back to Item Cards</div>`;
+                const showAdminDetailTabs = isAdminAvReserveDetailTabsEnabled() && activeAvReserveMode === 'cards';
+                const showRepDetailTab = showAdminDetailTabs && !!getRoleAccessState().isAdmin && canSeeAvReserveRepTab();
+                const activeDetailTab = showAdminDetailTabs
+                    ? (activeAvReserveDetailTab === 'location' ? 'location' : (showRepDetailTab && activeAvReserveDetailTab === 'rep' ? 'rep' : 'customer'))
+                    : 'customer';
+                const customerRows = selectedGroupRows;
+                const locationRows = showAdminDetailTabs ? getSelectedAvReserveLocationRows() : [];
+                const repGroups = showRepDetailTab ? getSelectedAvReserveRepGroups(items) : [];
+                const activeRowCount = activeDetailTab === 'location' ? locationRows.length : (activeDetailTab === 'rep' ? repGroups.length : customerRows.length);
+                const activeLabel = activeDetailTab === 'location' ? 'Location' : (activeDetailTab === 'rep' ? 'Reps' : 'Customer');
+                crumb.innerText = term.length > 0 ? `${detailCrumb} > ${activeLabel} Search (${activeRowCount} cards)` : `${detailCrumb} > ${activeLabel} (${activeRowCount} cards)`;
+                let html = `${reserveModeTabsHtml}<div class="back-btn" onclick="backToAvReserveGroupList()"><i class="ph-bold ph-arrow-left"></i> Back to Item Cards</div>`;
                 if (selectedAvResRep) html += `<div class="back-btn" onclick="clearSelectedAvResRep()"><i class="ph-bold ph-users"></i> Back to Sales Reps</div>`;
-                html += selectedGroupRows.length
-                    ? selectedGroupRows.map(i => generateAvReserveRowCard(i)).join('')
-                    : `<div class="p-8 text-center text-gray-400">No reserve rows found for this item.</div>`;
-                container.innerHTML = html;
+                if (showAdminDetailTabs) {
+                    html += `<div class="flex flex-wrap gap-2 mb-3"><button class="task-tab ${activeDetailTab === 'customer' ? 'active' : ''}" onclick="return setAvReserveDetailTab('customer')">Customer</button><button class="task-tab ${activeDetailTab === 'location' ? 'active' : ''}" onclick="return setAvReserveDetailTab('location')">Location</button>${showRepDetailTab ? `<button class="task-tab ${activeDetailTab === 'rep' ? 'active' : ''}" onclick="return setAvReserveDetailTab('rep')">Reps</button>` : ''}</div>`;
+                }
+                if (showAdminDetailTabs && activeDetailTab === 'location') {
+                    const introHtml = `${reserveModeTabsHtml}<div class="back-btn" onclick="backToAvReserveGroupList()"><i class="ph-bold ph-arrow-left"></i> Back to Item Cards</div>${selectedAvResRep ? `<div class="back-btn" onclick="clearSelectedAvResRep()"><i class="ph-bold ph-users"></i> Back to Sales Reps</div>` : ''}<div class="flex flex-wrap gap-2 mb-3"><button class="task-tab ${activeDetailTab === 'customer' ? 'active' : ''}" onclick="return setAvReserveDetailTab('customer')">Customer</button><button class="task-tab ${activeDetailTab === 'location' ? 'active' : ''}" onclick="return setAvReserveDetailTab('location')">Location</button>${showRepDetailTab ? `<button class="task-tab ${activeDetailTab === 'rep' ? 'active' : ''}" onclick="return setAvReserveDetailTab('rep')">Reps</button>` : ''}</div>`;
+                    if (locationRows.length > 160) {
+                        renderAVMarkupChunked(container, crumb, locationRows, crumb.innerText, (row) => generateAvReserveLocationCard(row), { approxCardHeight: 260, emptyHtml: `<div class="p-8 text-center text-gray-400">No Drive Mode locations found for this item.</div>` });
+                        container.insertAdjacentHTML('afterbegin', introHtml);
+                    } else {
+                        html += locationRows.length
+                            ? locationRows.map(i => generateAvReserveLocationCard(i)).join('')
+                            : `<div class="p-8 text-center text-gray-400">No Drive Mode locations found for this item.</div>`;
+                        container.innerHTML = html;
+                    }
+                } else if (showRepDetailTab && activeDetailTab === 'rep') {
+                    const introHtml = `${reserveModeTabsHtml}<div class="back-btn" onclick="backToAvReserveGroupList()"><i class="ph-bold ph-arrow-left"></i> Back to Item Cards</div>${selectedAvResRep ? `<div class="back-btn" onclick="clearSelectedAvResRep()"><i class="ph-bold ph-users"></i> Back to Sales Reps</div>` : ''}<div class="flex flex-wrap gap-2 mb-3"><button class="task-tab ${activeDetailTab === 'customer' ? 'active' : ''}" onclick="return setAvReserveDetailTab('customer')">Customer</button><button class="task-tab ${activeDetailTab === 'location' ? 'active' : ''}" onclick="return setAvReserveDetailTab('location')">Location</button>${showRepDetailTab ? `<button class="task-tab ${activeDetailTab === 'rep' ? 'active' : ''}" onclick="return setAvReserveDetailTab('rep')">Reps</button>` : ''}</div>`;
+                    if (repGroups.length > 200) {
+                        renderAVMarkupChunked(container, crumb, repGroups, crumb.innerText, (row) => generateAvReserveRepCard(row), { approxCardHeight: 120, emptyHtml: `<div class="p-8 text-center text-gray-400">No sales reps found for this item.</div>` });
+                        container.insertAdjacentHTML('afterbegin', introHtml);
+                    } else {
+                        html += repGroups.length
+                            ? repGroups.map(rep => generateAvReserveRepCard(rep)).join('')
+                            : `<div class="p-8 text-center text-gray-400">No sales reps found for this item.</div>`;
+                        container.innerHTML = html;
+                    }
+                } else {
+                    const introHtml = `${reserveModeTabsHtml}<div class="back-btn" onclick="backToAvReserveGroupList()"><i class="ph-bold ph-arrow-left"></i> Back to Item Cards</div>${selectedAvResRep ? `<div class="back-btn" onclick="clearSelectedAvResRep()"><i class="ph-bold ph-users"></i> Back to Sales Reps</div>` : ''}${showAdminDetailTabs ? `<div class="flex flex-wrap gap-2 mb-3"><button class="task-tab ${activeDetailTab === 'customer' ? 'active' : ''}" onclick="return setAvReserveDetailTab('customer')">Customer</button><button class="task-tab ${activeDetailTab === 'location' ? 'active' : ''}" onclick="return setAvReserveDetailTab('location')">Location</button>${showRepDetailTab ? `<button class="task-tab ${activeDetailTab === 'rep' ? 'active' : ''}" onclick="return setAvReserveDetailTab('rep')">Reps</button>` : ''}</div>` : ''}`;
+                    if (customerRows.length > 180) {
+                        renderAVMarkupChunked(container, crumb, customerRows, crumb.innerText, (row) => generateAvReserveRowCard(row), { approxCardHeight: 340, emptyHtml: `<div class="p-8 text-center text-gray-400">No reserve rows found for this item.</div>` });
+                        container.insertAdjacentHTML('afterbegin', introHtml);
+                    } else {
+                        html += customerRows.length
+                            ? customerRows.map(i => generateAvReserveRowCard(i)).join('')
+                            : `<div class="p-8 text-center text-gray-400">No reserve rows found for this item.</div>`;
+                        container.innerHTML = html;
+                    }
+                }
                 return;
             }
 
             crumb.innerText = term.length > 0
                 ? `${reserveCrumbBase} Search (${reserveGroups.length} item cards)`
                 : `${reserveCrumbBase} (${reserveGroups.length} item cards)`;
-            let html = selectedAvResRep ? `<div class="back-btn" onclick="clearSelectedAvResRep()"><i class="ph-bold ph-arrow-left"></i> Back to Sales Reps</div>` : '';
-            html += reserveGroups.map(group => generateAvReserveGroupCard(group)).join('');
-            container.innerHTML = html;
+            let html = reserveModeTabsHtml + (selectedAvResRep ? `<div class="back-btn" onclick="clearSelectedAvResRep()"><i class="ph-bold ph-arrow-left"></i> Back to Sales Reps</div>` : '');
+            if (reserveGroups.length > 220) {
+                renderAVMarkupChunked(container, crumb, reserveGroups, crumb.innerText, (group) => generateAvReserveGroupCard(group), { approxCardHeight: 165 });
+                container.insertAdjacentHTML('afterbegin', html);
+            } else {
+                html += reserveGroups.map(group => generateAvReserveGroupCard(group)).join('');
+                container.innerHTML = html;
+            }
         }
         const debouncedDocksSearch=debounce(()=>{requestAnimationFrame(()=>renderDocks())},150);
         function clearDocksSearch(){ document.getElementById('docks-search').value=""; document.getElementById('docks-search-clear').classList.add('hidden'); dockViewLevel=0; selectedDockNum=null; selectedDockStop=null; renderDocks(); }
         function handleDocksSearch(){ const term=document.getElementById('docks-search').value.toLowerCase(); const clearBtn=document.getElementById('docks-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden');dockViewLevel=0;}else{clearBtn.classList.add('hidden');dockViewLevel=0;} scheduleSearchRender('docks', () => renderDocks()); }
         function resetDockView() { dockViewLevel = 0; selectedDockNum = null; selectedDockStop = null; document.getElementById('docks-search').value = ""; document.getElementById('docks-search-clear').classList.add('hidden'); renderDocks(); }
-        function selectDock(dock) { selectedDockNum = dock; selectedDockStop = null; dockViewLevel = 1; renderDocks(); }
-        function selectDockStop(stop) { selectedDockStop = stop; dockViewLevel = 2; renderDocks(); }
+        function selectDock(dock) { selectedDockNum = dock; selectedDockStop = null; dockViewLevel = 1; renderDocks(); queueScrollMainAreaToTop(`dock:${dock}`); }
+        function selectDockStop(stop) { selectedDockStop = stop; dockViewLevel = 2; renderDocks(); queueScrollMainAreaToTop(`dock-stop:${stop}`); }
 
         function openDockInfoModal(dockNum) {
             if (!canEditDockWorkflow()) {
@@ -8079,11 +8828,19 @@ activeDriveTab = tab;
             const camLsn = document.getElementById('camera-btn-lsn');
             const camNa = document.getElementById('camera-btn-na');
             const camReq = document.getElementById('camera-btn-req');
+            const camDock = document.getElementById('camera-btn-dock');
+            const camFlyer = document.getElementById('camera-btn-flyer');
 
-            if(camSsn) camSsn.style.display = 'flex';
-            if(camLsn) camLsn.style.display = 'flex';
-            if(camNa) camNa.style.display = 'flex';
-            if(camReq) camReq.style.display = 'flex';
+            [camSsn, camLsn, camNa, camReq, camDock, camFlyer].forEach((el) => {
+                if (el) el.style.display = 'flex';
+            });
+
+            if (isRepReadOnlyUser()) {
+                [camSsn, camLsn, camNa, camReq, camDock, camFlyer].forEach((el) => {
+                    if (el) el.style.display = 'none';
+                });
+                return;
+            }
 
             if (sourceView === 'tasks') {
                 if (activeTaskTab === 'season') {
@@ -8159,7 +8916,8 @@ activeDriveTab = tab;
                 document.getElementById('dtab-notes').classList.remove('hidden');
                 document.getElementById('dtab-gallery').classList.remove('hidden');
             } else if (sourceView === 'av') {
-                // AV detail stays focused on Bloom Picker and Request actions in Overview.
+                if (activeAVTab === 'reserves') document.getElementById('dtab-request').classList.remove('hidden');
+                document.getElementById('dtab-gallery').classList.remove('hidden');
             } else if (sourceView === 'low-stock') {
                 document.getElementById('dtab-season').classList.remove('hidden');
                 document.getElementById('dtab-location').classList.remove('hidden');
@@ -8192,10 +8950,10 @@ activeDriveTab = tab;
                 let desc = p === 'dock-' ? document.getElementById('dock-sales-desc') : null;
                 let avNote = document.getElementById(p + 'av-note');
 
-                if(match) match.value = p === 'req-' ? (activeItem.REQ_MATCH || '') : (activeItem.MATCH || '');
+                if(match) match.value = p === 'req-' ? firstNonEmptyValue(activeItem.REQ_MATCH, activeItem.MATCH, '') : firstNonEmptyValue(activeItem.MATCH, '');
                 if(spec) spec.value = p === 'req-' ? (activeItem.REQ_SPEC || activeItem.SPEC || '') : (p === 'dock-' ? (activeItem.DOCK_SPEC || '') : (activeItem.SPEC || ''));
                 if(caliper) caliper.value = p === 'req-' ? (activeItem.REQ_CALIPER || activeItem.CALIPER || '') : (p === 'dock-' ? (activeItem.DOCK_CALIPER || '') : (activeItem.CALIPER || ''));
-                if(pick) pick.value = p === 'req-' ? (activeItem.REQ_PICK || '') : (activeItem.PICK || '');
+                if(pick) pick.value = p === 'req-' ? firstNonEmptyValue(activeItem.REQ_PICK, activeItem.PICK, '') : firstNonEmptyValue(activeItem.PICK, '');
                 if(desc) desc.value = activeItem.DOCK_NOTE || '';
                 if(avNote) avNote.value = activeItem.AV_NOTE || '';
                 if (p === 'req-') {
@@ -8230,6 +8988,7 @@ activeDriveTab = tab;
             } else {
                 switchDetailTab('overview');
             }
+            queueScrollMainAreaToTop(`detail:${sourceView}:${uid}`);
         }
 
         function renderSavedPhotos() {
@@ -8237,6 +8996,7 @@ activeDriveTab = tab;
             let rLink = activeItem.REQ_PHOTO_LINK || "";
             let dLink = activeItem.DOCK_PHOTO_LINK || "";
             let fLink = activeItem.FLYER_PHOTO_LINK || "";
+            const allowRepPhotoEdits = !isRepReadOnlyUser();
 
             const makeThumbs = (link, containerId, wrapperId, prefix, allowRemove = false, title = 'Saved Photo') => {
                 let el = document.getElementById(containerId);
@@ -8244,6 +9004,7 @@ activeDriveTab = tab;
                 if(!el || !wrap) return;
                 if(link && String(link).trim() !== "") {
                     let urls = String(link).split(',').map(url => url.trim()).filter(Boolean);
+                    const allowReorder = canReorderProtectedPhoto(prefix);
                     let html = `<div class="flex gap-2 overflow-x-auto pb-2">`;
                     urls.forEach((u, idx) => {
                         let c = u;
@@ -8253,7 +9014,8 @@ activeDriveTab = tab;
                             let thumb = getDirectImageUrl(c);
                             const pressAttrs = allowRemove ? ` oncontextmenu="event.preventDefault(); return false;" onmousedown="startPhotoDeletePress(event, '${prefix}', ${idx})" onmouseup="cancelPhotoDeletePress('${prefix}', ${idx})" onmouseleave="cancelPhotoDeletePress('${prefix}', ${idx})" ontouchstart="startPhotoDeletePress(event, '${prefix}', ${idx})" ontouchend="cancelPhotoDeletePress('${prefix}', ${idx})" ontouchcancel="cancelPhotoDeletePress('${prefix}', ${idx})" ontouchmove="cancelPhotoDeletePress('${prefix}', ${idx})"` : '';
                             const hintHtml = allowRemove ? `<div class="mt-1 text-[9px] font-bold text-gray-400 uppercase text-center">Hold to Delete</div>` : '';
-                            html += `<div class="relative shrink-0"><img src="${thumb}" class="w-20 h-20 object-cover rounded-lg border border-gray-300 cursor-pointer shadow-sm active:scale-95" onclick="handlePhotoThumbClick('${link}', '${title}')"${pressAttrs}>${hintHtml}</div>`;
+                            const reorderHtml = allowReorder && urls.length > 1 ? `<div class="mt-1 flex items-center justify-center gap-1"><button class="px-2 py-1 text-[10px] font-black rounded-md border border-gray-300 bg-white text-slate-700 ${idx === 0 ? 'opacity-30 pointer-events-none' : ''}" onclick="event.stopPropagation(); movePhotoInSet('${prefix}', ${idx}, -1)">LEFT</button><button class="px-2 py-1 text-[10px] font-black rounded-md border border-gray-300 bg-white text-slate-700 ${idx === urls.length - 1 ? 'opacity-30 pointer-events-none' : ''}" onclick="event.stopPropagation(); movePhotoInSet('${prefix}', ${idx}, 1)">RIGHT</button></div>` : '';
+                            html += `<div class="relative shrink-0"><img src="${thumb}" class="w-20 h-20 object-cover rounded-lg border border-gray-300 cursor-pointer shadow-sm active:scale-95" onclick="handlePhotoThumbClick('${link}', '${title}')"${pressAttrs}>${hintHtml}${reorderHtml}</div>`;
                         }
                     });
                     html += `</div>`;
@@ -8265,12 +9027,12 @@ activeDriveTab = tab;
                 }
             };
 
-            makeThumbs(sLink, 'ssn-photo-list-container', 'ssn-photo-preview', 'ssn-', true, 'Base Photos');
-            makeThumbs(sLink, 'lsn-photo-list-container', 'lsn-photo-preview', 'lsn-', true, 'Base Photos');
-            makeThumbs(sLink, 'na-photo-list-container', 'na-photo-preview', 'na-', true, 'Base Photos');
-            makeThumbs(rLink || sLink, 'req-photo-list-container', 'req-photo-preview', 'req-', !!rLink, 'Request Photos');
-            makeThumbs(dLink || sLink, 'dock-photo-list-container', 'dock-photo-preview', 'dock-', !!dLink, 'Dock Photos');
-            makeThumbs(fLink || sLink, 'flyer-photo-list-container', 'flyer-photo-preview', 'flyer-', !!fLink, 'Flyer Photos');
+            makeThumbs(sLink, 'ssn-photo-list-container', 'ssn-photo-preview', 'ssn-', allowRepPhotoEdits, 'Base Photos');
+            makeThumbs(sLink, 'lsn-photo-list-container', 'lsn-photo-preview', 'lsn-', allowRepPhotoEdits, 'Base Photos');
+            makeThumbs(sLink, 'na-photo-list-container', 'na-photo-preview', 'na-', allowRepPhotoEdits, 'Base Photos');
+            makeThumbs(rLink || sLink, 'req-photo-list-container', 'req-photo-preview', 'req-', allowRepPhotoEdits && !!rLink, 'Request Photos');
+            makeThumbs(dLink || sLink, 'dock-photo-list-container', 'dock-photo-preview', 'dock-', allowRepPhotoEdits && !!dLink, 'Dock Photos');
+            makeThumbs(fLink || sLink, 'flyer-photo-list-container', 'flyer-photo-preview', 'flyer-', allowRepPhotoEdits && !!fLink, 'Flyer Photos');
             renderDetailOverviewMedia();
             refreshProtectedSections();
         }
@@ -8279,6 +9041,10 @@ activeDriveTab = tab;
             if (!activeItem) return;
             const config = getProtectedEditConfig(prefix);
             if (!config) return;
+            if (!skipPermissionCheck && isRepReadOnlyUser()) {
+                showRowEditRestrictedToast(prefix);
+                return;
+            }
             if (!skipPermissionCheck && !canRemoveProtectedPhoto(prefix)) {
                 showToast('Restricted', 'Only Dylan, JD, Morgan, or Kayla can remove photos after Done.', true);
                 return;
@@ -8306,6 +9072,45 @@ activeDriveTab = tab;
             renderSavedPhotos();
             renderPhotoGallery();
             showToast('Removed', 'Photo removed from this row.');
+        }
+
+        function movePhotoInSet(prefix, photoIndex, direction = 0) {
+            if (!activeItem) return;
+            const config = getProtectedEditConfig(prefix);
+            if (!config) return;
+            if (!canReorderProtectedPhoto(prefix)) {
+                showToast('Restricted', 'Only Dylan, JD, Morgan, or Kayla can reorder photos.', true);
+                return;
+            }
+            const step = Number(direction) || 0;
+            if (!step) return;
+            const photoField = config.photoField;
+            const photoNameField = config.photoNameField;
+            let links = String(activeItem[photoField] || '').split(',').map(v => v.trim()).filter(Boolean);
+            if (links.length < 2) return;
+            const targetIndex = photoIndex + step;
+            if (photoIndex < 0 || photoIndex >= links.length || targetIndex < 0 || targetIndex >= links.length) return;
+
+            const movedLink = links.splice(photoIndex, 1)[0];
+            links.splice(targetIndex, 0, movedLink);
+            activeItem[photoField] = links.join(',');
+
+            if (photoNameField) {
+                let names = String(activeItem[photoNameField] || '').split(',').map(v => v.trim());
+                if (names.length > photoIndex) {
+                    const movedName = names.splice(photoIndex, 1)[0];
+                    names.splice(targetIndex, 0, movedName);
+                    activeItem[photoNameField] = names.filter((_, idx) => idx < links.length).join(',');
+                }
+            }
+
+            normalizeRowPhotoFields(activeItem);
+            buildSearchIndex(activeItem);
+            syncRowDataAcrossViews(activeItem);
+            saveData(false, prefix, true, null, { photoChanged: true });
+            renderSavedPhotos();
+            renderPhotoGallery();
+            showToast('Updated', 'Photo order updated.');
         }
         function renderPhotoGallery() {
             const gallerySections = document.getElementById('gallery-sections');
@@ -8346,15 +9151,15 @@ activeDriveTab = tab;
             if (detTabsContainer) {
                 detTabsContainer.querySelectorAll('.detail-tab').forEach(el => {
                     el.classList.remove('active');
-                    el.style.borderBottomColor = 'transparent';
-                    el.style.color = '#6b7280';
+                    el.style.borderBottomColor = '';
+                    el.style.color = '';
                 });
             }
             let activeEl = document.getElementById('dtab-' + tab);
             if(activeEl) {
                 activeEl.classList.add('active');
-                activeEl.style.borderBottomColor = 'var(--bg)';
-                activeEl.style.color = 'var(--bg)';
+                activeEl.style.borderBottomColor = '';
+                activeEl.style.color = '';
             }
 
             document.getElementById('det-overview-content').classList.add('hidden');
@@ -8368,6 +9173,7 @@ activeDriveTab = tab;
 
             const contentEl = document.getElementById('det-' + tab + '-content');
             if(contentEl) contentEl.classList.remove('hidden');
+            queueScrollMainAreaToTop(`detail-tab:${tab}`);
         }
 
         function goBackFromDetail() {
@@ -8411,12 +9217,39 @@ activeDriveTab = tab;
             }
         }
 
+        function openSalesOfficeView() {
+            activeSalesOfficeTab = getRoleAccessState().isRep ? 'orders' : 'season';
+            switchView('sales-office');
+            return false;
+        }
+
+        function isSalesOfficeSubmittedByCurrentRep(value = '') {
+            if (!getRoleAccessState().isRep) return true;
+            const normalized = normalizeRepMatchToken(value);
+            if (!normalized) return false;
+            const collapsed = normalized.replace(/\s+/g, '');
+            const candidates = new Set([currentUser, currentUserDisplay, getDefaultRequestRepName(), ...repPermutations].map((entry) => normalizeRepMatchToken(entry)).filter(Boolean));
+            for (const candidate of candidates) {
+                const candidateCollapsed = candidate.replace(/\s+/g, '');
+                if (normalized === candidate || collapsed === candidateCollapsed || normalized.includes(candidate) || collapsed.includes(candidateCollapsed)) return true;
+            }
+            return false;
+        }
+
         function updateSalesOfficeTabButtons() {
+            const access = getRoleAccessState();
+            if (access.isRep) activeSalesOfficeTab = 'orders';
             const baseClass = 'rounded-full border px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] shadow-sm';
             const ordersBtn = document.getElementById('sales-office-tab-orders');
             const seasonBtn = document.getElementById('sales-office-tab-season');
-            if (ordersBtn) ordersBtn.className = `${baseClass} ${activeSalesOfficeTab === 'orders' ? 'bg-[#007a4d] text-white border-[#007a4d]' : 'bg-white text-[#007a4d] border-green-200'}`;
-            if (seasonBtn) seasonBtn.className = `${baseClass} ${activeSalesOfficeTab === 'season' ? 'bg-[#007a4d] text-white border-[#007a4d]' : 'bg-white text-[#007a4d] border-green-200'}`;
+            if (ordersBtn) {
+                ordersBtn.className = baseClass + ' ' + (activeSalesOfficeTab === 'orders' ? 'bg-[#007a4d] text-white border-[#007a4d]' : 'bg-white text-[#007a4d] border-green-200');
+                ordersBtn.classList.remove('hidden');
+            }
+            if (seasonBtn) {
+                seasonBtn.className = baseClass + ' ' + (activeSalesOfficeTab === 'season' ? 'bg-[#007a4d] text-white border-[#007a4d]' : 'bg-white text-[#007a4d] border-green-200');
+                seasonBtn.classList.toggle('hidden', !!access.isRep);
+            }
         }
 
         function updateSalesOfficeExportButton(count = 0) {
@@ -8432,13 +9265,15 @@ activeDriveTab = tab;
         }
 
         function setSalesOfficeTab(tab = 'season') {
-            activeSalesOfficeTab = tab === 'season' ? 'season' : 'orders';
+            const access = getRoleAccessState();
+            activeSalesOfficeTab = access.isRep ? 'orders' : (tab === 'season' ? 'season' : 'orders');
             if (activeSalesOfficeTab === 'orders' && salesOfficeOrderColumnsReady === false) {
                 ensureSalesOfficeOrderColumnsReady(true).then(() => {
                     if (getCurrentVisibleViewId() === 'sales-office') renderSalesOffice();
                 }).catch(() => {});
             }
             if (getCurrentVisibleViewId() === 'sales-office') renderSalesOffice();
+            queueScrollMainAreaToTop(`sales-office-tab:${activeSalesOfficeTab}`);
             return false;
         }
 
@@ -8453,7 +9288,11 @@ activeDriveTab = tab;
         }
 
         function getSalesOfficeOrderItems() {
-            return salesOfficeInventory.filter((item) => isBloomPickerSalesOfficeItem(item)).sort((a, b) => new Date(firstNonEmptyValue(b.ORDER_SUBMITTED_AT, b.UPDATED_AT, b.COMPLETED_AT, 0)).getTime() - new Date(firstNonEmptyValue(a.ORDER_SUBMITTED_AT, a.UPDATED_AT, a.COMPLETED_AT, 0)).getTime());
+            let items = salesOfficeInventory.filter((item) => isBloomPickerSalesOfficeItem(item));
+            if (getRoleAccessState().isRep) {
+                items = items.filter((item) => isSalesOfficeSubmittedByCurrentRep(firstNonEmptyValue(item.ORDER_SUBMITTED_BY, item.SALESREPNAME, item.SALESREP, item.SALES_REP, item.SALESREPID, '')));
+            }
+            return items.sort((a, b) => new Date(firstNonEmptyValue(b.ORDER_SUBMITTED_AT, b.UPDATED_AT, b.COMPLETED_AT, 0)).getTime() - new Date(firstNonEmptyValue(a.ORDER_SUBMITTED_AT, a.UPDATED_AT, a.COMPLETED_AT, 0)).getTime());
         }
 
         function getSalesOfficeOrderGroupKey(item) {
@@ -8676,6 +9515,8 @@ activeDriveTab = tab;
         }
         function renderSalesOffice() {
             if (ensureViewDataForRender('sales-office')) return;
+            const access = getRoleAccessState();
+            if (access.isRep) activeSalesOfficeTab = 'orders';
             const container = document.getElementById('sales-office-content');
             const crumb = document.getElementById('sales-office-crumb');
             if (!container) return;
@@ -8699,7 +9540,7 @@ activeDriveTab = tab;
                 updateSalesOfficeExportButton(items.length);
                 if (crumb) crumb.innerText = groups.length ? `Bloom Picker Orders (${groups.length} folder${groups.length === 1 ? '' : 's'} / ${items.length} row${items.length === 1 ? '' : 's'})` : 'Bloom Picker Orders';
                 if (!groups.length) {
-                    container.innerHTML = `<div class="p-8 text-center text-gray-400">No Bloom Picker orders have been submitted yet.</div>`;
+                    container.innerHTML = `<div class="p-8 text-center text-gray-400">${access.isRep ? 'No Bloom Picker orders submitted by you yet.' : 'No Bloom Picker orders have been submitted yet.'}</div>`;
                     return;
                 }
                 container.innerHTML = groups.map((group) => {
@@ -8776,6 +9617,7 @@ activeDriveTab = tab;
             selectedReqFolderView = null;
             requestViewLevel = 1;
             renderRequest();
+            queueScrollMainAreaToTop(`request-rep:${selectedReqRepView}`);
             return false;
         }
 
@@ -8784,6 +9626,7 @@ activeDriveTab = tab;
             selectedReqFolderView = null;
             requestViewLevel = 2;
             renderRequest();
+            queueScrollMainAreaToTop(`request-status:${selectedReqStatus}`);
             return false;
         }
 
@@ -8791,6 +9634,7 @@ activeDriveTab = tab;
             selectedReqFolderView = String(folderName || '').trim() || 'Unassigned';
             requestViewLevel = 3;
             renderRequest();
+            queueScrollMainAreaToTop(`request-folder:${selectedReqFolderView}`);
             return false;
         }
 
@@ -9502,7 +10346,7 @@ activeDriveTab = tab;
                         actionBadge = `<div class="flex gap-2 mt-3"><button class="flex-1 bg-green-50 text-green-700 border border-green-200 font-bold py-2 rounded-lg shadow-sm hover:bg-green-100 active:scale-95 text-[10px] uppercase tracking-wider" onclick="event.stopPropagation(); setRepRequestAction('${safeUidJs}', 'Approved')">APPROVE</button><button class="flex-1 bg-red-50 text-red-700 border border-red-200 font-bold py-2 rounded-lg shadow-sm hover:bg-red-100 active:scale-95 text-[10px] uppercase tracking-wider" onclick="event.stopPropagation(); setRepRequestAction('${safeUidJs}', 'Rejected')">REJECT</button></div>`;
                     }
                 }
-                return `<div class="flex items-center w-full mb-3 item-row app-smart-card relative bg-white p-4 rounded-xl border border-purple-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full"><div class="app-card-main flex-grow min-w-0 pr-2"><div class="flex justify-between items-start mb-1 gap-2"><div class="app-card-title font-black text-gray-800 text-[16px] leading-tight break-words">${item.COMMONNAME||'Unknown'}</div><div class="font-black text-purple-700 bg-purple-50 px-2 py-1 rounded text-sm whitespace-nowrap ml-2 border border-purple-100">QTY: ${reqQty}</div></div><div class="app-card-subtitle font-bold text-[#007a4d] text-sm mb-2">${item.CONTSIZE||'-'}</div><div class="app-card-meta-grid grid grid-cols-2 gap-x-2 gap-y-1 mb-2 text-[11px] font-bold text-gray-600"><div class="truncate"><i class="ph-bold ph-user mr-1"></i>${rep}</div><div class="truncate"><i class="ph-bold ph-storefront mr-1"></i>${cust}</div></div><div class="app-card-chip-row flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600">${statusChip}${reserveBadge}<span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">Loc: ${loc}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Lot: ${lot}</span><span class="bg-orange-50 text-orange-700 px-1.5 py-0.5 rounded border border-orange-100">Pri: ${priority}</span></div>${holdHtml}${requestSalesNoteHtml}</div>${inlineThumbHtml}</div>${actionBadge}</div></div>`;
+                return `<div class="flex items-center w-full mb-3 item-row app-smart-card relative bg-white p-4 rounded-xl border border-purple-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full"><div class="app-card-main flex-grow min-w-0 pr-2"><div class="flex justify-between items-start mb-1 gap-2"><div class="app-card-title font-black text-gray-800 text-[16px] leading-tight break-words">${item.COMMONNAME||'Unknown'}</div><div class="font-black text-purple-700 bg-purple-50 px-2 py-1 rounded text-sm whitespace-nowrap ml-2 border border-purple-100">QTY: ${reqQty}</div></div><div class="app-card-subtitle font-bold text-[#007a4d] text-sm mb-2">${item.CONTSIZE||'-'}</div><div class="app-card-meta-grid grid grid-cols-2 gap-x-2 gap-y-1 mb-2 text-[11px] font-bold text-gray-600"><div class="truncate"><i class="ph-bold ph-user mr-1"></i>${rep}</div><div class="truncate"><i class="ph-bold ph-storefront mr-1"></i>${cust}</div></div><div class="app-card-chip-row flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600">${statusChip}${reserveBadge}<span class="bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded border border-gray-200">PTRAVAILABLE: ${item.PTRAVAILABLE||'0'}</span><span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">Loc: ${loc}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Lot: ${lot}</span><span class="bg-orange-50 text-orange-700 px-1.5 py-0.5 rounded border border-orange-100">Pri: ${priority}</span></div>${holdHtml}${requestSalesNoteHtml}</div>${inlineThumbHtml}</div>${actionBadge}</div></div>`;
             }
             if(sourceView === 'docks'){
                 let qty = item.QUANTITYORDERED || item.QTY_ORDERED || item.PTRAVAILABLE || '1';
@@ -10252,14 +11096,14 @@ activeDriveTab = tab;
                 const missingIds = optimisticIds.filter(id => !savedIdSet.has(id));
                 if (!missingIds.length && savedCount > 0) {
                     showToast("Success","Request tickets cloned!",false);
-                    sendEmailNotification('new_request', folderId, requestedBy, cust, savedCount);
+                    notifyRequestEvent('new_request', folderId, requestedBy, cust, savedCount);
                     return;
                 }
                 if (savedCount > 0) {
                     rollbackOptimisticRequestIds(missingIds);
                     restoreQuickModeRows(missingIds);
                     showToast("Partial Save","Some requests saved. Retry the missing rows.",true);
-                    sendEmailNotification('new_request', folderId, requestedBy, cust, savedCount);
+                    notifyRequestEvent('new_request', folderId, requestedBy, cust, savedCount);
                     return;
                 }
                 rollbackOptimisticRequestIds(optimisticIds);
@@ -10553,9 +11397,9 @@ ${formatRequestItemsText(items)}`;
             debouncedDriveSearch();
         }
 
-        function selectDriveName(name) { selectedDriveName = name; driveViewLevel = 1; renderDrive() }
-        function selectDriveSize(size) { selectedDriveSize = size; driveViewLevel = 2; renderDrive() }
-        function backToDriveSizes() { driveViewLevel = 1; selectedDriveSize = null; renderDrive() }
+        function selectDriveName(name) { selectedDriveName = name; driveViewLevel = 1; renderDrive(); queueScrollMainAreaToTop(`drive-name:${name}`); }
+        function selectDriveSize(size) { selectedDriveSize = size; driveViewLevel = 2; renderDrive(); queueScrollMainAreaToTop(`drive-size:${size}`); }
+        function backToDriveSizes() { driveViewLevel = 1; selectedDriveSize = null; renderDrive(); queueScrollMainAreaToTop('drive-name'); }
 
        function sortDriveCardItems(items) {
             return [...items].sort((a, b) => {
@@ -10759,6 +11603,7 @@ function toggleDriveSeason(s) {
             taskViewTargetUser = u;
             document.getElementById('task-tabs-container').classList.remove('hidden');
             renderTasks();
+            queueScrollMainAreaToTop(`task-user:${u}`);
         }
 
         function openTaskBlockView(block) {
@@ -10766,6 +11611,7 @@ function toggleDriveSeason(s) {
             selectedTaskLoc = null;
             taskViewLevel = 1;
             renderTasks();
+            queueScrollMainAreaToTop(`task-block:${block}`);
             return false;
         }
 
@@ -10773,6 +11619,7 @@ function toggleDriveSeason(s) {
             selectedTaskLoc = loc;
             taskViewLevel = 2;
             renderTasks();
+            queueScrollMainAreaToTop(`task-loc:${loc}`);
             return false;
         }
 
@@ -10795,6 +11642,7 @@ function toggleDriveSeason(s) {
             selectedFlyerFolder = String(folderName || '');
             taskViewLevel = 1;
             renderTasks();
+            queueScrollMainAreaToTop(`flyer-folder:${selectedFlyerFolder}`);
             return false;
         }
 
@@ -10998,7 +11846,7 @@ function toggleDriveSeason(s) {
             const commonName = String(firstNonEmptyValue(item && item.COMMONNAME, item && item.DESCRIPTION, itemCode, 'AV Blank')).trim();
             const contSize = String(firstNonEmptyValue(item && item.CONTSIZE, item && item.ITEMSPEC, item && item.SIZE, '-')).trim() || '-';
             const seasonValue = String(firstNonEmptyValue(item && item.SEASON, item && item.season, '-')).trim() || '-';
-            return `<div class="bg-white border border-emerald-200 rounded-xl shadow-sm mb-3 p-4"><div class="flex items-start justify-between gap-3"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-600">AV Blank</div><div class="mt-1 font-black text-lg text-slate-900">${esc(locationCode)}</div><div class="mt-2 text-sm font-bold text-slate-700 break-words">${esc(commonName)}</div><div class="mt-1 text-xs font-semibold text-slate-500">${esc(contSize)}${itemCode ? `   ${esc(itemCode)}` : ''}</div></div><div class="shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">Season ${esc(seasonValue)}</div></div></div>`;
+            return `<div class="bg-white border border-emerald-200 rounded-xl shadow-sm mb-3 p-4"><div class="flex items-start justify-between gap-3"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-600">AV Blank</div><div class="mt-1 font-black text-lg text-slate-900">${esc(locationCode)}</div><div class="mt-2 text-sm font-bold text-slate-700 break-words">${esc(commonName)}</div><div class="mt-1 text-xs font-semibold text-slate-500">${esc(contSize)}${itemCode ? ` â€¢ ${esc(itemCode)}` : ''}</div></div><div class="shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">Season ${esc(seasonValue)}</div></div></div>`;
         }
 
         function renderTasks(options = {}) {
@@ -11177,6 +12025,7 @@ function toggleDriveSeason(s) {
                 el.classList.toggle('text-[#007a4d]', isActive);
             });
             scheduleUiRender('report-tab', () => renderReports());
+            queueScrollMainAreaToTop(`report-tab:${tab}`);
         }
 
         function renderReports() {
@@ -11259,6 +12108,12 @@ function toggleDriveSeason(s) {
             if (!itemToSave) return;
             let btnComp = document.getElementById(prefix + 'btn-save-complete');
             let isCurrentView = !!(activeItem && activeItem.UNIQUE_ID === itemToSave.UNIQUE_ID);
+
+            if (!canEditRowDetails(prefix)) {
+                if (isCurrentView && isComplete && btnComp) btnComp.innerText = 'MARK DONE';
+                if (!isSilentAutoSave) showRowEditRestrictedToast(prefix);
+                return;
+            }
 
             if (isCurrentView && isComplete && btnComp) btnComp.innerText = 'SAVING...';
 
@@ -11606,7 +12461,7 @@ function toggleDriveSeason(s) {
                     if (prefix === 'req-' && isComplete && !wasAlreadyComplete) {
                         let folderItems = requestsInventory.filter(i => i.REQUEST_FOLDER === itemToSave.REQUEST_FOLDER);
                         let allComplete = folderItems.every(i => isRequestComplete(i) || i.UNIQUE_ID === itemToSave.UNIQUE_ID);
-                        if (allComplete) sendEmailNotification('request_complete', itemToSave.REQUEST_FOLDER, itemToSave.REQUESTED_BY, itemToSave.REQ_CUSTOMER, folderItems.length);
+                        if (allComplete) notifyRequestEvent('request_complete', itemToSave.REQUEST_FOLDER, itemToSave.REQUESTED_BY, itemToSave.REQ_CUSTOMER, folderItems.length);
                     }
                 };
 
@@ -11698,6 +12553,10 @@ function toggleDriveSeason(s) {
         }
 
         function selectAvNote(note, prefix) {
+            if (!canEditRowDetails(prefix)) {
+                showRowEditRestrictedToast(prefix);
+                return;
+            }
             document.getElementById(prefix + 'av-note').value = note;
             document.getElementById(prefix + 'av-dropdown-list').classList.add('hidden');
             saveData(false, prefix, true, null, { photoChanged: true });
@@ -11705,6 +12564,11 @@ function toggleDriveSeason(s) {
 
         async function handlePhotoUpload(input, prefix) {
             if (!input.files || input.files.length === 0 || !activeItem) return;
+            if (!canEditRowDetails(prefix)) {
+                showRowEditRestrictedToast(prefix);
+                input.value = '';
+                return;
+            }
             const itemToUpload = activeItem;
             if ((isIOSDevice() || isStandaloneApp()) && document.activeElement && ['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) {
                 document.activeElement.blur();
@@ -11817,26 +12681,63 @@ function toggleDriveSeason(s) {
     </script>
 <script>
         if ('serviceWorker' in navigator) {
-            // Register the service worker
-            navigator.serviceWorker.register('/sw.js').then(reg => {
+            const markShellUpdateReady = () => {
+                window.__gncShellUpdateReady = true;
+                try { sessionStorage.setItem(APP_SHELL_REFRESH_STORAGE_KEY, APP_SHELL_BUILD); } catch (e) {}
+                if (currentUser && !document.hidden && !window.__gncShellUpdateToastShown) {
+                    window.__gncShellUpdateToastShown = true;
+                    try { showToast('Update Ready', 'New code is staged and will apply when the app is backgrounded or reopened.', false); } catch (e) {}
+                }
+            };
+            const tryApplyShellUpdateSilently = () => {
+                if (!window.__gncShellUpdateReady) return;
+                if (!document.hidden) return;
+                if ((pendingPhotoUploads && pendingPhotoUploads.size) || backgroundRefreshInFlight) return;
+                window.__gncShellUpdateReady = false;
+                window.__gncShellUpdateToastShown = false;
+                try {
+                    const nextUrl = new URL(window.location.href);
+                    nextUrl.searchParams.set(APP_SHELL_QUERY_PARAM, APP_SHELL_BUILD);
+                    window.location.replace(nextUrl.toString());
+                } catch (e) {
+                    window.location.reload();
+                }
+            };
+            navigator.serviceWorker.register('./sw.js?v=' + encodeURIComponent(APP_SHELL_BUILD), { scope: './' }).then(reg => {
                 console.log('Service Worker Registered');
-                
-                // Optional: Tell the app to silently check GitHub for updates every 30 minutes 
-                // in case the reps leave the app open on their screen all day.
+                if (reg.waiting) markShellUpdateReady();
+                reg.addEventListener('updatefound', () => {
+                    const installing = reg.installing;
+                    if (!installing) return;
+                    installing.addEventListener('statechange', () => {
+                        if (installing.state === 'installed' && navigator.serviceWorker.controller) markShellUpdateReady();
+                    });
+                });
                 setInterval(() => {
                     reg.update();
-                }, 1000 * 60 * 30); 
+                }, 1000 * 60 * 30);
             }).catch(err => console.error('Service Worker Error:', err));
-
-            // THE TRIGGER: As soon as the aggressive Service Worker takes over, force a hard reload.
-            let refreshing = false;
-            navigator.serviceWorker.addEventListener('controllerchange', () => {
-                if (!refreshing) {
-                    refreshing = true;
-                    window.location.reload(true); // The 'true' forces it to ignore local cache
+            navigator.serviceWorker.addEventListener('message', (event) => {
+                const data = event && event.data ? event.data : {};
+                if (!data || typeof data !== 'object') return;
+                if (data.type === 'GNC_OPEN_VIEW') {
+                    try { openViewFromPushMessage(data.viewId || 'request'); } catch (e) {}
+                } else if (data.type === 'GNC_RESUBSCRIBE_PUSH') {
+                    subscribeCurrentDeviceForPush({ prompt: false, force: true }).catch(() => {});
                 }
             });
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                markShellUpdateReady();
+                tryApplyShellUpdateSilently();
+            });
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) setTimeout(tryApplyShellUpdateSilently, 600);
+            }, { passive: true });
+            window.addEventListener('pagehide', () => {
+                setTimeout(tryApplyShellUpdateSilently, 120);
+            }, { passive: true });
         }
     </script>
 </body>
 </html>
+
