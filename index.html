@@ -839,6 +839,8 @@
             auth: { persistSession: false, autoRefreshToken: false },
             realtime: { params: { eventsPerSecond: 8 } }
         });
+        const REALTIME_TABLES = ['v2_master_inventory', 'v2_active_request', 'v2_dock_team_status', 'v2_dock_item_status'];
+        const HEAVY_DATASET_KEYS = new Set(['master', 'avOpen', 'reserves', 'soc', 'salesOffice', 'cav', 'avNotes']);
         let realtimeChannels = [];
         let realtimeChangeTimer = null;
         let realtimeChangeQueue = [];
@@ -1938,7 +1940,7 @@
                 startFallbackSync();
                 return;
             }
-            ['v2_master_inventory','v2_active_request','v2_reserves','v2_soc_master','v2_sales_office','v2_cav','v2_av_notes','v2_dock_team_status','v2_dock_item_status'].forEach((tableName) => {
+            REALTIME_TABLES.forEach((tableName) => {
                 const channel = supabaseClient
                     .channel(`realtime-${tableName}`)
                     .on('postgres_changes', { event: '*', schema: 'public', table: tableName }, (payload) => {
@@ -2311,14 +2313,24 @@
                 const normalizedPassword = String(password || '').trim();
                 const cachedUser = await tryLocalCachedLoginRecord(normalizedUsername, normalizedPassword);
                 if (cachedUser) return { ok: true, user: cachedUser, source: 'local-cache' };
-                const url = `${SUPABASE_URL}/rest/v1/v2_app_users?select=username,role,password&username=ilike.${encodeURIComponent(normalizedUsername)}&limit=1`;
-                const response = await fetchWithTimeout(url, {
+                const exactUrl = `${SUPABASE_URL}/rest/v1/v2_app_users?select=username,role,password&username=eq.${encodeURIComponent(normalizedUsername)}&limit=1`;
+                let response = await fetchWithTimeout(exactUrl, {
                     method: 'GET',
                     headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }
                 }, LOGIN_READ_TIMEOUT_MS, 'Login');
                 if (!response.ok) throw new Error(await getResponseError(response, `Supabase read failed (${response.status})`));
-                const text = await response.text();
-                const rows = text ? JSON.parse(text) : [];
+                let text = await response.text();
+                let rows = text ? JSON.parse(text) : [];
+                if ((!Array.isArray(rows) || rows.length === 0) && normalizedUsername) {
+                    const fallbackUrl = `${SUPABASE_URL}/rest/v1/v2_app_users?select=username,role,password&username=ilike.${encodeURIComponent(normalizedUsername)}&limit=3`;
+                    response = await fetchWithTimeout(fallbackUrl, {
+                        method: 'GET',
+                        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }
+                    }, LOGIN_READ_TIMEOUT_MS, 'Login');
+                    if (!response.ok) throw new Error(await getResponseError(response, `Supabase read failed (${response.status})`));
+                    text = await response.text();
+                    rows = text ? JSON.parse(text) : [];
+                }
                 const matchedUser = Array.isArray(rows)
                     ? rows.find((row) => String(row.username || '').trim().toLowerCase() === normalizedUsername && String(row.password || '').trim() === normalizedPassword)
                     : null;
@@ -2555,7 +2567,7 @@
         let pendingRequestArchiveFlushTimer = null;
         let pendingRequestArchiveFlushInFlight = false;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Machino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'V2026.03.31.11';
+        const APP_VERSION = 'V2026.03.31.12';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -3184,16 +3196,15 @@
 
         function getDatasetRefreshMaxAge(key, mode = 'initial') {
             const normalizedMode = mode === 'full' ? 'full' : 'initial';
-            if (key === 'reserves') {
-                if (liveSyncMode === 'realtime') {
-                    return normalizedMode === 'full' ? 1200000 : 480000;
+            if (HEAVY_DATASET_KEYS.has(key)) {
+                if (key === 'reserves') {
+                    if (normalizedMode === 'full') return (isIOSDevice() || isStandaloneApp()) ? 1200000 : 1800000;
+                    return (isIOSDevice() || isStandaloneApp()) ? 240000 : 300000;
                 }
-                if (isIOSDevice() || isStandaloneApp()) {
-                    return normalizedMode === 'full' ? 180000 : 120000;
-                }
-                return normalizedMode === 'full' ? 240000 : 180000;
+                if (normalizedMode === 'full') return (isIOSDevice() || isStandaloneApp()) ? 1200000 : 1800000;
+                return (isIOSDevice() || isStandaloneApp()) ? 180000 : 240000;
             }
-            const fastDataset = key === 'requests' || key === 'salesOffice' || key === 'soc';
+            const fastDataset = key === 'requests';
             if (liveSyncMode === 'realtime') {
                 return normalizedMode === 'full'
                     ? (fastDataset ? 90000 : 120000)
@@ -3230,7 +3241,7 @@
             if (viewId === 'av') {
                 if (activeAVTab === 'reserves') {
                     if (getRoleAccessState().isRep) {
-                        return { required: [{ key: 'reserves', mode: 'full' }], label: 'Loading all of your reserve rows...' };
+                        return { required: [{ key: 'reserves', mode: 'initial' }], background: [{ key: 'reserves', mode: 'full' }], label: 'Loading your reserve rows...' };
                     }
                     return { required: [{ key: 'reserves', mode: 'initial' }], background: [{ key: 'reserves', mode: 'full' }], label: 'Loading AV reserves...' };
                 }
@@ -3240,7 +3251,7 @@
             if (viewId === 'request') return { required: [{ key: 'requests', mode: 'initial' }], background: [{ key: 'requests', mode: 'full' }], label: 'Loading requests...' };
             if (viewId === 'reserves') {
                 if (getRoleAccessState().isRep) {
-                    return { required: [{ key: 'reserves', mode: 'full' }], label: 'Loading all of your reserve rows...' };
+                    return { required: [{ key: 'reserves', mode: 'initial' }], background: [{ key: 'reserves', mode: 'full' }], label: 'Loading your reserve rows...' };
                 }
                 return { required: [{ key: 'reserves', mode: 'initial' }], background: [{ key: 'reserves', mode: 'full' }], label: 'Loading reserves...' };
             }
@@ -5507,16 +5518,13 @@ function toggleDriveQuickRequestItem(domId) {
             const allowedViews = access.allowedViews instanceof Set ? access.allowedViews : new Set(access.allowedViews || []);
             const initialTargets = new Map();
             const fullTargets = new Map();
-            const reserveInitialMode = access.isRep ? 'full' : 'initial';
+            const reserveInitialMode = 'initial';
 
             addLoginWarmupTarget(initialTargets, 'master', 'initial');
-            addLoginWarmupTarget(fullTargets, 'master', 'full');
 
             if (allowedViews.has('av')) {
                 addLoginWarmupTarget(initialTargets, 'avOpen', 'initial');
-                addLoginWarmupTarget(fullTargets, 'avOpen', 'full');
                 addLoginWarmupTarget(initialTargets, 'reserves', reserveInitialMode);
-                if (access.isRep) addLoginWarmupTarget(fullTargets, 'reserves', 'full');
             }
             if (allowedViews.has('request') || allowedViews.has('reports')) {
                 addLoginWarmupTarget(initialTargets, 'requests', 'initial');
@@ -5524,21 +5532,16 @@ function toggleDriveQuickRequestItem(domId) {
             }
             if (allowedViews.has('docks') || allowedViews.has('reports')) {
                 addLoginWarmupTarget(initialTargets, 'soc', 'initial');
-                addLoginWarmupTarget(fullTargets, 'soc', 'full');
             }
             if (allowedViews.has('sales-office')) {
                 addLoginWarmupTarget(initialTargets, 'salesOffice', 'initial');
-                addLoginWarmupTarget(fullTargets, 'salesOffice', 'full');
             }
             if (allowedViews.has('tasks')) {
                 addLoginWarmupTarget(initialTargets, 'avNotes', 'initial');
                 addLoginWarmupTarget(initialTargets, 'cav', 'initial');
-                addLoginWarmupTarget(fullTargets, 'avNotes', 'full');
-                addLoginWarmupTarget(fullTargets, 'cav', 'full');
             }
             if (allowedViews.has('reserves')) {
                 addLoginWarmupTarget(initialTargets, 'reserves', reserveInitialMode);
-                if (access.isRep) addLoginWarmupTarget(fullTargets, 'reserves', 'full');
             }
 
             const initialPriority = ['master', 'avOpen', 'requests', 'soc', 'salesOffice', 'avNotes', 'cav', 'reserves'];
@@ -7305,9 +7308,9 @@ activeDriveTab = tab;
         }
 
         function getReserveDatasetInitialLimit() {
-            if (getRoleAccessState().isRep) return 1200;
+            if (getRoleAccessState().isRep) return (isIOSDevice() || isStandaloneApp()) ? 250 : 400;
             const reserveViewOpen = (isViewVisible('av') && activeAVTab === 'reserves') || isViewVisible('reserves');
-            if (reserveViewOpen) return (isIOSDevice() || isStandaloneApp()) ? 2200 : 2800;
+            if (reserveViewOpen) return (isIOSDevice() || isStandaloneApp()) ? 700 : 1000;
             return INITIAL_PAGE_LIMIT;
         }
 
@@ -9808,11 +9811,11 @@ activeDriveTab = tab;
         }
 
         function shouldRunRequestViewLiveSync() {
-            return !!(currentUser && navigator.onLine !== false && !document.hidden && isViewVisible('request'));
+            return !!(currentUser && navigator.onLine !== false && !document.hidden && isViewVisible('request') && !isRealtimeTableHealthy('v2_active_request'));
         }
 
         function getRequestViewLiveSyncInterval() {
-            return isRealtimeTableHealthy('v2_active_request') ? 1600 : 900;
+            return (isIOSDevice() || isStandaloneApp()) ? 9000 : 12000;
         }
 
         async function runRequestViewLiveSync() {
@@ -9853,7 +9856,7 @@ activeDriveTab = tab;
             }, nextDelay);
         }
         function getFallbackSyncInterval() {
-            return (isIOSDevice() || isStandaloneApp()) ? 12000 : 30000;
+            return (isIOSDevice() || isStandaloneApp()) ? 30000 : 45000;
         }
 
         function queueForegroundRefresh(delay = 220) {
@@ -11863,7 +11866,7 @@ function toggleDriveSeason(s) {
             const commonName = String(firstNonEmptyValue(item && item.COMMONNAME, item && item.DESCRIPTION, itemCode, 'AV Blank')).trim();
             const contSize = String(firstNonEmptyValue(item && item.CONTSIZE, item && item.ITEMSPEC, item && item.SIZE, '-')).trim() || '-';
             const seasonValue = String(firstNonEmptyValue(item && item.SEASON, item && item.season, '-')).trim() || '-';
-            return `<div class="bg-white border border-emerald-200 rounded-xl shadow-sm mb-3 p-4"><div class="flex items-start justify-between gap-3"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-600">AV Blank</div><div class="mt-1 font-black text-lg text-slate-900">${esc(locationCode)}</div><div class="mt-2 text-sm font-bold text-slate-700 break-words">${esc(commonName)}</div><div class="mt-1 text-xs font-semibold text-slate-500">${esc(contSize)}${itemCode ? ` Ã¢â‚¬Â¢ ${esc(itemCode)}` : ''}</div></div><div class="shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">Season ${esc(seasonValue)}</div></div></div>`;
+            return `<div class="bg-white border border-emerald-200 rounded-xl shadow-sm mb-3 p-4"><div class="flex items-start justify-between gap-3"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-600">AV Blank</div><div class="mt-1 font-black text-lg text-slate-900">${esc(locationCode)}</div><div class="mt-2 text-sm font-bold text-slate-700 break-words">${esc(commonName)}</div><div class="mt-1 text-xs font-semibold text-slate-500">${esc(contSize)}${itemCode ? ` ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ ${esc(itemCode)}` : ''}</div></div><div class="shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">Season ${esc(seasonValue)}</div></div></div>`;
         }
 
         function renderTasks(options = {}) {
@@ -12757,4 +12760,6 @@ function toggleDriveSeason(s) {
     </script>
 </body>
 </html>
+
+
 
