@@ -1,9 +1,9 @@
-/* GREENLEAF PROFESSIONAL SERVICE WORKER
+﻿/* GREENLEAF PROFESSIONAL SERVICE WORKER
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_URL = './index.html?shellv=V2026.03.31.14';
-const CACHE_NAME = 'greenleaf-v4.2-rebuild-V2026.03.31.14';
+const APP_SHELL_URL = './index.html?shellv=V2026.03.31.15';
+const CACHE_NAME = 'greenleaf-v4.2-rebuild-V2026.03.31.15';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -109,3 +109,4 @@ self.addEventListener('pushsubscriptionchange', (event) => {
     })))
   );
 });
+
