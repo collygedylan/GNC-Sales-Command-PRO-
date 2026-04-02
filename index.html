@@ -446,7 +446,7 @@
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
                             <button id="run-google-script-btn" type="button" class="hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/25 bg-white/10 text-white text-[10px] font-black uppercase tracking-[0.14em] whitespace-nowrap shadow-sm active:scale-95" onclick="return runGoogleAppsScriptTrigger()"><i class="ph-bold ph-lightning text-sm"></i><span data-run-script-label>Run Script</span></button>
-                            <div id="header-version" class="nav-version-pill">V2026.04.02.07</div>
+                            <div id="header-version" class="nav-version-pill">V2026.04.02.08</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -2711,7 +2711,7 @@
         let pendingRequestArchiveFlushTimer = null;
         let pendingRequestArchiveFlushInFlight = false;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Machino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'V2026.04.02.07';
+        const APP_VERSION = 'V2026.04.02.08';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -3008,7 +3008,10 @@
         }
 
         function isRequestComplete(item) {
-            return normalizeRequestStatus(item && item.REQ_STATUS) === 'Complete';
+            const statusComplete = normalizeRequestStatus(item && item.REQ_STATUS) === 'Complete';
+            if (statusComplete) return true;
+            const completedAt = String(firstNonEmptyValue(item && item.DATE_COMPLETED, item && item.date_completed, '')).trim();
+            return completedAt !== '';
         }
 
         function buildRequestLiveSyncSignature(rows = []) {
@@ -5286,8 +5289,8 @@ function toggleDriveQuickRequestItem(domId) {
         function isProtectedSectionCompleted(prefix, item = activeItem) {
             if (!item) return false;
             if (prefix === 'req-') return isRequestComplete(item);
-            if (prefix === 'flyer-') return String(item.FLYER_COMPLETED || item.DATE_COMPLETED || '').trim() !== '';
-            return String(item.DATE_COMPLETED || '').trim() !== '';
+            if (prefix === 'flyer-') return String(firstNonEmptyValue(item.FLYER_COMPLETED, item.flyer_completed, item.DATE_COMPLETED, item.date_completed, '')).trim() !== '';
+            return String(firstNonEmptyValue(item.DATE_COMPLETED, item.date_completed, '')).trim() !== '';
         }
 
         function isProtectedSectionLocked(prefix, item = activeItem) {
@@ -10307,10 +10310,10 @@ activeDriveTab = tab;
 
             const keepCompletedInTaskTab = activeTaskTab === 'colorwalk' || activeTaskTab === 'flyer';
             let scopedItems = useSharedNotesQueue
-                ? fullInventory.filter(i => keepCompletedInTaskTab || !i.DATE_COMPLETED)
+                ? fullInventory.filter(i => keepCompletedInTaskTab || !String(firstNonEmptyValue(i.DATE_COMPLETED, i.date_completed, '')).trim())
                 : isSharedFlyerQueue
                     ? fullInventory.filter(i => isFlyerTaskItem(i))
-                    : fullInventory.filter(i => i.ASSIGNEDTO === targetUser && (keepCompletedInTaskTab || !i.DATE_COMPLETED));
+                    : fullInventory.filter(i => i.ASSIGNEDTO === targetUser && (keepCompletedInTaskTab || !String(firstNonEmptyValue(i.DATE_COMPLETED, i.date_completed, '')).trim()));
             const seasonTaskItems = activeTaskTab === 'season' ? getTaskTabItems(scopedItems, 'season') : [];
             let tabItems = getTaskSubviewItems(getTaskTabItems(scopedItems, activeTaskTab), activeTaskTab, activeTaskSubview);
             if (activeTaskTab === 'season' && activeTaskSubview === 'av-blanks') {
@@ -12626,7 +12629,7 @@ function toggleDriveSeason(s) {
                     getFlyerAssigneeList(i.FLYER_ASSIGNED || i.ASSIGNEDTO || '').forEach(name => uSet.add(name));
                     return;
                 }
-                if(i.ASSIGNEDTO && !i.DATE_COMPLETED) uSet.add(i.ASSIGNEDTO);
+                if(i.ASSIGNEDTO && !String(firstNonEmptyValue(i.DATE_COMPLETED, i.date_completed, '')).trim()) uSet.add(i.ASSIGNEDTO);
             });
             if(uSet.size === 0) { 
                 document.getElementById('task-content').innerHTML = `<div class="p-8 text-center text-gray-400">No active tasks for any team member.</div>`; 
@@ -12637,7 +12640,7 @@ function toggleDriveSeason(s) {
             sorted.forEach(u => {
                 let userTasks = fullInventory.filter(i => {
                     if (isFlyerTaskItem(i)) return isFlyerAssignedToUser(i, u);
-                    return i.ASSIGNEDTO === u && !i.DATE_COMPLETED;
+                    return i.ASSIGNEDTO === u && !String(firstNonEmptyValue(i.DATE_COMPLETED, i.date_completed, '')).trim();
                 });
                 let htmlCounts = `<div class="flex gap-2 mt-2">`;
                 ['season','location','colorwalk','endcap','flyer'].forEach(t => {
@@ -12963,10 +12966,10 @@ function toggleDriveSeason(s) {
 
             const keepCompletedInTaskTab = activeTaskTab === 'colorwalk' || activeTaskTab === 'flyer';
             let scopedItems = useSharedNotesQueue
-                ? fullInventory.filter(i => keepCompletedInTaskTab || !i.DATE_COMPLETED)
+                ? fullInventory.filter(i => keepCompletedInTaskTab || !String(firstNonEmptyValue(i.DATE_COMPLETED, i.date_completed, '')).trim())
                 : isSharedFlyerQueue
                     ? fullInventory.filter(i => isFlyerTaskItem(i))
-                    : fullInventory.filter(i => i.ASSIGNEDTO === targetUser && (keepCompletedInTaskTab || !i.DATE_COMPLETED));
+                    : fullInventory.filter(i => i.ASSIGNEDTO === targetUser && (keepCompletedInTaskTab || !String(firstNonEmptyValue(i.DATE_COMPLETED, i.date_completed, '')).trim()));
             const seasonTaskItems = activeTaskTab === 'season' ? getTaskTabItems(scopedItems, 'season') : [];
             let tabItems = getTaskSubviewItems(getTaskTabItems(scopedItems, activeTaskTab), activeTaskTab, activeTaskSubview);
             if (activeTaskTab === 'season' && activeTaskSubview === 'av-blanks') {
@@ -13910,6 +13913,7 @@ function toggleDriveSeason(s) {
     </script>
 </body>
 </html>
+
 
 
 
