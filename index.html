@@ -446,7 +446,7 @@
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
                             <button id="run-google-script-btn" type="button" class="hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/25 bg-white/10 text-white text-[10px] font-black uppercase tracking-[0.14em] whitespace-nowrap shadow-sm active:scale-95" onclick="return runGoogleAppsScriptTrigger()"><i class="ph-bold ph-lightning text-sm"></i><span data-run-script-label>Run Script</span></button>
-                            <div id="header-version" class="nav-version-pill">V2026.04.02.06</div>
+                            <div id="header-version" class="nav-version-pill">V2026.04.02.07</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -2711,7 +2711,7 @@
         let pendingRequestArchiveFlushTimer = null;
         let pendingRequestArchiveFlushInFlight = false;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Machino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'V2026.04.02.06';
+        const APP_VERSION = 'V2026.04.02.07';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -4321,6 +4321,7 @@ function toggleDriveQuickRequestItem(domId) {
             const flyerAssignedTo = assignees.join(', ');
             const primaryAssignee = assignees[0] || currentUser;
             const updates = [];
+            const updateItems = [];
             domIds.forEach((domId) => {
                 const item = findItemByDomId(domId);
                 if (!item) return;
@@ -4333,6 +4334,7 @@ function toggleDriveQuickRequestItem(domId) {
                 buildSearchIndex(item);
                 syncRowDataAcrossViews(item);
                 const table = item.SOURCE_TABLE || 'v2_master_inventory';
+                updateItems.push(item);
                 updates.push(supabaseFetch(table, 'PATCH', {
                     assignedto: primaryAssignee,
                     date_completed: null,
@@ -4351,6 +4353,10 @@ function toggleDriveQuickRequestItem(domId) {
                 if (!succeeded) {
                     const firstError = failed[0] && failed[0].reason && failed[0].reason.message ? failed[0].reason.message : 'Flyer creation failed.';
                     throw new Error(firstError);
+                }
+                if (!isAddingToExistingFolder) {
+                    const emailItems = updateItems.filter((item, idx) => results[idx] && results[idx].status === 'fulfilled');
+                    if (emailItems.length) sendFlyerCreatedEmail(flyerFolder, flyerAssignedTo, emailItems, currentUserDisplay || currentUser || '');
                 }
                 clearDriveQuickRequestItems(true);
                 clearPendingFlyerFolderTarget(true);
@@ -4415,6 +4421,7 @@ function toggleDriveQuickRequestItem(domId) {
             const flyerAssignedTo = assignees.join(', ');
             const primaryAssignee = assignees[0] || currentUser;
             const updates = [];
+            const updateItems = [];
             validItems.forEach((item) => {
                 item.APP_TAB_ASSIGNMENT = 'flyer';
                 item.ASSIGNEDTO = primaryAssignee;
@@ -4425,6 +4432,7 @@ function toggleDriveQuickRequestItem(domId) {
                 buildSearchIndex(item);
                 syncRowDataAcrossViews(item);
                 const table = item.SOURCE_TABLE || 'v2_master_inventory';
+                updateItems.push(item);
                 updates.push(supabaseFetch(table, 'PATCH', {
                     assignedto: primaryAssignee,
                     date_completed: null,
@@ -4444,6 +4452,10 @@ function toggleDriveQuickRequestItem(domId) {
                 if (!succeeded) {
                     const firstError = failed[0] && failed[0].reason && failed[0].reason.message ? failed[0].reason.message : 'Flyer creation failed.';
                     throw new Error(firstError);
+                }
+                if (!isAddingToExistingFolder) {
+                    const emailItems = validItems.filter((item, idx) => results[idx] && results[idx].status === 'fulfilled');
+                    if (emailItems.length) sendFlyerCreatedEmail(flyerFolder, flyerAssignedTo, emailItems, currentUserDisplay || currentUser || '');
                 }
                 clearPendingFlyerFolderTarget(true);
                 clearSelection();
@@ -7392,6 +7404,27 @@ activeDriveTab = tab;
                 payload.repEmail = cleanRep + "@greenleafnursery.com";
             }
             fetch(GOOGLE_SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) }).catch(e => console.log(e));
+        }
+
+        function sendFlyerCreatedEmail(folderName, assignedTo, items = [], createdBy = '') {
+            const safeItems = Array.isArray(items)
+                ? items.map((item) => ({
+                    commonname: item && item.COMMONNAME ? item.COMMONNAME : '',
+                    contsize: item && item.CONTSIZE ? item.CONTSIZE : '',
+                    locationcode: item && item.LOCATIONCODE ? item.LOCATIONCODE : '',
+                    itemcode: item && item.ITEMCODE ? item.ITEMCODE : ''
+                })).filter((item) => item.commonname || item.contsize || item.locationcode || item.itemcode)
+                : [];
+            const payload = {
+                type: 'email',
+                emailType: 'flyer_created',
+                folderName: folderName,
+                assignedTo: assignedTo,
+                createdBy: createdBy || currentUserDisplay || currentUser || '',
+                instructions: 'Open the app, go to Tasks > Flyer, open the folder, complete the flyer work for each row, and mark the row done when finished.',
+                items: safeItems
+            };
+            fetch(GOOGLE_SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) }).catch((e) => console.log(e));
         }
 
         function getDefaultRequestRepName() {
@@ -13877,6 +13910,8 @@ function toggleDriveSeason(s) {
     </script>
 </body>
 </html>
+
+
 
 
 
