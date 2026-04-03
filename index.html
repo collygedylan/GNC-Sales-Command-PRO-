@@ -446,7 +446,7 @@
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
                             <button id="run-google-script-btn" type="button" class="hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/25 bg-white/10 text-white text-[10px] font-black uppercase tracking-[0.14em] whitespace-nowrap shadow-sm active:scale-95" onclick="return runGoogleAppsScriptTrigger()"><i class="ph-bold ph-lightning text-sm"></i><span data-run-script-label>Run Script</span></button>
-                            <div id="header-version" class="nav-version-pill">V2026.04.03.01</div>
+                            <div id="header-version" class="nav-version-pill">V2026.04.03.02</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -1215,9 +1215,19 @@
             document.body.removeChild(textArea);
             return copied;
         }
-
-        async function copyTextWithFallback(text) {
+        async function copyTextWithFallback(text, html = '') {
             if (navigator.clipboard && window.isSecureContext) {
+                if (html && typeof ClipboardItem !== 'undefined' && navigator.clipboard.write) {
+                    try {
+                        await navigator.clipboard.write([
+                            new ClipboardItem({
+                                'text/plain': new Blob([text], { type: 'text/plain' }),
+                                'text/html': new Blob([html], { type: 'text/html' })
+                            })
+                        ]);
+                        return true;
+                    } catch (err) {}
+                }
                 await navigator.clipboard.writeText(text);
                 return true;
             }
@@ -2718,7 +2728,7 @@
         let pendingRequestArchiveFlushTimer = null;
         let pendingRequestArchiveFlushInFlight = false;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Machino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'V2026.04.03.01';
+        const APP_VERSION = 'V2026.04.03.02';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -12324,8 +12334,61 @@ ${formatRequestItemsText(items)}`;
             }
             renderRequest();
         }
+        function escapeShareHtml(value) {
+            return String(value == null ? '' : value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
 
-        function extractSharePhotoUrls(photoValue) {
+        function getSharePhotoDateLabel(url) {
+            const match = String(url || '').match(/\/(20\d{2}-\d{2}-\d{2})(?:\/|%2F)/);
+            if (match && match[1]) return match[1];
+            return new Date().toISOString().slice(0, 10);
+        }
+
+        function buildSharePhotoDisplayName(item, index, url) {
+            return [
+                firstNonEmptyValue(item && item.COMMONNAME, 'Unknown'),
+                firstNonEmptyValue(item && item.CONTSIZE, item && item.ITEMSPEC, '-'),
+                firstNonEmptyValue(item && item.LOCATIONCODE, item && item.LOCATION, 'No Loc'),
+                firstNonEmptyValue(item && item.LOTCODE, item && item.lotcode, '-'),
+                getSharePhotoDateLabel(url),
+                String(index)
+            ].map(value => String(value || '').trim()).filter(Boolean).join(' ');
+        }
+
+        function getInventoryShareSummaryLine(item) {
+            return [
+                firstNonEmptyValue(item && item.COMMONNAME, 'Unknown'),
+                firstNonEmptyValue(item && item.CONTSIZE, item && item.ITEMSPEC, '-'),
+                firstNonEmptyValue(item && item.LOCATIONCODE, item && item.LOCATION, 'No Loc'),
+                firstNonEmptyValue(item && item.LOTCODE, item && item.lotcode, '-')
+            ].map(value => String(value || '').trim()).filter(Boolean).join(' ');
+        }
+
+        function getInventoryShareFieldRows(item) {
+            return [
+                { label: 'Item Code', value: firstNonEmptyValue(item && item.ITEMCODE, item && item.itemcode, '-'), force: true },
+                { label: 'Priority', value: firstNonEmptyValue(item && item.PRIORITY, ''), force: true },
+                { label: 'Spec', value: firstNonEmptyValue(item && item.SPEC, item && item.REQ_SPEC, item && item.REQ_DESIRED_SPEC, ''), force: true },
+                { label: 'Caliper', value: firstNonEmptyValue(item && item.CALIPER, item && item.REQ_CALIPER, item && item.REQ_DESIRED_CALIPER, ''), force: false },
+                { label: 'AV Note', value: firstNonEmptyValue(item && item.AV_NOTE, ''), force: true },
+                { label: 'Available', value: firstNonEmptyValue(item && item.PTRAVAILABLE, item && item.PTRONHAND, ''), force: true },
+                { label: 'LOC PHOTO MATCH', value: firstNonEmptyValue(item && item.MATCH, item && item.REQ_MATCH, item && item.MATCHPCT, ''), force: true, percent: true },
+                { label: 'LOC MATCH QTY', value: firstNonEmptyValue(item && item.LOC_MATCH_QTY, ''), force: false },
+                { label: 'Sales Note', value: firstNonEmptyValue(item && item.SALES_NOTE, item && item.SALESNOTE, item && item.SALESDESC, ''), force: false },
+                { label: 'Pick Note', value: firstNonEmptyValue(item && item.PIC_NOTE, item && item.PICKNOTE, item && item.PICK, item && item.REQ_PICK, item && item.REQ_PIC_NOTE, ''), force: false }
+            ];
+        }
+
+        function getInventorySharePhotoEntries(item) {
+            return extractSharePhotoUrls(firstNonEmptyValue(item && item.NA_PHOTO_LINK, item && item.REQ_PHOTO_LINK, item && item.DOCK_PHOTO_LINK, item && item.FLYER_PHOTO_LINK, item && item.SAVED_PHOTO_LINK, item && item.ROW_PHOTO_LINK, item && item['PHOTO LINK'], item && item.PHOTOLINK, ''), item);
+        }
+
+        function extractSharePhotoUrls(photoValue, item = null) {
             if (!photoValue || String(photoValue).trim() === '') return [];
             let counter = 1;
             return String(photoValue).split(',').map(url => {
@@ -12333,45 +12396,58 @@ ${formatRequestItemsText(items)}`;
                 let match = cleanUrl.match(/(https?:\/\/[^"\s>]+)/);
                 if (match) cleanUrl = match[1];
                 if (!cleanUrl.startsWith('http')) return null;
-                return { label: `Photo ${counter++}`, url: cleanUrl };
+                const index = counter++;
+                return {
+                    label: `Photo ${index}` ,
+                    url: cleanUrl,
+                    displayName: item ? buildSharePhotoDisplayName(item, index, cleanUrl) : cleanUrl,
+                    index
+                };
             }).filter(Boolean);
         }
-        function formatInventoryItemsText(items, headerLabel = 'SELECTED ROWS') {
-            let returnText = `${headerLabel}\n\n`;
-            (items || []).forEach(i => {
-                const appendLine = (label, value) => {
-                    const text = String(firstNonEmptyValue(value, '') || '').trim();
-                    if (!text) return;
-                    returnText += `  ${label}: ${text}\n`;
-                };
-                const appendPercentLine = (label, value) => {
-                    const text = String(firstNonEmptyValue(value, '') || '').trim();
-                    if (!text) return;
-                    returnText += `  ${label}: ${text.includes('%') ? text : `${text}%`}\n`;
-                };
-                returnText += `- ${firstNonEmptyValue(i.COMMONNAME, 'Unknown')}\n`;
-                appendLine('Contsize', firstNonEmptyValue(i.CONTSIZE, i.ITEMSPEC, '-'));
-                appendLine('Unique ID', firstNonEmptyValue(i.UNIQUE_ID, i.MASTER_ID, i.master_id, ''));
-                appendLine('Item Code', firstNonEmptyValue(i.ITEMCODE, i.itemcode, '-'));
-                appendLine('Location Code', firstNonEmptyValue(i.LOCATIONCODE, i.LOCATION, 'No Loc'));
-                appendLine('Lot Code', firstNonEmptyValue(i.LOTCODE, i.lotcode, '-'));
-                appendLine('Priority', i.PRIORITY);
-                appendLine('Season', i.SEASON);
-                appendLine('Block Alpha', i.BLOCKALPHA);
-                appendLine('Available', firstNonEmptyValue(i.PTRAVAILABLE, i.PTRONHAND, ''));
-                appendLine('S_LTS', firstNonEmptyValue(i.S_LTS, i.SLTS, ''));
-                appendPercentLine('LOC PHOTO MATCH', firstNonEmptyValue(i.MATCH, i.REQ_MATCH, i.MATCHPCT, ''));
-                appendLine('LOC MATCH QTY', i.LOC_MATCH_QTY);
-                appendLine('Spec', firstNonEmptyValue(i.SPEC, i.REQ_SPEC, i.REQ_DESIRED_SPEC, ''));
-                appendLine('Caliper', firstNonEmptyValue(i.CALIPER, i.REQ_CALIPER, i.REQ_DESIRED_CALIPER, ''));
-                appendLine('AV Note', firstNonEmptyValue(i.AV_NOTE, ''));
-                appendLine('Sales Note', firstNonEmptyValue(i.SALES_NOTE, i.SALESNOTE, i.SALESDESC, ''));
-                appendLine('Pick Note', firstNonEmptyValue(i.PIC_NOTE, i.PICKNOTE, i.PICK, i.REQ_PICK, i.REQ_PIC_NOTE, ''));
-                extractSharePhotoUrls(firstNonEmptyValue(i.NA_PHOTO_LINK, i.REQ_PHOTO_LINK, i.DOCK_PHOTO_LINK, i.FLYER_PHOTO_LINK, i.SAVED_PHOTO_LINK, i.ROW_PHOTO_LINK, i['PHOTO LINK'], i.PHOTOLINK, ''))
-                    .forEach(photo => { returnText += `  ${photo.label}: ${photo.url}\n`; });
-                returnText += `\n`;
+
+        function formatInventoryItemsText(items, headerLabel = 'SELECTED ROWS', options = {}) {
+            const includeHeader = options.includeHeader !== false && !!headerLabel;
+            const includePhotoUrls = options.includePhotoUrls !== false;
+            let returnText = includeHeader ? `${headerLabel}\n\n` : '';
+            (items || []).forEach((item, itemIndex) => {
+                returnText += `${getInventoryShareSummaryLine(item)}\n`;
+                getInventoryShareFieldRows(item).forEach(field => {
+                    const rawValue = String(firstNonEmptyValue(field.value, '') || '').trim();
+                    if (!rawValue && !field.force) return;
+                    const formattedValue = field.percent && rawValue ? (rawValue.includes('%') ? rawValue : `${rawValue}%`) : rawValue;
+                    returnText += `${field.label}: ${formattedValue}\n`;
+                });
+                getInventorySharePhotoEntries(item).forEach(photo => {
+                    returnText += `${photo.label}: ${photo.displayName}`;
+                    if (includePhotoUrls) returnText += ` - ${photo.url}`;
+                    returnText += `\n`;
+                });
+                if (itemIndex < (items || []).length - 1) returnText += `\n`;
             });
-            return returnText;
+            return returnText.trimEnd();
+        }
+
+        function formatInventoryItemsHtml(items, headerLabel = '') {
+            const blocks = [];
+            if (headerLabel) {
+                blocks.push(`<div style="font-weight:700;margin:0 0 14px 0;">${escapeShareHtml(headerLabel)}</div>`);
+            }
+            (items || []).forEach(item => {
+                const lines = [];
+                lines.push(`<div style="font-weight:700;margin:0 0 4px 0;">${escapeShareHtml(getInventoryShareSummaryLine(item))}</div>`);
+                getInventoryShareFieldRows(item).forEach(field => {
+                    const rawValue = String(firstNonEmptyValue(field.value, '') || '').trim();
+                    if (!rawValue && !field.force) return;
+                    const formattedValue = field.percent && rawValue ? (rawValue.includes('%') ? rawValue : `${rawValue}%`) : rawValue;
+                    lines.push(`<div><strong>${escapeShareHtml(field.label)}:</strong> ${escapeShareHtml(formattedValue)}</div>`);
+                });
+                getInventorySharePhotoEntries(item).forEach(photo => {
+                    lines.push(`<div><strong>${escapeShareHtml(photo.label)}:</strong> <a href="${escapeShareHtml(photo.url)}">${escapeShareHtml(photo.displayName)}</a></div>`);
+                });
+                blocks.push(`<div style="margin:0 0 18px 0;line-height:1.45;">${lines.join('')}</div>`);
+            });
+            return `<div>${blocks.join('')}</div>`;
         }
 
         function getSelectedItemsText(tabType) {
@@ -12399,14 +12475,17 @@ ${formatRequestItemsText(items)}`;
             let headerLabel = ((lastView==='drive' || lastView==='tasks') ? 'DRIVE MODE DATA' : 'SELECTED ROWS');
             return formatInventoryItemsText(items, headerLabel);
         }
-
         async function shareInventoryItems(action, items, subject = 'Drive Mode Data') {
-            const text = formatInventoryItemsText(items, subject.toUpperCase());
+            const copyHeaderLabel = items.length > 1 ? subject.toUpperCase() : '';
+            const textHeaderLabel = subject.toUpperCase();
             if (action === 'copy') {
-                await copyTextWithFallback(text);
+                const copyText = formatInventoryItemsText(items, copyHeaderLabel, { includePhotoUrls: false });
+                const copyHtml = formatInventoryItemsHtml(items, copyHeaderLabel);
+                await copyTextWithFallback(copyText, copyHtml);
                 showToast('Success', 'Copied to clipboard!');
                 return;
             }
+            const text = formatInventoryItemsText(items, textHeaderLabel, { includePhotoUrls: true });
             const shared = await handleMobileShare(action, subject, text);
             if (shared) {
                 showToast('Ready', action === 'email' ? 'Use the share sheet to send the email text.' : 'Use the share sheet to send the text.');
@@ -12435,10 +12514,24 @@ ${formatRequestItemsText(items)}`;
                 }
             }
         }
-
         async function executeBatchAction(action,tabType) {
+            const isInventoryLikeTab = tabType !== 'request' && tabType !== 'docks';
+            const selectedInventoryItems = [];
+            if (isInventoryLikeTab) {
+                selectedItems.forEach(domId => {
+                    let found = findItemByDomId(domId);
+                    if (found) selectedInventoryItems.push(found);
+                });
+            }
             const text=getSelectedItemsText(tabType);
             if(action==='copy'){
+                if (isInventoryLikeTab) {
+                    const headerLabel = selectedInventoryItems.length > 1 ? (((lastView==='drive' || lastView==='tasks') ? 'DRIVE MODE DATA' : 'SELECTED ROWS')) : '';
+                    const copyText = formatInventoryItemsText(selectedInventoryItems, headerLabel, { includePhotoUrls: false });
+                    const copyHtml = formatInventoryItemsHtml(selectedInventoryItems, headerLabel);
+                    copyTextWithFallback(copyText, copyHtml).then(()=>{showToast("Success","Copied to clipboard!");clearSelection()}).catch(()=>{showToast("Error","Could not copy text.",true);});
+                    return;
+                }
                 copyTextWithFallback(text).then(()=>{showToast("Success","Copied to clipboard!");clearSelection()}).catch(()=>{showToast("Error","Could not copy text.",true);})
             }else if(action==='email'){
                 let sub='Selected Rows';
@@ -13965,6 +14058,7 @@ function toggleDriveSeason(s) {
     </script>
 </body>
 </html>
+
 
 
 
