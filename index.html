@@ -446,7 +446,7 @@
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
                             <button id="run-google-script-btn" type="button" class="hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/25 bg-white/10 text-white text-[10px] font-black uppercase tracking-[0.14em] whitespace-nowrap shadow-sm active:scale-95" onclick="return runGoogleAppsScriptTrigger()"><i class="ph-bold ph-lightning text-sm"></i><span data-run-script-label>Run Script</span></button>
-                            <div id="header-version" class="nav-version-pill">V2026.04.02.09</div>
+                            <div id="header-version" class="nav-version-pill">V2026.04.03.01</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -2718,7 +2718,7 @@
         let pendingRequestArchiveFlushTimer = null;
         let pendingRequestArchiveFlushInFlight = false;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Machino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'V2026.04.02.09';
+        const APP_VERSION = 'V2026.04.03.01';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -12186,51 +12186,49 @@ activeDriveTab = tab;
             if(pendingAction==='assign'){openAssignModal()}
             else{executeBatchAction(pendingAction,pendingTabType)}
         }
-
         function formatRequestItemsText(items, headerLabel = '') {
-            let returnText = headerLabel ? `${headerLabel}
-
-` : '';
+            let returnText = headerLabel ? `${headerLabel}\n\n` : '';
             items.forEach(i => {
-                returnText += `${i.REQUEST_FOLDER||'No Folder'}
-ID: ${i.UNIQUE_ID} | ${i.REQ_CUSTOMER||'N/A'}
-${i.COMMONNAME||'Unknown'} ${i.CONTSIZE||'-'} Loc: ${i.LOCATIONCODE||'No Loc'}
-${i.ITEMCODE||'-'} | Lot: ${i.LOTCODE||'-'}
-`;
-                if(i.REQ_QTY)returnText += `  Requested Qty: ${i.REQ_QTY}
-`;
-                if(i.REQ_DESIRED_SPEC)returnText += `  Desired Spec: ${i.REQ_DESIRED_SPEC}
-`;
-                if(i.REQ_DESIRED_CALIPER)returnText += `  Desired Caliper: ${i.REQ_DESIRED_CALIPER}
-`;
-                if(i.REQ_EST_SHIP)returnText += `  Est Ship: ${i.REQ_EST_SHIP}
-`;
-                if(i.REQ_RESERVE)returnText += `  Reserve: ${i.REQ_RESERVE}
-`;
-                if(i.REQ_MATCH)returnText += `  Match: ${i.REQ_MATCH}%
-`;
-                if(i.REQ_SPEC)returnText += `  Spec: ${i.REQ_SPEC}
-`;
-                if(i.REQ_CALIPER)returnText += `  Caliper: ${i.REQ_CALIPER}
-`;
-                if(i.REQ_PICK)returnText += `  Pick Note: ${i.REQ_PICK}
-`;
-                let photo=i.REQ_PHOTO_LINK||i.SAVED_PHOTO_LINK||i['PHOTO LINK']||i.PHOTOLINK;
-                if(photo&&String(photo).trim()!==""){
-                    let urls=String(photo).split(',');
-                    let counter=1;
-                    urls.forEach(url=>{
-                        let cleanUrl=url.trim();
-                        let match=cleanUrl.match(/(https?:\/\/[^"\s>]+)/);
-                        if(match)cleanUrl=match[1];
-                        if(cleanUrl.startsWith('http')){returnText += `  Photo ${counter}: ${cleanUrl}
-`;counter++}
-                    })
-                }
-                returnText += `
-`;
+                const appendLine = (label, value) => {
+                    const text = String(firstNonEmptyValue(value, '') || '').trim();
+                    if (!text) return;
+                    returnText += `  ${label}: ${text}\n`;
+                };
+                const appendPercentLine = (label, value) => {
+                    const text = String(firstNonEmptyValue(value, '') || '').trim();
+                    if (!text) return;
+                    returnText += `  ${label}: ${text.includes('%') ? text : `${text}%`}\n`;
+                };
+                const folderName = String(firstNonEmptyValue(i.REQUEST_FOLDER, 'No Folder') || 'No Folder').trim();
+                returnText += `${folderName}\n`;
+                appendLine('Unique ID', i.UNIQUE_ID);
+                appendLine('Customer', firstNonEmptyValue(i.REQ_CUSTOMER, i.CUSTOMERNAME, i.CUSTOMER, 'N/A'));
+                appendLine('Common Name', firstNonEmptyValue(i.COMMONNAME, 'Unknown'));
+                appendLine('Contsize', firstNonEmptyValue(i.CONTSIZE, i.ITEMSPEC, '-'));
+                appendLine('Item Code', firstNonEmptyValue(i.ITEMCODE, '-'));
+                appendLine('Location Code', firstNonEmptyValue(i.LOCATIONCODE, i.LOCATION, 'No Loc'));
+                appendLine('Lot Code', firstNonEmptyValue(i.LOTCODE, '-'));
+                appendLine('Priority', i.PRIORITY);
+                appendLine('Season', i.SEASON);
+                appendLine('Block Alpha', i.BLOCKALPHA);
+                appendLine('Requested Qty', i.REQ_QTY);
+                appendLine('Desired Spec', i.REQ_DESIRED_SPEC);
+                appendLine('Desired Caliper', i.REQ_DESIRED_CALIPER);
+                appendLine('Est Ship', i.REQ_EST_SHIP);
+                appendLine('Reserve', i.REQ_RESERVE);
+                appendPercentLine('LOC PHOTO MATCH', firstNonEmptyValue(i.REQ_MATCH, i.MATCH, i.MATCHPCT, ''));
+                appendLine('LOC MATCH QTY', i.LOC_MATCH_QTY);
+                appendLine('Spec', firstNonEmptyValue(i.REQ_SPEC, i.SPEC, ''));
+                appendLine('Caliper', firstNonEmptyValue(i.REQ_CALIPER, i.CALIPER, ''));
+                appendLine('AV Note', i.AV_NOTE);
+                appendLine('Sales Note', firstNonEmptyValue(i.SALES_NOTE, i.SALESNOTE, i.SALESDESC, ''));
+                appendLine('Pick Note', firstNonEmptyValue(i.REQ_PICK, i.REQ_PIC_NOTE, i.PIC_NOTE, i.PICKNOTE, i.PICK, ''));
+                appendLine('Available', firstNonEmptyValue(i.PTRAVAILABLE, i.PTRONHAND, ''));
+                extractSharePhotoUrls(firstNonEmptyValue(i.REQ_PHOTO_LINK, i.SAVED_PHOTO_LINK, i.ROW_PHOTO_LINK, i['PHOTO LINK'], i.PHOTOLINK, ''))
+                    .forEach(photo => { returnText += `  ${photo.label}: ${photo.url}\n`; });
+                returnText += `\n`;
             });
-            return returnText
+            return returnText;
         }
 
         function getRequestFolderItems(folderName, status = selectedReqStatus, repName = selectedReqRepView) {
@@ -12338,28 +12336,38 @@ ${formatRequestItemsText(items)}`;
                 return { label: `Photo ${counter++}`, url: cleanUrl };
             }).filter(Boolean);
         }
-
         function formatInventoryItemsText(items, headerLabel = 'SELECTED ROWS') {
             let returnText = `${headerLabel}\n\n`;
             (items || []).forEach(i => {
-                returnText += `- ${i.COMMONNAME || 'Unknown'} (${i.CONTSIZE || '-'}) | Loc: ${i.LOCATIONCODE || 'No Loc'}\n`;
-                if (i.ITEMCODE) returnText += `  Item Code: ${i.ITEMCODE}\n`;
-                if (i.LOTCODE) returnText += `  Lot: ${i.LOTCODE}\n`;
-                let match = firstNonEmptyValue(i.MATCH, i.REQ_MATCH, i.MATCHPCT, '');
-                if (match) returnText += `  Match: ${match}%\n`;
-                let spec = firstNonEmptyValue(i.SPEC, i.REQ_SPEC, '');
-                if (spec) returnText += `  Spec: ${spec}\n`;
-                let caliper = firstNonEmptyValue(i.CALIPER, i.REQ_CALIPER, '');
-                if (caliper) returnText += `  Caliper: ${caliper}\n`;
-                let pick = firstNonEmptyValue(i.PIC_NOTE, i.PICKNOTE, i.PICK, i.REQ_PICK, i.REQ_PIC_NOTE, '');
-                if (pick) returnText += `  Pick Note: ${pick}\n`;
-                let avNote = firstNonEmptyValue(i.AV_NOTE, '');
-                if (avNote) returnText += `  AV Note: ${avNote}\n`;
-                let sales = firstNonEmptyValue(i.SALES_NOTE, i.SALESNOTE, i.SALESDESC, '');
-                if (sales) returnText += `  Sales Note: ${sales}\n`;
-                let ptrAvailable = firstNonEmptyValue(i.PTRAVAILABLE, i.PTRONHAND, '');
-                if (ptrAvailable) returnText += `  Available: ${ptrAvailable}\n`;
-                extractSharePhotoUrls(firstNonEmptyValue(i.NA_PHOTO_LINK, i.REQ_PHOTO_LINK, i.SAVED_PHOTO_LINK, i.ROW_PHOTO_LINK, i['PHOTO LINK'], i.PHOTOLINK, ''))
+                const appendLine = (label, value) => {
+                    const text = String(firstNonEmptyValue(value, '') || '').trim();
+                    if (!text) return;
+                    returnText += `  ${label}: ${text}\n`;
+                };
+                const appendPercentLine = (label, value) => {
+                    const text = String(firstNonEmptyValue(value, '') || '').trim();
+                    if (!text) return;
+                    returnText += `  ${label}: ${text.includes('%') ? text : `${text}%`}\n`;
+                };
+                returnText += `- ${firstNonEmptyValue(i.COMMONNAME, 'Unknown')}\n`;
+                appendLine('Contsize', firstNonEmptyValue(i.CONTSIZE, i.ITEMSPEC, '-'));
+                appendLine('Unique ID', firstNonEmptyValue(i.UNIQUE_ID, i.MASTER_ID, i.master_id, ''));
+                appendLine('Item Code', firstNonEmptyValue(i.ITEMCODE, i.itemcode, '-'));
+                appendLine('Location Code', firstNonEmptyValue(i.LOCATIONCODE, i.LOCATION, 'No Loc'));
+                appendLine('Lot Code', firstNonEmptyValue(i.LOTCODE, i.lotcode, '-'));
+                appendLine('Priority', i.PRIORITY);
+                appendLine('Season', i.SEASON);
+                appendLine('Block Alpha', i.BLOCKALPHA);
+                appendLine('Available', firstNonEmptyValue(i.PTRAVAILABLE, i.PTRONHAND, ''));
+                appendLine('S_LTS', firstNonEmptyValue(i.S_LTS, i.SLTS, ''));
+                appendPercentLine('LOC PHOTO MATCH', firstNonEmptyValue(i.MATCH, i.REQ_MATCH, i.MATCHPCT, ''));
+                appendLine('LOC MATCH QTY', i.LOC_MATCH_QTY);
+                appendLine('Spec', firstNonEmptyValue(i.SPEC, i.REQ_SPEC, i.REQ_DESIRED_SPEC, ''));
+                appendLine('Caliper', firstNonEmptyValue(i.CALIPER, i.REQ_CALIPER, i.REQ_DESIRED_CALIPER, ''));
+                appendLine('AV Note', firstNonEmptyValue(i.AV_NOTE, ''));
+                appendLine('Sales Note', firstNonEmptyValue(i.SALES_NOTE, i.SALESNOTE, i.SALESDESC, ''));
+                appendLine('Pick Note', firstNonEmptyValue(i.PIC_NOTE, i.PICKNOTE, i.PICK, i.REQ_PICK, i.REQ_PIC_NOTE, ''));
+                extractSharePhotoUrls(firstNonEmptyValue(i.NA_PHOTO_LINK, i.REQ_PHOTO_LINK, i.DOCK_PHOTO_LINK, i.FLYER_PHOTO_LINK, i.SAVED_PHOTO_LINK, i.ROW_PHOTO_LINK, i['PHOTO LINK'], i.PHOTOLINK, ''))
                     .forEach(photo => { returnText += `  ${photo.label}: ${photo.url}\n`; });
                 returnText += `\n`;
             });
@@ -13957,6 +13965,10 @@ function toggleDriveSeason(s) {
     </script>
 </body>
 </html>
+
+
+
+
 
 
 
