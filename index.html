@@ -446,7 +446,7 @@
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
                             <button id="run-google-script-btn" type="button" class="hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/25 bg-white/10 text-white text-[10px] font-black uppercase tracking-[0.14em] whitespace-nowrap shadow-sm active:scale-95" onclick="return runGoogleAppsScriptTrigger()"><i class="ph-bold ph-lightning text-sm"></i><span data-run-script-label>Run Script</span></button>
-                            <div id="header-version" class="nav-version-pill">V2026.04.03.24</div>
+                            <div id="header-version" class="nav-version-pill">V2026.04.03.25</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -2769,7 +2769,7 @@
         let pendingRequestArchiveFlushTimer = null;
         let pendingRequestArchiveFlushInFlight = false;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Maschino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'V2026.04.03.24';
+        const APP_VERSION = 'V2026.04.03.25';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -3861,6 +3861,7 @@
 
         function canEditRowDetails(prefix = '') {
             const normalizedPrefix = String(prefix || '').trim();
+            if (activeItem && isSalesOfficeLikeItem(activeItem) && canAccessView('sales-office')) return true;
             if (normalizedPrefix === 'dock-') return canEditDockWorkflow();
             if (isRepReadOnlyUser()) return canRepEditDetailPrefix(normalizedPrefix);
             return true;
@@ -5515,7 +5516,7 @@ function toggleDriveQuickRequestItem(domId) {
             }
             bar.classList.remove('hidden');
             if (isProtectedUnlocked(prefix)) {
-                bar.innerHTML = `<div class="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center justify-between gap-3"><div><div class="text-[10px] font-black text-amber-700 uppercase tracking-wider">Protected Data Unlocked</div><div class="text-xs font-semibold text-amber-900">Completed data stays editable for 90 seconds.</div></div><button class="bg-amber-600 text-white text-[10px] font-black uppercase tracking-wider px-4 py-2 rounded-lg shadow-sm" onclick="lockProtectedSection('${prefix}')">LOCK NOW</button></div>`;
+                bar.innerHTML = `<div class="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center justify-between gap-3"><div><div class="text-[10px] font-black text-amber-700 uppercase tracking-wider">Protected Data Unlocked</div><div class="text-xs font-semibold text-amber-900">Completed data stays editable until you lock it again.</div></div><button class="bg-amber-600 text-white text-[10px] font-black uppercase tracking-wider px-4 py-2 rounded-lg shadow-sm" onclick="lockProtectedSection('${prefix}')">LOCK NOW</button></div>`;
             } else if (!canUnlockProtectedData()) {
                 bar.innerHTML = `<div class="bg-gray-50 border border-gray-200 rounded-xl p-3"><div class="text-[10px] font-black text-gray-600 uppercase tracking-wider">Protected After Done</div><div class="text-xs font-semibold text-gray-700 mt-1">Only Dylan, JD, Morgan, or Kayla can unlock completed data. Photos can be removed with a long press before Done.</div></div>`;
             } else {
@@ -5567,9 +5568,8 @@ function toggleDriveQuickRequestItem(domId) {
             }
             protectedEditState[prefix] = true;
             clearProtectedTimers(prefix);
-            protectedUnlockTimers[prefix] = setTimeout(() => lockProtectedSection(prefix, true), 90000);
             applyProtectedEditState(prefix);
-            showToast('Unlocked', 'Protected fields are editable for 90 seconds.');
+            showToast('Unlocked', 'Protected fields stay editable until you lock them again.');
         }
 
         function lockProtectedSection(prefix, silent = false) {
@@ -14099,11 +14099,7 @@ function toggleDriveSeason(s) {
                 else executeSave();
             };
 
-            if (isSilentAutoSave && !isComplete && !specificItem) {
-                autoSaveTimer = setTimeout(() => { runSaveNow(); }, 1000);
-            } else {
-                runSaveNow();
-            }
+            runSaveNow();
         }
 
         function backupLocalItem(item) {
