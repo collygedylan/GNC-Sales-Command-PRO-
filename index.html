@@ -446,7 +446,7 @@
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
                             <button id="run-google-script-btn" type="button" class="hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/25 bg-white/10 text-white text-[10px] font-black uppercase tracking-[0.14em] whitespace-nowrap shadow-sm active:scale-95" onclick="return runGoogleAppsScriptTrigger()"><i class="ph-bold ph-lightning text-sm"></i><span data-run-script-label>Run Script</span></button>
-                            <div id="header-version" class="nav-version-pill">V2026.04.03.11</div>
+                            <div id="header-version" class="nav-version-pill">V2026.04.03.12</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -2756,8 +2756,8 @@
         let syncDiagnosticsOverride = "";
         let pendingRequestArchiveFlushTimer = null;
         let pendingRequestArchiveFlushInFlight = false;
-        const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Machino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'V2026.04.03.11';
+        const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Machino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
+        const APP_VERSION = 'V2026.04.03.12';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -3889,6 +3889,57 @@
             if (!cleanCustomer) return '';
             return cleanConsignee && cleanConsignee.toLowerCase() !== cleanCustomer.toLowerCase() ? `${cleanCustomer} | ${cleanConsignee}` : cleanCustomer;
         }
+        function getRequestRepMatchTokens(repName = '') {
+            const variants = new Set();
+            const push = (value = '') => {
+                const normalized = normalizeRepMatchToken(value);
+                if (!normalized) return;
+                variants.add(normalized);
+                variants.add(normalized.replace(/\s+/g, ''));
+            };
+            const raw = String(repName || '').trim();
+            if (!raw) return variants;
+            push(raw);
+            push(raw.replace(/_/g, ' '));
+            const normalizedRaw = normalizeRepMatchToken(raw);
+            const collapsedRaw = normalizedRaw.replace(/\s+/g, '');
+            if (normalizedRaw === 'jd' || normalizedRaw === 'jd jones' || collapsedRaw === 'jdjones' || normalizedRaw === 'j d' || normalizedRaw === 'jones jd' || normalizedRaw === 'jones j d') {
+                push('JD Jones');
+                push('JD');
+                push('Jones, JD');
+            }
+            const parts = raw.split(/[^a-z0-9]+/i).filter(Boolean);
+            if (parts.length >= 2) {
+                const first = parts[0];
+                const last = parts[parts.length - 1];
+                push(`${first} ${last}`);
+                push(`${last} ${first}`);
+                push(`${last}, ${first}`);
+                push(`${last},${first}`);
+                push(`${first}_${last}`);
+                push(`${first}${last}`);
+                push(`${last}${first}`);
+            }
+            return variants;
+        }
+
+        function doesRequestRepMatchValue(value = '', repName = '') {
+            const normalizedValue = normalizeRepMatchToken(value);
+            if (!normalizedValue) return false;
+            const collapsedValue = normalizedValue.replace(/\s+/g, '');
+            const repTokens = getRequestRepMatchTokens(repName);
+            if (!repTokens.size) return false;
+            for (const token of repTokens) {
+                const normalizedToken = normalizeRepMatchToken(token);
+                if (!normalizedToken) continue;
+                const collapsedToken = normalizedToken.replace(/\s+/g, '');
+                if (normalizedValue === normalizedToken || collapsedValue === collapsedToken || normalizedValue.includes(normalizedToken) || collapsedValue.includes(collapsedToken) || normalizedToken.includes(normalizedValue) || collapsedToken.includes(collapsedValue)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
 
         function resetQuickDriveRequestState() {
             driveQuickRequestFlow = false;
@@ -11654,23 +11705,28 @@ activeDriveTab = tab;
         const debouncedFilterRepList=debounce(()=>requestAnimationFrame(filterRepList),150);
 
         function filterRepList() {
-            const val=document.getElementById('rep-search-input').value.toLowerCase().trim();
-            const container=document.getElementById('rep-list-container');
-            const customBtn=document.getElementById('custom-rep-btn');
-            let html="";
-            let exactMatch=false;
-            salesRepList.forEach(rep=>{
-                if(rep.toLowerCase().includes(val)){
-                    if(rep.toLowerCase()===val)exactMatch=true;
-                    html+=`<button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm text-left" onclick="selectRepForRequest('${esc(rep)}')">${rep}</button>`
+            const rawVal = document.getElementById('rep-search-input').value;
+            const val = normalizeRepMatchToken(rawVal);
+            const collapsedVal = val.replace(/\s+/g, '');
+            const container = document.getElementById('rep-list-container');
+            const customBtn = document.getElementById('custom-rep-btn');
+            let html = '';
+            let exactMatch = false;
+            const repOptions = [...new Set(salesRepList.map(rep => String(rep || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+            repOptions.forEach(rep => {
+                const repToken = normalizeRepMatchToken(rep);
+                const repCollapsed = repToken.replace(/\s+/g, '');
+                if (!val || repToken.includes(val) || repCollapsed.includes(collapsedVal)) {
+                    if (repToken === val || repCollapsed === collapsedVal) exactMatch = true;
+                    html += `<button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm text-left" onclick="selectRepForRequest('${esc(rep)}')">${rep}</button>`;
                 }
             });
-            container.innerHTML=html;
-            if(val.length>0&&!exactMatch){
+            container.innerHTML = html;
+            if (val.length > 0 && !exactMatch) {
                 customBtn.classList.remove('hidden');
-                customBtn.querySelector('span').innerText=document.getElementById('rep-search-input').value
-            }else{
-                customBtn.classList.add('hidden')
+                customBtn.querySelector('span').innerText = rawVal.trim();
+            } else {
+                customBtn.classList.add('hidden');
             }
         }
 
@@ -11682,7 +11738,7 @@ activeDriveTab = tab;
                 showRequestCustomerStep('step-1-rep');
                 return;
             }
-            let repReqs=requestsInventory.filter(i=>i.REQUESTED_BY===repName&&!i.REQ_ARCHIVED);
+            let repReqs=requestsInventory.filter(i=>doesRequestRepMatchValue(i.REQUESTED_BY, repName)&&!i.REQ_ARCHIVED);
             let uniqueFolders={};
             repReqs.forEach(i=>{if(i.REQUEST_FOLDER)uniqueFolders[i.REQUEST_FOLDER]=i.REQ_CUSTOMER||"Unknown"});
             const folderKeys=Object.keys(uniqueFolders);
@@ -11709,39 +11765,34 @@ activeDriveTab = tab;
         const debouncedPopulateCustomerList=debounce(()=>requestAnimationFrame(populateCustomerList),150);
 
         function populateCustomerList() {
-            const val=document.getElementById('cust-search-input').value.toLowerCase().trim();
-            const container=document.getElementById('cust-list-container');
-            let custSet=new Set();
-            let parts=tempSelectedReqRep.split(' ');
-            let firstName=parts[0]||"";
-            let lastName=parts[parts.length-1]||"";
-            let flippedName=`${lastName}, ${firstName}`.toUpperCase();
-            let standardName=tempSelectedReqRep.toUpperCase();
-            const scan=(arr)=>{
-                arr.forEach(i=>{
-                    let sheetRep=String(i.SALESREPNAME||i.SALESREP||i.SALES_REP||"").toUpperCase();
-                    if(sheetRep.includes(flippedName)||sheetRep.includes(standardName)){
-                        let c=String(i.CUSTOMERNAME||i.CUSTOMER||"").trim();
-                        let cons=String(i.CONSIGNEENAME||i.CONSIGNEE||"").trim();
-                        if(c||cons){
-                            let display=c;
-                            if(cons&&cons!==c)display=`${c} | ${cons}`;
-                            custSet.add(display)
-                        }
+            const rawVal = document.getElementById('cust-search-input').value;
+            const val = normalizeRepMatchToken(rawVal);
+            const container = document.getElementById('cust-list-container');
+            let custSet = new Set();
+            const scan = (arr) => {
+                arr.forEach(i => {
+                    const sheetRep = String(i.SALESREPNAME || i.SALESREP || i.SALES_REP || '').trim();
+                    if (!doesRequestRepMatchValue(sheetRep, tempSelectedReqRep)) return;
+                    const c = String(i.CUSTOMERNAME || i.CUSTOMER || '').trim();
+                    const cons = String(i.CONSIGNEENAME || i.CONSIGNEE || '').trim();
+                    if (c || cons) {
+                        const display = buildRequestCustomerValue(c, cons) || c || cons;
+                        custSet.add(display);
                     }
-                })
+                });
             };
             scan(socInventory);
             scan(reservesInventory);
-            let sorted=Array.from(custSet).sort();
-            let html="";
-            sorted.forEach(c=>{
-                if(String(c).toLowerCase().includes(val)||val===""){
-                    html+=`<div class="bg-orange-50 text-orange-800 font-bold p-3 rounded-lg border border-orange-200 shadow-sm text-left cursor-pointer active:bg-orange-100 mb-2" onclick="setCustomerInput('${esc(c)}')">${c}</div>`
+            const sorted = Array.from(custSet).sort((a, b) => a.localeCompare(b));
+            let html = '';
+            sorted.forEach(c => {
+                const labelToken = normalizeRepMatchToken(c);
+                if (!val || labelToken.includes(val)) {
+                    html += `<div class="bg-orange-50 text-orange-800 font-bold p-3 rounded-lg border border-orange-200 shadow-sm text-left cursor-pointer active:bg-orange-100 mb-2" onclick="setCustomerInput('${esc(c)}')">${c}</div>`;
                 }
             });
-            if(html==="")html=`<div class="text-xs text-gray-400 p-2 text-center">No matching customers found. Type above to use a custom name.</div>`;
-            container.innerHTML=html
+            if (html === '') html = `<div class="text-xs text-gray-400 p-2 text-center">No matching customers found. Type above to use a custom name.</div>`;
+            container.innerHTML = html;
         }
 
         function setCustomerInput(val) {
