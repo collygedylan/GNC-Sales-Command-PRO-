@@ -446,7 +446,7 @@
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
                             <button id="run-google-script-btn" type="button" class="hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/25 bg-white/10 text-white text-[10px] font-black uppercase tracking-[0.14em] whitespace-nowrap shadow-sm active:scale-95" onclick="return runGoogleAppsScriptTrigger()"><i class="ph-bold ph-lightning text-sm"></i><span data-run-script-label>Run Script</span></button>
-                            <div id="header-version" class="nav-version-pill">V2026.04.03.22</div>
+                            <div id="header-version" class="nav-version-pill">V2026.04.03.23</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -1923,10 +1923,12 @@
                 changed = eventType === 'DELETE'
                     ? removeRealtimeRow(socInventory, uniqueId)
                     : upsertRealtimeRow(socInventory, nextRow);
-            } else if (tableName === 'v2_sales_office') {
-                changed = eventType === 'DELETE'
-                    ? removeRealtimeRow(salesOfficeInventory, uniqueId)
-                    : upsertRealtimeRow(salesOfficeInventory, nextRow);
+                        } else if (tableName === 'v2_sales_office') {
+                if (eventType === 'DELETE' || (nextRow && isSalesOfficeComplete(nextRow))) {
+                    changed = removeRealtimeRow(salesOfficeInventory, uniqueId);
+                } else if (nextRow) {
+                    changed = upsertRealtimeRow(salesOfficeInventory, nextRow);
+                }
             } else if (tableName === 'v2_cav') {
                 changed = eventType === 'DELETE'
                     ? removeRealtimeRow(cavInventory, uniqueId)
@@ -2767,7 +2769,7 @@
         let pendingRequestArchiveFlushTimer = null;
         let pendingRequestArchiveFlushInFlight = false;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Maschino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'V2026.04.03.22';
+        const APP_VERSION = 'V2026.04.03.23';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -10084,8 +10086,14 @@ activeDriveTab = tab;
             return false;
         }
 
+        function isSalesOfficeComplete(item) {
+            const status = String(firstNonEmptyValue(item && item.ORDER_STATUS, item && item.order_status, item && item.STATUS, item && item.status, '') || '').trim().toLowerCase();
+            if (!status) return false;
+            return status.includes('done') || status.includes('complete') || status.includes('closed') || status.includes('removed') || status.includes('archived');
+        }
+
         function getSalesOfficeSeasonItems() {
-            let items = salesOfficeInventory.filter((item) => !isBloomPickerSalesOfficeItem(item));
+            let items = salesOfficeInventory.filter((item) => !isBloomPickerSalesOfficeItem(item) && !isSalesOfficeComplete(item));
             if (fullInventory.length > 0) {
                 const seasonIds = new Set(fullInventory.filter(i => String(i.APP_TAB_ASSIGNMENT || '').toLowerCase() === 'season').map(i => String(i.UNIQUE_ID || '')).filter(Boolean));
                 items = items.filter((item) => seasonIds.has(String(firstNonEmptyValue(item.MASTER_ID, item.UNIQUE_ID) || '')));
@@ -10095,7 +10103,7 @@ activeDriveTab = tab;
         }
 
         function getSalesOfficeOrderItems() {
-            let items = salesOfficeInventory.filter((item) => isBloomPickerSalesOfficeItem(item));
+            let items = salesOfficeInventory.filter((item) => isBloomPickerSalesOfficeItem(item) && !isSalesOfficeComplete(item));
             if (getRoleAccessState().isRep) {
                 items = items.filter((item) => isSalesOfficeSubmittedByCurrentRep(firstNonEmptyValue(item.ORDER_SUBMITTED_BY, item.SALESREPNAME, item.SALESREP, item.SALES_REP, item.SALESREPID, '')));
             }
@@ -11422,7 +11430,37 @@ activeDriveTab = tab;
         }
 
         function markSalesOfficeComplete(uniqueId,domId) { 
-            removeSalesOfficeRowByUniqueId(uniqueId, { message: 'Removed from Sales Office.' }); 
+            const uid = String(uniqueId || '').trim();
+            if (!uid) return;
+            const completedAt = new Date().toISOString();
+            let previousRow = null;
+            salesOfficeInventory = salesOfficeInventory.map((item) => {
+                if (String(item.UNIQUE_ID || '').trim() !== uid) return item;
+                previousRow = { ...item };
+                return {
+                    ...item,
+                    ORDER_STATUS: 'Completed',
+                    order_status: 'Completed',
+                    UPDATED_AT: completedAt,
+                    updated_at: completedAt
+                };
+            });
+            if (domId) selectedItems.delete(domId);
+            if (!selectedItems.size) cartPanelOpen = false;
+            updateGlobalActionBar();
+            refreshCartButtons();
+            markViewDirty('sales-office');
+            if (getCurrentVisibleViewId() === 'sales-office') renderSalesOffice();
+            showToast("Complete", "Removed from Sales Office.");
+            supabaseFetch('v2_sales_office', 'PATCH', { order_status: 'Completed', updated_at: completedAt }, `unique_id=eq.${encodeURIComponent(uid)}`).catch(() => {
+                if (previousRow) {
+                    salesOfficeInventory = salesOfficeInventory.filter((item) => String(item.UNIQUE_ID || '').trim() !== uid);
+                    salesOfficeInventory.push(previousRow);
+                }
+                markViewDirty('sales-office');
+                if (getCurrentVisibleViewId() === 'sales-office') renderSalesOffice();
+                showToast("Error","Could not complete the Sales Office row.",true);
+            });
         }
 
         function generateCard(item,sourceView,colorClass='status-green') {
