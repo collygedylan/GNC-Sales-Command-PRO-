@@ -446,7 +446,7 @@
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
                             <button id="run-google-script-btn" type="button" class="hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/25 bg-white/10 text-white text-[10px] font-black uppercase tracking-[0.14em] whitespace-nowrap shadow-sm active:scale-95" onclick="return runGoogleAppsScriptTrigger()"><i class="ph-bold ph-lightning text-sm"></i><span data-run-script-label>Run Script</span></button>
-                            <div id="header-version" class="nav-version-pill">V2026.04.03.03</div>
+                            <div id="header-version" class="nav-version-pill">V2026.04.03.04</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -2728,7 +2728,7 @@
         let pendingRequestArchiveFlushTimer = null;
         let pendingRequestArchiveFlushInFlight = false;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Machino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'V2026.04.03.03';
+        const APP_VERSION = 'V2026.04.03.04';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -5083,9 +5083,7 @@ function toggleDriveQuickRequestItem(domId) {
                 const desiredCaliper = String(firstNonEmptyValue(draft.caliper, item.CALIPER, '') || '').trim();
                 const reserveValue = String(draft.reserve || 'NO').trim() || 'NO';
                 const rowId = buildBloomPickerOrderRowId(orderNumber, item, index);
-                const locationCode = String(firstNonEmptyValue(item.LOCATIONCODE, item.LOCATION, '') || '').trim();
-                const priorityNumber = parseAppNumber(item.PRIORITY);
-                const autoPicNote = priorityNumber != null && priorityNumber > 1 && locationCode ? `${locationCode} PIC APPROVED.` : '';
+                const autoPicNote = getStandardPickNoteForItem(item);
                 const picNote = String(firstNonEmptyValue(autoPicNote, item.PIC_NOTE, item.PICKNOTE, item.PICK, '') || '').trim();
                 const photoLink = firstNonEmptyValue(item.SAVED_PHOTO_LINK, item.ROW_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']);
                 const photoName = firstNonEmptyValue(item.SAVED_PHOTO_NAME, item.ROW_PHOTO_NAME, item.PHOTO_NAME, item.PHOTONAME, item['PHOTO NAME']);
@@ -12208,7 +12206,8 @@ activeDriveTab = tab;
                 { label: 'LOC PHOTO MATCH', value: firstNonEmptyValue(item && item.REQ_MATCH, item && item.MATCH, item && item.MATCHPCT, ''), force: true, percent: true },
                 { label: 'LOC MATCH QTY', value: firstNonEmptyValue(item && item.LOC_MATCH_QTY, ''), force: false },
                 { label: 'Sales Note', value: firstNonEmptyValue(item && item.SALES_NOTE, item && item.SALESNOTE, item && item.SALESDESC, ''), force: false },
-                { label: 'Pick Note', value: firstNonEmptyValue(item && item.REQ_PICK, item && item.REQ_PIC_NOTE, item && item.PIC_NOTE, item && item.PICKNOTE, item && item.PICK, ''), force: false }
+                { label: 'Notes', value: getShareNotesValue(item), force: false },
+                { label: 'Pick Note', value: firstNonEmptyValue(getStandardPickNoteForItem(item), item && item.REQ_PICK, item && item.REQ_PIC_NOTE, item && item.PIC_NOTE, item && item.PICKNOTE, item && item.PICK, ''), force: false }
             ];
         }
 
@@ -12395,6 +12394,24 @@ ${folderNote ? `Folder Note: ${folderNote}
             ].map(value => String(value || '').trim()).filter(Boolean).join(' ');
         }
 
+        function getStandardPickNoteForItem(item) {
+            const locationCode = String(firstNonEmptyValue(item && item.LOCATIONCODE, item && item.LOCATION, '') || '').trim();
+            const priorityText = String(firstNonEmptyValue(item && item.PRIORITY, item && item.priority, '') || '').trim();
+            if (!locationCode || !priorityText || priorityText === '1') return '';
+            return `${locationCode} PICK APPROVED`;
+        }
+
+        function getShareNotesValue(item) {
+            return firstNonEmptyValue(
+                item && item.NOTES,
+                item && item.notes,
+                item && item.REQ_COMMENTS,
+                item && item.FLYER_NOTES,
+                item && item.DOCK_NOTE,
+                ''
+            );
+        }
+
         function getInventoryShareFieldRows(item) {
             return [
                 { label: 'Item Code', value: firstNonEmptyValue(item && item.ITEMCODE, item && item.itemcode, '-'), force: true },
@@ -12406,7 +12423,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                 { label: 'LOC PHOTO MATCH', value: firstNonEmptyValue(item && item.MATCH, item && item.REQ_MATCH, item && item.MATCHPCT, ''), force: true, percent: true },
                 { label: 'LOC MATCH QTY', value: firstNonEmptyValue(item && item.LOC_MATCH_QTY, ''), force: false },
                 { label: 'Sales Note', value: firstNonEmptyValue(item && item.SALES_NOTE, item && item.SALESNOTE, item && item.SALESDESC, ''), force: false },
-                { label: 'Pick Note', value: firstNonEmptyValue(item && item.PIC_NOTE, item && item.PICKNOTE, item && item.PICK, item && item.REQ_PICK, item && item.REQ_PIC_NOTE, ''), force: false }
+                { label: 'Notes', value: getShareNotesValue(item), force: false },
+                { label: 'Pick Note', value: firstNonEmptyValue(getStandardPickNoteForItem(item), item && item.PIC_NOTE, item && item.PICKNOTE, item && item.PICK, item && item.REQ_PICK, item && item.REQ_PIC_NOTE, ''), force: false }
             ];
         }
 
@@ -13484,6 +13502,12 @@ function toggleDriveSeason(s) {
                     syncSharedFlyerPhotoFields(itemToSave, prefix);
                 }
 
+                const standardPickNote = getStandardPickNoteForItem(itemToSave);
+                if (standardPickNote) {
+                    if (prefix === 'req-') itemToSave.REQ_PICK = standardPickNote;
+                    else if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-' || prefix === 'flyer-') itemToSave.PICK = standardPickNote;
+                }
+
                 const trackedStateAfterSave = captureTrackedAvState(itemToSave);
                 const trackedChangeFlags = getTrackedAvChangeFlags(trackedStateBeforeSave, trackedStateAfterSave, saveOptions);
                 const setVal = (val) => (val === '' || val === undefined) ? null : val;
@@ -14093,6 +14117,7 @@ function toggleDriveSeason(s) {
     </script>
 </body>
 </html>
+
 
 
 
