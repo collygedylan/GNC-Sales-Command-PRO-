@@ -446,7 +446,7 @@
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
                             <button id="run-google-script-btn" type="button" class="hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/25 bg-white/10 text-white text-[10px] font-black uppercase tracking-[0.14em] whitespace-nowrap shadow-sm active:scale-95" onclick="return runGoogleAppsScriptTrigger()"><i class="ph-bold ph-lightning text-sm"></i><span data-run-script-label>Run Script</span></button>
-                            <div id="header-version" class="nav-version-pill">V2026.04.03.15</div>
+                            <div id="header-version" class="nav-version-pill">V2026.04.03.16</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -2757,7 +2757,7 @@
         let pendingRequestArchiveFlushTimer = null;
         let pendingRequestArchiveFlushInFlight = false;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Maschino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'V2026.04.03.15';
+        const APP_VERSION = 'V2026.04.03.16';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -12405,7 +12405,7 @@ activeDriveTab = tab;
             const text = `${subject}
 ${folderNote ? `Folder Note: ${folderNote}
 ` : ''}${formatRequestItemsText(items, '', { includePhotoUrls: true })}`;
-            const copyText = formatRequestItemsText(items, '', { includePhotoUrls: false });
+            const copyText = formatRequestItemsText(items, '', { includePhotoUrls: true });
             const copyHtml = formatRequestItemsHtml(items);
             if (action === 'copy') {
                 copyTextWithFallback(copyText, copyHtml).then(() => {
@@ -12643,7 +12643,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             const copyHeaderLabel = items.length > 1 ? subject.toUpperCase() : '';
             const textHeaderLabel = subject.toUpperCase();
             if (action === 'copy') {
-                const copyText = formatInventoryItemsText(items, copyHeaderLabel, { includePhotoUrls: false });
+                const copyText = formatInventoryItemsText(items, copyHeaderLabel, { includePhotoUrls: true });
                 const copyHtml = formatInventoryItemsHtml(items, copyHeaderLabel);
                 await copyTextWithFallback(copyText, copyHtml);
                 showToast('Success', 'Copied to clipboard!');
@@ -12693,14 +12693,14 @@ ${folderNote ? `Folder Note: ${folderNote}
             if(action==='copy'){
                 if (isInventoryLikeTab) {
                     const headerLabel = selectedInventoryItems.length > 1 ? (((lastView==='drive' || lastView==='tasks') ? 'DRIVE MODE DATA' : 'SELECTED ROWS')) : '';
-                    const copyText = formatInventoryItemsText(selectedInventoryItems, headerLabel, { includePhotoUrls: false });
+                    const copyText = formatInventoryItemsText(selectedInventoryItems, headerLabel, { includePhotoUrls: true });
                     const copyHtml = formatInventoryItemsHtml(selectedInventoryItems, headerLabel);
                     copyTextWithFallback(copyText, copyHtml).then(()=>{showToast("Success","Copied to clipboard!");clearSelection()}).catch(()=>{showToast("Error","Could not copy text.",true);});
                     return;
                 }
                 if (isRequestTab) {
                     const headerLabel = selectedRequestItems.length > 1 ? 'REQUEST DATA' : '';
-                    const copyText = formatRequestItemsText(selectedRequestItems, headerLabel, { includePhotoUrls: false });
+                    const copyText = formatRequestItemsText(selectedRequestItems, headerLabel, { includePhotoUrls: true });
                     const copyHtml = formatRequestItemsHtml(selectedRequestItems, headerLabel);
                     copyTextWithFallback(copyText, copyHtml).then(()=>{showToast("Success","Copied to clipboard!");clearSelection()}).catch(()=>{showToast("Error","Could not copy text.",true);});
                     return;
