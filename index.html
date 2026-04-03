@@ -446,7 +446,7 @@
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
                             <button id="run-google-script-btn" type="button" class="hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/25 bg-white/10 text-white text-[10px] font-black uppercase tracking-[0.14em] whitespace-nowrap shadow-sm active:scale-95" onclick="return runGoogleAppsScriptTrigger()"><i class="ph-bold ph-lightning text-sm"></i><span data-run-script-label>Run Script</span></button>
-                            <div id="header-version" class="nav-version-pill">V2026.04.03.12</div>
+                            <div id="header-version" class="nav-version-pill">V2026.04.03.13</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -2757,7 +2757,7 @@
         let pendingRequestArchiveFlushTimer = null;
         let pendingRequestArchiveFlushInFlight = false;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Machino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'V2026.04.03.12';
+        const APP_VERSION = 'V2026.04.03.13';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -9190,7 +9190,7 @@ activeDriveTab = tab;
             const access = getRoleAccessState();
             const canUseInventoryActions = canUseCartInventoryActions(items);
             const canUseBloomOrders = canUseBloomPicker(items);
-            const canUseFlyerFromBloom = canUseInventoryActions && canUseDriveQuickRequest();
+            const canUseFlyerFromBloom = canUseDriveQuickRequest() && items.some((item) => item && !isRequestLikeItem(item) && !isDockLikeItem(item) && !isSalesOfficeLikeItem(item));
             if (access.isRep) {
                 return {
                     showCopy: true,
@@ -11571,7 +11571,7 @@ activeDriveTab = tab;
                 showToast('Restricted', 'CSR users can use Copy or Email from Bloom Picker.', true);
                 return;
             }
-            const canUseFlyerFromBloom = canUseDriveQuickRequest() && canUseCartInventoryActions(items);
+            const canUseFlyerFromBloom = canUseDriveQuickRequest() && items.some((item) => item && !isRequestLikeItem(item) && !isDockLikeItem(item) && !isSalesOfficeLikeItem(item));
             if ((access.isRep || access.isCsr) && (action === 'assign' || action === 'endcap' || (action === 'flyer' && !canUseFlyerFromBloom))) {
                 showToast('Restricted', access.isRep ? 'REP users can only Copy, Email, Text, Request, and Submit Order from Bloom Picker.' : 'CSR users can only Copy, Email, Request, and Submit Order from Bloom Picker.', true);
                 return;
