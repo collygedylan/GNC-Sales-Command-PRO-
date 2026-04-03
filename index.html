@@ -446,7 +446,7 @@
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
                             <button id="run-google-script-btn" type="button" class="hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/25 bg-white/10 text-white text-[10px] font-black uppercase tracking-[0.14em] whitespace-nowrap shadow-sm active:scale-95" onclick="return runGoogleAppsScriptTrigger()"><i class="ph-bold ph-lightning text-sm"></i><span data-run-script-label>Run Script</span></button>
-                            <div id="header-version" class="nav-version-pill">V2026.04.03.21</div>
+                            <div id="header-version" class="nav-version-pill">V2026.04.03.22</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -880,13 +880,16 @@
         const LOGIN_READ_TIMEOUT_MS = 8000;
         const SUPABASE_WRITE_TIMEOUT_MS = 22000;
         const SUPABASE_UPLOAD_TIMEOUT_MS = 45000;
-        const CACHE_PERSIST_DEBOUNCE_MS = 8000;
-        const CACHE_PERSIST_MIN_INTERVAL_MS = 25000;
-        const CACHE_PERSIST_HIDDEN_MIN_INTERVAL_MS = 4000;
+        const CACHE_PERSIST_DEBOUNCE_MS = 25000;
+        const CACHE_PERSIST_MIN_INTERVAL_MS = 90000;
+        const CACHE_PERSIST_HIDDEN_MIN_INTERVAL_MS = 6000;
+        const CACHE_PERSIST_REALTIME_VISIBLE_MIN_INTERVAL_MS = 180000;
+        const CACHE_PERSIST_ACTIVE_INTERACTION_GRACE_MS = 12000;
         const CACHE_PERSIST_IDLE_TIMEOUT_MS = 2500;
         const PHOTO_MAX_WIDTH = 900;
         const PHOTO_JPEG_QUALITY = 0.72;
         let pendingPhotoUploads = new Map();
+        let lastUserInteractionAt = Date.now();
         let viewportHeightSyncInitialized = false;
         let standaloneShellBaseHeight = 0;
         let detailFieldFocusResetTimer = null;
@@ -899,6 +902,13 @@
         function isStandaloneApp() {
             return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
         }
+
+        function markUserInteractionActivity() {
+            lastUserInteractionAt = Date.now();
+        }
+        window.addEventListener('pointerdown', markUserInteractionActivity, { passive: true });
+        window.addEventListener('touchstart', markUserInteractionActivity, { passive: true });
+        window.addEventListener('keydown', markUserInteractionActivity, { passive: true });
 
         function setRealtimeTableStatus(tableName = '', status = '') {
             const key = String(tableName || '').trim();
@@ -1950,7 +1960,7 @@
                 });
                 if (changedTables.size) flushRealtimeDatasetUpdates(Array.from(changedTables));
                 if (changed) {
-                    persistCurrentCache();
+                    persistCurrentCache(false, 'realtime');
                     touchSyncTimestamp();
                     updateSyncDiagnostics('realtime');
                 }
@@ -2757,7 +2767,7 @@
         let pendingRequestArchiveFlushTimer = null;
         let pendingRequestArchiveFlushInFlight = false;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Maschino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'V2026.04.03.21';
+        const APP_VERSION = 'V2026.04.03.22';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -3287,13 +3297,26 @@
             }, 0);
         }
 
-        function persistCurrentCache(immediate = false) {
+        function persistCurrentCache(immediate = false, reason = 'general') {
             pendingCachePersist = true;
+            if (immediate) {
+                clearScheduledCachePersist();
+                return runPersistCurrentCacheNow();
+            }
+            const visibleRealtime = !document.hidden && (reason === 'realtime' || liveSyncMode === 'realtime');
+            if (visibleRealtime && (cachePersistTimer || cachePersistIdleHandle)) return true;
             clearScheduledCachePersist();
-            if (immediate) return runPersistCurrentCacheNow();
-            const minGapMs = document.hidden ? CACHE_PERSIST_HIDDEN_MIN_INTERVAL_MS : CACHE_PERSIST_MIN_INTERVAL_MS;
-            const gapRemaining = Math.max(0, minGapMs - (Date.now() - lastCachePersistAt));
-            const delayMs = Math.max(CACHE_PERSIST_DEBOUNCE_MS, gapRemaining);
+            const now = Date.now();
+            const recentlyInteracting = !document.hidden && (now - lastUserInteractionAt) < CACHE_PERSIST_ACTIVE_INTERACTION_GRACE_MS;
+            let minGapMs = document.hidden ? CACHE_PERSIST_HIDDEN_MIN_INTERVAL_MS : CACHE_PERSIST_MIN_INTERVAL_MS;
+            let debounceMs = CACHE_PERSIST_DEBOUNCE_MS;
+            if (visibleRealtime) {
+                minGapMs = Math.max(minGapMs, CACHE_PERSIST_REALTIME_VISIBLE_MIN_INTERVAL_MS);
+                debounceMs = Math.max(debounceMs, 45000);
+            }
+            if (recentlyInteracting) debounceMs = Math.max(debounceMs, 45000);
+            const gapRemaining = Math.max(0, minGapMs - (now - lastCachePersistAt));
+            const delayMs = Math.max(debounceMs, gapRemaining);
             cachePersistTimer = setTimeout(() => {
                 cachePersistTimer = null;
                 queueIdleCachePersist();
