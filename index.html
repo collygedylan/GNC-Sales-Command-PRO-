@@ -446,7 +446,7 @@
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
                             <button id="run-google-script-btn" type="button" class="hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/25 bg-white/10 text-white text-[10px] font-black uppercase tracking-[0.14em] whitespace-nowrap shadow-sm active:scale-95" onclick="return runGoogleAppsScriptTrigger()"><i class="ph-bold ph-lightning text-sm"></i><span data-run-script-label>Run Script</span></button>
-                            <div id="header-version" class="nav-version-pill">V2026.04.02.08</div>
+                            <div id="header-version" class="nav-version-pill">V2026.04.02.09</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -880,6 +880,10 @@
         const LOGIN_READ_TIMEOUT_MS = 8000;
         const SUPABASE_WRITE_TIMEOUT_MS = 22000;
         const SUPABASE_UPLOAD_TIMEOUT_MS = 45000;
+        const CACHE_PERSIST_DEBOUNCE_MS = 8000;
+        const CACHE_PERSIST_MIN_INTERVAL_MS = 25000;
+        const CACHE_PERSIST_HIDDEN_MIN_INTERVAL_MS = 4000;
+        const CACHE_PERSIST_IDLE_TIMEOUT_MS = 2500;
         const PHOTO_MAX_WIDTH = 900;
         const PHOTO_JPEG_QUALITY = 0.72;
         let pendingPhotoUploads = new Map();
@@ -1087,6 +1091,10 @@
             if (cachePersistTimer) {
                 clearTimeout(cachePersistTimer);
                 cachePersistTimer = null;
+            }
+            if (cachePersistIdleHandle && typeof cancelIdleCallback === 'function') {
+                try { cancelIdleCallback(cachePersistIdleHandle); } catch (error) {}
+                cachePersistIdleHandle = null;
             }
             await deleteAppCacheDatabase();
         }
@@ -2492,7 +2500,6 @@
             return {
                 status: 'success',
                 data: buildCacheRows(fullInventory),
-                avOpenData: buildCacheRows(avOpenInventory),
                 requestsData: buildCacheRows(requestsInventory),
                 reservesData: inlineReserveRows,
                 socData: buildCacheRows(socInventory),
@@ -2517,7 +2524,7 @@
             const hasRows = (rows) => Array.isArray(rows) && rows.length > 0;
             return {
                 master: { initialLoaded: hasRows(cachedRes.data), fullLoaded: false },
-                avOpen: { initialLoaded: hasRows(cachedRes.avOpenData), fullLoaded: false },
+                avOpen: { initialLoaded: hasRows(cachedRes.avOpenData) || hasRows(cachedRes.data), fullLoaded: false },
                 requests: { initialLoaded: hasRows(cachedRes.requestsData), fullLoaded: false },
                 reserves: { initialLoaded: hasRows(cachedRes.reservesData), fullLoaded: false },
                 soc: { initialLoaded: hasRows(cachedRes.socData), fullLoaded: false },
@@ -2646,7 +2653,7 @@
         let backgroundRefreshInFlight=false;
         let lastBackgroundRefreshAt=0;
         let cacheWarmPromise=null;
-        let cachePersistTimer=null;
+        let cachePersistTimer=null; let cachePersistIdleHandle=null; let lastCachePersistAt=0; let pendingCachePersist=false;
         let currentUser=""; let currentUserDisplay=""; let currentRole=""; let safeRole=""; let repPermutations=[]; let activeItem=null; let lastView=""; let activeDetailTab="overview"; let selectedItems=new Set(); let cartPanelOpen=false; let cartUiObserver=null; let cartUiRefreshQueued=false; let lastCartToggleAt=0; let lastCartToggleDomId=""; let isMultiSelectMode=false; let pressTimer=null; let isLongPress=false; let touchStartX=0; let touchStartY=0; let pendingAction=null; let pendingTabType=null; let hasAppliedInitialHomeView=false;
         let dockAssignableUsers=[]; let dockAssignableUsersPromise=null;
         let dockTeamStatusByDock=new Map(); let dockTeamStatusPromise=null; let dockTeamStatusLoaded=false; let dockTeamSchemaReady=null; let dockTeamSchemaPromise=null; let dockTeamSchemaWarningShown=false;
@@ -2711,7 +2718,7 @@
         let pendingRequestArchiveFlushTimer = null;
         let pendingRequestArchiveFlushInFlight = false;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Machino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'V2026.04.02.08';
+        const APP_VERSION = 'V2026.04.02.09';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -2933,6 +2940,7 @@
             } else {
                 clearRequestViewLiveSync();
             }
+            if (document.hidden && pendingCachePersist) persistCurrentCache(true);
             if (!document.hidden) updateSyncDiagnostics();
         });
 
@@ -3211,14 +3219,45 @@
             return {};
         }
 
-        function persistCurrentCache(immediate = false) {
-            const runPersist = () => saveToCache(buildCacheSnapshot());
+        function clearScheduledCachePersist() {
             if (cachePersistTimer) { clearTimeout(cachePersistTimer); cachePersistTimer = null; }
-            if (immediate) return runPersist();
+            if (cachePersistIdleHandle && typeof cancelIdleCallback === 'function') {
+                try { cancelIdleCallback(cachePersistIdleHandle); } catch (error) {}
+            }
+            cachePersistIdleHandle = null;
+        }
+
+        function runPersistCurrentCacheNow() {
+            pendingCachePersist = false;
+            lastCachePersistAt = Date.now();
+            return saveToCache(buildCacheSnapshot()).catch(() => false);
+        }
+
+        function queueIdleCachePersist() {
+            if (typeof requestIdleCallback === 'function') {
+                cachePersistIdleHandle = requestIdleCallback(() => {
+                    cachePersistIdleHandle = null;
+                    runPersistCurrentCacheNow();
+                }, { timeout: CACHE_PERSIST_IDLE_TIMEOUT_MS });
+                return;
+            }
+            setTimeout(() => {
+                runPersistCurrentCacheNow();
+            }, 0);
+        }
+
+        function persistCurrentCache(immediate = false) {
+            pendingCachePersist = true;
+            clearScheduledCachePersist();
+            if (immediate) return runPersistCurrentCacheNow();
+            const minGapMs = document.hidden ? CACHE_PERSIST_HIDDEN_MIN_INTERVAL_MS : CACHE_PERSIST_MIN_INTERVAL_MS;
+            const gapRemaining = Math.max(0, minGapMs - (Date.now() - lastCachePersistAt));
+            const delayMs = Math.max(CACHE_PERSIST_DEBOUNCE_MS, gapRemaining);
             cachePersistTimer = setTimeout(() => {
                 cachePersistTimer = null;
-                runPersist();
-            }, 2600);
+                queueIdleCachePersist();
+            }, delayMs);
+            return true;
         }
 
         function isDatasetLoaded(key, mode = 'initial') {
@@ -6179,8 +6218,13 @@ function toggleDriveQuickRequestItem(domId) {
                 invalidateMasterDerivedInventories();
             }
 
-            if (hasAvOpen) {
-                avOpenInventory = (res.avOpenData || []).map((item,idx)=>{item.DOM_ID='avo_'+(item.UNIQUE_ID || idx);return buildSearchIndex(normalizeRowPhotoFields(item));});
+            const shouldRebuildAvOpenFromMaster = hasMaster && !hasAvOpen;
+            if (hasAvOpen || shouldRebuildAvOpenFromMaster) {
+                const avOpenSource = hasAvOpen
+                    ? (res.avOpenData || [])
+                    : buildAvOpenInventoryFromMasterItems(fullInventory).map((item) => ({ ...item }));
+                avOpenInventory = avOpenSource.map((item,idx)=>{item.DOM_ID='avo_'+(item.UNIQUE_ID || idx);return buildSearchIndex(normalizeRowPhotoFields(item));});
+                if (shouldRebuildAvOpenFromMaster && !changedDatasetKeys.includes('avOpen')) changedDatasetKeys.push('avOpen');
             }
 
             if (hasRequests || (hasMaster && requestsInventory.length)) {
@@ -13913,6 +13957,9 @@ function toggleDriveSeason(s) {
     </script>
 </body>
 </html>
+
+
+
 
 
 
