@@ -446,7 +446,7 @@
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
                             <button id="run-google-script-btn" type="button" class="hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/25 bg-white/10 text-white text-[10px] font-black uppercase tracking-[0.14em] whitespace-nowrap shadow-sm active:scale-95" onclick="return runGoogleAppsScriptTrigger()"><i class="ph-bold ph-lightning text-sm"></i><span data-run-script-label>Run Script</span></button>
-                            <div id="header-version" class="nav-version-pill">V2026.04.03.19</div>
+                            <div id="header-version" class="nav-version-pill">V2026.04.03.20</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -2757,7 +2757,7 @@
         let pendingRequestArchiveFlushTimer = null;
         let pendingRequestArchiveFlushInFlight = false;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Maschino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'V2026.04.03.19';
+        const APP_VERSION = 'V2026.04.03.20';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -13717,6 +13717,14 @@ function toggleDriveSeason(s) {
                             if (String(itemToSave.REQ_PHOTO_LINK || '').trim() === '' && reusableRequestData.photoLink) itemToSave.REQ_PHOTO_LINK = reusableRequestData.photoLink;
                             if (String(itemToSave.REQ_PHOTO_NAME || '').trim() === '' && reusableRequestData.photoName) itemToSave.REQ_PHOTO_NAME = reusableRequestData.photoName;
                             calculateMatchQty('req-');
+                        }
+                        if (String(itemToSave.REQ_PHOTO_LINK || '').trim() === '') {
+                            const fallbackReqPhotoLink = String(firstNonEmptyValue(itemToSave.SAVED_PHOTO_LINK, requestMasterItem ? requestMasterItem.SAVED_PHOTO_LINK : '', itemToSave.PHOTO_LINK, itemToSave.PHOTOLINK, itemToSave['PHOTO LINK'])).trim();
+                            const fallbackReqPhotoName = String(firstNonEmptyValue(itemToSave.SAVED_PHOTO_NAME, requestMasterItem ? requestMasterItem.SAVED_PHOTO_NAME : '', itemToSave.PHOTO_NAME, itemToSave.PHOTONAME, itemToSave['PHOTO NAME'])).trim();
+                            if (fallbackReqPhotoLink) {
+                                itemToSave.REQ_PHOTO_LINK = fallbackReqPhotoLink;
+                                itemToSave.REQ_PHOTO_NAME = fallbackReqPhotoName;
+                            }
                         }
                         const effectiveAvNote = String(itemToSave.AV_NOTE || '').trim();
                         const effectiveMatch = parseAppNumber(itemToSave.REQ_MATCH);
