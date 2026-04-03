@@ -446,7 +446,7 @@
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
                             <button id="run-google-script-btn" type="button" class="hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/25 bg-white/10 text-white text-[10px] font-black uppercase tracking-[0.14em] whitespace-nowrap shadow-sm active:scale-95" onclick="return runGoogleAppsScriptTrigger()"><i class="ph-bold ph-lightning text-sm"></i><span data-run-script-label>Run Script</span></button>
-                            <div id="header-version" class="nav-version-pill">V2026.04.03.13</div>
+                            <div id="header-version" class="nav-version-pill">V2026.04.03.14</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -2757,7 +2757,7 @@
         let pendingRequestArchiveFlushTimer = null;
         let pendingRequestArchiveFlushInFlight = false;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Machino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'V2026.04.03.13';
+        const APP_VERSION = 'V2026.04.03.14';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -7563,8 +7563,10 @@ activeDriveTab = tab;
                 payload.repEmail = resolveRequestRecipientEmail(repName);
                 const requestItems = Array.isArray(details && details.items) ? details.items : [];
                 if (requestItems.length) {
-                    payload.formattedItemsHtml = formatRequestItemsHtml(requestItems);
-                    payload.formattedItemsText = formatRequestItemsText(requestItems, '', { includePhotoUrls: true });
+                    const requestItemsHtml = formatRequestItemsHtml(requestItems);
+                    const requestItemsText = formatRequestItemsText(requestItems, '', { includePhotoUrls: true });
+                    payload.formattedItemsHtml = String(requestItemsHtml || '').replace(/LOC MATCH %/gi, 'LOC PHOTO MATCH');
+                    payload.formattedItemsText = String(requestItemsText || '').replace(/LOC MATCH %/gi, 'LOC PHOTO MATCH');
                 }
                 const folderNote = String(details && details.folderNote ? details.folderNote : '').trim();
                 if (folderNote) payload.folderNote = folderNote;
@@ -13674,11 +13676,48 @@ function toggleDriveSeason(s) {
                     qualifiesForOpenStockView = isAvEligibleRequest && ltsValue > 0 && !requestSeason.includes('Y') && !requestSeason.includes('Z');
                     const needsCaliper = effectivePlantGroup && String(effectivePlantGroup).includes('330_TREES') && ['#7','#10','#15','#25','#45'].includes(effectiveContSize);
                     if (isComplete && isAvEligibleRequest) {
+                        const reusableRequestData = getRequestReusableData(itemToSave);
+                        const shouldOfferCurrentData = parseAppNumber(itemToSave.REQ_MATCH) == null && reusableRequestData.hasData && parseAppNumber(reusableRequestData.match) != null;
+                        if (shouldOfferCurrentData) {
+                            const useCurrentData = window.confirm('Use current data for this request?');
+                            if (!useCurrentData) {
+                                if (btnComp) btnComp.innerText = 'MARK DONE';
+                                return;
+                            }
+                            if (String(itemToSave.REQ_MATCH || '').trim() === '') {
+                                itemToSave.REQ_MATCH = reusableRequestData.match;
+                                const reqMatchEl = document.getElementById('req-match');
+                                if (reqMatchEl) reqMatchEl.value = reusableRequestData.match;
+                            }
+                            if (String(itemToSave.AV_NOTE || '').trim() === '' && reusableRequestData.avNote) {
+                                itemToSave.AV_NOTE = reusableRequestData.avNote;
+                                const reqAvEl = document.getElementById('req-av-note');
+                                if (reqAvEl) reqAvEl.value = reusableRequestData.avNote;
+                            }
+                            if (String(itemToSave.REQ_SPEC || '').trim() === '' && reusableRequestData.spec) {
+                                itemToSave.REQ_SPEC = reusableRequestData.spec;
+                                const reqSpecEl = document.getElementById('req-spec');
+                                if (reqSpecEl) reqSpecEl.value = reusableRequestData.spec;
+                            }
+                            if (String(itemToSave.REQ_CALIPER || '').trim() === '' && reusableRequestData.caliper) {
+                                itemToSave.REQ_CALIPER = reusableRequestData.caliper;
+                                const reqCalEl = document.getElementById('req-caliper');
+                                if (reqCalEl) reqCalEl.value = reusableRequestData.caliper;
+                            }
+                            if (String(itemToSave.REQ_PICK || '').trim() === '' && reusableRequestData.pick) {
+                                itemToSave.REQ_PICK = reusableRequestData.pick;
+                                const reqPickEl = document.getElementById('req-pick');
+                                if (reqPickEl) reqPickEl.value = reusableRequestData.pick;
+                            }
+                            if (String(itemToSave.REQ_PHOTO_LINK || '').trim() === '' && reusableRequestData.photoLink) itemToSave.REQ_PHOTO_LINK = reusableRequestData.photoLink;
+                            if (String(itemToSave.REQ_PHOTO_NAME || '').trim() === '' && reusableRequestData.photoName) itemToSave.REQ_PHOTO_NAME = reusableRequestData.photoName;
+                            calculateMatchQty('req-');
+                        }
                         const effectiveAvNote = String(itemToSave.AV_NOTE || '').trim();
                         const effectiveMatch = parseAppNumber(itemToSave.REQ_MATCH);
                         const effectiveSpec = String(itemToSave.REQ_SPEC || itemToSave.SPEC || '').trim();
                         const effectiveCaliper = String(itemToSave.REQ_CALIPER || itemToSave.CALIPER || '').trim();
-                        if (effectiveMatch == null) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required','LOC Match % is required before completing this request.',true); return; }
+                        if (effectiveMatch == null) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required','LOC Photo Match is required before completing this request.',true); return; }
                         if (!effectiveAvNote) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required','AV Note is required before completing this request.',true); return; }
                         if (!effectiveSpec) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required','Spec is required before completing this request.',true); return; }
                         if (needsCaliper && !effectiveCaliper) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required','Caliper is required for this request.',true); return; }
