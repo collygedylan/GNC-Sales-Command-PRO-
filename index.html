@@ -446,7 +446,7 @@
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
                             <button id="run-google-script-btn" type="button" class="hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/25 bg-white/10 text-white text-[10px] font-black uppercase tracking-[0.14em] whitespace-nowrap shadow-sm active:scale-95" onclick="return runGoogleAppsScriptTrigger()"><i class="ph-bold ph-lightning text-sm"></i><span data-run-script-label>Run Script</span></button>
-                            <div id="header-version" class="nav-version-pill">V2026.04.03.25</div>
+                            <div id="header-version" class="nav-version-pill">V2026.04.03.26</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -2769,7 +2769,7 @@
         let pendingRequestArchiveFlushTimer = null;
         let pendingRequestArchiveFlushInFlight = false;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Maschino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'V2026.04.03.25';
+        const APP_VERSION = 'V2026.04.03.26';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -14188,80 +14188,119 @@ function toggleDriveSeason(s) {
             };
 
             const uploadPromise = new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onerror = () => reject(new Error('Could not read the selected image.'));
-                reader.onload = function(event) {
-                    const img = new Image();
-                    img.onerror = () => reject(new Error('Could not process the selected image.'));
-                    img.src = event.target.result;
-                    img.onload = function() {
-                        const canvas = document.createElement('canvas');
-                        const targetMaxWidth = isLagSensitiveDetailPrefix(prefix) ? 720 : PHOTO_MAX_WIDTH;
-                        const targetJpegQuality = isLagSensitiveDetailPrefix(prefix) ? 0.64 : PHOTO_JPEG_QUALITY;
-                        const scaleSize = img.width > targetMaxWidth ? targetMaxWidth / img.width : 1;
-
-                        canvas.width = Math.max(1, Math.round(img.width * scaleSize));
-                        canvas.height = Math.max(1, Math.round(img.height * scaleSize));
-
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-                        canvas.toBlob(async (blob) => {
-                            if (!blob) {
-                                reject(new Error('Could not compress the selected image.'));
-                                return;
-                            }
-                            try {
-                                showToast('Uploading', 'Sending photo to Supabase...', false);
-
-                                const bucketName = PHOTO_BUCKETS[prefix] || PHOTO_BUCKETS.default;
-                                const clean = (t) => String(t || 'NA').replace(/[^a-zA-Z0-9_-]/g, '');
-                                const fileName = `${clean(itemToUpload.COMMONNAME)}-${clean(itemToUpload.CONTSIZE)}-${Date.now()}.jpg`;
-                                const filePath = `${new Date().toISOString().split('T')[0]}/${fileName}`;
-
-                                const uploadResult = await withTimeout(
-                                    supabaseClient.storage.from(bucketName).upload(filePath, blob, {
-                                        contentType: 'image/jpeg',
-                                        upsert: true
-                                    }),
-                                    SUPABASE_UPLOAD_TIMEOUT_MS,
-                                    'Photo upload'
-                                );
-                                const uploadError = uploadResult && uploadResult.error ? uploadResult.error : null;
-                                if (uploadError) throw uploadError;
-
-                                const { data: publicUrlData } = supabaseClient.storage.from(bucketName).getPublicUrl(filePath);
-                                const publicUrl = publicUrlData.publicUrl;
-
-                                if (prefix === 'req-') {
-                                    itemToUpload.REQ_PHOTO_LINK = appendCsvValue(itemToUpload.REQ_PHOTO_LINK, publicUrl);
-                                    itemToUpload.REQ_PHOTO_NAME = appendCsvValue(itemToUpload.REQ_PHOTO_NAME, fileName);
-                                } else if (prefix === 'dock-') {
-                                    itemToUpload.DOCK_PHOTO_LINK = appendCsvValue(itemToUpload.DOCK_PHOTO_LINK, publicUrl);
-                                    itemToUpload.DOCK_PHOTO_NAME = appendCsvValue(itemToUpload.DOCK_PHOTO_NAME, fileName);
-                                } else if (prefix === 'flyer-') {
-                                    itemToUpload.FLYER_PHOTO_LINK = appendCsvValue(itemToUpload.FLYER_PHOTO_LINK, publicUrl);
-                                    itemToUpload.FLYER_PHOTO_NAME = appendCsvValue(itemToUpload.FLYER_PHOTO_NAME, fileName);
-                                } else {
-                                    itemToUpload.SAVED_PHOTO_LINK = appendCsvValue(itemToUpload.SAVED_PHOTO_LINK, publicUrl);
-                                    itemToUpload.SAVED_PHOTO_NAME = appendCsvValue(itemToUpload.SAVED_PHOTO_NAME, fileName);
-                                }
-
-                                syncSharedFlyerPhotoFields(itemToUpload, prefix);
-                                normalizeRowPhotoFields(itemToUpload);
-                                saveData(false, prefix, true, itemToUpload, { photoChanged: true });
-                                showToast('Success', 'Photo uploaded successfully!');
-                                resolve(publicUrl);
-                            } catch (err) {
-                                showToast('Error', `Upload failed: ${err.message || 'Unknown error'}`, true);
-                                reject(err);
-                            } finally {
-                                input.value = '';
-                            }
-                        }, 'image/jpeg', targetJpegQuality);
-                    };
+                let objectUrl = '';
+                let bitmap = null;
+                let img = null;
+                let canvas = null;
+                const cleanupUploadResources = () => {
+                    if (bitmap && typeof bitmap.close === 'function') {
+                        try { bitmap.close(); } catch (e) {}
+                    }
+                    bitmap = null;
+                    if (img) {
+                        img.onload = null;
+                        img.onerror = null;
+                        try { img.src = ''; } catch (e) {}
+                    }
+                    img = null;
+                    if (canvas) {
+                        canvas.width = 1;
+                        canvas.height = 1;
+                    }
+                    canvas = null;
+                    if (objectUrl) {
+                        try { URL.revokeObjectURL(objectUrl); } catch (e) {}
+                        objectUrl = '';
+                    }
                 };
-                requestAnimationFrame(() => reader.readAsDataURL(file));
+                const failUpload = (error) => {
+                    cleanupUploadResources();
+                    input.value = '';
+                    reject(error instanceof Error ? error : new Error(String(error || 'Could not process the selected image.')));
+                };
+                const beginUpload = async (sourceImage) => {
+                    const sourceWidth = Number(sourceImage.width || sourceImage.naturalWidth || 0);
+                    const sourceHeight = Number(sourceImage.height || sourceImage.naturalHeight || 0);
+                    if (!sourceWidth || !sourceHeight) throw new Error('Could not process the selected image.');
+                    canvas = document.createElement('canvas');
+                    const targetMaxWidth = isLagSensitiveDetailPrefix(prefix) ? 720 : PHOTO_MAX_WIDTH;
+                    const targetJpegQuality = isLagSensitiveDetailPrefix(prefix) ? 0.64 : PHOTO_JPEG_QUALITY;
+                    const scaleSize = sourceWidth > targetMaxWidth ? targetMaxWidth / sourceWidth : 1;
+                    canvas.width = Math.max(1, Math.round(sourceWidth * scaleSize));
+                    canvas.height = Math.max(1, Math.round(sourceHeight * scaleSize));
+                    const ctx = canvas.getContext('2d', { alpha: false });
+                    if (!ctx) throw new Error('Could not prepare the selected image.');
+                    ctx.imageSmoothingEnabled = true;
+                    ctx.imageSmoothingQuality = 'high';
+                    ctx.drawImage(sourceImage, 0, 0, canvas.width, canvas.height);
+                    canvas.toBlob(async (blob) => {
+                        if (!blob) {
+                            failUpload(new Error('Could not compress the selected image.'));
+                            return;
+                        }
+                        try {
+                            showToast('Uploading', 'Sending photo to Supabase...', false);
+                            const bucketName = PHOTO_BUCKETS[prefix] || PHOTO_BUCKETS.default;
+                            const clean = (t) => String(t || 'NA').replace(/[^a-zA-Z0-9_-]/g, '');
+                            const fileName = clean(itemToUpload.COMMONNAME) + '-' + clean(itemToUpload.CONTSIZE) + '-' + Date.now() + '.jpg';
+                            const filePath = new Date().toISOString().split('T')[0] + '/' + fileName;
+                            const uploadResult = await withTimeout(
+                                supabaseClient.storage.from(bucketName).upload(filePath, blob, {
+                                    contentType: 'image/jpeg',
+                                    upsert: true
+                                }),
+                                SUPABASE_UPLOAD_TIMEOUT_MS,
+                                'Photo upload'
+                            );
+                            const uploadError = uploadResult && uploadResult.error ? uploadResult.error : null;
+                            if (uploadError) throw uploadError;
+                            const { data: publicUrlData } = supabaseClient.storage.from(bucketName).getPublicUrl(filePath);
+                            const publicUrl = publicUrlData.publicUrl;
+                            if (prefix === 'req-') {
+                                itemToUpload.REQ_PHOTO_LINK = appendCsvValue(itemToUpload.REQ_PHOTO_LINK, publicUrl);
+                                itemToUpload.REQ_PHOTO_NAME = appendCsvValue(itemToUpload.REQ_PHOTO_NAME, fileName);
+                            } else if (prefix === 'dock-') {
+                                itemToUpload.DOCK_PHOTO_LINK = appendCsvValue(itemToUpload.DOCK_PHOTO_LINK, publicUrl);
+                                itemToUpload.DOCK_PHOTO_NAME = appendCsvValue(itemToUpload.DOCK_PHOTO_NAME, fileName);
+                            } else if (prefix === 'flyer-') {
+                                itemToUpload.FLYER_PHOTO_LINK = appendCsvValue(itemToUpload.FLYER_PHOTO_LINK, publicUrl);
+                                itemToUpload.FLYER_PHOTO_NAME = appendCsvValue(itemToUpload.FLYER_PHOTO_NAME, fileName);
+                            } else {
+                                itemToUpload.SAVED_PHOTO_LINK = appendCsvValue(itemToUpload.SAVED_PHOTO_LINK, publicUrl);
+                                itemToUpload.SAVED_PHOTO_NAME = appendCsvValue(itemToUpload.SAVED_PHOTO_NAME, fileName);
+                            }
+                            syncSharedFlyerPhotoFields(itemToUpload, prefix);
+                            normalizeRowPhotoFields(itemToUpload);
+                            saveData(false, prefix, true, itemToUpload, { photoChanged: true });
+                            showToast('Success', 'Photo uploaded successfully!');
+                            resolve(publicUrl);
+                        } catch (err) {
+                            showToast('Error', 'Upload failed: ' + (err.message || 'Unknown error'), true);
+                            reject(err);
+                        } finally {
+                            input.value = '';
+                            cleanupUploadResources();
+                        }
+                    }, 'image/jpeg', targetJpegQuality);
+                };
+                const startFallbackImageLoad = () => {
+                    objectUrl = URL.createObjectURL(file);
+                    img = new Image();
+                    img.decoding = 'async';
+                    img.onerror = () => failUpload(new Error('Could not process the selected image.'));
+                    img.onload = () => beginUpload(img).catch(failUpload);
+                    img.src = objectUrl;
+                };
+                if (window.createImageBitmap) {
+                    createImageBitmap(file)
+                        .then((imageBitmap) => {
+                            bitmap = imageBitmap;
+                            return beginUpload(imageBitmap);
+                        })
+                        .catch(() => startFallbackImageLoad());
+                } else {
+                    startFallbackImageLoad();
+                }
             });
 
             registerPendingPhotoUpload(itemToUpload, prefix, uploadPromise);
