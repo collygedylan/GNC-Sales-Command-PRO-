@@ -445,7 +445,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-                            <div id="header-version" class="nav-version-pill">V2026.04.03.31</div>
+                            <div id="header-version" class="nav-version-pill">V2026.04.03.32</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -504,7 +504,7 @@
                             <div class="min-w-0 flex-1">
                                 <div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Supabase Upload Status</div>
                                 <div id="dashboard-sync-stamp" class="mt-2 text-lg font-black text-slate-900">Awaiting imported file data</div>
-                                <div id="dashboard-sync-summary" class="mt-1 text-xs font-semibold text-slate-500">Tap to view the latest uploaded file names loaded from Supabase.</div>
+                                <div id="dashboard-sync-summary" class="hidden"></div>
                             </div>
                             <div class="flex items-center gap-2 flex-shrink-0">
                                 <button id="run-google-script-btn" type="button" class="hidden inline-flex items-center gap-1.5 px-3 py-2 rounded-2xl border border-emerald-200 bg-emerald-50 text-[#007a4d] text-[10px] font-black uppercase tracking-[0.14em] whitespace-nowrap shadow-sm active:scale-95" onclick="event.preventDefault(); event.stopPropagation(); return runGoogleAppsScriptTrigger()"><i class="ph-bold ph-lightning text-sm"></i><span data-run-script-label>Run Script</span></button>
@@ -2787,7 +2787,7 @@
         let pendingRequestArchiveFlushTimer = null;
         let pendingRequestArchiveFlushInFlight = false;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Maschino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'V2026.04.03.31';
+        const APP_VERSION = 'V2026.04.03.32';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -10855,7 +10855,7 @@ activeDriveTab = tab;
             ].filter((entry) => entry.iso || entry.files.length);
             if (!sourceSummaries.length) {
                 stampEl.innerText = 'Awaiting imported file data';
-                summaryEl.innerText = 'Tap to view the latest uploaded file names loaded from Supabase.';
+                summaryEl.innerText = ''; 
                 filesEl.innerHTML = '<div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-semibold text-slate-400">No imported file metadata loaded yet.</div>';
                 return;
             }
@@ -10864,7 +10864,7 @@ activeDriveTab = tab;
                 return winner;
             }, null);
             stampEl.innerText = formatDashboardSyncDateTime(overall && overall.iso ? overall.iso : '');
-            summaryEl.innerText = 'Tap to view the latest uploaded file names loaded from Supabase.';
+            summaryEl.innerText = ''; 
             filesEl.innerHTML = sourceSummaries.map((entry) => {
                 const fileListHtml = entry.files.length
                     ? entry.files.map((fileName) => '<div class="truncate">' + escapeDashboardSyncText(fileName) + '</div>').join('')
