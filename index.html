@@ -88,6 +88,34 @@
         .camera-capture-pill.active{background:#007a4d;color:#fff;border-color:#007a4d;box-shadow:0 10px 24px rgba(0,122,77,.18)}
         .camera-capture-video-shell{position:relative;overflow:hidden;border-radius:1.35rem;border:1px solid rgba(15,23,42,.08);background:radial-gradient(circle at top,#14532d 0%,#0f172a 58%,#020617 100%);box-shadow:0 18px 34px rgba(15,23,42,.22)}
         .camera-capture-video-shell video,.camera-capture-video-shell canvas{width:100%;height:100%;display:block;object-fit:cover;background:#020617}
+        .camera-capture-pill{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:.58rem .95rem;border-radius:999px;border:1px solid rgba(255,255,255,.14);background:rgba(15,23,42,.42);color:rgba(255,255,255,.72);font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;box-shadow:none;transition:background .16s ease,color .16s ease,border-color .16s ease,transform .16s ease}
+        .camera-capture-pill:active{transform:scale(.98)}
+        .camera-capture-pill.active{background:#fff;color:#020617;border-color:#fff;box-shadow:0 12px 24px rgba(255,255,255,.14)}
+        .camera-capture-video-shell{position:relative;overflow:hidden;border-radius:0;border:none;background:radial-gradient(circle at top,#166534 0%,#0f172a 56%,#020617 100%);box-shadow:none}
+        .camera-capture-video-shell video,.camera-capture-video-shell canvas{width:100%;height:100%;display:block;object-fit:cover;background:#020617}
+        .camera-capture-modal-shell{position:relative;display:flex;flex-direction:column;width:min(100vw,480px);height:min(100svh,100vh);background:#020617;overflow:hidden}
+        .camera-capture-preview-stage{position:relative;flex:1;min-height:0;background:#020617}
+        .camera-capture-topbar{position:absolute;left:0;right:0;top:0;z-index:10;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:calc(env(safe-area-inset-top) + 12px) 16px 18px;background:linear-gradient(180deg,rgba(2,6,23,.82) 0%,rgba(2,6,23,.14) 100%)}
+        .camera-capture-close-btn{display:inline-flex;align-items:center;justify-content:center;height:44px;width:44px;border-radius:999px;background:rgba(15,23,42,.45);border:1px solid rgba(255,255,255,.12);color:#fff;font-size:26px;backdrop-filter:blur(10px)}
+        .camera-capture-bottom-sheet{position:absolute;left:0;right:0;bottom:0;z-index:10;padding:16px 18px calc(env(safe-area-inset-bottom) + 18px);background:linear-gradient(180deg,rgba(2,6,23,0) 0%,rgba(2,6,23,.28) 18%,rgba(2,6,23,.82) 42%,rgba(2,6,23,.96) 100%)}
+        .camera-capture-mode-row{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:18px;overflow-x:auto;scrollbar-width:none}
+        .camera-capture-mode-row::-webkit-scrollbar{display:none}
+        .camera-capture-mode-chip{display:inline-flex;align-items:center;justify-content:center;min-width:92px;padding:.72rem 1rem;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:rgba(15,23,42,.38);color:rgba(255,255,255,.72);font-size:11px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;backdrop-filter:blur(10px);transition:all .16s ease}
+        .camera-capture-mode-chip.active{background:#fff;color:#020617;border-color:#fff;box-shadow:0 10px 20px rgba(255,255,255,.16)}
+        .camera-capture-mode-chip:disabled{opacity:.45;pointer-events:none}
+        .camera-capture-shutter{position:relative;display:inline-flex;align-items:center;justify-content:center;width:84px;height:84px;border-radius:999px;border:4px solid rgba(255,255,255,.92);background:rgba(255,255,255,.12);box-shadow:0 18px 34px rgba(2,6,23,.36);transition:transform .16s ease,opacity .16s ease,box-shadow .16s ease}
+        .camera-capture-shutter::before{content:'';display:block;width:64px;height:64px;border-radius:999px;background:#fff;box-shadow:inset 0 0 0 1px rgba(15,23,42,.06)}
+        .camera-capture-shutter:active{transform:scale(.96)}
+        .camera-capture-secondary{display:inline-flex;align-items:center;justify-content:center;min-width:74px;min-height:44px;padding:.72rem .9rem;border-radius:999px;border:1px solid rgba(255,255,255,.14);background:rgba(15,23,42,.4);color:#fff;font-size:11px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;backdrop-filter:blur(10px)}
+        .camera-capture-secondary:active{transform:scale(.98)}
+        @media (min-width: 768px){
+            #camera-capture-modal{padding:24px;align-items:center;justify-content:center;background:rgba(2,6,23,.84)}
+            .camera-capture-modal-shell{height:min(92vh,900px);border-radius:28px;box-shadow:0 30px 70px rgba(2,6,23,.5)}
+        }
+        @media (max-width: 767px){
+            #camera-capture-modal{padding:0;align-items:stretch;justify-content:stretch}
+            .camera-capture-modal-shell{width:100vw;height:100svh}
+        }
         #drive-search-container,#av-search-container,#reserves-search-container,#docks-search-container{position:-webkit-sticky;position:sticky;top:0;z-index:45}
         .nav-header{position:-webkit-sticky;position:sticky;top:0;z-index:60;padding:max(10px,env(safe-area-inset-top)) var(--shell-gutter) 12px;background:linear-gradient(180deg,#007a4d 0%,#0d8b5d 100%);box-shadow:0 10px 24px rgba(7,94,63,.18)}
         .nav-header-shell{display:flex;flex-direction:column;gap:.5rem;width:var(--shell-width);max-width:var(--shell-width);margin:0 auto}
@@ -181,45 +209,36 @@
         <button id="photo-modal-next" type="button" class="hidden absolute right-4 top-1/2 -translate-y-1/2 z-50 items-center justify-center w-12 h-12 rounded-full bg-black/45 text-white text-2xl shadow-lg active:scale-95" onclick="event.stopPropagation(); stepPhotoModal(1)" aria-label="Next photo"><i class="ph-bold ph-caret-right"></i></button>
         <div id="photo-swipe-hint" class="absolute bottom-10 text-white text-xs font-bold uppercase tracking-widest opacity-50 hidden pointer-events-none"><i class="ph-bold ph-arrows-left-right mr-1 text-lg align-middle"></i> Swipe for more</div>
     </div>
-    <div id="camera-capture-modal" class="hidden fixed inset-0 z-[15500] bg-slate-950/80 backdrop-blur-sm p-4 flex items-center justify-center">
-        <div class="w-full max-w-xl rounded-[1.6rem] bg-white shadow-2xl border border-emerald-100 overflow-hidden">
-            <div class="flex items-center justify-between gap-3 px-5 py-4 border-b border-emerald-100 bg-gradient-to-r from-emerald-50 to-white">
-                <div class="min-w-0">
-                    <div id="camera-capture-title" class="text-[11px] font-black uppercase tracking-[0.18em] text-emerald-700">Camera</div>
-                    <div class="text-sm font-bold text-slate-500 mt-1">Choose the fastest capture mode for this row.</div>
-                </div>
-                <button type="button" class="h-11 w-11 rounded-2xl border border-emerald-100 bg-white text-2xl text-emerald-700 shadow-sm active:scale-95" onclick="closeCameraCaptureModal()"><i class="ph-bold ph-x"></i></button>
-            </div>
-            <div class="px-5 py-5 space-y-4">
-                <div class="flex flex-wrap gap-2 items-center">
-                    <button id="camera-capture-mode-standard" type="button" class="camera-capture-pill" onclick="setCameraCaptureMode('standard')">Standard</button>
-                    <button id="camera-capture-mode-video" type="button" class="camera-capture-pill" onclick="setCameraCaptureMode('video')">Video</button>
-                    <button id="camera-capture-portrait-toggle" type="button" class="camera-capture-pill ml-auto" onclick="toggleCameraPortraitMode()">Portrait Off</button>
-                </div>
-                <div id="camera-capture-status" class="text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">Standard mode opens the device camera. Video mode keeps the preview in-app.</div>
-                <div id="camera-capture-standard-panel" class="space-y-3">
-                    <div class="rounded-[1.25rem] border border-dashed border-emerald-200 bg-emerald-50/70 px-4 py-5 text-center">
-                        <div class="text-[11px] font-black uppercase tracking-[0.16em] text-emerald-700">Standard Camera</div>
-                        <div class="mt-2 text-sm font-semibold text-slate-600">Use the device camera for the quickest capture. Portrait mode, when on, is applied after the photo is taken.</div>
-                    </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <button id="camera-capture-standard-open" type="button" class="inline-flex items-center justify-center gap-2 rounded-[1.1rem] bg-[#007a4d] px-4 py-4 text-sm font-black uppercase tracking-[0.12em] text-white shadow-lg active:scale-[0.98]" onclick="triggerStandardCameraCapture()"><i class="ph-bold ph-camera"></i>Open Camera</button>
-                        <button type="button" class="inline-flex items-center justify-center gap-2 rounded-[1.1rem] border border-emerald-200 bg-white px-4 py-4 text-sm font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm active:scale-[0.98]" onclick="setCameraCaptureMode('video')"><i class="ph-bold ph-video-camera"></i>Use Video Mode</button>
+    <div id="camera-capture-modal" class="hidden fixed inset-0 z-[15500] bg-black">
+        <div class="camera-capture-modal-shell mx-auto">
+            <div class="camera-capture-preview-stage">
+                <div class="camera-capture-video-shell h-full w-full">
+                    <video id="camera-capture-video" playsinline muted autoplay></video>
+                    <canvas id="camera-capture-canvas" class="hidden"></canvas>
+                    <div id="camera-capture-video-empty" class="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center text-white/80">
+                        <i class="ph-bold ph-camera text-5xl"></i>
+                        <div class="text-[11px] font-black uppercase tracking-[0.18em]">Opening Camera</div>
+                        <div class="text-sm font-semibold text-white/75 max-w-xs">Frame the plant and use the bottom modes just like the phone camera.</div>
                     </div>
                 </div>
-                <div id="camera-capture-video-panel" class="hidden space-y-3">
-                    <div class="camera-capture-video-shell aspect-[4/5] w-full">
-                        <video id="camera-capture-video" playsinline muted autoplay></video>
-                        <canvas id="camera-capture-canvas" class="hidden"></canvas>
-                        <div id="camera-capture-video-empty" class="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center text-white/80">
-                            <i class="ph-bold ph-video-camera text-4xl"></i>
-                            <div class="text-[11px] font-black uppercase tracking-[0.16em]">Start In-App Camera</div>
-                            <div class="text-sm font-semibold text-white/70">Preview the plant here, then capture a still photo.</div>
-                        </div>
+                <div class="camera-capture-topbar">
+                    <div class="min-w-0">
+                        <div id="camera-capture-title" class="text-[11px] font-black uppercase tracking-[0.18em] text-emerald-300">Camera</div>
+                        <div id="camera-capture-subtitle" class="text-sm font-bold text-white/80 mt-1">Photo mode is ready.</div>
                     </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <button id="camera-capture-video-start" type="button" class="inline-flex items-center justify-center gap-2 rounded-[1.1rem] border border-emerald-200 bg-white px-4 py-4 text-sm font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm active:scale-[0.98]" onclick="startCameraVideoMode()"><i class="ph-bold ph-play"></i>Start Camera</button>
-                        <button id="camera-capture-video-shot" type="button" class="inline-flex items-center justify-center gap-2 rounded-[1.1rem] bg-[#007a4d] px-4 py-4 text-sm font-black uppercase tracking-[0.12em] text-white shadow-lg active:scale-[0.98]" onclick="captureCameraVideoFrame()"><i class="ph-bold ph-camera-plus"></i>Capture Photo</button>
+                    <button type="button" class="camera-capture-close-btn" onclick="closeCameraCaptureModal()" aria-label="Close camera"><i class="ph-bold ph-x"></i></button>
+                </div>
+                <div class="camera-capture-bottom-sheet">
+                    <div id="camera-capture-status" class="text-[11px] font-black uppercase tracking-[0.12em] text-white/75">Opening camera preview...</div>
+                    <div class="mt-4 flex items-center justify-between gap-4">
+                        <button id="camera-capture-restart" type="button" class="camera-capture-secondary" onclick="startCameraVideoMode()">Restart</button>
+                        <button id="camera-capture-primary" type="button" class="camera-capture-shutter" onclick="handleCameraPrimaryAction()" aria-label="Capture photo"><span class="sr-only">Capture photo</span></button>
+                        <button id="camera-capture-alt" type="button" class="camera-capture-secondary" onclick="triggerStandardCameraCapture()">Device</button>
+                    </div>
+                    <div class="camera-capture-mode-row">
+                        <button id="camera-capture-mode-portrait" type="button" class="camera-capture-mode-chip" onclick="setCameraCaptureMode('portrait')">Portrait</button>
+                        <button id="camera-capture-mode-photo" type="button" class="camera-capture-mode-chip" onclick="setCameraCaptureMode('photo')">Photo</button>
+                        <button id="camera-capture-mode-video" type="button" class="camera-capture-mode-chip" onclick="setCameraCaptureMode('video')">Video</button>
                     </div>
                 </div>
             </div>
@@ -494,7 +513,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-                            <div id="header-version" class="nav-version-pill">V2026.04.04.01</div>
+                            <div id="header-version" class="nav-version-pill">V2026.04.04.02</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -974,7 +993,7 @@
             prefix: '',
             input: null,
             open: false,
-            mode: 'standard',
+            mode: 'photo',
             portraitEnabled: false,
             stream: null,
             model: null,
@@ -2867,7 +2886,7 @@
         let pendingRequestArchiveFlushTimer = null;
         let pendingRequestArchiveFlushInFlight = false;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Maschino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'V2026.04.04.01';
+        const APP_VERSION = 'V2026.04.04.02';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -5911,7 +5930,7 @@ function toggleDriveQuickRequestItem(domId) {
 
         function persistCameraCapturePrefs() {
             try {
-                localStorage.setItem(CAMERA_CAPTURE_MODE_STORAGE_KEY, cameraCaptureState.mode === 'video' ? 'video' : 'standard');
+                localStorage.setItem(CAMERA_CAPTURE_MODE_STORAGE_KEY, cameraCaptureState.mode === 'video' ? 'video' : 'photo');
                 localStorage.setItem(CAMERA_PORTRAIT_STORAGE_KEY, cameraCaptureState.portraitEnabled ? 'true' : 'false');
             } catch (e) {}
         }
@@ -5921,60 +5940,73 @@ function toggleDriveQuickRequestItem(domId) {
             if (!statusEl) return;
             statusEl.textContent = String(message || '').trim();
             statusEl.className = 'text-[11px] font-black uppercase tracking-[0.12em]';
-            if (tone === 'error') statusEl.classList.add('text-red-600');
-            else if (tone === 'warn') statusEl.classList.add('text-amber-600');
-            else if (tone === 'active') statusEl.classList.add('text-emerald-700');
-            else statusEl.classList.add('text-slate-500');
+            if (tone === 'error') statusEl.classList.add('text-red-400');
+            else if (tone === 'warn') statusEl.classList.add('text-amber-300');
+            else if (tone === 'active') statusEl.classList.add('text-emerald-300');
+            else statusEl.classList.add('text-white/75');
         }
-
         function syncCameraCaptureUi() {
-            const standardBtn = document.getElementById('camera-capture-mode-standard');
+            const portraitBtn = document.getElementById('camera-capture-mode-portrait');
+            const photoBtn = document.getElementById('camera-capture-mode-photo');
             const videoBtn = document.getElementById('camera-capture-mode-video');
-            const portraitBtn = document.getElementById('camera-capture-portrait-toggle');
-            const standardPanel = document.getElementById('camera-capture-standard-panel');
-            const videoPanel = document.getElementById('camera-capture-video-panel');
             const titleEl = document.getElementById('camera-capture-title');
-            const videoStartBtn = document.getElementById('camera-capture-video-start');
-            const videoShotBtn = document.getElementById('camera-capture-video-shot');
+            const subtitleEl = document.getElementById('camera-capture-subtitle');
+            const primaryBtn = document.getElementById('camera-capture-primary');
+            const restartBtn = document.getElementById('camera-capture-restart');
+            const alternateBtn = document.getElementById('camera-capture-alt');
             const videoEmpty = document.getElementById('camera-capture-video-empty');
             const hasInlineVideo = canUseInlineVideoCapture();
             const usingVideo = cameraCaptureState.mode === 'video';
+            const usingPortrait = !usingVideo && !!cameraCaptureState.portraitEnabled;
+            const usingPhoto = !usingVideo && !usingPortrait;
             if (titleEl) titleEl.textContent = getCameraCaptureLabel(cameraCaptureState.prefix);
-            if (standardBtn) standardBtn.classList.toggle('active', !usingVideo);
+            if (subtitleEl) {
+                subtitleEl.textContent = usingVideo
+                    ? 'Video-style live preview is open.'
+                    : (usingPortrait ? 'Portrait mode is ready for plants.' : 'Photo mode is ready.');
+            }
+            if (portraitBtn) portraitBtn.classList.toggle('active', usingPortrait);
+            if (photoBtn) photoBtn.classList.toggle('active', usingPhoto);
             if (videoBtn) {
                 videoBtn.classList.toggle('active', usingVideo);
                 videoBtn.disabled = !hasInlineVideo;
-                videoBtn.classList.toggle('opacity-50', !hasInlineVideo);
-                videoBtn.classList.toggle('pointer-events-none', !hasInlineVideo);
             }
-            if (portraitBtn) {
-                portraitBtn.classList.toggle('active', !!cameraCaptureState.portraitEnabled);
-                portraitBtn.textContent = cameraCaptureState.portraitEnabled ? 'Portrait On' : 'Portrait Off';
+            if (primaryBtn) {
+                primaryBtn.disabled = !!cameraCaptureState.captureInFlight;
+                primaryBtn.classList.toggle('opacity-60', !!cameraCaptureState.captureInFlight);
+                primaryBtn.classList.toggle('pointer-events-none', !!cameraCaptureState.captureInFlight);
+                primaryBtn.setAttribute('aria-label', hasInlineVideo
+                    ? (usingPortrait ? 'Capture portrait photo' : usingVideo ? 'Capture from live preview' : 'Capture photo')
+                    : 'Open device camera');
             }
-            if (standardPanel) standardPanel.classList.toggle('hidden', usingVideo);
-            if (videoPanel) videoPanel.classList.toggle('hidden', !usingVideo);
-            if (videoStartBtn) videoStartBtn.textContent = cameraCaptureState.stream ? 'Restart Camera' : 'Start Camera';
-            if (videoShotBtn) {
-                videoShotBtn.disabled = !cameraCaptureState.stream || cameraCaptureState.captureInFlight;
-                videoShotBtn.classList.toggle('opacity-50', !cameraCaptureState.stream || cameraCaptureState.captureInFlight);
-                videoShotBtn.classList.toggle('pointer-events-none', !cameraCaptureState.stream || cameraCaptureState.captureInFlight);
-                videoShotBtn.textContent = cameraCaptureState.captureInFlight ? 'Capturing...' : 'Capture Photo';
+            if (restartBtn) {
+                restartBtn.classList.toggle('hidden', !hasInlineVideo);
+                restartBtn.textContent = cameraCaptureState.stream ? 'Restart' : 'Start';
             }
-            if (videoEmpty && cameraCaptureState.stream) videoEmpty.classList.add('hidden');
+            if (alternateBtn) {
+                alternateBtn.classList.toggle('hidden', !hasInlineVideo);
+                alternateBtn.textContent = 'Device';
+            }
+            if (videoEmpty) videoEmpty.classList.toggle('hidden', !!cameraCaptureState.stream);
             if (!cameraCaptureState.open) return;
-            if (usingVideo) {
-                if (!hasInlineVideo) {
-                    setCameraCaptureStatus('In-app video mode is not available here. Standard mode is still ready.', 'warn');
-                } else if (cameraCaptureState.stream) {
-                    setCameraCaptureStatus(cameraCaptureState.portraitEnabled ? 'Live preview is ready. Portrait blur will run after capture.' : 'Live preview is ready. Capture when the plant is framed.', 'active');
-                } else {
-                    setCameraCaptureStatus(cameraCaptureState.portraitEnabled ? 'Start the in-app camera. Portrait blur will run after capture.' : 'Start the in-app camera preview for a live capture.', 'neutral');
-                }
-            } else {
-                setCameraCaptureStatus(cameraCaptureState.portraitEnabled ? 'Standard mode opens the device camera. Portrait blur runs after capture.' : 'Standard mode opens the device camera for the fastest capture.', cameraCaptureState.portraitEnabled ? 'active' : 'neutral');
+            if (!hasInlineVideo) {
+                if (usingVideo) setCameraCaptureStatus('Video preview is not available here. Tap the shutter to open the device camera.', 'warn');
+                else if (usingPortrait) setCameraCaptureStatus('Portrait mode will process the photo after the device camera capture.', 'active');
+                else setCameraCaptureStatus('Tap the shutter to open the device camera.', 'neutral');
+                return;
             }
+            if (cameraCaptureState.captureInFlight) {
+                setCameraCaptureStatus('Capturing photo...', 'active');
+                return;
+            }
+            if (!cameraCaptureState.stream) {
+                setCameraCaptureStatus('Opening camera preview...', 'active');
+                return;
+            }
+            if (usingPortrait) setCameraCaptureStatus('Portrait mode is live. The plant stays sharp and the background softens after capture.', 'active');
+            else if (usingVideo) setCameraCaptureStatus('Video mode is live. Use the shutter to grab a still frame without leaving the app.', 'active');
+            else setCameraCaptureStatus('Photo mode is live. Frame the plant and tap the shutter.', 'active');
         }
-
         function stopCameraCaptureStream() {
             const videoEl = document.getElementById('camera-capture-video');
             const emptyEl = document.getElementById('camera-capture-video-empty');
@@ -6020,41 +6052,38 @@ function toggleDriveQuickRequestItem(domId) {
             cameraCaptureState.prefix = prefix;
             cameraCaptureState.input = input;
             cameraCaptureState.open = true;
+            cameraCaptureState.captureInFlight = false;
             const modal = document.getElementById('camera-capture-modal');
             if (modal) modal.classList.remove('hidden');
             syncCameraCaptureUi();
-            if (cameraCaptureState.mode === 'video' && canUseInlineVideoCapture()) {
-                runAfterShellInteractive(function() { startCameraVideoMode(); }, 40);
+            if (canUseInlineVideoCapture()) {
+                runAfterShellInteractive(function() { startCameraVideoMode(); }, 25);
             }
+            if (cameraCaptureState.portraitEnabled) ensurePortraitModelReady(false).catch(function() {});
             return false;
         }
-
         function setCameraCaptureMode(mode) {
-            const nextMode = String(mode || '').toLowerCase() === 'video' ? 'video' : 'standard';
-            cameraCaptureState.mode = nextMode;
-            persistCameraCapturePrefs();
-            if (nextMode !== 'video') stopCameraCaptureStream();
-            syncCameraCaptureUi();
-            if (nextMode === 'video' && cameraCaptureState.open) {
-                runAfterShellInteractive(function() { startCameraVideoMode(); }, 40);
+            const nextMode = String(mode || '').toLowerCase();
+            if (nextMode === 'video') {
+                cameraCaptureState.mode = 'video';
+                cameraCaptureState.portraitEnabled = false;
+            } else if (nextMode === 'portrait') {
+                cameraCaptureState.mode = 'photo';
+                cameraCaptureState.portraitEnabled = true;
+            } else {
+                cameraCaptureState.mode = 'photo';
+                cameraCaptureState.portraitEnabled = false;
             }
-        }
-
-        function toggleCameraPortraitMode() {
-            cameraCaptureState.portraitEnabled = !cameraCaptureState.portraitEnabled;
             persistCameraCapturePrefs();
             syncCameraCaptureUi();
-            if (!cameraCaptureState.portraitEnabled) return;
-            ensurePortraitModelReady(true).then(function() {
-                if (cameraCaptureState.open) syncCameraCaptureUi();
-            }).catch(function(err) {
-                console.warn('Portrait model load failed', err);
-                if (cameraCaptureState.open) {
-                    setCameraCaptureStatus('AI portrait blur could not load. Standard capture is still available.', 'warn');
-                }
-            });
+            if (cameraCaptureState.open && canUseInlineVideoCapture() && !cameraCaptureState.stream) {
+                runAfterShellInteractive(function() { startCameraVideoMode(); }, 20);
+            }
+            if (cameraCaptureState.portraitEnabled) ensurePortraitModelReady(false).catch(function() {});
         }
-
+        function toggleCameraPortraitMode() {
+            setCameraCaptureMode((cameraCaptureState.mode === 'photo' && cameraCaptureState.portraitEnabled) ? 'photo' : 'portrait');
+        }
         function loadCameraCaptureExternalScript(url, globalCheck) {
             const key = String(url || '').trim();
             if (!key) return Promise.reject(new Error('Missing script URL.'));
@@ -6195,17 +6224,17 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         async function startCameraVideoMode() {
-            if (!cameraCaptureState.open || cameraCaptureState.mode !== 'video') return;
+            if (!cameraCaptureState.open) return;
             const videoEl = document.getElementById('camera-capture-video');
             const emptyEl = document.getElementById('camera-capture-video-empty');
             if (!videoEl) return;
             if (!canUseInlineVideoCapture()) {
-                setCameraCaptureStatus('In-app video mode is not available on this device. Standard mode is still ready.', 'warn');
+                setCameraCaptureStatus('Inline camera preview is not available here. The device camera is still ready.', 'warn');
                 syncCameraCaptureUi();
                 return;
             }
             stopCameraCaptureStream();
-            setCameraCaptureStatus('Opening in-app camera...', 'active');
+            setCameraCaptureStatus('Opening camera preview...', 'active');
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({
                     audio: false,
@@ -6215,7 +6244,7 @@ function toggleDriveQuickRequestItem(domId) {
                         height: { ideal: 960 }
                     }
                 });
-                if (!cameraCaptureState.open || cameraCaptureState.mode !== 'video') {
+                if (!cameraCaptureState.open) {
                     stream.getTracks().forEach(function(track) { track.stop(); });
                     return;
                 }
@@ -6230,10 +6259,23 @@ function toggleDriveQuickRequestItem(domId) {
                 if (cameraCaptureState.portraitEnabled) ensurePortraitModelReady(false).catch(function() {});
             } catch (err) {
                 console.warn('Inline camera preview failed', err);
-                setCameraCaptureStatus('Could not access the in-app camera. Standard mode is still available.', 'error');
-                showToast('Camera', 'Could not start the in-app camera. Standard mode is still available.', true);
+                setCameraCaptureStatus('Could not access the in-app camera. The device camera is still available.', 'error');
+                showToast('Camera', 'Could not start the in-app camera. The device camera is still available.', true);
                 syncCameraCaptureUi();
             }
+        }
+
+        function handleCameraPrimaryAction() {
+            if (cameraCaptureState.captureInFlight) return;
+            if (canUseInlineVideoCapture()) {
+                if (!cameraCaptureState.stream) {
+                    startCameraVideoMode();
+                    return;
+                }
+                captureCameraVideoFrame();
+                return;
+            }
+            triggerStandardCameraCapture();
         }
 
         function triggerStandardCameraCapture() {
@@ -6247,7 +6289,6 @@ function toggleDriveQuickRequestItem(domId) {
             setCameraCaptureStatus('Opening device camera...', 'active');
             input.click();
         }
-
         function captureCameraVideoFrame() {
             if (!cameraCaptureState.open || cameraCaptureState.captureInFlight) return;
             const videoEl = document.getElementById('camera-capture-video');
