@@ -83,6 +83,11 @@
         .photo-modal-slide{flex:0 0 100%;width:100%;scroll-snap-align:center;scroll-snap-stop:always;display:flex;align-items:center;justify-content:center;padding:0 .75rem}
         .photo-modal-slide img{width:100%;max-height:80vh;object-fit:contain;border-radius:1rem;box-shadow:0 20px 45px rgba(0,0,0,.35);background:rgba(255,255,255,.02);user-select:none;-webkit-user-drag:none}
         .photo-gallery-clickzone{cursor:pointer}
+        .camera-capture-pill{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:.58rem .95rem;border-radius:999px;border:1px solid #a7f3d0;background:#fff;color:#065f46;font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;box-shadow:0 6px 14px rgba(15,23,42,.06);transition:background .16s ease,color .16s ease,border-color .16s ease,transform .16s ease}
+        .camera-capture-pill:active{transform:scale(.98)}
+        .camera-capture-pill.active{background:#007a4d;color:#fff;border-color:#007a4d;box-shadow:0 10px 24px rgba(0,122,77,.18)}
+        .camera-capture-video-shell{position:relative;overflow:hidden;border-radius:1.35rem;border:1px solid rgba(15,23,42,.08);background:radial-gradient(circle at top,#14532d 0%,#0f172a 58%,#020617 100%);box-shadow:0 18px 34px rgba(15,23,42,.22)}
+        .camera-capture-video-shell video,.camera-capture-video-shell canvas{width:100%;height:100%;display:block;object-fit:cover;background:#020617}
         #drive-search-container,#av-search-container,#reserves-search-container,#docks-search-container{position:-webkit-sticky;position:sticky;top:0;z-index:45}
         .nav-header{position:-webkit-sticky;position:sticky;top:0;z-index:60;padding:max(10px,env(safe-area-inset-top)) var(--shell-gutter) 12px;background:linear-gradient(180deg,#007a4d 0%,#0d8b5d 100%);box-shadow:0 10px 24px rgba(7,94,63,.18)}
         .nav-header-shell{display:flex;flex-direction:column;gap:.5rem;width:var(--shell-width);max-width:var(--shell-width);margin:0 auto}
@@ -175,6 +180,50 @@
         <div id="photo-modal-gallery" class="w-full max-h-[85vh] mt-10 overflow-x-auto overflow-y-hidden snap-x snap-mandatory scrollbar-none"></div>
         <button id="photo-modal-next" type="button" class="hidden absolute right-4 top-1/2 -translate-y-1/2 z-50 items-center justify-center w-12 h-12 rounded-full bg-black/45 text-white text-2xl shadow-lg active:scale-95" onclick="event.stopPropagation(); stepPhotoModal(1)" aria-label="Next photo"><i class="ph-bold ph-caret-right"></i></button>
         <div id="photo-swipe-hint" class="absolute bottom-10 text-white text-xs font-bold uppercase tracking-widest opacity-50 hidden pointer-events-none"><i class="ph-bold ph-arrows-left-right mr-1 text-lg align-middle"></i> Swipe for more</div>
+    </div>
+    <div id="camera-capture-modal" class="hidden fixed inset-0 z-[15500] bg-slate-950/80 backdrop-blur-sm p-4 flex items-center justify-center">
+        <div class="w-full max-w-xl rounded-[1.6rem] bg-white shadow-2xl border border-emerald-100 overflow-hidden">
+            <div class="flex items-center justify-between gap-3 px-5 py-4 border-b border-emerald-100 bg-gradient-to-r from-emerald-50 to-white">
+                <div class="min-w-0">
+                    <div id="camera-capture-title" class="text-[11px] font-black uppercase tracking-[0.18em] text-emerald-700">Camera</div>
+                    <div class="text-sm font-bold text-slate-500 mt-1">Choose the fastest capture mode for this row.</div>
+                </div>
+                <button type="button" class="h-11 w-11 rounded-2xl border border-emerald-100 bg-white text-2xl text-emerald-700 shadow-sm active:scale-95" onclick="closeCameraCaptureModal()"><i class="ph-bold ph-x"></i></button>
+            </div>
+            <div class="px-5 py-5 space-y-4">
+                <div class="flex flex-wrap gap-2 items-center">
+                    <button id="camera-capture-mode-standard" type="button" class="camera-capture-pill" onclick="setCameraCaptureMode('standard')">Standard</button>
+                    <button id="camera-capture-mode-video" type="button" class="camera-capture-pill" onclick="setCameraCaptureMode('video')">Video</button>
+                    <button id="camera-capture-portrait-toggle" type="button" class="camera-capture-pill ml-auto" onclick="toggleCameraPortraitMode()">Portrait Off</button>
+                </div>
+                <div id="camera-capture-status" class="text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">Standard mode opens the device camera. Video mode keeps the preview in-app.</div>
+                <div id="camera-capture-standard-panel" class="space-y-3">
+                    <div class="rounded-[1.25rem] border border-dashed border-emerald-200 bg-emerald-50/70 px-4 py-5 text-center">
+                        <div class="text-[11px] font-black uppercase tracking-[0.16em] text-emerald-700">Standard Camera</div>
+                        <div class="mt-2 text-sm font-semibold text-slate-600">Use the device camera for the quickest capture. Portrait mode, when on, is applied after the photo is taken.</div>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <button id="camera-capture-standard-open" type="button" class="inline-flex items-center justify-center gap-2 rounded-[1.1rem] bg-[#007a4d] px-4 py-4 text-sm font-black uppercase tracking-[0.12em] text-white shadow-lg active:scale-[0.98]" onclick="triggerStandardCameraCapture()"><i class="ph-bold ph-camera"></i>Open Camera</button>
+                        <button type="button" class="inline-flex items-center justify-center gap-2 rounded-[1.1rem] border border-emerald-200 bg-white px-4 py-4 text-sm font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm active:scale-[0.98]" onclick="setCameraCaptureMode('video')"><i class="ph-bold ph-video-camera"></i>Use Video Mode</button>
+                    </div>
+                </div>
+                <div id="camera-capture-video-panel" class="hidden space-y-3">
+                    <div class="camera-capture-video-shell aspect-[4/5] w-full">
+                        <video id="camera-capture-video" playsinline muted autoplay></video>
+                        <canvas id="camera-capture-canvas" class="hidden"></canvas>
+                        <div id="camera-capture-video-empty" class="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center text-white/80">
+                            <i class="ph-bold ph-video-camera text-4xl"></i>
+                            <div class="text-[11px] font-black uppercase tracking-[0.16em]">Start In-App Camera</div>
+                            <div class="text-sm font-semibold text-white/70">Preview the plant here, then capture a still photo.</div>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <button id="camera-capture-video-start" type="button" class="inline-flex items-center justify-center gap-2 rounded-[1.1rem] border border-emerald-200 bg-white px-4 py-4 text-sm font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm active:scale-[0.98]" onclick="startCameraVideoMode()"><i class="ph-bold ph-play"></i>Start Camera</button>
+                        <button id="camera-capture-video-shot" type="button" class="inline-flex items-center justify-center gap-2 rounded-[1.1rem] bg-[#007a4d] px-4 py-4 text-sm font-black uppercase tracking-[0.12em] text-white shadow-lg active:scale-[0.98]" onclick="captureCameraVideoFrame()"><i class="ph-bold ph-camera-plus"></i>Capture Photo</button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
     <div id="view-login">
         <div class="login-card">
@@ -445,7 +494,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-                            <div id="header-version" class="nav-version-pill">V2026.04.03.35</div>
+                            <div id="header-version" class="nav-version-pill">V2026.04.04.01</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -748,7 +797,7 @@
                     </div>
                     <div id="det-season-content" class="hidden py-4">
                         <div id="ssn-photo-preview" class="mb-4 hidden"><p class="text-[10px] font-bold text-blue-600 mb-2 uppercase">Photos on file</p><div id="ssn-photo-list-container" class="space-y-2"></div></div>
-                        <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-ssn" class="bg-green-50 border-2 border-dashed border-green-500 text-green-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="handlePhotoUpload(this, 'ssn-')"></label></div>
+                        <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-ssn" class="bg-green-50 border-2 border-dashed border-green-500 text-green-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden" onclick="return openCameraCapture(event, 'ssn-')"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input id="camera-input-ssn" type="file" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoUpload(this, 'ssn-')"></label></div>
                         <div class="relative w-full mb-3"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2 relative"><input type="text" id="ssn-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); debouncedFilterAvNotes('ssn-')" onfocus="filterAvNotes('ssn-')" onblur="setTimeout(()=>{if(document.getElementById('ssn-av-dropdown-list'))document.getElementById('ssn-av-dropdown-list').classList.add('hidden'); saveData(false, 'ssn-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT..."><button type="button" class="shrink-0 h-[48px] w-[48px] rounded-xl border border-blue-300 bg-blue-100 text-blue-700 text-2xl font-black shadow-sm active:scale-95" onmousedown="event.preventDefault()" onclick="appendSpecCaliperToAvNote('ssn-')">+</button></div><div id="ssn-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div></div>
                         <div id="ssn-input-container">
                             <div class="mb-3 relative"><label class="text-[10px] font-bold text-gray-500 uppercase">Loc Match %</label><input type="number" id="ssn-match" class="input-field !mb-0 pr-20" placeholder="e.g. 40" oninput="calculateMatchQty('ssn-')" onchange="saveData(false, 'ssn-', true)"><div id="ssn-match-display" class="pointer-events-none absolute right-3 bottom-3 text-[10px] font-bold text-[#007a4d] hidden">QTY: <span id="ssn-match-qty-val">0</span></div></div>
@@ -760,7 +809,7 @@
                     </div>
                     <div id="det-location-content" class="hidden py-4">
                         <div id="lsn-photo-preview" class="mb-4 hidden"><p class="text-[10px] font-bold text-blue-600 mb-2 uppercase">Photos on file</p><div id="lsn-photo-list-container" class="space-y-2"></div></div>
-                        <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-lsn" class="bg-green-50 border-2 border-dashed border-green-500 text-green-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="handlePhotoUpload(this, 'lsn-')"></label></div>
+                        <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-lsn" class="bg-green-50 border-2 border-dashed border-green-500 text-green-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden" onclick="return openCameraCapture(event, 'lsn-')"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input id="camera-input-lsn" type="file" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoUpload(this, 'lsn-')"></label></div>
                         <div class="relative w-full mb-3"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2 relative"><input type="text" id="lsn-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); debouncedFilterAvNotes('lsn-')" onfocus="filterAvNotes('lsn-')" onblur="setTimeout(()=>{if(document.getElementById('lsn-av-dropdown-list'))document.getElementById('lsn-av-dropdown-list').classList.add('hidden'); saveData(false, 'lsn-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT..."><button type="button" class="shrink-0 h-[48px] w-[48px] rounded-xl border border-blue-300 bg-blue-100 text-blue-700 text-2xl font-black shadow-sm active:scale-95" onmousedown="event.preventDefault()" onclick="appendSpecCaliperToAvNote('lsn-')">+</button></div><div id="lsn-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div></div>
                         <div id="lsn-input-container">
                             <div class="mb-3 relative"><label class="text-[10px] font-bold text-gray-500 uppercase">Loc Match %</label><input type="number" id="lsn-match" class="input-field !mb-0 pr-20" placeholder="e.g. 95" oninput="calculateMatchQty('lsn-')" onchange="saveData(false, 'lsn-', true)"><div id="lsn-match-display" class="pointer-events-none absolute right-3 bottom-3 text-[10px] font-bold text-[#007a4d] hidden">QTY: <span id="lsn-match-qty-val">0</span></div></div>
@@ -772,7 +821,7 @@
                     </div>
                     <div id="det-notes-content" class="hidden py-4">
                         <div id="na-photo-preview" class="mb-4 hidden"><p class="text-[10px] font-bold text-blue-600 mb-2 uppercase">Photos on file</p><div id="na-photo-list-container" class="space-y-2"></div></div>
-                        <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-na" class="bg-green-50 border-2 border-dashed border-green-500 text-green-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="handlePhotoUpload(this, 'na-')"></label></div>
+                        <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-na" class="bg-green-50 border-2 border-dashed border-green-500 text-green-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden" onclick="return openCameraCapture(event, 'na-')"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input id="camera-input-na" type="file" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoUpload(this, 'na-')"></label></div>
                         <div class="relative w-full mb-3"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2 relative"><input type="text" id="na-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); debouncedFilterAvNotes('na-')" onfocus="filterAvNotes('na-')" onblur="setTimeout(()=>{if(document.getElementById('na-av-dropdown-list'))document.getElementById('na-av-dropdown-list').classList.add('hidden'); saveData(false, 'na-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT..."><button type="button" class="shrink-0 h-[48px] w-[48px] rounded-xl border border-blue-300 bg-blue-100 text-blue-700 text-2xl font-black shadow-sm active:scale-95" onmousedown="event.preventDefault()" onclick="appendSpecCaliperToAvNote('na-')">+</button></div><div id="na-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div></div>
                         <div id="na-input-container">
                             <div class="mb-3"><label class="text-[10px] font-bold text-gray-500 uppercase">Loc Match %</label><input type="number" id="na-match" class="input-field !mb-1" placeholder="e.g. 95" oninput="calculateMatchQty('na-')"><div id="na-match-display" class="text-[10px] font-bold text-[#007a4d] text-right mb-2 hidden">LOC Match QTY: <span id="na-match-qty-val">0</span></div></div>
@@ -790,7 +839,7 @@
                     </div>
                     <div id="det-request-content" class="hidden py-4">
                         <div id="req-photo-preview" class="mb-4 hidden"><p class="text-[10px] font-bold text-purple-600 mb-2 uppercase">Request Photos</p><div id="req-photo-list-container" class="space-y-2"></div></div>
-                        <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-req" class="bg-purple-50 border-2 border-dashed border-purple-500 text-purple-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="handlePhotoUpload(this, 'req-')"></label></div>
+                        <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-req" class="bg-purple-50 border-2 border-dashed border-purple-500 text-purple-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden" onclick="return openCameraCapture(event, 'req-')"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input id="camera-input-req" type="file" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoUpload(this, 'req-')"></label></div>
                         <div id="req-input-container">
                             <div class="relative w-full mb-3"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2 relative"><input type="text" id="req-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); debouncedFilterAvNotes('req-')" onfocus="filterAvNotes('req-')" onblur="setTimeout(()=>{if(document.getElementById('req-av-dropdown-list'))document.getElementById('req-av-dropdown-list').classList.add('hidden'); saveData(false, 'req-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT..."><button type="button" class="shrink-0 h-[48px] w-[48px] rounded-xl border border-blue-300 bg-blue-100 text-blue-700 text-2xl font-black shadow-sm active:scale-95" onmousedown="event.preventDefault()" onclick="appendSpecCaliperToAvNote('req-')">+</button></div><div id="req-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div></div>
                             <div class="mb-3 relative"><label class="text-[10px] font-bold text-gray-500 uppercase">Loc Match %</label><input type="number" id="req-match" class="input-field !mb-0 pr-20" placeholder="e.g. 95" oninput="calculateMatchQty('req-')" onchange="saveData(false, 'req-', true)"><div id="req-match-display" class="pointer-events-none absolute right-3 bottom-3 text-[10px] font-bold text-[#007a4d] hidden">QTY: <span id="req-match-qty-val">0</span></div></div>
@@ -807,7 +856,7 @@
                     </div>
                     <div id="det-docks-content" class="hidden py-4">
                         <div id="dock-photo-preview" class="mb-4 hidden"><p class="text-[10px] font-bold text-orange-600 mb-2 uppercase">Photos on file</p><div id="dock-photo-list-container" class="space-y-2"></div></div>
-                        <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-dock" class="bg-orange-50 border-2 border-dashed border-orange-500 text-orange-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="handlePhotoUpload(this, 'dock-')"></label></div>
+                        <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-dock" class="bg-orange-50 border-2 border-dashed border-orange-500 text-orange-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden" onclick="return openCameraCapture(event, 'dock-')"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input id="camera-input-dock" type="file" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoUpload(this, 'dock-')"></label></div>
                         <div id="dock-input-container">
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="dock-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'dock-', true)"></div>
                             <div id="dock-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="dock-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'dock-', true)"></div>
@@ -816,7 +865,7 @@
                     </div>
                     <div id="det-flyer-content" class="hidden py-4">
                         <div id="flyer-photo-preview" class="mb-4 hidden"><p class="text-[10px] font-bold text-indigo-600 mb-2 uppercase">Photos on file</p><div id="flyer-photo-list-container" class="space-y-2"></div></div>
-                        <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-flyer" class="bg-indigo-50 border-2 border-dashed border-indigo-500 text-indigo-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="handlePhotoUpload(this, 'flyer-')"></label></div>
+                        <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-flyer" class="bg-indigo-50 border-2 border-dashed border-indigo-500 text-indigo-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden" onclick="return openCameraCapture(event, 'flyer-')"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input id="camera-input-flyer" type="file" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoUpload(this, 'flyer-')"></label></div>
                         <div id="flyer-input-container">
                             <div class="relative w-full mb-3"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2 relative"><input type="text" id="flyer-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); debouncedFilterAvNotes('flyer-')" onfocus="filterAvNotes('flyer-')" onblur="setTimeout(()=>{if(document.getElementById('flyer-av-dropdown-list'))document.getElementById('flyer-av-dropdown-list').classList.add('hidden'); saveData(false, 'flyer-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT..."><button type="button" class="shrink-0 h-[48px] w-[48px] rounded-xl border border-blue-300 bg-blue-100 text-blue-700 text-2xl font-black shadow-sm active:scale-95" onmousedown="event.preventDefault()" onclick="appendSpecCaliperToAvNote('flyer-')">+</button></div><div id="flyer-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div></div>
                             <div class="mb-3 relative"><label class="text-[10px] font-bold text-gray-500 uppercase">Loc Match %</label><input type="number" id="flyer-match" class="input-field !mb-0 pr-20" placeholder="e.g. 95" oninput="calculateMatchQty('flyer-')" onchange="saveData(false, 'flyer-', true)"><div id="flyer-match-display" class="pointer-events-none absolute right-3 bottom-3 text-[10px] font-bold text-[#007a4d] hidden">QTY: <span id="flyer-match-qty-val">0</span></div></div>
@@ -905,7 +954,39 @@
         const CACHE_PERSIST_IDLE_TIMEOUT_MS = 2500;
         const PHOTO_MAX_WIDTH = 900;
         const PHOTO_JPEG_QUALITY = 0.72;
+        const TFJS_SCRIPT_URL = 'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js';
+        const COCO_SSD_SCRIPT_URL = 'https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js';
+        const CAMERA_CAPTURE_MODE_STORAGE_KEY = 'gnc_camera_capture_mode_v1';
+        const CAMERA_PORTRAIT_STORAGE_KEY = 'gnc_camera_portrait_mode_v1';
+        const CAMERA_PORTRAIT_DETECTION_MAX_SIDE = 640;
+        const CAMERA_PORTRAIT_MIN_SCORE = 0.32;
+        const CAMERA_PORTRAIT_BLUR_PX = 18;
+        const CAMERA_CAPTURE_LABELS = Object.freeze({
+            'ssn-': 'Season Sales Notes Camera',
+            'lsn-': 'Location Sales Notes Camera',
+            'na-': 'Notes & Actions Camera',
+            'req-': 'Request Camera',
+            'dock-': 'Dock Camera',
+            'flyer-': 'Flyer Camera'
+        });
         let pendingPhotoUploads = new Map();
+        let cameraCaptureState = {
+            prefix: '',
+            input: null,
+            open: false,
+            mode: 'standard',
+            portraitEnabled: false,
+            stream: null,
+            model: null,
+            modelPromise: null,
+            scriptPromises: Object.create(null),
+            captureInFlight: false
+        };
+        try {
+            const storedCameraMode = String(localStorage.getItem(CAMERA_CAPTURE_MODE_STORAGE_KEY) || '').trim().toLowerCase();
+            if (storedCameraMode === 'video') cameraCaptureState.mode = 'video';
+            cameraCaptureState.portraitEnabled = localStorage.getItem(CAMERA_PORTRAIT_STORAGE_KEY) === 'true';
+        } catch (e) {}
         let lastUserInteractionAt = Date.now();
         let viewportHeightSyncInitialized = false;
         let standaloneShellBaseHeight = 0;
@@ -2786,7 +2867,7 @@
         let pendingRequestArchiveFlushTimer = null;
         let pendingRequestArchiveFlushInFlight = false;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Maschino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'V2026.04.03.35';
+        const APP_VERSION = 'V2026.04.04.01';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -5816,6 +5897,551 @@ function toggleDriveQuickRequestItem(domId) {
             if (counterEl) counterEl.innerText = '';
             if (modal) modal.classList.add('hidden');
         }
+        function getCameraInputId(prefix) {
+            return 'camera-input-' + String(prefix || '').replace(/[^a-z0-9]/gi, '');
+        }
+
+        function getCameraCaptureLabel(prefix) {
+            return CAMERA_CAPTURE_LABELS[prefix] || 'Camera';
+        }
+
+        function canUseInlineVideoCapture() {
+            return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && (window.isSecureContext !== false));
+        }
+
+        function persistCameraCapturePrefs() {
+            try {
+                localStorage.setItem(CAMERA_CAPTURE_MODE_STORAGE_KEY, cameraCaptureState.mode === 'video' ? 'video' : 'standard');
+                localStorage.setItem(CAMERA_PORTRAIT_STORAGE_KEY, cameraCaptureState.portraitEnabled ? 'true' : 'false');
+            } catch (e) {}
+        }
+
+        function setCameraCaptureStatus(message, tone) {
+            const statusEl = document.getElementById('camera-capture-status');
+            if (!statusEl) return;
+            statusEl.textContent = String(message || '').trim();
+            statusEl.className = 'text-[11px] font-black uppercase tracking-[0.12em]';
+            if (tone === 'error') statusEl.classList.add('text-red-600');
+            else if (tone === 'warn') statusEl.classList.add('text-amber-600');
+            else if (tone === 'active') statusEl.classList.add('text-emerald-700');
+            else statusEl.classList.add('text-slate-500');
+        }
+
+        function syncCameraCaptureUi() {
+            const standardBtn = document.getElementById('camera-capture-mode-standard');
+            const videoBtn = document.getElementById('camera-capture-mode-video');
+            const portraitBtn = document.getElementById('camera-capture-portrait-toggle');
+            const standardPanel = document.getElementById('camera-capture-standard-panel');
+            const videoPanel = document.getElementById('camera-capture-video-panel');
+            const titleEl = document.getElementById('camera-capture-title');
+            const videoStartBtn = document.getElementById('camera-capture-video-start');
+            const videoShotBtn = document.getElementById('camera-capture-video-shot');
+            const videoEmpty = document.getElementById('camera-capture-video-empty');
+            const hasInlineVideo = canUseInlineVideoCapture();
+            const usingVideo = cameraCaptureState.mode === 'video';
+            if (titleEl) titleEl.textContent = getCameraCaptureLabel(cameraCaptureState.prefix);
+            if (standardBtn) standardBtn.classList.toggle('active', !usingVideo);
+            if (videoBtn) {
+                videoBtn.classList.toggle('active', usingVideo);
+                videoBtn.disabled = !hasInlineVideo;
+                videoBtn.classList.toggle('opacity-50', !hasInlineVideo);
+                videoBtn.classList.toggle('pointer-events-none', !hasInlineVideo);
+            }
+            if (portraitBtn) {
+                portraitBtn.classList.toggle('active', !!cameraCaptureState.portraitEnabled);
+                portraitBtn.textContent = cameraCaptureState.portraitEnabled ? 'Portrait On' : 'Portrait Off';
+            }
+            if (standardPanel) standardPanel.classList.toggle('hidden', usingVideo);
+            if (videoPanel) videoPanel.classList.toggle('hidden', !usingVideo);
+            if (videoStartBtn) videoStartBtn.textContent = cameraCaptureState.stream ? 'Restart Camera' : 'Start Camera';
+            if (videoShotBtn) {
+                videoShotBtn.disabled = !cameraCaptureState.stream || cameraCaptureState.captureInFlight;
+                videoShotBtn.classList.toggle('opacity-50', !cameraCaptureState.stream || cameraCaptureState.captureInFlight);
+                videoShotBtn.classList.toggle('pointer-events-none', !cameraCaptureState.stream || cameraCaptureState.captureInFlight);
+                videoShotBtn.textContent = cameraCaptureState.captureInFlight ? 'Capturing...' : 'Capture Photo';
+            }
+            if (videoEmpty && cameraCaptureState.stream) videoEmpty.classList.add('hidden');
+            if (!cameraCaptureState.open) return;
+            if (usingVideo) {
+                if (!hasInlineVideo) {
+                    setCameraCaptureStatus('In-app video mode is not available here. Standard mode is still ready.', 'warn');
+                } else if (cameraCaptureState.stream) {
+                    setCameraCaptureStatus(cameraCaptureState.portraitEnabled ? 'Live preview is ready. Portrait blur will run after capture.' : 'Live preview is ready. Capture when the plant is framed.', 'active');
+                } else {
+                    setCameraCaptureStatus(cameraCaptureState.portraitEnabled ? 'Start the in-app camera. Portrait blur will run after capture.' : 'Start the in-app camera preview for a live capture.', 'neutral');
+                }
+            } else {
+                setCameraCaptureStatus(cameraCaptureState.portraitEnabled ? 'Standard mode opens the device camera. Portrait blur runs after capture.' : 'Standard mode opens the device camera for the fastest capture.', cameraCaptureState.portraitEnabled ? 'active' : 'neutral');
+            }
+        }
+
+        function stopCameraCaptureStream() {
+            const videoEl = document.getElementById('camera-capture-video');
+            const emptyEl = document.getElementById('camera-capture-video-empty');
+            if (cameraCaptureState.stream) {
+                try {
+                    cameraCaptureState.stream.getTracks().forEach(function(track) { track.stop(); });
+                } catch (e) {}
+            }
+            cameraCaptureState.stream = null;
+            cameraCaptureState.captureInFlight = false;
+            if (videoEl) {
+                try { videoEl.pause(); } catch (e) {}
+                try { videoEl.srcObject = null; } catch (e) {}
+            }
+            if (emptyEl) emptyEl.classList.remove('hidden');
+            syncCameraCaptureUi();
+        }
+
+        function closeCameraCaptureModal() {
+            const modal = document.getElementById('camera-capture-modal');
+            if (modal) modal.classList.add('hidden');
+            cameraCaptureState.open = false;
+            cameraCaptureState.prefix = '';
+            cameraCaptureState.input = null;
+            stopCameraCaptureStream();
+        }
+
+        function openCameraCapture(event, prefix) {
+            if (event) {
+                if (typeof event.preventDefault === 'function') event.preventDefault();
+                if (typeof event.stopPropagation === 'function') event.stopPropagation();
+            }
+            if (!activeItem) return false;
+            if (!canEditRowDetails(prefix)) {
+                showRowEditRestrictedToast(prefix);
+                return false;
+            }
+            const input = document.getElementById(getCameraInputId(prefix));
+            if (!input) {
+                showToast('Camera', 'Camera input is not ready for this row yet.', true);
+                return false;
+            }
+            cameraCaptureState.prefix = prefix;
+            cameraCaptureState.input = input;
+            cameraCaptureState.open = true;
+            const modal = document.getElementById('camera-capture-modal');
+            if (modal) modal.classList.remove('hidden');
+            syncCameraCaptureUi();
+            if (cameraCaptureState.mode === 'video' && canUseInlineVideoCapture()) {
+                runAfterShellInteractive(function() { startCameraVideoMode(); }, 40);
+            }
+            return false;
+        }
+
+        function setCameraCaptureMode(mode) {
+            const nextMode = String(mode || '').toLowerCase() === 'video' ? 'video' : 'standard';
+            cameraCaptureState.mode = nextMode;
+            persistCameraCapturePrefs();
+            if (nextMode !== 'video') stopCameraCaptureStream();
+            syncCameraCaptureUi();
+            if (nextMode === 'video' && cameraCaptureState.open) {
+                runAfterShellInteractive(function() { startCameraVideoMode(); }, 40);
+            }
+        }
+
+        function toggleCameraPortraitMode() {
+            cameraCaptureState.portraitEnabled = !cameraCaptureState.portraitEnabled;
+            persistCameraCapturePrefs();
+            syncCameraCaptureUi();
+            if (!cameraCaptureState.portraitEnabled) return;
+            ensurePortraitModelReady(true).then(function() {
+                if (cameraCaptureState.open) syncCameraCaptureUi();
+            }).catch(function(err) {
+                console.warn('Portrait model load failed', err);
+                if (cameraCaptureState.open) {
+                    setCameraCaptureStatus('AI portrait blur could not load. Standard capture is still available.', 'warn');
+                }
+            });
+        }
+
+        function loadCameraCaptureExternalScript(url, globalCheck) {
+            const key = String(url || '').trim();
+            if (!key) return Promise.reject(new Error('Missing script URL.'));
+            if (typeof globalCheck === 'function' && globalCheck()) return Promise.resolve();
+            if (cameraCaptureState.scriptPromises[key]) return cameraCaptureState.scriptPromises[key];
+            cameraCaptureState.scriptPromises[key] = new Promise(function(resolve, reject) {
+                const existing = Array.from(document.getElementsByTagName('script')).find(function(script) {
+                    return String(script.src || '').indexOf(key) !== -1;
+                });
+                if (existing) {
+                    existing.addEventListener('load', function() { resolve(); }, { once: true });
+                    existing.addEventListener('error', function() { reject(new Error('Could not load script.')); }, { once: true });
+                    return;
+                }
+                const script = document.createElement('script');
+                script.src = key;
+                script.async = true;
+                script.crossOrigin = 'anonymous';
+                script.onload = function() { resolve(); };
+                script.onerror = function() { reject(new Error('Could not load script.')); };
+                document.head.appendChild(script);
+            }).catch(function(err) {
+                delete cameraCaptureState.scriptPromises[key];
+                throw err;
+            });
+            return cameraCaptureState.scriptPromises[key];
+        }
+
+        async function ensurePortraitModelReady(showFeedback) {
+            if (cameraCaptureState.model) return cameraCaptureState.model;
+            if (!cameraCaptureState.modelPromise) {
+                cameraCaptureState.modelPromise = (async function() {
+                    if (showFeedback && cameraCaptureState.open) setCameraCaptureStatus('Loading AI plant detection...', 'active');
+                    if (typeof window.tf === 'undefined') {
+                        await loadCameraCaptureExternalScript(TFJS_SCRIPT_URL, function() { return typeof window.tf !== 'undefined'; });
+                    }
+                    if (window.tf && typeof window.tf.setBackend === 'function') {
+                        try {
+                            if (window.tf.getBackend() !== 'webgl') await window.tf.setBackend('webgl');
+                        } catch (e) {}
+                    }
+                    if (window.tf && typeof window.tf.ready === 'function') await window.tf.ready();
+                    if (typeof window.cocoSsd === 'undefined') {
+                        await loadCameraCaptureExternalScript(COCO_SSD_SCRIPT_URL, function() { return typeof window.cocoSsd !== 'undefined'; });
+                    }
+                    return await window.cocoSsd.load({ base: 'lite_mobilenet_v2' });
+                })().then(function(model) {
+                    cameraCaptureState.model = model;
+                    return model;
+                }).catch(function(err) {
+                    cameraCaptureState.modelPromise = null;
+                    throw err;
+                });
+            }
+            return cameraCaptureState.modelPromise;
+        }
+
+        function createRoundedRectPath(ctx, x, y, width, height, radius) {
+            const r = Math.max(0, Math.min(Number(radius) || 0, Math.min(width, height) / 2));
+            ctx.beginPath();
+            if (typeof ctx.roundRect === 'function') {
+                ctx.roundRect(x, y, width, height, r);
+                return;
+            }
+            ctx.moveTo(x + r, y);
+            ctx.lineTo(x + width - r, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + r);
+            ctx.lineTo(x + width, y + height - r);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+            ctx.lineTo(x + r, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - r);
+            ctx.lineTo(x, y + r);
+            ctx.quadraticCurveTo(x, y, x + r, y);
+        }
+
+        function drawCameraSourceToCanvas(ctx, sourceImage, width, height) {
+            ctx.clearRect(0, 0, width, height);
+            ctx.filter = 'none';
+            ctx.drawImage(sourceImage, 0, 0, width, height);
+        }
+
+        async function applyPortraitPlantBlur(sourceImage, canvas) {
+            const model = await ensurePortraitModelReady(false);
+            if (!model) return { applied: false, reason: 'model' };
+            const sourceWidth = Number(sourceImage.width || sourceImage.naturalWidth || 0);
+            const sourceHeight = Number(sourceImage.height || sourceImage.naturalHeight || 0);
+            if (!sourceWidth || !sourceHeight) return { applied: false, reason: 'size' };
+            const detectScale = Math.min(1, CAMERA_PORTRAIT_DETECTION_MAX_SIDE / Math.max(sourceWidth, sourceHeight));
+            const detectWidth = Math.max(1, Math.round(sourceWidth * detectScale));
+            const detectHeight = Math.max(1, Math.round(sourceHeight * detectScale));
+            const detectCanvas = document.createElement('canvas');
+            detectCanvas.width = detectWidth;
+            detectCanvas.height = detectHeight;
+            const detectCtx = detectCanvas.getContext('2d', { alpha: false });
+            if (!detectCtx) return { applied: false, reason: 'context' };
+            detectCtx.drawImage(sourceImage, 0, 0, detectWidth, detectHeight);
+            let predictions = [];
+            try {
+                predictions = await model.detect(detectCanvas, 8, CAMERA_PORTRAIT_MIN_SCORE);
+            } finally {
+                detectCanvas.width = 1;
+                detectCanvas.height = 1;
+            }
+            const plantBoxes = (predictions || []).filter(function(prediction) {
+                const label = String(prediction && prediction.class || '').toLowerCase();
+                return Number(prediction && prediction.score || 0) >= CAMERA_PORTRAIT_MIN_SCORE && (label === 'potted plant' || label.indexOf('plant') !== -1);
+            });
+            if (!plantBoxes.length) return { applied: false, reason: 'no-plant' };
+            const ctx = canvas.getContext('2d', { alpha: false });
+            if (!ctx) return { applied: false, reason: 'context' };
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.save();
+            ctx.filter = 'blur(' + CAMERA_PORTRAIT_BLUR_PX + 'px)';
+            ctx.drawImage(sourceImage, 0, 0, canvas.width, canvas.height);
+            ctx.restore();
+            const scaleX = canvas.width / detectWidth;
+            const scaleY = canvas.height / detectHeight;
+            plantBoxes.forEach(function(prediction) {
+                const box = Array.isArray(prediction.bbox) ? prediction.bbox : [0, 0, detectWidth, detectHeight];
+                let x = Number(box[0] || 0) * scaleX;
+                let y = Number(box[1] || 0) * scaleY;
+                let width = Number(box[2] || 0) * scaleX;
+                let height = Number(box[3] || 0) * scaleY;
+                const padX = Math.max(20, width * 0.16);
+                const padY = Math.max(20, height * 0.16);
+                x = Math.max(0, x - padX);
+                y = Math.max(0, y - padY);
+                width = Math.min(canvas.width - x, width + (padX * 2));
+                height = Math.min(canvas.height - y, height + (padY * 2));
+                const radius = Math.min(40, Math.max(16, Math.min(width, height) * 0.18));
+                ctx.save();
+                createRoundedRectPath(ctx, x, y, width, height, radius);
+                ctx.clip();
+                ctx.drawImage(sourceImage, 0, 0, canvas.width, canvas.height);
+                ctx.restore();
+            });
+            return { applied: true, reason: 'applied' };
+        }
+
+        async function startCameraVideoMode() {
+            if (!cameraCaptureState.open || cameraCaptureState.mode !== 'video') return;
+            const videoEl = document.getElementById('camera-capture-video');
+            const emptyEl = document.getElementById('camera-capture-video-empty');
+            if (!videoEl) return;
+            if (!canUseInlineVideoCapture()) {
+                setCameraCaptureStatus('In-app video mode is not available on this device. Standard mode is still ready.', 'warn');
+                syncCameraCaptureUi();
+                return;
+            }
+            stopCameraCaptureStream();
+            setCameraCaptureStatus('Opening in-app camera...', 'active');
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    audio: false,
+                    video: {
+                        facingMode: { ideal: 'environment' },
+                        width: { ideal: 1280 },
+                        height: { ideal: 960 }
+                    }
+                });
+                if (!cameraCaptureState.open || cameraCaptureState.mode !== 'video') {
+                    stream.getTracks().forEach(function(track) { track.stop(); });
+                    return;
+                }
+                cameraCaptureState.stream = stream;
+                videoEl.srcObject = stream;
+                videoEl.muted = true;
+                videoEl.setAttribute('playsinline', 'true');
+                videoEl.setAttribute('autoplay', 'true');
+                await videoEl.play().catch(function() {});
+                if (emptyEl) emptyEl.classList.add('hidden');
+                syncCameraCaptureUi();
+                if (cameraCaptureState.portraitEnabled) ensurePortraitModelReady(false).catch(function() {});
+            } catch (err) {
+                console.warn('Inline camera preview failed', err);
+                setCameraCaptureStatus('Could not access the in-app camera. Standard mode is still available.', 'error');
+                showToast('Camera', 'Could not start the in-app camera. Standard mode is still available.', true);
+                syncCameraCaptureUi();
+            }
+        }
+
+        function triggerStandardCameraCapture() {
+            const input = cameraCaptureState.input;
+            if (!input) {
+                showToast('Camera', 'The device camera input is not ready.', true);
+                return;
+            }
+            try { input.value = ''; } catch (e) {}
+            if (cameraCaptureState.portraitEnabled) ensurePortraitModelReady(false).catch(function() {});
+            setCameraCaptureStatus('Opening device camera...', 'active');
+            input.click();
+        }
+
+        function captureCameraVideoFrame() {
+            if (!cameraCaptureState.open || cameraCaptureState.captureInFlight) return;
+            const videoEl = document.getElementById('camera-capture-video');
+            const canvas = document.getElementById('camera-capture-canvas');
+            if (!cameraCaptureState.stream || !videoEl || !canvas || !videoEl.videoWidth || !videoEl.videoHeight) {
+                startCameraVideoMode();
+                return;
+            }
+            cameraCaptureState.captureInFlight = true;
+            syncCameraCaptureUi();
+            setCameraCaptureStatus('Capturing photo...', 'active');
+            canvas.width = videoEl.videoWidth;
+            canvas.height = videoEl.videoHeight;
+            const ctx = canvas.getContext('2d', { alpha: false });
+            if (!ctx) {
+                cameraCaptureState.captureInFlight = false;
+                syncCameraCaptureUi();
+                showToast('Camera', 'Could not capture this frame.', true);
+                return;
+            }
+            ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+            const prefix = cameraCaptureState.prefix;
+            const input = cameraCaptureState.input;
+            const applyPortrait = !!cameraCaptureState.portraitEnabled;
+            canvas.toBlob(function(blob) {
+                cameraCaptureState.captureInFlight = false;
+                if (!blob) {
+                    syncCameraCaptureUi();
+                    showToast('Camera', 'Could not capture this frame.', true);
+                    return;
+                }
+                closeCameraCaptureModal();
+                processSelectedPhotoFile(blob, prefix, input, { applyPortrait: applyPortrait }).catch(function() {});
+            }, 'image/jpeg', 0.88);
+        }
+
+        async function processSelectedPhotoFile(file, prefix, input, options) {
+            const opts = options || {};
+            if (!file || !activeItem) return Promise.resolve();
+            if (!canEditRowDetails(prefix)) {
+                showRowEditRestrictedToast(prefix);
+                if (input) input.value = '';
+                return Promise.resolve();
+            }
+            const itemToUpload = activeItem;
+            if ((isIOSDevice() || isStandaloneApp()) && document.activeElement && ['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) {
+                document.activeElement.blur();
+            }
+            if (navigator.onLine === false) {
+                showToast('Offline', 'No service. Photo could not upload.', true);
+                if (input) input.value = '';
+                return Promise.resolve();
+            }
+            const fileType = String(file.type || opts.mimeType || 'image/jpeg').toLowerCase();
+            if (fileType.indexOf('image/') !== 0) {
+                showToast('Error', 'Please select an image file.', true);
+                if (input) input.value = '';
+                return Promise.resolve();
+            }
+            const shouldAttemptPortrait = !!opts.applyPortrait;
+            showToast('Processing', shouldAttemptPortrait ? 'Preparing portrait photo...' : 'Compressing image...', false);
+            const appendCsvValue = function(currentValue, nextValue) {
+                const existing = String(currentValue || '').split(',').map(function(value) { return value.trim(); }).filter(Boolean);
+                if (String(nextValue || '').trim()) existing.push(String(nextValue).trim());
+                return existing.join(',');
+            };
+            const uploadPromise = new Promise(function(resolve, reject) {
+                let objectUrl = '';
+                let bitmap = null;
+                let img = null;
+                let canvas = null;
+                const cleanupUploadResources = function() {
+                    if (bitmap && typeof bitmap.close === 'function') {
+                        try { bitmap.close(); } catch (e) {}
+                    }
+                    bitmap = null;
+                    if (img) {
+                        img.onload = null;
+                        img.onerror = null;
+                        try { img.src = ''; } catch (e) {}
+                    }
+                    img = null;
+                    if (canvas) {
+                        canvas.width = 1;
+                        canvas.height = 1;
+                    }
+                    canvas = null;
+                    if (objectUrl) {
+                        try { URL.revokeObjectURL(objectUrl); } catch (e) {}
+                        objectUrl = '';
+                    }
+                };
+                const failUpload = function(error) {
+                    cleanupUploadResources();
+                    if (input) input.value = '';
+                    reject(error instanceof Error ? error : new Error(String(error || 'Could not process the selected image.')));
+                };
+                const beginUpload = async function(sourceImage) {
+                    const sourceWidth = Number(sourceImage.width || sourceImage.naturalWidth || 0);
+                    const sourceHeight = Number(sourceImage.height || sourceImage.naturalHeight || 0);
+                    if (!sourceWidth || !sourceHeight) throw new Error('Could not process the selected image.');
+                    canvas = document.createElement('canvas');
+                    const targetMaxWidthBase = isLagSensitiveDetailPrefix(prefix) ? 720 : PHOTO_MAX_WIDTH;
+                    const targetMaxWidth = shouldAttemptPortrait ? Math.min(targetMaxWidthBase, 840) : targetMaxWidthBase;
+                    const targetJpegQualityBase = isLagSensitiveDetailPrefix(prefix) ? 0.64 : PHOTO_JPEG_QUALITY;
+                    const targetJpegQuality = shouldAttemptPortrait ? Math.min(targetJpegQualityBase, 0.68) : targetJpegQualityBase;
+                    const scaleSize = sourceWidth > targetMaxWidth ? targetMaxWidth / sourceWidth : 1;
+                    canvas.width = Math.max(1, Math.round(sourceWidth * scaleSize));
+                    canvas.height = Math.max(1, Math.round(sourceHeight * scaleSize));
+                    const ctx = canvas.getContext('2d', { alpha: false });
+                    if (!ctx) throw new Error('Could not prepare the selected image.');
+                    ctx.imageSmoothingEnabled = true;
+                    ctx.imageSmoothingQuality = 'high';
+                    let portraitApplied = false;
+                    if (shouldAttemptPortrait) {
+                        try {
+                            const portraitResult = await applyPortraitPlantBlur(sourceImage, canvas);
+                            portraitApplied = !!(portraitResult && portraitResult.applied);
+                        } catch (err) {
+                            console.warn('Portrait processing failed', err);
+                        }
+                    }
+                    if (!portraitApplied) drawCameraSourceToCanvas(ctx, sourceImage, canvas.width, canvas.height);
+                    canvas.toBlob(async function(blob) {
+                        if (!blob) {
+                            failUpload(new Error('Could not compress the selected image.'));
+                            return;
+                        }
+                        try {
+                            showToast('Uploading', portraitApplied ? 'Sending portrait photo to Supabase...' : 'Sending photo to Supabase...', false);
+                            const bucketName = PHOTO_BUCKETS[prefix] || PHOTO_BUCKETS.default;
+                            const clean = function(value) { return String(value || 'NA').replace(/[^a-zA-Z0-9_-]/g, ''); };
+                            const fileName = clean(itemToUpload.COMMONNAME) + '-' + clean(itemToUpload.CONTSIZE) + '-' + Date.now() + '.jpg';
+                            const filePath = new Date().toISOString().split('T')[0] + '/' + fileName;
+                            const uploadResult = await withTimeout(supabaseClient.storage.from(bucketName).upload(filePath, blob, { contentType: 'image/jpeg', upsert: true }), SUPABASE_UPLOAD_TIMEOUT_MS, 'Photo upload');
+                            const uploadError = uploadResult && uploadResult.error ? uploadResult.error : null;
+                            if (uploadError) throw uploadError;
+                            const publicUrlData = supabaseClient.storage.from(bucketName).getPublicUrl(filePath).data;
+                            const publicUrl = publicUrlData.publicUrl;
+                            if (prefix === 'req-') {
+                                itemToUpload.REQ_PHOTO_LINK = appendCsvValue(itemToUpload.REQ_PHOTO_LINK, publicUrl);
+                                itemToUpload.REQ_PHOTO_NAME = appendCsvValue(itemToUpload.REQ_PHOTO_NAME, fileName);
+                            } else if (prefix === 'dock-') {
+                                itemToUpload.DOCK_PHOTO_LINK = appendCsvValue(itemToUpload.DOCK_PHOTO_LINK, publicUrl);
+                                itemToUpload.DOCK_PHOTO_NAME = appendCsvValue(itemToUpload.DOCK_PHOTO_NAME, fileName);
+                            } else if (prefix === 'flyer-') {
+                                itemToUpload.FLYER_PHOTO_LINK = appendCsvValue(itemToUpload.FLYER_PHOTO_LINK, publicUrl);
+                                itemToUpload.FLYER_PHOTO_NAME = appendCsvValue(itemToUpload.FLYER_PHOTO_NAME, fileName);
+                            } else {
+                                itemToUpload.SAVED_PHOTO_LINK = appendCsvValue(itemToUpload.SAVED_PHOTO_LINK, publicUrl);
+                                itemToUpload.SAVED_PHOTO_NAME = appendCsvValue(itemToUpload.SAVED_PHOTO_NAME, fileName);
+                            }
+                            syncSharedFlyerPhotoFields(itemToUpload, prefix);
+                            normalizeRowPhotoFields(itemToUpload);
+                            saveData(false, prefix, true, itemToUpload, { photoChanged: true });
+                            showToast('Success', portraitApplied ? 'Portrait photo uploaded successfully!' : 'Photo uploaded successfully!');
+                            resolve(publicUrl);
+                        } catch (err) {
+                            showToast('Error', 'Upload failed: ' + (err.message || 'Unknown error'), true);
+                            reject(err);
+                        } finally {
+                            if (input) input.value = '';
+                            cleanupUploadResources();
+                        }
+                    }, 'image/jpeg', targetJpegQuality);
+                };
+                const startFallbackImageLoad = function() {
+                    objectUrl = URL.createObjectURL(file);
+                    img = new Image();
+                    img.decoding = 'async';
+                    img.onerror = function() { failUpload(new Error('Could not process the selected image.')); };
+                    img.onload = function() { beginUpload(img).catch(failUpload); };
+                    img.src = objectUrl;
+                };
+                if (window.createImageBitmap) {
+                    createImageBitmap(file)
+                        .then(function(imageBitmap) {
+                            bitmap = imageBitmap;
+                            return beginUpload(imageBitmap);
+                        })
+                        .catch(function() { startFallbackImageLoad(); });
+                } else {
+                    startFallbackImageLoad();
+                }
+            });
+            registerPendingPhotoUpload(itemToUpload, prefix, uploadPromise);
+            uploadPromise.catch(function() {});
+            return uploadPromise;
+        }
+
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) stopCameraCaptureStream();
+        }, { passive: true });
+        window.addEventListener('pagehide', function() { stopCameraCaptureStream(); }, { passive: true });
         function handleLogin(isBiometricLogin=false) {
             const rawUser=document.getElementById('username-input').value.trim();
             const inputUser=rawUser.toLowerCase(); 
@@ -14273,155 +14899,10 @@ function toggleDriveSeason(s) {
         }
 
         async function handlePhotoUpload(input, prefix) {
-            if (!input.files || input.files.length === 0 || !activeItem) return;
-            if (!canEditRowDetails(prefix)) {
-                showRowEditRestrictedToast(prefix);
-                input.value = '';
-                return;
-            }
-            const itemToUpload = activeItem;
-            if ((isIOSDevice() || isStandaloneApp()) && document.activeElement && ['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) {
-                document.activeElement.blur();
-            }
-            if (navigator.onLine === false) {
-                showToast('Offline', 'No service. Photo could not upload.', true);
-                input.value = '';
-                return;
-            }
+            if (!input || !input.files || input.files.length === 0 || !activeItem) return;
+            if (cameraCaptureState.open && cameraCaptureState.prefix === prefix) closeCameraCaptureModal();
             const file = input.files[0];
-
-            if (!file.type.startsWith('image/')) {
-                showToast('Error', 'Please select an image file.', true);
-                input.value = '';
-                return;
-            }
-
-            showToast('Processing', 'Compressing image...', false);
-
-            const appendCsvValue = (currentValue, nextValue) => {
-                const existing = String(currentValue || '').split(',').map(v => v.trim()).filter(Boolean);
-                if (String(nextValue || '').trim()) existing.push(String(nextValue).trim());
-                return existing.join(',');
-            };
-
-            const uploadPromise = new Promise((resolve, reject) => {
-                let objectUrl = '';
-                let bitmap = null;
-                let img = null;
-                let canvas = null;
-                const cleanupUploadResources = () => {
-                    if (bitmap && typeof bitmap.close === 'function') {
-                        try { bitmap.close(); } catch (e) {}
-                    }
-                    bitmap = null;
-                    if (img) {
-                        img.onload = null;
-                        img.onerror = null;
-                        try { img.src = ''; } catch (e) {}
-                    }
-                    img = null;
-                    if (canvas) {
-                        canvas.width = 1;
-                        canvas.height = 1;
-                    }
-                    canvas = null;
-                    if (objectUrl) {
-                        try { URL.revokeObjectURL(objectUrl); } catch (e) {}
-                        objectUrl = '';
-                    }
-                };
-                const failUpload = (error) => {
-                    cleanupUploadResources();
-                    input.value = '';
-                    reject(error instanceof Error ? error : new Error(String(error || 'Could not process the selected image.')));
-                };
-                const beginUpload = async (sourceImage) => {
-                    const sourceWidth = Number(sourceImage.width || sourceImage.naturalWidth || 0);
-                    const sourceHeight = Number(sourceImage.height || sourceImage.naturalHeight || 0);
-                    if (!sourceWidth || !sourceHeight) throw new Error('Could not process the selected image.');
-                    canvas = document.createElement('canvas');
-                    const targetMaxWidth = isLagSensitiveDetailPrefix(prefix) ? 720 : PHOTO_MAX_WIDTH;
-                    const targetJpegQuality = isLagSensitiveDetailPrefix(prefix) ? 0.64 : PHOTO_JPEG_QUALITY;
-                    const scaleSize = sourceWidth > targetMaxWidth ? targetMaxWidth / sourceWidth : 1;
-                    canvas.width = Math.max(1, Math.round(sourceWidth * scaleSize));
-                    canvas.height = Math.max(1, Math.round(sourceHeight * scaleSize));
-                    const ctx = canvas.getContext('2d', { alpha: false });
-                    if (!ctx) throw new Error('Could not prepare the selected image.');
-                    ctx.imageSmoothingEnabled = true;
-                    ctx.imageSmoothingQuality = 'high';
-                    ctx.drawImage(sourceImage, 0, 0, canvas.width, canvas.height);
-                    canvas.toBlob(async (blob) => {
-                        if (!blob) {
-                            failUpload(new Error('Could not compress the selected image.'));
-                            return;
-                        }
-                        try {
-                            showToast('Uploading', 'Sending photo to Supabase...', false);
-                            const bucketName = PHOTO_BUCKETS[prefix] || PHOTO_BUCKETS.default;
-                            const clean = (t) => String(t || 'NA').replace(/[^a-zA-Z0-9_-]/g, '');
-                            const fileName = clean(itemToUpload.COMMONNAME) + '-' + clean(itemToUpload.CONTSIZE) + '-' + Date.now() + '.jpg';
-                            const filePath = new Date().toISOString().split('T')[0] + '/' + fileName;
-                            const uploadResult = await withTimeout(
-                                supabaseClient.storage.from(bucketName).upload(filePath, blob, {
-                                    contentType: 'image/jpeg',
-                                    upsert: true
-                                }),
-                                SUPABASE_UPLOAD_TIMEOUT_MS,
-                                'Photo upload'
-                            );
-                            const uploadError = uploadResult && uploadResult.error ? uploadResult.error : null;
-                            if (uploadError) throw uploadError;
-                            const { data: publicUrlData } = supabaseClient.storage.from(bucketName).getPublicUrl(filePath);
-                            const publicUrl = publicUrlData.publicUrl;
-                            if (prefix === 'req-') {
-                                itemToUpload.REQ_PHOTO_LINK = appendCsvValue(itemToUpload.REQ_PHOTO_LINK, publicUrl);
-                                itemToUpload.REQ_PHOTO_NAME = appendCsvValue(itemToUpload.REQ_PHOTO_NAME, fileName);
-                            } else if (prefix === 'dock-') {
-                                itemToUpload.DOCK_PHOTO_LINK = appendCsvValue(itemToUpload.DOCK_PHOTO_LINK, publicUrl);
-                                itemToUpload.DOCK_PHOTO_NAME = appendCsvValue(itemToUpload.DOCK_PHOTO_NAME, fileName);
-                            } else if (prefix === 'flyer-') {
-                                itemToUpload.FLYER_PHOTO_LINK = appendCsvValue(itemToUpload.FLYER_PHOTO_LINK, publicUrl);
-                                itemToUpload.FLYER_PHOTO_NAME = appendCsvValue(itemToUpload.FLYER_PHOTO_NAME, fileName);
-                            } else {
-                                itemToUpload.SAVED_PHOTO_LINK = appendCsvValue(itemToUpload.SAVED_PHOTO_LINK, publicUrl);
-                                itemToUpload.SAVED_PHOTO_NAME = appendCsvValue(itemToUpload.SAVED_PHOTO_NAME, fileName);
-                            }
-                            syncSharedFlyerPhotoFields(itemToUpload, prefix);
-                            normalizeRowPhotoFields(itemToUpload);
-                            saveData(false, prefix, true, itemToUpload, { photoChanged: true });
-                            showToast('Success', 'Photo uploaded successfully!');
-                            resolve(publicUrl);
-                        } catch (err) {
-                            showToast('Error', 'Upload failed: ' + (err.message || 'Unknown error'), true);
-                            reject(err);
-                        } finally {
-                            input.value = '';
-                            cleanupUploadResources();
-                        }
-                    }, 'image/jpeg', targetJpegQuality);
-                };
-                const startFallbackImageLoad = () => {
-                    objectUrl = URL.createObjectURL(file);
-                    img = new Image();
-                    img.decoding = 'async';
-                    img.onerror = () => failUpload(new Error('Could not process the selected image.'));
-                    img.onload = () => beginUpload(img).catch(failUpload);
-                    img.src = objectUrl;
-                };
-                if (window.createImageBitmap) {
-                    createImageBitmap(file)
-                        .then((imageBitmap) => {
-                            bitmap = imageBitmap;
-                            return beginUpload(imageBitmap);
-                        })
-                        .catch(() => startFallbackImageLoad());
-                } else {
-                    startFallbackImageLoad();
-                }
-            });
-
-            registerPendingPhotoUpload(itemToUpload, prefix, uploadPromise);
-            uploadPromise.catch(() => {});
+            return processSelectedPhotoFile(file, prefix, input, { applyPortrait: cameraCaptureState.portraitEnabled }).catch(function() {});
         }
     </script>
     <script>
@@ -14499,6 +14980,8 @@ function toggleDriveSeason(s) {
     </script>
 </body>
 </html>
+
+
 
 
 
