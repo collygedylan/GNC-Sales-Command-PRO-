@@ -446,7 +446,7 @@
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
                             <button id="run-google-script-btn" type="button" class="hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/25 bg-white/10 text-white text-[10px] font-black uppercase tracking-[0.14em] whitespace-nowrap shadow-sm active:scale-95" onclick="return runGoogleAppsScriptTrigger()"><i class="ph-bold ph-lightning text-sm"></i><span data-run-script-label>Run Script</span></button>
-                            <div id="header-version" class="nav-version-pill">V2026.04.03.27</div>
+                            <div id="header-version" class="nav-version-pill">V2026.04.03.28</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -2782,7 +2782,7 @@
         let pendingRequestArchiveFlushTimer = null;
         let pendingRequestArchiveFlushInFlight = false;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Maschino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'V2026.04.03.27';
+        const APP_VERSION = 'V2026.04.03.28';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -10853,9 +10853,9 @@ activeDriveTab = tab;
             summaryEl.innerText = 'Latest uploaded files currently loaded from Supabase.';
             filesEl.innerHTML = sourceSummaries.map((entry) => {
                 const fileListHtml = entry.files.length
-                    ? entry.files.map((fileName) => <div class="truncate"></div>).join('')
+                    ? entry.files.map((fileName) => `<div class="truncate">${escapeDashboardSyncText(fileName)}</div>`).join('')
                     : '<div class="text-slate-400">No file name stored on the latest rows.</div>';
-                return <div class="rounded-xl border border-emerald-100 bg-emerald-50/40 p-3"><div class="flex items-center justify-between gap-3"><span class="text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]"></span><span class="text-[10px] font-bold text-slate-500 text-right"></span></div><div class="mt-2 space-y-1 text-[11px] font-semibold text-slate-700"></div></div>;
+                return `<div class="rounded-xl border border-emerald-100 bg-emerald-50/40 p-3"><div class="flex items-center justify-between gap-3"><span class="text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">${escapeDashboardSyncText(entry.label)}</span><span class="text-[10px] font-bold text-slate-500 text-right">${escapeDashboardSyncText(formatDashboardSyncDateTime(entry.iso))}</span></div><div class="mt-2 space-y-1 text-[11px] font-semibold text-slate-700">${fileListHtml}</div></div>`;
             }).join('');
         }
 
