@@ -445,7 +445,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-                            <div id="header-version" class="nav-version-pill">V2026.04.03.33</div>
+                            <div id="header-version" class="nav-version-pill">V2026.04.03.34</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -2786,7 +2786,7 @@
         let pendingRequestArchiveFlushTimer = null;
         let pendingRequestArchiveFlushInFlight = false;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Maschino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'V2026.04.03.33';
+        const APP_VERSION = 'V2026.04.03.34';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -5994,52 +5994,58 @@ function toggleDriveQuickRequestItem(domId) {
             const reserveInitialMode = 'initial';
             const prefersDeferredWarm = isTouchConstrainedDevice();
 
-            if (prefersDeferredWarm) addLoginWarmupTarget(fullTargets, 'master', 'initial');
-            else addLoginWarmupTarget(initialTargets, 'master', 'initial');
+            addLoginWarmupTarget(initialTargets, 'master', 'initial');
+            addLoginWarmupTarget(fullTargets, 'master', 'full');
 
             if (allowedViews.has('av')) {
-                if (prefersDeferredWarm) addLoginWarmupTarget(fullTargets, 'avOpen', 'initial');
-                else addLoginWarmupTarget(initialTargets, 'avOpen', 'initial');
-                if (!prefersDeferredWarm) addLoginWarmupTarget(initialTargets, 'reserves', reserveInitialMode);
+                addLoginWarmupTarget(initialTargets, 'avOpen', 'initial');
+                addLoginWarmupTarget(fullTargets, 'avOpen', 'full');
+                addLoginWarmupTarget(initialTargets, 'reserves', reserveInitialMode);
+                addLoginWarmupTarget(fullTargets, 'reserves', 'full');
             }
             if (allowedViews.has('request') || allowedViews.has('reports')) {
                 addLoginWarmupTarget(initialTargets, 'requests', 'initial');
                 addLoginWarmupTarget(fullTargets, 'requests', 'full');
             }
             if (allowedViews.has('docks') || allowedViews.has('reports')) {
-                if (!prefersDeferredWarm) addLoginWarmupTarget(initialTargets, 'soc', 'initial');
+                addLoginWarmupTarget(initialTargets, 'soc', 'initial');
+                addLoginWarmupTarget(fullTargets, 'soc', 'full');
             }
             if (allowedViews.has('sales-office')) {
-                if (!prefersDeferredWarm) addLoginWarmupTarget(initialTargets, 'salesOffice', 'initial');
+                addLoginWarmupTarget(initialTargets, 'salesOffice', 'initial');
+                addLoginWarmupTarget(fullTargets, 'salesOffice', 'full');
             }
             if (allowedViews.has('tasks')) {
-                if (!prefersDeferredWarm) addLoginWarmupTarget(initialTargets, 'avNotes', 'initial');
-                if (!prefersDeferredWarm) addLoginWarmupTarget(initialTargets, 'cav', 'initial');
+                addLoginWarmupTarget(initialTargets, 'avNotes', 'initial');
+                addLoginWarmupTarget(fullTargets, 'avNotes', 'full');
+                addLoginWarmupTarget(initialTargets, 'cav', 'initial');
+                addLoginWarmupTarget(fullTargets, 'cav', 'full');
             }
             if (allowedViews.has('reserves')) {
-                if (!prefersDeferredWarm) addLoginWarmupTarget(initialTargets, 'reserves', reserveInitialMode);
+                addLoginWarmupTarget(initialTargets, 'reserves', reserveInitialMode);
+                addLoginWarmupTarget(fullTargets, 'reserves', 'full');
             }
 
-            const initialPriority = ['master', 'avOpen', 'requests', 'soc', 'salesOffice', 'avNotes', 'cav', 'reserves'];
+            const initialPriority = ['master', 'requests', 'avOpen', 'soc', 'salesOffice', 'avNotes', 'cav', 'reserves'];
             const initialKeys = initialPriority.concat(Array.from(initialTargets.keys()).filter((key) => !initialPriority.includes(key)));
             const initialQueue = [];
-            const initialStart = prefersDeferredWarm ? 1800 : 30;
-            const initialStep = prefersDeferredWarm ? 550 : 140;
+            const initialStart = prefersDeferredWarm ? (openedFromCache ? 80 : 120) : 30;
+            const initialStep = prefersDeferredWarm ? 180 : 140;
             initialKeys.forEach((key) => {
                 const target = initialTargets.get(key);
                 if (!target) return;
                 initialQueue.push({ key, mode: target.mode, delay: initialStart + (initialQueue.length * initialStep) });
             });
 
-            const fullPriority = ['requests', 'soc', 'avOpen', 'salesOffice', 'avNotes', 'cav', 'reserves', 'master'];
+            const fullPriority = ['requests', 'soc', 'salesOffice', 'avNotes', 'cav', 'avOpen', 'reserves', 'master'];
             const fullKeys = fullPriority.concat(Array.from(fullTargets.keys()).filter((key) => !fullPriority.includes(key)));
             const fullQueue = [];
-            const fullStart = openedFromCache ? (prefersDeferredWarm ? 5200 : 2400) : (prefersDeferredWarm ? 4200 : 900);
-            const fullStep = openedFromCache ? (prefersDeferredWarm ? 3200 : 1900) : (prefersDeferredWarm ? 2200 : 900);
+            const fullStart = openedFromCache ? (prefersDeferredWarm ? 1200 : 1600) : (prefersDeferredWarm ? 650 : 900);
+            const fullStep = openedFromCache ? (prefersDeferredWarm ? 1200 : 1600) : (prefersDeferredWarm ? 900 : 900);
             fullKeys.forEach((key) => {
                 const target = fullTargets.get(key);
                 if (!target) return;
-                const extraDelay = key === 'reserves' && (isIOSDevice() || isStandaloneApp()) ? (openedFromCache ? 500 : 250) : 0;
+                const extraDelay = key === 'reserves' && (isIOSDevice() || isStandaloneApp()) ? (openedFromCache ? 350 : 180) : 0;
                 fullQueue.push({ key, mode: target.mode, delay: fullStart + (fullQueue.length * fullStep) + extraDelay });
             });
 
@@ -6061,10 +6067,10 @@ function toggleDriveQuickRequestItem(domId) {
             document.getElementById('header-user').innerText=currentUserDisplay || currentUser; 
             const roleAccess = getRoleAccessState();
             const deferHeavyLoginWarm = isTouchConstrainedDevice();
-            const shouldWarmReserveCache = !deferHeavyLoginWarm && roleAccess.allowedViews && typeof roleAccess.allowedViews.has === 'function' && (roleAccess.allowedViews.has('av') || roleAccess.allowedViews.has('reserves') || roleAccess.allowedViews.has('reports'));
-            const shellWarmDelay = deferHeavyLoginWarm ? 5200 : 0;
-            const cacheWarmDelay = deferHeavyLoginWarm ? 6200 : 0;
-            const queueWarmDelay = deferHeavyLoginWarm ? 6800 : 0;
+            const shouldWarmReserveCache = roleAccess.allowedViews && typeof roleAccess.allowedViews.has === 'function' && (roleAccess.allowedViews.has('av') || roleAccess.allowedViews.has('reserves') || roleAccess.allowedViews.has('reports'));
+            const shellWarmDelay = deferHeavyLoginWarm ? 900 : 0;
+            const cacheWarmDelay = deferHeavyLoginWarm ? 180 : 0;
+            const queueWarmDelay = deferHeavyLoginWarm ? 260 : 0;
             const postShellUiDelay = deferHeavyLoginWarm ? 180 : 40;
             const shouldPromptBiometric = !deferHeavyLoginWarm && !isBiometricLogin && window.PublicKeyCredential && localStorage.getItem('gnc_bio_enabled')!=='true';
             setLoginProgress(Math.max(currentProgress, 30), 'Preparing your workspace...');
@@ -6109,8 +6115,9 @@ function toggleDriveQuickRequestItem(domId) {
                 })
                 : Promise.resolve(false);
 
-            if (fullInventory.length === 0 && !deferHeavyLoginWarm) {
-                runAfterShellInteractive(() => {
+            if (fullInventory.length === 0) {
+                const scheduleCacheWarm = deferHeavyLoginWarm ? runAfterTouchInteraction : runAfterShellInteractive;
+                scheduleCacheWarm(() => {
                     warmCachedInventory().then((hasCache) => {
                         if (hasCache) {
                             setTimeout(() => reRenderCurrentView(), postShellUiDelay);
