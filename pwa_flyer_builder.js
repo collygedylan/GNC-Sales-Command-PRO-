@@ -8,6 +8,8 @@
     slate: { background: '#f8fafc', panel: '#ffffff', accent: '#1d4ed8', title: '#0f172a', body: '#334155' }
   };
 
+  const BUILDER_STATE_STORAGE_KEY = 'gnc_native_flyer_builder_state_v1';
+
   const BUILDER_CSS = `
     .npf-wrap{display:grid;gap:16px}.npf-grid{display:grid;gap:16px;grid-template-columns:minmax(320px,420px) minmax(320px,1fr)}
     .npf-card{background:#fff;border:1px solid #d9e4dc;border-radius:24px;box-shadow:0 18px 36px rgba(15,23,42,.08);overflow:hidden}
@@ -132,12 +134,14 @@
         }))
       };
       this.ui = {};
+      this.storageKey = BUILDER_STATE_STORAGE_KEY;
     }
 
     mount() {
       if (!this.root) throw new Error('Builder root element is required.');
       injectCss();
-      this.root.innerHTML = `<div class="npf-wrap"><div class="npf-grid"><div class="npf-stack"><div class="npf-card"><div class="npf-section npf-stack"><div><div class="npf-label">Flyer Builder</div><div style="margin-top:6px;font:900 26px/1.08 Arial,sans-serif;color:#0f172a">Phone-ready flyer builder</div><div style="margin-top:6px;font:600 13px/1.45 Arial,sans-serif;color:#64748b">Select pictures, change the color scheme, edit the text below the photos, then export and share the flyer.</div></div><label class="npf-label">Headline<input class="npf-input" data-field="title"></label><label class="npf-label">Subheadline<textarea class="npf-textarea" data-field="subtitle"></textarea></label><label class="npf-label">Footer<input class="npf-input" data-field="footer"></label><label class="npf-label">Footer Note<textarea class="npf-textarea" data-field="footerNote"></textarea></label><div class="npf-label">Themes</div><div class="npf-themes" data-themes></div></div></div><div class="npf-card"><div class="npf-section npf-stack"><div><div class="npf-label">Native Camera</div><div style="margin-top:6px;font:600 13px/1.45 Arial,sans-serif;color:#64748b">Portrait and Photo hand off to your phone camera. Use Samsung Portrait Mode there, then return with the file.</div></div><div class="npf-video-shell"><div class="npf-video-empty">Tap Open Camera or Capture To Slot. The app will wait while your phone camera opens, then continue when you return with the photo.</div></div><div class="npf-mode-row"><button type="button" class="npf-btn npf-muted npf-mode" data-mode="portrait">Portrait</button><button type="button" class="npf-btn npf-muted npf-mode" data-mode="photo">Photo</button><button type="button" class="npf-btn npf-muted npf-mode" data-mode="video">Video</button></div><div class="npf-actions"><button type="button" class="npf-btn npf-primary" data-action="open">Open Camera</button><button type="button" class="npf-btn npf-secondary" data-action="capture">Capture To Slot</button><button type="button" class="npf-btn npf-muted" data-action="stop">Reset Status</button></div><div class="npf-label" data-camera-status style="color:#64748b">Ready to use your phone camera.</div><input type="file" accept="image/*" capture="environment" class="hidden" data-native-image-input><input type="file" accept="video/*" capture="environment" class="hidden" data-native-video-input></div></div><div class="npf-card"><div class="npf-section npf-stack"><div><div class="npf-label">Flyer Cards</div><div style="margin-top:6px;font:600 13px/1.45 Arial,sans-serif;color:#64748b">Each card has its own photo, text below the photo, and note.</div></div><div class="npf-slots" data-slots></div></div></div></div><div class="npf-card"><div class="npf-section"><div class="npf-label">Preview</div><div style="margin-top:6px;font:600 13px/1.45 Arial,sans-serif;color:#64748b">This canvas is the export source.</div></div><div class="npf-preview-shell"><canvas class="npf-canvas" width="1080" height="1350"></canvas></div></div><div class="npf-card"><div class="npf-section npf-stack"><div><div class="npf-label">Export And Share</div><div style="margin-top:6px;font:600 13px/1.45 Arial,sans-serif;color:#64748b">Export a PNG, send it by in-app message, or open an email draft.</div></div><div class="npf-actions"><button type="button" class="npf-btn npf-primary" data-action="png">Export PNG</button><button type="button" class="npf-btn npf-secondary" data-action="message">In-App Message</button><button type="button" class="npf-btn npf-secondary" data-action="outlook">Email Draft</button></div><div class="npf-label" data-share-status style="color:#64748b">Ready to export.</div></div></div></div></div></div>`;
+      this.restorePersistedState();
+      this.root.innerHTML = `<div class="npf-wrap"><div class="npf-grid"><div class="npf-stack"><div class="npf-card"><div class="npf-section npf-stack"><div><div class="npf-label">Flyer Builder</div><div style="margin-top:6px;font:900 26px/1.08 Arial,sans-serif;color:#0f172a">Phone-ready flyer builder</div><div style="margin-top:6px;font:600 13px/1.45 Arial,sans-serif;color:#64748b">Select pictures, change the color scheme, edit the text below the photos, then export and share the flyer.</div></div><label class="npf-label">Headline<input class="npf-input" data-field="title"></label><label class="npf-label">Subheadline<textarea class="npf-textarea" data-field="subtitle"></textarea></label><label class="npf-label">Footer<input class="npf-input" data-field="footer"></label><label class="npf-label">Footer Note<textarea class="npf-textarea" data-field="footerNote"></textarea></label><div class="npf-label">Themes</div><div class="npf-themes" data-themes></div></div></div><div class="npf-card"><div class="npf-section npf-stack"><div><div class="npf-label">Native Camera</div><div style="margin-top:6px;font:600 13px/1.45 Arial,sans-serif;color:#64748b">Portrait and Photo hand off to your phone camera. Use Samsung Portrait Mode there, then return with the file.</div></div><div class="npf-video-shell"><div class="npf-video-empty">Tap Open Camera or Capture To Slot. The app will wait while your phone camera opens, then continue when you return with the photo.</div></div><div class="npf-mode-row"><button type="button" class="npf-btn npf-muted npf-mode" data-mode="portrait">Portrait</button><button type="button" class="npf-btn npf-muted npf-mode" data-mode="photo">Photo</button><button type="button" class="npf-btn npf-muted npf-mode" data-mode="video">Video</button></div><div class="npf-actions"><button type="button" class="npf-btn npf-primary" data-action="open">Open Camera</button><button type="button" class="npf-btn npf-secondary" data-action="capture">Capture To Slot</button><button type="button" class="npf-btn npf-muted" data-action="stop">Reset Status</button></div><div class="npf-label" data-camera-status style="color:#64748b">Ready to use your phone camera.</div><input type="file" accept="image/*"  class="hidden" data-native-image-input><input type="file" accept="video/*"  class="hidden" data-native-video-input></div></div><div class="npf-card"><div class="npf-section npf-stack"><div><div class="npf-label">Flyer Cards</div><div style="margin-top:6px;font:600 13px/1.45 Arial,sans-serif;color:#64748b">Each card has its own photo, text below the photo, and note.</div></div><div class="npf-slots" data-slots></div></div></div></div><div class="npf-card"><div class="npf-section"><div class="npf-label">Preview</div><div style="margin-top:6px;font:600 13px/1.45 Arial,sans-serif;color:#64748b">This canvas is the export source.</div></div><div class="npf-preview-shell"><canvas class="npf-canvas" width="1080" height="1350"></canvas></div></div><div class="npf-card"><div class="npf-section npf-stack"><div><div class="npf-label">Export And Share</div><div style="margin-top:6px;font:600 13px/1.45 Arial,sans-serif;color:#64748b">Export a PNG, send it by in-app message, or open an email draft.</div></div><div class="npf-actions"><button type="button" class="npf-btn npf-primary" data-action="png">Export PNG</button><button type="button" class="npf-btn npf-secondary" data-action="message">In-App Message</button><button type="button" class="npf-btn npf-secondary" data-action="outlook">Email Draft</button></div><div class="npf-label" data-share-status style="color:#64748b">Ready to export.</div></div></div></div></div></div>`;
       this.ui.canvas = this.root.querySelector('.npf-canvas');
       this.ui.themeWrap = this.root.querySelector('[data-themes]');
       this.ui.slotWrap = this.root.querySelector('[data-slots]');
@@ -148,6 +152,7 @@
       this.ui.nativeVideoInput = this.root.querySelector('[data-native-video-input]');
       this.ui.fields.forEach((field) => field.addEventListener('input', () => {
         this.state[field.dataset.field] = field.value;
+        this.persistState();
         this.render();
       }));
       Array.from(this.root.querySelectorAll('[data-mode]')).forEach((button) => button.addEventListener('click', () => {
@@ -168,6 +173,7 @@
       Array.from(this.ui.themeWrap.querySelectorAll('[data-theme]')).forEach((button) => button.addEventListener('click', () => {
         this.state.themeKey = button.dataset.theme;
         this.state.theme = Object.assign({}, THEMES[button.dataset.theme]);
+        this.persistState();
         this.renderUi();
         this.render();
       }));
@@ -180,6 +186,7 @@
       this.ui.slotWrap.innerHTML = this.state.cards.map((card, index) => `<div class="npf-slot"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:10px"><div class="npf-label" style="color:#0f7a4f">${index === this.selectedSlot ? 'Selected Slot' : 'Flyer Slot'} ${index + 1}</div><button type="button" class="npf-btn ${index === this.selectedSlot ? 'npf-primary' : 'npf-muted'}" data-select="${index}">Use This Slot</button></div><div class="npf-thumb" style="${card.imageSrc ? `background-image:url('${card.imageSrc.replace(/'/g, '%27')}');color:transparent;` : ''}">${card.imageSrc ? card.imageName || `Photo ${index + 1}` : 'No image selected yet'}</div><div class="npf-slot-actions" style="margin-top:10px"><button type="button" class="npf-btn npf-secondary" data-camera-slot="${index}">Camera</button><button type="button" class="npf-btn npf-secondary" data-file-slot="${index}">Choose File</button><button type="button" class="npf-btn npf-muted" data-clear-slot="${index}">Clear</button></div><label class="npf-label" style="margin-top:12px">Text Below Photo<input class="npf-input" data-card="heading" data-index="${index}" value="${this.escape(card.heading)}"></label><label class="npf-label">Subtext<textarea class="npf-textarea" data-card="subheading" data-index="${index}">${this.escape(card.subheading)}</textarea></label><label class="npf-label">Note<textarea class="npf-textarea" data-card="note" data-index="${index}">${this.escape(card.note)}</textarea></label></div>`).join('');
       Array.from(this.ui.slotWrap.querySelectorAll('[data-select]')).forEach((button) => button.addEventListener('click', () => {
         this.selectedSlot = Number(button.dataset.select || 0);
+        this.persistState();
         this.renderUi();
       }));
       Array.from(this.ui.slotWrap.querySelectorAll('[data-camera-slot]')).forEach((button) => button.addEventListener('click', async () => {
@@ -197,15 +204,38 @@
         this.revokeCardImageUrl(index);
         this.state.cards[index].imageSrc = '';
         this.state.cards[index].imageName = '';
+        this.persistState();
         this.renderUi();
         this.render();
       }));
       Array.from(this.ui.slotWrap.querySelectorAll('[data-card]')).forEach((field) => field.addEventListener('input', () => {
         const index = Number(field.dataset.index || 0);
         this.state.cards[index][field.dataset.card] = field.value;
+        this.persistState();
         this.render();
       }));
       this.setCameraStatus(this.getCameraStatusText());
+    }
+
+    persistState() {
+      try {
+        sessionStorage.setItem(this.storageKey, JSON.stringify({
+          state: this.state,
+          selectedSlot: this.selectedSlot,
+          cameraMode: this.cameraMode
+        }));
+      } catch (error) {}
+    }
+
+    restorePersistedState() {
+      try {
+        const raw = sessionStorage.getItem(this.storageKey);
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        if (parsed && parsed.state && typeof parsed.state === 'object') this.state = parsed.state;
+        if (parsed && Number.isFinite(Number(parsed.selectedSlot))) this.selectedSlot = Number(parsed.selectedSlot);
+        if (parsed && parsed.cameraMode) this.cameraMode = String(parsed.cameraMode);
+      } catch (error) {}
     }
 
     getCameraStatusText() {
@@ -245,6 +275,8 @@
         return null;
       }
       try { input.value = ''; } catch (error) {}
+      this.persistState();
+      if (typeof global.showToast === 'function') global.showToast('Portrait Tip', 'Select "Camera" then swipe to "Portrait" mode.', false);
       this.setCameraStatus(this.cameraMode === 'portrait'
         ? 'Opening Samsung Camera. Switch to Portrait Mode there if available, then return with the file.'
         : (kind === 'video' ? 'Opening Samsung Camera for video capture...' : 'Opening Samsung Camera for photo capture...'));
@@ -281,6 +313,7 @@
       const objectUrl = URL.createObjectURL(file);
       this.state.cards[index].imageSrc = objectUrl;
       this.state.cards[index].imageName = file.name || `${safeName(this.state.title)}-${index + 1}.jpg`;
+      this.persistState();
       this.renderUi();
       this.render();
       this.setCameraStatus(this.cameraMode === 'portrait'
@@ -294,7 +327,7 @@
       const input = document.createElement('input');
       input.type = 'file';
       input.accept = 'image/*';
-      if (opts.camera) input.capture = 'environment';
+
       const file = await new Promise((resolve) => {
         input.addEventListener('change', () => resolve((input.files && input.files[0]) || null), { once: true });
         input.click();
