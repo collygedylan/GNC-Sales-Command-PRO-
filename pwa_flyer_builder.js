@@ -11,7 +11,7 @@
   const BUILDER_STATE_STORAGE_KEY = 'gnc_native_flyer_builder_state_v1';
 
   const BUILDER_CSS = `
-    .npf-wrap{display:grid;gap:16px}.npf-grid{display:grid;gap:16px;grid-template-columns:minmax(320px,420px) minmax(320px,1fr)}
+    .npf-wrap{display:grid;gap:16px}.npf-grid{display:grid;gap:16px;grid-template-columns:minmax(320px,440px) minmax(320px,1fr)}
     .npf-card{background:#fff;border:1px solid #d9e4dc;border-radius:24px;box-shadow:0 18px 36px rgba(15,23,42,.08);overflow:hidden}
     .npf-section{padding:18px}.npf-stack{display:grid;gap:10px}.npf-label{font-size:11px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:#475569}
     .npf-input,.npf-textarea{width:100%;border:1px solid #d6e3db;border-radius:16px;padding:12px 14px;font:700 14px/1.4 Arial,sans-serif;color:#0f172a;background:#fff}.npf-textarea{min-height:76px;resize:vertical}
@@ -21,6 +21,9 @@
     .npf-video-shell{position:relative;overflow:hidden;border-radius:22px;background:radial-gradient(circle at top,#166534 0%,#0f172a 56%,#020617 100%);aspect-ratio:3/4;min-height:300px}
     .npf-video-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;color:rgba(255,255,255,.88);font:800 14px/1.45 Arial,sans-serif}
     .npf-slots{display:grid;gap:12px}.npf-slot{border:1px solid #dbe7df;border-radius:20px;padding:14px;background:#f8fbf9}.npf-thumb{width:100%;aspect-ratio:16/10;border-radius:18px;background:#dfe9e2 center/cover no-repeat;border:1px dashed #bfd2c4;display:flex;align-items:center;justify-content:center;text-align:center;padding:12px;color:#64748b;font:800 12px/1.4 Arial,sans-serif}
+    .npf-thumb-caption{margin-top:8px;font:800 11px/1.4 Arial,sans-serif;color:#475569}.npf-photo-picker{display:grid;gap:8px;margin-top:12px}.npf-photo-rail{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}.npf-photo-rail::-webkit-scrollbar{display:none}
+    .npf-photo-option{min-width:92px;width:92px;border:1px solid #d6e3db;background:#fff;border-radius:18px;padding:6px;display:grid;gap:6px;cursor:pointer;box-shadow:0 8px 18px rgba(15,23,42,.05)}.npf-photo-option.active{border-color:#0f7a4f;box-shadow:0 0 0 2px rgba(15,122,79,.14),0 8px 18px rgba(15,23,42,.08)}
+    .npf-photo-mini{width:100%;aspect-ratio:1/1;border-radius:12px;background:#dfe9e2 center/cover no-repeat}.npf-photo-caption{font:800 10px/1.3 Arial,sans-serif;color:#334155;text-align:left;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.npf-photo-empty{font:800 11px/1.4 Arial,sans-serif;color:#94a3b8;padding:6px 0 2px}
     .npf-preview-shell{padding:18px;background:linear-gradient(180deg,#f8fafc 0%,#eef4f7 100%);border-radius:24px}.npf-canvas{width:100%;height:auto;display:block;border-radius:22px;box-shadow:0 28px 48px rgba(15,23,42,.16);background:#fff}
     @media (max-width:980px){.npf-grid{grid-template-columns:1fr}}
   `;
@@ -91,6 +94,34 @@
     return maxLines ? lines.slice(0, maxLines) : lines;
   }
 
+  function normalizePhotoOption(option, index) {
+    if (!option) return null;
+    if (typeof option === 'string') option = { src: option };
+    const src = String(option.src || option.url || '').trim();
+    if (!src) return null;
+    const fallbackName = `Photo ${Number(index || 0) + 1}`;
+    const name = String(option.name || option.label || option.displayName || fallbackName).trim() || fallbackName;
+    const displayName = String(option.displayName || name).trim() || name;
+    const source = String(option.source || 'library').trim() || 'library';
+    return { src, name, displayName, source, token: String(option.token || src).trim() || src };
+  }
+
+  function mergePhotoOptions() {
+    const merged = [];
+    const seen = new Set();
+    Array.from(arguments).forEach((list) => {
+      (Array.isArray(list) ? list : []).forEach((option, index) => {
+        const normalized = normalizePhotoOption(option, index);
+        if (!normalized) return;
+        const key = normalized.token || normalized.src;
+        if (!key || seen.has(key)) return;
+        seen.add(key);
+        merged.push(normalized);
+      });
+    });
+    return merged;
+  }
+
   class NativeCamera {
     constructor() {
       this.mode = 'photo';
@@ -125,22 +156,71 @@
         subtitle: opts.subtitle,
         footer: opts.footer,
         footerNote: opts.footerNote,
-        cards: Array.from({ length: Math.max(1, opts.slots) }).map((_, index) => ({
-          heading: `Photo ${index + 1}`,
-          subheading: 'Add detail text below the photo',
-          note: '',
-          imageSrc: '',
-          imageName: ''
-        }))
+        cards: Array.from({ length: Math.max(1, opts.slots) }).map((_, index) => this.createDefaultCard(index))
       };
       this.ui = {};
       this.storageKey = BUILDER_STATE_STORAGE_KEY;
+    }
+
+    createDefaultCard(index) {
+      return {
+        heading: `Photo ${Number(index || 0) + 1}`,
+        subheading: 'Add detail text below the photo',
+        note: '',
+        imageSrc: '',
+        imageName: '',
+        photoOptions: [],
+        selectedPhotoIndex: -1,
+        manualClear: false
+      };
+    }
+
+    normalizeCard(card, index) {
+      const base = Object.assign({}, this.createDefaultCard(index), card || {});
+      let photoOptions = mergePhotoOptions(base.photoOptions || []);
+      const imageSrc = String(base.imageSrc || '').trim();
+      const imageName = String(base.imageName || '').trim() || `Photo ${Number(index || 0) + 1}`;
+      if (imageSrc) {
+        photoOptions = mergePhotoOptions(photoOptions, [{ src: imageSrc, name: imageName, displayName: imageName, source: 'selected' }]);
+      }
+      base.photoOptions = photoOptions;
+      let selectedPhotoIndex = Number.isFinite(Number(base.selectedPhotoIndex)) ? Number(base.selectedPhotoIndex) : -1;
+      if (imageSrc) {
+        const matchedIndex = photoOptions.findIndex((option) => String(option.src || '').trim() === imageSrc);
+        if (matchedIndex >= 0) selectedPhotoIndex = matchedIndex;
+      }
+      if (base.manualClear && !imageSrc) {
+        base.selectedPhotoIndex = -1;
+        base.imageSrc = '';
+        base.imageName = '';
+        return base;
+      }
+      if (selectedPhotoIndex < 0 && photoOptions.length && !imageSrc) selectedPhotoIndex = 0;
+      if (selectedPhotoIndex >= photoOptions.length) selectedPhotoIndex = photoOptions.length ? 0 : -1;
+      if (selectedPhotoIndex >= 0 && photoOptions[selectedPhotoIndex]) {
+        base.selectedPhotoIndex = selectedPhotoIndex;
+        base.imageSrc = photoOptions[selectedPhotoIndex].src;
+        base.imageName = photoOptions[selectedPhotoIndex].name;
+        base.manualClear = false;
+      } else {
+        base.selectedPhotoIndex = -1;
+        base.imageSrc = imageSrc;
+        base.imageName = imageSrc ? imageName : '';
+      }
+      return base;
+    }
+
+    normalizeCards() {
+      const incoming = Array.isArray(this.state.cards) ? this.state.cards : [];
+      this.state.cards = incoming.length ? incoming.map((card, index) => this.normalizeCard(card, index)) : [this.createDefaultCard(0)];
+      if (this.selectedSlot >= this.state.cards.length) this.selectedSlot = 0;
     }
 
     mount() {
       if (!this.root) throw new Error('Builder root element is required.');
       injectCss();
       this.restorePersistedState();
+      this.normalizeCards();
       this.root.innerHTML = `<div class="npf-wrap"><div class="npf-grid"><div class="npf-stack"><div class="npf-card"><div class="npf-section npf-stack"><div><div class="npf-label">Flyer Builder</div><div style="margin-top:6px;font:900 26px/1.08 Arial,sans-serif;color:#0f172a">Phone-ready flyer builder</div><div style="margin-top:6px;font:600 13px/1.45 Arial,sans-serif;color:#64748b">Select pictures, change the color scheme, edit the text below the photos, then export and share the flyer.</div></div><label class="npf-label">Headline<input class="npf-input" data-field="title"></label><label class="npf-label">Subheadline<textarea class="npf-textarea" data-field="subtitle"></textarea></label><label class="npf-label">Footer<input class="npf-input" data-field="footer"></label><label class="npf-label">Footer Note<textarea class="npf-textarea" data-field="footerNote"></textarea></label><div class="npf-label">Themes</div><div class="npf-themes" data-themes></div></div></div><div class="npf-card"><div class="npf-section npf-stack"><div><div class="npf-label">Native Camera</div><div style="margin-top:6px;font:600 13px/1.45 Arial,sans-serif;color:#64748b">Portrait and Photo hand off to your phone camera. Use Samsung Portrait Mode there, then return with the file.</div></div><div class="npf-video-shell"><div class="npf-video-empty">Tap Open Camera or Capture To Slot. The app will wait while your phone camera opens, then continue when you return with the photo.</div></div><div class="npf-mode-row"><button type="button" class="npf-btn npf-muted npf-mode" data-mode="portrait">Portrait</button><button type="button" class="npf-btn npf-muted npf-mode" data-mode="photo">Photo</button><button type="button" class="npf-btn npf-muted npf-mode" data-mode="video">Video</button></div><div class="npf-actions"><button type="button" class="npf-btn npf-primary" data-action="open">Open Camera</button><button type="button" class="npf-btn npf-secondary" data-action="capture">Capture To Slot</button><button type="button" class="npf-btn npf-muted" data-action="stop">Reset Status</button></div><div class="npf-label" data-camera-status style="color:#64748b">Ready to use your phone camera.</div><input type="file" accept="image/*" capture="environment" class="hidden" data-native-image-input><input type="file" accept="video/*"  class="hidden" data-native-video-input></div></div><div class="npf-card"><div class="npf-section npf-stack"><div><div class="npf-label">Flyer Cards</div><div style="margin-top:6px;font:600 13px/1.45 Arial,sans-serif;color:#64748b">Each card has its own photo, text below the photo, and note.</div></div><div class="npf-slots" data-slots></div></div></div></div><div class="npf-card"><div class="npf-section"><div class="npf-label">Preview</div><div style="margin-top:6px;font:600 13px/1.45 Arial,sans-serif;color:#64748b">This canvas is the export source.</div></div><div class="npf-preview-shell"><canvas class="npf-canvas" width="1080" height="1350"></canvas></div></div><div class="npf-card"><div class="npf-section npf-stack"><div><div class="npf-label">Export And Share</div><div style="margin-top:6px;font:600 13px/1.45 Arial,sans-serif;color:#64748b">Export a PNG, send it by in-app message, or open an email draft.</div></div><div class="npf-actions"><button type="button" class="npf-btn npf-primary" data-action="png">Export PNG</button><button type="button" class="npf-btn npf-secondary" data-action="message">In-App Message</button><button type="button" class="npf-btn npf-secondary" data-action="outlook">Email Draft</button></div><div class="npf-label" data-share-status style="color:#64748b">Ready to export.</div></div></div></div></div></div>`;
       this.ui.canvas = this.root.querySelector('.npf-canvas');
       this.ui.themeWrap = this.root.querySelector('[data-themes]');
@@ -168,14 +248,15 @@
     }
 
     renderUi() {
+      this.normalizeCards();
       this.ui.fields.forEach((field) => { field.value = this.state[field.dataset.field] || ''; });
       this.ui.themeWrap.innerHTML = Object.keys(THEMES).map((key) => `<button type="button" class="npf-btn npf-secondary npf-theme ${this.state.themeKey === key ? 'active' : ''}" data-theme="${key}" style="background:${THEMES[key].background};color:${THEMES[key].title};border-color:${THEMES[key].accent}">${key}</button>`).join('');
       Array.from(this.ui.themeWrap.querySelectorAll('[data-theme]')).forEach((button) => button.addEventListener('click', () => {
         this.state.themeKey = button.dataset.theme;
-        this.state.theme = Object.assign({}, THEMES[button.dataset.theme]);
+        this.state.theme = Object.assign({}, THEMES[button.dataset.theme] || THEMES.sage);
         this.persistState();
         this.renderUi();
-        this.render();
+        this.render().catch(() => {});
       }));
       Array.from(this.root.querySelectorAll('[data-mode]')).forEach((button) => {
         const active = button.dataset.mode === this.cameraMode;
@@ -183,11 +264,21 @@
         button.classList.toggle('npf-primary', active);
         button.classList.toggle('npf-muted', !active);
       });
-      this.ui.slotWrap.innerHTML = this.state.cards.map((card, index) => `<div class="npf-slot"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:10px"><div class="npf-label" style="color:#0f7a4f">${index === this.selectedSlot ? 'Selected Slot' : 'Flyer Slot'} ${index + 1}</div><button type="button" class="npf-btn ${index === this.selectedSlot ? 'npf-primary' : 'npf-muted'}" data-select="${index}">Use This Slot</button></div><div class="npf-thumb" style="${card.imageSrc ? `background-image:url('${card.imageSrc.replace(/'/g, '%27')}');color:transparent;` : ''}">${card.imageSrc ? card.imageName || `Photo ${index + 1}` : 'No image selected yet'}</div><div class="npf-slot-actions" style="margin-top:10px"><button type="button" class="npf-btn npf-secondary" data-camera-slot="${index}">Camera</button><button type="button" class="npf-btn npf-secondary" data-file-slot="${index}">Choose File</button><button type="button" class="npf-btn npf-muted" data-clear-slot="${index}">Clear</button></div><label class="npf-label" style="margin-top:12px">Text Below Photo<input class="npf-input" data-card="heading" data-index="${index}" value="${this.escape(card.heading)}"></label><label class="npf-label">Subtext<textarea class="npf-textarea" data-card="subheading" data-index="${index}">${this.escape(card.subheading)}</textarea></label><label class="npf-label">Note<textarea class="npf-textarea" data-card="note" data-index="${index}">${this.escape(card.note)}</textarea></label></div>`).join('');
+      this.ui.slotWrap.innerHTML = this.state.cards.map((card, index) => {
+        const thumbStyle = card.imageSrc ? `background-image:url('${String(card.imageSrc || '').replace(/'/g, '%27')}');color:transparent;` : '';
+        const photoRail = card.photoOptions.length
+          ? `<div class="npf-photo-picker"><div class="npf-label" style="color:#0f7a4f">Row Photos</div><div class="npf-photo-rail">${card.photoOptions.map((option, optionIndex) => `<button type="button" class="npf-photo-option ${card.selectedPhotoIndex === optionIndex && !card.manualClear ? 'active' : ''}" data-photo-option="${index}:${optionIndex}" title="${this.escape(option.displayName || option.name || `Photo ${optionIndex + 1}`)}"><div class="npf-photo-mini" style="background-image:url('${String(option.src || '').replace(/'/g, '%27')}')"></div><div class="npf-photo-caption">${this.escape(option.displayName || option.name || `Photo ${optionIndex + 1}`)}</div></button>`).join('')}</div></div>`
+          : `<div class="npf-photo-empty">No saved row photos yet for this flyer item.</div>`;
+        return `<div class="npf-slot"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:10px"><div class="npf-label" style="color:#0f7a4f">${index === this.selectedSlot ? 'Selected Slot' : 'Flyer Slot'} ${index + 1}</div><button type="button" class="npf-btn ${index === this.selectedSlot ? 'npf-primary' : 'npf-muted'}" data-select="${index}">Use This Slot</button></div><div class="npf-thumb" style="${thumbStyle}">${card.imageSrc ? card.imageName || `Photo ${index + 1}` : 'No image selected yet'}</div><div class="npf-thumb-caption">${this.escape(card.imageName || (card.manualClear ? 'Slot cleared. Tap a row photo to use it again.' : 'Tap any saved row photo below to choose it for the flyer.'))}</div>${photoRail}<div class="npf-slot-actions" style="margin-top:10px"><button type="button" class="npf-btn npf-secondary" data-camera-slot="${index}">Camera</button><button type="button" class="npf-btn npf-secondary" data-file-slot="${index}">Choose File</button><button type="button" class="npf-btn npf-muted" data-clear-slot="${index}">Clear</button></div><label class="npf-label" style="margin-top:12px">Text Below Photo<input class="npf-input" data-card="heading" data-index="${index}" value="${this.escape(card.heading)}"></label><label class="npf-label">Subtext<textarea class="npf-textarea" data-card="subheading" data-index="${index}">${this.escape(card.subheading)}</textarea></label><label class="npf-label">Note<textarea class="npf-textarea" data-card="note" data-index="${index}">${this.escape(card.note)}</textarea></label></div>`;
+      }).join('');
       Array.from(this.ui.slotWrap.querySelectorAll('[data-select]')).forEach((button) => button.addEventListener('click', () => {
         this.selectedSlot = Number(button.dataset.select || 0);
         this.persistState();
         this.renderUi();
+      }));
+      Array.from(this.ui.slotWrap.querySelectorAll('[data-photo-option]')).forEach((button) => button.addEventListener('click', () => {
+        const parts = String(button.dataset.photoOption || '').split(':');
+        this.selectPhotoOption(Number(parts[0] || 0), Number(parts[1] || 0));
       }));
       Array.from(this.ui.slotWrap.querySelectorAll('[data-camera-slot]')).forEach((button) => button.addEventListener('click', async () => {
         this.selectedSlot = Number(button.dataset.cameraSlot || 0);
@@ -200,24 +291,18 @@
         await this.pickFile(this.selectedSlot);
       }));
       Array.from(this.ui.slotWrap.querySelectorAll('[data-clear-slot]')).forEach((button) => button.addEventListener('click', () => {
-        const index = Number(button.dataset.clearSlot || 0);
-        this.revokeCardImageUrl(index);
-        this.state.cards[index].imageSrc = '';
-        this.state.cards[index].imageName = '';
-        this.persistState();
-        this.renderUi();
-        this.render();
+        this.clearSlot(Number(button.dataset.clearSlot || 0));
       }));
       Array.from(this.ui.slotWrap.querySelectorAll('[data-card]')).forEach((field) => field.addEventListener('input', () => {
         const index = Number(field.dataset.index || 0);
         this.state.cards[index][field.dataset.card] = field.value;
         this.persistState();
-        this.render();
+        this.render().catch(() => {});
       }));
       this.setCameraStatus(this.getCameraStatusText());
     }
-
     persistState() {
+      this.normalizeCards();
       try {
         sessionStorage.setItem(this.storageKey, JSON.stringify({
           state: this.state,
@@ -249,19 +334,50 @@
     }
 
     setCameraStatus(text) {
-      this.ui.cameraStatus.textContent = text;
+      if (this.ui.cameraStatus) this.ui.cameraStatus.textContent = text;
     }
 
     setShareStatus(text) {
-      this.ui.shareStatus.textContent = text;
+      if (this.ui.shareStatus) this.ui.shareStatus.textContent = text;
     }
 
-    revokeCardImageUrl(index) {
-      const card = this.state.cards[index];
-      const src = String(card && card.imageSrc || '');
+    revokeBlobUrl(url) {
+      const src = String(url || '').trim();
       if (src && src.indexOf('blob:') === 0) {
         try { URL.revokeObjectURL(src); } catch (error) {}
       }
+    }
+
+    selectPhotoOption(slotIndex, optionIndex) {
+      const index = Math.max(0, Math.min(this.state.cards.length - 1, Number(slotIndex || 0)));
+      const card = this.state.cards[index] = this.normalizeCard(this.state.cards[index], index);
+      const option = card.photoOptions[Number(optionIndex || 0)];
+      if (!option) return;
+      card.selectedPhotoIndex = Number(optionIndex || 0);
+      card.imageSrc = option.src;
+      card.imageName = option.name;
+      card.manualClear = false;
+      this.selectedSlot = index;
+      this.persistState();
+      this.renderUi();
+      this.render().catch(() => {});
+    }
+
+    clearSlot(slotIndex) {
+      const index = Math.max(0, Math.min(this.state.cards.length - 1, Number(slotIndex || 0)));
+      const card = this.state.cards[index] = this.normalizeCard(this.state.cards[index], index);
+      const selected = card.selectedPhotoIndex >= 0 ? card.photoOptions[card.selectedPhotoIndex] : null;
+      if (selected && selected.source !== 'row') {
+        this.revokeBlobUrl(selected.src);
+        card.photoOptions = card.photoOptions.filter((_, optionIndex) => optionIndex !== card.selectedPhotoIndex);
+      }
+      card.imageSrc = '';
+      card.imageName = '';
+      card.selectedPhotoIndex = -1;
+      card.manualClear = true;
+      this.persistState();
+      this.renderUi();
+      this.render().catch(() => {});
     }
 
     async openCamera() {
@@ -309,13 +425,18 @@
         this.setCameraStatus(`Video returned from the phone camera for slot ${index + 1}. Flyer cards still use still photos only.`);
         return file;
       }
-      this.revokeCardImageUrl(index);
       const objectUrl = URL.createObjectURL(file);
-      this.state.cards[index].imageSrc = objectUrl;
-      this.state.cards[index].imageName = file.name || `${safeName(this.state.title)}-${index + 1}.jpg`;
+      const imageName = file.name || `${safeName(this.state.title)}-${index + 1}.jpg`;
+      const card = this.state.cards[index] = this.normalizeCard(this.state.cards[index], index);
+      card.photoOptions = mergePhotoOptions(card.photoOptions, [{ src: objectUrl, name: imageName, displayName: imageName, source: 'upload' }]);
+      const selectedIndex = card.photoOptions.findIndex((option) => String(option.src || '').trim() === objectUrl);
+      card.selectedPhotoIndex = selectedIndex >= 0 ? selectedIndex : card.photoOptions.length - 1;
+      card.imageSrc = objectUrl;
+      card.imageName = imageName;
+      card.manualClear = false;
       this.persistState();
       this.renderUi();
-      this.render();
+      this.render().catch(() => {});
       this.setCameraStatus(this.cameraMode === 'portrait'
         ? `Portrait photo returned from Samsung Camera into slot ${index + 1}.`
         : `Photo returned from Samsung Camera into slot ${index + 1}.`);
@@ -533,3 +654,16 @@
 
   global.NativePwaFlyer = { Builder, NativeCamera, THEMES };
 })(window);
+
+
+
+
+
+
+
+
+
+
+
+
+
