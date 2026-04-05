@@ -25,7 +25,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="./pwa_flyer_builder.js?shellv=V2026.04.05.08"></script>
+    <script src="./pwa_flyer_builder.js?shellv=V2026.04.05.10"></script>
     <style>:root{--bg:#007a4d;--text-color:#111827;--app-height:100vh;--visual-height:100vh;--keyboard-offset:0px}html,body{min-height:100%;width:100%;max-width:100%;overflow:hidden;overscroll-behavior:none;position:relative}html{background:white}@supports (height:100dvh){:root{--app-height:100dvh}}body{font-family:"Amazon Ember",Arial,sans-serif;background:white;color:var(--text-color);user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior:none;min-height:var(--app-height);height:var(--app-height);width:100%;overflow:hidden;position:fixed;inset:0;touch-action:pan-y pinch-zoom}button,[role="button"],.task-tab,.detail-tab,.drawer-item,.drill-item,.menu-btn{touch-action:manipulation}.nav-header{background:var(--bg);color:white;padding-top:max(10px,env(safe-area-inset-top))}#view-login,#view-change-password{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;min-height:var(--app-height)}#view-change-password{display:none;z-index:10000}#app-wrapper{min-height:var(--app-height);height:var(--app-height);width:100%;max-width:100%;overflow:hidden;position:fixed;inset:0}.login-card{background:white;padding:30px;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,.2);width:100%;max-width:360px;text-align:center}.input-field{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:8px;font-size:16px;margin-bottom:12px}#toast-notification{position:fixed;top:-100px;left:50%;transform:translateX(-50%);background:#16a34a;color:white;padding:16px 24px;border-radius:50px;box-shadow:0 10px 15px -3px rgba(0,0,0,.3);z-index:11000;transition:top .5s;display:flex;align-items:center;gap:12px;pointer-events:none}#toast-notification.show{top:20px}#side-drawer{position:fixed;top:0;left:-280px;width:280px;height:100%;background:white;z-index:2000;box-shadow:2px 0 10px rgba(0,0,0,.2);transition:left .3s;overflow-y:auto;padding-bottom:100px}#side-drawer.open{left:0}#drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1999;display:none}#drawer-overlay.open{display:block}.drawer-header{background:var(--bg);color:white;padding:20px;font-weight:bold;font-size:18px}.drawer-item{padding:16px 20px;border-bottom:1px solid #f3f4f6;cursor:pointer;display:flex;align-items:center;gap:12px;color:#374151;font-weight:500}.drill-item{border-bottom:1px solid #e5e7eb;padding:16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:white;transition:background .1s}.drill-item:active{background:#f3f4f6}.back-btn{display:none !important}.inv-card{border:1px solid #dbe4dc;border-left-width:6px;border-radius:18px;padding:14px;background:white;cursor:pointer;flex-grow:1;box-shadow:0 10px 24px rgba(15,23,42,.06);overflow:hidden}.status-green{border-left-color:#22c55e}.status-purple{border-left-color:#9333ea}.status-orange{border-left-color:#f97316}.status-blue{border-left-color:#3b82f6}.status-indigo{border-left-color:#4f46e5}.status-teal{border-left-color:#0d9488}.status-yellow{border-left-color:#eab308}.status-red{border-left-color:#ef4444}.task-tabs,.detail-tabs{display:flex;border-bottom:1px solid #e5e7eb;background:#f9fafb;margin-bottom:10px}.detail-tabs{overflow-x:auto;scrollbar-width:none}.detail-tabs::-webkit-scrollbar{display:none}.task-tab,.detail-tab{flex:1;text-align:center;padding:12px;font-size:11px;font-weight:700;color:#6b7280;cursor:pointer;border-bottom:3px solid transparent;text-transform:uppercase}.detail-tab{flex:0 0 auto;padding:10px 16px}.task-tab.active,.detail-tab.active{color:var(--bg);border-bottom-color:var(--bg);background:white}.overview-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}.overview-card{background:#f8fafc;padding:10px;border-radius:6px;border:1px solid #e2e8f0}.overview-label{font-size:9px;font-weight:800;color:#64748b;text-transform:uppercase;margin-bottom:2px}.overview-val{font-size:13px;font-weight:600;color:#0f172a;word-break:break-all}.expand-trigger{display:flex;align-items:center;justify-content:space-between;padding:12px;background:#f9fafb;border-radius:6px;cursor:pointer;font-weight:600;font-size:14px;border:1px solid #e5e7eb}.expand-content{display:none;margin-top:12px;padding:12px;background:#f9fafb;border-radius:6px;border:1px solid #e5e7eb}.expanded .expand-content{display:block}.card-checkbox-container{width:42px;min-width:42px;overflow:visible;opacity:1;display:flex;align-items:flex-start;justify-content:center;margin-right:12px;transition:transform .16s ease}.card-checkbox-container.absolute{width:auto;min-width:0;margin-right:0}.card-checkbox{display:none !important}.cart-toggle-btn{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:999px;border:1px solid #a7f3d0;background:#f0fdf4;color:#007a4d;box-shadow:0 6px 16px rgba(7,94,63,.14);transition:transform .16s ease,background .16s ease,color .16s ease,border-color .16s ease}.cart-toggle-btn i{font-size:18px;line-height:1}.cart-toggle-btn:active{transform:scale(.95)}.cart-toggle-btn.active{background:#007a4d;color:#fff;border-color:#007a4d}.item-row.cart-selected{box-shadow:0 0 0 2px rgba(0,122,77,.16) inset}.item-row{touch-action:manipulation}.spinner{border:4px solid rgba(255,255,255,.3);border-top:4px solid white;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:0 auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.scrollbar-none::-webkit-scrollbar{display:none}.scrollbar-none{-ms-overflow-style:none;scrollbar-width:none}</style>
     <style>
         :root{--shell-max-width:920px;--content-max-width:820px;--shell-gutter:clamp(12px,2vw,24px);--shell-width:min(calc(100% - (var(--shell-gutter) * 2)),var(--shell-max-width));--content-width:min(100%,var(--content-max-width))}
@@ -566,7 +566,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-                            <div id="header-version" class="nav-version-pill">V2026.04.05.08</div>
+                            <div id="header-version" class="nav-version-pill">V2026.04.05.10</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -1038,6 +1038,7 @@
             'dock-': 'Dock Camera',
             'flyer-': 'Flyer Camera'
         });
+        const CAMERA_NATIVE_RETURN_CONTEXT_STORAGE_KEY = 'gnc_camera_return_context_v1';
         let pendingPhotoUploads = new Map();
         let cameraCaptureState = {
             prefix: '',
@@ -2957,7 +2958,7 @@
         let pendingRequestArchiveFlushTimer = null;
         let pendingRequestArchiveFlushInFlight = false;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Maschino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'V2026.04.05.08';
+        const APP_VERSION = 'V2026.04.05.10';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -6007,14 +6008,76 @@ function toggleDriveQuickRequestItem(domId) {
             return CAMERA_CAPTURE_LABELS[prefix] || 'Camera';
         }
 
+        function persistNativeCameraReturnContext(prefix) {
+            if (!activeItem || !activeItem.UNIQUE_ID) return;
+            try {
+                sessionStorage.setItem(CAMERA_NATIVE_RETURN_CONTEXT_STORAGE_KEY, JSON.stringify({
+                    uid: String(activeItem.UNIQUE_ID || '').trim(),
+                    prefix: String(prefix || '').trim(),
+                    sourceView: String(lastView || getCurrentVisibleViewId() || '').trim(),
+                    detailTab: String(activeDetailTab || 'overview').trim(),
+                    ts: Date.now()
+                }));
+            } catch (e) {}
+        }
+
+        function getNativeCameraReturnContext() {
+            try {
+                const raw = sessionStorage.getItem(CAMERA_NATIVE_RETURN_CONTEXT_STORAGE_KEY);
+                if (!raw) return null;
+                const parsed = JSON.parse(raw);
+                if (!parsed || typeof parsed !== 'object') return null;
+                if (!String(parsed.uid || '').trim()) return null;
+                return parsed;
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function clearNativeCameraReturnContext() {
+            try { sessionStorage.removeItem(CAMERA_NATIVE_RETURN_CONTEXT_STORAGE_KEY); } catch (e) {}
+        }
+
+        function restoreNativeCameraReturnContext(expectedPrefix, options) {
+            const opts = options || {};
+            const context = getNativeCameraReturnContext();
+            if (!context) return false;
+            const normalizedExpectedPrefix = String(expectedPrefix || '').trim();
+            const normalizedContextPrefix = String(context.prefix || '').trim();
+            if (normalizedExpectedPrefix && normalizedContextPrefix && normalizedExpectedPrefix !== normalizedContextPrefix) return false;
+            const contextAgeMs = Date.now() - Number(context.ts || 0);
+            if (!Number.isFinite(contextAgeMs) || contextAgeMs > (10 * 60 * 1000)) {
+                clearNativeCameraReturnContext();
+                return false;
+            }
+            const uid = String(context.uid || '').trim();
+            const sourceView = String(context.sourceView || lastView || '').trim() || 'drive';
+            const detailTab = String(context.detailTab || '').trim();
+            const item = findItemByUniqueId(uid);
+            if (!item) return false;
+            if ((opts.reopenDetail !== false) && getCurrentVisibleViewId() !== 'detail') {
+                openDetail(uid, sourceView);
+            } else {
+                activeItem = item;
+                lastView = sourceView || lastView;
+            }
+            activeItem = findItemByUniqueId(uid) || item;
+            if (detailTab && typeof switchDetailTab === 'function') switchDetailTab(detailTab);
+            const nextPrefix = normalizedExpectedPrefix || normalizedContextPrefix;
+            if (nextPrefix) {
+                cameraCaptureState.prefix = nextPrefix;
+                cameraCaptureState.input = document.getElementById(getCameraInputId(nextPrefix));
+            }
+            return true;
+        }
+
         function canUseInlineVideoCapture() {
-            return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && (window.isSecureContext !== false));
+            return false;
         }
 
         function shouldUseNativeCameraCaptureMode() {
-            return cameraCaptureState.mode !== 'video';
+            return true;
         }
-
         function persistCameraCapturePrefs() {
             try {
                 localStorage.setItem(CAMERA_CAPTURE_MODE_STORAGE_KEY, cameraCaptureState.mode === 'video' ? 'video' : 'photo');
@@ -6473,6 +6536,7 @@ function toggleDriveQuickRequestItem(domId) {
                 showToast('Camera', 'Camera input is not ready for this row yet.', true);
                 return false;
             }
+            persistNativeCameraReturnContext(prefix);
             cameraCaptureState.prefix = prefix;
             cameraCaptureState.input = input;
             cameraCaptureState.mode = 'photo';
@@ -6777,64 +6841,12 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         async function startCameraVideoMode() {
-            if (!cameraCaptureState.open) return;
-            const videoEl = document.getElementById('camera-capture-video');
-            const emptyEl = document.getElementById('camera-capture-video-empty');
-            if (!videoEl) return;
-            if (!canUseInlineVideoCapture()) {
-                setCameraCaptureStatus('Inline camera preview is not available here. The device camera is still ready.', 'warn');
-                syncCameraCaptureUi();
-                return;
-            }
-            stopCameraCaptureStream();
-            setCameraCaptureStatus('Opening camera preview...', 'active');
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    audio: false,
-                    video: buildCameraPreviewConstraints()
-                });
-                if (!cameraCaptureState.open) {
-                    stream.getTracks().forEach(function(track) { track.stop(); });
-                    return;
-                }
-                cameraCaptureState.stream = stream;
-                const track = getCameraVideoTrack();
-                if (track) {
-                    await applyBestEffortCameraTrackConstraints(track);
-                    if (typeof window.ImageCapture !== 'undefined') {
-                        try { cameraCaptureState.imageCapture = new window.ImageCapture(track); } catch (e) { cameraCaptureState.imageCapture = null; }
-                    }
-                    await refreshCameraCaptureCapabilities(track);
-                    await applyCameraCaptureControlSettings(track);
-                    await refreshCameraCaptureCapabilities(track);
-                }
-                videoEl.srcObject = stream;
-                videoEl.muted = true;
-                videoEl.setAttribute('playsinline', 'true');
-                videoEl.setAttribute('autoplay', 'true');
-                await videoEl.play().catch(function() {});
-                if (emptyEl) emptyEl.classList.add('hidden');
-                syncCameraCaptureUi();
-                if (cameraCaptureState.portraitEnabled) ensurePortraitModelReady(false).catch(function() {});
-            } catch (err) {
-                console.warn('Inline camera preview failed', err);
-                setCameraCaptureStatus('Could not access the in-app camera. The device camera is still available.', 'error');
-                showToast('Camera', 'Could not start the in-app camera. The device camera is still available.', true);
-                syncCameraCaptureUi();
-            }
+            triggerStandardCameraCapture();
         }
 
         function handleCameraPrimaryAction() {
             if (cameraCaptureState.captureInFlight) return;
-            if (shouldUseNativeCameraCaptureMode()) {
-                triggerStandardCameraCapture();
-                return;
-            }
-            if (cameraCaptureState.stream && canUseInlineVideoCapture()) {
-                captureCameraVideoFrame();
-                return;
-            }
-            startCameraVideoMode();
+            triggerStandardCameraCapture();
         }
 
         function triggerStandardCameraCapture() {
@@ -6843,36 +6855,14 @@ function toggleDriveQuickRequestItem(domId) {
                 showToast('Camera', 'The device camera input is not ready.', true);
                 return;
             }
+            persistNativeCameraReturnContext(cameraCaptureState.prefix || '');
             try { input.value = ''; } catch (e) {}
-            if (cameraCaptureState.portraitEnabled) ensurePortraitModelReady(false).catch(function() {});
             setCameraCaptureStatus('Opening device camera...', 'active');
             input.click();
         }
 
         async function captureCameraStillPhoto() {
-            if (!cameraCaptureState.open || cameraCaptureState.captureInFlight) return;
-            const videoEl = document.getElementById('camera-capture-video');
-            if (!cameraCaptureState.stream || !videoEl) {
-                startCameraVideoMode();
-                return;
-            }
-            cameraCaptureState.captureInFlight = true;
-            syncCameraCaptureUi();
-            setCameraCaptureStatus(cameraCaptureState.portraitEnabled ? 'Capturing portrait photo...' : 'Capturing full-quality photo...', 'active');
-            const prefix = cameraCaptureState.prefix;
-            const input = cameraCaptureState.input;
-            const applyPortrait = !!cameraCaptureState.portraitEnabled;
-            try {
-                const blob = await captureHighQualityCameraBlob(videoEl);
-                if (!blob) throw new Error('Could not capture this photo.');
-                closeCameraCaptureModal();
-                processSelectedPhotoFile(blob, prefix, input, { applyPortrait: applyPortrait }).catch(function() {});
-            } catch (err) {
-                console.warn('High-quality capture failed', err);
-                cameraCaptureState.captureInFlight = false;
-                syncCameraCaptureUi();
-                showToast('Camera', 'Could not capture this photo.', true);
-            }
+            triggerStandardCameraCapture();
         }
         function captureCameraVideoFrame() {
             if (!cameraCaptureState.open || cameraCaptureState.captureInFlight) return;
@@ -6905,7 +6895,9 @@ function toggleDriveQuickRequestItem(domId) {
 
         async function processSelectedPhotoFile(file, prefix, input, options) {
             const opts = options || {};
-            if (!file || !activeItem) return Promise.resolve();
+            if (!file) return Promise.resolve();
+            if (!activeItem) restoreNativeCameraReturnContext(prefix, { reopenDetail: true });
+            if (!activeItem) return Promise.resolve();
             if (!canEditRowDetails(prefix)) {
                 showRowEditRestrictedToast(prefix);
                 if (input) input.value = '';
@@ -7058,9 +7050,16 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         document.addEventListener('visibilitychange', function() {
-            if (document.hidden) stopCameraCaptureStream();
+            if (document.hidden) {
+                stopCameraCaptureStream();
+                return;
+            }
+            if (!activeItem) restoreNativeCameraReturnContext('', { reopenDetail: true });
         }, { passive: true });
         window.addEventListener('pagehide', function() { stopCameraCaptureStream(); }, { passive: true });
+        window.addEventListener('pageshow', function() {
+            if (!activeItem) restoreNativeCameraReturnContext('', { reopenDetail: true });
+        }, { passive: true });
         function handleLogin(isBiometricLogin=false) {
             const rawUser=document.getElementById('username-input').value.trim();
             const inputUser=rawUser.toLowerCase();
@@ -9196,7 +9195,7 @@ activeDriveTab = tab;
             const saveLabel = document.getElementById('hours-timecard-save-label');
             const dirtyPill = document.getElementById('hours-timecard-dirty-pill');
             if (title) title.textContent = card.employee_name || 'Employee Time Card';
-            if (subtitle) subtitle.textContent = [card.employee_code || 'No employee code', card.department || 'No department', formatLaborTimeCardWeekLabel(card.week_ending).replace(/^Week ending\s+/i, '')].join(' ÃƒÂ¯Ã‚Â¿Ã‚Â½ ');
+            if (subtitle) subtitle.textContent = [card.employee_code || 'No employee code', card.department || 'No department', formatLaborTimeCardWeekLabel(card.week_ending).replace(/^Week ending\s+/i, '')].join(' ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ ');
             if (saveLabel) saveLabel.textContent = card._dirty ? 'SAVE CHANGES *' : 'SAVE TIME CARD';
             if (dirtyPill) { dirtyPill.textContent = card._dirty ? 'Unsaved Changes' : 'Saved'; dirtyPill.className = card._dirty ? 'inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-amber-700' : 'inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-emerald-700'; }
         }
@@ -9278,7 +9277,7 @@ activeDriveTab = tab;
             if (showLoading || (!!laborTimeCardsPromise && !laborTimeCardsLoaded)) return '<div class="space-y-3"><div class="h-20 rounded-[22px] bg-slate-100 animate-pulse"></div><div class="h-20 rounded-[22px] bg-slate-100 animate-pulse"></div><div class="h-20 rounded-[22px] bg-slate-100 animate-pulse"></div></div>';
             const cards = getFilteredLaborTimeCards();
             if (!cards.length) return '<div class="rounded-[22px] border border-dashed border-[#cfe6d9] bg-[#f6fbf8] px-4 py-6 text-sm font-semibold text-slate-500">No employee time cards found for this supervisor and week. Create a card to get started.</div>';
-            return cards.map((card) => { const active = card.unique_id === activeLaborTimeCardId; return `<button type="button" onclick="selectLaborTimeCard('${escapeLaborTimeCardHtml(card.unique_id)}')" class="w-full rounded-[22px] border px-4 py-4 text-left transition active:scale-[0.99] ${active ? 'border-[#007a4d] bg-[#f4fbf7] shadow-md' : 'border-[#dceee4] bg-white shadow-sm'}"><div class="flex items-start justify-between gap-3"><div class="min-w-0 flex-1"><div class="text-base font-black text-slate-900 truncate">${escapeLaborTimeCardHtml(card.employee_name || 'Unnamed Employee')}</div><div class="text-xs font-bold text-slate-500 mt-1 truncate">${escapeLaborTimeCardHtml(card.employee_code || 'No employee code')} ÃƒÂ¯Ã‚Â¿Ã‚Â½ ${escapeLaborTimeCardHtml(card.department || 'No department')}</div></div><div class="text-right shrink-0"><div class="text-[10px] font-black uppercase tracking-[0.2em] ${active ? 'text-[#007a4d]' : 'text-slate-400'}">${escapeLaborTimeCardHtml(formatLaborTimeCardShortDate(card.week_ending))}</div><div class="text-sm font-black text-slate-900 mt-1">${escapeLaborTimeCardHtml(formatLaborTimeCardHours(card.totals.total))} hrs</div></div></div></button>`; }).join('');
+            return cards.map((card) => { const active = card.unique_id === activeLaborTimeCardId; return `<button type="button" onclick="selectLaborTimeCard('${escapeLaborTimeCardHtml(card.unique_id)}')" class="w-full rounded-[22px] border px-4 py-4 text-left transition active:scale-[0.99] ${active ? 'border-[#007a4d] bg-[#f4fbf7] shadow-md' : 'border-[#dceee4] bg-white shadow-sm'}"><div class="flex items-start justify-between gap-3"><div class="min-w-0 flex-1"><div class="text-base font-black text-slate-900 truncate">${escapeLaborTimeCardHtml(card.employee_name || 'Unnamed Employee')}</div><div class="text-xs font-bold text-slate-500 mt-1 truncate">${escapeLaborTimeCardHtml(card.employee_code || 'No employee code')} ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ ${escapeLaborTimeCardHtml(card.department || 'No department')}</div></div><div class="text-right shrink-0"><div class="text-[10px] font-black uppercase tracking-[0.2em] ${active ? 'text-[#007a4d]' : 'text-slate-400'}">${escapeLaborTimeCardHtml(formatLaborTimeCardShortDate(card.week_ending))}</div><div class="text-sm font-black text-slate-900 mt-1">${escapeLaborTimeCardHtml(formatLaborTimeCardHours(card.totals.total))} hrs</div></div></div></button>`; }).join('');
         }
 
         function renderLaborTimeCardEditorHtml() {
@@ -9287,7 +9286,7 @@ activeDriveTab = tab;
             const card = getActiveLaborTimeCard();
             if (!card) return '<div class="flex h-full min-h-[520px] flex-col items-center justify-center rounded-[24px] border border-dashed border-[#cfe6d9] bg-[#f8fdf9] px-8 py-10 text-center"><div class="inline-flex h-16 w-16 items-center justify-center rounded-full bg-[#e7f7ee] text-[#007a4d]"><i class="ph-bold ph-identification-card text-3xl"></i></div><h3 class="mt-5 text-2xl font-black text-slate-900">Create the first employee time card</h3><p class="mt-3 max-w-xl text-sm font-semibold text-slate-500">Set the week ending date, create an employee card on the left, and the digital time sheet will appear here for the supervisor.</p></div>';
             const rows = LABOR_TIMECARD_DAYS.map((day) => { const row = card.days[day.key] || { hours: '', code: '', other: '' }; return `<div class="grid grid-cols-[82px_minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,1.2fr)] border-t border-[#dceee4] bg-white"><div class="flex items-center justify-center border-r border-[#dceee4] px-3 py-4 text-sm font-black uppercase tracking-[0.28em] text-[#007a4d]">${escapeLaborTimeCardHtml(day.label)}</div><div class="border-r border-[#dceee4] px-2 py-2"><input type="number" step="0.25" min="0" class="w-full rounded-2xl border border-[#d7ebe0] bg-[#f9fcfa] px-3 py-3 text-sm font-bold text-slate-900 outline-none focus:border-[#007a4d]" value="${escapeLaborTimeCardHtml(row.hours)}" oninput="updateLaborTimeCardDay('${day.key}','hours',this.value)" placeholder="0.0"></div><div class="border-r border-[#dceee4] px-2 py-2"><input type="text" list="hours-timecard-code-options" class="w-full rounded-2xl border border-[#d7ebe0] bg-[#f9fcfa] px-3 py-3 text-sm font-bold uppercase tracking-[0.16em] text-slate-900 outline-none focus:border-[#007a4d]" value="${escapeLaborTimeCardHtml(row.code)}" oninput="updateLaborTimeCardDay('${day.key}','code',this.value)" placeholder="REG"></div><div class="px-2 py-2"><input type="text" class="w-full rounded-2xl border border-[#d7ebe0] bg-[#f9fcfa] px-3 py-3 text-sm font-semibold text-slate-900 outline-none focus:border-[#007a4d]" value="${escapeLaborTimeCardHtml(row.other)}" oninput="updateLaborTimeCardDay('${day.key}','other',this.value)" placeholder="Other note / code"></div></div>`; }).join('');
-            return `<div class="space-y-5"><div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between"><div><div class="flex flex-wrap items-center gap-2 mb-2"><div class="text-[11px] font-black uppercase tracking-[0.28em] text-[#007a4d]">Employee Time Card</div><div id="hours-timecard-dirty-pill" class="inline-flex items-center rounded-full ${card._dirty ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'} px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em]">${card._dirty ? 'Unsaved Changes' : 'Saved'}</div></div><h3 id="hours-timecard-editor-title" class="text-[30px] leading-tight font-black text-slate-900">${escapeLaborTimeCardHtml(card.employee_name || 'Employee Time Card')}</h3><p id="hours-timecard-editor-subtitle" class="text-sm font-semibold text-slate-500 mt-2">${escapeLaborTimeCardHtml([card.employee_code || 'No employee code', card.department || 'No department', formatLaborTimeCardWeekLabel(card.week_ending).replace(/^Week ending\s+/i, '')].join(' ÃƒÂ¯Ã‚Â¿Ã‚Â½ '))}</p></div><div class="flex flex-wrap gap-2"><button type="button" class="inline-flex items-center gap-2 rounded-2xl bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.18em] text-white shadow-lg active:scale-95" onclick="saveActiveLaborTimeCard()"><i class="ph-bold ph-floppy-disk text-base"></i><span id="hours-timecard-save-label">${card._dirty ? 'SAVE CHANGES *' : 'SAVE TIME CARD'}</span></button><button type="button" class="inline-flex items-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-[11px] font-black uppercase tracking-[0.18em] text-rose-700 active:scale-95" onclick="deleteActiveLaborTimeCard()"><i class="ph-bold ph-trash text-base"></i>Delete Card</button></div></div><div class="grid gap-4 lg:grid-cols-3"><div><label class="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500 ml-1">Employee Name</label><input type="text" class="input-field mb-0 mt-2" value="${escapeLaborTimeCardHtml(card.employee_name)}" oninput="updateLaborTimeCardMeta('employee_name',this.value)"></div><div><label class="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500 ml-1">Employee Number</label><input type="text" class="input-field mb-0 mt-2" value="${escapeLaborTimeCardHtml(card.employee_code)}" oninput="updateLaborTimeCardMeta('employee_code',this.value)"></div><div><label class="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500 ml-1">Department</label><input type="text" class="input-field mb-0 mt-2" value="${escapeLaborTimeCardHtml(card.department)}" oninput="updateLaborTimeCardMeta('department',this.value)"></div></div><div class="rounded-[28px] border-2 border-[#cfe6d9] overflow-hidden bg-[#f8fdf9] shadow-sm"><div class="grid grid-cols-[82px_minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,1.2fr)] bg-[#eff8f2] text-[10px] font-black uppercase tracking-[0.28em] text-[#007a4d]"><div class="border-r border-[#dceee4] px-3 py-3 text-center">Day</div><div class="border-r border-[#dceee4] px-3 py-3 text-center">Hours</div><div class="border-r border-[#dceee4] px-3 py-3 text-center">Code</div><div class="px-3 py-3 text-center">Other</div></div>${rows}<div class="grid grid-cols-4 border-t border-[#cfe6d9] bg-[#f1faf4]"><div class="px-4 py-4 border-r border-[#dceee4]"><div class="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">Reg</div><div id="hours-timecard-total-reg" class="text-xl font-black text-slate-900 mt-1">${escapeLaborTimeCardHtml(formatLaborTimeCardHours(card.totals.reg))}</div></div><div class="px-4 py-4 border-r border-[#dceee4]"><div class="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">Vac</div><div id="hours-timecard-total-vac" class="text-xl font-black text-slate-900 mt-1">${escapeLaborTimeCardHtml(formatLaborTimeCardHours(card.totals.vac))}</div></div><div class="px-4 py-4 border-r border-[#dceee4]"><div class="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">P.W.</div><div id="hours-timecard-total-pw" class="text-xl font-black text-slate-900 mt-1">${escapeLaborTimeCardHtml(formatLaborTimeCardHours(card.totals.pw))}</div></div><div class="px-4 py-4"><div class="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">Total</div><div id="hours-timecard-total-all" class="text-xl font-black text-[#007a4d] mt-1">${escapeLaborTimeCardHtml(formatLaborTimeCardHours(card.totals.total))}</div></div></div></div><div class="rounded-[24px] border border-[#d9ece2] bg-[#f9fcfa] p-4"><label class="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500 ml-1">Supervisor Notes</label><textarea class="input-field mb-0 mt-2 min-h-[120px] resize-y" placeholder="Anything payroll or management needs to know about this employee for the week..." oninput="updateLaborTimeCardNotes(this.value)">${escapeLaborTimeCardHtml(card.notes)}</textarea></div></div>`;
+            return `<div class="space-y-5"><div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between"><div><div class="flex flex-wrap items-center gap-2 mb-2"><div class="text-[11px] font-black uppercase tracking-[0.28em] text-[#007a4d]">Employee Time Card</div><div id="hours-timecard-dirty-pill" class="inline-flex items-center rounded-full ${card._dirty ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'} px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em]">${card._dirty ? 'Unsaved Changes' : 'Saved'}</div></div><h3 id="hours-timecard-editor-title" class="text-[30px] leading-tight font-black text-slate-900">${escapeLaborTimeCardHtml(card.employee_name || 'Employee Time Card')}</h3><p id="hours-timecard-editor-subtitle" class="text-sm font-semibold text-slate-500 mt-2">${escapeLaborTimeCardHtml([card.employee_code || 'No employee code', card.department || 'No department', formatLaborTimeCardWeekLabel(card.week_ending).replace(/^Week ending\s+/i, '')].join(' ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ '))}</p></div><div class="flex flex-wrap gap-2"><button type="button" class="inline-flex items-center gap-2 rounded-2xl bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.18em] text-white shadow-lg active:scale-95" onclick="saveActiveLaborTimeCard()"><i class="ph-bold ph-floppy-disk text-base"></i><span id="hours-timecard-save-label">${card._dirty ? 'SAVE CHANGES *' : 'SAVE TIME CARD'}</span></button><button type="button" class="inline-flex items-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-[11px] font-black uppercase tracking-[0.18em] text-rose-700 active:scale-95" onclick="deleteActiveLaborTimeCard()"><i class="ph-bold ph-trash text-base"></i>Delete Card</button></div></div><div class="grid gap-4 lg:grid-cols-3"><div><label class="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500 ml-1">Employee Name</label><input type="text" class="input-field mb-0 mt-2" value="${escapeLaborTimeCardHtml(card.employee_name)}" oninput="updateLaborTimeCardMeta('employee_name',this.value)"></div><div><label class="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500 ml-1">Employee Number</label><input type="text" class="input-field mb-0 mt-2" value="${escapeLaborTimeCardHtml(card.employee_code)}" oninput="updateLaborTimeCardMeta('employee_code',this.value)"></div><div><label class="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500 ml-1">Department</label><input type="text" class="input-field mb-0 mt-2" value="${escapeLaborTimeCardHtml(card.department)}" oninput="updateLaborTimeCardMeta('department',this.value)"></div></div><div class="rounded-[28px] border-2 border-[#cfe6d9] overflow-hidden bg-[#f8fdf9] shadow-sm"><div class="grid grid-cols-[82px_minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,1.2fr)] bg-[#eff8f2] text-[10px] font-black uppercase tracking-[0.28em] text-[#007a4d]"><div class="border-r border-[#dceee4] px-3 py-3 text-center">Day</div><div class="border-r border-[#dceee4] px-3 py-3 text-center">Hours</div><div class="border-r border-[#dceee4] px-3 py-3 text-center">Code</div><div class="px-3 py-3 text-center">Other</div></div>${rows}<div class="grid grid-cols-4 border-t border-[#cfe6d9] bg-[#f1faf4]"><div class="px-4 py-4 border-r border-[#dceee4]"><div class="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">Reg</div><div id="hours-timecard-total-reg" class="text-xl font-black text-slate-900 mt-1">${escapeLaborTimeCardHtml(formatLaborTimeCardHours(card.totals.reg))}</div></div><div class="px-4 py-4 border-r border-[#dceee4]"><div class="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">Vac</div><div id="hours-timecard-total-vac" class="text-xl font-black text-slate-900 mt-1">${escapeLaborTimeCardHtml(formatLaborTimeCardHours(card.totals.vac))}</div></div><div class="px-4 py-4 border-r border-[#dceee4]"><div class="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">P.W.</div><div id="hours-timecard-total-pw" class="text-xl font-black text-slate-900 mt-1">${escapeLaborTimeCardHtml(formatLaborTimeCardHours(card.totals.pw))}</div></div><div class="px-4 py-4"><div class="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">Total</div><div id="hours-timecard-total-all" class="text-xl font-black text-[#007a4d] mt-1">${escapeLaborTimeCardHtml(formatLaborTimeCardHours(card.totals.total))}</div></div></div></div><div class="rounded-[24px] border border-[#d9ece2] bg-[#f9fcfa] p-4"><label class="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500 ml-1">Supervisor Notes</label><textarea class="input-field mb-0 mt-2 min-h-[120px] resize-y" placeholder="Anything payroll or management needs to know about this employee for the week..." oninput="updateLaborTimeCardNotes(this.value)">${escapeLaborTimeCardHtml(card.notes)}</textarea></div></div>`;
         }
 
         function renderLaborTimeCardWorkspace(showLoading = false) {
@@ -15157,7 +15156,7 @@ function toggleDriveSeason(s) {
                 }
                 cards.push({
                     heading: [String(item.COMMONNAME || '').trim(), String(item.CONTSIZE || '').trim()].filter(Boolean).join(' '),
-                    subheading: [String(item.LOCATIONCODE || '').trim(), String(item.LOTCODE || '').trim()].filter(Boolean).join(' ÃƒÂ¯Ã‚Â¿Ã‚Â½ ') || 'Add location details',
+                    subheading: [String(item.LOCATIONCODE || '').trim(), String(item.LOTCODE || '').trim()].filter(Boolean).join(' ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ ') || 'Add location details',
                     note: String(firstNonEmptyValue(item.FLYER_NOTES, item.AV_NOTE, item.SPEC, item.SALES_NOTE, item.SALESNOTE, '') || '').trim(),
                     imageSrc: getFlyerBuilderPrimaryPhoto(item),
                     imageName: String(item.COMMONNAME || `Photo ${index + 1}`).trim()
@@ -16160,10 +16159,14 @@ function toggleDriveSeason(s) {
         }
 
         async function handlePhotoUpload(input, prefix) {
-            if (!input || !input.files || input.files.length === 0 || !activeItem) return;
+            if (!input || !input.files || input.files.length === 0) return;
+            if (!activeItem) restoreNativeCameraReturnContext(prefix, { reopenDetail: true });
+            if (!activeItem) return;
             if (cameraCaptureState.open && cameraCaptureState.prefix === prefix) closeCameraCaptureModal();
             const file = input.files[0];
-            return processSelectedPhotoFile(file, prefix, input, { applyPortrait: cameraCaptureState.portraitEnabled }).catch(function() {});
+            const uploadPromise = processSelectedPhotoFile(file, prefix, input, { applyPortrait: false }).catch(function() {});
+            Promise.resolve(uploadPromise).finally(function() { clearNativeCameraReturnContext(); });
+            return uploadPromise;
         }
     </script>
     <script>
