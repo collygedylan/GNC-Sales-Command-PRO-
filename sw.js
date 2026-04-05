@@ -2,8 +2,8 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_URL = './index.html?shellv=V2026.04.05.13';
-const CACHE_NAME = 'greenleaf-v4.2-rebuild-V2026.04.05.13';
+const APP_SHELL_URL = './index.html?shellv=V2026.04.05.14';
+const CACHE_NAME = 'greenleaf-v4.2-rebuild-V2026.04.05.14';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
