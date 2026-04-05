@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -25,7 +25,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="./pwa_flyer_builder.js?shellv=V2026.04.04.11"></script>
+    <script src="./pwa_flyer_builder.js?shellv=V2026.04.05.01"></script>
     <style>:root{--bg:#007a4d;--text-color:#111827;--app-height:100vh;--visual-height:100vh;--keyboard-offset:0px}html,body{min-height:100%;width:100%;max-width:100%;overflow:hidden;overscroll-behavior:none;position:relative}html{background:white}@supports (height:100dvh){:root{--app-height:100dvh}}body{font-family:"Amazon Ember",Arial,sans-serif;background:white;color:var(--text-color);user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior:none;min-height:var(--app-height);height:var(--app-height);width:100%;overflow:hidden;position:fixed;inset:0;touch-action:pan-y pinch-zoom}button,[role="button"],.task-tab,.detail-tab,.drawer-item,.drill-item,.menu-btn{touch-action:manipulation}.nav-header{background:var(--bg);color:white;padding-top:max(10px,env(safe-area-inset-top))}#view-login,#view-change-password{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;min-height:var(--app-height)}#view-change-password{display:none;z-index:10000}#app-wrapper{min-height:var(--app-height);height:var(--app-height);width:100%;max-width:100%;overflow:hidden;position:fixed;inset:0}.login-card{background:white;padding:30px;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,.2);width:100%;max-width:360px;text-align:center}.input-field{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:8px;font-size:16px;margin-bottom:12px}#toast-notification{position:fixed;top:-100px;left:50%;transform:translateX(-50%);background:#16a34a;color:white;padding:16px 24px;border-radius:50px;box-shadow:0 10px 15px -3px rgba(0,0,0,.3);z-index:11000;transition:top .5s;display:flex;align-items:center;gap:12px;pointer-events:none}#toast-notification.show{top:20px}#side-drawer{position:fixed;top:0;left:-280px;width:280px;height:100%;background:white;z-index:2000;box-shadow:2px 0 10px rgba(0,0,0,.2);transition:left .3s;overflow-y:auto;padding-bottom:100px}#side-drawer.open{left:0}#drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1999;display:none}#drawer-overlay.open{display:block}.drawer-header{background:var(--bg);color:white;padding:20px;font-weight:bold;font-size:18px}.drawer-item{padding:16px 20px;border-bottom:1px solid #f3f4f6;cursor:pointer;display:flex;align-items:center;gap:12px;color:#374151;font-weight:500}.drill-item{border-bottom:1px solid #e5e7eb;padding:16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:white;transition:background .1s}.drill-item:active{background:#f3f4f6}.back-btn{display:none !important}.inv-card{border:1px solid #dbe4dc;border-left-width:6px;border-radius:18px;padding:14px;background:white;cursor:pointer;flex-grow:1;box-shadow:0 10px 24px rgba(15,23,42,.06);overflow:hidden}.status-green{border-left-color:#22c55e}.status-purple{border-left-color:#9333ea}.status-orange{border-left-color:#f97316}.status-blue{border-left-color:#3b82f6}.status-indigo{border-left-color:#4f46e5}.status-teal{border-left-color:#0d9488}.status-yellow{border-left-color:#eab308}.status-red{border-left-color:#ef4444}.task-tabs,.detail-tabs{display:flex;border-bottom:1px solid #e5e7eb;background:#f9fafb;margin-bottom:10px}.detail-tabs{overflow-x:auto;scrollbar-width:none}.detail-tabs::-webkit-scrollbar{display:none}.task-tab,.detail-tab{flex:1;text-align:center;padding:12px;font-size:11px;font-weight:700;color:#6b7280;cursor:pointer;border-bottom:3px solid transparent;text-transform:uppercase}.detail-tab{flex:0 0 auto;padding:10px 16px}.task-tab.active,.detail-tab.active{color:var(--bg);border-bottom-color:var(--bg);background:white}.overview-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}.overview-card{background:#f8fafc;padding:10px;border-radius:6px;border:1px solid #e2e8f0}.overview-label{font-size:9px;font-weight:800;color:#64748b;text-transform:uppercase;margin-bottom:2px}.overview-val{font-size:13px;font-weight:600;color:#0f172a;word-break:break-all}.expand-trigger{display:flex;align-items:center;justify-content:space-between;padding:12px;background:#f9fafb;border-radius:6px;cursor:pointer;font-weight:600;font-size:14px;border:1px solid #e5e7eb}.expand-content{display:none;margin-top:12px;padding:12px;background:#f9fafb;border-radius:6px;border:1px solid #e5e7eb}.expanded .expand-content{display:block}.card-checkbox-container{width:42px;min-width:42px;overflow:visible;opacity:1;display:flex;align-items:flex-start;justify-content:center;margin-right:12px;transition:transform .16s ease}.card-checkbox-container.absolute{width:auto;min-width:0;margin-right:0}.card-checkbox{display:none !important}.cart-toggle-btn{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:999px;border:1px solid #a7f3d0;background:#f0fdf4;color:#007a4d;box-shadow:0 6px 16px rgba(7,94,63,.14);transition:transform .16s ease,background .16s ease,color .16s ease,border-color .16s ease}.cart-toggle-btn i{font-size:18px;line-height:1}.cart-toggle-btn:active{transform:scale(.95)}.cart-toggle-btn.active{background:#007a4d;color:#fff;border-color:#007a4d}.item-row.cart-selected{box-shadow:0 0 0 2px rgba(0,122,77,.16) inset}.item-row{touch-action:manipulation}.spinner{border:4px solid rgba(255,255,255,.3);border-top:4px solid white;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:0 auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.scrollbar-none::-webkit-scrollbar{display:none}.scrollbar-none{-ms-overflow-style:none;scrollbar-width:none}</style>
     <style>
         :root{--shell-max-width:920px;--content-max-width:820px;--shell-gutter:clamp(12px,2vw,24px);--shell-width:min(calc(100% - (var(--shell-gutter) * 2)),var(--shell-max-width));--content-width:min(100%,var(--content-max-width))}
@@ -566,7 +566,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-                            <div id="header-version" class="nav-version-pill">V2026.04.04.11</div>
+                            <div id="header-version" class="nav-version-pill">V2026.04.05.01</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -581,7 +581,7 @@
                 <div id="global-header-view-title">Home</div>
             </div>
         </div>
-        
+
         <div id="drawer-overlay" onclick="toggleMenu()"></div>
         <div id="side-drawer">
             <div class="drawer-header">Menu</div>
@@ -603,7 +603,7 @@
             <hr class="my-3 border-gray-200">
             <div class="drawer-item text-red-600 bg-red-50 font-bold justify-center rounded-lg mx-4 mt-2 mb-8" onclick="performLogout()"><i class="ph-bold ph-sign-out text-xl"></i> Log Out</div>
         </div>
-        
+
         <div id="main-scroll-area" class="flex-grow overflow-y-auto overflow-x-hidden p-4 pb-40 relative">
             <div id="pull-refresh-indicator" class="pointer-events-none absolute left-4 right-4 top-2 z-40 flex justify-center">
                 <div class="pull-refresh-pill bg-white border border-gray-200 text-gray-500 text-[10px] font-black uppercase tracking-wider px-4 py-2 rounded-full shadow-sm">Pull to Refresh</div>
@@ -678,7 +678,7 @@
                     </div>
                     <div id="av-content"></div>
                 </div>
-                
+
                 <div id="view-reports" class="hidden">
                     <div class="freeze-panel">
                     <div id="reports-crumb" class="text-xs font-bold text-[#007a4d] mb-3">Crop Value Summary</div>
@@ -696,7 +696,7 @@
                     </div>
                     <div id="reports-content"></div>
                 </div>
-                
+
                 <div id="view-request" class="hidden">
                     <div class="freeze-panel">
                     <div class="task-tabs mb-2 mt-2">
@@ -707,7 +707,7 @@
                     </div>
                     <div id="request-content"></div>
                 </div>
-                
+
                 <div id="view-reserves" class="hidden">
                     <div class="freeze-panel">
                     <div id="reserves-search-container" class="sticky-search relative mb-2">
@@ -718,7 +718,7 @@
                     </div>
                     <div id="reserves-content"></div>
                 </div>
-                
+
                 <div id="view-docks" class="hidden">
                     <div class="freeze-panel">
                     <div id="docks-search-container" class="sticky-search relative mb-2">
@@ -729,14 +729,14 @@
                     </div>
                     <div id="docks-content"></div>
                 </div>
-                
+
                 <div id="view-low-stock" class="hidden">
                     <div class="freeze-panel">
                     <div id="low-stock-crumb" class="text-xs font-bold text-[#007a4d] mb-3">Action Required</div>
                     </div>
                     <div id="low-stock-content"></div>
                 </div>
-                
+
                 <div id="view-sales-office" class="hidden">
                     <div class="freeze-panel">
                         <div class="flex items-start justify-between gap-3 mb-3">
@@ -752,7 +752,7 @@
                     </div>
                     <div id="sales-office-content"></div>
                 </div>
-                
+
                 <div id="view-drive" class="hidden">
                     <div class="freeze-panel">
                     <div id="drive-search-container" class="sticky-search relative mb-2">
@@ -770,7 +770,7 @@
                     </div>
                     <div id="drive-content"></div>
                 </div>
-                
+
                 <div id="view-tasks" class="hidden">
                     <div class="freeze-panel">
                     <div id="task-crumb" class="text-xs font-bold text-[#007a4d] mb-3"></div>
@@ -792,14 +792,14 @@
                     </div>
                     <div id="task-content"></div>
                 </div>
-                
+
                 <div id="view-review" class="hidden">
                     <div class="freeze-panel">
                     <div id="review-crumb" class="text-xs font-bold text-[#007a4d] mb-3"></div>
                     </div>
                     <div id="review-content"></div>
                 </div>
-                
+
                 <div id="view-detail" class="hidden">
                     <div class="freeze-panel">
                     <div class="back-btn" onclick="goBackFromDetail()"><i class="ph-bold ph-arrow-left"></i> Back</div>
@@ -929,7 +929,7 @@
                         </div>
                         <div class="flex gap-2 mt-4"><button id="flyer-btn-save-complete" class="w-full bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform" onclick="saveData(true, 'flyer-')">MARK DONE</button></div>
                     </div>
-                </div> 
+                </div>
             </div>
 
             <div id="global-action-bar" class="hidden fixed bottom-[60px] left-0 w-full bg-white p-3 shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.15)] z-[45] border-t border-gray-200">
@@ -959,7 +959,7 @@
         <script id="app-script-source" type="text/plain">
         const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6cm55anNvc3J5ZWpqZWpsaWlpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzAyNzM1NywiZXhwIjoyMDg4NjAzMzU3fQ.Bc46UfJ1N4AgAS1PgfhFg6S4BEyybR6g_TUnPZsE2t0";
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwhH-eB5Py3xCwhmWReOAcAfl9Zu6mkw0hZYnAbIP9lLANoE4iebK1hXa6-ogU4_1AURA/exec"; 
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwhH-eB5Py3xCwhmWReOAcAfl9Zu6mkw0hZYnAbIP9lLANoE4iebK1hXa6-ogU4_1AURA/exec";
         const PUSH_SUBSCRIPTIONS_TABLE = 'v2_push_subscriptions';
         const PUSH_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/send-push-alert`;
         const PUSH_VAPID_PUBLIC_KEY = 'BAnr5wnptNgeqol-aJzw1eW_4CnuHpQNlvJ3vmo4VGVfuRsHNO5bRZdT-8NN8qUL5bTlUxYrx592fbG26EYjEN4';
@@ -1080,7 +1080,7 @@
         let standaloneShellBaseHeight = 0;
         let detailFieldFocusResetTimer = null;
         let detailFormFocusInitialized = false;
-        
+
         function isIOSDevice() {
             return IOS_DEVICE_REGEX.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
         }
@@ -2248,21 +2248,21 @@
             });
         }
 
-        function performLogout() { 
+        function performLogout() {
             cleanupRealtime();
             ['gnc_user_v3','gnc_pin_v3','gnc_role_v3'].forEach((key) => {
                 try { localStorage.removeItem(key); } catch (e) {}
             });
-            sessionStorage.clear(); 
-            location.reload(); 
+            sessionStorage.clear();
+            location.reload();
         }
 
-        function debounce(func,wait) { 
-            let timeout; 
-            return function(...args){ 
-                clearTimeout(timeout); 
-                timeout=setTimeout(()=>func.apply(this,args),wait); 
-            }; 
+        function debounce(func,wait) {
+            let timeout;
+            return function(...args){
+                clearTimeout(timeout);
+                timeout=setTimeout(()=>func.apply(this,args),wait);
+            };
         }
 
         let uiRenderTimers = {};
@@ -2363,7 +2363,7 @@
                 renderAV();
             }, delay);
         }
-        
+
         let activeFetches=0; let fetchProgressInterval; let currentProgress=0;
         let initialAppLoadActive=false;
         let initialAppLoadComplete=false;
@@ -2403,31 +2403,31 @@
             }, 250);
         }
 
-        function startGlobalProgress() { 
+        function startGlobalProgress() {
             if (initialAppLoadComplete || !initialAppLoadActive) return;
-            activeFetches++; 
-            if(activeFetches===1){ 
-                currentProgress=Math.max(currentProgress,18); 
+            activeFetches++;
+            if(activeFetches===1){
+                currentProgress=Math.max(currentProgress,18);
                 setLoginProgress(currentProgress, 'Downloading data...');
-                fetchProgressInterval=setInterval(()=>{ 
-                    if(currentProgress<90){ 
-                        currentProgress+=Math.random()*4; 
+                fetchProgressInterval=setInterval(()=>{
+                    if(currentProgress<90){
+                        currentProgress+=Math.random()*4;
                         setLoginProgress(currentProgress, 'Downloading data...');
-                    } 
-                },220); 
-            } 
+                    }
+                },220);
+            }
         }
 
-        function stopGlobalProgress() { 
+        function stopGlobalProgress() {
             if (initialAppLoadComplete || !initialAppLoadActive) return;
-            activeFetches--; 
-            if(activeFetches<=0){ 
-                activeFetches=0; 
-                clearInterval(fetchProgressInterval); 
+            activeFetches--;
+            if(activeFetches<=0){
+                activeFetches=0;
+                clearInterval(fetchProgressInterval);
                 fetchProgressInterval=null;
                 currentProgress=Math.max(currentProgress,92);
                 setLoginProgress(currentProgress, 'Finalizing app...');
-            } 
+            }
         }
 
         async function fetchWithTimeout(url, options = {}, timeoutMs = SUPABASE_WRITE_TIMEOUT_MS, label = 'Request') {
@@ -2693,37 +2693,37 @@
             }
         }
 
-        function openDB() { 
-            return new Promise((resolve,reject)=>{ 
-                const request=indexedDB.open(DB_NAME,1); 
-                request.onupgradeneeded=event=>{ 
-                    const db=event.target.result; 
-                    if(!db.objectStoreNames.contains(STORE_NAME)){ db.createObjectStore(STORE_NAME); } 
-                }; 
-                request.onsuccess=event=>resolve(event.target.result); 
-                request.onerror=event=>reject(event.target.error); 
-            }); 
+        function openDB() {
+            return new Promise((resolve,reject)=>{
+                const request=indexedDB.open(DB_NAME,1);
+                request.onupgradeneeded=event=>{
+                    const db=event.target.result;
+                    if(!db.objectStoreNames.contains(STORE_NAME)){ db.createObjectStore(STORE_NAME); }
+                };
+                request.onsuccess=event=>resolve(event.target.result);
+                request.onerror=event=>reject(event.target.error);
+            });
         }
 
-        async function saveCacheValue(cacheKey, data) { 
-            try{ 
-                const db=await openDB(); 
-                const tx=db.transaction(STORE_NAME,"readwrite"); 
-                tx.objectStore(STORE_NAME).put(data,cacheKey); 
-                return new Promise((resolve)=>{ tx.oncomplete=()=>resolve(true); tx.onerror=()=>resolve(false); }); 
-            }catch(e){ return false; } 
+        async function saveCacheValue(cacheKey, data) {
+            try{
+                const db=await openDB();
+                const tx=db.transaction(STORE_NAME,"readwrite");
+                tx.objectStore(STORE_NAME).put(data,cacheKey);
+                return new Promise((resolve)=>{ tx.oncomplete=()=>resolve(true); tx.onerror=()=>resolve(false); });
+            }catch(e){ return false; }
         }
 
-        async function loadCacheValue(cacheKey) { 
-            try{ 
-                const db=await openDB(); 
-                return new Promise((resolve,reject)=>{ 
-                    const tx=db.transaction(STORE_NAME,"readonly"); 
-                    const request=tx.objectStore(STORE_NAME).get(cacheKey); 
-                    request.onsuccess=()=>resolve(request.result); 
-                    request.onerror=()=>resolve(null); 
-                }); 
-            }catch(e){ return null; } 
+        async function loadCacheValue(cacheKey) {
+            try{
+                const db=await openDB();
+                return new Promise((resolve,reject)=>{
+                    const tx=db.transaction(STORE_NAME,"readonly");
+                    const request=tx.objectStore(STORE_NAME).get(cacheKey);
+                    request.onsuccess=()=>resolve(request.result);
+                    request.onerror=()=>resolve(null);
+                });
+            }catch(e){ return null; }
         }
 
         async function saveToCache(data) { return saveCacheValue("latest_data", data); }
@@ -2900,7 +2900,7 @@
         let activeSalesOfficeTab='season'; let salesOfficeOrderColumnsReady=null; let salesOfficeOrderSchemaPromise=null; let salesOfficeOrderSchemaWarningShown=false;
         const LABOR_TIMECARD_TABLE='v2_employee_time_cards'; const LABOR_TIMECARD_DAYS=Object.freeze([{key:'wed',label:'Wed'},{key:'thu',label:'Thu'},{key:'fri',label:'Fri'},{key:'sat',label:'Sat'},{key:'sun',label:'Sun'},{key:'mon',label:'Mon'},{key:'tue',label:'Tue'}]);
         let activeHoursTab='summary'; let laborTimeCards=[]; let laborTimeCardsLoaded=false; let laborTimeCardsPromise=null; let laborTimeCardSchemaReady=null; let laborTimeCardSchemaPromise=null; let laborTimeCardSchemaWarningShown=false; let activeLaborTimeCardId=''; let laborTimeCardWeekEnding=''; let laborTimeCardSearchTerm=''; let laborTimeCardLoadedWeekEnding=''; let laborTimeCardLoadedSupervisor='';
-        
+
         function isLagSensitiveDetailPrefix(prefix) {
             return prefix === 'ssn-' || prefix === 'lsn-';
         }
@@ -2942,13 +2942,12 @@
         const DRIVE_MODE_LABELS = { ok: 'Drive Mode' };
         let activeDriveMode='ok'; let activeDriveTab='name'; let selectedDriveBlock=null; let selectedDriveLoc=null; let driveQuickRequestCardMode=false; let driveQuickFilterName=''; let driveQuickFilterLocation=''; let driveQuickFilterLot=''; let driveQuickFilterSize=''; let driveQuickFilterPriority=''; let driveQuickFilterLtsMode=''; let driveQuickFilterLtsValue=''; let driveQuickHoldStopOnly=false; let driveQuickFilterOptionsCacheKey=''; let driveQuickFilterOptionsCache=null; let driveBaseFilterCacheKey=''; let driveBaseFilterCacheItems=[]; let driveQuickFilterCacheKey=''; let driveQuickFilterCacheItems=[]; let driveQuickFiltersModalOpen=false;
         let driveViewLevel=0; let selectedDriveName=null; let selectedDriveSize=null; let driveSelectedSeasons=new Set(['ALL']); const availableSeasons=["ALL","S1","F1","U1","U2","U3","X","Y","Z"];
-        
-        let activeTaskTab="season"; let activeTaskSubview="all"; let taskViewTargetUser=null; let taskViewLevel=0; let selectedTaskBlock=null; let selectedTaskLoc=null; let selectedEndCapFolder=null; let selectedFlyerFolder=null; let activeFlyerFolderTab="active"; let selectedColorWalkContSize=""; let selectedColorWalkSearchTerm=""; let pendingFlyerFolderTarget=null; let pendingFlyerFolderAssignees="";
-let flyerBuilderOpen=false; let flyerBuilderMountedFolder=''; let flyerBuilderInstance=null; const flyerBuilderDrafts={};
+
+        let activeTaskTab="season"; let activeTaskSubview="all"; let taskViewTargetUser=null; let taskViewLevel=0; let selectedTaskBlock=null; let selectedTaskLoc=null; let selectedEndCapFolder=null; let selectedFlyerFolder=null; let activeFlyerFolderTab="active"; let activeFlyerWorkspaceTab="pending"; let selectedFlyerBuilderFolder=null; let selectedColorWalkContSize=""; let selectedColorWalkSearchTerm=""; let pendingFlyerFolderTarget=null; let pendingFlyerFolderAssignees="";
+        let flyerBuilderMountedFolder=''; let flyerBuilderInstance=null; const flyerBuilderDrafts={};
         let detailReturnState = { viewId: '', scrollTop: 0 };
-        
         let activeAVTab='open'; let activeAvOpenTab='name'; let avOpenLevel=0; let selectedAvOpenName=null; let selectedAvOpenSize=null; let selectedAvOpenSeason=null; let selectedAvOpenLot=null; let avResLevel=0; let selectedAvResRep=null; let selectedAvResDriveUid=null; let selectedAvResItemCode=null; let selectedAvResName=null; let selectedAvResSize=null; let activeAvReserveMode='current'; let activeAvReserveDetailTab='customer';
-        
+
         let lowStockViewLevel=0; let selectedLowStockName=null; let selectedLowStockSize=null; let reviewViewLevel=0; let selectedReviewItemCode=null; let selectedReviewCommonName=null; let selectedReviewContSize=null;
         let requestViewLevel=0; let reservesViewLevel=0; let reportViewLevel=0; let activeReqTab="pending"; let selectedReqRep=null; let selectedReqRepStatus=null; let selectedReqFolder=null; let tempSelectedReqRep=""; let tempReqFolder=null; let tempReqCust=null; let previousReqStep=""; let driveQuickRequestItems=new Set(); let driveQuickRequestFlow=false; let driveQuickAssignFlow=false;
         let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqFolderView=null; let selectedReqStatus='Pending';
@@ -2958,7 +2957,7 @@ let flyerBuilderOpen=false; let flyerBuilderMountedFolder=''; let flyerBuilderIn
         let pendingRequestArchiveFlushTimer = null;
         let pendingRequestArchiveFlushInFlight = false;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Maschino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'V2026.04.04.11';
+        const APP_VERSION = 'V2026.04.05.01';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -3883,11 +3882,11 @@ let flyerBuilderOpen=false; let flyerBuilderMountedFolder=''; let flyerBuilderIn
             if (!match) match = String(url).match(/\/d\/([a-zA-Z0-9_-]+)/);
             return match && match[1] ? match[1] : '';
         }
-        function getDirectImageUrl(url) { 
-            if(!url)return""; 
+        function getDirectImageUrl(url) {
+            if(!url)return"";
             const driveId = getDriveImageId(url);
-            if(driveId){ return `https://drive.google.com/thumbnail?id=${driveId}&sz=w100`; } 
-            return url; 
+            if(driveId){ return `https://drive.google.com/thumbnail?id=${driveId}&sz=w100`; }
+            return url;
         }
         function getExpandedImageUrl(url='') {
             if (!url) return '';
@@ -3908,41 +3907,41 @@ let flyerBuilderOpen=false; let flyerBuilderMountedFolder=''; let flyerBuilderIn
                 .filter(Boolean);
         }
 
-        async function promptToEnableBiometrics(user,pin) { 
-            if(!confirm("Would you like to enable Fingerprint/FaceID login for future use?"))return; 
-            try{ 
-                const publicKey={challenge:new Uint8Array(32),rp:{name:"GREENLEAF NURSERY COMPANY"},user:{id:new Uint8Array(16),name:user,displayName:user},pubKeyCredParams:[{type:"public-key",alg:-7}],authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required"},timeout:60000}; 
-                await navigator.credentials.create({publicKey}); 
-                localStorage.setItem('gnc_bio_enabled','true'); 
-                localStorage.setItem('gnc_bio_user',user); 
-                localStorage.setItem('gnc_bio_pin',pin); 
-                showToast("Success","Fingerprint login enabled!"); 
-            }catch(err){} 
+        async function promptToEnableBiometrics(user,pin) {
+            if(!confirm("Would you like to enable Fingerprint/FaceID login for future use?"))return;
+            try{
+                const publicKey={challenge:new Uint8Array(32),rp:{name:"GREENLEAF NURSERY COMPANY"},user:{id:new Uint8Array(16),name:user,displayName:user},pubKeyCredParams:[{type:"public-key",alg:-7}],authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required"},timeout:60000};
+                await navigator.credentials.create({publicKey});
+                localStorage.setItem('gnc_bio_enabled','true');
+                localStorage.setItem('gnc_bio_user',user);
+                localStorage.setItem('gnc_bio_pin',pin);
+                showToast("Success","Fingerprint login enabled!");
+            }catch(err){}
         }
 
-        async function loginWithBiometric() { 
-            try{ 
-                const publicKey={challenge:new Uint8Array(32),timeout:60000,userVerification:"required"}; 
-                await navigator.credentials.get({publicKey}); 
-                const savedUser=localStorage.getItem('gnc_bio_user'); 
-                const savedPin=localStorage.getItem('gnc_bio_pin'); 
-                if(savedUser&&savedPin){ 
-                    document.getElementById('username-input').value=savedUser; 
-                    document.getElementById('pin-code').value=savedPin; 
-                    handleLogin(true); 
-                }else{ 
-                    showToast("Error","Credentials lost.",true); 
-                } 
-            }catch(err){ 
-                showToast("Error","Fingerprint cancelled.",true); 
-            } 
+        async function loginWithBiometric() {
+            try{
+                const publicKey={challenge:new Uint8Array(32),timeout:60000,userVerification:"required"};
+                await navigator.credentials.get({publicKey});
+                const savedUser=localStorage.getItem('gnc_bio_user');
+                const savedPin=localStorage.getItem('gnc_bio_pin');
+                if(savedUser&&savedPin){
+                    document.getElementById('username-input').value=savedUser;
+                    document.getElementById('pin-code').value=savedPin;
+                    handleLogin(true);
+                }else{
+                    showToast("Error","Credentials lost.",true);
+                }
+            }catch(err){
+                showToast("Error","Fingerprint cancelled.",true);
+            }
         }
 
         function normalizeRepMatchToken(value='') {
             return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
         }
 
-        function setRepPermutations(user) { 
+        function setRepPermutations(user) {
             const rawUser = String(user || '').toLowerCase().trim();
             const parts = rawUser.split(/[^a-z0-9]+/).filter(Boolean);
             const variants = new Set();
@@ -3956,9 +3955,9 @@ let flyerBuilderOpen=false; let flyerBuilderMountedFolder=''; let flyerBuilderIn
             pushVariant(rawUser);
             pushVariant(rawUser.replace(/_/g, ' '));
 
-            if (parts.length >= 2) { 
-                let first = parts[0]; 
-                let last = parts[parts.length - 1]; 
+            if (parts.length >= 2) {
+                let first = parts[0];
+                let last = parts[parts.length - 1];
                 pushVariant(`${first} ${last}`);
                 pushVariant(`${last} ${first}`);
                 pushVariant(`${last}, ${first}`);
@@ -3972,16 +3971,16 @@ let flyerBuilderOpen=false; let flyerBuilderMountedFolder=''; let flyerBuilderIn
             if (!repPermutations.length && rawUser) repPermutations = [rawUser];
         }
 
-        function isMyRep(repNameStr) { 
-            if(!getRoleAccessState().isRep)return true; 
-            if(!repNameStr)return false; 
-            let normalized = normalizeRepMatchToken(repNameStr); 
+        function isMyRep(repNameStr) {
+            if(!getRoleAccessState().isRep)return true;
+            if(!repNameStr)return false;
+            let normalized = normalizeRepMatchToken(repNameStr);
             let collapsed = normalized.replace(/\s+/g, '');
             return repPermutations.some(p => {
                 const candidate = normalizeRepMatchToken(p);
                 const candidateCollapsed = candidate.replace(/\s+/g, '');
                 return normalized.includes(candidate) || collapsed.includes(candidateCollapsed);
-            }); 
+            });
         }
         let activeReportTab = 'ALL';
         let protectedEditState = {};
@@ -7052,34 +7051,34 @@ function toggleDriveQuickRequestItem(domId) {
         window.addEventListener('pagehide', function() { stopCameraCaptureStream(); }, { passive: true });
         function handleLogin(isBiometricLogin=false) {
             const rawUser=document.getElementById('username-input').value.trim();
-            const inputUser=rawUser.toLowerCase(); 
+            const inputUser=rawUser.toLowerCase();
             const inputPass=document.getElementById('pin-code').value.trim();
             if(!rawUser||!inputPass){ showToast("Error","Please enter username and password",true); return; }
-            if(fullInventory.length===0){ 
-                let skeletonHtml=`<div class="p-4 space-y-4 w-full max-w-md mx-auto"><div class="skeleton h-8 w-1/3 mb-6"></div>`; 
-                for(let i=0;i<5;i++){ skeletonHtml+=`<div class="skeleton h-24 w-full rounded-xl mb-3"></div>`; } 
-                skeletonHtml+=`</div>`; 
-                document.getElementById('drive-content').innerHTML=skeletonHtml; 
+            if(fullInventory.length===0){
+                let skeletonHtml=`<div class="p-4 space-y-4 w-full max-w-md mx-auto"><div class="skeleton h-8 w-1/3 mb-6"></div>`;
+                for(let i=0;i<5;i++){ skeletonHtml+=`<div class="skeleton h-24 w-full rounded-xl mb-3"></div>`; }
+                skeletonHtml+=`</div>`;
+                document.getElementById('drive-content').innerHTML=skeletonHtml;
             }
-            document.getElementById('login-inputs').classList.add('hidden'); 
-            document.getElementById('loading-spinner').classList.remove('hidden'); 
+            document.getElementById('login-inputs').classList.add('hidden');
+            document.getElementById('loading-spinner').classList.remove('hidden');
             beginInitialAppLoad('Signing in...');
                 fetchLoginUser(rawUser, inputPass).then(result=>{
                 if(result && result.ok && result.user){
-                    const userRecord=result.user; 
-                    currentUser=String(userRecord.username || userRecord.USERNAME || inputUser).trim().toLowerCase(); 
+                    const userRecord=result.user;
+                    currentUser=String(userRecord.username || userRecord.USERNAME || inputUser).trim().toLowerCase();
                     currentUserDisplay=String(userRecord.username || userRecord.USERNAME || rawUser || currentUser).trim();
-                    currentRole=userRecord.role||userRecord.ROLE||'User'; 
+                    currentRole=userRecord.role||userRecord.ROLE||'User';
                     safeRole=String(currentRole).toUpperCase().replace(/\s+/g,'');
-                    const isDefaultPassword=['1234','12345','welcome','password',currentUser,currentUserDisplay].includes(inputPass); 
+                    const isDefaultPassword=['1234','12345','welcome','password',currentUser,currentUserDisplay].includes(inputPass);
                     const hasChangedLocally=localStorage.getItem('gnc_pw_changed_'+currentUser)==='true';
-                    if(isDefaultPassword&&!hasChangedLocally&&!isBiometricLogin){ 
+                    if(isDefaultPassword&&!hasChangedLocally&&!isBiometricLogin){
                         finishInitialAppLoad();
                         setBootingSession(false);
-                        document.getElementById('view-login').style.display='none'; 
-                        document.getElementById('view-change-password').style.display='flex'; 
+                        document.getElementById('view-login').style.display='none';
+                        document.getElementById('view-change-password').style.display='flex';
                     }
-                    else{ 
+                    else{
                         const finishLogin = () => finalizeLogin(currentUser,inputPass,isBiometricLogin);
                         if (isTouchConstrainedDevice()) {
                             finishLogin();
@@ -7087,45 +7086,45 @@ function toggleDriveQuickRequestItem(domId) {
                             primePushPermissionFromLoginGesture().finally(finishLogin);
                         }
                     }
-                } else if (result && result.reason === 'mismatch') { 
+                } else if (result && result.reason === 'mismatch') {
                     finishInitialAppLoad();
                     setBootingSession(false);
-                    alert("MISMATCH DETECTED!\n\nIncorrect Username or Password."); 
-                    document.getElementById('pin-code').value=""; 
-                    document.getElementById('login-inputs').classList.remove('hidden'); 
-                    document.getElementById('loading-spinner').classList.add('hidden'); 
+                    alert("MISMATCH DETECTED!\n\nIncorrect Username or Password.");
+                    document.getElementById('pin-code').value="";
+                    document.getElementById('login-inputs').classList.remove('hidden');
+                    document.getElementById('loading-spinner').classList.add('hidden');
                 } else {
                     finishInitialAppLoad();
                     setBootingSession(false);
                     const rawError = result && result.error && result.error.message ? String(result.error.message) : '';
-                    showToast('Error', rawError ? `Login failed: ${rawError}` : 'Could not reach the login service.', true); 
-                    document.getElementById('login-inputs').classList.remove('hidden'); 
-                    document.getElementById('loading-spinner').classList.add('hidden'); 
+                    showToast('Error', rawError ? `Login failed: ${rawError}` : 'Could not reach the login service.', true);
+                    document.getElementById('login-inputs').classList.remove('hidden');
+                    document.getElementById('loading-spinner').classList.add('hidden');
                 }
-            }).catch(err=>{ 
+            }).catch(err=>{
                 finishInitialAppLoad();
                 setBootingSession(false);
                 const rawError = err && err.message ? String(err.message) : '';
-                showToast('Error', rawError ? `Login failed: ${rawError}` : 'Could not reach the login service.', true); 
-                document.getElementById('login-inputs').classList.remove('hidden'); 
-                document.getElementById('loading-spinner').classList.add('hidden'); 
+                showToast('Error', rawError ? `Login failed: ${rawError}` : 'Could not reach the login service.', true);
+                document.getElementById('login-inputs').classList.remove('hidden');
+                document.getElementById('loading-spinner').classList.add('hidden');
             });
         }
 
-        async function submitNewPassword() { 
-            const newPass=document.getElementById('new-password').value.trim(); 
-            const confirmPass=document.getElementById('confirm-password').value.trim(); 
-            if(!newPass||newPass.length<4){ alert("Password must be at least 4 characters!"); return; } 
-            if(newPass!==confirmPass){ alert("Passwords do not match!"); return; } 
-            document.getElementById('view-change-password').style.display='none'; 
-            document.getElementById('view-login').style.display='flex'; 
-            document.getElementById('login-inputs').classList.add('hidden'); 
-            document.getElementById('loading-spinner').classList.remove('hidden'); 
-            try{ await supabaseFetch('v2_app_users','PATCH',{password:newPass},`username=ilike.*${encodeURIComponent(currentUser)}*`); }catch(e){} 
-            localStorage.setItem('gnc_pw_changed_'+currentUser,'true'); 
-            document.getElementById('new-password').value=""; 
-            document.getElementById('confirm-password').value=""; 
-            finalizeLogin(currentUser,newPass,false); 
+        async function submitNewPassword() {
+            const newPass=document.getElementById('new-password').value.trim();
+            const confirmPass=document.getElementById('confirm-password').value.trim();
+            if(!newPass||newPass.length<4){ alert("Password must be at least 4 characters!"); return; }
+            if(newPass!==confirmPass){ alert("Passwords do not match!"); return; }
+            document.getElementById('view-change-password').style.display='none';
+            document.getElementById('view-login').style.display='flex';
+            document.getElementById('login-inputs').classList.add('hidden');
+            document.getElementById('loading-spinner').classList.remove('hidden');
+            try{ await supabaseFetch('v2_app_users','PATCH',{password:newPass},`username=ilike.*${encodeURIComponent(currentUser)}*`); }catch(e){}
+            localStorage.setItem('gnc_pw_changed_'+currentUser,'true');
+            document.getElementById('new-password').value="";
+            document.getElementById('confirm-password').value="";
+            finalizeLogin(currentUser,newPass,false);
         }
 
         function openAppShellAfterLogin(fromCache = false) {
@@ -7293,12 +7292,12 @@ function toggleDriveQuickRequestItem(domId) {
             });
             return warmupPlan;
         }
-        async function finalizeLogin(user,pass,isBiometricLogin) { 
+        async function finalizeLogin(user,pass,isBiometricLogin) {
             setBootingSession(false);
-            localStorage.setItem('gnc_user_v3',user); 
-            localStorage.setItem('gnc_pin_v3',pass); 
-            localStorage.setItem('gnc_role_v3',currentRole); 
-            document.getElementById('header-user').innerText=currentUserDisplay || currentUser; 
+            localStorage.setItem('gnc_user_v3',user);
+            localStorage.setItem('gnc_pin_v3',pass);
+            localStorage.setItem('gnc_role_v3',currentRole);
+            document.getElementById('header-user').innerText=currentUserDisplay || currentUser;
             const roleAccess = getRoleAccessState();
             const deferHeavyLoginWarm = isTouchConstrainedDevice();
             const shouldWarmReserveCache = roleAccess.allowedViews && typeof roleAccess.allowedViews.has === 'function' && (roleAccess.allowedViews.has('av') || roleAccess.allowedViews.has('reserves') || roleAccess.allowedViews.has('reports'));
@@ -7387,7 +7386,7 @@ function toggleDriveQuickRequestItem(domId) {
             loginPrefetchMode = '';
         }
         async function silentBackgroundSync() {
-            if(!currentUser)return; 
+            if(!currentUser)return;
             if (liveSyncMode === 'realtime' && shouldUseRealtime()) return;
             const checkTime=new Date().toISOString();
             try {
@@ -7401,14 +7400,14 @@ function toggleDriveQuickRequestItem(domId) {
                             if(idx>-1){
                                 for(let k in updatedRow){ if(updatedRow[k]!==null) fullInventory[idx][k.toUpperCase()]=updatedRow[k]; }
                                 normalizeRowPhotoFields(fullInventory[idx]);
-                                updated=true; 
+                                updated=true;
                                 if(activeItem&&activeItem.UNIQUE_ID===updatedRow.unique_id){ Object.assign(activeItem,fullInventory[idx]); }
                             }
                         });
                         if(updated){ processAndLoadData({ data: fullInventory, avOpenData: buildAvOpenInventoryFromMasterItems(fullInventory) }); if(activeItem&&!document.getElementById('view-detail').classList.contains('hidden')){ openDetail(activeItem.UNIQUE_ID,lastView); } }
-                    } 
+                    }
                 }
-                
+
                 const reqRes = await fetch(`${SUPABASE_URL}/rest/v1/v2_active_request?select=*`, {method:'GET', headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
                 if(reqRes.ok) {
                     const reqData = await reqRes.json();
@@ -7420,7 +7419,7 @@ function toggleDriveQuickRequestItem(domId) {
                             obj.DOM_ID = 'req_' + obj.UNIQUE_ID;
                             normalizeRowPhotoFields(obj);
                             obj.CONTSIZE=item.contsize || obj.CONTSIZE || item.itemspec || obj.ITEMSPEC || item.size || "-";
-                            obj.LOCATIONCODE=obj.LOCATIONCODE||obj.LOCATION||"No Loc"; 
+                            obj.LOCATIONCODE=obj.LOCATIONCODE||obj.LOCATION||"No Loc";
                             return obj;
                         });
                         localStorage.setItem('last_req_hash', hash);
@@ -7459,7 +7458,7 @@ function toggleDriveQuickRequestItem(domId) {
                     markViewDirty('docks');
                     if (!document.getElementById('view-docks').classList.contains('hidden')) renderViewContent('docks', false, true);
                 }
-                
+
                 lastSyncTime=checkTime;
                 lastSuccessfulSyncTime = checkTime;
                 syncDiagnosticsOverride = '';
@@ -8151,12 +8150,12 @@ function toggleDriveQuickRequestItem(domId) {
         }
         function toggleMenu(forceOpen = null) { const drawer = document.getElementById('side-drawer'); const overlay = document.getElementById('drawer-overlay'); if (!drawer || !overlay) return; const shouldOpen = forceOpen === null ? !drawer.classList.contains('open') : !!forceOpen; drawer.classList.toggle('open', shouldOpen); overlay.classList.toggle('open', shouldOpen); updateFooterNavState(); }
 
-        function showToast(title, message, isAlert = false) { 
-            const toast = document.getElementById('toast-notification'); 
-            toast.style.background = isAlert ? '#ef4444' : '#16a34a'; 
-            toast.innerHTML = `<div class="font-bold text-sm">${title}</div><div class="text-xs">${message}</div>`; 
-            toast.classList.add('show'); 
-            setTimeout(() => toast.classList.remove('show'), 3000); 
+        function showToast(title, message, isAlert = false) {
+            const toast = document.getElementById('toast-notification');
+            toast.style.background = isAlert ? '#ef4444' : '#16a34a';
+            toast.innerHTML = `<div class="font-bold text-sm">${title}</div><div class="text-xs">${message}</div>`;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
         }
 
         let pushSchemaReady = null;
@@ -8499,7 +8498,7 @@ function toggleDriveQuickRequestItem(domId) {
             const footerCartBtn = document.getElementById('footer-cart-btn');
             if (footerCartBtn) footerCartBtn.classList.toggle('active', !!(cartPanelOpen && selectedItems.size));
         }
-        function switchView(viewId) { 
+        function switchView(viewId) {
             closeDriveQuickFiltersModal();
             const requestedViewId = String(viewId || 'home').trim();
             const nextViewId = canAccessView(requestedViewId) ? requestedViewId : 'home';
@@ -8515,7 +8514,7 @@ function toggleDriveQuickRequestItem(domId) {
             ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-detail','view-docks','view-request','view-reserves','view-av', 'view-hours'].forEach(id=>{
                 const el=document.getElementById(id);
                 if(el)el.classList.add('hidden');
-            }); 
+            });
             const targetView = document.getElementById('view-'+nextViewId);
             if (targetView) targetView.classList.remove('hidden');
             queueViewRender(nextViewId);
@@ -8675,27 +8674,27 @@ function toggleDriveQuickRequestItem(domId) {
             return false;
         }
 
-        function reRenderCurrentView() { 
+        function reRenderCurrentView() {
             const visibleViewIds = getVisibleTrackedViewIds();
             visibleViewIds.forEach((viewId) => renderViewContent(viewId, false, true));
             markHiddenViewsDirty(visibleViewIds);
         }
 
-        function setTaskTab(tab) { 
+        function setTaskTab(tab) {
             const previousTaskTab = activeTaskTab;
-            activeTaskTab=tab; 
+            activeTaskTab=tab;
             if (!taskTabUsesBlockDrill(tab) || (tab !== 'season' && activeTaskSubview === 'av-blanks')) activeTaskSubview='all';
             if (tab !== 'colorwalk' && previousTaskTab === 'colorwalk') {
                 selectedColorWalkContSize='';
                 selectedColorWalkSearchTerm='';
             }
-            document.getElementById('tab-season').classList.toggle('active',tab==='season'); 
-            document.getElementById('tab-location').classList.toggle('active',tab==='location'); 
-            document.getElementById('tab-colorwalk').classList.toggle('active',tab==='colorwalk'); 
-            document.getElementById('tab-endcap').classList.toggle('active',tab==='endcap'); 
-            document.getElementById('tab-flyer').classList.toggle('active',tab==='flyer'); 
+            document.getElementById('tab-season').classList.toggle('active',tab==='season');
+            document.getElementById('tab-location').classList.toggle('active',tab==='location');
+            document.getElementById('tab-colorwalk').classList.toggle('active',tab==='colorwalk');
+            document.getElementById('tab-endcap').classList.toggle('active',tab==='endcap');
+            document.getElementById('tab-flyer').classList.toggle('active',tab==='flyer');
             syncTaskSubviewControls(tab);
-            taskViewLevel=0; 
+            taskViewLevel=0;
             selectedTaskBlock=null;
             selectedTaskLoc=null;
             selectedEndCapFolder=null;
@@ -8705,7 +8704,7 @@ function toggleDriveQuickRequestItem(domId) {
                 queueScrollMainAreaToTop(`task-tab:${tab}`);
                 return;
             }
-            scheduleUiRender('task-tab', () => renderTasks()); 
+            scheduleUiRender('task-tab', () => renderTasks());
             queueScrollMainAreaToTop(`task-tab:${tab}`);
         }
 
@@ -8738,7 +8737,7 @@ function toggleDriveQuickRequestItem(domId) {
             scheduleUiRender('drive-tab', () => renderDrive());
             queueScrollMainAreaToTop(`drive-mode:${mode}`);
         }
-        function setDriveTab(tab) { 
+        function setDriveTab(tab) {
             if (tab !== 'card') closeDriveQuickFiltersModal();
 activeDriveTab = tab;
             driveQuickRequestCardMode = tab === 'card';
@@ -8783,25 +8782,25 @@ activeDriveTab = tab;
         function clearAVSearch() { document.getElementById('av-search').value=""; document.getElementById('av-search-clear').classList.add('hidden'); avResLevel=0; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; avOpenLevel=0; renderAV(); }
         function handleAVSearch() { const term=document.getElementById('av-search').value.toLowerCase(); const clearBtn=document.getElementById('av-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden'); avResLevel=0; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; avOpenLevel=0;} else{clearBtn.classList.add('hidden'); avResLevel=0; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; avOpenLevel=0;} scheduleSearchRender('av', () => renderAV()); }
 
-        function resetAVView() { 
+        function resetAVView() {
             activeAVTab='open'; activeAvOpenTab='name';
-            avResLevel=0; selectedAvResRep=null; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; activeAvReserveMode='current'; activeAvReserveDetailTab='customer'; 
+            avResLevel=0; selectedAvResRep=null; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; activeAvReserveMode='current'; activeAvReserveDetailTab='customer';
             avOpenLevel=0; selectedAvOpenName=null; selectedAvOpenSize=null; selectedAvOpenSeason=null; selectedAvOpenLot=null;
-            document.getElementById('tab-av-open').classList.add('active'); document.getElementById('tab-av-reserves').classList.remove('active'); 
+            document.getElementById('tab-av-open').classList.add('active'); document.getElementById('tab-av-reserves').classList.remove('active');
             document.getElementById('tab-av-open-name').classList.add('active'); document.getElementById('tab-av-open-photos').classList.remove('active');
             document.getElementById('av-open-sub-tabs').style.display = 'flex';
-            document.getElementById('av-search').value=""; document.getElementById('av-search-clear').classList.add('hidden'); 
-            renderAV(); 
+            document.getElementById('av-search').value=""; document.getElementById('av-search-clear').classList.add('hidden');
+            renderAV();
         }
 
-        function setAVTab(tab) { 
-            activeAVTab=tab; 
-            avResLevel=0; selectedAvResRep=null; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; activeAvReserveMode='current'; activeAvReserveDetailTab='customer'; 
+        function setAVTab(tab) {
+            activeAVTab=tab;
+            avResLevel=0; selectedAvResRep=null; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; activeAvReserveMode='current'; activeAvReserveDetailTab='customer';
             avOpenLevel=0; selectedAvOpenName=null; selectedAvOpenSize=null; selectedAvOpenSeason=null; selectedAvOpenLot=null;
-            document.getElementById('tab-av-open').classList.toggle('active',tab==='open'); document.getElementById('tab-av-reserves').classList.toggle('active',tab==='reserves'); 
+            document.getElementById('tab-av-open').classList.toggle('active',tab==='open'); document.getElementById('tab-av-reserves').classList.toggle('active',tab==='reserves');
             const subTabs = document.getElementById('av-open-sub-tabs');
             subTabs.style.display = tab==='open' ? 'flex' : 'none';
-            scheduleUiRender('av-tab', () => renderAV()); 
+            scheduleUiRender('av-tab', () => renderAV());
             queueScrollMainAreaToTop(`av-tab:${tab}`);
         }
 
@@ -8814,7 +8813,7 @@ activeDriveTab = tab;
             scheduleUiRender('av-open-tab', () => renderAV());
             queueScrollMainAreaToTop(`av-open-tab:${tab}`);
         }
-        
+
         function setReqTab(tab) {
             activeReqTab = tab;
             document.getElementById('tab-req-pending').classList.toggle('active', tab === 'pending');
@@ -9185,7 +9184,7 @@ activeDriveTab = tab;
             const saveLabel = document.getElementById('hours-timecard-save-label');
             const dirtyPill = document.getElementById('hours-timecard-dirty-pill');
             if (title) title.textContent = card.employee_name || 'Employee Time Card';
-            if (subtitle) subtitle.textContent = [card.employee_code || 'No employee code', card.department || 'No department', formatLaborTimeCardWeekLabel(card.week_ending).replace(/^Week ending\s+/i, '')].join(' • ');
+            if (subtitle) subtitle.textContent = [card.employee_code || 'No employee code', card.department || 'No department', formatLaborTimeCardWeekLabel(card.week_ending).replace(/^Week ending\s+/i, '')].join(' � ');
             if (saveLabel) saveLabel.textContent = card._dirty ? 'SAVE CHANGES *' : 'SAVE TIME CARD';
             if (dirtyPill) { dirtyPill.textContent = card._dirty ? 'Unsaved Changes' : 'Saved'; dirtyPill.className = card._dirty ? 'inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-amber-700' : 'inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-emerald-700'; }
         }
@@ -9267,7 +9266,7 @@ activeDriveTab = tab;
             if (showLoading || (!!laborTimeCardsPromise && !laborTimeCardsLoaded)) return '<div class="space-y-3"><div class="h-20 rounded-[22px] bg-slate-100 animate-pulse"></div><div class="h-20 rounded-[22px] bg-slate-100 animate-pulse"></div><div class="h-20 rounded-[22px] bg-slate-100 animate-pulse"></div></div>';
             const cards = getFilteredLaborTimeCards();
             if (!cards.length) return '<div class="rounded-[22px] border border-dashed border-[#cfe6d9] bg-[#f6fbf8] px-4 py-6 text-sm font-semibold text-slate-500">No employee time cards found for this supervisor and week. Create a card to get started.</div>';
-            return cards.map((card) => { const active = card.unique_id === activeLaborTimeCardId; return `<button type="button" onclick="selectLaborTimeCard('${escapeLaborTimeCardHtml(card.unique_id)}')" class="w-full rounded-[22px] border px-4 py-4 text-left transition active:scale-[0.99] ${active ? 'border-[#007a4d] bg-[#f4fbf7] shadow-md' : 'border-[#dceee4] bg-white shadow-sm'}"><div class="flex items-start justify-between gap-3"><div class="min-w-0 flex-1"><div class="text-base font-black text-slate-900 truncate">${escapeLaborTimeCardHtml(card.employee_name || 'Unnamed Employee')}</div><div class="text-xs font-bold text-slate-500 mt-1 truncate">${escapeLaborTimeCardHtml(card.employee_code || 'No employee code')} • ${escapeLaborTimeCardHtml(card.department || 'No department')}</div></div><div class="text-right shrink-0"><div class="text-[10px] font-black uppercase tracking-[0.2em] ${active ? 'text-[#007a4d]' : 'text-slate-400'}">${escapeLaborTimeCardHtml(formatLaborTimeCardShortDate(card.week_ending))}</div><div class="text-sm font-black text-slate-900 mt-1">${escapeLaborTimeCardHtml(formatLaborTimeCardHours(card.totals.total))} hrs</div></div></div></button>`; }).join('');
+            return cards.map((card) => { const active = card.unique_id === activeLaborTimeCardId; return `<button type="button" onclick="selectLaborTimeCard('${escapeLaborTimeCardHtml(card.unique_id)}')" class="w-full rounded-[22px] border px-4 py-4 text-left transition active:scale-[0.99] ${active ? 'border-[#007a4d] bg-[#f4fbf7] shadow-md' : 'border-[#dceee4] bg-white shadow-sm'}"><div class="flex items-start justify-between gap-3"><div class="min-w-0 flex-1"><div class="text-base font-black text-slate-900 truncate">${escapeLaborTimeCardHtml(card.employee_name || 'Unnamed Employee')}</div><div class="text-xs font-bold text-slate-500 mt-1 truncate">${escapeLaborTimeCardHtml(card.employee_code || 'No employee code')} � ${escapeLaborTimeCardHtml(card.department || 'No department')}</div></div><div class="text-right shrink-0"><div class="text-[10px] font-black uppercase tracking-[0.2em] ${active ? 'text-[#007a4d]' : 'text-slate-400'}">${escapeLaborTimeCardHtml(formatLaborTimeCardShortDate(card.week_ending))}</div><div class="text-sm font-black text-slate-900 mt-1">${escapeLaborTimeCardHtml(formatLaborTimeCardHours(card.totals.total))} hrs</div></div></div></button>`; }).join('');
         }
 
         function renderLaborTimeCardEditorHtml() {
@@ -9276,7 +9275,7 @@ activeDriveTab = tab;
             const card = getActiveLaborTimeCard();
             if (!card) return '<div class="flex h-full min-h-[520px] flex-col items-center justify-center rounded-[24px] border border-dashed border-[#cfe6d9] bg-[#f8fdf9] px-8 py-10 text-center"><div class="inline-flex h-16 w-16 items-center justify-center rounded-full bg-[#e7f7ee] text-[#007a4d]"><i class="ph-bold ph-identification-card text-3xl"></i></div><h3 class="mt-5 text-2xl font-black text-slate-900">Create the first employee time card</h3><p class="mt-3 max-w-xl text-sm font-semibold text-slate-500">Set the week ending date, create an employee card on the left, and the digital time sheet will appear here for the supervisor.</p></div>';
             const rows = LABOR_TIMECARD_DAYS.map((day) => { const row = card.days[day.key] || { hours: '', code: '', other: '' }; return `<div class="grid grid-cols-[82px_minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,1.2fr)] border-t border-[#dceee4] bg-white"><div class="flex items-center justify-center border-r border-[#dceee4] px-3 py-4 text-sm font-black uppercase tracking-[0.28em] text-[#007a4d]">${escapeLaborTimeCardHtml(day.label)}</div><div class="border-r border-[#dceee4] px-2 py-2"><input type="number" step="0.25" min="0" class="w-full rounded-2xl border border-[#d7ebe0] bg-[#f9fcfa] px-3 py-3 text-sm font-bold text-slate-900 outline-none focus:border-[#007a4d]" value="${escapeLaborTimeCardHtml(row.hours)}" oninput="updateLaborTimeCardDay('${day.key}','hours',this.value)" placeholder="0.0"></div><div class="border-r border-[#dceee4] px-2 py-2"><input type="text" list="hours-timecard-code-options" class="w-full rounded-2xl border border-[#d7ebe0] bg-[#f9fcfa] px-3 py-3 text-sm font-bold uppercase tracking-[0.16em] text-slate-900 outline-none focus:border-[#007a4d]" value="${escapeLaborTimeCardHtml(row.code)}" oninput="updateLaborTimeCardDay('${day.key}','code',this.value)" placeholder="REG"></div><div class="px-2 py-2"><input type="text" class="w-full rounded-2xl border border-[#d7ebe0] bg-[#f9fcfa] px-3 py-3 text-sm font-semibold text-slate-900 outline-none focus:border-[#007a4d]" value="${escapeLaborTimeCardHtml(row.other)}" oninput="updateLaborTimeCardDay('${day.key}','other',this.value)" placeholder="Other note / code"></div></div>`; }).join('');
-            return `<div class="space-y-5"><div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between"><div><div class="flex flex-wrap items-center gap-2 mb-2"><div class="text-[11px] font-black uppercase tracking-[0.28em] text-[#007a4d]">Employee Time Card</div><div id="hours-timecard-dirty-pill" class="inline-flex items-center rounded-full ${card._dirty ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'} px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em]">${card._dirty ? 'Unsaved Changes' : 'Saved'}</div></div><h3 id="hours-timecard-editor-title" class="text-[30px] leading-tight font-black text-slate-900">${escapeLaborTimeCardHtml(card.employee_name || 'Employee Time Card')}</h3><p id="hours-timecard-editor-subtitle" class="text-sm font-semibold text-slate-500 mt-2">${escapeLaborTimeCardHtml([card.employee_code || 'No employee code', card.department || 'No department', formatLaborTimeCardWeekLabel(card.week_ending).replace(/^Week ending\s+/i, '')].join(' • '))}</p></div><div class="flex flex-wrap gap-2"><button type="button" class="inline-flex items-center gap-2 rounded-2xl bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.18em] text-white shadow-lg active:scale-95" onclick="saveActiveLaborTimeCard()"><i class="ph-bold ph-floppy-disk text-base"></i><span id="hours-timecard-save-label">${card._dirty ? 'SAVE CHANGES *' : 'SAVE TIME CARD'}</span></button><button type="button" class="inline-flex items-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-[11px] font-black uppercase tracking-[0.18em] text-rose-700 active:scale-95" onclick="deleteActiveLaborTimeCard()"><i class="ph-bold ph-trash text-base"></i>Delete Card</button></div></div><div class="grid gap-4 lg:grid-cols-3"><div><label class="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500 ml-1">Employee Name</label><input type="text" class="input-field mb-0 mt-2" value="${escapeLaborTimeCardHtml(card.employee_name)}" oninput="updateLaborTimeCardMeta('employee_name',this.value)"></div><div><label class="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500 ml-1">Employee Number</label><input type="text" class="input-field mb-0 mt-2" value="${escapeLaborTimeCardHtml(card.employee_code)}" oninput="updateLaborTimeCardMeta('employee_code',this.value)"></div><div><label class="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500 ml-1">Department</label><input type="text" class="input-field mb-0 mt-2" value="${escapeLaborTimeCardHtml(card.department)}" oninput="updateLaborTimeCardMeta('department',this.value)"></div></div><div class="rounded-[28px] border-2 border-[#cfe6d9] overflow-hidden bg-[#f8fdf9] shadow-sm"><div class="grid grid-cols-[82px_minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,1.2fr)] bg-[#eff8f2] text-[10px] font-black uppercase tracking-[0.28em] text-[#007a4d]"><div class="border-r border-[#dceee4] px-3 py-3 text-center">Day</div><div class="border-r border-[#dceee4] px-3 py-3 text-center">Hours</div><div class="border-r border-[#dceee4] px-3 py-3 text-center">Code</div><div class="px-3 py-3 text-center">Other</div></div>${rows}<div class="grid grid-cols-4 border-t border-[#cfe6d9] bg-[#f1faf4]"><div class="px-4 py-4 border-r border-[#dceee4]"><div class="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">Reg</div><div id="hours-timecard-total-reg" class="text-xl font-black text-slate-900 mt-1">${escapeLaborTimeCardHtml(formatLaborTimeCardHours(card.totals.reg))}</div></div><div class="px-4 py-4 border-r border-[#dceee4]"><div class="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">Vac</div><div id="hours-timecard-total-vac" class="text-xl font-black text-slate-900 mt-1">${escapeLaborTimeCardHtml(formatLaborTimeCardHours(card.totals.vac))}</div></div><div class="px-4 py-4 border-r border-[#dceee4]"><div class="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">P.W.</div><div id="hours-timecard-total-pw" class="text-xl font-black text-slate-900 mt-1">${escapeLaborTimeCardHtml(formatLaborTimeCardHours(card.totals.pw))}</div></div><div class="px-4 py-4"><div class="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">Total</div><div id="hours-timecard-total-all" class="text-xl font-black text-[#007a4d] mt-1">${escapeLaborTimeCardHtml(formatLaborTimeCardHours(card.totals.total))}</div></div></div></div><div class="rounded-[24px] border border-[#d9ece2] bg-[#f9fcfa] p-4"><label class="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500 ml-1">Supervisor Notes</label><textarea class="input-field mb-0 mt-2 min-h-[120px] resize-y" placeholder="Anything payroll or management needs to know about this employee for the week..." oninput="updateLaborTimeCardNotes(this.value)">${escapeLaborTimeCardHtml(card.notes)}</textarea></div></div>`;
+            return `<div class="space-y-5"><div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between"><div><div class="flex flex-wrap items-center gap-2 mb-2"><div class="text-[11px] font-black uppercase tracking-[0.28em] text-[#007a4d]">Employee Time Card</div><div id="hours-timecard-dirty-pill" class="inline-flex items-center rounded-full ${card._dirty ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'} px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em]">${card._dirty ? 'Unsaved Changes' : 'Saved'}</div></div><h3 id="hours-timecard-editor-title" class="text-[30px] leading-tight font-black text-slate-900">${escapeLaborTimeCardHtml(card.employee_name || 'Employee Time Card')}</h3><p id="hours-timecard-editor-subtitle" class="text-sm font-semibold text-slate-500 mt-2">${escapeLaborTimeCardHtml([card.employee_code || 'No employee code', card.department || 'No department', formatLaborTimeCardWeekLabel(card.week_ending).replace(/^Week ending\s+/i, '')].join(' � '))}</p></div><div class="flex flex-wrap gap-2"><button type="button" class="inline-flex items-center gap-2 rounded-2xl bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.18em] text-white shadow-lg active:scale-95" onclick="saveActiveLaborTimeCard()"><i class="ph-bold ph-floppy-disk text-base"></i><span id="hours-timecard-save-label">${card._dirty ? 'SAVE CHANGES *' : 'SAVE TIME CARD'}</span></button><button type="button" class="inline-flex items-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-[11px] font-black uppercase tracking-[0.18em] text-rose-700 active:scale-95" onclick="deleteActiveLaborTimeCard()"><i class="ph-bold ph-trash text-base"></i>Delete Card</button></div></div><div class="grid gap-4 lg:grid-cols-3"><div><label class="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500 ml-1">Employee Name</label><input type="text" class="input-field mb-0 mt-2" value="${escapeLaborTimeCardHtml(card.employee_name)}" oninput="updateLaborTimeCardMeta('employee_name',this.value)"></div><div><label class="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500 ml-1">Employee Number</label><input type="text" class="input-field mb-0 mt-2" value="${escapeLaborTimeCardHtml(card.employee_code)}" oninput="updateLaborTimeCardMeta('employee_code',this.value)"></div><div><label class="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500 ml-1">Department</label><input type="text" class="input-field mb-0 mt-2" value="${escapeLaborTimeCardHtml(card.department)}" oninput="updateLaborTimeCardMeta('department',this.value)"></div></div><div class="rounded-[28px] border-2 border-[#cfe6d9] overflow-hidden bg-[#f8fdf9] shadow-sm"><div class="grid grid-cols-[82px_minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,1.2fr)] bg-[#eff8f2] text-[10px] font-black uppercase tracking-[0.28em] text-[#007a4d]"><div class="border-r border-[#dceee4] px-3 py-3 text-center">Day</div><div class="border-r border-[#dceee4] px-3 py-3 text-center">Hours</div><div class="border-r border-[#dceee4] px-3 py-3 text-center">Code</div><div class="px-3 py-3 text-center">Other</div></div>${rows}<div class="grid grid-cols-4 border-t border-[#cfe6d9] bg-[#f1faf4]"><div class="px-4 py-4 border-r border-[#dceee4]"><div class="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">Reg</div><div id="hours-timecard-total-reg" class="text-xl font-black text-slate-900 mt-1">${escapeLaborTimeCardHtml(formatLaborTimeCardHours(card.totals.reg))}</div></div><div class="px-4 py-4 border-r border-[#dceee4]"><div class="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">Vac</div><div id="hours-timecard-total-vac" class="text-xl font-black text-slate-900 mt-1">${escapeLaborTimeCardHtml(formatLaborTimeCardHours(card.totals.vac))}</div></div><div class="px-4 py-4 border-r border-[#dceee4]"><div class="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">P.W.</div><div id="hours-timecard-total-pw" class="text-xl font-black text-slate-900 mt-1">${escapeLaborTimeCardHtml(formatLaborTimeCardHours(card.totals.pw))}</div></div><div class="px-4 py-4"><div class="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">Total</div><div id="hours-timecard-total-all" class="text-xl font-black text-[#007a4d] mt-1">${escapeLaborTimeCardHtml(formatLaborTimeCardHours(card.totals.total))}</div></div></div></div><div class="rounded-[24px] border border-[#d9ece2] bg-[#f9fcfa] p-4"><label class="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500 ml-1">Supervisor Notes</label><textarea class="input-field mb-0 mt-2 min-h-[120px] resize-y" placeholder="Anything payroll or management needs to know about this employee for the week..." oninput="updateLaborTimeCardNotes(this.value)">${escapeLaborTimeCardHtml(card.notes)}</textarea></div></div>`;
         }
 
         function renderLaborTimeCardWorkspace(showLoading = false) {
@@ -10793,22 +10792,22 @@ activeDriveTab = tab;
             container.innerHTML = html;
         }
 
-        function calculateMatchQty(prefix) { 
-            if(!activeItem)return; 
-            let matchEl=document.getElementById(prefix+'match'); 
-            let displayEl=document.getElementById(prefix+'match-display'); 
-            let valEl=document.getElementById(prefix+'match-qty-val'); 
-            if(matchEl&&matchEl.value!==""){ 
-                let qty=calculateLocMatchQtyValue(activeItem, matchEl.value); 
-                if(qty==null){ 
-                    if(displayEl)displayEl.classList.add('hidden'); 
-                    return; 
-                } 
-                if(valEl)valEl.innerText=qty; 
-                if(displayEl)displayEl.classList.remove('hidden'); 
-            }else{ 
-                if(displayEl)displayEl.classList.add('hidden'); 
-            } 
+        function calculateMatchQty(prefix) {
+            if(!activeItem)return;
+            let matchEl=document.getElementById(prefix+'match');
+            let displayEl=document.getElementById(prefix+'match-display');
+            let valEl=document.getElementById(prefix+'match-qty-val');
+            if(matchEl&&matchEl.value!==""){
+                let qty=calculateLocMatchQtyValue(activeItem, matchEl.value);
+                if(qty==null){
+                    if(displayEl)displayEl.classList.add('hidden');
+                    return;
+                }
+                if(valEl)valEl.innerText=qty;
+                if(displayEl)displayEl.classList.remove('hidden');
+            }else{
+                if(displayEl)displayEl.classList.add('hidden');
+            }
         }
 
         function getCartSelectedItems() {
@@ -11023,15 +11022,15 @@ activeDriveTab = tab;
             return false;
         }
 
-        function startPress(e,domId) { 
-            isLongPress=false; 
+        function startPress(e,domId) {
+            isLongPress=false;
             cancelPress();
             const point = e && e.touches && e.touches[0] ? e.touches[0] : e;
             touchStartX = point && Number.isFinite(point.clientX) ? point.clientX : 0;
             touchStartY = point && Number.isFinite(point.clientY) ? point.clientY : 0;
         }
 
-        function checkMove(e) { 
+        function checkMove(e) {
             const point = e && e.touches && e.touches[0] ? e.touches[0] : e;
             if (!point) return;
             const moveX = Math.abs((Number.isFinite(point.clientX) ? point.clientX : 0) - touchStartX);
@@ -11050,29 +11049,29 @@ activeDriveTab = tab;
             return false;
         }
 
-        function enableMultiSelect(firstDomId) { 
+        function enableMultiSelect(firstDomId) {
             return false;
         }
 
-        function clearSelection() { 
-            isMultiSelectMode=false; 
-            document.body.classList.remove('multi-select-mode'); 
-            selectedItems.clear(); 
+        function clearSelection() {
+            isMultiSelectMode=false;
+            document.body.classList.remove('multi-select-mode');
+            selectedItems.clear();
             cartPanelOpen=false;
-            updateGlobalActionBar(); 
-            refreshCartButtons(); 
+            updateGlobalActionBar();
+            refreshCartButtons();
             if (activeItem) renderDetailOverviewMedia();
         }
-        function toggleGlobalItem(domId,isChecked=null) { 
+        function toggleGlobalItem(domId,isChecked=null) {
             const hadItem = selectedItems.has(domId);
             if(isChecked===null){
-                if(hadItem)selectedItems.delete(domId); 
+                if(hadItem)selectedItems.delete(domId);
                 else selectedItems.add(domId);
-            } else if(isChecked)selectedItems.add(domId); 
-            else selectedItems.delete(domId); 
+            } else if(isChecked)selectedItems.add(domId);
+            else selectedItems.delete(domId);
             const hasItemNow = selectedItems.has(domId);
             if(!selectedItems.size)cartPanelOpen=false;
-            updateGlobalActionBar(); 
+            updateGlobalActionBar();
             if(!hadItem && hasItemNow){
                 showToast('Added To Bloom Picker', `${selectedItems.size} row${selectedItems.size === 1 ? '' : 's'} in Bloom Picker.`);
             } else if(hadItem && !hasItemNow){
@@ -11117,21 +11116,21 @@ activeDriveTab = tab;
             }
         }
         function handleCardClick(domId,uniqueId,sourceView) {
-            let item=findItemByUniqueId(uniqueId); 
+            let item=findItemByUniqueId(uniqueId);
             if(sourceView==='av-photo'){
                 openAvGallery(item);
-            }else if(getRoleAccessState().isRep&&sourceView==='drive'){ 
-                if(item){ 
-                    let pLink=getRowPhotoLink(item, 'drive'); 
-                    if(pLink){ 
-                        openPhotoModal(pLink, `${esc(item.COMMONNAME)} (${esc(item.CONTSIZE)}) - Loc: ${item.LOCATIONCODE||'N/A'}`); 
-                    }else{ 
-                        showToast("No Photo","There is no photo on file for this item.",true); 
-                    } 
-                } 
-            }else{ 
-                applyCameraPermissions(sourceView); 
-                openDetail(uniqueId,sourceView); 
+            }else if(getRoleAccessState().isRep&&sourceView==='drive'){
+                if(item){
+                    let pLink=getRowPhotoLink(item, 'drive');
+                    if(pLink){
+                        openPhotoModal(pLink, `${esc(item.COMMONNAME)} (${esc(item.CONTSIZE)}) - Loc: ${item.LOCATIONCODE||'N/A'}`);
+                    }else{
+                        showToast("No Photo","There is no photo on file for this item.",true);
+                    }
+                }
+            }else{
+                applyCameraPermissions(sourceView);
+                openDetail(uniqueId,sourceView);
             }
         }
         function openDetail(uid, sourceView) {
@@ -12217,22 +12216,22 @@ activeDriveTab = tab;
             if (ensureViewDataForRender('request')) return;
             const container = document.getElementById('request-content');
             const crumb = document.getElementById('request-crumb');
-            
+
             let items = getScopedRequestItems(requestsInventory);
 
             if (activeReqTab === 'pending') {
                 crumb.innerText = "All Pending Requests";
                 let pendingItems = items.filter(i => !isRequestComplete(i) && !i.REQ_ARCHIVED);
-                
+
                 if (pendingItems.length === 0) {
                     container.innerHTML = `<div class="p-8 text-center text-gray-400">No pending requests.</div>`;
                     return;
                 }
-                
+
                 pendingItems.sort((a,b) => String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""), undefined, {numeric: true}));
                 container.innerHTML = pendingItems.map(i => generateCard(i, 'request', 'status-purple')).join('');
                 requestAnimationFrame(decorateRequestRows);
-                
+
             } else if (activeReqTab === 'reps') {
                 if (requestViewLevel === 0) {
                     crumb.innerText = "Sales Reps";
@@ -12247,7 +12246,7 @@ activeDriveTab = tab;
                     let repItems = items.filter(i => getRequestAssignedRep(i) === selectedReqRepView && !i.REQ_ARCHIVED);
                     let pendingCount = repItems.filter(i => !isRequestComplete(i)).length;
                     let completeCount = repItems.filter(i => isRequestComplete(i)).length;
-                    
+
                     container.innerHTML = `
                         <div class="back-btn" onclick="return backToRequestRepList()"><i class="ph-bold ph-arrow-left"></i> Back to Reps</div>
                         <div class="bg-orange-50 border border-orange-200 rounded-xl shadow-sm mb-4 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="return openRequestStatusView('Pending')">
@@ -12263,7 +12262,7 @@ activeDriveTab = tab;
                     crumb.innerText = `${selectedReqRepView} > ${selectedReqStatus}`;
                     let repItems = items.filter(i => getRequestAssignedRep(i) === selectedReqRepView && !i.REQ_ARCHIVED);
                     let statusItems = repItems.filter(i => selectedReqStatus === 'Pending' ? !isRequestComplete(i) : isRequestComplete(i));
-                    
+
                     if (statusItems.length === 0) {
                         container.innerHTML = `<div class="back-btn" onclick="return backToRequestStatusList()"><i class="ph-bold ph-arrow-left"></i> Back to Status</div><div class="p-8 text-center text-gray-400">No ${selectedReqStatus.toLowerCase()} requests.</div>`;
                         return;
@@ -12285,7 +12284,7 @@ activeDriveTab = tab;
                     folderItems = folderItems.filter(i => ((i.REQUEST_FOLDER || 'Unassigned')) === selectedReqFolderView);
                     folderItems = folderItems.filter(i => selectedReqStatus === 'Pending' ? !isRequestComplete(i) : isRequestComplete(i));
                     folderItems.sort((a,b) => String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""), undefined, {numeric: true}));
-                    
+
                     container.innerHTML = `<div class="back-btn" onclick="return backToRequestFolderList()"><i class="ph-bold ph-arrow-left"></i> Back to Folders</div>` + folderItems.map(i => generateCard(i, 'request', selectedReqStatus === 'Complete' ? 'status-green' : 'status-purple')).join('');
                     requestAnimationFrame(decorateRequestRows);
                 }
@@ -12474,7 +12473,7 @@ activeDriveTab = tab;
             ].filter((entry) => entry.iso || entry.files.length);
             if (!sourceSummaries.length) {
                 stampEl.innerText = 'Awaiting imported file data';
-                summaryEl.innerText = ''; 
+                summaryEl.innerText = '';
                 filesEl.innerHTML = '<div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-semibold text-slate-400">No imported file metadata loaded yet.</div>';
                 return;
             }
@@ -12483,7 +12482,7 @@ activeDriveTab = tab;
                 return winner;
             }, null);
             stampEl.innerText = formatDashboardSyncDateTime(overall && overall.iso ? overall.iso : '');
-            summaryEl.innerText = ''; 
+            summaryEl.innerText = '';
             filesEl.innerHTML = sourceSummaries.map((entry) => {
                 const fileListHtml = entry.files.length
                     ? entry.files.map((fileName) => '<div class="truncate">' + escapeDashboardSyncText(fileName) + '</div>').join('')
@@ -13005,7 +13004,7 @@ activeDriveTab = tab;
             });
         }
 
-        function updateGlobalActionBar() {             const bar=document.getElementById('global-action-bar'); 
+        function updateGlobalActionBar() {             const bar=document.getElementById('global-action-bar');
             const footerCartBtn=document.getElementById('footer-cart-btn');
             const footerCartBadge=document.getElementById('footer-cart-badge');
             const countLabel=document.getElementById('sel-count');
@@ -13013,15 +13012,15 @@ activeDriveTab = tab;
             const btnCopy=document.getElementById('batch-btn-copy');
             const btnEmail=document.getElementById('batch-btn-email');
             const btnText=document.getElementById('batch-btn-text');
-            const btnAssign=document.getElementById('batch-btn-assign'); 
-            const btnRequest=document.getElementById('batch-btn-request'); 
+            const btnAssign=document.getElementById('batch-btn-assign');
+            const btnRequest=document.getElementById('batch-btn-request');
             const btnFlyer=document.getElementById('batch-btn-flyer');
             const btnEndCap=document.getElementById('batch-btn-endcap');
             const btnBloomOrder=document.getElementById('batch-btn-bloom-order');
             const hasItems=selectedItems.size>0;
             const items=getCartSelectedItems();
             const actionVisibility=getBloomPickerActionVisibility(items);
-            if(countLabel)countLabel.innerText=selectedItems.size; 
+            if(countLabel)countLabel.innerText=selectedItems.size;
             if(footerCartBtn){
                 footerCartBtn.classList.toggle('hidden', !currentUser);
                 footerCartBtn.classList.toggle('active', cartPanelOpen&&hasItems);
@@ -13043,12 +13042,12 @@ activeDriveTab = tab;
             updateFooterNavState();
         }
 
-        function copyTextToClipboard(text,label) { 
-            copyTextWithFallback(text).then(()=>{ 
-                showToast("Copied!",`${label} copied to clipboard.`); 
-            }).catch(err=>{ 
-                showToast("Error","Could not copy text.",true); 
-            }); 
+        function copyTextToClipboard(text,label) {
+            copyTextWithFallback(text).then(()=>{
+                showToast("Copied!",`${label} copied to clipboard.`);
+            }).catch(err=>{
+                showToast("Error","Could not copy text.",true);
+            });
         }
 
         function openSalesOfficeAvNoteModal(uniqueId) {
@@ -13160,7 +13159,7 @@ activeDriveTab = tab;
             });
         }
 
-        function markSalesOfficeComplete(uniqueId,domId) { 
+        function markSalesOfficeComplete(uniqueId,domId) {
             const uid = String(uniqueId || '').trim();
             if (!uid) return;
             const completedAt = new Date().toISOString();
@@ -13197,9 +13196,9 @@ activeDriveTab = tab;
         function generateCard(item,sourceView,colorClass='status-green') {
             normalizeRowPhotoFields(item);
             let thumbHtml=''; let photoLink=getRowPhotoLink(item, sourceView);
-            
-            const isChecked=selectedItems.has(item.DOM_ID)?'checked':''; 
-            const tagColor=item.FIELDTAGCOLOR||'-'; 
+
+            const isChecked=selectedItems.has(item.DOM_ID)?'checked':'';
+            const tagColor=item.FIELDTAGCOLOR||'-';
             const safeUidJs=esc(item.UNIQUE_ID);
             const rawHoldCode = firstNonEmptyValue(item.HOLDSTOPCODE, item.HOLD_STOP_CODE, item.HOLDSTOP);
             const holdCode = String(rawHoldCode || '').trim().toUpperCase();
@@ -13331,7 +13330,7 @@ activeDriveTab = tab;
                 let locCode = item.LOCATIONCODE || '-';
                 let lotCode = item.LOTCODE || '-';
                 let safeAvNote = esc(avNoteText);
-                
+
                 return `<div class="flex items-center w-full mb-3 item-row relative" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="inv-card app-smart-card status-purple flex-grow !mb-0 bg-purple-50/40 border border-purple-200 transition-transform active:scale-[0.99]"><div class="flex justify-between items-start mb-3"><div class="app-card-main font-bold text-lg text-[#007a4d] leading-tight pr-2 select-text" style="-webkit-user-select: text; user-select: text;"><div class="mb-2 flex flex-wrap gap-2"><span class="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]"><i class="ph-bold ph-handbag text-sm"></i>Bloom Picker</span><span class="inline-flex items-center rounded-full border border-purple-200 bg-white px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-purple-700">Season Sales Notes</span></div>${item.COMMONNAME||'Unknown'}<br><span class="text-sm text-gray-500 font-semibold">${item.CONTSIZE||'-'}</span></div>${inlineThumbHtml}</div><div class="bg-white p-3 rounded-lg border border-purple-200 shadow-sm mb-3 select-text cursor-text" style="-webkit-user-select: text; user-select: text;" onclick="event.stopPropagation();"><div class="flex justify-between items-center mb-1"><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Item Code</span><span class="font-black text-purple-700 font-mono tracking-wide text-sm">${itemCode}</span></div><div class="flex justify-between items-center mb-1 border-b border-gray-100 pb-1"><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Location / Lot</span><span class="font-bold text-gray-600 text-xs">${locCode} / ${lotCode}</span></div><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5 mt-2">AV Note</div><div class="text-[14px] font-bold text-blue-800 leading-snug mb-2 whitespace-pre-wrap">${avNoteText}</div><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Sales Note</div><div class="text-[14px] font-bold text-green-800 leading-snug whitespace-pre-wrap">${displaySalesNote}</div></div><div class="flex flex-wrap gap-2"><button class="flex-1 min-w-[calc(50%-0.25rem)] bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-700 text-[10px] font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 active:bg-indigo-200" onclick="event.stopPropagation(); copyTextToClipboard('${itemCode}', 'ITEM CODE')"><i class="ph-bold ph-barcode text-lg"></i> COPY ITEMCODE</button><button class="flex-1 min-w-[calc(50%-0.25rem)] bg-blue-50 border border-blue-200 hover:bg-blue-100 text-blue-700 text-[10px] font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 active:bg-blue-200" onclick="event.stopPropagation(); openSalesOfficeAvNoteModal('${safeUidJs}')"><i class="ph-bold ph-pencil-simple-line text-lg"></i> EDIT AV NOTE</button><button class="flex-1 min-w-[calc(50%-0.25rem)] bg-purple-50 border border-purple-200 hover:bg-purple-100 text-purple-700 text-[10px] font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 active:bg-purple-200" onclick="event.stopPropagation(); copyTextToClipboard('${safeAvNote}', 'AV NOTE')"><i class="ph-bold ph-chat-text text-lg"></i> COPY AV NOTE</button><button class="flex-1 min-w-[calc(50%-0.25rem)] bg-[#007a4d] hover:bg-green-700 text-white text-[10px] font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-md active:scale-95" onclick="event.stopPropagation(); markSalesOfficeComplete('${safeUidJs}', '${item.DOM_ID}')"><i class="ph-bold ph-check-circle text-lg"></i> DONE</button></div></div></div>`;
             }
             if(sourceView==='reserves_drill'){
@@ -13356,7 +13355,7 @@ activeDriveTab = tab;
                 }
                 return `<div class="flex items-center w-full mb-3 item-row app-smart-card relative bg-white p-4 rounded-xl border border-gray-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-grow items-start justify-between min-w-0"><div class="app-card-main flex-grow min-w-0 pr-2"><div class="font-black text-gray-800 text-[16px] leading-tight break-words mb-0.5">${item.COMMONNAME||'Unknown'}</div><div class="app-card-subtitle font-bold text-[#007a4d] text-sm mb-2">${item.CONTSIZE||'-'}</div><div class="text-[11px] font-mono text-gray-500 mb-2 flex items-center bg-gray-100 px-2 py-0.5 rounded w-max"><i class="ph-bold ph-barcode mr-1.5 text-gray-400"></i>${item.ITEMCODE||'-'}</div><div class="app-card-chip-row flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600"><span class="bg-gray-100 px-1.5 py-0.5 rounded">LOC AVA: <span class="text-gray-900">${item.PTRAVAILABLE||'0'}</span></span><span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">Loc: ${item.LOCATIONCODE||'No Loc'}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded">Lot: ${item.LOTCODE||'-'}</span><span class="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-100">s_LTS: ${item.S_LTS||'0'}</span><span class="bg-orange-50 text-orange-700 px-1.5 py-0.5 rounded border border-orange-100">Pri: ${item.PRIORITY||'-'}</span></div>${extraData}${noteHtml}${quickRequestBtn}</div>${inlineThumbHtml}</div></div>`;
             }
-            
+
             return `<div class="flex items-center w-full mb-2 item-row overflow-hidden" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="inv-card app-smart-card ${colorClass} flex items-start justify-between flex-grow !mb-0 transition-transform active:scale-[0.99]"><div class="app-card-main flex-grow min-w-0 text-[#007a4d]"><div class="flex justify-between font-bold text-sm mb-1"><span class="truncate pr-2">${item.COMMONNAME||'Unknown'} &bull; ${item.CONTSIZE||'-'} &bull; Loc: ${item.LOCATIONCODE||'No Loc'}</span><span class="whitespace-nowrap bg-[#007a4d]/10 px-1.5 py-0.5 rounded text-xs border border-[#007a4d]/20 h-max">Pri: ${item.PRIORITY||'-'}</span></div><div class="text-[11px] font-semibold truncate mt-0.5">Tag: ${tagColor} | Lot: ${item.LOTCODE||'-'} | PTR-Ava: ${item.PTRAVAILABLE||'0'} | s_LTS: ${item.S_LTS||'0'} | Supply: ${item.SEASONSUPPLY||'0'}</div><div class="text-[11px] font-semibold truncate mt-0.5">Item: ${item.ITEMCODE||'-'}</div></div>${inlineThumbHtml}</div></div>`;
         }
 
@@ -13457,8 +13456,8 @@ activeDriveTab = tab;
             if(!item) return;
 
             let folderId = item.REQUEST_FOLDER;
-            item.REQ_REP_ACTION = action; 
-            item.REQ_ARCHIVED = true; 
+            item.REQ_REP_ACTION = action;
+            item.REQ_ARCHIVED = true;
             reRenderCurrentView();
             showToast("Saving...", `Marked as ${action}`, false);
 
@@ -13472,7 +13471,7 @@ activeDriveTab = tab;
         function checkFolderCompletion(folderId) {
             let fItems = requestsInventory.filter(i => i.REQUEST_FOLDER === folderId);
             let remainingToReview = fItems.filter(i => isRequestComplete(i) && !i.REQ_ARCHIVED);
-            
+
             if (remainingToReview.length === 0) {
                 let approvedItems = fItems.filter(i => i.REQ_REP_ACTION === 'Approved');
                 let payload = {
@@ -14546,7 +14545,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         const debouncedDriveSearch = debounce(() => {
             scheduleUiRender('drive-search', () => renderDrive());
         }, 120);
-        
+
         function clearDriveSearch() {
             document.getElementById('drive-search').value = "";
             document.getElementById('drive-search-clear').classList.add('hidden');
@@ -14559,7 +14558,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             const clearBtn = document.getElementById('drive-search-clear');
             if(term.length > 0) {
                 clearBtn.classList.remove('hidden');
-                driveViewLevel = 0; 
+                driveViewLevel = 0;
             } else {
                 clearBtn.classList.add('hidden');
                 driveViewLevel = 0;
@@ -14742,9 +14741,9 @@ function toggleDriveSeason(s) {
                 }
                 if(i.ASSIGNEDTO && !String(firstNonEmptyValue(i.DATE_COMPLETED, i.date_completed, '')).trim()) uSet.add(i.ASSIGNEDTO);
             });
-            if(uSet.size === 0) { 
-                document.getElementById('task-content').innerHTML = `<div class="p-8 text-center text-gray-400">No active tasks for any team member.</div>`; 
-                return; 
+            if(uSet.size === 0) {
+                document.getElementById('task-content').innerHTML = `<div class="p-8 text-center text-gray-400">No active tasks for any team member.</div>`;
+                return;
             }
             let sorted = Array.from(uSet).sort();
             let html = `<h2 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Select Team Member</h2>`;
@@ -14808,7 +14807,30 @@ function toggleDriveSeason(s) {
             return false;
         }
 
+        function getFlyerWorkspaceTabValue(value = activeFlyerWorkspaceTab) {
+            const normalized = String(value || '').toLowerCase().trim();
+            if (normalized === 'archive') return 'archive';
+            if (normalized === 'build' || normalized === 'builder') return 'build';
+            return 'pending';
+        }
+
+        function setFlyerWorkspaceTab(tab = 'pending') {
+            const nextTab = getFlyerWorkspaceTabValue(tab);
+            if (nextTab === 'build') {
+                if (selectedFlyerFolder && !isFlyerFolderArchived(selectedFlyerFolder)) selectedFlyerBuilderFolder = getFlyerFolderName(selectedFlyerFolder);
+            }
+            activeFlyerWorkspaceTab = nextTab;
+            activeFlyerFolderTab = nextTab === 'archive' ? 'archive' : 'active';
+            taskViewLevel = 0;
+            selectedFlyerFolder = null;
+            closeAllFlyerSwipes();
+            renderTasks();
+            queueScrollMainAreaToTop(`flyer-workspace:${activeFlyerWorkspaceTab}`);
+            return false;
+        }
+
         function setFlyerFolderTab(tab = 'active') {
+            activeFlyerWorkspaceTab = getFlyerFolderTabValue(tab) === 'archive' ? 'archive' : 'pending';
             activeFlyerFolderTab = getFlyerFolderTabValue(tab);
             taskViewLevel = 0;
             selectedFlyerFolder = null;
@@ -14818,8 +14840,17 @@ function toggleDriveSeason(s) {
             return false;
         }
 
+        function selectFlyerBuilderFolder(folderName = '') {
+            selectedFlyerBuilderFolder = getFlyerFolderName(folderName);
+            taskViewLevel = 0;
+            scheduleUiRender('flyer-builder-folder', () => renderTasks());
+            queueScrollMainAreaToTop(`flyer-builder:${selectedFlyerBuilderFolder || 'none'}`);
+            return false;
+        }
+
         function openFlyerFolder(folderName, folderTab = activeFlyerFolderTab) {
             activeFlyerFolderTab = getFlyerFolderTabValue(folderTab);
+            activeFlyerWorkspaceTab = activeFlyerFolderTab === 'archive' ? 'archive' : 'pending';
             selectedFlyerFolder = getFlyerFolderName(folderName);
             taskViewLevel = 1;
             closeAllFlyerSwipes();
@@ -15029,7 +15060,7 @@ function toggleDriveSeason(s) {
             });
         }
 
-                function safeFlyerBuilderFilePart(value = '') {
+        function safeFlyerBuilderFilePart(value = '') {
             return String(value || '').trim().replace(/\s+/g, '-').replace(/[^a-zA-Z0-9_.-]/g, '').replace(/-+/g, '-').replace(/^[-.]+|[-.]+$/g, '') || 'flyer';
         }
 
@@ -15055,12 +15086,50 @@ function toggleDriveSeason(s) {
             return firstPhoto ? getDirectImageUrl(firstPhoto) : '';
         }
 
+        function getFlyerBuilderFolderEntries(items = []) {
+            const folderMap = {};
+            (Array.isArray(items) ? items : []).forEach((item) => {
+                if (!item || isFlyerFolderArchived(item)) return;
+                const folderName = getFlyerFolderName(item);
+                if (!folderName) return;
+                if (!folderMap[folderName]) folderMap[folderName] = { folderName, count: 0, complete: 0, assignees: new Set(), items: [] };
+                const entry = folderMap[folderName];
+                entry.count++;
+                if (String(item.FLYER_COMPLETED || item.DATE_COMPLETED || '').trim() !== '') entry.complete++;
+                getFlyerAssigneeList(item.FLYER_ASSIGNED || item.ASSIGNEDTO || '').forEach(name => entry.assignees.add(name));
+                entry.items.push(item);
+            });
+            return Object.values(folderMap)
+                .sort((a, b) => String(a.folderName).localeCompare(String(b.folderName), undefined, { numeric: true }))
+                .map((entry) => ({
+                    folderName: entry.folderName,
+                    count: entry.count,
+                    complete: entry.complete,
+                    assigneesText: Array.from(entry.assignees).join(', ') || 'Unassigned',
+                    items: entry.items
+                }));
+        }
+
+        function ensureFlyerBuilderFolder(folderEntries = []) {
+            const entries = Array.isArray(folderEntries) ? folderEntries : [];
+            const validFolders = new Set(entries.map(entry => entry.folderName));
+            if (selectedFlyerFolder && validFolders.has(selectedFlyerFolder)) selectedFlyerBuilderFolder = selectedFlyerFolder;
+            if (!entries.length) {
+                selectedFlyerBuilderFolder = null;
+                return '';
+            }
+            if (!selectedFlyerBuilderFolder || !validFolders.has(selectedFlyerBuilderFolder)) {
+                selectedFlyerBuilderFolder = entries[0].folderName;
+            }
+            return selectedFlyerBuilderFolder;
+        }
+
         function buildFlyerBuilderSeedState(folderName = '', folderItems = []) {
             const folderLabel = getFlyerFolderName(folderName) || 'Flyer';
             const draft = loadFlyerBuilderDraft(folderLabel);
             const normalizedItems = Array.isArray(folderItems) ? folderItems : [];
             const slotCount = Math.max(4, Math.min(Math.max(normalizedItems.length, 4), 8));
-            const assignees = getFlyerFolderAssignedNames(folderLabel, normalizedItems, activeFlyerFolderTab).join(', ');
+            const assignees = getFlyerFolderAssignedNames(folderLabel, normalizedItems, 'active').join(', ');
             const instructions = [...new Set(normalizedItems.map(item => String(item && item.FLYER_INST || '').trim()).filter(Boolean))].join(' | ');
             const cards = [];
             for (let index = 0; index < slotCount; index += 1) {
@@ -15076,7 +15145,7 @@ function toggleDriveSeason(s) {
                 }
                 cards.push({
                     heading: [String(item.COMMONNAME || '').trim(), String(item.CONTSIZE || '').trim()].filter(Boolean).join(' '),
-                    subheading: [String(item.LOCATIONCODE || '').trim(), String(item.LOTCODE || '').trim()].filter(Boolean).join(' • ') || 'Add location details',
+                    subheading: [String(item.LOCATIONCODE || '').trim(), String(item.LOTCODE || '').trim()].filter(Boolean).join(' � ') || 'Add location details',
                     note: String(firstNonEmptyValue(item.FLYER_NOTES, item.AV_NOTE, item.SPEC, item.SALES_NOTE, item.SALESNOTE, '') || '').trim(),
                     imageSrc: getFlyerBuilderPrimaryPhoto(item),
                     imageName: String(item.COMMONNAME || `Photo ${index + 1}`).trim()
@@ -15126,35 +15195,44 @@ function toggleDriveSeason(s) {
             }
         }
 
-        async function openFlyerBuilderOutlookDraft(builder, folderName = '') {
+        async function openFlyerBuilderEmailDraft(builder, folderName = '') {
             const folderLabel = getFlyerFolderName(folderName) || builder.state.title || 'Flyer';
             const exportBlob = await builder.exportAsBlob('image/png', 1);
             const fileName = `${safeFlyerBuilderFilePart(folderLabel)}-${new Date().toISOString().slice(0, 10)}.png`;
             let flyerUrl = '';
             if (typeof builder.uploadFlyerBlob === 'function') flyerUrl = await builder.uploadFlyerBlob(exportBlob, fileName, builder.state);
+            const subject = `${folderLabel} Flyer`;
             const body = builder.buildShareText(flyerUrl);
-            const params = new URLSearchParams({ subject: `${folderLabel} Flyer`, body: body });
-            window.open(`https://outlook.office.com/mail/deeplink/compose?${params.toString()}`, '_blank', 'noopener');
-            showToast('Ready', 'Outlook draft opened.');
+            const mailtoUrl = `mailto:?${new URLSearchParams({ subject, body }).toString()}`;
+            const outlookUrl = `https://outlook.office.com/mail/deeplink/compose?${new URLSearchParams({ subject, body }).toString()}`;
+            let opened = false;
+            try {
+                if (!isIOSDevice() && !isStandaloneApp()) {
+                    const popup = window.open(outlookUrl, '_blank', 'noopener');
+                    opened = !!popup;
+                }
+            } catch (error) {}
+            if (!opened) window.location.href = mailtoUrl;
+            showToast('Ready', 'Email draft opened.');
+            return { body, flyerUrl, fileName };
         }
 
-        function renderFlyerBuilderCard(folderName = '', folderItems = []) {
-            const rowCount = Array.isArray(folderItems) ? folderItems.length : 0;
-            const isOpen = !!flyerBuilderOpen;
-            return `<div class="mb-3 rounded-xl border border-emerald-200 bg-white shadow-sm overflow-hidden"><button type="button" class="w-full px-4 py-4 flex items-center justify-between gap-3 text-left" onclick="return toggleFlyerBuilderAccordion()"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-600">Flyer Builder</div><div class="text-base font-black text-slate-900 mt-1 truncate">${folderName || 'Flyer Folder'} Builder</div><div class="text-[11px] font-semibold text-slate-500 mt-1">Use folder photos, camera capture, custom text, theme colors, export, and share from your phone.</div></div><div class="shrink-0 inline-flex items-center rounded-full ${isOpen ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'} px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em]">${isOpen ? 'Hide' : 'Open'} Builder</div></button><div id="flyer-folder-builder-panel" class="${isOpen ? '' : 'hidden'} border-t border-emerald-100 bg-[#f7fbf8] p-4"><div class="text-[11px] font-semibold text-slate-500 mb-3">${rowCount} folder row${rowCount === 1 ? '' : 's'} are ready to seed this flyer.</div><div id="flyer-folder-builder-root"></div></div></div>`;
+        function renderFlyerBuilderWorkspace(folderEntries = []) {
+            const entries = Array.isArray(folderEntries) ? folderEntries : [];
+            const currentFolder = ensureFlyerBuilderFolder(entries);
+            if (!entries.length) {
+                return `<div class="rounded-xl border border-dashed border-emerald-200 bg-emerald-50 px-4 py-6 text-center text-sm font-semibold text-emerald-800">No pending flyer folders are ready yet. Add rows to a flyer folder from Pending first, then build the flyer here.</div>`;
+            }
+            const selectedEntry = entries.find(entry => entry.folderName === currentFolder) || entries[0];
+            return `<div class="mb-3 rounded-xl border border-emerald-200 bg-white shadow-sm overflow-hidden"><div class="px-4 py-4 border-b border-emerald-100"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-600">Build Flyer</div><div class="text-base font-black text-slate-900 mt-1">Select A Pending Folder</div><div class="text-[11px] font-semibold text-slate-500 mt-1">Choose a pending flyer folder to pull in its current photos, colors, and text from your phone.</div><div class="mt-4 flex overflow-x-auto scrollbar-none gap-2 pb-1">${entries.map((entry) => `<button type="button" class="rounded-full border px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] whitespace-nowrap ${entry.folderName === currentFolder ? 'bg-[#007a4d] text-white border-[#007a4d] shadow-sm' : 'bg-white text-[#007a4d] border-emerald-200 shadow-sm'}" onclick="return selectFlyerBuilderFolder('${esc(entry.folderName)}')">${esc(entry.folderName)} <span class="ml-1 opacity-70">(${entry.count})</span></button>`).join('')}</div><div class="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-emerald-700">Pending Folder</div><div class="text-base font-black text-slate-900 mt-1">${esc(selectedEntry.folderName)}</div><div class="text-[11px] font-semibold text-slate-500 mt-1">${selectedEntry.count} row${selectedEntry.count === 1 ? '' : 's'} | ${esc(selectedEntry.assigneesText)}</div></div></div><div id="flyer-builder-workspace-root" class="p-4 bg-[#f7fbf8]"></div></div>`;
         }
 
-        function toggleFlyerBuilderAccordion(forceState = null) {
-            flyerBuilderOpen = typeof forceState === 'boolean' ? forceState : !flyerBuilderOpen;
-            renderTasks();
-            return false;
-        }
-
-        async function mountFlyerBuilderForFolder(folderName = '', folderItems = []) {
-            const root = document.getElementById('flyer-folder-builder-root');
+        async function mountFlyerBuilderForFolder(folderName = '', folderItems = [], rootId = 'flyer-builder-workspace-root') {
+            const root = document.getElementById(rootId);
             if (!root) return;
-            if (!flyerBuilderOpen) {
-                root.innerHTML = '';
+            const folderLabel = getFlyerFolderName(folderName);
+            if (!folderLabel || !Array.isArray(folderItems) || !folderItems.length) {
+                root.innerHTML = `<div class="rounded-xl border border-dashed border-slate-200 bg-white px-4 py-8 text-center text-sm font-semibold text-slate-500">Choose a pending flyer folder to start building.</div>`;
                 flyerBuilderMountedFolder = '';
                 flyerBuilderInstance = null;
                 return;
@@ -15163,7 +15241,6 @@ function toggleDriveSeason(s) {
                 root.innerHTML = `<div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800">Flyer builder could not load.</div>`;
                 return;
             }
-            const folderLabel = getFlyerFolderName(folderName) || 'Flyer';
             const seed = buildFlyerBuilderSeedState(folderLabel, folderItems);
             root.innerHTML = '';
             const builder = new window.NativePwaFlyer.Builder(root, {
@@ -15190,12 +15267,13 @@ function toggleDriveSeason(s) {
                 saveFlyerBuilderDraft(folderLabel, this.state);
             };
             builder.sendInAppMessage = async function() { return await sendFlyerBuilderMessage(this, folderLabel); };
-            builder.openOutlookDraft = async function() { return await openFlyerBuilderOutlookDraft(this, folderLabel); };
+            builder.openOutlookDraft = async function() { return await openFlyerBuilderEmailDraft(this, folderLabel); };
             builder.renderUi();
             await builder.render();
             flyerBuilderMountedFolder = folderLabel;
             flyerBuilderInstance = builder;
         }
+
         function renderTaskAvBlankCard(item) {
             const locationCode = String(firstNonEmptyValue(item && item.LOCATIONCODE, item && item.LOCATION, item && item.LOC, 'No Loc')).trim() || 'No Loc';
             const itemCode = String(firstNonEmptyValue(item && item.ITEMCODE, item && item.itemcode, '')).trim();
@@ -15224,7 +15302,7 @@ function toggleDriveSeason(s) {
             const notesTitle = useBlockDrill && activeTaskSubview !== 'all'
                 ? `${baseNotesTitle} > ${getTaskSubviewLabel(activeTaskSubview)}`
                 : baseNotesTitle;
-            const flyerFolderTabLabel = getFlyerFolderTabValue(activeFlyerFolderTab) === 'archive' ? 'Archive' : 'Active';
+            const flyerWorkspaceTabLabel = getFlyerWorkspaceTabValue(activeFlyerWorkspaceTab) === 'archive' ? 'Archive' : (getFlyerWorkspaceTabValue(activeFlyerWorkspaceTab) === 'build' ? 'Build Flyer' : 'Pending');
 
             const applyTaskCrumb = () => {
                 if (useSharedNotesQueue) {
@@ -15232,9 +15310,11 @@ function toggleDriveSeason(s) {
                     else if (taskViewLevel === 1) crumb.innerText = `${notesTitle} > Block ${selectedTaskBlock}`;
                     else crumb.innerText = `${notesTitle} > ${selectedTaskLoc}`;
                 } else if (isSharedFlyerQueue) {
-                    crumb.innerText = taskViewLevel === 0
-                        ? `Flyer > ${flyerFolderTabLabel}`
-                        : `Flyer > ${flyerFolderTabLabel} > ${selectedFlyerFolder || 'Folder'}`;
+                    crumb.innerText = getFlyerWorkspaceTabValue(activeFlyerWorkspaceTab) === 'build'
+                        ? (selectedFlyerBuilderFolder ? `Flyer > Build Flyer > ${selectedFlyerBuilderFolder}` : 'Flyer > Build Flyer')
+                        : (taskViewLevel === 0
+                            ? `Flyer > ${flyerWorkspaceTabLabel}`
+                            : `Flyer > ${flyerWorkspaceTabLabel} > ${selectedFlyerFolder || 'Folder'}`);
                 } else {
                     crumb.innerHTML = safeRole === 'ADMIN'
                         ? `<span class="text-[#007a4d]">${targetUser}'s Tasks</span>`
@@ -15315,50 +15395,60 @@ function toggleDriveSeason(s) {
                     container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=0; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to End Caps</div>` + fItems.map(i => generateCard(i, 'tasks', 'status-yellow')).join('');
                 }
             } else if (activeTaskTab === 'flyer') {
-                const flyerTabsHtml = `<div class="flex gap-2 mb-3"><button class="task-tab ${flyerFolderTabLabel === 'Active' ? 'active' : ''}" onclick="return setFlyerFolderTab('active')">Active</button><button class="task-tab ${flyerFolderTabLabel === 'Archive' ? 'active' : ''}" onclick="return setFlyerFolderTab('archive')">Archive</button></div>`;
-                const visibleFlyerItems = tabItems.filter(i => getFlyerFolderTabValue(activeFlyerFolderTab) === (isFlyerFolderArchived(i) ? 'archive' : 'active'));
-                if (taskViewLevel === 0) {
-                    let folderMap = {};
-                    visibleFlyerItems.forEach(i => {
-                        const folderName = getFlyerFolderName(i);
-                        if (!folderName) return;
-                        if (!folderMap[folderName]) folderMap[folderName] = { count: 0, complete: 0, assignees: new Set() };
-                        folderMap[folderName].count++;
-                        if (String(i.FLYER_COMPLETED || i.DATE_COMPLETED || '').trim() !== '') folderMap[folderName].complete++;
-                        getFlyerAssigneeList(i.FLYER_ASSIGNED || i.ASSIGNEDTO || '').forEach(name => folderMap[folderName].assignees.add(name));
-                    });
-                    const folderNames = Object.keys(folderMap).sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true }));
-                    const emptyFoldersHtml = `<div class="p-8 text-center text-gray-400">No ${flyerFolderTabLabel.toLowerCase()} flyer folders.</div>`;
-                    const nextTab = flyerFolderTabLabel === 'Archive' ? 'active' : 'archive';
-                    const actionLabel = flyerFolderTabLabel === 'Archive' ? 'Restore' : 'Archive';
-                    const actionStyle = flyerFolderTabLabel === 'Archive' ? 'color:#0f766e;background:#ecfeff;' : 'color:#4338ca;background:#eef2ff;';
-                    const folderHtml = folderNames.length ? folderNames.map(folderName => {
-                        const meta = folderMap[folderName];
-                        const assignees = Array.from(meta.assignees).join(', ') || 'Unassigned';
-                        return `<div class="request-swipe-row flyer-folder-swipe-row" ontouchstart="handleFlyerSwipeStart(event)" ontouchmove="handleFlyerSwipeMove(event)" ontouchend="handleFlyerSwipeEnd(event)" ontouchcancel="handleFlyerSwipeEnd(event)"><button type="button" class="request-swipe-action" style="${actionStyle}" onclick="event.preventDefault(); event.stopPropagation(); return setFlyerFolderArchiveState('${esc(folderName)}', '${nextTab}', { currentTab: '${getFlyerFolderTabValue(activeFlyerFolderTab)}' })">${actionLabel}</button><div class="request-swipe-surface" onclick="return handleFlyerFolderSurfaceClick(event, this, '${esc(folderName)}', '${getFlyerFolderTabValue(activeFlyerFolderTab)}')"><div class="bg-white border border-indigo-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform"><div class="min-w-0 pr-3"><div class="font-bold text-lg text-indigo-800 truncate">${folderName}</div><div class="text-xs font-semibold text-indigo-500 mt-1 truncate">${assignees}</div></div><div class="text-right shrink-0"><div class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${meta.count} Rows</div><div class="text-[11px] font-semibold text-gray-500 mt-2">${meta.complete} Complete</div></div></div></div></div>`;
-                    }).join('') : emptyFoldersHtml;
-                    container.innerHTML = `${flyerTabsHtml}${folderHtml}`;
-                } else if (taskViewLevel === 1) {
-                    let folderItems = visibleFlyerItems.filter(i => getFlyerFolderName(i) === selectedFlyerFolder);
-                    folderItems.sort((a,b) => {
-                        const locationCompare = compareLocationCodeValues(a.LOCATIONCODE, b.LOCATIONCODE);
-                        if (locationCompare !== 0) return locationCompare;
-                        const completeCompare = String(a.FLYER_COMPLETED || a.DATE_COMPLETED || '').localeCompare(String(b.FLYER_COMPLETED || b.DATE_COMPLETED || ''));
-                        if (completeCompare !== 0) return completeCompare;
-                        return String(a.COMMONNAME || '').localeCompare(String(b.COMMONNAME || ''));
-                    });
-                    const folderAssignees = getFlyerFolderAssignedNames(selectedFlyerFolder, folderItems, activeFlyerFolderTab).join(', ') || 'Unassigned';
-                    const folderActionButton = getFlyerFolderTabValue(activeFlyerFolderTab) === 'archive'
-                        ? `<button class="w-full sm:w-auto min-h-[42px] px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-[0.14em] transition-colors duration-150 bg-white border border-emerald-200 text-emerald-700 shadow-sm hover:bg-emerald-50" onclick="return setFlyerFolderArchiveState('${esc(selectedFlyerFolder || '')}', 'active', { currentTab: 'archive', keepOpen: true })">Restore Folder</button>`
-                        : `<button class="w-full sm:w-auto min-h-[42px] px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-[0.14em] transition-colors duration-150 bg-white border border-indigo-200 text-indigo-700 shadow-sm hover:bg-indigo-100" onclick="return startAddRowsToFlyerFolder('${esc(selectedFlyerFolder || '')}')">Add Rows To Folder</button>`;
-                    const folderHeader = `<div class="mb-3 rounded-xl border border-indigo-200 bg-indigo-50 p-4"><div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-indigo-600">${getFlyerFolderTabValue(activeFlyerFolderTab) === 'archive' ? 'Archived Flyer Folder' : 'Flyer Folder'}</div><div class="text-lg font-black text-indigo-900 truncate mt-1">${selectedFlyerFolder || ''}</div><div class="text-[11px] font-semibold text-indigo-500 mt-1">${folderItems.length} row${folderItems.length === 1 ? '' : 's'} | ${folderAssignees}</div></div>${folderActionButton}</div></div>`;
-                    const flyerBuilderHtml = renderFlyerBuilderCard(selectedFlyerFolder, folderItems);
-                    const detailHtml = folderItems.length ? folderItems.map(i => generateCard(i, 'tasks', 'status-indigo')).join('') : `<div class="p-8 text-center text-gray-400">No rows remain in this flyer folder.</div>`;
-                    container.innerHTML = `${flyerTabsHtml}<div class="back-btn" onclick="return backToFlyerFolderList()"><i class="ph-bold ph-arrow-left"></i> Back to Folders</div>${folderHeader}${flyerBuilderHtml}${detailHtml}`;
+                const flyerWorkspaceTabsHtml = `<div class="flex gap-2 mb-3"><button class="task-tab ${getFlyerWorkspaceTabValue(activeFlyerWorkspaceTab) === 'pending' ? 'active' : ''}" onclick="return setFlyerWorkspaceTab('pending')">Pending</button><button class="task-tab ${getFlyerWorkspaceTabValue(activeFlyerWorkspaceTab) === 'build' ? 'active' : ''}" onclick="return setFlyerWorkspaceTab('build')">Build Flyer</button><button class="task-tab ${getFlyerWorkspaceTabValue(activeFlyerWorkspaceTab) === 'archive' ? 'active' : ''}" onclick="return setFlyerWorkspaceTab('archive')">Archive</button></div>`;
+                const pendingFlyerItems = tabItems.filter(i => !isFlyerFolderArchived(i));
+                const archivedFlyerItems = tabItems.filter(i => isFlyerFolderArchived(i));
+                const activeFlyerWorkspace = getFlyerWorkspaceTabValue(activeFlyerWorkspaceTab);
+                if (activeFlyerWorkspace === 'build') {
+                    const folderEntries = getFlyerBuilderFolderEntries(pendingFlyerItems);
+                    container.innerHTML = `${flyerWorkspaceTabsHtml}${renderFlyerBuilderWorkspace(folderEntries)}`;
+                    const selectedEntry = folderEntries.find(entry => entry.folderName === selectedFlyerBuilderFolder) || folderEntries[0] || null;
                     requestAnimationFrame(() => {
-                        mountFlyerBuilderForFolder(selectedFlyerFolder, folderItems).catch(err => console.error('Flyer builder mount failed', err));
-                        decorateFlyerTaskRows();
+                        mountFlyerBuilderForFolder(selectedEntry ? selectedEntry.folderName : '', selectedEntry ? selectedEntry.items : [], 'flyer-builder-workspace-root').catch(err => console.error('Flyer builder mount failed', err));
                     });
+                } else {
+                    const folderTabValue = activeFlyerWorkspace === 'archive' ? 'archive' : 'active';
+                    const visibleFlyerItems = folderTabValue === 'archive' ? archivedFlyerItems : pendingFlyerItems;
+                    const flyerFolderTabLabel = folderTabValue === 'archive' ? 'Archive' : 'Pending';
+                    if (taskViewLevel === 0) {
+                        let folderMap = {};
+                        visibleFlyerItems.forEach(i => {
+                            const folderName = getFlyerFolderName(i);
+                            if (!folderName) return;
+                            if (!folderMap[folderName]) folderMap[folderName] = { count: 0, complete: 0, assignees: new Set() };
+                            folderMap[folderName].count++;
+                            if (String(i.FLYER_COMPLETED || i.DATE_COMPLETED || '').trim() !== '') folderMap[folderName].complete++;
+                            getFlyerAssigneeList(i.FLYER_ASSIGNED || i.ASSIGNEDTO || '').forEach(name => folderMap[folderName].assignees.add(name));
+                        });
+                        const folderNames = Object.keys(folderMap).sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true }));
+                        const emptyFoldersHtml = `<div class="p-8 text-center text-gray-400">No ${flyerFolderTabLabel.toLowerCase()} flyer folders.</div>`;
+                        const nextTab = flyerFolderTabLabel === 'Archive' ? 'active' : 'archive';
+                        const actionLabel = flyerFolderTabLabel === 'Archive' ? 'Restore' : 'Archive';
+                        const actionStyle = flyerFolderTabLabel === 'Archive' ? 'color:#0f766e;background:#ecfeff;' : 'color:#4338ca;background:#eef2ff;';
+                        const folderHtml = folderNames.length ? folderNames.map(folderName => {
+                            const meta = folderMap[folderName];
+                            const assignees = Array.from(meta.assignees).join(', ') || 'Unassigned';
+                            return `<div class="request-swipe-row flyer-folder-swipe-row" ontouchstart="handleFlyerSwipeStart(event)" ontouchmove="handleFlyerSwipeMove(event)" ontouchend="handleFlyerSwipeEnd(event)" ontouchcancel="handleFlyerSwipeEnd(event)"><button type="button" class="request-swipe-action" style="${actionStyle}" onclick="event.preventDefault(); event.stopPropagation(); return setFlyerFolderArchiveState('${esc(folderName)}', '${nextTab}', { currentTab: '${folderTabValue}' })">${actionLabel}</button><div class="request-swipe-surface" onclick="return handleFlyerFolderSurfaceClick(event, this, '${esc(folderName)}', '${folderTabValue}')"><div class="bg-white border border-indigo-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform"><div class="min-w-0 pr-3"><div class="font-bold text-lg text-indigo-800 truncate">${folderName}</div><div class="text-xs font-semibold text-indigo-500 mt-1 truncate">${assignees}</div></div><div class="text-right shrink-0"><div class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${meta.count} Rows</div><div class="text-[11px] font-semibold text-gray-500 mt-2">${meta.complete} Complete</div></div></div></div></div>`;
+                        }).join('') : emptyFoldersHtml;
+                        container.innerHTML = `${flyerWorkspaceTabsHtml}${folderHtml}`;
+                    } else if (taskViewLevel === 1) {
+                        let folderItems = visibleFlyerItems.filter(i => getFlyerFolderName(i) === selectedFlyerFolder);
+                        folderItems.sort((a,b) => {
+                            const locationCompare = compareLocationCodeValues(a.LOCATIONCODE, b.LOCATIONCODE);
+                            if (locationCompare !== 0) return locationCompare;
+                            const completeCompare = String(a.FLYER_COMPLETED || a.DATE_COMPLETED || '').localeCompare(String(b.FLYER_COMPLETED || b.DATE_COMPLETED || ''));
+                            if (completeCompare !== 0) return completeCompare;
+                            return String(a.COMMONNAME || '').localeCompare(String(b.COMMONNAME || ''));
+                        });
+                        const folderAssignees = getFlyerFolderAssignedNames(selectedFlyerFolder, folderItems, folderTabValue).join(', ') || 'Unassigned';
+                        const folderActionButton = folderTabValue === 'archive'
+                            ? `<button class="w-full sm:w-auto min-h-[42px] px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-[0.14em] transition-colors duration-150 bg-white border border-emerald-200 text-emerald-700 shadow-sm hover:bg-emerald-50" onclick="return setFlyerFolderArchiveState('${esc(selectedFlyerFolder || '')}', 'active', { currentTab: 'archive', keepOpen: true })">Restore Folder</button>`
+                            : `<button class="w-full sm:w-auto min-h-[42px] px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-[0.14em] transition-colors duration-150 bg-white border border-indigo-200 text-indigo-700 shadow-sm hover:bg-indigo-100" onclick="return startAddRowsToFlyerFolder('${esc(selectedFlyerFolder || '')}')">Add Rows To Folder</button>`;
+                        const folderHeader = `<div class="mb-3 rounded-xl border border-indigo-200 bg-indigo-50 p-4"><div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-indigo-600">${folderTabValue === 'archive' ? 'Archived Flyer Folder' : 'Pending Flyer Folder'}</div><div class="text-lg font-black text-indigo-900 truncate mt-1">${selectedFlyerFolder || ''}</div><div class="text-[11px] font-semibold text-indigo-500 mt-1">${folderItems.length} row${folderItems.length === 1 ? '' : 's'} | ${folderAssignees}</div></div>${folderActionButton}</div></div>`;
+                        const detailHtml = folderItems.length ? folderItems.map(i => generateCard(i, 'tasks', 'status-indigo')).join('') : `<div class="p-8 text-center text-gray-400">No rows remain in this flyer folder.</div>`;
+                        container.innerHTML = `${flyerWorkspaceTabsHtml}<div class="back-btn" onclick="return backToFlyerFolderList()"><i class="ph-bold ph-arrow-left"></i> Back to Folders</div>${folderHeader}${detailHtml}`;
+                        requestAnimationFrame(decorateFlyerTaskRows);
+                    }
                 }
             } else {
                 if (taskViewLevel === 0) {
@@ -16139,44 +16229,3 @@ function toggleDriveSeason(s) {
     </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
