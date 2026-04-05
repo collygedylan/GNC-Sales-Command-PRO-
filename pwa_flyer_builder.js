@@ -172,6 +172,15 @@
     return merged;
   }
 
+  function formatPriceValue(value) {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    if (/\$/.test(raw) || /[%A-Za-z]/.test(raw)) return raw;
+    const numeric = Number(String(raw).replace(/,/g, ''));
+    if (!Number.isFinite(numeric)) return raw;
+    return '$' + (Number.isInteger(numeric) ? numeric.toFixed(0) : numeric.toFixed(2).replace(/0+$/, '').replace(/\.$/, ''));
+  }
+
   class Builder {
     constructor(root, options) {
       const opts = Object.assign({
@@ -198,6 +207,7 @@
         footer: opts.footer,
         footerNote: opts.footerNote,
         columns: 2,
+        rowsPerPage: 4,
         density: 'standard',
         photoFit: 'cover',
         cardStyle: 'soft',
@@ -214,6 +224,9 @@
         heading: `Photo ${Number(index || 0) + 1}`,
         subheading: '',
         note: '',
+        price: '',
+        pricePosition: 'top-right',
+        priceSize: 'md',
         imageSrc: '',
         imageName: '',
         photoOptions: [],
@@ -304,8 +317,8 @@
                       <div class="npf-segmented" data-columns></div>
                     </div>
                     <div>
-                      <div class="npf-label">Density</div>
-                      <div class="npf-segmented" data-density></div>
+                      <div class="npf-label">Rows Per Page</div>
+                      <div class="npf-segmented" data-rows></div>
                     </div>
                     <div>
                       <div class="npf-label">Photo Crop</div>
@@ -421,7 +434,7 @@
       };
 
       buildSegmented(this.root.querySelector('[data-columns]'), [{ value: 1, label: '1 Col' }, { value: 2, label: '2 Col' }, { value: 3, label: '3 Col' }], this.state.columns, 'columns');
-      buildSegmented(this.root.querySelector('[data-density]'), [{ value: 'airy', label: 'Airy' }, { value: 'standard', label: 'Standard' }, { value: 'compact', label: 'Compact' }], this.state.density, 'density');
+      buildSegmented(this.root.querySelector('[data-rows]'), [{ value: 1, label: '1' }, { value: 2, label: '2' }, { value: 3, label: '3' }, { value: 4, label: '4' }, { value: 5, label: '5' }, { value: 6, label: '6' }], this.state.rowsPerPage, 'rows');
       buildSegmented(this.root.querySelector('[data-fit]'), [{ value: 'cover', label: 'Fill' }, { value: 'contain', label: 'Fit' }], this.state.photoFit, 'fit');
       buildSegmented(this.root.querySelector('[data-card-style]'), [{ value: 'soft', label: 'Soft' }, { value: 'outline', label: 'Outline' }, { value: 'flat', label: 'Flat' }], this.state.cardStyle, 'cardStyle');
 
@@ -432,8 +445,8 @@
         this.renderUi();
         this.render().catch(() => {});
       }));
-      Array.from(this.root.querySelectorAll('[data-density] button[data-density]')).forEach((button) => button.addEventListener('click', () => {
-        this.state.density = String(button.dataset.density || 'standard');
+      Array.from(this.root.querySelectorAll('[data-rows] button[data-rows]')).forEach((button) => button.addEventListener('click', () => {
+        this.state.rowsPerPage = Math.max(1, Math.min(6, Number(button.dataset.rows || 4)));
         this.clampPageIndex();
         this.persistState();
         this.renderUi();
@@ -488,6 +501,9 @@
               <label class="npf-label wide">Text Below Photo<input class="npf-input" data-card="heading" data-index="${index}" value="${this.escape(card.heading)}"></label>
               <label class="npf-label">Subtext<textarea class="npf-textarea" data-card="subheading" data-index="${index}">${this.escape(card.subheading)}</textarea></label>
               <label class="npf-label">Note<textarea class="npf-textarea" data-card="note" data-index="${index}">${this.escape(card.note)}</textarea></label>
+              <label class="npf-label">Price<input class="npf-input" data-card="price" data-index="${index}" value="${this.escape(card.price || '')}" placeholder="$19.99"></label>
+              <label class="npf-label">Price Spot<select class="npf-input" data-card="pricePosition" data-index="${index}"><option value="top-left" ${String(card.pricePosition || 'top-right') === 'top-left' ? 'selected' : ''}>Top Left</option><option value="top-right" ${String(card.pricePosition || 'top-right') === 'top-right' ? 'selected' : ''}>Top Right</option><option value="bottom-left" ${String(card.pricePosition || 'top-right') === 'bottom-left' ? 'selected' : ''}>Bottom Left</option><option value="bottom-right" ${String(card.pricePosition || 'top-right') === 'bottom-right' ? 'selected' : ''}>Bottom Right</option><option value="below-title" ${String(card.pricePosition || 'top-right') === 'below-title' ? 'selected' : ''}>Below Title</option></select></label>
+              <label class="npf-label">Price Size<select class="npf-input" data-card="priceSize" data-index="${index}"><option value="sm" ${String(card.priceSize || 'md') === 'sm' ? 'selected' : ''}>Small</option><option value="md" ${String(card.priceSize || 'md') === 'md' ? 'selected' : ''}>Medium</option><option value="lg" ${String(card.priceSize || 'md') === 'lg' ? 'selected' : ''}>Large</option><option value="xl" ${String(card.priceSize || 'md') === 'xl' ? 'selected' : ''}>XL</option></select></label>
             </div>
           </div>`;
       }).join('') : `<div class="npf-photo-empty">No rows match that search.</div>`;
@@ -499,12 +515,16 @@
       Array.from(this.ui.slotWrap.querySelectorAll('[data-toggle-card]')).forEach((button) => button.addEventListener('click', () => {
         this.toggleCardEnabled(Number(button.dataset.toggleCard || 0));
       }));
-      Array.from(this.ui.slotWrap.querySelectorAll('[data-card]')).forEach((field) => field.addEventListener('input', () => {
-        const index = Number(field.dataset.index || 0);
-        this.state.cards[index][field.dataset.card] = field.value;
-        this.persistState();
-        this.render().catch(() => {});
-      }));
+      Array.from(this.ui.slotWrap.querySelectorAll('[data-card]')).forEach((field) => {
+        const applyCardField = () => {
+          const index = Number(field.dataset.index || 0);
+          this.state.cards[index][field.dataset.card] = field.value;
+          this.persistState();
+          this.render().catch(() => {});
+        };
+        field.addEventListener('input', applyCardField);
+        field.addEventListener('change', applyCardField);
+      });
 
       Array.from(this.root.querySelectorAll('[data-page-nav]')).forEach((button) => {
         button.disabled = (button.dataset.pageNav === 'prev' && this.state.pageIndex <= 0) || (button.dataset.pageNav === 'next' && this.state.pageIndex >= pageCount - 1);
@@ -535,8 +555,7 @@
     }
 
     getRowsPerPage() {
-      const density = DENSITY_ROWS[this.state.density] || DENSITY_ROWS.standard;
-      return density[this.state.columns] || density[2] || 5;
+      return Math.max(1, Math.min(6, Number(this.state.rowsPerPage || 4)));
     }
 
     getCardsPerPage() {
@@ -665,8 +684,36 @@
       }
       ctx.restore();
 
+      const priceText = formatPriceValue(card.price);
+      const priceSizeMap = { sm: 18 * scale, md: 24 * scale, lg: 30 * scale, xl: 36 * scale };
+      const priceFontSize = priceSizeMap[String(card.priceSize || 'md')] || priceSizeMap.md;
+      const priceBadgeHeight = priceText ? priceFontSize + (14 * scale) : 0;
+      ctx.font = `900 ${priceFontSize}px Arial`;
+      const priceBadgeWidth = priceText ? Math.min(cardWidth - (inner * 2), ctx.measureText(priceText).width + (26 * scale)) : 0;
+      const drawPriceBadge = (badgeX, badgeY) => {
+        roundRect(ctx, badgeX, badgeY, priceBadgeWidth, priceBadgeHeight, 18 * scale);
+        ctx.fillStyle = theme.accent;
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = `900 ${priceFontSize}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(priceText, badgeX + (priceBadgeWidth / 2), badgeY + (priceBadgeHeight / 2));
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'alphabetic';
+      };
+
+      if (priceText && String(card.pricePosition || 'top-right') !== 'below-title') {
+        let badgeX = imageX + (16 * scale);
+        let badgeY = imageY + (16 * scale);
+        const position = String(card.pricePosition || 'top-right');
+        if (position === 'top-right' || position === 'bottom-right') badgeX = imageX + imageWidth - priceBadgeWidth - (16 * scale);
+        if (position === 'bottom-left' || position === 'bottom-right') badgeY = imageY + imageHeight - priceBadgeHeight - (16 * scale);
+        drawPriceBadge(badgeX, badgeY);
+      }
+
       let textY = imageY + imageHeight + (32 * scale);
-      const titleFont = Math.max(22 * scale, Math.min(34 * scale, cardWidth / 10.5));
+      const titleFont = Math.max(18 * scale, Math.min(34 * scale, cardWidth / 10.5, cardHeight / 8.6));
       ctx.fillStyle = theme.title;
       ctx.font = `900 ${titleFont}px Arial`;
       wrapText(ctx, card.heading || 'Flyer Item', cardWidth - (inner * 2), 3).forEach((line) => {
@@ -674,9 +721,14 @@
         textY += titleFont + (6 * scale);
       });
 
+      if (priceText && String(card.pricePosition || 'top-right') === 'below-title') {
+        drawPriceBadge(x + inner, textY - (priceFontSize * 0.15));
+        textY += priceBadgeHeight + (10 * scale);
+      }
+
       if (card.subheading) {
         ctx.fillStyle = theme.body;
-        ctx.font = `700 ${19 * scale}px Arial`;
+        ctx.font = `700 ${Math.max(14 * scale, Math.min(19 * scale, cardHeight / 11))}px Arial`;
         wrapText(ctx, card.subheading, cardWidth - (inner * 2), 3).forEach((line) => {
           ctx.fillText(line, x + inner, textY);
           textY += 24 * scale;
@@ -686,7 +738,7 @@
       if (card.note) {
         textY += 8 * scale;
         ctx.fillStyle = theme.accent;
-        ctx.font = `900 ${15 * scale}px Arial`;
+        ctx.font = `900 ${Math.max(12 * scale, Math.min(15 * scale, cardHeight / 13))}px Arial`;
         wrapText(ctx, card.note, cardWidth - (inner * 2), 4).forEach((line) => {
           ctx.fillText(line, x + inner, textY);
           textY += 20 * scale;
@@ -703,7 +755,7 @@
       const ctx = canvas.getContext('2d');
       const theme = this.state.theme;
       const padding = 70 * exportScale;
-      const gap = (this.state.density === 'airy' ? 30 : (this.state.density === 'compact' ? 18 : 24)) * exportScale;
+      const rowsPerPage = this.getRowsPerPage(); const gap = (rowsPerPage >= 6 ? 14 : (rowsPerPage >= 5 ? 18 : 24)) * exportScale;
       const headerHeight = (this.state.subtitle ? 250 : 210) * exportScale;
       const footerHeight = (this.state.footer || this.state.footerNote) ? 150 * exportScale : 0;
       const usableWidth = width - (padding * 2);
@@ -924,3 +976,7 @@
 
   global.NativePwaFlyer = { Builder, THEMES };
 })(window);
+
+
+
+
