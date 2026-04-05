@@ -513,7 +513,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-                            <div id="header-version" class="nav-version-pill">V2026.04.04.02</div>
+                            <div id="header-version" class="nav-version-pill">V2026.04.04.03</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -971,15 +971,23 @@
         const CACHE_PERSIST_REALTIME_VISIBLE_MIN_INTERVAL_MS = 180000;
         const CACHE_PERSIST_ACTIVE_INTERACTION_GRACE_MS = 12000;
         const CACHE_PERSIST_IDLE_TIMEOUT_MS = 2500;
-        const PHOTO_MAX_WIDTH = 900;
-        const PHOTO_JPEG_QUALITY = 0.72;
+        const PHOTO_MAX_WIDTH = 1920;
+        const PHOTO_JPEG_QUALITY = 0.9;
+        const PHOTO_LAG_MAX_WIDTH = 1560;
+        const PHOTO_LAG_JPEG_QUALITY = 0.84;
+        const CAMERA_VIDEO_FRAME_JPEG_QUALITY = 0.92;
+        const CAMERA_PORTRAIT_OUTPUT_MAX_WIDTH = 1800;
+        const CAMERA_PORTRAIT_OUTPUT_JPEG_QUALITY = 0.88;
         const TFJS_SCRIPT_URL = 'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js';
         const COCO_SSD_SCRIPT_URL = 'https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js';
         const CAMERA_CAPTURE_MODE_STORAGE_KEY = 'gnc_camera_capture_mode_v1';
         const CAMERA_PORTRAIT_STORAGE_KEY = 'gnc_camera_portrait_mode_v1';
-        const CAMERA_PORTRAIT_DETECTION_MAX_SIDE = 640;
-        const CAMERA_PORTRAIT_MIN_SCORE = 0.32;
-        const CAMERA_PORTRAIT_BLUR_PX = 18;
+        const CAMERA_PREVIEW_WIDTH_IDEAL = 1920;
+        const CAMERA_PREVIEW_HEIGHT_IDEAL = 1440;
+        const CAMERA_PORTRAIT_DETECTION_MAX_SIDE = 960;
+        const CAMERA_PORTRAIT_MIN_SCORE = 0.24;
+        const CAMERA_PORTRAIT_BLUR_PX = 28;
+        const CAMERA_PORTRAIT_FOCUS_FEATHER = 0.26;
         const CAMERA_CAPTURE_LABELS = Object.freeze({
             'ssn-': 'Season Sales Notes Camera',
             'lsn-': 'Location Sales Notes Camera',
@@ -996,6 +1004,7 @@
             mode: 'photo',
             portraitEnabled: false,
             stream: null,
+            imageCapture: null,
             model: null,
             modelPromise: null,
             scriptPromises: Object.create(null),
@@ -2886,7 +2895,7 @@
         let pendingRequestArchiveFlushTimer = null;
         let pendingRequestArchiveFlushInFlight = false;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Maschino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'V2026.04.04.02';
+        const APP_VERSION = 'V2026.04.04.03';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -5963,7 +5972,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (subtitleEl) {
                 subtitleEl.textContent = usingVideo
                     ? 'Video-style live preview is open.'
-                    : (usingPortrait ? 'Portrait mode is ready for plants.' : 'Photo mode is ready.');
+                    : (usingPortrait ? 'Portrait mode is ready for a blurred plant shot.' : 'Photo mode is ready for a full-quality still.');
             }
             if (portraitBtn) portraitBtn.classList.toggle('active', usingPortrait);
             if (photoBtn) photoBtn.classList.toggle('active', usingPhoto);
@@ -6005,7 +6014,7 @@ function toggleDriveQuickRequestItem(domId) {
             }
             if (usingPortrait) setCameraCaptureStatus('Portrait mode is live. The plant stays sharp and the background softens after capture.', 'active');
             else if (usingVideo) setCameraCaptureStatus('Video mode is live. Use the shutter to grab a still frame without leaving the app.', 'active');
-            else setCameraCaptureStatus('Photo mode is live. Frame the plant and tap the shutter.', 'active');
+            else setCameraCaptureStatus('Photo mode is live. Frame the plant and tap the shutter for a full-quality still.', 'active');
         }
         function stopCameraCaptureStream() {
             const videoEl = document.getElementById('camera-capture-video');
@@ -6016,6 +6025,7 @@ function toggleDriveQuickRequestItem(domId) {
                 } catch (e) {}
             }
             cameraCaptureState.stream = null;
+            cameraCaptureState.imageCapture = null;
             cameraCaptureState.captureInFlight = false;
             if (videoEl) {
                 try { videoEl.pause(); } catch (e) {}
@@ -6165,6 +6175,103 @@ function toggleDriveQuickRequestItem(domId) {
             ctx.drawImage(sourceImage, 0, 0, width, height);
         }
 
+        function getCameraVideoTrack() {
+            try {
+                return cameraCaptureState.stream && typeof cameraCaptureState.stream.getVideoTracks === 'function'
+                    ? (cameraCaptureState.stream.getVideoTracks()[0] || null)
+                    : null;
+            } catch (e) {
+                return null;
+            }
+        }
+
+        async function applyBestEffortCameraTrackConstraints(track) {
+            if (!track || typeof track.applyConstraints !== 'function') return;
+            try {
+                const capabilities = typeof track.getCapabilities === 'function' ? track.getCapabilities() : null;
+                const advanced = [];
+                if (capabilities && Array.isArray(capabilities.focusMode) && capabilities.focusMode.indexOf('continuous') !== -1) advanced.push({ focusMode: 'continuous' });
+                if (capabilities && Array.isArray(capabilities.exposureMode) && capabilities.exposureMode.indexOf('continuous') !== -1) advanced.push({ exposureMode: 'continuous' });
+                if (capabilities && Array.isArray(capabilities.whiteBalanceMode) && capabilities.whiteBalanceMode.indexOf('continuous') !== -1) advanced.push({ whiteBalanceMode: 'continuous' });
+                if (capabilities && capabilities.zoom) {
+                    const minZoom = Number(capabilities.zoom.min || 1);
+                    advanced.push({ zoom: Math.max(1, minZoom) });
+                }
+                if (advanced.length) await track.applyConstraints({ advanced: advanced });
+            } catch (err) {}
+        }
+
+        function captureCameraCanvasBlob(videoEl, quality) {
+            return new Promise(function(resolve, reject) {
+                if (!videoEl || !videoEl.videoWidth || !videoEl.videoHeight) {
+                    reject(new Error('Could not capture this frame.'));
+                    return;
+                }
+                const canvas = document.getElementById('camera-capture-canvas') || document.createElement('canvas');
+                canvas.width = videoEl.videoWidth;
+                canvas.height = videoEl.videoHeight;
+                const ctx = canvas.getContext('2d', { alpha: false });
+                if (!ctx) {
+                    reject(new Error('Could not capture this frame.'));
+                    return;
+                }
+                drawCameraSourceToCanvas(ctx, videoEl, canvas.width, canvas.height);
+                canvas.toBlob(function(blob) {
+                    if (!blob) {
+                        reject(new Error('Could not capture this frame.'));
+                        return;
+                    }
+                    resolve(blob);
+                }, 'image/jpeg', Number(quality || CAMERA_VIDEO_FRAME_JPEG_QUALITY));
+            });
+        }
+
+        async function captureHighQualityCameraBlob(videoEl) {
+            const track = getCameraVideoTrack();
+            if (track && typeof window.ImageCapture !== 'undefined') {
+                try {
+                    if (!cameraCaptureState.imageCapture) cameraCaptureState.imageCapture = new window.ImageCapture(track);
+                    const blob = await cameraCaptureState.imageCapture.takePhoto();
+                    if (blob) return blob;
+                } catch (err) {
+                    console.warn('ImageCapture.takePhoto failed', err);
+                }
+            }
+            return await captureCameraCanvasBlob(videoEl, CAMERA_VIDEO_FRAME_JPEG_QUALITY);
+        }
+
+        function createPortraitFocusMask(canvasWidth, canvasHeight, focusBoxes) {
+            const maskCanvas = document.createElement('canvas');
+            maskCanvas.width = canvasWidth;
+            maskCanvas.height = canvasHeight;
+            const maskCtx = maskCanvas.getContext('2d', { alpha: true });
+            if (!maskCtx) return null;
+            (focusBoxes || []).forEach(function(box) {
+                const width = Math.max(32, Number(box && box.width || 0));
+                const height = Math.max(32, Number(box && box.height || 0));
+                const x = Number(box && box.x || 0);
+                const y = Number(box && box.y || 0);
+                const cx = x + (width / 2);
+                const cy = y + (height / 2);
+                const rx = Math.max(48, width * (1 + CAMERA_PORTRAIT_FOCUS_FEATHER));
+                const ry = Math.max(64, height * (1 + CAMERA_PORTRAIT_FOCUS_FEATHER));
+                maskCtx.save();
+                maskCtx.translate(cx, cy);
+                maskCtx.scale(rx, ry);
+                const gradient = maskCtx.createRadialGradient(0, 0, 0.18, 0, 0, 1);
+                gradient.addColorStop(0, 'rgba(255,255,255,1)');
+                gradient.addColorStop(0.55, 'rgba(255,255,255,0.98)');
+                gradient.addColorStop(0.82, 'rgba(255,255,255,0.74)');
+                gradient.addColorStop(1, 'rgba(255,255,255,0)');
+                maskCtx.fillStyle = gradient;
+                maskCtx.beginPath();
+                maskCtx.arc(0, 0, 1, 0, Math.PI * 2);
+                maskCtx.fill();
+                maskCtx.restore();
+            });
+            return maskCanvas;
+        }
+
         async function applyPortraitPlantBlur(sourceImage, canvas) {
             const model = await ensurePortraitModelReady(false);
             if (!model) return { applied: false, reason: 'model' };
@@ -6182,7 +6289,7 @@ function toggleDriveQuickRequestItem(domId) {
             detectCtx.drawImage(sourceImage, 0, 0, detectWidth, detectHeight);
             let predictions = [];
             try {
-                predictions = await model.detect(detectCanvas, 8, CAMERA_PORTRAIT_MIN_SCORE);
+                predictions = await model.detect(detectCanvas, 10, CAMERA_PORTRAIT_MIN_SCORE);
             } finally {
                 detectCanvas.width = 1;
                 detectCanvas.height = 1;
@@ -6191,36 +6298,58 @@ function toggleDriveQuickRequestItem(domId) {
                 const label = String(prediction && prediction.class || '').toLowerCase();
                 return Number(prediction && prediction.score || 0) >= CAMERA_PORTRAIT_MIN_SCORE && (label === 'potted plant' || label.indexOf('plant') !== -1);
             });
-            if (!plantBoxes.length) return { applied: false, reason: 'no-plant' };
             const ctx = canvas.getContext('2d', { alpha: false });
             if (!ctx) return { applied: false, reason: 'context' };
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.save();
-            ctx.filter = 'blur(' + CAMERA_PORTRAIT_BLUR_PX + 'px)';
-            ctx.drawImage(sourceImage, 0, 0, canvas.width, canvas.height);
-            ctx.restore();
             const scaleX = canvas.width / detectWidth;
             const scaleY = canvas.height / detectHeight;
-            plantBoxes.forEach(function(prediction) {
-                const box = Array.isArray(prediction.bbox) ? prediction.bbox : [0, 0, detectWidth, detectHeight];
-                let x = Number(box[0] || 0) * scaleX;
-                let y = Number(box[1] || 0) * scaleY;
-                let width = Number(box[2] || 0) * scaleX;
-                let height = Number(box[3] || 0) * scaleY;
-                const padX = Math.max(20, width * 0.16);
-                const padY = Math.max(20, height * 0.16);
-                x = Math.max(0, x - padX);
-                y = Math.max(0, y - padY);
-                width = Math.min(canvas.width - x, width + (padX * 2));
-                height = Math.min(canvas.height - y, height + (padY * 2));
-                const radius = Math.min(40, Math.max(16, Math.min(width, height) * 0.18));
-                ctx.save();
-                createRoundedRectPath(ctx, x, y, width, height, radius);
-                ctx.clip();
-                ctx.drawImage(sourceImage, 0, 0, canvas.width, canvas.height);
-                ctx.restore();
-            });
-            return { applied: true, reason: 'applied' };
+            const focusBoxes = plantBoxes.length
+                ? plantBoxes.map(function(prediction) {
+                    const box = Array.isArray(prediction.bbox) ? prediction.bbox : [0, 0, detectWidth, detectHeight];
+                    let x = Number(box[0] || 0) * scaleX;
+                    let y = Number(box[1] || 0) * scaleY;
+                    let width = Number(box[2] || 0) * scaleX;
+                    let height = Number(box[3] || 0) * scaleY;
+                    const padX = Math.max(28, width * 0.24);
+                    const padY = Math.max(28, height * 0.24);
+                    x = Math.max(0, x - padX);
+                    y = Math.max(0, y - (padY * 0.9));
+                    width = Math.min(canvas.width - x, width + (padX * 2));
+                    height = Math.min(canvas.height - y, height + (padY * 2.1));
+                    return { x: x, y: y, width: width, height: height };
+                })
+                : [{
+                    x: canvas.width * 0.16,
+                    y: canvas.height * 0.12,
+                    width: canvas.width * 0.68,
+                    height: canvas.height * 0.76
+                }];
+            const blurCanvas = document.createElement('canvas');
+            blurCanvas.width = canvas.width;
+            blurCanvas.height = canvas.height;
+            const blurCtx = blurCanvas.getContext('2d', { alpha: false });
+            const sharpCanvas = document.createElement('canvas');
+            sharpCanvas.width = canvas.width;
+            sharpCanvas.height = canvas.height;
+            const sharpCtx = sharpCanvas.getContext('2d', { alpha: true });
+            if (!blurCtx || !sharpCtx) return { applied: false, reason: 'context' };
+            blurCtx.filter = 'blur(' + CAMERA_PORTRAIT_BLUR_PX + 'px) saturate(0.97) brightness(0.98)';
+            blurCtx.drawImage(sourceImage, 0, 0, canvas.width, canvas.height);
+            sharpCtx.drawImage(sourceImage, 0, 0, canvas.width, canvas.height);
+            const maskCanvas = createPortraitFocusMask(canvas.width, canvas.height, focusBoxes);
+            if (!maskCanvas) return { applied: false, reason: 'mask' };
+            sharpCtx.globalCompositeOperation = 'destination-in';
+            sharpCtx.drawImage(maskCanvas, 0, 0);
+            sharpCtx.globalCompositeOperation = 'source-over';
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(blurCanvas, 0, 0);
+            ctx.drawImage(sharpCanvas, 0, 0);
+            blurCanvas.width = 1;
+            blurCanvas.height = 1;
+            sharpCanvas.width = 1;
+            sharpCanvas.height = 1;
+            maskCanvas.width = 1;
+            maskCanvas.height = 1;
+            return { applied: true, reason: plantBoxes.length ? 'applied' : 'fallback-focus' };
         }
 
         async function startCameraVideoMode() {
@@ -6240,8 +6369,10 @@ function toggleDriveQuickRequestItem(domId) {
                     audio: false,
                     video: {
                         facingMode: { ideal: 'environment' },
-                        width: { ideal: 1280 },
-                        height: { ideal: 960 }
+                        width: { ideal: CAMERA_PREVIEW_WIDTH_IDEAL, max: 2560 },
+                        height: { ideal: CAMERA_PREVIEW_HEIGHT_IDEAL, max: 1920 },
+                        aspectRatio: { ideal: 4 / 3 },
+                        frameRate: { ideal: cameraCaptureState.mode === 'video' ? 30 : 24 }
                     }
                 });
                 if (!cameraCaptureState.open) {
@@ -6249,6 +6380,13 @@ function toggleDriveQuickRequestItem(domId) {
                     return;
                 }
                 cameraCaptureState.stream = stream;
+                const track = getCameraVideoTrack();
+                if (track) {
+                    await applyBestEffortCameraTrackConstraints(track);
+                    if (typeof window.ImageCapture !== 'undefined') {
+                        try { cameraCaptureState.imageCapture = new window.ImageCapture(track); } catch (e) { cameraCaptureState.imageCapture = null; }
+                    }
+                }
                 videoEl.srcObject = stream;
                 videoEl.muted = true;
                 videoEl.setAttribute('playsinline', 'true');
@@ -6272,7 +6410,11 @@ function toggleDriveQuickRequestItem(domId) {
                     startCameraVideoMode();
                     return;
                 }
-                captureCameraVideoFrame();
+                if (cameraCaptureState.mode === 'video') {
+                    captureCameraVideoFrame();
+                    return;
+                }
+                captureCameraStillPhoto();
                 return;
             }
             triggerStandardCameraCapture();
@@ -6289,31 +6431,45 @@ function toggleDriveQuickRequestItem(domId) {
             setCameraCaptureStatus('Opening device camera...', 'active');
             input.click();
         }
-        function captureCameraVideoFrame() {
+        async function captureCameraStillPhoto() {
             if (!cameraCaptureState.open || cameraCaptureState.captureInFlight) return;
             const videoEl = document.getElementById('camera-capture-video');
-            const canvas = document.getElementById('camera-capture-canvas');
-            if (!cameraCaptureState.stream || !videoEl || !canvas || !videoEl.videoWidth || !videoEl.videoHeight) {
+            if (!cameraCaptureState.stream || !videoEl) {
                 startCameraVideoMode();
                 return;
             }
             cameraCaptureState.captureInFlight = true;
             syncCameraCaptureUi();
-            setCameraCaptureStatus('Capturing photo...', 'active');
-            canvas.width = videoEl.videoWidth;
-            canvas.height = videoEl.videoHeight;
-            const ctx = canvas.getContext('2d', { alpha: false });
-            if (!ctx) {
-                cameraCaptureState.captureInFlight = false;
-                syncCameraCaptureUi();
-                showToast('Camera', 'Could not capture this frame.', true);
-                return;
-            }
-            ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+            setCameraCaptureStatus(cameraCaptureState.portraitEnabled ? 'Capturing portrait photo...' : 'Capturing full-quality photo...', 'active');
             const prefix = cameraCaptureState.prefix;
             const input = cameraCaptureState.input;
             const applyPortrait = !!cameraCaptureState.portraitEnabled;
-            canvas.toBlob(function(blob) {
+            try {
+                const blob = await captureHighQualityCameraBlob(videoEl);
+                if (!blob) throw new Error('Could not capture this photo.');
+                closeCameraCaptureModal();
+                processSelectedPhotoFile(blob, prefix, input, { applyPortrait: applyPortrait }).catch(function() {});
+            } catch (err) {
+                console.warn('High-quality capture failed', err);
+                cameraCaptureState.captureInFlight = false;
+                syncCameraCaptureUi();
+                showToast('Camera', 'Could not capture this photo.', true);
+            }
+        }
+        function captureCameraVideoFrame() {
+            if (!cameraCaptureState.open || cameraCaptureState.captureInFlight) return;
+            const videoEl = document.getElementById('camera-capture-video');
+            if (!cameraCaptureState.stream || !videoEl || !videoEl.videoWidth || !videoEl.videoHeight) {
+                startCameraVideoMode();
+                return;
+            }
+            cameraCaptureState.captureInFlight = true;
+            syncCameraCaptureUi();
+            setCameraCaptureStatus('Capturing video-frame photo...', 'active');
+            const prefix = cameraCaptureState.prefix;
+            const input = cameraCaptureState.input;
+            const applyPortrait = !!cameraCaptureState.portraitEnabled;
+            captureCameraCanvasBlob(videoEl, CAMERA_VIDEO_FRAME_JPEG_QUALITY).then(function(blob) {
                 cameraCaptureState.captureInFlight = false;
                 if (!blob) {
                     syncCameraCaptureUi();
@@ -6322,7 +6478,11 @@ function toggleDriveQuickRequestItem(domId) {
                 }
                 closeCameraCaptureModal();
                 processSelectedPhotoFile(blob, prefix, input, { applyPortrait: applyPortrait }).catch(function() {});
-            }, 'image/jpeg', 0.88);
+            }).catch(function() {
+                cameraCaptureState.captureInFlight = false;
+                syncCameraCaptureUi();
+                showToast('Camera', 'Could not capture this frame.', true);
+            });
         }
 
         async function processSelectedPhotoFile(file, prefix, input, options) {
@@ -6391,10 +6551,10 @@ function toggleDriveQuickRequestItem(domId) {
                     const sourceHeight = Number(sourceImage.height || sourceImage.naturalHeight || 0);
                     if (!sourceWidth || !sourceHeight) throw new Error('Could not process the selected image.');
                     canvas = document.createElement('canvas');
-                    const targetMaxWidthBase = isLagSensitiveDetailPrefix(prefix) ? 720 : PHOTO_MAX_WIDTH;
-                    const targetMaxWidth = shouldAttemptPortrait ? Math.min(targetMaxWidthBase, 840) : targetMaxWidthBase;
-                    const targetJpegQualityBase = isLagSensitiveDetailPrefix(prefix) ? 0.64 : PHOTO_JPEG_QUALITY;
-                    const targetJpegQuality = shouldAttemptPortrait ? Math.min(targetJpegQualityBase, 0.68) : targetJpegQualityBase;
+                    const targetMaxWidthBase = isLagSensitiveDetailPrefix(prefix) ? PHOTO_LAG_MAX_WIDTH : PHOTO_MAX_WIDTH;
+                    const targetMaxWidth = shouldAttemptPortrait ? Math.min(targetMaxWidthBase, CAMERA_PORTRAIT_OUTPUT_MAX_WIDTH) : targetMaxWidthBase;
+                    const targetJpegQualityBase = isLagSensitiveDetailPrefix(prefix) ? PHOTO_LAG_JPEG_QUALITY : PHOTO_JPEG_QUALITY;
+                    const targetJpegQuality = shouldAttemptPortrait ? Math.max(targetJpegQualityBase, CAMERA_PORTRAIT_OUTPUT_JPEG_QUALITY) : targetJpegQualityBase;
                     const scaleSize = sourceWidth > targetMaxWidth ? targetMaxWidth / sourceWidth : 1;
                     canvas.width = Math.max(1, Math.round(sourceWidth * scaleSize));
                     canvas.height = Math.max(1, Math.round(sourceHeight * scaleSize));
