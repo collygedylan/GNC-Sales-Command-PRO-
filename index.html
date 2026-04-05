@@ -559,7 +559,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-                            <div id="header-version" class="nav-version-pill">V2026.04.04.07</div>
+                            <div id="header-version" class="nav-version-pill">V2026.04.04.08</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -646,29 +646,7 @@
                         <div onclick="switchView('review')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform col-span-2 cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-warning-circle text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Manager Review</span></div>
                     </div>
                 </div>
-                
-                <div id="view-hours" class="hidden">
-                    <div class="bg-white rounded-xl shadow-md p-6 mb-6 border-2 border-[#007a4d]">
-                        <h2 class="text-xl font-black text-[#007a4d] mb-2">Report Labor Hours</h2>
-                        <p class="text-xs text-gray-500 font-bold mb-6">Submit man-hours for your department.</p>
-                        <label class="text-[10px] font-bold text-gray-500 uppercase ml-1">Date</label>
-                        <input type="date" id="hours-date" class="input-field mb-4">
-                        <label class="text-[10px] font-bold text-gray-500 uppercase ml-1">Department</label>
-                        <select id="hours-dept" class="input-field bg-white mb-4">
-                            <option value="" disabled selected>Select Department...</option>
-                            <option value="Shipping">Shipping</option>
-                            <option value="Production">Production</option>
-                            <option value="Maintenance">Maintenance</option>
-                            <option value="Sales">Sales</option>
-                            <option value="Admin">Admin</option>
-                            <option value="Driving">Driving</option>
-                            <option value="Quality Control">Quality Control</option>
-                        </select>
-                        <label class="text-[10px] font-bold text-gray-500 uppercase ml-1">Total Man Hours</label>
-                        <input type="number" id="hours-amount" class="input-field mb-6" placeholder="e.g. 120" step="0.5" min="0">
-                        <button class="w-full bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform" onclick="submitLaborHours()">SUBMIT HOURS</button>
-                    </div>
-                </div>
+                <div id="view-hours" class="hidden"></div>
 
                 <div id="view-av" class="hidden">
                     <div class="freeze-panel">
@@ -2913,6 +2891,8 @@
         let detailRequestSourceDomIds=[];
         let avRuleColumnsReady=null; let avRuleColumnsProbePromise=null; let avRuleSchemaWarningShown=false; let avRuleCleanupInFlight=new Set();
         let activeSalesOfficeTab='season'; let salesOfficeOrderColumnsReady=null; let salesOfficeOrderSchemaPromise=null; let salesOfficeOrderSchemaWarningShown=false;
+        const LABOR_TIMECARD_TABLE='v2_employee_time_cards'; const LABOR_TIMECARD_DAYS=Object.freeze([{key:'wed',label:'Wed'},{key:'thu',label:'Thu'},{key:'fri',label:'Fri'},{key:'sat',label:'Sat'},{key:'sun',label:'Sun'},{key:'mon',label:'Mon'},{key:'tue',label:'Tue'}]);
+        let activeHoursTab='summary'; let laborTimeCards=[]; let laborTimeCardsLoaded=false; let laborTimeCardsPromise=null; let laborTimeCardSchemaReady=null; let laborTimeCardSchemaPromise=null; let laborTimeCardSchemaWarningShown=false; let activeLaborTimeCardId=''; let laborTimeCardWeekEnding=''; let laborTimeCardSearchTerm=''; let laborTimeCardLoadedWeekEnding=''; let laborTimeCardLoadedSupervisor='';
         
         function isLagSensitiveDetailPrefix(prefix) {
             return prefix === 'ssn-' || prefix === 'lsn-';
@@ -2970,7 +2950,7 @@
         let pendingRequestArchiveFlushTimer = null;
         let pendingRequestArchiveFlushInFlight = false;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Maschino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'V2026.04.04.07';
+        const APP_VERSION = 'V2026.04.04.08';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -8478,7 +8458,7 @@ function toggleDriveQuickRequestItem(domId) {
                 if (forceReset || !state.initialized) resetAVView();
                 else renderAV();
             } else if (viewId === 'hours') {
-                resetHoursView();
+                renderHoursView(forceReset || !state.initialized);
             }
 
             state.initialized = true;
@@ -8917,20 +8897,400 @@ activeDriveTab = tab;
             return parts.map(formatPart).filter(Boolean).join(' ').trim();
         }
 
-        function resetHoursView() {
-            let yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
-            document.getElementById('hours-date').value = yesterday.toISOString().split('T')[0];
-            document.getElementById('hours-dept').value = ""; document.getElementById('hours-amount').value = "";
+        function getCurrentSupervisorKey() {
+            return normalizePushUsername(currentUser || currentUserDisplay || '');
+        }
+
+        function getCurrentSupervisorDisplay() {
+            return String(currentUserDisplay || currentUser || 'Supervisor').trim() || 'Supervisor';
+        }
+
+        function getDefaultLaborTimeCardWeekEnding(baseDate = new Date()) {
+            const date = new Date(baseDate);
+            if (Number.isNaN(date.getTime())) return '';
+            date.setHours(12, 0, 0, 0);
+            date.setDate(date.getDate() + ((2 - date.getDay() + 7) % 7));
+            return date.toISOString().split('T')[0];
+        }
+
+        function formatLaborTimeCardWeekLabel(value = '') {
+            const raw = String(value || '').trim();
+            if (!raw) return 'Week ending Tuesday';
+            const parsed = new Date(`${raw}T12:00:00`);
+            if (Number.isNaN(parsed.getTime())) return `Week ending ${raw}`;
+            return `Week ending ${parsed.toLocaleDateString(undefined, { weekday: 'long', month: 'numeric', day: 'numeric', year: 'numeric' })}`;
+        }
+
+        function formatLaborTimeCardShortDate(value = '') {
+            const raw = String(value || '').trim();
+            if (!raw) return 'No week';
+            const parsed = new Date(`${raw}T12:00:00`);
+            if (Number.isNaN(parsed.getTime())) return raw;
+            return parsed.toLocaleDateString(undefined, { month: 'numeric', day: 'numeric', year: '2-digit' });
+        }
+
+        function escapeLaborTimeCardHtml(value = '') {
+            return String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+
+        function roundLaborTimeCardHours(value) {
+            const numeric = Number(value || 0);
+            return Number.isFinite(numeric) ? Math.round(numeric * 100) / 100 : 0;
+        }
+
+        function formatLaborTimeCardHours(value) {
+            const numeric = roundLaborTimeCardHours(value);
+            if (!numeric) return '0';
+            return numeric.toLocaleString(undefined, { minimumFractionDigits: numeric % 1 === 0 ? 0 : (Number.isInteger(numeric * 2) ? 1 : 2), maximumFractionDigits: 2 });
+        }
+
+        function getLaborTimeCardDayTemplate() {
+            const days = {};
+            LABOR_TIMECARD_DAYS.forEach((day) => { days[day.key] = { hours: '', code: '', other: '' }; });
+            return days;
+        }
+
+        function parseLaborTimeCardJson(value, fallback = {}) {
+            if (!value) return fallback;
+            if (typeof value === 'object') return value;
+            try {
+                const parsed = JSON.parse(value);
+                return parsed && typeof parsed === 'object' ? parsed : fallback;
+            } catch (error) {
+                return fallback;
+            }
+        }
+
+        function normalizeLaborTimeCardDay(dayKey, source = {}) {
+            return {
+                hours: String(firstNonEmptyValue(source.hours, source.HOURS, '') || '').replace(/[^0-9.]/g, ''),
+                code: String(firstNonEmptyValue(source.code, source.CODE, '') || '').trim().toUpperCase(),
+                other: String(firstNonEmptyValue(source.other, source.OTHER, '') || '').trim()
+            };
+        }
+
+        function computeLaborTimeCardTotals(days = {}) {
+            const totals = { reg: 0, vac: 0, pw: 0, total: 0 };
+            LABOR_TIMECARD_DAYS.forEach((day) => {
+                const row = days[day.key] || {};
+                const hours = roundLaborTimeCardHours(row.hours);
+                if (!hours) return;
+                const codeKey = String(row.code || '').toUpperCase().replace(/[^A-Z]/g, '');
+                if (codeKey === 'VAC') totals.vac += hours;
+                else if (codeKey === 'PW') totals.pw += hours;
+                else totals.reg += hours;
+                totals.total += hours;
+            });
+            totals.reg = roundLaborTimeCardHours(totals.reg);
+            totals.vac = roundLaborTimeCardHours(totals.vac);
+            totals.pw = roundLaborTimeCardHours(totals.pw);
+            totals.total = roundLaborTimeCardHours(totals.total);
+            return totals;
+        }
+
+        function normalizeLaborTimeCardRow(row = {}) {
+            const sourceDays = parseLaborTimeCardJson(firstNonEmptyValue(row.days, row.DAYS, {}), {});
+            const days = getLaborTimeCardDayTemplate();
+            LABOR_TIMECARD_DAYS.forEach((day) => { days[day.key] = normalizeLaborTimeCardDay(day.key, sourceDays[day.key] || sourceDays[day.label] || {}); });
+            return {
+                unique_id: String(firstNonEmptyValue(row.unique_id, row.UNIQUE_ID, '') || '').trim(),
+                supervisor_username: String(firstNonEmptyValue(row.supervisor_username, row.SUPERVISOR_USERNAME, getCurrentSupervisorKey()) || '').trim(),
+                supervisor_display: String(firstNonEmptyValue(row.supervisor_display, row.SUPERVISOR_DISPLAY, getCurrentSupervisorDisplay()) || '').trim(),
+                employee_name: String(firstNonEmptyValue(row.employee_name, row.EMPLOYEE_NAME, '') || '').trim(),
+                employee_code: String(firstNonEmptyValue(row.employee_code, row.EMPLOYEE_CODE, '') || '').trim(),
+                department: String(firstNonEmptyValue(row.department, row.DEPARTMENT, '') || '').trim(),
+                week_ending: String(firstNonEmptyValue(row.week_ending, row.WEEK_ENDING, laborTimeCardWeekEnding || getDefaultLaborTimeCardWeekEnding()) || '').trim(),
+                notes: String(firstNonEmptyValue(row.notes, row.NOTES, '') || '').trim(),
+                status: String(firstNonEmptyValue(row.status, row.STATUS, 'active') || 'active').trim(),
+                created_at: String(firstNonEmptyValue(row.created_at, row.CREATED_AT, '') || '').trim(),
+                updated_at: String(firstNonEmptyValue(row.updated_at, row.UPDATED_AT, '') || '').trim(),
+                days,
+                totals: computeLaborTimeCardTotals(days),
+                _dirty: !!row._dirty
+            };
+        }
+
+        function buildLaborTimeCardRecord(overrides = {}) {
+            const now = new Date().toISOString();
+            return normalizeLaborTimeCardRow({ unique_id: `ltc-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, supervisor_username: getCurrentSupervisorKey(), supervisor_display: getCurrentSupervisorDisplay(), week_ending: laborTimeCardWeekEnding || getDefaultLaborTimeCardWeekEnding(), days: getLaborTimeCardDayTemplate(), status: 'active', created_at: now, updated_at: now, ...overrides });
+        }
+
+        function serializeLaborTimeCardForWrite(card) {
+            const normalized = normalizeLaborTimeCardRow(card || {});
+            const now = new Date().toISOString();
+            return { unique_id: normalized.unique_id, supervisor_username: normalized.supervisor_username || getCurrentSupervisorKey(), supervisor_display: normalized.supervisor_display || getCurrentSupervisorDisplay(), employee_name: normalized.employee_name, employee_code: normalized.employee_code || null, department: normalized.department || null, week_ending: normalized.week_ending, days: normalized.days, totals: computeLaborTimeCardTotals(normalized.days), notes: normalized.notes || null, status: normalized.status || 'active', created_at: normalized.created_at || now, updated_at: now };
+        }
+
+        function getActiveLaborTimeCard() {
+            return laborTimeCards.find((card) => String(card.unique_id || '') === String(activeLaborTimeCardId || '')) || null;
+        }
+
+        function getFilteredLaborTimeCards() {
+            const search = String(laborTimeCardSearchTerm || '').trim().toLowerCase();
+            return laborTimeCards.filter((card) => !search || [card.employee_name, card.employee_code, card.department, card.notes].map((value) => String(value || '').toLowerCase()).join(' ').includes(search));
+        }
+
+        function ensureActiveLaborTimeCardSelection() {
+            const cards = getFilteredLaborTimeCards();
+            if (!cards.some((card) => card.unique_id === activeLaborTimeCardId)) activeLaborTimeCardId = cards.length ? cards[0].unique_id : '';
+        }
+
+        async function ensureLaborTimeCardSchemaReady(force = false) {
+            if (laborTimeCardSchemaReady === true && !force) return true;
+            if (laborTimeCardSchemaReady === false && !force) return false;
+            if (laborTimeCardSchemaPromise && !force) return laborTimeCardSchemaPromise;
+            laborTimeCardSchemaPromise = (async () => {
+                if (navigator.onLine === false) return false;
+                try {
+                    const response = await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/${LABOR_TIMECARD_TABLE}?select=unique_id&limit=1`, { method: 'GET', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' } }, SUPABASE_READ_TIMEOUT_MS, 'labor time card schema');
+                    laborTimeCardSchemaReady = !!response.ok;
+                } catch (error) {
+                    laborTimeCardSchemaReady = false;
+                }
+                if (laborTimeCardSchemaReady === false && !laborTimeCardSchemaWarningShown && currentUser) {
+                    laborTimeCardSchemaWarningShown = true;
+                    showToast('Schema Required', 'Run labor_time_cards_migration.sql in Supabase to use Employee Time Card.', true);
+                }
+                return laborTimeCardSchemaReady;
+            })().finally(() => { laborTimeCardSchemaPromise = null; });
+            return laborTimeCardSchemaPromise;
+        }
+
+        async function loadLaborTimeCards(force = false) {
+            const supervisorKey = getCurrentSupervisorKey();
+            laborTimeCardWeekEnding = laborTimeCardWeekEnding || getDefaultLaborTimeCardWeekEnding();
+            if (!supervisorKey) { laborTimeCards = []; laborTimeCardsLoaded = false; laborTimeCardLoadedWeekEnding = ''; laborTimeCardLoadedSupervisor = ''; activeLaborTimeCardId = ''; return []; }
+            if (!force && laborTimeCardsLoaded && laborTimeCardLoadedWeekEnding === laborTimeCardWeekEnding && laborTimeCardLoadedSupervisor === supervisorKey) { ensureActiveLaborTimeCardSelection(); return laborTimeCards; }
+            if (laborTimeCardsPromise && !force) return laborTimeCardsPromise;
+            laborTimeCardsPromise = (async () => {
+                const schemaReady = await ensureLaborTimeCardSchemaReady(force);
+                if (!schemaReady) { laborTimeCards = []; laborTimeCardsLoaded = false; activeLaborTimeCardId = ''; laborTimeCardLoadedWeekEnding = ''; laborTimeCardLoadedSupervisor = ''; return []; }
+                const rows = await supabaseFetch(LABOR_TIMECARD_TABLE, 'GET', null, `select=*&supervisor_username=eq.${encodeURIComponent(supervisorKey)}&week_ending=eq.${encodeURIComponent(laborTimeCardWeekEnding)}&order=employee_name.asc`);
+                laborTimeCards = (rows || []).map((row) => normalizeLaborTimeCardRow(row));
+                laborTimeCardsLoaded = true;
+                laborTimeCardLoadedWeekEnding = laborTimeCardWeekEnding;
+                laborTimeCardLoadedSupervisor = supervisorKey;
+                ensureActiveLaborTimeCardSelection();
+                return laborTimeCards;
+            })().catch((error) => {
+                console.error('Failed to load labor time cards', error);
+                laborTimeCards = [];
+                laborTimeCardsLoaded = false;
+                activeLaborTimeCardId = '';
+                showToast('Error', 'Unable to load employee time cards.', true);
+                return [];
+            }).finally(() => {
+                laborTimeCardsPromise = null;
+                if (activeHoursTab === 'timecard') renderLaborTimeCardWorkspace();
+            });
+            return laborTimeCardsPromise;
+        }
+
+        function hoursViewShellHtml() {
+            const summaryActive = activeHoursTab === 'summary';
+            const weekEnding = laborTimeCardWeekEnding || getDefaultLaborTimeCardWeekEnding();
+            const supervisorLabel = escapeLaborTimeCardHtml(getCurrentSupervisorDisplay());
+            const weekLabel = escapeLaborTimeCardHtml(formatLaborTimeCardWeekLabel(weekEnding));
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            const defaultDate = yesterday.toISOString().split('T')[0];
+            return `
+                <div class="space-y-4">
+                    <div class="bg-white rounded-[28px] shadow-md border border-[#cce9d8] overflow-hidden">
+                        <div class="px-5 pt-5 pb-4 border-b border-[#e0f2e9] bg-gradient-to-br from-[#f4fbf7] via-white to-[#ecfdf3]">
+                            <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                <div>
+                                    <div class="text-[11px] font-black uppercase tracking-[0.35em] text-[#007a4d] mb-2">Labor Center</div>
+                                    <h2 class="text-[28px] leading-tight font-black text-slate-900">Labor Hours & Employee Time Cards</h2>
+                                    <p class="text-sm font-semibold text-slate-500 mt-2">Supervisors can post department hours and keep a weekly digital time card for each employee.</p>
+                                </div>
+                                <div class="rounded-2xl border border-[#d6ede1] bg-white px-4 py-3 shadow-sm min-w-[220px]">
+                                    <div class="text-[10px] font-black uppercase tracking-[0.28em] text-slate-400 mb-1">Signed In Supervisor</div>
+                                    <div class="text-base font-black text-[#007a4d]">${supervisorLabel}</div>
+                                    <div class="text-xs font-bold text-slate-500 mt-1">${weekLabel}</div>
+                                </div>
+                            </div>
+                            <div class="task-tabs mt-5 mb-0 rounded-t-2xl overflow-hidden border border-[#dceee4]">
+                                <div class="task-tab !text-[12px] ${summaryActive ? 'active' : ''}" onclick="setHoursTab('summary')">Summary Hours</div>
+                                <div class="task-tab !text-[12px] ${summaryActive ? '' : 'active'}" onclick="setHoursTab('timecard')">Employee Time Card</div>
+                            </div>
+                        </div>
+                        <div class="${summaryActive ? '' : 'hidden'} p-5 lg:p-6">
+                            <div class="grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(280px,0.9fr)]">
+                                <div class="rounded-[24px] border border-[#d9ece2] bg-[#f8fdf9] p-5 shadow-sm">
+                                    <div class="text-[11px] font-black uppercase tracking-[0.28em] text-[#007a4d] mb-2">Department Summary</div>
+                                    <h3 class="text-2xl font-black text-slate-900 mb-1">Report Labor Hours</h3>
+                                    <p class="text-sm font-semibold text-slate-500">Submit total man-hours for the department without leaving the Labor Center.</p>
+                                    <div class="grid gap-4 mt-5 md:grid-cols-2"><div><label class="text-[10px] font-black text-slate-500 uppercase tracking-[0.28em] ml-1">Date</label><input type="date" id="hours-date" class="input-field mb-0 mt-2" value="${defaultDate}"></div><div><label class="text-[10px] font-black text-slate-500 uppercase tracking-[0.28em] ml-1">Department</label><select id="hours-dept" class="input-field bg-white mb-0 mt-2"><option value="" disabled selected>Select Department...</option><option value="Shipping">Shipping</option><option value="Production">Production</option><option value="Maintenance">Maintenance</option><option value="Sales">Sales</option><option value="Admin">Admin</option><option value="Driving">Driving</option><option value="Quality Control">Quality Control</option></select></div></div>
+                                    <div class="mt-4"><label class="text-[10px] font-black text-slate-500 uppercase tracking-[0.28em] ml-1">Total Man Hours</label><input type="number" id="hours-amount" class="input-field mb-0 mt-2" placeholder="e.g. 120" step="0.5" min="0"></div>
+                                    <button class="w-full mt-5 bg-[#007a4d] text-white font-black py-4 rounded-2xl shadow-lg active:scale-95 transition-transform tracking-[0.14em]" onclick="submitLaborHours()">SUBMIT HOURS</button>
+                                </div>
+                                <div class="rounded-[24px] border border-[#d9ece2] bg-white p-5 shadow-sm"><div class="text-[11px] font-black uppercase tracking-[0.28em] text-[#007a4d] mb-2">Employee Cards</div><h3 class="text-xl font-black text-slate-900 mb-2">Weekly Supervisor Time Cards</h3><p class="text-sm font-semibold text-slate-500">Use the employee card tab to remake the paper time card digitally for every employee on your team.</p><div class="grid grid-cols-3 gap-3 mt-5"><div class="rounded-2xl border border-[#dfeee6] bg-[#f7fbf8] p-3"><div class="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">Week</div><div class="text-sm font-black text-slate-900 mt-1">Wed-Tue</div></div><div class="rounded-2xl border border-[#dfeee6] bg-[#f7fbf8] p-3"><div class="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">Columns</div><div class="text-sm font-black text-slate-900 mt-1">Hours, Code, Other</div></div><div class="rounded-2xl border border-[#dfeee6] bg-[#f7fbf8] p-3"><div class="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">Totals</div><div class="text-sm font-black text-slate-900 mt-1">Reg, Vac, P.W.</div></div></div></div>
+                            </div>
+                        </div>
+                        <div class="${summaryActive ? 'hidden' : ''} p-5 lg:p-6 bg-[#fbfdfb]"><div class="grid gap-5 xl:grid-cols-[360px_minmax(0,1fr)]"><div class="space-y-4"><div class="rounded-[24px] border border-[#d9ece2] bg-white p-5 shadow-sm"><div class="text-[11px] font-black uppercase tracking-[0.28em] text-[#007a4d] mb-3">Card Filters</div><label class="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500 ml-1">Week Ending</label><input type="date" id="hours-timecard-week" class="input-field mb-0 mt-2" value="${escapeLaborTimeCardHtml(weekEnding)}" onchange="handleLaborTimeCardWeekChange(this.value)"><label class="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500 ml-1 mt-4 block">Find Employee</label><input type="text" id="hours-timecard-search" class="input-field mb-0 mt-2" value="${escapeLaborTimeCardHtml(laborTimeCardSearchTerm)}" placeholder="Search employee or department..." oninput="handleLaborTimeCardSearch(this.value)"></div><div class="rounded-[24px] border border-[#d9ece2] bg-white p-5 shadow-sm"><div class="text-[11px] font-black uppercase tracking-[0.28em] text-[#007a4d] mb-3">Create Time Card</div><input type="text" id="hours-timecard-new-name" class="input-field mb-3" placeholder="Employee name"><input type="text" id="hours-timecard-new-code" class="input-field mb-3" placeholder="Employee number / code"><input type="text" id="hours-timecard-new-department" class="input-field mb-0" placeholder="Department"><button class="w-full mt-4 bg-[#007a4d] text-white font-black py-3.5 rounded-2xl shadow-lg active:scale-95 transition-transform tracking-[0.12em]" onclick="createLaborTimeCardFromInputs()">CREATE CARD</button></div><div class="rounded-[24px] border border-[#d9ece2] bg-white p-5 shadow-sm"><div class="flex items-center justify-between gap-3 mb-3"><div><div class="text-[11px] font-black uppercase tracking-[0.28em] text-[#007a4d]">Saved Cards</div><div id="hours-timecard-list-count" class="text-sm font-bold text-slate-500 mt-1">0 cards</div></div><button type="button" class="inline-flex items-center gap-2 rounded-2xl border border-[#d8ebe1] bg-[#f7fbf8] px-3 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-[#007a4d] active:scale-95" onclick="refreshLaborTimeCards(true)"><i class="ph-bold ph-arrows-clockwise text-base"></i>Refresh</button></div><div id="hours-timecard-list" class="space-y-3"></div></div></div><div id="hours-timecard-editor" class="rounded-[28px] border border-[#d9ece2] bg-white p-5 shadow-sm"></div></div><datalist id="hours-timecard-code-options"><option value="REG"></option><option value="VAC"></option><option value="P.W."></option><option value="PW"></option></datalist></div>
+                    </div>
+                </div>`;
+        }
+
+        function renderHoursView(forceReset = false) {
+            laborTimeCardWeekEnding = laborTimeCardWeekEnding || getDefaultLaborTimeCardWeekEnding();
+            const view = document.getElementById('view-hours');
+            if (!view) return;
+            view.innerHTML = hoursViewShellHtml();
+            if (activeHoursTab === 'timecard') {
+                const needsLoad = !laborTimeCardsLoaded || laborTimeCardLoadedWeekEnding !== laborTimeCardWeekEnding || laborTimeCardLoadedSupervisor !== getCurrentSupervisorKey();
+                if (needsLoad) { renderLaborTimeCardWorkspace(true); loadLaborTimeCards(); } else { renderLaborTimeCardWorkspace(); }
+            }
+        }
+
+        function setHoursTab(tab = 'summary') {
+            activeHoursTab = tab === 'timecard' ? 'timecard' : 'summary';
+            renderHoursView();
+        }
+
+        function handleLaborTimeCardWeekChange(value = '') {
+            const nextWeek = String(value || '').trim() || getDefaultLaborTimeCardWeekEnding();
+            const activeCard = getActiveLaborTimeCard();
+            if (activeCard && activeCard._dirty && nextWeek !== laborTimeCardWeekEnding && !confirm('You have unsaved changes on this employee card. Switch weeks anyway?')) { renderHoursView(); return; }
+            laborTimeCardWeekEnding = nextWeek;
+            laborTimeCardLoadedWeekEnding = '';
+            activeLaborTimeCardId = '';
+            renderHoursView();
+        }
+
+        function handleLaborTimeCardSearch(value = '') {
+            laborTimeCardSearchTerm = String(value || '');
+            renderHoursView();
+        }
+
+        function selectLaborTimeCard(uniqueId = '') {
+            activeLaborTimeCardId = String(uniqueId || '').trim();
+            renderHoursView();
+        }
+
+        function refreshActiveLaborTimeCardMeta() {
+            const card = getActiveLaborTimeCard();
+            if (!card) return;
+            const title = document.getElementById('hours-timecard-editor-title');
+            const subtitle = document.getElementById('hours-timecard-editor-subtitle');
+            const saveLabel = document.getElementById('hours-timecard-save-label');
+            const dirtyPill = document.getElementById('hours-timecard-dirty-pill');
+            if (title) title.textContent = card.employee_name || 'Employee Time Card';
+            if (subtitle) subtitle.textContent = [card.employee_code || 'No employee code', card.department || 'No department', formatLaborTimeCardWeekLabel(card.week_ending).replace(/^Week ending\s+/i, '')].join(' • ');
+            if (saveLabel) saveLabel.textContent = card._dirty ? 'SAVE CHANGES *' : 'SAVE TIME CARD';
+            if (dirtyPill) { dirtyPill.textContent = card._dirty ? 'Unsaved Changes' : 'Saved'; dirtyPill.className = card._dirty ? 'inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-amber-700' : 'inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-emerald-700'; }
+        }
+
+        function refreshActiveLaborTimeCardTotals() {
+            const card = getActiveLaborTimeCard();
+            if (!card) return;
+            card.totals = computeLaborTimeCardTotals(card.days);
+            [['reg','hours-timecard-total-reg'],['vac','hours-timecard-total-vac'],['pw','hours-timecard-total-pw'],['total','hours-timecard-total-all']].forEach(([key, id]) => { const el = document.getElementById(id); if (el) el.textContent = formatLaborTimeCardHours(card.totals[key]); });
+        }
+
+        function updateLaborTimeCardMeta(field, value) {
+            const card = getActiveLaborTimeCard();
+            if (!card) return;
+            card[field] = field === 'employee_name' ? String(value || '') : String(value || '').trim();
+            card._dirty = true;
+            refreshActiveLaborTimeCardMeta();
+        }
+
+        function updateLaborTimeCardDay(dayKey, field, value) {
+            const card = getActiveLaborTimeCard();
+            if (!card || !card.days[dayKey]) return;
+            let nextValue = String(value || '');
+            if (field === 'hours') nextValue = nextValue.replace(/[^0-9.]/g, '');
+            if (field === 'code') nextValue = nextValue.toUpperCase().trim();
+            card.days[dayKey][field] = nextValue;
+            card._dirty = true;
+            refreshActiveLaborTimeCardMeta();
+            refreshActiveLaborTimeCardTotals();
+        }
+
+        function updateLaborTimeCardNotes(value) {
+            const card = getActiveLaborTimeCard();
+            if (!card) return;
+            card.notes = String(value || '');
+            card._dirty = true;
+            refreshActiveLaborTimeCardMeta();
+        }
+
+        async function createLaborTimeCardFromInputs() {
+            if (!await ensureLaborTimeCardSchemaReady()) return;
+            const nameInput = document.getElementById('hours-timecard-new-name');
+            const codeInput = document.getElementById('hours-timecard-new-code');
+            const departmentInput = document.getElementById('hours-timecard-new-department');
+            const employeeName = String(nameInput && nameInput.value || '').trim();
+            const employeeCode = String(codeInput && codeInput.value || '').trim();
+            const department = String(departmentInput && departmentInput.value || '').trim();
+            if (!employeeName) { showToast('Required', 'Enter an employee name before creating a time card.', true); return; }
+            const existing = laborTimeCards.find((card) => String(card.employee_name || '').trim().toLowerCase() === employeeName.toLowerCase() && String(card.employee_code || '').trim().toLowerCase() === employeeCode.toLowerCase());
+            if (existing) { activeLaborTimeCardId = existing.unique_id; renderHoursView(); showToast('Already Exists', 'Opened the existing employee time card for this week.'); return; }
+            const record = buildLaborTimeCardRecord({ employee_name: employeeName, employee_code: employeeCode, department: department, week_ending: laborTimeCardWeekEnding || getDefaultLaborTimeCardWeekEnding() });
+            showToast('Creating...', 'Saving new employee time card...', false);
+            try { await supabaseFetch(LABOR_TIMECARD_TABLE, 'POST', serializeLaborTimeCardForWrite(record)); if (nameInput) nameInput.value = ''; if (codeInput) codeInput.value = ''; if (departmentInput) departmentInput.value = ''; activeLaborTimeCardId = record.unique_id; await loadLaborTimeCards(true); renderHoursView(); showToast('Success', 'Employee time card created.'); } catch (error) { console.error('Failed to create labor time card', error); showToast('Error', 'Failed to create employee time card.', true); }
+        }
+
+        async function saveActiveLaborTimeCard() {
+            if (!await ensureLaborTimeCardSchemaReady()) return;
+            const card = getActiveLaborTimeCard();
+            if (!card) return;
+            if (!String(card.employee_name || '').trim()) { showToast('Required', 'Employee name is required before saving this time card.', true); return; }
+            showToast('Saving...', 'Updating employee time card...', false);
+            try { await supabaseFetch(LABOR_TIMECARD_TABLE, 'POST', serializeLaborTimeCardForWrite(card)); card._dirty = false; await loadLaborTimeCards(true); renderHoursView(); showToast('Success', 'Employee time card saved.'); } catch (error) { console.error('Failed to save labor time card', error); showToast('Error', 'Failed to save employee time card.', true); }
+        }
+
+        async function deleteActiveLaborTimeCard() {
+            const card = getActiveLaborTimeCard();
+            if (!card || !confirm(`Delete the time card for ${card.employee_name || 'this employee'}?`)) return;
+            showToast('Deleting...', 'Removing employee time card...', false);
+            try { await supabaseFetch(LABOR_TIMECARD_TABLE, 'DELETE', null, `unique_id=eq.${encodeURIComponent(card.unique_id)}`); activeLaborTimeCardId = ''; await loadLaborTimeCards(true); renderHoursView(); showToast('Success', 'Employee time card deleted.'); } catch (error) { console.error('Failed to delete labor time card', error); showToast('Error', 'Failed to delete employee time card.', true); }
+        }
+
+        async function refreshLaborTimeCards(force = false) {
+            renderLaborTimeCardWorkspace(true);
+            return loadLaborTimeCards(!!force);
+        }
+
+        function renderLaborTimeCardListHtml(showLoading = false) {
+            if (laborTimeCardSchemaReady === false) return '<div class="rounded-[22px] border border-dashed border-amber-300 bg-amber-50 px-4 py-5 text-sm font-semibold text-amber-800">Run <span class="font-black">labor_time_cards_migration.sql</span> in Supabase, then reopen this tab.</div>';
+            if (showLoading || (!!laborTimeCardsPromise && !laborTimeCardsLoaded)) return '<div class="space-y-3"><div class="h-20 rounded-[22px] bg-slate-100 animate-pulse"></div><div class="h-20 rounded-[22px] bg-slate-100 animate-pulse"></div><div class="h-20 rounded-[22px] bg-slate-100 animate-pulse"></div></div>';
+            const cards = getFilteredLaborTimeCards();
+            if (!cards.length) return '<div class="rounded-[22px] border border-dashed border-[#cfe6d9] bg-[#f6fbf8] px-4 py-6 text-sm font-semibold text-slate-500">No employee time cards found for this supervisor and week. Create a card to get started.</div>';
+            return cards.map((card) => { const active = card.unique_id === activeLaborTimeCardId; return `<button type="button" onclick="selectLaborTimeCard('${escapeLaborTimeCardHtml(card.unique_id)}')" class="w-full rounded-[22px] border px-4 py-4 text-left transition active:scale-[0.99] ${active ? 'border-[#007a4d] bg-[#f4fbf7] shadow-md' : 'border-[#dceee4] bg-white shadow-sm'}"><div class="flex items-start justify-between gap-3"><div class="min-w-0 flex-1"><div class="text-base font-black text-slate-900 truncate">${escapeLaborTimeCardHtml(card.employee_name || 'Unnamed Employee')}</div><div class="text-xs font-bold text-slate-500 mt-1 truncate">${escapeLaborTimeCardHtml(card.employee_code || 'No employee code')} • ${escapeLaborTimeCardHtml(card.department || 'No department')}</div></div><div class="text-right shrink-0"><div class="text-[10px] font-black uppercase tracking-[0.2em] ${active ? 'text-[#007a4d]' : 'text-slate-400'}">${escapeLaborTimeCardHtml(formatLaborTimeCardShortDate(card.week_ending))}</div><div class="text-sm font-black text-slate-900 mt-1">${escapeLaborTimeCardHtml(formatLaborTimeCardHours(card.totals.total))} hrs</div></div></div></button>`; }).join('');
+        }
+
+        function renderLaborTimeCardEditorHtml() {
+            if (laborTimeCardSchemaReady === false) return '<div class="flex h-full min-h-[520px] items-center justify-center rounded-[24px] border border-dashed border-amber-300 bg-amber-50 px-8 py-10 text-center text-sm font-semibold text-amber-800">Employee Time Card needs the new Supabase table first. After you run <span class="font-black mx-1">labor_time_cards_migration.sql</span>, this editor will appear here.</div>';
+            if (!!laborTimeCardsPromise && !laborTimeCardsLoaded) return '<div class="min-h-[520px] rounded-[24px] bg-slate-100 animate-pulse"></div>';
+            const card = getActiveLaborTimeCard();
+            if (!card) return '<div class="flex h-full min-h-[520px] flex-col items-center justify-center rounded-[24px] border border-dashed border-[#cfe6d9] bg-[#f8fdf9] px-8 py-10 text-center"><div class="inline-flex h-16 w-16 items-center justify-center rounded-full bg-[#e7f7ee] text-[#007a4d]"><i class="ph-bold ph-identification-card text-3xl"></i></div><h3 class="mt-5 text-2xl font-black text-slate-900">Create the first employee time card</h3><p class="mt-3 max-w-xl text-sm font-semibold text-slate-500">Set the week ending date, create an employee card on the left, and the digital time sheet will appear here for the supervisor.</p></div>';
+            const rows = LABOR_TIMECARD_DAYS.map((day) => { const row = card.days[day.key] || { hours: '', code: '', other: '' }; return `<div class="grid grid-cols-[82px_minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,1.2fr)] border-t border-[#dceee4] bg-white"><div class="flex items-center justify-center border-r border-[#dceee4] px-3 py-4 text-sm font-black uppercase tracking-[0.28em] text-[#007a4d]">${escapeLaborTimeCardHtml(day.label)}</div><div class="border-r border-[#dceee4] px-2 py-2"><input type="number" step="0.25" min="0" class="w-full rounded-2xl border border-[#d7ebe0] bg-[#f9fcfa] px-3 py-3 text-sm font-bold text-slate-900 outline-none focus:border-[#007a4d]" value="${escapeLaborTimeCardHtml(row.hours)}" oninput="updateLaborTimeCardDay('${day.key}','hours',this.value)" placeholder="0.0"></div><div class="border-r border-[#dceee4] px-2 py-2"><input type="text" list="hours-timecard-code-options" class="w-full rounded-2xl border border-[#d7ebe0] bg-[#f9fcfa] px-3 py-3 text-sm font-bold uppercase tracking-[0.16em] text-slate-900 outline-none focus:border-[#007a4d]" value="${escapeLaborTimeCardHtml(row.code)}" oninput="updateLaborTimeCardDay('${day.key}','code',this.value)" placeholder="REG"></div><div class="px-2 py-2"><input type="text" class="w-full rounded-2xl border border-[#d7ebe0] bg-[#f9fcfa] px-3 py-3 text-sm font-semibold text-slate-900 outline-none focus:border-[#007a4d]" value="${escapeLaborTimeCardHtml(row.other)}" oninput="updateLaborTimeCardDay('${day.key}','other',this.value)" placeholder="Other note / code"></div></div>`; }).join('');
+            return `<div class="space-y-5"><div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between"><div><div class="flex flex-wrap items-center gap-2 mb-2"><div class="text-[11px] font-black uppercase tracking-[0.28em] text-[#007a4d]">Employee Time Card</div><div id="hours-timecard-dirty-pill" class="inline-flex items-center rounded-full ${card._dirty ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'} px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em]">${card._dirty ? 'Unsaved Changes' : 'Saved'}</div></div><h3 id="hours-timecard-editor-title" class="text-[30px] leading-tight font-black text-slate-900">${escapeLaborTimeCardHtml(card.employee_name || 'Employee Time Card')}</h3><p id="hours-timecard-editor-subtitle" class="text-sm font-semibold text-slate-500 mt-2">${escapeLaborTimeCardHtml([card.employee_code || 'No employee code', card.department || 'No department', formatLaborTimeCardWeekLabel(card.week_ending).replace(/^Week ending\s+/i, '')].join(' • '))}</p></div><div class="flex flex-wrap gap-2"><button type="button" class="inline-flex items-center gap-2 rounded-2xl bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.18em] text-white shadow-lg active:scale-95" onclick="saveActiveLaborTimeCard()"><i class="ph-bold ph-floppy-disk text-base"></i><span id="hours-timecard-save-label">${card._dirty ? 'SAVE CHANGES *' : 'SAVE TIME CARD'}</span></button><button type="button" class="inline-flex items-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-[11px] font-black uppercase tracking-[0.18em] text-rose-700 active:scale-95" onclick="deleteActiveLaborTimeCard()"><i class="ph-bold ph-trash text-base"></i>Delete Card</button></div></div><div class="grid gap-4 lg:grid-cols-3"><div><label class="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500 ml-1">Employee Name</label><input type="text" class="input-field mb-0 mt-2" value="${escapeLaborTimeCardHtml(card.employee_name)}" oninput="updateLaborTimeCardMeta('employee_name',this.value)"></div><div><label class="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500 ml-1">Employee Number</label><input type="text" class="input-field mb-0 mt-2" value="${escapeLaborTimeCardHtml(card.employee_code)}" oninput="updateLaborTimeCardMeta('employee_code',this.value)"></div><div><label class="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500 ml-1">Department</label><input type="text" class="input-field mb-0 mt-2" value="${escapeLaborTimeCardHtml(card.department)}" oninput="updateLaborTimeCardMeta('department',this.value)"></div></div><div class="rounded-[28px] border-2 border-[#cfe6d9] overflow-hidden bg-[#f8fdf9] shadow-sm"><div class="grid grid-cols-[82px_minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,1.2fr)] bg-[#eff8f2] text-[10px] font-black uppercase tracking-[0.28em] text-[#007a4d]"><div class="border-r border-[#dceee4] px-3 py-3 text-center">Day</div><div class="border-r border-[#dceee4] px-3 py-3 text-center">Hours</div><div class="border-r border-[#dceee4] px-3 py-3 text-center">Code</div><div class="px-3 py-3 text-center">Other</div></div>${rows}<div class="grid grid-cols-4 border-t border-[#cfe6d9] bg-[#f1faf4]"><div class="px-4 py-4 border-r border-[#dceee4]"><div class="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">Reg</div><div id="hours-timecard-total-reg" class="text-xl font-black text-slate-900 mt-1">${escapeLaborTimeCardHtml(formatLaborTimeCardHours(card.totals.reg))}</div></div><div class="px-4 py-4 border-r border-[#dceee4]"><div class="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">Vac</div><div id="hours-timecard-total-vac" class="text-xl font-black text-slate-900 mt-1">${escapeLaborTimeCardHtml(formatLaborTimeCardHours(card.totals.vac))}</div></div><div class="px-4 py-4 border-r border-[#dceee4]"><div class="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">P.W.</div><div id="hours-timecard-total-pw" class="text-xl font-black text-slate-900 mt-1">${escapeLaborTimeCardHtml(formatLaborTimeCardHours(card.totals.pw))}</div></div><div class="px-4 py-4"><div class="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">Total</div><div id="hours-timecard-total-all" class="text-xl font-black text-[#007a4d] mt-1">${escapeLaborTimeCardHtml(formatLaborTimeCardHours(card.totals.total))}</div></div></div></div><div class="rounded-[24px] border border-[#d9ece2] bg-[#f9fcfa] p-4"><label class="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500 ml-1">Supervisor Notes</label><textarea class="input-field mb-0 mt-2 min-h-[120px] resize-y" placeholder="Anything payroll or management needs to know about this employee for the week..." oninput="updateLaborTimeCardNotes(this.value)">${escapeLaborTimeCardHtml(card.notes)}</textarea></div></div>`;
+        }
+
+        function renderLaborTimeCardWorkspace(showLoading = false) {
+            const listEl = document.getElementById('hours-timecard-list');
+            const listCount = document.getElementById('hours-timecard-list-count');
+            const editorEl = document.getElementById('hours-timecard-editor');
+            if (!listEl || !editorEl) return;
+            if (!showLoading) ensureActiveLaborTimeCardSelection();
+            const cards = getFilteredLaborTimeCards();
+            if (listCount) listCount.textContent = laborTimeCardSchemaReady === false ? 'Schema required' : ((showLoading || (!!laborTimeCardsPromise && !laborTimeCardsLoaded)) ? 'Loading cards...' : `${cards.length} card${cards.length === 1 ? '' : 's'} this week`);
+            listEl.innerHTML = renderLaborTimeCardListHtml(showLoading);
+            editorEl.innerHTML = renderLaborTimeCardEditorHtml();
         }
 
         function submitLaborHours() {
-            const dateVal = document.getElementById('hours-date').value; 
-            const deptVal = document.getElementById('hours-dept').value; 
-            const hoursVal = document.getElementById('hours-amount').value;
-            if(!dateVal || !deptVal || !hoursVal) { showToast("Required", "Please fill out all fields.", true); return; }
-            showToast("Submitting...", "Saving labor hours...", false);
+            const dateVal = document.getElementById('hours-date') ? document.getElementById('hours-date').value : '';
+            const deptVal = document.getElementById('hours-dept') ? document.getElementById('hours-dept').value : '';
+            const hoursVal = document.getElementById('hours-amount') ? document.getElementById('hours-amount').value : '';
+            if (!dateVal || !deptVal || !hoursVal) { showToast('Required', 'Please fill out all fields.', true); return; }
+            showToast('Submitting...', 'Saving labor hours...', false);
             const payload = { date_reported: dateVal, department: deptVal, man_hours: parseFloat(hoursVal), submitted_by: currentUser, submitted_at: new Date().toISOString() };
-            supabaseFetch('v2_labor_hours', 'POST', payload).then(() => { showToast("Success", "Hours submitted successfully!"); document.getElementById('hours-amount').value = ""; }).catch(err => { showToast("Error", "Failed to submit hours.", true); });
+            supabaseFetch('v2_labor_hours', 'POST', payload).then(() => { showToast('Success', 'Hours submitted successfully!'); const amountInput = document.getElementById('hours-amount'); if (amountInput) amountInput.value = ''; }).catch(() => { showToast('Error', 'Failed to submit hours.', true); });
         }
 
         const debouncedReservesSearch=debounce(()=>{requestAnimationFrame(()=>renderReserves())},150);
@@ -15600,6 +15960,11 @@ function toggleDriveSeason(s) {
     </script>
 </body>
 </html>
+
+
+
+
+
 
 
 
