@@ -2,8 +2,8 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_URL = './index.html?shellv=V2026.04.04.08';
-const CACHE_NAME = 'greenleaf-v4.2-rebuild-V2026.04.04.08';
+const APP_SHELL_URL = './index.html?shellv=V2026.04.04.09';
+const CACHE_NAME = 'greenleaf-v4.2-rebuild-V2026.04.04.09';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -109,6 +109,7 @@ self.addEventListener('pushsubscriptionchange', (event) => {
     })))
   );
 });
+
 
 
 
