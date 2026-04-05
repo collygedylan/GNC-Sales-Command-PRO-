@@ -98,6 +98,25 @@
         .camera-capture-topbar{position:absolute;left:0;right:0;top:0;z-index:10;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:calc(env(safe-area-inset-top) + 12px) 16px 18px;background:linear-gradient(180deg,rgba(2,6,23,.82) 0%,rgba(2,6,23,.14) 100%)}
         .camera-capture-close-btn{display:inline-flex;align-items:center;justify-content:center;height:44px;width:44px;border-radius:999px;background:rgba(15,23,42,.45);border:1px solid rgba(255,255,255,.12);color:#fff;font-size:26px;backdrop-filter:blur(10px)}
         .camera-capture-bottom-sheet{position:absolute;left:0;right:0;bottom:0;z-index:10;padding:16px 18px calc(env(safe-area-inset-bottom) + 18px);background:linear-gradient(180deg,rgba(2,6,23,0) 0%,rgba(2,6,23,.28) 18%,rgba(2,6,23,.82) 42%,rgba(2,6,23,.96) 100%)}
+        .camera-capture-capability-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px}
+        .camera-capture-capability-summary{min-width:0;flex:1;color:rgba(255,255,255,.86);font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .camera-capture-control-toggle{display:inline-flex;align-items:center;justify-content:center;min-width:74px;min-height:36px;padding:.58rem .85rem;border-radius:999px;border:1px solid rgba(255,255,255,.14);background:rgba(15,23,42,.42);color:#fff;font-size:11px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;backdrop-filter:blur(10px)}
+        .camera-capture-control-toggle.active{background:#fff;color:#020617;border-color:#fff}
+        .camera-capture-pro-panel{margin-top:12px;padding:12px 12px 10px;border-radius:20px;border:1px solid rgba(255,255,255,.12);background:rgba(15,23,42,.36);backdrop-filter:blur(16px);box-shadow:inset 0 1px 0 rgba(255,255,255,.06)}
+        .camera-capture-control-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+        .camera-capture-control-group{display:flex;flex-direction:column;gap:8px;min-width:0}
+        .camera-capture-control-group[data-disabled="true"]{opacity:.45}
+        .camera-capture-control-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+        .camera-capture-control-head span{font-size:10px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.82)}
+        .camera-capture-control-value{font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#86efac}
+        .camera-capture-slider{width:100%;appearance:none;height:5px;border-radius:999px;background:rgba(255,255,255,.18);outline:none}
+        .camera-capture-slider::-webkit-slider-thumb{appearance:none;width:20px;height:20px;border-radius:999px;background:#fff;border:2px solid rgba(2,6,23,.82);box-shadow:0 4px 12px rgba(2,6,23,.34)}
+        .camera-capture-slider::-moz-range-thumb{width:20px;height:20px;border-radius:999px;background:#fff;border:2px solid rgba(2,6,23,.82);box-shadow:0 4px 12px rgba(2,6,23,.34)}
+        .camera-capture-chip-row{display:flex;align-items:center;gap:8px;overflow-x:auto;scrollbar-width:none;margin-top:12px;padding-bottom:2px}
+        .camera-capture-chip-row::-webkit-scrollbar{display:none}
+        .camera-capture-chip-btn{display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:.55rem .9rem;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.08);color:#fff;font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;white-space:nowrap}
+        .camera-capture-chip-btn.active{background:#fff;color:#020617;border-color:#fff}
+        .camera-capture-chip-btn:disabled{opacity:.45;pointer-events:none}
         .camera-capture-mode-row{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:18px;overflow-x:auto;scrollbar-width:none}
         .camera-capture-mode-row::-webkit-scrollbar{display:none}
         .camera-capture-mode-chip{display:inline-flex;align-items:center;justify-content:center;min-width:92px;padding:.72rem 1rem;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:rgba(15,23,42,.38);color:rgba(255,255,255,.72);font-size:11px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;backdrop-filter:blur(10px);transition:all .16s ease}
@@ -230,6 +249,33 @@
                 </div>
                 <div class="camera-capture-bottom-sheet">
                     <div id="camera-capture-status" class="text-[11px] font-black uppercase tracking-[0.12em] text-white/75">Opening camera preview...</div>
+                    <div class="camera-capture-capability-row">
+                        <div id="camera-capture-capability-summary" class="camera-capture-capability-summary">Loading camera controls...</div>
+                        <button id="camera-capture-control-toggle" type="button" class="camera-capture-control-toggle" onclick="toggleCameraControlPanel()">Pro</button>
+                    </div>
+                    <div id="camera-capture-pro-panel" class="camera-capture-pro-panel hidden">
+                        <div class="camera-capture-control-grid">
+                            <label class="camera-capture-control-group" id="camera-capture-zoom-group">
+                                <div class="camera-capture-control-head">
+                                    <span>Zoom</span>
+                                    <strong id="camera-capture-zoom-value" class="camera-capture-control-value">1.0x</strong>
+                                </div>
+                                <input id="camera-capture-zoom-slider" class="camera-capture-slider" type="range" min="1" max="1" step="0.1" value="1" oninput="updateCameraNumericControl('zoom', this.value)">
+                            </label>
+                            <label class="camera-capture-control-group" id="camera-capture-exposure-group">
+                                <div class="camera-capture-control-head">
+                                    <span>Exposure</span>
+                                    <strong id="camera-capture-exposure-value" class="camera-capture-control-value">0.0</strong>
+                                </div>
+                                <input id="camera-capture-exposure-slider" class="camera-capture-slider" type="range" min="0" max="0" step="0.1" value="0" oninput="updateCameraNumericControl('exposureCompensation', this.value)">
+                            </label>
+                        </div>
+                        <div class="camera-capture-chip-row">
+                            <button id="camera-capture-chip-light" type="button" class="camera-capture-chip-btn" onclick="cycleCameraFlashMode()">Light: Auto</button>
+                            <button id="camera-capture-chip-torch" type="button" class="camera-capture-chip-btn" onclick="toggleCameraTorch()">Torch</button>
+                            <button type="button" class="camera-capture-chip-btn" onclick="resetCameraEnhancements()">Reset</button>
+                        </div>
+                    </div>
                     <div class="mt-4 flex items-center justify-between gap-4">
                         <button id="camera-capture-restart" type="button" class="camera-capture-secondary" onclick="startCameraVideoMode()">Restart</button>
                         <button id="camera-capture-primary" type="button" class="camera-capture-shutter" onclick="handleCameraPrimaryAction()" aria-label="Capture photo"><span class="sr-only">Capture photo</span></button>
@@ -513,7 +559,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-                            <div id="header-version" class="nav-version-pill">V2026.04.04.05</div>
+                            <div id="header-version" class="nav-version-pill">V2026.04.04.07</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -971,23 +1017,34 @@
         const CACHE_PERSIST_REALTIME_VISIBLE_MIN_INTERVAL_MS = 180000;
         const CACHE_PERSIST_ACTIVE_INTERACTION_GRACE_MS = 12000;
         const CACHE_PERSIST_IDLE_TIMEOUT_MS = 2500;
-        const PHOTO_MAX_WIDTH = 1920;
-        const PHOTO_JPEG_QUALITY = 0.9;
-        const PHOTO_LAG_MAX_WIDTH = 1560;
-        const PHOTO_LAG_JPEG_QUALITY = 0.84;
-        const CAMERA_VIDEO_FRAME_JPEG_QUALITY = 0.92;
-        const CAMERA_PORTRAIT_OUTPUT_MAX_WIDTH = 1800;
-        const CAMERA_PORTRAIT_OUTPUT_JPEG_QUALITY = 0.88;
+        const PHOTO_MAX_WIDTH = 2560;
+        const PHOTO_JPEG_QUALITY = 0.94;
+        const PHOTO_LAG_MAX_WIDTH = 2048;
+        const PHOTO_LAG_JPEG_QUALITY = 0.9;
+        const CAMERA_VIDEO_FRAME_JPEG_QUALITY = 0.96;
+        const CAMERA_PORTRAIT_OUTPUT_MAX_WIDTH = 2560;
+        const CAMERA_PORTRAIT_OUTPUT_JPEG_QUALITY = 0.94;
         const TFJS_SCRIPT_URL = 'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js';
         const COCO_SSD_SCRIPT_URL = 'https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js';
         const CAMERA_CAPTURE_MODE_STORAGE_KEY = 'gnc_camera_capture_mode_v1';
         const CAMERA_PORTRAIT_STORAGE_KEY = 'gnc_camera_portrait_mode_v1';
-        const CAMERA_PREVIEW_WIDTH_IDEAL = 1920;
-        const CAMERA_PREVIEW_HEIGHT_IDEAL = 1440;
-        const CAMERA_PORTRAIT_DETECTION_MAX_SIDE = 960;
+        const CAMERA_PREVIEW_WIDTH_IDEAL = 2560;
+        const CAMERA_PREVIEW_HEIGHT_IDEAL = 1920;
+        const CAMERA_PORTRAIT_DETECTION_MAX_SIDE = 1280;
         const CAMERA_PORTRAIT_MIN_SCORE = 0.24;
-        const CAMERA_PORTRAIT_BLUR_PX = 28;
+        const CAMERA_PORTRAIT_BLUR_PX = 30;
         const CAMERA_PORTRAIT_FOCUS_FEATHER = 0.26;
+        const CAMERA_PREVIEW_WIDTH_MAX = 4096;
+        const CAMERA_PREVIEW_HEIGHT_MAX = 3072;
+        const CAMERA_PHOTO_WIDTH_FALLBACK = 3072;
+        const CAMERA_PHOTO_HEIGHT_FALLBACK = 2304;
+        const CAMERA_FLASH_MODE_STORAGE_KEY = 'gnc_camera_flash_mode_v1';
+        const CAMERA_PRO_PANEL_STORAGE_KEY = 'gnc_camera_pro_panel_v1';
+        const CAMERA_ZOOM_STORAGE_KEY = 'gnc_camera_zoom_v1';
+        const CAMERA_EXPOSURE_STORAGE_KEY = 'gnc_camera_exposure_v1';
+        const CAMERA_DEFAULT_FLASH_MODE = 'auto';
+        const CAMERA_DEFAULT_ZOOM = 1;
+        const CAMERA_DEFAULT_EXPOSURE_COMP = 0;
         const CAMERA_CAPTURE_LABELS = Object.freeze({
             'ssn-': 'Season Sales Notes Camera',
             'lsn-': 'Location Sales Notes Camera',
@@ -1008,12 +1065,30 @@
             model: null,
             modelPromise: null,
             scriptPromises: Object.create(null),
-            captureInFlight: false
+            captureInFlight: false,
+            controlApplyTimer: null,
+            capabilities: null,
+            settings: null,
+            photoCapabilities: null,
+            controlsOpen: false,
+            controls: {
+                zoom: CAMERA_DEFAULT_ZOOM,
+                exposureCompensation: CAMERA_DEFAULT_EXPOSURE_COMP,
+                torch: false,
+                fillLightMode: CAMERA_DEFAULT_FLASH_MODE
+            }
         };
         try {
             const storedCameraMode = String(localStorage.getItem(CAMERA_CAPTURE_MODE_STORAGE_KEY) || '').trim().toLowerCase();
             if (storedCameraMode === 'video') cameraCaptureState.mode = 'video';
             cameraCaptureState.portraitEnabled = localStorage.getItem(CAMERA_PORTRAIT_STORAGE_KEY) === 'true';
+            const storedFlashMode = String(localStorage.getItem(CAMERA_FLASH_MODE_STORAGE_KEY) || '').trim().toLowerCase();
+            if (storedFlashMode) cameraCaptureState.controls.fillLightMode = storedFlashMode;
+            cameraCaptureState.controlsOpen = localStorage.getItem(CAMERA_PRO_PANEL_STORAGE_KEY) === 'true';
+            const storedZoom = Number(localStorage.getItem(CAMERA_ZOOM_STORAGE_KEY));
+            if (Number.isFinite(storedZoom) && storedZoom > 0) cameraCaptureState.controls.zoom = storedZoom;
+            const storedExposure = Number(localStorage.getItem(CAMERA_EXPOSURE_STORAGE_KEY));
+            if (Number.isFinite(storedExposure)) cameraCaptureState.controls.exposureCompensation = storedExposure;
         } catch (e) {}
         let lastUserInteractionAt = Date.now();
         let viewportHeightSyncInitialized = false;
@@ -2895,7 +2970,7 @@
         let pendingRequestArchiveFlushTimer = null;
         let pendingRequestArchiveFlushInFlight = false;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Maschino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'V2026.04.04.05';
+        const APP_VERSION = 'V2026.04.04.07';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -5941,7 +6016,328 @@ function toggleDriveQuickRequestItem(domId) {
             try {
                 localStorage.setItem(CAMERA_CAPTURE_MODE_STORAGE_KEY, cameraCaptureState.mode === 'video' ? 'video' : 'photo');
                 localStorage.setItem(CAMERA_PORTRAIT_STORAGE_KEY, cameraCaptureState.portraitEnabled ? 'true' : 'false');
+                localStorage.setItem(CAMERA_FLASH_MODE_STORAGE_KEY, String(cameraCaptureState.controls.fillLightMode || CAMERA_DEFAULT_FLASH_MODE));
+                localStorage.setItem(CAMERA_PRO_PANEL_STORAGE_KEY, cameraCaptureState.controlsOpen ? 'true' : 'false');
+                localStorage.setItem(CAMERA_ZOOM_STORAGE_KEY, String(Number(cameraCaptureState.controls.zoom || CAMERA_DEFAULT_ZOOM)));
+                localStorage.setItem(CAMERA_EXPOSURE_STORAGE_KEY, String(Number(cameraCaptureState.controls.exposureCompensation || CAMERA_DEFAULT_EXPOSURE_COMP)));
             } catch (e) {}
+        }
+
+        function getCameraRangeMeta(range) {
+            if (!range || typeof range !== 'object') return null;
+            const min = Number(range.min);
+            const max = Number(range.max);
+            if (!Number.isFinite(min) || !Number.isFinite(max)) return null;
+            let step = Number(range.step);
+            if (!Number.isFinite(step) || step <= 0) {
+                const spread = Math.abs(max - min);
+                step = spread > 0 ? Math.max(spread / 120, 0.01) : 0.1;
+            }
+            return { min: min, max: max, step: step };
+        }
+
+        function clampCameraRangeValue(value, range, fallback) {
+            const meta = getCameraRangeMeta(range);
+            if (!meta) return Number.isFinite(Number(fallback)) ? Number(fallback) : Number(value || 0);
+            let nextValue = Number(value);
+            if (!Number.isFinite(nextValue)) nextValue = Number.isFinite(Number(fallback)) ? Number(fallback) : meta.min;
+            nextValue = Math.min(meta.max, Math.max(meta.min, nextValue));
+            if (meta.step > 0) nextValue = meta.min + (Math.round((nextValue - meta.min) / meta.step) * meta.step);
+            nextValue = Math.min(meta.max, Math.max(meta.min, nextValue));
+            return Number(nextValue.toFixed(4));
+        }
+
+        function formatCameraFlashModeLabel(mode) {
+            const normalized = String(mode || '').trim().toLowerCase();
+            if (normalized === 'flash' || normalized === 'on') return 'Flash';
+            if (normalized === 'off') return 'Off';
+            return 'Auto';
+        }
+
+        function getCameraFlashModes() {
+            const photoCapabilities = cameraCaptureState.photoCapabilities;
+            const rawModes = photoCapabilities && Array.isArray(photoCapabilities.fillLightMode)
+                ? photoCapabilities.fillLightMode
+                : [];
+            const modes = rawModes.map(function(mode) {
+                const normalized = String(mode || '').trim().toLowerCase();
+                return normalized === 'on' ? 'flash' : normalized;
+            }).filter(Boolean);
+            const uniqueModes = Array.from(new Set(modes));
+            if (!uniqueModes.length && cameraCaptureState.imageCapture) {
+                return [String(cameraCaptureState.controls.fillLightMode || CAMERA_DEFAULT_FLASH_MODE).trim().toLowerCase() || CAMERA_DEFAULT_FLASH_MODE];
+            }
+            return uniqueModes;
+        }
+
+        function cameraSupportsTorch() {
+            return !!(cameraCaptureState.capabilities && cameraCaptureState.capabilities.torch);
+        }
+
+        function getCameraCapabilitySummary() {
+            if (!canUseInlineVideoCapture()) return 'Device camera fallback';
+            if (!cameraCaptureState.stream) return 'Tap start for live controls';
+            const settings = cameraCaptureState.settings || {};
+            const photoCapabilities = cameraCaptureState.photoCapabilities || {};
+            const widthRange = getCameraRangeMeta(photoCapabilities.imageWidth);
+            const heightRange = getCameraRangeMeta(photoCapabilities.imageHeight);
+            const width = widthRange ? widthRange.max : Number(settings.width || CAMERA_PHOTO_WIDTH_FALLBACK);
+            const height = heightRange ? heightRange.max : Number(settings.height || CAMERA_PHOTO_HEIGHT_FALLBACK);
+            const parts = [];
+            if (Number.isFinite(width) && Number.isFinite(height) && width > 0 && height > 0) {
+                parts.push((((width * height) / 1000000)).toFixed(1) + 'MP');
+            } else {
+                parts.push('PWA Max');
+            }
+            parts.push(Number(cameraCaptureState.controls.zoom || CAMERA_DEFAULT_ZOOM).toFixed(1) + 'x');
+            const exposureValue = Number(cameraCaptureState.controls.exposureCompensation || 0);
+            if (Math.abs(exposureValue) >= 0.05) parts.push('EV ' + (exposureValue > 0 ? '+' : '') + exposureValue.toFixed(1));
+            parts.push('Light ' + formatCameraFlashModeLabel(cameraCaptureState.controls.fillLightMode));
+            if (cameraCaptureState.controls.torch) parts.push('Torch On');
+            return parts.join(' | ');
+        }
+
+        function syncCameraCaptureControlUi() {
+            const summaryEl = document.getElementById('camera-capture-capability-summary');
+            const toggleBtn = document.getElementById('camera-capture-control-toggle');
+            const panelEl = document.getElementById('camera-capture-pro-panel');
+            const zoomGroup = document.getElementById('camera-capture-zoom-group');
+            const zoomSlider = document.getElementById('camera-capture-zoom-slider');
+            const zoomValueEl = document.getElementById('camera-capture-zoom-value');
+            const exposureGroup = document.getElementById('camera-capture-exposure-group');
+            const exposureSlider = document.getElementById('camera-capture-exposure-slider');
+            const exposureValueEl = document.getElementById('camera-capture-exposure-value');
+            const lightChip = document.getElementById('camera-capture-chip-light');
+            const torchChip = document.getElementById('camera-capture-chip-torch');
+            const hasLiveControls = !!(canUseInlineVideoCapture() && cameraCaptureState.stream);
+            const zoomMeta = hasLiveControls ? getCameraRangeMeta(cameraCaptureState.capabilities && cameraCaptureState.capabilities.zoom) : null;
+            const exposureMeta = hasLiveControls ? getCameraRangeMeta(cameraCaptureState.capabilities && cameraCaptureState.capabilities.exposureCompensation) : null;
+            const flashModes = hasLiveControls ? getCameraFlashModes() : [];
+            const supportsTorch = hasLiveControls && cameraSupportsTorch();
+            if (summaryEl) summaryEl.textContent = getCameraCapabilitySummary();
+            if (toggleBtn) {
+                toggleBtn.textContent = cameraCaptureState.controlsOpen ? 'Hide' : 'Pro';
+                toggleBtn.classList.toggle('active', !!cameraCaptureState.controlsOpen);
+            }
+            if (panelEl) panelEl.classList.toggle('hidden', !cameraCaptureState.controlsOpen);
+            if (zoomGroup) zoomGroup.dataset.disabled = zoomMeta ? 'false' : 'true';
+            if (zoomSlider) {
+                zoomSlider.disabled = !zoomMeta;
+                if (zoomMeta) {
+                    zoomSlider.min = String(zoomMeta.min);
+                    zoomSlider.max = String(zoomMeta.max);
+                    zoomSlider.step = String(zoomMeta.step);
+                    zoomSlider.value = String(clampCameraRangeValue(cameraCaptureState.controls.zoom, cameraCaptureState.capabilities.zoom, Math.max(1, zoomMeta.min)));
+                } else {
+                    zoomSlider.min = '1';
+                    zoomSlider.max = '1';
+                    zoomSlider.step = '0.1';
+                    zoomSlider.value = '1';
+                }
+            }
+            if (zoomValueEl) zoomValueEl.textContent = Number(cameraCaptureState.controls.zoom || CAMERA_DEFAULT_ZOOM).toFixed(1) + 'x';
+            if (exposureGroup) exposureGroup.dataset.disabled = exposureMeta ? 'false' : 'true';
+            if (exposureSlider) {
+                exposureSlider.disabled = !exposureMeta;
+                if (exposureMeta) {
+                    exposureSlider.min = String(exposureMeta.min);
+                    exposureSlider.max = String(exposureMeta.max);
+                    exposureSlider.step = String(exposureMeta.step);
+                    exposureSlider.value = String(clampCameraRangeValue(cameraCaptureState.controls.exposureCompensation, cameraCaptureState.capabilities.exposureCompensation, CAMERA_DEFAULT_EXPOSURE_COMP));
+                } else {
+                    exposureSlider.min = '0';
+                    exposureSlider.max = '0';
+                    exposureSlider.step = '0.1';
+                    exposureSlider.value = '0';
+                }
+            }
+            if (exposureValueEl) {
+                const exposureValue = Number(cameraCaptureState.controls.exposureCompensation || 0);
+                exposureValueEl.textContent = (exposureValue > 0 ? '+' : '') + exposureValue.toFixed(1);
+            }
+            if (lightChip) {
+                lightChip.disabled = !flashModes.length;
+                lightChip.textContent = 'Light: ' + formatCameraFlashModeLabel(cameraCaptureState.controls.fillLightMode);
+                lightChip.classList.toggle('active', String(cameraCaptureState.controls.fillLightMode || '').toLowerCase() === 'flash');
+            }
+            if (torchChip) {
+                torchChip.disabled = !supportsTorch;
+                torchChip.textContent = cameraCaptureState.controls.torch ? 'Torch On' : 'Torch';
+                torchChip.classList.toggle('active', !!cameraCaptureState.controls.torch);
+            }
+        }
+
+        function toggleCameraControlPanel() {
+            cameraCaptureState.controlsOpen = !cameraCaptureState.controlsOpen;
+            persistCameraCapturePrefs();
+            syncCameraCaptureControlUi();
+        }
+
+        function scheduleApplyCameraControlSettings(immediate) {
+            if (cameraCaptureState.controlApplyTimer) {
+                clearTimeout(cameraCaptureState.controlApplyTimer);
+                cameraCaptureState.controlApplyTimer = null;
+            }
+            if (!cameraCaptureState.stream) return;
+            const runApply = function() {
+                cameraCaptureState.controlApplyTimer = null;
+                applyCameraCaptureControlSettings().then(function() {
+                    return refreshCameraCaptureCapabilities();
+                }).catch(function(err) {
+                    console.warn('Camera control apply failed', err);
+                });
+            };
+            if (immediate) {
+                runApply();
+                return;
+            }
+            cameraCaptureState.controlApplyTimer = setTimeout(runApply, 120);
+        }
+
+        function updateCameraNumericControl(controlName, nextValue) {
+            if (!cameraCaptureState.controls || !Object.prototype.hasOwnProperty.call(cameraCaptureState.controls, controlName)) return;
+            const parsed = Number(nextValue);
+            if (!Number.isFinite(parsed)) return;
+            cameraCaptureState.controls[controlName] = parsed;
+            persistCameraCapturePrefs();
+            syncCameraCaptureControlUi();
+            scheduleApplyCameraControlSettings(false);
+        }
+
+        function cycleCameraFlashMode() {
+            const modes = getCameraFlashModes();
+            if (!modes.length) return;
+            const current = String(cameraCaptureState.controls.fillLightMode || CAMERA_DEFAULT_FLASH_MODE).toLowerCase();
+            const idx = Math.max(0, modes.indexOf(current));
+            cameraCaptureState.controls.fillLightMode = modes[(idx + 1) % modes.length];
+            persistCameraCapturePrefs();
+            syncCameraCaptureControlUi();
+        }
+
+        function toggleCameraTorch() {
+            if (!cameraSupportsTorch()) return;
+            cameraCaptureState.controls.torch = !cameraCaptureState.controls.torch;
+            persistCameraCapturePrefs();
+            syncCameraCaptureControlUi();
+            scheduleApplyCameraControlSettings(true);
+        }
+
+        function resetCameraEnhancements() {
+            cameraCaptureState.controls.zoom = clampCameraRangeValue(CAMERA_DEFAULT_ZOOM, cameraCaptureState.capabilities && cameraCaptureState.capabilities.zoom, CAMERA_DEFAULT_ZOOM);
+            cameraCaptureState.controls.exposureCompensation = clampCameraRangeValue(CAMERA_DEFAULT_EXPOSURE_COMP, cameraCaptureState.capabilities && cameraCaptureState.capabilities.exposureCompensation, CAMERA_DEFAULT_EXPOSURE_COMP);
+            cameraCaptureState.controls.torch = false;
+            const flashModes = getCameraFlashModes();
+            cameraCaptureState.controls.fillLightMode = flashModes.indexOf(CAMERA_DEFAULT_FLASH_MODE) !== -1 ? CAMERA_DEFAULT_FLASH_MODE : (flashModes[0] || CAMERA_DEFAULT_FLASH_MODE);
+            persistCameraCapturePrefs();
+            syncCameraCaptureControlUi();
+            scheduleApplyCameraControlSettings(true);
+        }
+
+        async function applyCameraCaptureControlSettings(trackOverride) {
+            const track = trackOverride || getCameraVideoTrack();
+            if (!track || typeof track.applyConstraints !== 'function') return;
+            const capabilities = cameraCaptureState.capabilities || (typeof track.getCapabilities === 'function' ? track.getCapabilities() : null) || null;
+            const constraintAttempts = [];
+            if (capabilities && Array.isArray(capabilities.focusMode) && capabilities.focusMode.indexOf('continuous') !== -1) constraintAttempts.push({ advanced: [{ focusMode: 'continuous' }] });
+            if (capabilities && Array.isArray(capabilities.exposureMode) && capabilities.exposureMode.indexOf('continuous') !== -1) constraintAttempts.push({ advanced: [{ exposureMode: 'continuous' }] });
+            if (capabilities && Array.isArray(capabilities.whiteBalanceMode) && capabilities.whiteBalanceMode.indexOf('continuous') !== -1) constraintAttempts.push({ advanced: [{ whiteBalanceMode: 'continuous' }] });
+            if (capabilities && capabilities.zoom) {
+                cameraCaptureState.controls.zoom = clampCameraRangeValue(cameraCaptureState.controls.zoom, capabilities.zoom, CAMERA_DEFAULT_ZOOM);
+                constraintAttempts.push({ advanced: [{ zoom: cameraCaptureState.controls.zoom }] });
+            }
+            if (capabilities && capabilities.exposureCompensation) {
+                cameraCaptureState.controls.exposureCompensation = clampCameraRangeValue(cameraCaptureState.controls.exposureCompensation, capabilities.exposureCompensation, CAMERA_DEFAULT_EXPOSURE_COMP);
+                constraintAttempts.push({ advanced: [{ exposureCompensation: cameraCaptureState.controls.exposureCompensation }] });
+            }
+            if (capabilities && capabilities.torch) {
+                constraintAttempts.push({ advanced: [{ torch: !!cameraCaptureState.controls.torch }] });
+            }
+            for (const attempt of constraintAttempts) {
+                try { await track.applyConstraints(attempt); } catch (err) {}
+            }
+            if (typeof track.getSettings === 'function') {
+                try { cameraCaptureState.settings = track.getSettings() || null; } catch (e) {}
+            }
+            persistCameraCapturePrefs();
+            syncCameraCaptureControlUi();
+        }
+
+        async function refreshCameraCaptureCapabilities(trackOverride) {
+            const track = trackOverride || getCameraVideoTrack();
+            if (!track) {
+                cameraCaptureState.capabilities = null;
+                cameraCaptureState.settings = null;
+                cameraCaptureState.photoCapabilities = null;
+                cameraCaptureState.controls.torch = false;
+                syncCameraCaptureControlUi();
+                return;
+            }
+            cameraCaptureState.capabilities = typeof track.getCapabilities === 'function' ? (track.getCapabilities() || null) : null;
+            cameraCaptureState.settings = typeof track.getSettings === 'function' ? (track.getSettings() || null) : null;
+            cameraCaptureState.photoCapabilities = null;
+            if (cameraCaptureState.imageCapture && typeof cameraCaptureState.imageCapture.getPhotoCapabilities === 'function') {
+                try {
+                    cameraCaptureState.photoCapabilities = await cameraCaptureState.imageCapture.getPhotoCapabilities();
+                } catch (err) {
+                    cameraCaptureState.photoCapabilities = null;
+                }
+            }
+            if (cameraCaptureState.capabilities && cameraCaptureState.capabilities.zoom) {
+                cameraCaptureState.controls.zoom = clampCameraRangeValue(cameraCaptureState.controls.zoom, cameraCaptureState.capabilities.zoom, CAMERA_DEFAULT_ZOOM);
+            } else {
+                cameraCaptureState.controls.zoom = CAMERA_DEFAULT_ZOOM;
+            }
+            if (cameraCaptureState.capabilities && cameraCaptureState.capabilities.exposureCompensation) {
+                cameraCaptureState.controls.exposureCompensation = clampCameraRangeValue(cameraCaptureState.controls.exposureCompensation, cameraCaptureState.capabilities.exposureCompensation, CAMERA_DEFAULT_EXPOSURE_COMP);
+            } else {
+                cameraCaptureState.controls.exposureCompensation = CAMERA_DEFAULT_EXPOSURE_COMP;
+            }
+            if (!cameraSupportsTorch()) cameraCaptureState.controls.torch = false;
+            const flashModes = getCameraFlashModes();
+            if (flashModes.length) {
+                if (flashModes.indexOf(String(cameraCaptureState.controls.fillLightMode || '').toLowerCase()) === -1) {
+                    cameraCaptureState.controls.fillLightMode = flashModes.indexOf(CAMERA_DEFAULT_FLASH_MODE) !== -1 ? CAMERA_DEFAULT_FLASH_MODE : flashModes[0];
+                }
+            } else {
+                cameraCaptureState.controls.fillLightMode = CAMERA_DEFAULT_FLASH_MODE;
+            }
+            persistCameraCapturePrefs();
+            syncCameraCaptureControlUi();
+        }
+
+        function buildBestCameraPhotoSettings() {
+            const photoSettings = {};
+            const photoCapabilities = cameraCaptureState.photoCapabilities || {};
+            const widthMeta = getCameraRangeMeta(photoCapabilities.imageWidth);
+            const heightMeta = getCameraRangeMeta(photoCapabilities.imageHeight);
+            if (widthMeta && heightMeta) {
+                let width = Math.round(widthMeta.max);
+                let height = Math.round(heightMeta.max);
+                const targetAspect = 4 / 3;
+                if (width > 0 && height > 0) {
+                    if ((width / height) > targetAspect) width = Math.round(height * targetAspect);
+                    else height = Math.round(width / targetAspect);
+                }
+                photoSettings.imageWidth = Math.max(Math.round(widthMeta.min), Math.min(Math.round(widthMeta.max), width));
+                photoSettings.imageHeight = Math.max(Math.round(heightMeta.min), Math.min(Math.round(heightMeta.max), height));
+            } else {
+                photoSettings.imageWidth = CAMERA_PHOTO_WIDTH_FALLBACK;
+                photoSettings.imageHeight = CAMERA_PHOTO_HEIGHT_FALLBACK;
+            }
+            const flashModes = getCameraFlashModes();
+            const selectedLight = String(cameraCaptureState.controls.fillLightMode || CAMERA_DEFAULT_FLASH_MODE).toLowerCase();
+            if (flashModes.indexOf(selectedLight) !== -1) photoSettings.fillLightMode = selectedLight;
+            return photoSettings;
+        }
+
+        function buildCameraPreviewConstraints() {
+            return {
+                facingMode: { ideal: 'environment' },
+                width: { ideal: CAMERA_PREVIEW_WIDTH_IDEAL, max: CAMERA_PREVIEW_WIDTH_MAX },
+                height: { ideal: CAMERA_PREVIEW_HEIGHT_IDEAL, max: CAMERA_PREVIEW_HEIGHT_MAX },
+                aspectRatio: { ideal: 4 / 3 },
+                frameRate: { ideal: 30, max: cameraCaptureState.mode === 'video' ? 60 : 30 }
+            };
         }
 
         function setCameraCaptureStatus(message, tone) {
@@ -6000,6 +6396,7 @@ function toggleDriveQuickRequestItem(domId) {
                 alternateBtn.classList.toggle('hidden', !cameraCaptureState.input);
                 alternateBtn.textContent = 'Device';
             }
+            syncCameraCaptureControlUi();
             if (videoEmpty) videoEmpty.classList.toggle('hidden', !!cameraCaptureState.stream);
             if (!cameraCaptureState.open) return;
             if (!hasInlineVideo) {
@@ -6037,6 +6434,14 @@ function toggleDriveQuickRequestItem(domId) {
             cameraCaptureState.stream = null;
             cameraCaptureState.imageCapture = null;
             cameraCaptureState.captureInFlight = false;
+            if (cameraCaptureState.controlApplyTimer) {
+                clearTimeout(cameraCaptureState.controlApplyTimer);
+                cameraCaptureState.controlApplyTimer = null;
+            }
+            cameraCaptureState.capabilities = null;
+            cameraCaptureState.settings = null;
+            cameraCaptureState.photoCapabilities = null;
+            cameraCaptureState.controls.torch = false;
             if (videoEl) {
                 try { videoEl.pause(); } catch (e) {}
                 try { videoEl.srcObject = null; } catch (e) {}
@@ -6247,7 +6652,15 @@ function toggleDriveQuickRequestItem(domId) {
             if (track && typeof window.ImageCapture !== 'undefined') {
                 try {
                     if (!cameraCaptureState.imageCapture) cameraCaptureState.imageCapture = new window.ImageCapture(track);
-                    const blob = await cameraCaptureState.imageCapture.takePhoto();
+                    await refreshCameraCaptureCapabilities(track);
+                    await applyCameraCaptureControlSettings(track);
+                    const photoSettings = buildBestCameraPhotoSettings();
+                    let blob = null;
+                    try {
+                        blob = await cameraCaptureState.imageCapture.takePhoto(photoSettings);
+                    } catch (photoErr) {
+                        blob = await cameraCaptureState.imageCapture.takePhoto();
+                    }
                     if (blob) return blob;
                 } catch (err) {
                     console.warn('ImageCapture.takePhoto failed', err);
@@ -6383,13 +6796,7 @@ function toggleDriveQuickRequestItem(domId) {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({
                     audio: false,
-                    video: {
-                        facingMode: { ideal: 'environment' },
-                        width: { ideal: CAMERA_PREVIEW_WIDTH_IDEAL, max: 2560 },
-                        height: { ideal: CAMERA_PREVIEW_HEIGHT_IDEAL, max: 1920 },
-                        aspectRatio: { ideal: 4 / 3 },
-                        frameRate: { ideal: cameraCaptureState.mode === 'video' ? 30 : 24 }
-                    }
+                    video: buildCameraPreviewConstraints()
                 });
                 if (!cameraCaptureState.open) {
                     stream.getTracks().forEach(function(track) { track.stop(); });
@@ -6402,6 +6809,9 @@ function toggleDriveQuickRequestItem(domId) {
                     if (typeof window.ImageCapture !== 'undefined') {
                         try { cameraCaptureState.imageCapture = new window.ImageCapture(track); } catch (e) { cameraCaptureState.imageCapture = null; }
                     }
+                    await refreshCameraCaptureCapabilities(track);
+                    await applyCameraCaptureControlSettings(track);
+                    await refreshCameraCaptureCapabilities(track);
                 }
                 videoEl.srcObject = stream;
                 videoEl.muted = true;
