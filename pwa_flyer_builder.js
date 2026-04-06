@@ -39,12 +39,12 @@
 
   const BUILDER_CSS = `
     .npf-wrap{display:grid;gap:18px}
-    .npf-grid{display:grid;gap:18px;grid-template-columns:1fr;align-items:start}
+    .npf-grid{display:grid;gap:18px;grid-template-columns:minmax(360px,.92fr) minmax(0,1.08fr);align-items:start}
     .npf-card{background:#fff;border:1px solid #d9e4dc;border-radius:28px;box-shadow:0 18px 40px rgba(15,23,42,.08);overflow:hidden}
     .npf-section{padding:18px}
     .npf-stack{display:grid;gap:12px}
     .npf-preview-column{display:grid;gap:18px;min-width:0}
-    .npf-preview-card{position:static}
+    .npf-preview-card{position:sticky;top:18px}
     .npf-builder-column{display:grid;gap:18px;grid-template-columns:minmax(280px,320px) minmax(0,1fr);align-items:start}
     .npf-builder-column>.npf-card:first-child{position:sticky;top:18px}
     .npf-label{font-size:11px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:#475569}
@@ -107,7 +107,39 @@
     .npf-photo-option.active{border-color:#0f7a4f;box-shadow:0 0 0 2px rgba(15,122,79,.14),0 8px 18px rgba(15,23,42,.08)}
     .npf-photo-mini{width:100%;aspect-ratio:1/1;border-radius:12px;background:#dfe9e2 center/cover no-repeat}
     .npf-photo-caption{font:800 10px/1.3 Arial,sans-serif;color:#334155;text-align:left;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-    .npf-photo-empty{font:800 11px/1.4 Arial,sans-serif;color:#94a3b8;padding:6px 0 2px}
+        .npf-photo-empty{font:800 11px/1.4 Arial,sans-serif;color:#94a3b8;padding:6px 0 2px}
+    .npf-live-editor{display:grid;gap:14px}
+    .npf-live-selector{display:grid;gap:10px}
+    .npf-live-stage-card{display:grid;gap:14px;position:sticky;top:18px;z-index:1}
+    .npf-live-shell{display:grid;gap:14px;grid-template-columns:minmax(0,1.15fr) minmax(240px,.85fr);align-items:start}
+    .npf-live-stage{display:grid;gap:12px;padding:16px;border:1px solid #dbe7df;border-radius:26px;background:linear-gradient(180deg,#f8fbf9 0%,#eef5f0 100%)}
+    .npf-live-frame{position:relative;aspect-ratio:4/5;border-radius:24px;overflow:hidden;background:#dfe9e2;box-shadow:0 18px 42px rgba(15,23,42,.12)}
+    .npf-live-layer,.npf-live-layer img{position:absolute;inset:0;width:100%;height:100%}
+    .npf-live-layer img{transform-origin:center center}
+    .npf-live-focus{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);overflow:hidden;border-radius:24px;box-shadow:0 0 0 2px rgba(255,255,255,.76),0 18px 32px rgba(15,23,42,.14)}
+    .npf-live-warmth{position:absolute;inset:0;pointer-events:none;mix-blend-mode:screen}
+    .npf-live-price-badge{position:absolute;display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:8px 14px;border-radius:999px;background:#0f7a4f;color:#fff;font:900 20px/1 Arial,sans-serif;letter-spacing:.01em;box-shadow:0 12px 28px rgba(15,122,79,.24);z-index:2}
+    .npf-live-copy{display:grid;gap:8px;padding:16px 18px;border-radius:22px;background:rgba(255,255,255,.94);border:1px solid rgba(219,231,223,.92);backdrop-filter:blur(12px)}
+    .npf-live-title{font:900 24px/1.08 Arial,sans-serif;color:#0f172a}
+    .npf-live-subheading{font:800 13px/1.45 Arial,sans-serif;color:#475569}
+    .npf-live-note{font:900 13px/1.4 Arial,sans-serif;color:#0f7a4f}
+    .npf-live-sidebar{display:grid;gap:12px}
+    .npf-live-card-list{display:flex;gap:8px;overflow:auto;padding-bottom:4px;scrollbar-width:none}
+    .npf-live-card-list::-webkit-scrollbar{display:none}
+    .npf-live-chip{min-width:132px;max-width:190px;display:grid;gap:4px;justify-items:start;padding:10px 12px;border-radius:18px;border:1px solid #dbe7df;background:#fff;box-shadow:0 10px 20px rgba(15,23,42,.06);cursor:pointer}
+    .npf-live-chip span{font:900 10px/1 Arial,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#64748b}
+    .npf-live-chip strong{font:900 13px/1.25 Arial,sans-serif;color:#0f172a;text-align:left;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+    .npf-live-chip.active{border-color:#0f7a4f;background:#eef8f2;box-shadow:0 0 0 2px rgba(15,122,79,.14),0 12px 24px rgba(15,23,42,.08)}
+    .npf-live-meta{display:grid;gap:8px;padding:14px;border-radius:20px;background:#fff;border:1px solid #dbe7df}
+    .npf-live-meta strong{font:900 14px/1.25 Arial,sans-serif;color:#0f172a}
+    .npf-live-meta .muted{font:800 11px/1.45 Arial,sans-serif;color:#64748b}
+    .npf-live-placeholder{display:flex;align-items:center;justify-content:center;height:100%;padding:24px;text-align:center;font:900 18px/1.4 Arial,sans-serif;color:#64748b}
+    .npf-live-control-shell{display:grid;gap:14px;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}
+    .npf-live-control-card{display:grid;gap:12px;padding:16px;border:1px solid #dbe7df;border-radius:24px;background:#f8fbf9}
+    .npf-live-form-grid{display:grid;gap:10px;grid-template-columns:repeat(2,minmax(0,1fr))}
+    .npf-live-form-grid .wide{grid-column:1/-1}
+    .npf-slot.current{border-color:#0f7a4f;box-shadow:0 0 0 2px rgba(15,122,79,.14),0 12px 22px rgba(15,23,42,.06)}
+    .npf-slot.current .npf-slot-title{color:#0f7a4f}
     .npf-editor-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
     .npf-editor-grid .wide{grid-column:1/-1}
     .npf-range-wrap{display:grid;gap:6px}
@@ -115,9 +147,10 @@
     .npf-range-value{font:900 10px/1 Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#64748b;text-align:right}
     .npf-share-list{display:grid;gap:10px;margin:0;padding:0;list-style:none}
     .npf-share-list li{padding:12px 14px;border-radius:18px;border:1px solid #d9e6dd;background:#f8fbf9;font:700 13px/1.45 Arial,sans-serif;color:#334155}
-    @media (max-width:1320px){.npf-builder-column{grid-template-columns:1fr}.npf-builder-column>.npf-card:first-child{position:static}}
+    @media (max-width:1320px){.npf-grid{grid-template-columns:1fr}.npf-preview-card{position:static}.npf-builder-column{grid-template-columns:1fr}.npf-builder-column>.npf-card:first-child,.npf-live-stage-card{position:static}}
     @media (max-width:1480px){.npf-slots{max-height:none}.npf-preview-shell{max-height:none}.npf-preview-stage{min-width:0;width:100%;max-width:none}.npf-canvas{max-width:100%!important;width:100%!important}}
-    @media (max-width:640px){.npf-control-grid,.npf-control-grid.three,.npf-color-grid,.npf-editor-grid,.npf-summary-grid{grid-template-columns:1fr}.npf-pagebar,.npf-preview-tools,.npf-save-row{align-items:flex-start;flex-direction:column}.npf-step-pill{min-width:0;flex:1 1 44%}}
+    @media (max-width:980px){.npf-live-shell,.npf-live-control-shell,.npf-live-form-grid{grid-template-columns:1fr}}
+    @media (max-width:640px){.npf-control-grid,.npf-control-grid.three,.npf-color-grid,.npf-editor-grid,.npf-summary-grid{grid-template-columns:1fr}.npf-pagebar,.npf-preview-tools,.npf-save-row{align-items:flex-start;flex-direction:column}.npf-step-pill{min-width:0;flex:1 1 44%}.npf-live-chip{min-width:118px}.npf-live-title{font-size:20px}}
   `;
 
   function injectCss() {
@@ -342,6 +375,7 @@
         photoFit: 'cover',
         cardStyle: 'soft',
         rowFilter: '',
+        activeCardIndex: 0,
         pageIndex: 0,
         previewZoom: 100,
         showLogo: true,
@@ -419,6 +453,8 @@
     normalizeCards() {
       const incoming = Array.isArray(this.state.cards) ? this.state.cards : [];
       this.state.cards = incoming.length ? incoming.map((card, index) => this.normalizeCard(card, index)) : [this.createDefaultCard(0)];
+      const maxCardIndex = Math.max(0, this.state.cards.length - 1);
+      this.state.activeCardIndex = clamp(Number(this.state.activeCardIndex || 0), 0, maxCardIndex);
       this.clampPageIndex();
     }
 
@@ -662,9 +698,13 @@
             <div class="npf-stack" style="gap:6px">
               <div class="npf-label">Step 3</div>
               <strong>Style, Price, And Edit Each Photo</strong>
-              <div class="npf-helper">Change the flyer colors, then fine-tune each picture with brightness, contrast, saturation, warmth, blur, crop, and price placement while watching the live page preview.</div>
+              <div class="npf-helper">Work one selected flyer card at a time. Keep the live image stage in view while you blur, brighten, crop, move, and place pricing, then confirm the full page in the flyer preview.</div>
             </div>
           </div>
+          ${this.renderRowFilter('Search flyer rows for styling...')}
+          ${this.renderLiveCardSelector()}
+          ${this.renderLiveEditorPanel()}
+          ${this.renderActiveCardStyleControls()}
           <div>
             <div class="npf-label">Theme Presets</div>
             <div class="npf-theme-grid" data-themes></div>
@@ -689,9 +729,218 @@
               <div class="npf-segmented" data-card-style></div>
             </div>
           </div>
-          ${this.renderRowFilter('Search flyer rows for styling...')}
-          <div class="npf-slots">${this.renderCardEditorCards('style')}</div>
         </div>`;
+    }
+
+    getActiveEditorCardIndex(filteredCards) {
+      const filtered = Array.isArray(filteredCards) ? filteredCards : this.getFilteredEditorCards();
+      if (!filtered.length) {
+        this.state.activeCardIndex = 0;
+        return 0;
+      }
+      let index = Number(this.state.activeCardIndex || 0);
+      if (!Number.isFinite(index)) index = filtered[0].index;
+      if (!filtered.some((entry) => entry.index === index)) index = filtered[0].index;
+      index = clamp(index, 0, this.state.cards.length - 1);
+      this.state.activeCardIndex = index;
+      return index;
+    }
+
+    getActiveEditorEntry(filteredCards) {
+      const filtered = Array.isArray(filteredCards) ? filteredCards : this.getFilteredEditorCards();
+      if (!filtered.length) return null;
+      const activeIndex = this.getActiveEditorCardIndex(filtered);
+      return filtered.find((item) => item.index === activeIndex) || filtered[0];
+    }
+
+    buildLiveImageStyle(card, withBlur) {
+      const fit = this.state.photoFit === 'contain' ? 'contain' : 'cover';
+      const translateX = clamp(card.imageOffsetX || 0, -40, 40) * 0.35;
+      const translateY = clamp(card.imageOffsetY || 0, -40, 40) * 0.35;
+      const zoom = clamp(card.imageZoom || 100, 60, 220) / 100;
+      const filters = [
+        `brightness(${clamp(card.brightness || 100, 60, 170)}%)`,
+        `contrast(${clamp(card.contrast || 100, 60, 170)}%)`,
+        `saturate(${clamp(card.saturation || 100, 40, 190)}%)`
+      ];
+      if (withBlur) filters.push(`blur(${(Math.max(0, Number(card.backgroundBlur || 0)) * 0.6).toFixed(2)}px)`);
+      return `object-fit:${fit};transform:translate(${translateX}%, ${translateY}%) scale(${zoom});filter:${filters.join(' ')};`;
+    }
+
+    renderLiveCardSelector() {
+      const filtered = this.getFilteredEditorCards();
+      if (!filtered.length) return `<div class="npf-photo-empty">No rows match that search.</div>`;
+      const activeIndex = this.getActiveEditorCardIndex(filtered);
+      const chips = filtered.map(({ card, index }) => `
+        <button type="button" class="npf-live-chip ${index === activeIndex ? 'active' : ''}" data-live-card="${index}">
+          <span>Row ${index + 1}</span>
+          <strong data-live-card-title="${index}">${this.escape(card.heading || `Photo ${index + 1}`)}</strong>
+        </button>`).join('');
+      return `
+        <div class="npf-live-selector">
+          <div class="npf-save-row">
+            <div class="npf-stack" style="gap:4px">
+              <div class="npf-label">Selected Flyer Card</div>
+              <div class="npf-helper">Tap any row below to switch the live editor without leaving this step.</div>
+            </div>
+            <div class="npf-label" style="color:${this.state.theme.accent}">Editing Row ${activeIndex + 1}</div>
+          </div>
+          <div class="npf-live-card-list">${chips}</div>
+        </div>`;
+    }
+    renderLiveEditorPanel() {
+      const entry = this.getActiveEditorEntry();
+      if (!entry) return `<div class="npf-photo-empty" data-live-editor-panel>No rows match that search.</div>`;
+      const card = this.state.cards[entry.index] = this.normalizeCard(entry.card, entry.index);
+      const theme = this.state.theme;
+      const warmth = clamp(card.warmth || 0, -30, 30);
+      const warmthOpacity = Math.min(0.2, Math.abs(warmth) / 140).toFixed(3);
+      const warmthStyle = warmth ? `background:${warmth > 0 ? `rgba(255,191,120,${warmthOpacity})` : `rgba(125,175,255,${warmthOpacity})`};` : 'background:transparent;';
+      const focusWidth = clamp(card.focusArea || 62, 40, 90);
+      const focusHeight = Math.min(94, focusWidth + 8);
+      const priceText = formatPriceValue(card.price);
+      const priceSizeMap = { sm: 16, md: 20, lg: 24, xl: 28 };
+      const priceSize = priceSizeMap[String(card.priceSize || 'md')] || priceSizeMap.md;
+      let priceBadge = '';
+      if (priceText && String(card.pricePosition || 'top-right') !== 'below-title') {
+        const pos = String(card.pricePosition || 'top-right');
+        const isRight = pos === 'top-right' || pos === 'bottom-right';
+        const isBottom = pos === 'bottom-left' || pos === 'bottom-right';
+        const offsetX = Number(card.priceOffsetX || 0) * 1.2;
+        const offsetY = Number(card.priceOffsetY || 0) * 1.2;
+        const badgeStyle = `${isRight ? 'right:18px;' : 'left:18px;'}${isBottom ? 'bottom:18px;' : 'top:18px;'}transform:translate(${offsetX}px, ${offsetY}px);font-size:${priceSize}px;background:${theme.accent};`;
+        priceBadge = `<div class="npf-live-price-badge" style="${badgeStyle}">${this.escape(priceText)}</div>`;
+      }
+      const photoMarkup = card.imageSrc
+        ? `
+          <div class="npf-live-layer"><img alt="${this.escape(card.imageName || card.heading || 'Flyer photo')}" src="${this.escape(card.imageSrc)}" style="${this.buildLiveImageStyle(card, true)}"></div>
+          <div class="npf-live-focus" style="width:${focusWidth}%;height:${focusHeight}%"><div class="npf-live-layer"><img alt="${this.escape(card.imageName || card.heading || 'Flyer photo')}" src="${this.escape(card.imageSrc)}" style="${this.buildLiveImageStyle(card, false)}"></div></div>
+          <div class="npf-live-warmth" style="${warmthStyle}"></div>
+          ${priceBadge}`
+        : `<div class="npf-live-placeholder">Pick a saved row photo below to start styling this card.</div>`;
+      return `
+        <div class="npf-live-stage-card" data-live-editor-panel>
+          <div class="npf-live-shell">
+            <div class="npf-live-stage">
+              <div class="npf-live-frame">${photoMarkup}</div>
+              <div class="npf-live-copy">
+                <div class="npf-live-title" style="color:${theme.title}">${this.escape(card.heading || `Photo ${entry.index + 1}`)}</div>
+                ${priceText && String(card.pricePosition || 'top-right') === 'below-title' ? `<div class="npf-live-price-badge" style="position:relative;left:auto;right:auto;top:auto;bottom:auto;transform:translate(${Number(card.priceOffsetX || 0) * 1.2}px, ${Number(card.priceOffsetY || 0) * 1.2}px);font-size:${priceSize}px;background:${theme.accent};width:max-content;">${this.escape(priceText)}</div>` : ''}
+                ${card.subheading ? `<div class="npf-live-subheading" style="color:${theme.body}">${this.escape(card.subheading)}</div>` : ''}
+                ${card.note ? `<div class="npf-live-note" style="color:${theme.accent}">${this.escape(card.note)}</div>` : ''}
+              </div>
+            </div>
+            <div class="npf-live-sidebar">
+              <div class="npf-live-meta">
+                <div class="npf-label">Selected Photo</div>
+                <strong>${this.escape(card.imageName || 'No photo selected')}</strong>
+                <div class="muted">${Array.isArray(card.photoOptions) ? card.photoOptions.length : 0} saved row photo${Array.isArray(card.photoOptions) && card.photoOptions.length === 1 ? '' : 's'} available for this card.</div>
+              </div>
+              <div class="npf-live-meta">
+                <div class="npf-label">Live Settings</div>
+                <strong>Blur ${Number(card.backgroundBlur || 0)}px | Size ${Number(card.imageZoom || 100)}%</strong>
+                <div class="muted">Brightness ${Number(card.brightness || 100)}% | Contrast ${Number(card.contrast || 100)}% | Saturation ${Number(card.saturation || 100)}% | Warmth ${Number(card.warmth || 0)}</div>
+              </div>
+              <div class="npf-live-meta">
+                <div class="npf-label">Editing Tip</div>
+                <div class="muted">Leave this large stage in view while you adjust the selected row below. The page preview stays as the whole-flyer check, and the live stage is where you judge the image edits instantly.</div>
+              </div>
+            </div>
+          </div>
+        </div>`;
+    }
+    renderActiveCardStyleControls() {
+      const entry = this.getActiveEditorEntry();
+      if (!entry) return `<div class="npf-photo-empty" data-active-style-controls>No rows match that search.</div>`;
+      const index = entry.index;
+      const card = this.state.cards[index] = this.normalizeCard(entry.card, index);
+      const thumbStyle = card.imageSrc ? `background-image:url('${String(card.imageSrc || '').replace(/'/g, '%27')}');color:transparent;` : '';
+      const photoRail = card.photoOptions.length
+        ? `<div class="npf-photo-picker"><div class="npf-label" style="color:#0f7a4f">Row Photos</div><div class="npf-photo-rail">${card.photoOptions.map((option, optionIndex) => `<button type="button" class="npf-photo-option ${card.selectedPhotoIndex === optionIndex ? 'active' : ''}" data-photo-option="${index}:${optionIndex}" title="${this.escape(option.displayName || option.name || `Photo ${optionIndex + 1}`)}"><div class="npf-photo-mini" style="background-image:url('${String(option.src || '').replace(/'/g, '%27')}')"></div><div class="npf-photo-caption">${this.escape(option.displayName || option.name || `Photo ${optionIndex + 1}`)}</div></button>`).join('')}</div></div>`
+        : `<div class="npf-photo-empty">No saved row photos yet for this flyer item.</div>`;
+      return `
+        <div class="npf-stack" data-active-style-controls>
+          <div class="npf-kicker">
+            <div class="npf-stack" style="gap:6px">
+              <div class="npf-label">Selected Row Controls</div>
+              <strong>${this.escape(card.heading || `Photo ${index + 1}`)}</strong>
+              <div class="npf-helper">Everything here updates the live stage above right away, and the full flyer preview refreshes behind it.</div>
+            </div>
+            <button type="button" class="npf-btn ${card.enabled ? 'npf-primary' : 'npf-muted'}" data-toggle-card="${index}" data-card-toggle="${index}">${card.enabled ? 'Included' : 'Hidden'}</button>
+          </div>
+          <div class="npf-live-control-shell">
+            <div class="npf-live-control-card">
+              <div class="npf-label">Selected Image</div>
+              <div class="npf-thumb" data-card-thumb="${index}" style="${thumbStyle}">${card.imageSrc ? this.escape(card.imageName || `Photo ${index + 1}`) : 'Pick a saved row photo below'}</div>
+              <div class="npf-thumb-caption" data-card-caption="${index}">${this.escape(card.imageName || 'Tap the exact saved row photo you want on the flyer.')}</div>
+              ${photoRail}
+              <div class="npf-live-form-grid">
+                <label class="npf-label wide">Text Below Photo<input class="npf-input" data-card="heading" data-index="${index}" value="${this.escape(card.heading)}"></label>
+                <label class="npf-label">Subtext<textarea class="npf-textarea" data-card="subheading" data-index="${index}">${this.escape(card.subheading)}</textarea></label>
+                <label class="npf-label">Notes / Details<textarea class="npf-textarea" data-card="note" data-index="${index}">${this.escape(card.note)}</textarea></label>
+              </div>
+            </div>
+            <div class="npf-live-control-card">
+              <div class="npf-label">Price Placement</div>
+              <div class="npf-live-form-grid">
+                <label class="npf-label">Price<input class="npf-input" data-card="price" data-index="${index}" value="${this.escape(card.price || '')}" placeholder="$19.99"></label>
+                <label class="npf-label">Price Spot<select class="npf-select" data-card="pricePosition" data-index="${index}"><option value="top-left" ${String(card.pricePosition || 'top-right') === 'top-left' ? 'selected' : ''}>Top Left</option><option value="top-right" ${String(card.pricePosition || 'top-right') === 'top-right' ? 'selected' : ''}>Top Right</option><option value="bottom-left" ${String(card.pricePosition || 'top-right') === 'bottom-left' ? 'selected' : ''}>Bottom Left</option><option value="bottom-right" ${String(card.pricePosition || 'top-right') === 'bottom-right' ? 'selected' : ''}>Bottom Right</option><option value="below-title" ${String(card.pricePosition || 'top-right') === 'below-title' ? 'selected' : ''}>Below Title</option></select></label>
+                <label class="npf-label">Price Size<select class="npf-select" data-card="priceSize" data-index="${index}"><option value="sm" ${String(card.priceSize || 'md') === 'sm' ? 'selected' : ''}>Small</option><option value="md" ${String(card.priceSize || 'md') === 'md' ? 'selected' : ''}>Medium</option><option value="lg" ${String(card.priceSize || 'md') === 'lg' ? 'selected' : ''}>Large</option><option value="xl" ${String(card.priceSize || 'md') === 'xl' ? 'selected' : ''}>XL</option></select></label>
+                <label class="npf-label npf-range-wrap">Price X Offset<span class="npf-range-value">${this.formatRangeValue('priceOffsetX', card.priceOffsetX || 0)}</span><input type="range" min="-40" max="40" step="1" data-card="priceOffsetX" data-index="${index}" value="${Number(card.priceOffsetX || 0)}"></label>
+                <label class="npf-label npf-range-wrap">Price Y Offset<span class="npf-range-value">${this.formatRangeValue('priceOffsetY', card.priceOffsetY || 0)}</span><input type="range" min="-40" max="40" step="1" data-card="priceOffsetY" data-index="${index}" value="${Number(card.priceOffsetY || 0)}"></label>
+              </div>
+              <div class="npf-label" style="margin-top:4px">Photo Adjustments</div>
+              <div class="npf-live-form-grid">
+                <label class="npf-label npf-range-wrap">Brightness<span class="npf-range-value">${this.formatRangeValue('brightness', card.brightness || 100)}</span><input type="range" min="60" max="160" step="1" data-card="brightness" data-index="${index}" value="${Number(card.brightness || 100)}"></label>
+                <label class="npf-label npf-range-wrap">Contrast<span class="npf-range-value">${this.formatRangeValue('contrast', card.contrast || 100)}</span><input type="range" min="60" max="160" step="1" data-card="contrast" data-index="${index}" value="${Number(card.contrast || 100)}"></label>
+                <label class="npf-label npf-range-wrap">Saturation<span class="npf-range-value">${this.formatRangeValue('saturation', card.saturation || 100)}</span><input type="range" min="40" max="180" step="1" data-card="saturation" data-index="${index}" value="${Number(card.saturation || 100)}"></label>
+                <label class="npf-label npf-range-wrap">Warmth<span class="npf-range-value">${this.formatRangeValue('warmth', card.warmth || 0)}</span><input type="range" min="-30" max="30" step="1" data-card="warmth" data-index="${index}" value="${Number(card.warmth || 0)}"></label>
+                <label class="npf-label npf-range-wrap">Background Blur<span class="npf-range-value">${this.formatRangeValue('backgroundBlur', card.backgroundBlur || 0)}</span><input type="range" min="0" max="40" step="1" data-card="backgroundBlur" data-index="${index}" value="${Number(card.backgroundBlur || 0)}"></label>
+                <label class="npf-label npf-range-wrap">Focus Window<span class="npf-range-value">${this.formatRangeValue('focusArea', card.focusArea || 62)}</span><input type="range" min="40" max="90" step="1" data-card="focusArea" data-index="${index}" value="${Number(card.focusArea || 62)}"></label>
+                <label class="npf-label npf-range-wrap">Photo Size<span class="npf-range-value">${this.formatRangeValue('imageZoom', card.imageZoom || 100)}</span><input type="range" min="60" max="220" step="1" data-card="imageZoom" data-index="${index}" value="${Number(card.imageZoom || 100)}"></label>
+                <label class="npf-label npf-range-wrap">Move Left / Right<span class="npf-range-value">${this.formatRangeValue('imageOffsetX', card.imageOffsetX || 0)}</span><input type="range" min="-40" max="40" step="1" data-card="imageOffsetX" data-index="${index}" value="${Number(card.imageOffsetX || 0)}"></label>
+                <label class="npf-label npf-range-wrap wide">Move Up / Down<span class="npf-range-value">${this.formatRangeValue('imageOffsetY', card.imageOffsetY || 0)}</span><input type="range" min="-40" max="40" step="1" data-card="imageOffsetY" data-index="${index}" value="${Number(card.imageOffsetY || 0)}"></label>
+              </div>
+            </div>
+          </div>
+        </div>`;
+    }
+    bindLiveEditorEvents() {
+      Array.from(this.ui.stepBody.querySelectorAll('[data-live-card]')).forEach((button) => button.addEventListener('click', () => {
+        const viewportState = this.captureViewportState();
+        this.state.activeCardIndex = clamp(button.dataset.liveCard || 0, 0, this.state.cards.length - 1);
+        this.renderStepBody();
+        this.restoreViewportState(viewportState);
+        this.refreshCardSelectionUi();
+      }));
+      Array.from(this.ui.stepBody.querySelectorAll('[data-card-slot]')).forEach((slot) => slot.addEventListener('click', (event) => {
+        if (event.target.closest('input,textarea,select,button')) return;
+        const viewportState = this.captureViewportState();
+        this.state.activeCardIndex = clamp(slot.dataset.selectCard || slot.dataset.cardSlot || 0, 0, this.state.cards.length - 1);
+        this.renderStepBody();
+        this.restoreViewportState(viewportState);
+        this.refreshCardSelectionUi();
+      }));
+    }
+
+    refreshCardSelectionUi() {
+      const activeIndex = this.getActiveEditorCardIndex();
+      Array.from(this.ui.stepBody.querySelectorAll('[data-card-slot]')).forEach((slot) => {
+        slot.classList.toggle('current', Number(slot.dataset.cardSlot || -1) === activeIndex);
+      });
+      Array.from(this.ui.stepBody.querySelectorAll('[data-live-card]')).forEach((button) => {
+        const index = Number(button.dataset.liveCard || -1);
+        button.classList.toggle('active', index === activeIndex);
+        const label = button.querySelector('[data-live-card-title]');
+        if (label && this.state.cards[index]) label.textContent = String(this.state.cards[index].heading || '').trim() || `Photo ${index + 1}`;
+      });
+    }
+
+    refreshLiveEditorPanel() {
+      const panel = this.ui.stepBody ? this.ui.stepBody.querySelector('[data-live-editor-panel]') : null;
+      if (!panel) return;
+      panel.outerHTML = this.renderLiveEditorPanel();
+      this.refreshCardSelectionUi();
     }
 
     renderShareStep() {
@@ -888,6 +1137,7 @@
           input.oninput = () => {
             const viewportState = this.captureViewportState(input);
             this.state.theme[input.dataset.color] = input.value;
+            this.refreshLiveEditorPanel();
             this.persistState(false);
             this.scheduleRender(false, viewportState);
           };
@@ -917,6 +1167,9 @@
             const slotTitle = target.closest('.npf-slot') ? target.closest('.npf-slot').querySelector('.npf-slot-title') : null;
             if (slotTitle) slotTitle.textContent = String(value || '').trim() || `Photo ${index + 1}`;
           }
+          this.state.activeCardIndex = index;
+          this.refreshCardSelectionUi();
+          this.refreshLiveEditorPanel();
           const viewportState = this.captureViewportState(target);
           this.persistState(false);
           this.scheduleRender(false, viewportState);
@@ -924,6 +1177,8 @@
         field.addEventListener('input', applyCardField);
         field.addEventListener('change', applyCardField);
       });
+      this.bindLiveEditorEvents();
+      this.refreshCardSelectionUi();
     }
 
     captureFocusState(node) {
@@ -1086,25 +1341,41 @@
       const option = card.photoOptions[Number(optionIndex || 0)];
       if (!option) return;
       const viewportState = this.captureViewportState();
+      this.state.activeCardIndex = index;
       card.selectedPhotoIndex = Number(optionIndex || 0);
       card.imageSrc = option.src;
       card.imageName = option.name;
       card.enabled = true;
       this.persistState(false);
-      this.refreshCardSlotUi(index);
-      this.restoreViewportState(viewportState);
+      if (this.state.step === 'style') {
+        this.renderStepBody();
+        this.restoreViewportState(viewportState);
+        this.refreshCardSelectionUi();
+      } else {
+        this.refreshCardSlotUi(index);
+        this.restoreViewportState(viewportState);
+      }
+      this.refreshLiveEditorPanel();
       this.scheduleRender(false, viewportState);
     }
 
     toggleCardEnabled(index) {
       const cardIndex = clamp(index || 0, 0, this.state.cards.length - 1);
       const card = this.state.cards[cardIndex] = this.normalizeCard(this.state.cards[cardIndex], cardIndex);
+      this.state.activeCardIndex = cardIndex;
       const viewportState = this.captureViewportState();
       card.enabled = card.enabled === false;
       this.clampPageIndex();
       this.persistState(false);
-      this.refreshCardSlotUi(cardIndex);
-      this.restoreViewportState(viewportState);
+      if (this.state.step === 'style') {
+        this.renderStepBody();
+        this.restoreViewportState(viewportState);
+        this.refreshCardSelectionUi();
+      } else {
+        this.refreshCardSlotUi(cardIndex);
+        this.restoreViewportState(viewportState);
+      }
+      this.refreshLiveEditorPanel();
       this.renderPageControls();
       this.scheduleRender(false, viewportState);
     }
@@ -1152,7 +1423,7 @@
       this.renderTimer = setTimeout(() => {
         this.renderTimer = null;
         runRender().catch(() => {});
-      }, 90);
+      }, 36);
     }
 
     persistState(manual) {
