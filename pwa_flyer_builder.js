@@ -39,12 +39,14 @@
 
   const BUILDER_CSS = `
     .npf-wrap{display:grid;gap:18px}
-    .npf-grid{display:grid;gap:18px;grid-template-columns:minmax(620px,1.55fr) minmax(380px,1fr);align-items:start}
+    .npf-grid{display:grid;gap:18px;grid-template-columns:1fr;align-items:start}
     .npf-card{background:#fff;border:1px solid #d9e4dc;border-radius:28px;box-shadow:0 18px 40px rgba(15,23,42,.08);overflow:hidden}
     .npf-section{padding:18px}
     .npf-stack{display:grid;gap:12px}
     .npf-preview-column{display:grid;gap:18px;min-width:0}
-    .npf-preview-card{position:sticky;top:18px}
+    .npf-preview-card{position:static}
+    .npf-builder-column{display:grid;gap:18px;grid-template-columns:minmax(280px,320px) minmax(0,1fr);align-items:start}
+    .npf-builder-column>.npf-card:first-child{position:sticky;top:18px}
     .npf-label{font-size:11px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:#475569}
     .npf-input,.npf-textarea,.npf-select{width:100%;border:1px solid #d6e3db;border-radius:16px;padding:12px 14px;font:700 14px/1.4 Arial,sans-serif;color:#0f172a;background:#fff}
     .npf-textarea{min-height:92px;resize:vertical}
@@ -77,9 +79,9 @@
     .npf-step-pill strong{font:900 15px/1.1 Arial,sans-serif}
     .npf-pagebar{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
     .npf-pagebar .status{font:900 11px/1 Arial,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#64748b}
-    .npf-preview-shell{padding:18px;background:linear-gradient(180deg,#f8fafc 0%,#edf3f7 100%);border-radius:24px;overflow:auto;max-height:82vh;overscroll-behavior:contain}
-    .npf-preview-stage{min-width:640px}
-    .npf-canvas{width:100%;height:auto;display:block;border-radius:24px;box-shadow:0 28px 48px rgba(15,23,42,.18);background:#fff;transform-origin:top left}
+    .npf-preview-shell{padding:20px;background:linear-gradient(180deg,#f8fafc 0%,#edf3f7 100%);border-radius:24px;overflow:auto;max-height:82vh;overscroll-behavior:contain;display:flex;justify-content:center;align-items:flex-start}
+    .npf-preview-stage{width:100%;max-width:1120px;min-width:0;display:flex;justify-content:center}
+    .npf-canvas{width:100%;height:auto;display:block;border-radius:24px;box-shadow:0 28px 48px rgba(15,23,42,.18);background:#fff;transform-origin:top center}
     .npf-preview-tools{align-items:flex-start;justify-content:space-between}
     .npf-save-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-radius:20px;border:1px solid #deebe2;background:#f8fbf9}
     .npf-save-status{font:800 12px/1.45 Arial,sans-serif;color:#0f7a4f}
@@ -113,7 +115,8 @@
     .npf-range-value{font:900 10px/1 Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#64748b;text-align:right}
     .npf-share-list{display:grid;gap:10px;margin:0;padding:0;list-style:none}
     .npf-share-list li{padding:12px 14px;border-radius:18px;border:1px solid #d9e6dd;background:#f8fbf9;font:700 13px/1.45 Arial,sans-serif;color:#334155}
-    @media (max-width:1120px){.npf-grid{grid-template-columns:1fr}.npf-preview-card{position:static}.npf-slots{max-height:none}.npf-preview-shell{max-height:none}.npf-preview-stage{min-width:0}.npf-canvas{width:100%!important}}
+    @media (max-width:1320px){.npf-builder-column{grid-template-columns:1fr}.npf-builder-column>.npf-card:first-child{position:static}}
+    @media (max-width:1480px){.npf-slots{max-height:none}.npf-preview-shell{max-height:none}.npf-preview-stage{min-width:0;width:100%;max-width:none}.npf-canvas{max-width:100%!important;width:100%!important}}
     @media (max-width:640px){.npf-control-grid,.npf-control-grid.three,.npf-color-grid,.npf-editor-grid,.npf-summary-grid{grid-template-columns:1fr}.npf-pagebar,.npf-preview-tools,.npf-save-row{align-items:flex-start;flex-direction:column}.npf-step-pill{min-width:0;flex:1 1 44%}}
   `;
 
@@ -482,7 +485,7 @@
                 </div>
               </div>
             </div>
-            <div class="npf-stack">
+            <div class="npf-builder-column">
               <div class="npf-card">
                 <div class="npf-section npf-stack">
                   <div class="npf-kicker">
@@ -509,6 +512,7 @@
       this.ui.stepNav = this.root.querySelector('[data-steps]');
       this.ui.stepBody = this.root.querySelector('[data-step-body]');
       this.ui.previewZoomWrap = this.root.querySelector('[data-preview-zoom-wrap]');
+      this.ui.previewShell = this.root.querySelector('.npf-preview-shell');
       this.ui.saveStatus = this.root.querySelector('[data-save-status]');
 
       Array.from(this.root.querySelectorAll('[data-action]')).forEach((button) => button.addEventListener('click', () => this.handleAction(button.dataset.action)));
@@ -517,6 +521,7 @@
         this.clampPageIndex();
         this.persistState(false);
         this.renderPageControls();
+        this.scrollPreviewToTop();
         this.scheduleRender(true);
       }));
       const saveButton = this.root.querySelector('[data-save-progress]');
@@ -545,6 +550,7 @@
         this.state.step = button.dataset.step || 'layout';
         this.persistState();
         this.renderUi();
+        this.scrollPreviewToTop();
       }));
     }
 
@@ -557,6 +563,7 @@
         this.state.pageIndex = clamp(button.dataset.pageChip || 0, 0, pageCount - 1);
         this.persistState(false);
         this.renderPageControls();
+        this.scrollPreviewToTop();
         this.scheduleRender(true);
       }));
       if (this.ui.previewZoomWrap) {
@@ -774,7 +781,7 @@
             <div class="npf-slot-meta">
               <div class="npf-slot-badge">Row ${index + 1}</div>
               <div class="npf-slot-title">${this.escape(card.heading || `Photo ${index + 1}`)}</div>
-              <div class="npf-helper">${card.photoOptions.length} saved photo${card.photoOptions.length === 1 ? '' : 's'} � Selected image drives the final PDF.</div>
+              <div class="npf-helper">${card.photoOptions.length} saved photo${card.photoOptions.length === 1 ? '' : 's'} Ã¢â‚¬Â¢ Selected image drives the final PDF.</div>
             </div>
             <button type="button" class="npf-btn ${card.enabled ? 'npf-primary' : 'npf-muted'}" data-toggle-card="${index}">${card.enabled ? 'Included' : 'Hidden'}</button>
           </div>
@@ -822,6 +829,7 @@
 
       const rerenderWithCanvas = () => {
         this.renderUi();
+        this.scrollPreviewToTop();
         this.scheduleRender(true);
       };
 
@@ -1546,4 +1554,7 @@
 
   global.NativePwaFlyer = { Builder, THEMES, LAYOUT_PRESETS };
 })(window);
+
+
+
 
