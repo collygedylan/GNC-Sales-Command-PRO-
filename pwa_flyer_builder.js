@@ -91,7 +91,7 @@
     .npf-row-filter{position:relative}
     .npf-row-filter input{padding-right:44px}
     .npf-row-filter .count{position:absolute;right:14px;top:50%;transform:translateY(-50%);font:900 11px/1 Arial,sans-serif;color:#94a3b8}
-    .npf-slots{display:grid;gap:12px;max-height:960px;overflow:auto;padding-right:4px}
+    .npf-slots{display:grid;gap:12px;max-height:960px;overflow:auto;padding-right:4px;scroll-behavior:smooth;overscroll-behavior:contain}
     .npf-slot{border:1px solid #dbe7df;border-radius:22px;padding:14px;background:#f8fbf9}
     .npf-slot.off{opacity:.62}
     .npf-slot-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:10px}
@@ -101,9 +101,9 @@
     .npf-thumb{width:100%;aspect-ratio:16/10;border-radius:18px;background:#dfe9e2 center/cover no-repeat;border:1px dashed #bfd2c4;display:flex;align-items:center;justify-content:center;text-align:center;padding:12px;color:#64748b;font:800 12px/1.4 Arial,sans-serif}
     .npf-thumb-caption{margin-top:8px;font:800 11px/1.4 Arial,sans-serif;color:#475569}
     .npf-photo-picker{display:grid;gap:8px;margin-top:12px}
-    .npf-photo-rail{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+    .npf-photo-rail{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;scroll-snap-type:x proximity}
     .npf-photo-rail::-webkit-scrollbar{display:none}
-    .npf-photo-option{min-width:104px;width:104px;border:1px solid #d6e3db;background:#fff;border-radius:18px;padding:6px;display:grid;gap:6px;cursor:pointer;box-shadow:0 8px 18px rgba(15,23,42,.05)}
+    .npf-photo-option{min-width:104px;width:104px;border:1px solid #d6e3db;background:#fff;border-radius:18px;padding:6px;display:grid;gap:6px;cursor:pointer;box-shadow:0 8px 18px rgba(15,23,42,.05);scroll-snap-align:start}
     .npf-photo-option.active{border-color:#0f7a4f;box-shadow:0 0 0 2px rgba(15,122,79,.14),0 8px 18px rgba(15,23,42,.08)}
     .npf-photo-mini{width:100%;aspect-ratio:1/1;border-radius:12px;background:#dfe9e2 center/cover no-repeat}
     .npf-photo-caption{font:800 10px/1.3 Arial,sans-serif;color:#334155;text-align:left;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
@@ -408,9 +408,9 @@
       base.contrast = clamp(base.contrast || 100, 60, 160);
       base.saturation = clamp(base.saturation || 100, 40, 180);
       base.warmth = clamp(base.warmth || 0, -30, 30);
-      base.backgroundBlur = clamp(base.backgroundBlur || 0, 0, 24);
+      base.backgroundBlur = clamp(base.backgroundBlur || 0, 0, 40);
       base.focusArea = clamp(base.focusArea || 62, 40, 90);
-      base.imageZoom = clamp(base.imageZoom || 100, 80, 160);
+      base.imageZoom = clamp(base.imageZoom || 100, 60, 220);
       base.imageOffsetX = clamp(base.imageOffsetX || 0, -40, 40);
       base.imageOffsetY = clamp(base.imageOffsetY || 0, -40, 40);
       return base;
@@ -736,6 +736,11 @@
       return filteredCards.map(({ card, index }) => this.buildCardMarkup(card, index, mode)).join('');
     }
 
+    buildCardHelperText(card) {
+      const count = Array.isArray(card.photoOptions) ? card.photoOptions.length : 0;
+      return `${count} saved photo${count === 1 ? '' : 's'} - Tap a thumbnail below to switch the flyer image.`;
+    }
+
     buildCardMarkup(card, index, mode) {
       const thumbStyle = card.imageSrc ? `background-image:url('${String(card.imageSrc || '').replace(/'/g, '%27')}');color:transparent;` : '';
       const photoRail = card.photoOptions.length
@@ -767,30 +772,31 @@
                 <label class="npf-label npf-range-wrap">Contrast<span class="npf-range-value">${this.formatRangeValue('contrast', card.contrast || 100)}</span><input type="range" min="60" max="160" step="1" data-card="contrast" data-index="${index}" value="${Number(card.contrast || 100)}"></label>
                 <label class="npf-label npf-range-wrap">Saturation<span class="npf-range-value">${this.formatRangeValue('saturation', card.saturation || 100)}</span><input type="range" min="40" max="180" step="1" data-card="saturation" data-index="${index}" value="${Number(card.saturation || 100)}"></label>
                 <label class="npf-label npf-range-wrap">Warmth<span class="npf-range-value">${this.formatRangeValue('warmth', card.warmth || 0)}</span><input type="range" min="-30" max="30" step="1" data-card="warmth" data-index="${index}" value="${Number(card.warmth || 0)}"></label>
-                <label class="npf-label npf-range-wrap">Background Blur<span class="npf-range-value">${this.formatRangeValue('backgroundBlur', card.backgroundBlur || 0)}</span><input type="range" min="0" max="24" step="1" data-card="backgroundBlur" data-index="${index}" value="${Number(card.backgroundBlur || 0)}"></label>
+                <label class="npf-label npf-range-wrap">Background Blur<span class="npf-range-value">${this.formatRangeValue('backgroundBlur', card.backgroundBlur || 0)}</span><input type="range" min="0" max="40" step="1" data-card="backgroundBlur" data-index="${index}" value="${Number(card.backgroundBlur || 0)}"></label>
                 <label class="npf-label npf-range-wrap">Focus Window<span class="npf-range-value">${this.formatRangeValue('focusArea', card.focusArea || 62)}</span><input type="range" min="40" max="90" step="1" data-card="focusArea" data-index="${index}" value="${Number(card.focusArea || 62)}"></label>
-                <label class="npf-label npf-range-wrap">Photo Zoom<span class="npf-range-value">${this.formatRangeValue('imageZoom', card.imageZoom || 100)}</span><input type="range" min="80" max="160" step="1" data-card="imageZoom" data-index="${index}" value="${Number(card.imageZoom || 100)}"></label>
+                <label class="npf-label npf-range-wrap">Photo Size<span class="npf-range-value">${this.formatRangeValue('imageZoom', card.imageZoom || 100)}</span><input type="range" min="60" max="220" step="1" data-card="imageZoom" data-index="${index}" value="${Number(card.imageZoom || 100)}"></label>
                 <label class="npf-label npf-range-wrap">Move Left / Right<span class="npf-range-value">${this.formatRangeValue('imageOffsetX', card.imageOffsetX || 0)}</span><input type="range" min="-40" max="40" step="1" data-card="imageOffsetX" data-index="${index}" value="${Number(card.imageOffsetX || 0)}"></label>
                 <label class="npf-label npf-range-wrap wide">Move Up / Down<span class="npf-range-value">${this.formatRangeValue('imageOffsetY', card.imageOffsetY || 0)}</span><input type="range" min="-40" max="40" step="1" data-card="imageOffsetY" data-index="${index}" value="${Number(card.imageOffsetY || 0)}"></label>
               </div>
             </div>
           </div>`;
       return `
-        <div class="npf-slot ${card.enabled ? '' : 'off'}">
+        <div class="npf-slot ${card.enabled ? '' : 'off'}" data-card-slot="${index}">
           <div class="npf-slot-head">
             <div class="npf-slot-meta">
               <div class="npf-slot-badge">Row ${index + 1}</div>
-              <div class="npf-slot-title">${this.escape(card.heading || `Photo ${index + 1}`)}</div>
-              <div class="npf-helper">${card.photoOptions.length} saved photo${card.photoOptions.length === 1 ? '' : 's'} Ã¢â‚¬Â¢ Selected image drives the final PDF.</div>
+              <div class="npf-slot-title" data-card-title="${index}">${this.escape(card.heading || `Photo ${index + 1}`)}</div>
+              <div class="npf-helper" data-card-helper="${index}">${this.escape(this.buildCardHelperText(card))}</div>
             </div>
-            <button type="button" class="npf-btn ${card.enabled ? 'npf-primary' : 'npf-muted'}" data-toggle-card="${index}">${card.enabled ? 'Included' : 'Hidden'}</button>
+            <button type="button" class="npf-btn ${card.enabled ? 'npf-primary' : 'npf-muted'}" data-toggle-card="${index}" data-card-toggle="${index}">${card.enabled ? 'Included' : 'Hidden'}</button>
           </div>
-          <div class="npf-thumb" style="${thumbStyle}">${card.imageSrc ? this.escape(card.imageName || `Photo ${index + 1}`) : 'Pick a saved row photo below'}</div>
-          <div class="npf-thumb-caption">${this.escape(card.imageName || 'Tap the exact saved row photo you want on the flyer.')}</div>
+          <div class="npf-thumb" data-card-thumb="${index}" style="${thumbStyle}">${card.imageSrc ? this.escape(card.imageName || `Photo ${index + 1}`) : 'Pick a saved row photo below'}</div>
+          <div class="npf-thumb-caption" data-card-caption="${index}">${this.escape(card.imageName || 'Tap the exact saved row photo you want on the flyer.')}</div>
           ${photoRail}
           ${cardsFields}
         </div>`;
     }
+
 
     bindStepEvents() {
       const bindFieldInput = (selector, handler) => Array.from(this.ui.stepBody.querySelectorAll(selector)).forEach((node) => {
@@ -803,15 +809,17 @@
         const key = String(target.dataset.field || '').trim();
         this.state[key] = target.value;
         this.clampPageIndex();
+        const viewportState = this.captureViewportState(target);
         this.persistState(false);
         if (key === 'rowFilter') {
           const snapshot = this.captureFocusState(target);
           this.renderUi();
+          this.restoreViewportState(viewportState);
           this.restoreFocusState(snapshot);
-          this.scheduleRender(true);
+          this.scheduleRender(true, viewportState);
           return;
         }
-        this.scheduleRender(false);
+        this.scheduleRender(false, viewportState);
       });
 
       Array.from(this.ui.stepBody.querySelectorAll('[data-layout-preset]')).forEach((button) => button.addEventListener('click', () => this.applyLayoutPreset(button.dataset.layoutPreset)));
@@ -878,9 +886,10 @@
         Array.from(this.ui.stepBody.querySelectorAll('[data-color]')).forEach((input) => {
           input.value = this.state.theme[input.dataset.color] || '#ffffff';
           input.oninput = () => {
+            const viewportState = this.captureViewportState(input);
             this.state.theme[input.dataset.color] = input.value;
             this.persistState(false);
-            this.scheduleRender(false);
+            this.scheduleRender(false, viewportState);
           };
         });
       }
@@ -908,8 +917,9 @@
             const slotTitle = target.closest('.npf-slot') ? target.closest('.npf-slot').querySelector('.npf-slot-title') : null;
             if (slotTitle) slotTitle.textContent = String(value || '').trim() || `Photo ${index + 1}`;
           }
+          const viewportState = this.captureViewportState(target);
           this.persistState(false);
-          this.scheduleRender(false);
+          this.scheduleRender(false, viewportState);
         };
         field.addEventListener('input', applyCardField);
         field.addEventListener('change', applyCardField);
@@ -933,6 +943,71 @@
         const end = typeof snapshot.end === 'number' ? snapshot.end : snapshot.start;
         target.setSelectionRange(snapshot.start, end);
       }
+    }
+
+    captureViewportState(node) {
+      const doc = document.scrollingElement || document.documentElement || document.body;
+      return {
+        docTop: doc ? Number(doc.scrollTop || 0) : 0,
+        docLeft: doc ? Number(doc.scrollLeft || 0) : 0,
+        slot: this.captureSlotScrollState(),
+        focus: this.captureFocusState(node)
+      };
+    }
+
+    restoreViewportState(snapshot) {
+      if (!snapshot) return;
+      const doc = document.scrollingElement || document.documentElement || document.body;
+      if (doc) {
+        doc.scrollTop = Number(snapshot.docTop || 0);
+        doc.scrollLeft = Number(snapshot.docLeft || 0);
+      }
+      this.restoreSlotScrollState(snapshot.slot);
+      if (snapshot.focus) this.restoreFocusState(snapshot.focus);
+    }
+
+    captureSlotScrollState() {
+      const slots = this.ui.stepBody ? this.ui.stepBody.querySelector('.npf-slots') : null;
+      if (!slots) return null;
+      return { top: Number(slots.scrollTop || 0), left: Number(slots.scrollLeft || 0) };
+    }
+
+    restoreSlotScrollState(snapshot) {
+      if (!snapshot) return;
+      const slots = this.ui.stepBody ? this.ui.stepBody.querySelector('.npf-slots') : null;
+      if (!slots) return;
+      slots.scrollTop = Number(snapshot.top || 0);
+      slots.scrollLeft = Number(snapshot.left || 0);
+    }
+
+    refreshCardSlotUi(index) {
+      const slot = this.ui.stepBody ? this.ui.stepBody.querySelector(`[data-card-slot="${index}"]`) : null;
+      if (!slot || !this.state.cards[index]) return;
+      const card = this.state.cards[index] = this.normalizeCard(this.state.cards[index], index);
+      slot.classList.toggle('off', !card.enabled);
+      const title = slot.querySelector(`[data-card-title="${index}"]`);
+      if (title) title.textContent = String(card.heading || '').trim() || `Photo ${index + 1}`;
+      const helper = slot.querySelector(`[data-card-helper="${index}"]`);
+      if (helper) helper.textContent = this.buildCardHelperText(card);
+      const toggle = slot.querySelector(`[data-card-toggle="${index}"]`);
+      if (toggle) {
+        toggle.textContent = card.enabled ? 'Included' : 'Hidden';
+        toggle.classList.toggle('npf-primary', !!card.enabled);
+        toggle.classList.toggle('npf-muted', !card.enabled);
+      }
+      const thumb = slot.querySelector(`[data-card-thumb="${index}"]`);
+      if (thumb) {
+        thumb.style.backgroundImage = card.imageSrc ? `url("${String(card.imageSrc || '').replace(/"/g, '%22')}")` : '';
+        thumb.style.color = card.imageSrc ? 'transparent' : '#64748b';
+        thumb.textContent = card.imageSrc ? (String(card.imageName || '').trim() || `Photo ${index + 1}`) : 'Pick a saved row photo below';
+      }
+      const caption = slot.querySelector(`[data-card-caption="${index}"]`);
+      if (caption) caption.textContent = String(card.imageName || '').trim() || 'Tap the exact saved row photo you want on the flyer.';
+      Array.from(slot.querySelectorAll('[data-photo-option]')).forEach((button) => {
+        const parts = String(button.dataset.photoOption || '').split(':');
+        const optionIndex = Number(parts[1] || 0);
+        button.classList.toggle('active', optionIndex === Number(card.selectedPhotoIndex || -1));
+      });
     }
 
     formatRangeValue(key, value) {
@@ -1000,12 +1075,40 @@
       if (!Number.isFinite(Number(this.state.pageIndex))) this.state.pageIndex = 0;
       this.state.pageIndex = clamp(this.state.pageIndex || 0, 0, maxPage);
     }
-
-    clampPageIndex() {
-      const maxPage = this.getPageCount() - 1;
-      if (!Number.isFinite(Number(this.state.pageIndex))) this.state.pageIndex = 0;
-      this.state.pageIndex = clamp(this.state.pageIndex || 0, 0, maxPage);
+    saveProgress() {
+      this.persistState(true);
+      this.scheduleRender(true);
     }
+
+    selectPhotoOption(slotIndex, optionIndex) {
+      const index = clamp(slotIndex || 0, 0, this.state.cards.length - 1);
+      const card = this.state.cards[index] = this.normalizeCard(this.state.cards[index], index);
+      const option = card.photoOptions[Number(optionIndex || 0)];
+      if (!option) return;
+      const viewportState = this.captureViewportState();
+      card.selectedPhotoIndex = Number(optionIndex || 0);
+      card.imageSrc = option.src;
+      card.imageName = option.name;
+      card.enabled = true;
+      this.persistState(false);
+      this.refreshCardSlotUi(index);
+      this.restoreViewportState(viewportState);
+      this.scheduleRender(false, viewportState);
+    }
+
+    toggleCardEnabled(index) {
+      const cardIndex = clamp(index || 0, 0, this.state.cards.length - 1);
+      const card = this.state.cards[cardIndex] = this.normalizeCard(this.state.cards[cardIndex], cardIndex);
+      const viewportState = this.captureViewportState();
+      card.enabled = card.enabled === false;
+      this.clampPageIndex();
+      this.persistState(false);
+      this.refreshCardSlotUi(cardIndex);
+      this.restoreViewportState(viewportState);
+      this.renderPageControls();
+      this.scheduleRender(false, viewportState);
+    }
+
 
     formatSavedTime(timestamp) {
       const date = timestamp ? new Date(timestamp) : new Date();
@@ -1029,19 +1132,27 @@
       this.ui.canvas.style.maxWidth = 'none';
     }
 
-    scheduleRender(immediate) {
+    scrollPreviewToTop() {
+      if (this.ui.previewShell) this.ui.previewShell.scrollTop = 0;
+    }
+
+    scheduleRender(immediate, viewportState) {
+      const runRender = async () => {
+        await this.render();
+        if (viewportState) this.restoreViewportState(viewportState);
+      };
       if (this.renderTimer) {
         clearTimeout(this.renderTimer);
         this.renderTimer = null;
       }
       if (immediate) {
-        this.render().catch(() => {});
+        runRender().catch(() => {});
         return;
       }
       this.renderTimer = setTimeout(() => {
         this.renderTimer = null;
-        this.render().catch(() => {});
-      }, 70);
+        runRender().catch(() => {});
+      }, 90);
     }
 
     persistState(manual) {
@@ -1067,34 +1178,6 @@
       } catch (error) {}
     }
 
-    saveProgress() {
-      this.persistState(true);
-      this.scheduleRender(true);
-    }
-
-    selectPhotoOption(slotIndex, optionIndex) {
-      const index = clamp(slotIndex || 0, 0, this.state.cards.length - 1);
-      const card = this.state.cards[index] = this.normalizeCard(this.state.cards[index], index);
-      const option = card.photoOptions[Number(optionIndex || 0)];
-      if (!option) return;
-      card.selectedPhotoIndex = Number(optionIndex || 0);
-      card.imageSrc = option.src;
-      card.imageName = option.name;
-      card.enabled = true;
-      this.persistState(false);
-      this.renderUi();
-      this.scheduleRender(true);
-    }
-
-    toggleCardEnabled(index) {
-      const cardIndex = clamp(index || 0, 0, this.state.cards.length - 1);
-      const card = this.state.cards[cardIndex] = this.normalizeCard(this.state.cards[cardIndex], cardIndex);
-      card.enabled = card.enabled === false;
-      this.clampPageIndex();
-      this.persistState(false);
-      this.renderUi();
-      this.scheduleRender(true);
-    }
 
     async getCachedImage(src) {
       const key = String(src || '').trim();
@@ -1114,7 +1197,7 @@
       const baseScale = fitMode === 'contain'
         ? Math.min(frameWidth / image.width, frameHeight / image.height)
         : Math.max(frameWidth / image.width, frameHeight / image.height);
-      const zoom = clamp(card.imageZoom || 100, 80, 180) / 100;
+      const zoom = clamp(card.imageZoom || 100, 60, 220) / 100;
       const scaleValue = baseScale * zoom;
       const drawWidth = image.width * scaleValue;
       const drawHeight = image.height * scaleValue;
