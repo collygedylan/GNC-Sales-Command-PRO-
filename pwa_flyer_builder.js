@@ -409,6 +409,7 @@
         imageName: '',
         photoOptions: [],
         selectedPhotoIndex: -1,
+        sourceUniqueId: '',
         enabled: true
       };
     }
@@ -867,7 +868,7 @@
       const card = this.state.cards[index] = this.normalizeCard(entry.card, index);
       const thumbStyle = card.imageSrc ? `background-image:url('${String(card.imageSrc || '').replace(/'/g, '%27')}');color:transparent;` : '';
       const photoRail = card.photoOptions.length
-        ? `<div class="npf-photo-picker"><div class="npf-label" style="color:#0f7a4f">Row Photos</div><div class="npf-photo-rail">${card.photoOptions.map((option, optionIndex) => `<button type="button" class="npf-photo-option ${card.selectedPhotoIndex === optionIndex ? 'active' : ''}" data-photo-option="${index}:${optionIndex}" title="${this.escape(option.displayName || option.name || `Photo ${optionIndex + 1}`)}"><div class="npf-photo-mini" style="background-image:url('${String(option.src || '').replace(/'/g, '%27')}')"></div><div class="npf-photo-caption">${this.escape(option.displayName || option.name || `Photo ${optionIndex + 1}`)}</div></button>`).join('')}</div></div>`
+        ? `<div class="npf-photo-picker"><div class="npf-label" style="color:#0f7a4f">Row Photos</div><div class="npf-photo-rail">${card.photoOptions.map((option, optionIndex) => `<button type="button" class="npf-photo-option ${card.selectedPhotoIndex === optionIndex ? 'active' : ''}" data-photo-option="${index}:${optionIndex}" title="${this.escape(option.displayName || option.name || `Photo ${optionIndex + 1}`)}"><div class="npf-photo-mini" style="background-image:url('${String(option.src || '').replace(/'/g, '%27')}')"></div><div class="npf-photo-caption">${this.escape(option.displayName || option.name || `Photo ${optionIndex + 1}`)}</div></button>`).join('')}</div><div class="npf-actions" style="margin-top:10px"><button type="button" class="npf-btn npf-secondary" data-duplicate-card="${index}">Add Another Photo From This Row</button></div></div>`
         : `<div class="npf-photo-empty">No saved row photos yet for this flyer item.</div>`;
       return `
         <div class="npf-stack" data-active-style-controls>
@@ -998,13 +999,14 @@
 
     buildCardHelperText(card) {
       const count = Array.isArray(card.photoOptions) ? card.photoOptions.length : 0;
-      return `${count} saved photo${count === 1 ? '' : 's'} - Tap a thumbnail below to switch the flyer image.`;
+      return `${count} saved photo${count === 1 ? '' : 's'} - Tap a thumbnail to switch the flyer image, or add this row again to use another saved photo.`;
     }
+
 
     buildCardMarkup(card, index, mode) {
       const thumbStyle = card.imageSrc ? `background-image:url('${String(card.imageSrc || '').replace(/'/g, '%27')}');color:transparent;` : '';
       const photoRail = card.photoOptions.length
-        ? `<div class="npf-photo-picker"><div class="npf-label" style="color:#0f7a4f">Row Photos</div><div class="npf-photo-rail">${card.photoOptions.map((option, optionIndex) => `<button type="button" class="npf-photo-option ${card.selectedPhotoIndex === optionIndex ? 'active' : ''}" data-photo-option="${index}:${optionIndex}" title="${this.escape(option.displayName || option.name || `Photo ${optionIndex + 1}`)}"><div class="npf-photo-mini" style="background-image:url('${String(option.src || '').replace(/'/g, '%27')}')"></div><div class="npf-photo-caption">${this.escape(option.displayName || option.name || `Photo ${optionIndex + 1}`)}</div></button>`).join('')}</div></div>`
+        ? `<div class="npf-photo-picker"><div class="npf-label" style="color:#0f7a4f">Row Photos</div><div class="npf-photo-rail">${card.photoOptions.map((option, optionIndex) => `<button type="button" class="npf-photo-option ${card.selectedPhotoIndex === optionIndex ? 'active' : ''}" data-photo-option="${index}:${optionIndex}" title="${this.escape(option.displayName || option.name || `Photo ${optionIndex + 1}`)}"><div class="npf-photo-mini" style="background-image:url('${String(option.src || '').replace(/'/g, '%27')}')"></div><div class="npf-photo-caption">${this.escape(option.displayName || option.name || `Photo ${optionIndex + 1}`)}</div></button>`).join('')}</div><div class="npf-actions" style="margin-top:10px"><button type="button" class="npf-btn npf-secondary" data-duplicate-card="${index}">Add Another Photo From This Row</button></div></div>`
         : `<div class="npf-photo-empty">No saved row photos yet for this flyer item.</div>`;
       const cardsFields = mode === 'cards'
         ? `
@@ -1158,6 +1160,9 @@
       Array.from(this.ui.stepBody.querySelectorAll('[data-photo-option]')).forEach((button) => button.addEventListener('click', () => {
         const parts = String(button.dataset.photoOption || '').split(':');
         this.selectPhotoOption(Number(parts[0] || 0), Number(parts[1] || 0));
+      }));
+      Array.from(this.ui.stepBody.querySelectorAll('[data-duplicate-card]')).forEach((button) => button.addEventListener('click', () => {
+        this.duplicateCard(Number(button.dataset.duplicateCard || 0));
       }));
       Array.from(this.ui.stepBody.querySelectorAll('[data-toggle-card]')).forEach((button) => button.addEventListener('click', () => {
         this.toggleCardEnabled(Number(button.dataset.toggleCard || 0));
@@ -1386,6 +1391,31 @@
       this.refreshLiveEditorPanel();
       this.scheduleRender(false, viewportState);
     }
+    duplicateCard(index) {
+      const cardIndex = clamp(index || 0, 0, this.state.cards.length - 1);
+      const sourceCard = this.state.cards[cardIndex] = this.normalizeCard(this.state.cards[cardIndex], cardIndex);
+      const viewportState = this.captureViewportState();
+      const clone = Object.assign({}, sourceCard, {
+        photoOptions: (Array.isArray(sourceCard.photoOptions) ? sourceCard.photoOptions : []).map((option) => Object.assign({}, option)),
+        enabled: true
+      });
+      if (clone.photoOptions.length > 1) {
+        const nextIndex = (Number(sourceCard.selectedPhotoIndex || 0) + 1) % clone.photoOptions.length;
+        clone.selectedPhotoIndex = nextIndex;
+        clone.imageSrc = clone.photoOptions[nextIndex].src;
+        clone.imageName = clone.photoOptions[nextIndex].name;
+      }
+      this.state.cards.splice(cardIndex + 1, 0, clone);
+      this.normalizeCards();
+      this.state.activeCardIndex = Math.min(cardIndex + 1, this.state.cards.length - 1);
+      this.queuePersistState();
+      this.renderStepBody();
+      this.restoreViewportState(viewportState);
+      this.refreshCardSelectionUi();
+      this.refreshLiveEditorPanel();
+      this.scheduleRender(true, viewportState);
+    }
+
 
     toggleCardEnabled(index) {
       const cardIndex = clamp(index || 0, 0, this.state.cards.length - 1);
