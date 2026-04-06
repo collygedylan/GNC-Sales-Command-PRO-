@@ -1,4 +1,4 @@
-ï»¿(function (global) {
+(function (global) {
   'use strict';
 
   const THEMES = {
@@ -29,16 +29,17 @@
     { id: '3x6', label: '18', columns: 3, rows: 6 }
   ];
 
+  const PREVIEW_ZOOMS = [60, 80, 100, 125, 150];
   const PAGE_WIDTH = 1275;
   const PAGE_HEIGHT = 1650;
   const EXPORT_SCALE = 2;
   const PDF_PAGE_WIDTH = 612;
   const PDF_PAGE_HEIGHT = 792;
-  const BUILDER_STATE_STORAGE_KEY = 'gnc_native_flyer_builder_state_v3';
+  const BUILDER_STATE_STORAGE_KEY = 'gnc_native_flyer_builder_state_v5';
 
   const BUILDER_CSS = `
     .npf-wrap{display:grid;gap:18px}
-    .npf-grid{display:grid;gap:18px;grid-template-columns:minmax(360px,1fr) minmax(340px,460px);align-items:start}
+    .npf-grid{display:grid;gap:18px;grid-template-columns:minmax(620px,1.55fr) minmax(380px,1fr);align-items:start}
     .npf-card{background:#fff;border:1px solid #d9e4dc;border-radius:28px;box-shadow:0 18px 40px rgba(15,23,42,.08);overflow:hidden}
     .npf-section{padding:18px}
     .npf-stack{display:grid;gap:12px}
@@ -46,14 +47,15 @@
     .npf-preview-card{position:sticky;top:18px}
     .npf-label{font-size:11px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:#475569}
     .npf-input,.npf-textarea,.npf-select{width:100%;border:1px solid #d6e3db;border-radius:16px;padding:12px 14px;font:700 14px/1.4 Arial,sans-serif;color:#0f172a;background:#fff}
-    .npf-textarea{min-height:76px;resize:vertical}
+    .npf-textarea{min-height:92px;resize:vertical}
     .npf-select{appearance:none}
     .npf-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:42px;padding:10px 16px;border-radius:999px;border:1px solid transparent;font:900 11px/1 Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;transition:.18s ease;text-align:center}
     .npf-primary{background:#0f7a4f;color:#fff}
     .npf-secondary{background:#eef6f1;color:#0f7a4f;border-color:#cfe4d6}
     .npf-muted{background:#f8fafc;color:#475569;border-color:#d8e0ea}
+    .npf-soft{background:#fff;color:#0f7a4f;border-color:#dbe6dd}
     .npf-btn.active{box-shadow:inset 0 0 0 2px rgba(15,122,79,.18)}
-    .npf-actions,.npf-theme-grid,.npf-segmented,.npf-page-chips,.npf-step-nav{display:flex;flex-wrap:wrap;gap:8px}
+    .npf-actions,.npf-theme-grid,.npf-segmented,.npf-page-chips,.npf-step-nav,.npf-preview-tools{display:flex;flex-wrap:wrap;gap:8px}
     .npf-theme-chip{min-width:96px;justify-content:flex-start}
     .npf-theme-chip .swatch{width:16px;height:16px;border-radius:999px;border:2px solid rgba(255,255,255,.72);box-shadow:0 0 0 1px rgba(15,23,42,.12)}
     .npf-control-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
@@ -63,8 +65,8 @@
     .npf-color-chip span{font:900 10px/1 Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#64748b}
     .npf-color-chip input{width:100%;height:42px;border:none;background:transparent;padding:0;cursor:pointer}
     .npf-helper{font:700 12px/1.5 Arial,sans-serif;color:#64748b}
-    .npf-kicker{display:flex;align-items:center;justify-content:space-between;gap:12px}
-    .npf-kicker strong{font:900 24px/1.08 Arial,sans-serif;color:#0f172a}
+    .npf-kicker{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+    .npf-kicker strong{font:900 26px/1.08 Arial,sans-serif;color:#0f172a}
     .npf-summary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
     .npf-stat{padding:14px;border-radius:20px;background:#f8fbf9;border:1px solid #deebe2}
     .npf-stat-value{font:900 22px/1 Arial,sans-serif;color:#0f172a}
@@ -73,15 +75,21 @@
     .npf-step-pill.active{background:#0f7a4f;color:#fff;border-color:#0f7a4f;box-shadow:0 14px 28px rgba(15,122,79,.18)}
     .npf-step-pill span{font:900 10px/1 Arial,sans-serif;letter-spacing:.14em;text-transform:uppercase;opacity:.72}
     .npf-step-pill strong{font:900 15px/1.1 Arial,sans-serif}
-    .npf-preview-shell{padding:20px;background:linear-gradient(180deg,#f8fafc 0%,#edf3f7 100%);border-radius:24px}
-    .npf-canvas{width:100%;height:auto;display:block;border-radius:24px;box-shadow:0 28px 48px rgba(15,23,42,.18);background:#fff}
-    .npf-pagebar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+    .npf-pagebar{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
     .npf-pagebar .status{font:900 11px/1 Arial,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#64748b}
+    .npf-preview-shell{padding:18px;background:linear-gradient(180deg,#f8fafc 0%,#edf3f7 100%);border-radius:24px;overflow:auto;max-height:82vh;overscroll-behavior:contain}
+    .npf-preview-stage{min-width:640px}
+    .npf-canvas{width:100%;height:auto;display:block;border-radius:24px;box-shadow:0 28px 48px rgba(15,23,42,.18);background:#fff;transform-origin:top left}
+    .npf-preview-tools{align-items:flex-start;justify-content:space-between}
+    .npf-save-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-radius:20px;border:1px solid #deebe2;background:#f8fbf9}
+    .npf-save-status{font:800 12px/1.45 Arial,sans-serif;color:#0f7a4f}
+    .npf-save-status[data-state="working"],.npf-save-status[data-state="dirty"]{color:#b45309}
+    .npf-save-status[data-state="saved"]{color:#0f7a4f}
     .npf-export-note{font:700 12px/1.45 Arial,sans-serif;color:#64748b}
     .npf-row-filter{position:relative}
     .npf-row-filter input{padding-right:44px}
     .npf-row-filter .count{position:absolute;right:14px;top:50%;transform:translateY(-50%);font:900 11px/1 Arial,sans-serif;color:#94a3b8}
-    .npf-slots{display:grid;gap:12px;max-height:920px;overflow:auto;padding-right:4px}
+    .npf-slots{display:grid;gap:12px;max-height:960px;overflow:auto;padding-right:4px}
     .npf-slot{border:1px solid #dbe7df;border-radius:22px;padding:14px;background:#f8fbf9}
     .npf-slot.off{opacity:.62}
     .npf-slot-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:10px}
@@ -101,12 +109,12 @@
     .npf-editor-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
     .npf-editor-grid .wide{grid-column:1/-1}
     .npf-range-wrap{display:grid;gap:6px}
-    .npf-range-wrap input[type=range]{width:100%}
+    .npf-range-wrap input[type=range]{width:100%;accent-color:#0f7a4f}
     .npf-range-value{font:900 10px/1 Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#64748b;text-align:right}
     .npf-share-list{display:grid;gap:10px;margin:0;padding:0;list-style:none}
     .npf-share-list li{padding:12px 14px;border-radius:18px;border:1px solid #d9e6dd;background:#f8fbf9;font:700 13px/1.45 Arial,sans-serif;color:#334155}
-    @media (max-width:1120px){.npf-grid{grid-template-columns:1fr}.npf-preview-card{position:static}.npf-slots{max-height:none}}
-    @media (max-width:640px){.npf-control-grid,.npf-control-grid.three,.npf-color-grid,.npf-editor-grid,.npf-summary-grid{grid-template-columns:1fr}.npf-pagebar{align-items:flex-start;flex-direction:column}.npf-step-pill{min-width:0;flex:1 1 44%}}
+    @media (max-width:1120px){.npf-grid{grid-template-columns:1fr}.npf-preview-card{position:static}.npf-slots{max-height:none}.npf-preview-shell{max-height:none}.npf-preview-stage{min-width:0}.npf-canvas{width:100%!important}}
+    @media (max-width:640px){.npf-control-grid,.npf-control-grid.three,.npf-color-grid,.npf-editor-grid,.npf-summary-grid{grid-template-columns:1fr}.npf-pagebar,.npf-preview-tools,.npf-save-row{align-items:flex-start;flex-direction:column}.npf-step-pill{min-width:0;flex:1 1 44%}}
   `;
 
   function injectCss() {
@@ -315,6 +323,9 @@
       this.logoUrl = opts.logoUrl;
       this.imageCache = new Map();
       this.logoPromise = null;
+      this.renderTimer = null;
+      this.saveStatusMessage = 'Draft ready. Auto-save is on for this device.';
+      this.saveStatusState = 'saved';
       this.state = {
         step: 'layout',
         themeKey: opts.theme,
@@ -329,6 +340,7 @@
         cardStyle: 'soft',
         rowFilter: '',
         pageIndex: 0,
+        previewZoom: 100,
         showLogo: true,
         cards: Array.from({ length: Math.max(1, opts.slots) }).map((_, index) => this.createDefaultCard(index))
       };
@@ -346,6 +358,15 @@
         priceSize: 'md',
         priceOffsetX: 0,
         priceOffsetY: 0,
+        brightness: 100,
+        contrast: 100,
+        saturation: 100,
+        warmth: 0,
+        backgroundBlur: 0,
+        focusArea: 62,
+        imageZoom: 100,
+        imageOffsetX: 0,
+        imageOffsetY: 0,
         imageSrc: '',
         imageName: '',
         photoOptions: [],
@@ -380,6 +401,15 @@
       base.enabled = base.enabled !== false;
       base.priceOffsetX = clamp(base.priceOffsetX || 0, -40, 40);
       base.priceOffsetY = clamp(base.priceOffsetY || 0, -40, 40);
+      base.brightness = clamp(base.brightness || 100, 60, 160);
+      base.contrast = clamp(base.contrast || 100, 60, 160);
+      base.saturation = clamp(base.saturation || 100, 40, 180);
+      base.warmth = clamp(base.warmth || 0, -30, 30);
+      base.backgroundBlur = clamp(base.backgroundBlur || 0, 0, 24);
+      base.focusArea = clamp(base.focusArea || 62, 40, 90);
+      base.imageZoom = clamp(base.imageZoom || 100, 80, 160);
+      base.imageOffsetX = clamp(base.imageOffsetX || 0, -40, 40);
+      base.imageOffsetY = clamp(base.imageOffsetY || 0, -40, 40);
       return base;
     }
 
@@ -399,11 +429,11 @@
           <div class="npf-grid">
             <div class="npf-preview-column">
               <div class="npf-card npf-preview-card">
-                <div class="npf-section">
+                <div class="npf-section npf-stack">
                   <div class="npf-pagebar">
                     <div>
                       <div class="npf-label">Live Preview</div>
-                      <div class="npf-helper" style="margin-top:6px">See the exact page while you change layout, photos, colors, and pricing.</div>
+                      <div class="npf-helper" style="margin-top:6px">Review a larger working page while you edit. PDF export always includes the whole finished flyer.</div>
                     </div>
                     <div class="npf-actions">
                       <button type="button" class="npf-btn npf-muted" data-page-nav="prev">Previous</button>
@@ -411,9 +441,27 @@
                       <button type="button" class="npf-btn npf-muted" data-page-nav="next">Next</button>
                     </div>
                   </div>
+                  <div class="npf-preview-tools">
+                    <div class="npf-stack" style="gap:4px">
+                      <div class="npf-label">Preview Zoom</div>
+                      <div class="npf-helper">Use this larger view while you work. Share and email always use the complete flyer PDF.</div>
+                    </div>
+                    <div class="npf-segmented" data-preview-zoom-wrap></div>
+                  </div>
                   <div class="npf-page-chips" data-page-chips></div>
-                  <div class="npf-preview-shell" style="margin-top:14px">
-                    <canvas class="npf-canvas"></canvas>
+                  <div class="npf-preview-shell">
+                    <div class="npf-preview-stage">
+                      <canvas class="npf-canvas"></canvas>
+                    </div>
+                  </div>
+                  <div class="npf-save-row">
+                    <div class="npf-stack" style="gap:4px">
+                      <div class="npf-label">Draft Progress</div>
+                      <div class="npf-save-status" data-save-status>Draft ready.</div>
+                    </div>
+                    <div class="npf-actions">
+                      <button type="button" class="npf-btn npf-primary" data-save-progress>Save Progress</button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -421,7 +469,7 @@
                 <div class="npf-section npf-stack">
                   <div>
                     <div class="npf-label">Export & Share</div>
-                    <div class="npf-export-note" style="margin-top:6px">Download a PDF, share a PDF from your phone, or fall back to an Outlook draft with a PDF link.</div>
+                    <div class="npf-export-note" style="margin-top:6px">Download, share, or email the full flyer PDF. The current page preview is only for editing.</div>
                   </div>
                   <div class="npf-actions">
                     <button type="button" class="npf-btn npf-primary" data-action="pdf">Download PDF</button>
@@ -441,7 +489,7 @@
                     <div class="npf-stack" style="gap:6px">
                       <div class="npf-label">Flyer Builder</div>
                       <strong>Build It Step By Step</strong>
-                      <div class="npf-helper">Pick the page layout first, then row photos, then colors and prices, then send the final flyer as a PDF.</div>
+                      <div class="npf-helper">Choose layout, then photos and text, then styling and pricing, then send the whole finished flyer as a PDF.</div>
                     </div>
                   </div>
                   <div class="npf-step-nav" data-steps></div>
@@ -460,16 +508,21 @@
       this.ui.pageChips = this.root.querySelector('[data-page-chips]');
       this.ui.stepNav = this.root.querySelector('[data-steps]');
       this.ui.stepBody = this.root.querySelector('[data-step-body]');
+      this.ui.previewZoomWrap = this.root.querySelector('[data-preview-zoom-wrap]');
+      this.ui.saveStatus = this.root.querySelector('[data-save-status]');
 
       Array.from(this.root.querySelectorAll('[data-action]')).forEach((button) => button.addEventListener('click', () => this.handleAction(button.dataset.action)));
       Array.from(this.root.querySelectorAll('[data-page-nav]')).forEach((button) => button.addEventListener('click', () => {
         this.state.pageIndex += button.dataset.pageNav === 'next' ? 1 : -1;
         this.clampPageIndex();
-        this.persistState();
-        this.renderUi();
-        this.render().catch(() => {});
+        this.persistState(false);
+        this.renderPageControls();
+        this.scheduleRender(true);
       }));
+      const saveButton = this.root.querySelector('[data-save-progress]');
+      if (saveButton) saveButton.addEventListener('click', () => this.saveProgress());
 
+      if (!this.saveStatusMessage) this.setSaveStatus('Draft ready. Auto-save is on for this device.', 'saved');
       this.renderUi();
       this.render().catch(() => {});
       return this;
@@ -502,14 +555,28 @@
         <button type="button" class="npf-btn ${index === this.state.pageIndex ? 'npf-primary active' : 'npf-muted'}" data-page-chip="${index}">${index + 1}</button>`).join('');
       Array.from(this.ui.pageChips.querySelectorAll('[data-page-chip]')).forEach((button) => button.addEventListener('click', () => {
         this.state.pageIndex = clamp(button.dataset.pageChip || 0, 0, pageCount - 1);
-        this.persistState();
-        this.renderUi();
-        this.render().catch(() => {});
+        this.persistState(false);
+        this.renderPageControls();
+        this.scheduleRender(true);
       }));
+      if (this.ui.previewZoomWrap) {
+        this.ui.previewZoomWrap.innerHTML = PREVIEW_ZOOMS.map((zoom) => `<button type="button" class="npf-btn ${Number(this.state.previewZoom || 100) === zoom ? 'npf-primary active' : 'npf-muted'}" data-preview-zoom="${zoom}">${zoom}%</button>`).join('');
+        Array.from(this.ui.previewZoomWrap.querySelectorAll('[data-preview-zoom]')).forEach((button) => button.addEventListener('click', () => {
+          this.state.previewZoom = clamp(button.dataset.previewZoom || 100, 60, 150);
+          this.persistState(false);
+          this.renderPageControls();
+          this.applyPreviewZoom();
+        }));
+      }
+      this.applyPreviewZoom();
       Array.from(this.root.querySelectorAll('[data-page-nav]')).forEach((button) => {
         button.disabled = (button.dataset.pageNav === 'prev' && this.state.pageIndex <= 0) || (button.dataset.pageNav === 'next' && this.state.pageIndex >= pageCount - 1);
         button.style.opacity = button.disabled ? '0.45' : '1';
       });
+      if (this.ui.saveStatus) {
+        this.ui.saveStatus.textContent = this.saveStatusMessage || 'Draft ready.';
+        this.ui.saveStatus.dataset.state = this.saveStatusState || 'saved';
+      }
     }
 
     renderStepBody() {
@@ -573,7 +640,7 @@
             <div class="npf-stack" style="gap:6px">
               <div class="npf-label">Step 2</div>
               <strong>Select The Row Photo And Text</strong>
-              <div class="npf-helper">Every flyer row keeps its saved photo stack. Scroll the pictures for that row and tap the exact shot you want on the flyer.</div>
+              <div class="npf-helper">Scroll each row's saved photo stack, tap the exact image you want, and type freely without losing focus while the preview updates.</div>
             </div>
           </div>
           ${this.renderRowFilter('Choose rows in this flyer...')}
@@ -587,8 +654,8 @@
           <div class="npf-kicker">
             <div class="npf-stack" style="gap:6px">
               <div class="npf-label">Step 3</div>
-              <strong>Change Colors And Place Pricing</strong>
-              <div class="npf-helper">Use the live preview pages to tune the flyer like a simple Canva workflow on your phone. Price offsets let you nudge the badge exactly where you want it on each card.</div>
+              <strong>Style, Price, And Edit Each Photo</strong>
+              <div class="npf-helper">Change the flyer colors, then fine-tune each picture with brightness, contrast, saturation, warmth, blur, crop, and price placement while watching the live page preview.</div>
             </div>
           </div>
           <div>
@@ -615,7 +682,7 @@
               <div class="npf-segmented" data-card-style></div>
             </div>
           </div>
-          ${this.renderRowFilter('Search flyer rows for pricing...')}
+          ${this.renderRowFilter('Search flyer rows for styling...')}
           <div class="npf-slots">${this.renderCardEditorCards('style')}</div>
         </div>`;
     }
@@ -626,8 +693,8 @@
           <div class="npf-kicker">
             <div class="npf-stack" style="gap:6px">
               <div class="npf-label">Step 4</div>
-              <strong>Review Pages And Send The PDF</strong>
-              <div class="npf-helper">Download the PDF, share the PDF from your phone, or let the app fall back to an email draft with the PDF link when file sharing is not available.</div>
+              <strong>Review Pages And Send The Full PDF</strong>
+              <div class="npf-helper">Every PDF action sends the entire finished flyer, not just the page you are looking at in preview.</div>
             </div>
           </div>
           <div class="npf-summary-grid">
@@ -636,9 +703,9 @@
             <div class="npf-stat"><div class="npf-stat-value">${this.getPageCount()}</div><div class="npf-stat-label">Flyer Pages</div></div>
           </div>
           <ul class="npf-share-list">
-            <li>The footer now carries the Greenleaf logo on every page.</li>
-            <li>The Email PDF button will try the native share sheet with a real PDF file first.</li>
-            <li>If your browser blocks file share, the app will open an Outlook or Mail draft with a PDF link instead.</li>
+            <li>The preview is page-by-page, but the PDF export always includes the full build result.</li>
+            <li>Email PDF and Share PDF both work from the complete flyer, including every page and the footer logo.</li>
+            <li>Save Progress keeps the current flyer draft on this device so you can come back and finish it later.</li>
           </ul>
           <div class="npf-actions">
             <button type="button" class="npf-btn npf-primary" data-action="pdf">Download PDF</button>
@@ -675,12 +742,31 @@
             <label class="npf-label">Notes / Details<textarea class="npf-textarea" data-card="note" data-index="${index}">${this.escape(card.note)}</textarea></label>
           </div>`
         : `
-          <div class="npf-editor-grid">
-            <label class="npf-label">Price<input class="npf-input" data-card="price" data-index="${index}" value="${this.escape(card.price || '')}" placeholder="$19.99"></label>
-            <label class="npf-label">Price Spot<select class="npf-select" data-card="pricePosition" data-index="${index}"><option value="top-left" ${String(card.pricePosition || 'top-right') === 'top-left' ? 'selected' : ''}>Top Left</option><option value="top-right" ${String(card.pricePosition || 'top-right') === 'top-right' ? 'selected' : ''}>Top Right</option><option value="bottom-left" ${String(card.pricePosition || 'top-right') === 'bottom-left' ? 'selected' : ''}>Bottom Left</option><option value="bottom-right" ${String(card.pricePosition || 'top-right') === 'bottom-right' ? 'selected' : ''}>Bottom Right</option><option value="below-title" ${String(card.pricePosition || 'top-right') === 'below-title' ? 'selected' : ''}>Below Title</option></select></label>
-            <label class="npf-label">Price Size<select class="npf-select" data-card="priceSize" data-index="${index}"><option value="sm" ${String(card.priceSize || 'md') === 'sm' ? 'selected' : ''}>Small</option><option value="md" ${String(card.priceSize || 'md') === 'md' ? 'selected' : ''}>Medium</option><option value="lg" ${String(card.priceSize || 'md') === 'lg' ? 'selected' : ''}>Large</option><option value="xl" ${String(card.priceSize || 'md') === 'xl' ? 'selected' : ''}>XL</option></select></label>
-            <label class="npf-label npf-range-wrap">Price X Offset<span class="npf-range-value">${Number(card.priceOffsetX || 0)} px</span><input type="range" min="-40" max="40" step="1" data-card="priceOffsetX" data-index="${index}" value="${Number(card.priceOffsetX || 0)}"></label>
-            <label class="npf-label npf-range-wrap">Price Y Offset<span class="npf-range-value">${Number(card.priceOffsetY || 0)} px</span><input type="range" min="-40" max="40" step="1" data-card="priceOffsetY" data-index="${index}" value="${Number(card.priceOffsetY || 0)}"></label>
+          <div class="npf-stack" style="margin-top:12px">
+            <div>
+              <div class="npf-label" style="margin-bottom:8px">Price Placement</div>
+              <div class="npf-editor-grid">
+                <label class="npf-label">Price<input class="npf-input" data-card="price" data-index="${index}" value="${this.escape(card.price || '')}" placeholder="$19.99"></label>
+                <label class="npf-label">Price Spot<select class="npf-select" data-card="pricePosition" data-index="${index}"><option value="top-left" ${String(card.pricePosition || 'top-right') === 'top-left' ? 'selected' : ''}>Top Left</option><option value="top-right" ${String(card.pricePosition || 'top-right') === 'top-right' ? 'selected' : ''}>Top Right</option><option value="bottom-left" ${String(card.pricePosition || 'top-right') === 'bottom-left' ? 'selected' : ''}>Bottom Left</option><option value="bottom-right" ${String(card.pricePosition || 'top-right') === 'bottom-right' ? 'selected' : ''}>Bottom Right</option><option value="below-title" ${String(card.pricePosition || 'top-right') === 'below-title' ? 'selected' : ''}>Below Title</option></select></label>
+                <label class="npf-label">Price Size<select class="npf-select" data-card="priceSize" data-index="${index}"><option value="sm" ${String(card.priceSize || 'md') === 'sm' ? 'selected' : ''}>Small</option><option value="md" ${String(card.priceSize || 'md') === 'md' ? 'selected' : ''}>Medium</option><option value="lg" ${String(card.priceSize || 'md') === 'lg' ? 'selected' : ''}>Large</option><option value="xl" ${String(card.priceSize || 'md') === 'xl' ? 'selected' : ''}>XL</option></select></label>
+                <label class="npf-label npf-range-wrap">Price X Offset<span class="npf-range-value">${this.formatRangeValue('priceOffsetX', card.priceOffsetX || 0)}</span><input type="range" min="-40" max="40" step="1" data-card="priceOffsetX" data-index="${index}" value="${Number(card.priceOffsetX || 0)}"></label>
+                <label class="npf-label npf-range-wrap">Price Y Offset<span class="npf-range-value">${this.formatRangeValue('priceOffsetY', card.priceOffsetY || 0)}</span><input type="range" min="-40" max="40" step="1" data-card="priceOffsetY" data-index="${index}" value="${Number(card.priceOffsetY || 0)}"></label>
+              </div>
+            </div>
+            <div>
+              <div class="npf-label" style="margin-bottom:8px">Photo Adjustments</div>
+              <div class="npf-editor-grid">
+                <label class="npf-label npf-range-wrap">Brightness<span class="npf-range-value">${this.formatRangeValue('brightness', card.brightness || 100)}</span><input type="range" min="60" max="160" step="1" data-card="brightness" data-index="${index}" value="${Number(card.brightness || 100)}"></label>
+                <label class="npf-label npf-range-wrap">Contrast<span class="npf-range-value">${this.formatRangeValue('contrast', card.contrast || 100)}</span><input type="range" min="60" max="160" step="1" data-card="contrast" data-index="${index}" value="${Number(card.contrast || 100)}"></label>
+                <label class="npf-label npf-range-wrap">Saturation<span class="npf-range-value">${this.formatRangeValue('saturation', card.saturation || 100)}</span><input type="range" min="40" max="180" step="1" data-card="saturation" data-index="${index}" value="${Number(card.saturation || 100)}"></label>
+                <label class="npf-label npf-range-wrap">Warmth<span class="npf-range-value">${this.formatRangeValue('warmth', card.warmth || 0)}</span><input type="range" min="-30" max="30" step="1" data-card="warmth" data-index="${index}" value="${Number(card.warmth || 0)}"></label>
+                <label class="npf-label npf-range-wrap">Background Blur<span class="npf-range-value">${this.formatRangeValue('backgroundBlur', card.backgroundBlur || 0)}</span><input type="range" min="0" max="24" step="1" data-card="backgroundBlur" data-index="${index}" value="${Number(card.backgroundBlur || 0)}"></label>
+                <label class="npf-label npf-range-wrap">Focus Window<span class="npf-range-value">${this.formatRangeValue('focusArea', card.focusArea || 62)}</span><input type="range" min="40" max="90" step="1" data-card="focusArea" data-index="${index}" value="${Number(card.focusArea || 62)}"></label>
+                <label class="npf-label npf-range-wrap">Photo Zoom<span class="npf-range-value">${this.formatRangeValue('imageZoom', card.imageZoom || 100)}</span><input type="range" min="80" max="160" step="1" data-card="imageZoom" data-index="${index}" value="${Number(card.imageZoom || 100)}"></label>
+                <label class="npf-label npf-range-wrap">Move Left / Right<span class="npf-range-value">${this.formatRangeValue('imageOffsetX', card.imageOffsetX || 0)}</span><input type="range" min="-40" max="40" step="1" data-card="imageOffsetX" data-index="${index}" value="${Number(card.imageOffsetX || 0)}"></label>
+                <label class="npf-label npf-range-wrap wide">Move Up / Down<span class="npf-range-value">${this.formatRangeValue('imageOffsetY', card.imageOffsetY || 0)}</span><input type="range" min="-40" max="40" step="1" data-card="imageOffsetY" data-index="${index}" value="${Number(card.imageOffsetY || 0)}"></label>
+              </div>
+            </div>
           </div>`;
       return `
         <div class="npf-slot ${card.enabled ? '' : 'off'}">
@@ -688,12 +774,12 @@
             <div class="npf-slot-meta">
               <div class="npf-slot-badge">Row ${index + 1}</div>
               <div class="npf-slot-title">${this.escape(card.heading || `Photo ${index + 1}`)}</div>
-              <div class="npf-helper">${card.photoOptions.length} saved photo${card.photoOptions.length === 1 ? '' : 's'}</div>
+              <div class="npf-helper">${card.photoOptions.length} saved photo${card.photoOptions.length === 1 ? '' : 's'} • Selected image drives the final PDF.</div>
             </div>
             <button type="button" class="npf-btn ${card.enabled ? 'npf-primary' : 'npf-muted'}" data-toggle-card="${index}">${card.enabled ? 'Included' : 'Hidden'}</button>
           </div>
           <div class="npf-thumb" style="${thumbStyle}">${card.imageSrc ? this.escape(card.imageName || `Photo ${index + 1}`) : 'Pick a saved row photo below'}</div>
-          <div class="npf-thumb-caption">${this.escape(card.imageName || 'Tap the row photo you want on the flyer.')}</div>
+          <div class="npf-thumb-caption">${this.escape(card.imageName || 'Tap the exact saved row photo you want on the flyer.')}</div>
           ${photoRail}
           ${cardsFields}
         </div>`;
@@ -706,11 +792,19 @@
       });
 
       bindFieldInput('[data-field]', (event) => {
-        this.state[event.currentTarget.dataset.field] = event.currentTarget.value;
+        const target = event.currentTarget;
+        const key = String(target.dataset.field || '').trim();
+        this.state[key] = target.value;
         this.clampPageIndex();
-        this.persistState();
-        this.renderUi();
-        this.render().catch(() => {});
+        this.persistState(false);
+        if (key === 'rowFilter') {
+          const snapshot = this.captureFocusState(target);
+          this.renderUi();
+          this.restoreFocusState(snapshot);
+          this.scheduleRender(true);
+          return;
+        }
+        this.scheduleRender(false);
       });
 
       Array.from(this.ui.stepBody.querySelectorAll('[data-layout-preset]')).forEach((button) => button.addEventListener('click', () => this.applyLayoutPreset(button.dataset.layoutPreset)));
@@ -726,37 +820,37 @@
       buildSegmented(this.ui.stepBody.querySelector('[data-fit]'), [{ value: 'cover', label: 'Fill' }, { value: 'contain', label: 'Fit' }], this.state.photoFit, 'fit');
       buildSegmented(this.ui.stepBody.querySelector('[data-card-style]'), [{ value: 'soft', label: 'Soft' }, { value: 'outline', label: 'Outline' }, { value: 'flat', label: 'Flat' }], this.state.cardStyle, 'cardStyle');
 
+      const rerenderWithCanvas = () => {
+        this.renderUi();
+        this.scheduleRender(true);
+      };
+
       Array.from(this.ui.stepBody.querySelectorAll('[data-columns] button[data-columns]')).forEach((button) => button.addEventListener('click', () => {
         this.state.columns = clamp(button.dataset.columns || 2, 1, 3);
         this.clampPageIndex();
-        this.persistState();
-        this.renderUi();
-        this.render().catch(() => {});
+        this.persistState(false);
+        rerenderWithCanvas();
       }));
       Array.from(this.ui.stepBody.querySelectorAll('[data-rows] button[data-rows]')).forEach((button) => button.addEventListener('click', () => {
         this.state.rowsPerPage = clamp(button.dataset.rows || 4, 1, 6);
         this.clampPageIndex();
-        this.persistState();
-        this.renderUi();
-        this.render().catch(() => {});
+        this.persistState(false);
+        rerenderWithCanvas();
       }));
       Array.from(this.ui.stepBody.querySelectorAll('[data-logo-toggle] button[data-logo-toggle]')).forEach((button) => button.addEventListener('click', () => {
         this.state.showLogo = String(button.dataset.logoToggle) === 'on';
-        this.persistState();
-        this.renderUi();
-        this.render().catch(() => {});
+        this.persistState(false);
+        rerenderWithCanvas();
       }));
       Array.from(this.ui.stepBody.querySelectorAll('[data-fit] button[data-fit]')).forEach((button) => button.addEventListener('click', () => {
         this.state.photoFit = String(button.dataset.fit || 'cover');
-        this.persistState();
-        this.renderUi();
-        this.render().catch(() => {});
+        this.persistState(false);
+        rerenderWithCanvas();
       }));
       Array.from(this.ui.stepBody.querySelectorAll('[data-card-style] button[data-card-style]')).forEach((button) => button.addEventListener('click', () => {
         this.state.cardStyle = String(button.dataset.cardStyle || 'soft');
-        this.persistState();
-        this.renderUi();
-        this.render().catch(() => {});
+        this.persistState(false);
+        rerenderWithCanvas();
       }));
       if (this.state.step === 'style') {
         const themeWrap = this.ui.stepBody.querySelector('[data-themes]');
@@ -769,17 +863,16 @@
             const nextKey = button.dataset.theme;
             this.state.themeKey = nextKey;
             this.state.theme = Object.assign({}, THEMES[nextKey] || THEMES.sage);
-            this.persistState();
-            this.renderUi();
-            this.render().catch(() => {});
+            this.persistState(false);
+            rerenderWithCanvas();
           }));
         }
         Array.from(this.ui.stepBody.querySelectorAll('[data-color]')).forEach((input) => {
           input.value = this.state.theme[input.dataset.color] || '#ffffff';
           input.oninput = () => {
             this.state.theme[input.dataset.color] = input.value;
-            this.persistState();
-            this.render().catch(() => {});
+            this.persistState(false);
+            this.scheduleRender(false);
           };
         });
       }
@@ -792,17 +885,54 @@
         this.toggleCardEnabled(Number(button.dataset.toggleCard || 0));
       }));
       Array.from(this.ui.stepBody.querySelectorAll('[data-card]')).forEach((field) => {
-        const applyCardField = () => {
-          const index = Number(field.dataset.index || 0);
+        const applyCardField = (event) => {
+          const target = event.currentTarget;
+          const index = Number(target.dataset.index || 0);
           if (!this.state.cards[index]) return;
-          this.state.cards[index][field.dataset.card] = field.value;
-          this.persistState();
-          if (this.state.step !== 'cards') this.renderUi();
-          this.render().catch(() => {});
+          const key = String(target.dataset.card || '').trim();
+          const value = target.type === 'range' ? Number(target.value) : target.value;
+          this.state.cards[index][key] = value;
+          if (target.type === 'range') {
+            const valueLabel = target.parentElement ? target.parentElement.querySelector('.npf-range-value') : null;
+            if (valueLabel) valueLabel.textContent = this.formatRangeValue(key, value);
+          }
+          if (key === 'heading') {
+            const slotTitle = target.closest('.npf-slot') ? target.closest('.npf-slot').querySelector('.npf-slot-title') : null;
+            if (slotTitle) slotTitle.textContent = String(value || '').trim() || `Photo ${index + 1}`;
+          }
+          this.persistState(false);
+          this.scheduleRender(false);
         };
         field.addEventListener('input', applyCardField);
         field.addEventListener('change', applyCardField);
       });
+    }
+
+    captureFocusState(node) {
+      const target = node || document.activeElement;
+      if (!target || !this.ui.stepBody || !this.ui.stepBody.contains(target)) return null;
+      if (target.dataset && target.dataset.field) return { selector: `[data-field="${target.dataset.field}"]`, start: target.selectionStart, end: target.selectionEnd };
+      if (target.dataset && target.dataset.card && typeof target.dataset.index !== 'undefined') return { selector: `[data-card="${target.dataset.card}"][data-index="${target.dataset.index}"]`, start: target.selectionStart, end: target.selectionEnd };
+      return null;
+    }
+
+    restoreFocusState(snapshot) {
+      if (!snapshot || !snapshot.selector) return;
+      const target = this.ui.stepBody ? this.ui.stepBody.querySelector(snapshot.selector) : null;
+      if (!target) return;
+      target.focus();
+      if (typeof snapshot.start === 'number' && typeof target.setSelectionRange === 'function') {
+        const end = typeof snapshot.end === 'number' ? snapshot.end : snapshot.start;
+        target.setSelectionRange(snapshot.start, end);
+      }
+    }
+
+    formatRangeValue(key, value) {
+      const numeric = Number(value || 0);
+      if (key === 'backgroundBlur') return `${numeric}px`;
+      if (key === 'priceOffsetX' || key === 'priceOffsetY' || key === 'imageOffsetX' || key === 'imageOffsetY') return `${numeric}px`;
+      if (key === 'warmth') return numeric > 0 ? `+${numeric}` : `${numeric}`;
+      return `${numeric}%`;
     }
 
     escape(value) {
@@ -863,20 +993,75 @@
       this.state.pageIndex = clamp(this.state.pageIndex || 0, 0, maxPage);
     }
 
-    persistState() {
+    clampPageIndex() {
+      const maxPage = this.getPageCount() - 1;
+      if (!Number.isFinite(Number(this.state.pageIndex))) this.state.pageIndex = 0;
+      this.state.pageIndex = clamp(this.state.pageIndex || 0, 0, maxPage);
+    }
+
+    formatSavedTime(timestamp) {
+      const date = timestamp ? new Date(timestamp) : new Date();
+      if (!date || Number.isNaN(date.getTime())) return 'just now';
+      return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    }
+
+    setSaveStatus(text, state) {
+      this.saveStatusMessage = text || 'Draft ready.';
+      this.saveStatusState = state || 'saved';
+      if (this.ui.saveStatus) {
+        this.ui.saveStatus.textContent = this.saveStatusMessage;
+        this.ui.saveStatus.dataset.state = this.saveStatusState;
+      }
+    }
+
+    applyPreviewZoom() {
+      if (!this.ui.canvas) return;
+      const zoom = clamp(this.state.previewZoom || 100, 60, 150);
+      this.ui.canvas.style.width = `${zoom}%`;
+      this.ui.canvas.style.maxWidth = 'none';
+    }
+
+    scheduleRender(immediate) {
+      if (this.renderTimer) {
+        clearTimeout(this.renderTimer);
+        this.renderTimer = null;
+      }
+      if (immediate) {
+        this.render().catch(() => {});
+        return;
+      }
+      this.renderTimer = setTimeout(() => {
+        this.renderTimer = null;
+        this.render().catch(() => {});
+      }, 70);
+    }
+
+    persistState(manual) {
       this.normalizeCards();
-      try {
-        sessionStorage.setItem(this.storageKey, JSON.stringify({ state: this.state }));
-      } catch (error) {}
+      const savedAt = new Date().toISOString();
+      const payload = JSON.stringify({ state: this.state, savedAt });
+      try { localStorage.setItem(this.storageKey, payload); } catch (error) {}
+      try { sessionStorage.setItem(this.storageKey, payload); } catch (error) {}
+      this.setSaveStatus(`${manual ? 'Progress saved' : 'Auto-saved'} at ${this.formatSavedTime(savedAt)}.`, 'saved');
+      return savedAt;
     }
 
     restorePersistedState() {
       try {
-        const raw = sessionStorage.getItem(this.storageKey);
+        const raw = localStorage.getItem(this.storageKey) || sessionStorage.getItem(this.storageKey);
         if (!raw) return;
         const parsed = JSON.parse(raw);
-        if (parsed && parsed.state && typeof parsed.state === 'object') this.state = Object.assign({}, this.state, parsed.state);
+        if (parsed && parsed.state && typeof parsed.state === 'object') {
+          this.state = Object.assign({}, this.state, parsed.state);
+          if (parsed.state.theme && typeof parsed.state.theme === 'object') this.state.theme = Object.assign({}, this.state.theme, parsed.state.theme);
+        }
+        if (parsed && parsed.savedAt) this.setSaveStatus(`Saved progress restored from ${this.formatSavedTime(parsed.savedAt)}.`, 'saved');
       } catch (error) {}
+    }
+
+    saveProgress() {
+      this.persistState(true);
+      this.scheduleRender(true);
     }
 
     selectPhotoOption(slotIndex, optionIndex) {
@@ -888,9 +1073,9 @@
       card.imageSrc = option.src;
       card.imageName = option.name;
       card.enabled = true;
-      this.persistState();
+      this.persistState(false);
       this.renderUi();
-      this.render().catch(() => {});
+      this.scheduleRender(true);
     }
 
     toggleCardEnabled(index) {
@@ -898,9 +1083,9 @@
       const card = this.state.cards[cardIndex] = this.normalizeCard(this.state.cards[cardIndex], cardIndex);
       card.enabled = card.enabled === false;
       this.clampPageIndex();
-      this.persistState();
+      this.persistState(false);
       this.renderUi();
-      this.render().catch(() => {});
+      this.scheduleRender(true);
     }
 
     async getCachedImage(src) {
@@ -914,6 +1099,52 @@
       if (!this.logoUrl || this.state.showLogo === false) return null;
       if (!this.logoPromise) this.logoPromise = loadImage(this.logoUrl).catch(() => null);
       return await this.logoPromise;
+    }
+
+    getImagePlacement(image, frameX, frameY, frameWidth, frameHeight, card) {
+      const fitMode = this.state.photoFit === 'contain' ? 'contain' : 'cover';
+      const baseScale = fitMode === 'contain'
+        ? Math.min(frameWidth / image.width, frameHeight / image.height)
+        : Math.max(frameWidth / image.width, frameHeight / image.height);
+      const zoom = clamp(card.imageZoom || 100, 80, 180) / 100;
+      const scaleValue = baseScale * zoom;
+      const drawWidth = image.width * scaleValue;
+      const drawHeight = image.height * scaleValue;
+      const overflowX = Math.max(0, drawWidth - frameWidth);
+      const overflowY = Math.max(0, drawHeight - frameHeight);
+      const moveX = (clamp(card.imageOffsetX || 0, -40, 40) / 80) * overflowX;
+      const moveY = (clamp(card.imageOffsetY || 0, -40, 40) / 80) * overflowY;
+      return {
+        drawX: frameX + ((frameWidth - drawWidth) / 2) - moveX,
+        drawY: frameY + ((frameHeight - drawHeight) / 2) - moveY,
+        drawWidth,
+        drawHeight
+      };
+    }
+
+    applyWarmthOverlay(ctx, x, y, width, height, warmth) {
+      const amount = clamp(warmth || 0, -30, 30);
+      if (!amount) return;
+      const opacity = Math.min(0.18, Math.abs(amount) / 160);
+      ctx.save();
+      ctx.fillStyle = amount > 0 ? `rgba(255,191,120,${opacity})` : `rgba(125,175,255,${opacity})`;
+      ctx.fillRect(x, y, width, height);
+      ctx.restore();
+    }
+
+    drawImageFrame(ctx, image, frameX, frameY, frameWidth, frameHeight, card, extraBlur) {
+      const placement = this.getImagePlacement(image, frameX, frameY, frameWidth, frameHeight, card);
+      const filters = [
+        `brightness(${clamp(card.brightness || 100, 60, 170)}%)`,
+        `contrast(${clamp(card.contrast || 100, 60, 170)}%)`,
+        `saturate(${clamp(card.saturation || 100, 40, 190)}%)`
+      ];
+      if (Number(extraBlur || 0) > 0) filters.push(`blur(${Number(extraBlur).toFixed(2)}px)`);
+      ctx.save();
+      ctx.filter = filters.join(' ');
+      ctx.drawImage(image, placement.drawX, placement.drawY, placement.drawWidth, placement.drawHeight);
+      ctx.restore();
+      this.applyWarmthOverlay(ctx, frameX, frameY, frameWidth, frameHeight, card.warmth);
     }
 
     async drawCard(ctx, card, x, y, cardWidth, cardHeight, scale) {
@@ -954,15 +1185,35 @@
       roundRect(ctx, imageX, imageY, imageWidth, imageHeight, 22 * scale);
       ctx.save();
       ctx.clip();
+      ctx.fillStyle = '#edf4ef';
+      ctx.fillRect(imageX, imageY, imageWidth, imageHeight);
       if (card.imageSrc) {
         const image = await this.getCachedImage(card.imageSrc);
         if (image) {
-          const scaleValue = this.state.photoFit === 'contain' ? Math.min(imageWidth / image.width, imageHeight / image.height) : Math.max(imageWidth / image.width, imageHeight / image.height);
-          const drawWidth = image.width * scaleValue;
-          const drawHeight = image.height * scaleValue;
-          ctx.fillStyle = '#edf4ef';
-          ctx.fillRect(imageX, imageY, imageWidth, imageHeight);
-          ctx.drawImage(image, imageX + ((imageWidth - drawWidth) / 2), imageY + ((imageHeight - drawHeight) / 2), drawWidth, drawHeight);
+          const blurStrength = Math.max(0, Number(card.backgroundBlur || 0)) * 0.45 * scale;
+          if (blurStrength > 0) {
+            this.drawImageFrame(ctx, image, imageX, imageY, imageWidth, imageHeight, card, blurStrength);
+            const focusRatio = clamp(card.focusArea || 62, 40, 90) / 100;
+            const focusWidth = imageWidth * Math.min(0.96, focusRatio);
+            const focusHeight = imageHeight * Math.min(0.92, focusRatio + 0.08);
+            const focusX = imageX + ((imageWidth - focusWidth) / 2);
+            const focusY = imageY + ((imageHeight - focusHeight) / 2);
+            ctx.save();
+            roundRect(ctx, focusX, focusY, focusWidth, focusHeight, 18 * scale);
+            ctx.clip();
+            this.drawImageFrame(ctx, image, imageX, imageY, imageWidth, imageHeight, card, 0);
+            ctx.restore();
+            ctx.save();
+            roundRect(ctx, focusX, focusY, focusWidth, focusHeight, 18 * scale);
+            ctx.lineWidth = 2 * scale;
+            ctx.strokeStyle = 'rgba(255,255,255,.60)';
+            ctx.shadowColor = 'rgba(15,23,42,.10)';
+            ctx.shadowBlur = 16 * scale;
+            ctx.stroke();
+            ctx.restore();
+          } else {
+            this.drawImageFrame(ctx, image, imageX, imageY, imageWidth, imageHeight, card, 0);
+          }
         } else {
           ctx.fillStyle = '#e5ece7';
           ctx.fillRect(imageX, imageY, imageWidth, imageHeight);
@@ -977,6 +1228,7 @@
         ctx.textAlign = 'left';
       }
       ctx.restore();
+
       const priceText = formatPriceValue(card.price);
       const priceSizeMap = { sm: 18 * scale, md: 24 * scale, lg: 30 * scale, xl: 36 * scale };
       const priceFontSize = priceSizeMap[String(card.priceSize || 'md')] || priceSizeMap.md;
@@ -1013,13 +1265,14 @@
         drawPriceBadge(badgeX, badgeY);
       }
 
-      let textY = imageY + imageHeight + (30 * scale);
-      const titleFont = Math.max(16 * scale, Math.min(34 * scale, cardWidth / 10.5, cardHeight / 8.6));
+      let textY = imageY + imageHeight + (28 * scale);
+      const titleSize = fitTextSize(ctx, card.heading || 'Flyer Item', cardWidth - (inner * 2), Math.max(16 * scale, Math.min(34 * scale, cardHeight / 6.6)), 13 * scale, 900);
+      const titleLines = wrapText(ctx, card.heading || 'Flyer Item', cardWidth - (inner * 2), cardHeight < (300 * scale) ? 2 : 3);
       ctx.fillStyle = theme.title;
-      ctx.font = `900 ${titleFont}px Arial`;
-      wrapText(ctx, card.heading || 'Flyer Item', cardWidth - (inner * 2), 3).forEach((line) => {
+      ctx.font = `900 ${titleSize}px Arial`;
+      titleLines.forEach((line) => {
         ctx.fillText(line, x + inner, textY);
-        textY += titleFont + (6 * scale);
+        textY += titleSize + (6 * scale);
       });
 
       if (priceText && String(card.pricePosition || 'top-right') === 'below-title') {
@@ -1028,21 +1281,23 @@
       }
 
       if (card.subheading) {
+        const subSize = Math.max(12 * scale, Math.min(19 * scale, cardHeight / 11));
         ctx.fillStyle = theme.body;
-        ctx.font = `700 ${Math.max(13 * scale, Math.min(19 * scale, cardHeight / 11))}px Arial`;
-        wrapText(ctx, card.subheading, cardWidth - (inner * 2), 3).forEach((line) => {
+        ctx.font = `700 ${subSize}px Arial`;
+        wrapText(ctx, card.subheading, cardWidth - (inner * 2), cardHeight < (320 * scale) ? 2 : 3).forEach((line) => {
           ctx.fillText(line, x + inner, textY);
-          textY += 24 * scale;
+          textY += subSize + (8 * scale);
         });
       }
 
       if (card.note) {
-        textY += 6 * scale;
+        textY += 4 * scale;
+        const noteSize = Math.max(11 * scale, Math.min(15 * scale, cardHeight / 13));
         ctx.fillStyle = theme.accent;
-        ctx.font = `900 ${Math.max(12 * scale, Math.min(15 * scale, cardHeight / 13))}px Arial`;
-        wrapText(ctx, card.note, cardWidth - (inner * 2), 4).forEach((line) => {
+        ctx.font = `900 ${noteSize}px Arial`;
+        wrapText(ctx, card.note, cardWidth - (inner * 2), cardHeight < (320 * scale) ? 3 : 4).forEach((line) => {
           ctx.fillText(line, x + inner, textY);
-          textY += 20 * scale;
+          textY += noteSize + (7 * scale);
         });
       }
     }
@@ -1144,6 +1399,7 @@
 
     async render() {
       this.clampPageIndex();
+      this.applyPreviewZoom();
       await this.renderPageToCanvas(this.ui.canvas, this.state.pageIndex, 1);
       if (this.ui.pageStatus) this.ui.pageStatus.textContent = `Page ${this.state.pageIndex + 1} of ${this.getPageCount()}`;
     }
