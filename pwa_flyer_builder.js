@@ -360,6 +360,7 @@
       this.imageCache = new Map();
       this.logoPromise = null;
       this.renderTimer = null;
+      this.persistTimer = null;
       this.saveStatusMessage = 'Draft ready. Auto-save is on for this device.';
       this.saveStatusState = 'saved';
       this.state = {
@@ -555,7 +556,7 @@
       Array.from(this.root.querySelectorAll('[data-page-nav]')).forEach((button) => button.addEventListener('click', () => {
         this.state.pageIndex += button.dataset.pageNav === 'next' ? 1 : -1;
         this.clampPageIndex();
-        this.persistState(false);
+        this.queuePersistState();
         this.renderPageControls();
         this.scrollPreviewToTop();
         this.scheduleRender(true);
@@ -566,6 +567,16 @@
       if (!this.saveStatusMessage) this.setSaveStatus('Draft ready. Auto-save is on for this device.', 'saved');
       this.renderUi();
       this.render().catch(() => {});
+      if (!this.visibilityPersistHandler) {
+        this.visibilityPersistHandler = () => {
+          if (document.hidden) this.flushQueuedState(false);
+        };
+        document.addEventListener('visibilitychange', this.visibilityPersistHandler, { passive: true });
+      }
+      if (!this.pageHidePersistHandler) {
+        this.pageHidePersistHandler = () => this.flushQueuedState(false);
+        global.addEventListener('pagehide', this.pageHidePersistHandler, { passive: true });
+      }
       return this;
     }
 
@@ -584,7 +595,7 @@
         </button>`).join('');
       Array.from(this.ui.stepNav.querySelectorAll('[data-step]')).forEach((button) => button.addEventListener('click', () => {
         this.state.step = button.dataset.step || 'layout';
-        this.persistState();
+        this.queuePersistState();
         this.renderUi();
         this.scrollPreviewToTop();
       }));
@@ -597,7 +608,7 @@
         <button type="button" class="npf-btn ${index === this.state.pageIndex ? 'npf-primary active' : 'npf-muted'}" data-page-chip="${index}">${index + 1}</button>`).join('');
       Array.from(this.ui.pageChips.querySelectorAll('[data-page-chip]')).forEach((button) => button.addEventListener('click', () => {
         this.state.pageIndex = clamp(button.dataset.pageChip || 0, 0, pageCount - 1);
-        this.persistState(false);
+        this.queuePersistState();
         this.renderPageControls();
         this.scrollPreviewToTop();
         this.scheduleRender(true);
@@ -606,7 +617,7 @@
         this.ui.previewZoomWrap.innerHTML = PREVIEW_ZOOMS.map((zoom) => `<button type="button" class="npf-btn ${Number(this.state.previewZoom || 100) === zoom ? 'npf-primary active' : 'npf-muted'}" data-preview-zoom="${zoom}">${zoom}%</button>`).join('');
         Array.from(this.ui.previewZoomWrap.querySelectorAll('[data-preview-zoom]')).forEach((button) => button.addEventListener('click', () => {
           this.state.previewZoom = clamp(button.dataset.previewZoom || 100, 60, 150);
-          this.persistState(false);
+          this.queuePersistState();
           this.renderPageControls();
           this.applyPreviewZoom();
         }));
@@ -1059,7 +1070,7 @@
         this.state[key] = target.value;
         this.clampPageIndex();
         const viewportState = this.captureViewportState(target);
-        this.persistState(false);
+        this.queuePersistState();
         if (key === 'rowFilter') {
           const snapshot = this.captureFocusState(target);
           this.renderUi();
@@ -1093,28 +1104,28 @@
       Array.from(this.ui.stepBody.querySelectorAll('[data-columns] button[data-columns]')).forEach((button) => button.addEventListener('click', () => {
         this.state.columns = clamp(button.dataset.columns || 2, 1, 3);
         this.clampPageIndex();
-        this.persistState(false);
+        this.queuePersistState();
         rerenderWithCanvas();
       }));
       Array.from(this.ui.stepBody.querySelectorAll('[data-rows] button[data-rows]')).forEach((button) => button.addEventListener('click', () => {
         this.state.rowsPerPage = clamp(button.dataset.rows || 4, 1, 6);
         this.clampPageIndex();
-        this.persistState(false);
+        this.queuePersistState();
         rerenderWithCanvas();
       }));
       Array.from(this.ui.stepBody.querySelectorAll('[data-logo-toggle] button[data-logo-toggle]')).forEach((button) => button.addEventListener('click', () => {
         this.state.showLogo = String(button.dataset.logoToggle) === 'on';
-        this.persistState(false);
+        this.queuePersistState();
         rerenderWithCanvas();
       }));
       Array.from(this.ui.stepBody.querySelectorAll('[data-fit] button[data-fit]')).forEach((button) => button.addEventListener('click', () => {
         this.state.photoFit = String(button.dataset.fit || 'cover');
-        this.persistState(false);
+        this.queuePersistState();
         rerenderWithCanvas();
       }));
       Array.from(this.ui.stepBody.querySelectorAll('[data-card-style] button[data-card-style]')).forEach((button) => button.addEventListener('click', () => {
         this.state.cardStyle = String(button.dataset.cardStyle || 'soft');
-        this.persistState(false);
+        this.queuePersistState();
         rerenderWithCanvas();
       }));
       if (this.state.step === 'style') {
@@ -1128,7 +1139,7 @@
             const nextKey = button.dataset.theme;
             this.state.themeKey = nextKey;
             this.state.theme = Object.assign({}, THEMES[nextKey] || THEMES.sage);
-            this.persistState(false);
+            this.queuePersistState();
             rerenderWithCanvas();
           }));
         }
@@ -1138,7 +1149,7 @@
             const viewportState = this.captureViewportState(input);
             this.state.theme[input.dataset.color] = input.value;
             this.refreshLiveEditorPanel();
-            this.persistState(false);
+            this.queuePersistState();
             this.scheduleRender(false, viewportState);
           };
         });
@@ -1171,7 +1182,7 @@
           this.refreshCardSelectionUi();
           this.refreshLiveEditorPanel();
           const viewportState = this.captureViewportState(target);
-          this.persistState(false);
+          this.queuePersistState();
           this.scheduleRender(false, viewportState);
         };
         field.addEventListener('input', applyCardField);
@@ -1288,7 +1299,7 @@
       this.state.columns = preset.columns;
       this.state.rowsPerPage = preset.rows;
       this.clampPageIndex();
-      this.persistState();
+      this.queuePersistState();
       this.renderUi();
       this.render().catch(() => {});
     }
@@ -1331,8 +1342,25 @@
       this.state.pageIndex = clamp(this.state.pageIndex || 0, 0, maxPage);
     }
     saveProgress() {
-      this.persistState(true);
+      this.flushQueuedState(true);
       this.scheduleRender(true);
+    }
+
+    queuePersistState() {
+      if (this.persistTimer) clearTimeout(this.persistTimer);
+      this.setSaveStatus('Draft changes pending...', 'dirty');
+      this.persistTimer = setTimeout(() => {
+        this.persistTimer = null;
+        this.persistState(false);
+      }, 320);
+    }
+
+    flushQueuedState(manual) {
+      if (this.persistTimer) {
+        clearTimeout(this.persistTimer);
+        this.persistTimer = null;
+      }
+      return this.persistState(!!manual);
     }
 
     selectPhotoOption(slotIndex, optionIndex) {
@@ -1346,7 +1374,7 @@
       card.imageSrc = option.src;
       card.imageName = option.name;
       card.enabled = true;
-      this.persistState(false);
+      this.queuePersistState();
       if (this.state.step === 'style') {
         this.renderStepBody();
         this.restoreViewportState(viewportState);
@@ -1366,7 +1394,7 @@
       const viewportState = this.captureViewportState();
       card.enabled = card.enabled === false;
       this.clampPageIndex();
-      this.persistState(false);
+      this.queuePersistState();
       if (this.state.step === 'style') {
         this.renderStepBody();
         this.restoreViewportState(viewportState);
@@ -1423,7 +1451,7 @@
       this.renderTimer = setTimeout(() => {
         this.renderTimer = null;
         runRender().catch(() => {});
-      }, 36);
+      }, 72);
     }
 
     persistState(manual) {
@@ -1897,6 +1925,7 @@
     }
 
     async handleAction(action) {
+      this.flushQueuedState(false);
       if (action === 'pdf') return await this.exportPdf();
       if (action === 'png') return await this.exportPng();
       if (action === 'all') return await this.exportAllPng();
@@ -1908,6 +1937,7 @@
 
   global.NativePwaFlyer = { Builder, THEMES, LAYOUT_PRESETS };
 })(window);
+
 
 
 
