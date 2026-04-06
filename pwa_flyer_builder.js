@@ -39,14 +39,14 @@
 
   const BUILDER_CSS = `
     .npf-wrap{display:grid;gap:18px}
-    .npf-grid{display:grid;gap:18px;grid-template-columns:minmax(360px,.92fr) minmax(0,1.08fr);align-items:start}
+    .npf-grid{display:grid;gap:18px;grid-template-columns:minmax(320px,.78fr) minmax(0,1.22fr);align-items:start}
     .npf-card{background:#fff;border:1px solid #d9e4dc;border-radius:28px;box-shadow:0 18px 40px rgba(15,23,42,.08);overflow:hidden}
     .npf-section{padding:18px}
     .npf-stack{display:grid;gap:12px}
     .npf-preview-column{display:grid;gap:18px;min-width:0}
     .npf-preview-card{position:sticky;top:18px}
-    .npf-builder-column{display:grid;gap:18px;grid-template-columns:minmax(280px,320px) minmax(0,1fr);align-items:start}
-    .npf-builder-column>.npf-card:first-child{position:sticky;top:18px}
+    .npf-builder-column{display:grid;gap:18px;grid-template-columns:1fr;align-items:start;min-width:0}
+    .npf-builder-column>.npf-card:first-child{position:sticky;top:18px}.npf-builder-column>.npf-card{min-width:0}
     .npf-label{font-size:11px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:#475569}
     .npf-input,.npf-textarea,.npf-select{width:100%;border:1px solid #d6e3db;border-radius:16px;padding:12px 14px;font:700 14px/1.4 Arial,sans-serif;color:#0f172a;background:#fff}
     .npf-textarea{min-height:92px;resize:vertical}
