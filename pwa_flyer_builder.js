@@ -1,4 +1,4 @@
-(function (global) {
+﻿(function (global) {
   'use strict';
 
   const THEMES = {
@@ -1357,7 +1357,7 @@
       this.persistTimer = setTimeout(() => {
         this.persistTimer = null;
         this.persistState(false);
-      }, 320);
+      }, 900);
     }
 
     flushQueuedState(manual) {
@@ -1481,7 +1481,7 @@
       this.renderTimer = setTimeout(() => {
         this.renderTimer = null;
         runRender().catch(() => {});
-      }, 72);
+      }, 110);
     }
 
     persistState(manual) {
@@ -1967,6 +1967,7 @@
 
   global.NativePwaFlyer = { Builder, THEMES, LAYOUT_PRESETS };
 })(window);
+
 
 
 

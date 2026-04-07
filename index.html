@@ -25,7 +25,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="./pwa_flyer_builder.js?shellv=V2026.04.06.10"></script>
+    <script src="./pwa_flyer_builder.js?shellv=V2026.04.07.01"></script>
     <style>:root{--bg:#007a4d;--text-color:#111827;--app-height:100vh;--visual-height:100vh;--keyboard-offset:0px}html,body{min-height:100%;width:100%;max-width:100%;overflow:hidden;overscroll-behavior:none;position:relative}html{background:white}@supports (height:100dvh){:root{--app-height:100dvh}}body{font-family:"Amazon Ember",Arial,sans-serif;background:white;color:var(--text-color);user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior:none;min-height:var(--app-height);height:var(--app-height);width:100%;overflow:hidden;position:fixed;inset:0;touch-action:pan-y pinch-zoom}button,[role="button"],.task-tab,.detail-tab,.drawer-item,.drill-item,.menu-btn{touch-action:manipulation}.nav-header{background:var(--bg);color:white;padding-top:max(10px,env(safe-area-inset-top))}#view-login,#view-change-password{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;min-height:var(--app-height)}#view-change-password{display:none;z-index:10000}#app-wrapper{min-height:var(--app-height);height:var(--app-height);width:100%;max-width:100%;overflow:hidden;position:fixed;inset:0}.login-card{background:white;padding:30px;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,.2);width:100%;max-width:360px;text-align:center}.input-field{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:8px;font-size:16px;margin-bottom:12px}#toast-notification{position:fixed;top:-100px;left:50%;transform:translateX(-50%);background:#16a34a;color:white;padding:16px 24px;border-radius:50px;box-shadow:0 10px 15px -3px rgba(0,0,0,.3);z-index:11000;transition:top .5s;display:flex;align-items:center;gap:12px;pointer-events:none}#toast-notification.show{top:20px}#side-drawer{position:fixed;top:0;left:-280px;width:280px;height:100%;background:white;z-index:2000;box-shadow:2px 0 10px rgba(0,0,0,.2);transition:left .3s;overflow-y:auto;padding-bottom:100px}#side-drawer.open{left:0}#drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1999;display:none}#drawer-overlay.open{display:block}.drawer-header{background:var(--bg);color:white;padding:20px;font-weight:bold;font-size:18px}.drawer-item{padding:16px 20px;border-bottom:1px solid #f3f4f6;cursor:pointer;display:flex;align-items:center;gap:12px;color:#374151;font-weight:500}.drill-item{border-bottom:1px solid #e5e7eb;padding:16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:white;transition:background .1s}.drill-item:active{background:#f3f4f6}.back-btn{display:none !important}.inv-card{border:1px solid #dbe4dc;border-left-width:6px;border-radius:18px;padding:14px;background:white;cursor:pointer;flex-grow:1;box-shadow:0 10px 24px rgba(15,23,42,.06);overflow:hidden}.status-green{border-left-color:#22c55e}.status-purple{border-left-color:#9333ea}.status-orange{border-left-color:#f97316}.status-blue{border-left-color:#3b82f6}.status-indigo{border-left-color:#4f46e5}.status-teal{border-left-color:#0d9488}.status-yellow{border-left-color:#eab308}.status-red{border-left-color:#ef4444}.task-tabs,.detail-tabs{display:flex;border-bottom:1px solid #e5e7eb;background:#f9fafb;margin-bottom:10px}.detail-tabs{overflow-x:auto;scrollbar-width:none}.detail-tabs::-webkit-scrollbar{display:none}.task-tab,.detail-tab{flex:1;text-align:center;padding:12px;font-size:11px;font-weight:700;color:#6b7280;cursor:pointer;border-bottom:3px solid transparent;text-transform:uppercase}.detail-tab{flex:0 0 auto;padding:10px 16px}.task-tab.active,.detail-tab.active{color:var(--bg);border-bottom-color:var(--bg);background:white}.overview-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}.overview-card{background:#f8fafc;padding:10px;border-radius:6px;border:1px solid #e2e8f0}.overview-label{font-size:9px;font-weight:800;color:#64748b;text-transform:uppercase;margin-bottom:2px}.overview-val{font-size:13px;font-weight:600;color:#0f172a;word-break:break-all}.expand-trigger{display:flex;align-items:center;justify-content:space-between;padding:12px;background:#f9fafb;border-radius:6px;cursor:pointer;font-weight:600;font-size:14px;border:1px solid #e5e7eb}.expand-content{display:none;margin-top:12px;padding:12px;background:#f9fafb;border-radius:6px;border:1px solid #e5e7eb}.expanded .expand-content{display:block}.card-checkbox-container{width:42px;min-width:42px;overflow:visible;opacity:1;display:flex;align-items:flex-start;justify-content:center;margin-right:12px;transition:transform .16s ease}.card-checkbox-container.absolute{width:auto;min-width:0;margin-right:0}.card-checkbox{display:none !important}.cart-toggle-btn{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:999px;border:1px solid #a7f3d0;background:#f0fdf4;color:#007a4d;box-shadow:0 6px 16px rgba(7,94,63,.14);transition:transform .16s ease,background .16s ease,color .16s ease,border-color .16s ease}.cart-toggle-btn i{font-size:18px;line-height:1}.cart-toggle-btn:active{transform:scale(.95)}.cart-toggle-btn.active{background:#007a4d;color:#fff;border-color:#007a4d}.item-row.cart-selected{box-shadow:0 0 0 2px rgba(0,122,77,.16) inset}.item-row{touch-action:manipulation}.spinner{border:4px solid rgba(255,255,255,.3);border-top:4px solid white;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:0 auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.scrollbar-none::-webkit-scrollbar{display:none}.scrollbar-none{-ms-overflow-style:none;scrollbar-width:none}</style>
     <style>
         :root{--shell-max-width:920px;--content-max-width:820px;--shell-gutter:clamp(12px,2vw,24px);--shell-width:min(calc(100% - (var(--shell-gutter) * 2)),var(--shell-max-width));--content-width:min(100%,var(--content-max-width))}
@@ -430,7 +430,7 @@
                 <button type="button" class="text-gray-500 font-bold py-2 px-3" onclick="closeSalesOfficeAvNoteModal()">Close</button>
             </div>
             <input type="hidden" id="sales-office-av-uid">
-            <textarea id="sales-office-av-text" class="input-field border-purple-200 focus:border-purple-500 min-h-[160px] resize-y text-left" placeholder="Enter AV note..."></textarea>
+            <textarea id="sales-office-av-text" class="input-field border-purple-200 focus:border-purple-500 min-h-[160px] resize-y text-left" placeholder="Enter AV note..." autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="done"></textarea>
             <div class="flex gap-2 mt-2">
                 <button type="button" class="w-1/3 bg-gray-100 text-gray-600 font-bold p-3 rounded-lg shadow-sm active:scale-95" onclick="closeSalesOfficeAvNoteModal()">Cancel</button>
                 <button type="button" id="sales-office-av-save-btn" class="w-2/3 bg-[#007a4d] text-white font-bold p-3 rounded-lg shadow-md active:scale-95" onclick="saveSalesOfficeAvNote()">Save AV Note</button>
@@ -571,7 +571,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-                            <div id="header-version" class="nav-version-pill">V2026.04.06.10</div>
+                            <div id="header-version" class="nav-version-pill">V2026.04.07.01</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -1007,10 +1007,14 @@
         const CACHE_PERSIST_REALTIME_VISIBLE_MIN_INTERVAL_MS = 180000;
         const CACHE_PERSIST_ACTIVE_INTERACTION_GRACE_MS = 12000;
         const CACHE_PERSIST_IDLE_TIMEOUT_MS = 2500;
+        const VISIBLE_RENDER_INTERACTION_GRACE_MS = 1800;
+        const FULL_DATASET_INTERACTION_DEFER_MS = 3200;
+        const FULL_DATASET_QUEUE_RETRY_MS = 1000;
         const PHOTO_MAX_WIDTH = 2560;
         const PHOTO_JPEG_QUALITY = 0.94;
         const PHOTO_LAG_MAX_WIDTH = 2048;
         const PHOTO_LAG_JPEG_QUALITY = 0.9;
+        const PHOTO_DIRECT_UPLOAD_MAX_BYTES = 24 * 1024 * 1024;
         const CAMERA_VIDEO_FRAME_JPEG_QUALITY = 0.96;
         const CAMERA_PORTRAIT_OUTPUT_MAX_WIDTH = 2560;
         const CAMERA_PORTRAIT_OUTPUT_JPEG_QUALITY = 0.94;
@@ -2917,6 +2921,9 @@
         let loginPrefetchMode='';
         let datasetLoadState=createDatasetLoadState();
         let datasetQueueTimers={};
+        let datasetLoadExecutionQueue=[];
+        let datasetLoadExecutionActive=0;
+        let datasetLoadPumpTimer=null;
         let backgroundRefreshInFlight=false;
         let lastBackgroundRefreshAt=0;
         let cacheWarmPromise=null;
@@ -2987,7 +2994,7 @@
         let pendingRequestArchiveFlushTimer = null;
         let pendingRequestArchiveFlushInFlight = false;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Maschino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'V2026.04.06.10';
+        const APP_VERSION = 'V2026.04.07.01';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -3605,17 +3612,73 @@
                 return true;
             };
 
+            const executeDatasetLoad = () => runDatasetLoadWithBudget(key, wantsFull ? 'full' : 'initial', runLoad);
+
             if (wantsFull) {
-                state.fullPromise = Promise.resolve(state.initialPromise).catch(() => false).then(runLoad).finally(() => {
+                state.fullPromise = Promise.resolve(state.initialPromise).catch(() => false).then(executeDatasetLoad).finally(() => {
                     state.fullPromise = null;
                 });
                 return state.fullPromise;
             }
 
-            state.initialPromise = runLoad().finally(() => {
+            state.initialPromise = executeDatasetLoad().finally(() => {
                 state.initialPromise = null;
             });
             return state.initialPromise;
+        }
+
+        function getDatasetLoadExecutionLimit() {
+            return isTouchConstrainedDevice() ? 1 : 2;
+        }
+
+        function shouldPauseFullDatasetLoad() {
+            if (document.hidden) return false;
+            return (Date.now() - lastUserInteractionAt) < FULL_DATASET_INTERACTION_DEFER_MS;
+        }
+
+        function scheduleDatasetLoadPump(delayMs = 0) {
+            if (datasetLoadPumpTimer) return;
+            datasetLoadPumpTimer = setTimeout(() => {
+                datasetLoadPumpTimer = null;
+                pumpDatasetLoadExecutionQueue();
+            }, Math.max(0, Number(delayMs) || 0));
+        }
+
+        function pumpDatasetLoadExecutionQueue() {
+            if (!datasetLoadExecutionQueue.length) return;
+            const limit = getDatasetLoadExecutionLimit();
+            while (datasetLoadExecutionActive < limit && datasetLoadExecutionQueue.length) {
+                let jobIndex = datasetLoadExecutionQueue.findIndex((job) => job.mode !== 'full');
+                if (jobIndex === -1) {
+                    if (shouldPauseFullDatasetLoad()) {
+                        scheduleDatasetLoadPump(FULL_DATASET_QUEUE_RETRY_MS);
+                        return;
+                    }
+                    jobIndex = 0;
+                }
+                const job = datasetLoadExecutionQueue.splice(jobIndex, 1)[0];
+                if (!job) return;
+                datasetLoadExecutionActive += 1;
+                Promise.resolve()
+                    .then(() => job.run())
+                    .then(job.resolve, job.reject)
+                    .finally(() => {
+                        datasetLoadExecutionActive = Math.max(0, datasetLoadExecutionActive - 1);
+                        if (datasetLoadExecutionQueue.length) scheduleDatasetLoadPump(0);
+                    });
+            }
+        }
+
+        function runDatasetLoadWithBudget(key, mode = 'initial', runner = null) {
+            const normalizedMode = mode === 'full' ? 'full' : 'initial';
+            return new Promise((resolve, reject) => {
+                datasetLoadExecutionQueue.push({ key, mode: normalizedMode, queuedAt: Date.now(), run: typeof runner === 'function' ? runner : (() => true), resolve, reject });
+                datasetLoadExecutionQueue.sort((a, b) => {
+                    if (a.mode !== b.mode) return a.mode === 'initial' ? -1 : 1;
+                    return a.queuedAt - b.queuedAt;
+                });
+                scheduleDatasetLoadPump(0);
+            });
         }
 
         function queueDatasetLoad(key, mode = 'full', delayMs = 180) {
@@ -3626,10 +3689,11 @@
                 : (state.initialLoaded || state.fullLoaded || !!state.initialPromise || !!state.fullPromise);
             if (alreadyLoaded) return;
             if (datasetQueueTimers[queueKey]) clearTimeout(datasetQueueTimers[queueKey]);
+            const extraDelay = mode === 'full' && !document.hidden && isTouchConstrainedDevice() ? Math.max(220, FULL_DATASET_QUEUE_RETRY_MS) : 0;
             datasetQueueTimers[queueKey] = setTimeout(() => {
                 delete datasetQueueTimers[queueKey];
                 ensureDatasetLoaded(key, mode).catch(() => {});
-            }, delayMs);
+            }, Math.max(0, Number(delayMs) || 0) + extraDelay);
         }
 
         function isDatasetStale(key, maxAgeMs = 15000) {
@@ -3790,6 +3854,10 @@
                 return false;
             }
             if (backgroundRefreshInFlight) return false;
+            if (!force && !document.hidden && (Date.now() - lastUserInteractionAt) < FULL_DATASET_INTERACTION_DEFER_MS) {
+                queueVisibleDatasetCatchup(FULL_DATASET_QUEUE_RETRY_MS);
+                return false;
+            }
             const loadedKeys = Object.keys(datasetLoadState).filter((key) => {
                 const state = getDatasetState(key);
                 return state.initialLoaded || state.fullLoaded;
@@ -7611,7 +7679,7 @@ function toggleDriveQuickRequestItem(domId) {
                 && !applyPlantQualityColor
                 && !!directUploadExtension
                 && Number(file && file.size || 0) > 0
-                && Number(file && file.size || 0) <= (12 * 1024 * 1024);
+                && Number(file && file.size || 0) <= PHOTO_DIRECT_UPLOAD_MAX_BYTES;
             if (!canDirectUploadOriginal) {
                 showToast('Processing', preserveSourceResolution ? 'Saving High-Res Image...' : (shouldAttemptPortrait ? 'Preparing portrait photo...' : 'Compressing image...'), false);
             }
@@ -7991,9 +8059,7 @@ function toggleDriveQuickRequestItem(domId) {
             }
             if (allowedViews.has('tasks')) {
                 addLoginWarmupTarget(initialTargets, 'avNotes', 'initial');
-                addLoginWarmupTarget(fullTargets, 'avNotes', 'full');
-                addLoginWarmupTarget(initialTargets, 'cav', 'initial');
-                addLoginWarmupTarget(fullTargets, 'cav', 'full');
+                if (!prefersDeferredWarm || openedFromCache) addLoginWarmupTarget(fullTargets, 'avNotes', 'full');
             }
             if (allowedViews.has('reserves')) {
                 addLoginWarmupTarget(initialTargets, 'reserves', reserveInitialMode);
@@ -8014,8 +8080,8 @@ function toggleDriveQuickRequestItem(domId) {
             const fullPriority = ['master', 'requests', 'soc', 'salesOffice', 'avNotes', 'cav', 'avOpen', 'reserves'];
             const fullKeys = fullPriority.concat(Array.from(fullTargets.keys()).filter((key) => !fullPriority.includes(key)));
             const fullQueue = [];
-            const fullStart = openedFromCache ? (prefersDeferredWarm ? 700 : 850) : (prefersDeferredWarm ? 420 : 520);
-            const fullStep = openedFromCache ? (prefersDeferredWarm ? 450 : 520) : (prefersDeferredWarm ? 320 : 380);
+            const fullStart = openedFromCache ? (prefersDeferredWarm ? 2600 : 1400) : (prefersDeferredWarm ? 2200 : 1100);
+            const fullStep = prefersDeferredWarm ? 1400 : 650;
             fullKeys.forEach((key) => {
                 const target = fullTargets.get(key);
                 if (!target) return;
@@ -8370,13 +8436,18 @@ function toggleDriveQuickRequestItem(domId) {
                 const salesOfficeSource = hasSalesOffice ? (res.salesOfficeData || []) : salesOfficeInventory;
                 salesOfficeInventory = salesOfficeSource.map((item, idx) => {
                     item.DOM_ID = 'so_' + item.UNIQUE_ID;
-                    const salesOfficeSource = String(firstNonEmptyValue(item.SO_SOURCE, item.so_source, 'season')).toLowerCase();
+                    const salesOfficeSourceType = String(firstNonEmptyValue(item.SO_SOURCE, item.so_source, 'season')).toLowerCase();
                     const salesOfficeMasterId = String(item.MASTER_ID || item.master_id || item.MASTER_UNIQUE_ID || item.UNIQUE_ID || '').trim();
                     const salesOfficeMasterItem = salesOfficeMasterId ? findItemByUniqueId(salesOfficeMasterId) : null;
-                    const isSalesOfficeExactRow = !!(salesOfficeMasterItem && salesOfficeSource !== 'bloom_picker' && String(item.UNIQUE_ID || '').trim() === salesOfficeMasterId);
+                    const isSalesOfficeExactRow = !!(salesOfficeMasterItem && salesOfficeSourceType !== 'bloom_picker' && String(item.UNIQUE_ID || '').trim() === salesOfficeMasterId);
+                    const isLinkedSalesOfficeRow = !!(salesOfficeMasterItem && salesOfficeSourceType !== 'bloom_picker' && String(item.UNIQUE_ID || '').trim() !== salesOfficeMasterId);
                     if (isSalesOfficeExactRow) {
+                        syncMasterFieldsToRow(salesOfficeMasterItem, item, EXACT_ROW_SYNC_KEYS, { attachMasterLink: false });
+                    } else if (isLinkedSalesOfficeRow) {
                         syncMasterFieldsToRow(salesOfficeMasterItem, item, LINKED_ROW_SYNC_KEYS, { attachMasterLink: true });
-                        item.APP_TAB_ASSIGNMENT = firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, salesOfficeMasterItem.APP_TAB_ASSIGNMENT);
+                    }
+                    if (salesOfficeSourceType !== 'bloom_picker') {
+                        item.APP_TAB_ASSIGNMENT = firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, salesOfficeMasterItem && salesOfficeMasterItem.APP_TAB_ASSIGNMENT, 'season');
                     }
                     normalizeRowPhotoFields(item);
                     buildSearchIndex(item);
@@ -9106,7 +9177,7 @@ function toggleDriveQuickRequestItem(domId) {
             const activeTag = activeEl && activeEl.tagName ? String(activeEl.tagName).toUpperCase() : '';
             const isEditableField = !!(activeEl && ['INPUT', 'TEXTAREA', 'SELECT'].includes(activeTag) && !activeEl.readOnly && !activeEl.disabled);
             if (isEditableField) return true;
-            return !document.hidden && (Date.now() - lastUserInteractionAt) < 650;
+            return !document.hidden && (Date.now() - lastUserInteractionAt) < VISIBLE_RENDER_INTERACTION_GRACE_MS;
         }
 
         function refreshAffectedViews(changedKeys = []) {
@@ -9115,12 +9186,17 @@ function toggleDriveQuickRequestItem(domId) {
             dirtyViews.forEach((viewId) => markViewDirty(viewId));
             const visibleDirtyViewIds = getVisibleTrackedViewIds().filter((viewId) => dirtyViews.includes(viewId));
             if (!visibleDirtyViewIds.length) return;
-            const refreshDelay = shouldDeferVisibleDataRefresh() ? 320 : 24;
             visibleDirtyViewIds.forEach((viewId) => {
-                scheduleUiRender(`data-refresh:${viewId}`, () => {
+                const tryRenderView = () => {
                     if (!isViewVisible(viewId)) return;
+                    if (shouldDeferVisibleDataRefresh()) {
+                        scheduleUiRender(`data-refresh:${viewId}`, tryRenderView, 420);
+                        return;
+                    }
                     renderViewContent(viewId, false, true);
-                }, refreshDelay);
+                };
+                const refreshDelay = shouldDeferVisibleDataRefresh() ? 420 : 24;
+                scheduleUiRender(`data-refresh:${viewId}`, tryRenderView, refreshDelay);
             });
         }
 
@@ -12510,11 +12586,16 @@ activeDriveTab = tab;
 
         function getSalesOfficeSeasonItems() {
             let items = salesOfficeInventory.filter((item) => !isBloomPickerSalesOfficeItem(item) && !isSalesOfficeComplete(item));
-            if (fullInventory.length > 0) {
-                const seasonIds = new Set(fullInventory.filter(i => String(i.APP_TAB_ASSIGNMENT || '').toLowerCase() === 'season').map(i => String(i.UNIQUE_ID || '')).filter(Boolean));
-                items = items.filter((item) => seasonIds.has(String(firstNonEmptyValue(item.MASTER_ID, item.UNIQUE_ID) || '')));
-            }
-            items.sort((a, b) => new Date(b.COMPLETED_AT || 0).getTime() - new Date(a.COMPLETED_AT || 0).getTime());
+            items = items.filter((item) => {
+                const assignment = String(firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, item.app_tab_assignment, '') || '').trim().toLowerCase();
+                if (assignment) return assignment === 'season';
+                if (!getDatasetState('master').fullLoaded) return true;
+                const masterRow = findLinkedMasterRow(item);
+                if (!masterRow) return true;
+                const masterAssignment = String(firstNonEmptyValue(masterRow.APP_TAB_ASSIGNMENT, '') || '').trim().toLowerCase();
+                return masterAssignment ? masterAssignment === 'season' : true;
+            });
+            items.sort((a, b) => new Date(firstNonEmptyValue(b.UPDATED_AT, b.COMPLETED_AT, 0)).getTime() - new Date(firstNonEmptyValue(a.UPDATED_AT, a.COMPLETED_AT, 0)).getTime());
             return items;
         }
 
@@ -13857,7 +13938,10 @@ activeDriveTab = tab;
             if (modal) modal.classList.add('hidden');
             if (uidField) uidField.value = '';
             if (textField) textField.value = '';
-            if (saveBtn) saveBtn.innerText = 'Save AV Note';
+            if (saveBtn) {
+                saveBtn.innerText = 'Save AV Note';
+                saveBtn.disabled = false;
+            }
         }
 
         async function saveSalesOfficeAvNote() {
@@ -13866,50 +13950,67 @@ activeDriveTab = tab;
             const saveBtn = document.getElementById('sales-office-av-save-btn');
             const uid = String(uidField && uidField.value || '').trim();
             if (!uid || !textField) return;
-            const nextValue = String(textField.value || '').trim().toUpperCase();
             const salesOfficeRow = salesOfficeInventory.find((row) => String((row && row.UNIQUE_ID) || '').trim() === uid);
             if (!salesOfficeRow) {
                 showToast('Not Found', 'That Sales Office row could not be found.', true);
                 return;
             }
+            if (saveBtn) {
+                saveBtn.innerText = 'Saving...';
+                saveBtn.disabled = true;
+            }
+            try {
+                if ((isIOSDevice() || isStandaloneApp()) && typeof textField.blur === 'function') textField.blur();
+            } catch (e) {}
+            if (isIOSDevice() || isStandaloneApp()) await new Promise((resolve) => setTimeout(resolve, 40));
+            const nextValue = String(textField.value || '').trim().toUpperCase();
             const masterRow = masterInventoryById.get(uid) || fullInventory.find((row) => String((row && row.UNIQUE_ID) || '').trim() === uid) || null;
             const previousSalesOfficeNote = String(salesOfficeRow.AV_NOTE || '');
             const previousMasterNote = masterRow ? String(masterRow.AV_NOTE || '') : null;
-            if (saveBtn) saveBtn.innerText = 'Saving...';
+            const refreshSalesOfficeView = function() {
+                markViewDirty('sales-office');
+                if (getCurrentVisibleViewId() === 'sales-office') scheduleUiRender(`sales-office-av-note:${uid}`, () => renderSalesOffice(), 18);
+            };
             salesOfficeRow.AV_NOTE = nextValue;
+            buildSearchIndex(salesOfficeRow);
             if (masterRow) {
                 masterRow.AV_NOTE = nextValue;
                 buildSearchIndex(masterRow);
                 syncRowDataAcrossViews(masterRow);
             }
             if (activeItem && String((activeItem.UNIQUE_ID || '')).trim() === uid) activeItem.AV_NOTE = nextValue;
-            if (getCurrentVisibleViewId() === 'sales-office') renderSalesOffice();
+            refreshSalesOfficeView();
             try {
-                await supabaseFetch('v2_sales_office', 'PATCH', { av_note: nextValue || null }, `unique_id=eq.${encodeURIComponent(uid)}`);
-                if (masterRow) {
-                    const masterSync = await Promise.allSettled([
-                        supabaseFetch('v2_master_inventory', 'PATCH', { av_note: nextValue || null }, `unique_id=eq.${encodeURIComponent(uid)}`)
-                    ]);
-                    if (masterSync.some((result) => result.status !== 'fulfilled')) {
-                        showToast('Sync Warning', 'AV Note saved in Sales Office, but the linked inventory row did not confirm yet.', true);
-                    } else {
-                        showToast('Saved', 'AV Note updated.');
-                    }
+                const writeResults = await Promise.allSettled([
+                    supabaseFetch('v2_sales_office', 'PATCH', { av_note: nextValue || null }, `unique_id=eq.${encodeURIComponent(uid)}`),
+                    ...(masterRow ? [supabaseFetch('v2_master_inventory', 'PATCH', { av_note: nextValue || null }, `unique_id=eq.${encodeURIComponent(uid)}`)] : [])
+                ]);
+                if (writeResults[0].status !== 'fulfilled') throw (writeResults[0].reason || new Error('Could not save the Sales Office AV Note.'));
+                touchSyncTimestamp();
+                persistCurrentCache(false, 'background-data');
+                refreshSalesOfficeView();
+                if (masterRow && writeResults[1] && writeResults[1].status !== 'fulfilled') {
+                    showToast('Sync Warning', 'AV Note saved in Sales Office, but the linked inventory row did not confirm yet.', true);
                 } else {
                     showToast('Saved', 'AV Note updated.');
                 }
                 closeSalesOfficeAvNoteModal();
             } catch (err) {
                 salesOfficeRow.AV_NOTE = previousSalesOfficeNote;
+                buildSearchIndex(salesOfficeRow);
                 if (masterRow) {
                     masterRow.AV_NOTE = previousMasterNote;
                     buildSearchIndex(masterRow);
                     syncRowDataAcrossViews(masterRow);
                 }
                 if (activeItem && String((activeItem.UNIQUE_ID || '')).trim() === uid) activeItem.AV_NOTE = previousSalesOfficeNote;
-                if (getCurrentVisibleViewId() === 'sales-office') renderSalesOffice();
-                if (saveBtn) saveBtn.innerText = 'Save AV Note';
+                refreshSalesOfficeView();
                 showToast('Error', 'Could not save the Sales Office AV Note.', true);
+            } finally {
+                if (saveBtn) {
+                    saveBtn.innerText = 'Save AV Note';
+                    saveBtn.disabled = false;
+                }
             }
         }
 
@@ -16146,7 +16247,7 @@ function toggleDriveSeason(s) {
                 uploadFlyerBlob: createFlyerBuilderUploadCallback(folderLabel),
                 supabaseFetchFn: supabaseFetch,
                 currentUser: currentUserDisplay || currentUser || 'Unknown User',
-                logoUrl: './assets/greenleaf-logo.png?shellv=V2026.04.06.10',
+                logoUrl: './assets/greenleaf-logo.png?shellv=V2026.04.07.01',
                 storageNamespace: folderLabel
             }).mount();
             builder.state.themeKey = seed.themeKey;
@@ -16555,7 +16656,7 @@ function toggleDriveSeason(s) {
             buildSearchIndex(itemToSave);
             syncRowDataAcrossViews(itemToSave);
             touchSyncTimestamp();
-            persistCurrentCache(false, 'photo-upload');
+            persistCurrentCache(false, 'background-data');
             const isCurrentDetailItem = !!(activeItem && String(activeItem.UNIQUE_ID || '').trim() === String(itemToSave.UNIQUE_ID || '').trim());
             if (isCurrentDetailItem) {
                 const refreshDetailMedia = () => {
@@ -17203,6 +17304,18 @@ function toggleDriveSeason(s) {
     </script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
