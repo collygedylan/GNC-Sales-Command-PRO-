@@ -25,13 +25,13 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="./pwa_flyer_builder.js?shellv=V2026.04.07.10"></script>
+    <script src="./pwa_flyer_builder.js?shellv=V2026.04.06.10"></script>
     <style>:root{--bg:#007a4d;--text-color:#111827;--app-height:100vh;--visual-height:100vh;--keyboard-offset:0px}html,body{min-height:100%;width:100%;max-width:100%;overflow:hidden;overscroll-behavior:none;position:relative}html{background:white}@supports (height:100dvh){:root{--app-height:100dvh}}body{font-family:"Amazon Ember",Arial,sans-serif;background:white;color:var(--text-color);user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior:none;min-height:var(--app-height);height:var(--app-height);width:100%;overflow:hidden;position:fixed;inset:0;touch-action:pan-y pinch-zoom}button,[role="button"],.task-tab,.detail-tab,.drawer-item,.drill-item,.menu-btn{touch-action:manipulation}.nav-header{background:var(--bg);color:white;padding-top:max(10px,env(safe-area-inset-top))}#view-login,#view-change-password{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;min-height:var(--app-height)}#view-change-password{display:none;z-index:10000}#app-wrapper{min-height:var(--app-height);height:var(--app-height);width:100%;max-width:100%;overflow:hidden;position:fixed;inset:0}.login-card{background:white;padding:30px;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,.2);width:100%;max-width:360px;text-align:center}.input-field{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:8px;font-size:16px;margin-bottom:12px}#toast-notification{position:fixed;top:-100px;left:50%;transform:translateX(-50%);background:#16a34a;color:white;padding:16px 24px;border-radius:50px;box-shadow:0 10px 15px -3px rgba(0,0,0,.3);z-index:11000;transition:top .5s;display:flex;align-items:center;gap:12px;pointer-events:none}#toast-notification.show{top:20px}#side-drawer{position:fixed;top:0;left:-280px;width:280px;height:100%;background:white;z-index:2000;box-shadow:2px 0 10px rgba(0,0,0,.2);transition:left .3s;overflow-y:auto;padding-bottom:100px}#side-drawer.open{left:0}#drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1999;display:none}#drawer-overlay.open{display:block}.drawer-header{background:var(--bg);color:white;padding:20px;font-weight:bold;font-size:18px}.drawer-item{padding:16px 20px;border-bottom:1px solid #f3f4f6;cursor:pointer;display:flex;align-items:center;gap:12px;color:#374151;font-weight:500}.drill-item{border-bottom:1px solid #e5e7eb;padding:16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:white;transition:background .1s}.drill-item:active{background:#f3f4f6}.back-btn{display:none !important}.inv-card{border:1px solid #dbe4dc;border-left-width:6px;border-radius:18px;padding:14px;background:white;cursor:pointer;flex-grow:1;box-shadow:0 10px 24px rgba(15,23,42,.06);overflow:hidden}.status-green{border-left-color:#22c55e}.status-purple{border-left-color:#9333ea}.status-orange{border-left-color:#f97316}.status-blue{border-left-color:#3b82f6}.status-indigo{border-left-color:#4f46e5}.status-teal{border-left-color:#0d9488}.status-yellow{border-left-color:#eab308}.status-red{border-left-color:#ef4444}.task-tabs,.detail-tabs{display:flex;border-bottom:1px solid #e5e7eb;background:#f9fafb;margin-bottom:10px}.detail-tabs{overflow-x:auto;scrollbar-width:none}.detail-tabs::-webkit-scrollbar{display:none}.task-tab,.detail-tab{flex:1;text-align:center;padding:12px;font-size:11px;font-weight:700;color:#6b7280;cursor:pointer;border-bottom:3px solid transparent;text-transform:uppercase}.detail-tab{flex:0 0 auto;padding:10px 16px}.task-tab.active,.detail-tab.active{color:var(--bg);border-bottom-color:var(--bg);background:white}.overview-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}.overview-card{background:#f8fafc;padding:10px;border-radius:6px;border:1px solid #e2e8f0}.overview-label{font-size:9px;font-weight:800;color:#64748b;text-transform:uppercase;margin-bottom:2px}.overview-val{font-size:13px;font-weight:600;color:#0f172a;word-break:break-all}.expand-trigger{display:flex;align-items:center;justify-content:space-between;padding:12px;background:#f9fafb;border-radius:6px;cursor:pointer;font-weight:600;font-size:14px;border:1px solid #e5e7eb}.expand-content{display:none;margin-top:12px;padding:12px;background:#f9fafb;border-radius:6px;border:1px solid #e5e7eb}.expanded .expand-content{display:block}.card-checkbox-container{width:42px;min-width:42px;overflow:visible;opacity:1;display:flex;align-items:flex-start;justify-content:center;margin-right:12px;transition:transform .16s ease}.card-checkbox-container.absolute{width:auto;min-width:0;margin-right:0}.card-checkbox{display:none !important}.cart-toggle-btn{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:999px;border:1px solid #a7f3d0;background:#f0fdf4;color:#007a4d;box-shadow:0 6px 16px rgba(7,94,63,.14);transition:transform .16s ease,background .16s ease,color .16s ease,border-color .16s ease}.cart-toggle-btn i{font-size:18px;line-height:1}.cart-toggle-btn:active{transform:scale(.95)}.cart-toggle-btn.active{background:#007a4d;color:#fff;border-color:#007a4d}.item-row.cart-selected{box-shadow:0 0 0 2px rgba(0,122,77,.16) inset}.item-row{touch-action:manipulation}.spinner{border:4px solid rgba(255,255,255,.3);border-top:4px solid white;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:0 auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.scrollbar-none::-webkit-scrollbar{display:none}.scrollbar-none{-ms-overflow-style:none;scrollbar-width:none}</style>
     <style>
         :root{--shell-max-width:920px;--content-max-width:820px;--shell-gutter:clamp(12px,2vw,24px);--shell-width:min(calc(100% - (var(--shell-gutter) * 2)),var(--shell-max-width));--content-width:min(100%,var(--content-max-width))}
         #main-scroll-area{min-height:0;width:100%;max-width:100%;min-width:0;overflow-x:hidden;overflow-y:auto;overscroll-behavior-x:none;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;scroll-padding-top:calc(5.5rem + env(safe-area-inset-top));scroll-padding-bottom:calc(7rem + env(safe-area-inset-bottom));padding:0 var(--shell-gutter) calc(10rem + env(safe-area-inset-bottom));background:linear-gradient(180deg,#f8fbf9 0%,#f4f7f5 100%)}
         #global-action-bar{padding-bottom:calc(.75rem + env(safe-area-inset-bottom))}#cart-helper-text{margin-top:.6rem;font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#6b7280}
-        body.app-standalone #app-wrapper{height:var(--app-height);min-height:var(--app-height)}body.app-standalone #main-scroll-area{padding-bottom:calc(10rem + env(safe-area-inset-bottom))}body.app-standalone.keyboard-open #bottom-nav,body.app-standalone.keyboard-open #global-action-bar{opacity:0;pointer-events:none;transform:translateY(140%);transition:transform .18s ease,opacity .18s ease}body.app-standalone.keyboard-open #main-scroll-area{padding-bottom:calc(1.5rem + var(--keyboard-offset));scroll-padding-bottom:calc(1.5rem + var(--keyboard-offset))}#bottom-nav{left:50%;right:auto;bottom:0;transform:translateX(-50%);width:min(760px,calc(100% - (var(--shell-gutter) * 2)));max-width:calc(100% - (var(--shell-gutter) * 2));padding:10px 10px calc(.75rem + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:.5rem;background:rgba(255,255,255,.98);backdrop-filter:saturate(150%) blur(12px);border-top-left-radius:22px;border-top-right-radius:22px;box-sizing:border-box;box-shadow:0 -12px 28px rgba(15,23,42,.14)}body.app-standalone.ios-device #bottom-nav{padding-top:.45rem;padding-bottom:max(.2rem, env(safe-area-inset-bottom));align-items:end;width:min(760px,calc(100vw - (var(--shell-gutter) * 2)));max-width:calc(100vw - (var(--shell-gutter) * 2))}body.ios-device,body.ios-device #app-wrapper,body.ios-device #main-scroll-area,body.ios-device #view-wrapper,body.ios-device .freeze-panel{overflow-x:clip !important;overscroll-behavior-x:none !important;max-width:100vw !important}body.ios-device #view-wrapper{width:min(var(--shell-width),100vw)}body.ios-device #view-wrapper>div{max-width:min(var(--content-width),calc(100vw - (var(--shell-gutter) * 2)))}body.ios-device #main-scroll-area{touch-action:pan-y !important;scroll-behavior:auto !important}body.ios-device #bottom-nav{background:#ffffff !important;backdrop-filter:none !important;-webkit-backdrop-filter:none !important;box-shadow:0 -8px 20px rgba(15,23,42,.10) !important}body.ios-device .nav-header,body.ios-device .freeze-panel,body.ios-device .sticky-search{transform:none !important;-webkit-transform:none !important;backface-visibility:visible !important;will-change:auto !important;box-shadow:0 4px 12px rgba(15,23,42,.06) !important}body.ios-device .app-smart-card,body.ios-device .inv-card,body.ios-device .app-card-shell{contain:none !important;transition:none !important;transform:none !important;will-change:auto !important;backface-visibility:visible !important;box-shadow:0 8px 20px rgba(15,23,42,.07) !important}body.ios-device .app-smart-card:hover,body.ios-device .app-smart-card:active,body.ios-device .app-smart-card:focus-within,body.ios-device .inv-card:hover,body.ios-device .inv-card:active{transform:none !important}body.ios-device #global-action-bar,body.ios-device .camera-capture-close-btn,body.ios-device .camera-capture-control-toggle,body.ios-device .camera-capture-pro-panel,body.ios-device .camera-capture-mode-chip,body.ios-device .camera-capture-secondary,body.ios-device #pull-refresh-indicator .pull-refresh-pill{backdrop-filter:none !important;-webkit-backdrop-filter:none !important}
+        body.app-standalone #app-wrapper{height:var(--app-height);min-height:var(--app-height)}body.app-standalone #main-scroll-area{padding-bottom:calc(10rem + env(safe-area-inset-bottom))}body.app-standalone.keyboard-open #bottom-nav,body.app-standalone.keyboard-open #global-action-bar{opacity:0;pointer-events:none;transform:translateY(140%);transition:transform .18s ease,opacity .18s ease}body.app-standalone.keyboard-open #main-scroll-area{padding-bottom:calc(1.5rem + var(--keyboard-offset));scroll-padding-bottom:calc(1.5rem + var(--keyboard-offset))}#bottom-nav{left:50%;right:auto;bottom:0;transform:translateX(-50%);width:min(760px,calc(100% - (var(--shell-gutter) * 2)));max-width:calc(100% - (var(--shell-gutter) * 2));padding:10px 10px calc(.75rem + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:.5rem;background:rgba(255,255,255,.98);backdrop-filter:saturate(150%) blur(12px);border-top-left-radius:22px;border-top-right-radius:22px;box-sizing:border-box;box-shadow:0 -12px 28px rgba(15,23,42,.14)}body.app-standalone.ios-device #bottom-nav{padding-top:.45rem;padding-bottom:max(.2rem, env(safe-area-inset-bottom));align-items:end;width:min(760px,calc(100vw - (var(--shell-gutter) * 2)));max-width:calc(100vw - (var(--shell-gutter) * 2))}body.ios-device,body.ios-device #app-wrapper,body.ios-device #main-scroll-area,body.ios-device #view-wrapper,body.ios-device .freeze-panel{overflow-x:clip !important;overscroll-behavior-x:none !important;max-width:100vw !important}body.ios-device #view-wrapper{width:min(var(--shell-width),100vw)}body.ios-device #view-wrapper>div{max-width:min(var(--content-width),calc(100vw - (var(--shell-gutter) * 2)))}body.ios-device #main-scroll-area{touch-action:pan-y !important}
         .footer-nav-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.18rem;min-height:52px;border-radius:16px;border:1px solid transparent;background:transparent;color:#6b7280;font-size:10px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;transition:background .16s ease,color .16s ease,border-color .16s ease,transform .16s ease;position:relative}
         .footer-nav-btn i{font-size:22px;line-height:1}
         .footer-nav-btn:active{transform:scale(.97)}
@@ -44,7 +44,7 @@
         .app-card-note{border-radius:12px}
         .app-card-actions{display:flex;gap:.55rem;margin-top:.9rem;padding-top:.85rem;border-top:1px solid #e5e7eb}
         .app-card-shell img,.inv-card img{display:block}
-        .app-smart-card{border-radius:22px !important;box-shadow:0 14px 34px rgba(15,23,42,.08),0 3px 10px rgba(15,23,42,.04) !important;border-color:#d7e4db !important;background:linear-gradient(180deg,#ffffff 0%,#fbfdfc 100%);transition:box-shadow .18s ease,border-color .18s ease,background .16s ease;contain:layout paint;transform:none !important}.app-smart-card:hover,.app-smart-card:active,.app-smart-card:focus-within{transform:none !important}
+        .app-smart-card{border-radius:22px !important;box-shadow:0 14px 34px rgba(15,23,42,.08),0 3px 10px rgba(15,23,42,.04) !important;border-color:#d7e4db !important;background:linear-gradient(180deg,#ffffff 0%,#fbfdfc 100%);transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease;contain:layout paint}
         .app-smart-card .app-card-eyebrow{font-size:.62rem !important;letter-spacing:.18em !important;text-transform:uppercase;font-weight:900}
         .app-smart-card .app-card-title{font-size:1.08rem !important;line-height:1.08 !important;letter-spacing:-.025em}
         .app-smart-card .app-card-subtitle{font-size:.86rem !important;line-height:1.15 !important;font-weight:800}
@@ -55,7 +55,7 @@
         .app-smart-card .app-card-chip-row > span{display:inline-flex;align-items:center;min-height:1.65rem;padding:.28rem .72rem !important;border-radius:999px !important;box-shadow:inset 0 1px 0 rgba(255,255,255,.65)}
         .app-smart-card .app-smart-thumb{width:4.1rem;height:4.1rem;border-radius:1rem !important;box-shadow:0 10px 24px rgba(15,23,42,.12)}
         .app-smart-card .app-smart-thumb--feature{width:5.85rem;height:5.85rem;border-radius:1.05rem !important}
-        body.viewport-wide .app-smart-card:hover{transform:none !important;box-shadow:0 18px 40px rgba(15,23,42,.10),0 6px 14px rgba(15,23,42,.05) !important}
+        body.viewport-wide .app-smart-card:hover{transform:translateY(-2px);box-shadow:0 18px 40px rgba(15,23,42,.10),0 6px 14px rgba(15,23,42,.05) !important}
         body.viewport-compact .app-smart-card{border-radius:18px !important}
         body.viewport-compact .app-smart-card .card-checkbox-container{width:36px;min-width:36px;margin-right:10px}
         body.viewport-compact .app-smart-card .app-card-main{padding-left:.6rem}
@@ -430,7 +430,7 @@
                 <button type="button" class="text-gray-500 font-bold py-2 px-3" onclick="closeSalesOfficeAvNoteModal()">Close</button>
             </div>
             <input type="hidden" id="sales-office-av-uid">
-            <textarea id="sales-office-av-text" class="input-field border-purple-200 focus:border-purple-500 min-h-[160px] resize-y text-left" placeholder="Enter AV note..." autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="done"></textarea>
+            <textarea id="sales-office-av-text" class="input-field border-purple-200 focus:border-purple-500 min-h-[160px] resize-y text-left" placeholder="Enter AV note..."></textarea>
             <div class="flex gap-2 mt-2">
                 <button type="button" class="w-1/3 bg-gray-100 text-gray-600 font-bold p-3 rounded-lg shadow-sm active:scale-95" onclick="closeSalesOfficeAvNoteModal()">Cancel</button>
                 <button type="button" id="sales-office-av-save-btn" class="w-2/3 bg-[#007a4d] text-white font-bold p-3 rounded-lg shadow-md active:scale-95" onclick="saveSalesOfficeAvNote()">Save AV Note</button>
@@ -571,7 +571,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-                            <div id="header-version" class="nav-version-pill">V2026.04.07.10</div>
+                            <div id="header-version" class="nav-version-pill">V2026.04.06.10</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -1007,14 +1007,10 @@
         const CACHE_PERSIST_REALTIME_VISIBLE_MIN_INTERVAL_MS = 180000;
         const CACHE_PERSIST_ACTIVE_INTERACTION_GRACE_MS = 12000;
         const CACHE_PERSIST_IDLE_TIMEOUT_MS = 2500;
-        const VISIBLE_RENDER_INTERACTION_GRACE_MS = 1800;
-        const FULL_DATASET_INTERACTION_DEFER_MS = 3200;
-        const FULL_DATASET_QUEUE_RETRY_MS = 1000;
         const PHOTO_MAX_WIDTH = 2560;
         const PHOTO_JPEG_QUALITY = 0.94;
         const PHOTO_LAG_MAX_WIDTH = 2048;
         const PHOTO_LAG_JPEG_QUALITY = 0.9;
-        const PHOTO_DIRECT_UPLOAD_MAX_BYTES = 24 * 1024 * 1024;
         const CAMERA_VIDEO_FRAME_JPEG_QUALITY = 0.96;
         const CAMERA_PORTRAIT_OUTPUT_MAX_WIDTH = 2560;
         const CAMERA_PORTRAIT_OUTPUT_JPEG_QUALITY = 0.94;
@@ -1112,15 +1108,6 @@
         let lastUserInteractionAt = Date.now();
         let viewportHeightSyncInitialized = false;
         let standaloneShellBaseHeight = 0;
-        let viewportShellSyncFrame = 0;
-        let lastViewportShellState = {
-            appHeight: 0,
-            visualHeight: 0,
-            keyboardOffset: 0,
-            standalone: null,
-            ios: null,
-            keyboardOpen: null
-        };
         let detailFieldFocusResetTimer = null;
         let detailFormFocusInitialized = false;
 
@@ -1169,7 +1156,6 @@
             const layoutHeight = Math.max(320, Math.round(window.innerHeight || document.documentElement.clientHeight || 0));
             const visualHeight = Math.max(320, Math.round(viewport ? (viewport.height + (viewport.offsetTop || 0)) : layoutHeight));
             const standalone = isStandaloneApp();
-            const ios = isIOSDevice();
             const activeEditable = isEditableTextEntryTarget(document.activeElement);
             const viewportKeyboardOffset = viewport ? Math.max(0, Math.round(layoutHeight - viewport.height - (viewport.offsetTop || 0))) : 0;
             const baseKeyboardOffset = standaloneShellBaseHeight ? Math.max(0, Math.round(standaloneShellBaseHeight - visualHeight)) : 0;
@@ -1186,43 +1172,18 @@
                 ? Math.max(standaloneShellBaseHeight || 0, layoutHeight, visualHeight)
                 : (standalone ? Math.max(standaloneShellBaseHeight || 0, layoutHeight, visualHeight) : visualHeight);
 
-            if (
-                lastViewportShellState.appHeight === nextHeight &&
-                lastViewportShellState.visualHeight === visualHeight &&
-                lastViewportShellState.keyboardOffset === (keyboardOpen ? keyboardOffset : 0) &&
-                lastViewportShellState.standalone === standalone &&
-                lastViewportShellState.ios === ios &&
-                lastViewportShellState.keyboardOpen === keyboardOpen
-            ) {
-                return;
-            }
-
             document.documentElement.style.setProperty('--app-height', `${nextHeight}px`);
             document.documentElement.style.setProperty('--visual-height', `${visualHeight}px`);
             document.documentElement.style.setProperty('--keyboard-offset', `${keyboardOpen ? keyboardOffset : 0}px`);
             document.body.classList.toggle('app-standalone', standalone);
-            document.body.classList.toggle('ios-device', ios);
+            document.body.classList.toggle('ios-device', isIOSDevice());
             document.body.classList.toggle('keyboard-open', keyboardOpen);
-            lastViewportShellState = {
-                appHeight: nextHeight,
-                visualHeight,
-                keyboardOffset: keyboardOpen ? keyboardOffset : 0,
-                standalone,
-                ios,
-                keyboardOpen
-            };
         }
 
         function initializeViewportHeightSync() {
             if (viewportHeightSyncInitialized) return;
             viewportHeightSyncInitialized = true;
-            const syncViewportShell = () => {
-                if (viewportShellSyncFrame) cancelAnimationFrame(viewportShellSyncFrame);
-                viewportShellSyncFrame = requestAnimationFrame(() => {
-                    viewportShellSyncFrame = 0;
-                    syncViewportHeight();
-                });
-            };
+            const syncViewportShell = () => requestAnimationFrame(syncViewportHeight);
             syncViewportHeight();
             window.addEventListener("resize", syncViewportShell, { passive: true });
             window.addEventListener("orientationchange", () => {
@@ -1233,9 +1194,7 @@
             document.addEventListener("focusout", () => setTimeout(syncViewportShell, 160));
             if (window.visualViewport) {
                 window.visualViewport.addEventListener("resize", syncViewportShell, { passive: true });
-                if (!isIOSDevice()) {
-                    window.visualViewport.addEventListener("scroll", syncViewportShell, { passive: true });
-                }
+                window.visualViewport.addEventListener("scroll", syncViewportShell, { passive: true });
             }
         }
 
@@ -1260,7 +1219,6 @@
         }
 
         let horizontalViewportClampInitialized = false;
-        let horizontalViewportClampFrame = 0;
         function clampHorizontalViewportShift() {
             if (!document.body.classList.contains('ios-device')) return;
             const mainScrollArea = document.getElementById('main-scroll-area');
@@ -1271,13 +1229,7 @@
         function initializeHorizontalViewportClamp() {
             if (horizontalViewportClampInitialized) return;
             horizontalViewportClampInitialized = true;
-            const scheduleClamp = () => {
-                if (horizontalViewportClampFrame) cancelAnimationFrame(horizontalViewportClampFrame);
-                horizontalViewportClampFrame = requestAnimationFrame(() => {
-                    horizontalViewportClampFrame = 0;
-                    clampHorizontalViewportShift();
-                });
-            };
+            const scheduleClamp = () => requestAnimationFrame(clampHorizontalViewportShift);
             scheduleClamp();
             const mainScrollArea = document.getElementById('main-scroll-area');
             if (mainScrollArea) {
@@ -1290,7 +1242,7 @@
             document.addEventListener('visibilitychange', () => {
                 if (!document.hidden) scheduleClamp();
             });
-            if (window.visualViewport && !isIOSDevice()) {
+            if (window.visualViewport) {
                 window.visualViewport.addEventListener('scroll', scheduleClamp, { passive: true });
             }
         }
@@ -2047,30 +1999,6 @@
                 if (sameLinkedRow(row)) applyLinkedRowCatalogData(row);
             });
 
-            const shouldSyncAvOpenFromMaster = isDriveOpenStockSourceItem(masterItem);
-            if (shouldSyncAvOpenFromMaster) {
-                const avOpenRowIndex = avOpenInventory.findIndex((row) => sameMasterRow(row));
-                const shouldShowInAvOpen = isDriveOpenStockSourceItem(masterItem);
-                if (shouldShowInAvOpen) {
-                    if (avOpenRowIndex > -1) {
-                        applyExactRowData(avOpenInventory[avOpenRowIndex]);
-                    } else {
-                        const avClone = { ...masterItem, DOM_ID: 'avo_' + masterId };
-                        normalizeRowPhotoFields(avClone);
-                        buildSearchIndex(avClone);
-                        avOpenInventory.push(avClone);
-                    }
-                } else if (avOpenRowIndex > -1) {
-                    const removedRows = avOpenInventory.splice(avOpenRowIndex, 1);
-                    removedRows.forEach((row) => {
-                        if (row && row.DOM_ID) selectedItems.delete(row.DOM_ID);
-                    });
-                    if (!selectedItems.size) cartPanelOpen = false;
-                    updateGlobalActionBar();
-                    refreshCartButtons();
-                }
-            }
-
             if (activeItem) {
                 if (sameMasterRow(activeItem)) applyExactRowData(activeItem);
                 else if (!isOrderSnapshot(activeItem) && sameLinkedRow(activeItem)) applyLinkedRowCatalogData(activeItem);
@@ -2195,7 +2123,8 @@
                     changed = removeRealtimeRow(avOpenInventory, uniqueId) || changed;
                 } else if (nextRow) {
                     changed = upsertRealtimeRow(fullInventory, nextRow) || changed;
-                    if (isDriveOpenStockSourceItem(nextRow)) changed = upsertRealtimeRow(avOpenInventory, nextRow) || changed;
+                    const sLts = parseFloat(String(nextRow.S_LTS || 0).replace(/,/g, '')) || 0;
+                    if (sLts > 0) changed = upsertRealtimeRow(avOpenInventory, nextRow) || changed;
                     else changed = removeRealtimeRow(avOpenInventory, uniqueId) || changed;
                 }
             } else if (tableName === 'v2_active_request') {
@@ -2659,7 +2588,7 @@
         function maybeWarnAvRuleSchemaMissing() {
             if (avRuleSchemaWarningShown || !currentUser) return;
             avRuleSchemaWarningShown = true;
-            console.warn('AV retention schema is not installed. Advanced AV rule snapshots are disabled until av_rule_retention_migration.sql is run in Supabase, but the 10-day stale cleanup still runs from completed dates.');
+            console.warn('AV retention schema is not installed. AV retention timing/reset rules are disabled until av_rule_retention_migration.sql is run in Supabase.');
         }
 
         async function ensureAvRuleColumnsReady(force = false) {
@@ -2831,20 +2760,6 @@
 
         async function loadFromCache() { return loadCacheValue("latest_data"); }
 
-        function stripTransientCacheFields(item = {}) {
-            const clean = {};
-            Object.keys(item || {}).forEach((key) => {
-                if (key === 'DOM_ID' || key === '_search' || key === '_searchCandidates' || key === '_searchPrimaryStarts' || key === '_searchWordStarts' || key === '_searchProfileWordStarts') return;
-                clean[key] = item[key];
-            });
-            return clean;
-        }
-
-        function buildCacheRows(items = []) {
-            if (!Array.isArray(items) || !items.length) return [];
-            return items.map((item) => stripTransientCacheFields(item));
-        }
-
         const CACHE_SCHEMA_VERSION = 4;
         const INLINE_CACHE_RESERVE_LIMIT = 180;
         function buildCacheSnapshot() {
@@ -3002,9 +2917,6 @@
         let loginPrefetchMode='';
         let datasetLoadState=createDatasetLoadState();
         let datasetQueueTimers={};
-        let datasetLoadExecutionQueue=[];
-        let datasetLoadExecutionActive=0;
-        let datasetLoadPumpTimer=null;
         let backgroundRefreshInFlight=false;
         let lastBackgroundRefreshAt=0;
         let cacheWarmPromise=null;
@@ -3015,7 +2927,6 @@
         let dockItemProgressByUid=new Map(); let dockItemProgressPromise=null; let dockItemProgressLoaded=false; let dockItemSchemaReady=null; let dockItemSchemaPromise=null; let dockItemSchemaWarningShown=false;
         let detailRequestSourceDomIds=[];
         let avRuleColumnsReady=null; let avRuleColumnsProbePromise=null; let avRuleSchemaWarningShown=false; let avRuleCleanupInFlight=new Set();
-        let salesOfficeDismissedRows=loadSalesOfficeDismissedRows(); let salesOfficeDismissCleanupInFlight=new Set();
         let activeSalesOfficeTab='season'; let salesOfficeOrderColumnsReady=null; let salesOfficeOrderSchemaPromise=null; let salesOfficeOrderSchemaWarningShown=false;
         const LABOR_TIMECARD_TABLE='v2_employee_time_cards'; const LABOR_TIMECARD_DAYS=Object.freeze([{key:'wed',label:'Wed'},{key:'thu',label:'Thu'},{key:'fri',label:'Fri'},{key:'sat',label:'Sat'},{key:'sun',label:'Sun'},{key:'mon',label:'Mon'},{key:'tue',label:'Tue'}]);
         let activeHoursTab='summary'; let laborTimeCards=[]; let laborTimeCardsLoaded=false; let laborTimeCardsPromise=null; let laborTimeCardSchemaReady=null; let laborTimeCardSchemaPromise=null; let laborTimeCardSchemaWarningShown=false; let activeLaborTimeCardId=''; let laborTimeCardWeekEnding=''; let laborTimeCardSearchTerm=''; let laborTimeCardLoadedWeekEnding=''; let laborTimeCardLoadedSupervisor='';
@@ -3076,7 +2987,7 @@
         let pendingRequestArchiveFlushTimer = null;
         let pendingRequestArchiveFlushInFlight = false;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Maschino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'V2026.04.07.10';
+        const APP_VERSION = 'V2026.04.06.10';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -3694,73 +3605,17 @@
                 return true;
             };
 
-            const executeDatasetLoad = () => runDatasetLoadWithBudget(key, wantsFull ? 'full' : 'initial', runLoad);
-
             if (wantsFull) {
-                state.fullPromise = Promise.resolve(state.initialPromise).catch(() => false).then(executeDatasetLoad).finally(() => {
+                state.fullPromise = Promise.resolve(state.initialPromise).catch(() => false).then(runLoad).finally(() => {
                     state.fullPromise = null;
                 });
                 return state.fullPromise;
             }
 
-            state.initialPromise = executeDatasetLoad().finally(() => {
+            state.initialPromise = runLoad().finally(() => {
                 state.initialPromise = null;
             });
             return state.initialPromise;
-        }
-
-        function getDatasetLoadExecutionLimit() {
-            return isTouchConstrainedDevice() ? 1 : 2;
-        }
-
-        function shouldPauseFullDatasetLoad() {
-            if (document.hidden) return false;
-            return (Date.now() - lastUserInteractionAt) < FULL_DATASET_INTERACTION_DEFER_MS;
-        }
-
-        function scheduleDatasetLoadPump(delayMs = 0) {
-            if (datasetLoadPumpTimer) return;
-            datasetLoadPumpTimer = setTimeout(() => {
-                datasetLoadPumpTimer = null;
-                pumpDatasetLoadExecutionQueue();
-            }, Math.max(0, Number(delayMs) || 0));
-        }
-
-        function pumpDatasetLoadExecutionQueue() {
-            if (!datasetLoadExecutionQueue.length) return;
-            const limit = getDatasetLoadExecutionLimit();
-            while (datasetLoadExecutionActive < limit && datasetLoadExecutionQueue.length) {
-                let jobIndex = datasetLoadExecutionQueue.findIndex((job) => job.mode !== 'full');
-                if (jobIndex === -1) {
-                    if (shouldPauseFullDatasetLoad()) {
-                        scheduleDatasetLoadPump(FULL_DATASET_QUEUE_RETRY_MS);
-                        return;
-                    }
-                    jobIndex = 0;
-                }
-                const job = datasetLoadExecutionQueue.splice(jobIndex, 1)[0];
-                if (!job) return;
-                datasetLoadExecutionActive += 1;
-                Promise.resolve()
-                    .then(() => job.run())
-                    .then(job.resolve, job.reject)
-                    .finally(() => {
-                        datasetLoadExecutionActive = Math.max(0, datasetLoadExecutionActive - 1);
-                        if (datasetLoadExecutionQueue.length) scheduleDatasetLoadPump(0);
-                    });
-            }
-        }
-
-        function runDatasetLoadWithBudget(key, mode = 'initial', runner = null) {
-            const normalizedMode = mode === 'full' ? 'full' : 'initial';
-            return new Promise((resolve, reject) => {
-                datasetLoadExecutionQueue.push({ key, mode: normalizedMode, queuedAt: Date.now(), run: typeof runner === 'function' ? runner : (() => true), resolve, reject });
-                datasetLoadExecutionQueue.sort((a, b) => {
-                    if (a.mode !== b.mode) return a.mode === 'initial' ? -1 : 1;
-                    return a.queuedAt - b.queuedAt;
-                });
-                scheduleDatasetLoadPump(0);
-            });
         }
 
         function queueDatasetLoad(key, mode = 'full', delayMs = 180) {
@@ -3771,11 +3626,10 @@
                 : (state.initialLoaded || state.fullLoaded || !!state.initialPromise || !!state.fullPromise);
             if (alreadyLoaded) return;
             if (datasetQueueTimers[queueKey]) clearTimeout(datasetQueueTimers[queueKey]);
-            const extraDelay = mode === 'full' && !document.hidden && isTouchConstrainedDevice() ? Math.max(220, FULL_DATASET_QUEUE_RETRY_MS) : 0;
             datasetQueueTimers[queueKey] = setTimeout(() => {
                 delete datasetQueueTimers[queueKey];
                 ensureDatasetLoaded(key, mode).catch(() => {});
-            }, Math.max(0, Number(delayMs) || 0) + extraDelay);
+            }, delayMs);
         }
 
         function isDatasetStale(key, maxAgeMs = 15000) {
@@ -3936,10 +3790,6 @@
                 return false;
             }
             if (backgroundRefreshInFlight) return false;
-            if (!force && !document.hidden && (Date.now() - lastUserInteractionAt) < FULL_DATASET_INTERACTION_DEFER_MS) {
-                queueVisibleDatasetCatchup(FULL_DATASET_QUEUE_RETRY_MS);
-                return false;
-            }
             const loadedKeys = Object.keys(datasetLoadState).filter((key) => {
                 const state = getDatasetState(key);
                 return state.initialLoaded || state.fullLoaded;
@@ -7761,7 +7611,7 @@ function toggleDriveQuickRequestItem(domId) {
                 && !applyPlantQualityColor
                 && !!directUploadExtension
                 && Number(file && file.size || 0) > 0
-                && Number(file && file.size || 0) <= PHOTO_DIRECT_UPLOAD_MAX_BYTES;
+                && Number(file && file.size || 0) <= (12 * 1024 * 1024);
             if (!canDirectUploadOriginal) {
                 showToast('Processing', preserveSourceResolution ? 'Saving High-Res Image...' : (shouldAttemptPortrait ? 'Preparing portrait photo...' : 'Compressing image...'), false);
             }
@@ -8141,7 +7991,9 @@ function toggleDriveQuickRequestItem(domId) {
             }
             if (allowedViews.has('tasks')) {
                 addLoginWarmupTarget(initialTargets, 'avNotes', 'initial');
-                if (!prefersDeferredWarm || openedFromCache) addLoginWarmupTarget(fullTargets, 'avNotes', 'full');
+                addLoginWarmupTarget(fullTargets, 'avNotes', 'full');
+                addLoginWarmupTarget(initialTargets, 'cav', 'initial');
+                addLoginWarmupTarget(fullTargets, 'cav', 'full');
             }
             if (allowedViews.has('reserves')) {
                 addLoginWarmupTarget(initialTargets, 'reserves', reserveInitialMode);
@@ -8162,8 +8014,8 @@ function toggleDriveQuickRequestItem(domId) {
             const fullPriority = ['master', 'requests', 'soc', 'salesOffice', 'avNotes', 'cav', 'avOpen', 'reserves'];
             const fullKeys = fullPriority.concat(Array.from(fullTargets.keys()).filter((key) => !fullPriority.includes(key)));
             const fullQueue = [];
-            const fullStart = openedFromCache ? (prefersDeferredWarm ? 2600 : 1400) : (prefersDeferredWarm ? 2200 : 1100);
-            const fullStep = prefersDeferredWarm ? 1400 : 650;
+            const fullStart = openedFromCache ? (prefersDeferredWarm ? 700 : 850) : (prefersDeferredWarm ? 420 : 520);
+            const fullStep = openedFromCache ? (prefersDeferredWarm ? 450 : 520) : (prefersDeferredWarm ? 320 : 380);
             fullKeys.forEach((key) => {
                 const target = fullTargets.get(key);
                 if (!target) return;
@@ -8403,7 +8255,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function buildAvOpenInventoryFromMasterItems(items = []) {
-            return items.filter((item) => isDriveOpenStockSourceItem(item));
+            return items.filter((item) => (parseFloat(String(firstNonEmptyValue(item && item.S_LTS, '0')).replace(/,/g,'')) || 0) > 0);
         }
 
         function collectMasterAvRuleClearOps(items = []) {
@@ -8479,7 +8331,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (hasMaster) {
                 fullInventory = (res.data || []).map((item,idx)=>{item.DOM_ID='fi_'+idx;return buildSearchIndex(normalizeRowPhotoFields(item));});
                 applyMasterAppTabAssignments(fullInventory);
-                if (fullInventory.length) avRuleClearOps = collectMasterAvRuleClearOps(fullInventory);
+                if (avRuleColumnsReady === true) avRuleClearOps = collectMasterAvRuleClearOps(fullInventory);
                 rebuildMasterInventoryIndexes();
                 invalidateMasterDerivedInventories();
             }
@@ -8516,35 +8368,20 @@ function toggleDriveQuickRequestItem(domId) {
 
             if (hasSalesOffice || (hasMaster && salesOfficeInventory.length)) {
                 const salesOfficeSource = hasSalesOffice ? (res.salesOfficeData || []) : salesOfficeInventory;
-                const staleSalesOfficeSeasonIds = [];
                 salesOfficeInventory = salesOfficeSource.map((item, idx) => {
                     item.DOM_ID = 'so_' + item.UNIQUE_ID;
-                    const salesOfficeSourceType = String(firstNonEmptyValue(item.SO_SOURCE, item.so_source, 'season')).toLowerCase();
+                    const salesOfficeSource = String(firstNonEmptyValue(item.SO_SOURCE, item.so_source, 'season')).toLowerCase();
                     const salesOfficeMasterId = String(item.MASTER_ID || item.master_id || item.MASTER_UNIQUE_ID || item.UNIQUE_ID || '').trim();
                     const salesOfficeMasterItem = salesOfficeMasterId ? findItemByUniqueId(salesOfficeMasterId) : null;
-                    const isSalesOfficeExactRow = !!(salesOfficeMasterItem && salesOfficeSourceType !== 'bloom_picker' && String(item.UNIQUE_ID || '').trim() === salesOfficeMasterId);
-                    const isLinkedSalesOfficeRow = !!(salesOfficeMasterItem && salesOfficeSourceType !== 'bloom_picker' && String(item.UNIQUE_ID || '').trim() !== salesOfficeMasterId);
+                    const isSalesOfficeExactRow = !!(salesOfficeMasterItem && salesOfficeSource !== 'bloom_picker' && String(item.UNIQUE_ID || '').trim() === salesOfficeMasterId);
                     if (isSalesOfficeExactRow) {
-                        syncMasterFieldsToRow(salesOfficeMasterItem, item, EXACT_ROW_SYNC_KEYS, { attachMasterLink: false });
-                    } else if (isLinkedSalesOfficeRow) {
                         syncMasterFieldsToRow(salesOfficeMasterItem, item, LINKED_ROW_SYNC_KEYS, { attachMasterLink: true });
-                    }
-                    if (salesOfficeSourceType !== 'bloom_picker') {
-                        item.APP_TAB_ASSIGNMENT = firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, salesOfficeMasterItem && salesOfficeMasterItem.APP_TAB_ASSIGNMENT, 'season');
+                        item.APP_TAB_ASSIGNMENT = firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, salesOfficeMasterItem.APP_TAB_ASSIGNMENT);
                     }
                     normalizeRowPhotoFields(item);
                     buildSearchIndex(item);
                     return item;
-                }).filter((item) => {
-                    clearSalesOfficeDismissedIfFresh(item);
-                    if (isSalesOfficeSeasonRowStale(item)) {
-                        const staleUid = String(item.UNIQUE_ID || '').trim();
-                        if (staleUid) staleSalesOfficeSeasonIds.push(staleUid);
-                        return false;
-                    }
-                    return !shouldSuppressSalesOfficeSeasonRow(item);
                 });
-                staleSalesOfficeSeasonIds.forEach((uid) => queueSalesOfficeSeasonRowDelete(uid));
             }
 
             if (hasSoc || (hasMaster && socInventory.length)) {
@@ -9269,7 +9106,7 @@ function toggleDriveQuickRequestItem(domId) {
             const activeTag = activeEl && activeEl.tagName ? String(activeEl.tagName).toUpperCase() : '';
             const isEditableField = !!(activeEl && ['INPUT', 'TEXTAREA', 'SELECT'].includes(activeTag) && !activeEl.readOnly && !activeEl.disabled);
             if (isEditableField) return true;
-            return !document.hidden && (Date.now() - lastUserInteractionAt) < VISIBLE_RENDER_INTERACTION_GRACE_MS;
+            return !document.hidden && (Date.now() - lastUserInteractionAt) < 650;
         }
 
         function refreshAffectedViews(changedKeys = []) {
@@ -9278,17 +9115,12 @@ function toggleDriveQuickRequestItem(domId) {
             dirtyViews.forEach((viewId) => markViewDirty(viewId));
             const visibleDirtyViewIds = getVisibleTrackedViewIds().filter((viewId) => dirtyViews.includes(viewId));
             if (!visibleDirtyViewIds.length) return;
+            const refreshDelay = shouldDeferVisibleDataRefresh() ? 320 : 24;
             visibleDirtyViewIds.forEach((viewId) => {
-                const tryRenderView = () => {
+                scheduleUiRender(`data-refresh:${viewId}`, () => {
                     if (!isViewVisible(viewId)) return;
-                    if (shouldDeferVisibleDataRefresh()) {
-                        scheduleUiRender(`data-refresh:${viewId}`, tryRenderView, 420);
-                        return;
-                    }
                     renderViewContent(viewId, false, true);
-                };
-                const refreshDelay = shouldDeferVisibleDataRefresh() ? 420 : 24;
-                scheduleUiRender(`data-refresh:${viewId}`, tryRenderView, refreshDelay);
+                }, refreshDelay);
             });
         }
 
@@ -10380,7 +10212,11 @@ activeDriveTab = tab;
         }
 
         function getAvReserveOpenStockBaseItems() {
-            return (isDatasetLoaded('avOpen', 'initial') ? avOpenInventory : fullInventory).filter(i => isDriveOpenStockSourceItem(i));
+            return (isDatasetLoaded('avOpen', 'initial') ? avOpenInventory : fullInventory).filter(i => {
+                let lts = Number(String(i.S_LTS || '0').replace(/,/g, ''));
+                let season = String(i.SEASON || '').toUpperCase();
+                return lts > 0 && !season.includes('Y') && !season.includes('Z');
+            });
         }
 
         function getAvReserveDriveRowsForSelection() {
@@ -10798,7 +10634,11 @@ activeDriveTab = tab;
             const useRepDrill = activeAVTab === 'reserves' && activeAvReserveMode !== 'cards' && canSelectAvReserveRep();
             let items = [];
             if (activeAVTab === 'open') {
-                items = (isDatasetLoaded('avOpen', 'initial') ? avOpenInventory : fullInventory).filter(i => isDriveOpenStockSourceItem(i));
+                items = (isDatasetLoaded('avOpen', 'initial') ? avOpenInventory : fullInventory).filter(i => {
+                    let lts = Number(String(i.S_LTS || '0').replace(/,/g, ''));
+                    let season = String(i.SEASON || '').toUpperCase();
+                    return lts > 0 && !season.includes('Y') && !season.includes('Z');
+                });
                 if (activeAvOpenTab === 'photos') items = items.filter(avItemHasPhotos);
             } else {
                 items = reservesInventory;
@@ -11756,20 +11596,13 @@ activeDriveTab = tab;
             return sourceTable === 'v2_sales_office' || assignment === 'sales-office' || assignment === 'sales-office-order';
         }
 
-        function isDriveOpenStockSourceItem(item) {
+        function isAvOpenLikeItem(item) {
             if (!item) return false;
-            if (isRequestLikeItem(item) || isDockLikeItem(item) || isSalesOfficeLikeItem(item)) return false;
-            const linkedMasterId = String(firstNonEmptyValue(item.MASTER_UNIQUE_ID, item.MASTER_ID, item.master_id, '') || '').trim();
-            const sourceTable = String(firstNonEmptyValue(item.SOURCE_TABLE, item.source_table, '') || '').toLowerCase().trim();
-            const isMasterSource = sourceTable === 'v2_master_inventory' || (sourceTable === '' && linkedMasterId === '');
-            if (!isMasterSource) return false;
+            const domId = String(item.DOM_ID || '').trim();
+            if (domId.startsWith('avo_')) return true;
             const ltsValue = Number(String(firstNonEmptyValue(item.S_LTS, item.s_lts, '0') || '0').replace(/,/g, ''));
             const season = String(firstNonEmptyValue(item.SEASON, item.season, '')).toUpperCase();
             return ltsValue > 0 && !season.includes('Y') && !season.includes('Z');
-        }
-
-        function isAvOpenLikeItem(item) {
-            return isDriveOpenStockSourceItem(item);
         }
 
         function isBloomPickerSalesOfficeItem(item) {
@@ -12608,107 +12441,6 @@ activeDriveTab = tab;
                 return String(value || '').trim() || 'Pending';
             }
         }
-        function getSalesOfficeSentMeta(item = null) {
-            const raw = String(firstNonEmptyValue(item && item.ORDER_SUBMITTED_AT, item && item.COMPLETED_AT, item && item.completed_at, '') || '').trim();
-            const label = formatSalesOfficeDate(raw);
-            if (!raw) {
-                return {
-                    raw: '',
-                    label,
-                    ageText: 'Unknown age',
-                    toneClass: 'border-slate-200 bg-slate-50 text-slate-600'
-                };
-            }
-            const sentMs = new Date(raw).getTime();
-            if (!Number.isFinite(sentMs)) {
-                return {
-                    raw,
-                    label,
-                    ageText: 'Unknown age',
-                    toneClass: 'border-slate-200 bg-slate-50 text-slate-600'
-                };
-            }
-            const ageDays = Math.max(0, Math.floor((Date.now() - sentMs) / 86400000));
-            const ageText = ageDays <= 0 ? 'Today' : ageDays === 1 ? '1 day old' : `${ageDays} days old`;
-            let toneClass = 'border-emerald-200 bg-emerald-50 text-emerald-700';
-            if (ageDays >= 5) toneClass = 'border-red-200 bg-red-50 text-red-700';
-            else if (ageDays >= 2) toneClass = 'border-amber-200 bg-amber-50 text-amber-700';
-            return { raw, label, ageText, toneClass };
-        }
-
-        function loadSalesOfficeDismissedRows() {
-            try {
-                const raw = localStorage.getItem('gnc_sales_office_done_v1');
-                const parsed = raw ? JSON.parse(raw) : {};
-                return parsed && typeof parsed === 'object' ? parsed : {};
-            } catch (error) {
-                return {};
-            }
-        }
-
-        function persistSalesOfficeDismissedRows() {
-            try { localStorage.setItem('gnc_sales_office_done_v1', JSON.stringify(salesOfficeDismissedRows || {})); } catch (error) {}
-        }
-
-        function getSalesOfficeSentRaw(item = null) {
-            return String(firstNonEmptyValue(item && item.ORDER_SUBMITTED_AT, item && item.COMPLETED_AT, item && item.completed_at, '') || '').trim();
-        }
-
-        function clearSalesOfficeDismissedIfFresh(item = null) {
-            const uid = String(item && item.UNIQUE_ID || '').trim();
-            if (!uid) return false;
-            const currentSentRaw = getSalesOfficeSentRaw(item);
-            const storedSentRaw = String(firstNonEmptyValue(salesOfficeDismissedRows && salesOfficeDismissedRows[uid], '')).trim();
-            if (!storedSentRaw) return false;
-            if (currentSentRaw && storedSentRaw !== currentSentRaw) {
-                delete salesOfficeDismissedRows[uid];
-                persistSalesOfficeDismissedRows();
-                return true;
-            }
-            return false;
-        }
-
-        function markSalesOfficeDismissed(item = null) {
-            if (!item || isBloomPickerSalesOfficeItem(item)) return;
-            const uid = String(item.UNIQUE_ID || '').trim();
-            const sentRaw = getSalesOfficeSentRaw(item);
-            if (!uid || !sentRaw) return;
-            salesOfficeDismissedRows[uid] = sentRaw;
-            persistSalesOfficeDismissedRows();
-        }
-
-        function shouldSuppressSalesOfficeSeasonRow(item = null) {
-            if (!item || isBloomPickerSalesOfficeItem(item)) return false;
-            const uid = String(item.UNIQUE_ID || '').trim();
-            if (!uid) return false;
-            const storedSentRaw = String(firstNonEmptyValue(salesOfficeDismissedRows && salesOfficeDismissedRows[uid], '')).trim();
-            if (!storedSentRaw) return false;
-            const currentSentRaw = getSalesOfficeSentRaw(item);
-            if (currentSentRaw && storedSentRaw !== currentSentRaw) {
-                delete salesOfficeDismissedRows[uid];
-                persistSalesOfficeDismissedRows();
-                return false;
-            }
-            return storedSentRaw !== '';
-        }
-
-        function isSalesOfficeSeasonRowStale(item = null) {
-            if (!item || isBloomPickerSalesOfficeItem(item)) return false;
-            const sentRaw = getSalesOfficeSentRaw(item);
-            if (!sentRaw) return false;
-            const sentMs = Date.parse(sentRaw);
-            if (!Number.isFinite(sentMs)) return false;
-            return (Date.now() - sentMs) > AV_RULE_MAX_AGE_MS;
-        }
-
-        function queueSalesOfficeSeasonRowDelete(uniqueId = '') {
-            const uid = String(uniqueId || '').trim();
-            if (!uid || salesOfficeDismissCleanupInFlight.has(uid)) return;
-            salesOfficeDismissCleanupInFlight.add(uid);
-            supabaseFetch('v2_sales_office', 'DELETE', null, `unique_id=eq.${encodeURIComponent(uid)}`).catch(() => {}).finally(() => {
-                salesOfficeDismissCleanupInFlight.delete(uid);
-            });
-        }
 
         function openSalesOfficeView() {
             activeSalesOfficeTab = getRoleAccessState().isRep ? 'orders' : 'season';
@@ -12777,29 +12509,15 @@ activeDriveTab = tab;
         }
 
         function getSalesOfficeSeasonItems() {
-            let staleIds = [];
             let items = salesOfficeInventory.filter((item) => !isBloomPickerSalesOfficeItem(item) && !isSalesOfficeComplete(item));
-            items = items.filter((item) => {
-                if (isSalesOfficeSeasonRowStale(item)) {
-                    const staleUid = String(item.UNIQUE_ID || '').trim();
-                    if (staleUid) staleIds.push(staleUid);
-                    return false;
-                }
-                return !shouldSuppressSalesOfficeSeasonRow(item);
-            });
-            staleIds.forEach((uid) => queueSalesOfficeSeasonRowDelete(uid));
-            items = items.filter((item) => {
-                const assignment = String(firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, item.app_tab_assignment, '') || '').trim().toLowerCase();
-                if (assignment) return assignment === 'season';
-                if (!getDatasetState('master').fullLoaded) return true;
-                const masterRow = findLinkedMasterRow(item);
-                if (!masterRow) return true;
-                const masterAssignment = String(firstNonEmptyValue(masterRow.APP_TAB_ASSIGNMENT, '') || '').trim().toLowerCase();
-                return masterAssignment ? masterAssignment === 'season' : true;
-            });
-            items.sort((a, b) => new Date(firstNonEmptyValue(b.UPDATED_AT, b.COMPLETED_AT, 0)).getTime() - new Date(firstNonEmptyValue(a.UPDATED_AT, a.COMPLETED_AT, 0)).getTime());
+            if (fullInventory.length > 0) {
+                const seasonIds = new Set(fullInventory.filter(i => String(i.APP_TAB_ASSIGNMENT || '').toLowerCase() === 'season').map(i => String(i.UNIQUE_ID || '')).filter(Boolean));
+                items = items.filter((item) => seasonIds.has(String(firstNonEmptyValue(item.MASTER_ID, item.UNIQUE_ID) || '')));
+            }
+            items.sort((a, b) => new Date(b.COMPLETED_AT || 0).getTime() - new Date(a.COMPLETED_AT || 0).getTime());
             return items;
         }
+
         function getSalesOfficeOrderItems() {
             let items = salesOfficeInventory.filter((item) => isBloomPickerSalesOfficeItem(item) && !isSalesOfficeComplete(item));
             if (getRoleAccessState().isRep) {
@@ -14139,10 +13857,7 @@ activeDriveTab = tab;
             if (modal) modal.classList.add('hidden');
             if (uidField) uidField.value = '';
             if (textField) textField.value = '';
-            if (saveBtn) {
-                saveBtn.innerText = 'Save AV Note';
-                saveBtn.disabled = false;
-            }
+            if (saveBtn) saveBtn.innerText = 'Save AV Note';
         }
 
         async function saveSalesOfficeAvNote() {
@@ -14151,67 +13866,50 @@ activeDriveTab = tab;
             const saveBtn = document.getElementById('sales-office-av-save-btn');
             const uid = String(uidField && uidField.value || '').trim();
             if (!uid || !textField) return;
+            const nextValue = String(textField.value || '').trim().toUpperCase();
             const salesOfficeRow = salesOfficeInventory.find((row) => String((row && row.UNIQUE_ID) || '').trim() === uid);
             if (!salesOfficeRow) {
                 showToast('Not Found', 'That Sales Office row could not be found.', true);
                 return;
             }
-            if (saveBtn) {
-                saveBtn.innerText = 'Saving...';
-                saveBtn.disabled = true;
-            }
-            try {
-                if ((isIOSDevice() || isStandaloneApp()) && typeof textField.blur === 'function') textField.blur();
-            } catch (e) {}
-            if (isIOSDevice() || isStandaloneApp()) await new Promise((resolve) => setTimeout(resolve, 40));
-            const nextValue = String(textField.value || '').trim().toUpperCase();
             const masterRow = masterInventoryById.get(uid) || fullInventory.find((row) => String((row && row.UNIQUE_ID) || '').trim() === uid) || null;
             const previousSalesOfficeNote = String(salesOfficeRow.AV_NOTE || '');
             const previousMasterNote = masterRow ? String(masterRow.AV_NOTE || '') : null;
-            const refreshSalesOfficeView = function() {
-                markViewDirty('sales-office');
-                if (getCurrentVisibleViewId() === 'sales-office') scheduleUiRender(`sales-office-av-note:${uid}`, () => renderSalesOffice(), 18);
-            };
+            if (saveBtn) saveBtn.innerText = 'Saving...';
             salesOfficeRow.AV_NOTE = nextValue;
-            buildSearchIndex(salesOfficeRow);
             if (masterRow) {
                 masterRow.AV_NOTE = nextValue;
                 buildSearchIndex(masterRow);
                 syncRowDataAcrossViews(masterRow);
             }
             if (activeItem && String((activeItem.UNIQUE_ID || '')).trim() === uid) activeItem.AV_NOTE = nextValue;
-            refreshSalesOfficeView();
+            if (getCurrentVisibleViewId() === 'sales-office') renderSalesOffice();
             try {
-                const writeResults = await Promise.allSettled([
-                    supabaseFetch('v2_sales_office', 'PATCH', { av_note: nextValue || null }, `unique_id=eq.${encodeURIComponent(uid)}`),
-                    ...(masterRow ? [supabaseFetch('v2_master_inventory', 'PATCH', { av_note: nextValue || null }, `unique_id=eq.${encodeURIComponent(uid)}`)] : [])
-                ]);
-                if (writeResults[0].status !== 'fulfilled') throw (writeResults[0].reason || new Error('Could not save the Sales Office AV Note.'));
-                touchSyncTimestamp();
-                persistCurrentCache(false, 'background-data');
-                refreshSalesOfficeView();
-                if (masterRow && writeResults[1] && writeResults[1].status !== 'fulfilled') {
-                    showToast('Sync Warning', 'AV Note saved in Sales Office, but the linked inventory row did not confirm yet.', true);
+                await supabaseFetch('v2_sales_office', 'PATCH', { av_note: nextValue || null }, `unique_id=eq.${encodeURIComponent(uid)}`);
+                if (masterRow) {
+                    const masterSync = await Promise.allSettled([
+                        supabaseFetch('v2_master_inventory', 'PATCH', { av_note: nextValue || null }, `unique_id=eq.${encodeURIComponent(uid)}`)
+                    ]);
+                    if (masterSync.some((result) => result.status !== 'fulfilled')) {
+                        showToast('Sync Warning', 'AV Note saved in Sales Office, but the linked inventory row did not confirm yet.', true);
+                    } else {
+                        showToast('Saved', 'AV Note updated.');
+                    }
                 } else {
                     showToast('Saved', 'AV Note updated.');
                 }
                 closeSalesOfficeAvNoteModal();
             } catch (err) {
                 salesOfficeRow.AV_NOTE = previousSalesOfficeNote;
-                buildSearchIndex(salesOfficeRow);
                 if (masterRow) {
                     masterRow.AV_NOTE = previousMasterNote;
                     buildSearchIndex(masterRow);
                     syncRowDataAcrossViews(masterRow);
                 }
                 if (activeItem && String((activeItem.UNIQUE_ID || '')).trim() === uid) activeItem.AV_NOTE = previousSalesOfficeNote;
-                refreshSalesOfficeView();
+                if (getCurrentVisibleViewId() === 'sales-office') renderSalesOffice();
+                if (saveBtn) saveBtn.innerText = 'Save AV Note';
                 showToast('Error', 'Could not save the Sales Office AV Note.', true);
-            } finally {
-                if (saveBtn) {
-                    saveBtn.innerText = 'Save AV Note';
-                    saveBtn.disabled = false;
-                }
             }
         }
 
@@ -14241,7 +13939,6 @@ activeDriveTab = tab;
             const existingRow = salesOfficeInventory.find((item) => String(item.UNIQUE_ID || '').trim() === uid);
             if (!existingRow) return;
             if (!isBloomPickerSalesOfficeItem(existingRow)) {
-                markSalesOfficeDismissed(existingRow);
                 removeSalesOfficeRowByUniqueId(uid, { message: 'Removed from Sales Office.' });
                 return;
             }
@@ -14276,22 +13973,6 @@ activeDriveTab = tab;
             });
         }
 
-        function formatAvUpdatedChipDate(value = '') {
-            const text = String(value || '').trim();
-            if (!text) return '';
-            try {
-                return new Date(text).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: '2-digit' });
-            } catch (error) {
-                return '';
-            }
-        }
-
-        function getAvUpdatedChipLabel(item = null) {
-            const raw = String(firstNonEmptyValue(getEffectiveAvRuleUpdatedAt(item), item && item.DATE_COMPLETED, item && item.date_completed, item && item.LAST_UPDATED, item && item.last_updated, '') || '').trim();
-            const label = formatAvUpdatedChipDate(raw);
-            return label ? `Updated ${label}` : '';
-        }
-
         function generateCard(item,sourceView,colorClass='status-green') {
             normalizeRowPhotoFields(item);
             let thumbHtml=''; let photoLink=getRowPhotoLink(item, sourceView);
@@ -14321,6 +14002,7 @@ activeDriveTab = tab;
 
             if(sourceView === 'av-photo' || sourceView === 'av') {
                 const holdHtml = buildHoldReasonHtml();
+                const salesNoteHtml = buildSalesNoteHtml();
                 let avNoteHtml = '';
                 if (item.AV_NOTE && item.AV_NOTE.trim() !== '') {
                     avNoteHtml = `<div class="mt-2 bg-blue-50 border border-blue-200 rounded p-2"><div class="text-[10px] font-black text-blue-600 uppercase tracking-wider mb-0.5">AV NOTE</div><div class="text-[13px] font-bold text-blue-800 leading-snug">${item.AV_NOTE}</div></div>`;
@@ -14335,7 +14017,7 @@ activeDriveTab = tab;
                     let thumbUrl = getDirectImageUrl(cleanUrl);
                     if(thumbUrl.startsWith('http')){
                         let photoCount = String(photoLink).split(',').length;
-                        clickThumbHtml = `<div class="ml-3 flex-shrink-0 flex flex-col items-center" onclick="event.stopPropagation(); openPhotoModal('${photoLink}', '${esc(item.COMMONNAME)} - ${esc(item.CONTSIZE)}')"><div class="relative"><img src="${thumbUrl}" class="app-smart-thumb app-smart-thumb--feature w-24 h-24 rounded-lg object-cover border-2 border-teal-300 shadow-md active:scale-95 transition-transform" loading="lazy">${photoCount > 1 ? `<div class="absolute -top-2 -right-2 bg-teal-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full border-2 border-white shadow-sm">+${photoCount-1}</div>` : ''}</div>${avUpdatedChipLabel ? `<div class="mt-1.5 rounded-full border border-teal-100 bg-white px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.12em] text-teal-600 shadow-sm">${avUpdatedChipLabel}</div>` : ''}<div class="text-center text-[9px] font-black text-teal-600 mt-1.5 uppercase tracking-widest bg-teal-50 px-2 py-0.5 rounded-md border border-teal-100 cursor-pointer active:bg-teal-200">VIEW</div></div>`;
+                        clickThumbHtml = `<div class="ml-3 flex-shrink-0 flex flex-col items-center" onclick="event.stopPropagation(); openPhotoModal('${photoLink}', '${esc(item.COMMONNAME)} - ${esc(item.CONTSIZE)}')"><div class="relative"><img src="${thumbUrl}" class="app-smart-thumb app-smart-thumb--feature w-24 h-24 rounded-lg object-cover border-2 border-teal-300 shadow-md active:scale-95 transition-transform" loading="lazy">${photoCount > 1 ? `<div class="absolute -top-2 -right-2 bg-teal-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full border-2 border-white shadow-sm">+${photoCount-1}</div>` : ''}</div><div class="text-center text-[9px] font-black text-teal-600 mt-1.5 uppercase tracking-widest bg-teal-50 px-2 py-0.5 rounded-md border border-teal-100 cursor-pointer active:bg-teal-200">VIEW</div></div>`;
                     }
                 }
 
@@ -14346,7 +14028,7 @@ activeDriveTab = tab;
                 const seasonChip = item.SEASON ? `<span class="bg-amber-50 text-amber-700 px-2 py-1 rounded border border-amber-200">Season ${item.SEASON}</span>` : '';
                 const priorityChip = item.PRIORITY ? `<span class="bg-orange-50 text-orange-700 px-2 py-1 rounded border border-orange-200">Pri ${item.PRIORITY}</span>` : '';
 
-                return `<div class="flex items-start w-full mb-3 item-row app-smart-card relative bg-white p-4 rounded-xl border-2 border-teal-100 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-teal-600 focus:ring-teal-600 shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full"><div class="app-card-main flex-grow min-w-0 pr-2"><div class="app-card-eyebrow text-[10px] font-black uppercase tracking-[0.16em] text-teal-600 mb-1">${avLabel}</div><div class="app-card-title font-black text-gray-800 text-[18px] leading-tight break-words mb-1">${item.COMMONNAME||'Unknown'}</div><div class="app-card-subtitle font-black text-teal-700 text-[15px] mb-2">${item.CONTSIZE||'-'}</div><div class="app-card-meta-grid grid grid-cols-2 gap-2 mb-2"><div class="text-[11px] font-bold text-gray-500 uppercase"><span class="block text-[8px] text-gray-400 mb-0.5">LOT CODE</span>${item.LOTCODE||'-'}</div><div class="text-[11px] font-bold text-gray-500 uppercase"><span class="block text-[8px] text-gray-400 mb-0.5">LOCATION</span>${item.LOCATIONCODE||'-'}</div></div><div class="app-card-chip-row flex flex-wrap gap-2 text-[11px] font-bold uppercase tracking-wider mt-1"><span class="bg-gray-100 text-gray-800 px-2 py-1 rounded border border-gray-200">LOC AVA: <span class="font-black">${item.PTRAVAILABLE||'0'}</span></span><span class="bg-purple-50 text-purple-700 px-2 py-1 rounded border border-purple-200">s_LTS: <span class="font-black">${item.S_LTS||'0'}</span></span><span class="bg-green-50 text-green-700 px-2 py-1 rounded border border-green-200">LOC PHOTO MATCH: <span class="font-black">${locPhotoMatch}</span></span>${seasonChip}${priorityChip}</div>${holdHtml}${avNoteHtml}</div>${clickThumbHtml}</div></div></div>`;
+                return `<div class="flex items-start w-full mb-3 item-row app-smart-card relative bg-white p-4 rounded-xl border-2 border-teal-100 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-teal-600 focus:ring-teal-600 shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full"><div class="app-card-main flex-grow min-w-0 pr-2"><div class="app-card-eyebrow text-[10px] font-black uppercase tracking-[0.16em] text-teal-600 mb-1">${avLabel}</div><div class="app-card-title font-black text-gray-800 text-[18px] leading-tight break-words mb-1">${item.COMMONNAME||'Unknown'}</div><div class="app-card-subtitle font-black text-teal-700 text-[15px] mb-2">${item.CONTSIZE||'-'}</div><div class="app-card-meta-grid grid grid-cols-2 gap-2 mb-2"><div class="text-[11px] font-bold text-gray-500 uppercase"><span class="block text-[8px] text-gray-400 mb-0.5">LOT CODE</span>${item.LOTCODE||'-'}</div><div class="text-[11px] font-bold text-gray-500 uppercase"><span class="block text-[8px] text-gray-400 mb-0.5">LOCATION</span>${item.LOCATIONCODE||'-'}</div></div><div class="app-card-chip-row flex flex-wrap gap-2 text-[11px] font-bold uppercase tracking-wider mt-1"><span class="bg-gray-100 text-gray-800 px-2 py-1 rounded border border-gray-200">LOC AVA: <span class="font-black">${item.PTRAVAILABLE||'0'}</span></span><span class="bg-purple-50 text-purple-700 px-2 py-1 rounded border border-purple-200">s_LTS: <span class="font-black">${item.S_LTS||'0'}</span></span><span class="bg-green-50 text-green-700 px-2 py-1 rounded border border-green-200">LOC PHOTO MATCH: <span class="font-black">${locPhotoMatch}</span></span>${seasonChip}${priorityChip}</div>${holdHtml}${salesNoteHtml}${avNoteHtml}</div>${clickThumbHtml}</div></div></div>`;
             }
             if(photoLink){
                 let firstUrl=String(photoLink).split(',')[0];
@@ -14409,7 +14091,7 @@ activeDriveTab = tab;
                 const orderReserve = firstNonEmptyValue(item.ORDER_RESERVE, 'NO');
                 const desiredSpec = firstNonEmptyValue(item.ORDER_DESIRED_SPEC, item.SPEC, '');
                 const desiredCaliper = firstNonEmptyValue(item.ORDER_DESIRED_CALIPER, item.CALIPER, '');
-                const sentMeta = getSalesOfficeSentMeta(item);
+                const submittedAt = formatSalesOfficeDate(firstNonEmptyValue(item.ORDER_SUBMITTED_AT, item.COMPLETED_AT, ''));
                 const holdHtml = buildHoldReasonHtml();
                 const salesNoteHtml = buildSalesNoteHtml();
                 const avNoteHtml = item.AV_NOTE && String(item.AV_NOTE).trim() !== '' ? `<div class="mt-2 rounded border border-blue-200 bg-blue-50 p-2 text-[12px] font-semibold text-blue-800 whitespace-pre-wrap"><span class="font-black">AV NOTE:</span> ${item.AV_NOTE}</div>` : '';
@@ -14419,7 +14101,7 @@ activeDriveTab = tab;
                     `<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Reserve: ${orderReserve}</span>`
                 ].filter(Boolean).join('');
                 const statusTone = String(orderStatus || '').toLowerCase().includes('done') ? 'bg-green-100 text-green-700 border-green-200' : 'bg-amber-50 text-amber-700 border-amber-100';
-                return `<div class="flex items-center w-full mb-3 item-row app-smart-card relative bg-white p-4 rounded-xl border border-emerald-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full"><div class="app-card-main flex-grow min-w-0 pr-2"><div class="app-card-eyebrow text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d] mb-1">Bloom Picker</div><div class="app-card-title font-black text-gray-800 text-[16px] leading-tight break-words mb-1">${item.COMMONNAME||'Unknown'}</div><div class="app-card-subtitle font-bold text-[#007a4d] text-sm mb-2">${item.CONTSIZE||'-'}</div><div class="app-card-chip-row flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600"><span class="bg-emerald-50 text-emerald-700 px-2 py-1 rounded border border-emerald-200">Qty ${orderQty}</span><span class="bg-white text-slate-600 px-2 py-1 rounded border border-slate-200">Order ${item.ORDER_NUMBER||'-'}</span><span class="bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-100">Loc ${item.LOCATIONCODE||'-'}</span><span class="bg-gray-100 text-gray-700 px-2 py-1 rounded border border-gray-200">Lot ${item.LOTCODE||'-'}</span><span class="px-2 py-1 rounded border ${statusTone}">${orderStatus}</span></div>${orderDetailBits ? `<div class="mt-2 flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-wider text-gray-600">${orderDetailBits}</div>` : ''}<div class="mt-2 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border px-2 py-1 ${sentMeta.toneClass}">Sent ${sentMeta.label}</span><span class="rounded-full border px-2 py-1 ${sentMeta.toneClass}">${sentMeta.ageText}</span></div>${holdHtml}${salesNoteHtml}${avNoteHtml}</div>${inlineThumbHtml}</div><div class="flex gap-2 mt-3"><button class="flex-1 bg-[#007a4d] hover:bg-green-700 text-white text-[10px] font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-md active:scale-95" onclick="event.stopPropagation(); markSalesOfficeComplete('${safeUidJs}', '${item.DOM_ID}')"><i class="ph-bold ph-check-circle text-lg"></i>DONE</button></div></div></div>`;
+                return `<div class="flex items-center w-full mb-3 item-row app-smart-card relative bg-white p-4 rounded-xl border border-emerald-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full"><div class="app-card-main flex-grow min-w-0 pr-2"><div class="app-card-eyebrow text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d] mb-1">Bloom Picker</div><div class="app-card-title font-black text-gray-800 text-[16px] leading-tight break-words mb-1">${item.COMMONNAME||'Unknown'}</div><div class="app-card-subtitle font-bold text-[#007a4d] text-sm mb-2">${item.CONTSIZE||'-'}</div><div class="app-card-chip-row flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600"><span class="bg-emerald-50 text-emerald-700 px-2 py-1 rounded border border-emerald-200">Qty ${orderQty}</span><span class="bg-white text-slate-600 px-2 py-1 rounded border border-slate-200">Order ${item.ORDER_NUMBER||'-'}</span><span class="bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-100">Loc ${item.LOCATIONCODE||'-'}</span><span class="bg-gray-100 text-gray-700 px-2 py-1 rounded border border-gray-200">Lot ${item.LOTCODE||'-'}</span><span class="px-2 py-1 rounded border ${statusTone}">${orderStatus}</span></div>${orderDetailBits ? `<div class="mt-2 flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-wider text-gray-600">${orderDetailBits}</div>` : ''}<div class="mt-2 text-[11px] font-semibold text-slate-500">Submitted ${submittedAt}</div>${holdHtml}${salesNoteHtml}${avNoteHtml}</div>${inlineThumbHtml}</div><div class="flex gap-2 mt-3"><button class="flex-1 bg-[#007a4d] hover:bg-green-700 text-white text-[10px] font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-md active:scale-95" onclick="event.stopPropagation(); markSalesOfficeComplete('${safeUidJs}', '${item.DOM_ID}')"><i class="ph-bold ph-check-circle text-lg"></i>DONE</button></div></div></div>`;
             }
             if(sourceView==='sales-office'){
                 let avNoteText = String(item.AV_NOTE || 'No AV Note Provided');
@@ -14428,9 +14110,8 @@ activeDriveTab = tab;
                 let locCode = item.LOCATIONCODE || '-';
                 let lotCode = item.LOTCODE || '-';
                 let safeAvNote = esc(avNoteText);
-                const sentMeta = getSalesOfficeSentMeta(item);
 
-                return `<div class="flex items-center w-full mb-3 item-row relative" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="inv-card app-smart-card status-purple flex-grow !mb-0 bg-purple-50/40 border border-purple-200 transition-transform active:scale-[0.99]"><div class="flex justify-between items-start mb-3"><div class="app-card-main font-bold text-lg text-[#007a4d] leading-tight pr-2 select-text" style="-webkit-user-select: text; user-select: text;"><div class="mb-2 flex flex-wrap gap-2"><span class="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]"><i class="ph-bold ph-handbag text-sm"></i>Bloom Picker</span><span class="inline-flex items-center rounded-full border border-purple-200 bg-white px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-purple-700">Season Sales Notes</span></div>${item.COMMONNAME||'Unknown'}<br><span class="text-sm text-gray-500 font-semibold">${item.CONTSIZE||'-'}</span></div>${inlineThumbHtml}</div><div class="bg-white p-3 rounded-lg border border-purple-200 shadow-sm mb-3 select-text cursor-text" style="-webkit-user-select: text; user-select: text;" onclick="event.stopPropagation();"><div class="flex justify-between items-center mb-1"><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Item Code</span><span class="font-black text-purple-700 font-mono tracking-wide text-sm">${itemCode}</span></div><div class="flex justify-between items-center mb-1 border-b border-gray-100 pb-1"><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Location / Lot</span><span class="font-bold text-gray-600 text-xs">${locCode} / ${lotCode}</span></div><div class="mt-2 mb-2 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border px-2 py-1 ${sentMeta.toneClass}">Sent ${sentMeta.label}</span><span class="rounded-full border px-2 py-1 ${sentMeta.toneClass}">${sentMeta.ageText}</span></div><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5 mt-2">AV Note</div><div class="text-[14px] font-bold text-blue-800 leading-snug mb-2 whitespace-pre-wrap">${avNoteText}</div><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Sales Note</div><div class="text-[14px] font-bold text-green-800 leading-snug whitespace-pre-wrap">${displaySalesNote}</div></div><div class="flex flex-wrap gap-2"><button class="flex-1 min-w-[calc(50%-0.25rem)] bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-700 text-[10px] font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 active:bg-indigo-200" onclick="event.stopPropagation(); copyTextToClipboard('${itemCode}', 'ITEM CODE')"><i class="ph-bold ph-barcode text-lg"></i> COPY ITEMCODE</button><button class="flex-1 min-w-[calc(50%-0.25rem)] bg-blue-50 border border-blue-200 hover:bg-blue-100 text-blue-700 text-[10px] font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 active:bg-blue-200" onclick="event.stopPropagation(); openSalesOfficeAvNoteModal('${safeUidJs}')"><i class="ph-bold ph-pencil-simple-line text-lg"></i> EDIT AV NOTE</button><button class="flex-1 min-w-[calc(50%-0.25rem)] bg-purple-50 border border-purple-200 hover:bg-purple-100 text-purple-700 text-[10px] font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 active:bg-purple-200" onclick="event.stopPropagation(); copyTextToClipboard('${safeAvNote}', 'AV NOTE')"><i class="ph-bold ph-chat-text text-lg"></i> COPY AV NOTE</button><button class="flex-1 min-w-[calc(50%-0.25rem)] bg-[#007a4d] hover:bg-green-700 text-white text-[10px] font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-md active:scale-95" onclick="event.stopPropagation(); markSalesOfficeComplete('${safeUidJs}', '${item.DOM_ID}')"><i class="ph-bold ph-check-circle text-lg"></i> DONE</button></div></div></div>`;
+                return `<div class="flex items-center w-full mb-3 item-row relative" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="inv-card app-smart-card status-purple flex-grow !mb-0 bg-purple-50/40 border border-purple-200 transition-transform active:scale-[0.99]"><div class="flex justify-between items-start mb-3"><div class="app-card-main font-bold text-lg text-[#007a4d] leading-tight pr-2 select-text" style="-webkit-user-select: text; user-select: text;"><div class="mb-2 flex flex-wrap gap-2"><span class="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]"><i class="ph-bold ph-handbag text-sm"></i>Bloom Picker</span><span class="inline-flex items-center rounded-full border border-purple-200 bg-white px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-purple-700">Season Sales Notes</span></div>${item.COMMONNAME||'Unknown'}<br><span class="text-sm text-gray-500 font-semibold">${item.CONTSIZE||'-'}</span></div>${inlineThumbHtml}</div><div class="bg-white p-3 rounded-lg border border-purple-200 shadow-sm mb-3 select-text cursor-text" style="-webkit-user-select: text; user-select: text;" onclick="event.stopPropagation();"><div class="flex justify-between items-center mb-1"><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Item Code</span><span class="font-black text-purple-700 font-mono tracking-wide text-sm">${itemCode}</span></div><div class="flex justify-between items-center mb-1 border-b border-gray-100 pb-1"><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Location / Lot</span><span class="font-bold text-gray-600 text-xs">${locCode} / ${lotCode}</span></div><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5 mt-2">AV Note</div><div class="text-[14px] font-bold text-blue-800 leading-snug mb-2 whitespace-pre-wrap">${avNoteText}</div><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Sales Note</div><div class="text-[14px] font-bold text-green-800 leading-snug whitespace-pre-wrap">${displaySalesNote}</div></div><div class="flex flex-wrap gap-2"><button class="flex-1 min-w-[calc(50%-0.25rem)] bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-700 text-[10px] font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 active:bg-indigo-200" onclick="event.stopPropagation(); copyTextToClipboard('${itemCode}', 'ITEM CODE')"><i class="ph-bold ph-barcode text-lg"></i> COPY ITEMCODE</button><button class="flex-1 min-w-[calc(50%-0.25rem)] bg-blue-50 border border-blue-200 hover:bg-blue-100 text-blue-700 text-[10px] font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 active:bg-blue-200" onclick="event.stopPropagation(); openSalesOfficeAvNoteModal('${safeUidJs}')"><i class="ph-bold ph-pencil-simple-line text-lg"></i> EDIT AV NOTE</button><button class="flex-1 min-w-[calc(50%-0.25rem)] bg-purple-50 border border-purple-200 hover:bg-purple-100 text-purple-700 text-[10px] font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 active:bg-purple-200" onclick="event.stopPropagation(); copyTextToClipboard('${safeAvNote}', 'AV NOTE')"><i class="ph-bold ph-chat-text text-lg"></i> COPY AV NOTE</button><button class="flex-1 min-w-[calc(50%-0.25rem)] bg-[#007a4d] hover:bg-green-700 text-white text-[10px] font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-md active:scale-95" onclick="event.stopPropagation(); markSalesOfficeComplete('${safeUidJs}', '${item.DOM_ID}')"><i class="ph-bold ph-check-circle text-lg"></i> DONE</button></div></div></div>`;
             }
             if(sourceView==='reserves_drill'){
                 let custStr=item.CUSTOMERNAME||'Unknown Customer';if(item.CONSIGNEENAME&&String(item.CONSIGNEENAME).trim()!=='')custStr+=` - ${item.CONSIGNEENAME}`;let qtyOrd=item.QTY_ORDERED||item.QUANTITYORDERED||'0';let qtyShip=item.QTY_SHIPPED||item.QUANTITYSHIPPED||'0';let repStr=item.SALESREPNAME||item.SALESREP||'Unknown Rep';
@@ -16465,7 +16146,7 @@ function toggleDriveSeason(s) {
                 uploadFlyerBlob: createFlyerBuilderUploadCallback(folderLabel),
                 supabaseFetchFn: supabaseFetch,
                 currentUser: currentUserDisplay || currentUser || 'Unknown User',
-                logoUrl: './assets/greenleaf-logo.png?shellv=V2026.04.07.10',
+                logoUrl: './assets/greenleaf-logo.png?shellv=V2026.04.06.10',
                 storageNamespace: folderLabel
             }).mount();
             builder.state.themeKey = seed.themeKey;
@@ -16874,7 +16555,7 @@ function toggleDriveSeason(s) {
             buildSearchIndex(itemToSave);
             syncRowDataAcrossViews(itemToSave);
             touchSyncTimestamp();
-            persistCurrentCache(false, 'background-data');
+            persistCurrentCache(false, 'photo-upload');
             const isCurrentDetailItem = !!(activeItem && String(activeItem.UNIQUE_ID || '').trim() === String(itemToSave.UNIQUE_ID || '').trim());
             if (isCurrentDetailItem) {
                 const refreshDetailMedia = () => {
@@ -16906,7 +16587,7 @@ function toggleDriveSeason(s) {
                 let wasAlreadyComplete = isRequestComplete(itemToSave);
                 const previousDateCompleted = itemToSave.DATE_COMPLETED || '';
                 const previousReqStatus = itemToSave.REQ_STATUS;
-                let requestUsedCurrentDataShortcut = false;
+                const requestHadReadyDataBeforeSave = prefix === 'req-' ? hasRequestCompletionReadyData(itemToSave, { requirePhoto: true }) : false;
                 const detailWasVisible = !!(document.getElementById('view-detail') && !document.getElementById('view-detail').classList.contains('hidden'));
                 const nextRequestId = (prefix === 'req-' && isComplete && isCurrentView && detailWasVisible && lastView === 'request') ? getNextRequestDetailId(itemToSave.UNIQUE_ID) : null;
                 const nextTaskId = (isComplete && isCurrentView && detailWasVisible && lastView === 'tasks') ? getNextTaskDetailId(itemToSave.UNIQUE_ID) : null;
@@ -17025,7 +16706,6 @@ function toggleDriveSeason(s) {
                                 if (btnComp) btnComp.innerText = 'MARK DONE';
                                 return;
                             }
-                            requestUsedCurrentDataShortcut = true;
                             if (String(itemToSave.REQ_MATCH || '').trim() === '') {
                                 itemToSave.REQ_MATCH = reusableRequestData.match;
                                 const reqMatchEl = document.getElementById('req-match');
@@ -17190,7 +16870,8 @@ function toggleDriveSeason(s) {
                         : (prefix === 'flyer-'
                             ? firstNonEmptyValue(itemToSave.FLYER_PHOTO_NAME, itemToSave.SAVED_PHOTO_NAME)
                             : firstNonEmptyValue(itemToSave.SAVED_PHOTO_NAME));
-                    const shouldCreateSalesOfficeRow = ['ssn-','lsn-','na-','req-','flyer-'].includes(prefix) && salesRuleAssignment === 'season' && salesRuleId !== '' && !wasAlreadyComplete;
+                    const requestShouldSkipSalesOffice = prefix === 'req-' && requestHadReadyDataBeforeSave;
+                    const shouldCreateSalesOfficeRow = ['ssn-','lsn-','na-','req-','flyer-'].includes(prefix) && salesRuleAssignment === 'season' && salesRuleId !== '' && !requestShouldSkipSalesOffice;
                     if (shouldCreateSalesOfficeRow) {
                         const salesOfficeAvNote = itemToSave.AV_NOTE || salesRuleItem.AV_NOTE || '';
                         const salesOfficeSalesNote = itemToSave.SALES_NOTE || salesRuleItem.SALES_NOTE || '';
@@ -17227,33 +16908,15 @@ function toggleDriveSeason(s) {
                         artifacts.masterSyncId = requestMasterId || itemToSave.MASTER_ID || itemToSave.MASTER_UNIQUE_ID || itemToSave.master_id;
                         artifacts.masterSyncItem = requestMasterItem || findItemByUniqueId(artifacts.masterSyncId);
                         if (artifacts.masterSyncId) {
-                            const requestMatchValue = parseAppNumber(itemToSave.REQ_MATCH);
-                            const requestInitialPtr = parseAppNumber(firstNonEmptyValue(
-                                artifacts.masterSyncItem && artifacts.masterSyncItem.PTRAVAILABLE,
-                                requestMasterItem && requestMasterItem.PTRAVAILABLE,
-                                itemToSave.PTRAVAILABLE
-                            ));
-                            const requestLocMatchQty = calculateLocMatchQtyValue(
-                                artifacts.masterSyncItem || requestMasterItem || itemToSave,
-                                requestMatchValue
-                            );
                             artifacts.masterSyncPayload = { date_completed: payload.date_completed };
                             artifacts.applyAvSync = true;
                             artifacts.masterSyncPayload.av_note = setVal(itemToSave.AV_NOTE);
-                            artifacts.masterSyncPayload.match = requestMatchValue == null ? null : requestMatchValue;
                             artifacts.masterSyncPayload.spec = setVal(itemToSave.REQ_SPEC || itemToSave.SPEC);
                             artifacts.masterSyncPayload.caliper = setVal(itemToSave.REQ_CALIPER || itemToSave.CALIPER);
-                            artifacts.masterSyncPayload.pic_note = setVal(itemToSave.REQ_PICK || itemToSave.PICK);
                             artifacts.masterSyncPayload.photo_link = setVal(itemToSave.REQ_PHOTO_LINK || itemToSave.SAVED_PHOTO_LINK);
                             artifacts.masterSyncPayload.photo_name = setVal(itemToSave.REQ_PHOTO_NAME || itemToSave.SAVED_PHOTO_NAME);
-                            artifacts.masterSyncPayload.loc_match_qty = requestLocMatchQty == null ? null : requestLocMatchQty;
-                            artifacts.masterSyncPayload.initial_ptr = requestInitialPtr == null ? null : requestInitialPtr;
                             if (avRuleColumnsReady == null) ensureAvRuleColumnsReady().catch(() => {});
-                            applyAvRuleTouchPayload(
-                                artifacts.masterSyncItem || requestMasterItem || itemToSave,
-                                artifacts.masterSyncPayload,
-                                { avNote: true, match: requestMatchValue != null, spec: true, caliper: true, photo: true }
-                            );
+                            applyAvRuleTouchPayload(artifacts.masterSyncItem || requestMasterItem || itemToSave, artifacts.masterSyncPayload, { avNote: true, spec: true, caliper: true, photo: true });
                         }
                     }
 
@@ -17276,7 +16939,6 @@ function toggleDriveSeason(s) {
                     syncRowDataAcrossViews(itemToSave);
 
                     if (artifacts.soPayload && artifacts.cloneSO) {
-                        clearSalesOfficeDismissedIfFresh(artifacts.cloneSO);
                         supabaseFetch('v2_sales_office', 'POST', artifacts.soPayload).catch(e => console.log(e));
                         let existingIdx = salesOfficeInventory.findIndex(s => s.UNIQUE_ID === artifacts.cloneSO.UNIQUE_ID);
                         if (existingIdx > -1) salesOfficeInventory[existingIdx] = artifacts.cloneSO;
@@ -17287,19 +16949,9 @@ function toggleDriveSeason(s) {
                         if (artifacts.masterSyncItem) {
                             artifacts.masterSyncItem.DATE_COMPLETED = payload.date_completed;
                             if (artifacts.applyAvSync) {
-                                const requestMatchText = String(firstNonEmptyValue(itemToSave.REQ_MATCH, '') || '').trim();
-                                const requestInitialPtr = parseAppNumber(firstNonEmptyValue(
-                                    artifacts.masterSyncItem.PTRAVAILABLE,
-                                    itemToSave.PTRAVAILABLE
-                                ));
-                                const requestLocMatchQty = calculateLocMatchQtyValue(artifacts.masterSyncItem, requestMatchText);
                                 artifacts.masterSyncItem.AV_NOTE = itemToSave.AV_NOTE;
-                                artifacts.masterSyncItem.MATCH = requestMatchText;
                                 artifacts.masterSyncItem.SPEC = itemToSave.REQ_SPEC || itemToSave.SPEC;
                                 artifacts.masterSyncItem.CALIPER = itemToSave.REQ_CALIPER || itemToSave.CALIPER;
-                                artifacts.masterSyncItem.PICK = String(firstNonEmptyValue(itemToSave.REQ_PICK, itemToSave.PICK, '') || '').trim();
-                                artifacts.masterSyncItem.LOC_MATCH_QTY = requestLocMatchQty == null ? '' : String(requestLocMatchQty);
-                                artifacts.masterSyncItem.INITIAL_PTR = requestInitialPtr == null ? '' : String(requestInitialPtr);
                                 artifacts.masterSyncItem.SAVED_PHOTO_LINK = itemToSave.REQ_PHOTO_LINK || itemToSave.SAVED_PHOTO_LINK;
                                 artifacts.masterSyncItem.SAVED_PHOTO_NAME = itemToSave.REQ_PHOTO_NAME || itemToSave.SAVED_PHOTO_NAME;
                             }
@@ -17310,10 +16962,12 @@ function toggleDriveSeason(s) {
                         supabaseFetch('v2_master_inventory', 'PATCH', artifacts.masterSyncPayload, `unique_id=eq.${encodeURIComponent(artifacts.masterSyncId)}`).catch(() => {});
                     }
 
-                    const immediateCleanupOps = collectMasterAvRuleClearOps([
-                        itemToSave,
-                        artifacts.masterSyncItem
-                    ].filter(Boolean));
+                    const immediateCleanupOps = avRuleColumnsReady === true
+                        ? collectMasterAvRuleClearOps([
+                            itemToSave,
+                            artifacts.masterSyncItem
+                        ].filter(Boolean))
+                        : [];
                     const didImmediateCleanup = immediateCleanupOps.length > 0;
                     if (didImmediateCleanup) {
                         immediateCleanupOps.forEach((entry) => backupLocalItem(entry.item));
@@ -17549,3 +17203,25 @@ function toggleDriveSeason(s) {
     </script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
