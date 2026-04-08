@@ -1219,8 +1219,10 @@
         }
 
         let horizontalViewportClampInitialized = false;
+        let lastMainScrollAt = 0;
         function clampHorizontalViewportShift() {
             if (!document.body.classList.contains('ios-device')) return;
+            if (Date.now() - Number(lastMainScrollAt || 0) < 140) return;
             const mainScrollArea = document.getElementById('main-scroll-area');
             const shouldClamp = (value) => Math.abs(value || 0) > 2;
             if (mainScrollArea && shouldClamp(mainScrollArea.scrollLeft)) mainScrollArea.scrollLeft = 0;
@@ -1235,6 +1237,7 @@ function initializeHorizontalViewportClamp() {
             const mainScrollArea = document.getElementById('main-scroll-area');
             if (mainScrollArea) {
                 mainScrollArea.addEventListener('scroll', () => {
+                    lastMainScrollAt = Date.now();
                     if (mainScrollArea.scrollLeft) mainScrollArea.scrollLeft = 0;
                 }, { passive: true });
             }
@@ -2428,18 +2431,27 @@ function initializeHorizontalViewportClamp() {
         function rememberDetailReturnPosition(viewId = '') {
             const currentViewId = String(viewId || getCurrentVisibleViewId() || '').trim();
             if (!currentViewId || currentViewId === 'detail') return;
-            detailReturnState = { viewId: currentViewId, scrollTop: getMainAreaScrollTop() };
+            detailReturnState = { viewId: currentViewId, scrollTop: getMainAreaScrollTop(), ts: Date.now() };
+            try { sessionStorage.setItem(DETAIL_RETURN_STORAGE_KEY, JSON.stringify(detailReturnState)); } catch (e) {}
         }
 
         function restoreDetailReturnPosition(expectedViewId = '') {
+            if (!detailReturnState || !detailReturnState.viewId) {
+                try {
+                    const raw = sessionStorage.getItem(DETAIL_RETURN_STORAGE_KEY);
+                    if (raw) detailReturnState = JSON.parse(raw) || detailReturnState;
+                } catch (e) {}
+            }
             if (!detailReturnState || !detailReturnState.viewId) return;
             const targetViewId = String(expectedViewId || lastView || '').trim();
             if (targetViewId && detailReturnState.viewId !== targetViewId) return;
             const restoreTop = Math.max(0, Number(detailReturnState.scrollTop || 0));
+            pendingDetailReturnRestore = { viewId: detailReturnState.viewId, scrollTop: restoreTop, ts: Date.now() };
             scheduleUiRender(`detail-return:${detailReturnState.viewId}:${restoreTop}`, () => {
                 setMainAreaScrollTop(restoreTop);
                 requestAnimationFrame(() => setMainAreaScrollTop(restoreTop));
             });
+            try { sessionStorage.removeItem(DETAIL_RETURN_STORAGE_KEY); } catch (e) {}
         }
 
         function queueViewRender(viewId, forceReset = false, forceRender = false) {
@@ -3048,6 +3060,8 @@ function initializeHorizontalViewportClamp() {
         let activeTaskTab="season"; let activeTaskSubview="all"; let taskViewTargetUser=null; let taskViewLevel=0; let selectedTaskBlock=null; let selectedTaskLoc=null; let selectedEndCapFolder=null; let selectedFlyerFolder=null; let activeFlyerFolderTab="active"; let activeFlyerWorkspaceTab="pending"; let selectedFlyerBuilderFolder=null; let selectedColorWalkContSize=""; let selectedColorWalkSearchTerm=""; let pendingFlyerFolderTarget=null; let pendingFlyerFolderAssignees="";
         let flyerBuilderMountedFolder=''; let flyerBuilderInstance=null; const flyerBuilderDrafts={};
         let detailReturnState = { viewId: '', scrollTop: 0 };
+        let pendingDetailReturnRestore = null;
+        const DETAIL_RETURN_STORAGE_KEY = 'gnc_detail_return_state_v1';
         let activeAVTab='open'; let activeAvOpenTab='name'; let avOpenLevel=0; let selectedAvOpenName=null; let selectedAvOpenSize=null; let selectedAvOpenSeason=null; let selectedAvOpenLot=null; let avResLevel=0; let selectedAvResRep=null; let selectedAvResDriveUid=null; let selectedAvResItemCode=null; let selectedAvResName=null; let selectedAvResSize=null; let activeAvReserveMode='current'; let activeAvReserveDetailTab='customer';
 
         let lowStockViewLevel=0; let selectedLowStockName=null; let selectedLowStockSize=null; let reviewViewLevel=0; let selectedReviewItemCode=null; let selectedReviewCommonName=null; let selectedReviewContSize=null;
@@ -3059,7 +3073,7 @@ function initializeHorizontalViewportClamp() {
         let pendingRequestArchiveFlushTimer = null;
         let pendingRequestArchiveFlushInFlight = false;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Maschino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'V2026.04.08.03';
+        const APP_VERSION = 'V2026.04.08.04';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -9503,6 +9517,14 @@ function toggleDriveQuickRequestItem(domId) {
             const visibleViewIds = getVisibleTrackedViewIds();
             visibleViewIds.forEach((viewId) => renderViewContent(viewId, false, true));
             markHiddenViewsDirty(visibleViewIds);
+            if (pendingDetailReturnRestore && pendingDetailReturnRestore.viewId === getCurrentVisibleViewId()) {
+                const restoreTop = Math.max(0, Number(pendingDetailReturnRestore.scrollTop || 0));
+                scheduleUiRender(`detail-return-post:${pendingDetailReturnRestore.viewId}:${restoreTop}`, () => {
+                    setMainAreaScrollTop(restoreTop);
+                    requestAnimationFrame(() => setMainAreaScrollTop(restoreTop));
+                });
+                pendingDetailReturnRestore = null;
+            }
         }
 
         function setTaskTab(tab) {
@@ -17291,6 +17313,10 @@ function toggleDriveSeason(s) {
     </script>
 </body>
 </html>
+
+
+
+
 
 
 
