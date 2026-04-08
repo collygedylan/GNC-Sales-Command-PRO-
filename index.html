@@ -17072,7 +17072,7 @@ function toggleDriveSeason(s) {
                         artifacts.masterSyncId = requestMasterId || itemToSave.MASTER_ID || itemToSave.MASTER_UNIQUE_ID || itemToSave.master_id;
                         artifacts.masterSyncItem = requestMasterItem || findItemByUniqueId(artifacts.masterSyncId);
                         if (artifacts.masterSyncId) {
-                            artifacts.masterSyncPayload = { date_completed: payload.date_completed };
+                            artifacts.masterSyncPayload = { date_completed: payload.date_completed };\r\n                        const reqMatchVal = parseAppNumber(itemToSave.REQ_MATCH || itemToSave.MATCH);\r\n                        artifacts.masterSyncPayload.match = reqMatchVal == null ? null : reqMatchVal;\r\n                        const reqLocMatchQty = calculateLocMatchQtyValue(itemToSave, reqMatchVal);\r\n                        artifacts.masterSyncPayload.loc_match_qty = reqLocMatchQty == null ? null : reqLocMatchQty;
                             artifacts.applyAvSync = true;
                             artifacts.masterSyncPayload.av_note = setVal(itemToSave.AV_NOTE);
                             artifacts.masterSyncPayload.spec = setVal(itemToSave.REQ_SPEC || itemToSave.SPEC);
@@ -17367,6 +17367,7 @@ function toggleDriveSeason(s) {
     </script>
 </body>
 </html>
+
 
 
 
