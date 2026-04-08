@@ -3072,8 +3072,8 @@ function initializeHorizontalViewportClamp() {
         let syncDiagnosticsOverride = "";
         let pendingRequestArchiveFlushTimer = null;
         let pendingRequestArchiveFlushInFlight = false;
-        const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Maschino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'V2026.04.08.04';
+        const salesRepList=["Abbey Burka","Molly Dixon","Annette Hancock","Ben Brown","Ben Harveson","Ben Maschino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
+        const APP_VERSION = 'V2026.04.08.05';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -4078,6 +4078,11 @@ function initializeHorizontalViewportClamp() {
 
             pushVariant(rawUser);
             pushVariant(rawUser.replace(/_/g, ' '));
+            const normalizedRawUser = normalizeRepMatchToken(rawUser);
+            const collapsedRawUser = normalizedRawUser.replace(/\s+/g, '');
+            if (normalizedRawUser.includes('abbey') || collapsedRawUser.includes('abbeyburka') || normalizedRawUser.includes('molly') || collapsedRawUser.includes('mollydixon')) {
+                ['Abbey Burka','Molly Dixon','abbey_burka','molly_dixon'].forEach(v => pushVariant(v));
+            }
 
             if (parts.length >= 2) {
                 let first = parts[0];
@@ -4261,6 +4266,14 @@ function initializeHorizontalViewportClamp() {
                 push('JD Jones');
                 push('JD');
                 push('Jones, JD');
+            }
+            if (normalizedRaw.includes('abbey') || collapsedRaw.includes('abbeyburka') || normalizedRaw.includes('molly') || collapsedRaw.includes('mollydixon')) {
+                push('Abbey Burka');
+                push('Molly Dixon');
+                push('Abbey');
+                push('Molly');
+                push('Burka, Abbey');
+                push('Dixon, Molly');
             }
             const parts = raw.split(/[^a-z0-9]+/i).filter(Boolean);
             if (parts.length >= 2) {
@@ -9674,6 +9687,12 @@ activeDriveTab = tab;
             const compact = normalized.replace(/\s+/g, '');
             const underscored = normalized.replace(/\s+/g, '_');
             const aliasMap = {
+                'abbey': 'abbey_burka@greenleafnursery.com',
+                'abbeyburka': 'abbey_burka@greenleafnursery.com',
+                'abbey_burka': 'abbey_burka@greenleafnursery.com',
+                'molly': 'molly_dixon@greenleafnursery.com',
+                'mollydixon': 'molly_dixon@greenleafnursery.com',
+                'molly_dixon': 'molly_dixon@greenleafnursery.com',
                 'jd': 'jd_jones@greenleafnursery.com',
                 'jdjones': 'jd_jones@greenleafnursery.com',
                 'jd_jones': 'jd_jones@greenleafnursery.com',
@@ -9692,6 +9711,9 @@ activeDriveTab = tab;
                 'benmachino': 'ben_maschino@greenleafnursery.com',
                 'ben_machino': 'ben_maschino@greenleafnursery.com'
             };
+            if (compact === 'abbey' || compact === 'abbeyburka' || compact === 'abbey_burka' || compact === 'molly' || compact === 'mollydixon' || compact === 'molly_dixon') {
+                return 'abbey_burka@greenleafnursery.com, molly_dixon@greenleafnursery.com';
+            }
             if (aliasMap[compact]) return aliasMap[compact];
             if (aliasMap[underscored]) return aliasMap[underscored];
             return underscored ? underscored + '@greenleafnursery.com' : '';
@@ -17313,6 +17335,15 @@ function toggleDriveSeason(s) {
     </script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
 
 
 
