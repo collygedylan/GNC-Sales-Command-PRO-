@@ -11550,35 +11550,13 @@ activeDriveTab = tab;
         function markSalesOfficeComplete(uniqueId,domId) { 
             const uid = String(uniqueId || '').trim();
             if (!uid) return;
-            const completedAt = new Date().toISOString();
-            let previousRow = null;
-            salesOfficeInventory = salesOfficeInventory.map((item) => {
-                if (String(item.UNIQUE_ID || '').trim() !== uid) return item;
-                previousRow = { ...item };
-                return {
-                    ...item,
-                    ORDER_STATUS: 'Completed',
-                    order_status: 'Completed',
-                    UPDATED_AT: completedAt,
-                    updated_at: completedAt
-                };
-            });
+            const existingRow = salesOfficeInventory.find((item) => String(item.UNIQUE_ID || '').trim() === uid);
+            if (!existingRow) {
+                showToast('Not Found', 'That Sales Office row could not be found.', true);
+                return;
+            }
             if (domId) selectedItems.delete(domId);
-            if (!selectedItems.size) cartPanelOpen = false;
-            updateGlobalActionBar();
-            refreshCartButtons();
-            markViewDirty('sales-office');
-            if (getCurrentVisibleViewId() === 'sales-office') renderSalesOffice();
-            showToast("Complete", "Removed from Sales Office.");
-            supabaseFetch('v2_sales_office', 'PATCH', { order_status: 'Completed', updated_at: completedAt }, `unique_id=eq.${encodeURIComponent(uid)}`).catch(() => {
-                if (previousRow) {
-                    salesOfficeInventory = salesOfficeInventory.filter((item) => String(item.UNIQUE_ID || '').trim() !== uid);
-                    salesOfficeInventory.push(previousRow);
-                }
-                markViewDirty('sales-office');
-                if (getCurrentVisibleViewId() === 'sales-office') renderSalesOffice();
-                showToast("Error","Could not complete the Sales Office row.",true);
-            });
+            removeSalesOfficeRowByUniqueId(uid, { message: 'Removed from Sales Office.' });
         }
 
         function generateCard(item,sourceView,colorClass='status-green') {
