@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -2629,6 +2629,26 @@
         async function saveToCache(data) { return saveCacheValue("latest_data", data); }
 
         async function loadFromCache() { return loadCacheValue("latest_data"); }
+        function stripTransientCacheFields(item = {}) {
+            const clean = {};
+            Object.keys(item || {}).forEach((key) => {
+                if (
+                    key === 'DOM_ID' ||
+                    key === '_search' ||
+                    key === '_searchCandidates' ||
+                    key === '_searchPrimaryStarts' ||
+                    key === '_searchWordStarts' ||
+                    key === '_searchProfileWordStarts'
+                ) return;
+                clean[key] = item[key];
+            });
+            return clean;
+        }
+
+        function buildCacheRows(items = []) {
+            if (!Array.isArray(items) || !items.length) return [];
+            return items.map((item) => stripTransientCacheFields(item));
+        }
 
         const CACHE_SCHEMA_VERSION = 4;
         const INLINE_CACHE_RESERVE_LIMIT = 180;
@@ -8799,6 +8819,86 @@ activeDriveTab = tab;
             showToast('Export Ready', `Downloading ${exportContext.rows.length} AV row${exportContext.rows.length === 1 ? '' : 's'} as Excel.`);
             return false;
         }
+        const chunkRenderTokensByKey = Object.create(null);
+
+        function bumpChunkRenderTokenByKey(key = 'default') {
+            const tokenKey = String(key || 'default');
+            const nextToken = (Number(chunkRenderTokensByKey[tokenKey] || 0) + 1);
+            chunkRenderTokensByKey[tokenKey] = nextToken;
+            return nextToken;
+        }
+
+        function shouldUseChunkedCardRender(total = 0, mobileThreshold = 120, desktopThreshold = 220) {
+            const count = Number(total) || 0;
+            if (count <= 0) return false;
+            const touchOptimized = isIOSDevice() || isStandaloneApp() || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+            return count > (touchOptimized ? mobileThreshold : desktopThreshold);
+        }
+
+        function renderMarkupChunkedByKey(tokenKey, container, crumb, rows, crumbText, renderRow, options = {}) {
+            if (!container) return false;
+            const key = String(tokenKey || 'default');
+            const token = bumpChunkRenderTokenByKey(key);
+            const total = Array.isArray(rows) ? rows.length : 0;
+            const touchOptimized = isIOSDevice() || isStandaloneApp() || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+            const viewportHeight = Math.max(640, Math.round((window.visualViewport && window.visualViewport.height) || window.innerHeight || document.documentElement.clientHeight || 640));
+            const approxCardHeight = Math.max(120, Number(options.approxCardHeight) || 220);
+            const emptyHtml = options.emptyHtml || `<div class="p-8 text-center text-gray-400">No rows found.</div>`;
+            const prefixHtml = String(options.prefixHtml || '');
+            const onComplete = typeof options.onComplete === 'function' ? options.onComplete : null;
+            const chunkSize = touchOptimized
+                ? (total > 1800 ? 48 : (total > 900 ? 56 : 64))
+                : (total > 1400 ? 28 : (total > 700 ? 36 : 44));
+            const initialScreens = touchOptimized ? 10 : 7;
+            const initialTarget = Math.min(total, Math.max(chunkSize * 2, Math.ceil((viewportHeight * initialScreens) / approxCardHeight)));
+            const perFrameLimit = touchOptimized ? Math.max(chunkSize * 2, 112) : Math.max(chunkSize, 64);
+            const frameBudgetMs = touchOptimized ? 8 : 6;
+            let index = 0;
+
+            if (crumb && typeof crumbText === 'string') crumb.innerText = crumbText;
+
+            if (!total) {
+                container.innerHTML = prefixHtml + emptyHtml;
+                return true;
+            }
+
+            const renderBatch = (targetCount, useBudget) => {
+                let html = '';
+                let rendered = 0;
+                const startTime = useBudget && typeof performance !== 'undefined' && performance.now ? performance.now() : 0;
+                while (index < total && rendered < targetCount) {
+                    html += renderRow(rows[index], index);
+                    index += 1;
+                    rendered += 1;
+                    if (useBudget && rendered >= chunkSize && typeof performance !== 'undefined' && performance.now && (performance.now() - startTime) >= frameBudgetMs) break;
+                }
+                return html;
+            };
+
+            container.innerHTML = prefixHtml + renderBatch(initialTarget, false);
+
+            const fireComplete = () => {
+                if (!onComplete) return;
+                requestAnimationFrame(() => {
+                    if (Number(chunkRenderTokensByKey[key] || 0) !== token) return;
+                    onComplete();
+                });
+            };
+
+            const renderNextChunk = () => {
+                if (Number(chunkRenderTokensByKey[key] || 0) !== token) return;
+                const html = renderBatch(perFrameLimit, true);
+                if (html) container.insertAdjacentHTML('beforeend', html);
+                if (index < total) requestAnimationFrame(renderNextChunk);
+                else fireComplete();
+            };
+
+            if (index < total) requestAnimationFrame(renderNextChunk);
+            else fireComplete();
+
+            return true;
+        }
+
         function shouldUseChunkedAVOpenRender(rows = []) {
             if (!Array.isArray(rows)) return false;
             const threshold = activeAvOpenTab === 'photos' ? 120 : 220;
@@ -10453,9 +10553,17 @@ activeDriveTab = tab;
             return exportSalesOfficeRowsToExcel(activeSalesOfficeTab);
         }
 
-        function exportSalesOfficeOrderFolder(folderKey = '') {
+                function exportSalesOfficeOrderFolder(folderKey = '') {
             return exportSalesOfficeRowsToExcel('orders', folderKey);
         }
+
+        function generateSalesOfficeOrderGroupCard(group) {
+            const submittedAtLabel = formatSalesOfficeDate(group.submittedAt);
+            const exportKey = esc(group.key);
+            const statusTone = String(group.status || '').toLowerCase().includes('done') ? 'bg-green-100 text-green-700 border-green-200' : 'bg-amber-50 text-amber-700 border-amber-100';
+            return `<div class="mb-4 overflow-hidden rounded-[1.5rem] border border-emerald-100 bg-white shadow-sm"><div class="border-b border-emerald-100 bg-gradient-to-r from-emerald-50 via-white to-emerald-50 px-4 py-4"><div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.18em] text-[#007a4d]">Bloom Picker Folder</div><div class="mt-1 text-lg font-black text-slate-900 leading-tight break-words">${group.folder}</div><div class="mt-2 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-600">Order ${group.orderNumber || '-'}</span><span class="rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-600">Customer ${group.customer || '-'}</span><span class="rounded-full border px-3 py-1 ${statusTone}">${group.status || 'Pending Review'}</span><span class="rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-600">${group.lineCount} line${group.lineCount === 1 ? '' : 's'}</span><span class="rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-600">Qty ${group.totalQty || 0}</span></div><div class="mt-3 text-[11px] font-semibold text-slate-500">Submitted by ${group.submittedBy || 'Unknown'} on ${submittedAtLabel}</div></div><button type="button" class="inline-flex items-center justify-center gap-2 rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-95" onclick="event.stopPropagation(); exportSalesOfficeOrderFolder('${exportKey}')"><i class="ph-bold ph-download-simple text-base"></i>Export Order</button></div></div><div class="bg-slate-50 px-3 py-3">${group.rows.map((item) => generateCard(item, 'sales-office-order')).join('')}</div></div>`;
+        }
+
         function renderSalesOffice() {
             if (ensureViewDataForRender('sales-office')) return;
             const access = getRoleAccessState();
@@ -10463,6 +10571,7 @@ activeDriveTab = tab;
             const container = document.getElementById('sales-office-content');
             const crumb = document.getElementById('sales-office-crumb');
             if (!container) return;
+            bumpChunkRenderTokenByKey('sales-office-main');
             updateSalesOfficeTabButtons();
 
             if (activeSalesOfficeTab === 'orders' && salesOfficeOrderColumnsReady == null) {
@@ -10486,12 +10595,14 @@ activeDriveTab = tab;
                     container.innerHTML = `<div class="p-8 text-center text-gray-400">${access.isRep ? 'No Bloom Picker orders submitted by you yet.' : 'No Bloom Picker orders have been submitted yet.'}</div>`;
                     return;
                 }
-                container.innerHTML = groups.map((group) => {
-                    const submittedAtLabel = formatSalesOfficeDate(group.submittedAt);
-                    const exportKey = esc(group.key);
-                    const statusTone = String(group.status || '').toLowerCase().includes('done') ? 'bg-green-100 text-green-700 border-green-200' : 'bg-amber-50 text-amber-700 border-amber-100';
-                    return `<div class="mb-4 overflow-hidden rounded-[1.5rem] border border-emerald-100 bg-white shadow-sm"><div class="border-b border-emerald-100 bg-gradient-to-r from-emerald-50 via-white to-emerald-50 px-4 py-4"><div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.18em] text-[#007a4d]">Bloom Picker Folder</div><div class="mt-1 text-lg font-black text-slate-900 leading-tight break-words">${group.folder}</div><div class="mt-2 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-600">Order ${group.orderNumber || '-'}</span><span class="rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-600">Customer ${group.customer || '-'}</span><span class="rounded-full border px-3 py-1 ${statusTone}">${group.status || 'Pending Review'}</span><span class="rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-600">${group.lineCount} line${group.lineCount === 1 ? '' : 's'}</span><span class="rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-600">Qty ${group.totalQty || 0}</span></div><div class="mt-3 text-[11px] font-semibold text-slate-500">Submitted by ${group.submittedBy || 'Unknown'} on ${submittedAtLabel}</div></div><button type="button" class="inline-flex items-center justify-center gap-2 rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-95" onclick="event.stopPropagation(); exportSalesOfficeOrderFolder('${exportKey}')"><i class="ph-bold ph-download-simple text-base"></i>Export Order</button></div></div><div class="bg-slate-50 px-3 py-3">${group.rows.map((item) => generateCard(item, 'sales-office-order')).join('')}</div></div>`;
-                }).join('');
+                                if (shouldUseChunkedCardRender(groups.length, 18, 32)) {
+                    const crumbText = groups.length ? `Bloom Picker Orders (${groups.length} folder${groups.length === 1 ? '' : 's'} / ${items.length} row${items.length === 1 ? '' : 's'})` : 'Bloom Picker Orders';
+                    renderMarkupChunkedByKey('sales-office-main', container, crumb, groups, crumbText, (group) => generateSalesOfficeOrderGroupCard(group), {
+                        approxCardHeight: 520
+                    });
+                    return;
+                }
+                container.innerHTML = groups.map((group) => generateSalesOfficeOrderGroupCard(group)).join('');
                 return;
             }
 
@@ -10500,6 +10611,13 @@ activeDriveTab = tab;
             if (crumb) crumb.innerText = items.length ? `Season Sales Notes (${items.length} row${items.length === 1 ? '' : 's'})` : 'Season Sales Notes';
             if (!items.length) {
                 container.innerHTML = `<div class="p-8 text-center text-gray-400">No Season Sales Notes rows found.</div>`;
+                return;
+            }
+            if (shouldUseChunkedCardRender(items.length, 65, 120)) {
+                const crumbText = items.length ? `Season Sales Notes (${items.length} row${items.length === 1 ? '' : 's'})` : 'Season Sales Notes';
+                renderMarkupChunkedByKey('sales-office-main', container, crumb, items, crumbText, (item) => generateCard(item, 'sales-office'), {
+                    approxCardHeight: 355
+                });
                 return;
             }
             container.innerHTML = items.map(i => generateCard(i, 'sales-office')).join('');
@@ -10603,10 +10721,28 @@ activeDriveTab = tab;
         }
 
         function getCurrentRequestDetailItems() {
-            let items = getScopedRequestItems(requestsInventory);
-
-            if (activeReqTab === 'pending') {
-                items = items.filter(i => !isRequestComplete(i) && !i.REQ_ARCHIVED);
+            let items = getScopedRequestItems(requestsInventory);            if (activeReqTab === 'pending') {
+                const crumbText = "All Pending Requests";
+                let pendingItems = items.filter(i => !isRequestComplete(i) && !i.REQ_ARCHIVED);
+                
+                if (pendingItems.length === 0) {
+                    container.innerHTML = `<div class="p-8 text-center text-gray-400">No pending requests.</div>`;
+                    crumb.innerText = crumbText;
+                    return;
+                }
+                
+                pendingItems.sort((a,b) => String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""), undefined, {numeric: true}));
+                if (shouldUseChunkedCardRender(pendingItems.length, 70, 140)) {
+                    renderMarkupChunkedByKey('request-main', container, crumb, pendingItems, crumbText, (item) => generateCard(item, 'request', 'status-purple'), {
+                        approxCardHeight: 360,
+                        onComplete: decorateRequestRows
+                    });
+                    return;
+                }
+                crumb.innerText = crumbText;
+                container.innerHTML = pendingItems.map(i => generateCard(i, 'request', 'status-purple')).join('');
+                requestAnimationFrame(decorateRequestRows);
+                
             } else if (activeReqTab === 'reps') {
                 items = items.filter(i => getRequestAssignedRep(i) === selectedReqRepView && !i.REQ_ARCHIVED);
                 if (selectedReqStatus) {
@@ -10702,6 +10838,7 @@ activeDriveTab = tab;
             if (ensureViewDataForRender('request')) return;
             const container = document.getElementById('request-content');
             const crumb = document.getElementById('request-crumb');
+            bumpChunkRenderTokenByKey('request-main');
             
             let items = getScopedRequestItems(requestsInventory);
 
@@ -10764,14 +10901,24 @@ activeDriveTab = tab;
                         return `<div class="bg-white border border-purple-200 rounded-xl shadow-sm mb-3 p-4 cursor-pointer active:scale-95 transition-transform" onclick="return openRequestFolderView('${esc(f)}')"><div class="flex justify-between items-center"><div class="flex items-center gap-3 min-w-0"><div class="bg-purple-50 p-2 rounded-lg"><i class="ph-fill ph-folder text-2xl text-purple-500"></i></div><span class="font-bold text-sm text-purple-800 break-all">${f}</span></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg min-w-max ml-2">${count} Items</span></div>${noteHtml}${shareActions}</div>`;
                     }).join('');
                     container.innerHTML = html;
-                } else if (requestViewLevel === 3) {
-                    crumb.innerText = selectedReqStatus === 'Complete' ? `${selectedReqRepView} > ${selectedReqFolderView}` : selectedReqFolderView;
+                                } else if (requestViewLevel === 3) {
+                    const crumbText = selectedReqStatus === 'Complete' ? `${selectedReqRepView} > ${selectedReqFolderView}` : selectedReqFolderView;
+                    crumb.innerText = crumbText;
                     let folderItems = items.filter(i => getRequestAssignedRep(i) === selectedReqRepView && !i.REQ_ARCHIVED);
                     folderItems = folderItems.filter(i => ((i.REQUEST_FOLDER || 'Unassigned')) === selectedReqFolderView);
                     folderItems = folderItems.filter(i => selectedReqStatus === 'Pending' ? !isRequestComplete(i) : isRequestComplete(i));
                     folderItems.sort((a,b) => String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""), undefined, {numeric: true}));
-                    
-                    container.innerHTML = `<div class="back-btn" onclick="return backToRequestFolderList()"><i class="ph-bold ph-arrow-left"></i> Back to Folders</div>` + folderItems.map(i => generateCard(i, 'request', selectedReqStatus === 'Complete' ? 'status-green' : 'status-purple')).join('');
+                    const prefixHtml = `<div class="back-btn" onclick="return backToRequestFolderList()"><i class="ph-bold ph-arrow-left"></i> Back to Folders</div>`;
+                    const cardTone = selectedReqStatus === 'Complete' ? 'status-green' : 'status-purple';
+                    if (shouldUseChunkedCardRender(folderItems.length, 70, 140)) {
+                        renderMarkupChunkedByKey('request-main', container, crumb, folderItems, crumbText, (item) => generateCard(item, 'request', cardTone), {
+                            prefixHtml,
+                            approxCardHeight: 360,
+                            onComplete: decorateRequestRows
+                        });
+                        return;
+                    }
+                    container.innerHTML = prefixHtml + folderItems.map(i => generateCard(i, 'request', cardTone)).join('');
                     requestAnimationFrame(decorateRequestRows);
                 }
             }
@@ -13059,14 +13206,22 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (!container || !crumb) return false;
             const driveModeLabel = DRIVE_MODE_LABELS[activeDriveMode] || 'Drive Mode';
             const finalItems = sortDriveCardItems(canUseDriveQuickRequest() ? getDriveFilteredItems(true) : getDriveFilteredItems(false));
-            crumb.innerText = `${driveModeLabel} > Card View (${finalItems.length} items)`;
+            const crumbText = `${driveModeLabel} > Card View (${finalItems.length} items)`;
             if (finalItems.length === 0) {
                 const emptyMessage = canUseDriveQuickRequest()
                     ? 'No rows match the current Card View filters.'
                     : 'No items found matching the current search.';
                 container.innerHTML = `<div class="p-8 text-center text-gray-400">${emptyMessage}</div>`;
+                crumb.innerText = crumbText;
                 return true;
             }
+            if (shouldUseChunkedCardRender(finalItems.length, 90, 170)) {
+                renderMarkupChunkedByKey('drive-quick-card', container, crumb, finalItems, crumbText, (item) => generateCard(item, 'drive', 'status-blue'), {
+                    approxCardHeight: 310
+                });
+                return true;
+            }
+            crumb.innerText = crumbText;
             container.innerHTML = finalItems.map(i => generateCard(i, 'drive', 'status-blue')).join('');
             return true;
         }
@@ -13079,6 +13234,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             const driveModeLabel = DRIVE_MODE_LABELS[activeDriveMode] || 'Drive Mode';
             const drillTabs = document.getElementById('drive-drill-tabs');
             const quickCardMode = activeDriveMode === 'ok' && activeDriveTab === 'card';
+            bumpChunkRenderTokenByKey('drive-main-card');
             if (drillTabs) drillTabs.classList.add('hidden');
             renderDriveQuickRequestBar();
 
@@ -13103,17 +13259,24 @@ ${folderNote ? `Folder Note: ${folderNote}
             const holdStopToggleHtml = `<button type="button" class="px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap cursor-pointer transition-colors ${driveQuickHoldStopOnly ? 'bg-amber-400 text-amber-950 shadow-md border border-amber-500' : 'bg-white border border-amber-300 text-amber-700'}" onclick="toggleDriveHoldStopOnly()">H/S HOLD</button>`;
             filtersDiv.innerHTML = driveTabsHtml + seasonFiltersHtml + holdStopToggleHtml;
 
-            const searchFilteredItems = getDriveFilteredItems(false);
-            if (quickCardMode) {
+            const searchFilteredItems = getDriveFilteredItems(false);            if (quickCardMode) {
                 const finalItems = sortDriveCardItems(canUseDriveQuickRequest() ? getDriveFilteredItems(true) : searchFilteredItems);
-                crumb.innerText = `${driveModeLabel} > Card View (${finalItems.length} items)`;
+                const crumbText = `${driveModeLabel} > Card View (${finalItems.length} items)`;
                 if (finalItems.length === 0) {
                     const emptyMessage = canUseDriveQuickRequest()
                         ? 'No rows match the current Card View filters.'
                         : 'No items found matching the current search.';
                     container.innerHTML = `<div class="p-8 text-center text-gray-400">${emptyMessage}</div>`;
+                    crumb.innerText = crumbText;
                     return;
                 }
+                if (shouldUseChunkedCardRender(finalItems.length, 90, 170)) {
+                    renderMarkupChunkedByKey('drive-main-card', container, crumb, finalItems, crumbText, (item) => generateCard(item, 'drive', 'status-blue'), {
+                        approxCardHeight: 310
+                    });
+                    return;
+                }
+                crumb.innerText = crumbText;
                 container.innerHTML = finalItems.map(i => generateCard(i, 'drive', 'status-blue')).join('');
                 return;
             }
@@ -14761,6 +14924,8 @@ function toggleDriveSeason(s) {
     </script>
 </body>
 </html>
+
+
 
 
 
