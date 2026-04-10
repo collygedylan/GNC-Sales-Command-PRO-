@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -1531,8 +1531,38 @@
             return Number.isFinite(stamp) ? new Date(stamp).toISOString() : '';
         }
 
+        function getLatestPhotoDateIsoForRetention(item) {
+            if (!item) return '';
+            const links = [
+                item.SAVED_PHOTO_LINK,
+                item.REQ_PHOTO_LINK,
+                item.DOCK_PHOTO_LINK,
+                item.FLYER_PHOTO_LINK,
+                item.PHOTO_LINK,
+                item.PHOTOLINK,
+                item['PHOTO LINK']
+            ];
+            let winner = '';
+            let winnerMs = -1;
+            links.forEach((link) => {
+                getPhotoUrlList(link).forEach((url) => {
+                    const match = String(url || '').match(/(?:\/|%2F)(20\d{2}-\d{2}-\d{2})(?:\/|%2F)/i);
+                    if (!match || !match[1]) return;
+                    const iso = getValidIsoTimestamp(`${match[1]}T00:00:00Z`);
+                    if (!iso) return;
+                    const stamp = Date.parse(iso);
+                    if (stamp > winnerMs) {
+                        winner = iso;
+                        winnerMs = stamp;
+                    }
+                });
+            });
+            return winner;
+        }
+
         function getEffectiveAvRuleUpdatedAt(item) {
             if (!item) return '';
+            const photoDateIso = getLatestPhotoDateIsoForRetention(item);
             const candidates = [
                 item.AV_RULE_BUNDLE_UPDATED_AT,
                 item.AV_RULE_AV_NOTE_UPDATED_AT,
@@ -1541,7 +1571,7 @@
                 item.AV_RULE_CALIPER_UPDATED_AT,
                 item.AV_RULE_PHOTO_UPDATED_AT,
                 item.DATE_COMPLETED,
-                item.LAST_UPDATED
+                photoDateIso
             ];
             let winner = '';
             let winnerMs = -1;
@@ -2428,7 +2458,7 @@
         function maybeWarnAvRuleSchemaMissing() {
             if (avRuleSchemaWarningShown || !currentUser) return;
             avRuleSchemaWarningShown = true;
-            console.warn('AV retention schema is not installed. AV retention timing/reset rules are disabled until av_rule_retention_migration.sql is run in Supabase.');
+            console.warn('AV retention schema is not installed. Advanced AV retention metadata is disabled until av_rule_retention_migration.sql is run in Supabase, but base 10-day AV cleanup is still active.');
         }
 
         async function ensureAvRuleColumnsReady(force = false) {
@@ -6396,7 +6426,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (hasMaster) {
                 fullInventory = (res.data || []).map((item,idx)=>{item.DOM_ID='fi_'+idx;return buildSearchIndex(normalizeRowPhotoFields(item));});
                 applyMasterAppTabAssignments(fullInventory);
-                if (avRuleColumnsReady === true) avRuleClearOps = collectMasterAvRuleClearOps(fullInventory);
+                avRuleClearOps = collectMasterAvRuleClearOps(fullInventory);
                 rebuildMasterInventoryIndexes();
                 invalidateMasterDerivedInventories();
             }
