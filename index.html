@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -3761,6 +3761,22 @@
             return null;
         }
 
+        function findRequestRowByUniqueId(uid) {
+            const normalizedUid = String(uid || '').trim();
+            if (!normalizedUid) return null;
+            const exact = requestsInventory.find((row) => String((row && row.UNIQUE_ID) || '').trim() === normalizedUid);
+            if (exact) return exact;
+            const linkedPending = requestsInventory.find((row) => {
+                if (!row || row.REQ_ARCHIVED) return false;
+                const masterId = String(firstNonEmptyValue(row.MASTER_ID, row.MASTER_UNIQUE_ID, row.master_id, '')).trim();
+                return masterId === normalizedUid && !isRequestComplete(row);
+            });
+            if (linkedPending) return linkedPending;
+            return requestsInventory.find((row) => {
+                const masterId = String(firstNonEmptyValue(row && row.MASTER_ID, row && row.MASTER_UNIQUE_ID, row && row.master_id, '')).trim();
+                return masterId === normalizedUid;
+            }) || null;
+        }
         function findItemByDomId(domId) {
             return fullInventory.find(i=>i.DOM_ID===domId)
                 || avOpenInventory.find(i=>i.DOM_ID===domId)
@@ -9601,7 +9617,15 @@ activeDriveTab = tab;
                 rememberDetailReturnPosition(sourceView || currentViewBeforeOpen);
             }
             lastView = sourceView || currentViewBeforeOpen || lastView;
-            activeItem = findItemByUniqueId(uid);
+            if (sourceView === 'request') {
+                activeItem = findRequestRowByUniqueId(uid) || findItemByUniqueId(uid);
+            } else if (sourceView === 'sales-office') {
+                activeItem = salesOfficeInventory.find(i => String(i.UNIQUE_ID || '').trim() === String(uid || '').trim()) || findItemByUniqueId(uid);
+            } else if (sourceView === 'docks') {
+                activeItem = socInventory.find(i => String(i.UNIQUE_ID || '').trim() === String(uid || '').trim()) || findItemByUniqueId(uid);
+            } else {
+                activeItem = findItemByUniqueId(uid);
+            }
             if(!activeItem) return;
 
             ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-docks','view-request','view-reserves','view-av', 'view-hours'].forEach(id=>{
@@ -13976,6 +14000,15 @@ function toggleDriveSeason(s) {
             if (isCurrentView && isComplete && btnComp) btnComp.innerText = 'SAVING...';
 
             const executeSave = () => {
+                if (prefix === 'req-') {
+                    const requestSourceRow = findRequestRowByUniqueId(itemToSave.UNIQUE_ID)
+                        || findRequestRowByUniqueId(firstNonEmptyValue(itemToSave.MASTER_ID, itemToSave.MASTER_UNIQUE_ID, itemToSave.master_id, ''));
+                    if (requestSourceRow && requestSourceRow !== itemToSave) {
+                        itemToSave = requestSourceRow;
+                        if (isCurrentView) activeItem = requestSourceRow;
+                        isCurrentView = !!(activeItem && activeItem.UNIQUE_ID === itemToSave.UNIQUE_ID);
+                    }
+                }
                 let wasAlreadyComplete = isRequestComplete(itemToSave);
                 const previousDateCompleted = itemToSave.DATE_COMPLETED || '';
                 const previousReqStatus = itemToSave.REQ_STATUS;
@@ -14728,6 +14761,7 @@ function toggleDriveSeason(s) {
     </script>
 </body>
 </html>
+
 
 
 
