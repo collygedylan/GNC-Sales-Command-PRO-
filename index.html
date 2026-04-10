@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -445,7 +445,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-                            <div id="header-version" class="nav-version-pill">V2026.04.10.02</div>
+                            <div id="header-version" class="nav-version-pill">V2026.04.10.03</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -904,8 +904,8 @@
         const CACHE_PERSIST_REALTIME_VISIBLE_MIN_INTERVAL_MS = 180000;
         const CACHE_PERSIST_ACTIVE_INTERACTION_GRACE_MS = 12000;
         const CACHE_PERSIST_IDLE_TIMEOUT_MS = 2500;
-        const PHOTO_MAX_WIDTH = 900;
-        const PHOTO_JPEG_QUALITY = 0.72;
+        const PHOTO_MAX_WIDTH = 760;
+        const PHOTO_JPEG_QUALITY = 0.66;
         let pendingPhotoUploads = new Map();
         let lastUserInteractionAt = Date.now();
         let viewportHeightSyncInitialized = false;
@@ -947,6 +947,10 @@
 
         function isRealtimeTableHealthy(tableName = '') {
             return getRealtimeTableStatus(tableName) === 'SUBSCRIBED';
+        }
+
+        function hasHealthyRealtimeSubscriptions() {
+            return REALTIME_TABLES.some((tableName) => isRealtimeTableHealthy(tableName));
         }
 
         function isEditableTextEntryTarget(target) {
@@ -2100,6 +2104,11 @@
                 updateSyncDiagnostics('offline');
                 return;
             }
+            if (shouldUseRealtime() && hasHealthyRealtimeSubscriptions()) {
+                liveSyncMode = 'realtime';
+                updateSyncDiagnostics('realtime');
+                return;
+            }
             liveSyncMode = 'polling';
             updateSyncDiagnostics('polling');
             const pollMs = Math.max(12000, Number(intervalMs) || getFallbackSyncInterval());
@@ -2141,7 +2150,14 @@
                         }
                         if (channelStatus === 'TIMED_OUT' || channelStatus === 'CHANNEL_ERROR' || channelStatus === 'CLOSED') {
                             if (tableName === 'v2_active_request') syncRequestViewLiveSync(140);
-                            startFallbackSync();
+                            if (!hasHealthyRealtimeSubscriptions()) {
+                                setTimeout(() => {
+                                    if (!hasHealthyRealtimeSubscriptions()) startFallbackSync();
+                                }, 1200);
+                            } else {
+                                liveSyncMode = 'realtime';
+                                updateSyncDiagnostics('realtime');
+                            }
                         }
                     });
                 realtimeChannels.push(channel);
@@ -2820,7 +2836,7 @@
         let activeSalesOfficeTab='season'; let salesOfficeOrderColumnsReady=null; let salesOfficeOrderSchemaPromise=null; let salesOfficeOrderSchemaWarningShown=false;
         
         function isLagSensitiveDetailPrefix(prefix) {
-            return prefix === 'ssn-' || prefix === 'lsn-';
+            return prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-' || prefix === 'req-' || prefix === 'dock-' || prefix === 'flyer-';
         }
 
         function invalidateAvNotesCommonNameIndex() {
@@ -2875,7 +2891,7 @@
         let pendingRequestArchiveFlushTimer = null;
         let pendingRequestArchiveFlushInFlight = false;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Maschino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'V2026.04.10.02';
+        const APP_VERSION = 'V2026.04.10.03';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -14657,11 +14673,20 @@ function toggleDriveSeason(s) {
                 }
 
                 if (pendingUploads.length > 0) {
-                    Promise.all(pendingUploads).then(() => {
-                        persistSave();
-                    }).catch((err) => {
-                        restoreFromFailedSave(err && err.message ? err.message : 'Photo upload failed before the save finished.');
-                    });
+                    withTimeout(Promise.allSettled(pendingUploads), 18000, 'Pending photo upload')
+                        .then((results) => {
+                            const rejected = (results || []).find((entry) => entry && entry.status === 'rejected');
+                            if (rejected) {
+                                const err = rejected.reason;
+                                restoreFromFailedSave(err && err.message ? err.message : 'Photo upload failed before the save finished.');
+                                return;
+                            }
+                            persistSave();
+                        })
+                        .catch(() => {
+                            showToast('Slow Upload', 'Photo upload is still finishing. Saving row now; photos will attach when upload completes.', false);
+                            persistSave();
+                        });
                     return;
                 }
 
@@ -14797,8 +14822,8 @@ function toggleDriveSeason(s) {
                     const sourceHeight = Number(sourceImage.height || sourceImage.naturalHeight || 0);
                     if (!sourceWidth || !sourceHeight) throw new Error('Could not process the selected image.');
                     canvas = document.createElement('canvas');
-                    const targetMaxWidth = isLagSensitiveDetailPrefix(prefix) ? 720 : PHOTO_MAX_WIDTH;
-                    const targetJpegQuality = isLagSensitiveDetailPrefix(prefix) ? 0.64 : PHOTO_JPEG_QUALITY;
+                    const targetMaxWidth = isLagSensitiveDetailPrefix(prefix) ? 640 : PHOTO_MAX_WIDTH;
+                    const targetJpegQuality = isLagSensitiveDetailPrefix(prefix) ? 0.6 : PHOTO_JPEG_QUALITY;
                     const scaleSize = sourceWidth > targetMaxWidth ? targetMaxWidth / sourceWidth : 1;
                     canvas.width = Math.max(1, Math.round(sourceWidth * scaleSize));
                     canvas.height = Math.max(1, Math.round(sourceHeight * scaleSize));
