@@ -13846,6 +13846,7 @@ function toggleDriveSeason(s) {
 
             const container = document.getElementById('task-content');
             const crumb = document.getElementById('task-crumb');
+            bumpChunkRenderTokenByKey('tasks-main');
             const baseNotesTitle = getTaskTabLabel(activeTaskTab);
             const notesTitle = useBlockDrill && activeTaskSubview !== 'all'
                 ? `${baseNotesTitle} > ${getTaskSubviewLabel(activeTaskSubview)}`
@@ -13947,7 +13948,16 @@ function toggleDriveSeason(s) {
                 } else if (taskViewLevel === 1) {
                     let fItems = tabItems.filter(i => (i.END_CAP_FOLDER || 'Unassigned') === selectedEndCapFolder);
                     fItems.sort((a,b) => String(a.COMMONNAME || '').localeCompare(String(b.COMMONNAME || '')));
-                    container.innerHTML = `<div class="back-btn" onclick="taskViewLevel=0; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to End Caps</div>` + fItems.map(i => generateCard(i, 'tasks', 'status-yellow')).join('');
+                    const prefixHtml = `<div class="back-btn" onclick="taskViewLevel=0; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to End Caps</div>`;
+                    if (shouldUseChunkedCardRender(fItems.length, 72, 140)) {
+                        renderMarkupChunkedByKey('tasks-main', container, null, fItems, '', (item) => generateCard(item, 'tasks', 'status-yellow'), {
+                            prefixHtml,
+                            approxCardHeight: 260,
+                            emptyHtml: `<div class="p-8 text-center text-gray-400">No rows remain in this folder.</div>`
+                        });
+                    } else {
+                        container.innerHTML = prefixHtml + fItems.map(i => generateCard(i, 'tasks', 'status-yellow')).join('');
+                    }
                 }
             } else if (activeTaskTab === 'flyer') {
                 const flyerTabsHtml = `<div class="flex gap-2 mb-3"><button class="task-tab ${flyerFolderTabLabel === 'Active' ? 'active' : ''}" onclick="return setFlyerFolderTab('active')">Active</button><button class="task-tab ${flyerFolderTabLabel === 'Archive' ? 'active' : ''}" onclick="return setFlyerFolderTab('archive')">Archive</button></div>`;
@@ -13987,9 +13997,19 @@ function toggleDriveSeason(s) {
                         ? `<button class="w-full sm:w-auto min-h-[42px] px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-[0.14em] transition-colors duration-150 bg-white border border-emerald-200 text-emerald-700 shadow-sm hover:bg-emerald-50" onclick="return setFlyerFolderArchiveState('${esc(selectedFlyerFolder || '')}', 'active', { currentTab: 'archive', keepOpen: true })">Restore Folder</button>`
                         : `<button class="w-full sm:w-auto min-h-[42px] px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-[0.14em] transition-colors duration-150 bg-white border border-indigo-200 text-indigo-700 shadow-sm hover:bg-indigo-100" onclick="return startAddRowsToFlyerFolder('${esc(selectedFlyerFolder || '')}')">Add Rows To Folder</button>`;
                     const folderHeader = `<div class="mb-3 rounded-xl border border-indigo-200 bg-indigo-50 p-4"><div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-indigo-600">${getFlyerFolderTabValue(activeFlyerFolderTab) === 'archive' ? 'Archived Flyer Folder' : 'Flyer Folder'}</div><div class="text-lg font-black text-indigo-900 truncate mt-1">${selectedFlyerFolder || ''}</div><div class="text-[11px] font-semibold text-indigo-500 mt-1">${folderItems.length} row${folderItems.length === 1 ? '' : 's'} | ${folderAssignees}</div></div>${folderActionButton}</div></div>`;
-                    const detailHtml = folderItems.length ? folderItems.map(i => generateCard(i, 'tasks', 'status-indigo')).join('') : `<div class="p-8 text-center text-gray-400">No rows remain in this flyer folder.</div>`;
-                    container.innerHTML = `${flyerTabsHtml}<div class="back-btn" onclick="return backToFlyerFolderList()"><i class="ph-bold ph-arrow-left"></i> Back to Folders</div>${folderHeader}${detailHtml}`;
-                    requestAnimationFrame(decorateFlyerTaskRows);
+                    const prefixHtml = `${flyerTabsHtml}<div class="back-btn" onclick="return backToFlyerFolderList()"><i class="ph-bold ph-arrow-left"></i> Back to Folders</div>${folderHeader}`;
+                    if (shouldUseChunkedCardRender(folderItems.length, 60, 120)) {
+                        renderMarkupChunkedByKey('tasks-main', container, null, folderItems, '', (item) => generateCard(item, 'tasks', 'status-indigo'), {
+                            prefixHtml,
+                            approxCardHeight: 300,
+                            emptyHtml: `<div class="p-8 text-center text-gray-400">No rows remain in this flyer folder.</div>`,
+                            onComplete: () => decorateFlyerTaskRows()
+                        });
+                    } else {
+                        const detailHtml = folderItems.length ? folderItems.map(i => generateCard(i, 'tasks', 'status-indigo')).join('') : `<div class="p-8 text-center text-gray-400">No rows remain in this flyer folder.</div>`;
+                        container.innerHTML = prefixHtml + detailHtml;
+                        requestAnimationFrame(decorateFlyerTaskRows);
+                    }
                 }
             } else {
                 if (taskViewLevel === 0) {
@@ -14020,10 +14040,22 @@ function toggleDriveSeason(s) {
                         return String(a.CONTSIZE || '').localeCompare(String(b.CONTSIZE || ''), undefined, { numeric: true });
                     });
                     const colorClass = activeTaskTab === 'season' ? 'status-green' : (activeTaskTab === 'colorwalk' ? 'status-indigo' : 'status-blue');
-                    const detailHtml = activeTaskTab === 'season' && activeTaskSubview === 'av-blanks'
-                        ? fItems.map(i => renderTaskAvBlankCard(i)).join('')
-                        : fItems.map(i => generateCard(i, 'tasks', colorClass)).join('');
-                    container.innerHTML = `<div class="back-btn" onclick="return backToTaskLocationList()"><i class="ph-bold ph-arrow-left"></i> Back to Locations</div>` + detailHtml;
+                    const prefixHtml = `<div class="back-btn" onclick="return backToTaskLocationList()"><i class="ph-bold ph-arrow-left"></i> Back to Locations</div>`;
+                    const renderRow = activeTaskTab === 'season' && activeTaskSubview === 'av-blanks'
+                        ? (item) => renderTaskAvBlankCard(item)
+                        : (item) => generateCard(item, 'tasks', colorClass);
+                    if (shouldUseChunkedCardRender(fItems.length, 72, 150)) {
+                        renderMarkupChunkedByKey('tasks-main', container, null, fItems, '', renderRow, {
+                            prefixHtml,
+                            approxCardHeight: activeTaskTab === 'season' && activeTaskSubview === 'av-blanks' ? 170 : 260,
+                            emptyHtml: `<div class="p-8 text-center text-gray-400">No rows found for this location.</div>`
+                        });
+                    } else {
+                        const detailHtml = activeTaskTab === 'season' && activeTaskSubview === 'av-blanks'
+                            ? fItems.map(i => renderTaskAvBlankCard(i)).join('')
+                            : fItems.map(i => generateCard(i, 'tasks', colorClass)).join('');
+                        container.innerHTML = prefixHtml + detailHtml;
+                    }
                 }
             }
         }
