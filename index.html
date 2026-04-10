@@ -1430,6 +1430,44 @@
             if (sourceView === 'sales-office') return firstNonEmptyValue(item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']);
             return firstNonEmptyValue(item.ROW_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.REQ_PHOTO_LINK, item.DOCK_PHOTO_LINK, item.FLYER_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']);
         }
+        function extractPhotoDateIsoFromText_(value = '') {
+            const text = String(value || '').trim();
+            if (!text) return '';
+            const dateMatch = text.match(/(?:\/|%2F|_|-)(20\d{2})[-_/](\d{2})[-_/](\d{2})(?:\/|%2F|_|-|$)/i);
+            if (!dateMatch) return '';
+            return `${dateMatch[1]}-${dateMatch[2]}-${dateMatch[3]}T12:00:00Z`;
+        }
+        function formatPhotoDateLabel_(value = '') {
+            const iso = getValidIsoTimestamp(value) || extractPhotoDateIsoFromText_(value);
+            if (!iso) return '';
+            try {
+                return new Date(iso).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: '2-digit' });
+            } catch (error) {
+                return '';
+            }
+        }
+        function getRowPhotoDateLabel(item, sourceView = '', explicitPhotoLink = '') {
+            if (!item) return '';
+            const photoLink = String(explicitPhotoLink || getRowPhotoLink(item, sourceView) || '').trim();
+            if (!photoLink) return '';
+            const fromLink = formatPhotoDateLabel_(photoLink);
+            if (fromLink) return fromLink;
+            const fallbackStamp = firstNonEmptyValue(
+                item.REQ_PHOTO_UPDATED_AT,
+                item.REQ_UPDATED_AT,
+                item.REQ_CREATED_AT,
+                item.DOCK_UPDATED_AT,
+                item.FLYER_COMPLETED,
+                item.AV_RULE_PHOTO_UPDATED_AT,
+                item.DATE_COMPLETED,
+                item.date_completed,
+                item.UPDATED_AT,
+                item.updated_at,
+                item.LAST_UPDATED,
+                item.last_updated
+            );
+            return formatPhotoDateLabel_(fallbackStamp);
+        }
         const AV_RULE_MAX_AGE_DAYS = 10;
         const AV_RULE_MAX_AGE_MS = AV_RULE_MAX_AGE_DAYS * 24 * 60 * 60 * 1000;
 
@@ -7896,13 +7934,15 @@ activeDriveTab = tab;
             const inBag = selectedItems.has(item.DOM_ID);
             let thumbHtml = '';
             const photoLink = getRowPhotoLink(item, 'drive');
+            const photoDateLabel = getRowPhotoDateLabel(item, 'drive', photoLink);
+            const photoDateHtml = photoDateLabel ? `<div class="mt-1 rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.12em] text-slate-500">Photo ${photoDateLabel}</div>` : '';
             if (photoLink) {
                 let firstUrl = String(photoLink).split(',')[0].trim();
                 let urlMatch = firstUrl.match(/(https?:\/\/[^"\s>]+)/);
                 if (urlMatch) firstUrl = urlMatch[1];
                 const thumbUrl = getDirectImageUrl(firstUrl);
                 if (thumbUrl.startsWith('http')) {
-                    thumbHtml = `<div class="absolute top-3 right-3 h-12 w-12 sm:h-14 sm:w-14 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 shadow-sm"><img src="${thumbUrl}" class="h-full w-full object-cover" loading="lazy"></div>`;
+                    thumbHtml = `<div class="absolute top-3 right-3 flex flex-col items-end"><div class="h-12 w-12 sm:h-14 sm:w-14 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 shadow-sm"><img src="${thumbUrl}" class="h-full w-full object-cover" loading="lazy"></div>${photoDateHtml}</div>`;
                 }
             }
             const cornerThumbHtml = thumbHtml || `<div class="absolute top-3 right-3 flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-xl border border-slate-200 bg-slate-100 px-1 text-center text-[8px] font-black uppercase tracking-[0.14em] text-slate-400">No Photo</div>`;
@@ -8135,14 +8175,16 @@ activeDriveTab = tab;
                 return `<div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2"><div class="text-[9px] font-black uppercase tracking-[0.14em] text-slate-400">${label}</div><div class="mt-1 text-[13px] font-bold text-slate-700 break-words">${esc(displayValue)}</div></div>`;
             };
             let thumbHtml = '';
-            const photoLink = getRowPhotoLink(item);
+            const photoLink = getRowPhotoLink(item, 'av');
+            const photoDateLabel = getRowPhotoDateLabel(item, 'av', photoLink);
+            const photoDateHtml = photoDateLabel ? `<div class="text-center text-[9px] font-black text-slate-500 mt-1 uppercase tracking-[0.14em] bg-white px-2 py-0.5 rounded-md border border-slate-200">PHOTO ${photoDateLabel}</div>` : '';
             if (photoLink) {
                 let firstUrl = String(photoLink).split(',')[0].trim();
                 let urlMatch = firstUrl.match(/(https?:\/\/[^"\s>]+)/);
                 if (urlMatch) firstUrl = urlMatch[1];
                 const thumbUrl = getDirectImageUrl(firstUrl);
                 if (thumbUrl.startsWith('http')) {
-                    thumbHtml = `<div class="ml-3 flex-shrink-0" onclick="event.stopPropagation(); openPhotoModal('${photoLink}', '${esc(commonName)} - ${esc(contSize)}')"><img src="${thumbUrl}" class="app-smart-thumb w-16 h-16 rounded-md object-cover border border-gray-300 shadow-sm active:scale-95 transition-transform" loading="lazy"></div>`;
+                    thumbHtml = `<div class="ml-3 flex-shrink-0 flex flex-col items-center" onclick="event.stopPropagation(); openPhotoModal('${photoLink}', '${esc(commonName)} - ${esc(contSize)}')"><img src="${thumbUrl}" class="app-smart-thumb w-16 h-16 rounded-md object-cover border border-gray-300 shadow-sm active:scale-95 transition-transform" loading="lazy">${photoDateHtml}</div>`;
                 }
             }
             const inlineThumbHtml = thumbHtml || `<div class="ml-3 flex-shrink-0"><div class="app-smart-thumb w-16 h-16 rounded-md border border-gray-300 bg-slate-100 shadow-sm flex items-center justify-center text-[8px] font-black uppercase tracking-[0.12em] text-slate-400">No Photo</div></div>`;
@@ -8170,14 +8212,16 @@ activeDriveTab = tab;
                 return `<div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2"><div class="text-[9px] font-black uppercase tracking-[0.14em] text-slate-400">${label}</div><div class="mt-1 text-[13px] font-bold text-slate-700 break-words">${esc(displayValue)}</div></div>`;
             };
             let thumbHtml = '';
-            const photoLink = getRowPhotoLink(item);
+            const photoLink = getRowPhotoLink(item, 'drive');
+            const photoDateLabel = getRowPhotoDateLabel(item, 'drive', photoLink);
+            const photoDateHtml = photoDateLabel ? `<div class="mt-1 rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.12em] text-slate-500">Photo ${photoDateLabel}</div>` : '';
             if (photoLink) {
                 let firstUrl = String(photoLink).split(',')[0].trim();
                 let urlMatch = firstUrl.match(/(https?:\/\/[^"\s>]+)/);
                 if (urlMatch) firstUrl = urlMatch[1];
                 const thumbUrl = getDirectImageUrl(firstUrl);
                 if (thumbUrl.startsWith('http')) {
-                    thumbHtml = `<div class="absolute top-3 right-3 flex h-14 w-14 items-center justify-center rounded-xl overflow-hidden border border-gray-300 shadow-sm bg-white" onclick="event.stopPropagation(); openPhotoModal('${photoLink}', '${esc(commonName)} - ${esc(contSize)}')"><img src="${thumbUrl}" class="app-smart-thumb h-full w-full object-cover active:scale-95 transition-transform" loading="lazy"></div>`;
+                    thumbHtml = `<div class="absolute top-3 right-3 flex flex-col items-end" onclick="event.stopPropagation(); openPhotoModal('${photoLink}', '${esc(commonName)} - ${esc(contSize)}')"><div class="flex h-14 w-14 items-center justify-center rounded-xl overflow-hidden border border-gray-300 shadow-sm bg-white"><img src="${thumbUrl}" class="app-smart-thumb h-full w-full object-cover active:scale-95 transition-transform" loading="lazy"></div>${photoDateHtml}</div>`;
                 }
             }
             const cornerThumbHtml = thumbHtml || `<div class="absolute top-3 right-3 flex h-14 w-14 items-center justify-center rounded-xl border border-slate-200 bg-slate-100 px-1 text-center text-[8px] font-black uppercase tracking-[0.14em] text-slate-400">No Photo</div>`;
@@ -11561,7 +11605,7 @@ activeDriveTab = tab;
 
         function generateCard(item,sourceView,colorClass='status-green') {
             normalizeRowPhotoFields(item);
-            let thumbHtml=''; let photoLink=getRowPhotoLink(item, sourceView);
+            let thumbHtml=''; let photoLink=getRowPhotoLink(item, sourceView); const photoDateLabel = getRowPhotoDateLabel(item, sourceView, photoLink); const photoDateHtml = photoDateLabel ? `<div class="text-center text-[9px] font-black text-slate-500 mt-1 uppercase tracking-[0.14em] bg-white px-2 py-0.5 rounded-md border border-slate-200">PHOTO ${photoDateLabel}</div>` : '';
             
             const isChecked=selectedItems.has(item.DOM_ID)?'checked':''; 
             const tagColor=item.FIELDTAGCOLOR||'-'; 
@@ -11603,7 +11647,7 @@ activeDriveTab = tab;
                     let thumbUrl = getDirectImageUrl(cleanUrl);
                     if(thumbUrl.startsWith('http')){
                         let photoCount = String(photoLink).split(',').length;
-                        clickThumbHtml = `<div class="ml-3 flex-shrink-0 flex flex-col items-center" onclick="event.stopPropagation(); openPhotoModal('${photoLink}', '${esc(item.COMMONNAME)} - ${esc(item.CONTSIZE)}')"><div class="relative"><img src="${thumbUrl}" class="app-smart-thumb app-smart-thumb--feature w-24 h-24 rounded-lg object-cover border-2 border-teal-300 shadow-md active:scale-95 transition-transform" loading="lazy">${photoCount > 1 ? `<div class="absolute -top-2 -right-2 bg-teal-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full border-2 border-white shadow-sm">+${photoCount-1}</div>` : ''}</div><div class="text-center text-[9px] font-black text-teal-600 mt-1.5 uppercase tracking-widest bg-teal-50 px-2 py-0.5 rounded-md border border-teal-100 cursor-pointer active:bg-teal-200">VIEW</div></div>`;
+                        clickThumbHtml = `<div class="ml-3 flex-shrink-0 flex flex-col items-center" onclick="event.stopPropagation(); openPhotoModal('${photoLink}', '${esc(item.COMMONNAME)} - ${esc(item.CONTSIZE)}')"><div class="relative"><img src="${thumbUrl}" class="app-smart-thumb app-smart-thumb--feature w-24 h-24 rounded-lg object-cover border-2 border-teal-300 shadow-md active:scale-95 transition-transform" loading="lazy">${photoCount > 1 ? `<div class="absolute -top-2 -right-2 bg-teal-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full border-2 border-white shadow-sm">+${photoCount-1}</div>` : ''}</div>${photoDateHtml}<div class="text-center text-[9px] font-black text-teal-600 mt-1.5 uppercase tracking-widest bg-teal-50 px-2 py-0.5 rounded-md border border-teal-100 cursor-pointer active:bg-teal-200">VIEW</div></div>`;
                     }
                 }
 
@@ -11623,7 +11667,7 @@ activeDriveTab = tab;
                 if(urlMatch)cleanUrl=urlMatch[1];
                 let thumbUrl=getDirectImageUrl(cleanUrl);
                 if(thumbUrl.startsWith('http')){
-                    thumbHtml=`<div class="ml-3 flex-shrink-0" onclick="event.stopPropagation(); openPhotoModal('${photoLink}', '${esc(item.COMMONNAME)} - ${esc(item.CONTSIZE)}')"><img src="${thumbUrl}" class="app-smart-thumb w-16 h-16 rounded-md object-cover border border-gray-300 shadow-sm active:scale-95 transition-transform" loading="lazy"></div>`;
+                    thumbHtml=`<div class="ml-3 flex-shrink-0 flex flex-col items-center" onclick="event.stopPropagation(); openPhotoModal('${photoLink}', '${esc(item.COMMONNAME)} - ${esc(item.CONTSIZE)}')"><img src="${thumbUrl}" class="app-smart-thumb w-16 h-16 rounded-md object-cover border border-gray-300 shadow-sm active:scale-95 transition-transform" loading="lazy">${photoDateHtml}</div>`;
                 }
             }
             const inlineThumbHtml = thumbHtml || `<div class="ml-3 flex-shrink-0"><div class="app-smart-thumb w-16 h-16 rounded-md border border-gray-300 bg-slate-100 shadow-sm flex items-center justify-center text-[8px] font-black uppercase tracking-[0.12em] text-slate-400">No Photo</div></div>`;
@@ -14654,6 +14698,9 @@ function toggleDriveSeason(s) {
     </script>
 </body>
 </html>
+
+
+
 
 
 
