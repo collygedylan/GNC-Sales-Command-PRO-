@@ -909,9 +909,11 @@
         const CACHE_PERSIST_REALTIME_VISIBLE_MIN_INTERVAL_MS = 180000;
         const CACHE_PERSIST_ACTIVE_INTERACTION_GRACE_MS = 12000;
         const CACHE_PERSIST_IDLE_TIMEOUT_MS = 2500;
-        const PHOTO_MAX_WIDTH = 700;
-        const PHOTO_JPEG_QUALITY = 0.62;
+        const PHOTO_MAX_WIDTH = 640;
+        const PHOTO_JPEG_QUALITY = 0.56;
         let pendingPhotoUploads = new Map();
+        let pendingPhotoPreviews = new Map();
+        window.pendingPhotoUploads = pendingPhotoUploads;
         let lastUserInteractionAt = Date.now();
         let viewportHeightSyncInitialized = false;
         let standaloneShellBaseHeight = 0;
@@ -1440,12 +1442,16 @@
         }
         function getRowPhotoLink(item, sourceView='') {
             if (!item) return '';
-            if (sourceView === 'av' || sourceView === 'av-photo') return firstNonEmptyValue(item.SAVED_PHOTO_LINK, item.ROW_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']);
-            if (sourceView === 'request') return firstNonEmptyValue(item.REQ_PHOTO_LINK, item.ROW_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']);
-            if (sourceView === 'docks') return firstNonEmptyValue(item.DOCK_PHOTO_LINK, item.ROW_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']);
-            if (sourceView === 'flyer') return firstNonEmptyValue(item.FLYER_PHOTO_LINK, item.ROW_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']);
-            if (sourceView === 'sales-office') return firstNonEmptyValue(item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']);
-            return firstNonEmptyValue(item.ROW_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.REQ_PHOTO_LINK, item.DOCK_PHOTO_LINK, item.FLYER_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']);
+            if (sourceView === 'av' || sourceView === 'av-photo') return getDisplayPhotoLinkCsv(firstNonEmptyValue(item.SAVED_PHOTO_LINK, item.ROW_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']), item, 'saved');
+            if (sourceView === 'request') return getDisplayPhotoLinkCsv(firstNonEmptyValue(item.REQ_PHOTO_LINK, item.ROW_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']), item, 'req');
+            if (sourceView === 'docks') return getDisplayPhotoLinkCsv(firstNonEmptyValue(item.DOCK_PHOTO_LINK, item.ROW_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']), item, 'dock');
+            if (sourceView === 'flyer') return getDisplayPhotoLinkCsv(firstNonEmptyValue(item.FLYER_PHOTO_LINK, item.ROW_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']), item, 'flyer');
+            if (sourceView === 'sales-office') return getDisplayPhotoLinkCsv(firstNonEmptyValue(item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']), item, 'saved');
+            const requestLink = getDisplayPhotoLinkCsv(item.REQ_PHOTO_LINK || '', item, 'req');
+            const dockLink = getDisplayPhotoLinkCsv(item.DOCK_PHOTO_LINK || '', item, 'dock');
+            const flyerLink = getDisplayPhotoLinkCsv(item.FLYER_PHOTO_LINK || '', item, 'flyer');
+            const savedLink = getDisplayPhotoLinkCsv(firstNonEmptyValue(item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']), item, 'saved');
+            return firstNonEmptyValue(requestLink, dockLink, flyerLink, savedLink, item.ROW_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.REQ_PHOTO_LINK, item.DOCK_PHOTO_LINK, item.FLYER_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']);
         }
         function extractPhotoDateIsoFromText_(value = '') {
             const text = String(value || '').trim();
@@ -1467,7 +1473,13 @@
             if (!item) return '';
             const photoLink = String(explicitPhotoLink || getRowPhotoLink(item, sourceView) || '').trim();
             if (!photoLink) return '';
-            const fromLink = formatPhotoDateLabel_(photoLink);
+            const firstUrl = parsePhotoCsvValues(photoLink)[0] || '';
+            const pendingPreview = findPendingPhotoPreviewByUrl(firstUrl);
+            if (pendingPreview && pendingPreview.createdAt) {
+                const pendingLabel = formatPhotoDateLabel_(pendingPreview.createdAt);
+                if (pendingLabel) return pendingLabel;
+            }
+            const fromLink = formatPhotoDateLabel_(firstUrl || photoLink);
             if (fromLink) return fromLink;
             const fallbackStamp = firstNonEmptyValue(
                 item.REQ_PHOTO_UPDATED_AT,
@@ -1744,10 +1756,10 @@
             const seen = new Set();
             [
                 getRowPhotoLink(item, sourceView || lastView),
-                item.SAVED_PHOTO_LINK || '',
-                item.REQ_PHOTO_LINK || '',
-                item.DOCK_PHOTO_LINK || '',
-                item.FLYER_PHOTO_LINK || ''
+                getDisplayPhotoLinkCsv(item.SAVED_PHOTO_LINK || '', item, 'saved'),
+                getDisplayPhotoLinkCsv(item.REQ_PHOTO_LINK || '', item, 'req'),
+                getDisplayPhotoLinkCsv(item.DOCK_PHOTO_LINK || '', item, 'dock'),
+                getDisplayPhotoLinkCsv(item.FLYER_PHOTO_LINK || '', item, 'flyer')
             ].forEach((link) => {
                 getPhotoUrlList(link).forEach((url) => {
                     const cleanUrl = String(url || '').trim();
@@ -2420,26 +2432,190 @@
             });
         }
 
+        function getPhotoBucketKey(prefixOrSource = '') {
+            const normalized = String(prefixOrSource || '').toLowerCase().trim();
+            if (normalized === 'req-' || normalized === 'req' || normalized === 'request' || normalized === 'request-photo') return 'req';
+            if (normalized === 'dock-' || normalized === 'dock' || normalized === 'docks') return 'dock';
+            if (normalized === 'flyer-' || normalized === 'flyer') return 'flyer';
+            return 'saved';
+        }
+
+        function getPhotoBucketKeysForItem(item, prefixOrSource = '') {
+            const bucket = getPhotoBucketKey(prefixOrSource);
+            const keys = [bucket];
+            const sharedFlyerAssignment = String(firstNonEmptyValue(item && item.APP_TAB_ASSIGNMENT, item && item.app_tab_assignment, '')).toLowerCase();
+            if (bucket === 'flyer' && (sharedFlyerAssignment === 'season' || sharedFlyerAssignment === 'location')) keys.push('saved');
+            return [...new Set(keys)];
+        }
+
+        function parsePhotoCsvValues(value = '') {
+            return String(value || '').split(',').map(v => String(v || '').trim()).filter(Boolean);
+        }
+
+        function mergePhotoCsvValues(primaryValue = '', secondaryValue = '', prependPrimary = true) {
+            const sources = prependPrimary ? [primaryValue, secondaryValue] : [secondaryValue, primaryValue];
+            const merged = [];
+            const seen = new Set();
+            sources.forEach((source) => {
+                parsePhotoCsvValues(source).forEach((entry) => {
+                    if (!entry || seen.has(entry)) return;
+                    seen.add(entry);
+                    merged.push(entry);
+                });
+            });
+            return merged.join(',');
+        }
+
         function getPendingPhotoUploadKey(item, prefix = '') {
-            return item ? `${item.UNIQUE_ID}::${prefix}` : '';
+            if (!item) return '';
+            const uniqueId = String(item.UNIQUE_ID || '').trim();
+            if (!uniqueId) return '';
+            return `${uniqueId}::${getPhotoBucketKey(prefix)}`;
+        }
+
+        function getPendingPhotoPreviewKey(item, prefix = '') {
+            if (!item) return '';
+            const uniqueId = String(item.UNIQUE_ID || '').trim();
+            if (!uniqueId) return '';
+            return `${uniqueId}::${getPhotoBucketKey(prefix)}`;
+        }
+
+        function createPendingPhotoToken() {
+            return `${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
         }
 
         function registerPendingPhotoUpload(item, prefix, promise) {
-            const key = getPendingPhotoUploadKey(item, prefix);
-            if (!key || !promise) return promise;
+            const keyBase = getPendingPhotoUploadKey(item, prefix);
+            if (!keyBase || !promise) return promise;
+            const key = `${keyBase}::${createPendingPhotoToken()}`;
             pendingPhotoUploads.set(key, promise);
             promise.finally(() => {
-                if (pendingPhotoUploads.get(key) === promise) pendingPhotoUploads.delete(key);
+                pendingPhotoUploads.delete(key);
             });
             return promise;
         }
 
         function getPendingPhotoUploadsForItem(item) {
             if (!item) return [];
-            const matchKey = `${item.UNIQUE_ID}::`;
+            const uniqueId = String(item.UNIQUE_ID || '').trim();
+            if (!uniqueId) return [];
+            const matchKey = `${uniqueId}::`;
             return Array.from(pendingPhotoUploads.entries())
                 .filter(([key]) => key.startsWith(matchKey))
                 .map(([, promise]) => promise);
+        }
+
+        function createPendingPhotoPreview(item, prefix, previewUrl, fileName = '') {
+            const bucketKeys = getPhotoBucketKeysForItem(item, prefix);
+            if (!bucketKeys.length || !previewUrl) return null;
+            const preview = {
+                id: createPendingPhotoToken(),
+                url: String(previewUrl || '').trim(),
+                name: String(fileName || '').trim(),
+                createdAt: new Date().toISOString()
+            };
+            bucketKeys.forEach((bucketKey) => {
+                const mapKey = `${String(item.UNIQUE_ID || '').trim()}::${bucketKey}`;
+                const current = pendingPhotoPreviews.get(mapKey) || [];
+                pendingPhotoPreviews.set(mapKey, current.concat({ ...preview, bucketKey }));
+            });
+            return preview;
+        }
+
+        function getPendingPhotoPreviewEntries(item, prefix = '') {
+            const key = getPendingPhotoPreviewKey(item, prefix);
+            return key ? (pendingPhotoPreviews.get(key) || []).slice() : [];
+        }
+
+        function clearPendingPhotoPreview(item, prefix, previewId, revokeUrl = true) {
+            const bucketKeys = getPhotoBucketKeysForItem(item, prefix);
+            if (!item || !previewId || !bucketKeys.length) return;
+            let revoked = false;
+            bucketKeys.forEach((bucketKey) => {
+                const mapKey = `${String(item.UNIQUE_ID || '').trim()}::${bucketKey}`;
+                const current = pendingPhotoPreviews.get(mapKey) || [];
+                if (!current.length) return;
+                const remaining = [];
+                current.forEach((entry) => {
+                    if (entry && entry.id === previewId) {
+                        if (!revoked && revokeUrl && entry.url && entry.url.startsWith('blob:')) {
+                            revoked = true;
+                            try { URL.revokeObjectURL(entry.url); } catch (error) {}
+                        }
+                        return;
+                    }
+                    remaining.push(entry);
+                });
+                if (remaining.length) pendingPhotoPreviews.set(mapKey, remaining);
+                else pendingPhotoPreviews.delete(mapKey);
+            });
+        }
+
+        function findPendingPhotoPreviewByUrl(url = '') {
+            const targetUrl = String(url || '').trim();
+            if (!targetUrl) return null;
+            for (const entries of pendingPhotoPreviews.values()) {
+                const match = (entries || []).find((entry) => String(entry && entry.url || '').trim() === targetUrl);
+                if (match) return match;
+            }
+            return null;
+        }
+
+        function getDisplayPhotoLinkCsv(baseLink = '', item = null, prefix = '') {
+            const pendingCsv = getPendingPhotoPreviewEntries(item, prefix).map((entry) => entry.url).join(',');
+            return mergePhotoCsvValues(pendingCsv, baseLink, true);
+        }
+
+        function getDisplayPhotoEntries(prefix, item = activeItem, baseLinkOverride = null) {
+            if (!item) return [];
+            const state = getEffectivePhotoFieldState(prefix, item);
+            const persistedLinks = baseLinkOverride == null
+                ? (state ? state.links : [])
+                : parsePhotoCsvValues(baseLinkOverride);
+            const persistedNames = baseLinkOverride == null
+                ? (state ? state.names : [])
+                : [];
+            const entries = [];
+            const seen = new Set();
+            getPendingPhotoPreviewEntries(item, prefix).forEach((entry) => {
+                const url = String(entry && entry.url || '').trim();
+                if (!url || seen.has(url)) return;
+                seen.add(url);
+                entries.push({
+                    url,
+                    name: String(entry && entry.name || '').trim(),
+                    pending: true,
+                    persistedIndex: -1,
+                    dateLabel: formatPhotoDateLabel_(entry && entry.createdAt || '')
+                });
+            });
+            persistedLinks.forEach((url, index) => {
+                const cleanUrl = String(url || '').trim();
+                if (!cleanUrl || seen.has(cleanUrl)) return;
+                seen.add(cleanUrl);
+                entries.push({
+                    url: cleanUrl,
+                    name: String(persistedNames[index] || '').trim(),
+                    pending: false,
+                    persistedIndex: index,
+                    dateLabel: formatPhotoDateLabel_(persistedNames[index] || cleanUrl)
+                });
+            });
+            return entries;
+        }
+
+        function refreshPendingPhotoUiForItem(item, prefix = '') {
+            if (!item) return;
+            const sameActiveItem = activeItem && String(activeItem.UNIQUE_ID || '').trim() === String(item.UNIQUE_ID || '').trim();
+            if (sameActiveItem) {
+                const renderKey = `active-photo-preview-${String(item.UNIQUE_ID || '').trim()}-${getPhotoBucketKey(prefix)}`;
+                scheduleUiRender(renderKey, () => {
+                    renderSavedPhotos();
+                    renderPhotoGallery();
+                }, 16);
+                return;
+            }
+            scheduleUiRender(`photo-preview-${String(item.UNIQUE_ID || '').trim()}-${getPhotoBucketKey(prefix)}`, () => reRenderCurrentView(), 16);
         }
 
         function normalizeActiveRequestWriteBody(body) {
@@ -2932,7 +3108,7 @@
         const PENDING_EDITS_STORAGE_KEY = 'gnc_pending_edits';
         const PENDING_EDITS_PERSIST_DEBOUNCE_MS = 400;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Maschino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'V2026.04.10.04';
+        const APP_VERSION = 'V2026.04.10.05';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -3891,6 +4067,8 @@
                 .split(',')
                 .map(part => {
                     let cleanUrl = String(part || '').trim();
+                    if (!cleanUrl) return '';
+                    if (/^blob:/i.test(cleanUrl) || /^data:image\//i.test(cleanUrl)) return cleanUrl;
                     let match = cleanUrl.match(/(https?:\/\/[^"\s>]+)/);
                     if (match) cleanUrl = match[1];
                     if (!cleanUrl.startsWith('http')) return '';
@@ -9906,21 +10084,24 @@ activeDriveTab = tab;
                 let el = document.getElementById(containerId);
                 let wrap = document.getElementById(wrapperId);
                 if(!el || !wrap) return;
-                if(link && String(link).trim() !== "") {
-                    let urls = String(link).split(',').map(url => url.trim()).filter(Boolean);
+                const entries = getDisplayPhotoEntries(prefix, activeItem, link);
+                if(entries.length > 0) {
                     const allowReorder = canReorderProtectedPhoto(prefix);
+                    const persistedEntries = entries.filter((entry) => !entry.pending && entry.persistedIndex > -1);
+                    const openLink = entries.map((entry) => entry.url).join(',');
                     let html = `<div class="flex gap-2 overflow-x-auto pb-2">`;
-                    urls.forEach((u, idx) => {
-                        let c = u;
-                        let m = c.match(/(https?:\/\/[^"\s>]+)/);
-                        if(m) c = m[1];
-                        if(c.startsWith('http')) {
-                            let thumb = getDirectImageUrl(c);
-                            const pressAttrs = allowRemove ? ` oncontextmenu="event.preventDefault(); return false;" onmousedown="startPhotoDeletePress(event, '${prefix}', ${idx})" onmouseup="cancelPhotoDeletePress('${prefix}', ${idx})" onmouseleave="cancelPhotoDeletePress('${prefix}', ${idx})" ontouchstart="startPhotoDeletePress(event, '${prefix}', ${idx})" ontouchend="cancelPhotoDeletePress('${prefix}', ${idx})" ontouchcancel="cancelPhotoDeletePress('${prefix}', ${idx})" ontouchmove="cancelPhotoDeletePress('${prefix}', ${idx})"` : '';
-                            const hintHtml = allowRemove ? `<div class="mt-1 text-[9px] font-bold text-gray-400 uppercase text-center">Hold to Delete</div>` : '';
-                            const reorderHtml = allowReorder && urls.length > 1 ? `<div class="mt-1 flex items-center justify-center gap-1"><button class="px-2 py-1 text-[10px] font-black rounded-md border border-gray-300 bg-white text-slate-700 ${idx === 0 ? 'opacity-30 pointer-events-none' : ''}" onclick="event.stopPropagation(); movePhotoInSet('${prefix}', ${idx}, -1)">LEFT</button><button class="px-2 py-1 text-[10px] font-black rounded-md border border-gray-300 bg-white text-slate-700 ${idx === urls.length - 1 ? 'opacity-30 pointer-events-none' : ''}" onclick="event.stopPropagation(); movePhotoInSet('${prefix}', ${idx}, 1)">RIGHT</button></div>` : '';
-                            html += `<div class="relative shrink-0"><img src="${thumb}" class="w-20 h-20 object-cover rounded-lg border border-gray-300 cursor-pointer shadow-sm active:scale-95" onclick="handlePhotoThumbClick('${link}', '${title}')"${pressAttrs}>${hintHtml}${reorderHtml}</div>`;
-                        }
+                    entries.forEach((entry) => {
+                        const cleanUrl = getPhotoUrlList(entry.url)[0] || '';
+                        if (!cleanUrl) return;
+                        const thumb = getDirectImageUrl(cleanUrl);
+                        const canRemoveThis = allowRemove && !entry.pending && entry.persistedIndex > -1;
+                        const pressAttrs = canRemoveThis ? ` oncontextmenu="event.preventDefault(); return false;" onmousedown="startPhotoDeletePress(event, '${prefix}', ${entry.persistedIndex})" onmouseup="cancelPhotoDeletePress('${prefix}', ${entry.persistedIndex})" onmouseleave="cancelPhotoDeletePress('${prefix}', ${entry.persistedIndex})" ontouchstart="startPhotoDeletePress(event, '${prefix}', ${entry.persistedIndex})" ontouchend="cancelPhotoDeletePress('${prefix}', ${entry.persistedIndex})" ontouchcancel="cancelPhotoDeletePress('${prefix}', ${entry.persistedIndex})" ontouchmove="cancelPhotoDeletePress('${prefix}', ${entry.persistedIndex})"` : '';
+                        const statusHtml = canRemoveThis
+                            ? `<div class="mt-1 text-[9px] font-bold text-gray-400 uppercase text-center">Hold to Delete</div>`
+                            : (entry.pending ? `<div class="mt-1 text-[9px] font-bold text-emerald-500 uppercase text-center">Uploading</div>` : '');
+                        const dateHtml = entry.dateLabel ? `<div class="mt-1 text-[9px] font-bold text-slate-400 uppercase text-center">Photo ${entry.dateLabel}</div>` : '';
+                        const reorderHtml = allowReorder && !entry.pending && persistedEntries.length > 1 ? `<div class="mt-1 flex items-center justify-center gap-1"><button class="px-2 py-1 text-[10px] font-black rounded-md border border-gray-300 bg-white text-slate-700 ${entry.persistedIndex === 0 ? 'opacity-30 pointer-events-none' : ''}" onclick="event.stopPropagation(); movePhotoInSet('${prefix}', ${entry.persistedIndex}, -1)">LEFT</button><button class="px-2 py-1 text-[10px] font-black rounded-md border border-gray-300 bg-white text-slate-700 ${entry.persistedIndex === persistedEntries.length - 1 ? 'opacity-30 pointer-events-none' : ''}" onclick="event.stopPropagation(); movePhotoInSet('${prefix}', ${entry.persistedIndex}, 1)">RIGHT</button></div>` : '';
+                        html += `<div class="relative shrink-0"><img src="${thumb}" class="w-20 h-20 object-cover rounded-lg border border-gray-300 cursor-pointer shadow-sm active:scale-95" onclick="handlePhotoThumbClick('${openLink}', '${title}')"${pressAttrs}>${statusHtml}${dateHtml}${reorderHtml}</div>`;
                     });
                     html += `</div>`;
                     el.innerHTML = html;
@@ -9934,9 +10115,9 @@ activeDriveTab = tab;
             makeThumbs(sLink, 'ssn-photo-list-container', 'ssn-photo-preview', 'ssn-', allowPhotoEdits('ssn-'), 'Base Photos');
             makeThumbs(sLink, 'lsn-photo-list-container', 'lsn-photo-preview', 'lsn-', allowPhotoEdits('lsn-'), 'Base Photos');
             makeThumbs(sLink, 'na-photo-list-container', 'na-photo-preview', 'na-', allowPhotoEdits('na-'), 'Base Photos');
-            makeThumbs(rLink || sLink, 'req-photo-list-container', 'req-photo-preview', 'req-', allowPhotoEdits('req-') && !!(rLink || sLink), 'Request Photos');
-            makeThumbs(dLink || sLink, 'dock-photo-list-container', 'dock-photo-preview', 'dock-', allowPhotoEdits('dock-') && !!(dLink || sLink), 'Dock Photos');
-            makeThumbs(fLink || sLink, 'flyer-photo-list-container', 'flyer-photo-preview', 'flyer-', allowPhotoEdits('flyer-') && !!(fLink || sLink), 'Flyer Photos');
+            makeThumbs(rLink || sLink, 'req-photo-list-container', 'req-photo-preview', 'req-', allowPhotoEdits('req-') && !!(rLink || sLink || getPendingPhotoPreviewEntries(activeItem, 'req-').length), 'Request Photos');
+            makeThumbs(dLink || sLink, 'dock-photo-list-container', 'dock-photo-preview', 'dock-', allowPhotoEdits('dock-') && !!(dLink || sLink || getPendingPhotoPreviewEntries(activeItem, 'dock-').length), 'Dock Photos');
+            makeThumbs(fLink || sLink, 'flyer-photo-list-container', 'flyer-photo-preview', 'flyer-', allowPhotoEdits('flyer-') && !!(fLink || sLink || getPendingPhotoPreviewEntries(activeItem, 'flyer-').length), 'Flyer Photos');
             renderDetailOverviewMedia();
             refreshProtectedSections();
         }
@@ -10212,21 +10393,18 @@ activeDriveTab = tab;
 
             const photoGroups = [
                 { label: 'Row Photos', link: getRowPhotoLink(activeItem) },
-                { label: 'Season / Base Photos', link: activeItem.SAVED_PHOTO_LINK || '' },
-                { label: 'Request Photos', link: activeItem.REQ_PHOTO_LINK || '' },
-                { label: 'Dock Photos', link: activeItem.DOCK_PHOTO_LINK || '' },
-                { label: 'Flyer Photos', link: activeItem.FLYER_PHOTO_LINK || '' }
+                { label: 'Season / Base Photos', link: getDisplayPhotoLinkCsv(activeItem.SAVED_PHOTO_LINK || '', activeItem, 'saved') },
+                { label: 'Request Photos', link: getDisplayPhotoLinkCsv(activeItem.REQ_PHOTO_LINK || '', activeItem, 'req') },
+                { label: 'Dock Photos', link: getDisplayPhotoLinkCsv(activeItem.DOCK_PHOTO_LINK || '', activeItem, 'dock') },
+                { label: 'Flyer Photos', link: getDisplayPhotoLinkCsv(activeItem.FLYER_PHOTO_LINK || '', activeItem, 'flyer') }
             ];
 
             let html = '';
             photoGroups.forEach(group => {
                 if (!group.link || String(group.link).trim() === '') return;
                 let tiles = '';
-                String(group.link).split(',').forEach((rawUrl) => {
-                    let cleanUrl = rawUrl.trim();
-                    let match = cleanUrl.match(/(https?:\/\/[^"\s>]+)/);
-                    if (match) cleanUrl = match[1];
-                    if (!cleanUrl.startsWith('http')) return;
+                getPhotoUrlList(group.link).forEach((cleanUrl) => {
+                    if (!cleanUrl) return;
                     const thumb = getDirectImageUrl(cleanUrl);
                     tiles += `<img src="${thumb}" class="w-24 h-24 object-cover rounded-xl border border-gray-300 shadow-sm cursor-pointer active:scale-95" onclick="openPhotoModal('${group.link}', '${group.label}')">`;
                 });
@@ -14522,7 +14700,9 @@ function toggleDriveSeason(s) {
                         ['flyer_photo_name', 'FLYER_PHOTO_NAME']
                     ];
                     fieldPairs.forEach(([payloadKey, itemKey]) => {
-                        if (itemToSave[itemKey]) payload[payloadKey] = itemToSave[itemKey];
+                        const rawValue = String(itemToSave[itemKey] || '').trim();
+                        const cleanValue = parsePhotoCsvValues(rawValue).filter((entry) => /^https?:\/\//i.test(entry)).join(',');
+                        if (cleanValue) payload[payloadKey] = cleanValue;
                         else delete payload[payloadKey];
                     });
                 };
@@ -14716,20 +14896,8 @@ function toggleDriveSeason(s) {
                 }
 
                 if (pendingUploads.length > 0) {
-                    withTimeout(Promise.allSettled(pendingUploads), 18000, 'Pending photo upload')
-                        .then((results) => {
-                            const rejected = (results || []).find((entry) => entry && entry.status === 'rejected');
-                            if (rejected) {
-                                const err = rejected.reason;
-                                restoreFromFailedSave(err && err.message ? err.message : 'Photo upload failed before the save finished.');
-                                return;
-                            }
-                            persistSave();
-                        })
-                        .catch(() => {
-                            showToast('Slow Upload', 'Photo upload is still finishing. Saving row now; photos will attach when upload completes.', false);
-                            persistSave();
-                        });
+                    if (!isSilentAutoSave) showToast('Saving', 'Photo upload is still finishing in the background. The row will update automatically when it lands.', false);
+                    persistSave();
                     return;
                 }
 
@@ -14842,139 +15010,145 @@ function toggleDriveSeason(s) {
                 return;
             }
             const file = input.files[0];
+            input.value = '';
 
-            if (!file.type.startsWith('image/')) {
+            if (!file || !file.type.startsWith('image/')) {
                 showToast('Error', 'Please select an image file.', true);
-                input.value = '';
                 return;
             }
 
-            showToast('Processing', 'Compressing image...', false);
-
             const appendCsvValue = (currentValue, nextValue) => {
-                const existing = String(currentValue || '').split(',').map(v => v.trim()).filter(Boolean);
+                const existing = parsePhotoCsvValues(currentValue);
                 if (String(nextValue || '').trim()) existing.push(String(nextValue).trim());
                 return existing.join(',');
             };
 
-            const uploadPromise = new Promise((resolve, reject) => {
-                let objectUrl = '';
-                let bitmap = null;
-                let img = null;
-                let canvas = null;
-                const cleanupUploadResources = () => {
-                    if (bitmap && typeof bitmap.close === 'function') {
-                        try { bitmap.close(); } catch (e) {}
-                    }
-                    bitmap = null;
-                    if (img) {
-                        img.onload = null;
-                        img.onerror = null;
-                        try { img.src = ''; } catch (e) {}
-                    }
-                    img = null;
-                    if (canvas) {
-                        canvas.width = 1;
-                        canvas.height = 1;
-                    }
-                    canvas = null;
-                    if (objectUrl) {
-                        try { URL.revokeObjectURL(objectUrl); } catch (e) {}
-                        objectUrl = '';
-                    }
-                };
-                const failUpload = (error) => {
-                    cleanupUploadResources();
-                    input.value = '';
-                    reject(error instanceof Error ? error : new Error(String(error || 'Could not process the selected image.')));
-                };
-                const beginUpload = async (sourceImage) => {
-                    const sourceWidth = Number(sourceImage.width || sourceImage.naturalWidth || 0);
-                    const sourceHeight = Number(sourceImage.height || sourceImage.naturalHeight || 0);
-                    if (!sourceWidth || !sourceHeight) throw new Error('Could not process the selected image.');
-                    canvas = document.createElement('canvas');
-                    const targetMaxWidth = isLagSensitiveDetailPrefix(prefix) ? 560 : PHOTO_MAX_WIDTH;
-                    const targetJpegQuality = isLagSensitiveDetailPrefix(prefix) ? 0.58 : PHOTO_JPEG_QUALITY;
-                    const scaleSize = sourceWidth > targetMaxWidth ? targetMaxWidth / sourceWidth : 1;
-                    canvas.width = Math.max(1, Math.round(sourceWidth * scaleSize));
-                    canvas.height = Math.max(1, Math.round(sourceHeight * scaleSize));
-                    const ctx = canvas.getContext('2d', { alpha: false });
-                    if (!ctx) throw new Error('Could not prepare the selected image.');
-                    ctx.imageSmoothingEnabled = true;
-                    ctx.imageSmoothingQuality = 'high';
-                    ctx.drawImage(sourceImage, 0, 0, canvas.width, canvas.height);
-                    canvas.toBlob(async (blob) => {
-                        if (!blob) {
-                            failUpload(new Error('Could not compress the selected image.'));
-                            return;
-                        }
-                        try {
-                            showToast('Uploading', 'Sending photo to Supabase...', false);
-                            const bucketName = PHOTO_BUCKETS[prefix] || PHOTO_BUCKETS.default;
-                            const clean = (t) => String(t || 'NA').replace(/[^a-zA-Z0-9_-]/g, '');
-                            const fileName = clean(itemToUpload.COMMONNAME) + '-' + clean(itemToUpload.CONTSIZE) + '-' + Date.now() + '.jpg';
-                            const filePath = new Date().toISOString().split('T')[0] + '/' + fileName;
-                            const uploadResult = await withTimeout(
-                                supabaseClient.storage.from(bucketName).upload(filePath, blob, {
-                                    contentType: 'image/jpeg',
-                                    upsert: true
-                                }),
-                                SUPABASE_UPLOAD_TIMEOUT_MS,
-                                'Photo upload'
-                            );
-                            const uploadError = uploadResult && uploadResult.error ? uploadResult.error : null;
-                            if (uploadError) throw uploadError;
-                            const { data: publicUrlData } = supabaseClient.storage.from(bucketName).getPublicUrl(filePath);
-                            const publicUrl = publicUrlData.publicUrl;
-                            if (prefix === 'req-') {
-                                itemToUpload.REQ_PHOTO_LINK = appendCsvValue(itemToUpload.REQ_PHOTO_LINK, publicUrl);
-                                itemToUpload.REQ_PHOTO_NAME = appendCsvValue(itemToUpload.REQ_PHOTO_NAME, fileName);
-                            } else if (prefix === 'dock-') {
-                                itemToUpload.DOCK_PHOTO_LINK = appendCsvValue(itemToUpload.DOCK_PHOTO_LINK, publicUrl);
-                                itemToUpload.DOCK_PHOTO_NAME = appendCsvValue(itemToUpload.DOCK_PHOTO_NAME, fileName);
-                            } else if (prefix === 'flyer-') {
-                                itemToUpload.FLYER_PHOTO_LINK = appendCsvValue(itemToUpload.FLYER_PHOTO_LINK, publicUrl);
-                                itemToUpload.FLYER_PHOTO_NAME = appendCsvValue(itemToUpload.FLYER_PHOTO_NAME, fileName);
-                            } else {
-                                itemToUpload.SAVED_PHOTO_LINK = appendCsvValue(itemToUpload.SAVED_PHOTO_LINK, publicUrl);
-                                itemToUpload.SAVED_PHOTO_NAME = appendCsvValue(itemToUpload.SAVED_PHOTO_NAME, fileName);
-                            }
-                            syncSharedFlyerPhotoFields(itemToUpload, prefix);
-                            normalizeRowPhotoFields(itemToUpload);
-                            saveData(false, prefix, true, itemToUpload, { photoChanged: true });
-                            showToast('Success', 'Photo uploaded successfully!');
-                            resolve(publicUrl);
-                        } catch (err) {
-                            showToast('Error', 'Upload failed: ' + (err.message || 'Unknown error'), true);
-                            reject(err);
-                        } finally {
-                            input.value = '';
-                            cleanupUploadResources();
-                        }
-                    }, 'image/jpeg', targetJpegQuality);
-                };
-                const startFallbackImageLoad = () => {
-                    objectUrl = URL.createObjectURL(file);
-                    img = new Image();
-                    img.decoding = 'async';
-                    img.onerror = () => failUpload(new Error('Could not process the selected image.'));
-                    img.onload = () => beginUpload(img).catch(failUpload);
-                    img.src = objectUrl;
-                };
-                if (window.createImageBitmap) {
-                    createImageBitmap(file)
-                        .then((imageBitmap) => {
-                            bitmap = imageBitmap;
-                            return beginUpload(imageBitmap);
-                        })
-                        .catch(() => startFallbackImageLoad());
-                } else {
-                    startFallbackImageLoad();
-                }
-            });
+            const previewUrl = URL.createObjectURL(file);
+            const previewEntry = createPendingPhotoPreview(itemToUpload, prefix, previewUrl, file.name || '');
+            refreshPendingPhotoUiForItem(itemToUpload, prefix);
 
-            registerPendingPhotoUpload(itemToUpload, prefix, uploadPromise);
-            uploadPromise.catch(() => {});
+            const startUpload = () => {
+                const uploadPromise = new Promise((resolve, reject) => {
+                    let bitmap = null;
+                    let img = null;
+                    let canvas = null;
+                    const cleanupUploadResources = () => {
+                        if (bitmap && typeof bitmap.close === 'function') {
+                            try { bitmap.close(); } catch (e) {}
+                        }
+                        bitmap = null;
+                        if (img) {
+                            img.onload = null;
+                            img.onerror = null;
+                            try { img.src = ''; } catch (e) {}
+                        }
+                        img = null;
+                        if (canvas) {
+                            canvas.width = 1;
+                            canvas.height = 1;
+                        }
+                        canvas = null;
+                    };
+                    const finishPreview = (revokeUrl = true) => {
+                        if (previewEntry && previewEntry.id) clearPendingPhotoPreview(itemToUpload, prefix, previewEntry.id, revokeUrl);
+                        refreshPendingPhotoUiForItem(itemToUpload, prefix);
+                    };
+                    const failUpload = (error) => {
+                        cleanupUploadResources();
+                        finishPreview(true);
+                        reject(error instanceof Error ? error : new Error(String(error || 'Could not process the selected image.')));
+                    };
+                    const beginUpload = async (sourceImage) => {
+                        const sourceWidth = Number(sourceImage.width || sourceImage.naturalWidth || 0);
+                        const sourceHeight = Number(sourceImage.height || sourceImage.naturalHeight || 0);
+                        if (!sourceWidth || !sourceHeight) throw new Error('Could not process the selected image.');
+                        canvas = document.createElement('canvas');
+                        const targetMaxWidth = isLagSensitiveDetailPrefix(prefix) ? 480 : PHOTO_MAX_WIDTH;
+                        const targetJpegQuality = isLagSensitiveDetailPrefix(prefix) ? 0.5 : PHOTO_JPEG_QUALITY;
+                        const scaleSize = sourceWidth > targetMaxWidth ? targetMaxWidth / sourceWidth : 1;
+                        canvas.width = Math.max(1, Math.round(sourceWidth * scaleSize));
+                        canvas.height = Math.max(1, Math.round(sourceHeight * scaleSize));
+                        const ctx = canvas.getContext('2d', { alpha: false });
+                        if (!ctx) throw new Error('Could not prepare the selected image.');
+                        ctx.imageSmoothingEnabled = true;
+                        ctx.imageSmoothingQuality = 'high';
+                        ctx.drawImage(sourceImage, 0, 0, canvas.width, canvas.height);
+                        canvas.toBlob(async (blob) => {
+                            if (!blob) {
+                                failUpload(new Error('Could not compress the selected image.'));
+                                return;
+                            }
+                            try {
+                                const bucketName = PHOTO_BUCKETS[prefix] || PHOTO_BUCKETS.default;
+                                const clean = (t) => String(t || 'NA').replace(/[^a-zA-Z0-9_-]/g, '');
+                                const fileName = clean(itemToUpload.COMMONNAME) + '-' + clean(itemToUpload.CONTSIZE) + '-' + Date.now() + '.jpg';
+                                const filePath = new Date().toISOString().split('T')[0] + '/' + fileName;
+                                const uploadResult = await withTimeout(
+                                    supabaseClient.storage.from(bucketName).upload(filePath, blob, {
+                                        contentType: 'image/jpeg',
+                                        upsert: true
+                                    }),
+                                    SUPABASE_UPLOAD_TIMEOUT_MS,
+                                    'Photo upload'
+                                );
+                                const uploadError = uploadResult && uploadResult.error ? uploadResult.error : null;
+                                if (uploadError) throw uploadError;
+                                const { data: publicUrlData } = supabaseClient.storage.from(bucketName).getPublicUrl(filePath);
+                                const publicUrl = publicUrlData.publicUrl;
+                                if (prefix === 'req-') {
+                                    itemToUpload.REQ_PHOTO_LINK = appendCsvValue(itemToUpload.REQ_PHOTO_LINK, publicUrl);
+                                    itemToUpload.REQ_PHOTO_NAME = appendCsvValue(itemToUpload.REQ_PHOTO_NAME, fileName);
+                                } else if (prefix === 'dock-') {
+                                    itemToUpload.DOCK_PHOTO_LINK = appendCsvValue(itemToUpload.DOCK_PHOTO_LINK, publicUrl);
+                                    itemToUpload.DOCK_PHOTO_NAME = appendCsvValue(itemToUpload.DOCK_PHOTO_NAME, fileName);
+                                } else if (prefix === 'flyer-') {
+                                    itemToUpload.FLYER_PHOTO_LINK = appendCsvValue(itemToUpload.FLYER_PHOTO_LINK, publicUrl);
+                                    itemToUpload.FLYER_PHOTO_NAME = appendCsvValue(itemToUpload.FLYER_PHOTO_NAME, fileName);
+                                } else {
+                                    itemToUpload.SAVED_PHOTO_LINK = appendCsvValue(itemToUpload.SAVED_PHOTO_LINK, publicUrl);
+                                    itemToUpload.SAVED_PHOTO_NAME = appendCsvValue(itemToUpload.SAVED_PHOTO_NAME, fileName);
+                                }
+                                syncSharedFlyerPhotoFields(itemToUpload, prefix);
+                                normalizeRowPhotoFields(itemToUpload);
+                                cleanupUploadResources();
+                                finishPreview(true);
+                                saveData(false, prefix, true, itemToUpload, { photoChanged: true });
+                                resolve(publicUrl);
+                            } catch (err) {
+                                failUpload(err);
+                            }
+                        }, 'image/jpeg', targetJpegQuality);
+                    };
+                    const startFallbackImageLoad = () => {
+                        img = new Image();
+                        img.decoding = 'async';
+                        img.onerror = () => failUpload(new Error('Could not process the selected image.'));
+                        img.onload = () => beginUpload(img).catch(failUpload);
+                        img.src = previewUrl;
+                    };
+                    if (window.createImageBitmap) {
+                        createImageBitmap(file)
+                            .then((imageBitmap) => {
+                                bitmap = imageBitmap;
+                                return beginUpload(imageBitmap);
+                            })
+                            .catch(() => startFallbackImageLoad());
+                    } else {
+                        startFallbackImageLoad();
+                    }
+                });
+
+                registerPendingPhotoUpload(itemToUpload, prefix, uploadPromise);
+                uploadPromise.catch((err) => {
+                    showToast('Error', 'Upload failed: ' + (err && err.message ? err.message : 'Unknown error'), true);
+                });
+            };
+
+            if (window.requestAnimationFrame) {
+                requestAnimationFrame(() => setTimeout(startUpload, 0));
+            } else {
+                setTimeout(startUpload, 0);
+            }
         }
     </script>
     <script>
