@@ -445,7 +445,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-                            <div id="header-version" class="nav-version-pill">V2026.04.11.02</div>
+                            <div id="header-version" class="nav-version-pill">V2026.04.11.03</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -3189,7 +3189,7 @@
         const PENDING_EDITS_STORAGE_KEY = 'gnc_pending_edits';
         const PENDING_EDITS_PERSIST_DEBOUNCE_MS = 400;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Maschino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'V2026.04.11.02';
+        const APP_VERSION = 'V2026.04.11.03';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -10146,7 +10146,7 @@ activeDriveTab = tab;
                 if(spec) spec.value = p === 'req-' ? (activeItem.REQ_SPEC || activeItem.SPEC || '') : (p === 'dock-' ? (activeItem.DOCK_SPEC || '') : (activeItem.SPEC || ''));
                 if(caliper) caliper.value = p === 'req-' ? (activeItem.REQ_CALIPER || activeItem.CALIPER || '') : (p === 'dock-' ? (activeItem.DOCK_CALIPER || '') : (activeItem.CALIPER || ''));
                 if(pick) pick.value = p === 'req-' ? firstNonEmptyValue(activeItem.REQ_PICK, activeItem.PICK, standardPick, '') : firstNonEmptyValue(activeItem.PICK, standardPick, '');
-                if(comments) comments.value = p === 'req-' ? (activeItem.REQ_COMMENTS || '') : firstNonEmptyValue(activeItem.SALES_NOTE, activeItem.SALESNOTE, '');
+                if(comments) comments.value = p === 'req-' ? (activeItem.REQ_COMMENTS || '') : '';
                 if(desc) desc.value = activeItem.DOCK_NOTE || '';
                 if(avNote) avNote.value = activeItem.AV_NOTE || '';
                 if (p === 'req-') {
@@ -10278,7 +10278,7 @@ activeDriveTab = tab;
                 if (spec) spec.value = p === 'req-' ? (activeItem.REQ_SPEC || activeItem.SPEC || '') : (p === 'dock-' ? (activeItem.DOCK_SPEC || '') : (activeItem.SPEC || ''));
                 if (caliper) caliper.value = p === 'req-' ? (activeItem.REQ_CALIPER || activeItem.CALIPER || '') : (p === 'dock-' ? (activeItem.DOCK_CALIPER || '') : (activeItem.CALIPER || ''));
                 if (pick) pick.value = p === 'req-' ? firstNonEmptyValue(activeItem.REQ_PICK, activeItem.PICK, standardPick, '') : firstNonEmptyValue(activeItem.PICK, standardPick, '');
-                if (comments) comments.value = p === 'req-' ? (activeItem.REQ_COMMENTS || '') : firstNonEmptyValue(activeItem.SALES_NOTE, activeItem.SALESNOTE, '');
+                if (comments) comments.value = p === 'req-' ? (activeItem.REQ_COMMENTS || '') : '';
                 if (desc) desc.value = activeItem.DOCK_NOTE || '';
                 if (avNote) avNote.value = activeItem.AV_NOTE || '';
                 if (p === 'req-') {
@@ -14589,7 +14589,7 @@ function toggleDriveSeason(s) {
                         let specEl = document.getElementById(prefix + 'spec'); if(specEl) itemToSave.SPEC = specEl.value;
                         let calEl = document.getElementById(prefix + 'caliper'); if(calEl) itemToSave.CALIPER = calEl.value;
                         let pickEl = document.getElementById(prefix + 'pick'); if(pickEl) itemToSave.PICK = pickEl.value;
-                        let commentsEl = document.getElementById(prefix + 'comments'); if(commentsEl) { itemToSave.SALES_NOTE = commentsEl.value; itemToSave.SALESNOTE = commentsEl.value; }
+                        let commentsEl = document.getElementById(prefix + 'comments'); if(commentsEl) { const nextComments = commentsEl.value; if (String(nextComments || '').trim() !== '') { itemToSave.SALES_NOTE = nextComments; itemToSave.SALESNOTE = nextComments; } }
                     } else if (prefix === 'req-') {
                         itemToSave.REQ_MATCH = document.getElementById('req-match').value;
                         itemToSave.REQ_SPEC = document.getElementById('req-spec').value;
