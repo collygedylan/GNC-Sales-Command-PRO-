@@ -445,7 +445,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-                            <div id="header-version" class="nav-version-pill">V2026.04.11.01</div>
+                            <div id="header-version" class="nav-version-pill">V2026.04.11.02</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -756,7 +756,8 @@
                             <div class="mb-3 relative"><label class="text-[10px] font-bold text-gray-500 uppercase">Loc Match %</label><input type="number" id="ssn-match" class="input-field !mb-0 pr-20" placeholder="e.g. 40" oninput="calculateMatchQty('ssn-')" onchange="saveData(false, 'ssn-', true)"><div id="ssn-match-display" class="pointer-events-none absolute right-3 bottom-3 text-[10px] font-bold text-[#007a4d] hidden">QTY: <span id="ssn-match-qty-val">0</span></div></div>
                         </div>
                         <div class="relative w-full mb-3"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2 relative"><input type="text" id="ssn-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); debouncedFilterAvNotes('ssn-')" onfocus="filterAvNotes('ssn-')" onblur="setTimeout(()=>{if(document.getElementById('ssn-av-dropdown-list'))document.getElementById('ssn-av-dropdown-list').classList.add('hidden'); saveData(false, 'ssn-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT..."><button type="button" class="shrink-0 h-[48px] w-[48px] rounded-xl border border-blue-300 bg-blue-100 text-blue-700 text-2xl font-black shadow-sm active:scale-95" onmousedown="event.preventDefault()" onclick="appendSpecCaliperToAvNote('ssn-')">+</button></div><div id="ssn-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div></div>
-                            <div class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="ssn-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'ssn-', true)"></div>
+                        <div><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="ssn-pick" class="input-field" placeholder="e.g. E.07.000 PICK APPROVED" onchange="saveData(false, 'ssn-', true)"></div>
+                        <div><label class="text-[10px] font-bold text-gray-500 uppercase">Comments</label><textarea id="ssn-comments" class="input-field resize-y" placeholder="Any additional comments..." onblur="saveData(false, 'ssn-', true)"></textarea></div>
                         <div class="flex gap-2 mt-4"><button id="ssn-btn-save-complete" class="w-full bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform" onclick="saveData(true, 'ssn-')">MARK DONE</button></div>
                     </div>
                     <div id="det-location-content" class="hidden py-4">
@@ -768,7 +769,8 @@
                             <div class="mb-3 relative"><label class="text-[10px] font-bold text-gray-500 uppercase">Loc Match %</label><input type="number" id="lsn-match" class="input-field !mb-0 pr-20" placeholder="e.g. 95" oninput="calculateMatchQty('lsn-')" onchange="saveData(false, 'lsn-', true)"><div id="lsn-match-display" class="pointer-events-none absolute right-3 bottom-3 text-[10px] font-bold text-[#007a4d] hidden">QTY: <span id="lsn-match-qty-val">0</span></div></div>
                         </div>
                         <div class="relative w-full mb-3"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2 relative"><input type="text" id="lsn-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); debouncedFilterAvNotes('lsn-')" onfocus="filterAvNotes('lsn-')" onblur="setTimeout(()=>{if(document.getElementById('lsn-av-dropdown-list'))document.getElementById('lsn-av-dropdown-list').classList.add('hidden'); saveData(false, 'lsn-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT..."><button type="button" class="shrink-0 h-[48px] w-[48px] rounded-xl border border-blue-300 bg-blue-100 text-blue-700 text-2xl font-black shadow-sm active:scale-95" onmousedown="event.preventDefault()" onclick="appendSpecCaliperToAvNote('lsn-')">+</button></div><div id="lsn-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div></div>
-                            <div class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="lsn-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'lsn-', true)"></div>
+                        <div><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="lsn-pick" class="input-field" placeholder="e.g. E.07.000 PICK APPROVED" onchange="saveData(false, 'lsn-', true)"></div>
+                        <div><label class="text-[10px] font-bold text-gray-500 uppercase">Comments</label><textarea id="lsn-comments" class="input-field resize-y" placeholder="Any additional comments..." onblur="saveData(false, 'lsn-', true)"></textarea></div>
                         <div class="flex gap-2 mt-4"><button id="lsn-btn-save-complete" class="w-full bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform" onclick="saveData(true, 'lsn-')">MARK DONE</button></div>
                     </div>
                     <div id="det-notes-content" class="hidden py-4">
@@ -780,7 +782,8 @@
                             <div class="mb-3"><label class="text-[10px] font-bold text-gray-500 uppercase">Loc Match %</label><input type="number" id="na-match" class="input-field !mb-1" placeholder="e.g. 95" oninput="calculateMatchQty('na-')"><div id="na-match-display" class="text-[10px] font-bold text-[#007a4d] text-right mb-2 hidden">LOC Match QTY: <span id="na-match-qty-val">0</span></div></div>
                         </div>
                         <div class="relative w-full mb-3"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2 relative"><input type="text" id="na-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); debouncedFilterAvNotes('na-')" onfocus="filterAvNotes('na-')" onblur="setTimeout(()=>{if(document.getElementById('na-av-dropdown-list'))document.getElementById('na-av-dropdown-list').classList.add('hidden'); saveData(false, 'na-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT..."><button type="button" class="shrink-0 h-[48px] w-[48px] rounded-xl border border-blue-300 bg-blue-100 text-blue-700 text-2xl font-black shadow-sm active:scale-95" onmousedown="event.preventDefault()" onclick="appendSpecCaliperToAvNote('na-')">+</button></div><div id="na-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div></div>
-                            <div class="mb-2"><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="na-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'na-', true)"></div>
+                        <div class="mb-2"><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="na-pick" class="input-field" placeholder="e.g. E.07.000 PICK APPROVED" onchange="saveData(false, 'na-', true)"></div>
+                        <div><label class="text-[10px] font-bold text-gray-500 uppercase">Comments</label><textarea id="na-comments" class="input-field resize-y" placeholder="Any additional comments..." onblur="saveData(false, 'na-', true)"></textarea></div>
                         <div class="mt-4">
                             <button id="na-btn-save-complete" class="w-full bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform" onclick="saveData(true, 'na-')">MARK DONE</button>
                         </div>
@@ -824,11 +827,12 @@
                             <div class="mb-3 relative"><label class="text-[10px] font-bold text-gray-500 uppercase">Loc Match %</label><input type="number" id="flyer-match" class="input-field !mb-0 pr-20" placeholder="e.g. 95" oninput="calculateMatchQty('flyer-')" onchange="saveData(false, 'flyer-', true)"><div id="flyer-match-display" class="pointer-events-none absolute right-3 bottom-3 text-[10px] font-bold text-[#007a4d] hidden">QTY: <span id="flyer-match-qty-val">0</span></div></div>
                         </div>
                         <div class="relative w-full mb-3"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2 relative"><input type="text" id="flyer-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); debouncedFilterAvNotes('flyer-')" onfocus="filterAvNotes('flyer-')" onblur="setTimeout(()=>{if(document.getElementById('flyer-av-dropdown-list'))document.getElementById('flyer-av-dropdown-list').classList.add('hidden'); saveData(false, 'flyer-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT..."><button type="button" class="shrink-0 h-[48px] w-[48px] rounded-xl border border-blue-300 bg-blue-100 text-blue-700 text-2xl font-black shadow-sm active:scale-95" onmousedown="event.preventDefault()" onclick="appendSpecCaliperToAvNote('flyer-')">+</button></div><div id="flyer-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div></div>
-                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Flyer Category</label><input type="text" id="flyer-cat" class="input-field" placeholder="e.g. Spring Sale" onchange="saveData(false, 'flyer-', true)"></div>
-                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Flyer Folder</label><input type="text" id="flyer-title" class="input-field" placeholder="e.g. Spring Promo Folder" onchange="saveData(false, 'flyer-', true)"></div>
-                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Instructions</label><input type="text" id="flyer-inst" class="input-field" placeholder="e.g. Needs front cover" onchange="saveData(false, 'flyer-', true)"></div>
-                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Assigned To</label><input type="text" id="flyer-assigned" class="input-field" placeholder="e.g. Kayla, Morgan" onchange="saveData(false, 'flyer-', true)"></div>
-                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Notes</label><input type="text" id="flyer-notes" class="input-field" placeholder="Any additional notes..." onchange="saveData(false, 'flyer-', true)"></div>
+                        <div><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="flyer-pick" class="input-field" placeholder="e.g. E.07.000 PICK APPROVED" onchange="saveData(false, 'flyer-', true)"></div>
+                        <div><label class="text-[10px] font-bold text-gray-500 uppercase">Comments</label><textarea id="flyer-notes" class="input-field resize-y" placeholder="Any additional comments..." onblur="saveData(false, 'flyer-', true)"></textarea></div>
+                        <div><label class="text-[10px] font-bold text-gray-500 uppercase">Flyer Category</label><input type="text" id="flyer-cat" class="input-field" placeholder="e.g. Spring Sale" onchange="saveData(false, 'flyer-', true)"></div>
+                        <div><label class="text-[10px] font-bold text-gray-500 uppercase">Flyer Folder</label><input type="text" id="flyer-title" class="input-field" placeholder="e.g. Spring Promo Folder" onchange="saveData(false, 'flyer-', true)"></div>
+                        <div><label class="text-[10px] font-bold text-gray-500 uppercase">Instructions</label><input type="text" id="flyer-inst" class="input-field" placeholder="e.g. Needs front cover" onchange="saveData(false, 'flyer-', true)"></div>
+                        <div><label class="text-[10px] font-bold text-gray-500 uppercase">Assigned To</label><input type="text" id="flyer-assigned" class="input-field" placeholder="e.g. Kayla, Morgan" onchange="saveData(false, 'flyer-', true)"></div>
                         <div class="flex gap-2 mt-4"><button id="flyer-btn-save-complete" class="w-full bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform" onclick="saveData(true, 'flyer-')">MARK DONE</button></div>
                     </div>
                 </div> 
@@ -1458,8 +1462,32 @@
             (Array.isArray(keys) ? keys : []).forEach((key) => {
                 row[key] = masterItem[key];
             });
-            clonePhotoFields(masterItem, row, { exact: true });
+            clonePhotoFields(masterItem, row, { exact: opts.exactPhotoClone !== false });
             syncSharedFlyerPhotoFields(row, opts.photoPrefix || '');
+            normalizeRowPhotoFields(row);
+            buildSearchIndex(row);
+            return row;
+        }
+
+        function syncMasterFieldsToRequestRow(masterItem, row) {
+            if (!masterItem || !row) return row;
+            const preservedValues = {
+                AV_NOTE: normalizeRuleText(row.AV_NOTE),
+                SALES_NOTE: normalizeRuleText(firstNonEmptyValue(row.SALES_NOTE, row.SALESNOTE)),
+                MATCH: normalizeRuleText(row.MATCH),
+                SPEC: normalizeRuleText(row.SPEC),
+                CALIPER: normalizeRuleText(row.CALIPER),
+                PICK: normalizeRuleText(row.PICK),
+                LOC_MATCH_QTY: normalizeRuleText(row.LOC_MATCH_QTY),
+                INITIAL_PTR: normalizeRuleText(row.INITIAL_PTR),
+                DATE_COMPLETED: normalizeRuleText(row.DATE_COMPLETED),
+                REQ_PHOTO_LINK: normalizeRuleText(row.REQ_PHOTO_LINK),
+                REQ_PHOTO_NAME: normalizeRuleText(row.REQ_PHOTO_NAME)
+            };
+            syncMasterFieldsToRow(masterItem, row, LINKED_ROW_SYNC_KEYS, { attachMasterLink: true, exactPhotoClone: false, photoPrefix: 'req-' });
+            Object.keys(preservedValues).forEach((key) => {
+                if (preservedValues[key] !== '') row[key] = preservedValues[key];
+            });
             normalizeRowPhotoFields(row);
             buildSearchIndex(row);
             return row;
@@ -1567,9 +1595,12 @@
             if (!item) return false;
             return [
                 item.AV_NOTE,
+                item.SALES_NOTE,
+                item.SALESNOTE,
                 item.MATCH,
                 item.SPEC,
                 item.CALIPER,
+                item.PICK,
                 item.SAVED_PHOTO_LINK,
                 item.SAVED_PHOTO_NAME,
                 item.LOC_MATCH_QTY,
@@ -1698,17 +1729,12 @@
         function getMasterAvInvalidationReasons(item) {
             if (!item || !hasTrackedAvPayload(item)) return [];
             const reasons = [];
-            const holdSnapshot = normalizeHoldStopSnapshotValue(item.AV_RULE_HOLDSTOP_SNAPSHOT);
             const currentHold = getHoldStopSnapshotFromItem(item);
-            const prioritySnapshot = normalizeRuleText(item.AV_RULE_PRIORITY_SNAPSHOT);
-            const currentPriority = getPrioritySnapshotFromItem(item);
             const bundleUpdatedAt = getEffectiveAvRuleUpdatedAt(item);
             const effectiveLocMatchQty = normalizeRuleText(item.LOC_MATCH_QTY) !== '' ? parseAppNumber(item.LOC_MATCH_QTY) : calculateLocMatchQtyValue(item);
 
             if (effectiveLocMatchQty != null && effectiveLocMatchQty <= 0) reasons.push('loc_match_qty_zero');
             if (hasHoldStopBlockCode(currentHold)) reasons.push('holdstop_blocked');
-            if (hasHoldStopBlockCode(holdSnapshot) && !currentHold) reasons.push('holdstop_cleared');
-            if (prioritySnapshot && currentPriority && prioritySnapshot !== currentPriority) reasons.push('priority_changed');
             if (bundleUpdatedAt) {
                 const ageMs = Date.now() - Date.parse(bundleUpdatedAt);
                 if (ageMs > AV_RULE_MAX_AGE_MS) reasons.push('stale_10_day');
@@ -1719,9 +1745,11 @@
         function buildMasterAvRuleClearPayload(item, reasonText = '', clearedAt = new Date().toISOString()) {
             const payload = {
                 av_note: null,
+                sales_note: null,
                 match: null,
                 spec: null,
                 caliper: null,
+                pic_note: null,
                 photo_link: null,
                 photo_name: null,
                 loc_match_qty: null,
@@ -1746,9 +1774,12 @@
         function applyMasterAvRuleClearToItem(item, reasonText = '', clearedAt = new Date().toISOString()) {
             if (!item) return item;
             item.AV_NOTE = '';
+            item.SALES_NOTE = '';
+            item.SALESNOTE = '';
             item.MATCH = '';
             item.SPEC = '';
             item.CALIPER = '';
+            item.PICK = '';
             item.LOC_MATCH_QTY = '';
             item.INITIAL_PTR = '';
             item.DATE_COMPLETED = '';
@@ -1896,12 +1927,22 @@
                 row.APP_TAB_ASSIGNMENT = firstNonEmptyValue(row.APP_TAB_ASSIGNMENT, masterItem.APP_TAB_ASSIGNMENT);
             };
 
+            const applyRequestSnapshotData = (row) => {
+                if (!row) return;
+                syncMasterFieldsToRequestRow(masterItem, row);
+                row.APP_TAB_ASSIGNMENT = firstNonEmptyValue(row.APP_TAB_ASSIGNMENT, masterItem.APP_TAB_ASSIGNMENT);
+            };
+
             const sameMasterRow = (row) => String((row && row.UNIQUE_ID) || '').trim() === masterId;
             const sameLinkedRow = (row) => {
                 const rowMasterId = String((row && (row.MASTER_UNIQUE_ID || row.MASTER_ID || row.master_id)) || '').trim();
                 return rowMasterId !== '' && rowMasterId === masterId;
             };
             const isOrderSnapshot = (row) => String(firstNonEmptyValue(row && row.SO_SOURCE, row && row.so_source, '')).toLowerCase() === 'bloom_picker';
+            const isRequestSnapshot = (row) => {
+                const sourceTable = String(firstNonEmptyValue(row && row.SOURCE_TABLE, row && row.source_table, '')).toLowerCase();
+                return sourceTable === 'v2_active_request' || String(firstNonEmptyValue(row && row.REQ_STATUS, row && row.REQUEST_FOLDER, row && row.REQ_CUSTOMER, '')).trim() !== '';
+            };
 
             fullInventory.forEach((row) => { if (sameMasterRow(row)) applyExactRowData(row); });
             avOpenInventory.forEach((row) => { if (sameMasterRow(row)) applyExactRowData(row); });
@@ -1919,12 +1960,15 @@
                 if (sameLinkedRow(row)) applyLinkedRowCatalogData(row);
             });
             requestsInventory.forEach((row) => {
-                if (sameLinkedRow(row)) applyLinkedRowCatalogData(row);
+                if (sameLinkedRow(row)) applyRequestSnapshotData(row);
             });
 
             if (activeItem) {
                 if (sameMasterRow(activeItem)) applyExactRowData(activeItem);
-                else if (!isOrderSnapshot(activeItem) && sameLinkedRow(activeItem)) applyLinkedRowCatalogData(activeItem);
+                else if (!isOrderSnapshot(activeItem) && sameLinkedRow(activeItem)) {
+                    if (isRequestSnapshot(activeItem)) applyRequestSnapshotData(activeItem);
+                    else applyLinkedRowCatalogData(activeItem);
+                }
             }
         }
         function openAvGallery(item) {
@@ -3145,7 +3189,7 @@
         const PENDING_EDITS_STORAGE_KEY = 'gnc_pending_edits';
         const PENDING_EDITS_PERSIST_DEBOUNCE_MS = 400;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Maschino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'V2026.04.11.01';
+        const APP_VERSION = 'V2026.04.11.02';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -3520,7 +3564,7 @@
             item.SEASONSUPPLY=firstNonEmptyValue(item.SEASONSUPPLY, item.SEASON_SUPPLY, item.season_supply, 0);
             item.PRIORITY=firstNonEmptyValue(item.PRIORITY, item.priority, '-');
             if(masterItem){
-                syncMasterFieldsToRow(masterItem, item, LINKED_ROW_SYNC_KEYS, { attachMasterLink: true });
+                syncMasterFieldsToRequestRow(masterItem, item);
                 item.APP_TAB_ASSIGNMENT = firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, masterItem.APP_TAB_ASSIGNMENT);
             }
             normalizeRowPhotoFields(item);
@@ -4204,12 +4248,12 @@
         const BLOOM_PICKER_ORDER_META_TOKEN = '||BP_META||';
         const PROTECTED_UNLOCK_USERS = new Set(['dylan', 'dylan_collyge', 'jd', 'jd_jones', 'morgan', 'morgan_anderson', 'kayla', 'kayla_knepp']);
         const PROTECTED_EDIT_CONFIG = {
-            'ssn-': { containerId: 'det-season-content', cameraId: 'camera-btn-ssn', photoField: 'SAVED_PHOTO_LINK', photoNameField: 'SAVED_PHOTO_NAME', inputIds: ['ssn-av-note', 'ssn-match', 'ssn-spec', 'ssn-caliper', 'ssn-pick'] },
-            'lsn-': { containerId: 'det-location-content', cameraId: 'camera-btn-lsn', photoField: 'SAVED_PHOTO_LINK', photoNameField: 'SAVED_PHOTO_NAME', inputIds: ['lsn-av-note', 'lsn-match', 'lsn-spec', 'lsn-caliper', 'lsn-pick'] },
-            'na-': { containerId: 'det-notes-content', cameraId: 'camera-btn-na', photoField: 'SAVED_PHOTO_LINK', photoNameField: 'SAVED_PHOTO_NAME', inputIds: ['na-av-note', 'na-match', 'na-spec', 'na-caliper', 'na-pick'] },
+            'ssn-': { containerId: 'det-season-content', cameraId: 'camera-btn-ssn', photoField: 'SAVED_PHOTO_LINK', photoNameField: 'SAVED_PHOTO_NAME', inputIds: ['ssn-av-note', 'ssn-match', 'ssn-spec', 'ssn-caliper', 'ssn-pick', 'ssn-comments'] },
+            'lsn-': { containerId: 'det-location-content', cameraId: 'camera-btn-lsn', photoField: 'SAVED_PHOTO_LINK', photoNameField: 'SAVED_PHOTO_NAME', inputIds: ['lsn-av-note', 'lsn-match', 'lsn-spec', 'lsn-caliper', 'lsn-pick', 'lsn-comments'] },
+            'na-': { containerId: 'det-notes-content', cameraId: 'camera-btn-na', photoField: 'SAVED_PHOTO_LINK', photoNameField: 'SAVED_PHOTO_NAME', inputIds: ['na-av-note', 'na-match', 'na-spec', 'na-caliper', 'na-pick', 'na-comments'] },
             'req-': { containerId: 'det-request-content', cameraId: 'camera-btn-req', photoField: 'REQ_PHOTO_LINK', photoNameField: 'REQ_PHOTO_NAME', inputIds: ['req-av-note', 'req-match', 'req-spec', 'req-caliper', 'req-reserve', 'req-pick', 'req-comments'] },
             'dock-': { containerId: 'det-docks-content', cameraId: 'camera-btn-dock', photoField: 'DOCK_PHOTO_LINK', photoNameField: 'DOCK_PHOTO_NAME', inputIds: ['dock-spec', 'dock-caliper', 'dock-sales-desc'] },
-            'flyer-': { containerId: 'det-flyer-content', cameraId: 'camera-btn-flyer', photoField: 'FLYER_PHOTO_LINK', photoNameField: 'FLYER_PHOTO_NAME', inputIds: ['flyer-av-note', 'flyer-match', 'flyer-spec', 'flyer-caliper', 'flyer-cat', 'flyer-title', 'flyer-inst', 'flyer-assigned', 'flyer-notes'] }
+            'flyer-': { containerId: 'det-flyer-content', cameraId: 'camera-btn-flyer', photoField: 'FLYER_PHOTO_LINK', photoNameField: 'FLYER_PHOTO_NAME', inputIds: ['flyer-av-note', 'flyer-match', 'flyer-spec', 'flyer-caliper', 'flyer-pick', 'flyer-cat', 'flyer-title', 'flyer-inst', 'flyer-assigned', 'flyer-notes'] }
         };
 
         function getProtectedUserTokens() {
@@ -6663,7 +6707,10 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function buildAvOpenInventoryFromMasterItems(items = []) {
-            return items.filter((item) => (parseFloat(String(firstNonEmptyValue(item && item.S_LTS, '0')).replace(/,/g,'')) || 0) > 0);
+            return items.filter((item) => {
+                const ltsValue = (parseFloat(String(firstNonEmptyValue(item && item.S_LTS, '0')).replace(/,/g,'')) || 0);
+                return ltsValue > 0 && !getMasterAvInvalidationReasons(item).length;
+            });
         }
 
         function collectMasterAvRuleClearOps(items = []) {
@@ -6746,9 +6793,29 @@ function toggleDriveQuickRequestItem(domId) {
 
             const shouldRebuildAvOpenFromMaster = hasMaster && !hasAvOpen;
             if (hasAvOpen || shouldRebuildAvOpenFromMaster) {
-                const avOpenSource = hasAvOpen
+                const masterById = hasMaster ? new Map(fullInventory.map((item) => [String(item.UNIQUE_ID || '').trim(), item])) : null;
+                const avOpenSource = (hasAvOpen
                     ? (res.avOpenData || [])
-                    : buildAvOpenInventoryFromMasterItems(fullInventory).map((item) => ({ ...item }));
+                    : buildAvOpenInventoryFromMasterItems(fullInventory).map((item) => ({ ...item })))
+                    .map((item) => {
+                        if (!item) return item;
+                        if (masterById) {
+                            const uniqueId = String(item.UNIQUE_ID || '').trim();
+                            const sourceTable = String(firstNonEmptyValue(item.SOURCE_TABLE, item.source_table, 'v2_master_inventory')).toLowerCase();
+                            const masterItem = masterById.get(uniqueId) || findLinkedMasterRow(item);
+                            if (masterItem) {
+                                if (sourceTable === 'v2_active_request') syncMasterFieldsToRequestRow(masterItem, item);
+                                else syncMasterFieldsToRow(masterItem, item, EXACT_ROW_SYNC_KEYS, { attachMasterLink: false });
+                            }
+                        }
+                        return item;
+                    })
+                    .filter((item) => {
+                        const sourceTable = String(firstNonEmptyValue(item && item.SOURCE_TABLE, item && item.source_table, 'v2_master_inventory')).toLowerCase();
+                        if (sourceTable !== 'v2_master_inventory') return true;
+                        const ltsValue = (parseFloat(String(firstNonEmptyValue(item && item.S_LTS, '0')).replace(/,/g,'')) || 0);
+                        return ltsValue > 0 && !getMasterAvInvalidationReasons(item).length;
+                    });
                 avOpenInventory = avOpenSource.map((item,idx)=>{item.DOM_ID='avo_'+(item.UNIQUE_ID || idx);return buildSearchIndex(normalizeRowPhotoFields(item));});
                 if (shouldRebuildAvOpenFromMaster && !changedDatasetKeys.includes('avOpen')) changedDatasetKeys.push('avOpen');
             }
@@ -6765,7 +6832,7 @@ function toggleDriveQuickRequestItem(domId) {
                         buildSearchIndex(item);
                         return item;
                     }
-                    syncMasterFieldsToRow(masterItem, item, LINKED_ROW_SYNC_KEYS, { attachMasterLink: true });
+                    syncMasterFieldsToRequestRow(masterItem, item);
                     item.APP_TAB_ASSIGNMENT = firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, masterItem.APP_TAB_ASSIGNMENT);
                     return item;
                 });
@@ -6802,7 +6869,7 @@ function toggleDriveQuickRequestItem(domId) {
                     item._search=`${item.COMMONNAME||''} ${item['PLANT_NAME']||''} ${item.CUSTOMERNAME||''} ${item.SALESREPNAME||''} ${item.STOPNUMBER||''} ${item.TRIPNUMBER||''}`.toLowerCase();
                     let masterItem=findLinkedMasterRow(item);
                     if(masterItem){
-                syncMasterFieldsToRow(masterItem, item, LINKED_ROW_SYNC_KEYS, { attachMasterLink: true });
+                syncMasterFieldsToRequestRow(masterItem, item);
                 item.APP_TAB_ASSIGNMENT = firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, masterItem.APP_TAB_ASSIGNMENT);
             }
                     normalizeRowPhotoFields(item);
@@ -10070,18 +10137,20 @@ activeDriveTab = tab;
                 let spec = document.getElementById(p + 'spec');
                 let caliper = document.getElementById(p + 'caliper');
                 let pick = document.getElementById(p + 'pick');
+                let comments = p === 'req-' ? document.getElementById('req-comments') : ((p === 'ssn-' || p === 'lsn-' || p === 'na-') ? document.getElementById(p + 'comments') : null);
                 let desc = p === 'dock-' ? document.getElementById('dock-sales-desc') : null;
                 let avNote = document.getElementById(p + 'av-note');
+                const standardPick = getStandardPickNoteForItem(activeItem);
 
                 if(match) match.value = p === 'req-' ? firstNonEmptyValue(activeItem.REQ_MATCH, activeItem.MATCH, '') : firstNonEmptyValue(activeItem.MATCH, '');
                 if(spec) spec.value = p === 'req-' ? (activeItem.REQ_SPEC || activeItem.SPEC || '') : (p === 'dock-' ? (activeItem.DOCK_SPEC || '') : (activeItem.SPEC || ''));
                 if(caliper) caliper.value = p === 'req-' ? (activeItem.REQ_CALIPER || activeItem.CALIPER || '') : (p === 'dock-' ? (activeItem.DOCK_CALIPER || '') : (activeItem.CALIPER || ''));
-                if(pick) pick.value = p === 'req-' ? firstNonEmptyValue(activeItem.REQ_PICK, activeItem.PICK, '') : firstNonEmptyValue(activeItem.PICK, '');
+                if(pick) pick.value = p === 'req-' ? firstNonEmptyValue(activeItem.REQ_PICK, activeItem.PICK, standardPick, '') : firstNonEmptyValue(activeItem.PICK, standardPick, '');
+                if(comments) comments.value = p === 'req-' ? (activeItem.REQ_COMMENTS || '') : firstNonEmptyValue(activeItem.SALES_NOTE, activeItem.SALESNOTE, '');
                 if(desc) desc.value = activeItem.DOCK_NOTE || '';
                 if(avNote) avNote.value = activeItem.AV_NOTE || '';
                 if (p === 'req-') {
                     let res = document.getElementById('req-reserve'); if(res) res.value = activeItem.REQ_RESERVE || "NO";
-                    let comments = document.getElementById('req-comments'); if(comments) comments.value = activeItem.REQ_COMMENTS || "";
                 }
                 if (p === 'flyer-') {
                     let fcat = document.getElementById('flyer-cat'); if(fcat) fcat.value = activeItem.FLYER_CAT || "";
@@ -10188,8 +10257,9 @@ activeDriveTab = tab;
             if (prefix === 'req-') return [item.REQ_MATCH, item.REQ_SPEC, item.REQ_CALIPER, item.REQ_PICK, item.REQ_COMMENTS, item.REQ_RESERVE].some(value => String(value || '').trim() !== '');
             if (prefix === 'dock-') return [item.DOCK_SPEC, item.DOCK_CALIPER, item.DOCK_NOTE].some(value => String(value || '').trim() !== '');
             if (prefix === 'flyer-') return [item.AV_NOTE, item.MATCH, item.SPEC, item.CALIPER, item.PICK, item.FLYER_NOTES, item.FLYER_CAT, item.FLYER_INST, item.FLYER_ASSIGNED, item.LOC_MATCH_QTY, item.DATE_COMPLETED, item.FLYER_COMPLETED].some(value => String(value || '').trim() !== '');
-            return [item.AV_NOTE, item.MATCH, item.SPEC, item.CALIPER, item.PICK, item.LOC_MATCH_QTY, item.DATE_COMPLETED].some(value => String(value || '').trim() !== '');
+            return [item.AV_NOTE, firstNonEmptyValue(item.SALES_NOTE, item.SALESNOTE, ''), item.MATCH, item.SPEC, item.CALIPER, item.PICK, item.LOC_MATCH_QTY, item.DATE_COMPLETED].some(value => String(value || '').trim() !== '');
         }
+
 
         function refreshDetailInputsFromActiveItem() {
             if (!activeItem) return;
@@ -10200,17 +10270,19 @@ activeDriveTab = tab;
                 let spec = document.getElementById(p + 'spec');
                 let caliper = document.getElementById(p + 'caliper');
                 let pick = document.getElementById(p + 'pick');
+                let comments = p === 'req-' ? document.getElementById('req-comments') : ((p === 'ssn-' || p === 'lsn-' || p === 'na-') ? document.getElementById(p + 'comments') : null);
                 let desc = p === 'dock-' ? document.getElementById('dock-sales-desc') : null;
                 let avNote = document.getElementById(p + 'av-note');
+                const standardPick = getStandardPickNoteForItem(activeItem);
                 if (match) match.value = p === 'req-' ? firstNonEmptyValue(activeItem.REQ_MATCH, activeItem.MATCH, '') : firstNonEmptyValue(activeItem.MATCH, '');
                 if (spec) spec.value = p === 'req-' ? (activeItem.REQ_SPEC || activeItem.SPEC || '') : (p === 'dock-' ? (activeItem.DOCK_SPEC || '') : (activeItem.SPEC || ''));
                 if (caliper) caliper.value = p === 'req-' ? (activeItem.REQ_CALIPER || activeItem.CALIPER || '') : (p === 'dock-' ? (activeItem.DOCK_CALIPER || '') : (activeItem.CALIPER || ''));
-                if (pick) pick.value = p === 'req-' ? firstNonEmptyValue(activeItem.REQ_PICK, activeItem.PICK, '') : firstNonEmptyValue(activeItem.PICK, '');
+                if (pick) pick.value = p === 'req-' ? firstNonEmptyValue(activeItem.REQ_PICK, activeItem.PICK, standardPick, '') : firstNonEmptyValue(activeItem.PICK, standardPick, '');
+                if (comments) comments.value = p === 'req-' ? (activeItem.REQ_COMMENTS || '') : firstNonEmptyValue(activeItem.SALES_NOTE, activeItem.SALESNOTE, '');
                 if (desc) desc.value = activeItem.DOCK_NOTE || '';
                 if (avNote) avNote.value = activeItem.AV_NOTE || '';
                 if (p === 'req-') {
                     let res = document.getElementById('req-reserve'); if (res) res.value = activeItem.REQ_RESERVE || "NO";
-                    let comments = document.getElementById('req-comments'); if (comments) comments.value = activeItem.REQ_COMMENTS || "";
                 }
                 if (p === 'flyer-') {
                     let fcat = document.getElementById('flyer-cat'); if (fcat) fcat.value = activeItem.FLYER_CAT || "";
@@ -10219,6 +10291,14 @@ activeDriveTab = tab;
                     let fass = document.getElementById('flyer-assigned'); if (fass) fass.value = activeItem.FLYER_ASSIGNED || "";
                     let fnotes = document.getElementById('flyer-notes'); if (fnotes) fnotes.value = activeItem.FLYER_NOTES || "";
                 }
+                const isTree = activeItem.PLANTGROUPCODE && String(activeItem.PLANTGROUPCODE).includes('330_TREES');
+                const isCaliperSize = ["#7","#10","#15","#25","#45"].includes(activeItem.CONTSIZE);
+                let calContainer = document.getElementById(p + 'container-caliper');
+                if (calContainer) {
+                    if(isTree && isCaliperSize) calContainer.classList.remove('hidden');
+                    else calContainer.classList.add('hidden');
+                }
+                if (match) calculateMatchQty(p);
             });
         }
 
@@ -10294,6 +10374,8 @@ activeDriveTab = tab;
                 payload.flyer_completed = null;
             } else {
                 activeItem.AV_NOTE = '';
+                activeItem.SALES_NOTE = '';
+                activeItem.SALESNOTE = '';
                 activeItem.MATCH = '';
                 activeItem.SPEC = '';
                 activeItem.CALIPER = '';
@@ -10304,6 +10386,7 @@ activeDriveTab = tab;
                 activeItem.SAVED_PHOTO_NAME = '';
                 activeItem.DATE_COMPLETED = '';
                 payload.av_note = null;
+                payload.sales_note = null;
                 payload.match = null;
                 payload.spec = null;
                 payload.caliper = null;
@@ -14506,6 +14589,7 @@ function toggleDriveSeason(s) {
                         let specEl = document.getElementById(prefix + 'spec'); if(specEl) itemToSave.SPEC = specEl.value;
                         let calEl = document.getElementById(prefix + 'caliper'); if(calEl) itemToSave.CALIPER = calEl.value;
                         let pickEl = document.getElementById(prefix + 'pick'); if(pickEl) itemToSave.PICK = pickEl.value;
+                        let commentsEl = document.getElementById(prefix + 'comments'); if(commentsEl) { itemToSave.SALES_NOTE = commentsEl.value; itemToSave.SALESNOTE = commentsEl.value; }
                     } else if (prefix === 'req-') {
                         itemToSave.REQ_MATCH = document.getElementById('req-match').value;
                         itemToSave.REQ_SPEC = document.getElementById('req-spec').value;
@@ -14522,6 +14606,7 @@ function toggleDriveSeason(s) {
                         let flyerMatchEl = document.getElementById('flyer-match'); if (flyerMatchEl) itemToSave.MATCH = flyerMatchEl.value;
                         let flyerSpecEl = document.getElementById('flyer-spec'); if (flyerSpecEl) itemToSave.SPEC = flyerSpecEl.value;
                         let flyerCalEl = document.getElementById('flyer-caliper'); if (flyerCalEl) itemToSave.CALIPER = flyerCalEl.value;
+                        let flyerPickEl = document.getElementById('flyer-pick'); if (flyerPickEl) itemToSave.PICK = flyerPickEl.value;
                         itemToSave.FLYER_CAT = document.getElementById('flyer-cat').value;
                         itemToSave.FLYER_TITLE = encodeFlyerFolderTitle(document.getElementById('flyer-title').value, isFlyerFolderArchived(itemToSave) ? 'archive' : 'active');
                         itemToSave.FLYER_INST = document.getElementById('flyer-inst').value;
@@ -14569,6 +14654,7 @@ function toggleDriveSeason(s) {
                     payload.spec = setVal(itemToSave.SPEC);
                     payload.caliper = setVal(itemToSave.CALIPER);
                     payload.pic_note = setVal(itemToSave.PICK);
+                    payload.sales_note = setVal(firstNonEmptyValue(itemToSave.SALES_NOTE, itemToSave.SALESNOTE, ''));
                     payload.av_note = setVal(itemToSave.AV_NOTE);
                 } else if (prefix === 'req-') {
                     requestMasterId = String(itemToSave.MASTER_ID || itemToSave.MASTER_UNIQUE_ID || itemToSave.master_id || '').trim();
@@ -14690,6 +14776,7 @@ function toggleDriveSeason(s) {
                     payload.av_note = setVal(itemToSave.AV_NOTE);
                     payload.spec = setVal(itemToSave.SPEC);
                     payload.caliper = setVal(itemToSave.CALIPER);
+                    payload.pic_note = setVal(itemToSave.PICK);
                     payload.assignedto = setVal(itemToSave.ASSIGNEDTO);
                     payload.flyer_cat = setVal(itemToSave.FLYER_CAT);
                     payload.flyer_title = setVal(itemToSave.FLYER_TITLE);
@@ -14756,9 +14843,26 @@ function toggleDriveSeason(s) {
                     const artifacts = { soPayload: null, cloneSO: null, masterSyncId: null, masterSyncItem: null, masterSyncPayload: null, applyAvSync: false };
                     if (!isComplete) return artifacts;
 
-                    const salesRuleItem = (prefix === 'req-' && requestMasterItem) ? requestMasterItem : itemToSave;
-                    const salesRuleId = String((prefix === 'req-' ? (requestMasterId || itemToSave.MASTER_ID || itemToSave.MASTER_UNIQUE_ID || itemToSave.master_id || salesRuleItem.UNIQUE_ID) : (salesRuleItem.UNIQUE_ID || itemToSave.UNIQUE_ID)) || '').trim();
-                    const salesRuleAssignment = String((prefix === 'req-' ? requestAssignment : (salesRuleItem.APP_TAB_ASSIGNMENT || itemToSave.APP_TAB_ASSIGNMENT || ''))).toLowerCase();
+                    const linkedMasterItem = findLinkedMasterRow(itemToSave) || requestMasterItem || null;
+                    const salesRuleItem = linkedMasterItem || itemToSave;
+                    const salesRuleId = String(firstNonEmptyValue(
+                        prefix === 'req-' ? requestMasterId : '',
+                        linkedMasterItem && linkedMasterItem.UNIQUE_ID,
+                        salesRuleItem.UNIQUE_ID,
+                        itemToSave.MASTER_ID,
+                        itemToSave.MASTER_UNIQUE_ID,
+                        itemToSave.master_id,
+                        itemToSave.UNIQUE_ID,
+                        ''
+                    ) || '').trim();
+                    const salesRuleAssignment = String(firstNonEmptyValue(
+                        prefix === 'req-' ? requestAssignment : '',
+                        linkedMasterItem && linkedMasterItem.APP_TAB_ASSIGNMENT,
+                        salesRuleItem.APP_TAB_ASSIGNMENT,
+                        itemToSave.APP_TAB_ASSIGNMENT,
+                        itemToSave.app_tab_assignment,
+                        ''
+                    ) || '').toLowerCase();
                     const salesRulePhotoLink = prefix === 'req-'
                         ? firstNonEmptyValue(itemToSave.REQ_PHOTO_LINK, itemToSave.SAVED_PHOTO_LINK, salesRuleItem.SAVED_PHOTO_LINK)
                         : (prefix === 'flyer-'
@@ -14772,7 +14876,7 @@ function toggleDriveSeason(s) {
                     const shouldCreateSalesOfficeRow = ['ssn-','lsn-','na-','req-','flyer-'].includes(prefix) && salesRuleAssignment === 'season' && salesRuleId !== '';
                     if (shouldCreateSalesOfficeRow) {
                         const salesOfficeAvNote = itemToSave.AV_NOTE || salesRuleItem.AV_NOTE || '';
-                        const salesOfficeSalesNote = itemToSave.SALES_NOTE || salesRuleItem.SALES_NOTE || '';
+                        const salesOfficeSalesNote = itemToSave.SALES_NOTE || itemToSave.REQ_COMMENTS || salesRuleItem.SALES_NOTE || salesRuleItem.SALESNOTE || '';
                         const salesOfficeSpec = itemToSave.REQ_SPEC || itemToSave.SPEC || salesRuleItem.SPEC || '';
                         const salesOfficeCaliper = itemToSave.REQ_CALIPER || itemToSave.CALIPER || salesRuleItem.CALIPER || '';
                         artifacts.soPayload = {
@@ -14806,17 +14910,29 @@ function toggleDriveSeason(s) {
                         artifacts.masterSyncId = requestMasterId || itemToSave.MASTER_ID || itemToSave.MASTER_UNIQUE_ID || itemToSave.master_id;
                         artifacts.masterSyncItem = requestMasterItem || findItemByUniqueId(artifacts.masterSyncId);
                         if (artifacts.masterSyncId) {
+                            const requestMatchValue = (itemToSave.REQ_MATCH === '' || itemToSave.REQ_MATCH == null) ? null : parseFloat(itemToSave.REQ_MATCH);
+                            const matchQtySeed = {
+                                MATCH: requestMatchValue,
+                                PTRAVAILABLE: firstNonEmptyValue(artifacts.masterSyncItem ? artifacts.masterSyncItem.PTRAVAILABLE : '', itemToSave.PTRAVAILABLE, '')
+                            };
+                            const derivedRequestLocQty = calculateLocMatchQtyValue(matchQtySeed);
+                            const initialPtrValue = parseAppNumber(matchQtySeed.PTRAVAILABLE);
                             artifacts.masterSyncPayload = { date_completed: payload.date_completed };
                             artifacts.applyAvSync = true;
                             artifacts.masterSyncPayload.av_note = setVal(itemToSave.AV_NOTE);
+                            artifacts.masterSyncPayload.match = requestMatchValue;
                             artifacts.masterSyncPayload.spec = setVal(itemToSave.REQ_SPEC || itemToSave.SPEC);
                             artifacts.masterSyncPayload.caliper = setVal(itemToSave.REQ_CALIPER || itemToSave.CALIPER);
+                            artifacts.masterSyncPayload.pic_note = setVal(itemToSave.REQ_PICK || itemToSave.PICK);
+                            artifacts.masterSyncPayload.loc_match_qty = derivedRequestLocQty == null ? null : derivedRequestLocQty;
+                            artifacts.masterSyncPayload.initial_ptr = initialPtrValue == null ? null : initialPtrValue;
                             artifacts.masterSyncPayload.photo_link = setVal(itemToSave.REQ_PHOTO_LINK || itemToSave.SAVED_PHOTO_LINK);
                             artifacts.masterSyncPayload.photo_name = setVal(itemToSave.REQ_PHOTO_NAME || itemToSave.SAVED_PHOTO_NAME);
                             if (avRuleColumnsReady == null) ensureAvRuleColumnsReady().catch(() => {});
-                            applyAvRuleTouchPayload(artifacts.masterSyncItem || requestMasterItem || itemToSave, artifacts.masterSyncPayload, { avNote: true, spec: true, caliper: true, photo: true });
+                            applyAvRuleTouchPayload(artifacts.masterSyncItem || requestMasterItem || itemToSave, artifacts.masterSyncPayload, { avNote: true, match: true, spec: true, caliper: true, photo: true });
                         }
                     }
+
 
                     return artifacts;
                 };
@@ -14848,8 +14964,12 @@ function toggleDriveSeason(s) {
                             artifacts.masterSyncItem.DATE_COMPLETED = payload.date_completed;
                             if (artifacts.applyAvSync) {
                                 artifacts.masterSyncItem.AV_NOTE = itemToSave.AV_NOTE;
+                                artifacts.masterSyncItem.MATCH = itemToSave.REQ_MATCH || artifacts.masterSyncItem.MATCH;
                                 artifacts.masterSyncItem.SPEC = itemToSave.REQ_SPEC || itemToSave.SPEC;
                                 artifacts.masterSyncItem.CALIPER = itemToSave.REQ_CALIPER || itemToSave.CALIPER;
+                                artifacts.masterSyncItem.PICK = itemToSave.REQ_PICK || itemToSave.PICK;
+                                artifacts.masterSyncItem.LOC_MATCH_QTY = firstNonEmptyValue(artifacts.masterSyncPayload.loc_match_qty, artifacts.masterSyncItem.LOC_MATCH_QTY, '');
+                                artifacts.masterSyncItem.INITIAL_PTR = firstNonEmptyValue(artifacts.masterSyncPayload.initial_ptr, artifacts.masterSyncItem.INITIAL_PTR, '');
                                 artifacts.masterSyncItem.SAVED_PHOTO_LINK = itemToSave.REQ_PHOTO_LINK || itemToSave.SAVED_PHOTO_LINK;
                                 artifacts.masterSyncItem.SAVED_PHOTO_NAME = itemToSave.REQ_PHOTO_NAME || itemToSave.SAVED_PHOTO_NAME;
                             }
@@ -14857,6 +14977,7 @@ function toggleDriveSeason(s) {
                             buildSearchIndex(artifacts.masterSyncItem);
                             syncRowDataAcrossViews(artifacts.masterSyncItem);
                         }
+
                         supabaseFetch('v2_master_inventory', 'PATCH', artifacts.masterSyncPayload, `unique_id=eq.${encodeURIComponent(artifacts.masterSyncId)}`).catch(() => {});
                     }
 
