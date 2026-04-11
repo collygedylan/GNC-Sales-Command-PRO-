@@ -445,7 +445,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-                            <div id="header-version" class="nav-version-pill">V2026.04.11.03</div>
+                            <div id="header-version" class="nav-version-pill">V2026.04.11.04</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -707,7 +707,8 @@
                     <div class="back-btn" onclick="goBackFromDetail()"><i class="ph-bold ph-arrow-left"></i> Back</div>
                     <div class="mb-4">
                         <h1 id="det-common" class="text-2xl font-black text-[#007a4d] leading-none mb-1">--</h1>
-                        <p id="det-size" class="text-gray-600 font-bold text-sm mb-3">--</p>
+                        <p id="det-size" class="text-[#007a4d] font-black text-lg leading-none mb-1">--</p>
+                        <p id="det-location" class="text-[#007a4d] font-black text-lg leading-none mb-3">--</p>
                         <div id="det-extra-info" class="text-[13px] text-gray-700 font-medium space-y-1 border-b border-gray-200 pb-4"></div>
                     </div>
                     <div id="global-inputs-container" class="mb-4">
@@ -3189,7 +3190,7 @@
         const PENDING_EDITS_STORAGE_KEY = 'gnc_pending_edits';
         const PENDING_EDITS_PERSIST_DEBOUNCE_MS = 400;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Maschino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'V2026.04.11.03';
+        const APP_VERSION = 'V2026.04.11.04';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -10055,6 +10056,25 @@ activeDriveTab = tab;
                 openDetail(uniqueId,sourceView); 
             }
         }
+        function reorderVisibleDetailTabs(primaryTab = '') {
+            const detTabsContainer = document.getElementById('det-tabs-container');
+            if (!detTabsContainer) return;
+            const baseOrder = ['dtab-season','dtab-location','dtab-request','dtab-notes','dtab-docks','dtab-flyer','dtab-overview','dtab-gallery'];
+            const desiredOrder = [];
+            const primaryId = primaryTab ? `dtab-${primaryTab}` : '';
+            if (primaryId && baseOrder.includes(primaryId)) desiredOrder.push(primaryId);
+            ['dtab-overview', 'dtab-gallery'].forEach((id) => {
+                if (!desiredOrder.includes(id)) desiredOrder.push(id);
+            });
+            baseOrder.forEach((id) => {
+                if (!desiredOrder.includes(id)) desiredOrder.push(id);
+            });
+            desiredOrder.forEach((id) => {
+                const tabEl = document.getElementById(id);
+                if (tabEl) detTabsContainer.appendChild(tabEl);
+            });
+        }
+
         function openDetail(uid, sourceView) {
             const currentViewBeforeOpen = getCurrentVisibleViewId();
             if (currentViewBeforeOpen && currentViewBeforeOpen !== 'detail') {
@@ -10081,7 +10101,9 @@ activeDriveTab = tab;
 
             document.getElementById('det-common').innerText = activeItem.COMMONNAME || '--';
             document.getElementById('det-size').innerText = activeItem.CONTSIZE || '--';
-            document.getElementById('det-extra-info').innerHTML = `Loc: ${activeItem.LOCATIONCODE||'No Loc'} &bull; PTR: ${activeItem.PTRAVAILABLE||0} &bull; s_LTS: ${activeItem.S_LTS||0}`;
+            const detLocation = document.getElementById('det-location');
+            if (detLocation) detLocation.innerText = activeItem.LOCATIONCODE || '--';
+            document.getElementById('det-extra-info').innerHTML = `Priority: ${activeItem.PRIORITY||'--'} &bull; PTRAvailable: ${activeItem.PTRAVAILABLE||0} &bull; s_LTS: ${activeItem.S_LTS||0}`;
 
             document.getElementById('ov-loc').innerText = activeItem.LOCATIONCODE || '--';
             document.getElementById('ov-avail').innerText = activeItem.PTRAVAILABLE || '0';
@@ -10126,6 +10148,22 @@ activeDriveTab = tab;
                 document.getElementById('dtab-request').classList.remove('hidden');
                 document.getElementById('dtab-gallery').classList.remove('hidden');
             }
+
+            let primaryDetailTab = 'overview';
+            if (sourceView === 'tasks' && activeTaskTab) {
+                primaryDetailTab = activeTaskTab === 'colorwalk' ? 'location' : activeTaskTab;
+            } else if (sourceView === 'request') {
+                primaryDetailTab = 'request';
+            } else if (sourceView === 'docks') {
+                primaryDetailTab = 'docks';
+            } else if (sourceView === 'drive' || sourceView === 'low-stock') {
+                if (assignment === 'season') primaryDetailTab = 'season';
+                else if (assignment === 'location') primaryDetailTab = 'location';
+                else if (sourceView === 'drive') primaryDetailTab = 'notes';
+            } else if (sourceView === 'av' && activeAVTab === 'reserves') {
+                primaryDetailTab = 'request';
+            }
+            reorderVisibleDetailTabs(primaryDetailTab);
 
             const globalAvContainer = document.getElementById('global-av-container');
             if (globalAvContainer) globalAvContainer.classList.add('hidden');
