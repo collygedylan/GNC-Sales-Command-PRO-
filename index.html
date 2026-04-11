@@ -885,7 +885,11 @@
             auth: { persistSession: false, autoRefreshToken: false },
             realtime: { params: { eventsPerSecond: 8 } }
         });
-        const REALTIME_TABLES = ['v2_master_inventory', 'v2_active_request', 'v2_sales_office', 'v2_av_notes', 'v2_dock_team_status', 'v2_dock_item_status'];
+        const CORE_REALTIME_TABLES = ['v2_master_inventory', 'v2_active_request', 'v2_sales_office'];
+        const OPTIONAL_REALTIME_TABLES = ['v2_av_notes', 'v2_dock_team_status', 'v2_dock_item_status'];
+        const REALTIME_TABLES = [...CORE_REALTIME_TABLES, ...OPTIONAL_REALTIME_TABLES];
+        const REALTIME_STARTUP_GRACE_MS = 8000;
+        const REALTIME_RECOVERY_GRACE_MS = 1800;
         const HEAVY_DATASET_KEYS = new Set(['master', 'avOpen', 'reserves', 'soc', 'salesOffice', 'cav', 'avNotes']);
         let realtimeChannels = [];
         let realtimeChangeTimer = null;
@@ -893,6 +897,7 @@
         let fallbackSyncInterval = null;
         let syncCatchupTimer = null;
         let liveSyncMode = 'idle';
+        let realtimeStartupUntil = 0;
         let realtimeTableStatus = Object.create(null);
         const SUPABASE_READ_TIMEOUT_MS = 30000;
         const LOGIN_READ_TIMEOUT_MS = 8000;
@@ -904,8 +909,8 @@
         const CACHE_PERSIST_REALTIME_VISIBLE_MIN_INTERVAL_MS = 180000;
         const CACHE_PERSIST_ACTIVE_INTERACTION_GRACE_MS = 12000;
         const CACHE_PERSIST_IDLE_TIMEOUT_MS = 2500;
-        const PHOTO_MAX_WIDTH = 760;
-        const PHOTO_JPEG_QUALITY = 0.66;
+        const PHOTO_MAX_WIDTH = 700;
+        const PHOTO_JPEG_QUALITY = 0.62;
         let pendingPhotoUploads = new Map();
         let lastUserInteractionAt = Date.now();
         let viewportHeightSyncInitialized = false;
@@ -949,10 +954,18 @@
             return getRealtimeTableStatus(tableName) === 'SUBSCRIBED';
         }
 
-        function hasHealthyRealtimeSubscriptions() {
-            return REALTIME_TABLES.some((tableName) => isRealtimeTableHealthy(tableName));
+        function hasHealthyRealtimeSubscriptions(tables = REALTIME_TABLES) {
+            const tableList = Array.isArray(tables) && tables.length ? tables : REALTIME_TABLES;
+            return tableList.some((tableName) => isRealtimeTableHealthy(tableName));
         }
 
+        function hasHealthyCoreRealtimeSubscriptions() {
+            return hasHealthyRealtimeSubscriptions(CORE_REALTIME_TABLES);
+        }
+
+        function isRealtimeStartupPending() {
+            return shouldUseRealtime() && Date.now() < realtimeStartupUntil;
+        }
         function isEditableTextEntryTarget(target) {
             return !!(target && ['INPUT','TEXTAREA','SELECT'].includes(target.tagName) && !target.disabled && !target.readOnly && target.type !== 'hidden' && target.type !== 'file');
         }
@@ -2079,6 +2092,7 @@
             }
             clearRequestViewLiveSync();
             realtimeTableStatus = Object.create(null);
+            realtimeStartupUntil = 0;
             liveSyncMode = 'idle';
             updateSyncDiagnostics();
         }
@@ -2100,18 +2114,28 @@
             }
             if (!currentUser) return;
             if (navigator.onLine === false) {
+                realtimeStartupUntil = 0;
                 liveSyncMode = 'offline';
                 updateSyncDiagnostics('offline');
                 return;
             }
-            if (shouldUseRealtime() && hasHealthyRealtimeSubscriptions()) {
-                liveSyncMode = 'realtime';
-                updateSyncDiagnostics('realtime');
-                return;
+            if (shouldUseRealtime()) {
+                if (hasHealthyCoreRealtimeSubscriptions()) {
+                    realtimeStartupUntil = 0;
+                    liveSyncMode = 'realtime';
+                    updateSyncDiagnostics('realtime');
+                    return;
+                }
+                if (isRealtimeStartupPending()) {
+                    liveSyncMode = 'queued';
+                    updateSyncDiagnostics('queued');
+                    return;
+                }
             }
+            realtimeStartupUntil = 0;
             liveSyncMode = 'polling';
             updateSyncDiagnostics('polling');
-            const pollMs = Math.max(12000, Number(intervalMs) || getFallbackSyncInterval());
+            const pollMs = Math.max(18000, Number(intervalMs) || getFallbackSyncInterval());
             fallbackSyncInterval = setInterval(() => {
                 if (!currentUser || document.hidden || navigator.onLine === false || backgroundRefreshInFlight) return;
                 refreshLoadedDatasets(false).catch(() => {});
@@ -2129,6 +2153,9 @@
                 startFallbackSync();
                 return;
             }
+            realtimeStartupUntil = Date.now() + REALTIME_STARTUP_GRACE_MS;
+            liveSyncMode = 'queued';
+            updateSyncDiagnostics('queued');
             REALTIME_TABLES.forEach((tableName) => {
                 const channel = supabaseClient
                     .channel(`realtime-${tableName}`)
@@ -2137,24 +2164,34 @@
                     })
                     .subscribe((status) => {
                         const channelStatus = String(status || '').trim().toUpperCase();
+                        const isCoreTable = CORE_REALTIME_TABLES.includes(tableName);
                         setRealtimeTableStatus(tableName, channelStatus);
                         if (channelStatus === 'SUBSCRIBED') {
-                            liveSyncMode = 'realtime';
-                            updateSyncDiagnostics();
-                            if (fallbackSyncInterval) {
-                                clearInterval(fallbackSyncInterval);
-                                fallbackSyncInterval = null;
+                            if (hasHealthyCoreRealtimeSubscriptions()) {
+                                realtimeStartupUntil = 0;
+                                liveSyncMode = 'realtime';
+                                updateSyncDiagnostics('realtime');
+                                if (fallbackSyncInterval) {
+                                    clearInterval(fallbackSyncInterval);
+                                    fallbackSyncInterval = null;
+                                }
+                            } else if (isRealtimeStartupPending()) {
+                                liveSyncMode = 'queued';
+                                updateSyncDiagnostics('queued');
                             }
                             if (tableName === 'v2_active_request') syncRequestViewLiveSync(0);
                             queueVisibleDatasetCatchup(160);
                         }
                         if (channelStatus === 'TIMED_OUT' || channelStatus === 'CHANNEL_ERROR' || channelStatus === 'CLOSED') {
                             if (tableName === 'v2_active_request') syncRequestViewLiveSync(140);
-                            if (!hasHealthyRealtimeSubscriptions()) {
+                            if (isCoreTable) {
+                                const retryDelay = isRealtimeStartupPending()
+                                    ? Math.max(REALTIME_RECOVERY_GRACE_MS, realtimeStartupUntil - Date.now())
+                                    : REALTIME_RECOVERY_GRACE_MS;
                                 setTimeout(() => {
-                                    if (!hasHealthyRealtimeSubscriptions()) startFallbackSync();
-                                }, 1200);
-                            } else {
+                                    if (!hasHealthyCoreRealtimeSubscriptions()) startFallbackSync();
+                                }, Math.max(300, retryDelay));
+                            } else if (hasHealthyCoreRealtimeSubscriptions()) {
                                 liveSyncMode = 'realtime';
                                 updateSyncDiagnostics('realtime');
                             }
@@ -2890,8 +2927,12 @@
         let syncDiagnosticsOverride = "";
         let pendingRequestArchiveFlushTimer = null;
         let pendingRequestArchiveFlushInFlight = false;
+        let pendingEditsCache = null;
+        let pendingEditsPersistTimer = null;
+        const PENDING_EDITS_STORAGE_KEY = 'gnc_pending_edits';
+        const PENDING_EDITS_PERSIST_DEBOUNCE_MS = 400;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Maschino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'V2026.04.10.03';
+        const APP_VERSION = 'V2026.04.10.04';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -3116,6 +3157,7 @@
                 clearRequestViewLiveSync();
             }
             if (document.hidden && pendingCachePersist) persistCurrentCache(true);
+            if (document.hidden) flushPendingEditsCache(true);
             if (!document.hidden) updateSyncDiagnostics();
         });
 
@@ -6275,7 +6317,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
         async function silentBackgroundSync() {
             if(!currentUser)return; 
-            if (liveSyncMode === 'realtime' && shouldUseRealtime()) return;
+            if (shouldUseRealtime() && hasHealthyCoreRealtimeSubscriptions()) return;
             const checkTime=new Date().toISOString();
             try {
                 const response=await fetch(`${SUPABASE_URL}/rest/v1/v2_master_inventory?select=*&last_updated=gt.${lastSyncTime}`,{method:'GET',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
@@ -7564,7 +7606,7 @@ function toggleDriveQuickRequestItem(domId) {
 
         function reRenderCurrentView() { 
             const visibleViewIds = getVisibleTrackedViewIds();
-            visibleViewIds.forEach((viewId) => renderViewContent(viewId, false, true));
+            visibleViewIds.forEach((viewId) => queueViewRender(viewId, false, true));
             markHiddenViewsDirty(visibleViewIds);
         }
 
@@ -11027,18 +11069,19 @@ activeDriveTab = tab;
                     return;
                 }
                 if (shouldUseRealtime()) {
-                    if (liveSyncMode !== 'realtime') initializeRealtime();
-                    else updateSyncDiagnostics('realtime');
+                    if (hasHealthyCoreRealtimeSubscriptions()) updateSyncDiagnostics('realtime');
+                    else if (!isRealtimeStartupPending()) initializeRealtime();
+                    else updateSyncDiagnostics('queued');
                     return;
                 }
                 const throttleMs = (isIOSDevice() || isStandaloneApp()) ? 14000 : 18000;
                 if (backgroundRefreshInFlight || (lastBackgroundRefreshAt && (Date.now() - lastBackgroundRefreshAt) < throttleMs)) {
                     updateSyncDiagnostics('idle');
-                    if (liveSyncMode !== 'realtime') initializeRealtime();
+                    if (!hasHealthyCoreRealtimeSubscriptions() && !isRealtimeStartupPending()) initializeRealtime();
                     return;
                 }
                 fetchBackgroundData('background').catch(() => {});
-                if (liveSyncMode !== 'realtime') initializeRealtime();
+                if (!hasHealthyCoreRealtimeSubscriptions() && !isRealtimeStartupPending()) initializeRealtime();
             }, delay);
         }
 
@@ -14701,15 +14744,43 @@ function toggleDriveSeason(s) {
             runSaveNow();
         }
 
+        function getPendingEditsCache() {
+            if (pendingEditsCache && typeof pendingEditsCache === 'object') return pendingEditsCache;
+            try {
+                pendingEditsCache = JSON.parse(localStorage.getItem(PENDING_EDITS_STORAGE_KEY) || '{}') || {};
+            } catch (error) {
+                pendingEditsCache = {};
+            }
+            return pendingEditsCache;
+        }
+
+        function flushPendingEditsCache(immediate = false) {
+            const writeNow = () => {
+                pendingEditsPersistTimer = null;
+                try {
+                    localStorage.setItem(PENDING_EDITS_STORAGE_KEY, JSON.stringify(getPendingEditsCache()));
+                } catch (error) {}
+            };
+            if (pendingEditsPersistTimer) {
+                clearTimeout(pendingEditsPersistTimer);
+                pendingEditsPersistTimer = null;
+            }
+            if (immediate) {
+                writeNow();
+                return;
+            }
+            pendingEditsPersistTimer = setTimeout(writeNow, PENDING_EDITS_PERSIST_DEBOUNCE_MS);
+        }
+
         function backupLocalItem(item) {
             if (!item) return;
-            let pendingEdits = JSON.parse(localStorage.getItem('gnc_pending_edits') || '{}');
+            let pendingEdits = getPendingEditsCache();
             pendingEdits[item.UNIQUE_ID] = { timestamp: new Date().getTime(), data: item };
-            localStorage.setItem('gnc_pending_edits', JSON.stringify(pendingEdits));
+            flushPendingEditsCache();
         }
 
         function applyLocalEdits() {
-            let pendingEdits = JSON.parse(localStorage.getItem('gnc_pending_edits') || '{}');
+            let pendingEdits = getPendingEditsCache();
             let now = new Date().getTime();
             let changed = false;
 
@@ -14723,7 +14794,7 @@ function toggleDriveSeason(s) {
                     if (masterInventoryById.has(String(uid || '').trim())) syncRowDataAcrossViews(item);
                 }
             }
-            if (changed) { localStorage.setItem('gnc_pending_edits', JSON.stringify(pendingEdits)); }
+            if (changed) flushPendingEditsCache(true);
         }
 
         function filterAvNotes(prefix) {
@@ -14822,8 +14893,8 @@ function toggleDriveSeason(s) {
                     const sourceHeight = Number(sourceImage.height || sourceImage.naturalHeight || 0);
                     if (!sourceWidth || !sourceHeight) throw new Error('Could not process the selected image.');
                     canvas = document.createElement('canvas');
-                    const targetMaxWidth = isLagSensitiveDetailPrefix(prefix) ? 640 : PHOTO_MAX_WIDTH;
-                    const targetJpegQuality = isLagSensitiveDetailPrefix(prefix) ? 0.6 : PHOTO_JPEG_QUALITY;
+                    const targetMaxWidth = isLagSensitiveDetailPrefix(prefix) ? 560 : PHOTO_MAX_WIDTH;
+                    const targetJpegQuality = isLagSensitiveDetailPrefix(prefix) ? 0.58 : PHOTO_JPEG_QUALITY;
                     const scaleSize = sourceWidth > targetMaxWidth ? targetMaxWidth / sourceWidth : 1;
                     canvas.width = Math.max(1, Math.round(sourceWidth * scaleSize));
                     canvas.height = Math.max(1, Math.round(sourceHeight * scaleSize));
@@ -14981,43 +15052,3 @@ function toggleDriveSeason(s) {
     </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
