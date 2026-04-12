@@ -445,7 +445,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-                            <div id="header-version" class="nav-version-pill">V2026.04.11.06</div>
+                            <div id="header-version" class="nav-version-pill">V2026.04.11.09</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -932,7 +932,7 @@
         let standaloneShellBaseHeight = 0;
         let detailFieldFocusResetTimer = null;
         let detailFormFocusInitialized = false;
-        const ACTIVE_TYPING_GRACE_MS = 320;
+        const ACTIVE_TYPING_GRACE_MS = 90;
         
         function isIOSDevice() {
             return IOS_DEVICE_REGEX.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -2136,11 +2136,14 @@
             if (!deferVisualSync) flushRealtimeDatasetUpdates([tableName]);
             return true;
         }
-
         function queueRealtimeChange(tableName = '', payload = null) {
             realtimeChangeQueue.push({ tableName, payload });
             if (realtimeChangeTimer) clearTimeout(realtimeChangeTimer);
-            realtimeChangeTimer = setTimeout(() => {
+            const flushQueuedRealtimeChanges = () => {
+                if (isUserActivelyTyping()) {
+                    realtimeChangeTimer = setTimeout(flushQueuedRealtimeChanges, 120);
+                    return;
+                }
                 const pending = realtimeChangeQueue.splice(0);
                 realtimeChangeTimer = null;
                 let changed = false;
@@ -2157,9 +2160,9 @@
                     touchSyncTimestamp();
                     updateSyncDiagnostics('realtime');
                 }
-            }, 48);
+            };
+            realtimeChangeTimer = setTimeout(flushQueuedRealtimeChanges, 120);
         }
-
         function clearRealtimeReconnectTimer() {
             if (realtimeReconnectTimer) {
                 clearTimeout(realtimeReconnectTimer);
@@ -3231,7 +3234,7 @@
             }, 120);
         }
         const DRIVE_MODE_LABELS = { ok: 'Drive Mode' };
-        let activeDriveMode='ok'; let activeDriveTab='name'; let selectedDriveBlock=null; let selectedDriveLoc=null; let driveQuickRequestCardMode=false; let driveQuickFilterName=''; let driveQuickFilterLocation=''; let driveQuickFilterLot=''; let driveQuickFilterSize=''; let driveQuickFilterPriority=''; let driveQuickFilterLtsMode=''; let driveQuickFilterLtsValue=''; let driveQuickHoldStopOnly=false; let driveQuickFilterOptionsCacheKey=''; let driveQuickFilterOptionsCache=null; let driveBaseFilterCacheKey=''; let driveBaseFilterCacheItems=[]; let driveQuickFilterCacheKey=''; let driveQuickFilterCacheItems=[]; let driveQuickFiltersModalOpen=false;
+        let activeDriveMode='ok'; let activeDriveTab='name'; let selectedDriveBlock=null; let selectedDriveLoc=null; let driveQuickRequestCardMode=false; let driveQuickFilterName=''; let driveQuickFilterLocation=''; let driveQuickFilterLot=''; let driveQuickFilterSize=''; let driveQuickFilterPriority=''; let driveQuickFilterLtsMode=''; let driveQuickFilterLtsValue=''; let driveQuickHoldStopOnly=false; let driveQuickFilterOptionsCacheKey=''; let driveQuickFilterOptionsCache=null; let driveBaseFilterCacheKey=''; let driveBaseFilterCacheItems=[]; let driveBaseContextCacheKey=''; let driveBaseContextCacheItems=[]; let driveBaseSearchContextKey=''; let driveBaseLastSearchTerm=''; let driveBaseLastSearchItems=[]; let driveQuickFilterCacheKey=''; let driveQuickFilterCacheItems=[]; let driveQuickFiltersModalOpen=false;
         let driveViewLevel=0; let selectedDriveName=null; let selectedDriveSize=null; let driveSelectedSeasons=new Set(['ALL']); const availableSeasons=["ALL","S1","F1","U1","U2","U3","X","Y","Z"];
         
         let activeTaskTab="season"; let activeTaskSubview="all"; let taskViewTargetUser=null; let taskViewLevel=0; let selectedTaskBlock=null; let selectedTaskLoc=null; let selectedEndCapFolder=null; let selectedFlyerFolder=null; let activeFlyerFolderTab="active"; let selectedColorWalkContSize=""; let selectedColorWalkSearchTerm=""; let selectedTaskGenusNames=new Set(); let taskGenusSearchTerm=""; let taskGenusFilterOpen=false; let taskGenusFilterItemsCache=[]; let pendingFlyerFolderTarget=null; let pendingFlyerFolderAssignees="";
@@ -3252,7 +3255,7 @@
         const PENDING_EDITS_STORAGE_KEY = 'gnc_pending_edits';
         const PENDING_EDITS_PERSIST_DEBOUNCE_MS = 400;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Maschino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'V2026.04.11.06';
+        const APP_VERSION = 'V2026.04.11.09';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -4513,7 +4516,7 @@
 
         function refreshDriveQuickFilterResults() {
             if (renderDriveQuickCardResultsOnly()) return;
-            renderDrive();
+            scheduleUiRender('drive-season-filter', () => renderDrive());
         }
 
         const debouncedDriveQuickFilterInputRender = debounce(() => {
@@ -4591,14 +4594,11 @@ return false;
             return driveQuickFilterOptionsCache;
         }
 
-        function getDriveBaseFilterKey() {
-            const searchInput = document.getElementById('drive-search');
-            const term = searchInput ? searchInput.value.toLowerCase().trim() : '';
+        function getDriveBaseFilterContextKey() {
             const masterState = getDatasetState('master');
             return [
                 activeDriveMode,
                 [...driveSelectedSeasons].sort().join('|'),
-                term,
                 driveQuickHoldStopOnly ? '1' : '0',
                 fullInventory.length,
                 masterState.lastLoadedAt || '',
@@ -4606,33 +4606,69 @@ return false;
             ].join('::');
         }
 
+        function getDriveBaseFilterKey() {
+            const searchInput = document.getElementById('drive-search');
+            const term = searchInput ? searchInput.value.toLowerCase().trim() : '';
+            return [getDriveBaseFilterContextKey(), term].join('::');
+        }
+
         function getDriveBaseFilteredItems() {
             const cacheKey = getDriveBaseFilterKey();
             if (driveBaseFilterCacheKey === cacheKey) return driveBaseFilterCacheItems;
-            let items = getDriveModeItems();
+            const contextKey = getDriveBaseFilterContextKey();
             if (activeDriveMode !== 'ok') {
+                driveBaseContextCacheKey = contextKey;
+                driveBaseContextCacheItems = [];
+                driveBaseSearchContextKey = contextKey;
+                driveBaseLastSearchTerm = '';
+                driveBaseLastSearchItems = [];
                 driveBaseFilterCacheKey = cacheKey;
                 driveBaseFilterCacheItems = [];
                 return driveBaseFilterCacheItems;
             }
-            if (!driveSelectedSeasons.has('ALL')) {
-                items = items.filter(i => {
-                    let s = String(i.SEASON || '').toUpperCase();
-                    return driveSelectedSeasons.has(s);
-                });
+            let baseItems;
+            if (driveBaseContextCacheKey === contextKey) {
+                baseItems = driveBaseContextCacheItems;
+            } else {
+                baseItems = getDriveModeItems();
+                if (!driveSelectedSeasons.has('ALL')) {
+                    baseItems = baseItems.filter(i => {
+                        let s = String(i.SEASON || '').toUpperCase();
+                        return driveSelectedSeasons.has(s);
+                    });
+                }
+                if (driveQuickHoldStopOnly) {
+                    baseItems = baseItems.filter(i => {
+                        const holdCode = String(firstNonEmptyValue(i.HOLDSTOPCODE, i.HOLD_STOP_CODE, i.HOLDSTOP) || '').toUpperCase();
+                        return holdCode.includes('H') || holdCode.includes('S');
+                    });
+                }
+                driveBaseContextCacheKey = contextKey;
+                driveBaseContextCacheItems = baseItems;
+                driveBaseSearchContextKey = contextKey;
+                driveBaseLastSearchTerm = '';
+                driveBaseLastSearchItems = baseItems;
             }
             const searchInput = document.getElementById('drive-search');
             const term = searchInput ? searchInput.value.toLowerCase().trim() : '';
-            if (term) items = filterBySearch(items, term, 'drive');
-            if (driveQuickHoldStopOnly) {
-                items = items.filter(i => {
-                    const holdCode = String(firstNonEmptyValue(i.HOLDSTOPCODE, i.HOLD_STOP_CODE, i.HOLDSTOP) || '').toUpperCase();
-                    return holdCode.includes('H') || holdCode.includes('S');
-                });
+            if (!term) {
+                driveBaseSearchContextKey = contextKey;
+                driveBaseLastSearchTerm = '';
+                driveBaseLastSearchItems = baseItems;
+                driveBaseFilterCacheKey = cacheKey;
+                driveBaseFilterCacheItems = baseItems;
+                return baseItems;
             }
+            const searchProfile = activeDriveTab === 'loc' ? 'drive_loc' : (activeDriveTab === 'card' ? 'drive_card' : 'drive_name');
+            const canUseIncremental = driveBaseSearchContextKey === contextKey && driveBaseLastSearchTerm && term.startsWith(driveBaseLastSearchTerm);
+            const searchSource = canUseIncremental ? driveBaseLastSearchItems : baseItems;
+            const filteredItems = filterBySearch(searchSource, term, searchProfile);
+            driveBaseSearchContextKey = contextKey;
+            driveBaseLastSearchTerm = term;
+            driveBaseLastSearchItems = filteredItems;
             driveBaseFilterCacheKey = cacheKey;
-            driveBaseFilterCacheItems = items;
-            return items;
+            driveBaseFilterCacheItems = filteredItems;
+            return filteredItems;
         }
 
         function getDriveFilteredItems(includeQuickFilters = false) {
@@ -4652,7 +4688,7 @@ return false;
             let items = baseItems;
             if (driveQuickFilterName) {
                 const nameTerm = String(driveQuickFilterName || '').toLowerCase().trim();
-                items = items.filter(i => String(i.COMMONNAME || '').toLowerCase().includes(nameTerm));
+                items = items.filter(i => normalizeSearchValue(i.COMMONNAME).startsWith(nameTerm));
             }
             if (driveQuickFilterLocation) items = items.filter(i => String(i.LOCATIONCODE || '').trim() === driveQuickFilterLocation);
             if (driveQuickFilterLot) items = items.filter(i => String(i.LOTCODE || '').trim() === driveQuickFilterLot);
@@ -5847,9 +5883,10 @@ function toggleDriveQuickRequestItem(domId) {
         function tokenizeSearchValue(value) {
             return normalizeSearchValue(value).split(/[^a-z0-9]+/).filter(Boolean);
         }
-
         const SEARCH_PROFILES = {
-            drive: (item) => [item.COMMONNAME, item.LOCATIONCODE, item.ITEMCODE, item.CONTSIZE, item.LOTCODE],
+            drive_name: (item) => [item.COMMONNAME, item.ITEMCODE, item.CONTSIZE, item.LOTCODE],
+            drive_card: (item) => [item.COMMONNAME, item.LOCATIONCODE, item.ITEMCODE, item.CONTSIZE, item.LOTCODE],
+            drive_loc: (item) => [item.LOCATIONCODE, item.COMMONNAME, item.ITEMCODE, item.CONTSIZE, item.LOTCODE],
             av_open: (item) => [item.COMMONNAME, item.LOCATIONCODE, item.ITEMCODE, item.CONTSIZE, item.LOTCODE],
             av_reserves: (item) => [item.COMMONNAME, item.CUSTOMERNAME, item.CONSIGNEENAME, item.SALESREPNAME || item.SALESREPID, item.ITEMCODE, item.CONTSIZE, item.LOCATIONCODE],
             docks: (item) => [item.DOCK_NUM, item.COMMONNAME, item.LOCATIONCODE, item.ITEMCODE, item.STOPNUMBER, item.TRIPNUMBER, item.CUSTOMERNAME, item.CONSIGNEENAME],
@@ -5880,6 +5917,7 @@ function toggleDriveQuickRequestItem(domId) {
             item._searchCandidates = candidates;
             item._searchPrimaryStarts = primaryFields;
             item._searchWordStarts = [...new Set(candidates.flatMap(tokenizeSearchValue))];
+            item._searchProfileValues = {};
             item._searchProfileWordStarts = {};
             item._search = candidates.join(' ');
             return item;
@@ -5892,9 +5930,14 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function getSearchValuesForProfile(item, profileName = '') {
+            if (!item) return [];
+            if (!profileName) return getSearchCandidates(item);
+            if (!item._searchProfileValues) item._searchProfileValues = {};
+            if (Array.isArray(item._searchProfileValues[profileName])) return item._searchProfileValues[profileName];
             const resolver = SEARCH_PROFILES[profileName];
-            if (!resolver) return getSearchCandidates(item);
-            return [...new Set(resolver(item).map(normalizeSearchValue).filter(Boolean))];
+            const values = resolver ? [...new Set(resolver(item).map(normalizeSearchValue).filter(Boolean))] : getSearchCandidates(item);
+            item._searchProfileValues[profileName] = values;
+            return values;
         }
 
         function getSearchWordStartsForProfile(item, profileName = '') {
@@ -5910,14 +5953,17 @@ function toggleDriveQuickRequestItem(domId) {
             item._searchProfileWordStarts[profileName] = wordStarts;
             return wordStarts;
         }
-
         function matchesItemSearch(item, rawTerm, profileName = '') {
             const terms = tokenizeSearchValue(rawTerm);
             if (!terms.length) return true;
+            const searchValues = getSearchValuesForProfile(item, profileName);
+            if (!searchValues.length) return false;
             const wordStarts = getSearchWordStartsForProfile(item, profileName);
+            const fieldStartsWith = (term) => searchValues.some(value => value.startsWith(term));
+            const wordStartsWith = (term) => wordStarts.some(word => word.startsWith(term));
             const [firstTerm, ...restTerms] = terms;
-            if (!wordStarts.some(word => word.startsWith(firstTerm))) return false;
-            return restTerms.every(term => wordStarts.some(word => word.startsWith(term)));
+            if (!fieldStartsWith(firstTerm)) return false;
+            return restTerms.every(term => fieldStartsWith(term) || wordStartsWith(term));
         }
 
         function filterBySearch(items, rawTerm, profileName = '') {
@@ -5932,13 +5978,9 @@ function toggleDriveQuickRequestItem(domId) {
                 delete searchRenderTimer[key];
                 searchRenderFrame[key] = requestAnimationFrame(() => {
                     delete searchRenderFrame[key];
-                    if (isUserActivelyTyping()) {
-                        scheduleSearchRender(key, renderFn);
-                        return;
-                    }
                     renderFn();
                 });
-            }, 140);
+            }, 16);
         }
         function getProtectedEditConfig(prefix) {
             return PROTECTED_EDIT_CONFIG[prefix] || null;
@@ -8047,8 +8089,8 @@ activeDriveTab = tab;
             scheduleUiRender('drive-holdstop-filter', () => renderDrive());
         }
 
-        function selectDriveBlock(block) { selectedDriveBlock = block; driveViewLevel = 1; renderDrive(); queueScrollMainAreaToTop(`drive-block:${block}`); }
-        function selectDriveLoc(loc) { selectedDriveLoc = loc; driveViewLevel = 2; renderDrive(); queueScrollMainAreaToTop(`drive-loc:${loc}`); }
+        function selectDriveBlock(block) { selectedDriveBlock = block; selectedDriveLoc = null; driveViewLevel = 1; scheduleUiRender('drive-select-block', () => renderDrive()); queueScrollMainAreaToTop(`drive-block:${block}`); }
+        function selectDriveLoc(loc) { selectedDriveLoc = loc; driveViewLevel = 2; scheduleUiRender('drive-select-location', () => renderDrive()); queueScrollMainAreaToTop(`drive-loc:${loc}`); }
         function resetDriveView() {
             activeDriveMode = 'ok';
             resetDriveQuickCardViewState();
@@ -8061,7 +8103,7 @@ activeDriveTab = tab;
             document.getElementById('drive-search').value = ""; document.getElementById('drive-search-clear').classList.add('hidden');
             driveSelectedSeasons.clear(); driveSelectedSeasons.add('ALL');
             driveQuickHoldStopOnly = false;
-            renderDrive();
+            scheduleUiRender('drive-season-filter', () => renderDrive());
         }
         function clearAVSearch() { document.getElementById('av-search').value=""; document.getElementById('av-search-clear').classList.add('hidden'); avResLevel=0; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; avOpenLevel=0; renderAV(); }
         function handleAVSearch() { const term=document.getElementById('av-search').value.toLowerCase(); const clearBtn=document.getElementById('av-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden'); avResLevel=0; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; avOpenLevel=0;} else{clearBtn.classList.add('hidden'); avResLevel=0; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; avOpenLevel=0;} scheduleSearchRender('av', () => renderAV()); }
@@ -13620,14 +13662,14 @@ ${folderNote ? `Folder Note: ${folderNote}
         function closeAssignModal() { driveQuickAssignFlow = false; document.getElementById('assign-modal').classList.add('hidden') }
 
         const debouncedDriveSearch = debounce(() => {
-            scheduleTypingAwareUiRender('drive-search', () => renderDrive(), 0, 180);
-        }, 160);
+            scheduleSearchRender('drive-search', () => renderDrive());
+        }, 18);
         
         function clearDriveSearch() {
             document.getElementById('drive-search').value = "";
             document.getElementById('drive-search-clear').classList.add('hidden');
             driveViewLevel = 0;
-            renderDrive();
+            scheduleSearchRender('drive-search', () => renderDrive());
         }
 
         function handleDriveSearch() {
@@ -13643,9 +13685,12 @@ ${folderNote ? `Folder Note: ${folderNote}
             debouncedDriveSearch();
         }
 
-        function selectDriveName(name) { selectedDriveName = name; driveViewLevel = 1; renderDrive(); queueScrollMainAreaToTop(`drive-name:${name}`); }
-        function selectDriveSize(size) { selectedDriveSize = size; driveViewLevel = 2; renderDrive(); queueScrollMainAreaToTop(`drive-size:${size}`); }
-        function backToDriveSizes() { driveViewLevel = 1; selectedDriveSize = null; renderDrive(); queueScrollMainAreaToTop('drive-name'); }
+        function selectDriveName(name) { selectedDriveName = name; selectedDriveSize = null; driveViewLevel = 1; scheduleUiRender('drive-select-name', () => renderDrive()); queueScrollMainAreaToTop(`drive-name:${name}`); }
+        function selectDriveSize(size) { selectedDriveSize = size; driveViewLevel = 2; scheduleUiRender('drive-select-size', () => renderDrive()); queueScrollMainAreaToTop(`drive-size:${size}`); }
+        function backToDriveSizes() { driveViewLevel = 1; selectedDriveSize = null; scheduleUiRender('drive-back-sizes', () => renderDrive()); queueScrollMainAreaToTop(`drive-name:${selectedDriveName || ''}`); }
+        function backToDriveNames() { driveViewLevel = 0; selectedDriveName = null; selectedDriveSize = null; scheduleUiRender('drive-back-names', () => renderDrive()); queueScrollMainAreaToTop('drive-names'); }
+        function backToDriveBlocks() { driveViewLevel = 0; selectedDriveBlock = null; selectedDriveLoc = null; scheduleUiRender('drive-back-blocks', () => renderDrive()); queueScrollMainAreaToTop('drive-blocks'); }
+        function backToDriveLocations() { driveViewLevel = 1; selectedDriveLoc = null; scheduleUiRender('drive-back-locations', () => renderDrive()); queueScrollMainAreaToTop(`drive-block:${selectedDriveBlock || ''}`); }
 
        function sortDriveCardItems(items) {
             return [...items].sort((a, b) => {
@@ -13763,7 +13808,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     const namedItems = searchFilteredItems.filter(i => i.COMMONNAME === selectedDriveName);
                     if (namedItems.length === 0) { container.innerHTML = `<div class="p-8 text-center text-gray-400">No items found.</div>`; return; }
                     const sizes = [...new Set(namedItems.map(i => i.CONTSIZE))].sort();
-                    let html = `<div class="back-btn" onclick="driveViewLevel=0; renderDrive()"><i class="ph-bold ph-arrow-left"></i> Back to Names</div><div class="font-bold text-[#007a4d] mb-4 px-2 text-xl border-b pb-2">${selectedDriveName}</div>`;
+                    let html = `<div class="back-btn" onclick="backToDriveNames()"><i class="ph-bold ph-arrow-left"></i> Back to Names</div><div class="font-bold text-[#007a4d] mb-4 px-2 text-xl border-b pb-2">${selectedDriveName}</div>`;
                     html += sizes.map(s => {
                         const count = namedItems.filter(i => i.CONTSIZE === s).length;
                         return `<div class="drill-item" onclick="selectDriveSize('${esc(s)}')"><span class="font-bold text-lg">${s} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
@@ -13796,7 +13841,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                         return alpha === selectedDriveBlock;
                     });
                     let locs = [...new Set(bItems.map(i => i.LOCATIONCODE || 'NoLoc'))].sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true }));
-                    let html = `<div class="back-btn" onclick="driveViewLevel=0; renderDrive()"><i class="ph-bold ph-arrow-left"></i> Back to Blocks</div>`;
+                    let html = `<div class="back-btn" onclick="backToDriveBlocks()"><i class="ph-bold ph-arrow-left"></i> Back to Blocks</div>`;
                     html += locs.map(l => {
                         let count = bItems.filter(i => (i.LOCATIONCODE || 'NoLoc') === l).length;
                         return `<div class="drill-item" onclick="selectDriveLoc('${esc(l)}')"><span class="font-bold text-lg text-gray-800">${l} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
@@ -13805,7 +13850,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 } else if (driveViewLevel === 2) {
                     crumb.innerText = `${driveModeLabel} > Block ${selectedDriveBlock} / Loc ${selectedDriveLoc}`;
                     let finalItems = searchFilteredItems.filter(i => (i.LOCATIONCODE || 'NoLoc') === selectedDriveLoc);
-                    container.innerHTML = `<div class="back-btn" onclick="driveViewLevel=1; renderDrive()"><i class="ph-bold ph-arrow-left"></i> Back to Locations</div>` + sortDriveCardItems(finalItems).map(i => generateCard(i, 'drive', 'status-blue')).join('');
+                    container.innerHTML = `<div class="back-btn" onclick="backToDriveLocations()"><i class="ph-bold ph-arrow-left"></i> Back to Locations</div>` + sortDriveCardItems(finalItems).map(i => generateCard(i, 'drive', 'status-blue')).join('');
                 }
             }
         }
@@ -13822,7 +13867,7 @@ function toggleDriveSeason(s) {
                     driveSelectedSeasons.add(s);
                 }
             }
-            renderDrive();
+            scheduleUiRender('drive-season-filter', () => renderDrive());
         }
 
         function renderTeamSelector() {
@@ -13864,7 +13909,7 @@ function toggleDriveSeason(s) {
         function selectTaskUser(u) {
             taskViewTargetUser = u;
             document.getElementById('task-tabs-container').classList.remove('hidden');
-            renderTasks();
+            scheduleUiRender('task-select-user', () => renderTasks());
             queueScrollMainAreaToTop(`task-user:${u}`);
         }
 
@@ -13872,7 +13917,7 @@ function toggleDriveSeason(s) {
             selectedTaskBlock = block;
             selectedTaskLoc = null;
             taskViewLevel = 1;
-            renderTasks();
+            scheduleUiRender('task-open-block', () => renderTasks());
             queueScrollMainAreaToTop(`task-block:${block}`);
             return false;
         }
@@ -13880,7 +13925,7 @@ function toggleDriveSeason(s) {
         function openTaskLocationView(loc) {
             selectedTaskLoc = loc;
             taskViewLevel = 2;
-            renderTasks();
+            scheduleUiRender('task-open-location', () => renderTasks());
             queueScrollMainAreaToTop(`task-loc:${loc}`);
             return false;
         }
@@ -13889,14 +13934,16 @@ function toggleDriveSeason(s) {
             taskViewLevel = 0;
             selectedTaskBlock = null;
             selectedTaskLoc = null;
-            renderTasks();
+            scheduleUiRender('task-back-block-list', () => renderTasks());
+            queueScrollMainAreaToTop('task-block-list');
             return false;
         }
 
         function backToTaskLocationList() {
             taskViewLevel = 1;
             selectedTaskLoc = null;
-            renderTasks();
+            scheduleUiRender('task-back-location-list', () => renderTasks());
+            queueScrollMainAreaToTop(`task-block:${selectedTaskBlock || ''}`);
             return false;
         }
 
@@ -13905,7 +13952,7 @@ function toggleDriveSeason(s) {
             taskViewLevel = 0;
             selectedFlyerFolder = null;
             closeAllFlyerSwipes();
-            renderTasks();
+            scheduleUiRender('task-flyer-folder-tab', () => renderTasks());
             queueScrollMainAreaToTop(`flyer-tab:${activeFlyerFolderTab}`);
             return false;
         }
@@ -13915,7 +13962,7 @@ function toggleDriveSeason(s) {
             selectedFlyerFolder = getFlyerFolderName(folderName);
             taskViewLevel = 1;
             closeAllFlyerSwipes();
-            renderTasks();
+            scheduleUiRender('task-open-flyer-folder', () => renderTasks());
             queueScrollMainAreaToTop(`flyer-folder:${activeFlyerFolderTab}:${selectedFlyerFolder}`);
             return false;
         }
@@ -13924,7 +13971,8 @@ function toggleDriveSeason(s) {
             taskViewLevel = 0;
             selectedFlyerFolder = null;
             closeAllFlyerSwipes();
-            renderTasks();
+            scheduleUiRender('task-back-flyer-folder-list', () => renderTasks());
+            queueScrollMainAreaToTop(`flyer-tab:${activeFlyerFolderTab}`);
             return false;
         }
 
