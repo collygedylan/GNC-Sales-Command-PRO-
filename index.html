@@ -445,7 +445,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-                            <div id="header-version" class="nav-version-pill">V2026.04.11.05</div>
+                            <div id="header-version" class="nav-version-pill">V2026.04.11.06</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -895,14 +895,16 @@
         const CORE_REALTIME_TABLES = ['v2_master_inventory', 'v2_active_request', 'v2_sales_office'];
         const OPTIONAL_REALTIME_TABLES = ['v2_av_notes', 'v2_dock_team_status', 'v2_dock_item_status'];
         const REALTIME_TABLES = [...CORE_REALTIME_TABLES, ...OPTIONAL_REALTIME_TABLES];
-        const REALTIME_STARTUP_GRACE_MS = 8000;
-        const REALTIME_RECOVERY_GRACE_MS = 1800;
+        const REALTIME_STARTUP_GRACE_MS = 12000;
+        const REALTIME_RECOVERY_GRACE_MS = 3200;
+        const DISABLE_POLLING_WHEN_REALTIME_SUPPORTED = true;
         const HEAVY_DATASET_KEYS = new Set(['master', 'avOpen', 'reserves', 'soc', 'salesOffice', 'cav', 'avNotes']);
         let realtimeChannels = [];
         let realtimeChangeTimer = null;
         let realtimeChangeQueue = [];
         let fallbackSyncInterval = null;
         let syncCatchupTimer = null;
+        let realtimeReconnectTimer = null;
         let liveSyncMode = 'idle';
         let realtimeStartupUntil = 0;
         let realtimeTableStatus = Object.create(null);
@@ -916,10 +918,13 @@
         const CACHE_PERSIST_REALTIME_VISIBLE_MIN_INTERVAL_MS = 180000;
         const CACHE_PERSIST_ACTIVE_INTERACTION_GRACE_MS = 12000;
         const CACHE_PERSIST_IDLE_TIMEOUT_MS = 2500;
-        const PHOTO_MAX_WIDTH = 640;
-        const PHOTO_JPEG_QUALITY = 0.56;
+        const PHOTO_MAX_WIDTH = 560;
+        const PHOTO_JPEG_QUALITY = 0.52;
+        const PHOTO_FIELD_PERSIST_DEBOUNCE_MS = 260;
+        const INTERACTION_REFRESH_DEFER_MS = 420;
         let pendingPhotoUploads = new Map();
         let pendingPhotoPreviews = new Map();
+        let pendingPhotoPersistTimers = Object.create(null);
         window.pendingPhotoUploads = pendingPhotoUploads;
         let lastUserInteractionAt = Date.now();
         let lastTypingAt = 0;
@@ -927,7 +932,7 @@
         let standaloneShellBaseHeight = 0;
         let detailFieldFocusResetTimer = null;
         let detailFormFocusInitialized = false;
-        const ACTIVE_TYPING_GRACE_MS = 260;
+        const ACTIVE_TYPING_GRACE_MS = 320;
         
         function isIOSDevice() {
             return IOS_DEVICE_REGEX.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -2155,7 +2160,32 @@
             }, 48);
         }
 
+        function clearRealtimeReconnectTimer() {
+            if (realtimeReconnectTimer) {
+                clearTimeout(realtimeReconnectTimer);
+                realtimeReconnectTimer = null;
+            }
+        }
+
+        function shouldDeferInteractiveBackgroundWork() {
+            return !!(isUserActivelyTyping() || (window.pendingPhotoUploads && window.pendingPhotoUploads.size));
+        }
+
+        function scheduleRealtimeReconnect(delay = REALTIME_RECOVERY_GRACE_MS) {
+            clearRealtimeReconnectTimer();
+            if (!currentUser || navigator.onLine === false || !shouldUseRealtime()) return;
+            liveSyncMode = 'queued';
+            updateSyncDiagnostics('queued');
+            realtimeReconnectTimer = setTimeout(() => {
+                realtimeReconnectTimer = null;
+                if (!currentUser || navigator.onLine === false || !shouldUseRealtime()) return;
+                if (hasHealthyCoreRealtimeSubscriptions()) return;
+                initializeRealtime();
+            }, Math.max(500, Number(delay) || REALTIME_RECOVERY_GRACE_MS));
+        }
+
         function cleanupRealtime() {
+            clearRealtimeReconnectTimer();
             realtimeChannels.forEach(channel => {
                 try { supabaseClient.removeChannel(channel); } catch (e) {}
             });
@@ -2186,6 +2216,10 @@
             syncCatchupTimer = setTimeout(() => {
                 syncCatchupTimer = null;
                 if (!currentUser || document.hidden || navigator.onLine === false || backgroundRefreshInFlight) return;
+                if (shouldDeferInteractiveBackgroundWork()) {
+                    queueVisibleDatasetCatchup(Math.max(INTERACTION_REFRESH_DEFER_MS, Number(delay) || 0));
+                    return;
+                }
                 refreshLoadedDatasets(false).catch(() => {});
             }, Math.max(0, Number(delay) || 0));
         }
@@ -2204,14 +2238,17 @@
             }
             if (shouldUseRealtime()) {
                 if (hasHealthyCoreRealtimeSubscriptions()) {
+                    clearRealtimeReconnectTimer();
                     realtimeStartupUntil = 0;
                     liveSyncMode = 'realtime';
                     updateSyncDiagnostics('realtime');
                     return;
                 }
-                if (isRealtimeStartupPending()) {
-                    liveSyncMode = 'queued';
-                    updateSyncDiagnostics('queued');
+                liveSyncMode = 'queued';
+                updateSyncDiagnostics('queued');
+                if (isRealtimeStartupPending()) return;
+                if (DISABLE_POLLING_WHEN_REALTIME_SUPPORTED) {
+                    scheduleRealtimeReconnect(Math.max(900, Number(intervalMs) || REALTIME_RECOVERY_GRACE_MS));
                     return;
                 }
             }
@@ -2220,7 +2257,7 @@
             updateSyncDiagnostics('polling');
             const pollMs = Math.max(18000, Number(intervalMs) || getFallbackSyncInterval());
             fallbackSyncInterval = setInterval(() => {
-                if (!currentUser || document.hidden || navigator.onLine === false || backgroundRefreshInFlight) return;
+                if (!currentUser || document.hidden || navigator.onLine === false || backgroundRefreshInFlight || shouldDeferInteractiveBackgroundWork()) return;
                 refreshLoadedDatasets(false).catch(() => {});
             }, pollMs);
             queueVisibleDatasetCatchup(180);
@@ -2250,6 +2287,7 @@
                         const isCoreTable = CORE_REALTIME_TABLES.includes(tableName);
                         setRealtimeTableStatus(tableName, channelStatus);
                         if (channelStatus === 'SUBSCRIBED') {
+                            clearRealtimeReconnectTimer();
                             if (hasHealthyCoreRealtimeSubscriptions()) {
                                 realtimeStartupUntil = 0;
                                 liveSyncMode = 'realtime';
@@ -2271,7 +2309,8 @@
                                 const retryDelay = isRealtimeStartupPending()
                                     ? Math.max(REALTIME_RECOVERY_GRACE_MS, realtimeStartupUntil - Date.now())
                                     : REALTIME_RECOVERY_GRACE_MS;
-                                setTimeout(() => {
+                                if (DISABLE_POLLING_WHEN_REALTIME_SUPPORTED) scheduleRealtimeReconnect(retryDelay);
+                                else setTimeout(() => {
                                     if (!hasHealthyCoreRealtimeSubscriptions()) startFallbackSync();
                                 }, Math.max(300, retryDelay));
                             } else if (hasHealthyCoreRealtimeSubscriptions()) {
@@ -2700,6 +2739,27 @@
                 return;
             }
             scheduleUiRender(`photo-preview-${String(item.UNIQUE_ID || '').trim()}-${getPhotoBucketKey(prefix)}`, () => reRenderCurrentView(), 16);
+        }
+
+        function getPendingPhotoPersistKey(item, prefix = '') {
+            return getPendingPhotoUploadKey(item, prefix);
+        }
+
+        function clearScheduledPhotoFieldPersist(item, prefix = '') {
+            const persistKey = getPendingPhotoPersistKey(item, prefix);
+            if (!persistKey || !pendingPhotoPersistTimers[persistKey]) return;
+            clearTimeout(pendingPhotoPersistTimers[persistKey]);
+            delete pendingPhotoPersistTimers[persistKey];
+        }
+
+        function schedulePhotoFieldPersist(item, prefix = '') {
+            const persistKey = getPendingPhotoPersistKey(item, prefix);
+            if (!persistKey || !item) return;
+            clearScheduledPhotoFieldPersist(item, prefix);
+            pendingPhotoPersistTimers[persistKey] = setTimeout(() => {
+                delete pendingPhotoPersistTimers[persistKey];
+                saveData(false, prefix, true, item, { photoChanged: true, backgroundPhotoSync: true });
+            }, PHOTO_FIELD_PERSIST_DEBOUNCE_MS);
         }
 
         function normalizeActiveRequestWriteBody(body) {
@@ -3192,7 +3252,7 @@
         const PENDING_EDITS_STORAGE_KEY = 'gnc_pending_edits';
         const PENDING_EDITS_PERSIST_DEBOUNCE_MS = 400;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Maschino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'V2026.04.11.05';
+        const APP_VERSION = 'V2026.04.11.06';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -3988,6 +4048,11 @@
                 return false;
             }
             if (backgroundRefreshInFlight) return false;
+            if (!force && shouldDeferInteractiveBackgroundWork()) {
+                queueVisibleDatasetCatchup(INTERACTION_REFRESH_DEFER_MS);
+                updateSyncDiagnostics(liveSyncMode === 'realtime' ? 'realtime' : 'idle');
+                return false;
+            }
             const loadedKeys = Object.keys(datasetLoadState).filter((key) => {
                 const state = getDatasetState(key);
                 return state.initialLoaded || state.fullLoaded;
@@ -14997,6 +15062,7 @@ function toggleDriveSeason(s) {
                         let existingIdx = salesOfficeInventory.findIndex(s => s.UNIQUE_ID === artifacts.cloneSO.UNIQUE_ID);
                         if (existingIdx > -1) salesOfficeInventory[existingIdx] = artifacts.cloneSO;
                         else salesOfficeInventory.push(artifacts.cloneSO);
+                        markViewDirty('sales-office');
                     }
 
                     if (artifacts.masterSyncPayload && artifacts.masterSyncId) {
@@ -15020,6 +15086,8 @@ function toggleDriveSeason(s) {
 
                         supabaseFetch('v2_master_inventory', 'PATCH', artifacts.masterSyncPayload, `unique_id=eq.${encodeURIComponent(artifacts.masterSyncId)}`).catch(() => {});
                     }
+                    markHiddenViewsDirty(getVisibleTrackedViewIds());
+
 
                     const immediateCleanupOps = avRuleColumnsReady === true
                         ? collectMasterAvRuleClearOps([
@@ -15265,8 +15333,8 @@ function toggleDriveSeason(s) {
                         const sourceHeight = Number(sourceImage.height || sourceImage.naturalHeight || 0);
                         if (!sourceWidth || !sourceHeight) throw new Error('Could not process the selected image.');
                         canvas = document.createElement('canvas');
-                        const targetMaxWidth = isLagSensitiveDetailPrefix(prefix) ? 480 : PHOTO_MAX_WIDTH;
-                        const targetJpegQuality = isLagSensitiveDetailPrefix(prefix) ? 0.5 : PHOTO_JPEG_QUALITY;
+                        const targetMaxWidth = isLagSensitiveDetailPrefix(prefix) ? 420 : PHOTO_MAX_WIDTH;
+                        const targetJpegQuality = isLagSensitiveDetailPrefix(prefix) ? 0.46 : PHOTO_JPEG_QUALITY;
                         const scaleSize = sourceWidth > targetMaxWidth ? targetMaxWidth / sourceWidth : 1;
                         canvas.width = Math.max(1, Math.round(sourceWidth * scaleSize));
                         canvas.height = Math.max(1, Math.round(sourceHeight * scaleSize));
@@ -15314,7 +15382,7 @@ function toggleDriveSeason(s) {
                                 normalizeRowPhotoFields(itemToUpload);
                                 cleanupUploadResources();
                                 finishPreview(true);
-                                saveData(false, prefix, true, itemToUpload, { photoChanged: true });
+                                schedulePhotoFieldPersist(itemToUpload, prefix);
                                 resolve(publicUrl);
                             } catch (err) {
                                 failUpload(err);
