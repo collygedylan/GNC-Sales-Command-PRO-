@@ -445,7 +445,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-                            <div id="header-version" class="nav-version-pill">V2026.04.12.02</div>
+                            <div id="header-version" class="nav-version-pill">V2026.04.12.04</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -933,6 +933,11 @@
         let standaloneShellBaseHeight = 0;
         let detailFieldFocusResetTimer = null;
         let detailFormFocusInitialized = false;
+        let viewportShellState = { appHeight: 0, visualHeight: 0, keyboardOffset: 0, standalone: null, ios: null, keyboardOpen: null };
+        let viewportSyncFrameQueued = false;
+        let viewportModeCompact = null;
+        let horizontalClampFrameQueued = false;
+        let swipeCloseOnScrollFrame = null;
         const ACTIVE_TYPING_GRACE_MS = 90;
 
         function isIOSDevice() {
@@ -1010,10 +1015,12 @@
         }
 
         function syncViewportHeight() {
+            viewportSyncFrameQueued = false;
             const viewport = window.visualViewport;
             const layoutHeight = Math.max(320, Math.round(window.innerHeight || document.documentElement.clientHeight || 0));
             const visualHeight = Math.max(320, Math.round(viewport ? (viewport.height + (viewport.offsetTop || 0)) : layoutHeight));
             const standalone = isStandaloneApp();
+            const iosDevice = isIOSDevice();
             const activeEditable = isEditableTextEntryTarget(document.activeElement);
             const viewportKeyboardOffset = viewport ? Math.max(0, Math.round(layoutHeight - viewport.height - (viewport.offsetTop || 0))) : 0;
             const baseKeyboardOffset = standaloneShellBaseHeight ? Math.max(0, Math.round(standaloneShellBaseHeight - visualHeight)) : 0;
@@ -1029,19 +1036,45 @@
             const nextHeight = standalone && keyboardOpen
                 ? Math.max(standaloneShellBaseHeight || 0, layoutHeight, visualHeight)
                 : (standalone ? Math.max(standaloneShellBaseHeight || 0, layoutHeight, visualHeight) : visualHeight);
+            const nextKeyboardOffset = keyboardOpen ? keyboardOffset : 0;
 
-            document.documentElement.style.setProperty('--app-height', `${nextHeight}px`);
-            document.documentElement.style.setProperty('--visual-height', `${visualHeight}px`);
-            document.documentElement.style.setProperty('--keyboard-offset', `${keyboardOpen ? keyboardOffset : 0}px`);
-            document.body.classList.toggle('app-standalone', standalone);
-            document.body.classList.toggle('ios-device', isIOSDevice());
-            document.body.classList.toggle('keyboard-open', keyboardOpen);
+            if (viewportShellState.appHeight !== nextHeight) {
+                document.documentElement.style.setProperty('--app-height', `${nextHeight}px`);
+            }
+            if (viewportShellState.visualHeight !== visualHeight) {
+                document.documentElement.style.setProperty('--visual-height', `${visualHeight}px`);
+            }
+            if (viewportShellState.keyboardOffset !== nextKeyboardOffset) {
+                document.documentElement.style.setProperty('--keyboard-offset', `${nextKeyboardOffset}px`);
+            }
+            if (viewportShellState.standalone !== standalone) {
+                document.body.classList.toggle('app-standalone', standalone);
+            }
+            if (viewportShellState.ios !== iosDevice) {
+                document.body.classList.toggle('ios-device', iosDevice);
+            }
+            if (viewportShellState.keyboardOpen !== keyboardOpen) {
+                document.body.classList.toggle('keyboard-open', keyboardOpen);
+            }
+
+            viewportShellState = {
+                appHeight: nextHeight,
+                visualHeight,
+                keyboardOffset: nextKeyboardOffset,
+                standalone,
+                ios: iosDevice,
+                keyboardOpen
+            };
         }
 
         function initializeViewportHeightSync() {
             if (viewportHeightSyncInitialized) return;
             viewportHeightSyncInitialized = true;
-            const syncViewportShell = () => requestAnimationFrame(syncViewportHeight);
+            const syncViewportShell = () => {
+                if (viewportSyncFrameQueued) return;
+                viewportSyncFrameQueued = true;
+                requestAnimationFrame(syncViewportHeight);
+            };
             syncViewportHeight();
             window.addEventListener("resize", syncViewportShell, { passive: true });
             window.addEventListener("orientationchange", () => {
@@ -1052,7 +1085,6 @@
             document.addEventListener("focusout", () => setTimeout(syncViewportShell, 160));
             if (window.visualViewport) {
                 window.visualViewport.addEventListener("resize", syncViewportShell, { passive: true });
-                window.visualViewport.addEventListener("scroll", syncViewportShell, { passive: true });
             }
         }
 
@@ -1062,17 +1094,20 @@
 
         function syncViewportMode() {
             const compact = isCompactViewport();
+            if (viewportModeCompact === compact) return compact;
+            viewportModeCompact = compact;
             document.body.classList.toggle('viewport-compact', compact);
             document.body.classList.toggle('viewport-wide', !compact);
             return compact;
         }
 
         function initializeViewportModeSync() {
+            const scheduleViewportModeSync = () => requestAnimationFrame(syncViewportMode);
             syncViewportMode();
-            window.addEventListener('resize', () => requestAnimationFrame(syncViewportMode), { passive: true });
-            window.addEventListener('orientationchange', () => requestAnimationFrame(syncViewportMode), { passive: true });
+            window.addEventListener('resize', scheduleViewportModeSync, { passive: true });
+            window.addEventListener('orientationchange', scheduleViewportModeSync, { passive: true });
             if (window.visualViewport) {
-                window.visualViewport.addEventListener('resize', syncViewportMode, { passive: true });
+                window.visualViewport.addEventListener('resize', scheduleViewportModeSync, { passive: true });
             }
         }
 
@@ -1084,24 +1119,28 @@
             if (window.scrollX) window.scrollTo(0, window.scrollY || 0);
         }
 
+        function scheduleHorizontalViewportClamp() {
+            if (horizontalClampFrameQueued) return;
+            horizontalClampFrameQueued = true;
+            requestAnimationFrame(() => {
+                horizontalClampFrameQueued = false;
+                clampHorizontalViewportShift();
+            });
+        }
+
         function initializeHorizontalViewportClamp() {
             if (horizontalViewportClampInitialized) return;
             horizontalViewportClampInitialized = true;
-            const scheduleClamp = () => requestAnimationFrame(clampHorizontalViewportShift);
-            scheduleClamp();
-            const mainScrollArea = document.getElementById('main-scroll-area');
-            if (mainScrollArea) {
-                mainScrollArea.addEventListener('scroll', () => {
-                    if (mainScrollArea.scrollLeft) mainScrollArea.scrollLeft = 0;
-                }, { passive: true });
-            }
-            window.addEventListener('resize', scheduleClamp, { passive: true });
-            window.addEventListener('orientationchange', scheduleClamp, { passive: true });
+            scheduleHorizontalViewportClamp();
+            window.addEventListener('resize', scheduleHorizontalViewportClamp, { passive: true });
+            window.addEventListener('orientationchange', scheduleHorizontalViewportClamp, { passive: true });
+            window.addEventListener('pageshow', scheduleHorizontalViewportClamp, { passive: true });
+            window.addEventListener('focus', scheduleHorizontalViewportClamp, { passive: true });
             document.addEventListener('visibilitychange', () => {
-                if (!document.hidden) scheduleClamp();
+                if (!document.hidden) scheduleHorizontalViewportClamp();
             });
             if (window.visualViewport) {
-                window.visualViewport.addEventListener('scroll', scheduleClamp, { passive: true });
+                window.visualViewport.addEventListener('resize', scheduleHorizontalViewportClamp, { passive: true });
             }
         }
         function isDetailEditableField(target) {
@@ -3516,7 +3555,7 @@
         const PENDING_EDITS_STORAGE_KEY = 'gnc_pending_edits';
         const PENDING_EDITS_PERSIST_DEBOUNCE_MS = 400;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Maschino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'V2026.04.12.02';
+        const APP_VERSION = 'V2026.04.12.04';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -11997,6 +12036,23 @@ activeDriveTab = tab;
             return !!target.closest('input, textarea, select, button, label, a, .task-tab, .detail-tab, .back-btn, [contenteditable="true"], .protected-edit-bar');
         }
 
+        function scheduleSwipeCloseOnScroll() {
+            if (swipeCloseOnScrollFrame) return;
+            swipeCloseOnScrollFrame = requestAnimationFrame(() => {
+                swipeCloseOnScrollFrame = null;
+                const scrollArea = document.getElementById('main-scroll-area');
+                if (!scrollArea || scrollArea.scrollTop <= 8) return;
+                const requestContainer = document.getElementById('request-content');
+                if (requestContainer && requestContainer.querySelector('.request-swipe-row.swipe-open')) {
+                    closeAllRequestSwipes();
+                }
+                const taskContainer = document.getElementById('task-content');
+                if (taskContainer && taskContainer.querySelector('.flyer-swipe-row.swipe-open, .flyer-folder-swipe-row.swipe-open')) {
+                    closeAllFlyerSwipes();
+                }
+            });
+        }
+
         function initializeInteractiveChrome() {
             if (interactiveChromeInitialized) return;
             interactiveChromeInitialized = true;
@@ -12006,12 +12062,7 @@ activeDriveTab = tab;
             scrollArea.addEventListener('touchmove', handlePullRefreshMove, { passive: false });
             scrollArea.addEventListener('touchend', handlePullRefreshEnd, { passive: true });
             scrollArea.addEventListener('touchcancel', handlePullRefreshEnd, { passive: true });
-            scrollArea.addEventListener('scroll', () => {
-                if (scrollArea.scrollTop > 8) {
-                    closeAllRequestSwipes();
-                    closeAllFlyerSwipes();
-                }
-            }, { passive: true });
+            scrollArea.addEventListener('scroll', scheduleSwipeCloseOnScroll, { passive: true });
             window.addEventListener('pageshow', () => {
                 syncViewportHeight();
                 queueForegroundRefresh(120);
