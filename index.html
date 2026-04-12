@@ -445,7 +445,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-                            <div id="header-version" class="nav-version-pill">V2026.04.12.06</div>
+                            <div id="header-version" class="nav-version-pill">V2026.04.12.07</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -3571,7 +3571,7 @@
         const PENDING_EDITS_STORAGE_KEY = 'gnc_pending_edits';
         const PENDING_EDITS_PERSIST_DEBOUNCE_MS = 400;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Maschino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'V2026.04.12.06';
+        const APP_VERSION = 'V2026.04.12.07';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -9685,6 +9685,8 @@ activeDriveTab = tab;
             const emptyHtml = options.emptyHtml || `<div class="p-8 text-center text-gray-400">No rows found.</div>`;
             const prefixHtml = String(options.prefixHtml || '');
             const onComplete = typeof options.onComplete === 'function' ? options.onComplete : null;
+            const reserveSpace = !!options.reserveSpace;
+            const reserveOffset = Number(options.reserveOffset) || 0;
             const chunkSize = touchOptimized
                 ? (total > 1800 ? 48 : (total > 900 ? 56 : 64))
                 : (total > 1400 ? 28 : (total > 700 ? 36 : 44));
@@ -9695,6 +9697,13 @@ activeDriveTab = tab;
             let index = 0;
 
             if (crumb && typeof crumbText === 'string') crumb.innerText = crumbText;
+
+            if (reserveSpace) {
+                const minHeight = Math.max(0, Math.round((total * approxCardHeight) + reserveOffset));
+                container.style.minHeight = minHeight ? `${minHeight}px` : '';
+            } else {
+                container.style.minHeight = '';
+            }
 
             if (!total) {
                 container.innerHTML = prefixHtml + emptyHtml;
@@ -9717,6 +9726,7 @@ activeDriveTab = tab;
             container.innerHTML = prefixHtml + renderBatch(initialTarget, false);
 
             const fireComplete = () => {
+                if (reserveSpace) container.style.minHeight = '';
                 if (!onComplete) return;
                 requestAnimationFrame(() => {
                     if (Number(chunkRenderTokensByKey[key] || 0) !== token) return;
@@ -14206,7 +14216,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     const names = [...new Set(searchFilteredItems.map(i => i.COMMONNAME))].sort();
                     const renderNameRow = (name) => `<div class="drill-item" onclick="selectDriveName('${esc(name)}')"><span class="font-bold text-lg">${name}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
                     if (shouldUseChunkedCardRender(names.length, 120, 220)) {
-                        renderMarkupChunkedByKey('drive-name-list', container, crumb, names, crumbText, renderNameRow, { approxCardHeight: 70 });
+                        renderMarkupChunkedByKey('drive-name-list', container, crumb, names, crumbText, renderNameRow, { approxCardHeight: 70, reserveSpace: true });
                         return;
                     }
                     crumb.innerText = crumbText;
@@ -14224,7 +14234,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     const prefixHtml = `<div class="back-btn" onclick="backToDriveNames()"><i class="ph-bold ph-arrow-left"></i> Back to Names</div><div class="font-bold text-[#007a4d] mb-4 px-2 text-xl border-b pb-2">${selectedDriveName}</div>`;
                     const renderSizeRow = (size) => `<div class="drill-item" onclick="selectDriveSize('${esc(size)}')"><span class="font-bold text-lg">${size} <span class="text-gray-400 text-sm font-normal">(${sizeCounts.get(size) || 0})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
                     if (shouldUseChunkedCardRender(sizes.length, 120, 220)) {
-                        renderMarkupChunkedByKey('drive-name-size-list', container, crumb, sizes, crumbText, renderSizeRow, { approxCardHeight: 72, prefixHtml });
+                        renderMarkupChunkedByKey('drive-name-size-list', container, crumb, sizes, crumbText, renderSizeRow, { approxCardHeight: 72, prefixHtml, reserveSpace: true, reserveOffset: 60 });
                         return;
                     }
                     crumb.innerText = crumbText;
