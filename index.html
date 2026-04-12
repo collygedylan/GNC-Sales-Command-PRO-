@@ -445,7 +445,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-                            <div id="header-version" class="nav-version-pill">V2026.04.11.09</div>
+                            <div id="header-version" class="nav-version-pill">V2026.04.12.02</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -902,6 +902,7 @@
         let realtimeChannels = [];
         let realtimeChangeTimer = null;
         let realtimeChangeQueue = [];
+        let realtimeDirtyIdsByTable = new Map();
         let fallbackSyncInterval = null;
         let syncCatchupTimer = null;
         let realtimeReconnectTimer = null;
@@ -2000,7 +2001,7 @@
             return [];
         }
 
-        function upsertRealtimeRow(collection, row) {
+                function upsertRealtimeRow(collection, row) {
             if (!Array.isArray(collection) || !row) return false;
             const uid = String(row.UNIQUE_ID || '');
             if (!uid) return false;
@@ -2020,25 +2021,283 @@
             return true;
         }
 
+        function trackRealtimeDirtyRowId(tableName = '', uniqueId = '') {
+            const tableKey = String(tableName || '').trim();
+            const uid = String(uniqueId || '').trim();
+            if (!tableKey || !uid) return;
+            let dirtyIds = realtimeDirtyIdsByTable.get(tableKey);
+            if (!dirtyIds) {
+                dirtyIds = new Set();
+                realtimeDirtyIdsByTable.set(tableKey, dirtyIds);
+            }
+            dirtyIds.add(uid);
+        }
+
+        function consumeRealtimeDirtyRowIds(tableName = '') {
+            const tableKey = String(tableName || '').trim();
+            if (!tableKey) return [];
+            const dirtyIds = realtimeDirtyIdsByTable.get(tableKey);
+            realtimeDirtyIdsByTable.delete(tableKey);
+            return dirtyIds ? Array.from(dirtyIds) : [];
+        }
+
+        function touchRealtimeDatasetState(changedTables = []) {
+            const stamp = new Date().toISOString();
+            (changedTables || []).forEach((tableName) => {
+                getDatasetKeysForTable(tableName).forEach((key) => {
+                    const state = getDatasetState(key);
+                    state.initialLoaded = true;
+                    state.lastLoadedAt = stamp;
+                });
+            });
+            lastSyncTime = stamp;
+            lastSuccessfulSyncTime = stamp;
+            return stamp;
+        }
+
+        function syncRealtimeRequestRows(masterIdSet = null) {
+            const scopedIds = masterIdSet instanceof Set && masterIdSet.size ? masterIdSet : null;
+            requestsInventory = (Array.isArray(requestsInventory) ? requestsInventory : []).map((item) => {
+                if (!item) return item;
+                const uniqueId = String(item.UNIQUE_ID || '').trim();
+                const masterId = String(firstNonEmptyValue(item.MASTER_ID, item.MASTER_UNIQUE_ID, item.master_id, '')).trim();
+                if (scopedIds && !scopedIds.has(uniqueId) && !scopedIds.has(masterId)) return item;
+                if (!item.DOM_ID) item.DOM_ID = 'req_' + (item.UNIQUE_ID || '');
+                item.REQ_STATUS = normalizeRequestStatus(firstNonEmptyValue(item.REQ_STATUS, item.req_status, item.STATUS, 'Pending')) || 'Pending';
+                item.REQ_ARCHIVED = item.REQ_ARCHIVED === true || item.REQ_ARCHIVED === 1 || item.REQ_ARCHIVED === '1' || String(item.REQ_ARCHIVED || '').trim().toLowerCase() === 'true';
+                const masterItem = findLinkedMasterRow(item);
+                if (!masterItem) {
+                    normalizeRowPhotoFields(item);
+                    buildSearchIndex(item);
+                    return item;
+                }
+                syncMasterFieldsToRequestRow(masterItem, item);
+                item.APP_TAB_ASSIGNMENT = firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, masterItem.APP_TAB_ASSIGNMENT);
+                return item;
+            });
+            applyPendingRequestArchives();
+            updateFooterRequestBadge();
+            requestViewLiveSyncSignature = buildRequestLiveSyncSignature(requestsInventory);
+        }
+
+        function syncRealtimeSocRows(masterIdSet = null) {
+            const scopedIds = masterIdSet instanceof Set && masterIdSet.size ? masterIdSet : null;
+            socInventory = (Array.isArray(socInventory) ? socInventory : []).map((item) => {
+                if (!item) return item;
+                const uniqueId = String(item.UNIQUE_ID || '').trim();
+                const masterId = String(firstNonEmptyValue(item.MASTER_ID, item.MASTER_UNIQUE_ID, item.master_id, '')).trim();
+                if (scopedIds && !scopedIds.has(uniqueId) && !scopedIds.has(masterId)) return item;
+                item.DOCK_NUM = item.DOCK_NUM || item.DOCK || item.dock;
+                item.SALESREPNAME = item.SALESREPNAME || item.SALESREP || item['SALES_REP'] || 'Unknown Rep';
+                item.CUSTOMERNAME = item.CUSTOMERNAME || item.CUSTOMER || 'Unknown Customer';
+                item.CONSIGNEENAME = item.CONSIGNEENAME || item.CONSIGNEE || '';
+                item._search = `${item.COMMONNAME || ''} ${item['PLANT_NAME'] || ''} ${item.CUSTOMERNAME || ''} ${item.SALESREPNAME || ''} ${item.STOPNUMBER || ''} ${item.TRIPNUMBER || ''}`.toLowerCase();
+                const masterItem = findLinkedMasterRow(item);
+                if (masterItem) {
+                    syncMasterFieldsToRequestRow(masterItem, item);
+                    item.APP_TAB_ASSIGNMENT = firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, masterItem.APP_TAB_ASSIGNMENT);
+                    return item;
+                }
+                normalizeRowPhotoFields(item);
+                buildSearchIndex(item);
+                return item;
+            });
+        }
+
+        function syncRealtimeSalesOfficeRows(masterIdSet = null) {
+            const scopedIds = masterIdSet instanceof Set && masterIdSet.size ? masterIdSet : null;
+            salesOfficeInventory = (Array.isArray(salesOfficeInventory) ? salesOfficeInventory : [])
+                .filter((item) => item && !isSalesOfficeComplete(item))
+                .map((item, idx) => {
+                    const uniqueId = String(item.UNIQUE_ID || '').trim();
+                    const masterId = String(item.MASTER_ID || item.master_id || item.MASTER_UNIQUE_ID || item.UNIQUE_ID || '').trim();
+                    if (scopedIds && !scopedIds.has(uniqueId) && !scopedIds.has(masterId)) return item;
+                    if (!item.DOM_ID) item.DOM_ID = 'so_' + (item.UNIQUE_ID || idx);
+                    const salesOfficeSource = String(firstNonEmptyValue(item.SO_SOURCE, item.so_source, 'season')).toLowerCase();
+                    const masterItem = masterId ? findItemByUniqueId(masterId) : null;
+                    const isExactRow = !!(masterItem && salesOfficeSource !== 'bloom_picker' && uniqueId === masterId);
+                    if (isExactRow) {
+                        syncMasterFieldsToRow(masterItem, item, LINKED_ROW_SYNC_KEYS, { attachMasterLink: true });
+                        item.APP_TAB_ASSIGNMENT = firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, masterItem.APP_TAB_ASSIGNMENT);
+                    }
+                    normalizeRowPhotoFields(item);
+                    buildSearchIndex(item);
+                    return item;
+                });
+        }
+
+        function syncRealtimeReserveRows() {
+            reservesInventory = (Array.isArray(reservesInventory) ? reservesInventory : []).map((item, idx) => {
+                if (!item) return item;
+                if (!item.DOM_ID) item.DOM_ID = 'res_' + (item.UNIQUE_ID || idx);
+                normalizeRowPhotoFields(item);
+                buildSearchIndex(item);
+                return item;
+            });
+        }
+
+        function syncRealtimeCavRows() {
+            cavInventory = (Array.isArray(cavInventory) ? cavInventory : []).map((item, idx) => {
+                if (!item) return item;
+                item.DOM_ID = item.DOM_ID || ('cav_' + (item.UNIQUE_ID || idx));
+                item.UNIQUE_ID = item.UNIQUE_ID || ('cav_uid_' + idx);
+                item.LOCATIONCODE = firstNonEmptyValue(item.LOCATIONCODE, item.LOCATION, item.LOC, 'No Loc');
+                item.ITEMCODE = firstNonEmptyValue(item.ITEMCODE, item.itemcode, item.ITEM, '');
+                item.COMMONNAME = firstNonEmptyValue(item.COMMONNAME, item.DESCRIPTION, item.PLANT_NAME, item.ITEMCODE, 'AV Blank');
+                item.CONTSIZE = firstNonEmptyValue(item.CONTSIZE, item.ITEMSPEC, item.SIZE, item.contsize, '-');
+                item.SEASON = firstNonEmptyValue(item.SEASON, item.season, '');
+                item._search = `${item.LOCATIONCODE || ''} ${item.ITEMCODE || ''} ${item.COMMONNAME || ''} ${item.CONTSIZE || ''} ${item.SEASON || ''}`.toLowerCase();
+                normalizeRowPhotoFields(item);
+                buildSearchIndex(item);
+                return item;
+            });
+        }
+
+        function refreshChangedMasterRealtimeSlices(changedMasterIds = new Set()) {
+            const dirtyIds = changedMasterIds instanceof Set
+                ? new Set(Array.from(changedMasterIds).map((value) => String(value || '').trim()).filter(Boolean))
+                : new Set();
+            const useFullRebuild = !dirtyIds.size || dirtyIds.size > 120;
+
+            if (useFullRebuild) {
+                fullInventory.forEach((item, idx) => {
+                    if (!item) return;
+                    if (!item.DOM_ID || String(item.DOM_ID).startsWith('fi_')) item.DOM_ID = 'fi_' + idx;
+                    normalizeRowPhotoFields(item);
+                    buildSearchIndex(item);
+                });
+                applyMasterAppTabAssignments(fullInventory);
+                rebuildMasterInventoryIndexes();
+                invalidateMasterDerivedInventories();
+                avOpenInventory = buildAvOpenInventoryFromMasterItems(fullInventory).map((sourceItem, idx) => {
+                    const nextItem = { ...sourceItem, DOM_ID: 'avo_' + (sourceItem.UNIQUE_ID || idx) };
+                    normalizeRowPhotoFields(nextItem);
+                    buildSearchIndex(nextItem);
+                    return nextItem;
+                });
+                return { linkedSyncIds: null, changedDatasetKeys: ['master', 'avOpen'] };
+            }
+
+            const affectedItemCodes = new Set();
+            const linkedSyncIds = new Set(dirtyIds);
+            fullInventory.forEach((item, idx) => {
+                if (!item) return;
+                const uid = String(item.UNIQUE_ID || '').trim();
+                if (!dirtyIds.has(uid)) return;
+                if (!item.DOM_ID || String(item.DOM_ID).startsWith('fi_')) item.DOM_ID = 'fi_' + idx;
+                normalizeRowPhotoFields(item);
+                buildSearchIndex(item);
+                const itemCode = String(item.ITEMCODE || '').trim().toUpperCase();
+                if (itemCode) affectedItemCodes.add(itemCode);
+            });
+
+            if (affectedItemCodes.size) {
+                fullInventory.forEach((item, idx) => {
+                    if (!item) return;
+                    const itemCode = String(item.ITEMCODE || '').trim().toUpperCase();
+                    if (!itemCode || !affectedItemCodes.has(itemCode)) return;
+                    const uid = String(item.UNIQUE_ID || '').trim();
+                    if (!uid) return;
+                    if (!item.DOM_ID || String(item.DOM_ID).startsWith('fi_')) item.DOM_ID = 'fi_' + idx;
+                    normalizeRowPhotoFields(item);
+                    buildSearchIndex(item);
+                    linkedSyncIds.add(uid);
+                });
+                applyMasterAppTabAssignmentsForItemCodes(fullInventory, Array.from(affectedItemCodes));
+            }
+
+            rebuildMasterInventoryIndexes();
+            invalidateMasterDerivedInventories();
+
+            const nextAvInventory = [];
+            (Array.isArray(avOpenInventory) ? avOpenInventory : []).forEach((item, idx) => {
+                const uid = String(item && item.UNIQUE_ID || '').trim();
+                if (!uid || dirtyIds.has(uid)) return;
+                if (!item.DOM_ID) item.DOM_ID = 'avo_' + (uid || idx);
+                normalizeRowPhotoFields(item);
+                buildSearchIndex(item);
+                nextAvInventory.push(item);
+            });
+            dirtyIds.forEach((uid) => {
+                const masterItem = uid ? findItemByUniqueId(uid) : null;
+                if (!masterItem) return;
+                const includeInAv = (parseFloat(String(firstNonEmptyValue(masterItem.S_LTS, '0')).replace(/,/g,'')) || 0) > 0 && !getMasterAvInvalidationReasons(masterItem).length;
+                if (!includeInAv) return;
+                const nextItem = { ...masterItem, DOM_ID: 'avo_' + uid };
+                normalizeRowPhotoFields(nextItem);
+                buildSearchIndex(nextItem);
+                nextAvInventory.push(nextItem);
+            });
+            avOpenInventory = nextAvInventory;
+            return { linkedSyncIds, changedDatasetKeys: ['master', 'avOpen'] };
+        }
+
         function flushRealtimeDatasetUpdates(changedTables = []) {
             const tableSet = new Set((changedTables || []).filter(Boolean));
             if (!tableSet.size) return false;
-            const syncPayload = {};
+            const dirtyIdsByTable = {};
+            tableSet.forEach((tableName) => {
+                dirtyIdsByTable[tableName] = consumeRealtimeDirtyRowIds(tableName);
+            });
+            const changedDatasetKeys = new Set();
+            const changedMasterIds = new Set(dirtyIdsByTable['v2_master_inventory'] || []);
+            touchRealtimeDatasetState(Array.from(tableSet));
+
             if (tableSet.has('v2_master_inventory')) {
-                syncPayload.data = fullInventory;
-                syncPayload.avOpenData = avOpenInventory;
+                const masterRefresh = refreshChangedMasterRealtimeSlices(changedMasterIds);
+                (masterRefresh.changedDatasetKeys || []).forEach((key) => changedDatasetKeys.add(key));
+                const linkedMasterIds = masterRefresh.linkedSyncIds;
+                if (requestsInventory.length) {
+                    syncRealtimeRequestRows(linkedMasterIds);
+                    changedDatasetKeys.add('requests');
+                }
+                if (socInventory.length) {
+                    syncRealtimeSocRows(linkedMasterIds);
+                    changedDatasetKeys.add('soc');
+                }
+                if (salesOfficeInventory.length) {
+                    syncRealtimeSalesOfficeRows(linkedMasterIds);
+                    changedDatasetKeys.add('salesOffice');
+                }
+                if (changedMasterIds.size) {
+                    const changedMasterItems = Array.from(changedMasterIds).map((uid) => findItemByUniqueId(uid)).filter(Boolean);
+                    const masterClearOps = collectMasterAvRuleClearOps(changedMasterItems);
+                    if (masterClearOps.length) persistMasterAvRuleClearOps(masterClearOps);
+                }
             }
-            if (tableSet.has('v2_active_request')) syncPayload.requestsData = requestsInventory;
-            if (tableSet.has('v2_reserves')) syncPayload.reservesData = reservesInventory;
-            if (tableSet.has('v2_soc_master')) syncPayload.socData = socInventory;
-            if (tableSet.has('v2_sales_office')) syncPayload.salesOfficeData = salesOfficeInventory;
-            if (tableSet.has('v2_cav')) syncPayload.cavData = cavInventory;
-            if (tableSet.has('v2_av_notes')) syncPayload.avNotesData = avNotesDb;
-            if (!Object.keys(syncPayload).length) return false;
-            processAndLoadData(syncPayload);
+            if (tableSet.has('v2_active_request') && !changedDatasetKeys.has('requests')) {
+                syncRealtimeRequestRows();
+                changedDatasetKeys.add('requests');
+            }
+            if (tableSet.has('v2_reserves')) {
+                syncRealtimeReserveRows();
+                changedDatasetKeys.add('reserves');
+            }
+            if (tableSet.has('v2_soc_master') && !changedDatasetKeys.has('soc')) {
+                syncRealtimeSocRows();
+                changedDatasetKeys.add('soc');
+            }
+            if (tableSet.has('v2_sales_office') && !changedDatasetKeys.has('salesOffice')) {
+                syncRealtimeSalesOfficeRows();
+                changedDatasetKeys.add('salesOffice');
+            }
+            if (tableSet.has('v2_cav')) {
+                syncRealtimeCavRows();
+                changedDatasetKeys.add('cav');
+            }
+            if (tableSet.has('v2_av_notes')) {
+                invalidateAvNotesCommonNameIndex();
+                changedDatasetKeys.add('avNotes');
+            }
+            const pendingEdits = getPendingEditsCache();
+            if (pendingEdits && Object.keys(pendingEdits).length) applyLocalEdits();
+            if (changedDatasetKeys.size) {
+                refreshAffectedViews(Array.from(changedDatasetKeys));
+                if (changedDatasetKeys.has('requests')) flushPendingRequestArchives().catch(() => {});
+            }
+            updateDashboardSyncSummary();
             return true;
         }
-
 
         function triggerRequestRealtimeUiRefresh(delay = 0) {
             updateFooterRequestBadge();
@@ -2132,6 +2391,7 @@
             }
 
             if (!changed) return false;
+            trackRealtimeDirtyRowId(tableName, uniqueId);
             if (tableName === 'v2_active_request') triggerRequestRealtimeUiRefresh(18);
             if (!deferVisualSync) flushRealtimeDatasetUpdates([tableName]);
             return true;
@@ -2198,6 +2458,7 @@
                 realtimeChangeTimer = null;
             }
             realtimeChangeQueue = [];
+            realtimeDirtyIdsByTable = new Map();
             if (fallbackSyncInterval) {
                 clearInterval(fallbackSyncInterval);
                 fallbackSyncInterval = null;
@@ -3255,7 +3516,7 @@
         const PENDING_EDITS_STORAGE_KEY = 'gnc_pending_edits';
         const PENDING_EDITS_PERSIST_DEBOUNCE_MS = 400;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Maschino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'V2026.04.11.09';
+        const APP_VERSION = 'V2026.04.12.02';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -5884,7 +6145,7 @@ function toggleDriveQuickRequestItem(domId) {
             return normalizeSearchValue(value).split(/[^a-z0-9]+/).filter(Boolean);
         }
         const SEARCH_PROFILES = {
-            drive_name: (item) => [item.COMMONNAME, item.ITEMCODE, item.CONTSIZE, item.LOTCODE],
+            drive_name: (item) => [item.COMMONNAME],
             drive_card: (item) => [item.COMMONNAME, item.LOCATIONCODE, item.ITEMCODE, item.CONTSIZE, item.LOTCODE],
             drive_loc: (item) => [item.LOCATIONCODE, item.COMMONNAME, item.ITEMCODE, item.CONTSIZE, item.LOTCODE],
             av_open: (item) => [item.COMMONNAME, item.LOCATIONCODE, item.ITEMCODE, item.CONTSIZE, item.LOTCODE],
@@ -5893,6 +6154,7 @@ function toggleDriveQuickRequestItem(domId) {
             reserves: (item) => [item.COMMONNAME, item.CUSTOMERNAME, item.CONSIGNEENAME, item.SALESREPNAME || item.SALESREPID, item.ITEMCODE, item.CONTSIZE, item.LOCATIONCODE],
             colorwalk: (item) => [item.COMMONNAME, item.LOCATIONCODE, item.ITEMCODE, item.CONTSIZE, item.LOTCODE, item.PRIORITY]
         };
+        const STRICT_PREFIX_SEARCH_PROFILES = new Set(['drive_name']);
         function buildSearchIndex(item) {
             if (!item) return item;
             const primaryFields = [
@@ -5958,6 +6220,11 @@ function toggleDriveQuickRequestItem(domId) {
             if (!terms.length) return true;
             const searchValues = getSearchValuesForProfile(item, profileName);
             if (!searchValues.length) return false;
+            if (STRICT_PREFIX_SEARCH_PROFILES.has(profileName)) {
+                const primaryValue = String(searchValues[0] || '').trim();
+                if (!primaryValue) return false;
+                return terms.every((term) => primaryValue.startsWith(term));
+            }
             const wordStarts = getSearchWordStartsForProfile(item, profileName);
             const fieldStartsWith = (term) => searchValues.some(value => value.startsWith(term));
             const wordStartsWith = (term) => wordStarts.some(word => word.startsWith(term));
@@ -5974,13 +6241,17 @@ function toggleDriveQuickRequestItem(domId) {
         function scheduleSearchRender(key, renderFn) {
             if (searchRenderTimer[key]) clearTimeout(searchRenderTimer[key]);
             if (searchRenderFrame[key]) cancelAnimationFrame(searchRenderFrame[key]);
+            const touchOptimized = isIOSDevice() || isStandaloneApp() || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+            const debounceDelay = key === 'drive-search'
+                ? (touchOptimized ? 84 : 56)
+                : (touchOptimized ? 48 : 24);
             searchRenderTimer[key] = setTimeout(() => {
                 delete searchRenderTimer[key];
                 searchRenderFrame[key] = requestAnimationFrame(() => {
                     delete searchRenderFrame[key];
                     renderFn();
                 });
-            }, 16);
+            }, debounceDelay);
         }
         function getProtectedEditConfig(prefix) {
             return PROTECTED_EDIT_CONFIG[prefix] || null;
@@ -6814,6 +7085,54 @@ function toggleDriveQuickRequestItem(domId) {
                     else r.APP_TAB_ASSIGNMENT = 'location';
                 });
             }
+        }
+
+        function applyMasterAppTabAssignmentsForItemCodes(items = [], itemCodes = []) {
+            const normalizedCodes = new Set((Array.isArray(itemCodes) ? itemCodes : []).map((value) => String(value || '').trim().toUpperCase()).filter(Boolean));
+            if (!normalizedCodes.size) return;
+            let icGroups = {};
+            items.forEach((item) => {
+                if (!item) return;
+                let ic = String(item.ITEMCODE || 'UNKNOWN').trim().toUpperCase();
+                if (!ic || !normalizedCodes.has(ic)) return;
+                let eStr = String(item.END_CAP_FOLDER || '').toUpperCase().trim();
+                let hasEndCap = (eStr !== '' && eStr !== 'NULL' && eStr !== 'N/A' && eStr !== '-');
+                if (hasEndCap) {
+                    item.APP_TAB_ASSIGNMENT = 'endcap';
+                    return;
+                }
+                let prio = String(item.PRIORITY || '').toUpperCase().trim();
+                if (prio && prio !== 'NULL' && prio !== 'N/A' && prio !== '-') {
+                    if (!icGroups[ic]) icGroups[ic] = [];
+                    icGroups[ic].push(item);
+                } else {
+                    item.APP_TAB_ASSIGNMENT = 'location';
+                }
+            });
+
+            normalizedCodes.forEach((ic) => {
+                let rows = icGroups[ic] || [];
+                if (!rows.length) return;
+                let eligible = rows.filter(r => {
+                    let ptr = parseFloat(String(r.PTRAVAILABLE).replace(/,/g,'')) || 0;
+                    let ss = parseFloat(String(r.SEASONSUPPLY || r.SEASON_SUPPLY).replace(/,/g,'')) || 0;
+                    return ptr > (0.10 * ss);
+                });
+                let pool = eligible.length > 0 ? eligible : rows;
+                pool.sort((a,b) => {
+                    let pa = parseFloat(a.PRIORITY); if (isNaN(pa)) pa = 999;
+                    let pb = parseFloat(b.PRIORITY); if (isNaN(pb)) pb = 999;
+                    if (pa !== pb) return pa - pb;
+                    let ptra = parseFloat(String(a.PTRAVAILABLE).replace(/,/g,'')) || 0;
+                    let ptrb = parseFloat(String(b.PTRAVAILABLE).replace(/,/g,'')) || 0;
+                    return ptrb - ptra;
+                });
+                let winner = pool[0];
+                rows.forEach(r => {
+                    if (r.UNIQUE_ID === winner.UNIQUE_ID) r.APP_TAB_ASSIGNMENT = 'season';
+                    else r.APP_TAB_ASSIGNMENT = 'location';
+                });
+            });
         }
 
         function buildAvOpenInventoryFromMasterItems(items = []) {
@@ -13800,24 +14119,43 @@ ${folderNote ? `Folder Note: ${folderNote}
 
             if (activeDriveTab === 'name') {
                 if (driveViewLevel === 0) {
-                    crumb.innerText = `${driveModeLabel} > Select Plant (${searchFilteredItems.length} items)`;
+                    const crumbText = `${driveModeLabel} > Select Plant (${searchFilteredItems.length} items)`;
                     const names = [...new Set(searchFilteredItems.map(i => i.COMMONNAME))].sort();
-                    container.innerHTML = names.map(n => `<div class="drill-item" onclick="selectDriveName('${esc(n)}')"><span class="font-bold text-lg">${n}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
+                    const renderNameRow = (name) => `<div class="drill-item" onclick="selectDriveName('${esc(name)}')"><span class="font-bold text-lg">${name}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
+                    if (shouldUseChunkedCardRender(names.length, 120, 220)) {
+                        renderMarkupChunkedByKey('drive-name-list', container, crumb, names, crumbText, renderNameRow, { approxCardHeight: 70 });
+                        return;
+                    }
+                    crumb.innerText = crumbText;
+                    container.innerHTML = names.map(renderNameRow).join('');
                 } else if (driveViewLevel === 1) {
-                    crumb.innerText = `${driveModeLabel} > ${selectedDriveName}`;
+                    const crumbText = `${driveModeLabel} > ${selectedDriveName}`;
                     const namedItems = searchFilteredItems.filter(i => i.COMMONNAME === selectedDriveName);
                     if (namedItems.length === 0) { container.innerHTML = `<div class="p-8 text-center text-gray-400">No items found.</div>`; return; }
-                    const sizes = [...new Set(namedItems.map(i => i.CONTSIZE))].sort();
-                    let html = `<div class="back-btn" onclick="backToDriveNames()"><i class="ph-bold ph-arrow-left"></i> Back to Names</div><div class="font-bold text-[#007a4d] mb-4 px-2 text-xl border-b pb-2">${selectedDriveName}</div>`;
-                    html += sizes.map(s => {
-                        const count = namedItems.filter(i => i.CONTSIZE === s).length;
-                        return `<div class="drill-item" onclick="selectDriveSize('${esc(s)}')"><span class="font-bold text-lg">${s} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
-                    }).join('');
-                    container.innerHTML = html;
+                    const sizeCounts = new Map();
+                    namedItems.forEach((item) => {
+                        const key = String(item.CONTSIZE || '-');
+                        sizeCounts.set(key, (sizeCounts.get(key) || 0) + 1);
+                    });
+                    const sizes = [...sizeCounts.keys()].sort();
+                    const prefixHtml = `<div class="back-btn" onclick="backToDriveNames()"><i class="ph-bold ph-arrow-left"></i> Back to Names</div><div class="font-bold text-[#007a4d] mb-4 px-2 text-xl border-b pb-2">${selectedDriveName}</div>`;
+                    const renderSizeRow = (size) => `<div class="drill-item" onclick="selectDriveSize('${esc(size)}')"><span class="font-bold text-lg">${size} <span class="text-gray-400 text-sm font-normal">(${sizeCounts.get(size) || 0})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
+                    if (shouldUseChunkedCardRender(sizes.length, 120, 220)) {
+                        renderMarkupChunkedByKey('drive-name-size-list', container, crumb, sizes, crumbText, renderSizeRow, { approxCardHeight: 72, prefixHtml });
+                        return;
+                    }
+                    crumb.innerText = crumbText;
+                    container.innerHTML = prefixHtml + sizes.map(renderSizeRow).join('');
                 } else if (driveViewLevel === 2) {
-                    crumb.innerText = `${driveModeLabel} > ${selectedDriveName} / ${selectedDriveSize}`;
-                    let finalItems = searchFilteredItems.filter(i => i.COMMONNAME === selectedDriveName && i.CONTSIZE === selectedDriveSize);
-                    container.innerHTML = `<div class="back-btn" onclick="backToDriveSizes()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>` + sortDriveCardItems(finalItems).map(i => generateCard(i, 'drive', 'status-blue')).join('');
+                    const crumbText = `${driveModeLabel} > ${selectedDriveName} / ${selectedDriveSize}`;
+                    let finalItems = sortDriveCardItems(searchFilteredItems.filter(i => i.COMMONNAME === selectedDriveName && i.CONTSIZE === selectedDriveSize));
+                    const prefixHtml = `<div class="back-btn" onclick="backToDriveSizes()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>`;
+                    if (shouldUseChunkedCardRender(finalItems.length, 80, 160)) {
+                        renderMarkupChunkedByKey('drive-name-card-list', container, crumb, finalItems, crumbText, (item) => generateCard(item, 'drive', 'status-blue'), { approxCardHeight: 310, prefixHtml });
+                        return;
+                    }
+                    crumb.innerText = crumbText;
+                    container.innerHTML = prefixHtml + finalItems.map(i => generateCard(i, 'drive', 'status-blue')).join('');
                 }
             } else if (activeDriveTab === 'loc') {
                 if (driveViewLevel === 0) {
@@ -13833,24 +14171,37 @@ ${folderNote ? `Folder Note: ${folderNote}
                     let html = Object.keys(blocks).sort().map(b => `<div class="bg-white border border-green-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectDriveBlock('${esc(b)}')"><div class="flex items-center gap-3"><div class="bg-green-100 text-[#007a4d] px-3 py-1.5 rounded-lg font-black text-lg">${b}</div><span class="font-bold text-lg text-gray-700">Block ${b}</span></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${blocks[b].count} Items</span></div>`).join('');
                     container.innerHTML = html;
                 } else if (driveViewLevel === 1) {
-                    crumb.innerText = `${driveModeLabel} > Block ${selectedDriveBlock}`;
+                    const crumbText = `${driveModeLabel} > Block ${selectedDriveBlock}`;
                     let bItems = searchFilteredItems.filter(i => {
                         let loc = String(i.LOCATIONCODE || 'NoLoc').trim();
                         let alpha = loc.charAt(0).toUpperCase();
                         if (!/[A-Z]/.test(alpha)) alpha = 'Other';
                         return alpha === selectedDriveBlock;
                     });
-                    let locs = [...new Set(bItems.map(i => i.LOCATIONCODE || 'NoLoc'))].sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true }));
-                    let html = `<div class="back-btn" onclick="backToDriveBlocks()"><i class="ph-bold ph-arrow-left"></i> Back to Blocks</div>`;
-                    html += locs.map(l => {
-                        let count = bItems.filter(i => (i.LOCATIONCODE || 'NoLoc') === l).length;
-                        return `<div class="drill-item" onclick="selectDriveLoc('${esc(l)}')"><span class="font-bold text-lg text-gray-800">${l} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
-                    }).join('');
-                    container.innerHTML = html;
+                    const locCounts = new Map();
+                    bItems.forEach((item) => {
+                        const key = String(item.LOCATIONCODE || 'NoLoc');
+                        locCounts.set(key, (locCounts.get(key) || 0) + 1);
+                    });
+                    let locs = [...locCounts.keys()].sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true }));
+                    const prefixHtml = `<div class="back-btn" onclick="backToDriveBlocks()"><i class="ph-bold ph-arrow-left"></i> Back to Blocks</div>`;
+                    const renderLocRow = (loc) => `<div class="drill-item" onclick="selectDriveLoc('${esc(loc)}')"><span class="font-bold text-lg text-gray-800">${loc} <span class="text-gray-400 text-sm font-normal">(${locCounts.get(loc) || 0})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
+                    if (shouldUseChunkedCardRender(locs.length, 120, 220)) {
+                        renderMarkupChunkedByKey('drive-loc-list', container, crumb, locs, crumbText, renderLocRow, { approxCardHeight: 72, prefixHtml });
+                        return;
+                    }
+                    crumb.innerText = crumbText;
+                    container.innerHTML = prefixHtml + locs.map(renderLocRow).join('');
                 } else if (driveViewLevel === 2) {
-                    crumb.innerText = `${driveModeLabel} > Block ${selectedDriveBlock} / Loc ${selectedDriveLoc}`;
-                    let finalItems = searchFilteredItems.filter(i => (i.LOCATIONCODE || 'NoLoc') === selectedDriveLoc);
-                    container.innerHTML = `<div class="back-btn" onclick="backToDriveLocations()"><i class="ph-bold ph-arrow-left"></i> Back to Locations</div>` + sortDriveCardItems(finalItems).map(i => generateCard(i, 'drive', 'status-blue')).join('');
+                    const crumbText = `${driveModeLabel} > Block ${selectedDriveBlock} / Loc ${selectedDriveLoc}`;
+                    let finalItems = sortDriveCardItems(searchFilteredItems.filter(i => (i.LOCATIONCODE || 'NoLoc') === selectedDriveLoc));
+                    const prefixHtml = `<div class="back-btn" onclick="backToDriveLocations()"><i class="ph-bold ph-arrow-left"></i> Back to Locations</div>`;
+                    if (shouldUseChunkedCardRender(finalItems.length, 80, 160)) {
+                        renderMarkupChunkedByKey('drive-loc-card-list', container, crumb, finalItems, crumbText, (item) => generateCard(item, 'drive', 'status-blue'), { approxCardHeight: 310, prefixHtml });
+                        return;
+                    }
+                    crumb.innerText = crumbText;
+                    container.innerHTML = prefixHtml + finalItems.map(i => generateCard(i, 'drive', 'status-blue')).join('');
                 }
             }
         }
