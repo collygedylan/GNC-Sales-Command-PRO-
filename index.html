@@ -445,7 +445,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-                            <div id="header-version" class="nav-version-pill">V2026.04.12.07</div>
+                            <div id="header-version" class="nav-version-pill">V2026.04.12.08</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -3571,7 +3571,7 @@
         const PENDING_EDITS_STORAGE_KEY = 'gnc_pending_edits';
         const PENDING_EDITS_PERSIST_DEBOUNCE_MS = 400;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Maschino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'V2026.04.12.07';
+        const APP_VERSION = 'V2026.04.12.08';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -9685,7 +9685,7 @@ activeDriveTab = tab;
             const emptyHtml = options.emptyHtml || `<div class="p-8 text-center text-gray-400">No rows found.</div>`;
             const prefixHtml = String(options.prefixHtml || '');
             const onComplete = typeof options.onComplete === 'function' ? options.onComplete : null;
-            const reserveSpace = !!options.reserveSpace;
+            const reserveSpace = options.reserveSpace !== false;
             const reserveOffset = Number(options.reserveOffset) || 0;
             const chunkSize = touchOptimized
                 ? (total > 1800 ? 48 : (total > 900 ? 56 : 64))
@@ -9771,7 +9771,10 @@ activeDriveTab = tab;
             const frameBudgetMs = touchOptimized ? 10 : 7;
             let index = 0;
             crumb.innerText = crumbText;
+            const reserveHeight = Math.max(0, Math.round(total * approxCardHeight));
+            container.style.minHeight = reserveHeight ? `${reserveHeight}px` : '';
             if (!total) {
+                container.style.minHeight = '';
                 container.innerHTML = `<div class="p-6 text-center text-gray-400">No rows found.</div>`;
                 return;
             }
@@ -9793,8 +9796,10 @@ activeDriveTab = tab;
                 const html = renderBatch(perFrameLimit, true);
                 if (html) container.insertAdjacentHTML('beforeend', html);
                 if (index < total) requestAnimationFrame(renderNextChunk);
+                else container.style.minHeight = '';
             };
             if (index < total) requestAnimationFrame(renderNextChunk);
+            else container.style.minHeight = '';
         }
 
         function renderAVMarkupChunked(container, crumb, rows, crumbText, renderRow, options = {}) {
@@ -9815,7 +9820,10 @@ activeDriveTab = tab;
             const frameBudgetMs = touchOptimized ? 10 : 7;
             let index = 0;
             crumb.innerText = crumbText;
+            const reserveHeight = Math.max(0, Math.round(total * approxCardHeight));
+            container.style.minHeight = reserveHeight ? `${reserveHeight}px` : '';
             if (!total) {
+                container.style.minHeight = '';
                 container.innerHTML = emptyHtml;
                 return;
             }
@@ -9837,8 +9845,10 @@ activeDriveTab = tab;
                 const html = renderBatch(perFrameLimit, true);
                 if (html) container.insertAdjacentHTML('beforeend', html);
                 if (index < total) requestAnimationFrame(renderNextChunk);
+                else container.style.minHeight = '';
             };
             if (index < total) requestAnimationFrame(renderNextChunk);
+            else container.style.minHeight = '';
         }
 
         function renderAV() {
