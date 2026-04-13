@@ -36,7 +36,7 @@
   const PDF_PAGE_WIDTH = 612;
   const PDF_PAGE_HEIGHT = 792;
   const BUILDER_STATE_STORAGE_KEY = 'gnc_native_flyer_builder_state_v5';
-  const RENDER_DEBOUNCE_MS = 16;
+  const RENDER_DEBOUNCE_MS = 28;
   const IDLE_RENDER_TIMEOUT_MS = 120;
   const PASSIVE_EVENT_OPTIONS = { passive: true };
   const HAPTIC_FEEDBACK_SELECTORS = 'button,[role="button"],input,select,textarea,.npf-photo-option';
