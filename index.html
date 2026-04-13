@@ -939,8 +939,8 @@
         const CACHE_PERSIST_ACTIVE_INTERACTION_GRACE_MS = 12000;
         const CACHE_PERSIST_IDLE_TIMEOUT_MS = 2500;
         const PHOTO_MAX_WIDTH = 560;
-        const PHOTO_JPEG_QUALITY = 0.52;
-        const PHOTO_FIELD_PERSIST_DEBOUNCE_MS = 260;
+        const PHOTO_JPEG_QUALITY = 0.85;
+        const PHOTO_FIELD_PERSIST_DEBOUNCE_MS = 100;
         const INTERACTION_REFRESH_DEFER_MS = 420;
         let pendingPhotoUploads = new Map();
         let pendingPhotoPreviews = new Map();
@@ -15307,6 +15307,7 @@ function toggleDriveSeason(s) {
             if (isCurrentView && isComplete && btnComp) btnComp.innerText = 'SAVING...';
 
             const executeSave = () => {
+                clearScheduledPhotoFieldPersist(itemToSave, prefix);
                 if (prefix === 'req-') {
                     const requestSourceRow = findRequestRowByUniqueId(itemToSave.UNIQUE_ID)
                         || findRequestRowByUniqueId(firstNonEmptyValue(itemToSave.MASTER_ID, itemToSave.MASTER_UNIQUE_ID, itemToSave.master_id, ''));
@@ -15694,7 +15695,7 @@ function toggleDriveSeason(s) {
                 const restoreFromFailedSave = (message) => {
                     itemToSave.DATE_COMPLETED = previousDateCompleted;
                     itemToSave.REQ_STATUS = previousReqStatus;
-                    if (isCurrentView && isComplete && btnComp) btnComp.innerText = 'MARK DONE';
+                    if (isComplete && btnComp) btnComp.innerText = 'MARK DONE';
                     if (didOptimisticClose) reRenderCurrentView();
                     if (!isSilentAutoSave) showToast('Network Error', message || 'Could not reach database.', true);
                 };
@@ -15780,7 +15781,7 @@ function toggleDriveSeason(s) {
                         if (isLagSensitiveDetailPrefix(prefix)) scheduleUiRender(`detail-media-${prefix}-${itemToSave.UNIQUE_ID}`, refreshDetailMedia, 24);
                         else refreshDetailMedia();
                     }
-                    if (isCurrentView && isComplete && btnComp) btnComp.innerText = 'MARK DONE';
+                    if (isComplete && btnComp) btnComp.innerText = 'MARK DONE';
                     if (!isSilentAutoSave && isCurrentView && isComplete && !didImmediateCleanup) showToast('Success', 'Task Completed!');
                     if (isComplete && !didOptimisticClose && !didImmediateCleanup) {
                         itemToSave.DATE_COMPLETED = payload.date_completed;
@@ -16164,7 +16165,6 @@ function toggleDriveSeason(s) {
     </script>
 </body>
 </html>
-
 
 
 
