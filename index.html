@@ -11711,6 +11711,11 @@ activeDriveTab = tab;
             return consignee && consignee !== customer ? `${customer}-${consignee}` : customer;
         }
 
+        function getRequestResponseFolderName(item) {
+            const repName = String(getRequestAssignedRep(item) || '').trim() || 'Unknown Rep';
+            return repName.replace(/[\\/:*?"<>|]/g, '-').replace(/\s+/g, ' ').trim() || 'Unknown Rep';
+        }
+
         function openRequestRepView(repName) {
             selectedReqRepView = String(repName || '').trim() || 'Unknown Rep';
             selectedReqStatus = 'Pending';
@@ -15291,7 +15296,7 @@ function toggleDriveSeason(s) {
 
         let autoSaveTimer = null;
 
-        function saveData(isComplete = false, prefix, isSilentAutoSave = false, specificItem = null, options = {}) {
+        async function saveData(isComplete = false, prefix, isSilentAutoSave = false, specificItem = null, options = {}) {
             if (autoSaveTimer) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
             let itemToSave = specificItem || activeItem;
             if (!itemToSave) return;
@@ -15306,7 +15311,7 @@ function toggleDriveSeason(s) {
 
             if (isCurrentView && isComplete && btnComp) btnComp.innerText = 'SAVING...';
 
-            const executeSave = () => {
+            const executeSave = async () => {
                 clearScheduledPhotoFieldPersist(itemToSave, prefix);
                 if (prefix === 'req-') {
                     const requestSourceRow = findRequestRowByUniqueId(itemToSave.UNIQUE_ID)
@@ -15430,7 +15435,7 @@ function toggleDriveSeason(s) {
                     const requestSeason = String(firstNonEmptyValue(itemToSave.SEASON, requestMasterItem ? requestMasterItem.SEASON : '')).toUpperCase();
                     const effectivePlantGroup = firstNonEmptyValue(itemToSave.PLANTGROUPCODE, requestMasterItem ? requestMasterItem.PLANTGROUPCODE : '');
                     const effectiveContSize = firstNonEmptyValue(itemToSave.CONTSIZE, requestMasterItem ? requestMasterItem.CONTSIZE : '');
-                    qualifiesForOpenStockView = isAvEligibleRequest && ltsValue > 0 && !requestSeason.includes('Y') && !requestSeason.includes('Z');
+                    qualifiesForOpenStockView = ltsValue > 0;
                     const needsCaliper = effectivePlantGroup && String(effectivePlantGroup).includes('330_TREES') && ['#7','#10','#15','#25','#45'].includes(effectiveContSize);
                     if (isComplete && isAvEligibleRequest) {
                         const reusableRequestData = getRequestReusableData(itemToSave);
@@ -15488,7 +15493,9 @@ function toggleDriveSeason(s) {
                         if (needsCaliper && !effectiveCaliper) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required','Caliper is required for this request.',true); return; }
                     }
                     const persistedRequestRep = String(itemToSave.REQUESTED_BY || getDefaultRequestRepName() || currentUserDisplay || currentUser || '').trim() || 'Unknown Rep';
-                    const persistedRequestFolder = String(itemToSave.REQUEST_FOLDER || '').trim() || 'Unassigned';
+                    const persistedRequestFolder = isComplete
+                        ? getRequestResponseFolderName(itemToSave)
+                        : (String(itemToSave.REQUEST_FOLDER || '').trim() || 'Unassigned');
                     const persistedRequestCustomer = String(itemToSave.REQ_CUSTOMER || getRequestDisplayCustomer(itemToSave) || '').trim() || 'Unknown Customer';
                     itemToSave.REQUESTED_BY = persistedRequestRep;
                     itemToSave.REQUEST_FOLDER = persistedRequestFolder;
@@ -15658,7 +15665,7 @@ function toggleDriveSeason(s) {
                         normalizeRowPhotoFields(artifacts.cloneSO);
                     }
 
-                    if (prefix === 'req-' && isAvEligibleRequest) {
+                    if (prefix === 'req-' && qualifiesForOpenStockView) {
                         artifacts.masterSyncId = requestMasterId || itemToSave.MASTER_ID || itemToSave.MASTER_UNIQUE_ID || itemToSave.master_id;
                         artifacts.masterSyncItem = requestMasterItem || findItemByUniqueId(artifacts.masterSyncId);
                         if (artifacts.masterSyncId) {
@@ -15805,19 +15812,20 @@ function toggleDriveSeason(s) {
                     }
                 };
 
-                const persistSave = () => {
+                const persistSave = async () => {
                     if (navigator.onLine === false) {
                         restoreFromFailedSave('No service. Could not reach Supabase.');
                         return;
                     }
                     applyPhotoFieldsToPayload();
-                    supabaseFetch(targetTable, 'PATCH', payload, `unique_id=eq.${encodeURIComponent(itemToSave.UNIQUE_ID)}`)
-                        .then(() => {
-                            const finalizeSave = () => handleSaveSuccess(buildCompletionArtifacts());
-                            if (isLagSensitiveDetailPrefix(prefix)) setTimeout(finalizeSave, 0);
-                            else finalizeSave();
-                        })
-                        .catch((err) => { restoreFromFailedSave(err && err.message ? err.message : 'Could not reach database.'); });
+                    try {
+                        await supabaseFetch(targetTable, 'PATCH', payload, `unique_id=eq.${encodeURIComponent(itemToSave.UNIQUE_ID)}`);
+                        const finalizeSave = () => handleSaveSuccess(buildCompletionArtifacts());
+                        if (isLagSensitiveDetailPrefix(prefix)) setTimeout(finalizeSave, 0);
+                        else finalizeSave();
+                    } catch (err) {
+                        restoreFromFailedSave(err && err.message ? err.message : 'Could not reach database.');
+                    }
                 };
 
                 if (prefix === 'req-' && isComplete) {
@@ -15836,19 +15844,30 @@ function toggleDriveSeason(s) {
 
                 if (pendingUploads.length > 0) {
                     if (!isSilentAutoSave) showToast('Saving', 'Photo upload is still finishing in the background. The row will update automatically when it lands.', false);
-                    persistSave();
+                    await persistSave();
                     return;
                 }
 
-                persistSave();
+                await persistSave();
             };
 
-            const runSaveNow = () => {
-                if (isLagSensitiveDetailPrefix(prefix)) requestAnimationFrame(() => executeSave());
-                else executeSave();
+            const handleUnexpectedSaveError = (error) => {
+                if (isComplete && btnComp) btnComp.innerText = 'MARK DONE';
+                if (!isSilentAutoSave) showToast('Error', error && error.message ? error.message : 'Could not save this row.', true);
             };
 
-            runSaveNow();
+            const runSaveNow = async () => {
+                if (isLagSensitiveDetailPrefix(prefix)) {
+                    await new Promise((resolve) => requestAnimationFrame(resolve));
+                }
+                await executeSave();
+            };
+
+            try {
+                await runSaveNow();
+            } catch (error) {
+                handleUnexpectedSaveError(error);
+            }
         }
 
         function getPendingEditsCache() {
@@ -16165,7 +16184,4 @@ function toggleDriveSeason(s) {
     </script>
 </body>
 </html>
-
-
-
 
