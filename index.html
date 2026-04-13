@@ -11850,28 +11850,9 @@ activeDriveTab = tab;
         }
 
         function getCurrentRequestDetailItems() {
-            let items = getScopedRequestItems(requestsInventory);            if (activeReqTab === 'pending') {
-                const crumbText = "All Pending Requests";
-                let pendingItems = items.filter(i => !isRequestComplete(i) && !i.REQ_ARCHIVED);
-
-                if (pendingItems.length === 0) {
-                    container.innerHTML = `<div class="p-8 text-center text-gray-400">No pending requests.</div>`;
-                    crumb.innerText = crumbText;
-                    return;
-                }
-
-                pendingItems.sort((a,b) => String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""), undefined, {numeric: true}));
-                if (shouldUseChunkedCardRender(pendingItems.length, 70, 140)) {
-                    renderMarkupChunkedByKey('request-main', container, crumb, pendingItems, crumbText, (item) => generateCard(item, 'request', 'status-purple'), {
-                        approxCardHeight: 360,
-                        onComplete: decorateRequestRows
-                    });
-                    return;
-                }
-                crumb.innerText = crumbText;
-                container.innerHTML = pendingItems.map(i => generateCard(i, 'request', 'status-purple')).join('');
-                requestAnimationFrame(decorateRequestRows);
-
+            let items = getScopedRequestItems(requestsInventory);
+            if (activeReqTab === 'pending') {
+                items = items.filter(i => !isRequestComplete(i) && !i.REQ_ARCHIVED);
             } else if (activeReqTab === 'reps') {
                 items = items.filter(i => getRequestAssignedRep(i) === selectedReqRepView && !i.REQ_ARCHIVED);
                 if (selectedReqStatus) {
@@ -12080,7 +12061,10 @@ activeDriveTab = tab;
             const canSeeRequests = !!(roleAccess.allowedViews && typeof roleAccess.allowedViews.has === 'function' && (roleAccess.allowedViews.has('request') || roleAccess.allowedViews.has('reports')));
             const requestState = getDatasetState('requests');
             const requestDatasetReady = !!((requestState && (requestState.initialLoaded || requestState.fullLoaded)) || (Array.isArray(requestsInventory) && requestsInventory.length));
-            return !!(currentUser && canSeeRequests && requestDatasetReady && navigator.onLine !== false && !document.hidden && !isRealtimeTableHealthy('v2_active_request'));
+            const isRequestContextVisible = isViewVisible('request')
+                || isViewVisible('reports')
+                || (isViewVisible('detail') && lastView === 'request');
+            return !!(currentUser && canSeeRequests && requestDatasetReady && isRequestContextVisible && navigator.onLine !== false && !document.hidden && !isRealtimeTableHealthy('v2_active_request'));
         }
 
         function getRequestViewLiveSyncInterval() {
@@ -15414,6 +15398,7 @@ function toggleDriveSeason(s) {
                 const nextRequestId = (prefix === 'req-' && isComplete && isCurrentView && detailWasVisible && lastView === 'request') ? getNextRequestDetailId(itemToSave.UNIQUE_ID) : null;
                 const nextTaskId = (isComplete && isCurrentView && detailWasVisible && lastView === 'tasks') ? getNextTaskDetailId(itemToSave.UNIQUE_ID) : null;
                 let didOptimisticClose = false;
+                let didOptimisticRender = false;
                 const saveOptions = options || {};
                 const trackedStateBeforeSave = captureTrackedAvState(itemToSave);
 
@@ -15875,7 +15860,7 @@ function toggleDriveSeason(s) {
                     }
                     if (isComplete && btnComp) btnComp.innerText = 'MARK DONE';
                     if (!isSilentAutoSave && isCurrentView && isComplete && !didImmediateCleanup) showToast('Success', 'Task Completed!');
-                    if (isComplete && !didOptimisticClose && !didImmediateCleanup) {
+                    if (isComplete && !didOptimisticClose && !didOptimisticRender && !didImmediateCleanup) {
                         itemToSave.DATE_COMPLETED = payload.date_completed;
                         if (isCurrentView && detailWasVisible) goBackFromDetail();
                         reRenderCurrentView();
@@ -15923,8 +15908,13 @@ function toggleDriveSeason(s) {
                         didOptimisticClose = true;
                         goBackFromDetail();
                     }
-                    if (isLagSensitiveDetailPrefix(prefix)) scheduleUiRender(`detail-complete-${itemToSave.UNIQUE_ID}`, () => reRenderCurrentView(), 24);
-                    else reRenderCurrentView();
+                    if (isLagSensitiveDetailPrefix(prefix)) {
+                        didOptimisticRender = true;
+                        scheduleUiRender(`detail-complete-${itemToSave.UNIQUE_ID}`, () => reRenderCurrentView(), 24);
+                    } else {
+                        didOptimisticRender = true;
+                        reRenderCurrentView();
+                    }
                 }
 
                 if (pendingUploads.length > 0) {
