@@ -15634,9 +15634,9 @@ function toggleDriveSeason(s) {
                             completed_at: payload.date_completed
                         };
                         if (isRequestCompletion) {
-                            const requestFolder = String(firstNonEmptyValue(itemToSave.REQUEST_FOLDER, '') || '').trim();
-                            const requestCustomer = String(firstNonEmptyValue(itemToSave.REQ_CUSTOMER, getRequestDisplayCustomer(itemToSave), '') || '').trim();
-                            const requestRep = String(firstNonEmptyValue(itemToSave.REQUESTED_BY, currentUserDisplay, currentUser, '') || '').trim();
+                            const requestFolder = String(itemToSave.REQUEST_FOLDER || '').trim();
+                            const requestCustomer = String(firstNonEmptyValue(itemToSave.REQ_CUSTOMER, getRequestDisplayCustomer(itemToSave), '')).trim();
+                            const requestRep = String(firstNonEmptyValue(itemToSave.REQUESTED_BY, currentUserDisplay, currentUser, '')).trim();
                             artifacts.soPayload.so_source = 'bloom_picker';
                             artifacts.soPayload.order_folder = requestFolder;
                             artifacts.soPayload.order_number = requestFolder;
@@ -15644,7 +15644,7 @@ function toggleDriveSeason(s) {
                             artifacts.soPayload.order_status = 'Pending Review';
                             artifacts.soPayload.order_submitted_by = requestRep;
                             artifacts.soPayload.order_submitted_at = payload.date_completed;
-                            artifacts.soPayload.order_qty = String(firstNonEmptyValue(itemToSave.REQ_QTY, '')).trim();
+                            artifacts.soPayload.order_qty = String(itemToSave.REQ_QTY || '').trim();
                             artifacts.soPayload.order_reserve = String(firstNonEmptyValue(itemToSave.REQ_RESERVE, 'NO')).trim() || 'NO';
                             artifacts.soPayload.salesrepname = requestRep;
                             artifacts.soPayload.salesrep = requestRep;
@@ -16169,5 +16169,4 @@ function toggleDriveSeason(s) {
     </script>
 </body>
 </html>
-
 
