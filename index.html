@@ -5129,10 +5129,10 @@ return false;
 
         function getDriveLocationSearchValues(item) {
             return [
-                item && item.LOCATIONCODE,
-                item && item.LOCATIONNAME,
-                item && item.LOCATION,
-                item && item.BLOCK
+                item?.LOCATIONCODE,
+                item?.LOCATIONNAME,
+                item?.LOCATION,
+                item?.BLOCK
             ].map(normalizeSearchValue).filter(Boolean);
         }
 
@@ -12192,6 +12192,7 @@ activeDriveTab = tab;
             }
         }
 
+        const REQUEST_ROW_REMOVAL_ANIMATION_MS = 220;
         let requestSwipeState = { row: null, surface: null, startX: 0, startY: 0, deltaX: 0, startOffset: 0, dragging: false };
         let flyerSwipeState = { row: null, surface: null, startX: 0, startY: 0, deltaX: 0, startOffset: 0, dragging: false };
         let pullRefreshState = { active: false, armed: false, refreshing: false, startX: 0, startY: 0, distance: 0 };
@@ -12647,7 +12648,7 @@ activeDriveTab = tab;
             setTimeout(() => {
                 if (row && row.parentElement) row.parentElement.removeChild(row);
                 finish();
-            }, 220);
+            }, REQUEST_ROW_REMOVAL_ANIMATION_MS);
             return true;
         }
 
