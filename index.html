@@ -961,6 +961,7 @@
         let lastUserInteractionAt = Date.now();
         let lastTypingAt = 0;
         let lastScrollAt = 0;
+        let lastTextFocusAt = 0;
         let scrollFramePending = false;
         let viewportHeightSyncInitialized = false;
         let standaloneShellBaseHeight = 0;
@@ -974,6 +975,11 @@
         let swipeCloseOnScrollTimer = null;
         const ACTIVE_TYPING_GRACE_MS = 35;
         const ACTIVE_SCROLL_GRACE_MS = 120;
+        // How long after the last keystroke OR focus event to keep blocking renders
+        // while a text element is focused.  3 s is enough to cover keyboard animation
+        // and a brief reading pause; renders are still deferred every 220 ms after
+        // this window closes (scheduleTypingAwareUiRender retry interval).
+        const FOCUSED_INPUT_RENDER_GRACE_MS = 3000;
 
         function isIOSDevice() {
             return IOS_DEVICE_REGEX.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -1006,10 +1012,25 @@
         }
         window.addEventListener('input', markTypingActivity, { passive: true });
 
+        function markTextFocusActivity(event) {
+            const target = event && event.target ? event.target : document.activeElement;
+            if (!isTextLikeElement(target)) return;
+            lastTextFocusAt = Date.now();
+        }
+        // Track focus so we can block renders right when the user taps into a field
+        // (before any keypress occurs – critical for preventing keyboard dismissal).
+        window.addEventListener('focus', markTextFocusActivity, { capture: true, passive: true });
+
         function isUserActivelyTyping() {
             const activeEl = document.activeElement;
             if (!isTextLikeElement(activeEl)) return false;
-            return (Date.now() - lastTypingAt) < ACTIVE_TYPING_GRACE_MS;
+            // Block renders while a text input is focused AND the user has been
+            // recently active in it (tapped, typed, or just focused within the
+            // last FOCUSED_INPUT_RENDER_GRACE_MS).  After the grace window expires
+            // renders proceed even if the field is still technically focused,
+            // allowing realtime updates to show for long-idle inputs.
+            const lastActivity = Math.max(lastTypingAt, lastTextFocusAt);
+            return (Date.now() - lastActivity) < FOCUSED_INPUT_RENDER_GRACE_MS;
         }
 
         function markScrollActivity() {
@@ -1679,6 +1700,34 @@
             buildSearchIndex(row);
             return row;
         }
+        // Like syncMasterFieldsToRequestRow but for Sales Office rows.
+        // Structural fields (name, location, qty, etc.) always come from master so
+        // they stay current. Note/annotation fields that the Sales Office team owns
+        // (AV_NOTE, SALES_NOTE, SPEC, CALIPER, PICK, MATCH, LOC_MATCH_QTY,
+        // INITIAL_PTR) are preserved from the SO row when non-empty – preventing a
+        // stale master value from clobbering an update that just arrived via the
+        // v2_sales_office realtime channel.
+        function syncMasterFieldsToSalesOfficeRow(masterItem, row) {
+            if (!masterItem || !row) return row;
+            const preservedValues = {
+                AV_NOTE: normalizeRuleText(row.AV_NOTE),
+                SALES_NOTE: normalizeRuleText(firstNonEmptyValue(row.SALES_NOTE, row.SALESNOTE)),
+                MATCH: normalizeRuleText(row.MATCH),
+                SPEC: normalizeRuleText(row.SPEC),
+                CALIPER: normalizeRuleText(row.CALIPER),
+                PICK: normalizeRuleText(row.PICK),
+                LOC_MATCH_QTY: normalizeRuleText(row.LOC_MATCH_QTY),
+                INITIAL_PTR: normalizeRuleText(row.INITIAL_PTR),
+            };
+            syncMasterFieldsToRow(masterItem, row, LINKED_ROW_SYNC_KEYS, { attachMasterLink: true });
+            Object.keys(preservedValues).forEach((key) => {
+                if (preservedValues[key] !== '') row[key] = preservedValues[key];
+            });
+            normalizeRowPhotoFields(row);
+            buildSearchIndex(row);
+            return row;
+        }
+
         function getRowPhotoLink(item, sourceView='') {
             if (!item) return '';
             if (sourceView === 'av' || sourceView === 'av-photo') return getDisplayPhotoLinkCsv(firstNonEmptyValue(item.SAVED_PHOTO_LINK, item.ROW_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']), item, 'saved');
@@ -2294,7 +2343,11 @@
             });
         }
 
-        function syncRealtimeSalesOfficeRows(masterIdSet = null) {
+        // skipMasterSync=true is used when the change originated from v2_sales_office
+        // itself – in that case the row already carries the authoritative values from
+        // the database, so we must NOT overwrite them with potentially-stale master
+        // data that hasn't received its own realtime update yet.
+        function syncRealtimeSalesOfficeRows(masterIdSet = null, skipMasterSync = false) {
             const scopedIds = masterIdSet instanceof Set && masterIdSet.size ? masterIdSet : null;
             salesOfficeInventory = (Array.isArray(salesOfficeInventory) ? salesOfficeInventory : [])
                 .filter((item) => item && !isSalesOfficeComplete(item))
@@ -2306,8 +2359,21 @@
                     const salesOfficeSource = String(firstNonEmptyValue(item.SO_SOURCE, item.so_source, 'season')).toLowerCase();
                     const masterItem = masterId ? findItemByUniqueId(masterId) : null;
                     if (masterItem && salesOfficeSource !== 'bloom_picker') {
-                        syncMasterFieldsToRow(masterItem, item, LINKED_ROW_SYNC_KEYS, { attachMasterLink: true });
-                        item.APP_TAB_ASSIGNMENT = firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, masterItem.APP_TAB_ASSIGNMENT);
+                        if (skipMasterSync) {
+                            // Row came fresh from v2_sales_office; only update the master
+                            // link and structural identity – never clobber note fields.
+                            if (masterId) {
+                                item.MASTER_UNIQUE_ID = masterId;
+                                if (!item.MASTER_ID) item.MASTER_ID = masterId;
+                                if (!item.master_id) item.master_id = masterId;
+                            }
+                            item.APP_TAB_ASSIGNMENT = firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, masterItem.APP_TAB_ASSIGNMENT);
+                        } else {
+                            // Normal master-driven sync – preserve SO-owned note fields
+                            // so they aren't overwritten by stale master values.
+                            syncMasterFieldsToSalesOfficeRow(masterItem, item);
+                            item.APP_TAB_ASSIGNMENT = firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, masterItem.APP_TAB_ASSIGNMENT);
+                        }
                     }
                     normalizeRowPhotoFields(item);
                     buildSearchIndex(item);
@@ -2467,7 +2533,10 @@
                 changedDatasetKeys.add('soc');
             }
             if (tableSet.has('v2_sales_office') && !changedDatasetKeys.has('salesOffice')) {
-                syncRealtimeSalesOfficeRows();
+                // skipMasterSync=true: the SO rows already arrived fresh from the DB
+                // via upsertRealtimeRow; don't let a potentially-stale master value
+                // overwrite fields like AV_NOTE before the master update arrives.
+                syncRealtimeSalesOfficeRows(null, true);
                 changedDatasetKeys.add('salesOffice');
             }
             if (tableSet.has('v2_cav')) {
@@ -8389,10 +8458,13 @@ function toggleDriveQuickRequestItem(domId) {
             const visibleDirtyViewIds = getVisibleTrackedViewIds().filter((viewId) => dirtyViews.includes(viewId));
             if (!visibleDirtyViewIds.length) return;
             visibleDirtyViewIds.forEach((viewId) => {
+                // Use a 180 ms initial delay (up from 24 ms) so that rapid bursts of
+                // realtime events are coalesced into a single render rather than
+                // causing repeated flashes of the visible view.
                 scheduleTypingAwareUiRender(`data-refresh:${viewId}`, () => {
                     if (!isViewVisible(viewId)) return;
                     renderViewContent(viewId, false, true);
-                }, 24, 220);
+                }, 180, 220);
             });
         }
 
