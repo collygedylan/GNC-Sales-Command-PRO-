@@ -36,6 +36,7 @@
   const PDF_PAGE_WIDTH = 612;
   const PDF_PAGE_HEIGHT = 792;
   const BUILDER_STATE_STORAGE_KEY = 'gnc_native_flyer_builder_state_v5';
+  const RENDER_DEBOUNCE_MS = 240;
 
   const BUILDER_CSS = `
     .npf-wrap{display:grid;gap:18px}
@@ -365,7 +366,7 @@
       this.renderQueued = false;
       this.pendingViewportState = null;
       this.persistTimer = null;
-      this.renderDebounceMs = 240;
+      this.renderDebounceMs = RENDER_DEBOUNCE_MS;
       this.saveStatusMessage = 'Draft ready. Auto-save is on for this device.';
       this.saveStatusState = 'saved';
       this.state = {
@@ -1998,7 +1999,6 @@
 
   global.NativePwaFlyer = { Builder, THEMES, LAYOUT_PRESETS };
 })(window);
-
 
 
 
