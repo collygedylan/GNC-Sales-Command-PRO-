@@ -16383,8 +16383,8 @@ function toggleDriveSeason(s) {
                         const sourceHeight = Number(sourceImage.height || sourceImage.naturalHeight || 0);
                         if (!sourceWidth || !sourceHeight) throw new Error('Could not process the selected image.');
                         canvas = document.createElement('canvas');
-                        const targetMaxWidth = isLagSensitiveDetailPrefix(prefix) ? 420 : PHOTO_MAX_WIDTH;
-                        const targetJpegQuality = isLagSensitiveDetailPrefix(prefix) ? 0.46 : PHOTO_JPEG_QUALITY;
+                        const targetMaxWidth = PHOTO_MAX_WIDTH;
+                        const targetJpegQuality = PHOTO_JPEG_QUALITY;
                         const scaleSize = sourceWidth > targetMaxWidth ? targetMaxWidth / sourceWidth : 1;
                         canvas.width = Math.max(1, Math.round(sourceWidth * scaleSize));
                         canvas.height = Math.max(1, Math.round(sourceHeight * scaleSize));
