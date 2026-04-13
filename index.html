@@ -15815,7 +15815,7 @@ function toggleDriveSeason(s) {
                 const persistSave = async () => {
                     if (navigator.onLine === false) {
                         restoreFromFailedSave('No service. Could not reach Supabase.');
-                        return false;
+                        return;
                     }
                     applyPhotoFieldsToPayload();
                     try {
@@ -15823,10 +15823,8 @@ function toggleDriveSeason(s) {
                         const finalizeSave = () => handleSaveSuccess(buildCompletionArtifacts());
                         if (isLagSensitiveDetailPrefix(prefix)) setTimeout(finalizeSave, 0);
                         else finalizeSave();
-                        return true;
                     } catch (err) {
                         restoreFromFailedSave(err && err.message ? err.message : 'Could not reach database.');
-                        return false;
                     }
                 };
 
@@ -15860,12 +15858,7 @@ function toggleDriveSeason(s) {
 
             const runSaveNow = async () => {
                 if (isLagSensitiveDetailPrefix(prefix)) {
-                    await new Promise((resolve, reject) => {
-                        requestAnimationFrame(() => {
-                            executeSave().then(resolve).catch(reject);
-                        });
-                    });
-                    return;
+                    await new Promise((resolve) => requestAnimationFrame(resolve));
                 }
                 await executeSave();
             };
@@ -16191,5 +16184,4 @@ function toggleDriveSeason(s) {
     </script>
 </body>
 </html>
-
 
