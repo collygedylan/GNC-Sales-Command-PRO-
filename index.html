@@ -929,6 +929,7 @@
         const LOGIN_READ_TIMEOUT_MS = 8000;
         const SUPABASE_WRITE_TIMEOUT_MS = 22000;
         const SUPABASE_UPLOAD_TIMEOUT_MS = 45000;
+        const ENABLE_MANUAL_PULL_REFRESH = false;
         const CACHE_PERSIST_DEBOUNCE_MS = 25000;
         const CACHE_PERSIST_MIN_INTERVAL_MS = 90000;
         const CACHE_PERSIST_HIDDEN_MIN_INTERVAL_MS = 6000;
@@ -12184,6 +12185,7 @@ activeDriveTab = tab;
         }
 
         function canUseManualPullRefresh() {
+            if (!ENABLE_MANUAL_PULL_REFRESH) return false;
             return !!(navigator.onLine !== false && !isStandaloneApp() && liveSyncMode !== 'realtime' && !backgroundRefreshInFlight && !pullRefreshState.refreshing);
         }
         function shouldIgnorePullRefreshTarget(target) {
@@ -12221,10 +12223,12 @@ activeDriveTab = tab;
             interactiveChromeInitialized = true;
             const scrollArea = document.getElementById('main-scroll-area');
             if (!scrollArea) return;
-            scrollArea.addEventListener('touchstart', handlePullRefreshStart, { passive: true });
-            scrollArea.addEventListener('touchmove', handlePullRefreshMove, { passive: false });
-            scrollArea.addEventListener('touchend', handlePullRefreshEnd, { passive: true });
-            scrollArea.addEventListener('touchcancel', handlePullRefreshEnd, { passive: true });
+            if (ENABLE_MANUAL_PULL_REFRESH) {
+                scrollArea.addEventListener('touchstart', handlePullRefreshStart, { passive: true });
+                scrollArea.addEventListener('touchmove', handlePullRefreshMove, { passive: false });
+                scrollArea.addEventListener('touchend', handlePullRefreshEnd, { passive: true });
+                scrollArea.addEventListener('touchcancel', handlePullRefreshEnd, { passive: true });
+            }
             const onMainScroll = () => {
                 if (scrollFramePending) return;
                 scrollFramePending = true;
