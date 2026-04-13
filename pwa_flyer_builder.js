@@ -36,6 +36,7 @@
   const PDF_PAGE_WIDTH = 612;
   const PDF_PAGE_HEIGHT = 792;
   const BUILDER_STATE_STORAGE_KEY = 'gnc_native_flyer_builder_state_v5';
+  const RENDER_DEBOUNCE_MS = 240;
 
   const BUILDER_CSS = `
     .npf-wrap{display:grid;gap:18px}
@@ -360,7 +361,12 @@
       this.imageCache = new Map();
       this.logoPromise = null;
       this.renderTimer = null;
+      this.renderFrame = null;
+      this.renderInFlight = false;
+      this.renderQueued = false;
+      this.pendingViewportState = null;
       this.persistTimer = null;
+      this.renderDebounceMs = RENDER_DEBOUNCE_MS;
       this.saveStatusMessage = 'Draft ready. Auto-save is on for this device.';
       this.saveStatusState = 'saved';
       this.state = {
@@ -1466,22 +1472,50 @@
     }
 
     scheduleRender(immediate, viewportState) {
+      if (viewportState) this.pendingViewportState = viewportState;
       const runRender = async () => {
-        await this.render();
-        if (viewportState) this.restoreViewportState(viewportState);
+        if (this.renderInFlight) {
+          this.renderQueued = true;
+          return;
+        }
+        this.renderInFlight = true;
+        const nextViewportState = this.pendingViewportState;
+        this.pendingViewportState = null;
+        try {
+          await this.render();
+          if (nextViewportState) this.restoreViewportState(nextViewportState);
+        } finally {
+          this.renderInFlight = false;
+          if (this.renderQueued) {
+            this.renderQueued = false;
+            this.scheduleRender(true);
+          }
+        }
       };
       if (this.renderTimer) {
         clearTimeout(this.renderTimer);
         this.renderTimer = null;
       }
+      if (this.renderFrame) {
+        cancelAnimationFrame(this.renderFrame);
+        this.renderFrame = null;
+      }
+      const queueFrameRender = () => {
+        this.renderFrame = requestAnimationFrame(() => {
+          this.renderFrame = null;
+          runRender().catch((error) => {
+            if (typeof console !== 'undefined' && typeof console.warn === 'function') console.warn('Native flyer render failed.', error);
+          });
+        });
+      };
       if (immediate) {
-        runRender().catch(() => {});
+        queueFrameRender();
         return;
       }
       this.renderTimer = setTimeout(() => {
         this.renderTimer = null;
-        runRender().catch(() => {});
-      }, 72);
+        queueFrameRender();
+      }, this.renderDebounceMs);
     }
 
     persistState(manual) {
@@ -1967,8 +2001,4 @@
 
   global.NativePwaFlyer = { Builder, THEMES, LAYOUT_PRESETS };
 })(window);
-
-
-
-
 
