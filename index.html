@@ -445,7 +445,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-                            <div id="header-version" class="nav-version-pill">V2026.04.12.09</div>
+                            <div id="header-version" class="nav-version-pill">V2026.04.13.01</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -911,6 +911,8 @@
         });
         let activeRealtimeTables = [...REALTIME_TABLES];
         let activeRealtimeViewId = '';
+        const VIEW_ENTER_REFRESH_MIN_INTERVAL_MS = 12000;
+        const viewEnterRefreshAt = new Map();
         const REALTIME_STARTUP_GRACE_MS = 12000;
         const REALTIME_RECOVERY_GRACE_MS = 3200;
         const DISABLE_POLLING_WHEN_REALTIME_SUPPORTED = true;
@@ -2206,8 +2208,7 @@
                     if (!item.DOM_ID) item.DOM_ID = 'so_' + (item.UNIQUE_ID || idx);
                     const salesOfficeSource = String(firstNonEmptyValue(item.SO_SOURCE, item.so_source, 'season')).toLowerCase();
                     const masterItem = masterId ? findItemByUniqueId(masterId) : null;
-                    const isExactRow = !!(masterItem && salesOfficeSource !== 'bloom_picker' && uniqueId === masterId);
-                    if (isExactRow) {
+                    if (masterItem && salesOfficeSource !== 'bloom_picker') {
                         syncMasterFieldsToRow(masterItem, item, LINKED_ROW_SYNC_KEYS, { attachMasterLink: true });
                         item.APP_TAB_ASSIGNMENT = firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, masterItem.APP_TAB_ASSIGNMENT);
                     }
@@ -3658,7 +3659,7 @@
         const PENDING_EDITS_STORAGE_KEY = 'gnc_pending_edits';
         const PENDING_EDITS_PERSIST_DEBOUNCE_MS = 400;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Maschino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'V2026.04.12.09';
+        const APP_VERSION = 'V2026.04.13.01';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -4382,7 +4383,7 @@
                 }
                 return { required: [{ key: 'reserves', mode: 'initial' }], background: [{ key: 'reserves', mode: 'full' }], label: 'Loading reserves...' };
             }
-            if (viewId === 'sales-office') return { required: [{ key: 'salesOffice', mode: 'initial' }], background: [{ key: 'salesOffice', mode: 'full' }], label: 'Loading sales office...' };
+            if (viewId === 'sales-office') return { required: [{ key: 'salesOffice', mode: 'initial' }], background: [{ key: 'salesOffice', mode: 'full' }, { key: 'master', mode: 'full' }], label: 'Loading sales office...' };
             if (viewId === 'tasks') {
                 const required = [{ key: 'master', mode: 'initial' }];
                 const background = [{ key: 'master', mode: 'full' }, { key: 'avNotes', mode: 'full' }];
@@ -4491,7 +4492,21 @@
                 backgroundRefreshInFlight = false;
             }
         }
-
+        function refreshViewDatasetsOnEnter(viewId, options = {}) {
+            const targetView = String(viewId || '').trim();
+            if (!targetView) return;
+            const now = Date.now();
+            const minInterval = Number(options.minInterval || VIEW_ENTER_REFRESH_MIN_INTERVAL_MS);
+            const last = viewEnterRefreshAt.get(targetView) || 0;
+            if (!options.force && (now - last) < minInterval) return;
+            viewEnterRefreshAt.set(targetView, now);
+            const config = getViewLoadingConfig(targetView);
+            if (!config || !Array.isArray(config.required) || !config.required.length) return;
+            Promise.all(config.required.map((item) => ensureDatasetLoaded(item.key, item.mode, { force: true }))).then(() => {
+                markViewDirty(targetView);
+                if (isViewVisible(targetView)) renderViewContent(targetView, false, true);
+            }).catch(() => {});
+        }
         function findItemByUniqueId(uid) {
             const normalizedUid = String(uid || '').trim();
             const masterItem = normalizedUid ? (masterInventoryById.get(normalizedUid) || fullInventory.find(i=>i.UNIQUE_ID===uid)) : null;
@@ -7167,10 +7182,10 @@ function toggleDriveQuickRequestItem(domId) {
                                                 salesOfficeInventory = soData.map((item, idx) => {
                             let obj = {SOURCE_TABLE: 'v2_sales_office'};
                             for(let k in item) { if(item[k]!==null) obj[k.toUpperCase()] = item[k]; }
-                            obj.DOM_ID = 'so_' + obj.UNIQUE_ID;
-                            normalizeRowPhotoFields(obj);
+                            obj.DOM_ID = 'so_' + (obj.UNIQUE_ID || idx);
                             return obj;
                         });
+                        syncRealtimeSalesOfficeRows();
                         localStorage.setItem('last_so_hash', soHash);
                         markViewDirty('sales-office');
                         if(!document.getElementById('view-sales-office').classList.contains('hidden')) renderViewContent('sales-office', false, true);
@@ -7430,19 +7445,11 @@ function toggleDriveQuickRequestItem(domId) {
             if (hasSalesOffice || (hasMaster && salesOfficeInventory.length)) {
                 const salesOfficeSource = hasSalesOffice ? (res.salesOfficeData || []) : salesOfficeInventory;
                 salesOfficeInventory = salesOfficeSource.map((item, idx) => {
-                    item.DOM_ID = 'so_' + item.UNIQUE_ID;
-                    const salesOfficeSource = String(firstNonEmptyValue(item.SO_SOURCE, item.so_source, 'season')).toLowerCase();
-                    const salesOfficeMasterId = String(item.MASTER_ID || item.master_id || item.MASTER_UNIQUE_ID || item.UNIQUE_ID || '').trim();
-                    const salesOfficeMasterItem = salesOfficeMasterId ? findItemByUniqueId(salesOfficeMasterId) : null;
-                    const isSalesOfficeExactRow = !!(salesOfficeMasterItem && salesOfficeSource !== 'bloom_picker' && String(item.UNIQUE_ID || '').trim() === salesOfficeMasterId);
-                    if (isSalesOfficeExactRow) {
-                        syncMasterFieldsToRow(salesOfficeMasterItem, item, LINKED_ROW_SYNC_KEYS, { attachMasterLink: true });
-                        item.APP_TAB_ASSIGNMENT = firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, salesOfficeMasterItem.APP_TAB_ASSIGNMENT);
-                    }
-                    normalizeRowPhotoFields(item);
-                    buildSearchIndex(item);
+                    if (!item) return item;
+                    item.DOM_ID = 'so_' + (item.UNIQUE_ID || idx);
                     return item;
-                });
+                }).filter(Boolean);
+                syncRealtimeSalesOfficeRows();
             }
 
             if (hasSoc || (hasMaster && socInventory.length)) {
@@ -8312,6 +8319,7 @@ function toggleDriveQuickRequestItem(domId) {
                 updateFooterNavState();
                 syncRequestViewLiveSync(nextViewId === 'request' ? 120 : 0);
                 setRealtimeSubscriptionsForView(nextViewId);
+            refreshViewDatasetsOnEnter(nextViewId);
                 return false;
             }
             ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-detail','view-docks','view-request','view-reserves','view-av', 'view-hours'].forEach(id=>{
@@ -8327,6 +8335,7 @@ function toggleDriveQuickRequestItem(domId) {
             updateFooterNavState();
             syncRequestViewLiveSync(nextViewId === 'request' ? 120 : 0);
                 setRealtimeSubscriptionsForView(nextViewId);
+            refreshViewDatasetsOnEnter(nextViewId);
             return false;
         }
         function goBackUniversal() {
@@ -15695,11 +15704,33 @@ function toggleDriveSeason(s) {
                     syncRowDataAcrossViews(itemToSave);
 
                     if (artifacts.soPayload && artifacts.cloneSO) {
-                        supabaseFetch('v2_sales_office', 'POST', artifacts.soPayload).catch(e => console.log(e));
-                        let existingIdx = salesOfficeInventory.findIndex(s => s.UNIQUE_ID === artifacts.cloneSO.UNIQUE_ID);
+                        const salesOfficeMasterId = String(firstNonEmptyValue(
+                            artifacts.masterSyncId,
+                            artifacts.cloneSO.MASTER_ID,
+                            artifacts.cloneSO.MASTER_UNIQUE_ID,
+                            artifacts.cloneSO.UNIQUE_ID,
+                            artifacts.soPayload.unique_id,
+                            ''
+                        ) || '').trim();
+                        artifacts.soPayload.master_id = salesOfficeMasterId || artifacts.soPayload.unique_id;
+                        artifacts.soPayload.so_source = String(firstNonEmptyValue(artifacts.soPayload.so_source, 'season')).toLowerCase();
+                        artifacts.cloneSO.MASTER_ID = artifacts.soPayload.master_id;
+                        artifacts.cloneSO.MASTER_UNIQUE_ID = artifacts.soPayload.master_id;
+                        artifacts.cloneSO.master_id = artifacts.soPayload.master_id;
+                        artifacts.cloneSO.SO_SOURCE = artifacts.soPayload.so_source;
+                        artifacts.cloneSO.so_source = artifacts.soPayload.so_source;
+                        let existingIdx = salesOfficeInventory.findIndex(s => String(s.UNIQUE_ID || '').trim() === String(artifacts.cloneSO.UNIQUE_ID || '').trim());
                         if (existingIdx > -1) salesOfficeInventory[existingIdx] = artifacts.cloneSO;
                         else salesOfficeInventory.push(artifacts.cloneSO);
+                        syncRealtimeSalesOfficeRows(new Set([String(artifacts.cloneSO.UNIQUE_ID || '').trim(), String(artifacts.soPayload.master_id || '').trim()].filter(Boolean)));
                         markViewDirty('sales-office');
+                        const salesOfficeUid = encodeURIComponent(String(artifacts.soPayload.unique_id || '').trim());
+                        supabaseFetch('v2_sales_office', 'GET', null, 'select=unique_id&unique_id=eq.' + salesOfficeUid)
+                            .then((rows) => Array.isArray(rows) && rows.length
+                                ? supabaseFetch('v2_sales_office', 'PATCH', artifacts.soPayload, 'unique_id=eq.' + salesOfficeUid)
+                                : supabaseFetch('v2_sales_office', 'POST', artifacts.soPayload))
+                            .then(() => { if (isViewVisible('sales-office')) refreshViewDatasetsOnEnter('sales-office', { force: true, minInterval: 0 }); })
+                            .catch(e => console.log(e));
                     }
 
                     if (artifacts.masterSyncPayload && artifacts.masterSyncId) {
@@ -16133,3 +16164,8 @@ function toggleDriveSeason(s) {
     </script>
 </body>
 </html>
+
+
+
+
+
