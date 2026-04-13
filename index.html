@@ -5158,6 +5158,14 @@ return false;
                 .sort((a, b) => String(a).localeCompare(String(b)));
         }
 
+        function syncDriveSelectedGenus(options = []) {
+            const validOptions = Array.isArray(options) ? options : [];
+            if (driveSelectedGenusName && !validOptions.includes(driveSelectedGenusName)) {
+                driveSelectedGenusName = '';
+            }
+            return driveSelectedGenusName;
+        }
+
         function getDriveQuickFilterOptions(candidateItems) {
             const searchInput = document.getElementById('drive-search');
             const masterState = getDatasetState('master');
@@ -5224,9 +5232,7 @@ return false;
                 driveBaseLastSearchItems = baseItems;
             }
             const availableGenusNames = getDriveGenusOptions(baseItems);
-            if (driveSelectedGenusName && !availableGenusNames.includes(driveSelectedGenusName)) {
-                driveSelectedGenusName = '';
-            }
+            syncDriveSelectedGenus(availableGenusNames);
             if (driveSelectedGenusName) {
                 baseItems = baseItems.filter(i => getTaskGenusName(i) === driveSelectedGenusName);
             }
@@ -14591,7 +14597,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             }).join('');
             const holdStopToggleHtml = `<button type="button" class="px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap cursor-pointer transition-colors ${driveQuickHoldStopOnly ? 'bg-amber-400 text-amber-950 shadow-md border border-amber-500' : 'bg-white border border-amber-300 text-amber-700'}" onclick="toggleDriveHoldStopOnly()">H/S HOLD</button>`;
             const driveGenusOptions = getDriveGenusOptions(getDriveContextItemsWithoutSearch());
-            if (driveSelectedGenusName && !driveGenusOptions.includes(driveSelectedGenusName)) driveSelectedGenusName = '';
+            syncDriveSelectedGenus(driveGenusOptions);
             const driveGenusOptionsHtml = [`<option value="">All Genus</option>`]
                 .concat(driveGenusOptions.map((name) => `<option value="${esc(name)}" ${driveSelectedGenusName === name ? 'selected' : ''}>${esc(name)}</option>`))
                 .join('');
