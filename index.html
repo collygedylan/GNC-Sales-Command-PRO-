@@ -1556,6 +1556,71 @@
 
         const LINKED_ROW_SYNC_KEYS = ['COMMONNAME','CONTSIZE','LOCATIONCODE','LOTCODE','ITEMCODE','PTRAVAILABLE','SEASONSUPPLY','PRIORITY','QUALITYCODE','FIELDTAGCOLOR','PLANTGROUPCODE','BLOCKALPHA','SEASON','S_LTS','AV_NOTE','SALES_NOTE','MATCH','SPEC','CALIPER','PICK','LOC_MATCH_QTY','INITIAL_PTR'];
         const EXACT_ROW_SYNC_KEYS = LINKED_ROW_SYNC_KEYS.concat(['APP_TAB_ASSIGNMENT','DATE_COMPLETED','FLYER_CAT','FLYER_TITLE','FLYER_INST','FLYER_ASSIGNED','FLYER_NOTES','FLYER_COMPLETED','ASSIGNEDTO']);
+        const ROW_SYNC_STORAGE_KEY = 'gnc_row_state_sync_v1';
+        const ROW_SYNC_EVENT_NAME = 'gnc-row-state-sync';
+        let rowSyncListenersInitialized = false;
+
+        function buildRowSyncSnapshot(item, prefix = '') {
+            if (!item) return null;
+            const uniqueId = String(firstNonEmptyValue(item.UNIQUE_ID, '')).trim();
+            if (!uniqueId) return null;
+            const masterUniqueId = String(firstNonEmptyValue(item.MASTER_ID, item.MASTER_UNIQUE_ID, item.master_id, uniqueId)).trim() || uniqueId;
+            const data = {};
+            EXACT_ROW_SYNC_KEYS.forEach((key) => { data[key] = item[key]; });
+            ['SAVED_PHOTO_LINK','SAVED_PHOTO_NAME','REQ_PHOTO_LINK','REQ_PHOTO_NAME','DOCK_PHOTO_LINK','DOCK_PHOTO_NAME','FLYER_PHOTO_LINK','FLYER_PHOTO_NAME','ROW_PHOTO_LINK','ROW_PHOTO_NAME','REQ_STATUS','REQ_MATCH','REQ_SPEC','REQ_CALIPER','REQ_PICK','REQ_COMMENTS','REQ_RESERVE'].forEach((key) => {
+                data[key] = item[key];
+            });
+            return {
+                uniqueId,
+                masterUniqueId,
+                prefix: String(prefix || ''),
+                at: new Date().toISOString(),
+                data
+            };
+        }
+
+        function applyRowSyncSnapshot(snapshot) {
+            if (!snapshot || typeof snapshot !== 'object') return false;
+            const payload = snapshot.data && typeof snapshot.data === 'object' ? snapshot.data : {};
+            const uniqueId = String(firstNonEmptyValue(snapshot.uniqueId, '')).trim();
+            const masterUniqueId = String(firstNonEmptyValue(snapshot.masterUniqueId, uniqueId, '')).trim();
+            const targetId = masterUniqueId || uniqueId;
+            if (!targetId) return false;
+            let target = findItemByUniqueId(targetId) || findRequestRowByUniqueId(targetId);
+            if (!target && uniqueId && uniqueId !== targetId) target = findItemByUniqueId(uniqueId) || findRequestRowByUniqueId(uniqueId);
+            if (!target) return false;
+            Object.keys(payload).forEach((key) => { target[key] = payload[key]; });
+            normalizeRowPhotoFields(target);
+            syncSharedFlyerPhotoFields(target, snapshot.prefix || '');
+            buildSearchIndex(target);
+            syncRowDataAcrossViews(target);
+            return true;
+        }
+
+        function broadcastRowSyncSnapshot(item, prefix = '') {
+            const snapshot = buildRowSyncSnapshot(item, prefix);
+            if (!snapshot) return;
+            try { localStorage.setItem(ROW_SYNC_STORAGE_KEY, JSON.stringify(snapshot)); } catch (e) {}
+            try { sessionStorage.setItem(ROW_SYNC_STORAGE_KEY, JSON.stringify(snapshot)); } catch (e) {}
+            try {
+                window.dispatchEvent(new CustomEvent(ROW_SYNC_EVENT_NAME, { detail: snapshot }));
+            } catch (e) {}
+        }
+
+        function initializeRowSyncListeners() {
+            if (rowSyncListenersInitialized || typeof window === 'undefined') return;
+            rowSyncListenersInitialized = true;
+            window.addEventListener('storage', (event) => {
+                if (!event || event.key !== ROW_SYNC_STORAGE_KEY || !event.newValue) return;
+                try { applyRowSyncSnapshot(JSON.parse(event.newValue)); } catch (e) {}
+            }, { passive: true });
+            window.addEventListener(ROW_SYNC_EVENT_NAME, (event) => {
+                const detail = event && event.detail ? event.detail : null;
+                if (!detail) return;
+                applyRowSyncSnapshot(detail);
+            }, { passive: true });
+        }
+        initializeRowSyncListeners();
 
         function syncMasterFieldsToRow(masterItem, row, keys = LINKED_ROW_SYNC_KEYS, options = {}) {
             if (!masterItem || !row) return row;
@@ -2027,24 +2092,29 @@
         function syncRowDataAcrossViews(masterItem) {
             if (!masterItem) return;
             normalizeRowPhotoFields(masterItem);
-            const masterId = String(masterItem.UNIQUE_ID || '').trim();
+            const canonicalMaster = findLinkedMasterRow(masterItem) || masterItem;
+            if (canonicalMaster && canonicalMaster !== masterItem) {
+                syncMasterFieldsToRow(masterItem, canonicalMaster, EXACT_ROW_SYNC_KEYS, { attachMasterLink: false, exactPhotoClone: true, photoPrefix: 'flyer-' });
+            }
+            normalizeRowPhotoFields(canonicalMaster);
+            const masterId = String((canonicalMaster && canonicalMaster.UNIQUE_ID) || '').trim();
             if (!masterId) return;
 
             const applyExactRowData = (row) => {
                 if (!row) return;
-                syncMasterFieldsToRow(masterItem, row, EXACT_ROW_SYNC_KEYS, { attachMasterLink: false });
+                syncMasterFieldsToRow(canonicalMaster, row, EXACT_ROW_SYNC_KEYS, { attachMasterLink: false });
             };
 
             const applyLinkedRowCatalogData = (row) => {
                 if (!row) return;
-                syncMasterFieldsToRow(masterItem, row, LINKED_ROW_SYNC_KEYS, { attachMasterLink: true });
-                row.APP_TAB_ASSIGNMENT = firstNonEmptyValue(row.APP_TAB_ASSIGNMENT, masterItem.APP_TAB_ASSIGNMENT);
+                syncMasterFieldsToRow(canonicalMaster, row, LINKED_ROW_SYNC_KEYS, { attachMasterLink: true });
+                row.APP_TAB_ASSIGNMENT = firstNonEmptyValue(row.APP_TAB_ASSIGNMENT, canonicalMaster.APP_TAB_ASSIGNMENT);
             };
 
             const applyRequestSnapshotData = (row) => {
                 if (!row) return;
-                syncMasterFieldsToRequestRow(masterItem, row);
-                row.APP_TAB_ASSIGNMENT = firstNonEmptyValue(row.APP_TAB_ASSIGNMENT, masterItem.APP_TAB_ASSIGNMENT);
+                syncMasterFieldsToRequestRow(canonicalMaster, row);
+                row.APP_TAB_ASSIGNMENT = firstNonEmptyValue(row.APP_TAB_ASSIGNMENT, canonicalMaster.APP_TAB_ASSIGNMENT);
             };
 
             const sameMasterRow = (row) => String((row && row.UNIQUE_ID) || '').trim() === masterId;
@@ -15780,6 +15850,7 @@ function toggleDriveSeason(s) {
                 const handleSaveSuccess = (artifacts) => {
                     buildSearchIndex(itemToSave);
                     syncRowDataAcrossViews(itemToSave);
+                    broadcastRowSyncSnapshot(itemToSave, prefix);
 
                     if (artifacts.soPayload && artifacts.cloneSO) {
                         const salesOfficeMasterId = String(firstNonEmptyValue(
@@ -16155,6 +16226,7 @@ function toggleDriveSeason(s) {
                                 }
                                 syncSharedFlyerPhotoFields(itemToUpload, prefix);
                                 normalizeRowPhotoFields(itemToUpload);
+                                broadcastRowSyncSnapshot(itemToUpload, prefix);
                                 cleanupUploadResources();
                                 finishPreview(true);
                                 schedulePhotoFieldPersist(itemToUpload, prefix);
