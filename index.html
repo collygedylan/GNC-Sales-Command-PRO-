@@ -3631,10 +3631,13 @@
             const detailView = document.getElementById('view-detail');
             if (!detailView || detailView.classList.contains('hidden')) return;
             if (detailInputSaveTimers[safePrefix]) clearTimeout(detailInputSaveTimers[safePrefix]);
-            detailInputSaveTimers[safePrefix] = setTimeout(() => {
-                detailInputSaveTimers[safePrefix] = null;
-                requestAnimationFrame(() => saveData(false, safePrefix, true));
+            const timerId = setTimeout(() => {
+                requestAnimationFrame(() => {
+                    if (detailInputSaveTimers[safePrefix] === timerId) detailInputSaveTimers[safePrefix] = null;
+                    saveData(false, safePrefix, true);
+                });
             }, DETAIL_INPUT_SAVE_DEBOUNCE_MS);
+            detailInputSaveTimers[safePrefix] = timerId;
         }
 
         window.addEventListener('input', (event) => {
@@ -6782,7 +6785,7 @@ function toggleDriveQuickRequestItem(domId) {
 
             photoModalState.urls = urls;
             photoModalState.index = 0;
-            gallery.innerHTML = urls.map((url, index) => `<div class="photo-modal-slide" data-photo-index="${index}"><img src="${url}" srcset="${url} 1x" sizes="100vw" alt="${esc(caption || `Photo ${index + 1}`)}" loading="${index === 0 ? 'eager' : 'lazy'}" decoding="async" fetchpriority="${index === 0 ? 'high' : 'low'}" draggable="false"></div>`).join('');
+            gallery.innerHTML = urls.map((url, index) => `<div class="photo-modal-slide" data-photo-index="${index}"><img src="${esc(url)}" sizes="100vw" alt="${esc(caption || `Photo ${index + 1}`)}" loading="${index === 0 ? 'eager' : 'lazy'}" decoding="async" fetchpriority="${index === 0 ? 'high' : 'low'}" draggable="false"></div>`).join('');
             photoModalState.scrollHandler = () => {
                 markScrollActivity();
                 if (photoModalState.scrollFrame) return;
@@ -6793,7 +6796,6 @@ function toggleDriveQuickRequestItem(domId) {
                 if (photoModalState.scrollTimer) clearTimeout(photoModalState.scrollTimer);
                 photoModalState.scrollTimer = setTimeout(() => {
                     requestAnimationFrame(() => {
-                        syncPhotoModalIndexFromScroll();
                         snapPhotoModalToIndex(photoModalState.index, false);
                     });
                 }, 120);
@@ -11292,7 +11294,7 @@ activeDriveTab = tab;
                 getPhotoUrlList(group.link).forEach((cleanUrl) => {
                     if (!cleanUrl) return;
                     const thumb = getDirectImageUrl(cleanUrl);
-                    tiles += `<img src="${thumb}" srcset="${thumb} 1x" sizes="96px" loading="lazy" decoding="async" fetchpriority="low" class="w-24 h-24 object-cover rounded-xl border border-gray-300 shadow-sm cursor-pointer active:scale-95" onclick="openPhotoModal('${group.link}', '${group.label}')">`;
+                    tiles += `<img src="${esc(thumb)}" sizes="96px" loading="lazy" decoding="async" fetchpriority="low" class="w-24 h-24 object-cover rounded-xl border border-gray-300 shadow-sm cursor-pointer active:scale-95" onclick="openPhotoModal('${esc(group.link)}', '${esc(group.label)}')">`;
                 });
                 if (!tiles) return;
                 html += `<div><div class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">${group.label}</div><div class="flex flex-wrap gap-3">${tiles}</div></div>`;
@@ -16031,7 +16033,7 @@ function toggleDriveSeason(s) {
                 return;
             }
             if (avNoteRenderedKeys[prefix] === cacheKey && !list.classList.contains('hidden')) return;
-            list.innerHTML = matchingNotes.map(n => `<div class="p-3 border-b border-gray-100 text-sm font-bold text-blue-800 cursor-pointer hover:bg-blue-50 active:bg-blue-100" onclick="selectAvNote('${esc(n)}', '${prefix}')">${n}</div>`).join('');
+            list.innerHTML = matchingNotes.map(n => `<div class="p-3 border-b border-gray-100 text-sm font-bold text-blue-800 cursor-pointer hover:bg-blue-50 active:bg-blue-100" onclick="selectAvNote('${esc(n)}', '${esc(prefix)}')">${esc(n)}</div>`).join('');
             avNoteRenderedKeys[prefix] = cacheKey;
             list.classList.remove('hidden');
         }
