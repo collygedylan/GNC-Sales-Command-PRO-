@@ -14213,7 +14213,7 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         const debouncedDriveSearch = debounce((term) => {
             scheduleSearchRender('drive-search', () => renderDrive(), term, { skipDebounce: true });
-        }, 120);\n        }, 120);
+        }, 120);
 
         function clearDriveSearch() {
             document.getElementById('drive-search').value = "";
