@@ -37,7 +37,9 @@
   const PDF_PAGE_HEIGHT = 792;
   const BUILDER_STATE_STORAGE_KEY = 'gnc_native_flyer_builder_state_v5';
   const RENDER_DEBOUNCE_MS = 16;
+  const IDLE_RENDER_TIMEOUT_MS = 120;
   const PASSIVE_EVENT_OPTIONS = { passive: true };
+  const HAPTIC_FEEDBACK_SELECTORS = 'button,[role="button"],input,select,textarea,.npf-photo-option';
 
   const BUILDER_CSS = `
     .npf-wrap{display:grid;gap:18px}
@@ -365,6 +367,7 @@
       this.renderFrame = null;
       this.renderInFlight = false;
       this.renderQueued = false;
+      this.lastHapticAt = 0;
       this.pendingViewportState = null;
       this.persistTimer = null;
       this.renderDebounceMs = RENDER_DEBOUNCE_MS;
@@ -560,7 +563,7 @@
       this.ui.previewShell = this.root.querySelector('.npf-preview-shell');
       this.ui.saveStatus = this.root.querySelector('[data-save-status]');
 
-      Array.from(this.root.querySelectorAll('[data-action]')).forEach((button) => button.addEventListener('click', () => this.handleAction(button.dataset.action), PASSIVE_EVENT_OPTIONS));
+      Array.from(this.root.querySelectorAll('[data-action]')).forEach((button) => button.addEventListener('click', () => this.handleAction(button.dataset.action)));
       Array.from(this.root.querySelectorAll('[data-page-nav]')).forEach((button) => button.addEventListener('click', () => {
         this.state.pageIndex += button.dataset.pageNav === 'next' ? 1 : -1;
         this.clampPageIndex();
@@ -568,13 +571,13 @@
         this.renderPageControls();
         this.scrollPreviewToTop();
         this.scheduleRender(true);
-      }, PASSIVE_EVENT_OPTIONS));
+      }));
       const saveButton = this.root.querySelector('[data-save-progress]');
-      if (saveButton) saveButton.addEventListener('click', () => this.saveProgress(), PASSIVE_EVENT_OPTIONS);
+      if (saveButton) saveButton.addEventListener('click', () => this.saveProgress());
       if (!this.hapticTouchHandler) {
         this.hapticTouchHandler = (event) => {
           if (!event || !event.target || typeof event.target.closest !== 'function') return;
-          if (!event.target.closest('button,[role="button"],input,select,textarea,.npf-photo-option')) return;
+          if (!event.target.closest(HAPTIC_FEEDBACK_SELECTORS)) return;
           this.triggerHapticFeedback();
         };
         this.root.addEventListener('touchstart', this.hapticTouchHandler, PASSIVE_EVENT_OPTIONS);
@@ -614,7 +617,7 @@
         this.queuePersistState();
         this.renderUi();
         this.scrollPreviewToTop();
-      }, PASSIVE_EVENT_OPTIONS));
+      }));
     }
 
     renderPageControls() {
@@ -628,7 +631,7 @@
         this.renderPageControls();
         this.scrollPreviewToTop();
         this.scheduleRender(true);
-      }, PASSIVE_EVENT_OPTIONS));
+      }));
       if (this.ui.previewZoomWrap) {
         this.ui.previewZoomWrap.innerHTML = PREVIEW_ZOOMS.map((zoom) => `<button type="button" class="npf-btn ${Number(this.state.previewZoom || 100) === zoom ? 'npf-primary active' : 'npf-muted'}" data-preview-zoom="${zoom}">${zoom}%</button>`).join('');
         Array.from(this.ui.previewZoomWrap.querySelectorAll('[data-preview-zoom]')).forEach((button) => button.addEventListener('click', () => {
@@ -636,7 +639,7 @@
           this.queuePersistState();
           this.renderPageControls();
           this.applyPreviewZoom();
-        }, PASSIVE_EVENT_OPTIONS));
+        }));
       }
       this.applyPreviewZoom();
       Array.from(this.root.querySelectorAll('[data-page-nav]')).forEach((button) => {
@@ -939,7 +942,7 @@
         this.renderStepBody();
         this.restoreViewportState(viewportState);
         this.refreshCardSelectionUi();
-      }, PASSIVE_EVENT_OPTIONS));
+      }));
       Array.from(this.ui.stepBody.querySelectorAll('[data-card-slot]')).forEach((slot) => slot.addEventListener('click', (event) => {
         if (event.target.closest('input,textarea,select,button')) return;
         const viewportState = this.captureViewportState();
@@ -947,7 +950,7 @@
         this.renderStepBody();
         this.restoreViewportState(viewportState);
         this.refreshCardSelectionUi();
-      }, PASSIVE_EVENT_OPTIONS));
+      }));
     }
 
     refreshCardSelectionUi() {
@@ -1077,8 +1080,8 @@
 
     bindStepEvents() {
       const bindFieldInput = (selector, handler) => Array.from(this.ui.stepBody.querySelectorAll(selector)).forEach((node) => {
-        node.addEventListener('input', handler, PASSIVE_EVENT_OPTIONS);
-        node.addEventListener('change', handler, PASSIVE_EVENT_OPTIONS);
+        node.addEventListener('input', handler);
+        node.addEventListener('change', handler);
       });
 
       bindFieldInput('[data-field]', (event) => {
@@ -1099,7 +1102,7 @@
         this.scheduleRender(false, viewportState);
       });
 
-      Array.from(this.ui.stepBody.querySelectorAll('[data-layout-preset]')).forEach((button) => button.addEventListener('click', () => this.applyLayoutPreset(button.dataset.layoutPreset), PASSIVE_EVENT_OPTIONS));
+      Array.from(this.ui.stepBody.querySelectorAll('[data-layout-preset]')).forEach((button) => button.addEventListener('click', () => this.applyLayoutPreset(button.dataset.layoutPreset)));
 
       const buildSegmented = (target, values, current, attr) => {
         if (!target) return;
@@ -1123,28 +1126,28 @@
         this.clampPageIndex();
         this.queuePersistState();
         rerenderWithCanvas();
-      }, PASSIVE_EVENT_OPTIONS));
+      }));
       Array.from(this.ui.stepBody.querySelectorAll('[data-rows] button[data-rows]')).forEach((button) => button.addEventListener('click', () => {
         this.state.rowsPerPage = clamp(button.dataset.rows || 4, 1, 6);
         this.clampPageIndex();
         this.queuePersistState();
         rerenderWithCanvas();
-      }, PASSIVE_EVENT_OPTIONS));
+      }));
       Array.from(this.ui.stepBody.querySelectorAll('[data-logo-toggle] button[data-logo-toggle]')).forEach((button) => button.addEventListener('click', () => {
         this.state.showLogo = String(button.dataset.logoToggle) === 'on';
         this.queuePersistState();
         rerenderWithCanvas();
-      }, PASSIVE_EVENT_OPTIONS));
+      }));
       Array.from(this.ui.stepBody.querySelectorAll('[data-fit] button[data-fit]')).forEach((button) => button.addEventListener('click', () => {
         this.state.photoFit = String(button.dataset.fit || 'cover');
         this.queuePersistState();
         rerenderWithCanvas();
-      }, PASSIVE_EVENT_OPTIONS));
+      }));
       Array.from(this.ui.stepBody.querySelectorAll('[data-card-style] button[data-card-style]')).forEach((button) => button.addEventListener('click', () => {
         this.state.cardStyle = String(button.dataset.cardStyle || 'soft');
         this.queuePersistState();
         rerenderWithCanvas();
-      }, PASSIVE_EVENT_OPTIONS));
+      }));
       if (this.state.step === 'style') {
         const themeWrap = this.ui.stepBody.querySelector('[data-themes]');
         if (themeWrap) {
@@ -1158,7 +1161,7 @@
             this.state.theme = Object.assign({}, THEMES[nextKey] || THEMES.sage);
             this.queuePersistState();
             rerenderWithCanvas();
-          }, PASSIVE_EVENT_OPTIONS));
+          }));
         }
         Array.from(this.ui.stepBody.querySelectorAll('[data-color]')).forEach((input) => {
           input.value = this.state.theme[input.dataset.color] || '#ffffff';
@@ -1168,20 +1171,20 @@
             this.refreshLiveEditorPanel();
             this.queuePersistState();
             this.scheduleRender(false, viewportState);
-          }, PASSIVE_EVENT_OPTIONS);
+          });
         });
       }
 
       Array.from(this.ui.stepBody.querySelectorAll('[data-photo-option]')).forEach((button) => button.addEventListener('click', () => {
         const parts = String(button.dataset.photoOption || '').split(':');
         this.selectPhotoOption(Number(parts[0] || 0), Number(parts[1] || 0));
-      }, PASSIVE_EVENT_OPTIONS));
+      }));
       Array.from(this.ui.stepBody.querySelectorAll('[data-duplicate-card]')).forEach((button) => button.addEventListener('click', () => {
         this.duplicateCard(Number(button.dataset.duplicateCard || 0));
-      }, PASSIVE_EVENT_OPTIONS));
+      }));
       Array.from(this.ui.stepBody.querySelectorAll('[data-toggle-card]')).forEach((button) => button.addEventListener('click', () => {
         this.toggleCardEnabled(Number(button.dataset.toggleCard || 0));
-      }, PASSIVE_EVENT_OPTIONS));
+      }));
       Array.from(this.ui.stepBody.querySelectorAll('[data-card]')).forEach((field) => {
         const applyCardField = (event) => {
           const target = event.currentTarget;
@@ -1205,8 +1208,8 @@
           this.queuePersistState();
           this.scheduleRender(false, viewportState);
         };
-        field.addEventListener('input', applyCardField, PASSIVE_EVENT_OPTIONS);
-        field.addEventListener('change', applyCardField, PASSIVE_EVENT_OPTIONS);
+        field.addEventListener('input', applyCardField);
+        field.addEventListener('change', applyCardField);
       });
       this.bindLiveEditorEvents();
       this.refreshCardSelectionUi();
@@ -1479,12 +1482,24 @@
     triggerHapticFeedback() {
       const nav = global.navigator;
       if (!nav || typeof nav.vibrate !== 'function') return;
-      try { nav.vibrate(8); } catch (error) {}
+      const now = Date.now();
+      if ((now - this.lastHapticAt) < 75) return;
+      this.lastHapticAt = now;
+      try { nav.vibrate(8); } catch (error) {
+        if (typeof console !== 'undefined' && typeof console.warn === 'function') console.warn('Haptic feedback unavailable.', error);
+      }
     }
 
     queueIdleRenderTask(task) {
       return new Promise((resolve, reject) => {
-        const runTask = () => Promise.resolve().then(task).then(resolve).catch(reject);
+        const runTask = () => {
+          try {
+            const result = task();
+            Promise.resolve(result).then(resolve).catch(reject);
+          } catch (error) {
+            reject(error);
+          }
+        };
         if (typeof global.requestIdleCallback === 'function') {
           global.requestIdleCallback(() => {
             if (typeof global.requestAnimationFrame === 'function') {
@@ -1492,7 +1507,7 @@
               return;
             }
             runTask();
-          }, { timeout: 120 });
+          }, { timeout: IDLE_RENDER_TIMEOUT_MS });
           return;
         }
         if (typeof global.requestAnimationFrame === 'function') {
