@@ -6363,12 +6363,15 @@ function toggleDriveQuickRequestItem(domId) {
             if (!terms.length) return true;
             const searchValues = getSearchValuesForProfile(item, profileName);
             if (!searchValues.length) return false;
+            const wordStarts = getSearchWordStartsForProfile(item, profileName);
             if (STRICT_PREFIX_SEARCH_PROFILES.has(profileName)) {
                 const primaryValue = String(searchValues[0] || '').trim();
                 if (!primaryValue) return false;
-                return terms.every((term) => primaryValue.startsWith(term));
+                const joined = terms.join(' ');
+                if (primaryValue.startsWith(joined)) return true;
+                if (!primaryValue.startsWith(terms[0])) return false;
+                return terms.slice(1).every((term) => wordStarts.some((word) => word.startsWith(term)));
             }
-            const wordStarts = getSearchWordStartsForProfile(item, profileName);
             const fieldStartsWith = (term) => searchValues.some(value => value.startsWith(term));
             const wordStartsWith = (term) => wordStarts.some(word => word.startsWith(term));
             const [firstTerm, ...restTerms] = terms;
