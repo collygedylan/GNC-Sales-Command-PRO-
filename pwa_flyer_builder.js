@@ -36,7 +36,10 @@
   const PDF_PAGE_WIDTH = 612;
   const PDF_PAGE_HEIGHT = 792;
   const BUILDER_STATE_STORAGE_KEY = 'gnc_native_flyer_builder_state_v5';
-  const RENDER_DEBOUNCE_MS = 240;
+  const RENDER_DEBOUNCE_MS = 16;
+  const IDLE_RENDER_TIMEOUT_MS = 120;
+  const PASSIVE_EVENT_OPTIONS = { passive: true };
+  const HAPTIC_FEEDBACK_SELECTORS = 'button,[role="button"],input,select,textarea,.npf-photo-option';
 
   const BUILDER_CSS = `
     .npf-wrap{display:grid;gap:18px}
@@ -49,10 +52,10 @@
     .npf-builder-column{display:grid;gap:18px;grid-template-columns:1fr;align-items:start;min-width:0}
     .npf-builder-column>.npf-card:first-child{position:sticky;top:18px}.npf-builder-column>.npf-card{min-width:0}
     .npf-label{font-size:11px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:#475569}
-    .npf-input,.npf-textarea,.npf-select{width:100%;border:1px solid #d6e3db;border-radius:16px;padding:12px 14px;font:700 14px/1.4 Arial,sans-serif;color:#0f172a;background:#fff}
+    .npf-input,.npf-textarea,.npf-select{width:100%;border:1px solid #d6e3db;border-radius:16px;padding:12px 14px;font:700 14px/1.4 Arial,sans-serif;color:#0f172a;background:#fff;touch-action:manipulation;-webkit-user-select:text;user-select:text}
     .npf-textarea{min-height:92px;resize:vertical}
     .npf-select{appearance:none}
-    .npf-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:42px;padding:10px 16px;border-radius:999px;border:1px solid transparent;font:900 11px/1 Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;transition:.18s ease;text-align:center}
+    .npf-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:42px;padding:10px 16px;border-radius:999px;border:1px solid transparent;font:900 11px/1 Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;transition:.18s ease;text-align:center;touch-action:manipulation}
     .npf-primary{background:#0f7a4f;color:#fff}
     .npf-secondary{background:#eef6f1;color:#0f7a4f;border-color:#cfe4d6}
     .npf-muted{background:#f8fafc;color:#475569;border-color:#d8e0ea}
@@ -80,7 +83,7 @@
     .npf-step-pill strong{font:900 15px/1.1 Arial,sans-serif}
     .npf-pagebar{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
     .npf-pagebar .status{font:900 11px/1 Arial,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#64748b}
-    .npf-preview-shell{padding:20px;background:linear-gradient(180deg,#f8fafc 0%,#edf3f7 100%);border-radius:24px;overflow:auto;max-height:82vh;overscroll-behavior:contain;display:flex;justify-content:center;align-items:flex-start}
+    .npf-preview-shell{padding:20px;background:linear-gradient(180deg,#f8fafc 0%,#edf3f7 100%);border-radius:24px;overflow:auto;max-height:82vh;overscroll-behavior:contain;display:flex;justify-content:center;align-items:flex-start;-webkit-overflow-scrolling:touch;touch-action:pan-y pinch-zoom}
     .npf-preview-stage{width:100%;max-width:1120px;min-width:0;display:flex;justify-content:center}
     .npf-canvas{width:100%;height:auto;display:block;border-radius:24px;box-shadow:0 28px 48px rgba(15,23,42,.18);background:#fff;transform-origin:top center}
     .npf-preview-tools{align-items:flex-start;justify-content:space-between}
@@ -92,7 +95,7 @@
     .npf-row-filter{position:relative}
     .npf-row-filter input{padding-right:44px}
     .npf-row-filter .count{position:absolute;right:14px;top:50%;transform:translateY(-50%);font:900 11px/1 Arial,sans-serif;color:#94a3b8}
-    .npf-slots{display:grid;gap:12px;max-height:960px;overflow:auto;padding-right:4px;scroll-behavior:smooth;overscroll-behavior:contain}
+    .npf-slots{display:grid;gap:12px;max-height:960px;overflow:auto;padding-right:4px;scroll-behavior:smooth;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y}
     .npf-slot{border:1px solid #dbe7df;border-radius:22px;padding:14px;background:#f8fbf9}
     .npf-slot.off{opacity:.62}
     .npf-slot-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:10px}
@@ -102,9 +105,9 @@
     .npf-thumb{width:100%;aspect-ratio:16/10;border-radius:18px;background:#dfe9e2 center/cover no-repeat;border:1px dashed #bfd2c4;display:flex;align-items:center;justify-content:center;text-align:center;padding:12px;color:#64748b;font:800 12px/1.4 Arial,sans-serif}
     .npf-thumb-caption{margin-top:8px;font:800 11px/1.4 Arial,sans-serif;color:#475569}
     .npf-photo-picker{display:grid;gap:8px;margin-top:12px}
-    .npf-photo-rail{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;scroll-snap-type:x proximity}
+    .npf-photo-rail{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;touch-action:pan-x}
     .npf-photo-rail::-webkit-scrollbar{display:none}
-    .npf-photo-option{min-width:104px;width:104px;border:1px solid #d6e3db;background:#fff;border-radius:18px;padding:6px;display:grid;gap:6px;cursor:pointer;box-shadow:0 8px 18px rgba(15,23,42,.05);scroll-snap-align:start}
+    .npf-photo-option{min-width:104px;width:104px;border:1px solid #d6e3db;background:#fff;border-radius:18px;padding:6px;display:grid;gap:6px;cursor:pointer;box-shadow:0 8px 18px rgba(15,23,42,.05);scroll-snap-align:start;touch-action:manipulation}
     .npf-photo-option.active{border-color:#0f7a4f;box-shadow:0 0 0 2px rgba(15,122,79,.14),0 8px 18px rgba(15,23,42,.08)}
     .npf-photo-mini{width:100%;aspect-ratio:1/1;border-radius:12px;background:#dfe9e2 center/cover no-repeat}
     .npf-photo-caption{font:800 10px/1.3 Arial,sans-serif;color:#334155;text-align:left;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
@@ -125,9 +128,9 @@
     .npf-live-subheading{font:800 13px/1.45 Arial,sans-serif;color:#475569}
     .npf-live-note{font:900 13px/1.4 Arial,sans-serif;color:#0f7a4f}
     .npf-live-sidebar{display:grid;gap:12px}
-    .npf-live-card-list{display:flex;gap:8px;overflow:auto;padding-bottom:4px;scrollbar-width:none}
+    .npf-live-card-list{display:flex;gap:8px;overflow:auto;padding-bottom:4px;scrollbar-width:none;-webkit-overflow-scrolling:touch;touch-action:pan-x}
     .npf-live-card-list::-webkit-scrollbar{display:none}
-    .npf-live-chip{min-width:132px;max-width:190px;display:grid;gap:4px;justify-items:start;padding:10px 12px;border-radius:18px;border:1px solid #dbe7df;background:#fff;box-shadow:0 10px 20px rgba(15,23,42,.06);cursor:pointer}
+    .npf-live-chip{min-width:132px;max-width:190px;display:grid;gap:4px;justify-items:start;padding:10px 12px;border-radius:18px;border:1px solid #dbe7df;background:#fff;box-shadow:0 10px 20px rgba(15,23,42,.06);cursor:pointer;touch-action:manipulation}
     .npf-live-chip span{font:900 10px/1 Arial,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#64748b}
     .npf-live-chip strong{font:900 13px/1.25 Arial,sans-serif;color:#0f172a;text-align:left;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
     .npf-live-chip.active{border-color:#0f7a4f;background:#eef8f2;box-shadow:0 0 0 2px rgba(15,122,79,.14),0 12px 24px rgba(15,23,42,.08)}
@@ -364,6 +367,7 @@
       this.renderFrame = null;
       this.renderInFlight = false;
       this.renderQueued = false;
+      this.lastHapticAt = 0;
       this.pendingViewportState = null;
       this.persistTimer = null;
       this.renderDebounceMs = RENDER_DEBOUNCE_MS;
@@ -570,6 +574,14 @@
       }));
       const saveButton = this.root.querySelector('[data-save-progress]');
       if (saveButton) saveButton.addEventListener('click', () => this.saveProgress());
+      if (!this.hapticTouchHandler) {
+        this.hapticTouchHandler = (event) => {
+          if (!event || !event.target || typeof event.target.closest !== 'function') return;
+          if (!event.target.closest(HAPTIC_FEEDBACK_SELECTORS)) return;
+          this.triggerHapticFeedback();
+        };
+        this.root.addEventListener('touchstart', this.hapticTouchHandler, PASSIVE_EVENT_OPTIONS);
+      }
 
       if (!this.saveStatusMessage) this.setSaveStatus('Draft ready. Auto-save is on for this device.', 'saved');
       this.renderUi();
@@ -1153,13 +1165,13 @@
         }
         Array.from(this.ui.stepBody.querySelectorAll('[data-color]')).forEach((input) => {
           input.value = this.state.theme[input.dataset.color] || '#ffffff';
-          input.oninput = () => {
+          input.addEventListener('input', () => {
             const viewportState = this.captureViewportState(input);
             this.state.theme[input.dataset.color] = input.value;
             this.refreshLiveEditorPanel();
             this.queuePersistState();
             this.scheduleRender(false, viewportState);
-          };
+          });
         });
       }
 
@@ -1234,13 +1246,20 @@
 
     restoreViewportState(snapshot) {
       if (!snapshot) return;
-      const doc = document.scrollingElement || document.documentElement || document.body;
-      if (doc) {
-        doc.scrollTop = Number(snapshot.docTop || 0);
-        doc.scrollLeft = Number(snapshot.docLeft || 0);
+      const restore = () => {
+        const doc = document.scrollingElement || document.documentElement || document.body;
+        if (doc) {
+          doc.scrollTop = Number(snapshot.docTop || 0);
+          doc.scrollLeft = Number(snapshot.docLeft || 0);
+        }
+        this.restoreSlotScrollState(snapshot.slot);
+        if (snapshot.focus) this.restoreFocusState(snapshot.focus);
+      };
+      if (typeof global.requestAnimationFrame === 'function') {
+        global.requestAnimationFrame(restore);
+        return;
       }
-      this.restoreSlotScrollState(snapshot.slot);
-      if (snapshot.focus) this.restoreFocusState(snapshot.focus);
+      restore();
     }
 
     captureSlotScrollState() {
@@ -1460,6 +1479,45 @@
       }
     }
 
+    triggerHapticFeedback() {
+      const nav = global.navigator;
+      if (!nav || typeof nav.vibrate !== 'function') return;
+      const now = Date.now();
+      if ((now - this.lastHapticAt) < 75) return;
+      this.lastHapticAt = now;
+      try { nav.vibrate(8); } catch (error) {
+        if (typeof console !== 'undefined' && typeof console.warn === 'function') console.warn('Haptic feedback unavailable.', error);
+      }
+    }
+
+    queueIdleRenderTask(task) {
+      return new Promise((resolve, reject) => {
+        const runTask = () => {
+          try {
+            const result = task();
+            Promise.resolve(result).then(resolve).catch(reject);
+          } catch (error) {
+            reject(error);
+          }
+        };
+        if (typeof global.requestIdleCallback === 'function') {
+          global.requestIdleCallback(() => {
+            if (typeof global.requestAnimationFrame === 'function') {
+              global.requestAnimationFrame(runTask);
+              return;
+            }
+            runTask();
+          }, { timeout: IDLE_RENDER_TIMEOUT_MS });
+          return;
+        }
+        if (typeof global.requestAnimationFrame === 'function') {
+          global.requestAnimationFrame(runTask);
+          return;
+        }
+        setTimeout(runTask, 0);
+      });
+    }
+
     applyPreviewZoom() {
       if (!this.ui.canvas) return;
       const zoom = clamp(this.state.previewZoom || 100, 60, 150);
@@ -1468,7 +1526,14 @@
     }
 
     scrollPreviewToTop() {
-      if (this.ui.previewShell) this.ui.previewShell.scrollTop = 0;
+      if (!this.ui.previewShell) return;
+      if (typeof global.requestAnimationFrame === 'function') {
+        global.requestAnimationFrame(() => {
+          if (this.ui.previewShell) this.ui.previewShell.scrollTop = 0;
+        });
+        return;
+      }
+      this.ui.previewShell.scrollTop = 0;
     }
 
     scheduleRender(immediate, viewportState) {
@@ -1757,98 +1822,100 @@
     }
 
     async renderPageToCanvas(canvas, pageIndex, scale) {
-      const exportScale = Math.max(1, Number(scale || 1));
-      const width = PAGE_WIDTH * exportScale;
-      const height = PAGE_HEIGHT * exportScale;
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext('2d');
-      const theme = this.state.theme;
-      const padding = 64 * exportScale;
-      const rowsPerPage = this.getRowsPerPage();
-      const gap = (rowsPerPage >= 6 ? 14 : (rowsPerPage >= 5 ? 18 : 24)) * exportScale;
-      const headerHeight = (this.state.subtitle ? 226 : 192) * exportScale;
-      const footerHeight = (this.state.footer || this.state.footerNote || this.state.showLogo) ? 176 * exportScale : 0;
-      const usableWidth = width - (padding * 2);
-      const cards = this.getPageCards(pageIndex);
-      const columns = clamp(this.state.columns || 2, 1, 3);
-      const rowCount = Math.max(1, Math.ceil(cards.length / columns));
-      const cardWidth = (usableWidth - (gap * (columns - 1))) / columns;
-      const pageBodyTop = padding + headerHeight + gap;
-      const pageBodyBottom = height - padding - footerHeight;
-      const bodyHeight = pageBodyBottom - pageBodyTop;
-      const cardHeight = rowCount > 0 ? Math.floor((bodyHeight - (gap * (rowCount - 1))) / rowCount) : bodyHeight;
+      await this.queueIdleRenderTask(async () => {
+        const exportScale = Math.max(1, Number(scale || 1));
+        const width = PAGE_WIDTH * exportScale;
+        const height = PAGE_HEIGHT * exportScale;
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        const theme = this.state.theme;
+        const padding = 64 * exportScale;
+        const rowsPerPage = this.getRowsPerPage();
+        const gap = (rowsPerPage >= 6 ? 14 : (rowsPerPage >= 5 ? 18 : 24)) * exportScale;
+        const headerHeight = (this.state.subtitle ? 226 : 192) * exportScale;
+        const footerHeight = (this.state.footer || this.state.footerNote || this.state.showLogo) ? 176 * exportScale : 0;
+        const usableWidth = width - (padding * 2);
+        const cards = this.getPageCards(pageIndex);
+        const columns = clamp(this.state.columns || 2, 1, 3);
+        const rowCount = Math.max(1, Math.ceil(cards.length / columns));
+        const cardWidth = (usableWidth - (gap * (columns - 1))) / columns;
+        const pageBodyTop = padding + headerHeight + gap;
+        const pageBodyBottom = height - padding - footerHeight;
+        const bodyHeight = pageBodyBottom - pageBodyTop;
+        const cardHeight = rowCount > 0 ? Math.floor((bodyHeight - (gap * (rowCount - 1))) / rowCount) : bodyHeight;
 
-      ctx.clearRect(0, 0, width, height);
-      ctx.fillStyle = theme.background;
-      ctx.fillRect(0, 0, width, height);
+        ctx.clearRect(0, 0, width, height);
+        ctx.fillStyle = theme.background;
+        ctx.fillRect(0, 0, width, height);
 
-      roundRect(ctx, padding, padding, usableWidth, headerHeight, 34 * exportScale);
-      ctx.fillStyle = theme.panel;
-      ctx.fill();
-      ctx.fillStyle = theme.accent;
-      ctx.fillRect(padding + (28 * exportScale), padding + (26 * exportScale), 180 * exportScale, 12 * exportScale);
-
-      const title = this.state.title || 'Flyer';
-      const titleMaxWidth = usableWidth - (60 * exportScale) - (210 * exportScale);
-      const titleSize = fitTextSize(ctx, title, titleMaxWidth, 62 * exportScale, 36 * exportScale, 900);
-      ctx.fillStyle = theme.title;
-      ctx.font = `900 ${titleSize}px Arial`;
-      ctx.fillText(title, padding + (28 * exportScale), padding + (100 * exportScale));
-
-      ctx.fillStyle = theme.body;
-      ctx.font = `700 ${28 * exportScale}px Arial`;
-      wrapText(ctx, this.state.subtitle || '', usableWidth - (56 * exportScale), 3).forEach((line, index) => {
-        ctx.fillText(line, padding + (28 * exportScale), padding + (148 * exportScale) + (index * (36 * exportScale)));
-      });
-
-      ctx.fillStyle = theme.body;
-      ctx.font = `900 ${18 * exportScale}px Arial`;
-      const pageLabel = `PAGE ${Number(pageIndex || 0) + 1} OF ${this.getPageCount()}`;
-      const labelWidth = ctx.measureText(pageLabel).width;
-      ctx.fillText(pageLabel, padding + usableWidth - labelWidth - (28 * exportScale), padding + (48 * exportScale));
-
-      for (let i = 0; i < cards.length; i += 1) {
-        const col = i % columns;
-        const row = Math.floor(i / columns);
-        const x = padding + (col * (cardWidth + gap));
-        const y = pageBodyTop + (row * (cardHeight + gap));
-        await this.drawCard(ctx, cards[i], x, y, cardWidth, cardHeight, exportScale);
-      }
-
-      if (footerHeight) {
-        const footerY = height - padding - footerHeight;
-        roundRect(ctx, padding, footerY, usableWidth, footerHeight, 28 * exportScale);
+        roundRect(ctx, padding, padding, usableWidth, headerHeight, 34 * exportScale);
         ctx.fillStyle = theme.panel;
         ctx.fill();
         ctx.fillStyle = theme.accent;
-        ctx.fillRect(padding + (28 * exportScale), footerY + (22 * exportScale), 140 * exportScale, 10 * exportScale);
+        ctx.fillRect(padding + (28 * exportScale), padding + (26 * exportScale), 180 * exportScale, 12 * exportScale);
 
-        const logoAreaWidth = this.state.showLogo ? 260 * exportScale : 0;
-        const textMaxWidth = usableWidth - (56 * exportScale) - logoAreaWidth;
+        const title = this.state.title || 'Flyer';
+        const titleMaxWidth = usableWidth - (60 * exportScale) - (210 * exportScale);
+        const titleSize = fitTextSize(ctx, title, titleMaxWidth, 62 * exportScale, 36 * exportScale, 900);
         ctx.fillStyle = theme.title;
-        ctx.font = `900 ${30 * exportScale}px Arial`;
-        ctx.fillText(this.state.footer || '', padding + (28 * exportScale), footerY + (72 * exportScale));
+        ctx.font = `900 ${titleSize}px Arial`;
+        ctx.fillText(title, padding + (28 * exportScale), padding + (100 * exportScale));
+
         ctx.fillStyle = theme.body;
-        ctx.font = `700 ${20 * exportScale}px Arial`;
-        wrapText(ctx, this.state.footerNote || '', textMaxWidth, 2).forEach((line, index) => {
-          ctx.fillText(line, padding + (28 * exportScale), footerY + (108 * exportScale) + (index * (24 * exportScale)));
+        ctx.font = `700 ${28 * exportScale}px Arial`;
+        wrapText(ctx, this.state.subtitle || '', usableWidth - (56 * exportScale), 3).forEach((line, index) => {
+          ctx.fillText(line, padding + (28 * exportScale), padding + (148 * exportScale) + (index * (36 * exportScale)));
         });
 
-        if (this.state.showLogo) {
-          const logoImage = await this.getLogoImage();
-          if (logoImage) {
-            const logoBoxWidth = 220 * exportScale;
-            const logoBoxHeight = footerHeight - (38 * exportScale);
-            const logoX = padding + usableWidth - logoBoxWidth - (28 * exportScale);
-            const logoY = footerY + ((footerHeight - logoBoxHeight) / 2);
-            const fit = Math.min(logoBoxWidth / logoImage.width, logoBoxHeight / logoImage.height);
-            const drawWidth = logoImage.width * fit;
-            const drawHeight = logoImage.height * fit;
-            ctx.drawImage(logoImage, logoX + ((logoBoxWidth - drawWidth) / 2), logoY + ((logoBoxHeight - drawHeight) / 2), drawWidth, drawHeight);
+        ctx.fillStyle = theme.body;
+        ctx.font = `900 ${18 * exportScale}px Arial`;
+        const pageLabel = `PAGE ${Number(pageIndex || 0) + 1} OF ${this.getPageCount()}`;
+        const labelWidth = ctx.measureText(pageLabel).width;
+        ctx.fillText(pageLabel, padding + usableWidth - labelWidth - (28 * exportScale), padding + (48 * exportScale));
+
+        for (let i = 0; i < cards.length; i += 1) {
+          const col = i % columns;
+          const row = Math.floor(i / columns);
+          const x = padding + (col * (cardWidth + gap));
+          const y = pageBodyTop + (row * (cardHeight + gap));
+          await this.drawCard(ctx, cards[i], x, y, cardWidth, cardHeight, exportScale);
+        }
+
+        if (footerHeight) {
+          const footerY = height - padding - footerHeight;
+          roundRect(ctx, padding, footerY, usableWidth, footerHeight, 28 * exportScale);
+          ctx.fillStyle = theme.panel;
+          ctx.fill();
+          ctx.fillStyle = theme.accent;
+          ctx.fillRect(padding + (28 * exportScale), footerY + (22 * exportScale), 140 * exportScale, 10 * exportScale);
+
+          const logoAreaWidth = this.state.showLogo ? 260 * exportScale : 0;
+          const textMaxWidth = usableWidth - (56 * exportScale) - logoAreaWidth;
+          ctx.fillStyle = theme.title;
+          ctx.font = `900 ${30 * exportScale}px Arial`;
+          ctx.fillText(this.state.footer || '', padding + (28 * exportScale), footerY + (72 * exportScale));
+          ctx.fillStyle = theme.body;
+          ctx.font = `700 ${20 * exportScale}px Arial`;
+          wrapText(ctx, this.state.footerNote || '', textMaxWidth, 2).forEach((line, index) => {
+            ctx.fillText(line, padding + (28 * exportScale), footerY + (108 * exportScale) + (index * (24 * exportScale)));
+          });
+
+          if (this.state.showLogo) {
+            const logoImage = await this.getLogoImage();
+            if (logoImage) {
+              const logoBoxWidth = 220 * exportScale;
+              const logoBoxHeight = footerHeight - (38 * exportScale);
+              const logoX = padding + usableWidth - logoBoxWidth - (28 * exportScale);
+              const logoY = footerY + ((footerHeight - logoBoxHeight) / 2);
+              const fit = Math.min(logoBoxWidth / logoImage.width, logoBoxHeight / logoImage.height);
+              const drawWidth = logoImage.width * fit;
+              const drawHeight = logoImage.height * fit;
+              ctx.drawImage(logoImage, logoX + ((logoBoxWidth - drawWidth) / 2), logoY + ((logoBoxHeight - drawHeight) / 2), drawWidth, drawHeight);
+            }
           }
         }
-      }
+      });
     }
 
     async render() {
@@ -2001,4 +2068,3 @@
 
   global.NativePwaFlyer = { Builder, THEMES, LAYOUT_PRESETS };
 })(window);
-
