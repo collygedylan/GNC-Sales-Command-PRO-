@@ -11760,28 +11760,9 @@ activeDriveTab = tab;
         }
 
         function getCurrentRequestDetailItems() {
-            let items = getScopedRequestItems(requestsInventory);            if (activeReqTab === 'pending') {
-                const crumbText = "All Pending Requests";
-                let pendingItems = items.filter(i => !isRequestComplete(i) && !i.REQ_ARCHIVED);
-
-                if (pendingItems.length === 0) {
-                    container.innerHTML = `<div class="p-8 text-center text-gray-400">No pending requests.</div>`;
-                    crumb.innerText = crumbText;
-                    return;
-                }
-
-                pendingItems.sort((a,b) => String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""), undefined, {numeric: true}));
-                if (shouldUseChunkedCardRender(pendingItems.length, 70, 140)) {
-                    renderMarkupChunkedByKey('request-main', container, crumb, pendingItems, crumbText, (item) => generateCard(item, 'request', 'status-purple'), {
-                        approxCardHeight: 360,
-                        onComplete: decorateRequestRows
-                    });
-                    return;
-                }
-                crumb.innerText = crumbText;
-                container.innerHTML = pendingItems.map(i => generateCard(i, 'request', 'status-purple')).join('');
-                requestAnimationFrame(decorateRequestRows);
-
+            let items = getScopedRequestItems(requestsInventory);
+            if (activeReqTab === 'pending') {
+                items = items.filter(i => !isRequestComplete(i) && !i.REQ_ARCHIVED);
             } else if (activeReqTab === 'reps') {
                 items = items.filter(i => getRequestAssignedRep(i) === selectedReqRepView && !i.REQ_ARCHIVED);
                 if (selectedReqStatus) {
@@ -11796,7 +11777,6 @@ activeDriveTab = tab;
             } else {
                 items = [];
             }
-
             return items.sort((a,b) => String(a.LOCATIONCODE||'').localeCompare(String(b.LOCATIONCODE||''), undefined, {numeric: true}));
         }
 
@@ -15625,14 +15605,18 @@ function toggleDriveSeason(s) {
                         : (prefix === 'flyer-'
                             ? firstNonEmptyValue(itemToSave.FLYER_PHOTO_NAME, itemToSave.SAVED_PHOTO_NAME)
                             : firstNonEmptyValue(itemToSave.SAVED_PHOTO_NAME));
-                    const shouldCreateSalesOfficeRow = ['ssn-','lsn-','na-','req-','flyer-'].includes(prefix) && salesRuleAssignment === 'season' && salesRuleId !== '';
+                    const isRequestCompletion = prefix === 'req-';
+                    const shouldCreateSalesOfficeRow = isRequestCompletion
+                        ? String(itemToSave.UNIQUE_ID || '').trim() !== ''
+                        : (['ssn-','lsn-','na-','flyer-'].includes(prefix) && salesRuleAssignment === 'season' && salesRuleId !== '');
                     if (shouldCreateSalesOfficeRow) {
+                        const salesOfficeUniqueId = isRequestCompletion ? String(itemToSave.UNIQUE_ID || salesRuleId).trim() : salesRuleId;
                         const salesOfficeAvNote = itemToSave.AV_NOTE || salesRuleItem.AV_NOTE || '';
                         const salesOfficeSalesNote = itemToSave.SALES_NOTE || itemToSave.REQ_COMMENTS || salesRuleItem.SALES_NOTE || salesRuleItem.SALESNOTE || '';
                         const salesOfficeSpec = itemToSave.REQ_SPEC || itemToSave.SPEC || salesRuleItem.SPEC || '';
                         const salesOfficeCaliper = itemToSave.REQ_CALIPER || itemToSave.CALIPER || salesRuleItem.CALIPER || '';
                         artifacts.soPayload = {
-                            unique_id: salesRuleId,
+                            unique_id: salesOfficeUniqueId,
                             itemcode: salesRuleItem.ITEMCODE || itemToSave.ITEMCODE || '',
                             commonname: salesRuleItem.COMMONNAME || itemToSave.COMMONNAME || '',
                             contsize: salesRuleItem.CONTSIZE || itemToSave.CONTSIZE || '',
@@ -15649,10 +15633,30 @@ function toggleDriveSeason(s) {
                             completed_by: currentUser,
                             completed_at: payload.date_completed
                         };
+                        if (isRequestCompletion) {
+                            const requestFolder = String(firstNonEmptyValue(itemToSave.REQUEST_FOLDER, '') || '').trim();
+                            const requestCustomer = String(firstNonEmptyValue(itemToSave.REQ_CUSTOMER, getRequestDisplayCustomer(itemToSave), '') || '').trim();
+                            const requestRep = String(firstNonEmptyValue(itemToSave.REQUESTED_BY, currentUserDisplay, currentUser, '') || '').trim();
+                            artifacts.soPayload.so_source = 'bloom_picker';
+                            artifacts.soPayload.order_folder = requestFolder;
+                            artifacts.soPayload.order_number = requestFolder;
+                            artifacts.soPayload.order_customer = requestCustomer;
+                            artifacts.soPayload.order_status = 'Pending Review';
+                            artifacts.soPayload.order_submitted_by = requestRep;
+                            artifacts.soPayload.order_submitted_at = payload.date_completed;
+                            artifacts.soPayload.order_qty = String(firstNonEmptyValue(itemToSave.REQ_QTY, '') || '').trim();
+                            artifacts.soPayload.order_reserve = String(firstNonEmptyValue(itemToSave.REQ_RESERVE, 'NO') || '').trim() || 'NO';
+                            artifacts.soPayload.salesrepname = requestRep;
+                            artifacts.soPayload.salesrep = requestRep;
+                            artifacts.soPayload.sales_rep = requestRep;
+                            artifacts.soPayload.request_folder = requestFolder;
+                            artifacts.soPayload.req_customer = requestCustomer;
+                        }
                         artifacts.cloneSO = { ...artifacts.soPayload };
                         for (let key in artifacts.soPayload) { artifacts.cloneSO[key.toUpperCase()] = artifacts.soPayload[key]; }
                         artifacts.cloneSO.DOM_ID = 'so_' + artifacts.cloneSO.UNIQUE_ID;
-                        artifacts.cloneSO.APP_TAB_ASSIGNMENT = 'season';
+                        const salesOfficeSource = String(firstNonEmptyValue(artifacts.soPayload.so_source, 'season')).toLowerCase();
+                        artifacts.cloneSO.APP_TAB_ASSIGNMENT = (salesOfficeSource === 'bloom_picker' || salesOfficeSource === 'bloom-picker') ? 'sales-office-order' : 'season';
                         artifacts.cloneSO.SAVED_PHOTO_LINK = artifacts.soPayload.photo_link;
                         artifacts.cloneSO.SAVED_PHOTO_NAME = artifacts.soPayload.photo_name || '';
                         normalizeRowPhotoFields(artifacts.cloneSO);
@@ -16165,7 +16169,6 @@ function toggleDriveSeason(s) {
     </script>
 </body>
 </html>
-
 
 
 
