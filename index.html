@@ -78,10 +78,12 @@
         #pull-refresh-indicator.visible{opacity:1}
         #pull-refresh-indicator.ready .pull-refresh-pill{background:#007a4d;color:#fff;border-color:#007a4d}
         #pull-refresh-indicator.refreshing .pull-refresh-pill{background:#111827;color:#fff;border-color:#111827}
-        #photo-modal-gallery{display:flex;align-items:center;gap:0;scroll-behavior:smooth;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;touch-action:pan-x pinch-zoom}
+        #photo-modal-gallery{display:flex;align-items:center;gap:0;scroll-behavior:smooth;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;touch-action:pan-x pinch-zoom;contain:layout paint style;will-change:scroll-position}
         #photo-modal-gallery::-webkit-scrollbar{display:none}
-        .photo-modal-slide{flex:0 0 100%;width:100%;scroll-snap-align:center;scroll-snap-stop:always;display:flex;align-items:center;justify-content:center;padding:0 .75rem}
-        .photo-modal-slide img{width:100%;max-height:80vh;object-fit:contain;border-radius:1rem;box-shadow:0 20px 45px rgba(0,0,0,.35);background:rgba(255,255,255,.02);user-select:none;-webkit-user-drag:none}
+        .photo-modal-slide{flex:0 0 100%;width:100%;scroll-snap-align:center;scroll-snap-stop:always;display:flex;align-items:center;justify-content:center;padding:0 .75rem;contain:layout paint}
+        .photo-modal-slide img{width:100%;max-height:80vh;object-fit:contain;border-radius:1rem;box-shadow:0 20px 45px rgba(0,0,0,.35);background:rgba(255,255,255,.02);user-select:none;-webkit-user-drag:none;transform:translateZ(0);will-change:transform}
+        #gallery-sections{contain:layout paint style}
+        #gallery-sections img{transform:translateZ(0);will-change:transform}
         .photo-gallery-clickzone{cursor:pointer}
         #drive-search-container,#av-search-container,#reserves-search-container,#docks-search-container{position:-webkit-sticky;position:sticky;top:0;z-index:45}
         .nav-header{position:-webkit-sticky;position:sticky;top:0;z-index:60;padding:max(10px,env(safe-area-inset-top)) var(--shell-gutter) 12px;background:linear-gradient(180deg,#007a4d 0%,#0d8b5d 100%);box-shadow:0 10px 24px rgba(7,94,63,.18)}
@@ -1444,7 +1446,17 @@
             return false;
         }
         let lastUiActionAt = 0;
-        let photoModalState = { urls: [], index: 0, scrollTimer: null, galleryClickHandler: null, keyHandler: null };
+        let photoModalState = {
+            urls: [],
+            index: 0,
+            scrollTimer: null,
+            scrollFrame: null,
+            scrollHandler: null,
+            wheelHandler: null,
+            touchMoveHandler: null,
+            galleryClickHandler: null,
+            keyHandler: null
+        };
 
         function blurActiveField() {
             const activeEl = document.activeElement;
@@ -3581,7 +3593,7 @@
             };
         }
 
-        let fullInventory=[]; let avOpenInventory=[]; let lowStockInventory=[]; let socInventory=[]; let reservesInventory=[]; let requestsInventory=[]; let managerReviewInventory=[]; let salesOfficeInventory=[]; let cavInventory=[]; let avNotesDb=[]; let avNotesCommonNameIndex=new Map(); let avNotesCommonNameIndexVersion=-1; let avNoteFilterTimers={};
+        let fullInventory=[]; let avOpenInventory=[]; let lowStockInventory=[]; let socInventory=[]; let reservesInventory=[]; let requestsInventory=[]; let managerReviewInventory=[]; let salesOfficeInventory=[]; let cavInventory=[]; let avNotesDb=[]; let avNotesCommonNameIndex=new Map(); let avNotesCommonNameIndexVersion=-1; let avNoteFilterTimers={}; let avNoteFilterResultCache=new Map(); let avNoteRenderedKeys={};
         let masterInventoryById=new Map(); let masterInventoryByExactKey=new Map(); let lowStockInventoryDirty=true; let managerReviewInventoryDirty=true;
         let loginPrefetchPromise=null;
         let loginPrefetchMode='';
@@ -3603,9 +3615,43 @@
             return prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-' || prefix === 'req-' || prefix === 'dock-' || prefix === 'flyer-';
         }
 
+        const DETAIL_INPUT_SAVE_DEBOUNCE_MS = 160;
+        let detailInputSaveTimers = {};
+
+        function extractDetailPrefixFromInputId(inputId = '') {
+            const id = String(inputId || '').trim();
+            if (id.endsWith('-spec')) return `${id.slice(0, -4)}-`;
+            if (id.endsWith('-caliper')) return `${id.slice(0, -7)}-`;
+            return '';
+        }
+
+        function queueLagSensitiveInputSave(prefix = '') {
+            const safePrefix = String(prefix || '');
+            if (!isLagSensitiveDetailPrefix(safePrefix) || !activeItem) return;
+            const detailView = document.getElementById('view-detail');
+            if (!detailView || detailView.classList.contains('hidden')) return;
+            if (detailInputSaveTimers[safePrefix]) clearTimeout(detailInputSaveTimers[safePrefix]);
+            const timerId = setTimeout(() => {
+                requestAnimationFrame(() => {
+                    if (detailInputSaveTimers[safePrefix] === timerId) detailInputSaveTimers[safePrefix] = null;
+                    saveData(false, safePrefix, true);
+                });
+            }, DETAIL_INPUT_SAVE_DEBOUNCE_MS);
+            detailInputSaveTimers[safePrefix] = timerId;
+        }
+
+        window.addEventListener('input', (event) => {
+            const target = event && event.target ? event.target : null;
+            if (!target || target.tagName !== 'INPUT') return;
+            const prefix = extractDetailPrefixFromInputId(target.id);
+            if (prefix) queueLagSensitiveInputSave(prefix);
+        }, { passive: true });
+
         function invalidateAvNotesCommonNameIndex() {
             avNotesCommonNameIndexVersion = -1;
             avNotesCommonNameIndex = new Map();
+            avNoteFilterResultCache = new Map();
+            avNoteRenderedKeys = {};
         }
 
         function ensureAvNotesCommonNameIndex() {
@@ -6720,21 +6766,45 @@ function toggleDriveQuickRequestItem(domId) {
             if (photoModalState.galleryClickHandler) {
                 gallery.removeEventListener('click', photoModalState.galleryClickHandler);
             }
+            if (photoModalState.scrollHandler) {
+                gallery.removeEventListener('scroll', photoModalState.scrollHandler);
+            }
+            if (photoModalState.wheelHandler) {
+                gallery.removeEventListener('wheel', photoModalState.wheelHandler);
+            }
+            if (photoModalState.touchMoveHandler) {
+                gallery.removeEventListener('touchmove', photoModalState.touchMoveHandler);
+            }
             if (photoModalState.keyHandler) {
                 window.removeEventListener('keydown', photoModalState.keyHandler);
+            }
+            if (photoModalState.scrollFrame) {
+                cancelAnimationFrame(photoModalState.scrollFrame);
+                photoModalState.scrollFrame = null;
             }
 
             photoModalState.urls = urls;
             photoModalState.index = 0;
-            gallery.innerHTML = urls.map((url, index) => `<div class="photo-modal-slide" data-photo-index="${index}"><img src="${url}" alt="${esc(caption || `Photo ${index + 1}`)}" loading="${index === 0 ? 'eager' : 'lazy'}" draggable="false"></div>`).join('');
-            gallery.onscroll = () => {
-                syncPhotoModalIndexFromScroll();
+            gallery.innerHTML = urls.map((url, index) => `<div class="photo-modal-slide" data-photo-index="${index}"><img src="${esc(url)}" sizes="100vw" alt="${esc(caption || `Photo ${index + 1}`)}" loading="${index === 0 ? 'eager' : 'lazy'}" decoding="async" fetchpriority="${index === 0 ? 'high' : 'low'}" draggable="false"></div>`).join('');
+            photoModalState.scrollHandler = () => {
+                markScrollActivity();
+                if (photoModalState.scrollFrame) return;
+                photoModalState.scrollFrame = requestAnimationFrame(() => {
+                    photoModalState.scrollFrame = null;
+                    syncPhotoModalIndexFromScroll();
+                });
                 if (photoModalState.scrollTimer) clearTimeout(photoModalState.scrollTimer);
                 photoModalState.scrollTimer = setTimeout(() => {
-                    syncPhotoModalIndexFromScroll();
-                    snapPhotoModalToIndex(photoModalState.index, false);
+                    requestAnimationFrame(() => {
+                        snapPhotoModalToIndex(photoModalState.index, false);
+                    });
                 }, 120);
             };
+            photoModalState.wheelHandler = () => markScrollActivity();
+            photoModalState.touchMoveHandler = () => markScrollActivity();
+            gallery.addEventListener('scroll', photoModalState.scrollHandler, { passive: true });
+            gallery.addEventListener('wheel', photoModalState.wheelHandler, { passive: true });
+            gallery.addEventListener('touchmove', photoModalState.touchMoveHandler, { passive: true });
             photoModalState.galleryClickHandler = (event) => {
                 if (window.matchMedia('(pointer: coarse)').matches) return;
                 if (photoModalState.urls.length <= 1) return;
@@ -6774,7 +6844,15 @@ function toggleDriveQuickRequestItem(domId) {
                 photoModalState.scrollTimer = null;
             }
             if (gallery) {
-                gallery.onscroll = null;
+                if (photoModalState.scrollHandler) {
+                    gallery.removeEventListener('scroll', photoModalState.scrollHandler);
+                }
+                if (photoModalState.wheelHandler) {
+                    gallery.removeEventListener('wheel', photoModalState.wheelHandler);
+                }
+                if (photoModalState.touchMoveHandler) {
+                    gallery.removeEventListener('touchmove', photoModalState.touchMoveHandler);
+                }
                 if (photoModalState.galleryClickHandler) {
                     gallery.removeEventListener('click', photoModalState.galleryClickHandler);
                 }
@@ -6784,8 +6862,15 @@ function toggleDriveQuickRequestItem(domId) {
             if (photoModalState.keyHandler) {
                 window.removeEventListener('keydown', photoModalState.keyHandler);
             }
+            if (photoModalState.scrollFrame) {
+                cancelAnimationFrame(photoModalState.scrollFrame);
+                photoModalState.scrollFrame = null;
+            }
             photoModalState.urls = [];
             photoModalState.index = 0;
+            photoModalState.scrollHandler = null;
+            photoModalState.wheelHandler = null;
+            photoModalState.touchMoveHandler = null;
             photoModalState.galleryClickHandler = null;
             photoModalState.keyHandler = null;
             if (swipeHint) swipeHint.classList.add('hidden');
@@ -11209,7 +11294,7 @@ activeDriveTab = tab;
                 getPhotoUrlList(group.link).forEach((cleanUrl) => {
                     if (!cleanUrl) return;
                     const thumb = getDirectImageUrl(cleanUrl);
-                    tiles += `<img src="${thumb}" class="w-24 h-24 object-cover rounded-xl border border-gray-300 shadow-sm cursor-pointer active:scale-95" onclick="openPhotoModal('${group.link}', '${group.label}')">`;
+                    tiles += `<img src="${esc(thumb)}" sizes="96px" loading="lazy" decoding="async" fetchpriority="low" class="w-24 h-24 object-cover rounded-xl border border-gray-300 shadow-sm cursor-pointer active:scale-95" onclick="openPhotoModal('${esc(group.link)}', '${esc(group.label)}')">`;
                 });
                 if (!tiles) return;
                 html += `<div><div class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">${group.label}</div><div class="flex flex-wrap gap-3">${tiles}</div></div>`;
@@ -15934,10 +16019,22 @@ function toggleDriveSeason(s) {
             const inputVal = inputEl.value.toUpperCase();
             const list = document.getElementById(prefix + 'av-dropdown-list');
             if (!list) return;
-            let matchingNotes = getIndexedAvNotes(activeItem.COMMONNAME).slice();
-            if (inputVal) { matchingNotes = matchingNotes.filter(n => String(n).toUpperCase().includes(inputVal)); }
-            if (matchingNotes.length === 0) { list.classList.add('hidden'); return; }
-            list.innerHTML = matchingNotes.map(n => `<div class="p-3 border-b border-gray-100 text-sm font-bold text-blue-800 cursor-pointer hover:bg-blue-50 active:bg-blue-100" onclick="selectAvNote('${esc(n)}', '${prefix}')">${n}</div>`).join('');
+            const commonKey = String(activeItem.COMMONNAME || '').trim().toUpperCase();
+            const cacheKey = `${commonKey}::${inputVal}`;
+            let matchingNotes = avNoteFilterResultCache.get(cacheKey);
+            if (!matchingNotes) {
+                matchingNotes = getIndexedAvNotes(activeItem.COMMONNAME).slice();
+                if (inputVal) matchingNotes = matchingNotes.filter(n => String(n).toUpperCase().includes(inputVal));
+                avNoteFilterResultCache.set(cacheKey, matchingNotes);
+            }
+            if (matchingNotes.length === 0) {
+                avNoteRenderedKeys[prefix] = cacheKey;
+                list.classList.add('hidden');
+                return;
+            }
+            if (avNoteRenderedKeys[prefix] === cacheKey && !list.classList.contains('hidden')) return;
+            list.innerHTML = matchingNotes.map(n => `<div class="p-3 border-b border-gray-100 text-sm font-bold text-blue-800 cursor-pointer hover:bg-blue-50 active:bg-blue-100" onclick="selectAvNote('${esc(n)}', '${esc(prefix)}')">${esc(n)}</div>`).join('');
+            avNoteRenderedKeys[prefix] = cacheKey;
             list.classList.remove('hidden');
         }
 
@@ -16184,4 +16281,3 @@ function toggleDriveSeason(s) {
     </script>
 </body>
 </html>
-
