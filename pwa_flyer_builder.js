@@ -40,6 +40,7 @@
   const RENDER_PRIORITY = { high: 'high', normal: 'normal', low: 'low' };
   const IDLE_RENDER_TIMEOUT_MS = 120;
   const INPUT_THROTTLE_MS = 90;
+  const RENDER_DEBOUNCE_NORMAL_MS = 40;
   const VIRTUAL_CARD_ROW_HEIGHT = 560;
   const VIRTUAL_CARD_OVERSCAN = 2;
   const IMAGE_CACHE_LIMIT = 120;
@@ -211,7 +212,6 @@
       const image = new Image();
       image.crossOrigin = 'anonymous';
       image.decoding = 'async';
-      image.loading = 'eager';
       image.onload = async () => {
         if (typeof image.decode === 'function') {
           try { await image.decode(); } catch (error) {}
@@ -381,6 +381,7 @@
       this.renderFrame = null;
       this.renderInFlight = false;
       this.renderQueued = false;
+      this.queuedRenderPriority = RENDER_PRIORITY.low;
       this.pendingRenderPriority = RENDER_PRIORITY.low;
       this.lastHapticAt = 0;
       this.pendingViewportState = null;
@@ -389,6 +390,7 @@
       this.stepDelegatedEventsBound = false;
       this.inputRenderTimer = null;
       this.lastInputRenderAt = 0;
+      this.imageReadyRenderTimer = null;
       this.virtualCardsState = { start: -1, end: -1, total: 0 };
       this.virtualCardsScrollHandler = null;
       this.livePanelFrame = null;
@@ -630,6 +632,10 @@
         this.pageHidePersistHandler = () => {
           this.flushQueuedState(false);
           this.pruneImageCache(true);
+          if (this.imageReadyRenderTimer) {
+            clearTimeout(this.imageReadyRenderTimer);
+            this.imageReadyRenderTimer = null;
+          }
           this.disposeWorkers();
         };
         global.addEventListener('pagehide', this.pageHidePersistHandler, { passive: true });
@@ -1075,7 +1081,7 @@
       const filteredCards = this.getFilteredEditorCards();
       if (!filteredCards.length) return `<div class="npf-photo-empty">No rows match that search.</div>`;
       if (mode !== 'cards') return filteredCards.map(({ card, index }) => this.buildCardMarkup(card, index, mode)).join('');
-      return this.renderVirtualCardRows(filteredCards, 0, 0);
+      return this.renderVirtualCardRows(filteredCards, 0, VIRTUAL_CARD_ROW_HEIGHT * 2);
     }
 
     getVirtualCardRange(total, scrollTop, viewportHeight) {
@@ -1224,13 +1230,13 @@
     bindDelegatedStepEvents() {
       if (this.stepDelegatedEventsBound || !this.ui.stepBody) return;
       this.stepDelegatedEventsBound = true;
-      this.ui.stepBody.addEventListener('input', (event) => this.handleStepInput(event), PASSIVE_EVENT_OPTIONS);
+      this.ui.stepBody.addEventListener('input', (event) => this.handleStepInput(event));
       this.ui.stepBody.addEventListener('change', (event) => this.handleStepInput(event));
       this.ui.stepBody.addEventListener('click', (event) => this.handleStepClick(event));
     }
 
     scheduleLowPriorityInputRender(viewportState) {
-      this.pendingViewportState = viewportState || this.pendingViewportState;
+      if (typeof viewportState !== 'undefined') this.pendingViewportState = viewportState;
       if (this.inputRenderTimer) return;
       const elapsed = Date.now() - this.lastInputRenderAt;
       const wait = Math.max(0, INPUT_THROTTLE_MS - elapsed);
@@ -1239,6 +1245,14 @@
         this.lastInputRenderAt = Date.now();
         this.scheduleRender(RENDER_PRIORITY.low, this.pendingViewportState);
       }, wait);
+    }
+
+    scheduleImageReadyRender() {
+      if (this.imageReadyRenderTimer) return;
+      this.imageReadyRenderTimer = setTimeout(() => {
+        this.imageReadyRenderTimer = null;
+        this.scheduleRender(RENDER_PRIORITY.low);
+      }, 80);
     }
 
     handleStepInput(event) {
@@ -1300,7 +1314,10 @@
     }
 
     handleStepClick(event) {
-      const target = event && event.target ? event.target.closest('button,[data-card-slot]') : null;
+      if (!event || !event.target || typeof event.target.closest !== 'function') return;
+      const buttonTarget = event.target.closest('button');
+      const slotTarget = event.target.closest('[data-card-slot]');
+      const target = buttonTarget || slotTarget;
       if (!target) return;
       const rerenderWithCanvas = () => {
         this.renderUi();
@@ -1708,6 +1725,16 @@
       return priorityOrImmediate ? RENDER_PRIORITY.high : RENDER_PRIORITY.low;
     }
 
+    getPriorityWeight(priority) {
+      if (priority === RENDER_PRIORITY.high) return 3;
+      if (priority === RENDER_PRIORITY.normal) return 2;
+      return 1;
+    }
+
+    pickHigherPriority(next, current) {
+      return this.getPriorityWeight(next) >= this.getPriorityWeight(current) ? next : current;
+    }
+
     updateRenderMetrics(durationMs) {
       const ms = Math.max(0, Number(durationMs || 0));
       this.performanceMetrics.renderCount += 1;
@@ -1733,6 +1760,7 @@
       const runRender = async () => {
         if (this.renderInFlight) {
           this.renderQueued = true;
+          this.queuedRenderPriority = this.pickHigherPriority(priority, this.queuedRenderPriority || RENDER_PRIORITY.low);
           return;
         }
         this.renderInFlight = true;
@@ -1750,7 +1778,9 @@
           this.renderInFlight = false;
           if (this.renderQueued) {
             this.renderQueued = false;
-            this.scheduleRender(nextPriority === RENDER_PRIORITY.low ? RENDER_PRIORITY.normal : RENDER_PRIORITY.high);
+            const queuedPriority = this.pickHigherPriority(this.pendingRenderPriority || RENDER_PRIORITY.low, this.queuedRenderPriority || RENDER_PRIORITY.low);
+            this.queuedRenderPriority = RENDER_PRIORITY.low;
+            this.scheduleRender(queuedPriority);
           }
         }
       };
@@ -1777,7 +1807,7 @@
       this.renderTimer = setTimeout(() => {
         this.renderTimer = null;
         queueFrameRender();
-      }, priority === RENDER_PRIORITY.normal ? Math.min(40, this.renderDebounceMs) : this.renderDebounceMs);
+      }, priority === RENDER_PRIORITY.normal ? Math.min(RENDER_DEBOUNCE_NORMAL_MS, this.renderDebounceMs) : this.renderDebounceMs);
     }
 
     persistState(manual) {
@@ -1816,7 +1846,7 @@
             return;
           }
           try {
-            if (typeof fetch !== 'function' || typeof createImageBitmap !== 'function') throw new Error('Image worker unavailable');
+            if (typeof fetch !== 'function' || typeof createImageBitmap !== 'function') throw new Error('Image worker missing fetch/createImageBitmap support');
             const response = await fetch(src, { mode: 'cors' });
             const blob = await response.blob();
             const bitmap = await createImageBitmap(blob);
@@ -1833,6 +1863,9 @@
         const pending = this.imageWorkerPending.get(payload.id);
         if (!pending) return;
         this.imageWorkerPending.delete(payload.id);
+        if (!payload.ok && typeof console !== 'undefined' && typeof console.warn === 'function') {
+          console.warn('Native flyer image worker fell back to main-thread image loading.');
+        }
         pending.resolve(payload.ok ? (payload.bitmap || null) : null);
       };
       this.workerEnabled = true;
@@ -1863,10 +1896,10 @@
       const entries = Array.from(this.imageCache.entries())
         .filter(([, value]) => value && value.status !== 'loading')
         .sort((a, b) => (a[1].lastUsed || 0) - (b[1].lastUsed || 0));
-      while (this.imageCache.size > IMAGE_CACHE_PRUNE_TO && entries.length) {
+      while (this.imageCache.size > max && entries.length) {
         const next = entries.shift();
         if (!next) break;
-        this.imageCache.delete(next[0]);
+        if (this.imageCache.has(next[0])) this.imageCache.delete(next[0]);
       }
     }
 
@@ -1894,7 +1927,7 @@
           entry.image = image || null;
           entry.status = image ? 'ready' : 'error';
           entry.lastUsed = ++this.imageCacheAccess;
-          if (entry.image) this.scheduleRender(RENDER_PRIORITY.low);
+          if (entry.image) this.scheduleImageReadyRender();
           return entry.image;
         }).catch(() => {
           entry.status = 'error';
@@ -1944,6 +1977,10 @@
       ctx.fillStyle = amount > 0 ? `rgba(255,191,120,${opacity})` : `rgba(125,175,255,${opacity})`;
       ctx.fillRect(x, y, width, height);
       ctx.restore();
+    }
+
+    shouldUseNonBlockingImageLoad(scale) {
+      return Number(scale || 1) <= 1;
     }
 
     drawImageFrame(ctx, image, frameX, frameY, frameWidth, frameHeight, card, extraBlur) {
@@ -2002,7 +2039,7 @@
       ctx.fillStyle = '#edf4ef';
       ctx.fillRect(imageX, imageY, imageWidth, imageHeight);
       if (card.imageSrc) {
-        const image = await this.getCachedImage(card.imageSrc, { nonBlocking: Number(scale || 1) <= 1 });
+        const image = await this.getCachedImage(card.imageSrc, { nonBlocking: this.shouldUseNonBlockingImageLoad(scale) });
         if (image) {
           const blurStrength = Math.max(0, Number(card.backgroundBlur || 0)) * 0.45 * scale;
           if (blurStrength > 0) {
