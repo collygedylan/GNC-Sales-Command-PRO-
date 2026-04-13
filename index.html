@@ -958,8 +958,8 @@
         let horizontalClampFrameQueued = false;
         let swipeCloseOnScrollFrame = null;
         let swipeCloseOnScrollTimer = null;
-        const ACTIVE_TYPING_GRACE_MS = 90;
-        const ACTIVE_SCROLL_GRACE_MS = 260;
+        const ACTIVE_TYPING_GRACE_MS = 35;
+        const ACTIVE_SCROLL_GRACE_MS = 120;
 
         function isIOSDevice() {
             return IOS_DEVICE_REGEX.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -2765,8 +2765,8 @@
 
         function scheduleTypingAwareUiRender(key, renderFn, delay = 0, typingDelay = ACTIVE_TYPING_GRACE_MS) {
             const safeDelay = Math.max(0, Number(delay) || 0);
-            const safeTypingDelay = Math.max(80, Number(typingDelay) || ACTIVE_TYPING_GRACE_MS);
-            const safeScrollDelay = Math.max(140, safeTypingDelay);
+            const safeTypingDelay = Math.max(35, Number(typingDelay) || ACTIVE_TYPING_GRACE_MS);
+            const safeScrollDelay = Math.max(80, safeTypingDelay);
             const runWhenReady = () => {
                 if (isUserActivelyTyping()) {
                     scheduleUiRender(key, runWhenReady, safeTypingDelay);
