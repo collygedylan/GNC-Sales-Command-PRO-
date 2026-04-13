@@ -905,21 +905,23 @@
         const REALTIME_TABLES = [...CORE_REALTIME_TABLES, ...OPTIONAL_REALTIME_TABLES];
         const REALTIME_TABLES_BY_VIEW = Object.freeze({
             home: CORE_REALTIME_TABLES,
-            drive: ['v2_master_inventory'],
-            tasks: ['v2_master_inventory', 'v2_av_notes'],
-            request: ['v2_active_request', 'v2_master_inventory'],
-            'sales-office': ['v2_sales_office', 'v2_master_inventory'],
-            av: ['v2_master_inventory', 'v2_reserves', 'v2_av_notes'],
-            reserves: ['v2_reserves', 'v2_master_inventory'],
-            docks: ['v2_soc_master', 'v2_dock_team_status', 'v2_dock_item_status'],
+            drive: CORE_REALTIME_TABLES,
+            tasks: CORE_REALTIME_TABLES,
+            request: CORE_REALTIME_TABLES,
+            'sales-office': CORE_REALTIME_TABLES,
+            av: CORE_REALTIME_TABLES,
+            reserves: CORE_REALTIME_TABLES,
+            // Docks needs additional dock-specific tables; normalizeRealtimeTableList deduplicates at runtime
+            docks: [...new Set([...CORE_REALTIME_TABLES, 'v2_soc_master', 'v2_dock_team_status', 'v2_dock_item_status'])],
             reports: CORE_REALTIME_TABLES,
-            review: ['v2_master_inventory', 'v2_sales_office'],
-            'low-stock': ['v2_master_inventory'],
+            review: CORE_REALTIME_TABLES,
+            'low-stock': CORE_REALTIME_TABLES,
             hours: []
         });
         let activeRealtimeTables = [...REALTIME_TABLES];
         let activeRealtimeViewId = '';
         const VIEW_ENTER_REFRESH_MIN_INTERVAL_MS = 12000;
+        const VIEW_ENTER_REFRESH_REALTIME_HEALTHY_MS = 60000;
         const viewEnterRefreshAt = new Map();
         const REALTIME_STARTUP_GRACE_MS = 12000;
         const REALTIME_RECOVERY_GRACE_MS = 3200;
@@ -2577,7 +2579,7 @@
 
             if (!changed) return false;
             trackRealtimeDirtyRowId(tableName, uniqueId);
-            if (tableName === 'v2_active_request') triggerRequestRealtimeUiRefresh(18);
+            if (tableName === 'v2_active_request') triggerRequestRealtimeUiRefresh(250);
             if (!deferVisualSync) flushRealtimeDatasetUpdates([tableName]);
             return true;
         }
@@ -2616,7 +2618,7 @@
         }
 
         function shouldDeferInteractiveBackgroundWork() {
-            return !!(isUserActivelyTyping() || (window.pendingPhotoUploads && window.pendingPhotoUploads.size));
+            return !!(isUserActivelyTyping() || isUserActivelyScrolling() || (window.pendingPhotoUploads && window.pendingPhotoUploads.size));
         }
 
         function scheduleRealtimeReconnect(delay = REALTIME_RECOVERY_GRACE_MS) {
@@ -4623,7 +4625,12 @@
             const targetView = String(viewId || '').trim();
             if (!targetView) return;
             const now = Date.now();
-            const minInterval = Number(options.minInterval || VIEW_ENTER_REFRESH_MIN_INTERVAL_MS);
+            // When realtime is healthy, data arrives via push — use a much longer interval to
+            // avoid hammering Supabase on every navigation. Only force-fetch when explicitly
+            // requested or when we have no live push channel.
+            const realtimeHealthy = !options.force && hasHealthyCoreRealtimeSubscriptions();
+            const defaultInterval = realtimeHealthy ? VIEW_ENTER_REFRESH_REALTIME_HEALTHY_MS : VIEW_ENTER_REFRESH_MIN_INTERVAL_MS;
+            const minInterval = Number(options.minInterval !== undefined ? options.minInterval : defaultInterval);
             const last = viewEnterRefreshAt.get(targetView) || 0;
             if (!options.force && (now - last) < minInterval) return;
             viewEnterRefreshAt.set(targetView, now);
@@ -9962,9 +9969,19 @@ activeDriveTab = tab;
 
         function setContainerHtml(container, html) {
             if (!container) return;
-            container.innerHTML = '';
-            if (!html) return;
-            appendHtmlFragment(container, html);
+            if (!html) {
+                if (typeof container.replaceChildren === 'function') container.replaceChildren();
+                else container.innerHTML = '';
+                return;
+            }
+            const template = document.createElement('template');
+            template.innerHTML = html;
+            if (typeof container.replaceChildren === 'function') {
+                container.replaceChildren(template.content);
+            } else {
+                container.innerHTML = '';
+                container.appendChild(template.content);
+            }
         }
 
         function renderMarkupChunkedByKey(tokenKey, container, crumb, rows, crumbText, renderRow, options = {}) {
@@ -12038,12 +12055,12 @@ activeDriveTab = tab;
                 let pendingItems = items.filter(i => !isRequestComplete(i) && !i.REQ_ARCHIVED);
 
                 if (pendingItems.length === 0) {
-                    container.innerHTML = `<div class="p-8 text-center text-gray-400">No pending requests.</div>`;
+                    setContainerHtml(container, `<div class="p-8 text-center text-gray-400">No pending requests.</div>`);
                     return;
                 }
 
                 pendingItems.sort((a,b) => String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""), undefined, {numeric: true}));
-                container.innerHTML = pendingItems.map(i => generateCard(i, 'request', 'status-purple')).join('');
+                setContainerHtml(container, pendingItems.map(i => generateCard(i, 'request', 'status-purple')).join(''));
                 requestAnimationFrame(decorateRequestRows);
 
             } else if (activeReqTab === 'reps') {
@@ -12051,17 +12068,17 @@ activeDriveTab = tab;
                     crumb.innerText = "Sales Reps";
                     let reps = [...new Set(items.map(i => getRequestAssignedRep(i)))].sort();
                     if (reps.length === 0) {
-                        container.innerHTML = `<div class="p-8 text-center text-gray-400">No sales reps found.</div>`;
+                        setContainerHtml(container, `<div class="p-8 text-center text-gray-400">No sales reps found.</div>`);
                         return;
                     }
-                    container.innerHTML = reps.map(r => `<div class="drill-item" onclick="return openRequestRepView('${esc(r)}')"><span class="font-bold text-lg">${r}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
+                    setContainerHtml(container, reps.map(r => `<div class="drill-item" onclick="return openRequestRepView('${esc(r)}')"><span class="font-bold text-lg">${r}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join(''));
                 } else if (requestViewLevel === 1) {
                     crumb.innerText = `${selectedReqRepView} > Status`;
                     let repItems = items.filter(i => getRequestAssignedRep(i) === selectedReqRepView && !i.REQ_ARCHIVED);
                     let pendingCount = repItems.filter(i => !isRequestComplete(i)).length;
                     let completeCount = repItems.filter(i => isRequestComplete(i)).length;
 
-                    container.innerHTML = `
+                    setContainerHtml(container, `
                         <div class="back-btn" onclick="return backToRequestRepList()"><i class="ph-bold ph-arrow-left"></i> Back to Reps</div>
                         <div class="bg-orange-50 border border-orange-200 rounded-xl shadow-sm mb-4 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="return openRequestStatusView('Pending')">
                             <div class="flex items-center gap-3"><i class="ph-bold ph-clock text-2xl text-orange-500"></i><span class="font-bold text-lg text-orange-800">Pending Requests</span></div>
@@ -12071,14 +12088,14 @@ activeDriveTab = tab;
                             <div class="flex items-center gap-3"><i class="ph-bold ph-check-circle text-2xl text-green-500"></i><span class="font-bold text-lg text-green-800">Completed Requests</span></div>
                             <span class="text-xs font-bold text-white bg-green-500 px-2 py-1 rounded-lg">${completeCount}</span>
                         </div>
-                    `;
+                    `);
                 } else if (requestViewLevel === 2) {
                     crumb.innerText = `${selectedReqRepView} > ${selectedReqStatus}`;
                     let repItems = items.filter(i => getRequestAssignedRep(i) === selectedReqRepView && !i.REQ_ARCHIVED);
                     let statusItems = repItems.filter(i => selectedReqStatus === 'Pending' ? !isRequestComplete(i) : isRequestComplete(i));
 
                     if (statusItems.length === 0) {
-                        container.innerHTML = `<div class="back-btn" onclick="return backToRequestStatusList()"><i class="ph-bold ph-arrow-left"></i> Back to Status</div><div class="p-8 text-center text-gray-400">No ${selectedReqStatus.toLowerCase()} requests.</div>`;
+                        setContainerHtml(container, `<div class="back-btn" onclick="return backToRequestStatusList()"><i class="ph-bold ph-arrow-left"></i> Back to Status</div><div class="p-8 text-center text-gray-400">No ${selectedReqStatus.toLowerCase()} requests.</div>`);
                         return;
                     }
 
@@ -12091,7 +12108,7 @@ activeDriveTab = tab;
                         const shareActions = canShareRequestFolders() ? `<div class="grid grid-cols-4 gap-2 mt-3"><button class="bg-white border border-purple-200 text-purple-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); shareRequestFolder('copy', '${esc(f)}', '${selectedReqStatus}', '${esc(selectedReqRepView)}')">Copy</button><button class="bg-white border border-indigo-200 text-indigo-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); shareRequestFolder('email', '${esc(f)}', '${selectedReqStatus}', '${esc(selectedReqRepView)}')">Email</button><button class="bg-white border border-emerald-200 text-emerald-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); shareRequestFolder('text', '${esc(f)}', '${selectedReqStatus}', '${esc(selectedReqRepView)}')">Text</button><button class="bg-white border border-amber-200 text-amber-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); setRequestFolderNote('${esc(f)}', '${selectedReqStatus}', '${esc(selectedReqRepView)}')">Note</button></div>` : '';
                         return `<div class="bg-white border border-purple-200 rounded-xl shadow-sm mb-3 p-4 cursor-pointer active:scale-95 transition-transform" onclick="return openRequestFolderView('${esc(f)}')"><div class="flex justify-between items-center"><div class="flex items-center gap-3 min-w-0"><div class="bg-purple-50 p-2 rounded-lg"><i class="ph-fill ph-folder text-2xl text-purple-500"></i></div><span class="font-bold text-sm text-purple-800 break-all">${f}</span></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg min-w-max ml-2">${count} Items</span></div>${noteHtml}${shareActions}</div>`;
                     }).join('');
-                    container.innerHTML = html;
+                    setContainerHtml(container, html);
                                 } else if (requestViewLevel === 3) {
                     const crumbText = selectedReqStatus === 'Complete' ? `${selectedReqRepView} > ${selectedReqFolderView}` : selectedReqFolderView;
                     crumb.innerText = crumbText;
@@ -12109,7 +12126,7 @@ activeDriveTab = tab;
                         });
                         return;
                     }
-                    container.innerHTML = prefixHtml + folderItems.map(i => generateCard(i, 'request', cardTone)).join('');
+                    setContainerHtml(container, prefixHtml + folderItems.map(i => generateCard(i, 'request', cardTone)).join(''));
                     requestAnimationFrame(decorateRequestRows);
                 }
             }
