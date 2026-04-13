@@ -15610,7 +15610,7 @@ function toggleDriveSeason(s) {
                         ? String(itemToSave.UNIQUE_ID || '').trim() !== ''
                         : (['ssn-','lsn-','na-','flyer-'].includes(prefix) && salesRuleAssignment === 'season' && salesRuleId !== '');
                     if (shouldCreateSalesOfficeRow) {
-                        const salesOfficeUniqueId = isRequestCompletion ? String(itemToSave.UNIQUE_ID || salesRuleId).trim() : salesRuleId;
+                        const salesOfficeUniqueId = isRequestCompletion ? String(itemToSave.UNIQUE_ID || '').trim() : salesRuleId;
                         const salesOfficeAvNote = itemToSave.AV_NOTE || salesRuleItem.AV_NOTE || '';
                         const salesOfficeSalesNote = itemToSave.SALES_NOTE || itemToSave.REQ_COMMENTS || salesRuleItem.SALES_NOTE || salesRuleItem.SALESNOTE || '';
                         const salesOfficeSpec = itemToSave.REQ_SPEC || itemToSave.SPEC || salesRuleItem.SPEC || '';
@@ -15644,8 +15644,8 @@ function toggleDriveSeason(s) {
                             artifacts.soPayload.order_status = 'Pending Review';
                             artifacts.soPayload.order_submitted_by = requestRep;
                             artifacts.soPayload.order_submitted_at = payload.date_completed;
-                            artifacts.soPayload.order_qty = String(firstNonEmptyValue(itemToSave.REQ_QTY, '') || '').trim();
-                            artifacts.soPayload.order_reserve = String(firstNonEmptyValue(itemToSave.REQ_RESERVE, 'NO') || '').trim() || 'NO';
+                            artifacts.soPayload.order_qty = String(firstNonEmptyValue(itemToSave.REQ_QTY, '')).trim();
+                            artifacts.soPayload.order_reserve = String(firstNonEmptyValue(itemToSave.REQ_RESERVE, 'NO')).trim() || 'NO';
                             artifacts.soPayload.salesrepname = requestRep;
                             artifacts.soPayload.salesrep = requestRep;
                             artifacts.soPayload.sales_rep = requestRep;
@@ -16169,6 +16169,5 @@ function toggleDriveSeason(s) {
     </script>
 </body>
 </html>
-
 
 
