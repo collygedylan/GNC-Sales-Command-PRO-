@@ -1560,6 +1560,11 @@
         const ROW_SYNC_STORAGE_KEY = 'gnc_row_state_sync_v1';
         const ROW_SYNC_EVENT_NAME = 'gnc-row-state-sync';
         let rowSyncListenersInitialized = false;
+        function logRowSyncIssue(context, error) {
+            if (window && window.console && typeof window.console.warn === 'function') {
+                window.console.warn(`[RowSync] ${context}`, error);
+            }
+        }
 
         function buildRowSyncSnapshot(item, prefix = '') {
             if (!item) return null;
@@ -1601,11 +1606,11 @@
         function broadcastRowSyncSnapshot(item, prefix = '') {
             const snapshot = buildRowSyncSnapshot(item, prefix);
             if (!snapshot) return;
-            try { localStorage.setItem(ROW_SYNC_STORAGE_KEY, JSON.stringify(snapshot)); } catch (e) {}
-            try { sessionStorage.setItem(ROW_SYNC_STORAGE_KEY, JSON.stringify(snapshot)); } catch (e) {}
+            try { localStorage.setItem(ROW_SYNC_STORAGE_KEY, JSON.stringify(snapshot)); } catch (e) { logRowSyncIssue('localStorage set failed', e); }
+            try { sessionStorage.setItem(ROW_SYNC_STORAGE_KEY, JSON.stringify(snapshot)); } catch (e) { logRowSyncIssue('sessionStorage set failed', e); }
             try {
                 window.dispatchEvent(new CustomEvent(ROW_SYNC_EVENT_NAME, { detail: snapshot }));
-            } catch (e) {}
+            } catch (e) { logRowSyncIssue('event dispatch failed', e); }
         }
 
         function initializeRowSyncListeners() {
@@ -1613,7 +1618,7 @@
             rowSyncListenersInitialized = true;
             window.addEventListener('storage', (event) => {
                 if (!event || event.key !== ROW_SYNC_STORAGE_KEY || !event.newValue) return;
-                try { applyRowSyncSnapshot(JSON.parse(event.newValue)); } catch (e) {}
+                try { applyRowSyncSnapshot(JSON.parse(event.newValue)); } catch (e) { logRowSyncIssue('storage sync parse failed', e); }
             }, { passive: true });
             window.addEventListener(ROW_SYNC_EVENT_NAME, (event) => {
                 const detail = event && event.detail ? event.detail : null;
