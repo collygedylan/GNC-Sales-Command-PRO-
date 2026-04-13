@@ -1598,7 +1598,6 @@
             Object.keys(payload).forEach((key) => { target[key] = payload[key]; });
             normalizeRowPhotoFields(target);
             syncSharedFlyerPhotoFields(target, snapshot.prefix || '');
-            buildSearchIndex(target);
             syncRowDataAcrossViews(target);
             return true;
         }

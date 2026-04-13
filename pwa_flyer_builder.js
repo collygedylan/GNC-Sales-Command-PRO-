@@ -1504,7 +1504,7 @@
         this.renderFrame = requestAnimationFrame(() => {
           this.renderFrame = null;
           runRender().catch((error) => {
-            if (global.console && typeof global.console.warn === 'function') global.console.warn('Native flyer render failed.', error);
+            if (typeof console !== 'undefined' && typeof console.warn === 'function') console.warn('Native flyer render failed.', error);
           });
         });
       };
@@ -2001,5 +2001,4 @@
 
   global.NativePwaFlyer = { Builder, THEMES, LAYOUT_PRESETS };
 })(window);
-
 
