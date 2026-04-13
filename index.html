@@ -161,6 +161,12 @@
             :root{--shell-gutter:12px;--shell-max-width:100vw;--content-max-width:100vw}
         }
     </style>
+    <style>
+        html,body,#app-wrapper,#main-scroll-area{-webkit-overflow-scrolling:touch}
+        #main-scroll-area{scroll-behavior:smooth;will-change:scroll-position}
+        a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.drawer-item,.drill-item,.menu-btn{touch-action:manipulation}
+        input,textarea,select{-webkit-user-select:text;user-select:text}
+    </style>
 </head>
 <body class="bg-gray-50 overflow-hidden">
     <div id="top-loading-bar-container" class="hidden fixed top-0 left-0 w-full h-1 z-[99999] pointer-events-none"><div id="top-loading-bar" class="h-full bg-[#22c55e] w-0 transition-all duration-300 ease-out shadow-[0_0_10px_#22c55e]"></div></div>
