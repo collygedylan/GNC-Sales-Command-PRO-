@@ -895,6 +895,22 @@
         const CORE_REALTIME_TABLES = ['v2_master_inventory', 'v2_active_request', 'v2_sales_office'];
         const OPTIONAL_REALTIME_TABLES = ['v2_av_notes', 'v2_dock_team_status', 'v2_dock_item_status'];
         const REALTIME_TABLES = [...CORE_REALTIME_TABLES, ...OPTIONAL_REALTIME_TABLES];
+        const REALTIME_TABLES_BY_VIEW = Object.freeze({
+            home: CORE_REALTIME_TABLES,
+            drive: ['v2_master_inventory'],
+            tasks: ['v2_master_inventory', 'v2_av_notes'],
+            request: ['v2_active_request', 'v2_master_inventory'],
+            'sales-office': ['v2_sales_office', 'v2_master_inventory'],
+            av: ['v2_master_inventory', 'v2_reserves', 'v2_av_notes'],
+            reserves: ['v2_reserves', 'v2_master_inventory'],
+            docks: ['v2_soc_master', 'v2_dock_team_status', 'v2_dock_item_status'],
+            reports: CORE_REALTIME_TABLES,
+            review: ['v2_master_inventory', 'v2_sales_office'],
+            'low-stock': ['v2_master_inventory'],
+            hours: []
+        });
+        let activeRealtimeTables = [...REALTIME_TABLES];
+        let activeRealtimeViewId = '';
         const REALTIME_STARTUP_GRACE_MS = 12000;
         const REALTIME_RECOVERY_GRACE_MS = 3200;
         const DISABLE_POLLING_WHEN_REALTIME_SUPPORTED = true;
@@ -930,6 +946,7 @@
         let lastUserInteractionAt = Date.now();
         let lastTypingAt = 0;
         let lastScrollAt = 0;
+        let scrollFramePending = false;
         let viewportHeightSyncInitialized = false;
         let standaloneShellBaseHeight = 0;
         let detailFieldFocusResetTimer = null;
@@ -1009,13 +1026,29 @@
             return getRealtimeTableStatus(tableName) === 'SUBSCRIBED';
         }
 
-        function hasHealthyRealtimeSubscriptions(tables = REALTIME_TABLES) {
-            const tableList = Array.isArray(tables) && tables.length ? tables : REALTIME_TABLES;
+        function normalizeRealtimeTableList(tables = []) {
+            const raw = Array.isArray(tables) ? tables : [];
+            const next = [];
+            const seen = new Set();
+            raw.forEach((tableName) => {
+                const key = String(tableName || '').trim();
+                if (!key || seen.has(key)) return;
+                seen.add(key);
+                next.push(key);
+            });
+            return next;
+        }
+
+        function hasHealthyRealtimeSubscriptions(tables = null) {
+            const tableList = normalizeRealtimeTableList((tables && tables.length) ? tables : (activeRealtimeTables && activeRealtimeTables.length ? activeRealtimeTables : REALTIME_TABLES));
             return tableList.some((tableName) => isRealtimeTableHealthy(tableName));
         }
 
         function hasHealthyCoreRealtimeSubscriptions() {
-            return hasHealthyRealtimeSubscriptions(CORE_REALTIME_TABLES);
+            const fallbackList = (activeRealtimeTables && activeRealtimeTables.length) ? activeRealtimeTables : CORE_REALTIME_TABLES;
+            const coreActive = CORE_REALTIME_TABLES.filter((tableName) => fallbackList.includes(tableName));
+            const targetList = coreActive.length ? coreActive : fallbackList;
+            return hasHealthyRealtimeSubscriptions(targetList);
         }
 
         function isRealtimeStartupPending() {
@@ -2500,7 +2533,7 @@
                 realtimeReconnectTimer = null;
                 if (!currentUser || navigator.onLine === false || !shouldUseRealtime()) return;
                 if (hasHealthyCoreRealtimeSubscriptions()) return;
-                initializeRealtime();
+                refreshRealtimeSubscriptionsForCurrentView(true);
             }, Math.max(500, Number(delay) || REALTIME_RECOVERY_GRACE_MS));
         }
 
@@ -2545,12 +2578,19 @@
             }, Math.max(0, Number(delay) || 0));
         }
 
-        function startFallbackSync(intervalMs = getFallbackSyncInterval()) {
+        function startFallbackSync(intervalMs = getFallbackSyncInterval(), requiredTables = activeRealtimeTables) {
             if (fallbackSyncInterval) {
                 clearInterval(fallbackSyncInterval);
                 fallbackSyncInterval = null;
             }
             if (!currentUser) return;
+            const tableList = normalizeRealtimeTableList(requiredTables);
+            if (!tableList.length) {
+                realtimeStartupUntil = 0;
+                liveSyncMode = 'idle';
+                updateSyncDiagnostics('idle');
+                return;
+            }
             if (navigator.onLine === false) {
                 realtimeStartupUntil = 0;
                 liveSyncMode = 'offline';
@@ -2588,16 +2628,56 @@
             return 'WebSocket' in window && navigator.onLine !== false;
         }
 
-        function initializeRealtime() {
+        function getRealtimeTablesForView(viewId) {
+            const key = String(viewId || '').trim() || 'home';
+            const config = REALTIME_TABLES_BY_VIEW[key];
+            if (Array.isArray(config)) return normalizeRealtimeTableList(config);
+            return normalizeRealtimeTableList(CORE_REALTIME_TABLES);
+        }
+
+        function realtimeTableListsEqual(listA = [], listB = []) {
+            const setA = new Set(normalizeRealtimeTableList(listA));
+            const listBNorm = normalizeRealtimeTableList(listB);
+            if (setA.size !== listBNorm.length) return false;
+            return listBNorm.every((item) => setA.has(item));
+        }
+
+        function setRealtimeSubscriptionsForView(viewId, force = false) {
+            const nextView = String(viewId || '').trim() || 'home';
+            const desiredTables = getRealtimeTablesForView(nextView);
+            const sameTables = realtimeTableListsEqual(activeRealtimeTables, desiredTables);
+            if (!force && sameTables && activeRealtimeViewId === nextView && !document.hidden) return;
+            activeRealtimeViewId = nextView;
+            activeRealtimeTables = desiredTables;
+            if (document.hidden || !activeRealtimeTables.length) {
+                cleanupRealtime();
+                return;
+            }
+            initializeRealtime(activeRealtimeTables);
+        }
+
+        function refreshRealtimeSubscriptionsForCurrentView(force = false) {
+            const viewId = typeof getCurrentVisibleViewId === 'function' ? getCurrentVisibleViewId() : (activeRealtimeViewId || 'home');
+            setRealtimeSubscriptionsForView(viewId, force);
+        }
+
+        function initializeRealtime(tables = null) {
+            const tableList = normalizeRealtimeTableList((tables && tables.length) ? tables : activeRealtimeTables);
+            activeRealtimeTables = tableList.length ? tableList : activeRealtimeTables;
             cleanupRealtime();
             if (!shouldUseRealtime()) {
-                startFallbackSync();
+                startFallbackSync(getFallbackSyncInterval(), tableList);
+                return;
+            }
+            if (!tableList.length) {
+                liveSyncMode = 'idle';
+                updateSyncDiagnostics('idle');
                 return;
             }
             realtimeStartupUntil = Date.now() + REALTIME_STARTUP_GRACE_MS;
             liveSyncMode = 'queued';
             updateSyncDiagnostics('queued');
-            REALTIME_TABLES.forEach((tableName) => {
+            tableList.forEach((tableName) => {
                 const channel = supabaseClient
                     .channel(`realtime-${tableName}`)
                     .on('postgres_changes', { event: '*', schema: 'public', table: tableName }, (payload) => {
@@ -2605,7 +2685,7 @@
                     })
                     .subscribe((status) => {
                         const channelStatus = String(status || '').trim().toUpperCase();
-                        const isCoreTable = CORE_REALTIME_TABLES.includes(tableName);
+                        const isCoreTable = activeRealtimeTables.includes(tableName);
                         setRealtimeTableStatus(tableName, channelStatus);
                         if (channelStatus === 'SUBSCRIBED') {
                             clearRealtimeReconnectTimer();
@@ -2632,7 +2712,7 @@
                                     : REALTIME_RECOVERY_GRACE_MS;
                                 if (DISABLE_POLLING_WHEN_REALTIME_SUPPORTED) scheduleRealtimeReconnect(retryDelay);
                                 else setTimeout(() => {
-                                    if (!hasHealthyCoreRealtimeSubscriptions()) startFallbackSync();
+                                    if (!hasHealthyCoreRealtimeSubscriptions()) startFallbackSync(getFallbackSyncInterval(), activeRealtimeTables);
                                 }, Math.max(300, retryDelay));
                             } else if (hasHealthyCoreRealtimeSubscriptions()) {
                                 liveSyncMode = 'realtime';
@@ -2643,7 +2723,6 @@
                 realtimeChannels.push(channel);
             });
         }
-
         function performLogout() {
             cleanupRealtime();
             ['gnc_user_v3','gnc_pin_v3','gnc_role_v3'].forEach((key) => {
@@ -4634,6 +4713,7 @@
         let photoDeleteLongPressFired = false;
         let searchRenderFrame = {};
         let searchRenderTimer = {};
+        let searchRenderLastTerm = {};
         let avRenderChunkToken = 0;
         let bloomPickerFolderManuallyEdited = false;
         let bloomPickerReservePartyOptions = [];
@@ -6300,21 +6380,32 @@ function toggleDriveQuickRequestItem(domId) {
             return items.filter(item => matchesItemSearch(item, rawTerm, profileName));
         }
 
-        function scheduleSearchRender(key, renderFn) {
-            if (searchRenderTimer[key]) clearTimeout(searchRenderTimer[key]);
-            if (searchRenderFrame[key]) cancelAnimationFrame(searchRenderFrame[key]);
+        function scheduleSearchRender(key, renderFn, term = null, options = {}) {
+            const safeKey = String(key || 'search');
+            const normalizedTerm = term === null || term === undefined ? null : normalizeSearchValue(term);
+            if (normalizedTerm !== null) {
+                const lastTerm = searchRenderLastTerm[safeKey];
+                if (!options.force && lastTerm === normalizedTerm) return;
+                searchRenderLastTerm[safeKey] = normalizedTerm;
+            }
+            if (searchRenderTimer[safeKey]) clearTimeout(searchRenderTimer[safeKey]);
+            if (searchRenderFrame[safeKey]) cancelAnimationFrame(searchRenderFrame[safeKey]);
             const touchOptimized = isIOSDevice() || isStandaloneApp() || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
-            const debounceDelay = key === 'drive-search'
-                ? (touchOptimized ? 84 : 56)
-                : (touchOptimized ? 48 : 24);
-            searchRenderTimer[key] = setTimeout(() => {
-                delete searchRenderTimer[key];
-                searchRenderFrame[key] = requestAnimationFrame(() => {
-                    delete searchRenderFrame[key];
+            const baseDelay = safeKey === 'drive-search'
+                ? (touchOptimized ? 160 : 120)
+                : (touchOptimized ? 130 : 90);
+            const debounceDelay = options && options.skipDebounce
+                ? 0
+                : Math.max(0, Number(options.debounceDelay) || baseDelay);
+            searchRenderTimer[safeKey] = setTimeout(() => {
+                delete searchRenderTimer[safeKey];
+                searchRenderFrame[safeKey] = requestAnimationFrame(() => {
+                    delete searchRenderFrame[safeKey];
                     renderFn();
                 });
             }, debounceDelay);
         }
+
         function getProtectedEditConfig(prefix) {
             return PROTECTED_EDIT_CONFIG[prefix] || null;
         }
@@ -6794,11 +6885,11 @@ function toggleDriveQuickRequestItem(domId) {
                 if (homeView && homeView.classList.contains('hidden')) homeView.classList.remove('hidden');
                 runAfterShellInteractive(() => {
                     applyRolePermissions();
-                    runAfterTouchInteraction(() => initializeRealtime(), 2800);
+                    runAfterTouchInteraction(() => refreshRealtimeSubscriptionsForCurrentView(true), 2800);
                 }, 220);
             } else {
                 applyRolePermissions();
-                initializeRealtime();
+                refreshRealtimeSubscriptionsForCurrentView(true);
             }
         }
 
@@ -7023,7 +7114,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
         async function silentBackgroundSync() {
             if(!currentUser)return;
-            if (shouldUseRealtime() && hasHealthyCoreRealtimeSubscriptions()) return;
+            if (shouldUseRealtime() && hasHealthyRealtimeSubscriptions(activeRealtimeTables)) return;
             const checkTime=new Date().toISOString();
             try {
                 const response=await fetch(`${SUPABASE_URL}/rest/v1/v2_master_inventory?select=*&last_updated=gt.${lastSyncTime}`,{method:'GET',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
@@ -8216,6 +8307,7 @@ function toggleDriveQuickRequestItem(domId) {
                 syncGlobalHeaderChrome();
                 updateFooterNavState();
                 syncRequestViewLiveSync(nextViewId === 'request' ? 120 : 0);
+                setRealtimeSubscriptionsForView(nextViewId);
                 return false;
             }
             ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-detail','view-docks','view-request','view-reserves','view-av', 'view-hours'].forEach(id=>{
@@ -8230,6 +8322,7 @@ function toggleDriveQuickRequestItem(domId) {
             syncGlobalHeaderChrome();
             updateFooterNavState();
             syncRequestViewLiveSync(nextViewId === 'request' ? 120 : 0);
+                setRealtimeSubscriptionsForView(nextViewId);
             return false;
         }
         function goBackUniversal() {
@@ -8498,7 +8591,7 @@ activeDriveTab = tab;
             scheduleUiRender('drive-season-filter', () => renderDrive());
         }
         function clearAVSearch() { document.getElementById('av-search').value=""; document.getElementById('av-search-clear').classList.add('hidden'); avResLevel=0; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; avOpenLevel=0; renderAV(); }
-        function handleAVSearch() { const term=document.getElementById('av-search').value.toLowerCase(); const clearBtn=document.getElementById('av-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden'); avResLevel=0; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; avOpenLevel=0;} else{clearBtn.classList.add('hidden'); avResLevel=0; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; avOpenLevel=0;} scheduleSearchRender('av', () => renderAV()); }
+        function handleAVSearch() { const term=document.getElementById('av-search').value.toLowerCase(); const clearBtn=document.getElementById('av-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden'); avResLevel=0; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; avOpenLevel=0;} else{clearBtn.classList.add('hidden'); avResLevel=0; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; avOpenLevel=0;} scheduleSearchRender('av', () => renderAV(), term); }
 
         function resetAVView() {
             activeAVTab='open'; activeAvOpenTab='name';
@@ -8640,7 +8733,7 @@ activeDriveTab = tab;
 
         const debouncedReservesSearch=debounce(()=>{requestAnimationFrame(()=>renderReserves())},150);
         function clearReservesSearch() { document.getElementById('reserves-search').value=""; document.getElementById('reserves-search-clear').classList.add('hidden'); reservesViewLevel=0; renderReserves(); }
-        function handleReservesSearch() { const term=document.getElementById('reserves-search').value.toLowerCase(); const clearBtn=document.getElementById('reserves-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden');reservesViewLevel=0;} else{clearBtn.classList.add('hidden');reservesViewLevel=0;} if (typeof renderReserves === 'function') scheduleSearchRender('reserves', () => renderReserves()); }
+        function handleReservesSearch() { const term=document.getElementById('reserves-search').value.toLowerCase(); const clearBtn=document.getElementById('reserves-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden');reservesViewLevel=0;} else{clearBtn.classList.add('hidden');reservesViewLevel=0;} if (typeof renderReserves === 'function') scheduleSearchRender('reserves', () => renderReserves(), term); }
 
         const debouncedAVSearch=debounce(()=>{requestAnimationFrame(()=>renderAV())},150);
 
@@ -9681,6 +9774,20 @@ activeDriveTab = tab;
             return count > (touchOptimized ? mobileThreshold : desktopThreshold);
         }
 
+        function appendHtmlFragment(container, html) {
+            if (!container || !html) return;
+            const template = document.createElement('template');
+            template.innerHTML = html;
+            container.appendChild(template.content);
+        }
+
+        function setContainerHtml(container, html) {
+            if (!container) return;
+            container.innerHTML = '';
+            if (!html) return;
+            appendHtmlFragment(container, html);
+        }
+
         function renderMarkupChunkedByKey(tokenKey, container, crumb, rows, crumbText, renderRow, options = {}) {
             if (!container) return false;
             const key = String(tokenKey || 'default');
@@ -9713,7 +9820,7 @@ activeDriveTab = tab;
             }
 
             if (!total) {
-                container.innerHTML = prefixHtml + emptyHtml;
+                setContainerHtml(container, prefixHtml + emptyHtml);
                 return true;
             }
 
@@ -9730,7 +9837,7 @@ activeDriveTab = tab;
                 return html;
             };
 
-            container.innerHTML = prefixHtml + renderBatch(initialTarget, false);
+            setContainerHtml(container, prefixHtml + renderBatch(initialTarget, false));
 
             const fireComplete = () => {
                 if (reserveSpace) container.style.minHeight = '';
@@ -9744,7 +9851,7 @@ activeDriveTab = tab;
             const renderNextChunk = () => {
                 if (Number(chunkRenderTokensByKey[key] || 0) !== token) return;
                 const html = renderBatch(perFrameLimit, true);
-                if (html) container.insertAdjacentHTML('beforeend', html);
+                if (html) appendHtmlFragment(container, html);
                 if (index < total) requestAnimationFrame(renderNextChunk);
                 else fireComplete();
             };
@@ -9782,7 +9889,7 @@ activeDriveTab = tab;
             container.style.minHeight = reserveHeight ? `${reserveHeight}px` : '';
             if (!total) {
                 container.style.minHeight = '';
-                container.innerHTML = `<div class="p-6 text-center text-gray-400">No rows found.</div>`;
+                setContainerHtml(container, `<div class="p-6 text-center text-gray-400">No rows found.</div>`);
                 return;
             }
             const renderBatch = (targetCount, useBudget) => {
@@ -9797,11 +9904,11 @@ activeDriveTab = tab;
                 }
                 return html;
             };
-            container.innerHTML = renderBatch(initialTarget, false);
+            setContainerHtml(container, renderBatch(initialTarget, false));
             const renderNextChunk = () => {
                 if (token !== avRenderChunkToken) return;
                 const html = renderBatch(perFrameLimit, true);
-                if (html) container.insertAdjacentHTML('beforeend', html);
+                if (html) appendHtmlFragment(container, html);
                 if (index < total) requestAnimationFrame(renderNextChunk);
                 else container.style.minHeight = '';
             };
@@ -9831,7 +9938,7 @@ activeDriveTab = tab;
             container.style.minHeight = reserveHeight ? `${reserveHeight}px` : '';
             if (!total) {
                 container.style.minHeight = '';
-                container.innerHTML = emptyHtml;
+                setContainerHtml(container, emptyHtml);
                 return;
             }
             const renderBatch = (targetCount, useBudget) => {
@@ -9846,11 +9953,11 @@ activeDriveTab = tab;
                 }
                 return html;
             };
-            container.innerHTML = renderBatch(initialTarget, false);
+            setContainerHtml(container, renderBatch(initialTarget, false));
             const renderNextChunk = () => {
                 if (token !== avRenderChunkToken) return;
                 const html = renderBatch(perFrameLimit, true);
-                if (html) container.insertAdjacentHTML('beforeend', html);
+                if (html) appendHtmlFragment(container, html);
                 if (index < total) requestAnimationFrame(renderNextChunk);
                 else container.style.minHeight = '';
             };
@@ -9979,7 +10086,7 @@ activeDriveTab = tab;
         }
         const debouncedDocksSearch=debounce(()=>{requestAnimationFrame(()=>renderDocks())},150);
         function clearDocksSearch(){ document.getElementById('docks-search').value=""; document.getElementById('docks-search-clear').classList.add('hidden'); dockViewLevel=0; selectedDockNum=null; selectedDockStop=null; renderDocks(); }
-        function handleDocksSearch(){ const term=document.getElementById('docks-search').value.toLowerCase(); const clearBtn=document.getElementById('docks-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden');dockViewLevel=0;}else{clearBtn.classList.add('hidden');dockViewLevel=0;} scheduleSearchRender('docks', () => renderDocks()); }
+        function handleDocksSearch(){ const term=document.getElementById('docks-search').value.toLowerCase(); const clearBtn=document.getElementById('docks-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden');dockViewLevel=0;}else{clearBtn.classList.add('hidden');dockViewLevel=0;} scheduleSearchRender('docks', () => renderDocks(), term); }
         function resetDockView() { dockViewLevel = 0; selectedDockNum = null; selectedDockStop = null; document.getElementById('docks-search').value = ""; document.getElementById('docks-search-clear').classList.add('hidden'); renderDocks(); }
         function selectDock(dock) { selectedDockNum = dock; selectedDockStop = null; dockViewLevel = 1; renderDocks(); queueScrollMainAreaToTop(`dock:${dock}`); }
         function selectDockStop(stop) { selectedDockStop = stop; dockViewLevel = 2; renderDocks(); queueScrollMainAreaToTop(`dock-stop:${stop}`); }
@@ -11931,18 +12038,18 @@ activeDriveTab = tab;
                 }
                 if (shouldUseRealtime()) {
                     if (hasHealthyCoreRealtimeSubscriptions()) updateSyncDiagnostics('realtime');
-                    else if (!isRealtimeStartupPending()) initializeRealtime();
+                    else if (!isRealtimeStartupPending()) refreshRealtimeSubscriptionsForCurrentView(true);
                     else updateSyncDiagnostics('queued');
                     return;
                 }
                 const throttleMs = (isIOSDevice() || isStandaloneApp()) ? 14000 : 18000;
                 if (backgroundRefreshInFlight || (lastBackgroundRefreshAt && (Date.now() - lastBackgroundRefreshAt) < throttleMs)) {
                     updateSyncDiagnostics('idle');
-                    if (!hasHealthyCoreRealtimeSubscriptions() && !isRealtimeStartupPending()) initializeRealtime();
+                    if (!hasHealthyCoreRealtimeSubscriptions() && !isRealtimeStartupPending()) refreshRealtimeSubscriptionsForCurrentView(true);
                     return;
                 }
                 fetchBackgroundData('background').catch(() => {});
-                if (!hasHealthyCoreRealtimeSubscriptions() && !isRealtimeStartupPending()) initializeRealtime();
+                if (!hasHealthyCoreRealtimeSubscriptions() && !isRealtimeStartupPending()) refreshRealtimeSubscriptionsForCurrentView(true);
             }, delay);
         }
 
@@ -12118,10 +12225,16 @@ activeDriveTab = tab;
             scrollArea.addEventListener('touchmove', handlePullRefreshMove, { passive: false });
             scrollArea.addEventListener('touchend', handlePullRefreshEnd, { passive: true });
             scrollArea.addEventListener('touchcancel', handlePullRefreshEnd, { passive: true });
-            scrollArea.addEventListener('scroll', () => {
-                markScrollActivity();
-                scheduleSwipeCloseOnScroll();
-            }, { passive: true });
+            const onMainScroll = () => {
+                if (scrollFramePending) return;
+                scrollFramePending = true;
+                requestAnimationFrame(() => {
+                    scrollFramePending = false;
+                    markScrollActivity();
+                    scheduleSwipeCloseOnScroll();
+                });
+            };
+            scrollArea.addEventListener('scroll', onMainScroll, { passive: true });
             window.addEventListener('pageshow', () => {
                 syncViewportHeight();
                 queueForegroundRefresh(120);
@@ -12137,6 +12250,14 @@ activeDriveTab = tab;
                 closeAllFlyerSwipes();
                 setPullRefreshIndicator('hidden');
                 queueForegroundRefresh(350);
+            }, { passive: true });
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) {
+                    cleanupRealtime();
+                    return;
+                }
+                refreshRealtimeSubscriptionsForCurrentView(true);
+                queueForegroundRefresh(120);
             }, { passive: true });
             updateSyncDiagnostics();
         }
@@ -14090,15 +14211,15 @@ ${folderNote ? `Folder Note: ${folderNote}
         function openAssignModal() { toggleCartPanel(false); document.getElementById('assign-modal').classList.remove('hidden') }
         function closeAssignModal() { driveQuickAssignFlow = false; document.getElementById('assign-modal').classList.add('hidden') }
 
-        const debouncedDriveSearch = debounce(() => {
-            scheduleSearchRender('drive-search', () => renderDrive());
-        }, 18);
+        const debouncedDriveSearch = debounce((term) => {
+            scheduleSearchRender('drive-search', () => renderDrive(), term, { skipDebounce: true });
+        }, 120);\n        }, 120);
 
         function clearDriveSearch() {
             document.getElementById('drive-search').value = "";
             document.getElementById('drive-search-clear').classList.add('hidden');
             driveViewLevel = 0;
-            scheduleSearchRender('drive-search', () => renderDrive());
+            scheduleSearchRender('drive-search', () => renderDrive(), '', { force: true, debounceDelay: 0 });
         }
 
         function handleDriveSearch() {
@@ -14111,7 +14232,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 clearBtn.classList.add('hidden');
                 driveViewLevel = 0;
             }
-            debouncedDriveSearch();
+            debouncedDriveSearch(term);
         }
 
         function selectDriveName(name) { selectedDriveName = name; selectedDriveSize = null; driveViewLevel = 1; scheduleUiRender('drive-select-name', () => renderDrive()); queueScrollMainAreaToTop(`drive-name:${name}`); }
