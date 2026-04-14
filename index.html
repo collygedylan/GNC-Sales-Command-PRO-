@@ -28,7 +28,7 @@
     <style>:root{--bg:#007a4d;--text-color:#111827;--app-height:100vh;--visual-height:100vh;--keyboard-offset:0px}html,body{min-height:100%;width:100%;max-width:100%;overflow:hidden;overscroll-behavior:none;position:relative}html{background:white}@supports (height:100dvh){:root{--app-height:100dvh}}body{font-family:"Amazon Ember",Arial,sans-serif;background:white;color:var(--text-color);user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior:none;min-height:var(--app-height);height:var(--app-height);width:100%;overflow:hidden;position:fixed;inset:0;touch-action:pan-y pinch-zoom}button,[role="button"],.task-tab,.detail-tab,.drawer-item,.drill-item,.menu-btn{touch-action:manipulation}.nav-header{background:var(--bg);color:white;padding-top:max(10px,env(safe-area-inset-top))}#view-login,#view-change-password{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;min-height:var(--app-height)}#view-change-password{display:none;z-index:10000}#app-wrapper{min-height:var(--app-height);height:var(--app-height);width:100%;max-width:100%;overflow:hidden;position:fixed;inset:0}.login-card{background:white;padding:30px;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,.2);width:100%;max-width:360px;text-align:center}.input-field{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:8px;font-size:16px;margin-bottom:12px}#toast-notification{position:fixed;top:-100px;left:50%;transform:translateX(-50%);background:#16a34a;color:white;padding:16px 24px;border-radius:50px;box-shadow:0 10px 15px -3px rgba(0,0,0,.3);z-index:11000;transition:top .5s;display:flex;align-items:center;gap:12px;pointer-events:none}#toast-notification.show{top:20px}#side-drawer{position:fixed;top:0;left:-280px;width:280px;height:100%;background:white;z-index:2000;box-shadow:2px 0 10px rgba(0,0,0,.2);transition:left .3s;overflow-y:auto;padding-bottom:100px}#side-drawer.open{left:0}#drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1999;display:none}#drawer-overlay.open{display:block}.drawer-header{background:var(--bg);color:white;padding:20px;font-weight:bold;font-size:18px}.drawer-item{padding:16px 20px;border-bottom:1px solid #f3f4f6;cursor:pointer;display:flex;align-items:center;gap:12px;color:#374151;font-weight:500}.drill-item{border-bottom:1px solid #e5e7eb;padding:16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:white;transition:background .1s}.drill-item:active{background:#f3f4f6}.back-btn{display:none !important}.inv-card{border:1px solid #dbe4dc;border-left-width:6px;border-radius:18px;padding:14px;background:white;cursor:pointer;flex-grow:1;box-shadow:0 10px 24px rgba(15,23,42,.06);overflow:hidden}.status-green{border-left-color:#22c55e}.status-purple{border-left-color:#9333ea}.status-orange{border-left-color:#f97316}.status-blue{border-left-color:#3b82f6}.status-indigo{border-left-color:#4f46e5}.status-teal{border-left-color:#0d9488}.status-yellow{border-left-color:#eab308}.status-red{border-left-color:#ef4444}.task-tabs,.detail-tabs{display:flex;border-bottom:1px solid #e5e7eb;background:#f9fafb;margin-bottom:10px}.detail-tabs{overflow-x:auto;scrollbar-width:none}.detail-tabs::-webkit-scrollbar{display:none}.task-tab,.detail-tab{flex:1;text-align:center;padding:12px;font-size:11px;font-weight:700;color:#6b7280;cursor:pointer;border-bottom:3px solid transparent;text-transform:uppercase}.detail-tab{flex:0 0 auto;padding:10px 16px}.task-tab.active,.detail-tab.active{color:var(--bg);border-bottom-color:var(--bg);background:white}.overview-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}.overview-card{background:#f8fafc;padding:10px;border-radius:6px;border:1px solid #e2e8f0}.overview-label{font-size:9px;font-weight:800;color:#64748b;text-transform:uppercase;margin-bottom:2px}.overview-val{font-size:13px;font-weight:600;color:#0f172a;word-break:break-all}.expand-trigger{display:flex;align-items:center;justify-content:space-between;padding:12px;background:#f9fafb;border-radius:6px;cursor:pointer;font-weight:600;font-size:14px;border:1px solid #e5e7eb}.expand-content{display:none;margin-top:12px;padding:12px;background:#f9fafb;border-radius:6px;border:1px solid #e5e7eb}.expanded .expand-content{display:block}.card-checkbox-container{width:42px;min-width:42px;overflow:visible;opacity:1;display:flex;align-items:flex-start;justify-content:center;margin-right:12px;transition:transform .16s ease}.card-checkbox-container.absolute{width:auto;min-width:0;margin-right:0}.card-checkbox{display:none !important}.cart-toggle-btn{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:999px;border:1px solid #a7f3d0;background:#f0fdf4;color:#007a4d;box-shadow:0 6px 16px rgba(7,94,63,.14);transition:transform .16s ease,background .16s ease,color .16s ease,border-color .16s ease}.cart-toggle-btn i{font-size:18px;line-height:1}.cart-toggle-btn:active{transform:scale(.95)}.cart-toggle-btn.active{background:#007a4d;color:#fff;border-color:#007a4d}.item-row.cart-selected{box-shadow:0 0 0 2px rgba(0,122,77,.16) inset}.item-row{touch-action:manipulation}.spinner{border:4px solid rgba(255,255,255,.3);border-top:4px solid white;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:0 auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.scrollbar-none::-webkit-scrollbar{display:none}.scrollbar-none{-ms-overflow-style:none;scrollbar-width:none}</style>
     <style>
         :root{--shell-max-width:920px;--content-max-width:820px;--shell-gutter:clamp(12px,2vw,24px);--shell-width:min(calc(100% - (var(--shell-gutter) * 2)),var(--shell-max-width));--content-width:min(100%,var(--content-max-width))}
-        #main-scroll-area{min-height:0;width:100%;max-width:100%;min-width:0;overflow-x:hidden;overflow-y:auto;overscroll-behavior-x:none;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;scroll-padding-top:calc(5.5rem + env(safe-area-inset-top));scroll-padding-bottom:calc(7rem + env(safe-area-inset-bottom));padding:0 var(--shell-gutter) calc(10rem + env(safe-area-inset-bottom));background:linear-gradient(180deg,#f8fbf9 0%,#f4f7f5 100%)}
+        #main-scroll-area{min-height:0;width:100%;max-width:100%;min-width:0;overflow-x:hidden;overflow-y:auto;overscroll-behavior-x:none;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;scroll-padding-top:calc(5.5rem + env(safe-area-inset-top));scroll-padding-bottom:calc(7rem + env(safe-area-inset-bottom));padding:0 var(--shell-gutter) calc(10rem + env(safe-area-inset-bottom));background:linear-gradient(180deg,#f8fbf9 0%,#f4f7f5 100%);transform:translateZ(0);will-change:scroll-position}
         #global-action-bar{padding-bottom:calc(.75rem + env(safe-area-inset-bottom))}#cart-helper-text{margin-top:.6rem;font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#6b7280}
         body.app-standalone #app-wrapper{height:var(--app-height);min-height:var(--app-height)}body.app-standalone #main-scroll-area{padding-bottom:calc(10rem + env(safe-area-inset-bottom))}body.app-standalone.keyboard-open #bottom-nav,body.app-standalone.keyboard-open #global-action-bar{opacity:0;pointer-events:none;transform:translateY(140%);transition:transform .18s ease,opacity .18s ease}body.app-standalone.keyboard-open #main-scroll-area{padding-bottom:calc(1.5rem + var(--keyboard-offset));scroll-padding-bottom:calc(1.5rem + var(--keyboard-offset))}#bottom-nav{left:50%;right:auto;bottom:0;transform:translateX(-50%);width:min(760px,calc(100% - (var(--shell-gutter) * 2)));max-width:calc(100% - (var(--shell-gutter) * 2));padding:10px 10px calc(.75rem + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:.5rem;background:rgba(255,255,255,.98);backdrop-filter:saturate(150%) blur(12px);border-top-left-radius:22px;border-top-right-radius:22px;box-sizing:border-box;box-shadow:0 -12px 28px rgba(15,23,42,.14)}body.app-standalone.ios-device #bottom-nav{padding-top:.45rem;padding-bottom:max(.2rem, env(safe-area-inset-bottom));align-items:end;width:min(760px,calc(100vw - (var(--shell-gutter) * 2)));max-width:calc(100vw - (var(--shell-gutter) * 2))}body.ios-device,body.ios-device #app-wrapper,body.ios-device #main-scroll-area,body.ios-device #view-wrapper,body.ios-device .freeze-panel{overflow-x:clip !important;overscroll-behavior-x:none !important;max-width:100vw !important}body.ios-device #view-wrapper{width:min(var(--shell-width),100vw)}body.ios-device #view-wrapper>div{max-width:min(var(--content-width),calc(100vw - (var(--shell-gutter) * 2)))}body.ios-device #main-scroll-area{touch-action:pan-y !important}
         .footer-nav-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.18rem;min-height:52px;border-radius:16px;border:1px solid transparent;background:transparent;color:#6b7280;font-size:10px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;transition:background .16s ease,color .16s ease,border-color .16s ease,transform .16s ease;position:relative}
@@ -73,6 +73,8 @@
         .request-swipe-surface{position:relative;z-index:2;width:100%;background:#ffffff;border-radius:inherit;padding:0;transition:transform .18s ease;will-change:transform}
         .request-swipe-action{position:absolute;top:0;right:0;bottom:0;width:88px;display:flex;align-items:center;justify-content:center;background:#ffffff;color:#dc2626;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;z-index:1}
         .request-swipe-row.swipe-open .request-swipe-surface{transform:translateX(-88px)}
+        .request-swipe-row.request-row-removing .request-swipe-surface{opacity:0;transform:translateX(-12px) scale(.985);transition:transform .2s ease,opacity .2s ease}
+        .request-swipe-row.request-row-removing{pointer-events:none}
         #pull-refresh-indicator{transform:translateY(-120%);opacity:0;transition:transform .16s ease,opacity .16s ease;padding-top:max(0px,env(safe-area-inset-top))}
         #pull-refresh-indicator .pull-refresh-pill{backdrop-filter:saturate(140%) blur(8px)}
         #pull-refresh-indicator.visible{opacity:1}
@@ -453,7 +455,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-                            <div id="header-version" class="nav-version-pill">V2026.04.13.02</div>
+                            <div id="header-version" class="nav-version-pill">V2026.04.13.03</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -959,6 +961,7 @@
         let lastUserInteractionAt = Date.now();
         let lastTypingAt = 0;
         let lastScrollAt = 0;
+        let lastTextFocusAt = 0;
         let scrollFramePending = false;
         let viewportHeightSyncInitialized = false;
         let standaloneShellBaseHeight = 0;
@@ -972,6 +975,11 @@
         let swipeCloseOnScrollTimer = null;
         const ACTIVE_TYPING_GRACE_MS = 35;
         const ACTIVE_SCROLL_GRACE_MS = 120;
+        // How long after the last keystroke OR focus event to keep blocking renders
+        // while a text element is focused.  3 s is enough to cover keyboard animation
+        // and a brief reading pause; renders are still deferred every 220 ms after
+        // this window closes (scheduleTypingAwareUiRender retry interval).
+        const FOCUSED_INPUT_RENDER_GRACE_MS = 3000;
 
         function isIOSDevice() {
             return IOS_DEVICE_REGEX.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -1004,10 +1012,25 @@
         }
         window.addEventListener('input', markTypingActivity, { passive: true });
 
+        function markTextFocusActivity(event) {
+            const target = event && event.target ? event.target : document.activeElement;
+            if (!isTextLikeElement(target)) return;
+            lastTextFocusAt = Date.now();
+        }
+        // Track focus so we can block renders right when the user taps into a field
+        // (before any keypress occurs – critical for preventing keyboard dismissal).
+        window.addEventListener('focus', markTextFocusActivity, { capture: true, passive: true });
+
         function isUserActivelyTyping() {
             const activeEl = document.activeElement;
             if (!isTextLikeElement(activeEl)) return false;
-            return (Date.now() - lastTypingAt) < ACTIVE_TYPING_GRACE_MS;
+            // Block renders while a text input is focused AND the user has been
+            // recently active in it (tapped, typed, or just focused within the
+            // last FOCUSED_INPUT_RENDER_GRACE_MS).  After the grace window expires
+            // renders proceed even if the field is still technically focused,
+            // allowing realtime updates to show for long-idle inputs.
+            const lastActivity = Math.max(lastTypingAt, lastTextFocusAt);
+            return (Date.now() - lastActivity) < FOCUSED_INPUT_RENDER_GRACE_MS;
         }
 
         function markScrollActivity() {
@@ -1677,6 +1700,34 @@
             buildSearchIndex(row);
             return row;
         }
+        // Like syncMasterFieldsToRequestRow but for Sales Office rows.
+        // Structural fields (name, location, qty, etc.) always come from master so
+        // they stay current. Note/annotation fields that the Sales Office team owns
+        // (AV_NOTE, SALES_NOTE, SPEC, CALIPER, PICK, MATCH, LOC_MATCH_QTY,
+        // INITIAL_PTR) are preserved from the SO row when non-empty – preventing a
+        // stale master value from clobbering an update that just arrived via the
+        // v2_sales_office realtime channel.
+        function syncMasterFieldsToSalesOfficeRow(masterItem, row) {
+            if (!masterItem || !row) return row;
+            const preservedValues = {
+                AV_NOTE: normalizeRuleText(row.AV_NOTE),
+                SALES_NOTE: normalizeRuleText(firstNonEmptyValue(row.SALES_NOTE, row.SALESNOTE)),
+                MATCH: normalizeRuleText(row.MATCH),
+                SPEC: normalizeRuleText(row.SPEC),
+                CALIPER: normalizeRuleText(row.CALIPER),
+                PICK: normalizeRuleText(row.PICK),
+                LOC_MATCH_QTY: normalizeRuleText(row.LOC_MATCH_QTY),
+                INITIAL_PTR: normalizeRuleText(row.INITIAL_PTR),
+            };
+            syncMasterFieldsToRow(masterItem, row, LINKED_ROW_SYNC_KEYS, { attachMasterLink: true });
+            Object.keys(preservedValues).forEach((key) => {
+                if (preservedValues[key] !== '') row[key] = preservedValues[key];
+            });
+            normalizeRowPhotoFields(row);
+            buildSearchIndex(row);
+            return row;
+        }
+
         function getRowPhotoLink(item, sourceView='') {
             if (!item) return '';
             if (sourceView === 'av' || sourceView === 'av-photo') return getDisplayPhotoLinkCsv(firstNonEmptyValue(item.SAVED_PHOTO_LINK, item.ROW_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']), item, 'saved');
@@ -2292,7 +2343,11 @@
             });
         }
 
-        function syncRealtimeSalesOfficeRows(masterIdSet = null) {
+        // skipMasterSync=true is used when the change originated from v2_sales_office
+        // itself – in that case the row already carries the authoritative values from
+        // the database, so we must NOT overwrite them with potentially-stale master
+        // data that hasn't received its own realtime update yet.
+        function syncRealtimeSalesOfficeRows(masterIdSet = null, skipMasterSync = false) {
             const scopedIds = masterIdSet instanceof Set && masterIdSet.size ? masterIdSet : null;
             salesOfficeInventory = (Array.isArray(salesOfficeInventory) ? salesOfficeInventory : [])
                 .filter((item) => item && !isSalesOfficeComplete(item))
@@ -2304,8 +2359,21 @@
                     const salesOfficeSource = String(firstNonEmptyValue(item.SO_SOURCE, item.so_source, 'season')).toLowerCase();
                     const masterItem = masterId ? findItemByUniqueId(masterId) : null;
                     if (masterItem && salesOfficeSource !== 'bloom_picker') {
-                        syncMasterFieldsToRow(masterItem, item, LINKED_ROW_SYNC_KEYS, { attachMasterLink: true });
-                        item.APP_TAB_ASSIGNMENT = firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, masterItem.APP_TAB_ASSIGNMENT);
+                        if (skipMasterSync) {
+                            // Row came fresh from v2_sales_office; only update the master
+                            // link and structural identity – never clobber note fields.
+                            if (masterId) {
+                                item.MASTER_UNIQUE_ID = masterId;
+                                if (!item.MASTER_ID) item.MASTER_ID = masterId;
+                                if (!item.master_id) item.master_id = masterId;
+                            }
+                            item.APP_TAB_ASSIGNMENT = firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, masterItem.APP_TAB_ASSIGNMENT);
+                        } else {
+                            // Normal master-driven sync – preserve SO-owned note fields
+                            // so they aren't overwritten by stale master values.
+                            syncMasterFieldsToSalesOfficeRow(masterItem, item);
+                            item.APP_TAB_ASSIGNMENT = firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, masterItem.APP_TAB_ASSIGNMENT);
+                        }
                     }
                     normalizeRowPhotoFields(item);
                     buildSearchIndex(item);
@@ -2465,7 +2533,10 @@
                 changedDatasetKeys.add('soc');
             }
             if (tableSet.has('v2_sales_office') && !changedDatasetKeys.has('salesOffice')) {
-                syncRealtimeSalesOfficeRows();
+                // skipMasterSync=true: the SO rows already arrived fresh from the DB
+                // via upsertRealtimeRow; don't let a potentially-stale master value
+                // overwrite fields like AV_NOTE before the master update arrives.
+                syncRealtimeSalesOfficeRows(null, true);
                 changedDatasetKeys.add('salesOffice');
             }
             if (tableSet.has('v2_cav')) {
@@ -3768,7 +3839,7 @@
         }
         const DRIVE_MODE_LABELS = { ok: 'Drive Mode' };
         let activeDriveMode='ok'; let activeDriveTab='name'; let selectedDriveBlock=null; let selectedDriveLoc=null; let driveQuickRequestCardMode=false; let driveQuickFilterName=''; let driveQuickFilterLocation=''; let driveQuickFilterLot=''; let driveQuickFilterSize=''; let driveQuickFilterPriority=''; let driveQuickFilterLtsMode=''; let driveQuickFilterLtsValue=''; let driveQuickHoldStopOnly=false; let driveQuickFilterOptionsCacheKey=''; let driveQuickFilterOptionsCache=null; let driveBaseFilterCacheKey=''; let driveBaseFilterCacheItems=[]; let driveBaseContextCacheKey=''; let driveBaseContextCacheItems=[]; let driveBaseSearchContextKey=''; let driveBaseLastSearchTerm=''; let driveBaseLastSearchItems=[]; let driveQuickFilterCacheKey=''; let driveQuickFilterCacheItems=[]; let driveQuickFiltersModalOpen=false;
-        let driveViewLevel=0; let selectedDriveName=null; let selectedDriveSize=null; let driveSelectedSeasons=new Set(['ALL']); const availableSeasons=["ALL","S1","F1","U1","U2","U3","X","Y","Z"];
+        let driveViewLevel=0; let selectedDriveName=null; let selectedDriveSize=null; let driveSelectedGenusName=''; let driveSelectedSeasons=new Set(['ALL']); const availableSeasons=["ALL","S1","F1","U1","U2","U3","X","Y","Z"];
 
         let activeTaskTab="season"; let activeTaskSubview="all"; let taskViewTargetUser=null; let taskViewLevel=0; let selectedTaskBlock=null; let selectedTaskLoc=null; let selectedEndCapFolder=null; let selectedFlyerFolder=null; let activeFlyerFolderTab="active"; let selectedColorWalkContSize=""; let selectedColorWalkSearchTerm=""; let selectedTaskGenusNames=new Set(); let taskGenusSearchTerm=""; let taskGenusFilterOpen=false; let taskGenusFilterItemsCache=[]; let pendingFlyerFolderTarget=null; let pendingFlyerFolderAssignees="";
         let detailReturnState = { viewId: '', scrollTop: 0 };
@@ -3788,7 +3859,7 @@
         const PENDING_EDITS_STORAGE_KEY = 'gnc_pending_edits';
         const PENDING_EDITS_PERSIST_DEBOUNCE_MS = 400;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Maschino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'V2026.04.13.02';
+        const APP_VERSION = 'V2026.04.13.03';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -5125,6 +5196,45 @@ return false;
             return [];
         }
 
+        function getDriveLocationSearchValues(item) {
+            return [
+                item?.LOCATIONCODE,
+                item?.LOCATIONNAME,
+                item?.LOCATION,
+                item?.BLOCK
+            ].map(normalizeSearchValue).filter(Boolean);
+        }
+
+        function getDriveContextItemsWithoutSearch() {
+            let items = getDriveModeItems();
+            if (!driveSelectedSeasons.has('ALL')) {
+                items = items.filter(i => {
+                    let s = String(i.SEASON || '').toUpperCase();
+                    return driveSelectedSeasons.has(s);
+                });
+            }
+            if (driveQuickHoldStopOnly) {
+                items = items.filter(i => {
+                    const holdCode = String(firstNonEmptyValue(i.HOLDSTOPCODE, i.HOLD_STOP_CODE, i.HOLDSTOP) || '').toUpperCase();
+                    return holdCode.includes('H') || holdCode.includes('S');
+                });
+            }
+            return items;
+        }
+
+        function getDriveGenusOptions(items = []) {
+            return [...new Set((Array.isArray(items) ? items : []).map(getTaskGenusName).filter(Boolean))]
+                .sort((a, b) => String(a).localeCompare(String(b)));
+        }
+
+        function syncDriveSelectedGenus(options = []) {
+            const validOptions = Array.isArray(options) ? options : [];
+            if (driveSelectedGenusName && !validOptions.includes(driveSelectedGenusName)) {
+                driveSelectedGenusName = '';
+            }
+            return driveSelectedGenusName;
+        }
+
         function getDriveQuickFilterOptions(candidateItems) {
             const searchInput = document.getElementById('drive-search');
             const masterState = getDatasetState('master');
@@ -5162,7 +5272,7 @@ return false;
         function getDriveBaseFilterKey() {
             const searchInput = document.getElementById('drive-search');
             const term = searchInput ? searchInput.value.toLowerCase().trim() : '';
-            return [getDriveBaseFilterContextKey(), term].join('::');
+            return [getDriveBaseFilterContextKey(), activeDriveTab, driveSelectedGenusName, term].join('::');
         }
 
         function getDriveBaseFilteredItems() {
@@ -5183,24 +5293,17 @@ return false;
             if (driveBaseContextCacheKey === contextKey) {
                 baseItems = driveBaseContextCacheItems;
             } else {
-                baseItems = getDriveModeItems();
-                if (!driveSelectedSeasons.has('ALL')) {
-                    baseItems = baseItems.filter(i => {
-                        let s = String(i.SEASON || '').toUpperCase();
-                        return driveSelectedSeasons.has(s);
-                    });
-                }
-                if (driveQuickHoldStopOnly) {
-                    baseItems = baseItems.filter(i => {
-                        const holdCode = String(firstNonEmptyValue(i.HOLDSTOPCODE, i.HOLD_STOP_CODE, i.HOLDSTOP) || '').toUpperCase();
-                        return holdCode.includes('H') || holdCode.includes('S');
-                    });
-                }
+                baseItems = getDriveContextItemsWithoutSearch();
                 driveBaseContextCacheKey = contextKey;
                 driveBaseContextCacheItems = baseItems;
                 driveBaseSearchContextKey = contextKey;
                 driveBaseLastSearchTerm = '';
                 driveBaseLastSearchItems = baseItems;
+            }
+            const availableGenusNames = getDriveGenusOptions(baseItems);
+            syncDriveSelectedGenus(availableGenusNames);
+            if (driveSelectedGenusName) {
+                baseItems = baseItems.filter(i => getTaskGenusName(i) === driveSelectedGenusName);
             }
             const searchInput = document.getElementById('drive-search');
             const term = searchInput ? searchInput.value.toLowerCase().trim() : '';
@@ -5215,7 +5318,13 @@ return false;
             const searchProfile = activeDriveTab === 'loc' ? 'drive_loc' : (activeDriveTab === 'card' ? 'drive_card' : 'drive_name');
             const canUseIncremental = driveBaseSearchContextKey === contextKey && driveBaseLastSearchTerm && term.startsWith(driveBaseLastSearchTerm);
             const searchSource = canUseIncremental ? driveBaseLastSearchItems : baseItems;
-            const filteredItems = filterBySearch(searchSource, term, searchProfile);
+            const filteredItems = activeDriveTab === 'loc'
+                ? searchSource.filter((item) => {
+                    const values = getDriveLocationSearchValues(item);
+                    if (!values.length) return false;
+                    return values.some((value) => value.includes(term));
+                })
+                : filterBySearch(searchSource, term, searchProfile);
             driveBaseSearchContextKey = contextKey;
             driveBaseLastSearchTerm = term;
             driveBaseLastSearchItems = filteredItems;
@@ -6439,7 +6548,7 @@ function toggleDriveQuickRequestItem(domId) {
         const SEARCH_PROFILES = {
             drive_name: (item) => [item.COMMONNAME],
             drive_card: (item) => [item.COMMONNAME, item.LOCATIONCODE, item.ITEMCODE, item.CONTSIZE, item.LOTCODE],
-            drive_loc: (item) => [item.LOCATIONCODE, item.COMMONNAME, item.ITEMCODE, item.CONTSIZE, item.LOTCODE],
+            drive_loc: (item) => [item.LOCATIONCODE, item.LOCATIONNAME, item.LOCATION, item.BLOCK, item.COMMONNAME, item.ITEMCODE, item.CONTSIZE, item.LOTCODE],
             av_open: (item) => [item.COMMONNAME, item.LOCATIONCODE, item.ITEMCODE, item.CONTSIZE, item.LOTCODE],
             av_reserves: (item) => [item.COMMONNAME, item.CUSTOMERNAME, item.CONSIGNEENAME, item.SALESREPNAME || item.SALESREPID, item.ITEMCODE, item.CONTSIZE, item.LOCATIONCODE],
             docks: (item) => [item.DOCK_NUM, item.COMMONNAME, item.LOCATIONCODE, item.ITEMCODE, item.STOPNUMBER, item.TRIPNUMBER, item.CUSTOMERNAME, item.CONSIGNEENAME],
@@ -8349,10 +8458,13 @@ function toggleDriveQuickRequestItem(domId) {
             const visibleDirtyViewIds = getVisibleTrackedViewIds().filter((viewId) => dirtyViews.includes(viewId));
             if (!visibleDirtyViewIds.length) return;
             visibleDirtyViewIds.forEach((viewId) => {
+                // Use a 180 ms initial delay (up from 24 ms) so that rapid bursts of
+                // realtime events are coalesced into a single render rather than
+                // causing repeated flashes of the visible view.
                 scheduleTypingAwareUiRender(`data-refresh:${viewId}`, () => {
                     if (!isViewVisible(viewId)) return;
                     renderViewContent(viewId, false, true);
-                }, 24, 220);
+                }, 180, 220);
             });
         }
 
@@ -8734,10 +8846,18 @@ function toggleDriveQuickRequestItem(domId) {
             scheduleUiRender('drive-tab', () => renderDrive());
             queueScrollMainAreaToTop(`drive-mode:${mode}`);
         }
+        function syncDriveSearchPlaceholder() {
+            const input = document.getElementById('drive-search');
+            if (!input) return;
+            if (activeDriveTab === 'loc') input.placeholder = 'Search Locations by Name or Code...';
+            else if (activeDriveTab === 'card') input.placeholder = 'Search Cards...';
+            else input.placeholder = 'Search Names or Locs...';
+        }
         function setDriveTab(tab) {
             if (tab !== 'card') closeDriveQuickFiltersModal();
 activeDriveTab = tab;
             driveQuickRequestCardMode = tab === 'card';
+            syncDriveSearchPlaceholder();
             document.getElementById('tab-drive-name').classList.toggle('active', tab === 'name');
             document.getElementById('tab-drive-loc').classList.toggle('active', tab === 'loc');
             document.getElementById('tab-drive-card').classList.toggle('active', tab === 'card');
@@ -8760,6 +8880,16 @@ activeDriveTab = tab;
             scheduleUiRender('drive-holdstop-filter', () => renderDrive());
         }
 
+        function setDriveGenusFilter(value = '') {
+            driveSelectedGenusName = String(value || '').trim();
+            driveViewLevel = 0;
+            selectedDriveName = null;
+            selectedDriveSize = null;
+            selectedDriveBlock = null;
+            selectedDriveLoc = null;
+            scheduleUiRender('drive-genus-filter', () => renderDrive());
+        }
+
         function selectDriveBlock(block) { selectedDriveBlock = block; selectedDriveLoc = null; driveViewLevel = 1; scheduleUiRender('drive-select-block', () => renderDrive()); queueScrollMainAreaToTop(`drive-block:${block}`); }
         function selectDriveLoc(loc) { selectedDriveLoc = loc; driveViewLevel = 2; scheduleUiRender('drive-select-location', () => renderDrive()); queueScrollMainAreaToTop(`drive-loc:${loc}`); }
         function resetDriveView() {
@@ -8772,7 +8902,9 @@ activeDriveTab = tab;
             document.getElementById('tab-drive-card').classList.remove('active');
             driveViewLevel = 0; selectedDriveName = null; selectedDriveSize = null; selectedDriveBlock = null; selectedDriveLoc = null;
             document.getElementById('drive-search').value = ""; document.getElementById('drive-search-clear').classList.add('hidden');
+            syncDriveSearchPlaceholder();
             driveSelectedSeasons.clear(); driveSelectedSeasons.add('ALL');
+            driveSelectedGenusName = '';
             driveQuickHoldStopOnly = false;
             scheduleUiRender('drive-season-filter', () => renderDrive());
         }
@@ -12132,6 +12264,7 @@ activeDriveTab = tab;
             }
         }
 
+        const REQUEST_ROW_REMOVAL_ANIMATION_MS = 220;
         let requestSwipeState = { row: null, surface: null, startX: 0, startY: 0, deltaX: 0, startOffset: 0, dragging: false };
         let flyerSwipeState = { row: null, surface: null, startX: 0, startY: 0, deltaX: 0, startOffset: 0, dragging: false };
         let pullRefreshState = { active: false, armed: false, refreshing: false, startX: 0, startY: 0, distance: 0 };
@@ -12559,6 +12692,36 @@ activeDriveTab = tab;
                 if (exceptRow && row === exceptRow) return;
                 closeRequestSwipe(row);
             });
+        }
+
+        function findVisibleRequestRowByUid(uid) {
+            const targetUid = String(uid || '').trim();
+            if (!targetUid) return null;
+            const container = document.getElementById('request-content');
+            if (!container) return null;
+            const rows = container.querySelectorAll('.request-swipe-row, .item-row');
+            for (const row of rows) {
+                if (String(row.dataset && row.dataset.requestUid || '').trim() === targetUid) return row;
+            }
+            return null;
+        }
+
+        function animateVisibleRequestRowRemoval(uid, done = null) {
+            const finish = () => {
+                if (typeof done === 'function') done();
+            };
+            const row = findVisibleRequestRowByUid(uid);
+            if (!row) {
+                finish();
+                return false;
+            }
+            if (row.classList.contains('request-swipe-row')) closeRequestSwipe(row);
+            row.classList.add('request-row-removing');
+            setTimeout(() => {
+                if (row && row.parentElement) row.parentElement.removeChild(row);
+                finish();
+            }, REQUEST_ROW_REMOVAL_ANIMATION_MS);
+            return true;
         }
 
         function handleRequestSwipeStart(event) {
@@ -13145,7 +13308,7 @@ activeDriveTab = tab;
                         actionBadge = `<div class="flex gap-2 mt-3"><button class="flex-1 bg-green-50 text-green-700 border border-green-200 font-bold py-2 rounded-lg shadow-sm hover:bg-green-100 active:scale-95 text-[10px] uppercase tracking-wider" onclick="event.stopPropagation(); setRepRequestAction('${safeUidJs}', 'Approved')">APPROVE</button><button class="flex-1 bg-red-50 text-red-700 border border-red-200 font-bold py-2 rounded-lg shadow-sm hover:bg-red-100 active:scale-95 text-[10px] uppercase tracking-wider" onclick="event.stopPropagation(); setRepRequestAction('${safeUidJs}', 'Rejected')">REJECT</button></div>`;
                     }
                 }
-                return `<div class="flex items-center w-full mb-3 item-row app-smart-card relative bg-white p-4 rounded-xl border border-purple-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full"><div class="app-card-main flex-grow min-w-0 pr-2"><div class="flex justify-between items-start mb-1 gap-2"><div class="app-card-title font-black text-gray-800 text-[16px] leading-tight break-words">${item.COMMONNAME||'Unknown'}</div><div class="font-black text-purple-700 bg-purple-50 px-2 py-1 rounded text-sm whitespace-nowrap ml-2 border border-purple-100">QTY: ${reqQty}</div></div><div class="app-card-subtitle font-bold text-[#007a4d] text-sm mb-2">${item.CONTSIZE||'-'}</div><div class="app-card-meta-grid grid grid-cols-2 gap-x-2 gap-y-1 mb-2 text-[11px] font-bold text-gray-600"><div class="truncate"><i class="ph-bold ph-user mr-1"></i>${rep}</div><div class="truncate"><i class="ph-bold ph-storefront mr-1"></i>${cust}</div></div><div class="app-card-chip-row flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600">${statusChip}${reserveBadge}<span class="bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded border border-gray-200">PTRAVAILABLE: ${item.PTRAVAILABLE||'0'}</span><span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">Loc: ${loc}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Lot: ${lot}</span><span class="bg-orange-50 text-orange-700 px-1.5 py-0.5 rounded border border-orange-100">Pri: ${priority}</span></div>${holdHtml}${requestSalesNoteHtml}</div>${inlineThumbHtml}</div>${actionBadge}</div></div>`;
+                return `<div class="flex items-center w-full mb-3 item-row app-smart-card relative bg-white p-4 rounded-xl border border-purple-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" data-request-uid="${safeUidJs}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full"><div class="app-card-main flex-grow min-w-0 pr-2"><div class="flex justify-between items-start mb-1 gap-2"><div class="app-card-title font-black text-gray-800 text-[16px] leading-tight break-words">${item.COMMONNAME||'Unknown'}</div><div class="font-black text-purple-700 bg-purple-50 px-2 py-1 rounded text-sm whitespace-nowrap ml-2 border border-purple-100">QTY: ${reqQty}</div></div><div class="app-card-subtitle font-bold text-[#007a4d] text-sm mb-2">${item.CONTSIZE||'-'}</div><div class="app-card-meta-grid grid grid-cols-2 gap-x-2 gap-y-1 mb-2 text-[11px] font-bold text-gray-600"><div class="truncate"><i class="ph-bold ph-user mr-1"></i>${rep}</div><div class="truncate"><i class="ph-bold ph-storefront mr-1"></i>${cust}</div></div><div class="app-card-chip-row flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600">${statusChip}${reserveBadge}<span class="bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded border border-gray-200">PTRAVAILABLE: ${item.PTRAVAILABLE||'0'}</span><span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">Loc: ${loc}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Lot: ${lot}</span><span class="bg-orange-50 text-orange-700 px-1.5 py-0.5 rounded border border-orange-100">Pri: ${priority}</span></div>${holdHtml}${requestSalesNoteHtml}</div>${inlineThumbHtml}</div>${actionBadge}</div></div>`;
             }
             if(sourceView === 'docks'){
                 let qty = item.QUANTITYORDERED || item.QTY_ORDERED || item.PTRAVAILABLE || '1';
@@ -14506,7 +14669,13 @@ ${folderNote ? `Folder Note: ${folderNote}
                 return `<button type="button" class="px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap cursor-pointer transition-colors ${active ? 'bg-[#007a4d] text-white shadow-md' : 'bg-white border border-gray-300 text-gray-600'}" onclick="toggleDriveSeason('${s}')">${s}</button>`;
             }).join('');
             const holdStopToggleHtml = `<button type="button" class="px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap cursor-pointer transition-colors ${driveQuickHoldStopOnly ? 'bg-amber-400 text-amber-950 shadow-md border border-amber-500' : 'bg-white border border-amber-300 text-amber-700'}" onclick="toggleDriveHoldStopOnly()">H/S HOLD</button>`;
-            filtersDiv.innerHTML = driveTabsHtml + seasonFiltersHtml + holdStopToggleHtml;
+            const driveGenusOptions = getDriveGenusOptions(getDriveContextItemsWithoutSearch());
+            syncDriveSelectedGenus(driveGenusOptions);
+            const driveGenusOptionsHtml = [`<option value="">All Genus</option>`]
+                .concat(driveGenusOptions.map((name) => `<option value="${esc(name)}" ${driveSelectedGenusName === name ? 'selected' : ''}>${esc(name)}</option>`))
+                .join('');
+            const driveGenusFilterHtml = `<label class="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white px-3 py-1.5 text-xs font-bold text-emerald-700 shadow-sm whitespace-nowrap">Genus<select class="bg-transparent text-xs font-bold text-emerald-800 focus:outline-none" onchange="setDriveGenusFilter(this.value)">${driveGenusOptionsHtml}</select></label>`;
+            filtersDiv.innerHTML = driveTabsHtml + seasonFiltersHtml + holdStopToggleHtml + driveGenusFilterHtml;
 
             const searchFilteredItems = getDriveFilteredItems(false);            if (quickCardMode) {
                 const finalItems = sortDriveCardItems(canUseDriveQuickRequest() ? getDriveFilteredItems(true) : searchFilteredItems);
@@ -16007,12 +16176,19 @@ function toggleDriveSeason(s) {
                         didOptimisticClose = true;
                         goBackFromDetail();
                     }
-                    if (isLagSensitiveDetailPrefix(prefix)) {
-                        didOptimisticRender = true;
-                        scheduleUiRender(`detail-complete-${itemToSave.UNIQUE_ID}`, () => reRenderCurrentView(), 24);
+                    const runOptimisticRender = () => {
+                        if (isLagSensitiveDetailPrefix(prefix)) {
+                            didOptimisticRender = true;
+                            scheduleUiRender(`detail-complete-${itemToSave.UNIQUE_ID}`, () => reRenderCurrentView(), 24);
+                        } else {
+                            didOptimisticRender = true;
+                            reRenderCurrentView();
+                        }
+                    };
+                    if (prefix === 'req-') {
+                        animateVisibleRequestRowRemoval(itemToSave.UNIQUE_ID, runOptimisticRender);
                     } else {
-                        didOptimisticRender = true;
-                        reRenderCurrentView();
+                        runOptimisticRender();
                     }
                 }
 
@@ -16207,8 +16383,8 @@ function toggleDriveSeason(s) {
                         const sourceHeight = Number(sourceImage.height || sourceImage.naturalHeight || 0);
                         if (!sourceWidth || !sourceHeight) throw new Error('Could not process the selected image.');
                         canvas = document.createElement('canvas');
-                        const targetMaxWidth = isLagSensitiveDetailPrefix(prefix) ? 420 : PHOTO_MAX_WIDTH;
-                        const targetJpegQuality = isLagSensitiveDetailPrefix(prefix) ? 0.46 : PHOTO_JPEG_QUALITY;
+                        const targetMaxWidth = PHOTO_MAX_WIDTH;
+                        const targetJpegQuality = PHOTO_JPEG_QUALITY;
                         const scaleSize = sourceWidth > targetMaxWidth ? targetMaxWidth / sourceWidth : 1;
                         canvas.width = Math.max(1, Math.round(sourceWidth * scaleSize));
                         canvas.height = Math.max(1, Math.round(sourceHeight * scaleSize));
