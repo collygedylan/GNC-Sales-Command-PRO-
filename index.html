@@ -453,7 +453,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-                            <div id="header-version" class="nav-version-pill">V2026.04.13.03</div>
+                            <div id="header-version" class="nav-version-pill">V2026.04.13.04</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -971,7 +971,7 @@
         let swipeCloseOnScrollFrame = null;
         let swipeCloseOnScrollTimer = null;
         const ACTIVE_TYPING_GRACE_MS = 35;
-        const ACTIVE_SCROLL_GRACE_MS = 120;
+        const ACTIVE_SCROLL_GRACE_MS = 180;
 
         function isIOSDevice() {
             return IOS_DEVICE_REGEX.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -1469,6 +1469,7 @@
             galleryClickHandler: null,
             keyHandler: null
         };
+
 
         function blurActiveField() {
             const activeEl = document.activeElement;
@@ -2620,7 +2621,6 @@
                 realtimeReconnectTimer = null;
             }
         }
-
         function shouldDeferInteractiveBackgroundWork() {
             return !!(isUserActivelyTyping() || isUserActivelyScrolling() || (window.pendingPhotoUploads && window.pendingPhotoUploads.size));
         }
@@ -2942,6 +2942,15 @@
             });
         }
 
+        function queueInteractiveViewRender(viewId, forceReset = false, forceRender = false, delay = 0, typingDelay = 220) {
+            const safeViewId = String(viewId || '').trim();
+            if (!safeViewId) return;
+            scheduleTypingAwareUiRender(`view-interactive:${safeViewId}`, () => {
+                const targetView = document.getElementById('view-' + safeViewId);
+                if (!targetView || targetView.classList.contains('hidden')) return;
+                renderViewContent(safeViewId, forceReset, forceRender);
+            }, Math.max(0, Number(delay) || 0), typingDelay);
+        }
         function scheduleDocksRender(delay = 32) {
             scheduleUiRender('docks:render', () => {
                 const docksView = document.getElementById('view-docks');
@@ -3768,7 +3777,7 @@
             avNoteFilterTimers[key] = setTimeout(() => {
                 avNoteFilterTimers[key] = null;
                 requestAnimationFrame(() => filterAvNotes(key));
-            }, 120);
+            }, 60);
         }
         const DRIVE_MODE_LABELS = { ok: 'Drive Mode' };
         let activeDriveMode='ok'; let activeDriveTab='name'; let selectedDriveBlock=null; let selectedDriveLoc=null; let driveQuickRequestCardMode=false; let driveQuickFilterName=''; let driveQuickFilterLocation=''; let driveQuickFilterLot=''; let driveQuickFilterSize=''; let driveQuickFilterPriority=''; let driveQuickFilterLtsMode=''; let driveQuickFilterLtsValue=''; let driveQuickHoldStopOnly=false; let driveQuickFilterOptionsCacheKey=''; let driveQuickFilterOptionsCache=null; let driveBaseFilterCacheKey=''; let driveBaseFilterCacheItems=[]; let driveBaseContextCacheKey=''; let driveBaseContextCacheItems=[]; let driveBaseSearchContextKey=''; let driveBaseLastSearchTerm=''; let driveBaseLastSearchItems=[]; let driveQuickFilterCacheKey=''; let driveQuickFilterCacheItems=[]; let driveQuickFiltersModalOpen=false;
@@ -3792,7 +3801,7 @@
         const PENDING_EDITS_STORAGE_KEY = 'gnc_pending_edits';
         const PENDING_EDITS_PERSIST_DEBOUNCE_MS = 400;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Maschino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'V2026.04.13.03';
+        const APP_VERSION = 'V2026.04.13.04';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -4640,10 +4649,23 @@
             viewEnterRefreshAt.set(targetView, now);
             const config = getViewLoadingConfig(targetView);
             if (!config || !Array.isArray(config.required) || !config.required.length) return;
-            Promise.all(config.required.map((item) => ensureDatasetLoaded(item.key, item.mode, { force: true }))).then(() => {
-                markViewDirty(targetView);
-                if (isViewVisible(targetView)) renderViewContent(targetView, false, true);
-            }).catch(() => {});
+            if (options.force) {
+                Promise.all(config.required.map((item) => ensureDatasetLoaded(item.key, item.mode, { force: true }))).then(() => {
+                    markViewDirty(targetView);
+                    if (isViewVisible(targetView)) renderViewContent(targetView, false, true);
+                }).catch(() => {});
+                return;
+            }
+            const pendingRequired = config.required.filter((item) => !isDatasetLoaded(item.key, item.mode));
+            if (pendingRequired.length) {
+                Promise.all(pendingRequired.map((item) => ensureDatasetLoaded(item.key, item.mode))).then(() => {
+                    markViewDirty(targetView);
+                    if (isViewVisible(targetView)) renderViewContent(targetView, false, true);
+                }).catch(() => {});
+                return;
+            }
+            queueVisibleDatasetCatchup(Math.max(60, Number(options.backgroundDelay) || 90));
+        }).catch(() => {});
         }
         function findItemByUniqueId(uid) {
             const normalizedUid = String(uid || '').trim();
@@ -5078,7 +5100,7 @@
 
         const debouncedDriveQuickFilterInputRender = debounce(() => {
             scheduleUiRender('drive-quick-filter', () => refreshDriveQuickFilterResults());
-        }, 120);
+        }, 60);
 
         function getDriveQuickPriorityValues() {
             return [...new Set(String(driveQuickFilterPriority || '').split('|').map(value => value.trim()).filter(Boolean))];
@@ -5163,20 +5185,26 @@ return false;
             ].join('::');
         }
 
+        function getDriveSearchProfile() {
+            return activeDriveTab === 'loc' ? 'drive_loc' : (activeDriveTab === 'card' ? 'drive_card' : 'drive_name');
+        }
+
         function getDriveBaseFilterKey() {
             const searchInput = document.getElementById('drive-search');
             const term = searchInput ? searchInput.value.toLowerCase().trim() : '';
-            return [getDriveBaseFilterContextKey(), term].join('::');
+            return [getDriveBaseFilterContextKey(), getDriveSearchProfile(), term].join('::');
         }
 
         function getDriveBaseFilteredItems() {
             const cacheKey = getDriveBaseFilterKey();
             if (driveBaseFilterCacheKey === cacheKey) return driveBaseFilterCacheItems;
             const contextKey = getDriveBaseFilterContextKey();
+            const searchProfile = getDriveSearchProfile();
+            const searchContextKey = [contextKey, searchProfile].join('::');
             if (activeDriveMode !== 'ok') {
                 driveBaseContextCacheKey = contextKey;
                 driveBaseContextCacheItems = [];
-                driveBaseSearchContextKey = contextKey;
+                driveBaseSearchContextKey = searchContextKey;
                 driveBaseLastSearchTerm = '';
                 driveBaseLastSearchItems = [];
                 driveBaseFilterCacheKey = cacheKey;
@@ -5202,25 +5230,22 @@ return false;
                 }
                 driveBaseContextCacheKey = contextKey;
                 driveBaseContextCacheItems = baseItems;
-                driveBaseSearchContextKey = contextKey;
+                driveBaseSearchContextKey = searchContextKey;
                 driveBaseLastSearchTerm = '';
                 driveBaseLastSearchItems = baseItems;
             }
             const searchInput = document.getElementById('drive-search');
             const term = searchInput ? searchInput.value.toLowerCase().trim() : '';
             if (!term) {
-                driveBaseSearchContextKey = contextKey;
+                driveBaseSearchContextKey = searchContextKey;
                 driveBaseLastSearchTerm = '';
                 driveBaseLastSearchItems = baseItems;
                 driveBaseFilterCacheKey = cacheKey;
                 driveBaseFilterCacheItems = baseItems;
                 return baseItems;
             }
-            const searchProfile = activeDriveTab === 'loc' ? 'drive_loc' : (activeDriveTab === 'card' ? 'drive_card' : 'drive_name');
-            const canUseIncremental = driveBaseSearchContextKey === contextKey && driveBaseLastSearchTerm && term.startsWith(driveBaseLastSearchTerm);
-            const searchSource = canUseIncremental ? driveBaseLastSearchItems : baseItems;
-            const filteredItems = filterBySearch(searchSource, term, searchProfile);
-            driveBaseSearchContextKey = contextKey;
+            const filteredItems = filterBySearch(baseItems, term, searchProfile);
+            driveBaseSearchContextKey = searchContextKey;
             driveBaseLastSearchTerm = term;
             driveBaseLastSearchItems = filteredItems;
             driveBaseFilterCacheKey = cacheKey;
@@ -6549,8 +6574,8 @@ function toggleDriveQuickRequestItem(domId) {
             if (searchRenderFrame[safeKey]) cancelAnimationFrame(searchRenderFrame[safeKey]);
             const touchOptimized = isIOSDevice() || isStandaloneApp() || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
             const baseDelay = safeKey === 'drive-search'
-                ? (touchOptimized ? 160 : 120)
-                : (touchOptimized ? 130 : 90);
+                ? (touchOptimized ? 70 : 45)
+                : (touchOptimized ? 55 : 35);
             const debounceDelay = options && options.skipDebounce
                 ? 0
                 : Math.max(0, Number(options.debounceDelay) || baseDelay);
@@ -6926,7 +6951,6 @@ function toggleDriveQuickRequestItem(domId) {
                 updatePhotoModalCounter();
             });
         }
-
         function closePhotoModal() {
             const gallery = document.getElementById('photo-modal-gallery');
             const modal = document.getElementById('photo-modal');
@@ -7347,7 +7371,7 @@ function toggleDriveQuickRequestItem(domId) {
                         });
                         localStorage.setItem('last_req_hash', hash);
                         markViewDirty('request');
-                        if(!document.getElementById('view-request').classList.contains('hidden')) renderViewContent('request', false, true);
+                        queueInteractiveViewRender('request', false, true, 48, 220);
                     }
                 }
 
@@ -7365,7 +7389,7 @@ function toggleDriveQuickRequestItem(domId) {
                         syncRealtimeSalesOfficeRows();
                         localStorage.setItem('last_so_hash', soHash);
                         markViewDirty('sales-office');
-                        if(!document.getElementById('view-sales-office').classList.contains('hidden')) renderViewContent('sales-office', false, true);
+                        queueInteractiveViewRender('sales-office', false, true, 48, 220);
                     }
                 }
 
@@ -7379,7 +7403,7 @@ function toggleDriveQuickRequestItem(domId) {
                     || previousDockItemSnapshot !== JSON.stringify(Array.from(dockItemProgressByUid.entries()));
                 if (dockWorkflowChanged) {
                     markViewDirty('docks');
-                    if (!document.getElementById('view-docks').classList.contains('hidden')) renderViewContent('docks', false, true);
+                    queueInteractiveViewRender('docks', false, true, 48, 220);
                 }
 
                 lastSyncTime=checkTime;
@@ -8484,6 +8508,16 @@ function toggleDriveQuickRequestItem(domId) {
             const footerCartBtn = document.getElementById('footer-cart-btn');
             if (footerCartBtn) footerCartBtn.classList.toggle('active', !!(cartPanelOpen && selectedItems.size));
         }
+        function scheduleViewActivationWork(viewId) {
+            const targetViewId = String(viewId || '').trim();
+            if (!targetViewId) return;
+            requestAnimationFrame(() => {
+                if (getCurrentVisibleViewId() !== targetViewId) return;
+                setRealtimeSubscriptionsForView(targetViewId);
+                refreshViewDatasetsOnEnter(targetViewId);
+            });
+        }
+
         function switchView(viewId) {
             closeDriveQuickFiltersModal();
             const requestedViewId = String(viewId || 'home').trim();
@@ -8495,8 +8529,7 @@ function toggleDriveQuickRequestItem(domId) {
                 syncGlobalHeaderChrome();
                 updateFooterNavState();
                 syncRequestViewLiveSync(nextViewId === 'request' ? 120 : 0);
-                setRealtimeSubscriptionsForView(nextViewId);
-            refreshViewDatasetsOnEnter(nextViewId);
+                scheduleViewActivationWork(nextViewId);
                 return false;
             }
             ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-detail','view-docks','view-request','view-reserves','view-av', 'view-hours'].forEach(id=>{
@@ -8511,8 +8544,7 @@ function toggleDriveQuickRequestItem(domId) {
             syncGlobalHeaderChrome();
             updateFooterNavState();
             syncRequestViewLiveSync(nextViewId === 'request' ? 120 : 0);
-                setRealtimeSubscriptionsForView(nextViewId);
-            refreshViewDatasetsOnEnter(nextViewId);
+            scheduleViewActivationWork(nextViewId);
             return false;
         }
         function goBackUniversal() {
@@ -8921,11 +8953,11 @@ activeDriveTab = tab;
             supabaseFetch('v2_labor_hours', 'POST', payload).then(() => { showToast("Success", "Hours submitted successfully!"); document.getElementById('hours-amount').value = ""; }).catch(err => { showToast("Error", "Failed to submit hours.", true); });
         }
 
-        const debouncedReservesSearch=debounce(()=>{requestAnimationFrame(()=>renderReserves())},150);
+        const debouncedReservesSearch=debounce(()=>{requestAnimationFrame(()=>renderReserves())},80);
         function clearReservesSearch() { document.getElementById('reserves-search').value=""; document.getElementById('reserves-search-clear').classList.add('hidden'); reservesViewLevel=0; renderReserves(); }
         function handleReservesSearch() { const term=document.getElementById('reserves-search').value.toLowerCase(); const clearBtn=document.getElementById('reserves-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden');reservesViewLevel=0;} else{clearBtn.classList.add('hidden');reservesViewLevel=0;} if (typeof renderReserves === 'function') scheduleSearchRender('reserves', () => renderReserves(), term); }
 
-        const debouncedAVSearch=debounce(()=>{requestAnimationFrame(()=>renderAV())},150);
+        const debouncedAVSearch=debounce(()=>{requestAnimationFrame(()=>renderAV())},80);
 
         function resetAVReserveSearchInput() {
             const searchInput = document.getElementById('av-search');
@@ -10284,7 +10316,7 @@ activeDriveTab = tab;
                 container.innerHTML = html;
             }
         }
-        const debouncedDocksSearch=debounce(()=>{requestAnimationFrame(()=>renderDocks())},150);
+        const debouncedDocksSearch=debounce(()=>{requestAnimationFrame(()=>renderDocks())},80);
         function clearDocksSearch(){ document.getElementById('docks-search').value=""; document.getElementById('docks-search-clear').classList.add('hidden'); dockViewLevel=0; selectedDockNum=null; selectedDockStop=null; renderDocks(); }
         function handleDocksSearch(){ const term=document.getElementById('docks-search').value.toLowerCase(); const clearBtn=document.getElementById('docks-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden');dockViewLevel=0;}else{clearBtn.classList.add('hidden');dockViewLevel=0;} scheduleSearchRender('docks', () => renderDocks(), term); }
         function resetDockView() { dockViewLevel = 0; selectedDockNum = null; selectedDockStop = null; document.getElementById('docks-search').value = ""; document.getElementById('docks-search-clear').classList.add('hidden'); renderDocks(); }
@@ -14419,7 +14451,7 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         const debouncedDriveSearch = debounce((term) => {
             scheduleSearchRender('drive-search', () => renderDrive(), term, { skipDebounce: true });
-        }, 120);
+        }, 60);
 
         function clearDriveSearch() {
             document.getElementById('drive-search').value = "";
