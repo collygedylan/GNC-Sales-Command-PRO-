@@ -3921,6 +3921,19 @@
             return [currentUser, currentUserDisplay].some(value => allowed.has(String(value || '').trim().toLowerCase()));
         }
 
+        const SHARED_TASK_COLLABORATOR_KEYS = new Set(['dylan_collyge', 'morgan_anderson', 'kayla_knepp', 'jd_jones']);
+        function normalizeSharedTaskCollaboratorKey(value = '') {
+            return String(value || '').trim().toLowerCase().replace(/\s+/g, '_');
+        }
+
+        function isSharedTaskCollaboratorUser(value = '') {
+            return SHARED_TASK_COLLABORATOR_KEYS.has(normalizeSharedTaskCollaboratorKey(value));
+        }
+
+        function isCurrentUserInSharedTaskGroup() {
+            return [currentUser, currentUserDisplay].some(value => isSharedTaskCollaboratorUser(value));
+        }
+
         function syncGoogleScriptButton() {
             const button = document.getElementById('run-google-script-btn');
             if (!button) return;
@@ -8533,7 +8546,7 @@ function toggleDriveQuickRequestItem(domId) {
                 if (forceReset || !state.initialized) resetDriveView();
                 else renderDrive();
             } else if (viewId === 'tasks') {
-                if (safeRole === 'ADMIN' && activeTaskTab !== 'flyer' && !taskViewTargetUser && !taskTabUsesBlockDrill(activeTaskTab)) renderTeamSelector();
+                if (shouldShowAdminTaskTeamSelector(activeTaskTab)) renderTeamSelector();
                 else renderTasks();
             } else if (viewId === 'reports') {
                 if (forceReset || !state.initialized) resetReportsView();
@@ -8816,7 +8829,7 @@ function toggleDriveQuickRequestItem(domId) {
             selectedTaskLoc=null;
             selectedEndCapFolder=null;
             selectedFlyerFolder=null;
-            if (safeRole === 'ADMIN' && tab !== 'flyer' && !taskViewTargetUser && !taskTabUsesBlockDrill(tab)) {
+            if (shouldShowAdminTaskTeamSelector(tab)) {
                 scheduleUiRender('task-tab', () => renderTeamSelector());
                 queueScrollMainAreaToTop(`task-tab:${tab}`);
                 return;
@@ -12284,18 +12297,11 @@ activeDriveTab = tab;
         }
 
         function getCurrentTaskDetailItems() {
-            const useBlockDrill = taskTabUsesBlockDrill(activeTaskTab);
-            const useSharedNotesQueue = safeRole === 'ADMIN' && useBlockDrill;
-            const isSharedFlyerQueue = activeTaskTab === 'flyer';
-            let targetUser = safeRole === 'ADMIN' && !useSharedNotesQueue && !isSharedFlyerQueue ? taskViewTargetUser : currentUser;
-            if (!useSharedNotesQueue && !isSharedFlyerQueue && !targetUser) return [];
+            const useSharedTaskQueue = shouldUseSharedTaskQueue(activeTaskTab);
+            let targetUser = safeRole === 'ADMIN' && !useSharedTaskQueue ? taskViewTargetUser : currentUser;
+            if (!useSharedTaskQueue && !targetUser) return [];
 
-            const keepCompletedInTaskTab = activeTaskTab === 'colorwalk' || activeTaskTab === 'flyer';
-            let scopedItems = useSharedNotesQueue
-                ? fullInventory.filter(i => keepCompletedInTaskTab || !String(firstNonEmptyValue(i.DATE_COMPLETED, i.date_completed, '')).trim())
-                : isSharedFlyerQueue
-                    ? fullInventory.filter(i => isFlyerTaskItem(i))
-                    : fullInventory.filter(i => i.ASSIGNEDTO === targetUser && (keepCompletedInTaskTab || !String(firstNonEmptyValue(i.DATE_COMPLETED, i.date_completed, '')).trim()));
+            let scopedItems = getScopedTaskQueueItems(activeTaskTab, targetUser);
             const seasonTaskItems = activeTaskTab === 'season' ? getTaskTabItems(scopedItems, 'season') : [];
             let tabItems = getTaskSubviewItems(getTaskTabItems(scopedItems, activeTaskTab), activeTaskTab, activeTaskSubview);
             if (activeTaskTab === 'season' && activeTaskSubview === 'av-blanks') {
@@ -15753,6 +15759,32 @@ ${folderNote ? `Folder Note: ${folderNote}
             return tab === 'season' || tab === 'location' || tab === 'colorwalk';
         }
 
+        function shouldUseSharedTaskQueue(tab = activeTaskTab) {
+            const safeTab = String(tab || activeTaskTab || '').trim().toLowerCase();
+            if (isCurrentUserInSharedTaskGroup()) return true;
+            if (safeTab === 'flyer') return true;
+            return safeRole === 'ADMIN' && taskTabUsesBlockDrill(safeTab);
+        }
+
+        function shouldShowAdminTaskTeamSelector(tab = activeTaskTab) {
+            const safeTab = String(tab || activeTaskTab || '').trim().toLowerCase();
+            return safeRole === 'ADMIN' && !isCurrentUserInSharedTaskGroup() && safeTab !== 'flyer' && !taskViewTargetUser && !taskTabUsesBlockDrill(safeTab);
+        }
+
+        function getScopedTaskQueueItems(tab = activeTaskTab, targetUser = currentUser) {
+            const safeTab = String(tab || activeTaskTab || '').trim().toLowerCase();
+            const keepCompletedInTaskTab = safeTab === 'colorwalk' || safeTab === 'flyer';
+            const baseItems = fullInventory.filter(i => keepCompletedInTaskTab || !String(firstNonEmptyValue(i.DATE_COMPLETED, i.date_completed, '')).trim());
+            if (shouldUseSharedTaskQueue(safeTab)) {
+                return safeTab === 'flyer' ? baseItems.filter(i => isFlyerTaskItem(i)) : baseItems;
+            }
+            const owner = String(targetUser || '').trim();
+            if (!owner) return [];
+            return safeTab === 'flyer'
+                ? baseItems.filter(i => isFlyerTaskItem(i))
+                : baseItems.filter(i => i.ASSIGNEDTO === owner);
+        }
+
         function getTaskSubviewLabel(subview = activeTaskSubview) {
             if (subview === 'positive-lts') return 'Positive LTS';
             if (subview === 'hold') return 'Hold';
@@ -16126,10 +16158,9 @@ ${folderNote ? `Folder Note: ${folderNote}
             syncTaskSubviewControls(activeTaskTab);
 
             const useBlockDrill = taskTabUsesBlockDrill(activeTaskTab);
-            const useSharedNotesQueue = safeRole === 'ADMIN' && useBlockDrill;
-            const isSharedFlyerQueue = activeTaskTab === 'flyer';
-            let targetUser = safeRole === 'ADMIN' && !useSharedNotesQueue && !isSharedFlyerQueue ? taskViewTargetUser : currentUser;
-            if (!useSharedNotesQueue && !isSharedFlyerQueue && !targetUser) return;
+            const useSharedTaskQueue = shouldUseSharedTaskQueue(activeTaskTab);
+            let targetUser = safeRole === 'ADMIN' && !useSharedTaskQueue ? taskViewTargetUser : currentUser;
+            if (!useSharedTaskQueue && !targetUser) return;
 
             const container = document.getElementById('task-content');
             const crumb = document.getElementById('task-crumb');
@@ -16141,14 +16172,18 @@ ${folderNote ? `Folder Note: ${folderNote}
             const flyerFolderTabLabel = getFlyerFolderTabValue(activeFlyerFolderTab) === 'archive' ? 'Archive' : 'Active';
 
             const applyTaskCrumb = () => {
-                if (useSharedNotesQueue) {
+                if (useSharedTaskQueue && useBlockDrill) {
                     if (taskViewLevel === 0) crumb.innerText = notesTitle;
                     else if (taskViewLevel === 1) crumb.innerText = `${notesTitle} > Block ${selectedTaskBlock}`;
                     else crumb.innerText = `${notesTitle} > ${selectedTaskLoc}`;
-                } else if (isSharedFlyerQueue) {
+                } else if (activeTaskTab === 'flyer') {
                     crumb.innerText = taskViewLevel === 0
                         ? `Flyer > ${flyerFolderTabLabel}`
                         : `Flyer > ${flyerFolderTabLabel} > ${selectedFlyerFolder || 'Folder'}`;
+                } else if (useSharedTaskQueue) {
+                    crumb.innerText = activeTaskTab === 'endcap' && taskViewLevel === 1 && selectedEndCapFolder
+                        ? `${notesTitle} > ${selectedEndCapFolder}`
+                        : notesTitle;
                 } else {
                     crumb.innerHTML = safeRole === 'ADMIN'
                         ? `<span class="text-[#007a4d]">${targetUser}'s Tasks</span>`
@@ -16156,12 +16191,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 }
             };
 
-            const keepCompletedInTaskTab = activeTaskTab === 'colorwalk' || activeTaskTab === 'flyer';
-            let scopedItems = useSharedNotesQueue
-                ? fullInventory.filter(i => keepCompletedInTaskTab || !String(firstNonEmptyValue(i.DATE_COMPLETED, i.date_completed, '')).trim())
-                : isSharedFlyerQueue
-                    ? fullInventory.filter(i => isFlyerTaskItem(i))
-                    : fullInventory.filter(i => i.ASSIGNEDTO === targetUser && (keepCompletedInTaskTab || !String(firstNonEmptyValue(i.DATE_COMPLETED, i.date_completed, '')).trim()));
+            let scopedItems = getScopedTaskQueueItems(activeTaskTab, targetUser);
             const seasonTaskItems = activeTaskTab === 'season' ? getTaskTabItems(scopedItems, 'season') : [];
             let tabItems = getTaskSubviewItems(getTaskTabItems(scopedItems, activeTaskTab), activeTaskTab, activeTaskSubview);
             if (activeTaskTab === 'season' && activeTaskSubview === 'av-blanks') {
