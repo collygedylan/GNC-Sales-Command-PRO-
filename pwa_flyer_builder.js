@@ -36,8 +36,15 @@
   const PDF_PAGE_WIDTH = 612;
   const PDF_PAGE_HEIGHT = 792;
   const BUILDER_STATE_STORAGE_KEY = 'gnc_native_flyer_builder_state_v5';
-  const RENDER_DEBOUNCE_MS = 28;
+  const RENDER_DEBOUNCE_MS = 100;
+  const RENDER_PRIORITY = { high: 'high', normal: 'normal', low: 'low' };
   const IDLE_RENDER_TIMEOUT_MS = 120;
+  const INPUT_THROTTLE_MS = 90;
+  const RENDER_DEBOUNCE_NORMAL_MS = 40;
+  const VIRTUAL_CARD_ROW_HEIGHT = 560;
+  const VIRTUAL_CARD_OVERSCAN = 2;
+  const IMAGE_CACHE_LIMIT = 120;
+  const IMAGE_CACHE_PRUNE_TO = 90;
   const PASSIVE_EVENT_OPTIONS = { passive: true };
   const HAPTIC_FEEDBACK_SELECTORS = 'button,[role="button"],input,select,textarea,.npf-photo-option';
 
@@ -204,7 +211,13 @@
     return await new Promise((resolve, reject) => {
       const image = new Image();
       image.crossOrigin = 'anonymous';
-      image.onload = () => resolve(image);
+      image.decoding = 'async';
+      image.onload = async () => {
+        if (typeof image.decode === 'function') {
+          try { await image.decode(); } catch (error) {}
+        }
+        resolve(image);
+      };
       image.onerror = () => reject(new Error('Could not load image.'));
       image.src = source;
     });
@@ -362,15 +375,38 @@
       this.currentUser = opts.currentUser;
       this.logoUrl = opts.logoUrl;
       this.imageCache = new Map();
+      this.imageCacheAccess = 0;
       this.logoPromise = null;
       this.renderTimer = null;
       this.renderFrame = null;
       this.renderInFlight = false;
       this.renderQueued = false;
+      this.queuedRenderPriority = RENDER_PRIORITY.low;
+      this.pendingRenderPriority = RENDER_PRIORITY.low;
       this.lastHapticAt = 0;
       this.pendingViewportState = null;
       this.persistTimer = null;
       this.renderDebounceMs = RENDER_DEBOUNCE_MS;
+      this.stepDelegatedEventsBound = false;
+      this.inputRenderTimer = null;
+      this.lastInputRenderAt = 0;
+      this.imageReadyRenderTimer = null;
+      this.virtualCardsState = { start: -1, end: -1, total: 0 };
+      this.virtualCardsScrollHandler = null;
+      this.livePanelFrame = null;
+      this.performanceMetrics = {
+        renderCount: 0,
+        totalRenderMs: 0,
+        maxRenderMs: 0,
+        lastRenderMs: 0,
+        lastRenderAt: 0
+      };
+      this.workerEnabled = false;
+      this.workerAvailable = typeof global.Worker === 'function' && typeof global.Blob === 'function' && typeof global.URL !== 'undefined';
+      this.imageWorker = null;
+      this.imageWorkerPending = new Map();
+      this.imageWorkerMessageId = 1;
+      this.imageWorkerUrl = null;
       this.saveStatusMessage = 'Draft ready. Auto-save is on for this device.';
       this.saveStatusState = 'saved';
       this.state = {
@@ -593,7 +629,15 @@
         document.addEventListener('visibilitychange', this.visibilityPersistHandler, { passive: true });
       }
       if (!this.pageHidePersistHandler) {
-        this.pageHidePersistHandler = () => this.flushQueuedState(false);
+        this.pageHidePersistHandler = () => {
+          this.flushQueuedState(false);
+          this.pruneImageCache(true);
+          if (this.imageReadyRenderTimer) {
+            clearTimeout(this.imageReadyRenderTimer);
+            this.imageReadyRenderTimer = null;
+          }
+          this.disposeWorkers();
+        };
         global.addEventListener('pagehide', this.pageHidePersistHandler, { passive: true });
       }
       return this;
@@ -973,6 +1017,30 @@
       this.refreshCardSelectionUi();
     }
 
+    scheduleLivePanelRefresh() {
+      if (this.livePanelFrame) return;
+      if (typeof global.requestAnimationFrame !== 'function') {
+        this.refreshLiveEditorPanel();
+        return;
+      }
+      this.livePanelFrame = global.requestAnimationFrame(() => {
+        this.livePanelFrame = null;
+        this.refreshLiveEditorPanel();
+      });
+    }
+
+    primeVisibleImages() {
+      const cards = [];
+      this.getPageCards(this.state.pageIndex).forEach((card) => {
+        if (card && card.imageSrc) cards.push(card.imageSrc);
+      });
+      this.getFilteredEditorCards().slice(0, 8).forEach(({ card }) => {
+        if (card && card.imageSrc) cards.push(card.imageSrc);
+      });
+      cards.forEach((src) => this.getCachedImage(src, { nonBlocking: true }));
+      this.pruneImageCache();
+    }
+
     renderShareStep() {
       return `
         <div class="npf-stack">
@@ -1012,7 +1080,59 @@
     renderCardEditorCards(mode) {
       const filteredCards = this.getFilteredEditorCards();
       if (!filteredCards.length) return `<div class="npf-photo-empty">No rows match that search.</div>`;
-      return filteredCards.map(({ card, index }) => this.buildCardMarkup(card, index, mode)).join('');
+      if (mode !== 'cards') return filteredCards.map(({ card, index }) => this.buildCardMarkup(card, index, mode)).join('');
+      return this.renderVirtualCardRows(filteredCards, 0, VIRTUAL_CARD_ROW_HEIGHT * 2);
+    }
+
+    getVirtualCardRange(total, scrollTop, viewportHeight) {
+      const safeTotal = Math.max(0, Number(total || 0));
+      if (!safeTotal) return { start: 0, end: 0 };
+      const safeTop = Math.max(0, Number(scrollTop || 0));
+      const safeHeight = Math.max(VIRTUAL_CARD_ROW_HEIGHT, Number(viewportHeight || 0));
+      const start = Math.max(0, Math.floor(safeTop / VIRTUAL_CARD_ROW_HEIGHT) - VIRTUAL_CARD_OVERSCAN);
+      const visibleRows = Math.max(1, Math.ceil(safeHeight / VIRTUAL_CARD_ROW_HEIGHT) + (VIRTUAL_CARD_OVERSCAN * 2));
+      return { start, end: Math.min(safeTotal, start + visibleRows) };
+    }
+
+    renderVirtualCardRows(filteredCards, scrollTop, viewportHeight) {
+      const list = Array.isArray(filteredCards) ? filteredCards : [];
+      const range = this.getVirtualCardRange(list.length, scrollTop, viewportHeight);
+      const items = list.slice(range.start, range.end).map(({ card, index }) => this.buildCardMarkup(card, index, 'cards')).join('');
+      const topSpace = Math.max(0, range.start * VIRTUAL_CARD_ROW_HEIGHT);
+      const bottomSpace = Math.max(0, (list.length - range.end) * VIRTUAL_CARD_ROW_HEIGHT);
+      this.virtualCardsState = { start: range.start, end: range.end, total: list.length };
+      return `<div data-card-virtual-top style="height:${topSpace}px"></div>${items}<div data-card-virtual-bottom style="height:${bottomSpace}px"></div>`;
+    }
+
+    refreshVirtualCardRows(force) {
+      if (!this.ui.stepBody || this.state.step !== 'cards') return;
+      const slots = this.ui.stepBody.querySelector('.npf-slots');
+      if (!slots) return;
+      const filteredCards = this.getFilteredEditorCards();
+      if (!filteredCards.length) {
+        slots.innerHTML = '<div class="npf-photo-empty">No rows match that search.</div>';
+        this.virtualCardsState = { start: 0, end: 0, total: 0 };
+        return;
+      }
+      const range = this.getVirtualCardRange(filteredCards.length, slots.scrollTop, slots.clientHeight);
+      const sameWindow = !force && this.virtualCardsState.total === filteredCards.length && this.virtualCardsState.start === range.start && this.virtualCardsState.end === range.end;
+      if (sameWindow) return;
+      slots.innerHTML = this.renderVirtualCardRows(filteredCards, slots.scrollTop, slots.clientHeight);
+      this.refreshCardSelectionUi();
+    }
+
+    setupVirtualCardRows() {
+      if (!this.ui.stepBody || this.state.step !== 'cards') return;
+      const slots = this.ui.stepBody.querySelector('.npf-slots');
+      if (!slots) return;
+      if (!this.virtualCardsScrollHandler) {
+        this.virtualCardsScrollHandler = () => this.refreshVirtualCardRows(false);
+      }
+      if (slots.__virtualBound !== true) {
+        slots.__virtualBound = true;
+        slots.addEventListener('scroll', this.virtualCardsScrollHandler, PASSIVE_EVENT_OPTIONS);
+      }
+      this.refreshVirtualCardRows(true);
     }
 
     buildCardHelperText(card) {
@@ -1079,31 +1199,6 @@
 
 
     bindStepEvents() {
-      const bindFieldInput = (selector, handler) => Array.from(this.ui.stepBody.querySelectorAll(selector)).forEach((node) => {
-        node.addEventListener('input', handler);
-        node.addEventListener('change', handler);
-      });
-
-      bindFieldInput('[data-field]', (event) => {
-        const target = event.currentTarget;
-        const key = String(target.dataset.field || '').trim();
-        this.state[key] = target.value;
-        this.clampPageIndex();
-        const viewportState = this.captureViewportState(target);
-        this.queuePersistState();
-        if (key === 'rowFilter') {
-          const snapshot = this.captureFocusState(target);
-          this.renderUi();
-          this.restoreViewportState(viewportState);
-          this.restoreFocusState(snapshot);
-          this.scheduleRender(true, viewportState);
-          return;
-        }
-        this.scheduleRender(false, viewportState);
-      });
-
-      Array.from(this.ui.stepBody.querySelectorAll('[data-layout-preset]')).forEach((button) => button.addEventListener('click', () => this.applyLayoutPreset(button.dataset.layoutPreset)));
-
       const buildSegmented = (target, values, current, attr) => {
         if (!target) return;
         target.innerHTML = values.map((entry) => `<button type="button" class="npf-btn ${String(entry.value) === String(current) ? 'npf-primary active' : 'npf-muted'}" data-${attr}="${this.escape(entry.value)}">${this.escape(entry.label)}</button>`).join('');
@@ -1114,40 +1209,6 @@
       buildSegmented(this.ui.stepBody.querySelector('[data-logo-toggle]'), [{ value: 'on', label: 'Show' }, { value: 'off', label: 'Hide' }], this.state.showLogo ? 'on' : 'off', 'logoToggle');
       buildSegmented(this.ui.stepBody.querySelector('[data-fit]'), [{ value: 'cover', label: 'Fill' }, { value: 'contain', label: 'Fit' }], this.state.photoFit, 'fit');
       buildSegmented(this.ui.stepBody.querySelector('[data-card-style]'), [{ value: 'soft', label: 'Soft' }, { value: 'outline', label: 'Outline' }, { value: 'flat', label: 'Flat' }], this.state.cardStyle, 'cardStyle');
-
-      const rerenderWithCanvas = () => {
-        this.renderUi();
-        this.scrollPreviewToTop();
-        this.scheduleRender(true);
-      };
-
-      Array.from(this.ui.stepBody.querySelectorAll('[data-columns] button[data-columns]')).forEach((button) => button.addEventListener('click', () => {
-        this.state.columns = clamp(button.dataset.columns || 2, 1, 3);
-        this.clampPageIndex();
-        this.queuePersistState();
-        rerenderWithCanvas();
-      }));
-      Array.from(this.ui.stepBody.querySelectorAll('[data-rows] button[data-rows]')).forEach((button) => button.addEventListener('click', () => {
-        this.state.rowsPerPage = clamp(button.dataset.rows || 4, 1, 6);
-        this.clampPageIndex();
-        this.queuePersistState();
-        rerenderWithCanvas();
-      }));
-      Array.from(this.ui.stepBody.querySelectorAll('[data-logo-toggle] button[data-logo-toggle]')).forEach((button) => button.addEventListener('click', () => {
-        this.state.showLogo = String(button.dataset.logoToggle) === 'on';
-        this.queuePersistState();
-        rerenderWithCanvas();
-      }));
-      Array.from(this.ui.stepBody.querySelectorAll('[data-fit] button[data-fit]')).forEach((button) => button.addEventListener('click', () => {
-        this.state.photoFit = String(button.dataset.fit || 'cover');
-        this.queuePersistState();
-        rerenderWithCanvas();
-      }));
-      Array.from(this.ui.stepBody.querySelectorAll('[data-card-style] button[data-card-style]')).forEach((button) => button.addEventListener('click', () => {
-        this.state.cardStyle = String(button.dataset.cardStyle || 'soft');
-        this.queuePersistState();
-        rerenderWithCanvas();
-      }));
       if (this.state.step === 'style') {
         const themeWrap = this.ui.stepBody.querySelector('[data-themes]');
         if (themeWrap) {
@@ -1155,64 +1216,187 @@
             const theme = THEMES[key];
             return `<button type="button" class="npf-btn npf-secondary npf-theme-chip ${this.state.themeKey === key ? 'active' : ''}" data-theme="${key}" style="background:${theme.background};color:${theme.title};border-color:${theme.accent}"><span class="swatch" style="background:${theme.accent}"></span>${this.escape(key)}</button>`;
           }).join('');
-          Array.from(themeWrap.querySelectorAll('[data-theme]')).forEach((button) => button.addEventListener('click', () => {
-            const nextKey = button.dataset.theme;
-            this.state.themeKey = nextKey;
-            this.state.theme = Object.assign({}, THEMES[nextKey] || THEMES.sage);
-            this.queuePersistState();
-            rerenderWithCanvas();
-          }));
         }
         Array.from(this.ui.stepBody.querySelectorAll('[data-color]')).forEach((input) => {
           input.value = this.state.theme[input.dataset.color] || '#ffffff';
-          input.addEventListener('input', () => {
-            const viewportState = this.captureViewportState(input);
-            this.state.theme[input.dataset.color] = input.value;
-            this.refreshLiveEditorPanel();
-            this.queuePersistState();
-            this.scheduleRender(false, viewportState);
-          });
         });
       }
-
-      Array.from(this.ui.stepBody.querySelectorAll('[data-photo-option]')).forEach((button) => button.addEventListener('click', () => {
-        const parts = String(button.dataset.photoOption || '').split(':');
-        this.selectPhotoOption(Number(parts[0] || 0), Number(parts[1] || 0));
-      }));
-      Array.from(this.ui.stepBody.querySelectorAll('[data-duplicate-card]')).forEach((button) => button.addEventListener('click', () => {
-        this.duplicateCard(Number(button.dataset.duplicateCard || 0));
-      }));
-      Array.from(this.ui.stepBody.querySelectorAll('[data-toggle-card]')).forEach((button) => button.addEventListener('click', () => {
-        this.toggleCardEnabled(Number(button.dataset.toggleCard || 0));
-      }));
-      Array.from(this.ui.stepBody.querySelectorAll('[data-card]')).forEach((field) => {
-        const applyCardField = (event) => {
-          const target = event.currentTarget;
-          const index = Number(target.dataset.index || 0);
-          if (!this.state.cards[index]) return;
-          const key = String(target.dataset.card || '').trim();
-          const value = target.type === 'range' ? Number(target.value) : target.value;
-          this.state.cards[index][key] = value;
-          if (target.type === 'range') {
-            const valueLabel = target.parentElement ? target.parentElement.querySelector('.npf-range-value') : null;
-            if (valueLabel) valueLabel.textContent = this.formatRangeValue(key, value);
-          }
-          if (key === 'heading') {
-            const slotTitle = target.closest('.npf-slot') ? target.closest('.npf-slot').querySelector('.npf-slot-title') : null;
-            if (slotTitle) slotTitle.textContent = String(value || '').trim() || `Photo ${index + 1}`;
-          }
-          this.state.activeCardIndex = index;
-          this.refreshCardSelectionUi();
-          this.refreshLiveEditorPanel();
-          const viewportState = this.captureViewportState(target);
-          this.queuePersistState();
-          this.scheduleRender(false, viewportState);
-        };
-        field.addEventListener('input', applyCardField);
-        field.addEventListener('change', applyCardField);
-      });
-      this.bindLiveEditorEvents();
+      this.bindDelegatedStepEvents();
+      this.setupVirtualCardRows();
+      this.primeVisibleImages();
       this.refreshCardSelectionUi();
+    }
+
+    bindDelegatedStepEvents() {
+      if (this.stepDelegatedEventsBound || !this.ui.stepBody) return;
+      this.stepDelegatedEventsBound = true;
+      this.ui.stepBody.addEventListener('input', (event) => this.handleStepInput(event));
+      this.ui.stepBody.addEventListener('change', (event) => this.handleStepInput(event));
+      this.ui.stepBody.addEventListener('click', (event) => this.handleStepClick(event));
+    }
+
+    scheduleLowPriorityInputRender(viewportState) {
+      if (typeof viewportState !== 'undefined') this.pendingViewportState = viewportState;
+      if (this.inputRenderTimer) return;
+      const elapsed = Date.now() - this.lastInputRenderAt;
+      const wait = Math.max(0, INPUT_THROTTLE_MS - elapsed);
+      this.inputRenderTimer = setTimeout(() => {
+        this.inputRenderTimer = null;
+        this.lastInputRenderAt = Date.now();
+        this.scheduleRender(RENDER_PRIORITY.low, this.pendingViewportState);
+      }, wait);
+    }
+
+    scheduleImageReadyRender() {
+      if (this.imageReadyRenderTimer) return;
+      this.imageReadyRenderTimer = setTimeout(() => {
+        this.imageReadyRenderTimer = null;
+        this.scheduleRender(RENDER_PRIORITY.low);
+      }, 80);
+    }
+
+    handleStepInput(event) {
+      const target = event && event.target ? event.target : null;
+      if (!target) return;
+      const field = target.closest('[data-field]');
+      if (field) {
+        const key = String(field.dataset.field || '').trim();
+        this.state[key] = field.value;
+        this.clampPageIndex();
+        const viewportState = this.captureViewportState(field);
+        this.queuePersistState();
+        if (key === 'rowFilter') {
+          const snapshot = this.captureFocusState(field);
+          this.renderStepBody();
+          this.restoreViewportState(viewportState);
+          this.restoreFocusState(snapshot);
+          this.scheduleRender(RENDER_PRIORITY.high, viewportState);
+          return;
+        }
+        this.scheduleLowPriorityInputRender(viewportState);
+        return;
+      }
+
+      const cardField = target.closest('[data-card]');
+      if (cardField) {
+        const index = Number(cardField.dataset.index || 0);
+        if (!this.state.cards[index]) return;
+        const key = String(cardField.dataset.card || '').trim();
+        const value = cardField.type === 'range' ? Number(cardField.value) : cardField.value;
+        this.state.cards[index][key] = value;
+        if (cardField.type === 'range') {
+          const valueLabel = cardField.parentElement ? cardField.parentElement.querySelector('.npf-range-value') : null;
+          if (valueLabel) valueLabel.textContent = this.formatRangeValue(key, value);
+        }
+        if (key === 'heading') {
+          const slotTitle = cardField.closest('.npf-slot') ? cardField.closest('.npf-slot').querySelector('.npf-slot-title') : null;
+          if (slotTitle) slotTitle.textContent = String(value || '').trim() || `Photo ${index + 1}`;
+        }
+        this.state.activeCardIndex = index;
+        this.refreshCardSelectionUi();
+        this.scheduleLivePanelRefresh();
+        const viewportState = this.captureViewportState(cardField);
+        this.queuePersistState();
+        this.scheduleLowPriorityInputRender(viewportState);
+        return;
+      }
+
+      const colorField = target.closest('[data-color]');
+      if (colorField) {
+        const key = String(colorField.dataset.color || '').trim();
+        if (!key) return;
+        this.state.theme[key] = colorField.value;
+        const viewportState = this.captureViewportState(colorField);
+        this.scheduleLivePanelRefresh();
+        this.queuePersistState();
+        this.scheduleLowPriorityInputRender(viewportState);
+      }
+    }
+
+    handleStepClick(event) {
+      if (!event || !event.target || typeof event.target.closest !== 'function') return;
+      const buttonTarget = event.target.closest('button');
+      const slotTarget = event.target.closest('[data-card-slot]');
+      const target = buttonTarget || slotTarget;
+      if (!target) return;
+      const rerenderWithCanvas = () => {
+        this.renderUi();
+        this.scrollPreviewToTop();
+        this.scheduleRender(RENDER_PRIORITY.high);
+      };
+      if (target.dataset.layoutPreset) {
+        this.applyLayoutPreset(target.dataset.layoutPreset);
+        return;
+      }
+      if (typeof target.dataset.columns !== 'undefined') {
+        this.state.columns = clamp(target.dataset.columns || 2, 1, 3);
+        this.clampPageIndex();
+        this.queuePersistState();
+        rerenderWithCanvas();
+        return;
+      }
+      if (typeof target.dataset.rows !== 'undefined') {
+        this.state.rowsPerPage = clamp(target.dataset.rows || 4, 1, 6);
+        this.clampPageIndex();
+        this.queuePersistState();
+        rerenderWithCanvas();
+        return;
+      }
+      if (typeof target.dataset.logoToggle !== 'undefined') {
+        this.state.showLogo = String(target.dataset.logoToggle) === 'on';
+        this.queuePersistState();
+        rerenderWithCanvas();
+        return;
+      }
+      if (typeof target.dataset.fit !== 'undefined') {
+        this.state.photoFit = String(target.dataset.fit || 'cover');
+        this.queuePersistState();
+        rerenderWithCanvas();
+        return;
+      }
+      if (typeof target.dataset.cardStyle !== 'undefined') {
+        this.state.cardStyle = String(target.dataset.cardStyle || 'soft');
+        this.queuePersistState();
+        rerenderWithCanvas();
+        return;
+      }
+      if (target.dataset.theme) {
+        const nextKey = target.dataset.theme;
+        this.state.themeKey = nextKey;
+        this.state.theme = Object.assign({}, THEMES[nextKey] || THEMES.sage);
+        this.queuePersistState();
+        rerenderWithCanvas();
+        return;
+      }
+      if (target.dataset.photoOption) {
+        const parts = String(target.dataset.photoOption || '').split(':');
+        this.selectPhotoOption(Number(parts[0] || 0), Number(parts[1] || 0));
+        return;
+      }
+      if (typeof target.dataset.duplicateCard !== 'undefined') {
+        this.duplicateCard(Number(target.dataset.duplicateCard || 0));
+        return;
+      }
+      if (typeof target.dataset.toggleCard !== 'undefined') {
+        this.toggleCardEnabled(Number(target.dataset.toggleCard || 0));
+        return;
+      }
+      if (typeof target.dataset.liveCard !== 'undefined') {
+        const viewportState = this.captureViewportState();
+        this.state.activeCardIndex = clamp(target.dataset.liveCard || 0, 0, this.state.cards.length - 1);
+        this.renderStepBody();
+        this.restoreViewportState(viewportState);
+        this.refreshCardSelectionUi();
+        return;
+      }
+      if (typeof target.dataset.cardSlot !== 'undefined') {
+        if (event.target.closest && event.target.closest('input,textarea,select,button')) return;
+        const viewportState = this.captureViewportState();
+        this.state.activeCardIndex = clamp(target.dataset.selectCard || target.dataset.cardSlot || 0, 0, this.state.cards.length - 1);
+        this.renderStepBody();
+        this.restoreViewportState(viewportState);
+        this.refreshCardSelectionUi();
+      }
     }
 
     captureFocusState(node) {
@@ -1536,24 +1720,67 @@
       this.ui.previewShell.scrollTop = 0;
     }
 
-    scheduleRender(immediate, viewportState) {
+    resolveRenderPriority(priorityOrImmediate) {
+      if (priorityOrImmediate === RENDER_PRIORITY.high || priorityOrImmediate === RENDER_PRIORITY.normal || priorityOrImmediate === RENDER_PRIORITY.low) return priorityOrImmediate;
+      return priorityOrImmediate ? RENDER_PRIORITY.high : RENDER_PRIORITY.low;
+    }
+
+    getPriorityWeight(priority) {
+      if (priority === RENDER_PRIORITY.high) return 3;
+      if (priority === RENDER_PRIORITY.normal) return 2;
+      return 1;
+    }
+
+    pickHigherPriority(next, current) {
+      return this.getPriorityWeight(next) >= this.getPriorityWeight(current) ? next : current;
+    }
+
+    updateRenderMetrics(durationMs) {
+      const ms = Math.max(0, Number(durationMs || 0));
+      this.performanceMetrics.renderCount += 1;
+      this.performanceMetrics.totalRenderMs += ms;
+      this.performanceMetrics.lastRenderMs = ms;
+      this.performanceMetrics.maxRenderMs = Math.max(this.performanceMetrics.maxRenderMs, ms);
+      this.performanceMetrics.lastRenderAt = Date.now();
+      global.__nativeFlyerPerformance = {
+        renderCount: this.performanceMetrics.renderCount,
+        averageRenderMs: this.performanceMetrics.renderCount ? (this.performanceMetrics.totalRenderMs / this.performanceMetrics.renderCount) : 0,
+        lastRenderMs: this.performanceMetrics.lastRenderMs,
+        maxRenderMs: this.performanceMetrics.maxRenderMs,
+        queueDepth: this.renderQueued ? 1 : 0,
+        cachedImages: this.imageCache.size
+      };
+    }
+
+    scheduleRender(priorityOrImmediate, viewportState) {
+      const priority = this.resolveRenderPriority(priorityOrImmediate);
+      const immediate = priority === RENDER_PRIORITY.high;
       if (viewportState) this.pendingViewportState = viewportState;
+      if (priority === RENDER_PRIORITY.high || this.pendingRenderPriority !== RENDER_PRIORITY.high) this.pendingRenderPriority = priority;
       const runRender = async () => {
         if (this.renderInFlight) {
           this.renderQueued = true;
+          this.queuedRenderPriority = this.pickHigherPriority(priority, this.queuedRenderPriority || RENDER_PRIORITY.low);
           return;
         }
         this.renderInFlight = true;
         const nextViewportState = this.pendingViewportState;
+        const nextPriority = this.pendingRenderPriority;
         this.pendingViewportState = null;
+        this.pendingRenderPriority = RENDER_PRIORITY.low;
+        const startedAt = typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now();
         try {
           await this.render();
           if (nextViewportState) this.restoreViewportState(nextViewportState);
         } finally {
+          const endedAt = typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now();
+          this.updateRenderMetrics(endedAt - startedAt);
           this.renderInFlight = false;
           if (this.renderQueued) {
             this.renderQueued = false;
-            this.scheduleRender(true);
+            const queuedPriority = this.pickHigherPriority(this.pendingRenderPriority || RENDER_PRIORITY.low, this.queuedRenderPriority || RENDER_PRIORITY.low);
+            this.queuedRenderPriority = RENDER_PRIORITY.low;
+            this.scheduleRender(queuedPriority);
           }
         }
       };
@@ -1580,7 +1807,7 @@
       this.renderTimer = setTimeout(() => {
         this.renderTimer = null;
         queueFrameRender();
-      }, this.renderDebounceMs);
+      }, priority === RENDER_PRIORITY.normal ? Math.min(RENDER_DEBOUNCE_NORMAL_MS, this.renderDebounceMs) : this.renderDebounceMs);
     }
 
     persistState(manual) {
@@ -1606,17 +1833,118 @@
       } catch (error) {}
     }
 
+    async ensureImageWorker() {
+      if (!this.workerAvailable) return null;
+      if (this.imageWorker) return this.imageWorker;
+      const workerSource = `
+        self.onmessage = async (event) => {
+          const data = event && event.data ? event.data : {};
+          const id = data.id;
+          const src = data.src;
+          if (!id || !src) {
+            self.postMessage({ id, ok: false });
+            return;
+          }
+          try {
+            if (typeof fetch !== 'function' || typeof createImageBitmap !== 'function') throw new Error('Image worker missing fetch/createImageBitmap support');
+            const response = await fetch(src, { mode: 'cors' });
+            const blob = await response.blob();
+            const bitmap = await createImageBitmap(blob);
+            self.postMessage({ id, ok: true, bitmap }, [bitmap]);
+          } catch (error) {
+            self.postMessage({ id, ok: false });
+          }
+        };
+      `;
+      this.imageWorkerUrl = global.URL.createObjectURL(new Blob([workerSource], { type: 'application/javascript' }));
+      this.imageWorker = new Worker(this.imageWorkerUrl);
+      this.imageWorker.onmessage = (event) => {
+        const payload = event && event.data ? event.data : {};
+        const pending = this.imageWorkerPending.get(payload.id);
+        if (!pending) return;
+        this.imageWorkerPending.delete(payload.id);
+        if (!payload.ok && typeof console !== 'undefined' && typeof console.warn === 'function') {
+          console.warn('Native flyer image worker fell back to main-thread image loading.');
+        }
+        pending.resolve(payload.ok ? (payload.bitmap || null) : null);
+      };
+      this.workerEnabled = true;
+      return this.imageWorker;
+    }
 
-    async getCachedImage(src) {
+    async loadImageWithWorker(src) {
+      const worker = await this.ensureImageWorker();
+      if (!worker) return null;
+      return await new Promise((resolve) => {
+        const id = this.imageWorkerMessageId++;
+        this.imageWorkerPending.set(id, { resolve });
+        worker.postMessage({ id, src });
+      });
+    }
+
+    async loadOptimizedImage(src) {
+      if (this.workerEnabled || this.workerAvailable) {
+        const workerImage = await this.loadImageWithWorker(src).catch(() => null);
+        if (workerImage) return workerImage;
+      }
+      return await loadImage(src).catch(() => null);
+    }
+
+    pruneImageCache(force) {
+      const max = force ? IMAGE_CACHE_PRUNE_TO : IMAGE_CACHE_LIMIT;
+      if (this.imageCache.size <= max) return;
+      const entries = Array.from(this.imageCache.entries())
+        .filter(([, value]) => value && value.status !== 'loading')
+        .sort((a, b) => (a[1].lastUsed || 0) - (b[1].lastUsed || 0));
+      while (this.imageCache.size > max && entries.length) {
+        const next = entries.shift();
+        if (!next) break;
+        if (this.imageCache.has(next[0])) this.imageCache.delete(next[0]);
+      }
+    }
+
+    disposeWorkers() {
+      if (this.imageWorker) {
+        try { this.imageWorker.terminate(); } catch (error) {}
+        this.imageWorker = null;
+      }
+      if (this.imageWorkerUrl && global.URL && typeof global.URL.revokeObjectURL === 'function') {
+        try { global.URL.revokeObjectURL(this.imageWorkerUrl); } catch (error) {}
+      }
+      this.imageWorkerUrl = null;
+      this.imageWorkerPending.clear();
+      this.workerEnabled = false;
+    }
+
+    async getCachedImage(src, options) {
       const key = String(src || '').trim();
       if (!key) return null;
-      if (!this.imageCache.has(key)) this.imageCache.set(key, loadImage(key).catch(() => null));
-      return await this.imageCache.get(key);
+      const opts = Object.assign({ nonBlocking: false }, options || {});
+      let entry = this.imageCache.get(key);
+      if (!entry) {
+        entry = { image: null, promise: null, status: 'loading', lastUsed: ++this.imageCacheAccess };
+        entry.promise = this.loadOptimizedImage(key).then((image) => {
+          entry.image = image || null;
+          entry.status = image ? 'ready' : 'error';
+          entry.lastUsed = ++this.imageCacheAccess;
+          if (entry.image) this.scheduleImageReadyRender();
+          return entry.image;
+        }).catch(() => {
+          entry.status = 'error';
+          return null;
+        });
+        this.imageCache.set(key, entry);
+      }
+      entry.lastUsed = ++this.imageCacheAccess;
+      this.pruneImageCache(false);
+      if (entry.image) return entry.image;
+      if (opts.nonBlocking) return null;
+      return await entry.promise;
     }
 
     async getLogoImage() {
       if (!this.logoUrl || this.state.showLogo === false) return null;
-      if (!this.logoPromise) this.logoPromise = loadImage(this.logoUrl).catch(() => null);
+      if (!this.logoPromise) this.logoPromise = this.loadOptimizedImage(this.logoUrl).catch(() => null);
       return await this.logoPromise;
     }
 
@@ -1649,6 +1977,10 @@
       ctx.fillStyle = amount > 0 ? `rgba(255,191,120,${opacity})` : `rgba(125,175,255,${opacity})`;
       ctx.fillRect(x, y, width, height);
       ctx.restore();
+    }
+
+    shouldUseNonBlockingImageLoad(scale) {
+      return Number(scale || 1) <= 1;
     }
 
     drawImageFrame(ctx, image, frameX, frameY, frameWidth, frameHeight, card, extraBlur) {
@@ -1707,7 +2039,7 @@
       ctx.fillStyle = '#edf4ef';
       ctx.fillRect(imageX, imageY, imageWidth, imageHeight);
       if (card.imageSrc) {
-        const image = await this.getCachedImage(card.imageSrc);
+        const image = await this.getCachedImage(card.imageSrc, { nonBlocking: this.shouldUseNonBlockingImageLoad(scale) });
         if (image) {
           const blurStrength = Math.max(0, Number(card.backgroundBlur || 0)) * 0.45 * scale;
           if (blurStrength > 0) {
@@ -1923,6 +2255,8 @@
       this.applyPreviewZoom();
       await this.renderPageToCanvas(this.ui.canvas, this.state.pageIndex, 1);
       if (this.ui.pageStatus) this.ui.pageStatus.textContent = `Page ${this.state.pageIndex + 1} of ${this.getPageCount()}`;
+      this.primeVisibleImages();
+      this.pruneImageCache(false);
     }
 
     async exportPageBlob(pageIndex, type, quality) {
