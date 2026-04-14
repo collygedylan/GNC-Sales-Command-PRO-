@@ -394,6 +394,9 @@
       this.virtualCardsState = { start: -1, end: -1, total: 0 };
       this.virtualCardsScrollHandler = null;
       this.livePanelFrame = null;
+      this.actionClickHandler = null;
+      this.pageNavClickHandler = null;
+      this.saveProgressClickHandler = null;
       this.performanceMetrics = {
         renderCount: 0,
         totalRenderMs: 0,
@@ -599,17 +602,35 @@
       this.ui.previewShell = this.root.querySelector('.npf-preview-shell');
       this.ui.saveStatus = this.root.querySelector('[data-save-status]');
 
-      Array.from(this.root.querySelectorAll('[data-action]')).forEach((button) => button.addEventListener('click', () => this.handleAction(button.dataset.action)));
-      Array.from(this.root.querySelectorAll('[data-page-nav]')).forEach((button) => button.addEventListener('click', () => {
-        this.state.pageIndex += button.dataset.pageNav === 'next' ? 1 : -1;
-        this.clampPageIndex();
-        this.queuePersistState();
-        this.renderPageControls();
-        this.scrollPreviewToTop();
-        this.scheduleRender(true);
-      }));
-      const saveButton = this.root.querySelector('[data-save-progress]');
-      if (saveButton) saveButton.addEventListener('click', () => this.saveProgress());
+      if (!this.actionClickHandler) {
+        this.actionClickHandler = (event) => {
+          const button = event && event.target && typeof event.target.closest === 'function' ? event.target.closest('[data-action]') : null;
+          if (!button || !this.root.contains(button)) return;
+          this.handleAction(button.dataset.action);
+        };
+        this.root.addEventListener('click', this.actionClickHandler);
+      }
+      if (!this.pageNavClickHandler) {
+        this.pageNavClickHandler = (event) => {
+          const button = event && event.target && typeof event.target.closest === 'function' ? event.target.closest('[data-page-nav]') : null;
+          if (!button || !this.root.contains(button)) return;
+          this.state.pageIndex += button.dataset.pageNav === 'next' ? 1 : -1;
+          this.clampPageIndex();
+          this.queuePersistState();
+          this.renderPageControls();
+          this.scrollPreviewToTop();
+          this.scheduleRender(true);
+        };
+        this.root.addEventListener('click', this.pageNavClickHandler);
+      }
+      if (!this.saveProgressClickHandler) {
+        this.saveProgressClickHandler = (event) => {
+          const button = event && event.target && typeof event.target.closest === 'function' ? event.target.closest('[data-save-progress]') : null;
+          if (!button || !this.root.contains(button)) return;
+          this.saveProgress();
+        };
+        this.root.addEventListener('click', this.saveProgressClickHandler);
+      }
       if (!this.hapticTouchHandler) {
         this.hapticTouchHandler = (event) => {
           if (!event || !event.target || typeof event.target.closest !== 'function') return;
@@ -645,11 +666,29 @@
 
     destroy() {
       if (this.renderTimer) { clearTimeout(this.renderTimer); this.renderTimer = null; }
-      if (this.renderFrame) { cancelAnimationFrame(this.renderFrame); this.renderFrame = null; }
+      if (this.renderFrame) {
+        if (typeof global.cancelAnimationFrame === 'function') global.cancelAnimationFrame(this.renderFrame);
+        this.renderFrame = null;
+      }
       if (this.persistTimer) { clearTimeout(this.persistTimer); this.persistTimer = null; }
       if (this.inputRenderTimer) { clearTimeout(this.inputRenderTimer); this.inputRenderTimer = null; }
       if (this.imageReadyRenderTimer) { clearTimeout(this.imageReadyRenderTimer); this.imageReadyRenderTimer = null; }
-      if (this.livePanelFrame) { cancelAnimationFrame(this.livePanelFrame); this.livePanelFrame = null; }
+      if (this.livePanelFrame) {
+        if (typeof global.cancelAnimationFrame === 'function') global.cancelAnimationFrame(this.livePanelFrame);
+        this.livePanelFrame = null;
+      }
+      if (this.actionClickHandler && this.root) {
+        this.root.removeEventListener('click', this.actionClickHandler);
+        this.actionClickHandler = null;
+      }
+      if (this.pageNavClickHandler && this.root) {
+        this.root.removeEventListener('click', this.pageNavClickHandler);
+        this.pageNavClickHandler = null;
+      }
+      if (this.saveProgressClickHandler && this.root) {
+        this.root.removeEventListener('click', this.saveProgressClickHandler);
+        this.saveProgressClickHandler = null;
+      }
       if (this.hapticTouchHandler && this.root) {
         this.root.removeEventListener('touchstart', this.hapticTouchHandler, PASSIVE_EVENT_OPTIONS);
         this.hapticTouchHandler = null;
@@ -1169,10 +1208,17 @@
         this.virtualCardsScrollHandler = () => {
           if (rafPending) return;
           rafPending = true;
-          requestAnimationFrame(() => {
+          if (typeof global.requestAnimationFrame === 'function') {
+            global.requestAnimationFrame(() => {
+              rafPending = false;
+              this.refreshVirtualCardRows(false);
+            });
+            return;
+          }
+          setTimeout(() => {
             rafPending = false;
             this.refreshVirtualCardRows(false);
-          });
+          }, 0);
         };
       }
       if (slots.__virtualBound !== true) {
@@ -1836,15 +1882,21 @@
         this.renderTimer = null;
       }
       if (this.renderFrame) {
-        cancelAnimationFrame(this.renderFrame);
+        if (typeof global.cancelAnimationFrame === 'function') global.cancelAnimationFrame(this.renderFrame);
         this.renderFrame = null;
       }
       const queueFrameRender = () => {
-        this.renderFrame = requestAnimationFrame(() => {
-          this.renderFrame = null;
-          runRender().catch((error) => {
-            if (typeof console !== 'undefined' && typeof console.warn === 'function') console.warn('Native flyer render failed.', error);
+        if (typeof global.requestAnimationFrame === 'function') {
+          this.renderFrame = global.requestAnimationFrame(() => {
+            this.renderFrame = null;
+            runRender().catch((error) => {
+              if (typeof console !== 'undefined' && typeof console.warn === 'function') console.warn('Native flyer render failed.', error);
+            });
           });
+          return;
+        }
+        runRender().catch((error) => {
+          if (typeof console !== 'undefined' && typeof console.warn === 'function') console.warn('Native flyer render failed.', error);
         });
       };
       if (immediate) {
