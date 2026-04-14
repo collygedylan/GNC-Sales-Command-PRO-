@@ -457,7 +457,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-                            <div id="header-version" class="nav-version-pill">V2026.04.14.04</div>
+                            <div id="header-version" class="nav-version-pill">V2026.04.14.05</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -956,7 +956,7 @@
         const PHOTO_MAX_WIDTH = 2048;
         const PHOTO_JPEG_QUALITY = 0.98;
         const PHOTO_FIELD_PERSIST_DEBOUNCE_MS = 100;
-        const INTERACTION_REFRESH_DEFER_MS = 520;
+        const INTERACTION_REFRESH_DEFER_MS = 900;
         let pendingPhotoUploads = new Map();
         let pendingPhotoPreviews = new Map();
         let pendingPhotoPersistTimers = Object.create(null);
@@ -977,8 +977,12 @@
         let swipeCloseOnScrollFrame = null;
         let swipeCloseOnScrollTimer = null;
         const ACTIVE_TYPING_GRACE_MS = 35;
-        const ACTIVE_SCROLL_GRACE_MS = 180;
-        const ACTIVE_TOUCH_GRACE_MS = 420;
+        const ACTIVE_SCROLL_GRACE_MS = 320;
+        const ACTIVE_TOUCH_GRACE_MS = 850;
+        const CHUNK_RENDER_GRACE_MS = 320;
+        let activeChunkRenderCount = 0;
+        let chunkRenderActivityByKey = Object.create(null);
+        let lastChunkRenderAt = 0;
 
         function isIOSDevice() {
             return IOS_DEVICE_REGEX.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -1043,6 +1047,30 @@
 
         function isUserActivelyTouching() {
             return (Date.now() - lastTouchInteractionAt) < ACTIVE_TOUCH_GRACE_MS;
+        }
+
+        function beginChunkRenderActivity(tokenKey = '', token = 0) {
+            const key = String(tokenKey || '').trim();
+            const normalizedToken = Number(token) || 0;
+            if (!key || !normalizedToken) return;
+            const currentToken = Number(chunkRenderActivityByKey[key] || 0);
+            if (!currentToken) activeChunkRenderCount += 1;
+            chunkRenderActivityByKey[key] = normalizedToken;
+            lastChunkRenderAt = Date.now();
+        }
+
+        function endChunkRenderActivity(tokenKey = '', token = 0) {
+            const key = String(tokenKey || '').trim();
+            const normalizedToken = Number(token) || 0;
+            if (!key || !normalizedToken) return;
+            if (Number(chunkRenderActivityByKey[key] || 0) !== normalizedToken) return;
+            delete chunkRenderActivityByKey[key];
+            activeChunkRenderCount = Math.max(0, activeChunkRenderCount - 1);
+            lastChunkRenderAt = Date.now();
+        }
+
+        function isChunkRenderActive() {
+            return activeChunkRenderCount > 0 || (Date.now() - lastChunkRenderAt) < CHUNK_RENDER_GRACE_MS;
         }
 
         function setRealtimeTableStatus(tableName = '', status = '') {
@@ -2612,7 +2640,7 @@
 
             if (!changed) return false;
             trackRealtimeDirtyRowId(tableName, uniqueId);
-            if (tableName === 'v2_active_request') triggerRequestRealtimeUiRefresh(250);
+            if (tableName === 'v2_active_request') triggerRequestRealtimeUiRefresh(420);
             if (!deferVisualSync) flushRealtimeDatasetUpdates([tableName]);
             return true;
         }
@@ -2650,7 +2678,7 @@
             }
         }
         function shouldDeferInteractiveBackgroundWork() {
-            return !!(isUserActivelyTyping() || isUserActivelyScrolling() || isUserActivelyTouching() || (window.pendingPhotoUploads && window.pendingPhotoUploads.size));
+            return !!(isUserActivelyTyping() || isUserActivelyScrolling() || isUserActivelyTouching() || isChunkRenderActive() || (window.pendingPhotoUploads && window.pendingPhotoUploads.size));
         }
 
         function scheduleRealtimeReconnect(delay = REALTIME_RECOVERY_GRACE_MS) {
@@ -3834,7 +3862,7 @@
         const PENDING_EDITS_STORAGE_KEY = 'gnc_pending_edits';
         const PENDING_EDITS_PERSIST_DEBOUNCE_MS = 400;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Maschino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'V2026.04.14.04';
+        const APP_VERSION = 'V2026.04.14.05';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -10151,8 +10179,11 @@ activeDriveTab = tab;
         function shouldUseChunkedCardRender(total = 0, mobileThreshold = 120, desktopThreshold = 220) {
             const count = Number(total) || 0;
             if (count <= 0) return false;
-            const touchOptimized = isIOSDevice() || isStandaloneApp() || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
-            return count > (touchOptimized ? mobileThreshold : desktopThreshold);
+            const coarsePointer = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+            const touchOptimized = isIOSDevice() || isStandaloneApp() || coarsePointer;
+            const mobileCutoff = Math.max(24, Math.min(Number(mobileThreshold) || 120, 72));
+            const desktopCutoff = Math.max(36, Math.min(Number(desktopThreshold) || 220, 160));
+            return count > (touchOptimized ? mobileCutoff : desktopCutoff);
         }
 
         function appendHtmlFragment(container, html) {
@@ -10184,7 +10215,8 @@ activeDriveTab = tab;
             const key = String(tokenKey || 'default');
             const token = bumpChunkRenderTokenByKey(key);
             const total = Array.isArray(rows) ? rows.length : 0;
-            const touchOptimized = isIOSDevice() || isStandaloneApp() || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+            const coarsePointer = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+            const touchOptimized = isIOSDevice() || isStandaloneApp() || coarsePointer;
             const viewportHeight = Math.max(640, Math.round((window.visualViewport && window.visualViewport.height) || window.innerHeight || document.documentElement.clientHeight || 640));
             const approxCardHeight = Math.max(120, Number(options.approxCardHeight) || 220);
             const emptyHtml = options.emptyHtml || `<div class="p-8 text-center text-gray-400">No rows found.</div>`;
@@ -10193,12 +10225,13 @@ activeDriveTab = tab;
             const reserveSpace = options.reserveSpace !== false;
             const reserveOffset = Number(options.reserveOffset) || 0;
             const chunkSize = touchOptimized
-                ? (total > 1800 ? 48 : (total > 900 ? 56 : 64))
-                : (total > 1400 ? 28 : (total > 700 ? 36 : 44));
-            const initialScreens = touchOptimized ? 10 : 7;
-            const initialTarget = Math.min(total, Math.max(chunkSize * 2, Math.ceil((viewportHeight * initialScreens) / approxCardHeight)));
-            const perFrameLimit = touchOptimized ? Math.max(chunkSize * 2, 112) : Math.max(chunkSize, 64);
-            const frameBudgetMs = touchOptimized ? 8 : 6;
+                ? (total > 1800 ? 28 : (total > 900 ? 36 : 44))
+                : (total > 1400 ? 20 : (total > 700 ? 24 : 32));
+            const initialScreens = touchOptimized ? 5 : 4;
+            const initialTarget = Math.min(total, Math.max(chunkSize, Math.ceil((viewportHeight * initialScreens) / approxCardHeight)));
+            const perFrameLimit = touchOptimized ? Math.max(chunkSize, 56) : Math.max(chunkSize, 40);
+            const frameBudgetMs = touchOptimized ? 5 : 4;
+            const hasFollowupChunks = total > initialTarget;
             let index = 0;
 
             if (crumb && typeof crumbText === 'string') crumb.innerText = crumbText;
@@ -10215,22 +10248,32 @@ activeDriveTab = tab;
                 return true;
             }
 
+            if (hasFollowupChunks) beginChunkRenderActivity(key, token);
+
             const renderBatch = (targetCount, useBudget) => {
                 let html = '';
                 let rendered = 0;
+                const interactionSlowMode = isUserActivelyTouching() || isUserActivelyScrolling();
+                const batchTarget = interactionSlowMode ? Math.min(targetCount, Math.max(12, Math.ceil(targetCount / 3))) : targetCount;
+                const timeBudget = interactionSlowMode ? Math.max(2.5, frameBudgetMs - 1.5) : frameBudgetMs;
                 const startTime = useBudget && typeof performance !== 'undefined' && performance.now ? performance.now() : 0;
-                while (index < total && rendered < targetCount) {
+                while (index < total && rendered < batchTarget) {
                     html += renderRow(rows[index], index);
                     index += 1;
                     rendered += 1;
-                    if (useBudget && rendered >= chunkSize && typeof performance !== 'undefined' && performance.now && (performance.now() - startTime) >= frameBudgetMs) break;
+                    if (useBudget && typeof performance !== 'undefined' && performance.now && (performance.now() - startTime) >= timeBudget) break;
                 }
                 return html;
             };
 
             setContainerHtml(container, prefixHtml + renderBatch(initialTarget, false));
 
+            const finishChunkRender = () => {
+                if (hasFollowupChunks) endChunkRenderActivity(key, token);
+            };
+
             const fireComplete = () => {
+                finishChunkRender();
                 if (reserveSpace) container.style.minHeight = '';
                 if (!onComplete) return;
                 requestAnimationFrame(() => {
@@ -10239,15 +10282,27 @@ activeDriveTab = tab;
                 });
             };
 
+            const queueNextChunkFrame = () => {
+                const interactionSlowMode = isUserActivelyTouching() || isUserActivelyScrolling();
+                if (interactionSlowMode) {
+                    setTimeout(() => requestAnimationFrame(renderNextChunk), 18);
+                    return;
+                }
+                requestAnimationFrame(renderNextChunk);
+            };
+
             const renderNextChunk = () => {
-                if (Number(chunkRenderTokensByKey[key] || 0) !== token) return;
+                if (Number(chunkRenderTokensByKey[key] || 0) !== token) {
+                    finishChunkRender();
+                    return;
+                }
                 const html = renderBatch(perFrameLimit, true);
                 if (html) appendHtmlFragment(container, html);
-                if (index < total) requestAnimationFrame(renderNextChunk);
+                if (index < total) queueNextChunkFrame();
                 else fireComplete();
             };
 
-            if (index < total) requestAnimationFrame(renderNextChunk);
+            if (index < total) queueNextChunkFrame();
             else fireComplete();
 
             return true;
