@@ -457,7 +457,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-                            <div id="header-version" class="nav-version-pill">V2026.04.14.02</div>
+                            <div id="header-version" class="nav-version-pill">V2026.04.14.03</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -3822,7 +3822,7 @@
         let activeAVTab='open'; let activeAvOpenTab='name'; let avOpenLevel=0; let selectedAvOpenName=null; let selectedAvOpenSize=null; let selectedAvOpenSeason=null; let selectedAvOpenLot=null; let avResLevel=0; let selectedAvResRep=null; let selectedAvResDriveUid=null; let selectedAvResItemCode=null; let selectedAvResName=null; let selectedAvResSize=null; let activeAvReserveMode='current'; let activeAvReserveDetailTab='customer';
 
         let lowStockViewLevel=0; let selectedLowStockName=null; let selectedLowStockSize=null; let reviewViewLevel=0; let selectedReviewItemCode=null; let selectedReviewCommonName=null; let selectedReviewContSize=null;
-        let requestViewLevel=0; let reservesViewLevel=0; let reportViewLevel=0; let activeReqTab="pending"; let selectedReqRep=null; let selectedReqRepStatus=null; let selectedReqFolder=null; let tempSelectedReqRep=""; let tempReqFolder=null; let tempReqCust=null; let previousReqStep=""; let driveQuickRequestItems=new Set(); let driveQuickRequestFlow=false; let driveQuickAssignFlow=false;
+        let requestViewLevel=0; let reservesViewLevel=0; let reportViewLevel=0; let activeReqTab="pending"; let selectedReqRep=null; let selectedReqRepStatus=null; let selectedReqFolder=null; let tempSelectedReqRep=""; let tempReqFolder=null; let tempReqCust=null; let tempReqAppendToExistingFolder=false; let previousReqStep=""; let driveQuickRequestItems=new Set(); let driveQuickRequestFlow=false; let driveQuickAssignFlow=false;
         let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqFolderView=null; let selectedReqStatus='Pending';
         let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pendingDockNum=null; let selectedDockName=null; let selectedDockSize=null; let selectedDockItemCode=null; let selectedDockCustomer=""; let selectedDockTrip=""; let selectedDockRep=""; let lastSyncTime=new Date().toISOString();
         let lastSuccessfulSyncTime = "";
@@ -3834,7 +3834,7 @@
         const PENDING_EDITS_STORAGE_KEY = 'gnc_pending_edits';
         const PENDING_EDITS_PERSIST_DEBOUNCE_MS = 400;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Maschino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'V2026.04.14.02';
+        const APP_VERSION = 'V2026.04.14.03';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -5842,6 +5842,7 @@ function toggleDriveQuickRequestItem(domId) {
             tempSelectedReqRep = '';
             tempReqFolder = null;
             tempReqCust = null;
+            tempReqAppendToExistingFolder = false;
             previousReqStep = '';
             document.getElementById('step-1-rep').classList.remove('hidden');
             document.getElementById('step-1.5-folder').classList.add('hidden');
@@ -5865,6 +5866,7 @@ function toggleDriveQuickRequestItem(domId) {
             tempSelectedReqRep = '';
             tempReqFolder = null;
             tempReqCust = null;
+            tempReqAppendToExistingFolder = false;
             previousReqStep = '';
             detailRequestSourceDomIds = [];
             resetQuickDriveRequestState();
@@ -6428,6 +6430,7 @@ function toggleDriveQuickRequestItem(domId) {
         function showRequestCustomerStep(fromStepId = 'step-1-rep') {
             tempReqFolder = null;
             tempReqCust = null;
+            tempReqAppendToExistingFolder = false;
             previousReqStep = fromStepId;
             document.getElementById('step-1-rep').classList.add('hidden');
             document.getElementById('step-1.5-folder').classList.add('hidden');
@@ -9004,7 +9007,23 @@ activeDriveTab = tab;
         }
         function sendEmailNotification(type, folderId, repName, customer, itemsCount, details = null) {
             let payload = { type: 'email', emailType: type, folderId: folderId, repName: repName, customer: customer, itemsCount: itemsCount, dylanEmail: 'dylan_collyge@greenleafnursery.com' };
-            const requestItems = Array.isArray(details && details.items) ? details.items.filter(Boolean) : [];
+            const rawRequestItems = Array.isArray(details && details.items) ? details.items.filter(Boolean) : [];
+            const requestIdSet = new Set((Array.isArray(details && details.requestIds) ? details.requestIds : []).map((id) => String(id || '').trim()).filter(Boolean));
+            const targetFolderId = String(folderId || '').trim();
+            const targetCustomer = normalizeSearchValue(customer);
+            let requestItems = rawRequestItems.filter((item) => {
+                const itemId = String(firstNonEmptyValue(item && item.UNIQUE_ID, item && item.unique_id, '') || '').trim();
+                const itemFolderId = String(firstNonEmptyValue(item && item.REQUEST_FOLDER, item && item.request_folder, '') || '').trim();
+                if (requestIdSet.size && itemId && !requestIdSet.has(itemId)) return false;
+                if (targetFolderId && itemFolderId && itemFolderId !== targetFolderId) return false;
+                return true;
+            });
+            if (type === 'new_request' && details && details.isNewFolder && requestItems.length > 1 && targetCustomer) {
+                const distinctCustomers = new Set(requestItems.map((item) => normalizeSearchValue(firstNonEmptyValue(item && item.REQ_CUSTOMER, item && item.req_customer, ''))).filter(Boolean));
+                if (distinctCustomers.size > 1) {
+                    requestItems = requestItems.filter((item) => normalizeSearchValue(firstNonEmptyValue(item && item.REQ_CUSTOMER, item && item.req_customer, '')) === targetCustomer);
+                }
+            }
             if (requestItems.length) {
                 const requestItemsHtml = formatRequestItemsHtml(requestItems);
                 const requestItemsText = formatRequestItemsText(requestItems, '', { includePhotoUrls: true });
@@ -9025,9 +9044,12 @@ activeDriveTab = tab;
                     photo: firstNonEmptyValue(item && item.REQ_PHOTO_LINK, item && item.req_photo_link, item && item.SAVED_PHOTO_LINK, item && item.saved_photo_link, '')
                 })).filter((item) => item.unique_id || item.commonname || item.itemcode);
             }
+            if (requestIdSet.size) payload.requestIds = Array.from(requestIdSet);
             if (type === 'new_request') {
                 payload.isNewFolder = !!(details && details.isNewFolder);
                 payload.appendedToExistingFolder = !!(details && details.appendedToExistingFolder);
+                payload.folderOnly = true;
+                payload.customerHistoryAllowed = false;
             }
             if (type === 'request_complete') {
                 payload.repEmail = resolveRequestRecipientEmail(repName);
@@ -13848,7 +13870,7 @@ activeDriveTab = tab;
                         const p=fk.split('-');
                         fLabel=p.length>=4?`${p[1]}/${p[2]}/${p[3]} - ${uniqueFolders[fk]}`:fk
                     }
-                    html+=`<button class="w-full bg-yellow-50 text-yellow-800 font-bold p-4 rounded-xl shadow-sm border border-yellow-200 mb-2 text-left flex items-center gap-3 active:bg-yellow-100 transition-colors" onclick="goToQtyStep('${esc(fk)}', '${esc(uniqueFolders[fk])}', 'step-1.5-folder')"><i class="ph-fill ph-folder text-2xl text-yellow-500"></i><div class="flex flex-col min-w-0"><span class="text-sm truncate">${fLabel}</span><span class="text-[10px] text-gray-500 uppercase font-normal">Append to existing</span></div></button>`
+                    html+=`<button class="w-full bg-yellow-50 text-yellow-800 font-bold p-4 rounded-xl shadow-sm border border-yellow-200 mb-2 text-left flex items-center gap-3 active:bg-yellow-100 transition-colors" onclick="goToQtyStep('${esc(fk)}', '${esc(uniqueFolders[fk])}', 'step-1.5-folder', true)"><i class="ph-fill ph-folder text-2xl text-yellow-500"></i><div class="flex flex-col min-w-0"><span class="text-sm truncate">${fLabel}</span><span class="text-[10px] text-gray-500 uppercase font-normal">Append to existing</span></div></button>`
                 });
                 html+=`</div>`;
                 html+=`<button class="w-full bg-orange-600 text-white font-bold p-4 rounded-xl shadow-md mt-auto active:scale-95 transition-transform flex-shrink-0" onclick="showRequestCustomerStep('step-1.5-folder')">+ CREATE NEW FOLDER</button></div>`;
@@ -13908,11 +13930,12 @@ activeDriveTab = tab;
                 finalizeRequestAction(null, cust, quickItemsData);
                 return;
             }
-            goToQtyStep(null,cust,'step-2-cust')
+            goToQtyStep(null,cust,'step-2-cust', false)
         }
 
-        function goToQtyStep(folderId,cust,fromStepId) {
-            tempReqFolder=folderId;
+        function goToQtyStep(folderId,cust,fromStepId,appendToExisting = false) {
+            tempReqAppendToExistingFolder=!!appendToExisting;
+            tempReqFolder=tempReqAppendToExistingFolder?folderId:null;
             tempReqCust=cust;
             previousReqStep=fromStepId;
             document.getElementById('step-1.5-folder').classList.add('hidden');
@@ -13977,7 +14000,7 @@ activeDriveTab = tab;
             document.querySelectorAll('.item-est-ship-input').forEach(input=>{let uid=input.getAttribute('data-uid');if(!itemsData[uid])itemsData[uid]={};itemsData[uid].estShip=input.value.trim()});
             document.querySelectorAll('.item-reserve-input').forEach(input=>{let uid=input.getAttribute('data-uid');if(!itemsData[uid])itemsData[uid]={};itemsData[uid].reserve=input.value.trim()});
             document.querySelectorAll('.item-reuse-data-input').forEach(input=>{let uid=input.getAttribute('data-uid');if(!itemsData[uid])itemsData[uid]={};itemsData[uid].reuse=input.value.trim()||'YES'});
-            finalizeRequestAction(tempReqFolder,tempReqCust,itemsData)
+            finalizeRequestAction(tempReqAppendToExistingFolder ? tempReqFolder : null,tempReqCust,itemsData)
         }
 
         async function confirmRequestInsertIds(requestIds = []) {
@@ -14388,9 +14411,20 @@ activeDriveTab = tab;
                 }
                 const savedCount = savedIdSet.size;
                 const missingIds = optimisticIds.filter(id => !savedIdSet.has(id));
-                const savedNotificationItems = getSavedRequestItems(optimisticIds.filter(id => savedIdSet.has(id)));
+                const savedRequestIds = optimisticIds.filter(id => savedIdSet.has(id));
+                const normalizedRequestCustomer = normalizeSearchValue(cust);
+                const savedNotificationItems = getSavedRequestItems(savedRequestIds).filter((item) => {
+                    const itemFolderId = String(firstNonEmptyValue(item && item.REQUEST_FOLDER, item && item.request_folder, '') || '').trim();
+                    if (folderId && itemFolderId && itemFolderId !== folderId) return false;
+                    if (!appendingToExistingFolder && normalizedRequestCustomer) {
+                        const itemCustomer = normalizeSearchValue(firstNonEmptyValue(item && item.REQ_CUSTOMER, item && item.req_customer, ''));
+                        if (itemCustomer && itemCustomer !== normalizedRequestCustomer) return false;
+                    }
+                    return true;
+                });
                 const requestNotificationDetails = {
                     items: savedNotificationItems,
+                    requestIds: savedRequestIds,
                     isNewFolder: !appendingToExistingFolder,
                     appendedToExistingFolder: appendingToExistingFolder
                 };
