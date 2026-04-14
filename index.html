@@ -457,7 +457,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-                            <div id="header-version" class="nav-version-pill">V2026.04.14.05</div>
+                            <div id="header-version" class="nav-version-pill">V2026.04.14.06</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -3862,7 +3862,7 @@
         const PENDING_EDITS_STORAGE_KEY = 'gnc_pending_edits';
         const PENDING_EDITS_PERSIST_DEBOUNCE_MS = 400;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Maschino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'V2026.04.14.05';
+        const APP_VERSION = 'V2026.04.14.06';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -6500,6 +6500,23 @@ function toggleDriveQuickRequestItem(domId) {
             if (match) badges.push('Match');
             if (photoLink) badges.push('Photos');
             return { hasData: badges.length > 0, avNote, spec, caliper, pick, match, photoLink, photoName, badges };
+        }
+
+        function isReadyRequestDataForAutoComplete(seed = {}) {
+            const assignment = String(firstNonEmptyValue(seed && seed.assignment, '')).trim().toLowerCase();
+            if (assignment !== 'season' && assignment !== 'location') return false;
+            const effectiveMatch = parseAppNumber(firstNonEmptyValue(seed && seed.match, ''));
+            const effectiveAvNote = String(firstNonEmptyValue(seed && seed.avNote, '')).trim();
+            const effectiveSpec = String(firstNonEmptyValue(seed && seed.spec, '')).trim();
+            const effectiveCaliper = String(firstNonEmptyValue(seed && seed.caliper, '')).trim();
+            const effectivePhotoLink = String(firstNonEmptyValue(seed && seed.photoLink, '')).trim();
+            const effectivePlantGroup = String(firstNonEmptyValue(seed && seed.plantGroupCode, '')).trim();
+            const effectiveContSize = String(firstNonEmptyValue(seed && seed.contSize, '')).trim();
+            const needsCaliper = effectivePlantGroup.includes('330_TREES') && ['#7','#10','#15','#25','#45'].includes(effectiveContSize);
+            if (effectiveMatch == null) return false;
+            if (!effectiveAvNote || !effectiveSpec || !effectivePhotoLink) return false;
+            if (needsCaliper && !effectiveCaliper) return false;
+            return true;
         }
 
         function buildRequestReusePromptHtml(item, safeUidHtml) {
@@ -14323,6 +14340,7 @@ activeDriveTab = tab;
             let insertPayloads=[];
             let optimisticIds=[];
             let optimisticSourceMap={};
+            let autoCompleteRequestIds = new Set();
             sourceDomIds.forEach(dId=>{
                 let item=findItemByDomId(dId);
                 if(item){
@@ -14336,6 +14354,17 @@ activeDriveTab = tab;
                     const requestPhotoLink=useExistingData?reusable.photoLink:'';
                     const requestPhotoName=useExistingData?reusable.photoName:'';
                     const requestAvNote=useExistingData?firstNonEmptyValue(reusable.avNote, item.AV_NOTE, ''):'';
+                    const autoCompleteOnCreate = useExistingData && isReadyRequestDataForAutoComplete({
+                        assignment: firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, item.app_tab_assignment, ''),
+                        match: requestMatch,
+                        avNote: requestAvNote,
+                        spec: requestSpec,
+                        caliper: requestCaliper,
+                        photoLink: requestPhotoLink,
+                        plantGroupCode: firstNonEmptyValue(item.PLANTGROUPCODE, item.plantgroupcode, ''),
+                        contSize: firstNonEmptyValue(item.CONTSIZE, item.contsize, '')
+                    });
+                    const autoCompletedAt = autoCompleteOnCreate ? new Date().toISOString() : '';
                     let newReqId='REQ-'+uuidGen();
                     let newReq={
                         unique_id:newReqId,
@@ -14367,7 +14396,8 @@ activeDriveTab = tab;
                         req_photo_link:requestPhotoLink||'',
                         req_photo_name:requestPhotoName||'',
                         req_archived:false,
-                        req_status:'Pending'
+                        date_completed:autoCompletedAt||null,
+                        req_status:autoCompleteOnCreate ? 'Complete' : 'Pending'
                     };
                     insertPayloads.push(newReq);
                     optimisticIds.push(newReqId);
@@ -14389,7 +14419,8 @@ activeDriveTab = tab;
                     clone.REQ_EST_SHIP=dataObj.estShip||"";
                     clone.REQ_RESERVE=dataObj.reserve||"NO";
                     clone.REQ_ARCHIVED=false;
-                    clone.REQ_STATUS='Pending';
+                    clone.REQ_STATUS=autoCompleteOnCreate ? 'Complete' : 'Pending';
+                    clone.DATE_COMPLETED=autoCompletedAt;
                     clone.REQ_PHOTO_LINK=newReq.req_photo_link;
                     clone.REQ_PHOTO_NAME=newReq.req_photo_name;
                     if (useExistingData) {
@@ -14414,7 +14445,8 @@ activeDriveTab = tab;
                         clone.PHOTONAME='';
                     }
                     normalizeRowPhotoFields(clone);
-                    requestsInventory.push(clone)
+                    requestsInventory.push(clone);
+                    if (autoCompleteOnCreate) autoCompleteRequestIds.add(newReqId);
                 }
             });
             updateFooterRequestBadge();
@@ -14467,6 +14499,12 @@ activeDriveTab = tab;
                 const savedCount = savedIdSet.size;
                 const missingIds = optimisticIds.filter(id => !savedIdSet.has(id));
                 const savedRequestIds = optimisticIds.filter(id => savedIdSet.has(id));
+                const autoCompleteSavedIds = savedRequestIds.filter(id => autoCompleteRequestIds.has(id));
+                for (const requestId of autoCompleteSavedIds) {
+                    const autoCompleteItem = requestsInventory.find((item) => String((item && item.UNIQUE_ID) || '').trim() === String(requestId || '').trim());
+                    if (!autoCompleteItem) continue;
+                    await saveData(true, 'req-', true, autoCompleteItem);
+                }
                 const normalizedRequestCustomer = normalizeSearchValue(cust);
                 const savedNotificationItems = getSavedRequestItems(savedRequestIds).filter((item) => {
                     const itemFolderId = String(firstNonEmptyValue(item && item.REQUEST_FOLDER, item && item.request_folder, '') || '').trim();
