@@ -3782,7 +3782,7 @@
         }
         const DRIVE_MODE_LABELS = { ok: 'Drive Mode' };
         let activeDriveMode='ok'; let activeDriveTab='name'; let selectedDriveBlock=null; let selectedDriveLoc=null; let driveQuickRequestCardMode=false; let driveQuickFilterName=''; let driveQuickFilterLocation=''; let driveQuickFilterLot=''; let driveQuickFilterSize=''; let driveQuickFilterPriority=''; let driveQuickFilterLtsMode=''; let driveQuickFilterLtsValue=''; let driveQuickHoldStopOnly=false; let driveQuickFilterOptionsCacheKey=''; let driveQuickFilterOptionsCache=null; let driveBaseFilterCacheKey=''; let driveBaseFilterCacheItems=[]; let driveBaseContextCacheKey=''; let driveBaseContextCacheItems=[]; let driveBaseSearchContextKey=''; let driveBaseLastSearchTerm=''; let driveBaseLastSearchItems=[]; let driveQuickFilterCacheKey=''; let driveQuickFilterCacheItems=[]; let driveQuickFiltersModalOpen=false;
-        let driveViewLevel=0; let selectedDriveName=null; let selectedDriveSize=null; let drivePlantFilterGenus=''; let drivePlantFilterContSize=''; let driveSelectedSeasons=new Set(['ALL']); const availableSeasons=["ALL","S1","F1","U1","U2","U3","X","Y","Z"];
+        let driveViewLevel=0; let selectedDriveName=null; let selectedDriveSize=null; let selectedDriveGenusNames=new Set(); let driveGenusSearchTerm=''; let driveGenusFilterOpen=false; let driveGenusFilterItemsCache=[]; let drivePlantFilterContSize=''; let driveSelectedSeasons=new Set(['ALL']); const availableSeasons=["ALL","S1","F1","U1","U2","U3","X","Y","Z"];
 
         let activeTaskTab="season"; let activeTaskSubview="all"; let taskViewTargetUser=null; let taskViewLevel=0; let selectedTaskBlock=null; let selectedTaskLoc=null; let selectedEndCapFolder=null; let selectedFlyerFolder=null; let activeFlyerFolderTab="active"; let selectedColorWalkContSize=""; let selectedColorWalkSearchTerm=""; let selectedTaskGenusNames=new Set(); let taskGenusSearchTerm=""; let taskGenusFilterOpen=false; let taskGenusFilterItemsCache=[]; let pendingFlyerFolderTarget=null; let pendingFlyerFolderAssignees="";
         let detailReturnState = { viewId: '', scrollTop: 0 };
@@ -8767,7 +8767,10 @@ function toggleDriveQuickRequestItem(domId) {
             selectedDriveSize = null;
             selectedDriveBlock = null;
             selectedDriveLoc = null;
-            drivePlantFilterGenus = '';
+            selectedDriveGenusNames = new Set();
+            driveGenusSearchTerm = '';
+            driveGenusFilterOpen = false;
+            driveGenusFilterItemsCache = [];
             drivePlantFilterContSize = '';
             scheduleUiRender('drive-tab', () => renderDrive());
             queueScrollMainAreaToTop(`drive-mode:${mode}`);
@@ -8784,7 +8787,10 @@ activeDriveTab = tab;
             selectedDriveSize = null;
             selectedDriveBlock = null;
             selectedDriveLoc = null;
-            drivePlantFilterGenus = '';
+            selectedDriveGenusNames = new Set();
+            driveGenusSearchTerm = '';
+            driveGenusFilterOpen = false;
+            driveGenusFilterItemsCache = [];
             drivePlantFilterContSize = '';
             scheduleUiRender('drive-tab', () => renderDrive());
             queueScrollMainAreaToTop(`drive-tab:${tab}`);
@@ -8811,7 +8817,7 @@ activeDriveTab = tab;
             document.getElementById('tab-drive-loc').classList.remove('active');
             document.getElementById('tab-drive-card').classList.remove('active');
             driveViewLevel = 0; selectedDriveName = null; selectedDriveSize = null; selectedDriveBlock = null; selectedDriveLoc = null;
-            drivePlantFilterGenus = ''; drivePlantFilterContSize = '';
+            selectedDriveGenusNames = new Set(); driveGenusSearchTerm = ''; driveGenusFilterOpen = false; driveGenusFilterItemsCache = []; drivePlantFilterContSize = '';
             document.getElementById('drive-search').value = ""; document.getElementById('drive-search-clear').classList.add('hidden');
             driveSelectedSeasons.clear(); driveSelectedSeasons.add('ALL');
             driveQuickHoldStopOnly = false;
@@ -14535,12 +14541,20 @@ ${folderNote ? `Folder Note: ${folderNote}
             const baseItems = Array.isArray(items) ? items : [];
             const genusOptions = [...new Set(baseItems.map((item) => getTaskGenusName(item)).filter(Boolean))]
                 .sort((a, b) => String(a).localeCompare(String(b)));
+            const availableGenus = new Set(genusOptions);
+            if (selectedDriveGenusNames.size) {
+                selectedDriveGenusNames = new Set([...selectedDriveGenusNames].filter((name) => availableGenus.has(name)));
+            }
+            const searchTerm = String(driveGenusSearchTerm || '').trim().toLowerCase();
+            const filteredGenusOptions = searchTerm
+                ? genusOptions.filter((name) => String(name).toLowerCase().includes(searchTerm))
+                : genusOptions;
             const sizeOptions = [...new Set(baseItems.map((item) => getDrivePlantContSize(item)).filter(Boolean))]
                 .sort(compareDrivePlantContSize);
-            if (drivePlantFilterGenus && !genusOptions.includes(drivePlantFilterGenus)) drivePlantFilterGenus = '';
             if (drivePlantFilterContSize && !sizeOptions.includes(drivePlantFilterContSize)) drivePlantFilterContSize = '';
             const filteredItems = baseItems.filter((item) => {
-                if (drivePlantFilterGenus && getTaskGenusName(item) !== drivePlantFilterGenus) return false;
+                const genusName = getTaskGenusName(item);
+                if (selectedDriveGenusNames.size && !selectedDriveGenusNames.has(genusName)) return false;
                 if (drivePlantFilterContSize && getDrivePlantContSize(item) !== drivePlantFilterContSize) return false;
                 return true;
             });
@@ -14548,8 +14562,11 @@ ${folderNote ? `Folder Note: ${folderNote}
                 baseItems,
                 filteredItems,
                 genusOptions,
+                filteredGenusOptions,
                 sizeOptions,
-                hasActiveFilters: !!(String(drivePlantFilterGenus || '').trim() || String(drivePlantFilterContSize || '').trim())
+                selectedCount: selectedDriveGenusNames.size,
+                hasActiveFilters: !!(selectedDriveGenusNames.size || String(drivePlantFilterContSize || '').trim()),
+                hasTypedSearch: !!String(driveGenusSearchTerm || '').trim()
             };
         }
 
@@ -14558,14 +14575,111 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (!container) return;
             container.classList.add('hidden');
             container.innerHTML = '';
+            if (container.dataset) delete container.dataset.driveGenusReady;
         }
 
-        function setDrivePlantGenusFilter(value = '') {
-            drivePlantFilterGenus = String(value || '').trim();
+        function updateDrivePlantFilterUi(state, container) {
+            if (!container) return;
+            const hasOptions = !!(state && state.genusOptions && state.genusOptions.length);
+            const summaryLabel = hasOptions
+                ? (state.selectedCount ? `${state.selectedCount} selected` : 'All Genus')
+                : 'No GENUSNAME data';
+            const chipsHtml = state.selectedCount
+                ? '<div class="flex flex-wrap gap-2 mt-2">' + [...selectedDriveGenusNames].map((name) =>
+                    `<button type="button" class="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700" data-genus="${esc(name)}" onclick="return toggleDriveGenusSelection(this.dataset.genus)">${esc(name)}<i class="ph-bold ph-x text-[11px]"></i></button>`).join('') + '</div>'
+                : '';
+            const optionHtml = hasOptions
+                ? (state.filteredGenusOptions.length
+                    ? state.filteredGenusOptions.map((name) => {
+                        const checked = selectedDriveGenusNames.has(name) ? 'checked' : '';
+                        return `<label class="flex items-center justify-between gap-3 px-3 py-2 hover:bg-emerald-50"><span class="text-[12px] font-bold text-slate-700">${esc(name)}</span><input type="checkbox" class="h-4 w-4 accent-emerald-600" data-genus="${esc(name)}" ${checked} onclick="event.stopPropagation(); return toggleDriveGenusSelection(this.dataset.genus)"></label>`;
+                    }).join('')
+                    : '<div class="px-3 py-4 text-center text-[11px] font-semibold text-gray-400">No matches</div>')
+                : '<div class="px-3 py-4 text-center text-[11px] font-semibold text-gray-400">No GENUSNAME data available.</div>';
+            const sizeOptionHtml = ['<option value="">All Cont Size</option>']
+                .concat(state.sizeOptions.map((size) => `<option value="${esc(size)}" ${drivePlantFilterContSize === size ? 'selected' : ''}>${esc(size)}</option>`))
+                .join('');
+            const rowLabel = `${state.filteredItems.length} matching row${state.filteredItems.length === 1 ? '' : 's'}`;
+            const summaryEl = container.querySelector('[data-drive-genus-summary]');
+            if (summaryEl) summaryEl.textContent = summaryLabel;
+            const rowCountEl = container.querySelector('[data-drive-genus-rowcount]');
+            if (rowCountEl) rowCountEl.textContent = rowLabel;
+            const chipsEl = container.querySelector('[data-drive-genus-chips]');
+            if (chipsEl) chipsEl.innerHTML = chipsHtml;
+            const optionsEl = container.querySelector('[data-drive-genus-options]');
+            if (optionsEl) optionsEl.innerHTML = optionHtml;
+            const panelEl = container.querySelector('[data-drive-genus-panel]');
+            if (panelEl) panelEl.classList.toggle('hidden', !driveGenusFilterOpen);
+            const clearBtn = container.querySelector('[data-drive-genus-clear]');
+            const clearDisabled = !state.hasActiveFilters && !state.hasTypedSearch;
+            if (clearBtn) {
+                clearBtn.classList.toggle('opacity-50', clearDisabled);
+                clearBtn.classList.toggle('cursor-not-allowed', clearDisabled);
+                clearBtn.classList.toggle('pointer-events-none', clearDisabled);
+            }
+            const sizeSelect = container.querySelector('[data-drive-cont-size]');
+            if (sizeSelect) {
+                sizeSelect.innerHTML = sizeOptionHtml;
+                sizeSelect.value = drivePlantFilterContSize;
+            }
+            const input = container.querySelector('#drive-genus-search');
+            if (input && document.activeElement !== input && input.value !== driveGenusSearchTerm) {
+                input.value = driveGenusSearchTerm;
+            }
+            container.classList.remove('hidden');
+        }
+
+        function toggleDriveGenusDropdown() {
+            driveGenusFilterOpen = !driveGenusFilterOpen;
+            renderDrivePlantFilters(driveGenusFilterItemsCache);
+            return false;
+        }
+
+        function closeDriveGenusDropdown() {
+            if (!driveGenusFilterOpen) return false;
+            driveGenusFilterOpen = false;
+            const container = document.getElementById('drive-plant-filters');
+            if (container) {
+                const state = buildDrivePlantFilterState(driveGenusFilterItemsCache);
+                updateDrivePlantFilterUi(state, container);
+            }
+            return false;
+        }
+
+        function setDriveGenusSearchTerm(value = '') {
+            driveGenusSearchTerm = String(value || '');
+            const container = document.getElementById('drive-plant-filters');
+            if (container) {
+                const input = container.querySelector('#drive-genus-search');
+                const cursorPos = input && typeof input.selectionStart === 'number' ? input.selectionStart : null;
+                const state = buildDrivePlantFilterState(driveGenusFilterItemsCache);
+                updateDrivePlantFilterUi(state, container);
+                if (input) {
+                    requestAnimationFrame(() => {
+                        const current = container.querySelector('#drive-genus-search');
+                        if (!current) return;
+                        if (document.activeElement !== current) current.focus();
+                        if (cursorPos !== null && typeof current.setSelectionRange === 'function') {
+                            current.setSelectionRange(cursorPos, cursorPos);
+                        }
+                    });
+                }
+                return false;
+            }
+            renderDrivePlantFilters(driveGenusFilterItemsCache);
+            return false;
+        }
+
+        function toggleDriveGenusSelection(genus = '') {
+            const value = String(genus || '').trim();
+            if (!value) return false;
+            if (selectedDriveGenusNames.has(value)) selectedDriveGenusNames.delete(value);
+            else selectedDriveGenusNames.add(value);
             driveViewLevel = 0;
             selectedDriveName = null;
             selectedDriveSize = null;
-            scheduleUiRender('drive-plant-genus-filter', () => renderDrive());
+            driveGenusFilterOpen = true;
+            scheduleUiRender('drive-genus-filter-select', () => renderDrive());
             queueScrollMainAreaToTop('drive-plant-filters');
             return false;
         }
@@ -14581,8 +14695,11 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function clearDrivePlantFilters() {
-            if (!drivePlantFilterGenus && !drivePlantFilterContSize) return false;
-            drivePlantFilterGenus = '';
+            if (!selectedDriveGenusNames.size && !drivePlantFilterContSize && !String(driveGenusSearchTerm || '').trim()) return false;
+            selectedDriveGenusNames = new Set();
+            driveGenusSearchTerm = '';
+            driveGenusFilterOpen = false;
+            driveGenusFilterItemsCache = [];
             drivePlantFilterContSize = '';
             driveViewLevel = 0;
             selectedDriveName = null;
@@ -14593,28 +14710,24 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function renderDrivePlantFilters(items = []) {
-            const state = buildDrivePlantFilterState(items);
             const container = document.getElementById('drive-plant-filters');
-            if (!container) return state;
+            if (!container) return buildDrivePlantFilterState(items);
             if (activeDriveMode !== 'ok' || activeDriveTab !== 'name') {
                 hideDrivePlantFilters();
-                return state;
+                return buildDrivePlantFilterState(items);
             }
-            const shouldShow = state.baseItems.length > 0 || state.hasActiveFilters;
+            driveGenusFilterItemsCache = Array.isArray(items) ? items : [];
+            const state = buildDrivePlantFilterState(driveGenusFilterItemsCache);
+            const shouldShow = state.baseItems.length > 0 || state.hasActiveFilters || state.hasTypedSearch;
             if (!shouldShow) {
                 hideDrivePlantFilters();
                 return state;
             }
-            const genusOptionHtml = ['<option value="">All Genus</option>']
-                .concat(state.genusOptions.map((name) => `<option value="${esc(name)}" ${drivePlantFilterGenus === name ? 'selected' : ''}>${esc(name)}</option>`))
-                .join('');
-            const sizeOptionHtml = ['<option value="">All Cont Size</option>']
-                .concat(state.sizeOptions.map((size) => `<option value="${esc(size)}" ${drivePlantFilterContSize === size ? 'selected' : ''}>${esc(size)}</option>`))
-                .join('');
-            const clearDisabled = !state.hasActiveFilters;
-            const rowLabel = `${state.filteredItems.length} matching row${state.filteredItems.length === 1 ? '' : 's'}`;
-            container.innerHTML = `<div class="rounded-[1.25rem] border border-emerald-100 bg-white px-3 py-3 shadow-sm"><div class="flex flex-wrap items-center gap-2"><div class="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm"><i class="ph-bold ph-funnel text-sm"></i>Plant Filters</div><span class="text-[10px] font-black uppercase tracking-[0.14em] text-gray-500">${rowLabel}</span><button type="button" class="ml-auto inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm ${clearDisabled ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}" onclick="return clearDrivePlantFilters()">Clear</button></div><div class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2"><label class="min-w-0 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-700">Genus<select class="input-field !mb-0 mt-2 border-emerald-200 bg-emerald-50/40" onchange="return setDrivePlantGenusFilter(this.value)">${genusOptionHtml}</select></label><label class="min-w-0 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-700">Cont Size<select class="input-field !mb-0 mt-2 border-emerald-200 bg-emerald-50/40" onchange="return setDrivePlantContSizeFilter(this.value)">${sizeOptionHtml}</select></label></div></div>`;
-            container.classList.remove('hidden');
+            if (!container.dataset.driveGenusReady) {
+                container.dataset.driveGenusReady = '1';
+                container.innerHTML = `<div class="rounded-[1.25rem] border border-emerald-100 bg-white px-3 py-3 shadow-sm"><div class="flex flex-wrap items-center gap-2"><button type="button" class="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm" onclick="return toggleDriveGenusDropdown()"><i class="ph-bold ph-funnel text-sm"></i>Genus Filter</button><span class="text-[10px] font-black uppercase tracking-[0.14em] text-gray-500" data-drive-genus-summary>All Genus</span><span class="text-[10px] font-black uppercase tracking-[0.14em] text-gray-400 sm:ml-auto" data-drive-genus-rowcount></span><button type="button" class="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm" data-drive-genus-clear onclick="return clearDrivePlantFilters()">Clear</button></div><div data-drive-genus-chips></div><div class="mt-3 rounded-xl border border-emerald-100 bg-emerald-50/30 hidden" data-drive-genus-panel><div class="p-2 border-b border-emerald-100"><input id="drive-genus-search" type="text" class="input-field !mb-0 border-emerald-200 bg-white" placeholder="Search genus..." value="${esc(driveGenusSearchTerm)}" oninput="setDriveGenusSearchTerm(this.value)" onkeydown="dismissSearchKeyboard(event)"></div><div class="max-h-60 overflow-y-auto" data-drive-genus-options></div><div class="p-2 border-t border-emerald-100 bg-white/80"><button type="button" class="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeDriveGenusDropdown()">Done</button></div></div><div class="mt-3"><label class="min-w-0 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-700">Cont Size<select class="input-field !mb-0 mt-2 border-emerald-200 bg-emerald-50/40" data-drive-cont-size onchange="return setDrivePlantContSizeFilter(this.value)"></select></label></div></div>`;
+            }
+            updateDrivePlantFilterUi(state, container);
             return state;
         }
 
