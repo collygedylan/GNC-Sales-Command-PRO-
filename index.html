@@ -16114,6 +16114,9 @@ function toggleDriveSeason(s) {
             if (!matchingNotes) {
                 matchingNotes = getIndexedAvNotes(activeItem.COMMONNAME).slice();
                 if (inputVal) matchingNotes = matchingNotes.filter(n => String(n).toUpperCase().includes(inputVal));
+                if (avNoteFilterResultCache.size >= 500) {
+                    avNoteFilterResultCache.delete(avNoteFilterResultCache.keys().next().value);
+                }
                 avNoteFilterResultCache.set(cacheKey, matchingNotes);
             }
             if (matchingNotes.length === 0) {
@@ -16344,7 +16347,7 @@ function toggleDriveSeason(s) {
                         if (installing.state === 'installed' && navigator.serviceWorker.controller) markShellUpdateReady();
                     });
                 });
-                setInterval(() => {
+                window.__swUpdateIntervalId = setInterval(() => {
                     reg.update();
                 }, 1000 * 60 * 30);
             }).catch(err => console.error('Service Worker Error:', err));

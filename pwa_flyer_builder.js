@@ -643,6 +643,30 @@
       return this;
     }
 
+    destroy() {
+      if (this.renderTimer) { clearTimeout(this.renderTimer); this.renderTimer = null; }
+      if (this.renderFrame) { cancelAnimationFrame(this.renderFrame); this.renderFrame = null; }
+      if (this.persistTimer) { clearTimeout(this.persistTimer); this.persistTimer = null; }
+      if (this.inputRenderTimer) { clearTimeout(this.inputRenderTimer); this.inputRenderTimer = null; }
+      if (this.imageReadyRenderTimer) { clearTimeout(this.imageReadyRenderTimer); this.imageReadyRenderTimer = null; }
+      if (this.livePanelFrame) { cancelAnimationFrame(this.livePanelFrame); this.livePanelFrame = null; }
+      if (this.hapticTouchHandler && this.root) {
+        this.root.removeEventListener('touchstart', this.hapticTouchHandler, PASSIVE_EVENT_OPTIONS);
+        this.hapticTouchHandler = null;
+      }
+      if (this.visibilityPersistHandler) {
+        document.removeEventListener('visibilitychange', this.visibilityPersistHandler);
+        this.visibilityPersistHandler = null;
+      }
+      if (this.pageHidePersistHandler) {
+        global.removeEventListener('pagehide', this.pageHidePersistHandler);
+        this.pageHidePersistHandler = null;
+      }
+      this.disposeWorkers();
+      this.imageCache.clear();
+      this.logoPromise = null;
+    }
+
     renderUi() {
       this.normalizeCards();
       this.renderStepNav();
@@ -656,12 +680,17 @@
           <span>${this.escape(step.label)}</span>
           <strong>${this.escape(step.title)}</strong>
         </button>`).join('');
-      Array.from(this.ui.stepNav.querySelectorAll('[data-step]')).forEach((button) => button.addEventListener('click', () => {
-        this.state.step = button.dataset.step || 'layout';
-        this.queuePersistState();
-        this.renderUi();
-        this.scrollPreviewToTop();
-      }));
+      if (!this.stepNavDelegated) {
+        this.stepNavDelegated = true;
+        this.ui.stepNav.addEventListener('click', (event) => {
+          const button = event.target.closest('[data-step]');
+          if (!button) return;
+          this.state.step = button.dataset.step || 'layout';
+          this.queuePersistState();
+          this.renderUi();
+          this.scrollPreviewToTop();
+        });
+      }
     }
 
     renderPageControls() {
@@ -669,21 +698,31 @@
       if (this.ui.pageStatus) this.ui.pageStatus.textContent = `Page ${this.state.pageIndex + 1} of ${pageCount}`;
       this.ui.pageChips.innerHTML = Array.from({ length: pageCount }).map((_, index) => `
         <button type="button" class="npf-btn ${index === this.state.pageIndex ? 'npf-primary active' : 'npf-muted'}" data-page-chip="${index}">${index + 1}</button>`).join('');
-      Array.from(this.ui.pageChips.querySelectorAll('[data-page-chip]')).forEach((button) => button.addEventListener('click', () => {
-        this.state.pageIndex = clamp(button.dataset.pageChip || 0, 0, pageCount - 1);
-        this.queuePersistState();
-        this.renderPageControls();
-        this.scrollPreviewToTop();
-        this.scheduleRender(true);
-      }));
-      if (this.ui.previewZoomWrap) {
-        this.ui.previewZoomWrap.innerHTML = PREVIEW_ZOOMS.map((zoom) => `<button type="button" class="npf-btn ${Number(this.state.previewZoom || 100) === zoom ? 'npf-primary active' : 'npf-muted'}" data-preview-zoom="${zoom}">${zoom}%</button>`).join('');
-        Array.from(this.ui.previewZoomWrap.querySelectorAll('[data-preview-zoom]')).forEach((button) => button.addEventListener('click', () => {
-          this.state.previewZoom = clamp(button.dataset.previewZoom || 100, 60, 150);
+      if (!this.pageChipsDelegated) {
+        this.pageChipsDelegated = true;
+        this.ui.pageChips.addEventListener('click', (event) => {
+          const button = event.target.closest('[data-page-chip]');
+          if (!button) return;
+          this.state.pageIndex = clamp(button.dataset.pageChip || 0, 0, this.getPageCount() - 1);
           this.queuePersistState();
           this.renderPageControls();
-          this.applyPreviewZoom();
-        }));
+          this.scrollPreviewToTop();
+          this.scheduleRender(true);
+        });
+      }
+      if (this.ui.previewZoomWrap) {
+        this.ui.previewZoomWrap.innerHTML = PREVIEW_ZOOMS.map((zoom) => `<button type="button" class="npf-btn ${Number(this.state.previewZoom || 100) === zoom ? 'npf-primary active' : 'npf-muted'}" data-preview-zoom="${zoom}">${zoom}%</button>`).join('');
+        if (!this.previewZoomDelegated) {
+          this.previewZoomDelegated = true;
+          this.ui.previewZoomWrap.addEventListener('click', (event) => {
+            const button = event.target.closest('[data-preview-zoom]');
+            if (!button) return;
+            this.state.previewZoom = clamp(button.dataset.previewZoom || 100, 60, 150);
+            this.queuePersistState();
+            this.renderPageControls();
+            this.applyPreviewZoom();
+          });
+        }
       }
       this.applyPreviewZoom();
       Array.from(this.root.querySelectorAll('[data-page-nav]')).forEach((button) => {
@@ -1126,7 +1165,15 @@
       const slots = this.ui.stepBody.querySelector('.npf-slots');
       if (!slots) return;
       if (!this.virtualCardsScrollHandler) {
-        this.virtualCardsScrollHandler = () => this.refreshVirtualCardRows(false);
+        let rafPending = false;
+        this.virtualCardsScrollHandler = () => {
+          if (rafPending) return;
+          rafPending = true;
+          requestAnimationFrame(() => {
+            rafPending = false;
+            this.refreshVirtualCardRows(false);
+          });
+        };
       }
       if (slots.__virtualBound !== true) {
         slots.__virtualBound = true;
