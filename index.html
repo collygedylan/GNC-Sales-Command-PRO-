@@ -956,7 +956,7 @@
         const PHOTO_MAX_WIDTH = 1200;
         const PHOTO_JPEG_QUALITY = 0.95;
         const PHOTO_FIELD_PERSIST_DEBOUNCE_MS = 100;
-        const INTERACTION_REFRESH_DEFER_MS = 420;
+        const INTERACTION_REFRESH_DEFER_MS = 520;
         let pendingPhotoUploads = new Map();
         let pendingPhotoPreviews = new Map();
         let pendingPhotoPersistTimers = Object.create(null);
@@ -978,7 +978,7 @@
         let swipeCloseOnScrollTimer = null;
         const ACTIVE_TYPING_GRACE_MS = 35;
         const ACTIVE_SCROLL_GRACE_MS = 180;
-        const ACTIVE_TOUCH_GRACE_MS = 320;
+        const ACTIVE_TOUCH_GRACE_MS = 420;
 
         function isIOSDevice() {
             return IOS_DEVICE_REGEX.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -11700,12 +11700,20 @@ activeDriveTab = tab;
             return status.includes('done') || status.includes('complete') || status.includes('closed') || status.includes('removed') || status.includes('archived');
         }
 
+        function isSeasonSalesOfficeItem(item) {
+            if (!item || isBloomPickerSalesOfficeItem(item) || isSalesOfficeComplete(item)) return false;
+            const salesOfficeSource = String(firstNonEmptyValue(item.SO_SOURCE, item.so_source, 'season')).toLowerCase().trim();
+            if (salesOfficeSource === 'season') return true;
+            const assignment = String(firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, item.app_tab_assignment, '')).toLowerCase().trim();
+            if (assignment === 'season') return true;
+            const masterId = String(firstNonEmptyValue(item.MASTER_ID, item.MASTER_UNIQUE_ID, item.master_id, item.UNIQUE_ID, '')).trim();
+            if (!masterId) return false;
+            const masterRow = findItemByUniqueId(masterId);
+            return String(firstNonEmptyValue(masterRow && masterRow.APP_TAB_ASSIGNMENT, '')).toLowerCase().trim() === 'season';
+        }
+
         function getSalesOfficeSeasonItems() {
-            let items = salesOfficeInventory.filter((item) => !isBloomPickerSalesOfficeItem(item) && !isSalesOfficeComplete(item));
-            if (fullInventory.length > 0) {
-                const seasonIds = new Set(fullInventory.filter(i => String(i.APP_TAB_ASSIGNMENT || '').toLowerCase() === 'season').map(i => String(i.UNIQUE_ID || '')).filter(Boolean));
-                items = items.filter((item) => seasonIds.has(String(firstNonEmptyValue(item.MASTER_ID, item.UNIQUE_ID) || '')));
-            }
+            const items = salesOfficeInventory.filter((item) => isSeasonSalesOfficeItem(item));
             items.sort((a, b) => new Date(b.COMPLETED_AT || 0).getTime() - new Date(a.COMPLETED_AT || 0).getTime());
             return items;
         }
@@ -12002,6 +12010,81 @@ activeDriveTab = tab;
             return `<div class="mb-4 overflow-hidden rounded-[1.5rem] border border-emerald-100 bg-white shadow-sm"><div class="border-b border-emerald-100 bg-gradient-to-r from-emerald-50 via-white to-emerald-50 px-4 py-4"><div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.18em] text-[#007a4d]">Bloom Picker Folder</div><div class="mt-1 text-lg font-black text-slate-900 leading-tight break-words">${group.folder}</div><div class="mt-2 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-600">Order ${group.orderNumber || '-'}</span><span class="rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-600">Customer ${group.customer || '-'}</span><span class="rounded-full border px-3 py-1 ${statusTone}">${group.status || 'Pending Review'}</span><span class="rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-600">${group.lineCount} line${group.lineCount === 1 ? '' : 's'}</span><span class="rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-600">Qty ${group.totalQty || 0}</span></div><div class="mt-3 text-[11px] font-semibold text-slate-500">Submitted by ${group.submittedBy || 'Unknown'} on ${submittedAtLabel}</div></div><button type="button" class="inline-flex items-center justify-center gap-2 rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-95" onclick="event.stopPropagation(); exportSalesOfficeOrderFolder('${exportKey}')"><i class="ph-bold ph-download-simple text-base"></i>Export Order</button></div></div><div class="bg-slate-50 px-3 py-3">${group.rows.map((item) => generateCard(item, 'sales-office-order')).join('')}</div></div>`;
         }
 
+        function buildSalesOfficeItemRenderSignature(item) {
+            if (!item) return '';
+            const clean = (value = '') => String(value == null ? '' : value).trim();
+            const photoLink = firstNonEmptyValue(item.PHOTO_LINK, item.photo_link, item.SAVED_PHOTO_LINK, '');
+            return [
+                clean(item.UNIQUE_ID),
+                clean(firstNonEmptyValue(item.MASTER_ID, item.MASTER_UNIQUE_ID, item.master_id, '')),
+                clean(firstNonEmptyValue(item.SO_SOURCE, item.so_source, 'season')),
+                clean(firstNonEmptyValue(item.ORDER_FOLDER, item.order_folder, '')),
+                clean(firstNonEmptyValue(item.ORDER_NUMBER, item.order_number, '')),
+                clean(firstNonEmptyValue(item.ORDER_STATUS, item.order_status, item.STATUS, item.status, '')),
+                clean(item.COMMONNAME),
+                clean(item.CONTSIZE),
+                clean(item.LOCATIONCODE),
+                clean(item.LOTCODE),
+                clean(firstNonEmptyValue(item.AV_NOTE, item.av_note, '')),
+                clean(firstNonEmptyValue(item.SALES_NOTE, item.sales_note, '')),
+                clean(firstNonEmptyValue(item.SPEC, item.spec, '')),
+                clean(firstNonEmptyValue(item.CALIPER, item.caliper, '')),
+                clean(firstNonEmptyValue(item.COMPLETED_AT, item.completed_at, item.ORDER_SUBMITTED_AT, item.order_submitted_at, '')),
+                clean(photoLink)
+            ].join('|');
+        }
+
+        function buildSalesOfficeGroupRenderSignature(group) {
+            if (!group) return '';
+            return [
+                String(group.key || '').trim(),
+                String(group.folder || '').trim(),
+                String(group.orderNumber || '').trim(),
+                String(group.customer || '').trim(),
+                String(group.status || '').trim(),
+                String(group.submittedBy || '').trim(),
+                String(group.submittedAt || '').trim(),
+                String(group.lineCount || 0).trim(),
+                String(group.totalQty || 0).trim(),
+                (Array.isArray(group.rows) ? group.rows : []).map((item) => buildSalesOfficeItemRenderSignature(item)).join('||')
+            ].join('|');
+        }
+
+        function buildSalesOfficeRenderKey(mode = '', crumbText = '', rows = []) {
+            const safeRows = Array.isArray(rows) ? rows : [];
+            const signatures = safeRows.map((row) => mode === 'orders'
+                ? buildSalesOfficeGroupRenderSignature(row)
+                : buildSalesOfficeItemRenderSignature(row)).join('###');
+            return [String(mode || '').trim(), String(crumbText || '').trim(), signatures].join('::');
+        }
+
+        function syncSalesOfficeCrumb(crumb, crumbText = '') {
+            if (!crumb) return;
+            const nextText = String(crumbText || '');
+            if (crumb.innerText !== nextText) crumb.innerText = nextText;
+        }
+
+        function rememberSalesOfficeRenderKey(container, renderKey = '') {
+            if (container && container.dataset) container.dataset.salesOfficeRenderKey = String(renderKey || '');
+        }
+
+        function shouldSkipSalesOfficeRender(container, crumb, crumbText, renderKey = '') {
+            if (!container) return false;
+            syncSalesOfficeCrumb(crumb, crumbText);
+            const nextKey = String(renderKey || '');
+            return !!(container.dataset && container.dataset.salesOfficeRenderKey === nextKey);
+        }
+
+        function applySalesOfficeRenderMarkup(container, crumb, crumbText, html, renderKey = '') {
+            if (!container) return false;
+            syncSalesOfficeCrumb(crumb, crumbText);
+            const nextKey = String(renderKey || (String(crumbText || '') + '::' + String(html || '')));
+            if (container.dataset && container.dataset.salesOfficeRenderKey === nextKey) return false;
+            setContainerHtml(container, html);
+            rememberSalesOfficeRenderKey(container, nextKey);
+            return true;
+        }
+
         function renderSalesOffice() {
             if (ensureViewDataForRender('sales-office')) return;
             const access = getRoleAccessState();
@@ -12019,46 +12102,54 @@ activeDriveTab = tab;
             }
 
             if (activeSalesOfficeTab === 'orders') {
+                const disabledCrumbText = 'Bloom Picker Orders';
                 if (salesOfficeOrderColumnsReady === false) {
-                    if (crumb) crumb.innerText = 'Bloom Picker Orders';
                     updateSalesOfficeExportButton(0);
-                    container.innerHTML = `<div class="p-8 text-center text-gray-400">Run sales_office_bloom_picker_migration.sql in Supabase to enable Bloom Picker orders.</div>`;
+                    applySalesOfficeRenderMarkup(container, crumb, disabledCrumbText, `<div class="p-8 text-center text-gray-400">Run sales_office_bloom_picker_migration.sql in Supabase to enable Bloom Picker orders.</div>`, 'sales-office:orders:disabled');
                     return;
                 }
                 const items = getSalesOfficeOrderItems();
                 const groups = getSalesOfficeOrderGroups(items);
+                const crumbText = groups.length ? `Bloom Picker Orders (${groups.length} folder${groups.length === 1 ? '' : 's'} / ${items.length} row${items.length === 1 ? '' : 's'})` : disabledCrumbText;
+                const renderKey = buildSalesOfficeRenderKey('orders', crumbText, groups);
                 updateSalesOfficeExportButton(items.length);
-                if (crumb) crumb.innerText = groups.length ? `Bloom Picker Orders (${groups.length} folder${groups.length === 1 ? '' : 's'} / ${items.length} row${items.length === 1 ? '' : 's'})` : 'Bloom Picker Orders';
                 if (!groups.length) {
-                    container.innerHTML = `<div class="p-8 text-center text-gray-400">${access.isRep ? 'No Bloom Picker orders submitted by you yet.' : 'No Bloom Picker orders have been submitted yet.'}</div>`;
+                    applySalesOfficeRenderMarkup(container, crumb, crumbText, `<div class="p-8 text-center text-gray-400">${access.isRep ? 'No Bloom Picker orders submitted by you yet.' : 'No Bloom Picker orders have been submitted yet.'}</div>`, renderKey + '::empty');
                     return;
                 }
-                                if (shouldUseChunkedCardRender(groups.length, 18, 32)) {
-                    const crumbText = groups.length ? `Bloom Picker Orders (${groups.length} folder${groups.length === 1 ? '' : 's'} / ${items.length} row${items.length === 1 ? '' : 's'})` : 'Bloom Picker Orders';
+                if (shouldUseChunkedCardRender(groups.length, 18, 32)) {
+                    if (shouldSkipSalesOfficeRender(container, crumb, crumbText, renderKey)) return;
+                    rememberSalesOfficeRenderKey(container, renderKey);
                     renderMarkupChunkedByKey('sales-office-main', container, crumb, groups, crumbText, (group) => generateSalesOfficeOrderGroupCard(group), {
-                        approxCardHeight: 520
+                        approxCardHeight: 520,
+                        onComplete: () => rememberSalesOfficeRenderKey(container, renderKey)
                     });
                     return;
                 }
-                container.innerHTML = groups.map((group) => generateSalesOfficeOrderGroupCard(group)).join('');
+                const html = groups.map((group) => generateSalesOfficeOrderGroupCard(group)).join('');
+                applySalesOfficeRenderMarkup(container, crumb, crumbText, html, renderKey);
                 return;
             }
 
             const items = getSalesOfficeSeasonItems();
+            const crumbText = items.length ? `Season Sales Notes (${items.length} row${items.length === 1 ? '' : 's'})` : 'Season Sales Notes';
+            const renderKey = buildSalesOfficeRenderKey('season', crumbText, items);
             updateSalesOfficeExportButton(items.length);
-            if (crumb) crumb.innerText = items.length ? `Season Sales Notes (${items.length} row${items.length === 1 ? '' : 's'})` : 'Season Sales Notes';
             if (!items.length) {
-                container.innerHTML = `<div class="p-8 text-center text-gray-400">No Season Sales Notes rows found.</div>`;
+                applySalesOfficeRenderMarkup(container, crumb, crumbText, `<div class="p-8 text-center text-gray-400">No Season Sales Notes rows found.</div>`, renderKey + '::empty');
                 return;
             }
             if (shouldUseChunkedCardRender(items.length, 65, 120)) {
-                const crumbText = items.length ? `Season Sales Notes (${items.length} row${items.length === 1 ? '' : 's'})` : 'Season Sales Notes';
+                if (shouldSkipSalesOfficeRender(container, crumb, crumbText, renderKey)) return;
+                rememberSalesOfficeRenderKey(container, renderKey);
                 renderMarkupChunkedByKey('sales-office-main', container, crumb, items, crumbText, (item) => generateCard(item, 'sales-office'), {
-                    approxCardHeight: 355
+                    approxCardHeight: 355,
+                    onComplete: () => rememberSalesOfficeRenderKey(container, renderKey)
                 });
                 return;
             }
-            container.innerHTML = items.map(i => generateCard(i, 'sales-office')).join('');
+            const html = items.map((item) => generateCard(item, 'sales-office')).join('');
+            applySalesOfficeRenderMarkup(container, crumb, crumbText, html, renderKey);
         }
         function resetLowStockView() {
             lowStockViewLevel = 0;
@@ -12414,7 +12505,9 @@ activeDriveTab = tab;
             }
         }
         let requestSwipeState = { row: null, surface: null, startX: 0, startY: 0, deltaX: 0, startOffset: 0, dragging: false };
+        let requestSwipeMoveBound = false;
         let flyerSwipeState = { row: null, surface: null, startX: 0, startY: 0, deltaX: 0, startOffset: 0, dragging: false };
+        let flyerSwipeMoveBound = false;
         let pullRefreshState = { active: false, armed: false, refreshing: false, startX: 0, startY: 0, distance: 0 };
         let interactiveChromeInitialized = false;
         let foregroundRefreshTimer = null;
@@ -12833,6 +12926,19 @@ activeDriveTab = tab;
             }
         }
 
+        function ensureRequestSwipeMoveListener() {
+            const container = document.getElementById('request-content');
+            if (!container || requestSwipeMoveBound) return;
+            container.addEventListener('touchmove', handleRequestSwipeMove, { passive: false });
+            requestSwipeMoveBound = true;
+        }
+
+        function releaseRequestSwipeMoveListener() {
+            const container = document.getElementById('request-content');
+            if (container && requestSwipeMoveBound) container.removeEventListener('touchmove', handleRequestSwipeMove, false);
+            requestSwipeMoveBound = false;
+        }
+
         function closeRequestSwipe(row) {
             if (!row) return;
             row.classList.remove('swipe-open');
@@ -12840,9 +12946,9 @@ activeDriveTab = tab;
             if (surface) surface.style.transform = '';
             if (requestSwipeState.row === row) {
                 requestSwipeState = { row: null, surface: null, startX: 0, startY: 0, deltaX: 0, startOffset: 0, dragging: false };
+                releaseRequestSwipeMoveListener();
             }
         }
-
         function closeAllRequestSwipes(exceptRow = null) {
             const container = document.getElementById('request-content');
             if (!container) return;
@@ -12868,6 +12974,7 @@ activeDriveTab = tab;
                 startOffset: row.classList.contains('swipe-open') ? -96 : 0,
                 dragging: true
             };
+            ensureRequestSwipeMoveListener();
         }
 
         function handleRequestSwipeMove(event) {
@@ -12889,7 +12996,10 @@ activeDriveTab = tab;
         }
 
         function handleRequestSwipeEnd(event) {
-            if (!requestSwipeState.row) return;
+            if (!requestSwipeState.row) {
+                releaseRequestSwipeMoveListener();
+                return;
+            }
             const row = requestSwipeState.row;
             const shouldOpen = requestSwipeState.deltaX <= -56;
             if (shouldOpen) {
@@ -12899,6 +13009,7 @@ activeDriveTab = tab;
                 closeRequestSwipe(row);
             }
             requestSwipeState.dragging = false;
+            releaseRequestSwipeMoveListener();
         }
 
         function decorateRequestRows() {
@@ -12910,7 +13021,6 @@ activeDriveTab = tab;
                     const row = event.target.closest('.request-swipe-row');
                     if (row) handleRequestSwipeStart(event, row);
                 }, { passive: true });
-                container.addEventListener('touchmove', handleRequestSwipeMove, { passive: false });
                 container.addEventListener('touchend', handleRequestSwipeEnd, { passive: true });
                 container.addEventListener('touchcancel', handleRequestSwipeEnd, { passive: true });
                 container.addEventListener('click', (event) => {
@@ -12976,6 +13086,19 @@ activeDriveTab = tab;
             showToast('Retrying', 'Request removal will keep retrying automatically.', false);
         }
 
+        function ensureFlyerSwipeMoveListener() {
+            const container = document.getElementById('task-content');
+            if (!container || flyerSwipeMoveBound) return;
+            container.addEventListener('touchmove', handleFlyerSwipeMove, { passive: false });
+            flyerSwipeMoveBound = true;
+        }
+
+        function releaseFlyerSwipeMoveListener() {
+            const container = document.getElementById('task-content');
+            if (container && flyerSwipeMoveBound) container.removeEventListener('touchmove', handleFlyerSwipeMove, false);
+            flyerSwipeMoveBound = false;
+        }
+
         function closeFlyerSwipe(row) {
             if (!row) return;
             row.classList.remove('swipe-open');
@@ -12983,9 +13106,9 @@ activeDriveTab = tab;
             if (surface) surface.style.transform = '';
             if (flyerSwipeState.row === row) {
                 flyerSwipeState = { row: null, surface: null, startX: 0, startY: 0, deltaX: 0, startOffset: 0, dragging: false };
+                releaseFlyerSwipeMoveListener();
             }
         }
-
         function closeAllFlyerSwipes(exceptRow = null) {
             const container = document.getElementById('task-content');
             if (!container) return;
@@ -13011,6 +13134,7 @@ activeDriveTab = tab;
                 startOffset: row.classList.contains('swipe-open') ? -96 : 0,
                 dragging: true
             };
+            ensureFlyerSwipeMoveListener();
         }
 
         function handleFlyerSwipeMove(event) {
@@ -13032,7 +13156,10 @@ activeDriveTab = tab;
         }
 
         function handleFlyerSwipeEnd(event) {
-            if (!flyerSwipeState.row) return;
+            if (!flyerSwipeState.row) {
+                releaseFlyerSwipeMoveListener();
+                return;
+            }
             const row = flyerSwipeState.row;
             const shouldOpen = flyerSwipeState.deltaX <= -56;
             if (shouldOpen) {
@@ -13042,6 +13169,7 @@ activeDriveTab = tab;
                 closeFlyerSwipe(row);
             }
             flyerSwipeState.dragging = false;
+            releaseFlyerSwipeMoveListener();
         }
 
         function handleFlyerFolderSurfaceClick(event, surface, folderName, folderTab = activeFlyerFolderTab) {
@@ -13146,14 +13274,13 @@ activeDriveTab = tab;
             if (!container.__flyerSwipeDelegated) {
                 container.__flyerSwipeDelegated = true;
                 container.addEventListener('touchstart', (event) => {
-                    const row = event.target.closest('.flyer-swipe-row');
+                    const row = event.target.closest('.flyer-swipe-row, .flyer-folder-swipe-row');
                     if (row) handleFlyerSwipeStart(event, row);
                 }, { passive: true });
-                container.addEventListener('touchmove', handleFlyerSwipeMove, { passive: false });
                 container.addEventListener('touchend', handleFlyerSwipeEnd, { passive: true });
                 container.addEventListener('touchcancel', handleFlyerSwipeEnd, { passive: true });
                 container.addEventListener('click', (event) => {
-                    const row = event.target.closest('.flyer-swipe-row');
+                    const row = event.target.closest('.flyer-swipe-row, .flyer-folder-swipe-row');
                     if (!row || event.target.closest('.request-swipe-action')) return;
                     if (!row.classList.contains('swipe-open')) return;
                     event.preventDefault();
@@ -16140,7 +16267,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     const folderHtml = folderNames.length ? folderNames.map(folderName => {
                         const meta = folderMap[folderName];
                         const assignees = Array.from(meta.assignees).join(', ') || 'Unassigned';
-                        return `<div class="request-swipe-row flyer-folder-swipe-row" ontouchstart="handleFlyerSwipeStart(event)" ontouchmove="handleFlyerSwipeMove(event)" ontouchend="handleFlyerSwipeEnd(event)" ontouchcancel="handleFlyerSwipeEnd(event)"><button type="button" class="request-swipe-action" style="${actionStyle}" onclick="event.preventDefault(); event.stopPropagation(); return setFlyerFolderArchiveState('${esc(folderName)}', '${nextTab}', { currentTab: '${getFlyerFolderTabValue(activeFlyerFolderTab)}' })">${actionLabel}</button><div class="request-swipe-surface" onclick="return handleFlyerFolderSurfaceClick(event, this, '${esc(folderName)}', '${getFlyerFolderTabValue(activeFlyerFolderTab)}')"><div class="bg-white border border-indigo-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform"><div class="min-w-0 pr-3"><div class="font-bold text-lg text-indigo-800 truncate">${folderName}</div><div class="text-xs font-semibold text-indigo-500 mt-1 truncate">${assignees}</div></div><div class="text-right shrink-0"><div class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${meta.count} Rows</div><div class="text-[11px] font-semibold text-gray-500 mt-2">${meta.complete} Complete</div></div></div></div></div>`;
+                        return `<div class="request-swipe-row flyer-folder-swipe-row"><button type="button" class="request-swipe-action" style="${actionStyle}" onclick="event.preventDefault(); event.stopPropagation(); return setFlyerFolderArchiveState('${esc(folderName)}', '${nextTab}', { currentTab: '${getFlyerFolderTabValue(activeFlyerFolderTab)}' })">${actionLabel}</button><div class="request-swipe-surface" onclick="return handleFlyerFolderSurfaceClick(event, this, '${esc(folderName)}', '${getFlyerFolderTabValue(activeFlyerFolderTab)}')"><div class="bg-white border border-indigo-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform"><div class="min-w-0 pr-3"><div class="font-bold text-lg text-indigo-800 truncate">${folderName}</div><div class="text-xs font-semibold text-indigo-500 mt-1 truncate">${assignees}</div></div><div class="text-right shrink-0"><div class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${meta.count} Rows</div><div class="text-[11px] font-semibold text-gray-500 mt-2">${meta.complete} Complete</div></div></div></div></div>`;
                     }).join('') : emptyFoldersHtml;
                     container.innerHTML = `${flyerTabsHtml}${folderHtml}`;
                 } else if (taskViewLevel === 1) {
