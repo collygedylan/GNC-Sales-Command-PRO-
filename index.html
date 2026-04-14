@@ -4638,7 +4638,7 @@
             const targetView = String(viewId || '').trim();
             if (!targetView) return;
             const now = Date.now();
-            // When realtime is healthy, data arrives via push — use a much longer interval to
+            // When realtime is healthy, data arrives via push - use a much longer interval to
             // avoid hammering Supabase on every navigation. Only force-fetch when explicitly
             // requested or when we have no live push channel.
             const realtimeHealthy = !options.force && hasHealthyCoreRealtimeSubscriptions();
@@ -4665,7 +4665,6 @@
                 return;
             }
             queueVisibleDatasetCatchup(Math.max(60, Number(options.backgroundDelay) || 90));
-        }).catch(() => {});
         }
         function findItemByUniqueId(uid) {
             const normalizedUid = String(uid || '').trim();
