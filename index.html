@@ -962,6 +962,7 @@
         let pendingPhotoPersistTimers = Object.create(null);
         window.pendingPhotoUploads = pendingPhotoUploads;
         let lastUserInteractionAt = Date.now();
+        let lastTouchInteractionAt = 0;
         let lastTypingAt = 0;
         let lastScrollAt = 0;
         let scrollFramePending = false;
@@ -977,6 +978,7 @@
         let swipeCloseOnScrollTimer = null;
         const ACTIVE_TYPING_GRACE_MS = 35;
         const ACTIVE_SCROLL_GRACE_MS = 180;
+        const ACTIVE_TOUCH_GRACE_MS = 320;
 
         function isIOSDevice() {
             return IOS_DEVICE_REGEX.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -986,11 +988,27 @@
             return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
         }
 
-        function markUserInteractionActivity() {
-            lastUserInteractionAt = Date.now();
+        function isTouchLikeInteractionEvent(event) {
+            if (!event) return false;
+            const eventType = String(event.type || '').toLowerCase();
+            if (eventType.startsWith('touch')) return true;
+            if (eventType.startsWith('pointer')) {
+                const pointerType = String(event.pointerType || '').toLowerCase();
+                return pointerType === 'touch' || pointerType === 'pen';
+            }
+            return false;
+        }
+
+        function markUserInteractionActivity(event) {
+            const now = Date.now();
+            lastUserInteractionAt = now;
+            if (isTouchLikeInteractionEvent(event)) lastTouchInteractionAt = now;
         }
         window.addEventListener('pointerdown', markUserInteractionActivity, { passive: true });
         window.addEventListener('touchstart', markUserInteractionActivity, { passive: true });
+        window.addEventListener('touchmove', markUserInteractionActivity, { passive: true });
+        window.addEventListener('touchend', markUserInteractionActivity, { passive: true });
+        window.addEventListener('touchcancel', markUserInteractionActivity, { passive: true });
         window.addEventListener('keydown', markUserInteractionActivity, { passive: true });
 
         function isTextLikeElement(el) {
@@ -1021,6 +1039,10 @@
 
         function isUserActivelyScrolling() {
             return (Date.now() - lastScrollAt) < ACTIVE_SCROLL_GRACE_MS;
+        }
+
+        function isUserActivelyTouching() {
+            return (Date.now() - lastTouchInteractionAt) < ACTIVE_TOUCH_GRACE_MS;
         }
 
         function setRealtimeTableStatus(tableName = '', status = '') {
@@ -2598,8 +2620,8 @@
             realtimeChangeQueue.push({ tableName, payload });
             if (realtimeChangeTimer) clearTimeout(realtimeChangeTimer);
             const flushQueuedRealtimeChanges = () => {
-                if (isUserActivelyTyping()) {
-                    realtimeChangeTimer = setTimeout(flushQueuedRealtimeChanges, 120);
+                if (shouldDeferInteractiveBackgroundWork()) {
+                    realtimeChangeTimer = setTimeout(flushQueuedRealtimeChanges, INTERACTION_REFRESH_DEFER_MS);
                     return;
                 }
                 const pending = realtimeChangeQueue.splice(0);
@@ -2628,7 +2650,7 @@
             }
         }
         function shouldDeferInteractiveBackgroundWork() {
-            return !!(isUserActivelyTyping() || isUserActivelyScrolling() || (window.pendingPhotoUploads && window.pendingPhotoUploads.size));
+            return !!(isUserActivelyTyping() || isUserActivelyScrolling() || isUserActivelyTouching() || (window.pendingPhotoUploads && window.pendingPhotoUploads.size));
         }
 
         function scheduleRealtimeReconnect(delay = REALTIME_RECOVERY_GRACE_MS) {
@@ -2872,10 +2894,15 @@
         function scheduleTypingAwareUiRender(key, renderFn, delay = 0, typingDelay = ACTIVE_TYPING_GRACE_MS) {
             const safeDelay = Math.max(0, Number(delay) || 0);
             const safeTypingDelay = Math.max(35, Number(typingDelay) || ACTIVE_TYPING_GRACE_MS);
+            const safeTouchDelay = Math.max(ACTIVE_TOUCH_GRACE_MS, safeTypingDelay);
             const safeScrollDelay = Math.max(80, safeTypingDelay);
             const runWhenReady = () => {
                 if (isUserActivelyTyping()) {
                     scheduleUiRender(key, runWhenReady, safeTypingDelay);
+                    return;
+                }
+                if (isUserActivelyTouching()) {
+                    scheduleUiRender(key, runWhenReady, safeTouchDelay);
                     return;
                 }
                 if (isUserActivelyScrolling()) {
@@ -4407,8 +4434,8 @@
                 }
                 if (key === 'reserves') {
                     if (isViewVisible('av') && activeAVTab === 'reserves') scheduleTypingAwareUiRender('av-reserves-refresh', () => renderAV(), wantsFull ? 18 : 8, 220);
-                    if (isViewVisible('reserves')) queueViewRender('reserves', false, true);
-                    if (isViewVisible('reports')) queueViewRender('reports', false, true);
+                    if (isViewVisible('reserves')) queueInteractiveViewRender('reserves', false, true, wantsFull ? 18 : 8, 220);
+                    if (isViewVisible('reports')) queueInteractiveViewRender('reports', false, true, wantsFull ? 18 : 8, 220);
                 }
                 if (key === 'cav') {
                     if (isViewVisible('tasks') && activeTaskTab === 'season') scheduleTypingAwareUiRender('tasks-cav-refresh', () => renderTasks(), wantsFull ? 18 : 8, 220);
@@ -4658,7 +4685,7 @@
             if (options.force) {
                 Promise.all(config.required.map((item) => ensureDatasetLoaded(item.key, item.mode, { force: true }))).then(() => {
                     markViewDirty(targetView);
-                    if (isViewVisible(targetView)) renderViewContent(targetView, false, true);
+                    if (isViewVisible(targetView)) queueInteractiveViewRender(targetView, false, true, 0, 180);
                 }).catch(() => {});
                 return;
             }
@@ -4666,7 +4693,7 @@
             if (pendingRequired.length) {
                 Promise.all(pendingRequired.map((item) => ensureDatasetLoaded(item.key, item.mode))).then(() => {
                     markViewDirty(targetView);
-                    if (isViewVisible(targetView)) renderViewContent(targetView, false, true);
+                    if (isViewVisible(targetView)) queueInteractiveViewRender(targetView, false, true, 0, 180);
                 }).catch(() => {});
                 return;
             }
@@ -8753,7 +8780,7 @@ function toggleDriveQuickRequestItem(domId) {
 
         function reRenderCurrentView() {
             const visibleViewIds = getVisibleTrackedViewIds();
-            if (isUserActivelyScrolling()) {
+            if (shouldDeferInteractiveBackgroundWork()) {
                 visibleViewIds.forEach((viewId) => {
                     markViewDirty(viewId);
                     scheduleTypingAwareUiRender(`rerender:${viewId}`, () => {
@@ -12415,6 +12442,10 @@ activeDriveTab = tab;
                 syncRequestViewLiveSync(pauseDelay + 120);
                 return;
             }
+            if (shouldDeferInteractiveBackgroundWork()) {
+                syncRequestViewLiveSync(INTERACTION_REFRESH_DEFER_MS);
+                return;
+            }
             requestViewLiveSyncInFlight = true;
             try {
                 const signatureRows = await supabaseFetch('v2_active_request', 'GET', null, 'select=unique_id,req_status,req_archived,req_rep_action,request_folder,req_customer,req_qty,date_completed');
@@ -12435,7 +12466,8 @@ activeDriveTab = tab;
             clearRequestViewLiveSync();
             if (!shouldRunRequestViewLiveSync()) return;
             const pauseDelay = Math.max(0, requestViewLiveSyncPausedUntil - Date.now());
-            const nextDelay = Math.max(Math.max(0, Number(delay) || 0), pauseDelay);
+            const interactionDelay = shouldDeferInteractiveBackgroundWork() ? INTERACTION_REFRESH_DEFER_MS : 0;
+            const nextDelay = Math.max(Math.max(0, Number(delay) || 0), pauseDelay, interactionDelay);
             requestViewLiveSyncTimer = setTimeout(() => {
                 requestViewLiveSyncTimer = null;
                 runRequestViewLiveSync().catch(() => {});
@@ -12454,6 +12486,11 @@ activeDriveTab = tab;
                 if (navigator.onLine === false) {
                     liveSyncMode = 'offline';
                     updateSyncDiagnostics('offline');
+                    return;
+                }
+                if (shouldDeferInteractiveBackgroundWork()) {
+                    updateSyncDiagnostics(liveSyncMode === 'realtime' ? 'realtime' : 'queued');
+                    queueForegroundRefresh(Math.max(INTERACTION_REFRESH_DEFER_MS, Number(delay) || 0));
                     return;
                 }
                 if (shouldUseRealtime()) {
