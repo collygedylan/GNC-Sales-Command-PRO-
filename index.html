@@ -1159,7 +1159,12 @@
         }
 
         function initializeViewportModeSync() {
-            const scheduleViewportModeSync = () => requestAnimationFrame(syncViewportMode);
+            let viewportSyncPending = false;
+            const scheduleViewportModeSync = () => {
+                if (viewportSyncPending) return;
+                viewportSyncPending = true;
+                requestAnimationFrame(() => { viewportSyncPending = false; syncViewportMode(); });
+            };
             syncViewportMode();
             window.addEventListener('resize', scheduleViewportModeSync, { passive: true });
             window.addEventListener('orientationchange', scheduleViewportModeSync, { passive: true });
@@ -1226,8 +1231,7 @@
                 }
             };
             requestAnimationFrame(run);
-            setTimeout(run, 140);
-            setTimeout(run, 320);
+            setTimeout(run, 300);
         }
 
         function refreshDetailEditingChromeState() {
@@ -12561,9 +12565,9 @@ activeDriveTab = tab;
             });
         }
 
-        function handleRequestSwipeStart(event) {
+        function handleRequestSwipeStart(event, rowOverride) {
             if (isMultiSelectMode) return;
-            const row = event.currentTarget;
+            const row = rowOverride || event.currentTarget;
             const surface = row.querySelector('.request-swipe-surface');
             if (!surface || !event.touches || event.touches.length !== 1) return;
             closeAllRequestSwipes(row);
@@ -12580,7 +12584,7 @@ activeDriveTab = tab;
         }
 
         function handleRequestSwipeMove(event) {
-            if (!requestSwipeState.dragging || requestSwipeState.row !== event.currentTarget || !event.touches || event.touches.length !== 1) return;
+            if (!requestSwipeState.dragging || !event.touches || event.touches.length !== 1) return;
             const touch = event.touches[0];
             const dx = touch.clientX - requestSwipeState.startX;
             const dy = touch.clientY - requestSwipeState.startY;
@@ -12598,7 +12602,7 @@ activeDriveTab = tab;
         }
 
         function handleRequestSwipeEnd(event) {
-            if (requestSwipeState.row !== event.currentTarget) return;
+            if (!requestSwipeState.row) return;
             const row = requestSwipeState.row;
             const shouldOpen = requestSwipeState.deltaX <= -56;
             if (shouldOpen) {
@@ -12613,6 +12617,24 @@ activeDriveTab = tab;
         function decorateRequestRows() {
             const container = document.getElementById('request-content');
             if (!container) return;
+            if (!container.__requestSwipeDelegated) {
+                container.__requestSwipeDelegated = true;
+                container.addEventListener('touchstart', (event) => {
+                    const row = event.target.closest('.request-swipe-row');
+                    if (row) handleRequestSwipeStart(event, row);
+                }, { passive: true });
+                container.addEventListener('touchmove', handleRequestSwipeMove, { passive: false });
+                container.addEventListener('touchend', handleRequestSwipeEnd, { passive: true });
+                container.addEventListener('touchcancel', handleRequestSwipeEnd, { passive: true });
+                container.addEventListener('click', (event) => {
+                    const row = event.target.closest('.request-swipe-row');
+                    if (!row || event.target.closest('.request-swipe-action')) return;
+                    if (!row.classList.contains('swipe-open')) return;
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+                    closeRequestSwipe(row);
+                }, true);
+            }
             container.querySelectorAll('.item-row').forEach((row) => {
                 if (row.dataset.swipeEnhanced === 'true') return;
                 const onclickAttr = row.getAttribute('onclick') || '';
@@ -12641,17 +12663,6 @@ activeDriveTab = tab;
 
                 row.appendChild(action);
                 row.appendChild(surface);
-                row.addEventListener('touchstart', handleRequestSwipeStart, { passive: true });
-                row.addEventListener('touchmove', handleRequestSwipeMove, { passive: false });
-                row.addEventListener('touchend', handleRequestSwipeEnd, { passive: true });
-                row.addEventListener('touchcancel', handleRequestSwipeEnd, { passive: true });
-                row.addEventListener('click', (event) => {
-                    if (event.target && event.target.closest('.request-swipe-action')) return;
-                    if (!row.classList.contains('swipe-open')) return;
-                    event.preventDefault();
-                    event.stopImmediatePropagation();
-                    closeRequestSwipe(row);
-                }, true);
             });
         }
         async function archiveRequestRow(uid) {
@@ -12697,9 +12708,9 @@ activeDriveTab = tab;
             });
         }
 
-        function handleFlyerSwipeStart(event) {
+        function handleFlyerSwipeStart(event, rowOverride) {
             if (isMultiSelectMode) return;
-            const row = event.currentTarget;
+            const row = rowOverride || event.currentTarget;
             const surface = row.querySelector('.request-swipe-surface');
             if (!surface || !event.touches || event.touches.length !== 1) return;
             closeAllFlyerSwipes(row);
@@ -12716,7 +12727,7 @@ activeDriveTab = tab;
         }
 
         function handleFlyerSwipeMove(event) {
-            if (!flyerSwipeState.dragging || flyerSwipeState.row !== event.currentTarget || !event.touches || event.touches.length !== 1) return;
+            if (!flyerSwipeState.dragging || !event.touches || event.touches.length !== 1) return;
             const touch = event.touches[0];
             const dx = touch.clientX - flyerSwipeState.startX;
             const dy = touch.clientY - flyerSwipeState.startY;
@@ -12734,7 +12745,7 @@ activeDriveTab = tab;
         }
 
         function handleFlyerSwipeEnd(event) {
-            if (flyerSwipeState.row !== event.currentTarget) return;
+            if (!flyerSwipeState.row) return;
             const row = flyerSwipeState.row;
             const shouldOpen = flyerSwipeState.deltaX <= -56;
             if (shouldOpen) {
@@ -12845,6 +12856,24 @@ activeDriveTab = tab;
         function decorateFlyerTaskRows() {
             const container = document.getElementById('task-content');
             if (!container || activeTaskTab !== 'flyer' || taskViewLevel !== 1) return;
+            if (!container.__flyerSwipeDelegated) {
+                container.__flyerSwipeDelegated = true;
+                container.addEventListener('touchstart', (event) => {
+                    const row = event.target.closest('.flyer-swipe-row');
+                    if (row) handleFlyerSwipeStart(event, row);
+                }, { passive: true });
+                container.addEventListener('touchmove', handleFlyerSwipeMove, { passive: false });
+                container.addEventListener('touchend', handleFlyerSwipeEnd, { passive: true });
+                container.addEventListener('touchcancel', handleFlyerSwipeEnd, { passive: true });
+                container.addEventListener('click', (event) => {
+                    const row = event.target.closest('.flyer-swipe-row');
+                    if (!row || event.target.closest('.request-swipe-action')) return;
+                    if (!row.classList.contains('swipe-open')) return;
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+                    closeFlyerSwipe(row);
+                }, true);
+            }
             container.querySelectorAll('.item-row').forEach((row) => {
                 if (row.dataset.flyerSwipeEnhanced === 'true') return;
                 const onclickAttr = row.getAttribute('onclick') || '';
@@ -12869,17 +12898,6 @@ activeDriveTab = tab;
                 row.parentElement.removeChild(row);
                 wrapper.appendChild(action);
                 wrapper.appendChild(row);
-                wrapper.addEventListener('touchstart', handleFlyerSwipeStart, { passive: true });
-                wrapper.addEventListener('touchmove', handleFlyerSwipeMove, { passive: false });
-                wrapper.addEventListener('touchend', handleFlyerSwipeEnd, { passive: true });
-                wrapper.addEventListener('touchcancel', handleFlyerSwipeEnd, { passive: true });
-                wrapper.addEventListener('click', (event) => {
-                    if (event.target && event.target.closest('.request-swipe-action')) return;
-                    if (!wrapper.classList.contains('swipe-open')) return;
-                    event.preventDefault();
-                    event.stopImmediatePropagation();
-                    closeFlyerSwipe(wrapper);
-                }, true);
             });
         }
 
@@ -16347,6 +16365,7 @@ function toggleDriveSeason(s) {
                         if (installing.state === 'installed' && navigator.serviceWorker.controller) markShellUpdateReady();
                     });
                 });
+                window.__swReg = reg;
                 window.__swUpdateIntervalId = setInterval(() => {
                     reg.update();
                 }, 1000 * 60 * 30);
@@ -16365,7 +16384,17 @@ function toggleDriveSeason(s) {
                 tryApplyShellUpdateSilently();
             });
             document.addEventListener('visibilitychange', () => {
-                if (document.hidden) setTimeout(tryApplyShellUpdateSilently, 600);
+                if (document.hidden) {
+                    setTimeout(tryApplyShellUpdateSilently, 600);
+                    if (window.__swUpdateIntervalId) {
+                        clearInterval(window.__swUpdateIntervalId);
+                        window.__swUpdateIntervalId = null;
+                    }
+                } else {
+                    if (!window.__swUpdateIntervalId && window.__swReg) {
+                        window.__swUpdateIntervalId = setInterval(() => { window.__swReg.update(); }, 1000 * 60 * 30);
+                    }
+                }
             }, { passive: true });
             window.addEventListener('pagehide', () => {
                 setTimeout(tryApplyShellUpdateSilently, 120);
