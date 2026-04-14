@@ -182,6 +182,10 @@
         <button id="photo-modal-prev" type="button" class="hidden absolute left-4 top-1/2 -translate-y-1/2 z-50 items-center justify-center w-12 h-12 rounded-full bg-black/45 text-white text-2xl shadow-lg active:scale-95" onclick="event.stopPropagation(); stepPhotoModal(-1)" aria-label="Previous photo"><i class="ph-bold ph-caret-left"></i></button>
         <div id="photo-modal-gallery" class="w-full max-h-[85vh] mt-10 overflow-x-auto overflow-y-hidden snap-x snap-mandatory scrollbar-none"></div>
         <button id="photo-modal-next" type="button" class="hidden absolute right-4 top-1/2 -translate-y-1/2 z-50 items-center justify-center w-12 h-12 rounded-full bg-black/45 text-white text-2xl shadow-lg active:scale-95" onclick="event.stopPropagation(); stepPhotoModal(1)" aria-label="Next photo"><i class="ph-bold ph-caret-right"></i></button>
+        <div id="photo-modal-actions" class="absolute bottom-20 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 pointer-events-none">
+            <a id="photo-modal-open-link" class="hidden pointer-events-auto inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-lg backdrop-blur-sm active:scale-95" href="#" target="_blank" rel="noopener noreferrer"><i class="ph-bold ph-link text-sm"></i>Open Link</a>
+            <button id="photo-modal-copy-link" type="button" class="hidden pointer-events-auto inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-lg backdrop-blur-sm active:scale-95" onclick="return copyCurrentPhotoModalLink()"><i class="ph-bold ph-copy text-sm"></i>Copy Link</button>
+        </div>
         <div id="photo-swipe-hint" class="absolute bottom-10 text-white text-xs font-bold uppercase tracking-widest opacity-50 hidden pointer-events-none"><i class="ph-bold ph-arrows-left-right mr-1 text-lg align-middle"></i> Swipe for more</div>
     </div>
     <div id="view-login">
@@ -453,7 +457,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-                            <div id="header-version" class="nav-version-pill">V2026.04.13.04</div>
+                            <div id="header-version" class="nav-version-pill">V2026.04.14.01</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -1468,7 +1472,8 @@
             wheelHandler: null,
             touchMoveHandler: null,
             galleryClickHandler: null,
-            keyHandler: null
+            keyHandler: null,
+            primedKey: ''
         };
 
 
@@ -3782,7 +3787,7 @@
         }
         const DRIVE_MODE_LABELS = { ok: 'Drive Mode' };
         let activeDriveMode='ok'; let activeDriveTab='name'; let selectedDriveBlock=null; let selectedDriveLoc=null; let driveQuickRequestCardMode=false; let driveQuickFilterName=''; let driveQuickFilterLocation=''; let driveQuickFilterLot=''; let driveQuickFilterSize=''; let driveQuickFilterPriority=''; let driveQuickFilterLtsMode=''; let driveQuickFilterLtsValue=''; let driveQuickHoldStopOnly=false; let driveQuickFilterOptionsCacheKey=''; let driveQuickFilterOptionsCache=null; let driveBaseFilterCacheKey=''; let driveBaseFilterCacheItems=[]; let driveBaseContextCacheKey=''; let driveBaseContextCacheItems=[]; let driveBaseSearchContextKey=''; let driveBaseLastSearchTerm=''; let driveBaseLastSearchItems=[]; let driveQuickFilterCacheKey=''; let driveQuickFilterCacheItems=[]; let driveQuickFiltersModalOpen=false;
-        let driveViewLevel=0; let selectedDriveName=null; let selectedDriveSize=null; let selectedDriveGenusNames=new Set(); let driveGenusSearchTerm=''; let driveGenusFilterOpen=false; let selectedDriveContSizes=new Set(); let driveContSizeSearchTerm=''; let driveContSizeFilterOpen=false; let drivePlantFilterItemsCache=[]; let driveSelectedSeasons=new Set(['ALL']); const availableSeasons=["ALL","S1","F1","U1","U2","U3","X","Y","Z"];
+        let driveViewLevel=0; let selectedDriveName=null; let selectedDriveSize=null; let selectedDriveCommonNames=new Set(); let driveCommonNameSearchTerm=''; let driveCommonNameFilterOpen=false; let selectedDriveGenusNames=new Set(); let driveGenusSearchTerm=''; let driveGenusFilterOpen=false; let selectedDriveContSizes=new Set(); let driveContSizeSearchTerm=''; let driveContSizeFilterOpen=false; let drivePlantFilterItemsCache=[]; let driveSelectedSeasons=new Set(['ALL']); const availableSeasons=["ALL","S1","F1","U1","U2","U3","X","Y","Z"];
 
         let activeTaskTab="season"; let activeTaskSubview="all"; let taskViewTargetUser=null; let taskViewLevel=0; let selectedTaskBlock=null; let selectedTaskLoc=null; let selectedEndCapFolder=null; let selectedFlyerFolder=null; let activeFlyerFolderTab="active"; let selectedColorWalkContSize=""; let selectedColorWalkSearchTerm=""; let selectedTaskGenusNames=new Set(); let taskGenusSearchTerm=""; let taskGenusFilterOpen=false; let taskGenusFilterItemsCache=[]; let pendingFlyerFolderTarget=null; let pendingFlyerFolderAssignees="";
         let detailReturnState = { viewId: '', scrollTop: 0 };
@@ -3802,7 +3807,7 @@
         const PENDING_EDITS_STORAGE_KEY = 'gnc_pending_edits';
         const PENDING_EDITS_PERSIST_DEBOUNCE_MS = 400;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Maschino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'V2026.04.13.04';
+        const APP_VERSION = 'V2026.04.14.01';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -4780,17 +4785,18 @@
             if (!match) match = String(url).match(/\/d\/([a-zA-Z0-9_-]+)/);
             return match && match[1] ? match[1] : '';
         }
-        function getDirectImageUrl(url) {
+        function getDirectImageUrl(url, width = 360) {
             if(!url)return"";
+            const thumbWidth = Math.max(120, Math.min(2400, Number(width) || 360));
             const driveId = getDriveImageId(url);
-            if(driveId){ return `https://drive.google.com/thumbnail?id=${driveId}&sz=w100`; }
-            return url;
+            if(driveId){ return `https://drive.google.com/thumbnail?id=${driveId}&sz=w${thumbWidth}`; }
+            return String(url).replace(/([?&])sz=w\d+/i, `$1sz=w${thumbWidth}`).replace(/[?&]$/, '');
         }
         function getExpandedImageUrl(url='') {
             if (!url) return '';
             const driveId = getDriveImageId(url);
             if (driveId) return `https://drive.google.com/uc?export=view&id=${driveId}`;
-            return String(url).replace('&sz=w100', '');
+            return String(url).replace(/([?&])sz=w\d+/i, '$1').replace(/[?&]$/, '');
         }
         function getPhotoUrlList(urlStr='') {
             return String(urlStr || '')
@@ -6806,6 +6812,45 @@ function toggleDriveQuickRequestItem(domId) {
             }
         }
 
+        function getCurrentPhotoModalUrl() {
+            return photoModalState.urls[photoModalState.index] || '';
+        }
+
+        function primePhotoModalAroundIndex(index = photoModalState.index) {
+            const urls = Array.isArray(photoModalState.urls) ? photoModalState.urls : [];
+            const key = `${index}|${urls.length}`;
+            if (!urls.length || photoModalState.primedKey === key) return;
+            photoModalState.primedKey = key;
+            [index - 1, index, index + 1].forEach((targetIndex) => {
+                const url = urls[targetIndex];
+                if (!url) return;
+                const img = new Image();
+                img.decoding = 'async';
+                img.src = url;
+            });
+        }
+
+        function syncPhotoModalLinkActions() {
+            const currentUrl = getCurrentPhotoModalUrl();
+            const openLink = document.getElementById('photo-modal-open-link');
+            const copyBtn = document.getElementById('photo-modal-copy-link');
+            if (openLink) {
+                if (currentUrl) openLink.href = currentUrl;
+                else openLink.removeAttribute('href');
+                openLink.classList.toggle('hidden', !currentUrl);
+            }
+            if (copyBtn) copyBtn.classList.toggle('hidden', !currentUrl);
+        }
+
+        function copyCurrentPhotoModalLink() {
+            const currentUrl = getCurrentPhotoModalUrl();
+            if (!currentUrl) return false;
+            copyTextWithFallback(currentUrl)
+                .then(() => showToast('Copied', 'High-resolution photo link copied.'))
+                .catch(() => showToast('Error', 'Could not copy the photo link.', true));
+            return false;
+        }
+
         function updatePhotoModalCounter() {
             const counter = document.getElementById('photo-modal-counter');
             const prevBtn = document.getElementById('photo-modal-prev');
@@ -6815,6 +6860,8 @@ function toggleDriveQuickRequestItem(domId) {
             const showNav = total > 1 && !window.matchMedia('(pointer: coarse)').matches;
             if (prevBtn) prevBtn.classList.toggle('hidden', !showNav);
             if (nextBtn) nextBtn.classList.toggle('hidden', !showNav);
+            syncPhotoModalLinkActions();
+            primePhotoModalAroundIndex(photoModalState.index);
         }
 
         function syncPhotoModalIndexFromScroll() {
@@ -6955,6 +7002,8 @@ function toggleDriveQuickRequestItem(domId) {
             const gallery = document.getElementById('photo-modal-gallery');
             const modal = document.getElementById('photo-modal');
             const swipeHint = document.getElementById('photo-swipe-hint');
+            const openLink = document.getElementById('photo-modal-open-link');
+            const copyBtn = document.getElementById('photo-modal-copy-link');
             if (photoModalState.scrollTimer) {
                 clearTimeout(photoModalState.scrollTimer);
                 photoModalState.scrollTimer = null;
@@ -6989,11 +7038,17 @@ function toggleDriveQuickRequestItem(domId) {
             photoModalState.touchMoveHandler = null;
             photoModalState.galleryClickHandler = null;
             photoModalState.keyHandler = null;
+            photoModalState.primedKey = '';
             if (swipeHint) swipeHint.classList.add('hidden');
             const captionEl = document.getElementById('photo-modal-caption');
             const counterEl = document.getElementById('photo-modal-counter');
             if (captionEl) captionEl.innerText = '';
             if (counterEl) counterEl.innerText = '';
+            if (openLink) {
+                openLink.classList.add('hidden');
+                openLink.removeAttribute('href');
+            }
+            if (copyBtn) copyBtn.classList.add('hidden');
             if (modal) modal.classList.add('hidden');
         }
         function handleLogin(isBiometricLogin=false) {
@@ -8767,6 +8822,9 @@ function toggleDriveQuickRequestItem(domId) {
             selectedDriveSize = null;
             selectedDriveBlock = null;
             selectedDriveLoc = null;
+            selectedDriveCommonNames = new Set();
+            driveCommonNameSearchTerm = '';
+            driveCommonNameFilterOpen = false;
             selectedDriveGenusNames = new Set();
             driveGenusSearchTerm = '';
             driveGenusFilterOpen = false;
@@ -8789,6 +8847,9 @@ activeDriveTab = tab;
             selectedDriveSize = null;
             selectedDriveBlock = null;
             selectedDriveLoc = null;
+            selectedDriveCommonNames = new Set();
+            driveCommonNameSearchTerm = '';
+            driveCommonNameFilterOpen = false;
             selectedDriveGenusNames = new Set();
             driveGenusSearchTerm = '';
             driveGenusFilterOpen = false;
@@ -8821,7 +8882,7 @@ activeDriveTab = tab;
             document.getElementById('tab-drive-loc').classList.remove('active');
             document.getElementById('tab-drive-card').classList.remove('active');
             driveViewLevel = 0; selectedDriveName = null; selectedDriveSize = null; selectedDriveBlock = null; selectedDriveLoc = null;
-            selectedDriveGenusNames = new Set(); driveGenusSearchTerm = ''; driveGenusFilterOpen = false; selectedDriveContSizes = new Set(); driveContSizeSearchTerm = ''; driveContSizeFilterOpen = false; drivePlantFilterItemsCache = [];
+            selectedDriveCommonNames = new Set(); driveCommonNameSearchTerm = ''; driveCommonNameFilterOpen = false; selectedDriveGenusNames = new Set(); driveGenusSearchTerm = ''; driveGenusFilterOpen = false; selectedDriveContSizes = new Set(); driveContSizeSearchTerm = ''; driveContSizeFilterOpen = false; drivePlantFilterItemsCache = [];
             document.getElementById('drive-search').value = ""; document.getElementById('drive-search-clear').classList.add('hidden');
             driveSelectedSeasons.clear(); driveSelectedSeasons.add('ALL');
             driveQuickHoldStopOnly = false;
@@ -14602,12 +14663,63 @@ ${folderNote ? `Folder Note: ${folderNote}
             return String(firstNonEmptyValue(item && item.CONTSIZE, item && item.ITEMSPEC, item && item.SIZE, '-')).trim() || '-';
         }
 
+        function getDrivePlantCommonName(item) {
+            return String(firstNonEmptyValue(item && item.COMMONNAME, item && item.DESCRIPTION, item && item.PLANT_NAME, item && item.ITEMCODE, '')).trim();
+        }
+
+        function compareDriveCommonName(a = '', b = '') {
+            return String(a || '').localeCompare(String(b || ''));
+        }
+
         function compareDrivePlantContSize(a = '', b = '') {
             return String(a || '').localeCompare(String(b || ''), undefined, { numeric: true });
         }
 
+        function buildDrivePlantMultiSelectChipsHtml(values = [], dataAttr = '', toggleHandler = '', sortFn = null) {
+            const items = Array.isArray(values) ? [...values] : [];
+            if (!items.length) return '';
+            if (typeof sortFn === 'function') items.sort(sortFn);
+            else items.sort((a, b) => String(a || '').localeCompare(String(b || '')));
+            return '<div class="flex flex-wrap gap-1.5 mt-1.5">' + items.map((value) =>
+                `<button type="button" class="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-bold text-emerald-700 shadow-sm" data-${dataAttr}="${esc(value)}" onclick="return ${toggleHandler}(this.dataset.${dataAttr})">${esc(value)}<i class="ph-bold ph-x text-[10px]"></i></button>`).join('') + '</div>';
+        }
+
+        function buildDrivePlantMultiSelectOptionsHtml(options = [], selectedSet = new Set(), dataAttr = '', toggleHandler = '', emptyText = 'No matches') {
+            if (!Array.isArray(options) || !options.length) {
+                return `<div class="px-3 py-4 text-center text-[11px] font-semibold text-gray-400">${esc(emptyText)}</div>`;
+            }
+            return options.map((value) => {
+                const checked = selectedSet.has(value) ? 'checked' : '';
+                return `<label class="flex items-center justify-between gap-3 px-3 py-2.5 hover:bg-emerald-50"><span class="min-w-0 break-words text-[12px] font-bold text-slate-700">${esc(value)}</span><input type="checkbox" class="h-4 w-4 shrink-0 accent-emerald-600" data-${dataAttr}="${esc(value)}" ${checked} onclick="event.stopPropagation(); return ${toggleHandler}(this.dataset.${dataAttr})"></label>`;
+            }).join('');
+        }
+
+        function setDrivePlantFilterTriggerState(container, triggerKey = '', isOpen = false) {
+            const trigger = container ? container.querySelector(`[data-drive-filter-trigger="${triggerKey}"]`) : null;
+            if (!trigger) return;
+            trigger.classList.toggle('bg-emerald-600', isOpen);
+            trigger.classList.toggle('border-emerald-600', isOpen);
+            trigger.classList.toggle('text-white', isOpen);
+            trigger.classList.toggle('shadow-md', isOpen);
+            trigger.classList.toggle('bg-white', !isOpen);
+            trigger.classList.toggle('border-emerald-200', !isOpen);
+            trigger.classList.toggle('text-emerald-700', !isOpen);
+        }
+
         function buildDrivePlantFilterState(items = []) {
             const baseItems = Array.isArray(items) ? items : [];
+
+            const commonNameOptions = [...new Set(baseItems.map((item) => getDrivePlantCommonName(item)).filter(Boolean))]
+                .sort(compareDriveCommonName);
+            const availableCommonNames = new Set(commonNameOptions);
+            if (selectedDriveCommonNames.size) {
+                selectedDriveCommonNames = new Set([...selectedDriveCommonNames].filter((name) => availableCommonNames.has(name)));
+            }
+            const commonNameSearchTerm = String(driveCommonNameSearchTerm || '').trim().toLowerCase();
+            const filteredCommonNameOptions = commonNameSearchTerm
+                ? commonNameOptions.filter((name) => String(name).toLowerCase().includes(commonNameSearchTerm))
+                : commonNameOptions;
+
             const genusOptions = [...new Set(baseItems.map((item) => getTaskGenusName(item)).filter(Boolean))]
                 .sort((a, b) => String(a).localeCompare(String(b)));
             const availableGenus = new Set(genusOptions);
@@ -14631,23 +14743,29 @@ ${folderNote ? `Folder Note: ${folderNote}
                 : sizeOptions;
 
             const filteredItems = baseItems.filter((item) => {
+                const commonName = getDrivePlantCommonName(item);
+                if (selectedDriveCommonNames.size && !selectedDriveCommonNames.has(commonName)) return false;
                 const genusName = getTaskGenusName(item);
                 if (selectedDriveGenusNames.size && !selectedDriveGenusNames.has(genusName)) return false;
                 const contSize = getDrivePlantContSize(item);
                 if (selectedDriveContSizes.size && !selectedDriveContSizes.has(contSize)) return false;
                 return true;
             });
+
             return {
                 baseItems,
                 filteredItems,
+                commonNameOptions,
+                filteredCommonNameOptions,
                 genusOptions,
                 filteredGenusOptions,
                 sizeOptions,
                 filteredSizeOptions,
+                commonNameSelectedCount: selectedDriveCommonNames.size,
                 genusSelectedCount: selectedDriveGenusNames.size,
                 contSizeSelectedCount: selectedDriveContSizes.size,
-                hasActiveFilters: !!(selectedDriveGenusNames.size || selectedDriveContSizes.size),
-                hasTypedSearch: !!(String(driveGenusSearchTerm || '').trim() || String(driveContSizeSearchTerm || '').trim())
+                hasActiveFilters: !!(selectedDriveCommonNames.size || selectedDriveGenusNames.size || selectedDriveContSizes.size),
+                hasTypedSearch: !!(String(driveCommonNameSearchTerm || '').trim() || String(driveGenusSearchTerm || '').trim() || String(driveContSizeSearchTerm || '').trim())
             };
         }
 
@@ -14658,66 +14776,101 @@ ${folderNote ? `Folder Note: ${folderNote}
             container.innerHTML = '';
             if (container.dataset) delete container.dataset.drivePlantFiltersReady;
         }
-
         function updateDrivePlantFilterUi(state, container) {
             if (!container) return;
+            const hasCommonNameOptions = !!(state && state.commonNameOptions && state.commonNameOptions.length);
             const hasGenusOptions = !!(state && state.genusOptions && state.genusOptions.length);
             const hasContSizeOptions = !!(state && state.sizeOptions && state.sizeOptions.length);
+
+            const commonNameSummaryLabel = hasCommonNameOptions
+                ? (state.commonNameSelectedCount ? `${state.commonNameSelectedCount} selected` : 'All names')
+                : 'No names';
             const genusSummaryLabel = hasGenusOptions
-                ? (state.genusSelectedCount ? `${state.genusSelectedCount} selected` : 'All Genus')
-                : 'No GENUSNAME data';
+                ? (state.genusSelectedCount ? `${state.genusSelectedCount} selected` : 'All genus')
+                : 'No genus';
             const contSizeSummaryLabel = hasContSizeOptions
-                ? (state.contSizeSelectedCount ? `${state.contSizeSelectedCount} selected` : 'All Cont Size')
-                : 'No CONTSIZE data';
+                ? (state.contSizeSelectedCount ? `${state.contSizeSelectedCount} selected` : 'All sizes')
+                : 'No sizes';
+
+            const commonNameChipsHtml = state.commonNameSelectedCount
+                ? buildDrivePlantMultiSelectChipsHtml([...selectedDriveCommonNames], 'commonname', 'toggleDriveCommonNameSelection', compareDriveCommonName)
+                : '';
             const genusChipsHtml = state.genusSelectedCount
-                ? '<div class="flex flex-wrap gap-2 mt-2">' + [...selectedDriveGenusNames].map((name) =>
-                    `<button type="button" class="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700" data-genus="${esc(name)}" onclick="return toggleDriveGenusSelection(this.dataset.genus)">${esc(name)}<i class="ph-bold ph-x text-[11px]"></i></button>`).join('') + '</div>'
+                ? buildDrivePlantMultiSelectChipsHtml([...selectedDriveGenusNames], 'genus', 'toggleDriveGenusSelection', compareDriveCommonName)
                 : '';
             const contSizeChipsHtml = state.contSizeSelectedCount
-                ? '<div class="flex flex-wrap gap-2 mt-2">' + [...selectedDriveContSizes].sort(compareDrivePlantContSize).map((size) =>
-                    `<button type="button" class="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700" data-contsize="${esc(size)}" onclick="return toggleDriveContSizeSelection(this.dataset.contsize)">${esc(size)}<i class="ph-bold ph-x text-[11px]"></i></button>`).join('') + '</div>'
+                ? buildDrivePlantMultiSelectChipsHtml([...selectedDriveContSizes], 'contsize', 'toggleDriveContSizeSelection', compareDrivePlantContSize)
                 : '';
+
+            const commonNameOptionHtml = hasCommonNameOptions
+                ? buildDrivePlantMultiSelectOptionsHtml(state.filteredCommonNameOptions, selectedDriveCommonNames, 'commonname', 'toggleDriveCommonNameSelection', 'No matching common names.')
+                : '<div class="px-3 py-4 text-center text-[11px] font-semibold text-gray-400">No COMMONNAME data available.</div>';
             const genusOptionHtml = hasGenusOptions
-                ? (state.filteredGenusOptions.length
-                    ? state.filteredGenusOptions.map((name) => {
-                        const checked = selectedDriveGenusNames.has(name) ? 'checked' : '';
-                        return `<label class="flex items-center justify-between gap-3 px-3 py-2 hover:bg-emerald-50"><span class="text-[12px] font-bold text-slate-700">${esc(name)}</span><input type="checkbox" class="h-4 w-4 accent-emerald-600" data-genus="${esc(name)}" ${checked} onclick="event.stopPropagation(); return toggleDriveGenusSelection(this.dataset.genus)"></label>`;
-                    }).join('')
-                    : '<div class="px-3 py-4 text-center text-[11px] font-semibold text-gray-400">No matches</div>')
+                ? buildDrivePlantMultiSelectOptionsHtml(state.filteredGenusOptions, selectedDriveGenusNames, 'genus', 'toggleDriveGenusSelection', 'No matching genus names.')
                 : '<div class="px-3 py-4 text-center text-[11px] font-semibold text-gray-400">No GENUSNAME data available.</div>';
             const contSizeOptionHtml = hasContSizeOptions
-                ? (state.filteredSizeOptions.length
-                    ? state.filteredSizeOptions.map((size) => {
-                        const checked = selectedDriveContSizes.has(size) ? 'checked' : '';
-                        return `<label class="flex items-center justify-between gap-3 px-3 py-2 hover:bg-emerald-50"><span class="text-[12px] font-bold text-slate-700">${esc(size)}</span><input type="checkbox" class="h-4 w-4 accent-emerald-600" data-contsize="${esc(size)}" ${checked} onclick="event.stopPropagation(); return toggleDriveContSizeSelection(this.dataset.contsize)"></label>`;
-                    }).join('')
-                    : '<div class="px-3 py-4 text-center text-[11px] font-semibold text-gray-400">No matches</div>')
+                ? buildDrivePlantMultiSelectOptionsHtml(state.filteredSizeOptions, selectedDriveContSizes, 'contsize', 'toggleDriveContSizeSelection', 'No matching container sizes.')
                 : '<div class="px-3 py-4 text-center text-[11px] font-semibold text-gray-400">No CONTSIZE data available.</div>';
+
             const rowLabel = `${state.filteredItems.length} matching row${state.filteredItems.length === 1 ? '' : 's'}`;
-            const genusSummaryEl = container.querySelector('[data-drive-genus-summary]');
-            if (genusSummaryEl) genusSummaryEl.textContent = genusSummaryLabel;
-            const contSizeSummaryEl = container.querySelector('[data-drive-contsize-summary]');
-            if (contSizeSummaryEl) contSizeSummaryEl.textContent = contSizeSummaryLabel;
             const rowCountEl = container.querySelector('[data-drive-filter-rowcount]');
             if (rowCountEl) rowCountEl.textContent = rowLabel;
+
+            const commonSummaryEl = container.querySelector('[data-drive-common-summary]');
+            if (commonSummaryEl) {
+                commonSummaryEl.textContent = commonNameSummaryLabel;
+                commonSummaryEl.classList.toggle('text-emerald-100', driveCommonNameFilterOpen);
+                commonSummaryEl.classList.toggle('text-slate-500', !driveCommonNameFilterOpen);
+            }
+            const genusSummaryEl = container.querySelector('[data-drive-genus-summary]');
+            if (genusSummaryEl) {
+                genusSummaryEl.textContent = genusSummaryLabel;
+                genusSummaryEl.classList.toggle('text-emerald-100', driveGenusFilterOpen);
+                genusSummaryEl.classList.toggle('text-slate-500', !driveGenusFilterOpen);
+            }
+            const contSizeSummaryEl = container.querySelector('[data-drive-contsize-summary]');
+            if (contSizeSummaryEl) {
+                contSizeSummaryEl.textContent = contSizeSummaryLabel;
+                contSizeSummaryEl.classList.toggle('text-emerald-100', driveContSizeFilterOpen);
+                contSizeSummaryEl.classList.toggle('text-slate-500', !driveContSizeFilterOpen);
+            }
+
+            const commonChipsEl = container.querySelector('[data-drive-common-chips]');
+            if (commonChipsEl) commonChipsEl.innerHTML = commonNameChipsHtml;
             const genusChipsEl = container.querySelector('[data-drive-genus-chips]');
             if (genusChipsEl) genusChipsEl.innerHTML = genusChipsHtml;
             const contSizeChipsEl = container.querySelector('[data-drive-contsize-chips]');
             if (contSizeChipsEl) contSizeChipsEl.innerHTML = contSizeChipsHtml;
+
+            const commonOptionsEl = container.querySelector('[data-drive-common-options]');
+            if (commonOptionsEl) commonOptionsEl.innerHTML = commonNameOptionHtml;
             const genusOptionsEl = container.querySelector('[data-drive-genus-options]');
             if (genusOptionsEl) genusOptionsEl.innerHTML = genusOptionHtml;
             const contSizeOptionsEl = container.querySelector('[data-drive-contsize-options]');
             if (contSizeOptionsEl) contSizeOptionsEl.innerHTML = contSizeOptionHtml;
+
+            const commonPanelEl = container.querySelector('[data-drive-common-panel]');
+            if (commonPanelEl) commonPanelEl.classList.toggle('hidden', !driveCommonNameFilterOpen);
             const genusPanelEl = container.querySelector('[data-drive-genus-panel]');
             if (genusPanelEl) genusPanelEl.classList.toggle('hidden', !driveGenusFilterOpen);
             const contSizePanelEl = container.querySelector('[data-drive-contsize-panel]');
             if (contSizePanelEl) contSizePanelEl.classList.toggle('hidden', !driveContSizeFilterOpen);
+
+            setDrivePlantFilterTriggerState(container, 'common', driveCommonNameFilterOpen);
+            setDrivePlantFilterTriggerState(container, 'genus', driveGenusFilterOpen);
+            setDrivePlantFilterTriggerState(container, 'contsize', driveContSizeFilterOpen);
+
             const clearBtn = container.querySelector('[data-drive-filters-clear]');
             const clearDisabled = !state.hasActiveFilters && !state.hasTypedSearch;
             if (clearBtn) {
                 clearBtn.classList.toggle('opacity-50', clearDisabled);
                 clearBtn.classList.toggle('cursor-not-allowed', clearDisabled);
                 clearBtn.classList.toggle('pointer-events-none', clearDisabled);
+            }
+
+            const commonInput = container.querySelector('#drive-common-search');
+            if (commonInput && document.activeElement !== commonInput && commonInput.value !== driveCommonNameSearchTerm) {
+                commonInput.value = driveCommonNameSearchTerm;
             }
             const genusInput = container.querySelector('#drive-genus-search');
             if (genusInput && document.activeElement !== genusInput && genusInput.value !== driveGenusSearchTerm) {
@@ -14730,10 +14883,35 @@ ${folderNote ? `Folder Note: ${folderNote}
             container.classList.remove('hidden');
         }
 
+        function toggleDriveCommonNameDropdown() {
+            const nextState = !driveCommonNameFilterOpen;
+            driveCommonNameFilterOpen = nextState;
+            if (nextState) {
+                driveGenusFilterOpen = false;
+                driveContSizeFilterOpen = false;
+            }
+            renderDrivePlantFilters(drivePlantFilterItemsCache);
+            return false;
+        }
+
+        function closeDriveCommonNameDropdown() {
+            if (!driveCommonNameFilterOpen) return false;
+            driveCommonNameFilterOpen = false;
+            const container = document.getElementById('drive-plant-filters');
+            if (container) {
+                const state = buildDrivePlantFilterState(drivePlantFilterItemsCache);
+                updateDrivePlantFilterUi(state, container);
+            }
+            return false;
+        }
+
         function toggleDriveGenusDropdown() {
             const nextState = !driveGenusFilterOpen;
             driveGenusFilterOpen = nextState;
-            if (nextState) driveContSizeFilterOpen = false;
+            if (nextState) {
+                driveCommonNameFilterOpen = false;
+                driveContSizeFilterOpen = false;
+            }
             renderDrivePlantFilters(drivePlantFilterItemsCache);
             return false;
         }
@@ -14752,7 +14930,10 @@ ${folderNote ? `Folder Note: ${folderNote}
         function toggleDriveContSizeDropdown() {
             const nextState = !driveContSizeFilterOpen;
             driveContSizeFilterOpen = nextState;
-            if (nextState) driveGenusFilterOpen = false;
+            if (nextState) {
+                driveCommonNameFilterOpen = false;
+                driveGenusFilterOpen = false;
+            }
             renderDrivePlantFilters(drivePlantFilterItemsCache);
             return false;
         }
@@ -14765,6 +14946,29 @@ ${folderNote ? `Folder Note: ${folderNote}
                 const state = buildDrivePlantFilterState(drivePlantFilterItemsCache);
                 updateDrivePlantFilterUi(state, container);
             }
+            return false;
+        }
+        function setDriveCommonNameSearchTerm(value = '') {
+            driveCommonNameSearchTerm = String(value || '');
+            const container = document.getElementById('drive-plant-filters');
+            if (container) {
+                const input = container.querySelector('#drive-common-search');
+                const cursorPos = input && typeof input.selectionStart === 'number' ? input.selectionStart : null;
+                const state = buildDrivePlantFilterState(drivePlantFilterItemsCache);
+                updateDrivePlantFilterUi(state, container);
+                if (input) {
+                    requestAnimationFrame(() => {
+                        const current = container.querySelector('#drive-common-search');
+                        if (!current) return;
+                        if (document.activeElement !== current) current.focus();
+                        if (cursorPos !== null && typeof current.setSelectionRange === 'function') {
+                            current.setSelectionRange(cursorPos, cursorPos);
+                        }
+                    });
+                }
+                return false;
+            }
+            renderDrivePlantFilters(drivePlantFilterItemsCache);
             return false;
         }
 
@@ -14816,6 +15020,22 @@ ${folderNote ? `Folder Note: ${folderNote}
             return false;
         }
 
+        function toggleDriveCommonNameSelection(commonName = '') {
+            const value = String(commonName || '').trim();
+            if (!value) return false;
+            if (selectedDriveCommonNames.has(value)) selectedDriveCommonNames.delete(value);
+            else selectedDriveCommonNames.add(value);
+            driveViewLevel = 0;
+            selectedDriveName = null;
+            selectedDriveSize = null;
+            driveCommonNameFilterOpen = true;
+            driveGenusFilterOpen = false;
+            driveContSizeFilterOpen = false;
+            scheduleUiRender('drive-common-filter-select', () => renderDrive());
+            queueScrollMainAreaToTop('drive-plant-filters');
+            return false;
+        }
+
         function toggleDriveGenusSelection(genus = '') {
             const value = String(genus || '').trim();
             if (!value) return false;
@@ -14824,6 +15044,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             driveViewLevel = 0;
             selectedDriveName = null;
             selectedDriveSize = null;
+            driveCommonNameFilterOpen = false;
             driveGenusFilterOpen = true;
             driveContSizeFilterOpen = false;
             scheduleUiRender('drive-genus-filter-select', () => renderDrive());
@@ -14839,15 +15060,19 @@ ${folderNote ? `Folder Note: ${folderNote}
             driveViewLevel = 0;
             selectedDriveName = null;
             selectedDriveSize = null;
-            driveContSizeFilterOpen = true;
+            driveCommonNameFilterOpen = false;
             driveGenusFilterOpen = false;
+            driveContSizeFilterOpen = true;
             scheduleUiRender('drive-contsize-filter-select', () => renderDrive());
             queueScrollMainAreaToTop('drive-plant-filters');
             return false;
         }
 
         function clearDrivePlantFilters() {
-            if (!selectedDriveGenusNames.size && !selectedDriveContSizes.size && !String(driveGenusSearchTerm || '').trim() && !String(driveContSizeSearchTerm || '').trim()) return false;
+            if (!selectedDriveCommonNames.size && !selectedDriveGenusNames.size && !selectedDriveContSizes.size && !String(driveCommonNameSearchTerm || '').trim() && !String(driveGenusSearchTerm || '').trim() && !String(driveContSizeSearchTerm || '').trim()) return false;
+            selectedDriveCommonNames = new Set();
+            driveCommonNameSearchTerm = '';
+            driveCommonNameFilterOpen = false;
             selectedDriveGenusNames = new Set();
             driveGenusSearchTerm = '';
             driveGenusFilterOpen = false;
@@ -14879,11 +15104,12 @@ ${folderNote ? `Folder Note: ${folderNote}
             }
             if (!container.dataset.drivePlantFiltersReady) {
                 container.dataset.drivePlantFiltersReady = '1';
-                container.innerHTML = `<div class="rounded-[1.25rem] border border-emerald-100 bg-white px-3 py-3 shadow-sm"><div class="flex flex-wrap items-center gap-2"><div class="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm"><i class="ph-bold ph-funnel text-sm"></i>Plant Filters</div><span class="text-[10px] font-black uppercase tracking-[0.14em] text-gray-400 sm:ml-auto" data-drive-filter-rowcount></span><button type="button" class="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm" data-drive-filters-clear onclick="return clearDrivePlantFilters()">Clear</button></div><div class="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-2"><div class="rounded-xl border border-emerald-100 bg-emerald-50/30 p-3"><div class="flex flex-wrap items-center gap-2"><button type="button" class="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm" onclick="return toggleDriveGenusDropdown()"><i class="ph-bold ph-funnel text-sm"></i>Genus Filter</button><span class="text-[10px] font-black uppercase tracking-[0.14em] text-gray-500" data-drive-genus-summary>All Genus</span></div><div data-drive-genus-chips></div><div class="mt-3 rounded-xl border border-emerald-100 bg-white/80 hidden" data-drive-genus-panel><div class="p-2 border-b border-emerald-100"><input id="drive-genus-search" type="text" class="input-field !mb-0 border-emerald-200 bg-white" placeholder="Search genus..." value="${esc(driveGenusSearchTerm)}" oninput="setDriveGenusSearchTerm(this.value)" onkeydown="dismissSearchKeyboard(event)"></div><div class="max-h-60 overflow-y-auto" data-drive-genus-options></div><div class="p-2 border-t border-emerald-100 bg-white/80"><button type="button" class="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeDriveGenusDropdown()">Done</button></div></div></div><div class="rounded-xl border border-emerald-100 bg-emerald-50/30 p-3"><div class="flex flex-wrap items-center gap-2"><button type="button" class="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm" onclick="return toggleDriveContSizeDropdown()"><i class="ph-bold ph-funnel text-sm"></i>Cont Size Filter</button><span class="text-[10px] font-black uppercase tracking-[0.14em] text-gray-500" data-drive-contsize-summary>All Cont Size</span></div><div data-drive-contsize-chips></div><div class="mt-3 rounded-xl border border-emerald-100 bg-white/80 hidden" data-drive-contsize-panel><div class="p-2 border-b border-emerald-100"><input id="drive-contsize-search" type="text" class="input-field !mb-0 border-emerald-200 bg-white" placeholder="Search cont size..." value="${esc(driveContSizeSearchTerm)}" oninput="setDriveContSizeSearchTerm(this.value)" onkeydown="dismissSearchKeyboard(event)"></div><div class="max-h-60 overflow-y-auto" data-drive-contsize-options></div><div class="p-2 border-t border-emerald-100 bg-white/80"><button type="button" class="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeDriveContSizeDropdown()">Done</button></div></div></div></div></div>`;
+                container.innerHTML = `<div class="rounded-[1.05rem] border border-emerald-100 bg-white/95 px-3 py-2.5 shadow-sm backdrop-blur-sm"><div class="flex flex-wrap items-center gap-2"><div class="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-[9px] font-black uppercase tracking-[0.14em] text-emerald-700 shadow-sm"><i class="ph-bold ph-funnel text-[12px]"></i>Plant Filters</div><span class="text-[9px] font-black uppercase tracking-[0.16em] text-slate-400 sm:ml-auto" data-drive-filter-rowcount></span><button type="button" class="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-white px-2.5 py-1.5 text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm" data-drive-filters-clear onclick="return clearDrivePlantFilters()">Clear</button></div><div class="mt-2 flex flex-wrap gap-2"><button type="button" class="inline-flex min-w-[10.5rem] flex-1 items-center gap-2 rounded-full border border-emerald-200 bg-white px-3 py-2 text-left text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm" data-drive-filter-trigger="common" onclick="return toggleDriveCommonNameDropdown()"><i class="ph-bold ph-text-aa text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="truncate">Common Name</span><span class="mt-1 text-[9px] font-bold normal-case tracking-normal text-slate-500" data-drive-common-summary>All names</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><button type="button" class="inline-flex min-w-[10.5rem] flex-1 items-center gap-2 rounded-full border border-emerald-200 bg-white px-3 py-2 text-left text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm" data-drive-filter-trigger="genus" onclick="return toggleDriveGenusDropdown()"><i class="ph-bold ph-leaf text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="truncate">Genus</span><span class="mt-1 text-[9px] font-bold normal-case tracking-normal text-slate-500" data-drive-genus-summary>All genus</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><button type="button" class="inline-flex min-w-[10.5rem] flex-1 items-center gap-2 rounded-full border border-emerald-200 bg-white px-3 py-2 text-left text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm" data-drive-filter-trigger="contsize" onclick="return toggleDriveContSizeDropdown()"><i class="ph-bold ph-ruler text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="truncate">Cont Size</span><span class="mt-1 text-[9px] font-bold normal-case tracking-normal text-slate-500" data-drive-contsize-summary>All sizes</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button></div><div class="mt-2 space-y-1"><div data-drive-common-chips></div><div data-drive-genus-chips></div><div data-drive-contsize-chips></div></div><div class="mt-2 space-y-2"><div class="hidden overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm" data-drive-common-panel><div class="border-b border-emerald-100 p-2"><input id="drive-common-search" type="text" class="input-field !mb-0 border-emerald-200 bg-white !py-2.5" placeholder="Search common names..." value="${esc(driveCommonNameSearchTerm)}" oninput="setDriveCommonNameSearchTerm(this.value)" onkeydown="dismissSearchKeyboard(event)"></div><div class="max-h-56 overflow-y-auto" data-drive-common-options></div><div class="border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeDriveCommonNameDropdown()">Done</button></div></div><div class="hidden overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm" data-drive-genus-panel><div class="border-b border-emerald-100 p-2"><input id="drive-genus-search" type="text" class="input-field !mb-0 border-emerald-200 bg-white !py-2.5" placeholder="Search genus..." value="${esc(driveGenusSearchTerm)}" oninput="setDriveGenusSearchTerm(this.value)" onkeydown="dismissSearchKeyboard(event)"></div><div class="max-h-56 overflow-y-auto" data-drive-genus-options></div><div class="border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeDriveGenusDropdown()">Done</button></div></div><div class="hidden overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm" data-drive-contsize-panel><div class="border-b border-emerald-100 p-2"><input id="drive-contsize-search" type="text" class="input-field !mb-0 border-emerald-200 bg-white !py-2.5" placeholder="Search cont size..." value="${esc(driveContSizeSearchTerm)}" oninput="setDriveContSizeSearchTerm(this.value)" onkeydown="dismissSearchKeyboard(event)"></div><div class="max-h-56 overflow-y-auto" data-drive-contsize-options></div><div class="border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeDriveContSizeDropdown()">Done</button></div></div></div></div>`;
             }
             updateDrivePlantFilterUi(state, container);
             return state;
         }
+
         function handleDriveSearch() {
             const term = document.getElementById('drive-search').value.toLowerCase();
             const clearBtn = document.getElementById('drive-search-clear');
@@ -14920,6 +15146,73 @@ ${folderNote ? `Folder Note: ${folderNote}
                 return String(a.LOCATIONCODE || '').localeCompare(String(b.LOCATIONCODE || ''), undefined, { numeric: true });
             });
         }
+        function buildDriveItemRenderSignature(item) {
+            if (!item) return '';
+            const clean = (value = '') => String(value == null ? '' : value).trim();
+            const holdCode = firstNonEmptyValue(item.HOLD, item.HOLDCODE, item.HOLD_CODE, '');
+            const photoLink = firstNonEmptyValue(item.ROW_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.REQ_PHOTO_LINK, item.DOCK_PHOTO_LINK, item.FLYER_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK'], '');
+            return [
+                clean(item.UNIQUE_ID),
+                clean(item.DOM_ID),
+                clean(item.COMMONNAME),
+                clean(item.CONTSIZE),
+                clean(item.ITEMCODE),
+                clean(item.LOCATIONCODE),
+                clean(item.LOTCODE),
+                clean(item.PTRAVAILABLE),
+                clean(item.PRIORITY),
+                clean(item.S_LTS),
+                clean(item.SEASON),
+                clean(item.MATCH),
+                clean(item.SPEC),
+                clean(item.CALIPER),
+                clean(item.LOC_MATCH_QTY),
+                clean(item.AV_NOTE),
+                clean(holdCode),
+                clean(photoLink),
+                selectedItems.has(item.DOM_ID) ? '1' : '0'
+            ].join('|');
+        }
+
+        function buildDriveRenderEntrySignature(entry) {
+            if (entry == null) return '';
+            if (typeof entry === 'string' || typeof entry === 'number' || typeof entry === 'boolean') return String(entry);
+            if (entry && entry.__driveRenderKeyValue != null) return String(entry.__driveRenderKeyValue);
+            return buildDriveItemRenderSignature(entry);
+        }
+
+        function buildDriveRenderKey(mode = '', crumbText = '', entries = []) {
+            return [
+                String(mode || '').trim(),
+                String(crumbText || '').trim(),
+                (Array.isArray(entries) ? entries : []).map((entry) => buildDriveRenderEntrySignature(entry)).join('||')
+            ].join('::');
+        }
+
+        function syncDriveCrumb(crumb, crumbText = '') {
+            if (!crumb) return;
+            const nextText = String(crumbText || '');
+            if (crumb.innerText !== nextText) crumb.innerText = nextText;
+        }
+
+        function applyDriveRenderMarkup(container, crumb, crumbText, html, renderKey = '') {
+            if (!container) return false;
+            syncDriveCrumb(crumb, crumbText);
+            const nextKey = String(renderKey || (String(crumbText || '') + '::' + String(html || '')));
+            if (container.dataset && container.dataset.driveRenderKey === nextKey) return false;
+            setContainerHtml(container, html);
+            if (container.dataset) container.dataset.driveRenderKey = nextKey;
+            return true;
+        }
+
+        function syncDriveFilterStrip(container, html = '') {
+            if (!container) return;
+            const nextKey = String(html || '');
+            if (container.dataset && container.dataset.driveFilterKey === nextKey) return;
+            setContainerHtml(container, html);
+            if (container.dataset) container.dataset.driveFilterKey = nextKey;
+        }
+
         function renderDriveQuickCardResultsOnly() {
             const driveView = document.getElementById('view-drive');
             if (!driveView || driveView.classList.contains('hidden')) return false;
@@ -14930,22 +15223,25 @@ ${folderNote ? `Folder Note: ${folderNote}
             const driveModeLabel = DRIVE_MODE_LABELS[activeDriveMode] || 'Drive Mode';
             const finalItems = sortDriveCardItems(canUseDriveQuickRequest() ? getDriveFilteredItems(true) : getDriveFilteredItems(false));
             const crumbText = `${driveModeLabel} > Card View (${finalItems.length} items)`;
+            const renderKey = buildDriveRenderKey(`drive:quick-card:${canUseDriveQuickRequest() ? 'quick' : 'base'}`, crumbText, finalItems);
             if (finalItems.length === 0) {
                 const emptyMessage = canUseDriveQuickRequest()
                     ? 'No rows match the current Card View filters.'
                     : 'No items found matching the current search.';
-                container.innerHTML = `<div class="p-8 text-center text-gray-400">${emptyMessage}</div>`;
-                crumb.innerText = crumbText;
+                applyDriveRenderMarkup(container, crumb, crumbText, `<div class="p-8 text-center text-gray-400">${emptyMessage}</div>`, 'drive:quick-card:empty');
                 return true;
             }
             if (shouldUseChunkedCardRender(finalItems.length, 90, 170)) {
+                syncDriveCrumb(crumb, crumbText);
+                if (container.dataset && container.dataset.driveRenderKey === renderKey) return true;
+                if (container.dataset) container.dataset.driveRenderKey = renderKey;
                 renderMarkupChunkedByKey('drive-quick-card', container, crumb, finalItems, crumbText, (item) => generateCard(item, 'drive', 'status-blue'), {
                     approxCardHeight: 310
                 });
                 return true;
             }
-            crumb.innerText = crumbText;
-            container.innerHTML = finalItems.map(i => generateCard(i, 'drive', 'status-blue')).join('');
+            const html = finalItems.map((item) => generateCard(item, 'drive', 'status-blue')).join('');
+            applyDriveRenderMarkup(container, crumb, crumbText, html, renderKey);
             return true;
         }
         function renderDrive() {
@@ -14954,7 +15250,6 @@ ${folderNote ? `Folder Note: ${folderNote}
             const container = document.getElementById('drive-content');
             const filtersDiv = document.getElementById('drive-season-filters');
             const crumb = document.getElementById('drive-crumb');
-            const drivePlantFilters = document.getElementById('drive-plant-filters');
             const driveModeLabel = DRIVE_MODE_LABELS[activeDriveMode] || 'Drive Mode';
             const drillTabs = document.getElementById('drive-drill-tabs');
             const quickCardMode = activeDriveMode === 'ok' && activeDriveTab === 'card';
@@ -14963,14 +15258,10 @@ ${folderNote ? `Folder Note: ${folderNote}
             renderDriveQuickRequestBar();
 
             if (activeDriveMode !== 'ok') {
-                filtersDiv.innerHTML = '';
-                if (drivePlantFilters) {
-                    drivePlantFilters.classList.add('hidden');
-                    drivePlantFilters.innerHTML = '';
-                }
+                syncDriveFilterStrip(filtersDiv, '');
+                hideDrivePlantFilters();
                 if (drillTabs) drillTabs.classList.remove('hidden');
-                crumb.innerText = driveModeLabel;
-                container.innerHTML = `<div class="p-8 text-center text-gray-400">No ${driveModeLabel} rows have been added yet.</div>`;
+                applyDriveRenderMarkup(container, crumb, driveModeLabel, `<div class="p-8 text-center text-gray-400">No ${driveModeLabel} rows have been added yet.</div>`, `drive:mode-empty:${activeDriveMode}`);
                 return;
             }
 
@@ -14979,134 +15270,164 @@ ${folderNote ? `Folder Note: ${folderNote}
                 { key: 'name', label: 'By Name' },
                 { key: 'loc', label: 'By Location' },
                 { key: 'card', label: 'Card View' }
-            ].map(tab => `<button type="button" class="${driveTabButtonClass(activeDriveTab === tab.key)}" onclick="setDriveTab('${tab.key}')">${tab.label}</button>`).join('');
-            const seasonFiltersHtml = availableSeasons.map(s => {
+            ].map((tab) => `<button type="button" class="${driveTabButtonClass(activeDriveTab === tab.key)}" onclick="setDriveTab('${tab.key}')">${tab.label}</button>`).join('');
+            const seasonFiltersHtml = availableSeasons.map((s) => {
                 const active = driveSelectedSeasons.has(s);
                 return `<button type="button" class="px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap cursor-pointer transition-colors ${active ? 'bg-[#007a4d] text-white shadow-md' : 'bg-white border border-gray-300 text-gray-600'}" onclick="toggleDriveSeason('${s}')">${s}</button>`;
             }).join('');
             const holdStopToggleHtml = `<button type="button" class="px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap cursor-pointer transition-colors ${driveQuickHoldStopOnly ? 'bg-amber-400 text-amber-950 shadow-md border border-amber-500' : 'bg-white border border-amber-300 text-amber-700'}" onclick="toggleDriveHoldStopOnly()">H/S HOLD</button>`;
-            filtersDiv.innerHTML = driveTabsHtml + seasonFiltersHtml + holdStopToggleHtml;
+            syncDriveFilterStrip(filtersDiv, driveTabsHtml + seasonFiltersHtml + holdStopToggleHtml);
 
             const baseSearchFilteredItems = getDriveFilteredItems(false);
             const drivePlantFilterState = renderDrivePlantFilters(baseSearchFilteredItems);
             const searchFilteredItems = activeDriveTab === 'name' ? drivePlantFilterState.filteredItems : baseSearchFilteredItems;
+
             if (quickCardMode) {
                 const finalItems = sortDriveCardItems(canUseDriveQuickRequest() ? getDriveFilteredItems(true) : searchFilteredItems);
                 const crumbText = `${driveModeLabel} > Card View (${finalItems.length} items)`;
+                const renderKey = buildDriveRenderKey(`drive:card:${canUseDriveQuickRequest() ? 'quick' : 'base'}`, crumbText, finalItems);
                 if (finalItems.length === 0) {
                     const emptyMessage = canUseDriveQuickRequest()
                         ? 'No rows match the current Card View filters.'
                         : 'No items found matching the current search.';
-                    container.innerHTML = `<div class="p-8 text-center text-gray-400">${emptyMessage}</div>`;
-                    crumb.innerText = crumbText;
+                    applyDriveRenderMarkup(container, crumb, crumbText, `<div class="p-8 text-center text-gray-400">${emptyMessage}</div>`, 'drive:card:empty');
                     return;
                 }
                 if (shouldUseChunkedCardRender(finalItems.length, 90, 170)) {
+                    syncDriveCrumb(crumb, crumbText);
+                    if (container.dataset && container.dataset.driveRenderKey === renderKey) return;
+                    if (container.dataset) container.dataset.driveRenderKey = renderKey;
                     renderMarkupChunkedByKey('drive-main-card', container, crumb, finalItems, crumbText, (item) => generateCard(item, 'drive', 'status-blue'), {
                         approxCardHeight: 310
                     });
                     return;
                 }
-                crumb.innerText = crumbText;
-                container.innerHTML = finalItems.map(i => generateCard(i, 'drive', 'status-blue')).join('');
+                const html = finalItems.map((item) => generateCard(item, 'drive', 'status-blue')).join('');
+                applyDriveRenderMarkup(container, crumb, crumbText, html, renderKey);
                 return;
             }
 
             if (searchFilteredItems.length === 0) {
-                container.innerHTML = `<div class="p-8 text-center text-gray-400">No items found matching the current search.</div>`;
-                crumb.innerText = `${driveModeLabel} > No Results`;
+                applyDriveRenderMarkup(container, crumb, `${driveModeLabel} > No Results`, `<div class="p-8 text-center text-gray-400">No items found matching the current search.</div>`, `drive:${activeDriveTab}:empty`);
                 return;
             }
-
             if (activeDriveTab === 'name') {
                 if (driveViewLevel === 0) {
                     const crumbText = `${driveModeLabel} > Select Plant (${searchFilteredItems.length} items)`;
-                    const names = [...new Set(searchFilteredItems.map(i => i.COMMONNAME))].sort();
+                    const names = [...new Set(searchFilteredItems.map((item) => getDrivePlantCommonName(item)).filter(Boolean))].sort(compareDriveCommonName);
                     const renderNameRow = (name) => `<div class="drill-item" onclick="selectDriveName('${esc(name)}')"><span class="font-bold text-lg">${name}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
+                    const renderKey = buildDriveRenderKey('drive:name:list', crumbText, names);
                     if (shouldUseChunkedCardRender(names.length, 120, 220)) {
+                        syncDriveCrumb(crumb, crumbText);
+                        if (container.dataset && container.dataset.driveRenderKey === renderKey) return;
+                        if (container.dataset) container.dataset.driveRenderKey = renderKey;
                         renderMarkupChunkedByKey('drive-name-list', container, crumb, names, crumbText, renderNameRow, { approxCardHeight: 70, reserveSpace: true });
                         return;
                     }
-                    crumb.innerText = crumbText;
-                    container.innerHTML = names.map(renderNameRow).join('');
+                    const html = names.map(renderNameRow).join('');
+                    applyDriveRenderMarkup(container, crumb, crumbText, html, renderKey);
                 } else if (driveViewLevel === 1) {
                     const crumbText = `${driveModeLabel} > ${selectedDriveName}`;
-                    const namedItems = searchFilteredItems.filter(i => i.COMMONNAME === selectedDriveName);
-                    if (namedItems.length === 0) { container.innerHTML = `<div class="p-8 text-center text-gray-400">No items found.</div>`; return; }
+                    const namedItems = searchFilteredItems.filter((item) => getDrivePlantCommonName(item) === selectedDriveName);
+                    const prefixHtml = `<div class="back-btn" onclick="backToDriveNames()"><i class="ph-bold ph-arrow-left"></i> Back to Names</div><div class="font-bold text-[#007a4d] mb-4 px-2 text-xl border-b pb-2">${selectedDriveName}</div>`;
+                    if (!namedItems.length) {
+                        applyDriveRenderMarkup(container, crumb, crumbText, `${prefixHtml}<div class="p-8 text-center text-gray-400">No items found.</div>`, `drive:name:sizes:${selectedDriveName}:empty`);
+                        return;
+                    }
                     const sizeCounts = new Map();
                     namedItems.forEach((item) => {
                         const key = String(item.CONTSIZE || '-');
                         sizeCounts.set(key, (sizeCounts.get(key) || 0) + 1);
                     });
-                    const sizes = [...sizeCounts.keys()].sort();
-                    const prefixHtml = `<div class="back-btn" onclick="backToDriveNames()"><i class="ph-bold ph-arrow-left"></i> Back to Names</div><div class="font-bold text-[#007a4d] mb-4 px-2 text-xl border-b pb-2">${selectedDriveName}</div>`;
+                    const sizes = [...sizeCounts.keys()].sort(compareDrivePlantContSize);
                     const renderSizeRow = (size) => `<div class="drill-item" onclick="selectDriveSize('${esc(size)}')"><span class="font-bold text-lg">${size} <span class="text-gray-400 text-sm font-normal">(${sizeCounts.get(size) || 0})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
+                    const sizeEntries = sizes.map((size) => ({ __driveRenderKeyValue: `${size}:${sizeCounts.get(size) || 0}` }));
+                    const renderKey = buildDriveRenderKey(`drive:name:sizes:${selectedDriveName}`, crumbText, sizeEntries);
                     if (shouldUseChunkedCardRender(sizes.length, 120, 220)) {
+                        syncDriveCrumb(crumb, crumbText);
+                        if (container.dataset && container.dataset.driveRenderKey === renderKey) return;
+                        if (container.dataset) container.dataset.driveRenderKey = renderKey;
                         renderMarkupChunkedByKey('drive-name-size-list', container, crumb, sizes, crumbText, renderSizeRow, { approxCardHeight: 72, prefixHtml, reserveSpace: true, reserveOffset: 60 });
                         return;
                     }
-                    crumb.innerText = crumbText;
-                    container.innerHTML = prefixHtml + sizes.map(renderSizeRow).join('');
+                    const html = prefixHtml + sizes.map(renderSizeRow).join('');
+                    applyDriveRenderMarkup(container, crumb, crumbText, html, renderKey);
                 } else if (driveViewLevel === 2) {
                     const crumbText = `${driveModeLabel} > ${selectedDriveName} / ${selectedDriveSize}`;
-                    let finalItems = sortDriveCardItems(searchFilteredItems.filter(i => i.COMMONNAME === selectedDriveName && i.CONTSIZE === selectedDriveSize));
+                    const finalItems = sortDriveCardItems(searchFilteredItems.filter((item) => getDrivePlantCommonName(item) === selectedDriveName && String(item.CONTSIZE || '-') === selectedDriveSize));
                     const prefixHtml = `<div class="back-btn" onclick="backToDriveSizes()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>`;
+                    const renderKey = buildDriveRenderKey(`drive:name:cards:${selectedDriveName}:${selectedDriveSize}`, crumbText, finalItems);
                     if (shouldUseChunkedCardRender(finalItems.length, 80, 160)) {
+                        syncDriveCrumb(crumb, crumbText);
+                        if (container.dataset && container.dataset.driveRenderKey === renderKey) return;
+                        if (container.dataset) container.dataset.driveRenderKey = renderKey;
                         renderMarkupChunkedByKey('drive-name-card-list', container, crumb, finalItems, crumbText, (item) => generateCard(item, 'drive', 'status-blue'), { approxCardHeight: 310, prefixHtml });
                         return;
                     }
-                    crumb.innerText = crumbText;
-                    container.innerHTML = prefixHtml + finalItems.map(i => generateCard(i, 'drive', 'status-blue')).join('');
+                    const html = prefixHtml + finalItems.map((item) => generateCard(item, 'drive', 'status-blue')).join('');
+                    applyDriveRenderMarkup(container, crumb, crumbText, html, renderKey);
                 }
             } else if (activeDriveTab === 'loc') {
                 if (driveViewLevel === 0) {
-                    crumb.innerText = `${driveModeLabel} > Select Block (${searchFilteredItems.length} items)`;
-                    let blocks = {};
-                    searchFilteredItems.forEach(i => {
-                        let loc = String(i.LOCATIONCODE || 'NoLoc').trim();
+                    const crumbText = `${driveModeLabel} > Select Block (${searchFilteredItems.length} items)`;
+                    const blocks = {};
+                    searchFilteredItems.forEach((item) => {
+                        const loc = String(item.LOCATIONCODE || 'NoLoc').trim();
                         let blockAlpha = loc.charAt(0).toUpperCase();
                         if (!/[A-Z]/.test(blockAlpha)) blockAlpha = 'Other';
                         if (!blocks[blockAlpha]) blocks[blockAlpha] = { count: 0 };
                         blocks[blockAlpha].count++;
                     });
-                    let html = Object.keys(blocks).sort().map(b => `<div class="bg-white border border-green-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectDriveBlock('${esc(b)}')"><div class="flex items-center gap-3"><div class="bg-green-100 text-[#007a4d] px-3 py-1.5 rounded-lg font-black text-lg">${b}</div><span class="font-bold text-lg text-gray-700">Block ${b}</span></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${blocks[b].count} Items</span></div>`).join('');
-                    container.innerHTML = html;
+                    const blockKeys = Object.keys(blocks).sort();
+                    const blockEntries = blockKeys.map((blockKey) => ({ __driveRenderKeyValue: `${blockKey}:${blocks[blockKey].count}` }));
+                    const html = blockKeys.map((blockKey) => `<div class="bg-white border border-green-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectDriveBlock('${esc(blockKey)}')"><div class="flex items-center gap-3"><div class="bg-green-100 text-[#007a4d] px-3 py-1.5 rounded-lg font-black text-lg">${blockKey}</div><span class="font-bold text-lg text-gray-700">Block ${blockKey}</span></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${blocks[blockKey].count} Items</span></div>`).join('');
+                    applyDriveRenderMarkup(container, crumb, crumbText, html, buildDriveRenderKey('drive:loc:block-list', crumbText, blockEntries));
                 } else if (driveViewLevel === 1) {
                     const crumbText = `${driveModeLabel} > Block ${selectedDriveBlock}`;
-                    let bItems = searchFilteredItems.filter(i => {
-                        let loc = String(i.LOCATIONCODE || 'NoLoc').trim();
+                    const blockItems = searchFilteredItems.filter((item) => {
+                        const loc = String(item.LOCATIONCODE || 'NoLoc').trim();
                         let alpha = loc.charAt(0).toUpperCase();
                         if (!/[A-Z]/.test(alpha)) alpha = 'Other';
                         return alpha === selectedDriveBlock;
                     });
                     const locCounts = new Map();
-                    bItems.forEach((item) => {
+                    blockItems.forEach((item) => {
                         const key = String(item.LOCATIONCODE || 'NoLoc');
                         locCounts.set(key, (locCounts.get(key) || 0) + 1);
                     });
-                    let locs = [...locCounts.keys()].sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true }));
+                    const locs = [...locCounts.keys()].sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true }));
                     const prefixHtml = `<div class="back-btn" onclick="backToDriveBlocks()"><i class="ph-bold ph-arrow-left"></i> Back to Blocks</div>`;
                     const renderLocRow = (loc) => `<div class="drill-item" onclick="selectDriveLoc('${esc(loc)}')"><span class="font-bold text-lg text-gray-800">${loc} <span class="text-gray-400 text-sm font-normal">(${locCounts.get(loc) || 0})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
+                    const locEntries = locs.map((loc) => ({ __driveRenderKeyValue: `${loc}:${locCounts.get(loc) || 0}` }));
+                    const renderKey = buildDriveRenderKey(`drive:loc:list:${selectedDriveBlock}`, crumbText, locEntries);
                     if (shouldUseChunkedCardRender(locs.length, 120, 220)) {
+                        syncDriveCrumb(crumb, crumbText);
+                        if (container.dataset && container.dataset.driveRenderKey === renderKey) return;
+                        if (container.dataset) container.dataset.driveRenderKey = renderKey;
                         renderMarkupChunkedByKey('drive-loc-list', container, crumb, locs, crumbText, renderLocRow, { approxCardHeight: 72, prefixHtml });
                         return;
                     }
-                    crumb.innerText = crumbText;
-                    container.innerHTML = prefixHtml + locs.map(renderLocRow).join('');
+                    const html = prefixHtml + locs.map(renderLocRow).join('');
+                    applyDriveRenderMarkup(container, crumb, crumbText, html, renderKey);
                 } else if (driveViewLevel === 2) {
                     const crumbText = `${driveModeLabel} > Block ${selectedDriveBlock} / Loc ${selectedDriveLoc}`;
-                    let finalItems = sortDriveCardItems(searchFilteredItems.filter(i => (i.LOCATIONCODE || 'NoLoc') === selectedDriveLoc));
+                    const finalItems = sortDriveCardItems(searchFilteredItems.filter((item) => (item.LOCATIONCODE || 'NoLoc') === selectedDriveLoc));
                     const prefixHtml = `<div class="back-btn" onclick="backToDriveLocations()"><i class="ph-bold ph-arrow-left"></i> Back to Locations</div>`;
+                    const renderKey = buildDriveRenderKey(`drive:loc:cards:${selectedDriveBlock}:${selectedDriveLoc}`, crumbText, finalItems);
                     if (shouldUseChunkedCardRender(finalItems.length, 80, 160)) {
+                        syncDriveCrumb(crumb, crumbText);
+                        if (container.dataset && container.dataset.driveRenderKey === renderKey) return;
+                        if (container.dataset) container.dataset.driveRenderKey = renderKey;
                         renderMarkupChunkedByKey('drive-loc-card-list', container, crumb, finalItems, crumbText, (item) => generateCard(item, 'drive', 'status-blue'), { approxCardHeight: 310, prefixHtml });
                         return;
                     }
-                    crumb.innerText = crumbText;
-                    container.innerHTML = prefixHtml + finalItems.map(i => generateCard(i, 'drive', 'status-blue')).join('');
+                    const html = prefixHtml + finalItems.map((item) => generateCard(item, 'drive', 'status-blue')).join('');
+                    applyDriveRenderMarkup(container, crumb, crumbText, html, renderKey);
                 }
             }
         }
-function toggleDriveSeason(s) {
+
+        function toggleDriveSeason(s) {
             if(s === 'ALL'){
                 driveSelectedSeasons.clear();
                 driveSelectedSeasons.add('ALL');
