@@ -12150,6 +12150,62 @@ activeDriveTab = tab;
             return items[idx + 1] ? items[idx + 1].UNIQUE_ID : null;
         }
 
+        function buildRequestItemRenderSignature(item) {
+            if (!item) return '';
+            const clean = (value = '') => String(value == null ? '' : value).trim();
+            const holdCode = firstNonEmptyValue(item.HOLD, item.HOLDCODE, item.HOLD_CODE, '');
+            const holdReason = firstNonEmptyValue(item.HOLD_REASON, item.HOLDREASON, item.CUSTOMERHOLDREASON, '');
+            const salesNote = firstNonEmptyValue(item.SALES_NOTE, item.SALESNOTE, '');
+            const photoLink = firstNonEmptyValue(item.REQ_PHOTO_LINK, item.ROW_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, '');
+            return [
+                clean(item.UNIQUE_ID),
+                clean(item.DOM_ID),
+                clean(item.COMMONNAME),
+                clean(item.CONTSIZE),
+                clean(item.LOCATIONCODE),
+                clean(item.LOTCODE),
+                clean(item.REQUESTED_BY),
+                clean(item.REQ_CUSTOMER),
+                clean(item.REQ_QTY),
+                clean(item.REQ_STATUS),
+                item.REQ_ARCHIVED ? '1' : '0',
+                clean(item.REQ_RESERVE),
+                clean(item.REQ_REP_ACTION),
+                clean(item.REQUEST_FOLDER),
+                clean(item.PTRAVAILABLE),
+                clean(item.PRIORITY),
+                clean(holdCode),
+                clean(holdReason),
+                clean(salesNote),
+                clean(photoLink),
+                selectedItems.has(item.DOM_ID) ? '1' : '0'
+            ].join('|');
+        }
+
+        function buildRequestChunkRenderKey(mode = '', crumbText = '', items = []) {
+            return [
+                String(mode || '').trim(),
+                String(crumbText || '').trim(),
+                (Array.isArray(items) ? items : []).map((item) => buildRequestItemRenderSignature(item)).join('||')
+            ].join('::');
+        }
+
+        function syncRequestCrumb(crumb, crumbText = '') {
+            if (!crumb) return;
+            const nextText = String(crumbText || '');
+            if (crumb.innerText !== nextText) crumb.innerText = nextText;
+        }
+
+        function applyRequestRenderMarkup(container, crumb, crumbText, html, renderKey = '') {
+            if (!container) return false;
+            syncRequestCrumb(crumb, crumbText);
+            const nextKey = String(renderKey || (String(crumbText || '') + '::' + String(html || '')));
+            if (container.dataset && container.dataset.requestRenderKey === nextKey) return false;
+            setContainerHtml(container, html);
+            if (container.dataset) container.dataset.requestRenderKey = nextKey;
+            return true;
+        }
+
         function renderRequest() {
             updateFooterRequestBadge();
             if (ensureViewDataForRender('request')) return;
@@ -12160,34 +12216,36 @@ activeDriveTab = tab;
             let items = getScopedRequestItems(requestsInventory);
 
             if (activeReqTab === 'pending') {
-                crumb.innerText = "All Pending Requests";
+                const crumbText = 'All Pending Requests';
                 let pendingItems = items.filter(i => !isRequestComplete(i) && !i.REQ_ARCHIVED);
 
                 if (pendingItems.length === 0) {
-                    setContainerHtml(container, `<div class="p-8 text-center text-gray-400">No pending requests.</div>`);
+                    applyRequestRenderMarkup(container, crumb, crumbText, `<div class="p-8 text-center text-gray-400">No pending requests.</div>`, 'request:pending:empty');
                     return;
                 }
 
-                pendingItems.sort((a,b) => String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""), undefined, {numeric: true}));
-                setContainerHtml(container, pendingItems.map(i => generateCard(i, 'request', 'status-purple')).join(''));
-                requestAnimationFrame(decorateRequestRows);
+                pendingItems.sort((a,b) => String(a.LOCATIONCODE||'').localeCompare(String(b.LOCATIONCODE||''), undefined, {numeric: true}));
+                const html = pendingItems.map(i => generateCard(i, 'request', 'status-purple')).join('');
+                if (applyRequestRenderMarkup(container, crumb, crumbText, html)) requestAnimationFrame(decorateRequestRows);
+                return;
 
             } else if (activeReqTab === 'reps') {
                 if (requestViewLevel === 0) {
-                    crumb.innerText = "Sales Reps";
+                    const crumbText = 'Sales Reps';
                     let reps = [...new Set(items.map(i => getRequestAssignedRep(i)))].sort();
                     if (reps.length === 0) {
-                        setContainerHtml(container, `<div class="p-8 text-center text-gray-400">No sales reps found.</div>`);
+                        applyRequestRenderMarkup(container, crumb, crumbText, `<div class="p-8 text-center text-gray-400">No sales reps found.</div>`, 'request:reps:empty');
                         return;
                     }
-                    setContainerHtml(container, reps.map(r => `<div class="drill-item" onclick="return openRequestRepView('${esc(r)}')"><span class="font-bold text-lg">${r}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join(''));
+                    const html = reps.map(r => `<div class="drill-item" onclick="return openRequestRepView('${esc(r)}')"><span class="font-bold text-lg">${r}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
+                    applyRequestRenderMarkup(container, crumb, crumbText, html);
+                    return;
                 } else if (requestViewLevel === 1) {
-                    crumb.innerText = `${selectedReqRepView} > Status`;
+                    const crumbText = `${selectedReqRepView} > Status`;
                     let repItems = items.filter(i => getRequestAssignedRep(i) === selectedReqRepView && !i.REQ_ARCHIVED);
                     let pendingCount = repItems.filter(i => !isRequestComplete(i)).length;
                     let completeCount = repItems.filter(i => isRequestComplete(i)).length;
-
-                    setContainerHtml(container, `
+                    const html = `
                         <div class="back-btn" onclick="return backToRequestRepList()"><i class="ph-bold ph-arrow-left"></i> Back to Reps</div>
                         <div class="bg-orange-50 border border-orange-200 rounded-xl shadow-sm mb-4 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="return openRequestStatusView('Pending')">
                             <div class="flex items-center gap-3"><i class="ph-bold ph-clock text-2xl text-orange-500"></i><span class="font-bold text-lg text-orange-800">Pending Requests</span></div>
@@ -12197,14 +12255,17 @@ activeDriveTab = tab;
                             <div class="flex items-center gap-3"><i class="ph-bold ph-check-circle text-2xl text-green-500"></i><span class="font-bold text-lg text-green-800">Completed Requests</span></div>
                             <span class="text-xs font-bold text-white bg-green-500 px-2 py-1 rounded-lg">${completeCount}</span>
                         </div>
-                    `);
+                    `;
+                    applyRequestRenderMarkup(container, crumb, crumbText, html);
+                    return;
                 } else if (requestViewLevel === 2) {
-                    crumb.innerText = `${selectedReqRepView} > ${selectedReqStatus}`;
+                    const crumbText = `${selectedReqRepView} > ${selectedReqStatus}`;
                     let repItems = items.filter(i => getRequestAssignedRep(i) === selectedReqRepView && !i.REQ_ARCHIVED);
                     let statusItems = repItems.filter(i => selectedReqStatus === 'Pending' ? !isRequestComplete(i) : isRequestComplete(i));
 
                     if (statusItems.length === 0) {
-                        setContainerHtml(container, `<div class="back-btn" onclick="return backToRequestStatusList()"><i class="ph-bold ph-arrow-left"></i> Back to Status</div><div class="p-8 text-center text-gray-400">No ${selectedReqStatus.toLowerCase()} requests.</div>`);
+                        const html = `<div class="back-btn" onclick="return backToRequestStatusList()"><i class="ph-bold ph-arrow-left"></i> Back to Status</div><div class="p-8 text-center text-gray-400">No ${selectedReqStatus.toLowerCase()} requests.</div>`;
+                        applyRequestRenderMarkup(container, crumb, crumbText, html, `request:reps:${selectedReqRepView}:${selectedReqStatus}:empty`);
                         return;
                     }
 
@@ -12217,17 +12278,21 @@ activeDriveTab = tab;
                         const shareActions = canShareRequestFolders() ? `<div class="grid grid-cols-4 gap-2 mt-3"><button class="bg-white border border-purple-200 text-purple-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); shareRequestFolder('copy', '${esc(f)}', '${selectedReqStatus}', '${esc(selectedReqRepView)}')">Copy</button><button class="bg-white border border-indigo-200 text-indigo-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); shareRequestFolder('email', '${esc(f)}', '${selectedReqStatus}', '${esc(selectedReqRepView)}')">Email</button><button class="bg-white border border-emerald-200 text-emerald-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); shareRequestFolder('text', '${esc(f)}', '${selectedReqStatus}', '${esc(selectedReqRepView)}')">Text</button><button class="bg-white border border-amber-200 text-amber-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); setRequestFolderNote('${esc(f)}', '${selectedReqStatus}', '${esc(selectedReqRepView)}')">Note</button></div>` : '';
                         return `<div class="bg-white border border-purple-200 rounded-xl shadow-sm mb-3 p-4 cursor-pointer active:scale-95 transition-transform" onclick="return openRequestFolderView('${esc(f)}')"><div class="flex justify-between items-center"><div class="flex items-center gap-3 min-w-0"><div class="bg-purple-50 p-2 rounded-lg"><i class="ph-fill ph-folder text-2xl text-purple-500"></i></div><span class="font-bold text-sm text-purple-800 break-all">${f}</span></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg min-w-max ml-2">${count} Items</span></div>${noteHtml}${shareActions}</div>`;
                     }).join('');
-                    setContainerHtml(container, html);
-                                } else if (requestViewLevel === 3) {
+                    applyRequestRenderMarkup(container, crumb, crumbText, html);
+                    return;
+                } else if (requestViewLevel === 3) {
                     const crumbText = selectedReqStatus === 'Complete' ? `${selectedReqRepView} > ${selectedReqFolderView}` : selectedReqFolderView;
-                    crumb.innerText = crumbText;
                     let folderItems = items.filter(i => getRequestAssignedRep(i) === selectedReqRepView && !i.REQ_ARCHIVED);
                     folderItems = folderItems.filter(i => ((i.REQUEST_FOLDER || 'Unassigned')) === selectedReqFolderView);
                     folderItems = folderItems.filter(i => selectedReqStatus === 'Pending' ? !isRequestComplete(i) : isRequestComplete(i));
-                    folderItems.sort((a,b) => String(a.LOCATIONCODE||"").localeCompare(String(b.LOCATIONCODE||""), undefined, {numeric: true}));
+                    folderItems.sort((a,b) => String(a.LOCATIONCODE||'').localeCompare(String(b.LOCATIONCODE||''), undefined, {numeric: true}));
                     const prefixHtml = `<div class="back-btn" onclick="return backToRequestFolderList()"><i class="ph-bold ph-arrow-left"></i> Back to Folders</div>`;
                     const cardTone = selectedReqStatus === 'Complete' ? 'status-green' : 'status-purple';
+                    const renderKey = buildRequestChunkRenderKey(`request-folder:${selectedReqStatus}:${selectedReqRepView}:${selectedReqFolderView}:${cardTone}`, crumbText, folderItems);
                     if (shouldUseChunkedCardRender(folderItems.length, 70, 140)) {
+                        syncRequestCrumb(crumb, crumbText);
+                        if (container && container.dataset && container.dataset.requestRenderKey === renderKey) return;
+                        if (container && container.dataset) container.dataset.requestRenderKey = renderKey;
                         renderMarkupChunkedByKey('request-main', container, crumb, folderItems, crumbText, (item) => generateCard(item, 'request', cardTone), {
                             prefixHtml,
                             approxCardHeight: 360,
@@ -12235,12 +12300,12 @@ activeDriveTab = tab;
                         });
                         return;
                     }
-                    setContainerHtml(container, prefixHtml + folderItems.map(i => generateCard(i, 'request', cardTone)).join(''));
-                    requestAnimationFrame(decorateRequestRows);
+                    const html = prefixHtml + folderItems.map(i => generateCard(i, 'request', cardTone)).join('');
+                    if (applyRequestRenderMarkup(container, crumb, crumbText, html, renderKey)) requestAnimationFrame(decorateRequestRows);
+                    return;
                 }
             }
         }
-
         let requestSwipeState = { row: null, surface: null, startX: 0, startY: 0, deltaX: 0, startOffset: 0, dragging: false };
         let flyerSwipeState = { row: null, surface: null, startX: 0, startY: 0, deltaX: 0, startOffset: 0, dragging: false };
         let pullRefreshState = { active: false, armed: false, refreshing: false, startX: 0, startY: 0, distance: 0 };
