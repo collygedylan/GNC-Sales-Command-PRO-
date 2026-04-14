@@ -953,8 +953,8 @@
         const CACHE_PERSIST_REALTIME_VISIBLE_MIN_INTERVAL_MS = 180000;
         const CACHE_PERSIST_ACTIVE_INTERACTION_GRACE_MS = 12000;
         const CACHE_PERSIST_IDLE_TIMEOUT_MS = 2500;
-        const PHOTO_MAX_WIDTH = 1200;
-        const PHOTO_JPEG_QUALITY = 0.95;
+        const PHOTO_MAX_WIDTH = 2048;
+        const PHOTO_JPEG_QUALITY = 0.98;
         const PHOTO_FIELD_PERSIST_DEBOUNCE_MS = 100;
         const INTERACTION_REFRESH_DEFER_MS = 520;
         let pendingPhotoUploads = new Map();
@@ -4825,9 +4825,11 @@
             if (!match) match = String(url).match(/\/d\/([a-zA-Z0-9_-]+)/);
             return match && match[1] ? match[1] : '';
         }
-        function getDirectImageUrl(url, width = 360) {
+        function getDirectImageUrl(url, width = 520) {
             if(!url)return"";
-            const thumbWidth = Math.max(120, Math.min(2400, Number(width) || 360));
+            const baseWidth = Math.max(160, Math.min(1600, Number(width) || 520));
+            const deviceScale = Math.max(1, Math.min(2.5, Number(window.devicePixelRatio) || 1));
+            const thumbWidth = Math.max(160, Math.min(3200, Math.round(baseWidth * deviceScale)));
             const driveId = getDriveImageId(url);
             if(driveId){ return `https://drive.google.com/thumbnail?id=${driveId}&sz=w${thumbWidth}`; }
             return String(url).replace(/([?&])sz=w\d+/i, `$1sz=w${thumbWidth}`).replace(/[?&]$/, '');
@@ -14665,10 +14667,11 @@ ${folderNote ? `Folder Note: ${folderNote}
                 if (match) cleanUrl = match[1];
                 if (!cleanUrl.startsWith('http')) return null;
                 const index = counter++;
+                const shareUrl = getExpandedImageUrl(cleanUrl);
                 return {
                     label: `Photo ${index}` ,
-                    url: cleanUrl,
-                    displayName: item ? buildSharePhotoDisplayName(item, index, cleanUrl) : cleanUrl,
+                    url: shareUrl,
+                    displayName: item ? buildSharePhotoDisplayName(item, index, shareUrl) : shareUrl,
                     index
                 };
             }).filter(Boolean);
@@ -17252,8 +17255,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                         const sourceHeight = Number(sourceImage.height || sourceImage.naturalHeight || 0);
                         if (!sourceWidth || !sourceHeight) throw new Error('Could not process the selected image.');
                         canvas = document.createElement('canvas');
-                        const targetMaxWidth = isLagSensitiveDetailPrefix(prefix) ? 420 : PHOTO_MAX_WIDTH;
-                        const targetJpegQuality = isLagSensitiveDetailPrefix(prefix) ? 0.46 : PHOTO_JPEG_QUALITY;
+                        const targetMaxWidth = PHOTO_MAX_WIDTH;
+                        const targetJpegQuality = PHOTO_JPEG_QUALITY;
                         const scaleSize = sourceWidth > targetMaxWidth ? targetMaxWidth / sourceWidth : 1;
                         canvas.width = Math.max(1, Math.round(sourceWidth * scaleSize));
                         canvas.height = Math.max(1, Math.round(sourceHeight * scaleSize));
