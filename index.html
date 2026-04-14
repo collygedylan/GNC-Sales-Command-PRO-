@@ -457,7 +457,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-                            <div id="header-version" class="nav-version-pill">V2026.04.14.08</div>
+                            <div id="header-version" class="nav-version-pill">V2026.04.14.09</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -1571,16 +1571,67 @@
             return '';
         }
 
+        function hasOwnField(item, key) {
+            return !!item && Object.prototype.hasOwnProperty.call(item, key);
+        }
+
+        function getCanonicalFieldValue(item, primaryKey, aliases = [], normalizer = null) {
+            if (!item) return '';
+            const keys = [primaryKey].concat(Array.isArray(aliases) ? aliases : []);
+            const value = hasOwnField(item, primaryKey)
+                ? item[primaryKey]
+                : firstNonEmptyValue(...keys.map((key) => item[key]));
+            return typeof normalizer === 'function' ? normalizer(value) : String(value == null ? '' : value).trim();
+        }
+
+        function syncRowLegacyFieldAliases(item) {
+            if (!item) return item;
+            const avNote = getCanonicalFieldValue(item, 'AV_NOTE', [], normalizeRuleText);
+            const salesNote = getCanonicalFieldValue(item, 'SALES_NOTE', ['SALESNOTE', 'SALES_DESC', 'SALESDESC'], normalizeRuleText);
+            const match = getCanonicalFieldValue(item, 'MATCH', ['MATCHPCT'], normalizeRuleText);
+            const spec = getCanonicalFieldValue(item, 'SPEC', [], normalizeRuleText);
+            const caliper = getCanonicalFieldValue(item, 'CALIPER', [], normalizeRuleText);
+            const pick = getCanonicalFieldValue(item, 'PICK', ['PIC_NOTE', 'PICKNOTE'], normalizeRuleText);
+            const locMatchQty = getCanonicalFieldValue(item, 'LOC_MATCH_QTY', [], normalizeRuleText);
+            const reqPick = getCanonicalFieldValue(item, 'REQ_PICK', ['REQ_PIC_NOTE'], normalizeRuleText);
+            const reqComments = getCanonicalFieldValue(item, 'REQ_COMMENTS', [], normalizeRuleText);
+
+            item.AV_NOTE = avNote;
+            item.SALES_NOTE = salesNote;
+            item.SALESNOTE = salesNote;
+            item.SALES_DESC = salesNote;
+            item.SALESDESC = salesNote;
+            item.MATCH = match;
+            item.MATCHPCT = match;
+            item.SPEC = spec;
+            item.CALIPER = caliper;
+            item.PICK = pick;
+            item.PIC_NOTE = pick;
+            item.PICKNOTE = pick;
+            item.LOC_MATCH_QTY = locMatchQty;
+            item.REQ_PICK = reqPick;
+            item.REQ_PIC_NOTE = reqPick;
+            item.REQ_COMMENTS = reqComments;
+            return item;
+        }
+
+        function syncCanonicalPhotoFieldAliases(item, linkKey, nameKey, linkAliases = [], nameAliases = []) {
+            if (!item) return item;
+            const linkValue = getCanonicalFieldValue(item, linkKey, linkAliases);
+            const nameValue = getCanonicalFieldValue(item, nameKey, nameAliases);
+            item[linkKey] = linkValue;
+            item[nameKey] = nameValue;
+            (Array.isArray(linkAliases) ? linkAliases : []).forEach((aliasKey) => { item[aliasKey] = linkValue; });
+            (Array.isArray(nameAliases) ? nameAliases : []).forEach((aliasKey) => { item[aliasKey] = nameValue; });
+            return item;
+        }
+
         function normalizeRowPhotoFields(item) {
             if (!item) return item;
-            item.SAVED_PHOTO_LINK = firstNonEmptyValue(item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']);
-            item.SAVED_PHOTO_NAME = firstNonEmptyValue(item.SAVED_PHOTO_NAME, item.PHOTO_NAME, item.PHOTONAME, item['PHOTO NAME']);
-            item.REQ_PHOTO_LINK = firstNonEmptyValue(item.REQ_PHOTO_LINK, item.REQUEST_PHOTO_LINK, item.REQUESTPHOTO_LINK);
-            item.REQ_PHOTO_NAME = firstNonEmptyValue(item.REQ_PHOTO_NAME, item.REQUEST_PHOTO_NAME, item.REQUESTPHOTONAME);
-            item.DOCK_PHOTO_LINK = firstNonEmptyValue(item.DOCK_PHOTO_LINK, item.DOCKPHOTO_LINK);
-            item.DOCK_PHOTO_NAME = firstNonEmptyValue(item.DOCK_PHOTO_NAME, item.DOCKPHOTO_NAME);
-            item.FLYER_PHOTO_LINK = firstNonEmptyValue(item.FLYER_PHOTO_LINK, item.FLYERPHOTO_LINK);
-            item.FLYER_PHOTO_NAME = firstNonEmptyValue(item.FLYER_PHOTO_NAME, item.FLYERPHOTONAME);
+            syncCanonicalPhotoFieldAliases(item, 'SAVED_PHOTO_LINK', 'SAVED_PHOTO_NAME', ['PHOTO_LINK', 'PHOTOLINK', 'PHOTO LINK'], ['PHOTO_NAME', 'PHOTONAME', 'PHOTO NAME']);
+            syncCanonicalPhotoFieldAliases(item, 'REQ_PHOTO_LINK', 'REQ_PHOTO_NAME', ['REQUEST_PHOTO_LINK', 'REQUESTPHOTO_LINK'], ['REQUEST_PHOTO_NAME', 'REQUESTPHOTONAME']);
+            syncCanonicalPhotoFieldAliases(item, 'DOCK_PHOTO_LINK', 'DOCK_PHOTO_NAME', ['DOCKPHOTO_LINK'], ['DOCKPHOTO_NAME']);
+            syncCanonicalPhotoFieldAliases(item, 'FLYER_PHOTO_LINK', 'FLYER_PHOTO_NAME', ['FLYERPHOTO_LINK'], ['FLYERPHOTONAME']);
             const sharedFlyerAssignment = String(firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, item.app_tab_assignment, '')).toLowerCase();
             const sharesFlyerBaseData = sharedFlyerAssignment === 'season' || sharedFlyerAssignment === 'location';
             if (sharesFlyerBaseData) {
@@ -1599,6 +1650,7 @@
             const exact = !!(options && options.exact);
             ['SAVED_PHOTO_LINK','SAVED_PHOTO_NAME','REQ_PHOTO_LINK','REQ_PHOTO_NAME','DOCK_PHOTO_LINK','DOCK_PHOTO_NAME','FLYER_PHOTO_LINK','FLYER_PHOTO_NAME','ROW_PHOTO_LINK','ROW_PHOTO_NAME'].forEach((key) => {
                 if (exact) target[key] = source[key] || '';
+                else if (hasOwnField(source, key)) target[key] = source[key] || '';
                 else if (firstNonEmptyValue(source[key]) !== '') target[key] = source[key];
             });
             return normalizeRowPhotoFields(target);
@@ -1611,11 +1663,11 @@
             const normalizedPrefix = String(prefix || '').toLowerCase();
             const preferFlyerFields = normalizedPrefix === 'flyer-';
             const sourcePhotoLink = preferFlyerFields
-                ? firstNonEmptyValue(item.FLYER_PHOTO_LINK, item.SAVED_PHOTO_LINK)
-                : firstNonEmptyValue(item.SAVED_PHOTO_LINK, item.FLYER_PHOTO_LINK);
+                ? (hasOwnField(item, 'FLYER_PHOTO_LINK') ? String(item.FLYER_PHOTO_LINK || '').trim() : firstNonEmptyValue(item.FLYER_PHOTO_LINK, item.SAVED_PHOTO_LINK))
+                : (hasOwnField(item, 'SAVED_PHOTO_LINK') ? String(item.SAVED_PHOTO_LINK || '').trim() : firstNonEmptyValue(item.SAVED_PHOTO_LINK, item.FLYER_PHOTO_LINK));
             const sourcePhotoName = preferFlyerFields
-                ? firstNonEmptyValue(item.FLYER_PHOTO_NAME, item.SAVED_PHOTO_NAME)
-                : firstNonEmptyValue(item.SAVED_PHOTO_NAME, item.FLYER_PHOTO_NAME);
+                ? (hasOwnField(item, 'FLYER_PHOTO_NAME') ? String(item.FLYER_PHOTO_NAME || '').trim() : firstNonEmptyValue(item.FLYER_PHOTO_NAME, item.SAVED_PHOTO_NAME))
+                : (hasOwnField(item, 'SAVED_PHOTO_NAME') ? String(item.SAVED_PHOTO_NAME || '').trim() : firstNonEmptyValue(item.SAVED_PHOTO_NAME, item.FLYER_PHOTO_NAME));
             item.SAVED_PHOTO_LINK = sourcePhotoLink || '';
             item.FLYER_PHOTO_LINK = sourcePhotoLink || '';
             item.SAVED_PHOTO_NAME = sourcePhotoName || '';
@@ -1665,6 +1717,7 @@
             if (!target && uniqueId && uniqueId !== targetId) target = findItemByUniqueId(uniqueId) || findRequestRowByUniqueId(uniqueId);
             if (!target) return false;
             Object.keys(payload).forEach((key) => { target[key] = payload[key]; });
+            syncRowLegacyFieldAliases(target);
             normalizeRowPhotoFields(target);
             syncSharedFlyerPhotoFields(target, snapshot.prefix || '');
             syncRowDataAcrossViews(target);
@@ -1708,8 +1761,10 @@
             (Array.isArray(keys) ? keys : []).forEach((key) => {
                 row[key] = masterItem[key];
             });
+            syncRowLegacyFieldAliases(row);
             clonePhotoFields(masterItem, row, { exact: opts.exactPhotoClone !== false });
             syncSharedFlyerPhotoFields(row, opts.photoPrefix || '');
+            syncRowLegacyFieldAliases(row);
             normalizeRowPhotoFields(row);
             buildSearchIndex(row);
             return row;
@@ -1734,6 +1789,7 @@
             Object.keys(preservedValues).forEach((key) => {
                 if (preservedValues[key] !== '') row[key] = preservedValues[key];
             });
+            syncRowLegacyFieldAliases(row);
             normalizeRowPhotoFields(row);
             buildSearchIndex(row);
             return row;
@@ -2054,6 +2110,7 @@
             item.AV_RULE_HOLDSTOP_SNAPSHOT = getHoldStopSnapshotFromItem(item);
             item.AV_RULE_LAST_CLEAR_REASON = reasonText || '';
             item.AV_RULE_LAST_CLEARED_AT = clearedAt;
+            syncRowLegacyFieldAliases(item);
             normalizeRowPhotoFields(item);
             return item;
         }
@@ -3862,7 +3919,7 @@
         const PENDING_EDITS_STORAGE_KEY = 'gnc_pending_edits';
         const PENDING_EDITS_PERSIST_DEBOUNCE_MS = 400;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Maschino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'V2026.04.14.08';
+        const APP_VERSION = 'V2026.04.14.09';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -4201,7 +4258,7 @@
             if (!Array.isArray(items)) return [];
             return items.map((item, idx) => {
                 let obj = { SOURCE_TABLE: sourceTable };
-                for (let k in item) { if (item[k] !== null) obj[k.toUpperCase()] = item[k]; }
+                for (let k in item) { obj[k.toUpperCase()] = item[k] === null ? '' : item[k]; }
                 if (!obj.UNIQUE_ID) obj.UNIQUE_ID = obj.ID || `${sourceTable}_${idx}`;
                 obj.COMMONNAME = obj.COMMONNAME || obj.DESCRIPTION || obj.PLANT_NAME || 'Unknown';
                 obj.CONTSIZE = item.contsize || obj.CONTSIZE || item.itemspec || obj.ITEMSPEC || item.size || '-';
@@ -4219,6 +4276,7 @@
                     obj.REQ_STATUS = normalizeRequestStatus(firstNonEmptyValue(obj.REQ_STATUS, obj.STATUS, 'Pending')) || 'Pending';
                     obj.REQ_ARCHIVED = obj.REQ_ARCHIVED === true || obj.REQ_ARCHIVED === 1 || obj.REQ_ARCHIVED === '1' || String(obj.REQ_ARCHIVED || '').trim().toLowerCase() === 'true';
                 }
+                syncRowLegacyFieldAliases(obj);
                 normalizeRowPhotoFields(obj);
                 return obj;
             });
@@ -7509,8 +7567,9 @@ function toggleDriveQuickRequestItem(domId) {
                     if(hash !== localStorage.getItem('last_req_hash')) {
                         requestsInventory = reqData.map(item => {
                             let obj = {SOURCE_TABLE: 'v2_active_request'};
-                            for(let k in item) { if(item[k]!==null) obj[k.toUpperCase()] = item[k]; }
+                            for(let k in item) { obj[k.toUpperCase()] = item[k] === null ? '' : item[k]; }
                             obj.DOM_ID = 'req_' + obj.UNIQUE_ID;
+                            syncRowLegacyFieldAliases(obj);
                             normalizeRowPhotoFields(obj);
                             obj.CONTSIZE=item.contsize || obj.CONTSIZE || item.itemspec || obj.ITEMSPEC || item.size || "-";
                             obj.LOCATIONCODE=obj.LOCATIONCODE||obj.LOCATION||"No Loc";
@@ -7529,8 +7588,10 @@ function toggleDriveQuickRequestItem(domId) {
                     if(soHash !== localStorage.getItem('last_so_hash')) {
                                                 salesOfficeInventory = soData.map((item, idx) => {
                             let obj = {SOURCE_TABLE: 'v2_sales_office'};
-                            for(let k in item) { if(item[k]!==null) obj[k.toUpperCase()] = item[k]; }
+                            for(let k in item) { obj[k.toUpperCase()] = item[k] === null ? '' : item[k]; }
                             obj.DOM_ID = 'so_' + (obj.UNIQUE_ID || idx);
+                            syncRowLegacyFieldAliases(obj);
+                            normalizeRowPhotoFields(obj);
                             return obj;
                         });
                         syncRealtimeSalesOfficeRows();
@@ -16688,7 +16749,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                         let specEl = document.getElementById(prefix + 'spec'); if(specEl) itemToSave.SPEC = specEl.value;
                         let calEl = document.getElementById(prefix + 'caliper'); if(calEl) itemToSave.CALIPER = calEl.value;
                         let pickEl = document.getElementById(prefix + 'pick'); if(pickEl) itemToSave.PICK = pickEl.value;
-                        let commentsEl = document.getElementById(prefix + 'comments'); if(commentsEl) { const nextComments = commentsEl.value; if (String(nextComments || '').trim() !== '') { itemToSave.SALES_NOTE = nextComments; itemToSave.SALESNOTE = nextComments; } }
+                        let commentsEl = document.getElementById(prefix + 'comments'); if(commentsEl) { const nextComments = commentsEl.value; itemToSave.SALES_NOTE = nextComments; itemToSave.SALESNOTE = nextComments; }
                     } else if (prefix === 'req-') {
                         itemToSave.REQ_MATCH = document.getElementById('req-match').value;
                         itemToSave.REQ_SPEC = document.getElementById('req-spec').value;
@@ -16726,6 +16787,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                     else if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-' || prefix === 'flyer-') itemToSave.PICK = standardPickNote;
                 }
 
+                syncRowLegacyFieldAliases(itemToSave);
+                normalizeRowPhotoFields(itemToSave);
                 const trackedStateAfterSave = captureTrackedAvState(itemToSave);
                 const trackedChangeFlags = getTrackedAvChangeFlags(trackedStateBeforeSave, trackedStateAfterSave, saveOptions);
                 const setVal = (val) => (val === '' || val === undefined) ? null : val;
@@ -16930,7 +16993,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                         const rawValue = String(itemToSave[itemKey] || '').trim();
                         const cleanValue = parsePhotoCsvValues(rawValue).filter((entry) => /^https?:\/\//i.test(entry)).join(',');
                         if (cleanValue) payload[payloadKey] = cleanValue;
-                        else delete payload[payloadKey];
+                        else payload[payloadKey] = null;
                     });
                 };
 
