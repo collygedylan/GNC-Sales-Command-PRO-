@@ -6411,6 +6411,8 @@ function toggleDriveQuickRequestItem(domId) {
             }
         }
         function showRequestCustomerStep(fromStepId = 'step-1-rep') {
+            tempReqFolder = null;
+            tempReqCust = null;
             previousReqStep = fromStepId;
             document.getElementById('step-1-rep').classList.add('hidden');
             document.getElementById('step-1.5-folder').classList.add('hidden');
@@ -8985,18 +8987,35 @@ activeDriveTab = tab;
             if (aliasMap[underscored]) return aliasMap[underscored];
             return underscored ? underscored + '@greenleafnursery.com' : '';
         }
-
         function sendEmailNotification(type, folderId, repName, customer, itemsCount, details = null) {
             let payload = { type: 'email', emailType: type, folderId: folderId, repName: repName, customer: customer, itemsCount: itemsCount, dylanEmail: 'dylan_collyge@greenleafnursery.com' };
+            const requestItems = Array.isArray(details && details.items) ? details.items.filter(Boolean) : [];
+            if (requestItems.length) {
+                const requestItemsHtml = formatRequestItemsHtml(requestItems);
+                const requestItemsText = formatRequestItemsText(requestItems, '', { includePhotoUrls: true });
+                payload.formattedItemsHtml = String(requestItemsHtml || '').replace(/LOC MATCH %/gi, 'LOC PHOTO MATCH');
+                payload.formattedItemsText = String(requestItemsText || '').replace(/LOC MATCH %/gi, 'LOC PHOTO MATCH');
+                payload.requestItems = requestItems.map((item) => ({
+                    unique_id: firstNonEmptyValue(item && item.UNIQUE_ID, item && item.unique_id, ''),
+                    folder: firstNonEmptyValue(item && item.REQUEST_FOLDER, item && item.request_folder, folderId || ''),
+                    customer: firstNonEmptyValue(item && item.REQ_CUSTOMER, item && item.req_customer, customer || ''),
+                    commonname: firstNonEmptyValue(item && item.COMMONNAME, item && item.commonname, ''),
+                    contsize: firstNonEmptyValue(item && item.CONTSIZE, item && item.contsize, ''),
+                    itemcode: firstNonEmptyValue(item && item.ITEMCODE, item && item.itemcode, ''),
+                    qty: firstNonEmptyValue(item && item.REQ_QTY, item && item.req_qty, ''),
+                    loc: firstNonEmptyValue(item && item.LOCATIONCODE, item && item.locationcode, ''),
+                    av_note: firstNonEmptyValue(item && item.AV_NOTE, item && item.av_note, ''),
+                    spec: firstNonEmptyValue(item && item.REQ_SPEC, item && item.req_spec, item && item.SPEC, ''),
+                    caliper: firstNonEmptyValue(item && item.REQ_CALIPER, item && item.req_caliper, item && item.CALIPER, ''),
+                    photo: firstNonEmptyValue(item && item.REQ_PHOTO_LINK, item && item.req_photo_link, item && item.SAVED_PHOTO_LINK, item && item.saved_photo_link, '')
+                })).filter((item) => item.unique_id || item.commonname || item.itemcode);
+            }
+            if (type === 'new_request') {
+                payload.isNewFolder = !!(details && details.isNewFolder);
+                payload.appendedToExistingFolder = !!(details && details.appendedToExistingFolder);
+            }
             if (type === 'request_complete') {
                 payload.repEmail = resolveRequestRecipientEmail(repName);
-                const requestItems = Array.isArray(details && details.items) ? details.items : [];
-                if (requestItems.length) {
-                    const requestItemsHtml = formatRequestItemsHtml(requestItems);
-                    const requestItemsText = formatRequestItemsText(requestItems, '', { includePhotoUrls: true });
-                    payload.formattedItemsHtml = String(requestItemsHtml || '').replace(/LOC MATCH %/gi, 'LOC PHOTO MATCH');
-                    payload.formattedItemsText = String(requestItemsText || '').replace(/LOC MATCH %/gi, 'LOC PHOTO MATCH');
-                }
                 const folderNote = String(details && details.folderNote ? details.folderNote : '').trim();
                 if (folderNote) payload.folderNote = folderNote;
             }
@@ -14064,18 +14083,26 @@ activeDriveTab = tab;
             if (isViewVisible('request')) queueViewRender('request', false, true);
         }
 
+        function createRequestFolderId(customerName = '') {
+            const now = new Date();
+            const dateStr = now.toISOString().split('T')[0];
+            const timeStr = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/:/g, '');
+            const millis = String(now.getMilliseconds()).padStart(3, '0');
+            const uniqueSuffix = Math.random().toString(36).slice(2, 6).toUpperCase();
+            const safeCustName = String(customerName || 'CUSTOMER').replace(/[^a-zA-Z0-9 ]/g, '').trim().replace(/\s+/g, '-').replace(/-+/g, '-') || 'CUSTOMER';
+            return `REQ-${dateStr}-${timeStr}${millis}-${uniqueSuffix}-${safeCustName}`;
+        }
+
         function finalizeRequestAction(existingFolderId,existingCust,itemsDataObj) {
-            let cust=existingCust;let folderId=existingFolderId;
+            let cust=existingCust;let folderId=String(existingFolderId || '').trim();
+            const appendingToExistingFolder = !!folderId;
             const quickMode = isQuickDriveRequestMode();
             const requestedBy = String(tempSelectedReqRep || getDefaultRequestRepName() || '').trim();
             const sourceDomIds=getRequestSourceDomIds();
             if(!sourceDomIds.length){showToast("Required","Please select a row first.",true);return}
             if(!requestedBy){showToast("Required","Please choose a sales rep for this request.",true);return}
-            if(!existingFolderId){
-                const dateStr=new Date().toISOString().split('T')[0];
-                const shortTime=new Date().toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'}).replace(/:/g,'');
-                let safeCustName=cust.replace(/[^a-zA-Z0-9 ]/g,"").trim().replace(/\s+/g,'-');
-                folderId=`REQ-${dateStr}-${shortTime}-${safeCustName}`
+            if(!appendingToExistingFolder){
+                folderId = createRequestFolderId(cust);
             }
             const restoredDriveIds = quickMode ? Array.from(driveQuickRequestItems) : [];
             closeRequestModal();
@@ -14200,6 +14227,9 @@ activeDriveTab = tab;
                     renderDriveQuickRequestBar();
                 };
                 const savedIdSet = new Set();
+                const getSavedRequestItems = (requestIds = []) => (Array.isArray(requestIds) ? requestIds : [])
+                    .map((requestId) => requestsInventory.find((item) => String((item && item.UNIQUE_ID) || '').trim() === String(requestId || '').trim()))
+                    .filter(Boolean);
                 let firstError = null;
                 for (const payload of insertPayloads) {
                     const payloadId = String(payload.unique_id || '').trim();
@@ -14223,16 +14253,22 @@ activeDriveTab = tab;
                 }
                 const savedCount = savedIdSet.size;
                 const missingIds = optimisticIds.filter(id => !savedIdSet.has(id));
+                const savedNotificationItems = getSavedRequestItems(optimisticIds.filter(id => savedIdSet.has(id)));
+                const requestNotificationDetails = {
+                    items: savedNotificationItems,
+                    isNewFolder: !appendingToExistingFolder,
+                    appendedToExistingFolder: appendingToExistingFolder
+                };
                 if (!missingIds.length && savedCount > 0) {
                     showToast("Success","Request tickets cloned!",false);
-                    notifyRequestEvent('new_request', folderId, requestedBy, cust, savedCount);
+                    notifyRequestEvent('new_request', folderId, requestedBy, cust, savedCount, requestNotificationDetails);
                     return;
                 }
                 if (savedCount > 0) {
                     rollbackOptimisticRequestIds(missingIds);
                     restoreQuickModeRows(missingIds);
                     showToast("Partial Save","Some requests saved. Retry the missing rows.",true);
-                    notifyRequestEvent('new_request', folderId, requestedBy, cust, savedCount);
+                    notifyRequestEvent('new_request', folderId, requestedBy, cust, savedCount, requestNotificationDetails);
                     return;
                 }
                 rollbackOptimisticRequestIds(optimisticIds);
