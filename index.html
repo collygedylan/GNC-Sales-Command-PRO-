@@ -11587,6 +11587,64 @@ activeDriveTab = tab;
             return items;
         }
 
+        function getSalesOfficeDisplayAvNote(item, fallback = '') {
+            const masterRow = findLinkedMasterRow(item);
+            return String(firstNonEmptyValue(item && item.AV_NOTE, masterRow && masterRow.AV_NOTE, fallback)).trim();
+        }
+
+        function getSeasonSalesOfficeSyncContext(item) {
+            if (!item) return null;
+            const masterRow = findLinkedMasterRow(item) || null;
+            const masterId = String(firstNonEmptyValue(masterRow && masterRow.UNIQUE_ID, item.MASTER_ID, item.MASTER_UNIQUE_ID, item.master_id, item.UNIQUE_ID, '')).trim();
+            const assignment = String(firstNonEmptyValue(masterRow && masterRow.APP_TAB_ASSIGNMENT, item.APP_TAB_ASSIGNMENT, item.app_tab_assignment, '')).toLowerCase();
+            if (!masterId || assignment !== 'season') return null;
+            return { masterId, masterRow };
+        }
+
+        function getSeasonSalesOfficeRowsByMasterId(masterId = '') {
+            const normalizedMasterId = String(masterId || '').trim();
+            if (!normalizedMasterId) return [];
+            return salesOfficeInventory.filter((row) => {
+                if (!row || isBloomPickerSalesOfficeItem(row)) return false;
+                const rowMasterId = String(firstNonEmptyValue(row.MASTER_ID, row.MASTER_UNIQUE_ID, row.master_id, row.UNIQUE_ID, '')).trim();
+                return rowMasterId === normalizedMasterId || String(firstNonEmptyValue(row.UNIQUE_ID, '')).trim() === normalizedMasterId;
+            });
+        }
+
+        function syncSeasonSalesOfficeAvNoteState(masterId = '', nextAvNote = '') {
+            const rows = getSeasonSalesOfficeRowsByMasterId(masterId);
+            const nextValue = String(nextAvNote || '').trim();
+            rows.forEach((row) => {
+                row.AV_NOTE = nextValue;
+                row.av_note = nextValue || null;
+                buildSearchIndex(row);
+            });
+            if (rows.length) {
+                markViewDirty('sales-office');
+                if (isViewVisible('sales-office')) queueInteractiveViewRender('sales-office', false, true, 24, 140);
+            }
+            return rows;
+        }
+
+        function syncSeasonSalesOfficeAvNoteRemote(masterId = '', nextAvNote = '') {
+            const normalizedMasterId = String(masterId || '').trim();
+            if (!normalizedMasterId || navigator.onLine === false) return Promise.resolve(false);
+            const nextValue = String(nextAvNote || '').trim();
+            const payload = { av_note: nextValue || null };
+            const patchTargetIds = (targetIds = []) => {
+                const ids = [...new Set((Array.isArray(targetIds) ? targetIds : []).map((value) => String(value || '').trim()).filter(Boolean))];
+                if (!ids.length) return Promise.resolve(false);
+                return Promise.allSettled(ids.map((targetId) => supabaseFetch('v2_sales_office', 'PATCH', payload, 'unique_id=eq.' + encodeURIComponent(targetId))))
+                    .then((results) => results.some((result) => result.status === 'fulfilled'));
+            };
+            const localTargetIds = getSeasonSalesOfficeRowsByMasterId(normalizedMasterId).map((row) => firstNonEmptyValue(row && row.UNIQUE_ID, ''));
+            if (localTargetIds.length) return patchTargetIds(localTargetIds);
+            const encodedMasterId = encodeURIComponent(normalizedMasterId);
+            return supabaseFetch('v2_sales_office', 'GET', null, 'select=unique_id&or=(unique_id.eq.' + encodedMasterId + ',master_id.eq.' + encodedMasterId + ')')
+                .then((rows) => patchTargetIds((rows || []).map((row) => firstNonEmptyValue(row && row.unique_id, row && row.UNIQUE_ID, ''))))
+                .catch(() => false);
+        }
+
         function getSalesOfficeOrderItems() {
             let items = salesOfficeInventory.filter((item) => isBloomPickerSalesOfficeItem(item) && !isSalesOfficeComplete(item));
             if (getRoleAccessState().isRep) {
@@ -11776,7 +11834,7 @@ activeDriveTab = tab;
                 { label: 'Item Code', value: (row) => row.ITEMCODE || '' },
                 { label: 'Qty Available', value: (row) => row.PTRAVAILABLE || '' },
                 { label: 'Priority', value: (row) => row.PRIORITY || '' },
-                { label: 'AV Note', value: (row) => row.AV_NOTE || '' },
+                { label: 'AV Note', value: (row) => getSalesOfficeDisplayAvNote(row, '') },
                 { label: 'Completed By', value: (row) => row.COMPLETED_BY || '' },
                 { label: 'Completed At', value: (row) => row.COMPLETED_AT || '' },
                 { label: 'Photo Links', value: (row) => getPhotoUrlList(getRowPhotoLink(row, 'sales-office')).join('\n') }
@@ -12992,7 +13050,7 @@ activeDriveTab = tab;
             const label = document.getElementById('sales-office-av-modal-label');
             if (!modal || !uidField || !textField) return;
             uidField.value = uid;
-            textField.value = String(item.AV_NOTE || '');
+            textField.value = getSalesOfficeDisplayAvNote(item, '');
             if (label) label.innerText = `${item.COMMONNAME || 'Unknown'} - ${item.CONTSIZE || '-'} - ${item.LOCATIONCODE || 'No Loc'} / ${item.LOTCODE || '-'}`;
             modal.classList.remove('hidden');
             setTimeout(() => {
@@ -13230,7 +13288,7 @@ activeDriveTab = tab;
                 return `<div class="flex items-center w-full mb-3 item-row app-smart-card relative bg-white p-4 rounded-xl border border-emerald-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full"><div class="app-card-main flex-grow min-w-0 pr-2"><div class="app-card-eyebrow text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d] mb-1">Bloom Picker</div><div class="app-card-title font-black text-gray-800 text-[16px] leading-tight break-words mb-1">${item.COMMONNAME||'Unknown'}</div><div class="app-card-subtitle font-bold text-[#007a4d] text-sm mb-2">${item.CONTSIZE||'-'}</div><div class="app-card-chip-row flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600"><span class="bg-emerald-50 text-emerald-700 px-2 py-1 rounded border border-emerald-200">Qty ${orderQty}</span><span class="bg-white text-slate-600 px-2 py-1 rounded border border-slate-200">Order ${item.ORDER_NUMBER||'-'}</span><span class="bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-100">Loc ${item.LOCATIONCODE||'-'}</span><span class="bg-gray-100 text-gray-700 px-2 py-1 rounded border border-gray-200">Lot ${item.LOTCODE||'-'}</span><span class="px-2 py-1 rounded border ${statusTone}">${orderStatus}</span></div>${orderDetailBits ? `<div class="mt-2 flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-wider text-gray-600">${orderDetailBits}</div>` : ''}<div class="mt-2 text-[11px] font-semibold text-slate-500">Submitted ${submittedAt}</div>${holdHtml}${salesNoteHtml}${avNoteHtml}</div>${inlineThumbHtml}</div><div class="flex gap-2 mt-3"><button class="flex-1 bg-[#007a4d] hover:bg-green-700 text-white text-[10px] font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-md active:scale-95" onclick="event.stopPropagation(); markSalesOfficeComplete('${safeUidJs}', '${item.DOM_ID}')"><i class="ph-bold ph-check-circle text-lg"></i>DONE</button></div></div></div>`;
             }
             if(sourceView==='sales-office'){
-                let avNoteText = String(item.AV_NOTE || 'No AV Note Provided');
+                let avNoteText = getSalesOfficeDisplayAvNote(item, 'No AV Note Provided');
                 let displaySalesNote = String(item.SALES_NOTE || salesNoteText || 'No Sales Note');
                 let itemCode = item.ITEMCODE || '-';
                 let locCode = item.LOCATIONCODE || '-';
@@ -15928,6 +15986,15 @@ function toggleDriveSeason(s) {
                     buildSearchIndex(itemToSave);
                     syncRowDataAcrossViews(itemToSave);
                     broadcastRowSyncSnapshot(itemToSave, prefix);
+
+                    if (!artifacts.soPayload && trackedChangeFlags.avNote) {
+                        const salesOfficeSyncContext = getSeasonSalesOfficeSyncContext(itemToSave);
+                        if (salesOfficeSyncContext) {
+                            const nextSalesOfficeAvNote = getSalesOfficeDisplayAvNote(salesOfficeSyncContext.masterRow || itemToSave, '');
+                            syncSeasonSalesOfficeAvNoteState(salesOfficeSyncContext.masterId, nextSalesOfficeAvNote);
+                            syncSeasonSalesOfficeAvNoteRemote(salesOfficeSyncContext.masterId, nextSalesOfficeAvNote).catch(() => {});
+                        }
+                    }
 
                     if (artifacts.soPayload && artifacts.cloneSO) {
                         const salesOfficeMasterId = String(firstNonEmptyValue(
