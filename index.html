@@ -4013,12 +4013,12 @@
                 const task = { runner, resolve, reject, meta: taskMeta };
                 if (state.running) {
                     if (taskMeta.isAutoSave && ((state.pending && state.pending.meta && state.pending.meta.isComplete) || hasPendingRowSaveCompletionIntent(safeKey))) {
-        window.addEventListener('input', (event) => {
-            const target = event && event.target ? event.target : null;
-            if (!target || (target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA')) return;
-            const prefix = extractDetailPrefixFromInputId(target.id);
-            if (prefix) queueLagSensitiveInputSave(prefix, target.id);
-        }, { passive: true });
+                        resolve({ skipped: true, reason: 'queued-complete' });
+                        return;
+                    }
+                    if (state.pending && typeof state.pending.resolve === 'function') {
+                        state.pending.resolve({ skipped: true, reason: 'superseded' });
+                    }
                     state.pending = task;
                     return;
                 }
@@ -4029,11 +4029,12 @@
             });
         }
 
+
         window.addEventListener('input', (event) => {
             const target = event && event.target ? event.target : null;
-            if (!target || target.tagName !== 'INPUT') return;
+            if (!target || (target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA')) return;
             const prefix = extractDetailPrefixFromInputId(target.id);
-            if (prefix) queueLagSensitiveInputSave(prefix);
+            if (prefix) queueLagSensitiveInputSave(prefix, target.id);
         }, { passive: true });
 
         function invalidateAvNotesCommonNameIndex() {
@@ -17793,7 +17794,6 @@ ${folderNote ? `Folder Note: ${folderNote}
                     } else if (!didOptimisticClose) {
                         didOptimisticRender = true;
                         queueVisibleSaveRefresh(0);
-                    }
                     }
                 }
 
