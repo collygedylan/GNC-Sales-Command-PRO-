@@ -457,7 +457,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-                            <div id="header-version" class="nav-version-pill">V2026.04.14.10</div>
+                            <div id="header-version" class="nav-version-pill">V2026.04.14.11</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -945,6 +945,10 @@
         const SUPABASE_READ_TIMEOUT_MS = 30000;
         const LOGIN_READ_TIMEOUT_MS = 8000;
         const SUPABASE_WRITE_TIMEOUT_MS = 22000;
+        const DETAIL_ROW_WRITE_TIMEOUT_MS = 30000;
+        const DETAIL_ROW_TOUCH_WRITE_TIMEOUT_MS = 40000;
+        const DETAIL_ROW_WRITE_RETRY_COUNT = 1;
+        const DETAIL_ROW_WRITE_RETRY_DELAY_MS = 650;
         const SUPABASE_UPLOAD_TIMEOUT_MS = 45000;
         const ENABLE_MANUAL_PULL_REFRESH = false;
         const CACHE_PERSIST_DEBOUNCE_MS = 25000;
@@ -990,6 +994,29 @@
 
         function isStandaloneApp() {
             return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+        }
+
+        function isTouchOptimizedDevice() {
+            return isIOSDevice() || isStandaloneApp() || /Android/i.test(navigator.userAgent) || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+        }
+
+        function getDetailRowWriteTimeoutMs() {
+            return isTouchOptimizedDevice() ? DETAIL_ROW_TOUCH_WRITE_TIMEOUT_MS : DETAIL_ROW_WRITE_TIMEOUT_MS;
+        }
+
+        function isRetryableSupabaseWriteError(error) {
+            const message = String(error && error.message || '').toLowerCase();
+            if (!message) return false;
+            return message.includes('timed out')
+                || message.includes('network')
+                || message.includes('failed to fetch')
+                || message.includes('load failed')
+                || message.includes('fetch failed')
+                || message.includes('connection');
+        }
+
+        function delayMs(duration = 0) {
+            return new Promise((resolve) => setTimeout(resolve, Math.max(0, Number(duration) || 0)));
         }
 
         function isTouchLikeInteractionEvent(event) {
@@ -1738,6 +1765,64 @@
             buildSearchIndex(row);
             return row;
         }
+
+        function captureSalesOfficeOwnedState(row) {
+            if (!row) return {};
+            return {
+                AV_NOTE: String(firstNonEmptyValue(row.AV_NOTE, row.av_note, '')).trim(),
+                SALES_NOTE: String(firstNonEmptyValue(row.SALES_NOTE, row.SALESNOTE, row.sales_note, '')).trim(),
+                SPEC: String(firstNonEmptyValue(row.SPEC, row.spec, '')).trim(),
+                CALIPER: String(firstNonEmptyValue(row.CALIPER, row.caliper, '')).trim(),
+                SAVED_PHOTO_LINK: String(firstNonEmptyValue(row.SAVED_PHOTO_LINK, row.photo_link, row.PHOTO_LINK, row.PHOTOLINK, '')).trim(),
+                SAVED_PHOTO_NAME: String(firstNonEmptyValue(row.SAVED_PHOTO_NAME, row.photo_name, row.PHOTO_NAME, row.PHOTONAME, '')).trim()
+            };
+        }
+
+        function applySalesOfficeOwnedState(row, preservedState = {}) {
+            if (!row) return row;
+            const preserved = preservedState || {};
+            if (preserved.AV_NOTE !== '') {
+                row.AV_NOTE = preserved.AV_NOTE;
+                row.av_note = preserved.AV_NOTE;
+            }
+            if (preserved.SALES_NOTE !== '') {
+                row.SALES_NOTE = preserved.SALES_NOTE;
+                row.SALESNOTE = preserved.SALES_NOTE;
+                row.sales_note = preserved.SALES_NOTE;
+            }
+            if (preserved.SPEC !== '') {
+                row.SPEC = preserved.SPEC;
+                row.spec = preserved.SPEC;
+            }
+            if (preserved.CALIPER !== '') {
+                row.CALIPER = preserved.CALIPER;
+                row.caliper = preserved.CALIPER;
+            }
+            if (preserved.SAVED_PHOTO_LINK !== '') {
+                row.SAVED_PHOTO_LINK = preserved.SAVED_PHOTO_LINK;
+                row.photo_link = preserved.SAVED_PHOTO_LINK;
+                row.PHOTO_LINK = preserved.SAVED_PHOTO_LINK;
+                row.PHOTOLINK = preserved.SAVED_PHOTO_LINK;
+            }
+            if (preserved.SAVED_PHOTO_NAME !== '') {
+                row.SAVED_PHOTO_NAME = preserved.SAVED_PHOTO_NAME;
+                row.photo_name = preserved.SAVED_PHOTO_NAME;
+                row.PHOTO_NAME = preserved.SAVED_PHOTO_NAME;
+                row.PHOTONAME = preserved.SAVED_PHOTO_NAME;
+            }
+            normalizeRowPhotoFields(row);
+            buildSearchIndex(row);
+            return row;
+        }
+
+        function syncMasterFieldsToSalesOfficeRow(masterItem, row) {
+            if (!masterItem || !row) return row;
+            const preserved = captureSalesOfficeOwnedState(row);
+            syncMasterFieldsToRow(masterItem, row, LINKED_ROW_SYNC_KEYS, { attachMasterLink: true });
+            applySalesOfficeOwnedState(row, preserved);
+            row.APP_TAB_ASSIGNMENT = firstNonEmptyValue(row.APP_TAB_ASSIGNMENT, masterItem.APP_TAB_ASSIGNMENT);
+            return row;
+        }
         function getRowPhotoLink(item, sourceView='') {
             if (!item) return '';
             if (sourceView === 'av' || sourceView === 'av-photo') return getDisplayPhotoLinkCsv(firstNonEmptyValue(item.SAVED_PHOTO_LINK, item.ROW_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']), item, 'saved');
@@ -2209,7 +2294,7 @@
             salesOfficeInventory.forEach((row) => {
                 if (isOrderSnapshot(row)) return;
                 if (sameMasterRow(row)) applyExactRowData(row);
-                else if (sameLinkedRow(row)) applyLinkedRowCatalogData(row);
+                else if (sameLinkedRow(row)) syncMasterFieldsToSalesOfficeRow(canonicalMaster, row);
             });
             socInventory.forEach((row) => {
                 if (sameLinkedRow(row)) applyLinkedRowCatalogData(row);
@@ -2225,6 +2310,7 @@
                 if (sameMasterRow(activeItem)) applyExactRowData(activeItem);
                 else if (!isOrderSnapshot(activeItem) && sameLinkedRow(activeItem)) {
                     if (isRequestSnapshot(activeItem)) applyRequestSnapshotData(activeItem);
+                    else if (Array.isArray(salesOfficeInventory) && salesOfficeInventory.includes(activeItem)) syncMasterFieldsToSalesOfficeRow(canonicalMaster, activeItem);
                     else applyLinkedRowCatalogData(activeItem);
                 }
             }
@@ -2365,7 +2451,7 @@
                     const salesOfficeSource = String(firstNonEmptyValue(item.SO_SOURCE, item.so_source, 'season')).toLowerCase();
                     const masterItem = masterId ? findItemByUniqueId(masterId) : null;
                     if (masterItem && salesOfficeSource !== 'bloom_picker') {
-                        syncMasterFieldsToRow(masterItem, item, LINKED_ROW_SYNC_KEYS, { attachMasterLink: true });
+                        syncMasterFieldsToSalesOfficeRow(masterItem, item);
                         item.APP_TAB_ASSIGNMENT = firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, masterItem.APP_TAB_ASSIGNMENT);
                     }
                     normalizeRowPhotoFields(item);
@@ -2919,11 +3005,12 @@
             }
         }
 
-        function scheduleTypingAwareUiRender(key, renderFn, delay = 0, typingDelay = ACTIVE_TYPING_GRACE_MS) {
+        function scheduleTypingAwareUiRender(key, renderFn, delay = 0, typingDelay = ACTIVE_TYPING_GRACE_MS, options = {}) {
+            const opts = options || {};
             const safeDelay = Math.max(0, Number(delay) || 0);
             const safeTypingDelay = Math.max(35, Number(typingDelay) || ACTIVE_TYPING_GRACE_MS);
-            const safeTouchDelay = Math.max(ACTIVE_TOUCH_GRACE_MS, safeTypingDelay);
-            const safeScrollDelay = Math.max(80, safeTypingDelay);
+            const safeTouchDelay = Math.max(80, Number(opts.touchDelayMs) || Math.max(ACTIVE_TOUCH_GRACE_MS, safeTypingDelay));
+            const safeScrollDelay = Math.max(80, Number(opts.scrollDelayMs) || safeTypingDelay);
             const runWhenReady = () => {
                 if (isUserActivelyTyping()) {
                     scheduleUiRender(key, runWhenReady, safeTypingDelay);
@@ -3010,7 +3097,7 @@
                 const targetView = document.getElementById('view-' + safeViewId);
                 if (!targetView || targetView.classList.contains('hidden')) return;
                 renderViewContent(safeViewId, forceReset, forceRender);
-            }, Math.max(0, Number(delay) || 0), typingDelay);
+            }, Math.max(0, Number(delay) || 0), typingDelay, { touchDelayMs: 140, scrollDelayMs: 120 });
         }
         function scheduleDocksRender(delay = 32) {
             scheduleUiRender('docks:render', () => {
@@ -3374,7 +3461,7 @@
             return Array.isArray(body) ? body.map(normalizeOne) : normalizeOne(body);
         }
 
-        async function supabaseFetch(table, method='GET', body=null, query='select=*') {
+        async function supabaseFetch(table, method='GET', body=null, query='select=*', requestOptions = {}) {
             startGlobalProgress();
             try {
                 let allData=[]; let offset=0; const limit=1000; let hasMore=true;
@@ -3389,12 +3476,13 @@
                         else { hasMore=false; }
                     } return allData;
                 } else {
+                    const writeTimeoutMs = Math.max(1000, Number(requestOptions && requestOptions.timeoutMs) || SUPABASE_WRITE_TIMEOUT_MS);
                     const options={method:method,headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json'}};
                     if(method==='POST') options.headers['Prefer']=table==='v2_active_request' ? 'return=minimal' : 'return=minimal,resolution=merge-duplicates';
                     else if(method==='PATCH' || method==='DELETE') options.headers['Prefer']='return=minimal';
                     else options.headers['Prefer']='return=representation';
                     if(body){ const normalizedBody = table==='v2_active_request' && (method==='POST' || method==='PATCH') ? normalizeActiveRequestWriteBody(body) : body; options.body=JSON.stringify(normalizedBody); }
-                    const response=await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/${table}${query?'?'+query:''}`,options,SUPABASE_WRITE_TIMEOUT_MS, `${table} ${method}`);
+                    const response=await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/${table}${query?'?'+query:''}`,options,writeTimeoutMs, `${table} ${method}`);
                     if(!response.ok) throw new Error(await getResponseError(response, `Supabase write failed (${response.status})`));
                     const text=await response.text(); return text?JSON.parse(text):{};
                 }
@@ -3402,6 +3490,24 @@
                 if(method==='GET') return [];
                 throw e;
             } finally { stopGlobalProgress(); }
+        }
+
+        async function runDetailWriteWithRetry(table, method, body, query, options = {}) {
+            const opts = options || {};
+            const retries = Math.max(0, Number(opts.retries) || 0);
+            const timeoutMs = Math.max(1000, Number(opts.timeoutMs) || SUPABASE_WRITE_TIMEOUT_MS);
+            const retryDelayMs = Math.max(120, Number(opts.retryDelayMs) || DETAIL_ROW_WRITE_RETRY_DELAY_MS);
+            let lastError = null;
+            for (let attempt = 0; attempt <= retries; attempt += 1) {
+                try {
+                    return await supabaseFetch(table, method, body, query, { timeoutMs });
+                } catch (error) {
+                    lastError = error;
+                    if (attempt >= retries || !isRetryableSupabaseWriteError(error)) throw error;
+                    await delayMs(retryDelayMs);
+                }
+            }
+            throw lastError;
         }
 
         function maybeWarnAvRuleSchemaMissing() {
@@ -3774,6 +3880,8 @@
 
         const DETAIL_INPUT_SAVE_DEBOUNCE_MS = 160;
         let detailInputSaveTimers = {};
+        const rowSaveCoordinatorState = new Map();
+        const ROW_SAVE_COMPLETE_INTENT_MS = 12000;
 
         function extractDetailPrefixFromInputId(inputId = '') {
             const id = String(inputId || '').trim();
@@ -3795,6 +3903,94 @@
                 });
             }, DETAIL_INPUT_SAVE_DEBOUNCE_MS);
             detailInputSaveTimers[safePrefix] = timerId;
+        }
+
+        function clearQueuedLagSensitiveInputSave(prefix = '') {
+            const safePrefix = String(prefix || '');
+            if (!safePrefix || !detailInputSaveTimers[safePrefix]) return;
+            clearTimeout(detailInputSaveTimers[safePrefix]);
+            detailInputSaveTimers[safePrefix] = null;
+        }
+
+        function getRowSaveCoordinatorKey(prefix = '', item = null) {
+            const row = item || activeItem;
+            const uniqueId = String(firstNonEmptyValue(row && row.UNIQUE_ID, '')).trim();
+            return uniqueId ? `${String(prefix || '').trim()}::${uniqueId}` : '';
+        }
+
+        function getRowSaveCoordinatorState(key = '') {
+            const safeKey = String(key || '').trim();
+            if (!safeKey) return null;
+            if (!rowSaveCoordinatorState.has(safeKey)) {
+                rowSaveCoordinatorState.set(safeKey, {
+                    running: false,
+                    pending: null,
+                    completionIntentUntil: 0
+                });
+            }
+            return rowSaveCoordinatorState.get(safeKey);
+        }
+
+        function hasPendingRowSaveCompletionIntent(key = '') {
+            const state = getRowSaveCoordinatorState(key);
+            return !!(state && state.completionIntentUntil > Date.now());
+        }
+
+        function cleanupRowSaveCoordinatorState(key = '') {
+            const safeKey = String(key || '').trim();
+            const state = getRowSaveCoordinatorState(safeKey);
+            if (!state) return;
+            if (!state.running && !state.pending && state.completionIntentUntil <= Date.now()) {
+                rowSaveCoordinatorState.delete(safeKey);
+            }
+        }
+
+        function runCoordinatedRowSave(key = '', runner = null, meta = {}) {
+            const safeKey = String(key || '').trim();
+            if (!safeKey || typeof runner !== 'function') return Promise.resolve(false);
+            const state = getRowSaveCoordinatorState(safeKey);
+            const taskMeta = {
+                isComplete: !!(meta && meta.isComplete),
+                isAutoSave: !!(meta && meta.isAutoSave)
+            };
+            if (taskMeta.isAutoSave && hasPendingRowSaveCompletionIntent(safeKey)) {
+                return Promise.resolve({ skipped: true, reason: 'completion-intent' });
+            }
+            if (taskMeta.isComplete) state.completionIntentUntil = Date.now() + ROW_SAVE_COMPLETE_INTENT_MS;
+            const executeTask = (task) => {
+                state.running = true;
+                return Promise.resolve()
+                    .then(() => task.runner())
+                    .then(task.resolve, task.reject)
+                    .finally(() => {
+                        state.running = false;
+                        const nextTask = state.pending;
+                        state.pending = null;
+                        if (nextTask) {
+                            executeTask(nextTask);
+                            return;
+                        }
+                        if (!task.meta.isComplete) cleanupRowSaveCoordinatorState(safeKey);
+                    });
+            };
+            return new Promise((resolve, reject) => {
+                const task = { runner, resolve, reject, meta: taskMeta };
+                if (state.running) {
+                    if (taskMeta.isAutoSave && ((state.pending && state.pending.meta && state.pending.meta.isComplete) || hasPendingRowSaveCompletionIntent(safeKey))) {
+                        resolve({ skipped: true, reason: 'queued-complete' });
+                        return;
+                    }
+                    if (state.pending && typeof state.pending.resolve === 'function') {
+                        state.pending.resolve({ skipped: true, reason: 'superseded' });
+                    }
+                    state.pending = task;
+                    return;
+                }
+                executeTask(task);
+            }).finally(() => {
+                if (!taskMeta.isComplete) return;
+                setTimeout(() => cleanupRowSaveCoordinatorState(safeKey), ROW_SAVE_COMPLETE_INTENT_MS + 80);
+            });
         }
 
         window.addEventListener('input', (event) => {
@@ -3862,7 +4058,7 @@
         const PENDING_EDITS_STORAGE_KEY = 'gnc_pending_edits';
         const PENDING_EDITS_PERSIST_DEBOUNCE_MS = 400;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Maschino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const APP_VERSION = 'V2026.04.14.10';
+        const APP_VERSION = 'V2026.04.14.11';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -13813,23 +14009,34 @@ activeDriveTab = tab;
                 showToast('Not Found', 'That Sales Office row could not be found.', true);
                 return;
             }
-            const masterRow = masterInventoryById.get(uid) || fullInventory.find((row) => String((row && row.UNIQUE_ID) || '').trim() === uid) || null;
+            const syncContext = getSeasonSalesOfficeSyncContext(salesOfficeRow);
+            const masterId = String(firstNonEmptyValue(syncContext && syncContext.masterId, salesOfficeRow.MASTER_ID, salesOfficeRow.MASTER_UNIQUE_ID, salesOfficeRow.master_id, '')).trim();
+            const masterRow = (syncContext && syncContext.masterRow) || (masterId ? (masterInventoryById.get(masterId) || fullInventory.find((row) => String((row && row.UNIQUE_ID) || '').trim() === masterId) || null) : null);
             const previousSalesOfficeNote = String(salesOfficeRow.AV_NOTE || '');
             const previousMasterNote = masterRow ? String(masterRow.AV_NOTE || '') : null;
             if (saveBtn) saveBtn.innerText = 'Saving...';
             salesOfficeRow.AV_NOTE = nextValue;
+            salesOfficeRow.av_note = nextValue || null;
+            if (masterId) syncSeasonSalesOfficeAvNoteState(masterId, nextValue);
             if (masterRow) {
                 masterRow.AV_NOTE = nextValue;
                 buildSearchIndex(masterRow);
                 syncRowDataAcrossViews(masterRow);
             }
             if (activeItem && String((activeItem.UNIQUE_ID || '')).trim() === uid) activeItem.AV_NOTE = nextValue;
-            if (getCurrentVisibleViewId() === 'sales-office') renderSalesOffice();
+            if (activeItem && masterId && String((activeItem.UNIQUE_ID || '')).trim() === masterId) activeItem.AV_NOTE = nextValue;
+            if (getCurrentVisibleViewId() === 'sales-office') queueInteractiveViewRender('sales-office', false, true, 16, 180);
             try {
-                await supabaseFetch('v2_sales_office', 'PATCH', { av_note: nextValue || null }, `unique_id=eq.${encodeURIComponent(uid)}`);
-                if (masterRow) {
+                await runDetailWriteWithRetry('v2_sales_office', 'PATCH', { av_note: nextValue || null }, `unique_id=eq.${encodeURIComponent(uid)}`, {
+                    timeoutMs: getDetailRowWriteTimeoutMs(),
+                    retries: DETAIL_ROW_WRITE_RETRY_COUNT
+                });
+                if (masterRow && masterId) {
                     const masterSync = await Promise.allSettled([
-                        supabaseFetch('v2_master_inventory', 'PATCH', { av_note: nextValue || null }, `unique_id=eq.${encodeURIComponent(uid)}`)
+                        runDetailWriteWithRetry('v2_master_inventory', 'PATCH', { av_note: nextValue || null }, `unique_id=eq.${encodeURIComponent(masterId)}`, {
+                            timeoutMs: getDetailRowWriteTimeoutMs(),
+                            retries: DETAIL_ROW_WRITE_RETRY_COUNT
+                        })
                     ]);
                     if (masterSync.some((result) => result.status !== 'fulfilled')) {
                         showToast('Sync Warning', 'AV Note saved in Sales Office, but the linked inventory row did not confirm yet.', true);
@@ -13842,13 +14049,16 @@ activeDriveTab = tab;
                 closeSalesOfficeAvNoteModal();
             } catch (err) {
                 salesOfficeRow.AV_NOTE = previousSalesOfficeNote;
+                salesOfficeRow.av_note = previousSalesOfficeNote || null;
+                if (masterId) syncSeasonSalesOfficeAvNoteState(masterId, previousSalesOfficeNote);
                 if (masterRow) {
                     masterRow.AV_NOTE = previousMasterNote;
                     buildSearchIndex(masterRow);
                     syncRowDataAcrossViews(masterRow);
                 }
                 if (activeItem && String((activeItem.UNIQUE_ID || '')).trim() === uid) activeItem.AV_NOTE = previousSalesOfficeNote;
-                if (getCurrentVisibleViewId() === 'sales-office') renderSalesOffice();
+                if (activeItem && masterId && String((activeItem.UNIQUE_ID || '')).trim() === masterId) activeItem.AV_NOTE = previousMasterNote;
+                if (getCurrentVisibleViewId() === 'sales-office') queueInteractiveViewRender('sales-office', false, true, 16, 180);
                 if (saveBtn) saveBtn.innerText = 'Save AV Note';
                 showToast('Error', 'Could not save the Sales Office AV Note.', true);
             }
@@ -16932,6 +17142,18 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (autoSaveTimer) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
             let itemToSave = specificItem || activeItem;
             if (!itemToSave) return;
+            if (prefix === 'req-') {
+                const requestSourceRow = findRequestRowByUniqueId(itemToSave.UNIQUE_ID)
+                    || findRequestRowByUniqueId(firstNonEmptyValue(itemToSave.MASTER_ID, itemToSave.MASTER_UNIQUE_ID, itemToSave.master_id, ''));
+                if (requestSourceRow && requestSourceRow !== itemToSave) {
+                    itemToSave = requestSourceRow;
+                    if (!specificItem) activeItem = requestSourceRow;
+                }
+            }
+            const rowSaveKey = getRowSaveCoordinatorKey(prefix, itemToSave);
+            const saveOptions = options || {};
+            const isBackgroundPhotoSync = !!saveOptions.backgroundPhotoSync;
+            const isCoordinatedAutoSave = !!(isSilentAutoSave && !isBackgroundPhotoSync);
             let btnComp = document.getElementById(prefix + 'btn-save-complete');
             let isCurrentView = !!(activeItem && activeItem.UNIQUE_ID === itemToSave.UNIQUE_ID);
 
@@ -16941,19 +17163,13 @@ ${folderNote ? `Folder Note: ${folderNote}
                 return;
             }
 
+            if (isComplete) clearQueuedLagSensitiveInputSave(prefix);
+            if (isCoordinatedAutoSave && hasPendingRowSaveCompletionIntent(rowSaveKey)) return;
             if (isCurrentView && isComplete && btnComp) btnComp.innerText = 'SAVING...';
 
             const executeSave = async () => {
                 clearScheduledPhotoFieldPersist(itemToSave, prefix);
-                if (prefix === 'req-') {
-                    const requestSourceRow = findRequestRowByUniqueId(itemToSave.UNIQUE_ID)
-                        || findRequestRowByUniqueId(firstNonEmptyValue(itemToSave.MASTER_ID, itemToSave.MASTER_UNIQUE_ID, itemToSave.master_id, ''));
-                    if (requestSourceRow && requestSourceRow !== itemToSave) {
-                        itemToSave = requestSourceRow;
-                        if (isCurrentView) activeItem = requestSourceRow;
-                        isCurrentView = !!(activeItem && activeItem.UNIQUE_ID === itemToSave.UNIQUE_ID);
-                    }
-                }
+                isCurrentView = !!(activeItem && activeItem.UNIQUE_ID === itemToSave.UNIQUE_ID);
                 let wasAlreadyComplete = isRequestComplete(itemToSave);
                 const previousDateCompleted = itemToSave.DATE_COMPLETED || '';
                 const previousReqStatus = itemToSave.REQ_STATUS;
@@ -16962,8 +17178,12 @@ ${folderNote ? `Folder Note: ${folderNote}
                 const nextTaskId = (isComplete && isCurrentView && detailWasVisible && lastView === 'tasks') ? getNextTaskDetailId(itemToSave.UNIQUE_ID) : null;
                 let didOptimisticClose = false;
                 let didOptimisticRender = false;
-                const saveOptions = options || {};
                 const trackedStateBeforeSave = captureTrackedAvState(itemToSave);
+                const queueVisibleSaveRefresh = (delay = 0) => {
+                    const visibleViewIds = getVisibleTrackedViewIds();
+                    if (!visibleViewIds.length) return;
+                    visibleViewIds.forEach((viewId) => queueInteractiveViewRender(viewId, false, true, delay, 180));
+                };
 
                 if (!specificItem) {
                     let avEl = document.getElementById(prefix + 'av-note');
@@ -17329,12 +17549,29 @@ ${folderNote ? `Folder Note: ${folderNote}
 
                 const targetTable = (prefix === 'req-') ? 'v2_active_request' : (itemToSave.SOURCE_TABLE || 'v2_master_inventory');
                 const pendingUploads = isComplete ? getPendingPhotoUploadsForItem(itemToSave) : [];
+                const getChangedDatasetKeys = (artifacts = null) => {
+                    const changedKeys = new Set(getDatasetKeysForTable(targetTable));
+                    if (artifacts && artifacts.masterSyncPayload) {
+                        getDatasetKeysForTable('v2_master_inventory').forEach((key) => changedKeys.add(key));
+                    }
+                    if ((artifacts && artifacts.soPayload) || (!(artifacts && artifacts.soPayload) && trackedChangeFlags.avNote && getSeasonSalesOfficeSyncContext(itemToSave))) {
+                        getDatasetKeysForTable('v2_sales_office').forEach((key) => changedKeys.add(key));
+                    }
+                    return Array.from(changedKeys);
+                };
+                const saveRequestOptions = isLagSensitiveDetailPrefix(prefix)
+                    ? {
+                        timeoutMs: getDetailRowWriteTimeoutMs(),
+                        retries: DETAIL_ROW_WRITE_RETRY_COUNT,
+                        retryDelayMs: DETAIL_ROW_WRITE_RETRY_DELAY_MS
+                    }
+                    : {};
 
                 const restoreFromFailedSave = (message) => {
                     itemToSave.DATE_COMPLETED = previousDateCompleted;
                     itemToSave.REQ_STATUS = previousReqStatus;
                     if (isComplete && btnComp) btnComp.innerText = 'MARK DONE';
-                    if (didOptimisticClose) reRenderCurrentView();
+                    if (didOptimisticClose || didOptimisticRender) queueVisibleSaveRefresh(16);
                     if (!isSilentAutoSave) showToast('Network Error', message || 'Could not reach database.', true);
                 };
 
@@ -17346,7 +17583,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     if (!artifacts.soPayload && trackedChangeFlags.avNote) {
                         const salesOfficeSyncContext = getSeasonSalesOfficeSyncContext(itemToSave);
                         if (salesOfficeSyncContext) {
-                            const nextSalesOfficeAvNote = getSalesOfficeDisplayAvNote(salesOfficeSyncContext.masterRow || itemToSave, '');
+                            const nextSalesOfficeAvNote = String(firstNonEmptyValue(itemToSave.AV_NOTE, salesOfficeSyncContext.masterRow && salesOfficeSyncContext.masterRow.AV_NOTE, '')).trim();
                             syncSeasonSalesOfficeAvNoteState(salesOfficeSyncContext.masterId, nextSalesOfficeAvNote);
                             syncSeasonSalesOfficeAvNoteRemote(salesOfficeSyncContext.masterId, nextSalesOfficeAvNote).catch(() => {});
                         }
@@ -17374,11 +17611,12 @@ ${folderNote ? `Folder Note: ${folderNote}
                         syncRealtimeSalesOfficeRows(new Set([String(artifacts.cloneSO.UNIQUE_ID || '').trim(), String(artifacts.soPayload.master_id || '').trim()].filter(Boolean)));
                         markViewDirty('sales-office');
                         const salesOfficeUid = encodeURIComponent(String(artifacts.soPayload.unique_id || '').trim());
+                        if (isViewVisible('sales-office')) queueInteractiveViewRender('sales-office', false, true, 16, 180);
                         supabaseFetch('v2_sales_office', 'GET', null, 'select=unique_id&unique_id=eq.' + salesOfficeUid)
                             .then((rows) => Array.isArray(rows) && rows.length
-                                ? supabaseFetch('v2_sales_office', 'PATCH', artifacts.soPayload, 'unique_id=eq.' + salesOfficeUid)
-                                : supabaseFetch('v2_sales_office', 'POST', artifacts.soPayload))
-                            .then(() => { if (isViewVisible('sales-office')) refreshViewDatasetsOnEnter('sales-office', { force: true, minInterval: 0 }); })
+                                ? runDetailWriteWithRetry('v2_sales_office', 'PATCH', artifacts.soPayload, 'unique_id=eq.' + salesOfficeUid, saveRequestOptions)
+                                : runDetailWriteWithRetry('v2_sales_office', 'POST', artifacts.soPayload, '', saveRequestOptions))
+                            .then(() => { queueVisibleDatasetCatchup(260); })
                             .catch(e => console.log(e));
                     }
 
@@ -17401,9 +17639,9 @@ ${folderNote ? `Folder Note: ${folderNote}
                             syncRowDataAcrossViews(artifacts.masterSyncItem);
                         }
 
-                        supabaseFetch('v2_master_inventory', 'PATCH', artifacts.masterSyncPayload, `unique_id=eq.${encodeURIComponent(artifacts.masterSyncId)}`).catch(() => {});
+                        runDetailWriteWithRetry('v2_master_inventory', 'PATCH', artifacts.masterSyncPayload, `unique_id=eq.${encodeURIComponent(artifacts.masterSyncId)}`, saveRequestOptions).catch(() => {});
                     }
-                    markHiddenViewsDirty(getVisibleTrackedViewIds());
+                    refreshAffectedViews(getChangedDatasetKeys(artifacts));
 
 
                     const immediateCleanupOps = avRuleColumnsReady === true
@@ -17434,7 +17672,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     if (isComplete && !didOptimisticClose && !didOptimisticRender && !didImmediateCleanup) {
                         itemToSave.DATE_COMPLETED = payload.date_completed;
                         if (isCurrentView && detailWasVisible) goBackFromDetail();
-                        reRenderCurrentView();
+                        queueVisibleSaveRefresh(16);
                     }
 
                     if (prefix === 'req-' && isComplete && nextRequestId) {
@@ -17460,7 +17698,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     }
                     applyPhotoFieldsToPayload();
                     try {
-                        await supabaseFetch(targetTable, 'PATCH', payload, `unique_id=eq.${encodeURIComponent(itemToSave.UNIQUE_ID)}`);
+                        await runDetailWriteWithRetry(targetTable, 'PATCH', payload, `unique_id=eq.${encodeURIComponent(itemToSave.UNIQUE_ID)}`, saveRequestOptions);
                         const finalizeSave = () => handleSaveSuccess(buildCompletionArtifacts());
                         if (isLagSensitiveDetailPrefix(prefix)) setTimeout(finalizeSave, 0);
                         else finalizeSave();
@@ -17481,10 +17719,10 @@ ${folderNote ? `Folder Note: ${folderNote}
                     }
                     if (isLagSensitiveDetailPrefix(prefix)) {
                         didOptimisticRender = true;
-                        scheduleUiRender(`detail-complete-${itemToSave.UNIQUE_ID}`, () => reRenderCurrentView(), 24);
+                        queueVisibleSaveRefresh(24);
                     } else {
                         didOptimisticRender = true;
-                        reRenderCurrentView();
+                        queueVisibleSaveRefresh(0);
                     }
                 }
 
@@ -17510,7 +17748,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             };
 
             try {
-                await runSaveNow();
+                await runCoordinatedRowSave(rowSaveKey, runSaveNow, { isComplete, isAutoSave: isCoordinatedAutoSave });
             } catch (error) {
                 handleUnexpectedSaveError(error);
             }
