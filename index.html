@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -457,7 +457,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-<div id="header-version" class="nav-version-pill">V2026.04.15.02</div>
+<div id="header-version" class="nav-version-pill">V2026.04.15.03</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -769,7 +769,7 @@
                         <div id="ssn-input-container">
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="ssn-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'ssn-', true)"></div>
                             <div id="ssn-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="ssn-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'ssn-', true)"></div>
-                            <div class="mb-3 relative"><label class="text-[10px] font-bold text-gray-500 uppercase">Loc Match %</label><input type="number" id="ssn-match" class="input-field !mb-0 pr-20" placeholder="e.g. 40" oninput="calculateMatchQty('ssn-')" onchange="saveData(false, 'ssn-', true)"><div id="ssn-match-display" class="pointer-events-none absolute right-3 bottom-3 text-[10px] font-bold text-[#007a4d] hidden">QTY: <span id="ssn-match-qty-val">0</span></div></div>
+                            <div class="mb-3 relative"><label class="text-[10px] font-bold text-gray-500 uppercase">LOC MATCH %</label><input type="number" id="ssn-match" class="input-field !mb-0 pr-20" placeholder="e.g. 40" oninput="calculateMatchQty('ssn-')" onchange="saveData(false, 'ssn-', true)"><div id="ssn-match-display" class="pointer-events-none absolute right-3 bottom-3 text-[10px] font-bold text-[#007a4d] hidden">LOC PHOTO MATCH: <span id="ssn-match-qty-val">0</span></div></div>
                         </div>
                         <div class="relative w-full mb-3"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2 relative"><input type="text" id="ssn-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); debouncedFilterAvNotes('ssn-')" onfocus="filterAvNotes('ssn-')" onblur="setTimeout(()=>{if(document.getElementById('ssn-av-dropdown-list'))document.getElementById('ssn-av-dropdown-list').classList.add('hidden'); saveData(false, 'ssn-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT..."><button type="button" class="shrink-0 h-[48px] w-[48px] rounded-xl border border-blue-300 bg-blue-100 text-blue-700 text-2xl font-black shadow-sm active:scale-95" onmousedown="event.preventDefault()" onclick="appendSpecCaliperToAvNote('ssn-')">+</button></div><div id="ssn-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div></div>
                         <div><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="ssn-pick" class="input-field" placeholder="e.g. E.07.000 PICK APPROVED" onchange="saveData(false, 'ssn-', true)"></div>
@@ -782,7 +782,7 @@
                         <div id="lsn-input-container">
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="lsn-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'lsn-', true)"></div>
                             <div id="lsn-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="lsn-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'lsn-', true)"></div>
-                            <div class="mb-3 relative"><label class="text-[10px] font-bold text-gray-500 uppercase">Loc Match %</label><input type="number" id="lsn-match" class="input-field !mb-0 pr-20" placeholder="e.g. 95" oninput="calculateMatchQty('lsn-')" onchange="saveData(false, 'lsn-', true)"><div id="lsn-match-display" class="pointer-events-none absolute right-3 bottom-3 text-[10px] font-bold text-[#007a4d] hidden">QTY: <span id="lsn-match-qty-val">0</span></div></div>
+                            <div class="mb-3 relative"><label class="text-[10px] font-bold text-gray-500 uppercase">LOC MATCH %</label><input type="number" id="lsn-match" class="input-field !mb-0 pr-20" placeholder="e.g. 95" oninput="calculateMatchQty('lsn-')" onchange="saveData(false, 'lsn-', true)"><div id="lsn-match-display" class="pointer-events-none absolute right-3 bottom-3 text-[10px] font-bold text-[#007a4d] hidden">LOC PHOTO MATCH: <span id="lsn-match-qty-val">0</span></div></div>
                         </div>
                         <div class="relative w-full mb-3"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2 relative"><input type="text" id="lsn-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); debouncedFilterAvNotes('lsn-')" onfocus="filterAvNotes('lsn-')" onblur="setTimeout(()=>{if(document.getElementById('lsn-av-dropdown-list'))document.getElementById('lsn-av-dropdown-list').classList.add('hidden'); saveData(false, 'lsn-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT..."><button type="button" class="shrink-0 h-[48px] w-[48px] rounded-xl border border-blue-300 bg-blue-100 text-blue-700 text-2xl font-black shadow-sm active:scale-95" onmousedown="event.preventDefault()" onclick="appendSpecCaliperToAvNote('lsn-')">+</button></div><div id="lsn-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div></div>
                         <div><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="lsn-pick" class="input-field" placeholder="e.g. E.07.000 PICK APPROVED" onchange="saveData(false, 'lsn-', true)"></div>
@@ -795,7 +795,7 @@
                         <div id="na-input-container">
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="na-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'na-', true)"></div>
                             <div id="na-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="na-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'na-', true)"></div>
-                            <div class="mb-3"><label class="text-[10px] font-bold text-gray-500 uppercase">Loc Match %</label><input type="number" id="na-match" class="input-field !mb-1" placeholder="e.g. 95" oninput="calculateMatchQty('na-')"><div id="na-match-display" class="text-[10px] font-bold text-[#007a4d] text-right mb-2 hidden">LOC Match QTY: <span id="na-match-qty-val">0</span></div></div>
+                            <div class="mb-3"><label class="text-[10px] font-bold text-gray-500 uppercase">LOC MATCH %</label><input type="number" id="na-match" class="input-field !mb-1" placeholder="e.g. 95" oninput="calculateMatchQty('na-')"><div id="na-match-display" class="text-[10px] font-bold text-[#007a4d] text-right mb-2 hidden">LOC PHOTO MATCH: <span id="na-match-qty-val">0</span></div></div>
                         </div>
                         <div class="relative w-full mb-3"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2 relative"><input type="text" id="na-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); debouncedFilterAvNotes('na-')" onfocus="filterAvNotes('na-')" onblur="setTimeout(()=>{if(document.getElementById('na-av-dropdown-list'))document.getElementById('na-av-dropdown-list').classList.add('hidden'); saveData(false, 'na-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT..."><button type="button" class="shrink-0 h-[48px] w-[48px] rounded-xl border border-blue-300 bg-blue-100 text-blue-700 text-2xl font-black shadow-sm active:scale-95" onmousedown="event.preventDefault()" onclick="appendSpecCaliperToAvNote('na-')">+</button></div><div id="na-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div></div>
                         <div class="mb-2"><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="na-pick" class="input-field" placeholder="e.g. E.07.000 PICK APPROVED" onchange="saveData(false, 'na-', true)"></div>
@@ -814,7 +814,7 @@
                         <div id="req-input-container">
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="req-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'req-', true)"></div>
                             <div id="req-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="req-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'req-', true)"></div>
-                            <div class="mb-3 relative"><label class="text-[10px] font-bold text-gray-500 uppercase">Loc Match %</label><input type="number" id="req-match" class="input-field !mb-0 pr-20" placeholder="e.g. 95" oninput="calculateMatchQty('req-')" onchange="saveData(false, 'req-', true)"><div id="req-match-display" class="pointer-events-none absolute right-3 bottom-3 text-[10px] font-bold text-[#007a4d] hidden">QTY: <span id="req-match-qty-val">0</span></div></div>
+                            <div class="mb-3 relative"><label class="text-[10px] font-bold text-gray-500 uppercase">LOC MATCH %</label><input type="number" id="req-match" class="input-field !mb-0 pr-20" placeholder="e.g. 95" oninput="calculateMatchQty('req-')" onchange="saveData(false, 'req-', true)"><div id="req-match-display" class="pointer-events-none absolute right-3 bottom-3 text-[10px] font-bold text-[#007a4d] hidden">LOC PHOTO MATCH: <span id="req-match-qty-val">0</span></div></div>
                         </div>
                         <div class="relative w-full mb-3"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2 relative"><input type="text" id="req-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); debouncedFilterAvNotes('req-')" onfocus="filterAvNotes('req-')" onblur="setTimeout(()=>{if(document.getElementById('req-av-dropdown-list'))document.getElementById('req-av-dropdown-list').classList.add('hidden'); saveData(false, 'req-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT..."><button type="button" class="shrink-0 h-[48px] w-[48px] rounded-xl border border-blue-300 bg-blue-100 text-blue-700 text-2xl font-black shadow-sm active:scale-95" onmousedown="event.preventDefault()" onclick="appendSpecCaliperToAvNote('req-')">+</button></div><div id="req-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div></div>
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Reserve</label><select id="req-reserve" class="input-field bg-white" onchange="saveData(false, 'req-', true)"><option value="NO">NO</option><option value="YES">YES</option></select></div>
@@ -840,7 +840,7 @@
                         <div id="flyer-input-container">
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="flyer-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'flyer-', true)"></div>
                             <div id="flyer-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="flyer-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'flyer-', true)"></div>
-                            <div class="mb-3 relative"><label class="text-[10px] font-bold text-gray-500 uppercase">Loc Match %</label><input type="number" id="flyer-match" class="input-field !mb-0 pr-20" placeholder="e.g. 95" oninput="calculateMatchQty('flyer-')" onchange="saveData(false, 'flyer-', true)"><div id="flyer-match-display" class="pointer-events-none absolute right-3 bottom-3 text-[10px] font-bold text-[#007a4d] hidden">QTY: <span id="flyer-match-qty-val">0</span></div></div>
+                            <div class="mb-3 relative"><label class="text-[10px] font-bold text-gray-500 uppercase">LOC MATCH %</label><input type="number" id="flyer-match" class="input-field !mb-0 pr-20" placeholder="e.g. 95" oninput="calculateMatchQty('flyer-')" onchange="saveData(false, 'flyer-', true)"><div id="flyer-match-display" class="pointer-events-none absolute right-3 bottom-3 text-[10px] font-bold text-[#007a4d] hidden">LOC PHOTO MATCH: <span id="flyer-match-qty-val">0</span></div></div>
                         </div>
                         <div class="relative w-full mb-3"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2 relative"><input type="text" id="flyer-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); debouncedFilterAvNotes('flyer-')" onfocus="filterAvNotes('flyer-')" onblur="setTimeout(()=>{if(document.getElementById('flyer-av-dropdown-list'))document.getElementById('flyer-av-dropdown-list').classList.add('hidden'); saveData(false, 'flyer-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT..."><button type="button" class="shrink-0 h-[48px] w-[48px] rounded-xl border border-blue-300 bg-blue-100 text-blue-700 text-2xl font-black shadow-sm active:scale-95" onmousedown="event.preventDefault()" onclick="appendSpecCaliperToAvNote('flyer-')">+</button></div><div id="flyer-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div></div>
                         <div><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="flyer-pick" class="input-field" placeholder="e.g. E.07.000 PICK APPROVED" onchange="saveData(false, 'flyer-', true)"></div>
@@ -1603,8 +1603,79 @@
             return '';
         }
 
+        const FLYER_SHADOW_FIELD_MAP = Object.freeze({
+            AV_NOTE: 'FLYER_AV_NOTE',
+            MATCH: 'FLYER_MATCH',
+            LOC_MATCH_QTY: 'FLYER_LOC_MATCH_QTY',
+            SPEC: 'FLYER_SPEC',
+            CALIPER: 'FLYER_CALIPER',
+            PICK: 'FLYER_PICK',
+            INITIAL_PTR: 'FLYER_INITIAL_PTR'
+        });
+
+        function getFlyerShadowKeys() {
+            return Object.values(FLYER_SHADOW_FIELD_MAP);
+        }
+
+        function normalizeFlyerShadowFields(item) {
+            if (!item) return item;
+            item.FLYER_AV_NOTE = firstNonEmptyValue(item.FLYER_AV_NOTE, item.flyer_av_note);
+            item.FLYER_MATCH = firstNonEmptyValue(item.FLYER_MATCH, item.flyer_match);
+            item.FLYER_LOC_MATCH_QTY = firstNonEmptyValue(item.FLYER_LOC_MATCH_QTY, item.flyer_loc_match_qty);
+            item.FLYER_SPEC = firstNonEmptyValue(item.FLYER_SPEC, item.flyer_spec);
+            item.FLYER_CALIPER = firstNonEmptyValue(item.FLYER_CALIPER, item.flyer_caliper);
+            item.FLYER_PICK = firstNonEmptyValue(item.FLYER_PICK, item.flyer_pick);
+            item.FLYER_INITIAL_PTR = firstNonEmptyValue(item.FLYER_INITIAL_PTR, item.flyer_initial_ptr);
+            return item;
+        }
+
+        function isFlyerFolderContextActive() {
+            const selectedFolder = typeof selectedFlyerFolder !== 'undefined' ? String(selectedFlyerFolder || '').trim() : '';
+            return selectedFolder !== '';
+        }
+
+        function shouldPreferFlyerOwnedFields(item, sourceView = '') {
+            if (!item) return false;
+            const normalizedSource = String(sourceView || '').toLowerCase();
+            if (normalizedSource === 'flyer') return true;
+            if (normalizedSource === 'tasks' && isFlyerFolderContextActive() && typeof doesItemMatchFlyerFolder === 'function') {
+                const folderTab = typeof activeFlyerFolderTab !== 'undefined' ? activeFlyerFolderTab : 'active';
+                return doesItemMatchFlyerFolder(item, selectedFlyerFolder, folderTab);
+            }
+            return false;
+        }
+
+        function getItemDisplayValue(item, key, sourceView = '') {
+            if (!item) return '';
+            const normalizedKey = String(key || '').trim().toUpperCase();
+            const flyerKey = FLYER_SHADOW_FIELD_MAP[normalizedKey];
+            if (flyerKey && shouldPreferFlyerOwnedFields(item, sourceView)) {
+                const flyerValue = firstNonEmptyValue(item[flyerKey], '');
+                if (flyerValue !== '') return flyerValue;
+            }
+            return firstNonEmptyValue(item[normalizedKey], item[key], '');
+        }
+
+        function getDisplayLocMatchQtyValue(item, sourceView = '') {
+            if (!item) return '';
+            if (shouldPreferFlyerOwnedFields(item, sourceView)) {
+                const flyerQty = String(firstNonEmptyValue(item.FLYER_LOC_MATCH_QTY, '') || '').trim();
+                if (flyerQty) return flyerQty;
+                const flyerDerivedQty = calculateLocMatchQtyValue({
+                    MATCH: firstNonEmptyValue(item.FLYER_MATCH, item.MATCH, ''),
+                    INITIAL_PTR: firstNonEmptyValue(item.FLYER_INITIAL_PTR, item.INITIAL_PTR, ''),
+                    PTRAVAILABLE: firstNonEmptyValue(item.PTRAVAILABLE, item.LOC_AVAIL, '0')
+                });
+                if (flyerDerivedQty != null) return String(flyerDerivedQty);
+            }
+            const derivedQty = calculateLocMatchQtyValue(item);
+            if (derivedQty != null) return String(derivedQty);
+            return String(firstNonEmptyValue(item.LOC_MATCH_QTY, '') || '').trim();
+        }
+
         function normalizeRowPhotoFields(item) {
             if (!item) return item;
+            normalizeFlyerShadowFields(item);
             item.SAVED_PHOTO_LINK = firstNonEmptyValue(item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']);
             item.SAVED_PHOTO_NAME = firstNonEmptyValue(item.SAVED_PHOTO_NAME, item.PHOTO_NAME, item.PHOTONAME, item['PHOTO NAME']);
             item.REQ_PHOTO_LINK = firstNonEmptyValue(item.REQ_PHOTO_LINK, item.REQUEST_PHOTO_LINK, item.REQUESTPHOTO_LINK);
@@ -1616,13 +1687,16 @@
             const sharedFlyerAssignment = String(firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, item.app_tab_assignment, '')).toLowerCase();
             const sharesFlyerBaseData = sharedFlyerAssignment === 'season' || sharedFlyerAssignment === 'location';
             if (sharesFlyerBaseData) {
-                if (!String(item.SAVED_PHOTO_LINK || '').trim() && String(item.FLYER_PHOTO_LINK || '').trim()) item.SAVED_PHOTO_LINK = item.FLYER_PHOTO_LINK;
                 if (!String(item.FLYER_PHOTO_LINK || '').trim() && String(item.SAVED_PHOTO_LINK || '').trim()) item.FLYER_PHOTO_LINK = item.SAVED_PHOTO_LINK;
-                if (!String(item.SAVED_PHOTO_NAME || '').trim() && String(item.FLYER_PHOTO_NAME || '').trim()) item.SAVED_PHOTO_NAME = item.FLYER_PHOTO_NAME;
                 if (!String(item.FLYER_PHOTO_NAME || '').trim() && String(item.SAVED_PHOTO_NAME || '').trim()) item.FLYER_PHOTO_NAME = item.SAVED_PHOTO_NAME;
             }
-            item.ROW_PHOTO_LINK = firstNonEmptyValue(item.REQ_PHOTO_LINK, item.DOCK_PHOTO_LINK, item.FLYER_PHOTO_LINK, item.SAVED_PHOTO_LINK);
-            item.ROW_PHOTO_NAME = firstNonEmptyValue(item.REQ_PHOTO_NAME, item.DOCK_PHOTO_NAME, item.FLYER_PHOTO_NAME, item.SAVED_PHOTO_NAME);
+            item.ROW_PHOTO_LINK = firstNonEmptyValue(item.REQ_PHOTO_LINK, item.DOCK_PHOTO_LINK, item.SAVED_PHOTO_LINK);
+            item.ROW_PHOTO_NAME = firstNonEmptyValue(item.REQ_PHOTO_NAME, item.DOCK_PHOTO_NAME, item.SAVED_PHOTO_NAME);
+            const sourceTable = String(firstNonEmptyValue(item.SOURCE_TABLE, item.source_table, 'v2_master_inventory')).toLowerCase();
+            if (sourceTable === 'v2_master_inventory') {
+                const derivedQty = calculateLocMatchQtyValue(item);
+                if (derivedQty != null) item.LOC_MATCH_QTY = derivedQty;
+            }
             return item;
         }
 
@@ -1635,28 +1709,17 @@
             });
             return normalizeRowPhotoFields(target);
         }
-
-        function syncSharedFlyerPhotoFields(item, prefix = '') {
+function syncSharedFlyerPhotoFields(item, prefix = '') {
             if (!item) return item;
             const sharedFlyerAssignment = String(firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, item.app_tab_assignment, '')).toLowerCase();
             if (sharedFlyerAssignment !== 'season' && sharedFlyerAssignment !== 'location') return normalizeRowPhotoFields(item);
-            const normalizedPrefix = String(prefix || '').toLowerCase();
-            const preferFlyerFields = normalizedPrefix === 'flyer-';
-            const sourcePhotoLink = preferFlyerFields
-                ? firstNonEmptyValue(item.FLYER_PHOTO_LINK, item.SAVED_PHOTO_LINK)
-                : firstNonEmptyValue(item.SAVED_PHOTO_LINK, item.FLYER_PHOTO_LINK);
-            const sourcePhotoName = preferFlyerFields
-                ? firstNonEmptyValue(item.FLYER_PHOTO_NAME, item.SAVED_PHOTO_NAME)
-                : firstNonEmptyValue(item.SAVED_PHOTO_NAME, item.FLYER_PHOTO_NAME);
-            item.SAVED_PHOTO_LINK = sourcePhotoLink || '';
-            item.FLYER_PHOTO_LINK = sourcePhotoLink || '';
-            item.SAVED_PHOTO_NAME = sourcePhotoName || '';
-            item.FLYER_PHOTO_NAME = sourcePhotoName || '';
+            if (!String(item.FLYER_PHOTO_LINK || '').trim() && String(item.SAVED_PHOTO_LINK || '').trim()) item.FLYER_PHOTO_LINK = item.SAVED_PHOTO_LINK;
+            if (!String(item.FLYER_PHOTO_NAME || '').trim() && String(item.SAVED_PHOTO_NAME || '').trim()) item.FLYER_PHOTO_NAME = item.SAVED_PHOTO_NAME;
             return normalizeRowPhotoFields(item);
         }
 
         const LINKED_ROW_SYNC_KEYS = ['COMMONNAME','CONTSIZE','LOCATIONCODE','LOTCODE','ITEMCODE','PTRAVAILABLE','SEASONSUPPLY','PRIORITY','QUALITYCODE','FIELDTAGCOLOR','PLANTGROUPCODE','BLOCKALPHA','SEASON','S_LTS','AV_NOTE','SALES_NOTE','MATCH','SPEC','CALIPER','PICK','LOC_MATCH_QTY','INITIAL_PTR'];
-        const EXACT_ROW_SYNC_KEYS = LINKED_ROW_SYNC_KEYS.concat(['APP_TAB_ASSIGNMENT','DATE_COMPLETED','FLYER_CAT','FLYER_TITLE','FLYER_INST','FLYER_ASSIGNED','FLYER_NOTES','FLYER_COMPLETED','ASSIGNEDTO']);
+        const EXACT_ROW_SYNC_KEYS = LINKED_ROW_SYNC_KEYS.concat(getFlyerShadowKeys(), ['APP_TAB_ASSIGNMENT','DATE_COMPLETED','FLYER_CAT','FLYER_TITLE','FLYER_INST','FLYER_ASSIGNED','FLYER_NOTES','FLYER_COMPLETED','ASSIGNEDTO']);
         const ROW_SYNC_SNAPSHOT_EXTRA_KEYS = ['SAVED_PHOTO_LINK','SAVED_PHOTO_NAME','REQ_PHOTO_LINK','REQ_PHOTO_NAME','DOCK_PHOTO_LINK','DOCK_PHOTO_NAME','FLYER_PHOTO_LINK','FLYER_PHOTO_NAME','ROW_PHOTO_LINK','ROW_PHOTO_NAME','REQ_STATUS','REQ_MATCH','REQ_SPEC','REQ_CALIPER','REQ_PICK','REQ_COMMENTS','REQ_RESERVE'];
         const ROW_SYNC_STORAGE_KEY = 'gnc_row_state_sync_v1';
         const ROW_SYNC_EVENT_NAME = 'gnc-row-state-sync';
@@ -1697,13 +1760,13 @@
             if (!target && uniqueId && uniqueId !== targetId) target = findItemByUniqueId(uniqueId) || findRequestRowByUniqueId(uniqueId);
             if (!target) return false;
             Object.keys(payload).forEach((key) => { target[key] = payload[key]; });
+            normalizeFlyerShadowFields(target);
             normalizeRowPhotoFields(target);
             syncSharedFlyerPhotoFields(target, snapshot.prefix || '');
             syncRowDataAcrossViews(target);
             return true;
         }
-
-        function broadcastRowSyncSnapshot(item, prefix = '') {
+function broadcastRowSyncSnapshot(item, prefix = '') {
             const snapshot = buildRowSyncSnapshot(item, prefix);
             if (!snapshot) return;
             try { localStorage.setItem(ROW_SYNC_STORAGE_KEY, JSON.stringify(snapshot)); } catch (e) { logRowSyncIssue('localStorage set failed', e); }
@@ -1833,13 +1896,13 @@
             if (sourceView === 'av' || sourceView === 'av-photo') return getDisplayPhotoLinkCsv(firstNonEmptyValue(item.SAVED_PHOTO_LINK, item.ROW_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']), item, 'saved');
             if (sourceView === 'request') return getDisplayPhotoLinkCsv(firstNonEmptyValue(item.REQ_PHOTO_LINK, item.ROW_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']), item, 'req');
             if (sourceView === 'docks') return getDisplayPhotoLinkCsv(firstNonEmptyValue(item.DOCK_PHOTO_LINK, item.ROW_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']), item, 'dock');
-            if (sourceView === 'flyer') return getDisplayPhotoLinkCsv(firstNonEmptyValue(item.FLYER_PHOTO_LINK, item.ROW_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']), item, 'flyer');
+            const preferFlyerFields = shouldPreferFlyerOwnedFields(item, sourceView);
+            if (sourceView === 'flyer' || preferFlyerFields) return getDisplayPhotoLinkCsv(firstNonEmptyValue(item.FLYER_PHOTO_LINK, item.ROW_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']), item, 'flyer');
             if (sourceView === 'sales-office') return getDisplayPhotoLinkCsv(firstNonEmptyValue(item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']), item, 'saved');
             const requestLink = getDisplayPhotoLinkCsv(item.REQ_PHOTO_LINK || '', item, 'req');
             const dockLink = getDisplayPhotoLinkCsv(item.DOCK_PHOTO_LINK || '', item, 'dock');
-            const flyerLink = getDisplayPhotoLinkCsv(item.FLYER_PHOTO_LINK || '', item, 'flyer');
             const savedLink = getDisplayPhotoLinkCsv(firstNonEmptyValue(item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']), item, 'saved');
-            return firstNonEmptyValue(requestLink, dockLink, flyerLink, savedLink, item.ROW_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.REQ_PHOTO_LINK, item.DOCK_PHOTO_LINK, item.FLYER_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']);
+            return firstNonEmptyValue(requestLink, dockLink, savedLink, item.ROW_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.REQ_PHOTO_LINK, item.DOCK_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']);
         }
         function extractPhotoDateIsoFromText_(value = '') {
             const text = String(value || '').trim();
@@ -1870,11 +1933,6 @@
             const fromLink = formatPhotoDateLabel_(firstUrl || photoLink);
             if (fromLink) return fromLink;
             const fallbackStamp = firstNonEmptyValue(
-                item.REQ_PHOTO_UPDATED_AT,
-                item.REQ_UPDATED_AT,
-                item.REQ_CREATED_AT,
-                item.DOCK_UPDATED_AT,
-                item.FLYER_COMPLETED,
                 item.AV_RULE_PHOTO_UPDATED_AT,
                 item.DATE_COMPLETED,
                 item.date_completed,
@@ -1906,7 +1964,7 @@
 
         function hasHoldStopBlockCode(value) {
             const snapshot = normalizeHoldStopSnapshotValue(value);
-            return snapshot.includes('H') || snapshot.includes('S');
+            return snapshot.includes('H');
         }
 
         function getPrioritySnapshotFromItem(item) {
@@ -1920,11 +1978,27 @@
             return Number.isFinite(num) ? num : null;
         }
 
-        function calculateLocMatchQtyValue(item, matchOverride = undefined) {
-            const matchVal = parseAppNumber(matchOverride === undefined ? (item && item.MATCH) : matchOverride);
+        function calculateLocMatchQtyValue(item, matchOverride = undefined, options = {}) {
+            const opts = options || {};
+            const matchSource = matchOverride === undefined
+                ? (opts.useFlyerFields
+                    ? firstNonEmptyValue(item && item.FLYER_MATCH, item && item.MATCH, item && item.MATCHPCT, '')
+                    : firstNonEmptyValue(item && item.MATCH, item && item.MATCHPCT, ''))
+                : matchOverride;
+            const matchVal = parseAppNumber(matchSource);
             if (matchVal == null) return null;
-            const ptr = parseAppNumber(item && item.PTRAVAILABLE);
-            return Math.round((ptr == null ? 0 : ptr) * (matchVal / 100));
+            const ptr = parseAppNumber(firstNonEmptyValue(item && item.PTRAVAILABLE, item && item.LOC_AVAIL, '0'));
+            const currentPtr = ptr == null ? 0 : Math.max(0, ptr);
+            const baselineCandidate = opts.currentAsBaseline
+                ? currentPtr
+                : parseAppNumber(opts.useFlyerFields
+                    ? firstNonEmptyValue(item && item.FLYER_INITIAL_PTR, item && item.INITIAL_PTR, '')
+                    : firstNonEmptyValue(item && item.INITIAL_PTR, ''));
+            if (baselineCandidate == null) return Math.round(currentPtr * (matchVal / 100));
+            const baselinePtr = Math.max(0, baselineCandidate);
+            const originalMatchQty = Math.max(0, Math.round(baselinePtr * (matchVal / 100)));
+            const ptrDrop = Math.max(0, baselinePtr - currentPtr);
+            return Math.min(originalMatchQty, Math.max(0, originalMatchQty - ptrDrop));
         }
 
         function hasTrackedAvPayload(item) {
@@ -1955,9 +2029,6 @@
             if (!item) return '';
             const links = [
                 item.SAVED_PHOTO_LINK,
-                item.REQ_PHOTO_LINK,
-                item.DOCK_PHOTO_LINK,
-                item.FLYER_PHOTO_LINK,
                 item.PHOTO_LINK,
                 item.PHOTOLINK,
                 item['PHOTO LINK']
@@ -1990,12 +2061,6 @@
                 item.AV_RULE_MATCH_UPDATED_AT,
                 item.AV_RULE_CALIPER_UPDATED_AT,
                 item.AV_RULE_PHOTO_UPDATED_AT,
-                item.REQ_PHOTO_UPDATED_AT,
-                item.REQ_UPDATED_AT,
-                item.REQ_CREATED_AT,
-                item.DOCK_UPDATED_AT,
-                item.FLYER_COMPLETED,
-                item.flyer_completed,
                 item.DATE_COMPLETED,
                 item.date_completed,
                 photoDateIso
@@ -2074,8 +2139,9 @@
             const reasons = [];
             const currentHold = getHoldStopSnapshotFromItem(item);
             const bundleUpdatedAt = getEffectiveAvRuleUpdatedAt(item);
-            const effectiveLocMatchQty = normalizeRuleText(item.LOC_MATCH_QTY) !== '' ? parseAppNumber(item.LOC_MATCH_QTY) : calculateLocMatchQtyValue(item);
+            const effectiveLocMatchQty = calculateLocMatchQtyValue(item) ?? parseAppNumber(item.LOC_MATCH_QTY);
 
+            if (effectiveLocMatchQty != null) item.LOC_MATCH_QTY = effectiveLocMatchQty;
             if (effectiveLocMatchQty != null && effectiveLocMatchQty <= 0) reasons.push('loc_match_qty_zero');
             if (hasHoldStopBlockCode(currentHold)) reasons.push('holdstop_blocked');
             if (bundleUpdatedAt) {
@@ -3478,6 +3544,13 @@
                 delete normalized.flyer_assigned;
                 delete normalized.flyer_notes;
                 delete normalized.flyer_completed;
+                delete normalized.flyer_av_note;
+                delete normalized.flyer_match;
+                delete normalized.flyer_loc_match_qty;
+                delete normalized.flyer_spec;
+                delete normalized.flyer_caliper;
+                delete normalized.flyer_pick;
+                delete normalized.flyer_initial_ptr;
                 delete normalized.assignedto;
                 delete normalized.initial_ptr;
                 delete normalized.loc_match_qty;
@@ -3580,6 +3653,51 @@
             return avRuleColumnsProbePromise;
         }
 
+
+        function maybeWarnFlyerShadowSchemaMissing() {
+            if (flyerShadowSchemaWarningShown || !currentUser) return;
+            flyerShadowSchemaWarningShown = true;
+            console.warn('Flyer shadow schema is not installed. Flyer-specific retention fields are disabled until the flyer shadow migration is applied in Supabase.');
+        }
+
+        async function ensureFlyerShadowColumnsReady(force = false) {
+            if (flyerShadowColumnsReady === true && !force) return true;
+            if (flyerShadowColumnsReady === false && !force) return false;
+            if (flyerShadowColumnsProbePromise && !force) return flyerShadowColumnsProbePromise;
+            flyerShadowColumnsProbePromise = (async () => {
+                if (navigator.onLine === false) return false;
+                try {
+                    const url = `${SUPABASE_URL}/rest/v1/v2_master_inventory?select=unique_id,flyer_av_note,flyer_match,flyer_loc_match_qty,flyer_spec,flyer_caliper,flyer_pick,flyer_initial_ptr&limit=1`;
+                    const response = await fetchWithTimeout(url, {
+                        method: 'GET',
+                        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }
+                    }, SUPABASE_READ_TIMEOUT_MS, 'Flyer Shadow Schema');
+                    if (!response.ok) {
+                        const errorText = await getResponseError(response, `Supabase read failed (${response.status})`);
+                        const normalizedError = String(errorText || '').toLowerCase();
+                        if (normalizedError.includes('flyer_') || normalizedError.includes('column')) {
+                            flyerShadowColumnsReady = false;
+                            maybeWarnFlyerShadowSchemaMissing();
+                            return false;
+                        }
+                        return false;
+                    }
+                    flyerShadowColumnsReady = true;
+                    return true;
+                } catch (error) {
+                    const normalizedError = String(error && error.message ? error.message : error || '').toLowerCase();
+                    if (normalizedError.includes('flyer_') || normalizedError.includes('column')) {
+                        flyerShadowColumnsReady = false;
+                        maybeWarnFlyerShadowSchemaMissing();
+                        return false;
+                    }
+                    return false;
+                } finally {
+                    flyerShadowColumnsProbePromise = null;
+                }
+            })();
+            return flyerShadowColumnsProbePromise;
+        }
         function maybeWarnSalesOfficeOrderSchemaMissing() {
             if (salesOfficeOrderSchemaWarningShown || !currentUser) return;
             salesOfficeOrderSchemaWarningShown = true;
@@ -3896,7 +4014,7 @@
         let dockTeamStatusByDock=new Map(); let dockTeamStatusPromise=null; let dockTeamStatusLoaded=false; let dockTeamSchemaReady=null; let dockTeamSchemaPromise=null; let dockTeamSchemaWarningShown=false;
         let dockItemProgressByUid=new Map(); let dockItemProgressPromise=null; let dockItemProgressLoaded=false; let dockItemSchemaReady=null; let dockItemSchemaPromise=null; let dockItemSchemaWarningShown=false;
         let detailRequestSourceDomIds=[];
-        let avRuleColumnsReady=null; let avRuleColumnsProbePromise=null; let avRuleSchemaWarningShown=false; let avRuleCleanupInFlight=new Set();
+        let avRuleColumnsReady=null; let avRuleColumnsProbePromise=null; let avRuleSchemaWarningShown=false; let avRuleCleanupInFlight=new Set(); let flyerShadowColumnsReady=null; let flyerShadowColumnsProbePromise=null; let flyerShadowSchemaWarningShown=false;
         let activeSalesOfficeTab='season'; let salesOfficeOrderColumnsReady=null; let salesOfficeOrderSchemaPromise=null; let salesOfficeOrderSchemaWarningShown=false;
 
         function isLagSensitiveDetailPrefix(prefix) {
@@ -4132,7 +4250,7 @@
         const PENDING_EDITS_STORAGE_KEY = 'gnc_pending_edits';
         const PENDING_EDITS_PERSIST_DEBOUNCE_MS = 400;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Maschino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-const APP_VERSION = 'V2026.04.15.02';
+const APP_VERSION = 'V2026.04.15.03';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -9369,8 +9487,8 @@ activeDriveTab = tab;
             if (requestItems.length) {
                 const requestItemsHtml = formatRequestItemsHtml(requestItems);
                 const requestItemsText = formatRequestItemsText(requestItems, '', { includePhotoUrls: true });
-                payload.formattedItemsHtml = String(requestItemsHtml || '').replace(/LOC MATCH %/gi, 'LOC PHOTO MATCH');
-                payload.formattedItemsText = String(requestItemsText || '').replace(/LOC MATCH %/gi, 'LOC PHOTO MATCH');
+                payload.formattedItemsHtml = String(requestItemsHtml || '');
+                payload.formattedItemsText = String(requestItemsText || '');
                 payload.requestItems = requestItems.map((item) => ({
                     unique_id: firstNonEmptyValue(item && item.UNIQUE_ID, item && item.unique_id, ''),
                     folder: firstNonEmptyValue(item && item.REQUEST_FOLDER, item && item.request_folder, folderId || ''),
@@ -11984,7 +12102,22 @@ activeDriveTab = tab;
             if (!item) return false;
             if (prefix === 'req-') return [item.REQ_MATCH, item.REQ_SPEC, item.REQ_CALIPER, item.REQ_PICK, item.REQ_COMMENTS, item.REQ_RESERVE].some(value => String(value || '').trim() !== '');
             if (prefix === 'dock-') return [item.DOCK_SPEC, item.DOCK_CALIPER, item.DOCK_NOTE].some(value => String(value || '').trim() !== '');
-            if (prefix === 'flyer-') return [item.AV_NOTE, item.MATCH, item.SPEC, item.CALIPER, item.PICK, item.FLYER_NOTES, item.FLYER_CAT, item.FLYER_INST, item.FLYER_ASSIGNED, item.LOC_MATCH_QTY, item.DATE_COMPLETED, item.FLYER_COMPLETED].some(value => String(value || '').trim() !== '');
+            if (prefix === 'flyer-') return [
+                firstNonEmptyValue(item.FLYER_AV_NOTE, item.AV_NOTE, ''),
+                firstNonEmptyValue(item.FLYER_MATCH, item.MATCH, ''),
+                firstNonEmptyValue(item.FLYER_SPEC, item.SPEC, ''),
+                firstNonEmptyValue(item.FLYER_CALIPER, item.CALIPER, ''),
+                firstNonEmptyValue(item.FLYER_PICK, item.PICK, ''),
+                item.FLYER_NOTES,
+                item.FLYER_CAT,
+                item.FLYER_INST,
+                item.FLYER_ASSIGNED,
+                firstNonEmptyValue(item.FLYER_LOC_MATCH_QTY, item.LOC_MATCH_QTY, ''),
+                firstNonEmptyValue(item.FLYER_PHOTO_LINK, item.SAVED_PHOTO_LINK, ''),
+                firstNonEmptyValue(item.FLYER_PHOTO_NAME, item.SAVED_PHOTO_NAME, ''),
+                item.DATE_COMPLETED,
+                item.FLYER_COMPLETED
+            ].some(value => String(value || '').trim() !== '');
             return [item.AV_NOTE, firstNonEmptyValue(item.SALES_NOTE, item.SALESNOTE, ''), item.MATCH, item.SPEC, item.CALIPER, item.PICK, item.LOC_MATCH_QTY, item.DATE_COMPLETED].some(value => String(value || '').trim() !== '');
         }
 
@@ -12002,13 +12135,13 @@ activeDriveTab = tab;
                 let desc = p === 'dock-' ? document.getElementById('dock-sales-desc') : null;
                 let avNote = document.getElementById(p + 'av-note');
                 const standardPick = getStandardPickNoteForItem(activeItem);
-                if (match) match.value = p === 'req-' ? firstNonEmptyValue(activeItem.REQ_MATCH, activeItem.MATCH, '') : firstNonEmptyValue(activeItem.MATCH, '');
-                if (spec) spec.value = p === 'req-' ? (activeItem.REQ_SPEC || activeItem.SPEC || '') : (p === 'dock-' ? (activeItem.DOCK_SPEC || '') : (activeItem.SPEC || ''));
-                if (caliper) caliper.value = p === 'req-' ? (activeItem.REQ_CALIPER || activeItem.CALIPER || '') : (p === 'dock-' ? (activeItem.DOCK_CALIPER || '') : (activeItem.CALIPER || ''));
-                if (pick) pick.value = p === 'req-' ? firstNonEmptyValue(activeItem.REQ_PICK, activeItem.PICK, standardPick, '') : firstNonEmptyValue(activeItem.PICK, standardPick, '');
+                if (match) match.value = p === 'req-' ? firstNonEmptyValue(activeItem.REQ_MATCH, activeItem.MATCH, '') : (p === 'flyer-' ? firstNonEmptyValue(activeItem.FLYER_MATCH, activeItem.MATCH, '') : firstNonEmptyValue(activeItem.MATCH, ''));
+                if (spec) spec.value = p === 'req-' ? (activeItem.REQ_SPEC || activeItem.SPEC || '') : (p === 'dock-' ? (activeItem.DOCK_SPEC || '') : (p === 'flyer-' ? firstNonEmptyValue(activeItem.FLYER_SPEC, activeItem.SPEC, '') : (activeItem.SPEC || '')));
+                if (caliper) caliper.value = p === 'req-' ? (activeItem.REQ_CALIPER || activeItem.CALIPER || '') : (p === 'dock-' ? (activeItem.DOCK_CALIPER || '') : (p === 'flyer-' ? firstNonEmptyValue(activeItem.FLYER_CALIPER, activeItem.CALIPER, '') : (activeItem.CALIPER || '')));
+                if (pick) pick.value = p === 'req-' ? firstNonEmptyValue(activeItem.REQ_PICK, activeItem.PICK, standardPick, '') : (p === 'flyer-' ? firstNonEmptyValue(activeItem.FLYER_PICK, activeItem.PICK, standardPick, '') : firstNonEmptyValue(activeItem.PICK, standardPick, ''));
                 if (comments) comments.value = p === 'req-' ? (activeItem.REQ_COMMENTS || '') : '';
                 if (desc) desc.value = activeItem.DOCK_NOTE || '';
-                if (avNote) avNote.value = activeItem.AV_NOTE || '';
+                if (avNote) avNote.value = p === 'flyer-' ? firstNonEmptyValue(activeItem.FLYER_AV_NOTE, activeItem.AV_NOTE, '') : (activeItem.AV_NOTE || '');
                 if (p === 'req-') {
                     let res = document.getElementById('req-reserve'); if (res) res.value = activeItem.REQ_RESERVE || "NO";
                 }
@@ -14342,16 +14475,22 @@ activeDriveTab = tab;
                 return `<div class="flex items-center w-full mb-3 item-row app-smart-card relative bg-white p-4 rounded-xl border border-indigo-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', 'av')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex justify-between items-start w-full min-w-0"><div class="app-card-main flex-grow min-w-0 pr-2"><div class="app-card-title font-black text-indigo-800 text-[16px] leading-tight mb-1 truncate">${custStr}</div><div class="text-[12px] font-bold text-gray-600 mb-2 truncate">${item.COMMONNAME} &bull; ${item.CONTSIZE}</div><div class="flex flex-wrap gap-2 text-[10px] font-bold"><span class="bg-indigo-50 text-indigo-700 px-2 py-1 rounded border border-indigo-100">Ordered: ${qtyOrd}</span><span class="bg-green-50 text-green-700 px-2 py-1 rounded border border-green-100">Shipped: ${qtyShip}</span><span class="bg-gray-100 text-gray-700 px-2 py-1 rounded border border-gray-200 flex items-center gap-1"><i class="ph-bold ph-user"></i>${repStr}</span></div></div>${inlineThumbHtml}</div></div>`;
             }
             if(sourceView==='drive'||sourceView==='tasks'){
+                const displaySourceView = sourceView;
+                const displayLocMatchQty = getDisplayLocMatchQtyValue(item, displaySourceView);
+                const displayAvNote = getItemDisplayValue(item, 'AV_NOTE', displaySourceView);
+                const displaySpec = getItemDisplayValue(item, 'SPEC', displaySourceView);
+                const displayCaliper = getItemDisplayValue(item, 'CALIPER', displaySourceView);
+                const displayMatch = getItemDisplayValue(item, 'MATCH', displaySourceView);
                 let noteHtml='';
                 const holdHtml = buildHoldReasonHtml();
                 const salesNoteHtml = buildSalesNoteHtml();
                 if(holdHtml) noteHtml += holdHtml;
                 if(salesNoteHtml) noteHtml += salesNoteHtml;
                 if(item.END_CAP_FOLDER&&String(item.END_CAP_FOLDER).trim()!==''){noteHtml+=`<div class="mt-2 text-[12px] text-yellow-800 bg-yellow-100 p-2 rounded border border-yellow-200 shadow-sm whitespace-pre-wrap"><span class="font-black">END CAP:</span> ${item.END_CAP_FOLDER} | QTY: ${item.END_CAP_QTY||'0'} | Lvl: ${item.END_CAP_LEVEL||'-'}</div>`}
-                if(item.LOC_MATCH_QTY&&String(item.LOC_MATCH_QTY).trim()!==''&&Number(item.LOC_MATCH_QTY)>0){noteHtml+=`<div class="mt-2 text-[12px] text-green-800 bg-green-100 p-2 rounded border border-green-200 shadow-sm whitespace-pre-wrap"><span class="font-black">MATCH QTY:</span> ${item.LOC_MATCH_QTY}</div>`}
-                if(item.AV_NOTE&&String(item.AV_NOTE).trim()!==''){noteHtml+=`<div class="mt-2 text-[12px] text-blue-800 bg-blue-100 p-2 rounded border border-blue-200 shadow-sm whitespace-pre-wrap"><span class="font-black">AV NOTE:</span> ${item.AV_NOTE}</div>`}
+                if(displayLocMatchQty&&String(displayLocMatchQty).trim()!==''&&Number(displayLocMatchQty)>0){noteHtml+=`<div class="mt-2 text-[12px] text-green-800 bg-green-100 p-2 rounded border border-green-200 shadow-sm whitespace-pre-wrap"><span class="font-black">LOC PHOTO MATCH:</span> ${displayLocMatchQty}</div>`}
+                if(displayAvNote&&String(displayAvNote).trim()!==''){noteHtml+=`<div class="mt-2 text-[12px] text-blue-800 bg-blue-100 p-2 rounded border border-blue-200 shadow-sm whitespace-pre-wrap"><span class="font-black">AV NOTE:</span> ${displayAvNote}</div>`}
                 if(item.FLYER_TITLE&&String(item.FLYER_TITLE).trim()!==''){noteHtml+=`<div class="mt-2 text-[12px] text-indigo-800 bg-indigo-100 p-2 rounded border border-indigo-200 shadow-sm whitespace-pre-wrap"><span class="font-black">FOLDER:</span> ${getFlyerFolderName(item)}${isFlyerFolderArchived(item) ? ' <span class="font-black uppercase tracking-wide">(Archived)</span>' : ''}</div>`}
-                let extraData='';if(sourceView==='tasks'||sourceView==='drive'){extraData=`<div class="mt-2 flex gap-2 text-[10px] font-bold text-gray-500 uppercase">${item.SPEC?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Spec: ${item.SPEC}</span>`:''}${item.CALIPER?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Cal: ${item.CALIPER}</span>`:''}${item.MATCH?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Match: ${item.MATCH}%</span>`:''}</div>`}
+                let extraData='';if(sourceView==='tasks'||sourceView==='drive'){extraData=`<div class="mt-2 flex gap-2 text-[10px] font-bold text-gray-500 uppercase">${displaySpec?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Spec: ${displaySpec}</span>`:''}${displayCaliper?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Cal: ${displayCaliper}</span>`:''}${displayMatch?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">LOC MATCH %: ${displayMatch}%</span>`:''}</div>`}
                 let quickRequestBtn='';
                 if(sourceView==='drive'&&canUseDriveQuickRequest()){
                     const isQueued=driveQuickRequestItems.has(item.DOM_ID);
@@ -15169,8 +15308,8 @@ activeDriveTab = tab;
                 { label: 'Caliper', value: firstNonEmptyValue(item && item.REQ_CALIPER, item && item.CALIPER, item && item.REQ_DESIRED_CALIPER, ''), force: false },
                 { label: 'AV Note', value: firstNonEmptyValue(item && item.AV_NOTE, ''), force: true },
                 { label: 'Available', value: firstNonEmptyValue(item && item.PTRAVAILABLE, item && item.PTRONHAND, ''), force: true },
-                { label: 'LOC PHOTO MATCH', value: firstNonEmptyValue(item && item.REQ_MATCH, item && item.MATCH, item && item.MATCHPCT, ''), force: true, percent: true },
-                { label: 'LOC MATCH QTY', value: firstNonEmptyValue(item && item.LOC_MATCH_QTY, ''), force: false },
+                { label: 'LOC MATCH %', value: firstNonEmptyValue(item && item.REQ_MATCH, item && item.MATCH, item && item.MATCHPCT, ''), force: true, percent: true },
+                { label: 'LOC PHOTO MATCH', value: firstNonEmptyValue(item && item.LOC_MATCH_QTY, ''), force: false },
                 { label: 'Sales Note', value: firstNonEmptyValue(item && item.SALES_NOTE, item && item.SALESNOTE, item && item.SALESDESC, ''), force: false },
                 { label: 'Notes', value: getShareNotesValue(item), force: false },
                 { label: 'Pick Note', value: firstNonEmptyValue(getStandardPickNoteForItem(item), item && item.REQ_PICK, item && item.REQ_PIC_NOTE, item && item.PIC_NOTE, item && item.PICKNOTE, item && item.PICK, ''), force: false }
@@ -15367,35 +15506,49 @@ ${folderNote ? `Folder Note: ${folderNote}
             return `${locationCode} PICK APPROVED`;
         }
 
-        function getShareNotesValue(item) {
+        function getShareNotesValue(item, sourceView = '') {
+            const preferFlyerFields = shouldPreferFlyerOwnedFields(item, sourceView);
             return firstNonEmptyValue(
                 item && item.NOTES,
                 item && item.notes,
                 item && item.REQ_COMMENTS,
-                item && item.FLYER_NOTES,
+                preferFlyerFields ? item && item.FLYER_NOTES : '',
                 item && item.DOCK_NOTE,
                 ''
             );
         }
 
         function getInventoryShareFieldRows(item) {
+            const shareSourceView = (String(lastView || '').toLowerCase() === 'tasks' && String(activeTaskTab || '').toLowerCase() === 'flyer') ? 'tasks' : '';
             return [
                 { label: 'Item Code', value: firstNonEmptyValue(item && item.ITEMCODE, item && item.itemcode, '-'), force: true },
                 { label: 'Priority', value: firstNonEmptyValue(item && item.PRIORITY, ''), force: true },
-                { label: 'Spec', value: firstNonEmptyValue(item && item.SPEC, item && item.REQ_SPEC, item && item.REQ_DESIRED_SPEC, ''), force: true },
-                { label: 'Caliper', value: firstNonEmptyValue(item && item.CALIPER, item && item.REQ_CALIPER, item && item.REQ_DESIRED_CALIPER, ''), force: false },
-                { label: 'AV Note', value: firstNonEmptyValue(item && item.AV_NOTE, ''), force: true },
+                { label: 'Spec', value: firstNonEmptyValue(getItemDisplayValue(item, 'SPEC', shareSourceView), item && item.REQ_SPEC, item && item.REQ_DESIRED_SPEC, ''), force: true },
+                { label: 'Caliper', value: firstNonEmptyValue(getItemDisplayValue(item, 'CALIPER', shareSourceView), item && item.REQ_CALIPER, item && item.REQ_DESIRED_CALIPER, ''), force: false },
+                { label: 'AV Note', value: firstNonEmptyValue(getItemDisplayValue(item, 'AV_NOTE', shareSourceView), ''), force: true },
                 { label: 'Available', value: firstNonEmptyValue(item && item.PTRAVAILABLE, item && item.PTRONHAND, ''), force: true },
-                { label: 'LOC PHOTO MATCH', value: firstNonEmptyValue(item && item.MATCH, item && item.REQ_MATCH, item && item.MATCHPCT, ''), force: true, percent: true },
-                { label: 'LOC MATCH QTY', value: firstNonEmptyValue(item && item.LOC_MATCH_QTY, ''), force: false },
+                { label: 'LOC MATCH %', value: firstNonEmptyValue(getItemDisplayValue(item, 'MATCH', shareSourceView), item && item.REQ_MATCH, item && item.MATCHPCT, ''), force: true, percent: true },
+                { label: 'LOC PHOTO MATCH', value: firstNonEmptyValue(getDisplayLocMatchQtyValue(item, shareSourceView), item && item.LOC_MATCH_QTY, ''), force: false },
                 { label: 'Sales Note', value: firstNonEmptyValue(item && item.SALES_NOTE, item && item.SALESNOTE, item && item.SALESDESC, ''), force: false },
-                { label: 'Notes', value: getShareNotesValue(item), force: false },
-                { label: 'Pick Note', value: firstNonEmptyValue(getStandardPickNoteForItem(item), item && item.PIC_NOTE, item && item.PICKNOTE, item && item.PICK, item && item.REQ_PICK, item && item.REQ_PIC_NOTE, ''), force: false }
+                { label: 'Notes', value: getShareNotesValue(item, shareSourceView), force: false },
+                { label: 'Pick Note', value: firstNonEmptyValue(getItemDisplayValue(item, 'PICK', shareSourceView), getStandardPickNoteForItem(item), item && item.PIC_NOTE, item && item.PICKNOTE, item && item.REQ_PICK, item && item.REQ_PIC_NOTE, ''), force: false }
             ];
         }
 
         function getInventorySharePhotoEntries(item) {
-            return extractSharePhotoUrls(firstNonEmptyValue(item && item.NA_PHOTO_LINK, item && item.REQ_PHOTO_LINK, item && item.DOCK_PHOTO_LINK, item && item.FLYER_PHOTO_LINK, item && item.SAVED_PHOTO_LINK, item && item.ROW_PHOTO_LINK, item && item['PHOTO LINK'], item && item.PHOTOLINK, ''), item);
+            const shareSourceView = (String(lastView || '').toLowerCase() === 'tasks' && String(activeTaskTab || '').toLowerCase() === 'flyer') ? 'tasks' : '';
+            const photoValue = firstNonEmptyValue(
+                getRowPhotoLink(item, shareSourceView),
+                item && item.NA_PHOTO_LINK,
+                item && item.REQ_PHOTO_LINK,
+                item && item.DOCK_PHOTO_LINK,
+                item && item.SAVED_PHOTO_LINK,
+                item && item.ROW_PHOTO_LINK,
+                item && item['PHOTO LINK'],
+                item && item.PHOTOLINK,
+                ''
+            );
+            return extractSharePhotoUrls(photoValue, item);
         }
 
         function extractSharePhotoUrls(photoValue, item = null) {
@@ -17318,6 +17471,11 @@ ${folderNote ? `Folder Note: ${folderNote}
                         let flyerSpecEl = document.getElementById('flyer-spec'); if (flyerSpecEl) itemToSave.SPEC = flyerSpecEl.value;
                         let flyerCalEl = document.getElementById('flyer-caliper'); if (flyerCalEl) itemToSave.CALIPER = flyerCalEl.value;
                         let flyerPickEl = document.getElementById('flyer-pick'); if (flyerPickEl) itemToSave.PICK = flyerPickEl.value;
+                        itemToSave.FLYER_AV_NOTE = itemToSave.AV_NOTE;
+                        itemToSave.FLYER_MATCH = itemToSave.MATCH;
+                        itemToSave.FLYER_SPEC = itemToSave.SPEC;
+                        itemToSave.FLYER_CALIPER = itemToSave.CALIPER;
+                        itemToSave.FLYER_PICK = itemToSave.PICK;
                         itemToSave.FLYER_CAT = document.getElementById('flyer-cat').value;
                         itemToSave.FLYER_TITLE = encodeFlyerFolderTitle(document.getElementById('flyer-title').value, isFlyerFolderArchived(itemToSave) ? 'archive' : 'active');
                         itemToSave.FLYER_INST = document.getElementById('flyer-inst').value;
@@ -17336,8 +17494,12 @@ ${folderNote ? `Folder Note: ${folderNote}
                 if (standardPickNote) {
                     if (prefix === 'req-') itemToSave.REQ_PICK = standardPickNote;
                     else if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-' || prefix === 'flyer-') itemToSave.PICK = standardPickNote;
+                    if (prefix === 'flyer-') itemToSave.FLYER_PICK = itemToSave.PICK;
                 }
 
+                const canPersistFlyerShadow = prefix === 'flyer-' && String(itemToSave.SOURCE_TABLE || 'v2_master_inventory') === 'v2_master_inventory'
+                    ? await ensureFlyerShadowColumnsReady().catch(() => false)
+                    : false;
                 const trackedStateAfterSave = captureTrackedAvState(itemToSave);
                 const trackedChangeFlags = getTrackedAvChangeFlags(trackedStateBeforeSave, trackedStateAfterSave, saveOptions);
                 const setVal = (val) => (val === '' || val === undefined) ? null : val;
@@ -17354,7 +17516,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     const effectiveSpec = String(itemToSave.SPEC || '').trim();
                     const effectiveCaliper = String(itemToSave.CALIPER || '').trim();
                     const needsCaliper = itemToSave.PLANTGROUPCODE && String(itemToSave.PLANTGROUPCODE).includes('330_TREES') && ['#7','#10','#15','#25','#45'].includes(itemToSave.CONTSIZE);
-                    if (effectiveMatch == null) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required','LOC Match % is required before completing this note.',true); return; }
+                    if (effectiveMatch == null) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required','LOC MATCH % is required before completing this note.',true); return; }
                     if (!effectiveAvNote) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required','AV Note is required before completing this note.',true); return; }
                     if (!effectiveSpec) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required','Spec is required before completing this note.',true); return; }
                     if (needsCaliper && !effectiveCaliper) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required','Caliper is required for this note.',true); return; }
@@ -17441,7 +17603,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                         const effectiveMatch = parseAppNumber(itemToSave.REQ_MATCH);
                         const effectiveSpec = String(itemToSave.REQ_SPEC || itemToSave.SPEC || '').trim();
                         const effectiveCaliper = String(itemToSave.REQ_CALIPER || itemToSave.CALIPER || '').trim();
-                        if (effectiveMatch == null) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required','LOC Photo Match is required before completing this request.',true); return; }
+                        if (effectiveMatch == null) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required','LOC MATCH % is required before completing this request.',true); return; }
                         if (!effectiveAvNote) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required','AV Note is required before completing this request.',true); return; }
                         if (!effectiveSpec) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required','Spec is required before completing this request.',true); return; }
                         if (needsCaliper && !effectiveCaliper) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required','Caliper is required for this request.',true); return; }
@@ -17478,7 +17640,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                         const effectiveMatch = parseAppNumber(itemToSave.MATCH);
                         const effectiveSpec = String(itemToSave.SPEC || '').trim();
                         const effectiveCaliper = String(itemToSave.CALIPER || '').trim();
-                        if (effectiveMatch == null) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required','LOC Match % is required before completing this flyer.',true); return; }
+                        if (effectiveMatch == null) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required','LOC MATCH % is required before completing this flyer.',true); return; }
                         if (!effectiveAvNote) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required','AV Note is required before completing this flyer.',true); return; }
                         if (!effectiveSpec) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required','Spec is required before completing this flyer.',true); return; }
                         if (needsCaliper && !effectiveCaliper) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required','Caliper is required for this flyer.',true); return; }
@@ -17494,6 +17656,13 @@ ${folderNote ? `Folder Note: ${folderNote}
                     payload.flyer_inst = setVal(itemToSave.FLYER_INST);
                     payload.flyer_assigned = setVal(itemToSave.FLYER_ASSIGNED);
                     payload.flyer_notes = setVal(itemToSave.FLYER_NOTES);
+                    if (canPersistFlyerShadow) {
+                        payload.flyer_av_note = setVal(itemToSave.FLYER_AV_NOTE);
+                        payload.flyer_match = (itemToSave.FLYER_MATCH === '' || itemToSave.FLYER_MATCH == null) ? null : parseFloat(itemToSave.FLYER_MATCH);
+                        payload.flyer_spec = setVal(itemToSave.FLYER_SPEC);
+                        payload.flyer_caliper = setVal(itemToSave.FLYER_CALIPER);
+                        payload.flyer_pick = setVal(itemToSave.FLYER_PICK);
+                    }
                     const flyerAssignment = String(itemToSave.APP_TAB_ASSIGNMENT || '').toLowerCase();
                     if (flyerAssignment === 'season' || flyerAssignment === 'location') {
                         payload.photo_link = setVal(itemToSave.FLYER_PHOTO_LINK || itemToSave.SAVED_PHOTO_LINK);
@@ -17505,18 +17674,35 @@ ${folderNote ? `Folder Note: ${folderNote}
                 }
 
                 if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-' || prefix === 'flyer-') {
-                    const derivedMatchQty = calculateLocMatchQtyValue(itemToSave);
+                    const derivedMatchQty = calculateLocMatchQtyValue(itemToSave, undefined, { currentAsBaseline: true, useFlyerFields: prefix === 'flyer-' });
                     const ptrVal = parseAppNumber(itemToSave.PTRAVAILABLE);
+                    const baselinePtr = ptrVal == null ? 0 : ptrVal;
                     if (derivedMatchQty == null) {
                         itemToSave.INITIAL_PTR = '';
                         itemToSave.LOC_MATCH_QTY = '';
                         payload.initial_ptr = null;
                         payload.loc_match_qty = null;
+                        if (prefix === 'flyer-') {
+                            itemToSave.FLYER_INITIAL_PTR = '';
+                            itemToSave.FLYER_LOC_MATCH_QTY = '';
+                            if (canPersistFlyerShadow) {
+                                payload.flyer_initial_ptr = null;
+                                payload.flyer_loc_match_qty = null;
+                            }
+                        }
                     } else {
-                        itemToSave.INITIAL_PTR = ptrVal == null ? 0 : ptrVal;
+                        itemToSave.INITIAL_PTR = baselinePtr;
                         itemToSave.LOC_MATCH_QTY = derivedMatchQty;
-                        payload.initial_ptr = itemToSave.INITIAL_PTR;
-                        payload.loc_match_qty = itemToSave.LOC_MATCH_QTY;
+                        payload.initial_ptr = baselinePtr;
+                        payload.loc_match_qty = derivedMatchQty;
+                        if (prefix === 'flyer-') {
+                            itemToSave.FLYER_INITIAL_PTR = baselinePtr;
+                            itemToSave.FLYER_LOC_MATCH_QTY = derivedMatchQty;
+                            if (canPersistFlyerShadow) {
+                                payload.flyer_initial_ptr = baselinePtr;
+                                payload.flyer_loc_match_qty = derivedMatchQty;
+                            }
+                        }
                     }
                 }
 
