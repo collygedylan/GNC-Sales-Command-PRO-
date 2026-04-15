@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -457,7 +457,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-<div id="header-version" class="nav-version-pill">V2026.04.15.01</div>
+<div id="header-version" class="nav-version-pill">V2026.04.15.02</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -949,6 +949,11 @@
         const DETAIL_ROW_TOUCH_WRITE_TIMEOUT_MS = 40000;
         const DETAIL_ROW_WRITE_RETRY_COUNT = 1;
         const DETAIL_ROW_WRITE_RETRY_DELAY_MS = 650;
+        const REALTIME_CHANGE_BATCH_MS = 48;
+        const REQUEST_REALTIME_UI_DELAY_MS = 24;
+        const POST_SAVE_DATASET_CATCHUP_MS = 320;
+        const SALES_OFFICE_SYNC_DEFER_MS = 72;
+        const REQUEST_LIVE_SYNC_PAUSE_AFTER_LOCAL_SAVE_MS = 900;
         const SUPABASE_UPLOAD_TIMEOUT_MS = 45000;
         const ENABLE_MANUAL_PULL_REFRESH = false;
         const CACHE_PERSIST_DEBOUNCE_MS = 25000;
@@ -2626,7 +2631,7 @@
             const pendingEdits = getPendingEditsCache();
             if (pendingEdits && Object.keys(pendingEdits).length) applyLocalEdits();
             if (changedDatasetKeys.size) {
-                propagateCommittedEdit(changedDatasetKeys.has('requests') ? 'v2_active_request' : '', null, Array.from(changedDatasetKeys), getVisibleAffectedViewIds(Array.from(changedDatasetKeys)), { delay: 12, typingDelay: 140, requestUiDelay: 60 });
+                propagateCommittedEdit(changedDatasetKeys.has('requests') ? 'v2_active_request' : '', null, Array.from(changedDatasetKeys), getVisibleAffectedViewIds(Array.from(changedDatasetKeys)), { delay: 4, typingDelay: 120, requestUiDelay: REQUEST_REALTIME_UI_DELAY_MS });
                 if (changedDatasetKeys.has('requests')) flushPendingRequestArchives().catch(() => {});
             }
             updateDashboardSyncSummary();
@@ -2726,7 +2731,7 @@
 
             if (!changed) return false;
             trackRealtimeDirtyRowId(tableName, uniqueId);
-            if (tableName === 'v2_active_request') triggerRequestRealtimeUiRefresh(120);
+            if (tableName === 'v2_active_request') triggerRequestRealtimeUiRefresh(REQUEST_REALTIME_UI_DELAY_MS);
             if (!deferVisualSync) flushRealtimeDatasetUpdates([tableName]);
             return true;
         }
@@ -2775,7 +2780,7 @@
                     updateSyncDiagnostics('realtime');
                 }
             };
-            realtimeChangeTimer = setTimeout(flushQueuedRealtimeChanges, 120);
+            realtimeChangeTimer = setTimeout(flushQueuedRealtimeChanges, REALTIME_CHANGE_BATCH_MS);
         }
         function clearRealtimeReconnectTimer() {
             if (realtimeReconnectTimer) {
@@ -3901,6 +3906,7 @@
         const DETAIL_INPUT_SAVE_DEBOUNCE_MS = 260;
         const DETAIL_AV_INPUT_SAVE_DEBOUNCE_MS = 340;
         const DETAIL_TEXTAREA_INPUT_SAVE_DEBOUNCE_MS = 320;
+        const DETAIL_DUPLICATE_AUTOSAVE_WINDOW_MS = 1200;
         let detailInputSaveTimers = {};
         const rowSaveCoordinatorState = new Map();
         const ROW_SAVE_COMPLETE_INTENT_MS = 12000;
@@ -3948,6 +3954,34 @@
             detailInputSaveTimers[safePrefix] = null;
         }
 
+        function shouldUseDebouncedDetailInputSave(inputId = '') {
+            const safeId = String(inputId || '').trim();
+            return safeId.endsWith('-av-note');
+        }
+
+        function buildRowSaveSignature(prefix = '', item = null, payload = {}, isComplete = false) {
+            const safePayload = payload && typeof payload === 'object' ? payload : {};
+            const uniqueId = String(firstNonEmptyValue(item && item.UNIQUE_ID, '')).trim();
+            return JSON.stringify({
+                prefix: String(prefix || '').trim(),
+                uniqueId,
+                isComplete: !!isComplete,
+                payload: safePayload
+            });
+        }
+
+        function shouldSkipDuplicateAutoSave(key = '', signature = '') {
+            const state = getRowSaveCoordinatorState(key);
+            return !!(state && signature && state.lastAutoSaveSignature === signature && (Date.now() - state.lastAutoSaveAt) < DETAIL_DUPLICATE_AUTOSAVE_WINDOW_MS);
+        }
+
+        function rememberAutoSaveSignature(key = '', signature = '') {
+            const state = getRowSaveCoordinatorState(key);
+            if (!state || !signature) return;
+            state.lastAutoSaveSignature = signature;
+            state.lastAutoSaveAt = Date.now();
+        }
+
         function getRowSaveCoordinatorKey(prefix = '', item = null) {
             const row = item || activeItem;
             const uniqueId = String(firstNonEmptyValue(row && row.UNIQUE_ID, '')).trim();
@@ -3961,7 +3995,9 @@
                 rowSaveCoordinatorState.set(safeKey, {
                     running: false,
                     pending: null,
-                    completionIntentUntil: 0
+                    completionIntentUntil: 0,
+                    lastAutoSaveSignature: '',
+                    lastAutoSaveAt: 0
                 });
             }
             return rowSaveCoordinatorState.get(safeKey);
@@ -4033,6 +4069,7 @@
         window.addEventListener('input', (event) => {
             const target = event && event.target ? event.target : null;
             if (!target || (target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA')) return;
+            if (!shouldUseDebouncedDetailInputSave(target.id)) return;
             const prefix = extractDetailPrefixFromInputId(target.id);
             if (prefix) queueLagSensitiveInputSave(prefix, target.id);
         }, { passive: true });
@@ -4095,7 +4132,7 @@
         const PENDING_EDITS_STORAGE_KEY = 'gnc_pending_edits';
         const PENDING_EDITS_PERSIST_DEBOUNCE_MS = 400;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Maschino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-const APP_VERSION = 'V2026.04.15.01';
+const APP_VERSION = 'V2026.04.15.02';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -8783,7 +8820,7 @@ function toggleDriveQuickRequestItem(domId) {
             }
             if (safeSourceTable === 'v2_active_request') {
                 requestViewLiveSyncSignature = buildRequestLiveSyncSignature(requestsInventory);
-                triggerRequestRealtimeUiRefresh(Math.max(60, Number(options.requestUiDelay) || 0));
+                triggerRequestRealtimeUiRefresh(Math.max(REQUEST_REALTIME_UI_DELAY_MS, Number(options.requestUiDelay) || 0));
             }
             if (!changedKeys.length) return targetVisibleViews;
             getAffectedViewsForDatasets(changedKeys).forEach((viewId) => markViewDirty(viewId));
@@ -17613,6 +17650,7 @@ ${folderNote ? `Folder Note: ${folderNote}
 
                 const targetTable = (prefix === 'req-') ? 'v2_active_request' : (itemToSave.SOURCE_TABLE || 'v2_master_inventory');
                 const pendingUploads = isComplete ? getPendingPhotoUploadsForItem(itemToSave) : [];
+                let savePayloadSignature = '';
                 const getChangedDatasetKeys = (artifacts = null) => {
                     const changedKeys = new Set(getDatasetKeysForTable(targetTable));
                     if (artifacts && artifacts.masterSyncPayload) {
@@ -17623,6 +17661,10 @@ ${folderNote ? `Folder Note: ${folderNote}
                     }
                     return Array.from(changedKeys);
                 };
+                if (isCoordinatedAutoSave) {
+                    savePayloadSignature = buildRowSaveSignature(prefix, itemToSave, payload, false);
+                    if (shouldSkipDuplicateAutoSave(rowSaveKey, savePayloadSignature)) return;
+                }
                 const saveRequestOptions = isLagSensitiveDetailPrefix(prefix)
                     ? {
                         timeoutMs: getDetailRowWriteTimeoutMs(),
@@ -17645,15 +17687,16 @@ ${folderNote ? `Folder Note: ${folderNote}
                     const deferNonCriticalWork = (keySuffix, work, delay = 0) => {
                         scheduleUiRender(`save-post:${prefix}:${itemToSave.UNIQUE_ID}:${keySuffix}`, work, Math.max(0, Number(delay) || 0));
                     };
+                    if (isCoordinatedAutoSave && savePayloadSignature) rememberAutoSaveSignature(rowSaveKey, savePayloadSignature);
 
-                    propagateCommittedEdit(targetTable, itemToSave, changedDatasetKeys, visibleAffectedViews, { prefix, delay: isComplete ? 8 : 0, typingDelay: 140, requestUiDelay: 60 });
+                    propagateCommittedEdit(targetTable, itemToSave, changedDatasetKeys, visibleAffectedViews, { prefix, delay: 0, typingDelay: 120, requestUiDelay: REQUEST_REALTIME_UI_DELAY_MS });
 
                     if (!artifacts.soPayload && trackedChangeFlags.avNote) {
                         const salesOfficeSyncContext = getSeasonSalesOfficeSyncContext(itemToSave);
                         if (salesOfficeSyncContext) {
                             const nextSalesOfficeAvNote = String(firstNonEmptyValue(itemToSave.AV_NOTE, salesOfficeSyncContext.masterRow && salesOfficeSyncContext.masterRow.AV_NOTE, '')).trim();
                             syncSeasonSalesOfficeAvNoteState(salesOfficeSyncContext.masterId, nextSalesOfficeAvNote);
-                            syncSeasonSalesOfficeAvNoteRemote(salesOfficeSyncContext.masterId, nextSalesOfficeAvNote).catch(() => {});
+                            deferNonCriticalWork('so-av-note-remote', () => syncSeasonSalesOfficeAvNoteRemote(salesOfficeSyncContext.masterId, nextSalesOfficeAvNote).catch(() => {}), 32);
                         }
                     }
 
@@ -17679,13 +17722,15 @@ ${folderNote ? `Folder Note: ${folderNote}
                         syncRealtimeSalesOfficeRows(new Set([String(artifacts.cloneSO.UNIQUE_ID || '').trim(), String(artifacts.soPayload.master_id || '').trim()].filter(Boolean)));
                         markViewDirty('sales-office');
                         const salesOfficeUid = encodeURIComponent(String(artifacts.soPayload.unique_id || '').trim());
-                        if (isViewVisible('sales-office')) queueInteractiveViewRender('sales-office', false, true, 16, 180);
-                        supabaseFetch('v2_sales_office', 'GET', null, 'select=unique_id&unique_id=eq.' + salesOfficeUid)
-                            .then((rows) => Array.isArray(rows) && rows.length
-                                ? runDetailWriteWithRetry('v2_sales_office', 'PATCH', artifacts.soPayload, 'unique_id=eq.' + salesOfficeUid, saveRequestOptions)
-                                : runDetailWriteWithRetry('v2_sales_office', 'POST', artifacts.soPayload, '', saveRequestOptions))
-                            .then(() => { queueVisibleDatasetCatchup(260); })
-                            .catch(e => console.log(e));
+                        if (isViewVisible('sales-office')) queueInteractiveViewRender('sales-office', false, true, 8, 140);
+                        deferNonCriticalWork('sales-office-remote', () => {
+                            supabaseFetch('v2_sales_office', 'GET', null, 'select=unique_id&unique_id=eq.' + salesOfficeUid)
+                                .then((rows) => Array.isArray(rows) && rows.length
+                                    ? runDetailWriteWithRetry('v2_sales_office', 'PATCH', artifacts.soPayload, 'unique_id=eq.' + salesOfficeUid, saveRequestOptions)
+                                    : runDetailWriteWithRetry('v2_sales_office', 'POST', artifacts.soPayload, '', saveRequestOptions))
+                                .then(() => { queueVisibleDatasetCatchup(POST_SAVE_DATASET_CATCHUP_MS); })
+                                .catch(e => console.log(e));
+                        }, SALES_OFFICE_SYNC_DEFER_MS);
                     }
 
                     if (artifacts.masterSyncPayload && artifacts.masterSyncId) {
@@ -17710,7 +17755,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                             runDetailWriteWithRetry('v2_master_inventory', 'PATCH', artifacts.masterSyncPayload, 'unique_id=eq.' + encodeURIComponent(artifacts.masterSyncId), saveRequestOptions).catch(() => {});
                         }, 42);
                     }
-                    deferNonCriticalWork('dataset-catchup', () => queueVisibleDatasetCatchup(220), 40);
+                    deferNonCriticalWork('dataset-catchup', () => queueVisibleDatasetCatchup(POST_SAVE_DATASET_CATCHUP_MS), 96);
 
 
                     const immediateCleanupOps = avRuleColumnsReady === true
@@ -17728,13 +17773,19 @@ ${folderNote ? `Folder Note: ${folderNote}
                     }
 
                     if (!isComplete && isCurrentView) {
-                        const refreshDetailMedia = () => {
-                            renderSavedPhotos();
-                            renderPhotoGallery();
-                            refreshProtectedSections();
-                        };
-                        if (isLagSensitiveDetailPrefix(prefix)) scheduleUiRender(`detail-media-${prefix}-${itemToSave.UNIQUE_ID}`, refreshDetailMedia, 24);
-                        else refreshDetailMedia();
+                        if (trackedChangeFlags.photo) {
+                            const refreshDetailMedia = () => {
+                                renderSavedPhotos();
+                                renderPhotoGallery();
+                                refreshProtectedSections();
+                            };
+                            if (isLagSensitiveDetailPrefix(prefix)) scheduleUiRender(`detail-media-${prefix}-${itemToSave.UNIQUE_ID}`, refreshDetailMedia, 24);
+                            else refreshDetailMedia();
+                        } else if (trackedChangeFlags.avNote || trackedChangeFlags.spec || trackedChangeFlags.match || trackedChangeFlags.caliper) {
+                            const refreshDetailState = () => refreshProtectedSections();
+                            if (isLagSensitiveDetailPrefix(prefix)) scheduleUiRender(`detail-state-${prefix}-${itemToSave.UNIQUE_ID}`, refreshDetailState, 12);
+                            else refreshDetailState();
+                        }
                     }
                     if (isComplete && btnComp) btnComp.innerText = 'MARK DONE';
                     if (!isSilentAutoSave && isCurrentView && isComplete && !didImmediateCleanup) showToast('Success', 'Task Completed!');
@@ -17779,7 +17830,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 };
 
                 if (prefix === 'req-' && isComplete) {
-                    pauseRequestViewLiveSync(1600);
+                    pauseRequestViewLiveSync(REQUEST_LIVE_SYNC_PAUSE_AFTER_LOCAL_SAVE_MS);
                 }
 
                 if (isComplete) {
@@ -18166,4 +18217,3 @@ ${folderNote ? `Folder Note: ${folderNote}
     </script>
 </body>
 </html>
-
