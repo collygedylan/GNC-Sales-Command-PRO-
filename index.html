@@ -3926,6 +3926,51 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             })();
             return productivityHistorySchemaPromise;
         }
+
+        function maybeWarnRequestEmailThreadSchemaMissing() {
+            if (requestEmailThreadSchemaWarningShown || !currentUser) return;
+            requestEmailThreadSchemaWarningShown = true;
+            showToast('Schema Required', 'Run request_email_threads_migration.sql in Supabase to enable threaded request emails.', true);
+        }
+
+        async function ensureRequestEmailThreadSchemaReady(force = false) {
+            if (requestEmailThreadSchemaReady === true && !force) return true;
+            if (requestEmailThreadSchemaReady === false && !force) return false;
+            if (requestEmailThreadSchemaPromise && !force) return requestEmailThreadSchemaPromise;
+            requestEmailThreadSchemaPromise = (async () => {
+                if (navigator.onLine === false) return false;
+                try {
+                    const url = `${SUPABASE_URL}/rest/v1/${REQUEST_EMAIL_THREAD_TABLE}?select=request_folder,initial_thread_id,initial_message_id,recipients,metadata&limit=1`;
+                    const response = await fetchWithTimeout(url, {
+                        method: 'GET',
+                        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }
+                    }, SUPABASE_READ_TIMEOUT_MS, 'Request Email Thread Schema');
+                    if (!response.ok) {
+                        const errorText = await getResponseError(response, `Supabase read failed (${response.status})`);
+                        const normalizedError = String(errorText || '').toLowerCase();
+                        if (normalizedError.includes('v2_request_email_threads') || normalizedError.includes('request_folder') || normalizedError.includes('initial_thread_id') || normalizedError.includes('recipients') || normalizedError.includes('metadata') || normalizedError.includes('relation') || normalizedError.includes('column')) {
+                            requestEmailThreadSchemaReady = false;
+                            maybeWarnRequestEmailThreadSchemaMissing();
+                            return false;
+                        }
+                        return false;
+                    }
+                    requestEmailThreadSchemaReady = true;
+                    return true;
+                } catch (error) {
+                    const normalizedError = String(error && error.message ? error.message : error || '').toLowerCase();
+                    if (normalizedError.includes('v2_request_email_threads') || normalizedError.includes('request_folder') || normalizedError.includes('initial_thread_id') || normalizedError.includes('recipients') || normalizedError.includes('metadata') || normalizedError.includes('relation') || normalizedError.includes('column')) {
+                        requestEmailThreadSchemaReady = false;
+                        maybeWarnRequestEmailThreadSchemaMissing();
+                        return false;
+                    }
+                    return false;
+                } finally {
+                    requestEmailThreadSchemaPromise = null;
+                }
+            })();
+            return requestEmailThreadSchemaPromise;
+        }
         async function tryLocalCachedLoginRecord(username, password) {
             const normalizedUsername = String(username || '').trim().toLowerCase();
             const normalizedPassword = String(password || '').trim();
@@ -4201,6 +4246,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         let avRuleColumnsReady=null; let avRuleColumnsProbePromise=null; let avRuleSchemaWarningShown=false; let avRuleCleanupInFlight=new Set(); let flyerShadowColumnsReady=null; let flyerShadowColumnsProbePromise=null; let flyerShadowSchemaWarningShown=false;
         let activeSalesOfficeTab='season'; let salesOfficeOrderColumnsReady=null; let salesOfficeOrderSchemaPromise=null; let salesOfficeOrderSchemaWarningShown=false;
         let activeHomeTab='dashboard'; let selectedProductivityUser=''; let productivityViewMode='cards'; let productivityHistoryByUser=new Map(); let productivityHistoryLoadState=new Map(); let productivityHistorySchemaReady=null; let productivityHistorySchemaPromise=null; let productivityHistorySchemaWarningShown=false; let productivityHistoryBackfillPromise=null;
+        let requestEmailThreadCache=new Map(); let requestEmailThreadSchemaReady=null; let requestEmailThreadSchemaPromise=null; let requestEmailThreadSchemaWarningShown=false;
 
         function isLagSensitiveDetailPrefix(prefix) {
             return prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-' || prefix === 'req-' || prefix === 'dock-' || prefix === 'flyer-';
@@ -4448,7 +4494,11 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         const PRODUCTIVITY_TIME_ZONE = 'America/Chicago';
         const PRODUCTIVITY_HISTORY_BACKFILL_STORAGE_KEY = 'gnc_productivity_backfill_v3';
         const PRODUCTIVITY_COMPLETION_SOURCE_KINDS = new Set(['season_sales_note','location_sales_note']);
-const APP_VERSION = 'V2026.04.16.04';
+        const REQUEST_EMAIL_THREAD_TABLE = 'v2_request_email_threads';
+        const REQUEST_EMAIL_THREAD_SELECT_FIELDS = 'request_folder,request_customer,sales_rep_name,sales_rep_email,recipients,initial_thread_id,initial_message_id,initial_email_sent_at,last_reply_sent_at,status,metadata';
+        const REQUEST_EMAIL_INTERNAL_RECIPIENTS = Object.freeze(['dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com']);
+        const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
+const APP_VERSION = 'V2026.04.16.05';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -9827,12 +9877,213 @@ activeDriveTab = tab;
             if (aliasMap[underscored]) return aliasMap[underscored];
             return underscored ? underscored + '@greenleafnursery.com' : '';
         }
-        function sendEmailNotification(type, folderId, repName, customer, itemsCount, details = null) {
-            let payload = { type: 'email', emailType: type, folderId: folderId, repName: repName, customer: customer, itemsCount: itemsCount, dylanEmail: 'dylan_collyge@greenleafnursery.com' };
-            const rawRequestItems = Array.isArray(details && details.items) ? details.items.filter(Boolean) : [];
-            const requestIdSet = new Set((Array.isArray(details && details.requestIds) ? details.requestIds : []).map((id) => String(id || '').trim()).filter(Boolean));
+
+        function normalizeRequestEmailAddress(email = '') {
+            return String(email || '').trim().toLowerCase();
+        }
+
+        function dedupeRequestEmailRecipients(recipients = []) {
+            const seen = new Set();
+            return (Array.isArray(recipients) ? recipients : []).map((value) => {
+                if (typeof value === 'string') return normalizeRequestEmailAddress(value);
+                return normalizeRequestEmailAddress(firstNonEmptyValue(value && value.email, value && value.address, ''));
+            }).filter((email) => {
+                if (!email || seen.has(email)) return false;
+                seen.add(email);
+                return true;
+            });
+        }
+
+        function resolveRequestEmailThreadId(source = null) {
+            return String(firstNonEmptyValue(source && source.threadId, source && source.thread_id, source && source.threadID, source && source.gmailThreadId, '')).trim();
+        }
+
+        function resolveRequestEmailMessageId(source = null) {
+            return String(firstNonEmptyValue(source && source.messageId, source && source.message_id, source && source.messageID, source && source.gmailMessageId, '')).trim();
+        }
+
+        function buildRequestEmailRecipients(repName = '', details = null) {
+            const safeDetails = details || {};
+            const repEmail = normalizeRequestEmailAddress(firstNonEmptyValue(safeDetails.repEmail, resolveRequestRecipientEmail(repName), ''));
+            const recipientEmails = dedupeRequestEmailRecipients([...REQUEST_EMAIL_INTERNAL_RECIPIENTS, repEmail]);
+            return {
+                repEmail,
+                recipientEmails,
+                recipientDetails: recipientEmails.map((email) => ({ email, role: email === repEmail ? 'sales-rep' : 'internal' }))
+            };
+        }
+
+        function normalizeRequestEmailThreadRow(row = null) {
+            if (!row || typeof row !== 'object') return null;
+            let recipients = [];
+            if (Array.isArray(row.recipients)) recipients = row.recipients;
+            else if (typeof row.recipients === 'string' && row.recipients.trim()) {
+                try {
+                    const parsedRecipients = JSON.parse(row.recipients);
+                    recipients = Array.isArray(parsedRecipients) ? parsedRecipients : [row.recipients];
+                } catch (error) {
+                    recipients = row.recipients.split(',');
+                }
+            }
+            let metadata = {};
+            if (row.metadata && typeof row.metadata === 'object' && !Array.isArray(row.metadata)) metadata = row.metadata;
+            else if (typeof row.metadata === 'string' && row.metadata.trim()) {
+                try {
+                    const parsedMetadata = JSON.parse(row.metadata);
+                    if (parsedMetadata && typeof parsedMetadata === 'object' && !Array.isArray(parsedMetadata)) metadata = parsedMetadata;
+                } catch (error) {}
+            }
+            return {
+                request_folder: String(firstNonEmptyValue(row.request_folder, row.REQUEST_FOLDER, '')).trim(),
+                request_customer: String(firstNonEmptyValue(row.request_customer, row.customer, '')).trim(),
+                sales_rep_name: String(firstNonEmptyValue(row.sales_rep_name, row.rep_name, '')).trim(),
+                sales_rep_email: normalizeRequestEmailAddress(firstNonEmptyValue(row.sales_rep_email, row.rep_email, '')),
+                recipients: dedupeRequestEmailRecipients(recipients),
+                initial_thread_id: String(firstNonEmptyValue(row.initial_thread_id, '')).trim(),
+                initial_message_id: String(firstNonEmptyValue(row.initial_message_id, '')).trim(),
+                initial_email_sent_at: String(firstNonEmptyValue(row.initial_email_sent_at, '')).trim(),
+                last_reply_sent_at: String(firstNonEmptyValue(row.last_reply_sent_at, '')).trim(),
+                status: String(firstNonEmptyValue(row.status, 'open')).trim() || 'open',
+                metadata
+            };
+        }
+
+        async function getRequestEmailThreadRecord(folderId = '', force = false) {
+            const safeFolderId = String(folderId || '').trim();
+            if (!safeFolderId) return null;
+            if (!force && requestEmailThreadCache.has(safeFolderId)) return requestEmailThreadCache.get(safeFolderId) || null;
+            const schemaReady = await ensureRequestEmailThreadSchemaReady();
+            if (!schemaReady) return null;
+            try {
+                const rows = await supabaseFetch(REQUEST_EMAIL_THREAD_TABLE, 'GET', null, `select=${REQUEST_EMAIL_THREAD_SELECT_FIELDS}&request_folder=eq.${encodeURIComponent(safeFolderId)}&limit=1`);
+                const normalized = normalizeRequestEmailThreadRow(Array.isArray(rows) && rows.length ? rows[0] : null);
+                if (normalized && normalized.request_folder) requestEmailThreadCache.set(safeFolderId, normalized);
+                return normalized;
+            } catch (error) {
+                const normalizedError = String(error && error.message ? error.message : error || '').toLowerCase();
+                if (normalizedError.includes('v2_request_email_threads') || normalizedError.includes('request_folder') || normalizedError.includes('initial_thread_id') || normalizedError.includes('recipients') || normalizedError.includes('metadata') || normalizedError.includes('relation') || normalizedError.includes('column')) {
+                    requestEmailThreadSchemaReady = false;
+                    maybeWarnRequestEmailThreadSchemaMissing();
+                    return null;
+                }
+                throw error;
+            }
+        }
+
+        async function upsertRequestEmailThreadRecord(record = {}, options = {}) {
+            const normalized = normalizeRequestEmailThreadRow(record);
+            if (!normalized || !normalized.request_folder) return false;
+            const opts = options || {};
+            const schemaReady = opts.skipEnsure ? true : await ensureRequestEmailThreadSchemaReady();
+            if (!schemaReady) return false;
+            try {
+                const payload = {
+                    request_folder: normalized.request_folder,
+                    request_customer: normalized.request_customer || null,
+                    sales_rep_name: normalized.sales_rep_name || null,
+                    sales_rep_email: normalized.sales_rep_email || null,
+                    recipients: normalized.recipients,
+                    initial_thread_id: normalized.initial_thread_id || null,
+                    initial_message_id: normalized.initial_message_id || null,
+                    initial_email_sent_at: normalized.initial_email_sent_at || null,
+                    last_reply_sent_at: normalized.last_reply_sent_at || null,
+                    status: normalized.status || 'open',
+                    metadata: normalized.metadata || {}
+                };
+                await supabaseFetch(REQUEST_EMAIL_THREAD_TABLE, 'POST', payload, 'on_conflict=request_folder');
+                requestEmailThreadCache.set(normalized.request_folder, normalized);
+                return true;
+            } catch (error) {
+                const normalizedError = String(error && error.message ? error.message : error || '').toLowerCase();
+                if (normalizedError.includes('v2_request_email_threads') || normalizedError.includes('request_folder') || normalizedError.includes('initial_thread_id') || normalizedError.includes('recipients') || normalizedError.includes('metadata') || normalizedError.includes('relation') || normalizedError.includes('column')) {
+                    requestEmailThreadSchemaReady = false;
+                    maybeWarnRequestEmailThreadSchemaMissing();
+                    return false;
+                }
+                throw error;
+            }
+        }
+
+        async function postRequestEmailPayload(payload = {}) {
+            const response = await fetchWithTimeout(GOOGLE_SCRIPT_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            }, REQUEST_EMAIL_SCRIPT_TIMEOUT_MS, 'Request Email');
+            let responseText = '';
+            try { responseText = await response.text(); } catch (error) {}
+            let parsed = {};
+            if (responseText) {
+                try {
+                    parsed = JSON.parse(responseText);
+                } catch (error) {
+                    parsed = { rawResponse: responseText };
+                }
+            }
+            return { ok: !!(response && response.ok), status: response ? response.status : 0, ...parsed };
+        }
+
+        async function persistRequestEmailThreadAfterSend(type = '', payload = {}, responseData = null, existingRecord = null) {
+            const safeType = String(type || '').trim().toLowerCase();
+            const safeFolderId = String(firstNonEmptyValue(payload.requestFolder, payload.folderId, '')).trim();
+            if (!safeFolderId || (responseData && responseData.ok === false)) return false;
+            const schemaReady = await ensureRequestEmailThreadSchemaReady();
+            if (!schemaReady) return false;
+            const previousRecord = normalizeRequestEmailThreadRow(existingRecord) || requestEmailThreadCache.get(safeFolderId) || null;
+            const nowIso = new Date().toISOString();
+            const threadId = String(firstNonEmptyValue(resolveRequestEmailThreadId(responseData), resolveRequestEmailThreadId(payload), previousRecord && previousRecord.initial_thread_id, '')).trim();
+            const messageId = String(firstNonEmptyValue(resolveRequestEmailMessageId(responseData), resolveRequestEmailMessageId(payload), previousRecord && previousRecord.initial_message_id, '')).trim();
+            const metadata = {
+                ...((previousRecord && previousRecord.metadata) || {}),
+                last_email_type: safeType,
+                last_email_status: Number(firstNonEmptyValue(responseData && responseData.status, 0)) || 0,
+                last_email_used_thread: !!threadId,
+                last_email_fallback: safeType === 'request_complete' && !threadId,
+                last_response_ok: !(responseData && responseData.ok === false)
+            };
+            const record = {
+                request_folder: safeFolderId,
+                request_customer: String(firstNonEmptyValue(payload.customer, previousRecord && previousRecord.request_customer, '')).trim(),
+                sales_rep_name: String(firstNonEmptyValue(payload.repName, previousRecord && previousRecord.sales_rep_name, '')).trim(),
+                sales_rep_email: normalizeRequestEmailAddress(firstNonEmptyValue(payload.repEmail, previousRecord && previousRecord.sales_rep_email, '')),
+                recipients: dedupeRequestEmailRecipients(firstNonEmptyValue(payload.recipientEmails, previousRecord && previousRecord.recipients, [])),
+                initial_thread_id: threadId || String(firstNonEmptyValue(previousRecord && previousRecord.initial_thread_id, '')).trim(),
+                initial_message_id: messageId || String(firstNonEmptyValue(previousRecord && previousRecord.initial_message_id, '')).trim(),
+                initial_email_sent_at: safeType === 'new_request' ? String(firstNonEmptyValue(previousRecord && previousRecord.initial_email_sent_at, nowIso)).trim() : String(firstNonEmptyValue(previousRecord && previousRecord.initial_email_sent_at, '')).trim(),
+                last_reply_sent_at: safeType === 'request_complete' ? nowIso : String(firstNonEmptyValue(previousRecord && previousRecord.last_reply_sent_at, '')).trim(),
+                status: safeType === 'request_complete' ? 'completed' : 'open',
+                metadata
+            };
+            return upsertRequestEmailThreadRecord(record, { skipEnsure: true });
+        }
+
+        async function sendEmailNotification(type, folderId, repName, customer, itemsCount, details = null) {
+            const safeType = String(type || '').trim().toLowerCase();
+            const safeDetails = details || {};
             const targetFolderId = String(folderId || '').trim();
             const targetCustomer = normalizeSearchValue(customer);
+            const existingThreadRecord = targetFolderId ? await getRequestEmailThreadRecord(targetFolderId) : null;
+            const { repEmail, recipientEmails, recipientDetails } = buildRequestEmailRecipients(repName, safeDetails);
+            let payload = {
+                type: 'email',
+                emailType: safeType,
+                folderId: targetFolderId,
+                requestFolder: targetFolderId,
+                repName: String(repName || '').trim(),
+                salesRepName: String(repName || '').trim(),
+                repEmail: repEmail,
+                salesRepEmail: repEmail,
+                customer: String(customer || '').trim(),
+                itemsCount: Number(itemsCount) || 0,
+                requestedBy: String(repName || '').trim(),
+                dylanEmail: REQUEST_EMAIL_INTERNAL_RECIPIENTS[0],
+                jdEmail: REQUEST_EMAIL_INTERNAL_RECIPIENTS[1],
+                internalRecipients: REQUEST_EMAIL_INTERNAL_RECIPIENTS.slice(),
+                recipientEmails: recipientEmails,
+                recipients: recipientDetails
+            };
+            const rawRequestItems = Array.isArray(safeDetails.items) ? safeDetails.items.filter(Boolean) : [];
+            const requestIdSet = new Set((Array.isArray(safeDetails.requestIds) ? safeDetails.requestIds : []).map((id) => String(id || '').trim()).filter(Boolean));
             let requestItems = rawRequestItems.filter((item) => {
                 const itemId = String(firstNonEmptyValue(item && item.UNIQUE_ID, item && item.unique_id, '') || '').trim();
                 const itemFolderId = String(firstNonEmptyValue(item && item.REQUEST_FOLDER, item && item.request_folder, '') || '').trim();
@@ -9840,7 +10091,7 @@ activeDriveTab = tab;
                 if (targetFolderId && itemFolderId && itemFolderId !== targetFolderId) return false;
                 return true;
             });
-            if (type === 'new_request' && details && details.isNewFolder && requestItems.length > 1 && targetCustomer) {
+            if (safeType === 'new_request' && safeDetails.isNewFolder && requestItems.length > 1 && targetCustomer) {
                 const distinctCustomers = new Set(requestItems.map((item) => normalizeSearchValue(firstNonEmptyValue(item && item.REQ_CUSTOMER, item && item.req_customer, ''))).filter(Boolean));
                 if (distinctCustomers.size > 1) {
                     requestItems = requestItems.filter((item) => normalizeSearchValue(firstNonEmptyValue(item && item.REQ_CUSTOMER, item && item.req_customer, '')) === targetCustomer);
@@ -9867,18 +10118,27 @@ activeDriveTab = tab;
                 })).filter((item) => item.unique_id || item.commonname || item.itemcode);
             }
             if (requestIdSet.size) payload.requestIds = Array.from(requestIdSet);
-            if (type === 'new_request') {
-                payload.isNewFolder = !!(details && details.isNewFolder);
-                payload.appendedToExistingFolder = !!(details && details.appendedToExistingFolder);
+            if (safeType === 'new_request') {
+                payload.isNewFolder = !!safeDetails.isNewFolder;
+                payload.appendedToExistingFolder = !!safeDetails.appendedToExistingFolder;
                 payload.folderOnly = true;
                 payload.customerHistoryAllowed = false;
             }
-            if (type === 'request_complete') {
-                payload.repEmail = resolveRequestRecipientEmail(repName);
-                const folderNote = String(details && details.folderNote ? details.folderNote : '').trim();
+            if (safeType === 'request_complete') {
+                const folderNote = String(safeDetails.folderNote || '').trim();
                 if (folderNote) payload.folderNote = folderNote;
             }
-            fetch(GOOGLE_SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) }).catch(e => console.log(e));
+            const existingThreadId = String(firstNonEmptyValue(safeDetails.threadId, existingThreadRecord && existingThreadRecord.initial_thread_id, '')).trim();
+            const existingMessageId = String(firstNonEmptyValue(safeDetails.messageId, existingThreadRecord && existingThreadRecord.initial_message_id, '')).trim();
+            if (existingThreadId) payload.threadId = existingThreadId;
+            if (existingMessageId) payload.messageId = existingMessageId;
+            payload.replyInExistingThread = !!existingThreadId && (safeType === 'request_complete' || !!safeDetails.appendedToExistingFolder);
+            try {
+                const responseData = await postRequestEmailPayload(payload);
+                await persistRequestEmailThreadAfterSend(safeType, payload, responseData, existingThreadRecord);
+            } catch (error) {
+                console.log(error);
+            }
         }
 
         function sendFlyerCreatedEmail(folderName, assignedTo, items = [], createdBy = '') {
