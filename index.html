@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -501,7 +501,7 @@
             </div>
             <div id="view-wrapper" style="position:relative; z-index:20; width:100%; max-width:100%; overflow-x:hidden;">
                 <div id="view-home" class="hidden">
-                    <div class="bg-[#007a4d] text-white p-6 rounded-xl mb-6 shadow-lg flex flex-col items-center text-center relative overflow-hidden">
+                    <div id="home-dashboard-hero" class="bg-[#007a4d] text-white p-6 rounded-xl mb-6 shadow-lg flex flex-col items-center text-center relative overflow-hidden">
                         <div class="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-white opacity-5 rounded-full pointer-events-none"></div>
                         <div class="absolute bottom-0 left-0 -mb-10 -ml-10 w-32 h-32 bg-black opacity-10 rounded-full pointer-events-none"></div>
                         <h1 class="text-2xl font-black tracking-tight mb-1 z-10 relative mt-4">GREENLEAF NURSERY COMPANY</h1>
@@ -511,40 +511,44 @@
                             <div class="text-[15px] font-black tracking-[0.2em] text-white uppercase drop-shadow-sm">GREENLEAF NURSERY COMPANY</div>
                         </div>
                     </div>
-                    <details id="dashboard-sync-accordion" class="hidden group bg-white rounded-2xl border border-emerald-100 shadow-sm mb-6 overflow-hidden">
-                        <summary class="list-none cursor-pointer p-4 flex items-start justify-between gap-3">
-                            <div class="min-w-0 flex-1">
-                                <div id="dashboard-sync-stamp" class="text-lg font-black text-slate-900">Awaiting imported file data</div>
-                                <div id="dashboard-sync-summary" class="hidden"></div>
+                    <div id="home-dynamic-content" class="space-y-6"></div>
+                    <div id="home-dashboard-content">
+                        <details id="dashboard-sync-accordion" class="hidden group bg-white rounded-2xl border border-emerald-100 shadow-sm mb-6 overflow-hidden">
+                            <summary class="list-none cursor-pointer p-4 flex items-start justify-between gap-3">
+                                <div class="min-w-0 flex-1">
+                                    <div id="dashboard-sync-stamp" class="text-lg font-black text-slate-900">Awaiting imported file data</div>
+                                    <div id="dashboard-sync-summary" class="hidden"></div>
+                                </div>
+                                <div class="flex items-center gap-2 flex-shrink-0">
+                                    <button id="run-google-script-btn" type="button" class="hidden inline-flex items-center gap-1.5 px-3 py-2 rounded-2xl border border-emerald-200 bg-emerald-50 text-[#007a4d] text-[10px] font-black uppercase tracking-[0.14em] whitespace-nowrap shadow-sm active:scale-95" onclick="event.preventDefault(); event.stopPropagation(); return runGoogleAppsScriptTrigger()"><i class="ph-bold ph-lightning text-sm"></i><span data-run-script-label>Run Script</span></button>
+                                    <div class="w-11 h-11 rounded-2xl bg-emerald-50 text-[#007a4d] flex items-center justify-center border border-emerald-100 shadow-sm"><i class="ph-bold ph-database text-2xl"></i></div>
+                                    <div class="w-8 h-8 rounded-xl border border-emerald-100 bg-white text-[#007a4d] flex items-center justify-center transition-transform duration-200 group-open:rotate-180"><i class="ph-bold ph-caret-down text-lg"></i></div>
+                                </div>
+                            </summary>
+                            <div class="border-t border-emerald-100/70 bg-emerald-50/20 px-4 pb-4">
+                                <div id="dashboard-sync-files" class="mt-4 space-y-2">
+                                    <div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-semibold text-slate-400">No imported file metadata loaded yet.</div>
+                                </div>
                             </div>
-                            <div class="flex items-center gap-2 flex-shrink-0">
-                                <button id="run-google-script-btn" type="button" class="hidden inline-flex items-center gap-1.5 px-3 py-2 rounded-2xl border border-emerald-200 bg-emerald-50 text-[#007a4d] text-[10px] font-black uppercase tracking-[0.14em] whitespace-nowrap shadow-sm active:scale-95" onclick="event.preventDefault(); event.stopPropagation(); return runGoogleAppsScriptTrigger()"><i class="ph-bold ph-lightning text-sm"></i><span data-run-script-label>Run Script</span></button>
-                                <div class="w-11 h-11 rounded-2xl bg-emerald-50 text-[#007a4d] flex items-center justify-center border border-emerald-100 shadow-sm"><i class="ph-bold ph-database text-2xl"></i></div>
-                                <div class="w-8 h-8 rounded-xl border border-emerald-100 bg-white text-[#007a4d] flex items-center justify-center transition-transform duration-200 group-open:rotate-180"><i class="ph-bold ph-caret-down text-lg"></i></div>
-                            </div>
-                        </summary>
-                        <div class="border-t border-emerald-100/70 bg-emerald-50/20 px-4 pb-4">
-                            <div id="dashboard-sync-files" class="mt-4 space-y-2">
-                                <div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-semibold text-slate-400">No imported file metadata loaded yet.</div>
+                        </details>
+                        <div id="home-dashboard-modules">
+                            <h2 class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3 pl-1">App Modules</h2>
+                            <div class="grid grid-cols-2 gap-3 mb-8">
+                                <div onclick="switchView('drive')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-qc-supervisor hidden"><i class="ph-bold ph-car text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Drive Mode</span></div>
+                                <div onclick="switchView('tasks')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-clipboard-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Tasks</span></div>
+                                <div onclick="switchView('docks')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep role-qc-supervisor role-qc hidden"><i class="ph-bold ph-truck text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Docks</span></div>
+                                <div onclick="switchView('av')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep hidden"><i class="ph-bold ph-notebook text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">AV</span></div>
+                                <div onclick="switchView('request')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep hidden"><i class="ph-bold ph-chat-circle-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Requests</span></div>
+                                <div onclick="switchView('reserves')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-bookmark-simple text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Reserves</span></div>
+                                <div onclick="openSalesOfficeView()" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep hidden"><i class="ph-bold ph-briefcase text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Sales Office</span></div>
+                                <div onclick="switchView('reports')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-chart-bar text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Reports</span></div>
+                                <div onclick="switchView('hours')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-clock text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Labor Hours</span></div>
+                                <div onclick="switchView('low-stock')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-trend-down text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Low Stock</span></div>
+                                <div onclick="switchView('review')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform col-span-2 cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-warning-circle text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Manager Review</span></div>
                             </div>
                         </div>
-                    </details>
-<h2 class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3 pl-1">App Modules</h2>
-                    <div class="grid grid-cols-2 gap-3 mb-8">
-                        <div onclick="switchView('drive')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-qc-supervisor hidden"><i class="ph-bold ph-car text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Drive Mode</span></div>
-                        <div onclick="switchView('tasks')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-clipboard-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Tasks</span></div>
-                        <div onclick="switchView('docks')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep role-qc-supervisor role-qc hidden"><i class="ph-bold ph-truck text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Docks</span></div>
-                        <div onclick="switchView('av')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep hidden"><i class="ph-bold ph-notebook text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">AV</span></div>
-                        <div onclick="switchView('request')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep hidden"><i class="ph-bold ph-chat-circle-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Requests</span></div>
-                        <div onclick="switchView('reserves')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-bookmark-simple text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Reserves</span></div>
-                        <div onclick="openSalesOfficeView()" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep hidden"><i class="ph-bold ph-briefcase text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Sales Office</span></div>
-                        <div onclick="switchView('reports')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-chart-bar text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Reports</span></div>
-                        <div onclick="switchView('hours')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-clock text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Labor Hours</span></div>
-                        <div onclick="switchView('low-stock')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-trend-down text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Low Stock</span></div>
-                        <div onclick="switchView('review')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform col-span-2 cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-warning-circle text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Manager Review</span></div>
                     </div>
                 </div>
-
                 <div id="view-hours" class="hidden">
                     <div class="bg-white rounded-xl shadow-md p-6 mb-6 border-2 border-[#007a4d]">
                         <h2 class="text-xl font-black text-[#007a4d] mb-2">Report Labor Hours</h2>
@@ -4308,7 +4312,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         const PRODUCTIVITY_HISTORY_BATCH_SIZE = 150;
         const PRODUCTIVITY_TIME_ZONE = 'America/Chicago';
         const PRODUCTIVITY_HISTORY_BACKFILL_STORAGE_KEY = 'gnc_productivity_backfill_v1';
-        const APP_VERSION = 'V2026.04.15.04';
+        const APP_VERSION = 'V2026.04.15.05';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
