@@ -4311,8 +4311,9 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         const PRODUCTIVITY_HISTORY_SELECT_FIELDS = 'event_key,completed_by_username,completed_by_display,completed_at,source_table,source_kind,source_unique_id,source_assignment,itemcode,commonname,contsize,locationcode,lotcode,customer_name,request_folder,snapshot';
         const PRODUCTIVITY_HISTORY_BATCH_SIZE = 150;
         const PRODUCTIVITY_TIME_ZONE = 'America/Chicago';
-        const PRODUCTIVITY_HISTORY_BACKFILL_STORAGE_KEY = 'gnc_productivity_backfill_v1';
-        const APP_VERSION = 'V2026.04.15.05';
+        const PRODUCTIVITY_HISTORY_BACKFILL_STORAGE_KEY = 'gnc_productivity_backfill_v2';
+        const PRODUCTIVITY_COMPLETION_SOURCE_KINDS = new Set(['season_sales_note','location_sales_note','request','flyer']);
+        const APP_VERSION = 'V2026.04.15.06';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -6881,15 +6882,6 @@ function toggleDriveQuickRequestItem(domId) {
                     await supabaseFetch('v2_sales_office', 'POST', payloadBatch);
                 }
                 cloneBatch.forEach((clone) => { const existingIdx = salesOfficeInventory.findIndex((row) => String(row.UNIQUE_ID || '').trim() === String(clone.UNIQUE_ID || '').trim()); if (existingIdx > -1) salesOfficeInventory[existingIdx] = clone; else salesOfficeInventory.push(clone); });
-                const productivityEntries = clones.map((clone) => buildProductivityHistoryEntry(clone, {
-                    sourceTable: 'v2_sales_office',
-                    sourceKind: 'sales_office_order',
-                    completedByUsername: normalizeProductivityUsername(currentUser || submittedBy),
-                    completedByDisplay: currentUserDisplay || currentUser || submittedBy || 'Unknown',
-                    completedAt: submittedAt,
-                    sourceAssignment: 'sales-office-order'
-                })).filter(Boolean);
-                if (productivityEntries.length) setTimeout(() => { appendProductivityHistoryEntries(productivityEntries).catch(() => {}); }, 0);
                 activeSalesOfficeTab = 'orders';
                 clearSelection();
                 closeBloomPickerModal();
@@ -13652,6 +13644,10 @@ activeDriveTab = tab;
             return PRODUCTIVITY_TRACKED_USER_SET.has(normalizeProductivityUsername(value));
         }
 
+        function isSupportedProductivitySourceKind(value = '') {
+            return PRODUCTIVITY_COMPLETION_SOURCE_KINDS.has(String(value || '').trim().toLowerCase());
+        }
+
         function canViewProductivityHome() {
             return PRODUCTIVITY_HOME_VIEWERS.has(normalizeProductivityUsername(currentUser || currentUserDisplay || ''));
         }
@@ -13816,6 +13812,7 @@ activeDriveTab = tab;
             const completedByUsername = normalizeProductivityUsername(firstNonEmptyValue(opts.completedByUsername, item.COMPLETED_BY, item.completed_by, item.ORDER_SUBMITTED_BY, item.order_submitted_by, item.ASSIGNEDTO, item.assignedto, ''));
             if (!completedAt || !sourceUniqueId || !completedByUsername) return null;
             const sourceKind = String(firstNonEmptyValue(opts.sourceKind, getProductivitySourceKindFromItem(item), 'task')).trim();
+            if (!isSupportedProductivitySourceKind(sourceKind)) return null;
             const sourceTable = String(firstNonEmptyValue(opts.sourceTable, item.SOURCE_TABLE, item.source_table, sourceKind === 'request' ? 'v2_active_request' : (sourceKind === 'sales_office_order' ? 'v2_sales_office' : 'v2_master_inventory'))).trim();
             const completedByDisplay = String(firstNonEmptyValue(opts.completedByDisplay, item.COMPLETED_BY, item.completed_by, item.ORDER_SUBMITTED_BY, item.order_submitted_by, item.ASSIGNEDTO, item.assignedto, completedByUsername)).trim();
             const sourceAssignment = String(firstNonEmptyValue(opts.sourceAssignment, item.APP_TAB_ASSIGNMENT, item.app_tab_assignment, '')).trim();
@@ -13823,7 +13820,7 @@ activeDriveTab = tab;
             return { event_key: `${sourceTable}|${sourceKind}|${sourceUniqueId}|${completedAt}|${completedByUsername}`, completed_by_username: completedByUsername, completed_by_display: completedByDisplay || completedByUsername, completed_at: completedAt, source_table: sourceTable, source_kind: sourceKind, source_unique_id: sourceUniqueId, source_assignment: sourceAssignment || null, itemcode: snapshot.itemcode || null, commonname: snapshot.commonname || null, contsize: snapshot.contsize || null, locationcode: snapshot.locationcode || null, lotcode: snapshot.lotcode || null, customer_name: firstNonEmptyValue(snapshot.req_customer, snapshot.customer_name, snapshot.consignee_name, '') || null, request_folder: snapshot.request_folder || null, snapshot };
         }
         async function appendProductivityHistoryEntries(entries = [], options = {}) {
-            const normalizedEntries = mergeProductivityHistoryRows([], entries).filter((entry) => entry && entry.event_key);
+            const normalizedEntries = mergeProductivityHistoryRows([], entries).filter((entry) => entry && entry.event_key && isSupportedProductivitySourceKind(entry.source_kind));
             if (!normalizedEntries.length) return false;
             const opts = options || {};
             const schemaReady = opts.skipEnsure ? true : await ensureProductivityHistorySchemaReady();
@@ -13875,7 +13872,7 @@ activeDriveTab = tab;
             const entries = [];
             const pushEntry = (item, options = {}) => {
                 const entry = buildProductivityHistoryEntry(item, options);
-                if (!entry || !isTrackedProductivityUser(entry.completed_by_username)) return;
+                if (!entry || !isTrackedProductivityUser(entry.completed_by_username) || !isSupportedProductivitySourceKind(entry.source_kind)) return;
                 entries.push(entry);
             };
             fullInventory.forEach((item) => {
@@ -13891,13 +13888,6 @@ activeDriveTab = tab;
                 const completedByUsername = deriveProductivityBackfillUsername(item);
                 if (!completedByUsername) return;
                 pushEntry(item, { sourceTable: 'v2_active_request', sourceKind: 'request', completedAt, completedByUsername, completedByDisplay: deriveProductivityBackfillDisplay(item, completedByUsername), sourceAssignment: firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, item.app_tab_assignment, '') });
-            });
-            salesOfficeInventory.forEach((item) => {
-                const completedAt = String(firstNonEmptyValue(item && item.ORDER_SUBMITTED_AT, item && item.order_submitted_at, '')).trim();
-                if (!item || !completedAt || !isBloomPickerSalesOfficeItem(item)) return;
-                const completedByUsername = deriveProductivityBackfillUsername(item);
-                if (!completedByUsername) return;
-                pushEntry(item, { sourceTable: 'v2_sales_office', sourceKind: 'sales_office_order', completedAt, completedByUsername, completedByDisplay: deriveProductivityBackfillDisplay(item, completedByUsername), sourceAssignment: 'sales-office-order' });
             });
             return mergeProductivityHistoryRows([], entries);
         }
@@ -13937,7 +13927,7 @@ activeDriveTab = tab;
                 }
                 await ensureProductivityHistoryBackfill();
                 const rows = await supabaseFetch(PRODUCTIVITY_HISTORY_TABLE, 'GET', null, `select=${PRODUCTIVITY_HISTORY_SELECT_FIELDS}&completed_by_username=eq.${encodeURIComponent(normalizedUser)}&order=completed_at.desc`);
-                const normalizedRows = mergeProductivityHistoryRows([], rows);
+                const normalizedRows = mergeProductivityHistoryRows([], rows).filter((row) => isSupportedProductivitySourceKind(firstNonEmptyValue(row && row.source_kind, row && row.snapshot && row.snapshot.source_kind, '')));
                 productivityHistoryByUser.set(normalizedUser, normalizedRows);
                 state.loadedAt = new Date().toISOString();
                 state.error = '';
