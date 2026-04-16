@@ -457,7 +457,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-<div id="header-version" class="nav-version-pill">V2026.04.15.03</div>
+<div id="header-version" class="nav-version-pill">V2026.04.15.07</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -1688,7 +1688,7 @@
             item.DOCK_PHOTO_NAME = firstNonEmptyValue(item.DOCK_PHOTO_NAME, item.DOCKPHOTO_NAME);
             item.FLYER_PHOTO_LINK = firstNonEmptyValue(item.FLYER_PHOTO_LINK, item.FLYERPHOTO_LINK);
             item.FLYER_PHOTO_NAME = firstNonEmptyValue(item.FLYER_PHOTO_NAME, item.FLYERPHOTONAME);
-            const sharedFlyerAssignment = String(firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, item.app_tab_assignment, '')).toLowerCase();
+            const sharedFlyerAssignment = String(firstNonEmptyValue(item.PRODUCTIVITY_ORIGIN_ASSIGNMENT, item.productivity_origin_assignment, item.APP_TAB_ASSIGNMENT, item.app_tab_assignment, '')).toLowerCase();
             const sharesFlyerBaseData = sharedFlyerAssignment === 'season' || sharedFlyerAssignment === 'location';
             if (sharesFlyerBaseData) {
                 if (!String(item.FLYER_PHOTO_LINK || '').trim() && String(item.SAVED_PHOTO_LINK || '').trim()) item.FLYER_PHOTO_LINK = item.SAVED_PHOTO_LINK;
@@ -1715,7 +1715,7 @@
         }
 function syncSharedFlyerPhotoFields(item, prefix = '') {
             if (!item) return item;
-            const sharedFlyerAssignment = String(firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, item.app_tab_assignment, '')).toLowerCase();
+            const sharedFlyerAssignment = String(firstNonEmptyValue(item.PRODUCTIVITY_ORIGIN_ASSIGNMENT, item.productivity_origin_assignment, item.APP_TAB_ASSIGNMENT, item.app_tab_assignment, '')).toLowerCase();
             if (sharedFlyerAssignment !== 'season' && sharedFlyerAssignment !== 'location') return normalizeRowPhotoFields(item);
             if (!String(item.FLYER_PHOTO_LINK || '').trim() && String(item.SAVED_PHOTO_LINK || '').trim()) item.FLYER_PHOTO_LINK = item.SAVED_PHOTO_LINK;
             if (!String(item.FLYER_PHOTO_NAME || '').trim() && String(item.SAVED_PHOTO_NAME || '').trim()) item.FLYER_PHOTO_NAME = item.SAVED_PHOTO_NAME;
@@ -1723,7 +1723,7 @@ function syncSharedFlyerPhotoFields(item, prefix = '') {
         }
 
         const LINKED_ROW_SYNC_KEYS = ['COMMONNAME','CONTSIZE','LOCATIONCODE','LOTCODE','ITEMCODE','PTRAVAILABLE','SEASONSUPPLY','PRIORITY','QUALITYCODE','FIELDTAGCOLOR','PLANTGROUPCODE','BLOCKALPHA','SEASON','S_LTS','AV_NOTE','SALES_NOTE','MATCH','SPEC','CALIPER','PICK','LOC_MATCH_QTY','INITIAL_PTR'];
-        const EXACT_ROW_SYNC_KEYS = LINKED_ROW_SYNC_KEYS.concat(getFlyerShadowKeys(), ['APP_TAB_ASSIGNMENT','DATE_COMPLETED','FLYER_CAT','FLYER_TITLE','FLYER_INST','FLYER_ASSIGNED','FLYER_NOTES','FLYER_COMPLETED','ASSIGNEDTO']);
+        const EXACT_ROW_SYNC_KEYS = LINKED_ROW_SYNC_KEYS.concat(getFlyerShadowKeys(), ['APP_TAB_ASSIGNMENT','PRODUCTIVITY_ORIGIN_ASSIGNMENT','DATE_COMPLETED','FLYER_CAT','FLYER_TITLE','FLYER_INST','FLYER_ASSIGNED','FLYER_NOTES','FLYER_COMPLETED','ASSIGNEDTO']);
         const ROW_SYNC_SNAPSHOT_EXTRA_KEYS = ['SAVED_PHOTO_LINK','SAVED_PHOTO_NAME','REQ_PHOTO_LINK','REQ_PHOTO_NAME','DOCK_PHOTO_LINK','DOCK_PHOTO_NAME','FLYER_PHOTO_LINK','FLYER_PHOTO_NAME','ROW_PHOTO_LINK','ROW_PHOTO_NAME','REQ_STATUS','REQ_MATCH','REQ_SPEC','REQ_CALIPER','REQ_PICK','REQ_COMMENTS','REQ_RESERVE'];
         const ROW_SYNC_STORAGE_KEY = 'gnc_row_state_sync_v1';
         const ROW_SYNC_EVENT_NAME = 'gnc-row-state-sync';
@@ -4311,9 +4311,9 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         const PRODUCTIVITY_HISTORY_SELECT_FIELDS = 'event_key,completed_by_username,completed_by_display,completed_at,source_table,source_kind,source_unique_id,source_assignment,itemcode,commonname,contsize,locationcode,lotcode,customer_name,request_folder,snapshot';
         const PRODUCTIVITY_HISTORY_BATCH_SIZE = 150;
         const PRODUCTIVITY_TIME_ZONE = 'America/Chicago';
-        const PRODUCTIVITY_HISTORY_BACKFILL_STORAGE_KEY = 'gnc_productivity_backfill_v2';
-        const PRODUCTIVITY_COMPLETION_SOURCE_KINDS = new Set(['season_sales_note','location_sales_note','request','flyer']);
-        const APP_VERSION = 'V2026.04.15.06';
+        const PRODUCTIVITY_HISTORY_BACKFILL_STORAGE_KEY = 'gnc_productivity_backfill_v3';
+        const PRODUCTIVITY_COMPLETION_SOURCE_KINDS = new Set(['season_sales_note','location_sales_note']);
+        const APP_VERSION = 'V2026.04.15.07';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -6144,6 +6144,7 @@ function toggleDriveQuickRequestItem(domId) {
             domIds.forEach((domId) => {
                 const item = findItemByDomId(domId);
                 if (!item) return;
+                item.PRODUCTIVITY_ORIGIN_ASSIGNMENT = firstNonEmptyValue(item.PRODUCTIVITY_ORIGIN_ASSIGNMENT, item.productivity_origin_assignment, item.APP_TAB_ASSIGNMENT, item.app_tab_assignment, '');
                 item.APP_TAB_ASSIGNMENT = 'flyer';
                 item.ASSIGNEDTO = primaryAssignee;
                 item.DATE_COMPLETED = '';
@@ -6242,6 +6243,7 @@ function toggleDriveQuickRequestItem(domId) {
             const updates = [];
             const updateItems = [];
             validItems.forEach((item) => {
+                item.PRODUCTIVITY_ORIGIN_ASSIGNMENT = firstNonEmptyValue(item.PRODUCTIVITY_ORIGIN_ASSIGNMENT, item.productivity_origin_assignment, item.APP_TAB_ASSIGNMENT, item.app_tab_assignment, '');
                 item.APP_TAB_ASSIGNMENT = 'flyer';
                 item.ASSIGNEDTO = primaryAssignee;
                 item.DATE_COMPLETED = '';
@@ -13688,25 +13690,210 @@ activeDriveTab = tab;
             return typeof snapshot === 'object' ? { ...snapshot } : {};
         }
 
+        function getProductivityOriginKindFromAssignment(value = '') {
+            const normalizedAssignment = String(value || '').trim().toLowerCase();
+            if (normalizedAssignment === 'season') return 'season_sales_note';
+            if (normalizedAssignment === 'location' || normalizedAssignment === 'colorwalk') return 'location_sales_note';
+            return '';
+        }
+
+        function getProductivitySourceKindLabel(sourceKind = '') {
+            const normalizedKind = String(sourceKind || '').trim().toLowerCase();
+            if (normalizedKind === 'season_sales_note') return 'Season Sales Note';
+            if (normalizedKind === 'location_sales_note') return 'Location Sales Note';
+            if (normalizedKind === 'need_av') return 'Need AV';
+            if (normalizedKind === 'flyer') return 'Flyer';
+            if (normalizedKind === 'request') return 'Request';
+            if (normalizedKind === 'sales_office_order') return 'Sales Office Order';
+            if (normalizedKind === 'end_cap') return 'End Cap';
+            return 'Task';
+        }
+
+        function getProductivityCompletionContextLabel(value = '') {
+            return getProductivitySourceKindLabel(value);
+        }
+
+        function resolveProductivityOriginAssignment(item = null, options = {}) {
+            const opts = options || {};
+            const masterRow = opts.masterRow === undefined ? (findLinkedMasterRow(item) || null) : opts.masterRow;
+            const candidates = [
+                opts.originAssignment,
+                item && item.PRODUCTIVITY_ORIGIN_ASSIGNMENT,
+                item && item.productivity_origin_assignment,
+                item && item.APP_TAB_ASSIGNMENT,
+                item && item.app_tab_assignment,
+                masterRow && masterRow.PRODUCTIVITY_ORIGIN_ASSIGNMENT,
+                masterRow && masterRow.productivity_origin_assignment,
+                masterRow && masterRow.APP_TAB_ASSIGNMENT,
+                masterRow && masterRow.app_tab_assignment
+            ];
+            for (const candidate of candidates) {
+                const resolvedKind = getProductivityOriginKindFromAssignment(candidate);
+                if (resolvedKind) return String(candidate || '').trim().toLowerCase();
+            }
+            return '';
+        }
+
+        function resolveProductivityOriginKind(item = null, options = {}) {
+            return getProductivityOriginKindFromAssignment(resolveProductivityOriginAssignment(item, options));
+        }
+
+        function getProductivityCompletionContextFromItem(item = null, fallback = 'task') {
+            if (!item) return fallback;
+            const sourceTable = String(firstNonEmptyValue(item.SOURCE_TABLE, item.source_table, '')).toLowerCase();
+            if (sourceTable === 'v2_active_request' || String(firstNonEmptyValue(item.REQ_STATUS, item.REQUEST_FOLDER, item.REQ_CUSTOMER, '')).trim() !== '') return 'request';
+            if (isFlyerTaskItem(item)) return 'flyer';
+            if (isBloomPickerSalesOfficeItem(item)) return 'sales_office_order';
+            const assignment = String(firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, item.app_tab_assignment, '')).trim().toLowerCase();
+            if (assignment === 'season') return 'season_sales_note';
+            if (assignment === 'location' || assignment === 'colorwalk') return 'location_sales_note';
+            if (assignment === 'need_av' || assignment === 'need av' || assignment === 'av blanks') return 'need_av';
+            if (assignment === 'endcap' || assignment === 'end_cap') return 'end_cap';
+            return fallback;
+        }
+
+        function getProductivityCompletionContextFromPrefix(prefix = '', item = null) {
+            const normalizedPrefix = String(prefix || '').trim().toLowerCase();
+            if (normalizedPrefix === 'ssn-') return 'season_sales_note';
+            if (normalizedPrefix === 'lsn-') return 'location_sales_note';
+            if (normalizedPrefix === 'req-') return 'request';
+            if (normalizedPrefix === 'flyer-') return 'flyer';
+            if (normalizedPrefix === 'na-') return 'need_av';
+            if (normalizedPrefix === 'endcap-') return 'end_cap';
+            return getProductivityCompletionContextFromItem(item);
+        }
+
+        function getProductivitySourceKindFromPrefix(prefix = '', item = null) {
+            const normalizedPrefix = String(prefix || '').trim().toLowerCase();
+            if (normalizedPrefix === 'ssn-') return 'season_sales_note';
+            if (normalizedPrefix === 'lsn-') return 'location_sales_note';
+            if (normalizedPrefix === 'req-' || normalizedPrefix === 'flyer-') {
+                return resolveProductivityOriginKind(item, { completionContext: normalizedPrefix === 'req-' ? 'request' : 'flyer' });
+            }
+            if (normalizedPrefix === 'na-') return 'need_av';
+            if (normalizedPrefix === 'endcap-') return 'end_cap';
+            return getProductivitySourceKindFromItem(item);
+        }
+
+        function getProductivitySourceKindFromItem(item = null, fallback = 'task') {
+            if (!item) return fallback;
+            const resolvedOriginKind = resolveProductivityOriginKind(item);
+            if (resolvedOriginKind) return resolvedOriginKind;
+            const sourceTable = String(firstNonEmptyValue(item.SOURCE_TABLE, item.source_table, '')).toLowerCase();
+            if (sourceTable === 'v2_active_request' || String(firstNonEmptyValue(item.REQ_STATUS, item.REQUEST_FOLDER, item.REQ_CUSTOMER, '')).trim() !== '') return 'request';
+            if (isFlyerTaskItem(item)) return 'flyer';
+            if (isBloomPickerSalesOfficeItem(item)) return 'sales_office_order';
+            const assignment = String(firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, item.app_tab_assignment, '')).trim().toLowerCase();
+            if (assignment === 'need_av' || assignment === 'need av' || assignment === 'av blanks') return 'need_av';
+            if (assignment === 'endcap' || assignment === 'end_cap') return 'end_cap';
+            return fallback;
+        }
+
+        function getProductivitySnapshotPhotoState(item = null, completionContext = '') {
+            if (!item) return { link: '', name: '' };
+            const normalizedKind = String(completionContext || '').toLowerCase();
+            if (normalizedKind === 'request') return { link: String(firstNonEmptyValue(item.REQ_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.ROW_PHOTO_LINK, '')).trim(), name: String(firstNonEmptyValue(item.REQ_PHOTO_NAME, item.SAVED_PHOTO_NAME, item.ROW_PHOTO_NAME, '')).trim() };
+            if (normalizedKind === 'flyer') return { link: String(firstNonEmptyValue(item.FLYER_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.ROW_PHOTO_LINK, '')).trim(), name: String(firstNonEmptyValue(item.FLYER_PHOTO_NAME, item.SAVED_PHOTO_NAME, item.ROW_PHOTO_NAME, '')).trim() };
+            return { link: String(firstNonEmptyValue(item.SAVED_PHOTO_LINK, item.ROW_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK'], '')).trim(), name: String(firstNonEmptyValue(item.SAVED_PHOTO_NAME, item.ROW_PHOTO_NAME, item.PHOTO_NAME, item.PHOTONAME, item['PHOTO NAME'], '')).trim() };
+        }
+
+        function getProductivitySnapshotMatchValue(item = null, completionContext = '', masterRow = null) {
+            if (!item) return '';
+            const normalizedKind = String(completionContext || '').toLowerCase();
+            if (normalizedKind === 'request') return String(firstNonEmptyValue(item.REQ_MATCH, item.MATCH, masterRow && masterRow.MATCH, '')).trim();
+            if (normalizedKind === 'flyer') return String(firstNonEmptyValue(item.FLYER_MATCH, item.MATCH, '')).trim();
+            return String(firstNonEmptyValue(item.MATCH, item.MATCHPCT, masterRow && masterRow.MATCH, '')).trim();
+        }
+
+        function getProductivitySnapshotLocMatchQty(item = null, completionContext = '', masterRow = null, matchValue = '') {
+            if (!item) return '';
+            const normalizedKind = String(completionContext || '').toLowerCase();
+            if (normalizedKind === 'flyer') return String(firstNonEmptyValue(item.FLYER_LOC_MATCH_QTY, getDisplayLocMatchQtyValue(item, 'flyer'), '')).trim();
+            if (normalizedKind === 'request') {
+                const derivedQty = calculateLocMatchQtyValue({ MATCH: firstNonEmptyValue(matchValue, item.REQ_MATCH, item.MATCH, ''), INITIAL_PTR: firstNonEmptyValue(item.INITIAL_PTR, masterRow && masterRow.INITIAL_PTR, item.PTRAVAILABLE, masterRow && masterRow.PTRAVAILABLE, ''), PTRAVAILABLE: firstNonEmptyValue(item.PTRAVAILABLE, masterRow && masterRow.PTRAVAILABLE, '') });
+                return derivedQty == null ? '' : String(derivedQty);
+            }
+            return String(firstNonEmptyValue(getDisplayLocMatchQtyValue(item, ''), item.LOC_MATCH_QTY, '')).trim();
+        }
+
+        function buildProductivitySnapshot(item = null, options = {}) {
+            if (!item) return {};
+            const opts = options || {};
+            const masterRow = opts.masterRow || findLinkedMasterRow(item) || null;
+            const sourceKind = String(firstNonEmptyValue(opts.sourceKind, getProductivitySourceKindFromItem(item), 'task')).toLowerCase();
+            const completionContext = String(firstNonEmptyValue(opts.completionContext, getProductivityCompletionContextFromItem(item, sourceKind), sourceKind)).toLowerCase();
+            const originAssignment = String(firstNonEmptyValue(opts.originAssignment, resolveProductivityOriginAssignment(item, { masterRow }), '')).trim().toLowerCase();
+            const photoState = getProductivitySnapshotPhotoState(item, completionContext);
+            const sourceView = completionContext === 'flyer' ? 'flyer' : '';
+            const matchValue = getProductivitySnapshotMatchValue(item, completionContext, masterRow);
+            const locMatchQtyValue = getProductivitySnapshotLocMatchQty(item, completionContext, masterRow, matchValue);
+            const avNote = completionContext === 'request' ? String(firstNonEmptyValue(item.AV_NOTE, masterRow && masterRow.AV_NOTE, '')).trim() : String(firstNonEmptyValue(getItemDisplayValue(item, 'AV_NOTE', sourceView), masterRow && masterRow.AV_NOTE, '')).trim();
+            const spec = completionContext === 'request' ? String(firstNonEmptyValue(item.REQ_SPEC, item.SPEC, masterRow && masterRow.SPEC, '')).trim() : String(firstNonEmptyValue(getItemDisplayValue(item, 'SPEC', sourceView), masterRow && masterRow.SPEC, '')).trim();
+            const caliper = completionContext === 'request' ? String(firstNonEmptyValue(item.REQ_CALIPER, item.CALIPER, masterRow && masterRow.CALIPER, '')).trim() : String(firstNonEmptyValue(getItemDisplayValue(item, 'CALIPER', sourceView), masterRow && masterRow.CALIPER, '')).trim();
+            const pickNote = completionContext === 'request' ? String(firstNonEmptyValue(item.REQ_PICK, item.PICK, masterRow && masterRow.PICK, '')).trim() : String(firstNonEmptyValue(getItemDisplayValue(item, 'PICK', sourceView), masterRow && masterRow.PICK, '')).trim();
+            const salesNote = completionContext === 'request' ? String(firstNonEmptyValue(item.REQ_COMMENTS, item.SALES_NOTE, item.SALESNOTE, '')).trim() : (completionContext === 'flyer' ? String(firstNonEmptyValue(item.FLYER_NOTES, item.SALES_NOTE, item.SALESNOTE, '')).trim() : String(firstNonEmptyValue(item.SALES_NOTE, item.SALESNOTE, '')).trim());
+            return { itemcode: String(firstNonEmptyValue(item.ITEMCODE, masterRow && masterRow.ITEMCODE, '')).trim(), commonname: String(firstNonEmptyValue(item.COMMONNAME, masterRow && masterRow.COMMONNAME, '')).trim(), contsize: String(firstNonEmptyValue(item.CONTSIZE, masterRow && masterRow.CONTSIZE, '')).trim(), locationcode: String(firstNonEmptyValue(item.LOCATIONCODE, masterRow && masterRow.LOCATIONCODE, '')).trim(), lotcode: String(firstNonEmptyValue(item.LOTCODE, masterRow && masterRow.LOTCODE, '')).trim(), req_customer: String(firstNonEmptyValue(item.REQ_CUSTOMER, '')).trim(), request_folder: String(firstNonEmptyValue(item.REQUEST_FOLDER, item.ORDER_FOLDER, '')).trim(), customer_name: String(firstNonEmptyValue(item.CUSTOMERNAME, item.ORDER_CUSTOMER, item.REQ_CUSTOMER, '')).trim(), consignee_name: String(firstNonEmptyValue(item.CONSIGNEENAME, '')).trim(), source_kind: sourceKind, source_label: getProductivitySourceKindLabel(sourceKind), source_assignment: String(firstNonEmptyValue(opts.sourceAssignment, item.APP_TAB_ASSIGNMENT, item.app_tab_assignment, '')).trim(), origin_kind: sourceKind, origin_label: getProductivitySourceKindLabel(sourceKind), origin_assignment: originAssignment, completion_context: completionContext, completion_context_label: getProductivityCompletionContextLabel(completionContext), completed_by: String(firstNonEmptyValue(opts.completedByDisplay, item.COMPLETED_BY, item.completed_by, item.ORDER_SUBMITTED_BY, item.order_submitted_by, '')).trim(), completed_by_username: normalizeProductivityUsername(firstNonEmptyValue(opts.completedByUsername, item.COMPLETED_BY, item.completed_by, item.ORDER_SUBMITTED_BY, item.order_submitted_by, '')), completed_at: String(firstNonEmptyValue(opts.completedAt, item.DATE_COMPLETED, item.date_completed, item.ORDER_SUBMITTED_AT, item.order_submitted_at, '')).trim(), av_note: avNote, sales_note: salesNote, spec, caliper, pick_note: pickNote, match: String(matchValue || '').trim(), loc_match_qty: String(locMatchQtyValue || '').trim(), photo_link: photoState.link, photo_name: photoState.name };
+        }
+
+        function resolveProductivityHistoryOriginAssignment(raw = {}, snapshot = {}) {
+            const candidates = [snapshot.origin_assignment, raw && raw.source_assignment, snapshot.source_assignment];
+            for (const candidate of candidates) {
+                const resolvedKind = getProductivityOriginKindFromAssignment(candidate);
+                if (resolvedKind) return String(candidate || '').trim().toLowerCase();
+            }
+            return '';
+        }
+
+        function resolveProductivityHistoryOriginKind(raw = {}, snapshot = {}) {
+            const directKinds = [snapshot.origin_kind, raw && raw.source_kind, snapshot.source_kind];
+            for (const candidate of directKinds) {
+                if (isSupportedProductivitySourceKind(candidate)) return String(candidate || '').trim().toLowerCase();
+            }
+            return getProductivityOriginKindFromAssignment(resolveProductivityHistoryOriginAssignment(raw, snapshot));
+        }
+
+        function resolveProductivityHistoryCompletionContext(raw = {}, snapshot = {}) {
+            const candidates = [snapshot.completion_context, raw && raw.source_kind, snapshot.source_kind, snapshot.origin_kind];
+            for (const candidate of candidates) {
+                const normalizedCandidate = String(candidate || '').trim().toLowerCase();
+                if (normalizedCandidate) return normalizedCandidate;
+            }
+            return '';
+        }
+
         function normalizeProductivityHistoryRow(raw = {}) {
             const snapshot = normalizeProductivitySnapshot(raw && raw.snapshot);
+            const sourceKind = resolveProductivityHistoryOriginKind(raw, snapshot);
+            const completionContext = resolveProductivityHistoryCompletionContext(raw, snapshot);
+            const originAssignment = resolveProductivityHistoryOriginAssignment(raw, snapshot);
+            const normalizedSnapshot = {
+                ...snapshot,
+                source_kind: String(firstNonEmptyValue(snapshot.source_kind, sourceKind, '')).trim(),
+                source_label: String(firstNonEmptyValue(snapshot.source_label, getProductivitySourceKindLabel(sourceKind), '')).trim(),
+                origin_kind: String(firstNonEmptyValue(snapshot.origin_kind, sourceKind, '')).trim(),
+                origin_label: String(firstNonEmptyValue(snapshot.origin_label, getProductivitySourceKindLabel(sourceKind), '')).trim(),
+                origin_assignment: String(firstNonEmptyValue(snapshot.origin_assignment, originAssignment, '')).trim(),
+                completion_context: String(firstNonEmptyValue(snapshot.completion_context, completionContext, sourceKind)).trim(),
+                completion_context_label: String(firstNonEmptyValue(snapshot.completion_context_label, getProductivityCompletionContextLabel(completionContext || sourceKind), '')).trim()
+            };
             return {
                 event_key: String(raw && raw.event_key || '').trim(),
                 completed_by_username: normalizeProductivityUsername(raw && raw.completed_by_username),
-                completed_by_display: String(firstNonEmptyValue(raw && raw.completed_by_display, raw && raw.completed_by_username, '')).trim(),
+                completed_by_display: String(firstNonEmptyValue(raw && raw.completed_by_display, raw && raw.completed_by_username, normalizedSnapshot.completed_by, '')).trim(),
                 completed_at: String(raw && raw.completed_at || '').trim(),
                 source_table: String(raw && raw.source_table || '').trim(),
-                source_kind: String(raw && raw.source_kind || '').trim(),
+                source_kind: sourceKind,
                 source_unique_id: String(raw && raw.source_unique_id || '').trim(),
-                source_assignment: String(raw && raw.source_assignment || '').trim(),
-                itemcode: String(firstNonEmptyValue(raw && raw.itemcode, snapshot.itemcode, '')).trim(),
-                commonname: String(firstNonEmptyValue(raw && raw.commonname, snapshot.commonname, '')).trim(),
-                contsize: String(firstNonEmptyValue(raw && raw.contsize, snapshot.contsize, '')).trim(),
-                locationcode: String(firstNonEmptyValue(raw && raw.locationcode, snapshot.locationcode, '')).trim(),
-                lotcode: String(firstNonEmptyValue(raw && raw.lotcode, snapshot.lotcode, '')).trim(),
-                customer_name: String(firstNonEmptyValue(raw && raw.customer_name, snapshot.customer_name, snapshot.req_customer, '')).trim(),
-                request_folder: String(firstNonEmptyValue(raw && raw.request_folder, snapshot.request_folder, '')).trim(),
-                snapshot
+                source_assignment: String(firstNonEmptyValue(raw && raw.source_assignment, normalizedSnapshot.source_assignment, '')).trim(),
+                completion_context: completionContext,
+                itemcode: String(firstNonEmptyValue(raw && raw.itemcode, normalizedSnapshot.itemcode, '')).trim(),
+                commonname: String(firstNonEmptyValue(raw && raw.commonname, normalizedSnapshot.commonname, '')).trim(),
+                contsize: String(firstNonEmptyValue(raw && raw.contsize, normalizedSnapshot.contsize, '')).trim(),
+                locationcode: String(firstNonEmptyValue(raw && raw.locationcode, normalizedSnapshot.locationcode, '')).trim(),
+                lotcode: String(firstNonEmptyValue(raw && raw.lotcode, normalizedSnapshot.lotcode, '')).trim(),
+                customer_name: String(firstNonEmptyValue(raw && raw.customer_name, normalizedSnapshot.customer_name, normalizedSnapshot.req_customer, '')).trim(),
+                request_folder: String(firstNonEmptyValue(raw && raw.request_folder, normalizedSnapshot.request_folder, '')).trim(),
+                snapshot: normalizedSnapshot
             };
         }
 
@@ -13723,102 +13910,26 @@ activeDriveTab = tab;
             return Array.from(merged.values()).sort((a, b) => new Date(b.completed_at || 0).getTime() - new Date(a.completed_at || 0).getTime());
         }
 
-        function getProductivitySourceKindLabel(sourceKind = '') {
-            const normalizedKind = String(sourceKind || '').trim().toLowerCase();
-            if (normalizedKind === 'season_sales_note') return 'Season Sales Note';
-            if (normalizedKind === 'location_sales_note') return 'Location Sales Note';
-            if (normalizedKind === 'need_av') return 'Need AV';
-            if (normalizedKind === 'flyer') return 'Flyer';
-            if (normalizedKind === 'request') return 'Request';
-            if (normalizedKind === 'sales_office_order') return 'Sales Office Order';
-            if (normalizedKind === 'end_cap') return 'End Cap';
-            return 'Task';
-        }
-
-        function getProductivitySourceKindFromPrefix(prefix = '', item = null) {
-            const normalizedPrefix = String(prefix || '').trim().toLowerCase();
-            if (normalizedPrefix === 'ssn-') return 'season_sales_note';
-            if (normalizedPrefix === 'lsn-') return 'location_sales_note';
-            if (normalizedPrefix === 'na-') return 'need_av';
-            if (normalizedPrefix === 'req-') return 'request';
-            if (normalizedPrefix === 'flyer-') return 'flyer';
-            if (normalizedPrefix === 'endcap-') return 'end_cap';
-            return getProductivitySourceKindFromItem(item);
-        }
-
-        function getProductivitySourceKindFromItem(item = null, fallback = 'task') {
-            if (!item) return fallback;
-            const sourceTable = String(firstNonEmptyValue(item.SOURCE_TABLE, item.source_table, '')).toLowerCase();
-            if (sourceTable === 'v2_active_request' || String(firstNonEmptyValue(item.REQ_STATUS, item.REQUEST_FOLDER, item.REQ_CUSTOMER, '')).trim() !== '') return 'request';
-            if (isBloomPickerSalesOfficeItem(item)) return 'sales_office_order';
-            const assignment = String(firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, item.app_tab_assignment, '')).trim().toLowerCase();
-            if (assignment === 'season') return 'season_sales_note';
-            if (assignment === 'location' || assignment === 'colorwalk') return 'location_sales_note';
-            if (assignment === 'flyer') return 'flyer';
-            if (assignment === 'need_av' || assignment === 'need av' || assignment === 'av blanks') return 'need_av';
-            if (assignment === 'endcap' || assignment === 'end_cap') return 'end_cap';
-            return fallback;
-        }
-
-        function getProductivitySnapshotPhotoState(item = null, sourceKind = '') {
-            if (!item) return { link: '', name: '' };
-            const normalizedKind = String(sourceKind || '').toLowerCase();
-            if (normalizedKind === 'request') return { link: String(firstNonEmptyValue(item.REQ_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.ROW_PHOTO_LINK, '')).trim(), name: String(firstNonEmptyValue(item.REQ_PHOTO_NAME, item.SAVED_PHOTO_NAME, item.ROW_PHOTO_NAME, '')).trim() };
-            if (normalizedKind === 'flyer') return { link: String(firstNonEmptyValue(item.FLYER_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.ROW_PHOTO_LINK, '')).trim(), name: String(firstNonEmptyValue(item.FLYER_PHOTO_NAME, item.SAVED_PHOTO_NAME, item.ROW_PHOTO_NAME, '')).trim() };
-            return { link: String(firstNonEmptyValue(item.SAVED_PHOTO_LINK, item.ROW_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK'], '')).trim(), name: String(firstNonEmptyValue(item.SAVED_PHOTO_NAME, item.ROW_PHOTO_NAME, item.PHOTO_NAME, item.PHOTONAME, item['PHOTO NAME'], '')).trim() };
-        }
-
-        function getProductivitySnapshotMatchValue(item = null, sourceKind = '', masterRow = null) {
-            if (!item) return '';
-            const normalizedKind = String(sourceKind || '').toLowerCase();
-            if (normalizedKind === 'request') return String(firstNonEmptyValue(item.REQ_MATCH, item.MATCH, masterRow && masterRow.MATCH, '')).trim();
-            if (normalizedKind === 'flyer') return String(firstNonEmptyValue(item.FLYER_MATCH, item.MATCH, '')).trim();
-            return String(firstNonEmptyValue(item.MATCH, item.MATCHPCT, masterRow && masterRow.MATCH, '')).trim();
-        }
-
-        function getProductivitySnapshotLocMatchQty(item = null, sourceKind = '', masterRow = null, matchValue = '') {
-            if (!item) return '';
-            const normalizedKind = String(sourceKind || '').toLowerCase();
-            if (normalizedKind === 'flyer') return String(firstNonEmptyValue(item.FLYER_LOC_MATCH_QTY, getDisplayLocMatchQtyValue(item, 'flyer'), '')).trim();
-            if (normalizedKind === 'request') {
-                const derivedQty = calculateLocMatchQtyValue({ MATCH: firstNonEmptyValue(matchValue, item.REQ_MATCH, item.MATCH, ''), INITIAL_PTR: firstNonEmptyValue(item.INITIAL_PTR, masterRow && masterRow.INITIAL_PTR, item.PTRAVAILABLE, masterRow && masterRow.PTRAVAILABLE, ''), PTRAVAILABLE: firstNonEmptyValue(item.PTRAVAILABLE, masterRow && masterRow.PTRAVAILABLE, '') });
-                return derivedQty == null ? '' : String(derivedQty);
-            }
-            return String(firstNonEmptyValue(getDisplayLocMatchQtyValue(item, ''), item.LOC_MATCH_QTY, '')).trim();
-        }
-
-        function buildProductivitySnapshot(item = null, options = {}) {
-            if (!item) return {};
-            const opts = options || {};
-            const sourceKind = String(firstNonEmptyValue(opts.sourceKind, getProductivitySourceKindFromItem(item), 'task')).toLowerCase();
-            const masterRow = opts.masterRow || findLinkedMasterRow(item) || null;
-            const photoState = getProductivitySnapshotPhotoState(item, sourceKind);
-            const sourceView = sourceKind === 'flyer' ? 'flyer' : '';
-            const matchValue = getProductivitySnapshotMatchValue(item, sourceKind, masterRow);
-            const locMatchQtyValue = getProductivitySnapshotLocMatchQty(item, sourceKind, masterRow, matchValue);
-            const avNote = sourceKind === 'request' ? String(firstNonEmptyValue(item.AV_NOTE, masterRow && masterRow.AV_NOTE, '')).trim() : String(firstNonEmptyValue(getItemDisplayValue(item, 'AV_NOTE', sourceView), masterRow && masterRow.AV_NOTE, '')).trim();
-            const spec = sourceKind === 'request' ? String(firstNonEmptyValue(item.REQ_SPEC, item.SPEC, masterRow && masterRow.SPEC, '')).trim() : String(firstNonEmptyValue(getItemDisplayValue(item, 'SPEC', sourceView), masterRow && masterRow.SPEC, '')).trim();
-            const caliper = sourceKind === 'request' ? String(firstNonEmptyValue(item.REQ_CALIPER, item.CALIPER, masterRow && masterRow.CALIPER, '')).trim() : String(firstNonEmptyValue(getItemDisplayValue(item, 'CALIPER', sourceView), masterRow && masterRow.CALIPER, '')).trim();
-            const pickNote = sourceKind === 'request' ? String(firstNonEmptyValue(item.REQ_PICK, item.PICK, masterRow && masterRow.PICK, '')).trim() : String(firstNonEmptyValue(getItemDisplayValue(item, 'PICK', sourceView), masterRow && masterRow.PICK, '')).trim();
-            const salesNote = sourceKind === 'request' ? String(firstNonEmptyValue(item.REQ_COMMENTS, item.SALES_NOTE, item.SALESNOTE, '')).trim() : (sourceKind === 'flyer' ? String(firstNonEmptyValue(item.FLYER_NOTES, item.SALES_NOTE, item.SALESNOTE, '')).trim() : String(firstNonEmptyValue(item.SALES_NOTE, item.SALESNOTE, '')).trim());
-            return { itemcode: String(firstNonEmptyValue(item.ITEMCODE, masterRow && masterRow.ITEMCODE, '')).trim(), commonname: String(firstNonEmptyValue(item.COMMONNAME, masterRow && masterRow.COMMONNAME, '')).trim(), contsize: String(firstNonEmptyValue(item.CONTSIZE, masterRow && masterRow.CONTSIZE, '')).trim(), locationcode: String(firstNonEmptyValue(item.LOCATIONCODE, masterRow && masterRow.LOCATIONCODE, '')).trim(), lotcode: String(firstNonEmptyValue(item.LOTCODE, masterRow && masterRow.LOTCODE, '')).trim(), req_customer: String(firstNonEmptyValue(item.REQ_CUSTOMER, '')).trim(), request_folder: String(firstNonEmptyValue(item.REQUEST_FOLDER, item.ORDER_FOLDER, '')).trim(), customer_name: String(firstNonEmptyValue(item.CUSTOMERNAME, item.ORDER_CUSTOMER, item.REQ_CUSTOMER, '')).trim(), consignee_name: String(firstNonEmptyValue(item.CONSIGNEENAME, '')).trim(), source_kind: sourceKind, source_label: getProductivitySourceKindLabel(sourceKind), source_assignment: String(firstNonEmptyValue(opts.sourceAssignment, item.APP_TAB_ASSIGNMENT, item.app_tab_assignment, '')).trim(), completed_by: String(firstNonEmptyValue(opts.completedByDisplay, item.COMPLETED_BY, item.ORDER_SUBMITTED_BY, item.ASSIGNEDTO, '')).trim(), completed_by_username: normalizeProductivityUsername(firstNonEmptyValue(opts.completedByUsername, item.COMPLETED_BY, item.ORDER_SUBMITTED_BY, item.ASSIGNEDTO, '')), completed_at: String(firstNonEmptyValue(opts.completedAt, item.DATE_COMPLETED, item.date_completed, item.ORDER_SUBMITTED_AT, item.order_submitted_at, '')).trim(), av_note: avNote, sales_note: salesNote, spec, caliper, pick_note: pickNote, match: String(matchValue || '').trim(), loc_match_qty: String(locMatchQtyValue || '').trim(), photo_link: photoState.link, photo_name: photoState.name };
-        }
-
         function buildProductivityHistoryEntry(item = null, options = {}) {
             if (!item) return null;
             const opts = options || {};
             const completedAt = String(firstNonEmptyValue(opts.completedAt, item.DATE_COMPLETED, item.date_completed, item.ORDER_SUBMITTED_AT, item.order_submitted_at, '')).trim();
             const sourceUniqueId = String(firstNonEmptyValue(opts.sourceUniqueId, item.UNIQUE_ID, item.unique_id, '')).trim();
-            const completedByUsername = normalizeProductivityUsername(firstNonEmptyValue(opts.completedByUsername, item.COMPLETED_BY, item.completed_by, item.ORDER_SUBMITTED_BY, item.order_submitted_by, item.ASSIGNEDTO, item.assignedto, ''));
+            const completedByUsername = normalizeProductivityUsername(firstNonEmptyValue(opts.completedByUsername, item.COMPLETED_BY, item.completed_by, item.ORDER_SUBMITTED_BY, item.order_submitted_by, ''));
             if (!completedAt || !sourceUniqueId || !completedByUsername) return null;
-            const sourceKind = String(firstNonEmptyValue(opts.sourceKind, getProductivitySourceKindFromItem(item), 'task')).trim();
+            const completionContext = String(firstNonEmptyValue(opts.completionContext, getProductivityCompletionContextFromItem(item, ''), '')).trim().toLowerCase();
+            const sourceKind = String(firstNonEmptyValue(opts.sourceKind, getProductivitySourceKindFromItem(item), '')).trim().toLowerCase();
             if (!isSupportedProductivitySourceKind(sourceKind)) return null;
-            const sourceTable = String(firstNonEmptyValue(opts.sourceTable, item.SOURCE_TABLE, item.source_table, sourceKind === 'request' ? 'v2_active_request' : (sourceKind === 'sales_office_order' ? 'v2_sales_office' : 'v2_master_inventory'))).trim();
-            const completedByDisplay = String(firstNonEmptyValue(opts.completedByDisplay, item.COMPLETED_BY, item.completed_by, item.ORDER_SUBMITTED_BY, item.order_submitted_by, item.ASSIGNEDTO, item.assignedto, completedByUsername)).trim();
+            const sourceTable = String(firstNonEmptyValue(opts.sourceTable, item.SOURCE_TABLE, item.source_table, completionContext === 'request' ? 'v2_active_request' : 'v2_master_inventory')).trim();
+            const completedByDisplay = String(firstNonEmptyValue(opts.completedByDisplay, item.COMPLETED_BY, item.completed_by, item.ORDER_SUBMITTED_BY, item.order_submitted_by, completedByUsername)).trim();
             const sourceAssignment = String(firstNonEmptyValue(opts.sourceAssignment, item.APP_TAB_ASSIGNMENT, item.app_tab_assignment, '')).trim();
-            const snapshot = buildProductivitySnapshot(item, { sourceKind, sourceAssignment, completedAt, completedByUsername, completedByDisplay, masterRow: opts.masterRow || null });
-            return { event_key: `${sourceTable}|${sourceKind}|${sourceUniqueId}|${completedAt}|${completedByUsername}`, completed_by_username: completedByUsername, completed_by_display: completedByDisplay || completedByUsername, completed_at: completedAt, source_table: sourceTable, source_kind: sourceKind, source_unique_id: sourceUniqueId, source_assignment: sourceAssignment || null, itemcode: snapshot.itemcode || null, commonname: snapshot.commonname || null, contsize: snapshot.contsize || null, locationcode: snapshot.locationcode || null, lotcode: snapshot.lotcode || null, customer_name: firstNonEmptyValue(snapshot.req_customer, snapshot.customer_name, snapshot.consignee_name, '') || null, request_folder: snapshot.request_folder || null, snapshot };
+            const masterRow = opts.masterRow || findLinkedMasterRow(item) || null;
+            const originAssignment = String(firstNonEmptyValue(opts.originAssignment, resolveProductivityOriginAssignment(item, { masterRow }), '')).trim().toLowerCase();
+            const snapshot = buildProductivitySnapshot(item, { sourceKind, sourceAssignment, completedAt, completedByUsername, completedByDisplay, masterRow, completionContext, originAssignment });
+            const eventKey = `${sourceTable}|${sourceKind}|${sourceUniqueId}|${completedAt}|${completedByUsername}`;
+            return { event_key: eventKey, completed_by_username: completedByUsername, completed_by_display: completedByDisplay || completedByUsername, completed_at: completedAt, source_table: sourceTable, source_kind: sourceKind, source_unique_id: sourceUniqueId, source_assignment: sourceAssignment || null, itemcode: snapshot.itemcode || null, commonname: snapshot.commonname || null, contsize: snapshot.contsize || null, locationcode: snapshot.locationcode || null, lotcode: snapshot.lotcode || null, customer_name: firstNonEmptyValue(snapshot.req_customer, snapshot.customer_name, snapshot.consignee_name, '') || null, request_folder: snapshot.request_folder || null, snapshot };
         }
+
         async function appendProductivityHistoryEntries(entries = [], options = {}) {
             const normalizedEntries = mergeProductivityHistoryRows([], entries).filter((entry) => entry && entry.event_key && isSupportedProductivitySourceKind(entry.source_kind));
             if (!normalizedEntries.length) return false;
@@ -13860,12 +13971,12 @@ activeDriveTab = tab;
 
         function deriveProductivityBackfillUsername(item = null) {
             if (!item) return '';
-            return normalizeProductivityUsername(firstNonEmptyValue(item.COMPLETED_BY, item.completed_by, item.ORDER_SUBMITTED_BY, item.order_submitted_by, item.ASSIGNEDTO, item.assignedto, ''));
+            return normalizeProductivityUsername(firstNonEmptyValue(item.COMPLETED_BY, item.completed_by, item.ORDER_SUBMITTED_BY, item.order_submitted_by, ''));
         }
 
         function deriveProductivityBackfillDisplay(item = null, username = '') {
             if (!item) return String(username || '').trim();
-            return String(firstNonEmptyValue(item.COMPLETED_BY, item.completed_by, item.ORDER_SUBMITTED_BY, item.order_submitted_by, item.ASSIGNEDTO, item.assignedto, username, '')).trim();
+            return String(firstNonEmptyValue(item.COMPLETED_BY, item.completed_by, item.ORDER_SUBMITTED_BY, item.order_submitted_by, username, '')).trim();
         }
 
         function collectProductivityBackfillEntries() {
@@ -13887,7 +13998,7 @@ activeDriveTab = tab;
                 if (!item || !completedAt || !isRequestComplete(item)) return;
                 const completedByUsername = deriveProductivityBackfillUsername(item);
                 if (!completedByUsername) return;
-                pushEntry(item, { sourceTable: 'v2_active_request', sourceKind: 'request', completedAt, completedByUsername, completedByDisplay: deriveProductivityBackfillDisplay(item, completedByUsername), sourceAssignment: firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, item.app_tab_assignment, '') });
+                pushEntry(item, { sourceTable: 'v2_active_request', sourceKind: getProductivitySourceKindFromItem(item), completionContext: 'request', completedAt, completedByUsername, completedByDisplay: deriveProductivityBackfillDisplay(item, completedByUsername), sourceAssignment: firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, item.app_tab_assignment, '') });
             });
             return mergeProductivityHistoryRows([], entries);
         }
@@ -18181,7 +18292,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                         payload.flyer_caliper = setVal(itemToSave.FLYER_CALIPER);
                         payload.flyer_pick = setVal(itemToSave.FLYER_PICK);
                     }
-                    const flyerAssignment = String(itemToSave.APP_TAB_ASSIGNMENT || '').toLowerCase();
+                    const flyerAssignment = String(firstNonEmptyValue(itemToSave.PRODUCTIVITY_ORIGIN_ASSIGNMENT, itemToSave.productivity_origin_assignment, itemToSave.APP_TAB_ASSIGNMENT, itemToSave.app_tab_assignment, '')).toLowerCase();
                     if (flyerAssignment === 'season' || flyerAssignment === 'location') {
                         payload.photo_link = setVal(itemToSave.FLYER_PHOTO_LINK || itemToSave.SAVED_PHOTO_LINK);
                         payload.photo_name = setVal(itemToSave.FLYER_PHOTO_NAME || itemToSave.SAVED_PHOTO_NAME);
@@ -18399,6 +18510,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                         ? buildProductivityHistoryEntry(itemToSave, {
                             sourceTable: targetTable,
                             sourceKind: getProductivitySourceKindFromPrefix(prefix, itemToSave),
+                            completionContext: getProductivityCompletionContextFromPrefix(prefix, itemToSave),
                             completedByUsername: normalizeProductivityUsername(currentUser || currentUserDisplay || ''),
                             completedByDisplay: currentUserDisplay || currentUser || 'Unknown',
                             completedAt: payload.date_completed,
