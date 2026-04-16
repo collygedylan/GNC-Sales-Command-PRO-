@@ -3742,6 +3742,51 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             })();
             return salesOfficeOrderSchemaPromise;
         }
+        function maybeWarnProductivitySchemaMissing() {
+            if (productivityHistorySchemaWarningShown || !currentUser) return;
+            productivityHistorySchemaWarningShown = true;
+            if (canViewProductivityHome()) showToast('Schema Required', 'Run productivity_history_migration.sql in Supabase to enable Home Productivity history.', true);
+            else console.warn('Productivity history schema is not installed. Run productivity_history_migration.sql in Supabase to enable durable completion history.');
+        }
+
+        async function ensureProductivityHistorySchemaReady(force = false) {
+            if (productivityHistorySchemaReady === true && !force) return true;
+            if (productivityHistorySchemaReady === false && !force) return false;
+            if (productivityHistorySchemaPromise && !force) return productivityHistorySchemaPromise;
+            productivityHistorySchemaPromise = (async () => {
+                if (navigator.onLine === false) return false;
+                try {
+                    const url = `${SUPABASE_URL}/rest/v1/${PRODUCTIVITY_HISTORY_TABLE}?select=event_key,completed_by_username,completed_at,snapshot&limit=1`;
+                    const response = await fetchWithTimeout(url, {
+                        method: 'GET',
+                        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }
+                    }, SUPABASE_READ_TIMEOUT_MS, 'Productivity History Schema');
+                    if (!response.ok) {
+                        const errorText = await getResponseError(response, `Supabase read failed (${response.status})`);
+                        const normalizedError = String(errorText || '').toLowerCase();
+                        if (normalizedError.includes('v2_productivity_history') || normalizedError.includes('completed_by_username') || normalizedError.includes('snapshot') || normalizedError.includes('relation') || normalizedError.includes('column')) {
+                            productivityHistorySchemaReady = false;
+                            maybeWarnProductivitySchemaMissing();
+                            return false;
+                        }
+                        return false;
+                    }
+                    productivityHistorySchemaReady = true;
+                    return true;
+                } catch (error) {
+                    const normalizedError = String(error && error.message ? error.message : error || '').toLowerCase();
+                    if (normalizedError.includes('v2_productivity_history') || normalizedError.includes('completed_by_username') || normalizedError.includes('snapshot') || normalizedError.includes('relation') || normalizedError.includes('column')) {
+                        productivityHistorySchemaReady = false;
+                        maybeWarnProductivitySchemaMissing();
+                        return false;
+                    }
+                    return false;
+                } finally {
+                    productivityHistorySchemaPromise = null;
+                }
+            })();
+            return productivityHistorySchemaPromise;
+        }
         async function tryLocalCachedLoginRecord(username, password) {
             const normalizedUsername = String(username || '').trim().toLowerCase();
             const normalizedPassword = String(password || '').trim();
@@ -4016,6 +4061,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         let detailRequestSourceDomIds=[];
         let avRuleColumnsReady=null; let avRuleColumnsProbePromise=null; let avRuleSchemaWarningShown=false; let avRuleCleanupInFlight=new Set(); let flyerShadowColumnsReady=null; let flyerShadowColumnsProbePromise=null; let flyerShadowSchemaWarningShown=false;
         let activeSalesOfficeTab='season'; let salesOfficeOrderColumnsReady=null; let salesOfficeOrderSchemaPromise=null; let salesOfficeOrderSchemaWarningShown=false;
+        let activeHomeTab='dashboard'; let selectedProductivityUser=''; let productivityViewMode='cards'; let productivityHistoryByUser=new Map(); let productivityHistoryLoadState=new Map(); let productivityHistorySchemaReady=null; let productivityHistorySchemaPromise=null; let productivityHistorySchemaWarningShown=false; let productivityHistoryBackfillPromise=null;
 
         function isLagSensitiveDetailPrefix(prefix) {
             return prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-' || prefix === 'req-' || prefix === 'dock-' || prefix === 'flyer-';
@@ -4250,7 +4296,19 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         const PENDING_EDITS_STORAGE_KEY = 'gnc_pending_edits';
         const PENDING_EDITS_PERSIST_DEBOUNCE_MS = 400;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Maschino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-const APP_VERSION = 'V2026.04.15.03';
+        const PRODUCTIVITY_HOME_VIEWERS = new Set(['dylan_collyge','jd_jones']);
+        const PRODUCTIVITY_TRACKED_USERS = Object.freeze([
+            { username: 'dylan_collyge', display: 'dylan_collyge' },
+            { username: 'kayla_knepp', display: 'kayla_knepp' },
+            { username: 'morgan_anderson', display: 'morgan_anderson' }
+        ]);
+        const PRODUCTIVITY_TRACKED_USER_SET = new Set(PRODUCTIVITY_TRACKED_USERS.map((entry) => entry.username));
+        const PRODUCTIVITY_HISTORY_TABLE = 'v2_productivity_history';
+        const PRODUCTIVITY_HISTORY_SELECT_FIELDS = 'event_key,completed_by_username,completed_by_display,completed_at,source_table,source_kind,source_unique_id,source_assignment,itemcode,commonname,contsize,locationcode,lotcode,customer_name,request_folder,snapshot';
+        const PRODUCTIVITY_HISTORY_BATCH_SIZE = 150;
+        const PRODUCTIVITY_TIME_ZONE = 'America/Chicago';
+        const PRODUCTIVITY_HISTORY_BACKFILL_STORAGE_KEY = 'gnc_productivity_backfill_v1';
+        const APP_VERSION = 'V2026.04.15.04';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -4402,7 +4460,8 @@ const APP_VERSION = 'V2026.04.15.03';
             if (headerVersion) headerVersion.innerText = APP_VERSION;
             syncGoogleScriptButton();
             if (title) title.innerText = meta.title || formatGlobalHeaderTitle(currentView);
-            if (backBtn) backBtn.classList.toggle('hidden', currentView === 'home');
+            const showHomeBack = currentView === 'home' && shouldShowHomeProductivityBackButton();
+            if (backBtn) backBtn.classList.toggle('hidden', currentView === 'home' ? !showHomeBack : false);
             if (searchSlot) clearNodeChildren(searchSlot);
             const searchContainerId = GLOBAL_HEADER_SEARCH_CONFIG[currentView];
             const searchContainer = searchContainerId ? document.getElementById(searchContainerId) : null;
@@ -6818,6 +6877,15 @@ function toggleDriveQuickRequestItem(domId) {
                     await supabaseFetch('v2_sales_office', 'POST', payloadBatch);
                 }
                 cloneBatch.forEach((clone) => { const existingIdx = salesOfficeInventory.findIndex((row) => String(row.UNIQUE_ID || '').trim() === String(clone.UNIQUE_ID || '').trim()); if (existingIdx > -1) salesOfficeInventory[existingIdx] = clone; else salesOfficeInventory.push(clone); });
+                const productivityEntries = clones.map((clone) => buildProductivityHistoryEntry(clone, {
+                    sourceTable: 'v2_sales_office',
+                    sourceKind: 'sales_office_order',
+                    completedByUsername: normalizeProductivityUsername(currentUser || submittedBy),
+                    completedByDisplay: currentUserDisplay || currentUser || submittedBy || 'Unknown',
+                    completedAt: submittedAt,
+                    sourceAssignment: 'sales-office-order'
+                })).filter(Boolean);
+                if (productivityEntries.length) setTimeout(() => { appendProductivityHistoryEntries(productivityEntries).catch(() => {}); }, 0);
                 activeSalesOfficeTab = 'orders';
                 clearSelection();
                 closeBloomPickerModal();
@@ -9007,7 +9075,9 @@ function toggleDriveQuickRequestItem(domId) {
             const state = ensureViewRenderState(viewId);
             if (!forceReset && !forceRender && state.initialized && !state.dirty) return;
 
-            if (viewId === 'drive') {
+            if (viewId === 'home') {
+                renderHome();
+            } else if (viewId === 'drive') {
                 if (forceReset || !state.initialized) resetDriveView();
                 else renderDrive();
             } else if (viewId === 'tasks') {
@@ -9056,7 +9126,9 @@ function toggleDriveQuickRequestItem(domId) {
         function updateGlobalBackButton() {
             const backBtn = document.getElementById('global-back-btn');
             if (!backBtn) return;
-            backBtn.classList.add('hidden');
+            const currentView = getCurrentVisibleViewId();
+            const showBack = currentView === 'detail' || (currentView === 'home' && shouldShowHomeProductivityBackButton());
+            backBtn.classList.toggle('hidden', !showBack);
         }
 
         function updateFooterNavState() {
@@ -9086,6 +9158,10 @@ function toggleDriveQuickRequestItem(domId) {
             const nextViewId = canAccessView(requestedViewId) ? requestedViewId : 'home';
             const currentViewId = getCurrentVisibleViewId();
             const nextState = ensureViewRenderState(nextViewId);
+            if (currentViewId === 'home' && nextViewId !== 'home' && selectedProductivityUser) {
+                selectedProductivityUser = '';
+                markViewDirty('home');
+            }
             if (currentViewId === nextViewId && nextState.initialized && !nextState.dirty) {
                 updateGlobalBackButton();
                 syncGlobalHeaderChrome();
@@ -9111,6 +9187,10 @@ function toggleDriveQuickRequestItem(domId) {
         }
         function goBackUniversal() {
             const currentView = getCurrentVisibleViewId();
+            if (currentView === 'home' && shouldShowHomeProductivityBackButton()) {
+                backToProductivityUserList();
+                return false;
+            }
             if (currentView === 'detail') {
                 goBackFromDetail();
                 return false;
@@ -13560,6 +13640,450 @@ activeDriveTab = tab;
             }).join('');
         }
 
+        function normalizeProductivityUsername(value = '') {
+            return String(value || '').trim().toLowerCase().replace(/@.*$/, '').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+        }
+
+        function isTrackedProductivityUser(value = '') {
+            return PRODUCTIVITY_TRACKED_USER_SET.has(normalizeProductivityUsername(value));
+        }
+
+        function canViewProductivityHome() {
+            return PRODUCTIVITY_HOME_VIEWERS.has(normalizeProductivityUsername(currentUser || currentUserDisplay || ''));
+        }
+
+        function shouldShowHomeProductivityBackButton() {
+            return getCurrentVisibleViewId() === 'home' && canViewProductivityHome() && activeHomeTab === 'productivity' && !!selectedProductivityUser;
+        }
+
+        function scheduleHomeRender(forceRender = true) {
+            markViewDirty('home');
+            if (getCurrentVisibleViewId() === 'home') queueInteractiveViewRender('home', false, forceRender, 0, 140);
+            syncGlobalHeaderChrome();
+        }
+
+        function getTrackedProductivityUsers() {
+            return PRODUCTIVITY_TRACKED_USERS.slice();
+        }
+
+        function getTrackedProductivityDisplayName(username = '') {
+            const normalizedUser = normalizeProductivityUsername(username);
+            const match = PRODUCTIVITY_TRACKED_USERS.find((entry) => entry.username === normalizedUser);
+            return match ? match.display : (normalizedUser || username || 'Unknown');
+        }
+
+        function getProductivityHistoryState(username = '') {
+            const normalizedUser = normalizeProductivityUsername(username);
+            if (!productivityHistoryLoadState.has(normalizedUser)) {
+                productivityHistoryLoadState.set(normalizedUser, { loading: false, error: '', loadedAt: '', schemaReady: null });
+            }
+            return productivityHistoryLoadState.get(normalizedUser);
+        }
+
+        function normalizeProductivitySnapshot(snapshot = {}) {
+            if (!snapshot) return {};
+            if (typeof snapshot === 'string') {
+                try { return JSON.parse(snapshot); } catch (error) { return {}; }
+            }
+            return typeof snapshot === 'object' ? { ...snapshot } : {};
+        }
+
+        function normalizeProductivityHistoryRow(raw = {}) {
+            const snapshot = normalizeProductivitySnapshot(raw && raw.snapshot);
+            return {
+                event_key: String(raw && raw.event_key || '').trim(),
+                completed_by_username: normalizeProductivityUsername(raw && raw.completed_by_username),
+                completed_by_display: String(firstNonEmptyValue(raw && raw.completed_by_display, raw && raw.completed_by_username, '')).trim(),
+                completed_at: String(raw && raw.completed_at || '').trim(),
+                source_table: String(raw && raw.source_table || '').trim(),
+                source_kind: String(raw && raw.source_kind || '').trim(),
+                source_unique_id: String(raw && raw.source_unique_id || '').trim(),
+                source_assignment: String(raw && raw.source_assignment || '').trim(),
+                itemcode: String(firstNonEmptyValue(raw && raw.itemcode, snapshot.itemcode, '')).trim(),
+                commonname: String(firstNonEmptyValue(raw && raw.commonname, snapshot.commonname, '')).trim(),
+                contsize: String(firstNonEmptyValue(raw && raw.contsize, snapshot.contsize, '')).trim(),
+                locationcode: String(firstNonEmptyValue(raw && raw.locationcode, snapshot.locationcode, '')).trim(),
+                lotcode: String(firstNonEmptyValue(raw && raw.lotcode, snapshot.lotcode, '')).trim(),
+                customer_name: String(firstNonEmptyValue(raw && raw.customer_name, snapshot.customer_name, snapshot.req_customer, '')).trim(),
+                request_folder: String(firstNonEmptyValue(raw && raw.request_folder, snapshot.request_folder, '')).trim(),
+                snapshot
+            };
+        }
+
+        function mergeProductivityHistoryRows(existingRows = [], incomingRows = []) {
+            const merged = new Map();
+            (existingRows || []).forEach((row) => {
+                const normalized = normalizeProductivityHistoryRow(row);
+                if (normalized.event_key) merged.set(normalized.event_key, normalized);
+            });
+            (incomingRows || []).forEach((row) => {
+                const normalized = normalizeProductivityHistoryRow(row);
+                if (normalized.event_key) merged.set(normalized.event_key, normalized);
+            });
+            return Array.from(merged.values()).sort((a, b) => new Date(b.completed_at || 0).getTime() - new Date(a.completed_at || 0).getTime());
+        }
+
+        function getProductivitySourceKindLabel(sourceKind = '') {
+            const normalizedKind = String(sourceKind || '').trim().toLowerCase();
+            if (normalizedKind === 'season_sales_note') return 'Season Sales Note';
+            if (normalizedKind === 'location_sales_note') return 'Location Sales Note';
+            if (normalizedKind === 'need_av') return 'Need AV';
+            if (normalizedKind === 'flyer') return 'Flyer';
+            if (normalizedKind === 'request') return 'Request';
+            if (normalizedKind === 'sales_office_order') return 'Sales Office Order';
+            if (normalizedKind === 'end_cap') return 'End Cap';
+            return 'Task';
+        }
+
+        function getProductivitySourceKindFromPrefix(prefix = '', item = null) {
+            const normalizedPrefix = String(prefix || '').trim().toLowerCase();
+            if (normalizedPrefix === 'ssn-') return 'season_sales_note';
+            if (normalizedPrefix === 'lsn-') return 'location_sales_note';
+            if (normalizedPrefix === 'na-') return 'need_av';
+            if (normalizedPrefix === 'req-') return 'request';
+            if (normalizedPrefix === 'flyer-') return 'flyer';
+            if (normalizedPrefix === 'endcap-') return 'end_cap';
+            return getProductivitySourceKindFromItem(item);
+        }
+
+        function getProductivitySourceKindFromItem(item = null, fallback = 'task') {
+            if (!item) return fallback;
+            const sourceTable = String(firstNonEmptyValue(item.SOURCE_TABLE, item.source_table, '')).toLowerCase();
+            if (sourceTable === 'v2_active_request' || String(firstNonEmptyValue(item.REQ_STATUS, item.REQUEST_FOLDER, item.REQ_CUSTOMER, '')).trim() !== '') return 'request';
+            if (isBloomPickerSalesOfficeItem(item)) return 'sales_office_order';
+            const assignment = String(firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, item.app_tab_assignment, '')).trim().toLowerCase();
+            if (assignment === 'season') return 'season_sales_note';
+            if (assignment === 'location' || assignment === 'colorwalk') return 'location_sales_note';
+            if (assignment === 'flyer') return 'flyer';
+            if (assignment === 'need_av' || assignment === 'need av' || assignment === 'av blanks') return 'need_av';
+            if (assignment === 'endcap' || assignment === 'end_cap') return 'end_cap';
+            return fallback;
+        }
+
+        function getProductivitySnapshotPhotoState(item = null, sourceKind = '') {
+            if (!item) return { link: '', name: '' };
+            const normalizedKind = String(sourceKind || '').toLowerCase();
+            if (normalizedKind === 'request') return { link: String(firstNonEmptyValue(item.REQ_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.ROW_PHOTO_LINK, '')).trim(), name: String(firstNonEmptyValue(item.REQ_PHOTO_NAME, item.SAVED_PHOTO_NAME, item.ROW_PHOTO_NAME, '')).trim() };
+            if (normalizedKind === 'flyer') return { link: String(firstNonEmptyValue(item.FLYER_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.ROW_PHOTO_LINK, '')).trim(), name: String(firstNonEmptyValue(item.FLYER_PHOTO_NAME, item.SAVED_PHOTO_NAME, item.ROW_PHOTO_NAME, '')).trim() };
+            return { link: String(firstNonEmptyValue(item.SAVED_PHOTO_LINK, item.ROW_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK'], '')).trim(), name: String(firstNonEmptyValue(item.SAVED_PHOTO_NAME, item.ROW_PHOTO_NAME, item.PHOTO_NAME, item.PHOTONAME, item['PHOTO NAME'], '')).trim() };
+        }
+
+        function getProductivitySnapshotMatchValue(item = null, sourceKind = '', masterRow = null) {
+            if (!item) return '';
+            const normalizedKind = String(sourceKind || '').toLowerCase();
+            if (normalizedKind === 'request') return String(firstNonEmptyValue(item.REQ_MATCH, item.MATCH, masterRow && masterRow.MATCH, '')).trim();
+            if (normalizedKind === 'flyer') return String(firstNonEmptyValue(item.FLYER_MATCH, item.MATCH, '')).trim();
+            return String(firstNonEmptyValue(item.MATCH, item.MATCHPCT, masterRow && masterRow.MATCH, '')).trim();
+        }
+
+        function getProductivitySnapshotLocMatchQty(item = null, sourceKind = '', masterRow = null, matchValue = '') {
+            if (!item) return '';
+            const normalizedKind = String(sourceKind || '').toLowerCase();
+            if (normalizedKind === 'flyer') return String(firstNonEmptyValue(item.FLYER_LOC_MATCH_QTY, getDisplayLocMatchQtyValue(item, 'flyer'), '')).trim();
+            if (normalizedKind === 'request') {
+                const derivedQty = calculateLocMatchQtyValue({ MATCH: firstNonEmptyValue(matchValue, item.REQ_MATCH, item.MATCH, ''), INITIAL_PTR: firstNonEmptyValue(item.INITIAL_PTR, masterRow && masterRow.INITIAL_PTR, item.PTRAVAILABLE, masterRow && masterRow.PTRAVAILABLE, ''), PTRAVAILABLE: firstNonEmptyValue(item.PTRAVAILABLE, masterRow && masterRow.PTRAVAILABLE, '') });
+                return derivedQty == null ? '' : String(derivedQty);
+            }
+            return String(firstNonEmptyValue(getDisplayLocMatchQtyValue(item, ''), item.LOC_MATCH_QTY, '')).trim();
+        }
+
+        function buildProductivitySnapshot(item = null, options = {}) {
+            if (!item) return {};
+            const opts = options || {};
+            const sourceKind = String(firstNonEmptyValue(opts.sourceKind, getProductivitySourceKindFromItem(item), 'task')).toLowerCase();
+            const masterRow = opts.masterRow || findLinkedMasterRow(item) || null;
+            const photoState = getProductivitySnapshotPhotoState(item, sourceKind);
+            const sourceView = sourceKind === 'flyer' ? 'flyer' : '';
+            const matchValue = getProductivitySnapshotMatchValue(item, sourceKind, masterRow);
+            const locMatchQtyValue = getProductivitySnapshotLocMatchQty(item, sourceKind, masterRow, matchValue);
+            const avNote = sourceKind === 'request' ? String(firstNonEmptyValue(item.AV_NOTE, masterRow && masterRow.AV_NOTE, '')).trim() : String(firstNonEmptyValue(getItemDisplayValue(item, 'AV_NOTE', sourceView), masterRow && masterRow.AV_NOTE, '')).trim();
+            const spec = sourceKind === 'request' ? String(firstNonEmptyValue(item.REQ_SPEC, item.SPEC, masterRow && masterRow.SPEC, '')).trim() : String(firstNonEmptyValue(getItemDisplayValue(item, 'SPEC', sourceView), masterRow && masterRow.SPEC, '')).trim();
+            const caliper = sourceKind === 'request' ? String(firstNonEmptyValue(item.REQ_CALIPER, item.CALIPER, masterRow && masterRow.CALIPER, '')).trim() : String(firstNonEmptyValue(getItemDisplayValue(item, 'CALIPER', sourceView), masterRow && masterRow.CALIPER, '')).trim();
+            const pickNote = sourceKind === 'request' ? String(firstNonEmptyValue(item.REQ_PICK, item.PICK, masterRow && masterRow.PICK, '')).trim() : String(firstNonEmptyValue(getItemDisplayValue(item, 'PICK', sourceView), masterRow && masterRow.PICK, '')).trim();
+            const salesNote = sourceKind === 'request' ? String(firstNonEmptyValue(item.REQ_COMMENTS, item.SALES_NOTE, item.SALESNOTE, '')).trim() : (sourceKind === 'flyer' ? String(firstNonEmptyValue(item.FLYER_NOTES, item.SALES_NOTE, item.SALESNOTE, '')).trim() : String(firstNonEmptyValue(item.SALES_NOTE, item.SALESNOTE, '')).trim());
+            return { itemcode: String(firstNonEmptyValue(item.ITEMCODE, masterRow && masterRow.ITEMCODE, '')).trim(), commonname: String(firstNonEmptyValue(item.COMMONNAME, masterRow && masterRow.COMMONNAME, '')).trim(), contsize: String(firstNonEmptyValue(item.CONTSIZE, masterRow && masterRow.CONTSIZE, '')).trim(), locationcode: String(firstNonEmptyValue(item.LOCATIONCODE, masterRow && masterRow.LOCATIONCODE, '')).trim(), lotcode: String(firstNonEmptyValue(item.LOTCODE, masterRow && masterRow.LOTCODE, '')).trim(), req_customer: String(firstNonEmptyValue(item.REQ_CUSTOMER, '')).trim(), request_folder: String(firstNonEmptyValue(item.REQUEST_FOLDER, item.ORDER_FOLDER, '')).trim(), customer_name: String(firstNonEmptyValue(item.CUSTOMERNAME, item.ORDER_CUSTOMER, item.REQ_CUSTOMER, '')).trim(), consignee_name: String(firstNonEmptyValue(item.CONSIGNEENAME, '')).trim(), source_kind: sourceKind, source_label: getProductivitySourceKindLabel(sourceKind), source_assignment: String(firstNonEmptyValue(opts.sourceAssignment, item.APP_TAB_ASSIGNMENT, item.app_tab_assignment, '')).trim(), completed_by: String(firstNonEmptyValue(opts.completedByDisplay, item.COMPLETED_BY, item.ORDER_SUBMITTED_BY, item.ASSIGNEDTO, '')).trim(), completed_by_username: normalizeProductivityUsername(firstNonEmptyValue(opts.completedByUsername, item.COMPLETED_BY, item.ORDER_SUBMITTED_BY, item.ASSIGNEDTO, '')), completed_at: String(firstNonEmptyValue(opts.completedAt, item.DATE_COMPLETED, item.date_completed, item.ORDER_SUBMITTED_AT, item.order_submitted_at, '')).trim(), av_note: avNote, sales_note: salesNote, spec, caliper, pick_note: pickNote, match: String(matchValue || '').trim(), loc_match_qty: String(locMatchQtyValue || '').trim(), photo_link: photoState.link, photo_name: photoState.name };
+        }
+
+        function buildProductivityHistoryEntry(item = null, options = {}) {
+            if (!item) return null;
+            const opts = options || {};
+            const completedAt = String(firstNonEmptyValue(opts.completedAt, item.DATE_COMPLETED, item.date_completed, item.ORDER_SUBMITTED_AT, item.order_submitted_at, '')).trim();
+            const sourceUniqueId = String(firstNonEmptyValue(opts.sourceUniqueId, item.UNIQUE_ID, item.unique_id, '')).trim();
+            const completedByUsername = normalizeProductivityUsername(firstNonEmptyValue(opts.completedByUsername, item.COMPLETED_BY, item.completed_by, item.ORDER_SUBMITTED_BY, item.order_submitted_by, item.ASSIGNEDTO, item.assignedto, ''));
+            if (!completedAt || !sourceUniqueId || !completedByUsername) return null;
+            const sourceKind = String(firstNonEmptyValue(opts.sourceKind, getProductivitySourceKindFromItem(item), 'task')).trim();
+            const sourceTable = String(firstNonEmptyValue(opts.sourceTable, item.SOURCE_TABLE, item.source_table, sourceKind === 'request' ? 'v2_active_request' : (sourceKind === 'sales_office_order' ? 'v2_sales_office' : 'v2_master_inventory'))).trim();
+            const completedByDisplay = String(firstNonEmptyValue(opts.completedByDisplay, item.COMPLETED_BY, item.completed_by, item.ORDER_SUBMITTED_BY, item.order_submitted_by, item.ASSIGNEDTO, item.assignedto, completedByUsername)).trim();
+            const sourceAssignment = String(firstNonEmptyValue(opts.sourceAssignment, item.APP_TAB_ASSIGNMENT, item.app_tab_assignment, '')).trim();
+            const snapshot = buildProductivitySnapshot(item, { sourceKind, sourceAssignment, completedAt, completedByUsername, completedByDisplay, masterRow: opts.masterRow || null });
+            return { event_key: `${sourceTable}|${sourceKind}|${sourceUniqueId}|${completedAt}|${completedByUsername}`, completed_by_username: completedByUsername, completed_by_display: completedByDisplay || completedByUsername, completed_at: completedAt, source_table: sourceTable, source_kind: sourceKind, source_unique_id: sourceUniqueId, source_assignment: sourceAssignment || null, itemcode: snapshot.itemcode || null, commonname: snapshot.commonname || null, contsize: snapshot.contsize || null, locationcode: snapshot.locationcode || null, lotcode: snapshot.lotcode || null, customer_name: firstNonEmptyValue(snapshot.req_customer, snapshot.customer_name, snapshot.consignee_name, '') || null, request_folder: snapshot.request_folder || null, snapshot };
+        }
+        async function appendProductivityHistoryEntries(entries = [], options = {}) {
+            const normalizedEntries = mergeProductivityHistoryRows([], entries).filter((entry) => entry && entry.event_key);
+            if (!normalizedEntries.length) return false;
+            const opts = options || {};
+            const schemaReady = opts.skipEnsure ? true : await ensureProductivityHistorySchemaReady();
+            if (!schemaReady) return false;
+            try {
+                for (let offset = 0; offset < normalizedEntries.length; offset += PRODUCTIVITY_HISTORY_BATCH_SIZE) {
+                    const batch = normalizedEntries.slice(offset, offset + PRODUCTIVITY_HISTORY_BATCH_SIZE).map((entry) => ({ event_key: entry.event_key, completed_by_username: entry.completed_by_username, completed_by_display: entry.completed_by_display, completed_at: entry.completed_at, source_table: entry.source_table, source_kind: entry.source_kind, source_unique_id: entry.source_unique_id, source_assignment: entry.source_assignment, itemcode: entry.itemcode, commonname: entry.commonname, contsize: entry.contsize, locationcode: entry.locationcode, lotcode: entry.lotcode, customer_name: entry.customer_name, request_folder: entry.request_folder, snapshot: normalizeProductivitySnapshot(entry.snapshot) }));
+                    await supabaseFetch(PRODUCTIVITY_HISTORY_TABLE, 'POST', batch, 'on_conflict=event_key');
+                }
+                const entriesByUser = new Map();
+                normalizedEntries.forEach((entry) => {
+                    const userKey = normalizeProductivityUsername(entry.completed_by_username);
+                    if (!userKey) return;
+                    if (!entriesByUser.has(userKey)) entriesByUser.set(userKey, []);
+                    entriesByUser.get(userKey).push(entry);
+                });
+                entriesByUser.forEach((userEntries, userKey) => {
+                    const existingRows = productivityHistoryByUser.get(userKey) || [];
+                    productivityHistoryByUser.set(userKey, mergeProductivityHistoryRows(existingRows, userEntries));
+                    const state = getProductivityHistoryState(userKey);
+                    state.loadedAt = new Date().toISOString();
+                    state.error = '';
+                    state.schemaReady = true;
+                });
+                if (getCurrentVisibleViewId() === 'home' && activeHomeTab === 'productivity') scheduleHomeRender(true);
+                return true;
+            } catch (error) {
+                const normalizedError = String(error && error.message ? error.message : error || '').toLowerCase();
+                if (normalizedError.includes('v2_productivity_history') || normalizedError.includes('completed_by_username') || normalizedError.includes('snapshot') || normalizedError.includes('relation') || normalizedError.includes('column')) {
+                    productivityHistorySchemaReady = false;
+                    maybeWarnProductivitySchemaMissing();
+                    return false;
+                }
+                throw error;
+            }
+        }
+
+        function deriveProductivityBackfillUsername(item = null) {
+            if (!item) return '';
+            return normalizeProductivityUsername(firstNonEmptyValue(item.COMPLETED_BY, item.completed_by, item.ORDER_SUBMITTED_BY, item.order_submitted_by, item.ASSIGNEDTO, item.assignedto, ''));
+        }
+
+        function deriveProductivityBackfillDisplay(item = null, username = '') {
+            if (!item) return String(username || '').trim();
+            return String(firstNonEmptyValue(item.COMPLETED_BY, item.completed_by, item.ORDER_SUBMITTED_BY, item.order_submitted_by, item.ASSIGNEDTO, item.assignedto, username, '')).trim();
+        }
+
+        function collectProductivityBackfillEntries() {
+            const entries = [];
+            const pushEntry = (item, options = {}) => {
+                const entry = buildProductivityHistoryEntry(item, options);
+                if (!entry || !isTrackedProductivityUser(entry.completed_by_username)) return;
+                entries.push(entry);
+            };
+            fullInventory.forEach((item) => {
+                const completedAt = String(firstNonEmptyValue(item && item.DATE_COMPLETED, item && item.date_completed, '')).trim();
+                if (!item || !completedAt) return;
+                const completedByUsername = deriveProductivityBackfillUsername(item);
+                if (!completedByUsername) return;
+                pushEntry(item, { sourceTable: 'v2_master_inventory', sourceKind: getProductivitySourceKindFromItem(item), completedAt, completedByUsername, completedByDisplay: deriveProductivityBackfillDisplay(item, completedByUsername), sourceAssignment: firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, item.app_tab_assignment, '') });
+            });
+            requestsInventory.forEach((item) => {
+                const completedAt = String(firstNonEmptyValue(item && item.DATE_COMPLETED, item && item.date_completed, '')).trim();
+                if (!item || !completedAt || !isRequestComplete(item)) return;
+                const completedByUsername = deriveProductivityBackfillUsername(item);
+                if (!completedByUsername) return;
+                pushEntry(item, { sourceTable: 'v2_active_request', sourceKind: 'request', completedAt, completedByUsername, completedByDisplay: deriveProductivityBackfillDisplay(item, completedByUsername), sourceAssignment: firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, item.app_tab_assignment, '') });
+            });
+            salesOfficeInventory.forEach((item) => {
+                const completedAt = String(firstNonEmptyValue(item && item.ORDER_SUBMITTED_AT, item && item.order_submitted_at, '')).trim();
+                if (!item || !completedAt || !isBloomPickerSalesOfficeItem(item)) return;
+                const completedByUsername = deriveProductivityBackfillUsername(item);
+                if (!completedByUsername) return;
+                pushEntry(item, { sourceTable: 'v2_sales_office', sourceKind: 'sales_office_order', completedAt, completedByUsername, completedByDisplay: deriveProductivityBackfillDisplay(item, completedByUsername), sourceAssignment: 'sales-office-order' });
+            });
+            return mergeProductivityHistoryRows([], entries);
+        }
+
+        async function ensureProductivityHistoryBackfill(force = false) {
+            if (productivityHistoryBackfillPromise && !force) return productivityHistoryBackfillPromise;
+            const alreadyBackfilled = !force && String(localStorage.getItem(PRODUCTIVITY_HISTORY_BACKFILL_STORAGE_KEY) || '').trim() === 'done';
+            if (alreadyBackfilled) return true;
+            productivityHistoryBackfillPromise = (async () => {
+                const schemaReady = await ensureProductivityHistorySchemaReady();
+                if (!schemaReady || !initialAppLoadComplete) return false;
+                const entries = collectProductivityBackfillEntries();
+                if (entries.length) await appendProductivityHistoryEntries(entries, { skipEnsure: true });
+                try { localStorage.setItem(PRODUCTIVITY_HISTORY_BACKFILL_STORAGE_KEY, 'done'); } catch (error) {}
+                return true;
+            })().finally(() => {
+                productivityHistoryBackfillPromise = null;
+            });
+            return productivityHistoryBackfillPromise;
+        }
+
+        async function loadProductivityHistoryForUser(username = '', force = false) {
+            const normalizedUser = normalizeProductivityUsername(username);
+            if (!normalizedUser) return [];
+            const state = getProductivityHistoryState(normalizedUser);
+            if (state.loading && !force) return productivityHistoryByUser.get(normalizedUser) || [];
+            if (!force && state.loadedAt && productivityHistoryByUser.has(normalizedUser)) return productivityHistoryByUser.get(normalizedUser) || [];
+            state.loading = true;
+            state.error = '';
+            scheduleHomeRender(true);
+            try {
+                const schemaReady = await ensureProductivityHistorySchemaReady();
+                state.schemaReady = schemaReady;
+                if (!schemaReady) {
+                    state.error = 'Run productivity_history_migration.sql in Supabase to enable Productivity history.';
+                    return [];
+                }
+                await ensureProductivityHistoryBackfill();
+                const rows = await supabaseFetch(PRODUCTIVITY_HISTORY_TABLE, 'GET', null, `select=${PRODUCTIVITY_HISTORY_SELECT_FIELDS}&completed_by_username=eq.${encodeURIComponent(normalizedUser)}&order=completed_at.desc`);
+                const normalizedRows = mergeProductivityHistoryRows([], rows);
+                productivityHistoryByUser.set(normalizedUser, normalizedRows);
+                state.loadedAt = new Date().toISOString();
+                state.error = '';
+                return normalizedRows;
+            } catch (error) {
+                state.error = String(error && error.message ? error.message : 'Could not load Productivity history.');
+                return productivityHistoryByUser.get(normalizedUser) || [];
+            } finally {
+                state.loading = false;
+                scheduleHomeRender(true);
+            }
+        }
+
+        function setHomeTab(tab = 'dashboard') {
+            const nextTab = (tab === 'productivity' && canViewProductivityHome()) ? 'productivity' : 'dashboard';
+            activeHomeTab = nextTab;
+            if (nextTab !== 'productivity') selectedProductivityUser = '';
+            if (nextTab === 'productivity') {
+                ensureProductivityHistorySchemaReady().catch(() => {});
+                if (selectedProductivityUser) loadProductivityHistoryForUser(selectedProductivityUser).catch(() => {});
+            }
+            scheduleHomeRender(true);
+            return false;
+        }
+
+        function openProductivityUserHistory(username = '') {
+            if (!canViewProductivityHome()) return false;
+            activeHomeTab = 'productivity';
+            selectedProductivityUser = normalizeProductivityUsername(username);
+            scheduleHomeRender(true);
+            loadProductivityHistoryForUser(selectedProductivityUser).catch(() => {});
+            return false;
+        }
+
+        function backToProductivityUserList() {
+            selectedProductivityUser = '';
+            scheduleHomeRender(true);
+            return false;
+        }
+
+        function setProductivityViewMode(mode = 'cards') {
+            productivityViewMode = String(mode || '').toLowerCase() === 'list' ? 'list' : 'cards';
+            scheduleHomeRender(true);
+            return false;
+        }
+
+        function formatProductivityDateLabel(value = '') {
+            const stamp = new Date(value || '');
+            if (Number.isNaN(stamp.getTime())) return 'Unknown Date';
+            return new Intl.DateTimeFormat('en-US', { timeZone: PRODUCTIVITY_TIME_ZONE, month: 'numeric', day: 'numeric', year: '2-digit' }).format(stamp);
+        }
+
+        function formatProductivityTimeLabel(value = '') {
+            const stamp = new Date(value || '');
+            if (Number.isNaN(stamp.getTime())) return '--:--';
+            return new Intl.DateTimeFormat('en-US', { timeZone: PRODUCTIVITY_TIME_ZONE, hour: 'numeric', minute: '2-digit' }).format(stamp);
+        }
+
+        function groupProductivityHistoryRows(rows = []) {
+            const groups = new Map();
+            (rows || []).forEach((row) => {
+                const normalizedRow = normalizeProductivityHistoryRow(row);
+                const dateKey = formatProductivityDateLabel(normalizedRow.completed_at);
+                if (!groups.has(dateKey)) groups.set(dateKey, { dateKey, latestAt: normalizedRow.completed_at, rows: [] });
+                const group = groups.get(dateKey);
+                group.rows.push(normalizedRow);
+                if (new Date(normalizedRow.completed_at || 0).getTime() > new Date(group.latestAt || 0).getTime()) group.latestAt = normalizedRow.completed_at;
+            });
+            return Array.from(groups.values()).sort((a, b) => new Date(b.latestAt || 0).getTime() - new Date(a.latestAt || 0).getTime()).map((group) => ({ ...group, rows: group.rows.sort((a, b) => new Date(b.completed_at || 0).getTime() - new Date(a.completed_at || 0).getTime()) }));
+        }
+
+        function getProductivityEntryTitle(snapshot = {}) {
+            const safeSnapshot = normalizeProductivitySnapshot(snapshot);
+            return String(firstNonEmptyValue(safeSnapshot.commonname, safeSnapshot.itemcode, 'Completed Row')).trim();
+        }
+
+        function getProductivityEntryMeta(snapshot = {}) {
+            const safeSnapshot = normalizeProductivitySnapshot(snapshot);
+            const parts = [];
+            if (safeSnapshot.contsize) parts.push(String(safeSnapshot.contsize).trim());
+            if (safeSnapshot.locationcode) parts.push(`Loc ${String(safeSnapshot.locationcode).trim()}`);
+            if (safeSnapshot.lotcode) parts.push(`Lot ${String(safeSnapshot.lotcode).trim()}`);
+            if (safeSnapshot.itemcode) parts.push(`Item ${String(safeSnapshot.itemcode).trim()}`);
+            return parts.join(' | ');
+        }
+        function renderProductivityEntryCard(row = null) {
+            if (!row) return '';
+            const snapshot = normalizeProductivitySnapshot(row.snapshot);
+            const title = getProductivityEntryTitle(snapshot);
+            const meta = getProductivityEntryMeta(snapshot);
+            const sourceLabel = getProductivitySourceKindLabel(row.source_kind || snapshot.source_kind || 'task');
+            const timeLabel = formatProductivityTimeLabel(row.completed_at || snapshot.completed_at || '');
+            const customerLabel = String(firstNonEmptyValue(snapshot.req_customer, snapshot.customer_name, snapshot.consignee_name, '')).trim();
+            const folderLabel = String(firstNonEmptyValue(snapshot.request_folder, row.request_folder, '')).trim();
+            const noteLabel = String(firstNonEmptyValue(snapshot.av_note, '')).trim();
+            const noteHtml = noteLabel ? `<div class="mt-3 rounded-xl border border-blue-100 bg-blue-50/70 px-3 py-2 text-[11px] font-semibold text-blue-900"><span class="font-black uppercase tracking-[0.14em] text-[9px] mr-2">AV Note</span>${esc(noteLabel)}</div>` : '';
+            const contextParts = [];
+            if (customerLabel) contextParts.push(`<span class="rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">${esc(customerLabel)}</span>`);
+            if (folderLabel) contextParts.push(`<span class="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600">${esc(folderLabel)}</span>`);
+            return `<div class="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm"><div class="flex items-start justify-between gap-3"><div class="min-w-0 flex-1"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-700">${esc(sourceLabel)}</div><div class="mt-1 text-lg font-black text-slate-900 leading-tight break-words">${esc(title)}</div>${meta ? `<div class="mt-1 text-[11px] font-semibold text-slate-500 break-words">${esc(meta)}</div>` : ''}</div><div class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-black text-slate-700 whitespace-nowrap">${esc(timeLabel)}</div></div>${contextParts.length ? `<div class="mt-3 flex flex-wrap gap-2">${contextParts.join('')}</div>` : ''}${noteHtml}</div>`;
+        }
+
+        function renderProductivityEntryListRow(row = null) {
+            if (!row) return '';
+            const snapshot = normalizeProductivitySnapshot(row.snapshot);
+            const title = getProductivityEntryTitle(snapshot);
+            const meta = getProductivityEntryMeta(snapshot);
+            const sourceLabel = getProductivitySourceKindLabel(row.source_kind || snapshot.source_kind || 'task');
+            const timeLabel = formatProductivityTimeLabel(row.completed_at || snapshot.completed_at || '');
+            const contextLabel = String(firstNonEmptyValue(snapshot.req_customer, snapshot.customer_name, snapshot.request_folder, '')).trim();
+            const summaryBits = [meta, contextLabel].filter(Boolean);
+            return `<div class="rounded-xl border border-slate-200 bg-white px-3 py-3 shadow-sm"><div class="flex items-start gap-3"><div class="min-w-[64px] text-[11px] font-black text-[#007a4d]">${esc(timeLabel)}</div><div class="min-w-0 flex-1"><div class="text-sm font-black text-slate-900 break-words">${esc(title)}</div><div class="mt-1 text-[11px] font-semibold text-slate-500 break-words">${esc(sourceLabel)}${summaryBits.length ? ' | ' + esc(summaryBits.join(' | ')) : ''}</div></div></div></div>`;
+        }
+
+        function renderProductivityGroups(rows = []) {
+            const groups = groupProductivityHistoryRows(rows);
+            if (!groups.length) return '<div class="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-10 text-center text-[12px] font-semibold text-slate-400">No completion history found for this user yet.</div>';
+            return groups.map((group) => {
+                const rowsHtml = productivityViewMode === 'list' ? `<div class="space-y-2">${group.rows.map((row) => renderProductivityEntryListRow(row)).join('')}</div>` : `<div class="space-y-3">${group.rows.map((row) => renderProductivityEntryCard(row)).join('')}</div>`;
+                return `<section class="space-y-3"><div class="flex items-center justify-between gap-3"><h3 class="text-[12px] font-black uppercase tracking-[0.18em] text-slate-500">${esc(group.dateKey)}</h3><div class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">${group.rows.length} Row${group.rows.length === 1 ? '' : 's'}</div></div>${rowsHtml}</section>`;
+            }).join('');
+        }
+
+        function renderHome() {
+            const dynamicContent = document.getElementById('home-dynamic-content');
+            const dashboardContent = document.getElementById('home-dashboard-content');
+            if (!dynamicContent || !dashboardContent) return;
+            const canViewProductivity = canViewProductivityHome();
+            if (!canViewProductivity && activeHomeTab === 'productivity') { activeHomeTab = 'dashboard'; selectedProductivityUser = ''; }
+            const activeTab = canViewProductivity ? activeHomeTab : 'dashboard';
+            dashboardContent.classList.toggle('hidden', activeTab !== 'dashboard');
+            const tabButtonClass = (isActive) => isActive ? 'rounded-full border border-[#007a4d] bg-[#007a4d] px-4 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-sm' : 'rounded-full border border-emerald-200 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d] shadow-sm';
+            let html = '';
+            if (canViewProductivity) html += `<div class="bg-white rounded-2xl border border-emerald-100 shadow-sm p-3 flex flex-wrap gap-2"><button type="button" class="${tabButtonClass(activeTab === 'dashboard')}" onclick="return setHomeTab('dashboard')">Dashboard</button><button type="button" class="${tabButtonClass(activeTab === 'productivity')}" onclick="return setHomeTab('productivity')">Productivity</button></div>`;
+            if (activeTab === 'productivity') {
+                if (!selectedProductivityUser) {
+                    html += `<div class="bg-white rounded-2xl border border-emerald-100 shadow-sm p-5"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Productivity</div><div class="mt-2 text-sm font-semibold text-slate-500">Select a team member to see durable completion history grouped by date.</div><div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">${getTrackedProductivityUsers().map((entry) => `<button type="button" class="rounded-2xl border border-emerald-100 bg-[#f6fffb] px-4 py-4 text-left shadow-sm active:scale-[0.99] transition-transform" onclick="return openProductivityUserHistory('${esc(entry.username)}')"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-700">View History</div><div class="mt-1 text-base font-black text-slate-900 break-words">${esc(entry.display)}</div></button>`).join('')}</div></div>`;
+                } else {
+                    const state = getProductivityHistoryState(selectedProductivityUser);
+                    const rows = productivityHistoryByUser.get(selectedProductivityUser) || [];
+                    const modeButtonClass = (mode) => productivityViewMode === mode ? 'rounded-full border border-[#007a4d] bg-[#007a4d] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-sm' : 'rounded-full border border-emerald-200 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d] shadow-sm';
+                    let bodyHtml = '';
+                    if (state.loading) bodyHtml = '<div class="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-10 text-center text-[12px] font-semibold text-slate-400">Loading Productivity history...</div>';
+                    else if (state.error) bodyHtml = `<div class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-6 text-center"><div class="text-sm font-black text-amber-900">${esc(state.error)}</div><button type="button" class="mt-4 rounded-full border border-amber-300 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-amber-700 shadow-sm" onclick="return openProductivityUserHistory('${esc(selectedProductivityUser)}')">Retry</button></div>`;
+                    else bodyHtml = renderProductivityGroups(rows);
+                    html += `<div class="space-y-4"><div class="bg-white rounded-2xl border border-emerald-100 shadow-sm p-5"><div class="flex flex-wrap items-center justify-between gap-3"><div><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Productivity History</div><div class="mt-1 text-xl font-black text-slate-900 break-words">${esc(getTrackedProductivityDisplayName(selectedProductivityUser))}</div><div class="mt-1 text-[11px] font-semibold text-slate-500">Grouped by America/Chicago date and ordered by completion timestamp.</div></div><div class="flex flex-wrap items-center gap-2"><button type="button" class="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-slate-600 shadow-sm" onclick="return backToProductivityUserList()">Back To Team</button><button type="button" class="${modeButtonClass('cards')}" onclick="return setProductivityViewMode('cards')">Cards</button><button type="button" class="${modeButtonClass('list')}" onclick="return setProductivityViewMode('list')">List</button></div></div></div>${bodyHtml}</div>`;
+                }
+            }
+            dynamicContent.innerHTML = html;
+        }
         function updateSyncDiagnostics(modeOverride = '') {
             if (modeOverride) syncDiagnosticsOverride = modeOverride;
             const badge = document.getElementById('sync-diagnostics-badge');
@@ -17876,6 +18400,20 @@ ${folderNote ? `Folder Note: ${folderNote}
                     if (isCoordinatedAutoSave && savePayloadSignature) rememberAutoSaveSignature(rowSaveKey, savePayloadSignature);
 
                     propagateCommittedEdit(targetTable, itemToSave, changedDatasetKeys, visibleAffectedViews, { prefix, delay: 0, typingDelay: 120, requestUiDelay: REQUEST_REALTIME_UI_DELAY_MS });
+
+                    const productivityHistoryEntry = isComplete && !wasAlreadyComplete
+                        ? buildProductivityHistoryEntry(itemToSave, {
+                            sourceTable: targetTable,
+                            sourceKind: getProductivitySourceKindFromPrefix(prefix, itemToSave),
+                            completedByUsername: normalizeProductivityUsername(currentUser || currentUserDisplay || ''),
+                            completedByDisplay: currentUserDisplay || currentUser || 'Unknown',
+                            completedAt: payload.date_completed,
+                            sourceAssignment: firstNonEmptyValue(itemToSave.APP_TAB_ASSIGNMENT, itemToSave.app_tab_assignment, '')
+                        })
+                        : null;
+                    if (productivityHistoryEntry) {
+                        deferNonCriticalWork('productivity-history', () => appendProductivityHistoryEntries([productivityHistoryEntry]).catch(() => {}), 28);
+                    }
 
                     if (!artifacts.soPayload && trackedChangeFlags.avNote) {
                         const salesOfficeSyncContext = getSeasonSalesOfficeSyncContext(itemToSave);
