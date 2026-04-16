@@ -457,7 +457,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-<div id="header-version" class="nav-version-pill">V2026.04.16.02</div>
+        <div id="header-version" class="nav-version-pill">V2026.04.16.03</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -4447,7 +4447,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         const PRODUCTIVITY_TIME_ZONE = 'America/Chicago';
         const PRODUCTIVITY_HISTORY_BACKFILL_STORAGE_KEY = 'gnc_productivity_backfill_v3';
         const PRODUCTIVITY_COMPLETION_SOURCE_KINDS = new Set(['season_sales_note','location_sales_note']);
-        const APP_VERSION = 'V2026.04.16.02';
+const APP_VERSION = 'V2026.04.16.03';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -6295,6 +6295,67 @@ function toggleDriveQuickRequestItem(domId) {
             return Array.from(names);
         }
 
+        function getFlyerRowRemovalAssignment(item) {
+            const originAssignment = String(firstNonEmptyValue(item && item.PRODUCTIVITY_ORIGIN_ASSIGNMENT, item && item.productivity_origin_assignment, '')).toLowerCase().trim();
+            return ['season', 'location', 'colorwalk', 'endcap'].includes(originAssignment) ? originAssignment : '';
+        }
+
+        function buildFlyerRowRemovalPayload(item, canPersistFlyerShadow = false) {
+            const restoreAssignment = String(item && item.APP_TAB_ASSIGNMENT || '').toLowerCase() === 'flyer'
+                ? getFlyerRowRemovalAssignment(item)
+                : '';
+            const payload = {
+                flyer_title: null,
+                flyer_assigned: null,
+                flyer_cat: null,
+                flyer_inst: null,
+                flyer_notes: null,
+                flyer_completed: null,
+                flyer_photo_link: null,
+                flyer_photo_name: null,
+                app_tab_assignment: restoreAssignment || null
+            };
+            if (canPersistFlyerShadow) {
+                payload.flyer_av_note = null;
+                payload.flyer_match = null;
+                payload.flyer_loc_match_qty = null;
+                payload.flyer_spec = null;
+                payload.flyer_caliper = null;
+                payload.flyer_pick = null;
+                payload.flyer_initial_ptr = null;
+            }
+            return { payload, restoreAssignment };
+        }
+
+        function clearFlyerRowMembershipLocally(item, canPersistFlyerShadow = false) {
+            if (!item) return { payload: {}, restoreAssignment: '' };
+            const { payload, restoreAssignment } = buildFlyerRowRemovalPayload(item, canPersistFlyerShadow);
+            item.FLYER_TITLE = '';
+            item.FLYER_ASSIGNED = '';
+            item.FLYER_CAT = '';
+            item.FLYER_INST = '';
+            item.FLYER_NOTES = '';
+            item.FLYER_COMPLETED = '';
+            item.FLYER_PHOTO_LINK = '';
+            item.FLYER_PHOTO_NAME = '';
+            item.FLYER_AV_NOTE = '';
+            item.FLYER_MATCH = '';
+            item.FLYER_LOC_MATCH_QTY = '';
+            item.FLYER_SPEC = '';
+            item.FLYER_CALIPER = '';
+            item.FLYER_PICK = '';
+            item.FLYER_INITIAL_PTR = '';
+            if (String(item.APP_TAB_ASSIGNMENT || '').toLowerCase() === 'flyer') item.APP_TAB_ASSIGNMENT = restoreAssignment;
+            buildSearchIndex(item);
+            syncRowDataAcrossViews(item);
+            return { payload, restoreAssignment };
+        }
+
+        function refreshFlyerFolderTaskView(reason = 'flyer-folder-update') {
+            markViewDirty('tasks');
+            persistCurrentCache();
+            scheduleUiRender(reason, () => renderTasks());
+        }
         function clearPendingFlyerFolderTarget(silent = false) {
             const previousFolder = String(pendingFlyerFolderTarget || '').trim();
             pendingFlyerFolderTarget = null;
@@ -14886,9 +14947,8 @@ activeDriveTab = tab;
                 selectedFlyerFolder = null;
                 taskViewLevel = 0;
             }
-            markViewDirty('tasks');
-            persistCurrentCache();
-            renderTasks();
+            if (String(pendingFlyerFolderTarget || '').trim() === cleanFolderName && targetTab === 'archive') clearPendingFlyerFolderTarget(true);
+            refreshFlyerFolderTaskView(`flyer-folder-archive:${cleanFolderName}:${targetTab}`);
             showToast(targetTab === 'archive' ? 'Archiving' : 'Restoring', `${cleanFolderName} is updating...`, false);
             const updates = matchingItems.map((item) => supabaseFetch(item.SOURCE_TABLE || 'v2_master_inventory', 'PATCH', { flyer_title: nextStoredTitle || null }, `unique_id=eq.${encodeURIComponent(item.UNIQUE_ID)}`));
             const results = await Promise.allSettled(updates);
@@ -14902,50 +14962,73 @@ activeDriveTab = tab;
             return false;
         }
 
-        async function removeFlyerRow(uid) {
+        async function deleteFlyerFolder(folderName, options = {}) {
+            const currentTab = getFlyerFolderTabValue(options.currentTab || activeFlyerFolderTab);
+            const cleanFolderName = getFlyerFolderName(folderName);
+            if (!cleanFolderName) return false;
+            const matchingItems = fullInventory.filter((item) => doesItemMatchFlyerFolder(item, cleanFolderName, currentTab));
+            if (!matchingItems.length) {
+                showToast('Folder Missing', 'That flyer folder could not be found.', true);
+                return false;
+            }
+            const rowCount = matchingItems.length;
+            const confirmMessage = rowCount === 1
+                ? `Delete ${cleanFolderName} and remove its only row from the flyer folder?`
+                : `Delete ${cleanFolderName} and remove all ${rowCount} rows from the flyer folder?`;
+            if (!window.confirm(confirmMessage)) return false;
+            const shouldProbeFlyerShadow = matchingItems.some((item) => String(item.SOURCE_TABLE || 'v2_master_inventory') === 'v2_master_inventory');
+            const canPersistFlyerShadow = shouldProbeFlyerShadow ? await ensureFlyerShadowColumnsReady() : false;
+            const clearedRows = matchingItems.map((item) => ({
+                item,
+                state: clearFlyerRowMembershipLocally(item, canPersistFlyerShadow && String(item.SOURCE_TABLE || 'v2_master_inventory') === 'v2_master_inventory')
+            }));
+            closeAllFlyerSwipes();
+            if (String(pendingFlyerFolderTarget || '').trim() === cleanFolderName) clearPendingFlyerFolderTarget(true);
+            if (taskViewLevel === 1 && selectedFlyerFolder === cleanFolderName) {
+                taskViewLevel = 0;
+                selectedFlyerFolder = null;
+            }
+            refreshFlyerFolderTaskView(`flyer-folder-delete:${cleanFolderName}`);
+            showToast('Deleting', `Removing ${cleanFolderName}...`, false);
+            const results = await Promise.allSettled(clearedRows.map(({ item, state }) => supabaseFetch(item.SOURCE_TABLE || 'v2_master_inventory', 'PATCH', state.payload, `unique_id=eq.${encodeURIComponent(item.UNIQUE_ID)}`)));
+            const failed = results.filter((result) => result.status === 'rejected');
+            if (failed.length) {
+                const firstError = failed[0] && failed[0].reason && failed[0].reason.message ? failed[0].reason.message : 'Supabase update failed.';
+                showToast('Sync Warning', `${cleanFolderName} was deleted here, but ${failed.length} row${failed.length === 1 ? '' : 's'} failed to sync. ${firstError}`, true);
+            } else {
+                showToast('Deleted', `${cleanFolderName} was removed from Flyer.`);
+            }
+            return false;
+        }
+
+        async function removeFlyerRow(uid, options = {}) {
             const item = fullInventory.find((entry) => entry.UNIQUE_ID === uid);
             if (!item) return false;
             const folderName = getFlyerFolderName(item);
             const folderTab = isFlyerFolderArchived(item) ? 'archive' : 'active';
-            item.FLYER_TITLE = '';
-            item.FLYER_ASSIGNED = '';
-            item.FLYER_CAT = '';
-            item.FLYER_INST = '';
-            item.FLYER_NOTES = '';
-            item.FLYER_COMPLETED = '';
-            item.FLYER_PHOTO_LINK = '';
-            item.FLYER_PHOTO_NAME = '';
-            if (String(item.APP_TAB_ASSIGNMENT || '').toLowerCase() === 'flyer') item.APP_TAB_ASSIGNMENT = '';
-            buildSearchIndex(item);
-            syncRowDataAcrossViews(item);
+            const skipConfirm = !!(options && options.skipConfirm);
+            if (!skipConfirm && !window.confirm(`Remove ${item.COMMONNAME || 'this row'} from ${folderName || 'this flyer folder'}?`)) return false;
+            const canPersistFlyerShadow = String(item.SOURCE_TABLE || 'v2_master_inventory') === 'v2_master_inventory'
+                ? await ensureFlyerShadowColumnsReady()
+                : false;
+            const { payload } = clearFlyerRowMembershipLocally(item, canPersistFlyerShadow);
             closeAllFlyerSwipes();
             const remainingItems = fullInventory.filter((entry) => entry && entry.UNIQUE_ID !== uid && doesItemMatchFlyerFolder(entry, folderName, folderTab));
             if (!remainingItems.length && taskViewLevel === 1 && selectedFlyerFolder === folderName) {
                 taskViewLevel = 0;
                 selectedFlyerFolder = null;
             }
-            markViewDirty('tasks');
-            persistCurrentCache();
-            renderTasks();
+            if (!remainingItems.length && String(pendingFlyerFolderTarget || '').trim() === folderName) clearPendingFlyerFolderTarget(true);
+            refreshFlyerFolderTaskView(`flyer-row-remove:${uid}`);
             showToast('Removing', 'Updating flyer row...', false);
             try {
-                await supabaseFetch(item.SOURCE_TABLE || 'v2_master_inventory', 'PATCH', {
-                    flyer_title: null,
-                    flyer_assigned: null,
-                    flyer_cat: null,
-                    flyer_inst: null,
-                    flyer_notes: null,
-                    flyer_completed: null,
-                    flyer_photo_link: null,
-                    flyer_photo_name: null
-                }, `unique_id=eq.${encodeURIComponent(uid)}`);
+                await supabaseFetch(item.SOURCE_TABLE || 'v2_master_inventory', 'PATCH', payload, `unique_id=eq.${encodeURIComponent(uid)}`);
                 showToast('Removed', 'Row removed from Flyer folder.');
             } catch (error) {
                 showToast('Sync Warning', 'Row removed here, but Supabase did not confirm it yet.', true);
             }
             return false;
         }
-
         function decorateFlyerTaskRows() {
             const container = document.getElementById('task-content');
             if (!container || activeTaskTab !== 'flyer' || taskViewLevel !== 1) return;
@@ -15340,7 +15423,11 @@ activeDriveTab = tab;
                     const isQueued=driveQuickRequestItems.has(item.DOM_ID);
                     quickRequestBtn=`<div class="mt-3 flex items-center justify-between"><span class="text-[10px] font-black uppercase tracking-wider ${isQueued?'text-orange-700':'text-gray-400'}">${isQueued?'Queued For Action':'Quick Add'}</span><button type="button" aria-label="${isQueued?'Remove from builder':'Add to builder'}" class="inline-flex items-center justify-center w-9 h-9 rounded-full shadow-sm border ${isQueued?'bg-orange-600 text-white border-orange-600':'bg-white text-orange-600 border-orange-300'} active:scale-95" onclick="event.stopPropagation(); toggleDriveQuickRequestItem('${item.DOM_ID}')"><i class="ph-bold ${isQueued?'ph-check':'ph-plus'} text-lg"></i></button></div>`;
                 }
-                return `<div class="flex items-center w-full mb-3 item-row app-smart-card relative bg-white p-4 rounded-xl border border-gray-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-grow items-start justify-between min-w-0"><div class="app-card-main flex-grow min-w-0 pr-2"><div class="font-black text-gray-800 text-[16px] leading-tight break-words mb-0.5">${item.COMMONNAME||'Unknown'}</div><div class="app-card-subtitle font-bold text-[#007a4d] text-sm mb-2">${item.CONTSIZE||'-'}</div><div class="text-[11px] font-mono text-gray-500 mb-2 flex items-center bg-gray-100 px-2 py-0.5 rounded w-max"><i class="ph-bold ph-barcode mr-1.5 text-gray-400"></i>${item.ITEMCODE||'-'}</div><div class="app-card-chip-row flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600"><span class="bg-gray-100 px-1.5 py-0.5 rounded">LOC AVA: <span class="text-gray-900">${item.PTRAVAILABLE||'0'}</span></span><span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">Loc: ${item.LOCATIONCODE||'No Loc'}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded">Lot: ${item.LOTCODE||'-'}</span><span class="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-100">s_LTS: ${item.S_LTS||'0'}</span><span class="bg-orange-50 text-orange-700 px-1.5 py-0.5 rounded border border-orange-100">Pri: ${item.PRIORITY||'-'}</span></div>${extraData}${noteHtml}${quickRequestBtn}</div>${inlineThumbHtml}</div></div>`;
+                let flyerFolderActionBtn='';
+                if(sourceView==='tasks'&&activeTaskTab==='flyer'&&taskViewLevel===1&&selectedFlyerFolder&&doesItemMatchFlyerFolder(item, selectedFlyerFolder, activeFlyerFolderTab)){
+                    flyerFolderActionBtn=`<div class="mt-3 flex items-center justify-between gap-2"><span class="text-[10px] font-black uppercase tracking-wider text-indigo-500">Folder Row</span><button type="button" class="inline-flex items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-red-700 shadow-sm active:scale-[0.98]" onclick="event.stopPropagation(); return removeFlyerRow('${safeUidJs}')"><i class="ph-bold ph-trash text-base"></i>Remove Row</button></div>`;
+                }
+                return `<div class="flex items-center w-full mb-3 item-row app-smart-card relative bg-white p-4 rounded-xl border border-gray-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-grow items-start justify-between min-w-0"><div class="app-card-main flex-grow min-w-0 pr-2"><div class="font-black text-gray-800 text-[16px] leading-tight break-words mb-0.5">${item.COMMONNAME||'Unknown'}</div><div class="app-card-subtitle font-bold text-[#007a4d] text-sm mb-2">${item.CONTSIZE||'-'}</div><div class="text-[11px] font-mono text-gray-500 mb-2 flex items-center bg-gray-100 px-2 py-0.5 rounded w-max"><i class="ph-bold ph-barcode mr-1.5 text-gray-400"></i>${item.ITEMCODE||'-'}</div><div class="app-card-chip-row flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600"><span class="bg-gray-100 px-1.5 py-0.5 rounded">LOC AVA: <span class="text-gray-900">${item.PTRAVAILABLE||'0'}</span></span><span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">Loc: ${item.LOCATIONCODE||'No Loc'}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded">Lot: ${item.LOTCODE||'-'}</span><span class="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-100">s_LTS: ${item.S_LTS||'0'}</span><span class="bg-orange-50 text-orange-700 px-1.5 py-0.5 rounded border border-orange-100">Pri: ${item.PRIORITY||'-'}</span></div>${extraData}${noteHtml}${quickRequestBtn}${flyerFolderActionBtn}</div>${inlineThumbHtml}</div></div>`;
             }
 
             return `<div class="flex items-center w-full mb-2 item-row overflow-hidden" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="inv-card app-smart-card ${colorClass} flex items-start justify-between flex-grow !mb-0 transition-transform active:scale-[0.99]"><div class="app-card-main flex-grow min-w-0 text-[#007a4d]"><div class="flex justify-between font-bold text-sm mb-1"><span class="truncate pr-2">${item.COMMONNAME||'Unknown'} &bull; ${item.CONTSIZE||'-'} &bull; Loc: ${item.LOCATIONCODE||'No Loc'}</span><span class="whitespace-nowrap bg-[#007a4d]/10 px-1.5 py-0.5 rounded text-xs border border-[#007a4d]/20 h-max">Pri: ${item.PRIORITY||'-'}</span></div><div class="text-[11px] font-semibold truncate mt-0.5">Tag: ${tagColor} | Lot: ${item.LOTCODE||'-'} | PTR-Ava: ${item.PTRAVAILABLE||'0'} | s_LTS: ${item.S_LTS||'0'} | Supply: ${item.SEASONSUPPLY||'0'}</div><div class="text-[11px] font-semibold truncate mt-0.5">Item: ${item.ITEMCODE||'-'}</div></div>${inlineThumbHtml}</div></div>`;
@@ -18068,10 +18155,10 @@ ${folderNote ? `Folder Note: ${folderNote}
                         return String(a.COMMONNAME || '').localeCompare(String(b.COMMONNAME || ''));
                     });
                     const folderAssignees = getFlyerFolderAssignedNames(selectedFlyerFolder, folderItems, activeFlyerFolderTab).join(', ') || 'Unassigned';
-                    const folderActionButton = getFlyerFolderTabValue(activeFlyerFolderTab) === 'archive'
-                        ? `<button class="w-full sm:w-auto min-h-[42px] px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-[0.14em] transition-colors duration-150 bg-white border border-emerald-200 text-emerald-700 shadow-sm hover:bg-emerald-50" onclick="return setFlyerFolderArchiveState('${esc(selectedFlyerFolder || '')}', 'active', { currentTab: 'archive', keepOpen: true })">Restore Folder</button>`
-                        : `<button class="w-full sm:w-auto min-h-[42px] px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-[0.14em] transition-colors duration-150 bg-white border border-indigo-200 text-indigo-700 shadow-sm hover:bg-indigo-100" onclick="return startAddRowsToFlyerFolder('${esc(selectedFlyerFolder || '')}')">Add Rows To Folder</button>`;
-                    const folderHeader = `<div class="mb-3 rounded-xl border border-indigo-200 bg-indigo-50 p-4"><div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-indigo-600">${getFlyerFolderTabValue(activeFlyerFolderTab) === 'archive' ? 'Archived Flyer Folder' : 'Flyer Folder'}</div><div class="text-lg font-black text-indigo-900 truncate mt-1">${selectedFlyerFolder || ''}</div><div class="text-[11px] font-semibold text-indigo-500 mt-1">${folderItems.length} row${folderItems.length === 1 ? '' : 's'} | ${folderAssignees}</div></div>${folderActionButton}</div></div>`;
+                    const folderActionButtons = getFlyerFolderTabValue(activeFlyerFolderTab) === 'archive'
+                        ? `<div class="flex w-full sm:w-auto flex-col sm:flex-row gap-2"><button class="w-full sm:w-auto min-h-[42px] px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-[0.14em] transition-colors duration-150 bg-white border border-emerald-200 text-emerald-700 shadow-sm hover:bg-emerald-50" onclick="return setFlyerFolderArchiveState('${esc(selectedFlyerFolder || '')}', 'active', { currentTab: 'archive', keepOpen: true })">Restore Folder</button><button class="w-full sm:w-auto min-h-[42px] px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-[0.14em] transition-colors duration-150 bg-white border border-red-200 text-red-700 shadow-sm hover:bg-red-50" onclick="return deleteFlyerFolder('${esc(selectedFlyerFolder || '')}', { currentTab: 'archive' })">Delete Folder</button></div>`
+                        : `<div class="flex w-full sm:w-auto flex-col sm:flex-row gap-2"><button class="w-full sm:w-auto min-h-[42px] px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-[0.14em] transition-colors duration-150 bg-white border border-indigo-200 text-indigo-700 shadow-sm hover:bg-indigo-100" onclick="return startAddRowsToFlyerFolder('${esc(selectedFlyerFolder || '')}')">Add Rows To Folder</button><button class="w-full sm:w-auto min-h-[42px] px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-[0.14em] transition-colors duration-150 bg-white border border-amber-200 text-amber-700 shadow-sm hover:bg-amber-50" onclick="return setFlyerFolderArchiveState('${esc(selectedFlyerFolder || '')}', 'archive', { currentTab: 'active' })">Archive Folder</button><button class="w-full sm:w-auto min-h-[42px] px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-[0.14em] transition-colors duration-150 bg-white border border-red-200 text-red-700 shadow-sm hover:bg-red-50" onclick="return deleteFlyerFolder('${esc(selectedFlyerFolder || '')}', { currentTab: 'active' })">Delete Folder</button></div>`;
+                    const folderHeader = `<div class="mb-3 rounded-xl border border-indigo-200 bg-indigo-50 p-4"><div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-indigo-600">${getFlyerFolderTabValue(activeFlyerFolderTab) === 'archive' ? 'Archived Flyer Folder' : 'Flyer Folder'}</div><div class="text-lg font-black text-indigo-900 truncate mt-1">${selectedFlyerFolder || ''}</div><div class="text-[11px] font-semibold text-indigo-500 mt-1">${folderItems.length} row${folderItems.length === 1 ? '' : 's'} | ${folderAssignees}</div></div>${folderActionButtons}</div></div>`;
                     const prefixHtml = `${flyerTabsHtml}<div class="back-btn" onclick="return backToFlyerFolderList()"><i class="ph-bold ph-arrow-left"></i> Back to Folders</div>${folderHeader}`;
                     renderMarkupChunkedByKey('tasks-flyer-folder-items', container, null, folderItems, '', (item) => generateCard(item, 'tasks', 'status-indigo'), {
                         prefixHtml,
