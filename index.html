@@ -457,7 +457,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-<div id="header-version" class="nav-version-pill">V2026.04.16.01</div>
+<div id="header-version" class="nav-version-pill">V2026.04.16.02</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -953,11 +953,11 @@
         const DETAIL_ROW_TOUCH_WRITE_TIMEOUT_MS = 40000;
         const DETAIL_ROW_WRITE_RETRY_COUNT = 1;
         const DETAIL_ROW_WRITE_RETRY_DELAY_MS = 650;
-        const REALTIME_CHANGE_BATCH_MS = 48;
-        const REQUEST_REALTIME_UI_DELAY_MS = 24;
+        const REALTIME_CHANGE_BATCH_MS = 36;
+        const REQUEST_REALTIME_UI_DELAY_MS = 18;
         const POST_SAVE_DATASET_CATCHUP_MS = 320;
         const SALES_OFFICE_SYNC_DEFER_MS = 72;
-        const REQUEST_LIVE_SYNC_PAUSE_AFTER_LOCAL_SAVE_MS = 900;
+        const REQUEST_LIVE_SYNC_PAUSE_AFTER_LOCAL_SAVE_MS = 640;
         const SUPABASE_UPLOAD_TIMEOUT_MS = 45000;
         const ENABLE_MANUAL_PULL_REFRESH = false;
         const CACHE_PERSIST_DEBOUNCE_MS = 25000;
@@ -970,6 +970,18 @@
         const PHOTO_JPEG_QUALITY = 0.98;
         const PHOTO_FIELD_PERSIST_DEBOUNCE_MS = 100;
         const INTERACTION_REFRESH_DEFER_MS = 900;
+        const LOCAL_REALTIME_ECHO_TTL_MS = 4200;
+        const MAX_INTERNAL_PERF_SAMPLES = 40;
+        const internalPerfStats = window.__gncPerfStats || (window.__gncPerfStats = {
+            forcedRerenders: 0,
+            skippedRealtimeEchoes: 0,
+            catchupsQueued: 0,
+            localEchoWrites: 0,
+            saveDurations: Object.create(null),
+            realtimeApplyDurations: Object.create(null),
+            viewRenderDurations: Object.create(null)
+        });
+        let recentLocalRealtimeWrites = new Map();
         let pendingPhotoUploads = new Map();
         let pendingPhotoPreviews = new Map();
         let pendingPhotoPersistTimers = Object.create(null);
@@ -1003,6 +1015,98 @@
 
         function isStandaloneApp() {
             return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+        }
+
+        function beginInternalPerfMeasure() {
+            return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+        }
+
+        function pushInternalPerfSample(bucketName = '', value = 0, key = '') {
+            const safeBucketName = String(bucketName || '').trim();
+            const sampleValue = Number(value);
+            if (!safeBucketName || !Number.isFinite(sampleValue)) return;
+            if (key) {
+                if (!internalPerfStats[safeBucketName] || typeof internalPerfStats[safeBucketName] !== 'object') internalPerfStats[safeBucketName] = Object.create(null);
+                if (!Array.isArray(internalPerfStats[safeBucketName][key])) internalPerfStats[safeBucketName][key] = [];
+                internalPerfStats[safeBucketName][key].push(Math.round(sampleValue * 100) / 100);
+                if (internalPerfStats[safeBucketName][key].length > MAX_INTERNAL_PERF_SAMPLES) internalPerfStats[safeBucketName][key].shift();
+                return;
+            }
+            if (!Array.isArray(internalPerfStats[safeBucketName])) internalPerfStats[safeBucketName] = [];
+            internalPerfStats[safeBucketName].push(Math.round(sampleValue * 100) / 100);
+            if (internalPerfStats[safeBucketName].length > MAX_INTERNAL_PERF_SAMPLES) internalPerfStats[safeBucketName].shift();
+        }
+
+        function recordInternalPerfDuration(bucketName = '', startedAt = 0, key = '') {
+            const started = Number(startedAt) || 0;
+            if (!started) return 0;
+            const duration = beginInternalPerfMeasure() - started;
+            pushInternalPerfSample(bucketName, duration, key);
+            return duration;
+        }
+
+        function pruneRecentLocalRealtimeWrites(now = Date.now()) {
+            if (!(recentLocalRealtimeWrites instanceof Map) || !recentLocalRealtimeWrites.size) return;
+            recentLocalRealtimeWrites.forEach((entry, key) => {
+                const stampedAt = Number(entry && entry.ts) || 0;
+                if (!stampedAt || (now - stampedAt) > LOCAL_REALTIME_ECHO_TTL_MS) recentLocalRealtimeWrites.delete(key);
+            });
+        }
+
+        function buildLocalRealtimeEchoKey(tableName = '', uniqueId = '') {
+            const safeTable = String(tableName || '').trim().toLowerCase();
+            const safeUniqueId = String(uniqueId || '').trim();
+            return safeTable && safeUniqueId ? `${safeTable}|${safeUniqueId}` : '';
+        }
+
+        function getRealtimeSignatureFieldList(tableName = '') {
+            const safeTable = String(tableName || '').trim().toLowerCase();
+            if (safeTable === 'v2_active_request') {
+                return ['UNIQUE_ID','DATE_COMPLETED','REQ_STATUS','REQ_ARCHIVED','REQ_REP_ACTION','REQUEST_FOLDER','REQ_CUSTOMER','REQ_QTY','REQ_MATCH','REQ_SPEC','REQ_CALIPER','REQ_PICK','REQ_COMMENTS','REQ_PHOTO_LINK','REQ_PHOTO_NAME','MASTER_ID','MASTER_UNIQUE_ID','MASTER_APP_TAB_ASSIGNMENT','APP_TAB_ASSIGNMENT','ASSIGNEDTO'];
+            }
+            if (safeTable === 'v2_sales_office') {
+                return ['UNIQUE_ID','DATE_COMPLETED','AV_NOTE','SALES_NOTE','SPEC','CALIPER','SAVED_PHOTO_LINK','SAVED_PHOTO_NAME','MASTER_ID','MASTER_UNIQUE_ID','SO_SOURCE'];
+            }
+            if (safeTable === 'v2_master_inventory') {
+                return ['UNIQUE_ID','DATE_COMPLETED','APP_TAB_ASSIGNMENT','ASSIGNEDTO','AV_NOTE','SALES_NOTE','SPEC','CALIPER','MATCH','LOC_MATCH_QTY','INITIAL_PTR','PICK','SAVED_PHOTO_LINK','SAVED_PHOTO_NAME','FLYER_FOLDER','FLYER_COMPLETED','REQUEST_FOLDER','REQ_STATUS','HOLSTOPCODE','PTRAVAILABLE','S_LTS'];
+            }
+            return ['UNIQUE_ID','DATE_COMPLETED','APP_TAB_ASSIGNMENT','ASSIGNEDTO','AV_NOTE','SPEC','CALIPER','MATCH','LOC_MATCH_QTY','PICK','SAVED_PHOTO_LINK','SAVED_PHOTO_NAME'];
+        }
+
+        function buildRealtimeRowSignature(row = null, tableName = '') {
+            if (!row || typeof row !== 'object') return '';
+            return getRealtimeSignatureFieldList(tableName).map((field) => {
+                const rawValue = firstNonEmptyValue(row[field], row[String(field || '').toLowerCase()], '');
+                if (rawValue === true || rawValue === 1) return `${field}:1`;
+                if (rawValue === false || rawValue === 0) return `${field}:0`;
+                return `${field}:${String(rawValue == null ? '' : rawValue).trim()}`;
+            }).join('|');
+        }
+
+        function rememberLocalRealtimeWrite(tableName = '', row = null) {
+            const uniqueId = String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '')).trim();
+            const echoKey = buildLocalRealtimeEchoKey(tableName, uniqueId);
+            if (!echoKey) return;
+            pruneRecentLocalRealtimeWrites();
+            recentLocalRealtimeWrites.set(echoKey, {
+                signature: buildRealtimeRowSignature(row, tableName),
+                ts: Date.now()
+            });
+            internalPerfStats.localEchoWrites = (Number(internalPerfStats.localEchoWrites) || 0) + 1;
+        }
+
+        function consumeMatchingLocalRealtimeEcho(tableName = '', row = null) {
+            const uniqueId = String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '')).trim();
+            const echoKey = buildLocalRealtimeEchoKey(tableName, uniqueId);
+            if (!echoKey) return false;
+            pruneRecentLocalRealtimeWrites();
+            const saved = recentLocalRealtimeWrites.get(echoKey);
+            if (!saved) return false;
+            const nextSignature = buildRealtimeRowSignature(row, tableName);
+            if (!saved.signature || saved.signature !== nextSignature) return false;
+            recentLocalRealtimeWrites.delete(echoKey);
+            internalPerfStats.skippedRealtimeEchoes = (Number(internalPerfStats.skippedRealtimeEchoes) || 0) + 1;
+            return true;
         }
 
         function isTouchOptimizedDevice() {
@@ -2412,13 +2516,19 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             return [];
         }
 
-                function upsertRealtimeRow(collection, row) {
+                function upsertRealtimeRow(collection, row, tableName = '') {
             if (!Array.isArray(collection) || !row) return false;
             const uid = String(row.UNIQUE_ID || '');
             if (!uid) return false;
             const idx = collection.findIndex(item => String(item.UNIQUE_ID || '') === uid);
-            if (idx === -1) collection.push(row);
-            else collection[idx] = Object.assign({}, collection[idx], row);
+            if (idx === -1) {
+                collection.push(row);
+                return true;
+            }
+            const previousRow = collection[idx];
+            const mergedRow = Object.assign({}, previousRow, row);
+            if (buildRealtimeRowSignature(previousRow, tableName) === buildRealtimeRowSignature(mergedRow, tableName)) return false;
+            collection[idx] = mergedRow;
             return true;
         }
 
@@ -2721,6 +2831,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         }
         function applyRealtimeChange(tableName = '', payload = null, deferVisualSync = false) {
             if (!payload || !payload.eventType) return false;
+            const realtimeApplyStartedAt = beginInternalPerfMeasure();
             const eventType = String(payload.eventType || '').toUpperCase();
 
             if (tableName === 'v2_dock_team_status') {
@@ -2736,6 +2847,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 dockTeamStatusLoaded = true;
                 markViewDirty('docks');
                 scheduleDocksRender(72);
+                recordInternalPerfDuration('realtimeApplyDurations', realtimeApplyStartedAt, tableName || 'dock-team');
                 return true;
             }
 
@@ -2752,6 +2864,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 dockItemProgressLoaded = true;
                 markViewDirty('docks');
                 scheduleDocksRender(72);
+                recordInternalPerfDuration('realtimeApplyDurations', realtimeApplyStartedAt, tableName || 'dock-item');
                 return true;
             }
 
@@ -2759,6 +2872,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             const nextRow = payload.new ? formatFetchedRows([payload.new], tableName)[0] : null;
             const uniqueId = String((nextRow && nextRow.UNIQUE_ID) || oldRow.unique_id || oldRow.UNIQUE_ID || '');
             if (!uniqueId) return false;
+            const isLocalEcho = eventType !== 'DELETE' && nextRow ? consumeMatchingLocalRealtimeEcho(tableName, nextRow) : false;
 
             let changed = false;
             if (tableName === 'v2_master_inventory') {
@@ -2766,44 +2880,53 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                     changed = removeRealtimeRow(fullInventory, uniqueId) || changed;
                     changed = removeRealtimeRow(avOpenInventory, uniqueId) || changed;
                 } else if (nextRow) {
-                    changed = upsertRealtimeRow(fullInventory, nextRow) || changed;
+                    changed = upsertRealtimeRow(fullInventory, nextRow, tableName) || changed;
                     const sLts = parseFloat(String(nextRow.S_LTS || 0).replace(/,/g, '')) || 0;
-                    if (sLts > 0) changed = upsertRealtimeRow(avOpenInventory, nextRow) || changed;
+                    if (sLts > 0) changed = upsertRealtimeRow(avOpenInventory, nextRow, tableName) || changed;
                     else changed = removeRealtimeRow(avOpenInventory, uniqueId) || changed;
                 }
             } else if (tableName === 'v2_active_request') {
                 changed = eventType === 'DELETE'
                     ? removeRealtimeRow(requestsInventory, uniqueId)
-                    : upsertRealtimeRow(requestsInventory, nextRow);
+                    : upsertRealtimeRow(requestsInventory, nextRow, tableName);
             } else if (tableName === 'v2_reserves') {
                 changed = eventType === 'DELETE'
                     ? removeRealtimeRow(reservesInventory, uniqueId)
-                    : upsertRealtimeRow(reservesInventory, nextRow);
+                    : upsertRealtimeRow(reservesInventory, nextRow, tableName);
             } else if (tableName === 'v2_soc_master') {
                 changed = eventType === 'DELETE'
                     ? removeRealtimeRow(socInventory, uniqueId)
-                    : upsertRealtimeRow(socInventory, nextRow);
-                        } else if (tableName === 'v2_sales_office') {
+                    : upsertRealtimeRow(socInventory, nextRow, tableName);
+            } else if (tableName === 'v2_sales_office') {
                 if (eventType === 'DELETE' || (nextRow && isSalesOfficeComplete(nextRow))) {
                     changed = removeRealtimeRow(salesOfficeInventory, uniqueId);
                 } else if (nextRow) {
-                    changed = upsertRealtimeRow(salesOfficeInventory, nextRow);
+                    changed = upsertRealtimeRow(salesOfficeInventory, nextRow, tableName);
                 }
             } else if (tableName === 'v2_cav') {
                 changed = eventType === 'DELETE'
                     ? removeRealtimeRow(cavInventory, uniqueId)
-                    : upsertRealtimeRow(cavInventory, nextRow);
+                    : upsertRealtimeRow(cavInventory, nextRow, tableName);
             } else if (tableName === 'v2_av_notes') {
                 changed = eventType === 'DELETE'
                     ? removeRealtimeRow(avNotesDb, uniqueId)
-                    : upsertRealtimeRow(avNotesDb, nextRow);
+                    : upsertRealtimeRow(avNotesDb, nextRow, tableName);
                 invalidateAvNotesCommonNameIndex();
             }
 
-            if (!changed) return false;
+            if (isLocalEcho) {
+                if (tableName === 'v2_active_request') requestViewLiveSyncSignature = buildRequestLiveSyncSignature(requestsInventory);
+                recordInternalPerfDuration('realtimeApplyDurations', realtimeApplyStartedAt, `${tableName}:echo`);
+                return false;
+            }
+            if (!changed) {
+                recordInternalPerfDuration('realtimeApplyDurations', realtimeApplyStartedAt, `${tableName}:noop`);
+                return false;
+            }
             trackRealtimeDirtyRowId(tableName, uniqueId);
             if (tableName === 'v2_active_request') triggerRequestRealtimeUiRefresh(REQUEST_REALTIME_UI_DELAY_MS);
             if (!deferVisualSync) flushRealtimeDatasetUpdates([tableName]);
+            recordInternalPerfDuration('realtimeApplyDurations', realtimeApplyStartedAt, tableName || 'unknown');
             return true;
         }
         const pendingRealtimeDatasetFlushTables = new Set();
@@ -2906,6 +3029,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         function queueVisibleDatasetCatchup(delay = 0) {
             if (syncCatchupTimer) clearTimeout(syncCatchupTimer);
             if (!currentUser) return;
+            internalPerfStats.catchupsQueued = (Number(internalPerfStats.catchupsQueued) || 0) + 1;
             syncCatchupTimer = setTimeout(() => {
                 syncCatchupTimer = null;
                 if (!currentUser || document.hidden || navigator.onLine === false || backgroundRefreshInFlight) return;
@@ -3194,6 +3318,13 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 if (!targetView || targetView.classList.contains('hidden')) return;
                 renderViewContent(safeViewId, forceReset, forceRender);
             }, Math.max(0, Number(delay) || 0), typingDelay, { touchDelayMs: 140, scrollDelayMs: 120 });
+        }
+
+        function queueVisibleTrackedViewRefresh(reason = 'tracked-refresh', delay = 0, typingDelay = 180) {
+            const visibleViewIds = getVisibleTrackedViewIds();
+            if (!visibleViewIds.length) return;
+            visibleViewIds.forEach((viewId) => markViewDirty(viewId));
+            visibleViewIds.forEach((viewId) => queueInteractiveViewRender(viewId, false, true, Math.max(0, Number(delay) || 0), Math.max(140, Number(typingDelay) || 0)));
         }
         function scheduleDocksRender(delay = 32) {
             scheduleUiRender('docks:render', () => {
@@ -3497,7 +3628,9 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 }, 16);
                 return;
             }
-            scheduleUiRender(`photo-preview-${String(item.UNIQUE_ID || '').trim()}-${getPhotoBucketKey(prefix)}`, () => reRenderCurrentView(), 16);
+            scheduleUiRender(`photo-preview-${String(item.UNIQUE_ID || '').trim()}-${getPhotoBucketKey(prefix)}`, () => {
+                queueVisibleTrackedViewRefresh('photo-preview', 0, 140);
+            }, 16);
         }
 
         function getPendingPhotoPersistKey(item, prefix = '') {
@@ -4314,7 +4447,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         const PRODUCTIVITY_TIME_ZONE = 'America/Chicago';
         const PRODUCTIVITY_HISTORY_BACKFILL_STORAGE_KEY = 'gnc_productivity_backfill_v3';
         const PRODUCTIVITY_COMPLETION_SOURCE_KINDS = new Set(['season_sales_note','location_sales_note']);
-        const APP_VERSION = 'V2026.04.16.01';
+        const APP_VERSION = 'V2026.04.16.02';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -6275,14 +6408,13 @@ function toggleDriveQuickRequestItem(domId) {
                 }
                 clearDriveQuickRequestItems(true);
                 clearPendingFlyerFolderTarget(true);
-                markViewDirty('tasks');
-                reRenderCurrentView();
-                switchView('tasks');
-                setTaskTab('flyer');
                 activeFlyerFolderTab = 'active';
                 selectedFlyerFolder = flyerFolder;
                 taskViewLevel = 1;
-                renderTasks();
+                setTaskTab('flyer');
+                markViewDirty('tasks');
+                switchView('tasks');
+                queueInteractiveViewRender('tasks', false, true, 0, 160);
                 if (failed.length) {
                     const firstError = failed[0] && failed[0].reason && failed[0].reason.message ? failed[0].reason.message : 'Some rows could not be added.';
                     showToast('Partial Success', `${succeeded} row${succeeded === 1 ? '' : 's'} added to ${flyerFolder}. ${failed.length} failed. ${firstError}`, true);
@@ -6375,14 +6507,13 @@ function toggleDriveQuickRequestItem(domId) {
                 }
                 clearPendingFlyerFolderTarget(true);
                 clearSelection();
-                markViewDirty('tasks');
-                reRenderCurrentView();
-                switchView('tasks');
-                setTaskTab('flyer');
                 activeFlyerFolderTab = 'active';
                 selectedFlyerFolder = flyerFolder;
                 taskViewLevel = 1;
-                renderTasks();
+                setTaskTab('flyer');
+                markViewDirty('tasks');
+                switchView('tasks');
+                queueInteractiveViewRender('tasks', false, true, 0, 160);
                 if (failed.length) {
                     const firstError = failed[0] && failed[0].reason && failed[0].reason.message ? failed[0].reason.message : 'Some rows could not be added.';
                     showToast('Partial Success', `${succeeded} row${succeeded === 1 ? '' : 's'} added to ${flyerFolder}. ${failed.length} failed. ${firstError}`, true);
@@ -7995,7 +8126,7 @@ function toggleDriveQuickRequestItem(domId) {
                 runAfterShellInteractive(() => {
                     warmCachedInventory().then((hasCache) => {
                         if (hasCache) {
-                            setTimeout(() => reRenderCurrentView(), postShellUiDelay);
+                            setTimeout(() => queueVisibleTrackedViewRefresh('cache-warm', 0, 180), postShellUiDelay);
                             syncGlobalHeaderChrome();
                             updateFooterNavState();
                         }
@@ -8020,7 +8151,7 @@ function toggleDriveQuickRequestItem(domId) {
 
             reserveCacheWarmPromise.then((warmedScopedDatasetCache) => {
                 if (warmedScopedDatasetCache) {
-                    setTimeout(() => reRenderCurrentView(), postShellUiDelay);
+                    setTimeout(() => queueVisibleTrackedViewRefresh('cache-warm', 0, 180), postShellUiDelay);
                     syncGlobalHeaderChrome();
                     updateFooterNavState();
                 }
@@ -9096,6 +9227,7 @@ function toggleDriveQuickRequestItem(domId) {
                 buildSearchIndex(changedRow);
                 syncRowDataAcrossViews(changedRow);
                 broadcastRowSyncSnapshot(changedRow, options.prefix || '');
+                if (safeSourceTable) rememberLocalRealtimeWrite(safeSourceTable, changedRow);
             }
             if (safeSourceTable === 'v2_active_request') {
                 requestViewLiveSyncSignature = buildRequestLiveSyncSignature(requestsInventory);
@@ -9167,6 +9299,7 @@ function toggleDriveQuickRequestItem(domId) {
         function renderViewContent(viewId, forceReset = false, forceRender = false) {
             const state = ensureViewRenderState(viewId);
             if (!forceReset && !forceRender && state.initialized && !state.dirty) return;
+            const renderStartedAt = beginInternalPerfMeasure();
 
             if (viewId === 'home') {
                 renderHome();
@@ -9205,6 +9338,7 @@ function toggleDriveQuickRequestItem(domId) {
 
             state.initialized = true;
             state.dirty = false;
+            recordInternalPerfDuration('viewRenderDurations', renderStartedAt, viewId || 'unknown');
         }
 
         function getCurrentVisibleViewId() {
@@ -9435,18 +9569,11 @@ function toggleDriveQuickRequestItem(domId) {
 
         function reRenderCurrentView() {
             const visibleViewIds = getVisibleTrackedViewIds();
-            if (shouldDeferInteractiveBackgroundWork()) {
-                visibleViewIds.forEach((viewId) => {
-                    markViewDirty(viewId);
-                    scheduleTypingAwareUiRender(`rerender:${viewId}`, () => {
-                        if (!isViewVisible(viewId)) return;
-                        renderViewContent(viewId, false, true);
-                    }, 60, 220);
-                });
-                markHiddenViewsDirty(visibleViewIds);
-                return;
-            }
-            visibleViewIds.forEach((viewId) => queueViewRender(viewId, false, true));
+            if (!visibleViewIds.length) return;
+            internalPerfStats.forcedRerenders = (Number(internalPerfStats.forcedRerenders) || 0) + visibleViewIds.length;
+            const rerenderDelay = shouldDeferInteractiveBackgroundWork() ? 60 : 0;
+            visibleViewIds.forEach((viewId) => markViewDirty(viewId));
+            visibleViewIds.forEach((viewId) => queueInteractiveViewRender(viewId, false, true, rerenderDelay, 180));
             markHiddenViewsDirty(visibleViewIds);
         }
 
@@ -11616,27 +11743,24 @@ activeDriveTab = tab;
             };
 
             if (dockViewLevel === 0) {
-                crumb.innerText = 'Select a Dock';
-                let docks = [...new Set(items.map(i => i.DOCK_NUM || 'Unassigned'))].sort(sortStops);
-                container.innerHTML = docks.map(d => {
-                    let dItems = items.filter(i => (i.DOCK_NUM || 'Unassigned') === d);
-                    let count = dItems.length;
-                    let savedInfo = getDockTeamInfo(d);
+                const dockCards = [...new Set(items.map(i => i.DOCK_NUM || 'Unassigned'))].sort(sortStops).map((dockNum) => {
+                    const dItems = items.filter(i => (i.DOCK_NUM || 'Unassigned') === dockNum);
+                    const savedInfo = getDockTeamInfo(dockNum);
                     let statusColor = 'text-blue-600 bg-blue-50';
-                    if(savedInfo.status.includes('Missing')) statusColor = 'text-red-600 bg-red-50';
-                    else if(savedInfo.status === 'Palletize') statusColor = 'text-purple-600 bg-purple-50';
-                    else if(savedInfo.status === 'Complete') statusColor = 'text-green-600 bg-green-50';
-                    let hasCoUt = dItems.some(i => {
-                        let state = String(i.CONSIGNEESTATE || i.STATE || '').toUpperCase().trim();
-                        let city = String(i.CONSIGNEECITY || '').toUpperCase().trim();
+                    if (savedInfo.status.includes('Missing')) statusColor = 'text-red-600 bg-red-50';
+                    else if (savedInfo.status === 'Palletize') statusColor = 'text-purple-600 bg-purple-50';
+                    else if (savedInfo.status === 'Complete') statusColor = 'text-green-600 bg-green-50';
+                    const hasCoUt = dItems.some(i => {
+                        const state = String(i.CONSIGNEESTATE || i.STATE || '').toUpperCase().trim();
+                        const city = String(i.CONSIGNEECITY || '').toUpperCase().trim();
                         return state === 'CO' || state === 'UT' || state === 'COLORADO' || state === 'UTAH' || city.includes(' CO') || city.includes(' UT') || city.endsWith('CO') || city.endsWith('UT');
                     });
-                    let borderCls = hasCoUt ? 'border-red-500' : 'border-[#007a4d]';
-                    let bgCls = hasCoUt ? 'bg-red-50' : 'bg-green-50';
-                    let textCls = hasCoUt ? 'text-red-700' : 'text-[#007a4d]';
-                    const editDockButton = canEditDockConfig ? `<button class="w-full bg-white border border-gray-200 text-gray-600 hover:text-[#007a4d] hover:border-[#007a4d] font-bold py-2 rounded-lg text-xs shadow-sm transition-colors" onclick="openDockInfoModal('${esc(d)}')"><i class="ph-bold ph-pencil-simple mr-1"></i> Edit Team & Status</button>` : '';
-                    return `<div class="bg-white border-2 ${borderCls} rounded-xl shadow-sm mb-4 overflow-hidden"><div class="p-4 flex justify-between items-center cursor-pointer active:${bgCls} transition-colors" onclick="selectDock('${esc(d)}')"><div class="flex items-center gap-3"><div class="${bgCls} p-2 rounded-lg"><i class="ph-fill ph-truck text-2xl ${textCls}"></i></div><div><div class="font-black text-lg ${textCls} leading-tight">Dock ${d}</div><div class="text-[10px] font-bold text-gray-500 uppercase mt-0.5">${count} Items</div></div></div><i class="ph-bold ph-caret-right text-gray-300 text-xl"></i></div><div class="bg-gray-50 p-3 border-t border-gray-100"><div class="flex justify-between items-center mb-2"><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Dock Status</span><span class="text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider ${statusColor}">${savedInfo.status}</span></div><div class="grid grid-cols-3 gap-2 mb-3"><div class="bg-white p-2 rounded border border-gray-200 text-center"><div class="text-[8px] font-bold text-gray-400 uppercase mb-0.5">Checker</div><div class="text-xs font-bold text-gray-700 truncate">${savedInfo.checker || '-'}</div></div><div class="bg-white p-2 rounded border border-gray-200 text-center"><div class="text-[8px] font-bold text-gray-400 uppercase mb-0.5">Inspector</div><div class="text-xs font-bold text-gray-700 truncate">${savedInfo.inspector || '-'}</div></div><div class="bg-white p-2 rounded border border-gray-200 text-center"><div class="text-[8px] font-bold text-gray-400 uppercase mb-0.5">Mistake Guy</div><div class="text-xs font-bold text-gray-700 truncate">${savedInfo.mistake || '-'}</div></div></div>${editDockButton}</div></div>`;
-                }).join('');
+                    return { dockNum, count: dItems.length, savedInfo, statusColor, borderCls: hasCoUt ? 'border-red-500' : 'border-[#007a4d]', bgCls: hasCoUt ? 'bg-red-50' : 'bg-green-50', textCls: hasCoUt ? 'text-red-700' : 'text-[#007a4d]' };
+                });
+                renderMarkupChunkedByKey('docks-main', container, crumb, dockCards, 'Select a Dock', (dockCard) => {
+                    const editDockButton = canEditDockConfig ? `<button class="w-full bg-white border border-gray-200 text-gray-600 hover:text-[#007a4d] hover:border-[#007a4d] font-bold py-2 rounded-lg text-xs shadow-sm transition-colors" onclick="openDockInfoModal('${esc(dockCard.dockNum)}')"><i class="ph-bold ph-pencil-simple mr-1"></i> Edit Team & Status</button>` : '';
+                    return `<div class="bg-white border-2 ${dockCard.borderCls} rounded-xl shadow-sm mb-4 overflow-hidden"><div class="p-4 flex justify-between items-center cursor-pointer active:${dockCard.bgCls} transition-colors" onclick="selectDock('${esc(dockCard.dockNum)}')"><div class="flex items-center gap-3"><div class="${dockCard.bgCls} p-2 rounded-lg"><i class="ph-fill ph-truck text-2xl ${dockCard.textCls}"></i></div><div><div class="font-black text-lg ${dockCard.textCls} leading-tight">Dock ${dockCard.dockNum}</div><div class="text-[10px] font-bold text-gray-500 uppercase mt-0.5">${dockCard.count} Items</div></div></div><i class="ph-bold ph-caret-right text-gray-300 text-xl"></i></div><div class="bg-gray-50 p-3 border-t border-gray-100"><div class="flex justify-between items-center mb-2"><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Dock Status</span><span class="text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider ${dockCard.statusColor}">${dockCard.savedInfo.status}</span></div><div class="grid grid-cols-3 gap-2 mb-3"><div class="bg-white p-2 rounded border border-gray-200 text-center"><div class="text-[8px] font-bold text-gray-400 uppercase mb-0.5">Checker</div><div class="text-xs font-bold text-gray-700 truncate">${dockCard.savedInfo.checker || '-'}</div></div><div class="bg-white p-2 rounded border border-gray-200 text-center"><div class="text-[8px] font-bold text-gray-400 uppercase mb-0.5">Inspector</div><div class="text-xs font-bold text-gray-700 truncate">${dockCard.savedInfo.inspector || '-'}</div></div><div class="bg-white p-2 rounded border border-gray-200 text-center"><div class="text-[8px] font-bold text-gray-400 uppercase mb-0.5">Mistake Guy</div><div class="text-xs font-bold text-gray-700 truncate">${dockCard.savedInfo.mistake || '-'}</div></div></div>${editDockButton}</div></div>`;
+                }, { approxCardHeight: 205, emptyHtml: `<div class="p-8 text-center text-gray-400">No dock items found.</div>` });
                 return;
             }
 
@@ -11656,22 +11780,19 @@ activeDriveTab = tab;
             });
 
             if (dockViewLevel === 1) {
-                crumb.innerText = `Dock: ${selectedDockNum}`;
-                let html = `<div class="back-btn" onclick="dockViewLevel=0; selectedDockStop=null; renderDocks()"><i class="ph-bold ph-arrow-left"></i> Back to Docks</div>`;
-                html += Object.keys(groupedStops).sort(sortStops).map((stopNum) => {
+                const stopCards = Object.keys(groupedStops).sort(sortStops).map((stopNum) => {
                     const stopItems = groupedStops[stopNum];
                     const lead = stopItems[0] || {};
-                    const rep = lead.SALESREPNAME || lead.SALESREPID || 'Unknown Rep';
-                    const cust = lead.CUSTOMERNAME || 'Unknown Customer';
-                    const cons = lead.CONSIGNEENAME || lead.CONSIGNEE || '';
-                    const state = lead.CONSIGNEESTATE || lead.STATE || 'N/A';
                     const doneCount = stopItems.filter(item => {
                         const progress = getDockItemProgress(item.UNIQUE_ID);
                         return progress.checker && progress.inspector;
                     }).length;
-                    return `<div class="bg-white border border-gray-200 rounded-xl shadow-sm mb-3 overflow-hidden cursor-pointer active:scale-[0.99] transition-transform" onclick="selectDockStop('${esc(stopNum)}')"><div class="p-4"><div class="flex justify-between items-start gap-3 mb-2"><div><div class="font-black text-xl text-[#007a4d] leading-none">STOP ${stopNum}</div><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-1">${stopItems.length} Rows</div></div><div class="text-right"><div class="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded ${doneCount === stopItems.length ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}">${doneCount}/${stopItems.length} Done</div></div></div><div class="text-sm font-bold text-gray-800 leading-tight">${cust}</div>${cons && cons !== cust ? `<div class="text-xs font-semibold text-gray-500 mt-1">${cons}</div>` : ''}<div class="flex flex-wrap gap-2 mt-3 text-[10px] font-bold uppercase tracking-wider"><span class="bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-100"><i class="ph-bold ph-user mr-1"></i>${rep}</span><span class="bg-gray-100 text-gray-700 px-2 py-1 rounded border border-gray-200"><i class="ph-bold ph-map-pin mr-1"></i>${state}</span></div></div><div class="bg-gray-50 border-t border-gray-100 px-4 py-3 flex items-center justify-between"><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Open Stop</span><i class="ph-bold ph-caret-right text-gray-300 text-xl"></i></div></div>`;
-                }).join('');
-                container.innerHTML = html;
+                    return { stopNum, count: stopItems.length, doneCount, rep: lead.SALESREPNAME || lead.SALESREPID || 'Unknown Rep', cust: lead.CUSTOMERNAME || 'Unknown Customer', cons: lead.CONSIGNEENAME || lead.CONSIGNEE || '', state: lead.CONSIGNEESTATE || lead.STATE || 'N/A' };
+                });
+                const prefixHtml = `<div class="back-btn" onclick="dockViewLevel=0; selectedDockStop=null; renderDocks()"><i class="ph-bold ph-arrow-left"></i> Back to Docks</div>`;
+                renderMarkupChunkedByKey('docks-stops', container, crumb, stopCards, `Dock: ${selectedDockNum}`, (stopCard) => {
+                    return `<div class="bg-white border border-gray-200 rounded-xl shadow-sm mb-3 overflow-hidden cursor-pointer active:scale-[0.99] transition-transform" onclick="selectDockStop('${esc(stopCard.stopNum)}')"><div class="p-4"><div class="flex justify-between items-start gap-3 mb-2"><div><div class="font-black text-xl text-[#007a4d] leading-none">STOP ${stopCard.stopNum}</div><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-1">${stopCard.count} Rows</div></div><div class="text-right"><div class="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded ${stopCard.doneCount === stopCard.count ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}">${stopCard.doneCount}/${stopCard.count} Done</div></div></div><div class="text-sm font-bold text-gray-800 leading-tight">${stopCard.cust}</div>${stopCard.cons && stopCard.cons !== stopCard.cust ? `<div class="text-xs font-semibold text-gray-500 mt-1">${stopCard.cons}</div>` : ''}<div class="flex flex-wrap gap-2 mt-3 text-[10px] font-bold uppercase tracking-wider"><span class="bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-100"><i class="ph-bold ph-user mr-1"></i>${stopCard.rep}</span><span class="bg-gray-100 text-gray-700 px-2 py-1 rounded border border-gray-200"><i class="ph-bold ph-map-pin mr-1"></i>${stopCard.state}</span></div></div><div class="bg-gray-50 border-t border-gray-100 px-4 py-3 flex items-center justify-between"><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Open Stop</span><i class="ph-bold ph-caret-right text-gray-300 text-xl"></i></div></div>`;
+                }, { prefixHtml, approxCardHeight: 175, emptyHtml: `<div class="p-8 text-center text-gray-400">No stops remain in this dock.</div>` });
                 return;
             }
 
@@ -12430,15 +12551,15 @@ activeDriveTab = tab;
                 payload.photo_link = null;
                 payload.photo_name = null;
             }
+            const changedDatasetKeys = getDatasetKeysForTable(targetTable);
+            const visibleAffectedViews = getVisibleAffectedViewIds(changedDatasetKeys);
             if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-' || prefix === 'flyer-') syncSharedFlyerPhotoFields(activeItem, prefix);
             normalizeRowPhotoFields(activeItem);
-            buildSearchIndex(activeItem);
-            syncRowDataAcrossViews(activeItem);
             refreshDetailInputsFromActiveItem();
             renderSavedPhotos();
             renderPhotoGallery();
             refreshProtectedSections();
-            reRenderCurrentView();
+            propagateCommittedEdit(targetTable, activeItem, changedDatasetKeys, visibleAffectedViews, { prefix, delay: 0, typingDelay: 140, requestUiDelay: REQUEST_REALTIME_UI_DELAY_MS });
             try {
                 await supabaseFetch(targetTable, 'PATCH', payload, `unique_id=eq.${encodeURIComponent(activeItem.UNIQUE_ID)}`);
                 showToast('Cleared', 'Row data and photos were cleared from this section.');
@@ -12447,13 +12568,11 @@ activeDriveTab = tab;
                 Object.keys(activeItem).forEach((key) => delete activeItem[key]);
                 Object.assign(activeItem, beforeState);
                 normalizeRowPhotoFields(activeItem);
-                buildSearchIndex(activeItem);
-                syncRowDataAcrossViews(activeItem);
                 refreshDetailInputsFromActiveItem();
                 renderSavedPhotos();
                 renderPhotoGallery();
                 refreshProtectedSections();
-                reRenderCurrentView();
+                propagateCommittedEdit(targetTable, activeItem, changedDatasetKeys, visibleAffectedViews, { prefix, delay: 0, typingDelay: 140, requestUiDelay: REQUEST_REALTIME_UI_DELAY_MS });
                 showToast('Error', err && err.message ? err.message : 'Could not clear this row section.', true);
                 return false;
             }
@@ -14475,7 +14594,7 @@ activeDriveTab = tab;
             setPullRefreshIndicator('refreshing');
             try {
                 await fetchBackgroundData('force');
-                reRenderCurrentView();
+                queueVisibleTrackedViewRefresh('manual-refresh', 0, 160);
                 showToast('Updated', 'Data refreshed.');
             } catch (err) {
                 showToast('Error', 'Refresh failed.', true);
@@ -15323,17 +15442,26 @@ activeDriveTab = tab;
             let item = requestsInventory.find(i => i.UNIQUE_ID === uid);
             if(!item) return;
 
+            const previousRepAction = item.REQ_REP_ACTION;
+            const previousArchived = item.REQ_ARCHIVED;
             let folderId = item.REQUEST_FOLDER;
+            const changedDatasetKeys = getDatasetKeysForTable('v2_active_request');
+            const visibleAffectedViews = getVisibleAffectedViewIds(changedDatasetKeys);
             item.REQ_REP_ACTION = action;
             item.REQ_ARCHIVED = true;
-            reRenderCurrentView();
+            propagateCommittedEdit('v2_active_request', item, changedDatasetKeys, visibleAffectedViews, { delay: 0, typingDelay: 140, requestUiDelay: REQUEST_REALTIME_UI_DELAY_MS });
             showToast("Saving...", `Marked as ${action}`, false);
 
             supabaseFetch('v2_active_request', 'PATCH', { req_rep_action: action, req_archived: true }, `unique_id=eq.${uid}`)
             .then(() => {
                 showToast("Saved", `Item ${action}`);
-                checkFolderCompletion(folderId);
-            }).catch(e => showToast("Error", "Network Error", true));
+                scheduleUiRender(`request-folder-complete:${folderId}`, () => checkFolderCompletion(folderId), 24);
+            }).catch(() => {
+                item.REQ_REP_ACTION = previousRepAction;
+                item.REQ_ARCHIVED = previousArchived;
+                propagateCommittedEdit('v2_active_request', item, changedDatasetKeys, visibleAffectedViews, { delay: 0, typingDelay: 140, requestUiDelay: REQUEST_REALTIME_UI_DELAY_MS });
+                showToast("Error", "Network Error", true);
+            });
         }
 
         function checkFolderCompletion(folderId) {
@@ -15520,12 +15648,15 @@ activeDriveTab = tab;
             showToast("Assigning...","Updating Database...",false);
             const domIds = quickAssign ? Array.from(driveQuickRequestItems) : Array.from(selectedItems);
             let promises=[];
+            const touchedItems = [];
             domIds.forEach(dId=>{
                 let item=findItemByDomId(dId);
                 if(item){
                     item.ASSIGNEDTO=user;
                     item.DATE_COMPLETED="";
                     buildSearchIndex(item);
+                    syncRowDataAcrossViews(item);
+                    touchedItems.push(item);
                     const table=item.SOURCE_TABLE||'v2_master_inventory';
                     promises.push(supabaseFetch(table,'PATCH',{assignedto:user,date_completed:null},`unique_id=eq.${item.UNIQUE_ID}`))
                 }
@@ -15537,7 +15668,13 @@ activeDriveTab = tab;
                 } else {
                     clearSelection();
                 }
-                reRenderCurrentView()
+                const changedDatasetKeys = new Set();
+                touchedItems.forEach((item) => {
+                    getDatasetKeysForTable(item.SOURCE_TABLE || 'v2_master_inventory').forEach((key) => changedDatasetKeys.add(key));
+                });
+                const nextChangedKeys = Array.from(changedDatasetKeys);
+                if (nextChangedKeys.length) propagateCommittedEdit('', null, nextChangedKeys, getVisibleAffectedViewIds(nextChangedKeys), { delay: 0, typingDelay: 140 });
+                else queueVisibleTrackedViewRefresh('assign', 0, 140);
             }).catch(err=>{showToast("Error","Assignment failed",true)})
         }
 
@@ -17878,24 +18015,22 @@ ${folderNote ? `Folder Note: ${folderNote}
             }
             if (activeTaskTab === 'endcap') {
                 if (taskViewLevel === 0) {
-                    let folders = [...new Set(tabItems.map(i => i.END_CAP_FOLDER || 'Unassigned'))].sort();
-                    container.innerHTML = folders.map(f => {
-                        let count = tabItems.filter(i => (i.END_CAP_FOLDER || 'Unassigned') === f).length;
-                        return `<div class="bg-white border border-yellow-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectedEndCapFolder='${esc(f)}'; taskViewLevel=1; renderTasks()"><div class="flex items-center gap-3"><div class="bg-yellow-50 p-2 rounded-lg"><i class="ph-fill ph-storefront text-2xl text-yellow-500"></i></div><span class="font-bold text-lg text-yellow-800">${f}</span></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${count} Items</span></div>`;
-                    }).join('');
+                    const folderRows = [...new Set(tabItems.map(i => i.END_CAP_FOLDER || 'Unassigned'))].sort().map((folderName) => ({
+                        folderName,
+                        count: tabItems.filter(i => (i.END_CAP_FOLDER || 'Unassigned') === folderName).length
+                    }));
+                    renderMarkupChunkedByKey('tasks-endcap-folders', container, null, folderRows, '', (folderRow) => {
+                        return `<div class="bg-white border border-yellow-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectedEndCapFolder='${esc(folderRow.folderName)}'; taskViewLevel=1; renderTasks()"><div class="flex items-center gap-3"><div class="bg-yellow-50 p-2 rounded-lg"><i class="ph-fill ph-storefront text-2xl text-yellow-500"></i></div><span class="font-bold text-lg text-yellow-800">${folderRow.folderName}</span></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${folderRow.count} Items</span></div>`;
+                    }, { approxCardHeight: 96, emptyHtml: `<div class="p-8 text-center text-gray-400">No end cap folders found.</div>` });
                 } else if (taskViewLevel === 1) {
                     let fItems = tabItems.filter(i => (i.END_CAP_FOLDER || 'Unassigned') === selectedEndCapFolder);
                     fItems.sort((a,b) => String(a.COMMONNAME || '').localeCompare(String(b.COMMONNAME || '')));
                     const prefixHtml = `<div class="back-btn" onclick="taskViewLevel=0; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to End Caps</div>`;
-                    if (shouldUseChunkedCardRender(fItems.length, 72, 140)) {
-                        renderMarkupChunkedByKey('tasks-main', container, null, fItems, '', (item) => generateCard(item, 'tasks', 'status-yellow'), {
-                            prefixHtml,
-                            approxCardHeight: 260,
-                            emptyHtml: `<div class="p-8 text-center text-gray-400">No rows remain in this folder.</div>`
-                        });
-                    } else {
-                        container.innerHTML = prefixHtml + fItems.map(i => generateCard(i, 'tasks', 'status-yellow')).join('');
-                    }
+                    renderMarkupChunkedByKey('tasks-endcap-items', container, null, fItems, '', (item) => generateCard(item, 'tasks', 'status-yellow'), {
+                        prefixHtml,
+                        approxCardHeight: 260,
+                        emptyHtml: `<div class="p-8 text-center text-gray-400">No rows remain in this folder.</div>`
+                    });
                 }
             } else if (activeTaskTab === 'flyer') {
                 const flyerTabsHtml = `<div class="flex gap-2 mb-3"><button class="task-tab ${flyerFolderTabLabel === 'Active' ? 'active' : ''}" onclick="return setFlyerFolderTab('active')">Active</button><button class="task-tab ${flyerFolderTabLabel === 'Archive' ? 'active' : ''}" onclick="return setFlyerFolderTab('archive')">Archive</button></div>`;
@@ -17915,12 +18050,14 @@ ${folderNote ? `Folder Note: ${folderNote}
                     const nextTab = flyerFolderTabLabel === 'Archive' ? 'active' : 'archive';
                     const actionLabel = flyerFolderTabLabel === 'Archive' ? 'Restore' : 'Archive';
                     const actionStyle = flyerFolderTabLabel === 'Archive' ? 'color:#0f766e;background:#ecfeff;' : 'color:#4338ca;background:#eef2ff;';
-                    const folderHtml = folderNames.length ? folderNames.map(folderName => {
-                        const meta = folderMap[folderName];
-                        const assignees = Array.from(meta.assignees).join(', ') || 'Unassigned';
-                        return `<div class="request-swipe-row flyer-folder-swipe-row"><button type="button" class="request-swipe-action" style="${actionStyle}" onclick="event.preventDefault(); event.stopPropagation(); return setFlyerFolderArchiveState('${esc(folderName)}', '${nextTab}', { currentTab: '${getFlyerFolderTabValue(activeFlyerFolderTab)}' })">${actionLabel}</button><div class="request-swipe-surface" onclick="return handleFlyerFolderSurfaceClick(event, this, '${esc(folderName)}', '${getFlyerFolderTabValue(activeFlyerFolderTab)}')"><div class="bg-white border border-indigo-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform"><div class="min-w-0 pr-3"><div class="font-bold text-lg text-indigo-800 truncate">${folderName}</div><div class="text-xs font-semibold text-indigo-500 mt-1 truncate">${assignees}</div></div><div class="text-right shrink-0"><div class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${meta.count} Rows</div><div class="text-[11px] font-semibold text-gray-500 mt-2">${meta.complete} Complete</div></div></div></div></div>`;
-                    }).join('') : emptyFoldersHtml;
-                    container.innerHTML = `${flyerTabsHtml}${folderHtml}`;
+                    const folderRows = folderNames.map((folderName) => ({
+                        folderName,
+                        meta: folderMap[folderName],
+                        assignees: Array.from((folderMap[folderName] && folderMap[folderName].assignees) || []).join(', ') || 'Unassigned'
+                    }));
+                    renderMarkupChunkedByKey('tasks-flyer-folders', container, null, folderRows, '', (folderRow) => {
+                        return `<div class="request-swipe-row flyer-folder-swipe-row"><button type="button" class="request-swipe-action" style="${actionStyle}" onclick="event.preventDefault(); event.stopPropagation(); return setFlyerFolderArchiveState('${esc(folderRow.folderName)}', '${nextTab}', { currentTab: '${getFlyerFolderTabValue(activeFlyerFolderTab)}' })">${actionLabel}</button><div class="request-swipe-surface" onclick="return handleFlyerFolderSurfaceClick(event, this, '${esc(folderRow.folderName)}', '${getFlyerFolderTabValue(activeFlyerFolderTab)}')"><div class="bg-white border border-indigo-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform"><div class="min-w-0 pr-3"><div class="font-bold text-lg text-indigo-800 truncate">${folderRow.folderName}</div><div class="text-xs font-semibold text-indigo-500 mt-1 truncate">${folderRow.assignees}</div></div><div class="text-right shrink-0"><div class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${folderRow.meta.count} Rows</div><div class="text-[11px] font-semibold text-gray-500 mt-2">${folderRow.meta.complete} Complete</div></div></div></div></div>`;
+                    }, { prefixHtml: flyerTabsHtml, approxCardHeight: 118, emptyHtml: emptyFoldersHtml });
                 } else if (taskViewLevel === 1) {
                     let folderItems = visibleFlyerItems.filter(i => getFlyerFolderName(i) === selectedFlyerFolder);
                     folderItems.sort((a,b) => {
@@ -17936,38 +18073,38 @@ ${folderNote ? `Folder Note: ${folderNote}
                         : `<button class="w-full sm:w-auto min-h-[42px] px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-[0.14em] transition-colors duration-150 bg-white border border-indigo-200 text-indigo-700 shadow-sm hover:bg-indigo-100" onclick="return startAddRowsToFlyerFolder('${esc(selectedFlyerFolder || '')}')">Add Rows To Folder</button>`;
                     const folderHeader = `<div class="mb-3 rounded-xl border border-indigo-200 bg-indigo-50 p-4"><div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-indigo-600">${getFlyerFolderTabValue(activeFlyerFolderTab) === 'archive' ? 'Archived Flyer Folder' : 'Flyer Folder'}</div><div class="text-lg font-black text-indigo-900 truncate mt-1">${selectedFlyerFolder || ''}</div><div class="text-[11px] font-semibold text-indigo-500 mt-1">${folderItems.length} row${folderItems.length === 1 ? '' : 's'} | ${folderAssignees}</div></div>${folderActionButton}</div></div>`;
                     const prefixHtml = `${flyerTabsHtml}<div class="back-btn" onclick="return backToFlyerFolderList()"><i class="ph-bold ph-arrow-left"></i> Back to Folders</div>${folderHeader}`;
-                    if (shouldUseChunkedCardRender(folderItems.length, 60, 120)) {
-                        renderMarkupChunkedByKey('tasks-main', container, null, folderItems, '', (item) => generateCard(item, 'tasks', 'status-indigo'), {
-                            prefixHtml,
-                            approxCardHeight: 300,
-                            emptyHtml: `<div class="p-8 text-center text-gray-400">No rows remain in this flyer folder.</div>`,
-                            onComplete: () => decorateFlyerTaskRows()
-                        });
-                    } else {
-                        const detailHtml = folderItems.length ? folderItems.map(i => generateCard(i, 'tasks', 'status-indigo')).join('') : `<div class="p-8 text-center text-gray-400">No rows remain in this flyer folder.</div>`;
-                        container.innerHTML = prefixHtml + detailHtml;
-                        requestAnimationFrame(decorateFlyerTaskRows);
-                    }
+                    renderMarkupChunkedByKey('tasks-flyer-folder-items', container, null, folderItems, '', (item) => generateCard(item, 'tasks', 'status-indigo'), {
+                        prefixHtml,
+                        approxCardHeight: 300,
+                        emptyHtml: `<div class="p-8 text-center text-gray-400">No rows remain in this flyer folder.</div>`,
+                        onComplete: () => decorateFlyerTaskRows()
+                    });
                 }
             } else {
                 if (taskViewLevel === 0) {
-                    let blocks = {};
-                    tabItems.forEach(i => {
-                        let blockAlpha = getTaskBlockAlpha(i);
-                        if (!blocks[blockAlpha]) blocks[blockAlpha] = { count: 0 };
-                        blocks[blockAlpha].count++;
-                    });
-                    let html = Object.keys(blocks).sort().map(b => `<div class="bg-white border border-green-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="return openTaskBlockView('${esc(b)}')"><div class="flex items-center gap-3"><div class="bg-green-100 text-[#007a4d] px-3 py-1.5 rounded-lg font-black text-lg">${b}</div><span class="font-bold text-lg text-gray-700">Block ${b}</span></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${blocks[b].count} Items</span></div>`).join('');
-                    container.innerHTML = html;
+                    const blockCounts = tabItems.reduce((acc, item) => {
+                        const blockAlpha = getTaskBlockAlpha(item);
+                        if (!acc[blockAlpha]) acc[blockAlpha] = 0;
+                        acc[blockAlpha] += 1;
+                        return acc;
+                    }, {});
+                    const blockRows = Object.keys(blockCounts).sort().map((blockAlpha) => ({ blockAlpha, count: blockCounts[blockAlpha] }));
+                    renderMarkupChunkedByKey('tasks-blocks', container, null, blockRows, '', (blockRow) => {
+                        return `<div class="bg-white border border-green-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="return openTaskBlockView('${esc(blockRow.blockAlpha)}')"><div class="flex items-center gap-3"><div class="bg-green-100 text-[#007a4d] px-3 py-1.5 rounded-lg font-black text-lg">${blockRow.blockAlpha}</div><span class="font-bold text-lg text-gray-700">Block ${blockRow.blockAlpha}</span></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${blockRow.count} Items</span></div>`;
+                    }, { approxCardHeight: 88, emptyHtml: `<div class="p-8 text-center text-gray-400">No task blocks found.</div>` });
                 } else if (taskViewLevel === 1) {
                     let bItems = tabItems.filter(i => getTaskBlockAlpha(i) === selectedTaskBlock);
-                    let locs = [...new Set(bItems.map(i => getTaskLocationBucket(i)))].sort((a,b) => compareLocationCodeValues(a, b));
-                    let html = `<div class="back-btn" onclick="return backToTaskBlockList()"><i class="ph-bold ph-arrow-left"></i> Back to Blocks</div>`;
-                    html += locs.map(l => {
-                        let count = bItems.filter(i => getTaskLocationBucket(i) === l).length;
-                        return `<div class="drill-item" onclick="return openTaskLocationView('${esc(l)}')"><span class="font-bold text-lg text-gray-800">${l} <span class="text-gray-400 text-sm font-normal">(${count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
-                    }).join('');
-                    container.innerHTML = html;
+                    const locCounts = bItems.reduce((acc, item) => {
+                        const locationCode = getTaskLocationBucket(item);
+                        if (!acc[locationCode]) acc[locationCode] = 0;
+                        acc[locationCode] += 1;
+                        return acc;
+                    }, {});
+                    const locRows = Object.keys(locCounts).sort((a,b) => compareLocationCodeValues(a, b)).map((locationCode) => ({ locationCode, count: locCounts[locationCode] }));
+                    const prefixHtml = `<div class="back-btn" onclick="return backToTaskBlockList()"><i class="ph-bold ph-arrow-left"></i> Back to Blocks</div>`;
+                    renderMarkupChunkedByKey('tasks-locations', container, null, locRows, '', (locationRow) => {
+                        return `<div class="drill-item" onclick="return openTaskLocationView('${esc(locationRow.locationCode)}')"><span class="font-bold text-lg text-gray-800">${locationRow.locationCode} <span class="text-gray-400 text-sm font-normal">(${locationRow.count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
+                    }, { prefixHtml, approxCardHeight: 72, emptyHtml: `<div class="p-8 text-center text-gray-400">No locations found for this block.</div>` });
                 } else if (taskViewLevel === 2) {
                     let fItems = tabItems.filter(i => getTaskLocationBucket(i) === selectedTaskLoc);
                     fItems.sort((a,b) => {
@@ -17982,18 +18119,11 @@ ${folderNote ? `Folder Note: ${folderNote}
                     const renderRow = activeTaskTab === 'season' && activeTaskSubview === 'av-blanks'
                         ? (item) => renderTaskAvBlankCard(item)
                         : (item) => generateCard(item, 'tasks', colorClass);
-                    if (shouldUseChunkedCardRender(fItems.length, 72, 150)) {
-                        renderMarkupChunkedByKey('tasks-main', container, null, fItems, '', renderRow, {
-                            prefixHtml,
-                            approxCardHeight: activeTaskTab === 'season' && activeTaskSubview === 'av-blanks' ? 170 : 260,
-                            emptyHtml: `<div class="p-8 text-center text-gray-400">No rows found for this location.</div>`
-                        });
-                    } else {
-                        const detailHtml = activeTaskTab === 'season' && activeTaskSubview === 'av-blanks'
-                            ? fItems.map(i => renderTaskAvBlankCard(i)).join('')
-                            : fItems.map(i => generateCard(i, 'tasks', colorClass)).join('');
-                        container.innerHTML = prefixHtml + detailHtml;
-                    }
+                    renderMarkupChunkedByKey('tasks-main', container, null, fItems, '', renderRow, {
+                        prefixHtml,
+                        approxCardHeight: activeTaskTab === 'season' && activeTaskSubview === 'av-blanks' ? 170 : 260,
+                        emptyHtml: `<div class="p-8 text-center text-gray-400">No rows found for this location.</div>`
+                    });
                 }
             }
         }
@@ -18024,12 +18154,10 @@ ${folderNote ? `Folder Note: ${folderNote}
             });
 
             const crumbText = safeRole === 'SALESREP' ? `My Reserves (${items.length})` : `Reserves (${items.length})`;
-            if (items.length > 220) {
-                renderAVOpenCardsChunked(container, crumb, items, 'reserves_drill', crumbText);
-                return;
-            }
-            crumb.innerText = crumbText;
-            container.innerHTML = items.map(i => generateCard(i, 'reserves_drill', 'status-indigo')).join('');
+            renderMarkupChunkedByKey('reserves-main', container, crumb, items, crumbText, (item) => generateCard(item, 'reserves_drill', 'status-indigo'), {
+                approxCardHeight: 305,
+                emptyHtml: `<div class="p-8 text-center text-gray-400">No reserves found.</div>`
+            });
         }
         function setReportTab(tab) {
             activeReportTab = tab;
@@ -18095,7 +18223,6 @@ ${folderNote ? `Folder Note: ${folderNote}
                 return;
             }
             if(reviewViewLevel === 0){
-                crumb.innerText = "Needs Location Priority Review";
                 let groups = {};
                 reviewItems.forEach(i => {
                     let code = i.ITEMCODE || "UNKNOWN";
@@ -18105,13 +18232,17 @@ ${folderNote ? `Folder Note: ${folderNote}
                     groups[code].count++;
                 });
                 let sorted = Object.values(groups).sort((a,b) => String(a.name).localeCompare(String(b.name)));
-                let html = sorted.map(g => `<div class="bg-yellow-50 border border-yellow-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectReviewItem('${esc(g.code)}', '${esc(g.name)}', '${esc(g.size)}')"><div class="flex-grow min-w-0 pr-3"><div class="font-bold text-[15px] text-yellow-800 truncate">${g.name}</div><div class="text-xs font-semibold text-yellow-600 mt-1">${g.size} <span class="mx-2 text-yellow-300">|</span> <span class="font-mono text-yellow-700">${g.code}</span></div></div><div class="bg-white px-3 py-1 rounded-lg shadow-sm border border-yellow-100 text-yellow-600 font-bold text-xs whitespace-nowrap">${g.count} Locs</div></div>`).join('');
-                container.innerHTML = html;
+                renderMarkupChunkedByKey('review-main', container, crumb, sorted, 'Needs Location Priority Review', (group) => {
+                    return `<div class="bg-yellow-50 border border-yellow-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectReviewItem('${esc(group.code)}', '${esc(group.name)}', '${esc(group.size)}')"><div class="flex-grow min-w-0 pr-3"><div class="font-bold text-[15px] text-yellow-800 truncate">${group.name}</div><div class="text-xs font-semibold text-yellow-600 mt-1">${group.size} <span class="mx-2 text-yellow-300">|</span> <span class="font-mono text-yellow-700">${group.code}</span></div></div><div class="bg-white px-3 py-1 rounded-lg shadow-sm border border-yellow-100 text-yellow-600 font-bold text-xs whitespace-nowrap">${group.count} Locs</div></div>`;
+                }, { approxCardHeight: 92, emptyHtml: `<div class="p-8 text-center text-gray-400">No items require manager review.</div>` });
             } else if(reviewViewLevel === 1){
-                crumb.innerText = `${selectedReviewCommonName} / ${selectedReviewContSize}`;
                 let items = reviewItems.filter(i => i.ITEMCODE === selectedReviewItemCode);
                 items.sort((a,b) => String(a.LOCATIONCODE || "").localeCompare(String(b.LOCATIONCODE || ""), undefined, {numeric: true}));
-                container.innerHTML = `<div class="back-btn" onclick="resetReviewView()"><i class="ph-bold ph-arrow-left"></i> Back to List</div>` + items.map(i => generateCard(i, 'review', 'status-yellow')).join('');
+                renderMarkupChunkedByKey('review-detail', container, crumb, items, `${selectedReviewCommonName} / ${selectedReviewContSize}`, (item) => generateCard(item, 'review', 'status-yellow'), {
+                    prefixHtml: `<div class="back-btn" onclick="resetReviewView()"><i class="ph-bold ph-arrow-left"></i> Back to List</div>`,
+                    approxCardHeight: 305,
+                    emptyHtml: `<div class="p-8 text-center text-gray-400">No review rows found.</div>`
+                });
             }
         }
 
@@ -18562,6 +18693,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 const targetTable = (prefix === 'req-') ? 'v2_active_request' : (itemToSave.SOURCE_TABLE || 'v2_master_inventory');
                 const pendingUploads = isComplete ? getPendingPhotoUploadsForItem(itemToSave) : [];
                 let savePayloadSignature = '';
+                const savePerfStartedAt = beginInternalPerfMeasure();
                 const getChangedDatasetKeys = (artifacts = null) => {
                     const changedKeys = new Set(getDatasetKeysForTable(targetTable));
                     if (artifacts && artifacts.masterSyncPayload) {
@@ -18589,6 +18721,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     itemToSave.REQ_STATUS = previousReqStatus;
                     if (isComplete && btnComp) btnComp.innerText = 'MARK DONE';
                     if (didOptimisticClose || didOptimisticRender) queueVisibleSaveRefresh(16);
+                    recordInternalPerfDuration('saveDurations', savePerfStartedAt, `${prefix}${isComplete ? ':complete-error' : (isSilentAutoSave ? ':autosave-error' : ':save-error')}`);
                     if (!isSilentAutoSave) showToast('Network Error', message || 'Could not reach database.', true);
                 };
 
@@ -18601,6 +18734,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     if (isCoordinatedAutoSave && savePayloadSignature) rememberAutoSaveSignature(rowSaveKey, savePayloadSignature);
 
                     propagateCommittedEdit(targetTable, itemToSave, changedDatasetKeys, visibleAffectedViews, { prefix, delay: 0, typingDelay: 120, requestUiDelay: REQUEST_REALTIME_UI_DELAY_MS });
+                    recordInternalPerfDuration('saveDurations', savePerfStartedAt, `${prefix}${isComplete ? ':complete' : (isSilentAutoSave ? ':autosave' : ':save')}`);
 
                     const productivityHistoryEntry = isComplete && !wasAlreadyComplete
                         ? buildProductivityHistoryEntry(itemToSave, {
@@ -18681,7 +18815,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                             runDetailWriteWithRetry('v2_master_inventory', 'PATCH', artifacts.masterSyncPayload, 'unique_id=eq.' + encodeURIComponent(artifacts.masterSyncId), saveRequestOptions).catch(() => {});
                         }, 42);
                     }
-                    deferNonCriticalWork('dataset-catchup', () => queueVisibleDatasetCatchup(POST_SAVE_DATASET_CATCHUP_MS), 96);
+                    const shouldQueueGenericCatchup = !isLagSensitiveDetailPrefix(prefix);
+                    if (shouldQueueGenericCatchup) deferNonCriticalWork('dataset-catchup', () => queueVisibleDatasetCatchup(POST_SAVE_DATASET_CATCHUP_MS), 96);
 
 
                     const immediateCleanupOps = avRuleColumnsReady === true
