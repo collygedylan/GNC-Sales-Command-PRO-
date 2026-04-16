@@ -457,7 +457,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-        <div id="header-version" class="nav-version-pill">V2026.04.16.03</div>
+        <div id="header-version" class="nav-version-pill">V2026.04.16.04</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -2246,12 +2246,13 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             if (!item || !hasTrackedAvPayload(item)) return [];
             const reasons = [];
             const currentHold = getHoldStopSnapshotFromItem(item);
+            const trackedHoldSnapshot = normalizeHoldStopSnapshotValue(firstNonEmptyValue(item && item.AV_RULE_HOLDSTOP_SNAPSHOT, item && item.av_rule_holdstop_snapshot, ''));
             const bundleUpdatedAt = getEffectiveAvRuleUpdatedAt(item);
             const effectiveLocMatchQty = calculateLocMatchQtyValue(item) ?? parseAppNumber(item.LOC_MATCH_QTY);
 
             if (effectiveLocMatchQty != null) item.LOC_MATCH_QTY = effectiveLocMatchQty;
             if (effectiveLocMatchQty != null && effectiveLocMatchQty <= 0) reasons.push('loc_match_qty_zero');
-            if (hasHoldStopBlockCode(currentHold)) reasons.push('holdstop_blocked');
+            if (hasHoldStopBlockCode(currentHold) && !hasHoldStopBlockCode(trackedHoldSnapshot)) reasons.push('holdstop_blocked');
             if (bundleUpdatedAt) {
                 const ageMs = Date.now() - Date.parse(bundleUpdatedAt);
                 if (ageMs > AV_RULE_MAX_AGE_MS) reasons.push('stale_10_day');
@@ -4447,7 +4448,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         const PRODUCTIVITY_TIME_ZONE = 'America/Chicago';
         const PRODUCTIVITY_HISTORY_BACKFILL_STORAGE_KEY = 'gnc_productivity_backfill_v3';
         const PRODUCTIVITY_COMPLETION_SOURCE_KINDS = new Set(['season_sales_note','location_sales_note']);
-const APP_VERSION = 'V2026.04.16.03';
+const APP_VERSION = 'V2026.04.16.04';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
