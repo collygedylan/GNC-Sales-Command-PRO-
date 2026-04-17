@@ -457,7 +457,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-        <div id="header-version" class="nav-version-pill">V2026.04.17.05</div>
+        <div id="header-version" class="nav-version-pill">V2026.04.17.06</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -1139,29 +1139,29 @@
             internalPerfStats.loginDiagnostics[safeKey] = (Number(internalPerfStats.loginDiagnostics[safeKey]) || 0) + (Number(amount) || 0);
         }
 
-        function noteRequestInsertDiagnostic(key = '''', amount = 1) {
-            const safeKey = String(key || '''').trim();
+        function noteRequestInsertDiagnostic(key = '', amount = 1) {
+            const safeKey = String(key || '').trim();
             if (!safeKey) return;
-            if (!internalPerfStats.requestInsertDiagnostics || typeof internalPerfStats.requestInsertDiagnostics !== ''object'') {
+            if (!internalPerfStats.requestInsertDiagnostics || typeof internalPerfStats.requestInsertDiagnostics !== 'object') {
                 internalPerfStats.requestInsertDiagnostics = Object.create(null);
             }
             internalPerfStats.requestInsertDiagnostics[safeKey] = (Number(internalPerfStats.requestInsertDiagnostics[safeKey]) || 0) + (Number(amount) || 0);
         }
 
         function extractErrorMessageText(error) {
-            if (!error) return '''';
-            if (typeof error === ''string'') return error;
-            if (typeof error.message === ''string'' && error.message) return error.message;
+            if (!error) return '';
+            if (typeof error === 'string') return error;
+            if (typeof error.message === 'string' && error.message) return error.message;
             try {
                 return JSON.stringify(error);
             } catch (jsonError) {
-                return String(error || '''');
+                return String(error || '');
             }
         }
 
-        function tryParseJsonErrorMessage(message = '''') {
-            const rawMessage = String(message || '''').trim();
-            if (!rawMessage || (!rawMessage.startsWith(''{'') && !rawMessage.startsWith(''[''))) return null;
+        function tryParseJsonErrorMessage(message = '') {
+            const rawMessage = String(message || '').trim();
+            if (!rawMessage || (!rawMessage.startsWith('{') && !rawMessage.startsWith('['))) return null;
             try {
                 return JSON.parse(rawMessage);
             } catch (error) {
@@ -1169,9 +1169,9 @@
             }
         }
 
-        function buildTaggedError(message = '''', metadata = {}) {
-            const taggedError = new Error(String(message || ''Unexpected error''));
-            if (metadata && typeof metadata === ''object'') {
+        function buildTaggedError(message = '', metadata = {}) {
+            const taggedError = new Error(String(message || 'Unexpected error'));
+            if (metadata && typeof metadata === 'object') {
                 Object.keys(metadata).forEach((key) => {
                     taggedError[key] = metadata[key];
                 });
@@ -1190,29 +1190,29 @@
         }
 
         function getLoginFailureInfo(error) {
-            const explicitCategory = String(error && error.loginCategory || '''').trim().toLowerCase();
+            const explicitCategory = String(error && error.loginCategory || '').trim().toLowerCase();
             const rawMessage = extractErrorMessageText(error);
             const message = rawMessage.toLowerCase();
             const parsed = tryParseJsonErrorMessage(rawMessage);
-            const parsedText = parsed && typeof parsed === ''object''
-                ? String(parsed.message || parsed.error || parsed.details || parsed.hint || '''').toLowerCase()
-                : '''';
+            const parsedText = parsed && typeof parsed === 'object'
+                ? String(parsed.message || parsed.error || parsed.details || parsed.hint || '').toLowerCase()
+                : '';
             const combinedText = `${message} ${parsedText}`.trim();
-            if (explicitCategory === ''response'') {
-                return { category: ''response'', userMessage: ''Login service responded with an error. Please try again.'' };
+            if (explicitCategory === 'response') {
+                return { category: 'response', userMessage: 'Login service responded with an error. Please try again.' };
             }
-            if (explicitCategory === ''parse'') {
-                return { category: ''parse'', userMessage: ''Login service returned an unreadable response. Please try again.'' };
+            if (explicitCategory === 'parse') {
+                return { category: 'parse', userMessage: 'Login service returned an unreadable response. Please try again.' };
             }
-            if (!combinedText) return { category: ''unknown'', userMessage: ''Could not reach the login service. Please try again.'' };
-            if (combinedText.includes(''timed out'')) return { category: ''transport'', userMessage: ''Login is taking longer than expected. Please try again.'' };
-            if (combinedText.includes(''failed to fetch'') || combinedText.includes(''fetch failed'') || combinedText.includes(''network'') || combinedText.includes(''load failed'') || combinedText.includes(''connection'')) {
-                return { category: ''transport'', userMessage: ''Could not reach the login service. Please check your connection and try again.'' };
+            if (!combinedText) return { category: 'unknown', userMessage: 'Could not reach the login service. Please try again.' };
+            if (combinedText.includes('timed out')) return { category: 'transport', userMessage: 'Login is taking longer than expected. Please try again.' };
+            if (combinedText.includes('failed to fetch') || combinedText.includes('fetch failed') || combinedText.includes('network') || combinedText.includes('load failed') || combinedText.includes('connection')) {
+                return { category: 'transport', userMessage: 'Could not reach the login service. Please check your connection and try again.' };
             }
-            if (combinedText.includes(''supabase read failed'') || parsed) {
-                return { category: ''response'', userMessage: ''Login service responded with an error. Please try again.'' };
+            if (combinedText.includes('supabase read failed') || parsed) {
+                return { category: 'response', userMessage: 'Login service responded with an error. Please try again.' };
             }
-            return { category: ''unknown'', userMessage: ''Could not reach the login service. Please try again.'' };
+            return { category: 'unknown', userMessage: 'Could not reach the login service. Please try again.' };
         }
 
         function getLoginFailureMessage(error) {
@@ -1230,36 +1230,35 @@
         }
 
         function getRequestInsertFailureInfo(error) {
-            const taggedInfo = error && error.requestInsertInfo && typeof error.requestInsertInfo === ''object'' ? error.requestInsertInfo : null;
+            const taggedInfo = error && error.requestInsertInfo && typeof error.requestInsertInfo === 'object' ? error.requestInsertInfo : null;
             if (taggedInfo) return taggedInfo;
             const rawMessage = extractErrorMessageText(error);
             const message = rawMessage.toLowerCase();
             const parsed = tryParseJsonErrorMessage(rawMessage);
-            const parsedText = parsed && typeof parsed === ''object''
-                ? String(parsed.message || parsed.error || parsed.details || parsed.hint || '''').toLowerCase()
-                : '''';
+            const parsedText = parsed && typeof parsed === 'object'
+                ? String(parsed.message || parsed.error || parsed.details || parsed.hint || '').toLowerCase()
+                : '';
             const combinedText = `${message} ${parsedText}`.trim();
             if (!combinedText) {
-                return { category: ''unknown'', retryable: false, userMessage: ''Request did not save. Please retry.'' };
+                return { category: 'unknown', retryable: false, userMessage: 'Request did not save. Please retry.' };
             }
-            if (combinedText.includes(''timed out'')) {
-                return { category: ''timeout'', retryable: true, userMessage: ''Request save timed out. Please retry.'' };
+            if (combinedText.includes('timed out')) {
+                return { category: 'timeout', retryable: true, userMessage: 'Request save timed out. Please retry.' };
             }
-            if (combinedText.includes(''failed to fetch'') || combinedText.includes(''fetch failed'') || combinedText.includes(''network'') || combinedText.includes(''load failed'') || combinedText.includes(''connection'')) {
-                return { category: ''transport'', retryable: true, userMessage: ''Request save was interrupted. Please retry.'' };
+            if (combinedText.includes('failed to fetch') || combinedText.includes('fetch failed') || combinedText.includes('network') || combinedText.includes('load failed') || combinedText.includes('connection')) {
+                return { category: 'transport', retryable: true, userMessage: 'Request save was interrupted. Please retry.' };
             }
-            if (combinedText.includes(''column'') || combinedText.includes(''relation'') || combinedText.includes(''schema'') || combinedText.includes(''violates'') || combinedText.includes(''not-null'') || combinedText.includes(''not null'') || combinedText.includes(''duplicate'') || combinedText.includes(''invalid input'') || combinedText.includes(''permission denied'') || combinedText.includes(''unauthorized'') || combinedText.includes(''forbidden'')) {
-                return { category: ''schema-validation'', retryable: false, userMessage: ''Request save was rejected by the server. Please try again.'' };
+            if (combinedText.includes('column') || combinedText.includes('relation') || combinedText.includes('schema') || combinedText.includes('violates') || combinedText.includes('not-null') || combinedText.includes('not null') || combinedText.includes('duplicate') || combinedText.includes('invalid input') || combinedText.includes('permission denied') || combinedText.includes('unauthorized') || combinedText.includes('forbidden')) {
+                return { category: 'schema-validation', retryable: false, userMessage: 'Request save was rejected by the server. Please try again.' };
             }
-            if (combinedText.includes(''supabase write failed'') || parsed) {
-                return { category: ''response'', retryable: false, userMessage: ''Request save failed on the server. Please try again.'' };
+            if (combinedText.includes('supabase write failed') || parsed) {
+                return { category: 'response', retryable: false, userMessage: 'Request save failed on the server. Please try again.' };
             }
-            return { category: ''unknown'', retryable: false, userMessage: ''Request did not save. Please retry.'' };
+            return { category: 'unknown', retryable: false, userMessage: 'Request did not save. Please retry.' };
         }
         function delayMs(duration = 0) {
             return new Promise((resolve) => setTimeout(resolve, Math.max(0, Number(duration) || 0)));
         }
-
         function isTouchLikeInteractionEvent(event) {
             if (!event) return false;
             const eventType = String(event.type || '').toLowerCase();
@@ -3614,39 +3613,39 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             }, 250);
         }
 
-        async function fetchLoginRowsWithRetry(url, label = ''exact'') {
+        async function fetchLoginRowsWithRetry(url, label = 'exact') {
             const timeoutMs = getLoginReadTimeoutMs();
             const maxAttempts = Math.max(1, LOGIN_READ_RETRY_COUNT + 1);
-            const phase = String(label || ''exact'').trim().toLowerCase();
+            const phase = String(label || 'exact').trim().toLowerCase();
             let lastError = null;
             for (let attempt = 0; attempt < maxAttempts; attempt++) {
                 const requestStartedAt = beginInternalPerfMeasure();
                 try {
                     const response = await fetchWithTimeout(url, {
-                        method: ''GET'',
-                        headers: { ''apikey'': SUPABASE_KEY, ''Authorization'': ''Bearer '' + SUPABASE_KEY, ''Content-Type'': ''application/json'' }
-                    }, timeoutMs, ''Login'');
-                    recordInternalPerfDuration(''loginReadDurations'', requestStartedAt, label);
-                    loginProgressOverrideLabel = '''';
+                        method: 'GET',
+                        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }
+                    }, timeoutMs, 'Login');
+                    recordInternalPerfDuration('loginReadDurations', requestStartedAt, label);
+                    loginProgressOverrideLabel = '';
                     return response;
                 } catch (error) {
-                    recordInternalPerfDuration(''loginReadDurations'', requestStartedAt, `${label}-error`);
+                    recordInternalPerfDuration('loginReadDurations', requestStartedAt, `${label}-error`);
                     lastError = error;
-                    noteLoginDiagnostic(''liveReadErrors'');
-                    if (String(error && error.message || '''').toLowerCase().includes(''timed out'')) noteLoginDiagnostic(''timeouts'');
+                    noteLoginDiagnostic('liveReadErrors');
+                    if (String(error && error.message || '').toLowerCase().includes('timed out')) noteLoginDiagnostic('timeouts');
                     if (attempt >= (maxAttempts - 1) || !isRetryableLoginReadError(error)) {
-                        noteLoginDiagnostic(''transportFailures'');
-                        loginProgressOverrideLabel = '''';
-                        throw buildTaggedError(extractErrorMessageText(error) || ''Could not reach the login service.'', { loginCategory: ''transport'', loginPhase: phase, cause: error });
+                        noteLoginDiagnostic('transportFailures');
+                        loginProgressOverrideLabel = '';
+                        throw buildTaggedError(extractErrorMessageText(error) || 'Could not reach the login service.', { loginCategory: 'transport', loginPhase: phase, cause: error });
                     }
-                    noteLoginDiagnostic(''retries'');
+                    noteLoginDiagnostic('retries');
                     loginProgressOverrideLabel = `Retrying login (${attempt + 2}/${maxAttempts})...`;
                     setLoginProgress(Math.max(currentProgress, 12), loginProgressOverrideLabel);
                     await delayMs(LOGIN_READ_RETRY_DELAY_MS);
                 }
             }
-            noteLoginDiagnostic(''transportFailures'');
-            throw buildTaggedError(extractErrorMessageText(lastError) || ''Could not reach the login service.'', { loginCategory: ''transport'', loginPhase: phase, cause: lastError });
+            noteLoginDiagnostic('transportFailures');
+            throw buildTaggedError(extractErrorMessageText(lastError) || 'Could not reach the login service.', { loginCategory: 'transport', loginPhase: phase, cause: lastError });
         }
         function startGlobalProgress() {
             if (initialAppLoadComplete || !initialAppLoadActive) return;
@@ -3967,7 +3966,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
 
         function sanitizeRequestInsertPayload(payload, canPersistRequestPhotoMode = true) {
             const normalizedPayload = normalizeActiveRequestWriteBody(payload);
-            if (!canPersistRequestPhotoMode && normalizedPayload && typeof normalizedPayload === ''object'' && !Array.isArray(normalizedPayload)) {
+            if (!canPersistRequestPhotoMode && normalizedPayload && typeof normalizedPayload === 'object' && !Array.isArray(normalizedPayload)) {
                 delete normalizedPayload.req_photo_mode;
             }
             return normalizedPayload;
@@ -3975,7 +3974,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
 
         async function insertActiveRequestRowWithRetry(payload, options = {}) {
             const opts = options || {};
-            const requestId = String(firstNonEmptyValue(payload && payload.unique_id, payload && payload.UNIQUE_ID, '''')).trim();
+            const requestId = String(firstNonEmptyValue(payload && payload.unique_id, payload && payload.UNIQUE_ID, '')).trim();
             const retries = Math.max(0, Number(opts.retries) || DETAIL_ROW_WRITE_RETRY_COUNT);
             const timeoutMs = Math.max(1000, Number(opts.timeoutMs) || getDetailRowWriteTimeoutMs());
             const retryDelayMs = Math.max(120, Number(opts.retryDelayMs) || DETAIL_ROW_WRITE_RETRY_DELAY_MS);
@@ -3983,29 +3982,29 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             let lastError = null;
             for (let attempt = 0; attempt <= retries; attempt += 1) {
                 try {
-                    await supabaseFetch(''v2_active_request'', ''POST'', sanitizedPayload, ''select=*'', { timeoutMs });
-                    return { ok: true, requestId, savedBy: ''write'' };
+                    await supabaseFetch('v2_active_request', 'POST', sanitizedPayload, 'select=*', { timeoutMs });
+                    return { ok: true, requestId, savedBy: 'write' };
                 } catch (error) {
                     lastError = error;
                     const failureInfo = getRequestInsertFailureInfo(error);
-                    if (failureInfo.category === ''timeout'') noteRequestInsertDiagnostic(''timeouts'');
-                    else if (failureInfo.category === ''transport'') noteRequestInsertDiagnostic(''transportFailures'');
-                    else if (failureInfo.category === ''response'') noteRequestInsertDiagnostic(''httpFailures'');
-                    else if (failureInfo.category === ''schema-validation'') noteRequestInsertDiagnostic(''schemaValidationFailures'');
+                    if (failureInfo.category === 'timeout') noteRequestInsertDiagnostic('timeouts');
+                    else if (failureInfo.category === 'transport') noteRequestInsertDiagnostic('transportFailures');
+                    else if (failureInfo.category === 'response') noteRequestInsertDiagnostic('httpFailures');
+                    else if (failureInfo.category === 'schema-validation') noteRequestInsertDiagnostic('schemaValidationFailures');
                     if (failureInfo.retryable && requestId) {
                         const confirmedIds = await confirmRequestInsertIds([requestId]);
                         if (confirmedIds.includes(requestId)) {
-                            return { ok: true, requestId, savedBy: ''confirm'' };
+                            return { ok: true, requestId, savedBy: 'confirm' };
                         }
                     }
                     if (attempt >= retries || !failureInfo.retryable) {
-                        throw buildTaggedError(extractErrorMessageText(error) || ''Request insert failed'', { requestInsertInfo: failureInfo, cause: error });
+                        throw buildTaggedError(extractErrorMessageText(error) || 'Request insert failed', { requestInsertInfo: failureInfo, cause: error });
                     }
-                    noteRequestInsertDiagnostic(''retries'');
+                    noteRequestInsertDiagnostic('retries');
                     await delayMs(retryDelayMs);
                 }
             }
-            throw lastError || buildTaggedError(''Request insert failed'', { requestInsertInfo: getRequestInsertFailureInfo(lastError) });
+            throw lastError || buildTaggedError('Request insert failed', { requestInsertInfo: getRequestInsertFailureInfo(lastError) });
         }
         async function supabaseFetch(table, method='GET', body=null, query='select=*', requestOptions = {}) {
             startGlobalProgress();
@@ -4336,56 +4335,56 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         }
 
         async function fetchRemoteLoginUserOnce(normalizedUsername, normalizedPassword) {
-            noteLoginDiagnostic(''liveLookups'');
+            noteLoginDiagnostic('liveLookups');
             const exactUrl = `${SUPABASE_URL}/rest/v1/v2_app_users?select=username,role,password&username=eq.${encodeURIComponent(normalizedUsername)}&limit=1`;
-            let response = await fetchLoginRowsWithRetry(exactUrl, ''exact'');
+            let response = await fetchLoginRowsWithRetry(exactUrl, 'exact');
             if (!response.ok) {
-                noteLoginDiagnostic(''exactReadResponseFailures'');
-                throw buildTaggedError(await getResponseError(response, `Supabase read failed (${response.status})`), { loginCategory: ''response'', loginPhase: ''exact'', loginStatus: response.status });
+                noteLoginDiagnostic('exactReadResponseFailures');
+                throw buildTaggedError(await getResponseError(response, `Supabase read failed (${response.status})`), { loginCategory: 'response', loginPhase: 'exact', loginStatus: response.status });
             }
             let text = await response.text();
             let rows = [];
             try {
                 rows = text ? JSON.parse(text) : [];
             } catch (parseError) {
-                noteLoginDiagnostic(''parseFailures'');
-                throw buildTaggedError(''Login response parse failed'', { loginCategory: ''parse'', loginPhase: ''exact'', cause: parseError });
+                noteLoginDiagnostic('parseFailures');
+                throw buildTaggedError('Login response parse failed', { loginCategory: 'parse', loginPhase: 'exact', cause: parseError });
             }
-            let source = ''remote-exact'';
+            let source = 'remote-exact';
             if ((!Array.isArray(rows) || rows.length === 0) && normalizedUsername) {
-                noteLoginDiagnostic(''fallbackLookups'');
+                noteLoginDiagnostic('fallbackLookups');
                 const fallbackUrl = `${SUPABASE_URL}/rest/v1/v2_app_users?select=username,role,password&username=ilike.${encodeURIComponent(normalizedUsername)}&limit=3`;
-                response = await fetchLoginRowsWithRetry(fallbackUrl, ''fallback'');
+                response = await fetchLoginRowsWithRetry(fallbackUrl, 'fallback');
                 if (!response.ok) {
-                    noteLoginDiagnostic(''fallbackReadResponseFailures'');
-                    throw buildTaggedError(await getResponseError(response, `Supabase read failed (${response.status})`), { loginCategory: ''response'', loginPhase: ''fallback'', loginStatus: response.status });
+                    noteLoginDiagnostic('fallbackReadResponseFailures');
+                    throw buildTaggedError(await getResponseError(response, `Supabase read failed (${response.status})`), { loginCategory: 'response', loginPhase: 'fallback', loginStatus: response.status });
                 }
                 text = await response.text();
                 try {
                     rows = text ? JSON.parse(text) : [];
                 } catch (parseError) {
-                    noteLoginDiagnostic(''parseFailures'');
-                    throw buildTaggedError(''Login response parse failed'', { loginCategory: ''parse'', loginPhase: ''fallback'', cause: parseError });
+                    noteLoginDiagnostic('parseFailures');
+                    throw buildTaggedError('Login response parse failed', { loginCategory: 'parse', loginPhase: 'fallback', cause: parseError });
                 }
-                source = ''remote-fallback'';
+                source = 'remote-fallback';
             }
             const matchedUser = Array.isArray(rows)
-                ? rows.find((row) => String(row.username || '''').trim().toLowerCase() === normalizedUsername && String(row.password || '''').trim() === normalizedPassword)
+                ? rows.find((row) => String(row.username || '').trim().toLowerCase() === normalizedUsername && String(row.password || '').trim() === normalizedPassword)
                 : null;
-            if (!matchedUser) return { ok: false, reason: ''mismatch'' };
-            noteLoginDiagnostic(''liveSuccesses'');
+            if (!matchedUser) return { ok: false, reason: 'mismatch' };
+            noteLoginDiagnostic('liveSuccesses');
             return { ok: true, user: matchedUser, source };
         }
 
         async function fetchLoginUser(username, password) {
             startGlobalProgress();
             try {
-                const normalizedUsername = String(username || '''').trim().toLowerCase();
-                const normalizedPassword = String(password || '''').trim();
+                const normalizedUsername = String(username || '').trim().toLowerCase();
+                const normalizedPassword = String(password || '').trim();
                 const cachedUser = await tryLocalCachedLoginRecord(normalizedUsername, normalizedPassword);
                 if (cachedUser) {
-                    noteLoginDiagnostic(''localCacheHits'');
-                    return { ok: true, user: cachedUser, source: ''local-cache'' };
+                    noteLoginDiagnostic('localCacheHits');
+                    return { ok: true, user: cachedUser, source: 'local-cache' };
                 }
                 const touchRetryEnabled = isTouchOptimizedDevice();
                 const maxLookupAttempts = touchRetryEnabled ? 2 : 1;
@@ -4396,21 +4395,21 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                     } catch (error) {
                         lastError = error;
                         const failureInfo = getLoginFailureInfo(error);
-                        const shouldRetryFullLookup = touchRetryEnabled && attempt < (maxLookupAttempts - 1) && failureInfo.category === ''transport'';
+                        const shouldRetryFullLookup = touchRetryEnabled && attempt < (maxLookupAttempts - 1) && failureInfo.category === 'transport';
                         if (!shouldRetryFullLookup) break;
-                        noteLoginDiagnostic(''outerTouchRetries'');
-                        loginProgressOverrideLabel = `Retrying login (${attempt + 2}/${maxLookupAttempts})...`;
+                        noteLoginDiagnostic('outerTouchRetries');
+                        loginProgressOverrideLabel = `Retrying login (${attempt + 2}/${maxAttempts})...`;
                         setLoginProgress(Math.max(currentProgress, 12), loginProgressOverrideLabel);
                         await delayMs(LOGIN_READ_RETRY_DELAY_MS);
                     }
                 }
-                noteLoginDiagnostic(''finalFailures'');
+                noteLoginDiagnostic('finalFailures');
                 const failureInfo = getLoginFailureInfo(lastError);
-                return { ok: false, reason: failureInfo.category === ''transport'' ? ''network'' : ''service'', error: lastError, userMessage: failureInfo.userMessage };
+                return { ok: false, reason: failureInfo.category === 'transport' ? 'network' : 'service', error: lastError, userMessage: failureInfo.userMessage };
             } catch (e) {
-                noteLoginDiagnostic(''finalFailures'');
+                noteLoginDiagnostic('finalFailures');
                 const failureInfo = getLoginFailureInfo(e);
-                return { ok: false, reason: failureInfo.category === ''transport'' ? ''network'' : ''service'', error: e, userMessage: failureInfo.userMessage };
+                return { ok: false, reason: failureInfo.category === 'transport' ? 'network' : 'service', error: e, userMessage: failureInfo.userMessage };
             } finally {
                 stopGlobalProgress();
             }
@@ -4893,7 +4892,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         const REQUEST_EMAIL_THREAD_SELECT_FIELDS = 'request_folder,request_customer,sales_rep_name,sales_rep_email,recipients,initial_thread_id,initial_message_id,initial_email_sent_at,last_reply_sent_at,status,metadata';
         const REQUEST_EMAIL_INTERNAL_RECIPIENTS = Object.freeze(['dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com']);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-const APP_VERSION = 'V2026.04.17.05';
+const APP_VERSION = 'V2026.04.17.06';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -17092,7 +17091,7 @@ activeDriveTab = tab;
                     retryDelayMs: DETAIL_ROW_WRITE_RETRY_DELAY_MS
                 };
                 for (const payload of insertPayloads) {
-                    const payloadId = String(payload.unique_id || '''').trim();
+                    const payloadId = String(payload.unique_id || '').trim();
                     if (!payloadId) continue;
                     try {
                         await insertActiveRequestRowWithRetry(payload, requestInsertOptions);
@@ -17106,16 +17105,16 @@ activeDriveTab = tab;
                 const savedRequestIds = optimisticIds.filter(id => savedIdSet.has(id));
                 const autoCompleteSavedIds = savedRequestIds.filter(id => autoCompleteRequestIds.has(id));
                 for (const requestId of autoCompleteSavedIds) {
-                    const autoCompleteItem = requestsInventory.find((item) => String((item && item.UNIQUE_ID) || '''').trim() === String(requestId || '''').trim());
+                    const autoCompleteItem = requestsInventory.find((item) => String((item && item.UNIQUE_ID) || '').trim() === String(requestId || '').trim());
                     if (!autoCompleteItem) continue;
-                    await saveData(true, ''req-'', true, autoCompleteItem);
+                    await saveData(true, 'req-', true, autoCompleteItem);
                 }
                 const normalizedRequestCustomer = normalizeSearchValue(cust);
                 const savedNotificationItems = getSavedRequestItems(savedRequestIds).filter((item) => {
-                    const itemFolderId = String(firstNonEmptyValue(item && item.REQUEST_FOLDER, item && item.request_folder, '''') || '''').trim();
+                    const itemFolderId = String(firstNonEmptyValue(item && item.REQUEST_FOLDER, item && item.request_folder, '') || '').trim();
                     if (folderId && itemFolderId && itemFolderId !== folderId) return false;
                     if (!appendingToExistingFolder && normalizedRequestCustomer) {
-                        const itemCustomer = normalizeSearchValue(firstNonEmptyValue(item && item.REQ_CUSTOMER, item && item.req_customer, ''''));
+                        const itemCustomer = normalizeSearchValue(firstNonEmptyValue(item && item.REQ_CUSTOMER, item && item.req_customer, ''));
                         if (itemCustomer && itemCustomer !== normalizedRequestCustomer) return false;
                     }
                     return true;
@@ -17128,19 +17127,19 @@ activeDriveTab = tab;
                 };
                 if (!missingIds.length && savedCount > 0) {
                     showToast("Success","Request tickets cloned!",false);
-                    notifyRequestEvent(''new_request'', folderId, requestedBy, cust, savedCount, requestNotificationDetails);
+                    notifyRequestEvent('new_request', folderId, requestedBy, cust, savedCount, requestNotificationDetails);
                     return;
                 }
                 if (savedCount > 0) {
                     rollbackOptimisticRequestIds(missingIds);
                     restoreQuickModeRows(missingIds);
                     showToast("Partial Save","Some requests saved. Retry the missing rows.",true);
-                    notifyRequestEvent(''new_request'', folderId, requestedBy, cust, savedCount, requestNotificationDetails);
+                    notifyRequestEvent('new_request', folderId, requestedBy, cust, savedCount, requestNotificationDetails);
                     return;
                 }
                 rollbackOptimisticRequestIds(optimisticIds);
                 restoreQuickModeRows(optimisticIds);
-                noteRequestInsertDiagnostic(''zeroSavedFinalFailures'');
+                noteRequestInsertDiagnostic('zeroSavedFinalFailures');
                 const failureInfo = getRequestInsertFailureInfo(firstError);
                 showToast("Error", failureInfo.userMessage, true);
             })();
@@ -20118,9 +20117,20 @@ function handleDriveSearch() {
         (function () {
             const sourceEl = document.getElementById('app-script-source');
             if (!sourceEl) return;
+            if (window.__gncAppSourceBootstrapped) return;
+            window.__gncAppSourceBootstrapped = true;
             try {
-                (0, eval)(sourceEl.textContent || '');
+                const runtimeScript = document.createElement('script');
+                runtimeScript.type = 'text/javascript';
+                runtimeScript.dataset.bootstrapSource = 'app-script-source';
+                runtimeScript.text = sourceEl.textContent || '';
+                (document.body || document.documentElement || document.head).appendChild(runtimeScript);
+                const missingGlobals = ['triggerLoginFromUI', 'switchView', 'showToast'].filter((key) => typeof window[key] !== 'function');
+                if (missingGlobals.length) {
+                    throw new Error('Missing required globals after bootstrap: ' + missingGlobals.join(', '));
+                }
             } catch (error) {
+                window.__gncAppSourceBootstrapped = false;
                 console.error('App bootstrap failed', error);
             }
         })();
