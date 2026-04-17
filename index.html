@@ -457,7 +457,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-        <div id="header-version" class="nav-version-pill">V2026.04.17.03</div>
+        <div id="header-version" class="nav-version-pill">V2026.04.17.04</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -480,7 +480,7 @@
             <div class="drawer-item text-green-600 font-bold" onclick="fetchBackgroundData('force'); toggleMenu();"><i class="ph-bold ph-arrows-clockwise"></i> Force Data Sync</div>
             <hr class="my-2">
             <div class="drawer-item role-access role-admin role-qc-supervisor hidden" onclick="switchView('drive'); toggleMenu();"><i class="ph-bold ph-car"></i> Drive Mode</div>
-            <div class="drawer-item role-access role-admin hidden" onclick="switchView('tasks'); toggleMenu();"><i class="ph-bold ph-clipboard-text"></i> My Tasks</div>
+            <div class="drawer-item role-access role-admin role-flyer-collab hidden" onclick="switchView('tasks'); toggleMenu();"><i class="ph-bold ph-clipboard-text"></i> My Tasks</div>
             <div class="drawer-item text-orange-600 font-bold role-access role-admin role-rep role-qc-supervisor role-qc hidden" onclick="switchView('docks'); toggleMenu();"><i class="ph-bold ph-truck"></i> Docks</div>
             <div class="drawer-item text-teal-600 font-bold role-access role-admin role-rep hidden" onclick="switchView('av'); toggleMenu();"><i class="ph-bold ph-notebook"></i> AV</div>
             <hr class="my-2">
@@ -535,7 +535,7 @@
                             <h2 class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3 pl-1">App Modules</h2>
                             <div class="grid grid-cols-2 gap-3 mb-8">
                                 <div onclick="switchView('drive')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-qc-supervisor hidden"><i class="ph-bold ph-car text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Drive Mode</span></div>
-                                <div onclick="switchView('tasks')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-clipboard-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Tasks</span></div>
+                                <div onclick="switchView('tasks')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-flyer-collab hidden"><i class="ph-bold ph-clipboard-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Tasks</span></div>
                                 <div onclick="switchView('docks')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep role-qc-supervisor role-qc hidden"><i class="ph-bold ph-truck text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Docks</span></div>
                                 <div onclick="switchView('av')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep hidden"><i class="ph-bold ph-notebook text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">AV</span></div>
                                 <div onclick="switchView('request')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep hidden"><i class="ph-bold ph-chat-circle-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Requests</span></div>
@@ -4723,7 +4723,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         const REQUEST_EMAIL_THREAD_SELECT_FIELDS = 'request_folder,request_customer,sales_rep_name,sales_rep_email,recipients,initial_thread_id,initial_message_id,initial_email_sent_at,last_reply_sent_at,status,metadata';
         const REQUEST_EMAIL_INTERNAL_RECIPIENTS = Object.freeze(['dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com']);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-const APP_VERSION = 'V2026.04.17.03';
+const APP_VERSION = 'V2026.04.17.04';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -4810,9 +4810,34 @@ const APP_VERSION = 'V2026.04.17.03';
             return [currentUser, currentUserDisplay].some(value => allowed.has(String(value || '').trim().toLowerCase()));
         }
 
+        const SHARED_TASK_COLLABORATOR_ALIAS_MAP = new Map([
+            ['dylan', 'dylan_collyge'],
+            ['dylancollyge', 'dylan_collyge'],
+            ['dylan collyge', 'dylan_collyge'],
+            ['dylan_collyge', 'dylan_collyge'],
+            ['jd', 'jd_jones'],
+            ['jdjones', 'jd_jones'],
+            ['jd jones', 'jd_jones'],
+            ['jd_jones', 'jd_jones'],
+            ['kayla', 'kayla_knepp'],
+            ['kaylaknepp', 'kayla_knepp'],
+            ['kayla knepp', 'kayla_knepp'],
+            ['kayla_knepp', 'kayla_knepp'],
+            ['morgan', 'morgan_anderson'],
+            ['morgananderson', 'morgan_anderson'],
+            ['morgan anderson', 'morgan_anderson'],
+            ['morgan_anderson', 'morgan_anderson']
+        ]);
         const SHARED_TASK_COLLABORATOR_KEYS = new Set(['dylan_collyge', 'morgan_anderson', 'kayla_knepp', 'jd_jones']);
         function normalizeSharedTaskCollaboratorKey(value = '') {
-            return String(value || '').trim().toLowerCase().replace(/\s+/g, '_');
+            const rawValue = String(value || '').trim().toLowerCase();
+            if (!rawValue) return '';
+            const compactKey = rawValue.replace(/[^a-z0-9]+/g, '');
+            const spacedKey = rawValue.replace(/[_\s]+/g, ' ').replace(/[^a-z0-9 ]+/g, '').trim();
+            return SHARED_TASK_COLLABORATOR_ALIAS_MAP.get(rawValue)
+                || SHARED_TASK_COLLABORATOR_ALIAS_MAP.get(spacedKey)
+                || SHARED_TASK_COLLABORATOR_ALIAS_MAP.get(compactKey)
+                || rawValue.replace(/\s+/g, '_');
         }
 
         function isSharedTaskCollaboratorUser(value = '') {
@@ -6501,7 +6526,19 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function normalizeFlyerAssigneeKey(value = '') {
+            const collaboratorKey = normalizeSharedTaskCollaboratorKey(value);
+            if (SHARED_TASK_COLLABORATOR_KEYS.has(collaboratorKey)) return collaboratorKey;
             return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+        }
+
+        function addFlyerAssigneeEntries(targetMap, value = '') {
+            if (!(targetMap instanceof Map)) return targetMap;
+            getFlyerAssigneeList(value).forEach((name) => {
+                const normalizedKey = normalizeFlyerAssigneeKey(name);
+                if (!normalizedKey) return;
+                if (!targetMap.has(normalizedKey)) targetMap.set(normalizedKey, name);
+            });
+            return targetMap;
         }
 
         const FLYER_ARCHIVE_PREFIX = '[ARCHIVED] ';
@@ -6571,11 +6608,11 @@ function toggleDriveQuickRequestItem(domId) {
         function getFlyerFolderAssignedNames(folderName, items = fullInventory, folderTab = activeFlyerFolderTab) {
             const normalizedFolder = getFlyerFolderName(folderName);
             const normalizedTab = getFlyerFolderTabValue(folderTab);
-            const names = new Set();
+            const names = new Map();
             if (!normalizedFolder) return [];
             items.filter(item => item && doesItemMatchFlyerFolder(item, normalizedFolder, normalizedTab))
-                .forEach(item => getFlyerAssigneeList(item.FLYER_ASSIGNED || item.ASSIGNEDTO || '').forEach(name => names.add(name)));
-            return Array.from(names);
+                .forEach(item => addFlyerAssigneeEntries(names, item.FLYER_ASSIGNED || item.ASSIGNEDTO || ''));
+            return Array.from(names.values());
         }
 
         function getFlyerRowRemovalAssignment(item) {
@@ -6753,9 +6790,9 @@ function toggleDriveQuickRequestItem(domId) {
                 clearDriveQuickRequestItems(true);
                 clearPendingFlyerFolderTarget(true);
                 activeFlyerFolderTab = 'active';
+                setTaskTab('flyer');
                 selectedFlyerFolder = flyerFolder;
                 taskViewLevel = 1;
-                setTaskTab('flyer');
                 markViewDirty('tasks');
                 switchView('tasks');
                 queueInteractiveViewRender('tasks', false, true, 0, 160);
@@ -6852,9 +6889,9 @@ function toggleDriveQuickRequestItem(domId) {
                 clearPendingFlyerFolderTarget(true);
                 clearSelection();
                 activeFlyerFolderTab = 'active';
+                setTaskTab('flyer');
                 selectedFlyerFolder = flyerFolder;
                 taskViewLevel = 1;
-                setTaskTab('flyer');
                 markViewDirty('tasks');
                 switchView('tasks');
                 queueInteractiveViewRender('tasks', false, true, 0, 160);
@@ -9262,6 +9299,8 @@ function toggleDriveQuickRequestItem(domId) {
             const isQc = !isQcSupervisor && (normalizedRole === 'QC' || normalizedRole.startsWith('QC'));
             const isCsr = normalizedRole === 'CSR' || normalizedRole.includes('CSR');
             const isAdmin = normalizedRole.includes('ADMIN') || normalizedRole.includes('MANAGER') || isCsr || (!isRep && !isQcSupervisor && !isQc);
+            const isSharedFlyerCollaborator = isCurrentUserInSharedTaskGroup();
+            const isFlyerOnlyTasks = !isAdmin && isSharedFlyerCollaborator;
             const allowedViews = new Set(['home']);
             if (isAdmin) {
                 ROLE_ACCESS_VIEWS.forEach(viewId => allowedViews.add(viewId));
@@ -9272,13 +9311,18 @@ function toggleDriveQuickRequestItem(domId) {
             } else if (isQc) {
                 ['docks'].forEach(viewId => allowedViews.add(viewId));
             }
-            return { isAdmin, isRep, isQcSupervisor, isQc, allowedViews };
+            if (isSharedFlyerCollaborator) allowedViews.add('tasks');
+            return { isAdmin, isRep, isQcSupervisor, isQc, isCsr, isSharedFlyerCollaborator, isFlyerOnlyTasks, allowedViews };
         }
 
         function canAccessView(viewId) {
             const targetView = String(viewId || '').trim();
             if (!targetView || targetView === 'home' || targetView === 'detail') return true;
             return getRoleAccessState().allowedViews.has(targetView);
+        }
+
+        function isFlyerOnlyTasksUser() {
+            return !!getRoleAccessState().isFlyerOnlyTasks;
         }
 
         function getAssignmentMatchKeys(value = '') {
@@ -9327,7 +9371,8 @@ function toggleDriveQuickRequestItem(domId) {
                     (access.isAdmin && el.classList.contains('role-admin')) ||
                     (access.isRep && el.classList.contains('role-rep')) ||
                     (access.isQcSupervisor && el.classList.contains('role-qc-supervisor')) ||
-                    (access.isQc && el.classList.contains('role-qc'));
+                    (access.isQc && el.classList.contains('role-qc')) ||
+                    (access.isFlyerOnlyTasks && el.classList.contains('role-flyer-collab'));
                 el.classList.toggle('hidden', !isAllowed);
                 el.style.display = '';
             });
@@ -9951,32 +9996,43 @@ function toggleDriveQuickRequestItem(domId) {
             markHiddenViewsDirty(visibleViewIds);
         }
 
+        function syncTaskTabAccessChrome(tab = activeTaskTab) {
+            const resolvedTab = String(tab || activeTaskTab || '').trim().toLowerCase() || 'season';
+            const flyerOnly = isFlyerOnlyTasksUser();
+            ['season', 'location', 'colorwalk', 'endcap', 'flyer'].forEach((tabKey) => {
+                const tabEl = document.getElementById(`tab-${tabKey}`);
+                if (!tabEl) return;
+                const isVisible = !flyerOnly || tabKey === 'flyer';
+                tabEl.classList.toggle('hidden', !isVisible);
+                tabEl.classList.toggle('active', resolvedTab === tabKey);
+            });
+            return resolvedTab;
+        }
+
         function setTaskTab(tab) {
             const previousTaskTab = activeTaskTab;
-            activeTaskTab=tab;
-            if (!taskTabUsesBlockDrill(tab) || (tab !== 'season' && activeTaskSubview === 'av-blanks')) activeTaskSubview='all';
-            if (tab !== 'colorwalk' && previousTaskTab === 'colorwalk') {
+            const requestedTab = String(tab || activeTaskTab || '').trim().toLowerCase() || 'season';
+            const resolvedTab = isFlyerOnlyTasksUser() ? 'flyer' : requestedTab;
+            activeTaskTab = resolvedTab;
+            if (!taskTabUsesBlockDrill(resolvedTab) || (resolvedTab !== 'season' && activeTaskSubview === 'av-blanks')) activeTaskSubview='all';
+            if (resolvedTab !== 'colorwalk' && previousTaskTab === 'colorwalk') {
                 selectedColorWalkContSize='';
                 selectedColorWalkSearchTerm='';
             }
-            document.getElementById('tab-season').classList.toggle('active',tab==='season');
-            document.getElementById('tab-location').classList.toggle('active',tab==='location');
-            document.getElementById('tab-colorwalk').classList.toggle('active',tab==='colorwalk');
-            document.getElementById('tab-endcap').classList.toggle('active',tab==='endcap');
-            document.getElementById('tab-flyer').classList.toggle('active',tab==='flyer');
-            syncTaskSubviewControls(tab);
+            syncTaskTabAccessChrome(resolvedTab);
+            syncTaskSubviewControls(resolvedTab);
             taskViewLevel=0;
             selectedTaskBlock=null;
             selectedTaskLoc=null;
             selectedEndCapFolder=null;
             selectedFlyerFolder=null;
-            if (shouldShowAdminTaskTeamSelector(tab)) {
+            if (shouldShowAdminTaskTeamSelector(resolvedTab)) {
                 scheduleUiRender('task-tab', () => renderTeamSelector());
-                queueScrollMainAreaToTop(`task-tab:${tab}`);
+                queueScrollMainAreaToTop(`task-tab:${resolvedTab}`);
                 return;
             }
             scheduleUiRender('task-tab', () => renderTasks());
-            queueScrollMainAreaToTop(`task-tab:${tab}`);
+            queueScrollMainAreaToTop(`task-tab:${resolvedTab}`);
         }
 
         function setTaskSubview(subview) {
@@ -18081,20 +18137,23 @@ function handleDriveSearch() {
         }
 
         function renderTeamSelector() {
-            let uSet = new Set();
+            const userMap = new Map();
             fullInventory.forEach(i => {
                 if (isFlyerTaskItem(i)) {
-                    getFlyerAssigneeList(i.FLYER_ASSIGNED || i.ASSIGNEDTO || '').forEach(name => uSet.add(name));
+                    addFlyerAssigneeEntries(userMap, i.FLYER_ASSIGNED || i.ASSIGNEDTO || '');
                     return;
                 }
-                if (i.ASSIGNEDTO && !String(firstNonEmptyValue(i.DATE_COMPLETED, i.date_completed, '')).trim()) uSet.add(i.ASSIGNEDTO);
+                const assignedTo = String(i.ASSIGNEDTO || '').trim();
+                if (assignedTo && !String(firstNonEmptyValue(i.DATE_COMPLETED, i.date_completed, '')).trim() && !userMap.has(assignedTo)) {
+                    userMap.set(assignedTo, assignedTo);
+                }
             });
             document.getElementById('task-tabs-container').classList.add('hidden');
             const subTabs = document.getElementById('task-subtabs-container');
             if (subTabs) subTabs.classList.add('hidden');
             const crumb = document.getElementById('task-crumb');
             const container = document.getElementById('task-content');
-            const sorted = Array.from(uSet).sort();
+            const sorted = Array.from(userMap.values()).sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true }));
             const taskMap = new Map();
             sorted.forEach((u) => {
                 taskMap.set(u, fullInventory.filter(i => {
@@ -18119,7 +18178,6 @@ function handleDriveSearch() {
                 reserveSpace: false
             });
         }
-
         function selectTaskUser(u) {
             taskViewTargetUser = u;
             document.getElementById('task-tabs-container').classList.remove('hidden');
@@ -18210,8 +18268,17 @@ function handleDriveSearch() {
             const safeTab = String(tab || activeTaskTab || '').trim().toLowerCase();
             const keepCompletedInTaskTab = safeTab === 'colorwalk' || safeTab === 'flyer';
             const baseItems = fullInventory.filter(i => keepCompletedInTaskTab || !String(firstNonEmptyValue(i.DATE_COMPLETED, i.date_completed, '')).trim());
+            if (safeTab === 'flyer') {
+                const flyerItems = baseItems.filter(i => isFlyerTaskItem(i));
+                if (isFlyerOnlyTasksUser()) {
+                    return flyerItems.filter(i => isFlyerAssignedToUser(i));
+                }
+                if (shouldUseSharedTaskQueue(safeTab)) {
+                    return flyerItems;
+                }
+            }
             if (shouldUseSharedTaskQueue(safeTab)) {
-                return safeTab === 'flyer' ? baseItems.filter(i => isFlyerTaskItem(i)) : baseItems;
+                return baseItems;
             }
             const owner = String(targetUser || '').trim();
             if (!owner) return [];
@@ -18219,7 +18286,6 @@ function handleDriveSearch() {
                 ? baseItems.filter(i => isFlyerTaskItem(i))
                 : baseItems.filter(i => i.ASSIGNEDTO === owner);
         }
-
         function getTaskSubviewLabel(subview = activeTaskSubview) {
             if (subview === 'positive-lts') return 'Positive LTS';
             if (subview === 'hold') return 'Hold';
@@ -18588,8 +18654,17 @@ function handleDriveSearch() {
         function renderTasks(options = {}) {
             const skipColorWalkFilterRender = !!(options && options.skipColorWalkFilterRender);
             if (ensureViewDataForRender('tasks')) return;
+            if (isFlyerOnlyTasksUser() && activeTaskTab !== 'flyer') {
+                activeTaskTab = 'flyer';
+                activeTaskSubview = 'all';
+                selectedTaskBlock = null;
+                selectedTaskLoc = null;
+                selectedEndCapFolder = null;
+                taskViewLevel = selectedFlyerFolder ? 1 : 0;
+            }
             const tabs = document.getElementById('task-tabs-container');
             if (tabs) tabs.classList.remove('hidden');
+            syncTaskTabAccessChrome(activeTaskTab);
             syncTaskSubviewControls(activeTaskTab);
 
             const useBlockDrill = taskTabUsesBlockDrill(activeTaskTab);
@@ -18717,10 +18792,10 @@ function handleDriveSearch() {
                     visibleFlyerItems.forEach(i => {
                         const folderName = getFlyerFolderName(i);
                         if (!folderName) return;
-                        if (!folderMap[folderName]) folderMap[folderName] = { count: 0, complete: 0, assignees: new Set() };
+                        if (!folderMap[folderName]) folderMap[folderName] = { count: 0, complete: 0, assignees: new Map() };
                         folderMap[folderName].count++;
                         if (String(i.FLYER_COMPLETED || i.DATE_COMPLETED || '').trim() !== '') folderMap[folderName].complete++;
-                        getFlyerAssigneeList(i.FLYER_ASSIGNED || i.ASSIGNEDTO || '').forEach(name => folderMap[folderName].assignees.add(name));
+                        addFlyerAssigneeEntries(folderMap[folderName].assignees, i.FLYER_ASSIGNED || i.ASSIGNEDTO || '');
                     });
                     const folderNames = Object.keys(folderMap).sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true }));
                     const emptyFoldersHtml = `<div class="p-8 text-center text-gray-400">No ${flyerFolderTabLabel.toLowerCase()} flyer folders.</div>`;
@@ -18730,7 +18805,7 @@ function handleDriveSearch() {
                     const folderRows = folderNames.map((folderName) => ({
                         folderName,
                         meta: folderMap[folderName],
-                        assignees: Array.from((folderMap[folderName] && folderMap[folderName].assignees) || []).join(', ') || 'Unassigned'
+                        assignees: Array.from(((folderMap[folderName] && folderMap[folderName].assignees) || new Map()).values()).join(', ') || 'Unassigned'
                     }));
                     renderMarkupChunkedByKey('tasks-flyer-folders', container, null, folderRows, '', (folderRow) => {
                         return `<div class="request-swipe-row flyer-folder-swipe-row"><button type="button" class="request-swipe-action" style="${actionStyle}" onclick="event.preventDefault(); event.stopPropagation(); return setFlyerFolderArchiveState('${esc(folderRow.folderName)}', '${nextTab}', { currentTab: '${getFlyerFolderTabValue(activeFlyerFolderTab)}' })">${actionLabel}</button><div class="request-swipe-surface" onclick="return handleFlyerFolderSurfaceClick(event, this, '${esc(folderRow.folderName)}', '${getFlyerFolderTabValue(activeFlyerFolderTab)}')"><div class="bg-white border border-indigo-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform"><div class="min-w-0 pr-3"><div class="font-bold text-lg text-indigo-800 truncate">${folderRow.folderName}</div><div class="text-xs font-semibold text-indigo-500 mt-1 truncate">${folderRow.assignees}</div></div><div class="text-right shrink-0"><div class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${folderRow.meta.count} Rows</div><div class="text-[11px] font-semibold text-gray-500 mt-2">${folderRow.meta.complete} Complete</div></div></div></div></div>`;
