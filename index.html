@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -457,7 +457,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-        <div id="header-version" class="nav-version-pill">V2026.04.16.04</div>
+        <div id="header-version" class="nav-version-pill">V2026.04.16.07</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -2005,7 +2005,8 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         }
         function getRowPhotoLink(item, sourceView='') {
             if (!item) return '';
-            if (sourceView === 'av' || sourceView === 'av-photo') return getDisplayPhotoLinkCsv(firstNonEmptyValue(item.SAVED_PHOTO_LINK, item.ROW_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']), item, 'saved');
+            if (sourceView === 'av' || sourceView === 'av-photo') return getDisplayPhotoLinkCsv(firstNonEmptyValue(item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']), item, 'saved');
+            if (sourceView === 'drive' || sourceView === 'low-stock') return getDisplayPhotoLinkCsv(firstNonEmptyValue(item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']), item, 'saved');
             if (sourceView === 'request') return getDisplayPhotoLinkCsv(firstNonEmptyValue(item.REQ_PHOTO_LINK, item.ROW_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']), item, 'req');
             if (sourceView === 'docks') return getDisplayPhotoLinkCsv(firstNonEmptyValue(item.DOCK_PHOTO_LINK, item.ROW_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']), item, 'dock');
             const preferFlyerFields = shouldPreferFlyerOwnedFields(item, sourceView);
@@ -2044,15 +2045,25 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             }
             const fromLink = formatPhotoDateLabel_(firstUrl || photoLink);
             if (fromLink) return fromLink;
-            const fallbackStamp = firstNonEmptyValue(
-                item.AV_RULE_PHOTO_UPDATED_AT,
-                item.DATE_COMPLETED,
-                item.date_completed,
-                item.UPDATED_AT,
-                item.updated_at,
-                item.LAST_UPDATED,
-                item.last_updated
-            );
+            const normalizedSource = String(sourceView || '').toLowerCase();
+            const fallbackStamp = normalizedSource === 'av' || normalizedSource === 'av-photo' || normalizedSource === 'drive' || normalizedSource === 'low-stock'
+                ? firstNonEmptyValue(
+                    item.AV_RULE_PHOTO_UPDATED_AT,
+                    item.AV_RULE_BUNDLE_UPDATED_AT,
+                    item.UPDATED_AT,
+                    item.updated_at,
+                    item.LAST_UPDATED,
+                    item.last_updated
+                )
+                : firstNonEmptyValue(
+                    item.AV_RULE_PHOTO_UPDATED_AT,
+                    item.DATE_COMPLETED,
+                    item.date_completed,
+                    item.UPDATED_AT,
+                    item.updated_at,
+                    item.LAST_UPDATED,
+                    item.last_updated
+                );
             return formatPhotoDateLabel_(fallbackStamp);
         }
         const AV_RULE_MAX_AGE_DAYS = 10;
@@ -2163,7 +2174,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             return winner;
         }
 
-        function getEffectiveAvRuleUpdatedAt(item) {
+        function getMasterAvRetentionUpdatedAt(item) {
             if (!item) return '';
             const photoDateIso = getLatestPhotoDateIsoForRetention(item);
             const candidates = [
@@ -2173,8 +2184,6 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 item.AV_RULE_MATCH_UPDATED_AT,
                 item.AV_RULE_CALIPER_UPDATED_AT,
                 item.AV_RULE_PHOTO_UPDATED_AT,
-                item.DATE_COMPLETED,
-                item.date_completed,
                 photoDateIso
             ];
             let winner = '';
@@ -2251,7 +2260,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             const reasons = [];
             const currentHold = getHoldStopSnapshotFromItem(item);
             const trackedHoldSnapshot = normalizeHoldStopSnapshotValue(firstNonEmptyValue(item && item.AV_RULE_HOLDSTOP_SNAPSHOT, item && item.av_rule_holdstop_snapshot, ''));
-            const bundleUpdatedAt = getEffectiveAvRuleUpdatedAt(item);
+            const bundleUpdatedAt = getMasterAvRetentionUpdatedAt(item);
             const effectiveLocMatchQty = calculateLocMatchQtyValue(item) ?? parseAppNumber(item.LOC_MATCH_QTY);
 
             if (effectiveLocMatchQty != null) item.LOC_MATCH_QTY = effectiveLocMatchQty;
@@ -4524,7 +4533,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         const REQUEST_EMAIL_THREAD_SELECT_FIELDS = 'request_folder,request_customer,sales_rep_name,sales_rep_email,recipients,initial_thread_id,initial_message_id,initial_email_sent_at,last_reply_sent_at,status,metadata';
         const REQUEST_EMAIL_INTERNAL_RECIPIENTS = Object.freeze(['dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com']);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-const APP_VERSION = 'V2026.04.16.06';
+const APP_VERSION = 'V2026.04.16.07';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -15723,7 +15732,7 @@ activeDriveTab = tab;
                 if(item.END_CAP_FOLDER&&String(item.END_CAP_FOLDER).trim()!==''){noteHtml+=`<div class="mt-2 text-[12px] text-yellow-800 bg-yellow-100 p-2 rounded border border-yellow-200 shadow-sm whitespace-pre-wrap"><span class="font-black">END CAP:</span> ${item.END_CAP_FOLDER} | QTY: ${item.END_CAP_QTY||'0'} | Lvl: ${item.END_CAP_LEVEL||'-'}</div>`}
                 if(displayLocMatchQty&&String(displayLocMatchQty).trim()!==''&&Number(displayLocMatchQty)>0){noteHtml+=`<div class="mt-2 text-[12px] text-green-800 bg-green-100 p-2 rounded border border-green-200 shadow-sm whitespace-pre-wrap"><span class="font-black">LOC PHOTO MATCH:</span> ${displayLocMatchQty}</div>`}
                 if(displayAvNote&&String(displayAvNote).trim()!==''){noteHtml+=`<div class="mt-2 text-[12px] text-blue-800 bg-blue-100 p-2 rounded border border-blue-200 shadow-sm whitespace-pre-wrap"><span class="font-black">AV NOTE:</span> ${displayAvNote}</div>`}
-                if(item.FLYER_TITLE&&String(item.FLYER_TITLE).trim()!==''){noteHtml+=`<div class="mt-2 text-[12px] text-indigo-800 bg-indigo-100 p-2 rounded border border-indigo-200 shadow-sm whitespace-pre-wrap"><span class="font-black">FOLDER:</span> ${getFlyerFolderName(item)}${isFlyerFolderArchived(item) ? ' <span class="font-black uppercase tracking-wide">(Archived)</span>' : ''}</div>`}
+                if(sourceView==='tasks'&&activeTaskTab==='flyer'&&taskViewLevel===1&&selectedFlyerFolder&&doesItemMatchFlyerFolder(item, selectedFlyerFolder, activeFlyerFolderTab)){noteHtml+=`<div class="mt-2 text-[12px] text-indigo-800 bg-indigo-100 p-2 rounded border border-indigo-200 shadow-sm whitespace-pre-wrap"><span class="font-black">FOLDER:</span> ${getFlyerFolderName(item)}${isFlyerFolderArchived(item) ? ' <span class="font-black uppercase tracking-wide">(Archived)</span>' : ''}</div>`}
                 let extraData='';if(sourceView==='tasks'||sourceView==='drive'){extraData=`<div class="mt-2 flex gap-2 text-[10px] font-bold text-gray-500 uppercase">${displaySpec?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Spec: ${displaySpec}</span>`:''}${displayCaliper?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Cal: ${displayCaliper}</span>`:''}${displayMatch?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">LOC MATCH %: ${displayMatch}%</span>`:''}</div>`}
                 let quickRequestBtn='';
                 if(sourceView==='drive'&&canUseDriveQuickRequest()){
@@ -17508,7 +17517,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (!item) return '';
             const clean = (value = '') => String(value == null ? '' : value).trim();
             const holdCode = firstNonEmptyValue(item.HOLD, item.HOLDCODE, item.HOLD_CODE, '');
-            const photoLink = firstNonEmptyValue(item.ROW_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.REQ_PHOTO_LINK, item.DOCK_PHOTO_LINK, item.FLYER_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK'], '');
+            const photoLink = getRowPhotoLink(item, 'drive');
             return [
                 clean(item.UNIQUE_ID),
                 clean(item.DOM_ID),
@@ -17521,11 +17530,11 @@ ${folderNote ? `Folder Note: ${folderNote}
                 clean(item.PRIORITY),
                 clean(item.S_LTS),
                 clean(item.SEASON),
-                clean(item.MATCH),
-                clean(item.SPEC),
-                clean(item.CALIPER),
-                clean(item.LOC_MATCH_QTY),
-                clean(item.AV_NOTE),
+                clean(getItemDisplayValue(item, 'MATCH', 'drive')),
+                clean(getItemDisplayValue(item, 'SPEC', 'drive')),
+                clean(getItemDisplayValue(item, 'CALIPER', 'drive')),
+                clean(getDisplayLocMatchQtyValue(item, 'drive')),
+                clean(getItemDisplayValue(item, 'AV_NOTE', 'drive')),
                 clean(holdCode),
                 clean(photoLink),
                 selectedItems.has(item.DOM_ID) ? '1' : '0'
