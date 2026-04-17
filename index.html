@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -457,7 +457,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-        <div id="header-version" class="nav-version-pill">V2026.04.16.08</div>
+        <div id="header-version" class="nav-version-pill">V2026.04.17.01</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -2005,18 +2005,28 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             row.APP_TAB_ASSIGNMENT = firstNonEmptyValue(row.APP_TAB_ASSIGNMENT, masterItem.APP_TAB_ASSIGNMENT);
             return row;
         }
+        function isMasterPhotoSourceView(sourceView = '') {
+            const normalizedSource = String(sourceView || '').toLowerCase();
+            return normalizedSource === 'av' || normalizedSource === 'av-photo' || normalizedSource === 'drive' || normalizedSource === 'low-stock';
+        }
+        function getMasterSavedPhotoBaseLink(item) {
+            if (!item) return '';
+            return String(firstNonEmptyValue(item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK'], '')).trim();
+        }
         function getRowPhotoLink(item, sourceView='') {
             if (!item) return '';
-            if (sourceView === 'av' || sourceView === 'av-photo') return getDisplayPhotoLinkCsv(firstNonEmptyValue(item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']), item, 'saved');
-            if (sourceView === 'drive' || sourceView === 'low-stock') return getDisplayPhotoLinkCsv(firstNonEmptyValue(item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']), item, 'saved');
+            const normalizedSource = String(sourceView || '').toLowerCase();
+            const savedBaseLink = getMasterSavedPhotoBaseLink(item);
+            const savedDisplayLink = getDisplayPhotoLinkCsv(savedBaseLink, item, 'saved');
+            if (isMasterPhotoSourceView(normalizedSource)) return getMasterPhotoVisibilityReasons(item, savedBaseLink).length ? '' : savedDisplayLink;
             if (sourceView === 'request') return getDisplayPhotoLinkCsv(firstNonEmptyValue(item.REQ_PHOTO_LINK, item.ROW_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']), item, 'req');
             if (sourceView === 'docks') return getDisplayPhotoLinkCsv(firstNonEmptyValue(item.DOCK_PHOTO_LINK, item.ROW_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']), item, 'dock');
             const preferFlyerFields = shouldPreferFlyerOwnedFields(item, sourceView);
             if (sourceView === 'flyer' || preferFlyerFields) return getDisplayPhotoLinkCsv(firstNonEmptyValue(item.FLYER_PHOTO_LINK, item.ROW_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']), item, 'flyer');
-            if (sourceView === 'sales-office') return getDisplayPhotoLinkCsv(firstNonEmptyValue(item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']), item, 'saved');
+            if (sourceView === 'sales-office') return savedDisplayLink;
             const requestLink = getDisplayPhotoLinkCsv(item.REQ_PHOTO_LINK || '', item, 'req');
             const dockLink = getDisplayPhotoLinkCsv(item.DOCK_PHOTO_LINK || '', item, 'dock');
-            const savedLink = getDisplayPhotoLinkCsv(firstNonEmptyValue(item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']), item, 'saved');
+            const savedLink = savedDisplayLink;
             return firstNonEmptyValue(requestLink, dockLink, savedLink, item.ROW_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.REQ_PHOTO_LINK, item.DOCK_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']);
         }
         function extractPhotoDateIsoFromText_(value = '') {
@@ -2037,8 +2047,14 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         }
         function getRowPhotoDateLabel(item, sourceView = '', explicitPhotoLink = '') {
             if (!item) return '';
+            const normalizedSource = String(sourceView || '').toLowerCase();
+            const isMasterSource = isMasterPhotoSourceView(normalizedSource);
             const photoLink = String(explicitPhotoLink || getRowPhotoLink(item, sourceView) || '').trim();
             if (!photoLink) return '';
+            if (isMasterSource) {
+                const masterStampLabel = formatPhotoDateLabel_(getMasterPhotoRetentionUpdatedAt(item));
+                if (masterStampLabel) return masterStampLabel;
+            }
             const firstUrl = parsePhotoCsvValues(photoLink)[0] || '';
             const pendingPreview = findPendingPhotoPreviewByUrl(firstUrl);
             if (pendingPreview && pendingPreview.createdAt) {
@@ -2047,16 +2063,8 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             }
             const fromLink = formatPhotoDateLabel_(firstUrl || photoLink);
             if (fromLink) return fromLink;
-            const normalizedSource = String(sourceView || '').toLowerCase();
-            const fallbackStamp = normalizedSource === 'av' || normalizedSource === 'av-photo' || normalizedSource === 'drive' || normalizedSource === 'low-stock'
-                ? firstNonEmptyValue(
-                    item.AV_RULE_PHOTO_UPDATED_AT,
-                    item.AV_RULE_BUNDLE_UPDATED_AT,
-                    item.UPDATED_AT,
-                    item.updated_at,
-                    item.LAST_UPDATED,
-                    item.last_updated
-                )
+            const fallbackStamp = isMasterSource
+                ? getMasterPhotoRetentionUpdatedAt(item)
                 : firstNonEmptyValue(
                     item.AV_RULE_PHOTO_UPDATED_AT,
                     item.DATE_COMPLETED,
@@ -2164,7 +2172,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 getPhotoUrlList(link).forEach((url) => {
                     const match = String(url || '').match(/(?:\/|%2F)(20\d{2}-\d{2}-\d{2})(?:\/|%2F)/i);
                     if (!match || !match[1]) return;
-                    const iso = getValidIsoTimestamp(`${match[1]}T00:00:00Z`);
+                    const iso = getValidIsoTimestamp(`${match[1]}T12:00:00Z`);
                     if (!iso) return;
                     const stamp = Date.parse(iso);
                     if (stamp > winnerMs) {
@@ -2174,6 +2182,42 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 });
             });
             return winner;
+        }
+
+        function getMasterPhotoRetentionUpdatedAt(item) {
+            if (!item) return '';
+            const candidates = [
+                item.AV_RULE_PHOTO_UPDATED_AT,
+                getLatestPhotoDateIsoForRetention(item)
+            ];
+            let winner = '';
+            let winnerMs = -1;
+            candidates.forEach((value) => {
+                const iso = getValidIsoTimestamp(value);
+                if (!iso) return;
+                const stamp = Date.parse(iso);
+                if (stamp > winnerMs) {
+                    winner = iso;
+                    winnerMs = stamp;
+                }
+            });
+            return winner;
+        }
+
+        function getMasterPhotoVisibilityReasons(item, basePhotoLink = null) {
+            if (!item) return ['missing_item'];
+            const photoBaseLink = basePhotoLink == null ? getMasterSavedPhotoBaseLink(item) : String(basePhotoLink || '').trim();
+            const photoLink = getDisplayPhotoLinkCsv(photoBaseLink, item, 'saved');
+            if (!getPhotoUrlList(photoLink).length) return ['missing_photo'];
+            const reasons = [];
+            const effectiveLocMatchQty = calculateLocMatchQtyValue(item) ?? parseAppNumber(item.LOC_MATCH_QTY);
+            const photoUpdatedAt = getMasterPhotoRetentionUpdatedAt(item);
+            if (effectiveLocMatchQty != null && effectiveLocMatchQty <= 0) reasons.push('loc_match_qty_zero');
+            if (photoUpdatedAt) {
+                const ageMs = Date.now() - Date.parse(photoUpdatedAt);
+                if (ageMs > AV_RULE_MAX_AGE_MS) reasons.push('stale_10_day');
+            }
+            return [...new Set(reasons)];
         }
 
         function getMasterAvRetentionUpdatedAt(item) {
@@ -4535,7 +4579,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         const REQUEST_EMAIL_THREAD_SELECT_FIELDS = 'request_folder,request_customer,sales_rep_name,sales_rep_email,recipients,initial_thread_id,initial_message_id,initial_email_sent_at,last_reply_sent_at,status,metadata';
         const REQUEST_EMAIL_INTERNAL_RECIPIENTS = Object.freeze(['dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com']);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-const APP_VERSION = 'V2026.04.16.08';
+const APP_VERSION = 'V2026.04.17.01';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
