@@ -457,7 +457,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-        <div id="header-version" class="nav-version-pill">V2026.04.17.02</div>
+        <div id="header-version" class="nav-version-pill">V2026.04.17.03</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -949,7 +949,10 @@
         let realtimeStartupUntil = 0;
         let realtimeTableStatus = Object.create(null);
         const SUPABASE_READ_TIMEOUT_MS = 30000;
-        const LOGIN_READ_TIMEOUT_MS = 8000;
+        const LOGIN_DESKTOP_READ_TIMEOUT_MS = 20000;
+        const LOGIN_TOUCH_READ_TIMEOUT_MS = 30000;
+        const LOGIN_READ_RETRY_COUNT = 1;
+        const LOGIN_READ_RETRY_DELAY_MS = 450;
         const SUPABASE_WRITE_TIMEOUT_MS = 22000;
         const DETAIL_ROW_WRITE_TIMEOUT_MS = 30000;
         const DETAIL_ROW_TOUCH_WRITE_TIMEOUT_MS = 40000;
@@ -979,6 +982,7 @@
             skippedRealtimeEchoes: 0,
             catchupsQueued: 0,
             localEchoWrites: 0,
+            loginDiagnostics: Object.create(null),
             saveDurations: Object.create(null),
             realtimeApplyDurations: Object.create(null),
             viewRenderDurations: Object.create(null),
@@ -1117,8 +1121,42 @@
             return isIOSDevice() || isStandaloneApp() || /Android/i.test(navigator.userAgent) || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
         }
 
+        function getLoginReadTimeoutMs() {
+            return isTouchOptimizedDevice() ? LOGIN_TOUCH_READ_TIMEOUT_MS : LOGIN_DESKTOP_READ_TIMEOUT_MS;
+        }
+
         function getDetailRowWriteTimeoutMs() {
             return isTouchOptimizedDevice() ? DETAIL_ROW_TOUCH_WRITE_TIMEOUT_MS : DETAIL_ROW_WRITE_TIMEOUT_MS;
+        }
+
+        function noteLoginDiagnostic(key = '', amount = 1) {
+            const safeKey = String(key || '').trim();
+            if (!safeKey) return;
+            if (!internalPerfStats.loginDiagnostics || typeof internalPerfStats.loginDiagnostics !== 'object') {
+                internalPerfStats.loginDiagnostics = Object.create(null);
+            }
+            internalPerfStats.loginDiagnostics[safeKey] = (Number(internalPerfStats.loginDiagnostics[safeKey]) || 0) + (Number(amount) || 0);
+        }
+
+        function isRetryableLoginReadError(error) {
+            const message = String(error && error.message || '').toLowerCase();
+            if (!message) return false;
+            return message.includes('timed out')
+                || message.includes('network')
+                || message.includes('failed to fetch')
+                || message.includes('load failed')
+                || message.includes('fetch failed')
+                || message.includes('connection');
+        }
+
+        function getLoginFailureMessage(error) {
+            const message = String(error && error.message || '').toLowerCase();
+            if (!message) return 'Could not reach the login service. Please try again.';
+            if (message.includes('timed out')) return 'Login is taking longer than expected. Please try again.';
+            if (message.includes('failed to fetch') || message.includes('fetch failed') || message.includes('network') || message.includes('load failed') || message.includes('connection')) {
+                return 'Could not reach the login service. Please check your connection and try again.';
+            }
+            return 'Could not reach the login service. Please try again.';
         }
 
         function isRetryableSupabaseWriteError(error) {
@@ -3451,7 +3489,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             }, delay);
         }
 
-        let activeFetches=0; let fetchProgressInterval; let currentProgress=0;
+        let activeFetches=0; let fetchProgressInterval; let currentProgress=0; let loginProgressOverrideLabel='';
         let initialAppLoadActive=false;
         let initialAppLoadComplete=false;
 
@@ -3490,16 +3528,48 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             }, 250);
         }
 
+        async function fetchLoginRowsWithRetry(url, label = 'exact') {
+            const timeoutMs = getLoginReadTimeoutMs();
+            const maxAttempts = Math.max(1, LOGIN_READ_RETRY_COUNT + 1);
+            let lastError = null;
+            for (let attempt = 0; attempt < maxAttempts; attempt++) {
+                const requestStartedAt = beginInternalPerfMeasure();
+                try {
+                    const response = await fetchWithTimeout(url, {
+                        method: 'GET',
+                        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }
+                    }, timeoutMs, 'Login');
+                    recordInternalPerfDuration('loginReadDurations', requestStartedAt, label);
+                    loginProgressOverrideLabel = '';
+                    return response;
+                } catch (error) {
+                    recordInternalPerfDuration('loginReadDurations', requestStartedAt, `${label}-error`);
+                    lastError = error;
+                    noteLoginDiagnostic('liveReadErrors');
+                    if (String(error && error.message || '').toLowerCase().includes('timed out')) noteLoginDiagnostic('timeouts');
+                    if (attempt >= (maxAttempts - 1) || !isRetryableLoginReadError(error)) {
+                        loginProgressOverrideLabel = '';
+                        throw error;
+                    }
+                    noteLoginDiagnostic('retries');
+                    loginProgressOverrideLabel = `Retrying login (${attempt + 2}/${maxAttempts})...`;
+                    setLoginProgress(Math.max(currentProgress, 12), loginProgressOverrideLabel);
+                    await delayMs(LOGIN_READ_RETRY_DELAY_MS);
+                }
+            }
+            throw lastError || new Error('Could not reach the login service.');
+        }
+
         function startGlobalProgress() {
             if (initialAppLoadComplete || !initialAppLoadActive) return;
             activeFetches++;
             if(activeFetches===1){
                 currentProgress=Math.max(currentProgress,18);
-                setLoginProgress(currentProgress, 'Downloading data...');
+                setLoginProgress(currentProgress, loginProgressOverrideLabel || 'Downloading data...');
                 fetchProgressInterval=setInterval(()=>{
                     if(currentProgress<90){
                         currentProgress+=Math.random()*4;
-                        setLoginProgress(currentProgress, 'Downloading data...');
+                        setLoginProgress(currentProgress, loginProgressOverrideLabel || 'Downloading data...');
                     }
                 },220);
             }
@@ -3510,6 +3580,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             activeFetches--;
             if(activeFetches<=0){
                 activeFetches=0;
+                loginProgressOverrideLabel = '';
                 clearInterval(fetchProgressInterval);
                 fetchProgressInterval=null;
                 currentProgress=Math.max(currentProgress,92);
@@ -4140,32 +4211,35 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 const normalizedUsername = String(username || '').trim().toLowerCase();
                 const normalizedPassword = String(password || '').trim();
                 const cachedUser = await tryLocalCachedLoginRecord(normalizedUsername, normalizedPassword);
-                if (cachedUser) return { ok: true, user: cachedUser, source: 'local-cache' };
+                if (cachedUser) {
+                    noteLoginDiagnostic('localCacheHits');
+                    return { ok: true, user: cachedUser, source: 'local-cache' };
+                }
+                noteLoginDiagnostic('liveLookups');
                 const exactUrl = `${SUPABASE_URL}/rest/v1/v2_app_users?select=username,role,password&username=eq.${encodeURIComponent(normalizedUsername)}&limit=1`;
-                let response = await fetchWithTimeout(exactUrl, {
-                    method: 'GET',
-                    headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }
-                }, LOGIN_READ_TIMEOUT_MS, 'Login');
+                let response = await fetchLoginRowsWithRetry(exactUrl, 'exact');
                 if (!response.ok) throw new Error(await getResponseError(response, `Supabase read failed (${response.status})`));
                 let text = await response.text();
                 let rows = text ? JSON.parse(text) : [];
+                let source = 'remote-exact';
                 if ((!Array.isArray(rows) || rows.length === 0) && normalizedUsername) {
+                    noteLoginDiagnostic('fallbackLookups');
                     const fallbackUrl = `${SUPABASE_URL}/rest/v1/v2_app_users?select=username,role,password&username=ilike.${encodeURIComponent(normalizedUsername)}&limit=3`;
-                    response = await fetchWithTimeout(fallbackUrl, {
-                        method: 'GET',
-                        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }
-                    }, LOGIN_READ_TIMEOUT_MS, 'Login');
+                    response = await fetchLoginRowsWithRetry(fallbackUrl, 'fallback');
                     if (!response.ok) throw new Error(await getResponseError(response, `Supabase read failed (${response.status})`));
                     text = await response.text();
                     rows = text ? JSON.parse(text) : [];
+                    source = 'remote-fallback';
                 }
                 const matchedUser = Array.isArray(rows)
                     ? rows.find((row) => String(row.username || '').trim().toLowerCase() === normalizedUsername && String(row.password || '').trim() === normalizedPassword)
                     : null;
                 if (!matchedUser) return { ok: false, reason: 'mismatch' };
-                return { ok: true, user: matchedUser };
+                noteLoginDiagnostic('liveSuccesses');
+                return { ok: true, user: matchedUser, source };
             } catch (e) {
-                return { ok: false, reason: 'network', error: e };
+                noteLoginDiagnostic('finalFailures');
+                return { ok: false, reason: 'network', error: e, userMessage: getLoginFailureMessage(e) };
             } finally {
                 stopGlobalProgress();
             }
@@ -4649,7 +4723,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         const REQUEST_EMAIL_THREAD_SELECT_FIELDS = 'request_folder,request_customer,sales_rep_name,sales_rep_email,recipients,initial_thread_id,initial_message_id,initial_email_sent_at,last_reply_sent_at,status,metadata';
         const REQUEST_EMAIL_INTERNAL_RECIPIENTS = Object.freeze(['dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com']);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-const APP_VERSION = 'V2026.04.17.02';
+const APP_VERSION = 'V2026.04.17.03';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -8154,16 +8228,16 @@ function toggleDriveQuickRequestItem(domId) {
                 } else {
                     finishInitialAppLoad();
                     setBootingSession(false);
-                    const rawError = result && result.error && result.error.message ? String(result.error.message) : '';
-                    showToast('Error', rawError ? `Login failed: ${rawError}` : 'Could not reach the login service.', true);
+                    const userMessage = result && result.userMessage ? String(result.userMessage) : getLoginFailureMessage(result && result.error);
+                    showToast('Error', userMessage, true);
                     document.getElementById('login-inputs').classList.remove('hidden');
                     document.getElementById('loading-spinner').classList.add('hidden');
                 }
             }).catch(err=>{
                 finishInitialAppLoad();
                 setBootingSession(false);
-                const rawError = err && err.message ? String(err.message) : '';
-                showToast('Error', rawError ? `Login failed: ${rawError}` : 'Could not reach the login service.', true);
+                const userMessage = getLoginFailureMessage(err);
+                showToast('Error', userMessage, true);
                 document.getElementById('login-inputs').classList.remove('hidden');
                 document.getElementById('loading-spinner').classList.add('hidden');
             });
