@@ -457,7 +457,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-        <div id="header-version" class="nav-version-pill">V2026.04.16.04</div>
+<div id="header-version" class="nav-version-pill">V2026.04.16.02</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -2246,13 +2246,12 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             if (!item || !hasTrackedAvPayload(item)) return [];
             const reasons = [];
             const currentHold = getHoldStopSnapshotFromItem(item);
-            const trackedHoldSnapshot = normalizeHoldStopSnapshotValue(firstNonEmptyValue(item && item.AV_RULE_HOLDSTOP_SNAPSHOT, item && item.av_rule_holdstop_snapshot, ''));
             const bundleUpdatedAt = getEffectiveAvRuleUpdatedAt(item);
             const effectiveLocMatchQty = calculateLocMatchQtyValue(item) ?? parseAppNumber(item.LOC_MATCH_QTY);
 
             if (effectiveLocMatchQty != null) item.LOC_MATCH_QTY = effectiveLocMatchQty;
             if (effectiveLocMatchQty != null && effectiveLocMatchQty <= 0) reasons.push('loc_match_qty_zero');
-            if (hasHoldStopBlockCode(currentHold) && !hasHoldStopBlockCode(trackedHoldSnapshot)) reasons.push('holdstop_blocked');
+            if (hasHoldStopBlockCode(currentHold)) reasons.push('holdstop_blocked');
             if (bundleUpdatedAt) {
                 const ageMs = Date.now() - Date.parse(bundleUpdatedAt);
                 if (ageMs > AV_RULE_MAX_AGE_MS) reasons.push('stale_10_day');
@@ -3926,51 +3925,6 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             })();
             return productivityHistorySchemaPromise;
         }
-
-        function maybeWarnRequestEmailThreadSchemaMissing() {
-            if (requestEmailThreadSchemaWarningShown || !currentUser) return;
-            requestEmailThreadSchemaWarningShown = true;
-            showToast('Schema Required', 'Run request_email_threads_migration.sql in Supabase to enable threaded request emails.', true);
-        }
-
-        async function ensureRequestEmailThreadSchemaReady(force = false) {
-            if (requestEmailThreadSchemaReady === true && !force) return true;
-            if (requestEmailThreadSchemaReady === false && !force) return false;
-            if (requestEmailThreadSchemaPromise && !force) return requestEmailThreadSchemaPromise;
-            requestEmailThreadSchemaPromise = (async () => {
-                if (navigator.onLine === false) return false;
-                try {
-                    const url = `${SUPABASE_URL}/rest/v1/${REQUEST_EMAIL_THREAD_TABLE}?select=request_folder,initial_thread_id,initial_message_id,recipients,metadata&limit=1`;
-                    const response = await fetchWithTimeout(url, {
-                        method: 'GET',
-                        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }
-                    }, SUPABASE_READ_TIMEOUT_MS, 'Request Email Thread Schema');
-                    if (!response.ok) {
-                        const errorText = await getResponseError(response, `Supabase read failed (${response.status})`);
-                        const normalizedError = String(errorText || '').toLowerCase();
-                        if (normalizedError.includes('v2_request_email_threads') || normalizedError.includes('request_folder') || normalizedError.includes('initial_thread_id') || normalizedError.includes('recipients') || normalizedError.includes('metadata') || normalizedError.includes('relation') || normalizedError.includes('column')) {
-                            requestEmailThreadSchemaReady = false;
-                            maybeWarnRequestEmailThreadSchemaMissing();
-                            return false;
-                        }
-                        return false;
-                    }
-                    requestEmailThreadSchemaReady = true;
-                    return true;
-                } catch (error) {
-                    const normalizedError = String(error && error.message ? error.message : error || '').toLowerCase();
-                    if (normalizedError.includes('v2_request_email_threads') || normalizedError.includes('request_folder') || normalizedError.includes('initial_thread_id') || normalizedError.includes('recipients') || normalizedError.includes('metadata') || normalizedError.includes('relation') || normalizedError.includes('column')) {
-                        requestEmailThreadSchemaReady = false;
-                        maybeWarnRequestEmailThreadSchemaMissing();
-                        return false;
-                    }
-                    return false;
-                } finally {
-                    requestEmailThreadSchemaPromise = null;
-                }
-            })();
-            return requestEmailThreadSchemaPromise;
-        }
         async function tryLocalCachedLoginRecord(username, password) {
             const normalizedUsername = String(username || '').trim().toLowerCase();
             const normalizedPassword = String(password || '').trim();
@@ -4246,7 +4200,6 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         let avRuleColumnsReady=null; let avRuleColumnsProbePromise=null; let avRuleSchemaWarningShown=false; let avRuleCleanupInFlight=new Set(); let flyerShadowColumnsReady=null; let flyerShadowColumnsProbePromise=null; let flyerShadowSchemaWarningShown=false;
         let activeSalesOfficeTab='season'; let salesOfficeOrderColumnsReady=null; let salesOfficeOrderSchemaPromise=null; let salesOfficeOrderSchemaWarningShown=false;
         let activeHomeTab='dashboard'; let selectedProductivityUser=''; let productivityViewMode='cards'; let productivityHistoryByUser=new Map(); let productivityHistoryLoadState=new Map(); let productivityHistorySchemaReady=null; let productivityHistorySchemaPromise=null; let productivityHistorySchemaWarningShown=false; let productivityHistoryBackfillPromise=null;
-        let requestEmailThreadCache=new Map(); let requestEmailThreadSchemaReady=null; let requestEmailThreadSchemaPromise=null; let requestEmailThreadSchemaWarningShown=false;
 
         function isLagSensitiveDetailPrefix(prefix) {
             return prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-' || prefix === 'req-' || prefix === 'dock-' || prefix === 'flyer-';
@@ -4494,11 +4447,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         const PRODUCTIVITY_TIME_ZONE = 'America/Chicago';
         const PRODUCTIVITY_HISTORY_BACKFILL_STORAGE_KEY = 'gnc_productivity_backfill_v3';
         const PRODUCTIVITY_COMPLETION_SOURCE_KINDS = new Set(['season_sales_note','location_sales_note']);
-        const REQUEST_EMAIL_THREAD_TABLE = 'v2_request_email_threads';
-        const REQUEST_EMAIL_THREAD_SELECT_FIELDS = 'request_folder,request_customer,sales_rep_name,sales_rep_email,recipients,initial_thread_id,initial_message_id,initial_email_sent_at,last_reply_sent_at,status,metadata';
-        const REQUEST_EMAIL_INTERNAL_RECIPIENTS = Object.freeze(['dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com']);
-        const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-const APP_VERSION = 'V2026.04.16.05';
+        const APP_VERSION = 'V2026.04.16.02';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -6346,67 +6295,6 @@ function toggleDriveQuickRequestItem(domId) {
             return Array.from(names);
         }
 
-        function getFlyerRowRemovalAssignment(item) {
-            const originAssignment = String(firstNonEmptyValue(item && item.PRODUCTIVITY_ORIGIN_ASSIGNMENT, item && item.productivity_origin_assignment, '')).toLowerCase().trim();
-            return ['season', 'location', 'colorwalk', 'endcap'].includes(originAssignment) ? originAssignment : '';
-        }
-
-        function buildFlyerRowRemovalPayload(item, canPersistFlyerShadow = false) {
-            const restoreAssignment = String(item && item.APP_TAB_ASSIGNMENT || '').toLowerCase() === 'flyer'
-                ? getFlyerRowRemovalAssignment(item)
-                : '';
-            const payload = {
-                flyer_title: null,
-                flyer_assigned: null,
-                flyer_cat: null,
-                flyer_inst: null,
-                flyer_notes: null,
-                flyer_completed: null,
-                flyer_photo_link: null,
-                flyer_photo_name: null,
-                app_tab_assignment: restoreAssignment || null
-            };
-            if (canPersistFlyerShadow) {
-                payload.flyer_av_note = null;
-                payload.flyer_match = null;
-                payload.flyer_loc_match_qty = null;
-                payload.flyer_spec = null;
-                payload.flyer_caliper = null;
-                payload.flyer_pick = null;
-                payload.flyer_initial_ptr = null;
-            }
-            return { payload, restoreAssignment };
-        }
-
-        function clearFlyerRowMembershipLocally(item, canPersistFlyerShadow = false) {
-            if (!item) return { payload: {}, restoreAssignment: '' };
-            const { payload, restoreAssignment } = buildFlyerRowRemovalPayload(item, canPersistFlyerShadow);
-            item.FLYER_TITLE = '';
-            item.FLYER_ASSIGNED = '';
-            item.FLYER_CAT = '';
-            item.FLYER_INST = '';
-            item.FLYER_NOTES = '';
-            item.FLYER_COMPLETED = '';
-            item.FLYER_PHOTO_LINK = '';
-            item.FLYER_PHOTO_NAME = '';
-            item.FLYER_AV_NOTE = '';
-            item.FLYER_MATCH = '';
-            item.FLYER_LOC_MATCH_QTY = '';
-            item.FLYER_SPEC = '';
-            item.FLYER_CALIPER = '';
-            item.FLYER_PICK = '';
-            item.FLYER_INITIAL_PTR = '';
-            if (String(item.APP_TAB_ASSIGNMENT || '').toLowerCase() === 'flyer') item.APP_TAB_ASSIGNMENT = restoreAssignment;
-            buildSearchIndex(item);
-            syncRowDataAcrossViews(item);
-            return { payload, restoreAssignment };
-        }
-
-        function refreshFlyerFolderTaskView(reason = 'flyer-folder-update') {
-            markViewDirty('tasks');
-            persistCurrentCache();
-            scheduleUiRender(reason, () => renderTasks());
-        }
         function clearPendingFlyerFolderTarget(silent = false) {
             const previousFolder = String(pendingFlyerFolderTarget || '').trim();
             pendingFlyerFolderTarget = null;
@@ -9877,213 +9765,12 @@ activeDriveTab = tab;
             if (aliasMap[underscored]) return aliasMap[underscored];
             return underscored ? underscored + '@greenleafnursery.com' : '';
         }
-
-        function normalizeRequestEmailAddress(email = '') {
-            return String(email || '').trim().toLowerCase();
-        }
-
-        function dedupeRequestEmailRecipients(recipients = []) {
-            const seen = new Set();
-            return (Array.isArray(recipients) ? recipients : []).map((value) => {
-                if (typeof value === 'string') return normalizeRequestEmailAddress(value);
-                return normalizeRequestEmailAddress(firstNonEmptyValue(value && value.email, value && value.address, ''));
-            }).filter((email) => {
-                if (!email || seen.has(email)) return false;
-                seen.add(email);
-                return true;
-            });
-        }
-
-        function resolveRequestEmailThreadId(source = null) {
-            return String(firstNonEmptyValue(source && source.threadId, source && source.thread_id, source && source.threadID, source && source.gmailThreadId, '')).trim();
-        }
-
-        function resolveRequestEmailMessageId(source = null) {
-            return String(firstNonEmptyValue(source && source.messageId, source && source.message_id, source && source.messageID, source && source.gmailMessageId, '')).trim();
-        }
-
-        function buildRequestEmailRecipients(repName = '', details = null) {
-            const safeDetails = details || {};
-            const repEmail = normalizeRequestEmailAddress(firstNonEmptyValue(safeDetails.repEmail, resolveRequestRecipientEmail(repName), ''));
-            const recipientEmails = dedupeRequestEmailRecipients([...REQUEST_EMAIL_INTERNAL_RECIPIENTS, repEmail]);
-            return {
-                repEmail,
-                recipientEmails,
-                recipientDetails: recipientEmails.map((email) => ({ email, role: email === repEmail ? 'sales-rep' : 'internal' }))
-            };
-        }
-
-        function normalizeRequestEmailThreadRow(row = null) {
-            if (!row || typeof row !== 'object') return null;
-            let recipients = [];
-            if (Array.isArray(row.recipients)) recipients = row.recipients;
-            else if (typeof row.recipients === 'string' && row.recipients.trim()) {
-                try {
-                    const parsedRecipients = JSON.parse(row.recipients);
-                    recipients = Array.isArray(parsedRecipients) ? parsedRecipients : [row.recipients];
-                } catch (error) {
-                    recipients = row.recipients.split(',');
-                }
-            }
-            let metadata = {};
-            if (row.metadata && typeof row.metadata === 'object' && !Array.isArray(row.metadata)) metadata = row.metadata;
-            else if (typeof row.metadata === 'string' && row.metadata.trim()) {
-                try {
-                    const parsedMetadata = JSON.parse(row.metadata);
-                    if (parsedMetadata && typeof parsedMetadata === 'object' && !Array.isArray(parsedMetadata)) metadata = parsedMetadata;
-                } catch (error) {}
-            }
-            return {
-                request_folder: String(firstNonEmptyValue(row.request_folder, row.REQUEST_FOLDER, '')).trim(),
-                request_customer: String(firstNonEmptyValue(row.request_customer, row.customer, '')).trim(),
-                sales_rep_name: String(firstNonEmptyValue(row.sales_rep_name, row.rep_name, '')).trim(),
-                sales_rep_email: normalizeRequestEmailAddress(firstNonEmptyValue(row.sales_rep_email, row.rep_email, '')),
-                recipients: dedupeRequestEmailRecipients(recipients),
-                initial_thread_id: String(firstNonEmptyValue(row.initial_thread_id, '')).trim(),
-                initial_message_id: String(firstNonEmptyValue(row.initial_message_id, '')).trim(),
-                initial_email_sent_at: String(firstNonEmptyValue(row.initial_email_sent_at, '')).trim(),
-                last_reply_sent_at: String(firstNonEmptyValue(row.last_reply_sent_at, '')).trim(),
-                status: String(firstNonEmptyValue(row.status, 'open')).trim() || 'open',
-                metadata
-            };
-        }
-
-        async function getRequestEmailThreadRecord(folderId = '', force = false) {
-            const safeFolderId = String(folderId || '').trim();
-            if (!safeFolderId) return null;
-            if (!force && requestEmailThreadCache.has(safeFolderId)) return requestEmailThreadCache.get(safeFolderId) || null;
-            const schemaReady = await ensureRequestEmailThreadSchemaReady();
-            if (!schemaReady) return null;
-            try {
-                const rows = await supabaseFetch(REQUEST_EMAIL_THREAD_TABLE, 'GET', null, `select=${REQUEST_EMAIL_THREAD_SELECT_FIELDS}&request_folder=eq.${encodeURIComponent(safeFolderId)}&limit=1`);
-                const normalized = normalizeRequestEmailThreadRow(Array.isArray(rows) && rows.length ? rows[0] : null);
-                if (normalized && normalized.request_folder) requestEmailThreadCache.set(safeFolderId, normalized);
-                return normalized;
-            } catch (error) {
-                const normalizedError = String(error && error.message ? error.message : error || '').toLowerCase();
-                if (normalizedError.includes('v2_request_email_threads') || normalizedError.includes('request_folder') || normalizedError.includes('initial_thread_id') || normalizedError.includes('recipients') || normalizedError.includes('metadata') || normalizedError.includes('relation') || normalizedError.includes('column')) {
-                    requestEmailThreadSchemaReady = false;
-                    maybeWarnRequestEmailThreadSchemaMissing();
-                    return null;
-                }
-                throw error;
-            }
-        }
-
-        async function upsertRequestEmailThreadRecord(record = {}, options = {}) {
-            const normalized = normalizeRequestEmailThreadRow(record);
-            if (!normalized || !normalized.request_folder) return false;
-            const opts = options || {};
-            const schemaReady = opts.skipEnsure ? true : await ensureRequestEmailThreadSchemaReady();
-            if (!schemaReady) return false;
-            try {
-                const payload = {
-                    request_folder: normalized.request_folder,
-                    request_customer: normalized.request_customer || null,
-                    sales_rep_name: normalized.sales_rep_name || null,
-                    sales_rep_email: normalized.sales_rep_email || null,
-                    recipients: normalized.recipients,
-                    initial_thread_id: normalized.initial_thread_id || null,
-                    initial_message_id: normalized.initial_message_id || null,
-                    initial_email_sent_at: normalized.initial_email_sent_at || null,
-                    last_reply_sent_at: normalized.last_reply_sent_at || null,
-                    status: normalized.status || 'open',
-                    metadata: normalized.metadata || {}
-                };
-                await supabaseFetch(REQUEST_EMAIL_THREAD_TABLE, 'POST', payload, 'on_conflict=request_folder');
-                requestEmailThreadCache.set(normalized.request_folder, normalized);
-                return true;
-            } catch (error) {
-                const normalizedError = String(error && error.message ? error.message : error || '').toLowerCase();
-                if (normalizedError.includes('v2_request_email_threads') || normalizedError.includes('request_folder') || normalizedError.includes('initial_thread_id') || normalizedError.includes('recipients') || normalizedError.includes('metadata') || normalizedError.includes('relation') || normalizedError.includes('column')) {
-                    requestEmailThreadSchemaReady = false;
-                    maybeWarnRequestEmailThreadSchemaMissing();
-                    return false;
-                }
-                throw error;
-            }
-        }
-
-        async function postRequestEmailPayload(payload = {}) {
-            const response = await fetchWithTimeout(GOOGLE_SCRIPT_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            }, REQUEST_EMAIL_SCRIPT_TIMEOUT_MS, 'Request Email');
-            let responseText = '';
-            try { responseText = await response.text(); } catch (error) {}
-            let parsed = {};
-            if (responseText) {
-                try {
-                    parsed = JSON.parse(responseText);
-                } catch (error) {
-                    parsed = { rawResponse: responseText };
-                }
-            }
-            return { ok: !!(response && response.ok), status: response ? response.status : 0, ...parsed };
-        }
-
-        async function persistRequestEmailThreadAfterSend(type = '', payload = {}, responseData = null, existingRecord = null) {
-            const safeType = String(type || '').trim().toLowerCase();
-            const safeFolderId = String(firstNonEmptyValue(payload.requestFolder, payload.folderId, '')).trim();
-            if (!safeFolderId || (responseData && responseData.ok === false)) return false;
-            const schemaReady = await ensureRequestEmailThreadSchemaReady();
-            if (!schemaReady) return false;
-            const previousRecord = normalizeRequestEmailThreadRow(existingRecord) || requestEmailThreadCache.get(safeFolderId) || null;
-            const nowIso = new Date().toISOString();
-            const threadId = String(firstNonEmptyValue(resolveRequestEmailThreadId(responseData), resolveRequestEmailThreadId(payload), previousRecord && previousRecord.initial_thread_id, '')).trim();
-            const messageId = String(firstNonEmptyValue(resolveRequestEmailMessageId(responseData), resolveRequestEmailMessageId(payload), previousRecord && previousRecord.initial_message_id, '')).trim();
-            const metadata = {
-                ...((previousRecord && previousRecord.metadata) || {}),
-                last_email_type: safeType,
-                last_email_status: Number(firstNonEmptyValue(responseData && responseData.status, 0)) || 0,
-                last_email_used_thread: !!threadId,
-                last_email_fallback: safeType === 'request_complete' && !threadId,
-                last_response_ok: !(responseData && responseData.ok === false)
-            };
-            const record = {
-                request_folder: safeFolderId,
-                request_customer: String(firstNonEmptyValue(payload.customer, previousRecord && previousRecord.request_customer, '')).trim(),
-                sales_rep_name: String(firstNonEmptyValue(payload.repName, previousRecord && previousRecord.sales_rep_name, '')).trim(),
-                sales_rep_email: normalizeRequestEmailAddress(firstNonEmptyValue(payload.repEmail, previousRecord && previousRecord.sales_rep_email, '')),
-                recipients: dedupeRequestEmailRecipients(firstNonEmptyValue(payload.recipientEmails, previousRecord && previousRecord.recipients, [])),
-                initial_thread_id: threadId || String(firstNonEmptyValue(previousRecord && previousRecord.initial_thread_id, '')).trim(),
-                initial_message_id: messageId || String(firstNonEmptyValue(previousRecord && previousRecord.initial_message_id, '')).trim(),
-                initial_email_sent_at: safeType === 'new_request' ? String(firstNonEmptyValue(previousRecord && previousRecord.initial_email_sent_at, nowIso)).trim() : String(firstNonEmptyValue(previousRecord && previousRecord.initial_email_sent_at, '')).trim(),
-                last_reply_sent_at: safeType === 'request_complete' ? nowIso : String(firstNonEmptyValue(previousRecord && previousRecord.last_reply_sent_at, '')).trim(),
-                status: safeType === 'request_complete' ? 'completed' : 'open',
-                metadata
-            };
-            return upsertRequestEmailThreadRecord(record, { skipEnsure: true });
-        }
-
-        async function sendEmailNotification(type, folderId, repName, customer, itemsCount, details = null) {
-            const safeType = String(type || '').trim().toLowerCase();
-            const safeDetails = details || {};
+        function sendEmailNotification(type, folderId, repName, customer, itemsCount, details = null) {
+            let payload = { type: 'email', emailType: type, folderId: folderId, repName: repName, customer: customer, itemsCount: itemsCount, dylanEmail: 'dylan_collyge@greenleafnursery.com' };
+            const rawRequestItems = Array.isArray(details && details.items) ? details.items.filter(Boolean) : [];
+            const requestIdSet = new Set((Array.isArray(details && details.requestIds) ? details.requestIds : []).map((id) => String(id || '').trim()).filter(Boolean));
             const targetFolderId = String(folderId || '').trim();
             const targetCustomer = normalizeSearchValue(customer);
-            const existingThreadRecord = targetFolderId ? await getRequestEmailThreadRecord(targetFolderId) : null;
-            const { repEmail, recipientEmails, recipientDetails } = buildRequestEmailRecipients(repName, safeDetails);
-            let payload = {
-                type: 'email',
-                emailType: safeType,
-                folderId: targetFolderId,
-                requestFolder: targetFolderId,
-                repName: String(repName || '').trim(),
-                salesRepName: String(repName || '').trim(),
-                repEmail: repEmail,
-                salesRepEmail: repEmail,
-                customer: String(customer || '').trim(),
-                itemsCount: Number(itemsCount) || 0,
-                requestedBy: String(repName || '').trim(),
-                dylanEmail: REQUEST_EMAIL_INTERNAL_RECIPIENTS[0],
-                jdEmail: REQUEST_EMAIL_INTERNAL_RECIPIENTS[1],
-                internalRecipients: REQUEST_EMAIL_INTERNAL_RECIPIENTS.slice(),
-                recipientEmails: recipientEmails,
-                recipients: recipientDetails
-            };
-            const rawRequestItems = Array.isArray(safeDetails.items) ? safeDetails.items.filter(Boolean) : [];
-            const requestIdSet = new Set((Array.isArray(safeDetails.requestIds) ? safeDetails.requestIds : []).map((id) => String(id || '').trim()).filter(Boolean));
             let requestItems = rawRequestItems.filter((item) => {
                 const itemId = String(firstNonEmptyValue(item && item.UNIQUE_ID, item && item.unique_id, '') || '').trim();
                 const itemFolderId = String(firstNonEmptyValue(item && item.REQUEST_FOLDER, item && item.request_folder, '') || '').trim();
@@ -10091,7 +9778,7 @@ activeDriveTab = tab;
                 if (targetFolderId && itemFolderId && itemFolderId !== targetFolderId) return false;
                 return true;
             });
-            if (safeType === 'new_request' && safeDetails.isNewFolder && requestItems.length > 1 && targetCustomer) {
+            if (type === 'new_request' && details && details.isNewFolder && requestItems.length > 1 && targetCustomer) {
                 const distinctCustomers = new Set(requestItems.map((item) => normalizeSearchValue(firstNonEmptyValue(item && item.REQ_CUSTOMER, item && item.req_customer, ''))).filter(Boolean));
                 if (distinctCustomers.size > 1) {
                     requestItems = requestItems.filter((item) => normalizeSearchValue(firstNonEmptyValue(item && item.REQ_CUSTOMER, item && item.req_customer, '')) === targetCustomer);
@@ -10118,27 +9805,18 @@ activeDriveTab = tab;
                 })).filter((item) => item.unique_id || item.commonname || item.itemcode);
             }
             if (requestIdSet.size) payload.requestIds = Array.from(requestIdSet);
-            if (safeType === 'new_request') {
-                payload.isNewFolder = !!safeDetails.isNewFolder;
-                payload.appendedToExistingFolder = !!safeDetails.appendedToExistingFolder;
+            if (type === 'new_request') {
+                payload.isNewFolder = !!(details && details.isNewFolder);
+                payload.appendedToExistingFolder = !!(details && details.appendedToExistingFolder);
                 payload.folderOnly = true;
                 payload.customerHistoryAllowed = false;
             }
-            if (safeType === 'request_complete') {
-                const folderNote = String(safeDetails.folderNote || '').trim();
+            if (type === 'request_complete') {
+                payload.repEmail = resolveRequestRecipientEmail(repName);
+                const folderNote = String(details && details.folderNote ? details.folderNote : '').trim();
                 if (folderNote) payload.folderNote = folderNote;
             }
-            const existingThreadId = String(firstNonEmptyValue(safeDetails.threadId, existingThreadRecord && existingThreadRecord.initial_thread_id, '')).trim();
-            const existingMessageId = String(firstNonEmptyValue(safeDetails.messageId, existingThreadRecord && existingThreadRecord.initial_message_id, '')).trim();
-            if (existingThreadId) payload.threadId = existingThreadId;
-            if (existingMessageId) payload.messageId = existingMessageId;
-            payload.replyInExistingThread = !!existingThreadId && (safeType === 'request_complete' || !!safeDetails.appendedToExistingFolder);
-            try {
-                const responseData = await postRequestEmailPayload(payload);
-                await persistRequestEmailThreadAfterSend(safeType, payload, responseData, existingThreadRecord);
-            } catch (error) {
-                console.log(error);
-            }
+            fetch(GOOGLE_SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) }).catch(e => console.log(e));
         }
 
         function sendFlyerCreatedEmail(folderName, assignedTo, items = [], createdBy = '') {
@@ -15208,8 +14886,9 @@ activeDriveTab = tab;
                 selectedFlyerFolder = null;
                 taskViewLevel = 0;
             }
-            if (String(pendingFlyerFolderTarget || '').trim() === cleanFolderName && targetTab === 'archive') clearPendingFlyerFolderTarget(true);
-            refreshFlyerFolderTaskView(`flyer-folder-archive:${cleanFolderName}:${targetTab}`);
+            markViewDirty('tasks');
+            persistCurrentCache();
+            renderTasks();
             showToast(targetTab === 'archive' ? 'Archiving' : 'Restoring', `${cleanFolderName} is updating...`, false);
             const updates = matchingItems.map((item) => supabaseFetch(item.SOURCE_TABLE || 'v2_master_inventory', 'PATCH', { flyer_title: nextStoredTitle || null }, `unique_id=eq.${encodeURIComponent(item.UNIQUE_ID)}`));
             const results = await Promise.allSettled(updates);
@@ -15223,73 +14902,50 @@ activeDriveTab = tab;
             return false;
         }
 
-        async function deleteFlyerFolder(folderName, options = {}) {
-            const currentTab = getFlyerFolderTabValue(options.currentTab || activeFlyerFolderTab);
-            const cleanFolderName = getFlyerFolderName(folderName);
-            if (!cleanFolderName) return false;
-            const matchingItems = fullInventory.filter((item) => doesItemMatchFlyerFolder(item, cleanFolderName, currentTab));
-            if (!matchingItems.length) {
-                showToast('Folder Missing', 'That flyer folder could not be found.', true);
-                return false;
-            }
-            const rowCount = matchingItems.length;
-            const confirmMessage = rowCount === 1
-                ? `Delete ${cleanFolderName} and remove its only row from the flyer folder?`
-                : `Delete ${cleanFolderName} and remove all ${rowCount} rows from the flyer folder?`;
-            if (!window.confirm(confirmMessage)) return false;
-            const shouldProbeFlyerShadow = matchingItems.some((item) => String(item.SOURCE_TABLE || 'v2_master_inventory') === 'v2_master_inventory');
-            const canPersistFlyerShadow = shouldProbeFlyerShadow ? await ensureFlyerShadowColumnsReady() : false;
-            const clearedRows = matchingItems.map((item) => ({
-                item,
-                state: clearFlyerRowMembershipLocally(item, canPersistFlyerShadow && String(item.SOURCE_TABLE || 'v2_master_inventory') === 'v2_master_inventory')
-            }));
-            closeAllFlyerSwipes();
-            if (String(pendingFlyerFolderTarget || '').trim() === cleanFolderName) clearPendingFlyerFolderTarget(true);
-            if (taskViewLevel === 1 && selectedFlyerFolder === cleanFolderName) {
-                taskViewLevel = 0;
-                selectedFlyerFolder = null;
-            }
-            refreshFlyerFolderTaskView(`flyer-folder-delete:${cleanFolderName}`);
-            showToast('Deleting', `Removing ${cleanFolderName}...`, false);
-            const results = await Promise.allSettled(clearedRows.map(({ item, state }) => supabaseFetch(item.SOURCE_TABLE || 'v2_master_inventory', 'PATCH', state.payload, `unique_id=eq.${encodeURIComponent(item.UNIQUE_ID)}`)));
-            const failed = results.filter((result) => result.status === 'rejected');
-            if (failed.length) {
-                const firstError = failed[0] && failed[0].reason && failed[0].reason.message ? failed[0].reason.message : 'Supabase update failed.';
-                showToast('Sync Warning', `${cleanFolderName} was deleted here, but ${failed.length} row${failed.length === 1 ? '' : 's'} failed to sync. ${firstError}`, true);
-            } else {
-                showToast('Deleted', `${cleanFolderName} was removed from Flyer.`);
-            }
-            return false;
-        }
-
-        async function removeFlyerRow(uid, options = {}) {
+        async function removeFlyerRow(uid) {
             const item = fullInventory.find((entry) => entry.UNIQUE_ID === uid);
             if (!item) return false;
             const folderName = getFlyerFolderName(item);
             const folderTab = isFlyerFolderArchived(item) ? 'archive' : 'active';
-            const skipConfirm = !!(options && options.skipConfirm);
-            if (!skipConfirm && !window.confirm(`Remove ${item.COMMONNAME || 'this row'} from ${folderName || 'this flyer folder'}?`)) return false;
-            const canPersistFlyerShadow = String(item.SOURCE_TABLE || 'v2_master_inventory') === 'v2_master_inventory'
-                ? await ensureFlyerShadowColumnsReady()
-                : false;
-            const { payload } = clearFlyerRowMembershipLocally(item, canPersistFlyerShadow);
+            item.FLYER_TITLE = '';
+            item.FLYER_ASSIGNED = '';
+            item.FLYER_CAT = '';
+            item.FLYER_INST = '';
+            item.FLYER_NOTES = '';
+            item.FLYER_COMPLETED = '';
+            item.FLYER_PHOTO_LINK = '';
+            item.FLYER_PHOTO_NAME = '';
+            if (String(item.APP_TAB_ASSIGNMENT || '').toLowerCase() === 'flyer') item.APP_TAB_ASSIGNMENT = '';
+            buildSearchIndex(item);
+            syncRowDataAcrossViews(item);
             closeAllFlyerSwipes();
             const remainingItems = fullInventory.filter((entry) => entry && entry.UNIQUE_ID !== uid && doesItemMatchFlyerFolder(entry, folderName, folderTab));
             if (!remainingItems.length && taskViewLevel === 1 && selectedFlyerFolder === folderName) {
                 taskViewLevel = 0;
                 selectedFlyerFolder = null;
             }
-            if (!remainingItems.length && String(pendingFlyerFolderTarget || '').trim() === folderName) clearPendingFlyerFolderTarget(true);
-            refreshFlyerFolderTaskView(`flyer-row-remove:${uid}`);
+            markViewDirty('tasks');
+            persistCurrentCache();
+            renderTasks();
             showToast('Removing', 'Updating flyer row...', false);
             try {
-                await supabaseFetch(item.SOURCE_TABLE || 'v2_master_inventory', 'PATCH', payload, `unique_id=eq.${encodeURIComponent(uid)}`);
+                await supabaseFetch(item.SOURCE_TABLE || 'v2_master_inventory', 'PATCH', {
+                    flyer_title: null,
+                    flyer_assigned: null,
+                    flyer_cat: null,
+                    flyer_inst: null,
+                    flyer_notes: null,
+                    flyer_completed: null,
+                    flyer_photo_link: null,
+                    flyer_photo_name: null
+                }, `unique_id=eq.${encodeURIComponent(uid)}`);
                 showToast('Removed', 'Row removed from Flyer folder.');
             } catch (error) {
                 showToast('Sync Warning', 'Row removed here, but Supabase did not confirm it yet.', true);
             }
             return false;
         }
+
         function decorateFlyerTaskRows() {
             const container = document.getElementById('task-content');
             if (!container || activeTaskTab !== 'flyer' || taskViewLevel !== 1) return;
@@ -15684,11 +15340,7 @@ activeDriveTab = tab;
                     const isQueued=driveQuickRequestItems.has(item.DOM_ID);
                     quickRequestBtn=`<div class="mt-3 flex items-center justify-between"><span class="text-[10px] font-black uppercase tracking-wider ${isQueued?'text-orange-700':'text-gray-400'}">${isQueued?'Queued For Action':'Quick Add'}</span><button type="button" aria-label="${isQueued?'Remove from builder':'Add to builder'}" class="inline-flex items-center justify-center w-9 h-9 rounded-full shadow-sm border ${isQueued?'bg-orange-600 text-white border-orange-600':'bg-white text-orange-600 border-orange-300'} active:scale-95" onclick="event.stopPropagation(); toggleDriveQuickRequestItem('${item.DOM_ID}')"><i class="ph-bold ${isQueued?'ph-check':'ph-plus'} text-lg"></i></button></div>`;
                 }
-                let flyerFolderActionBtn='';
-                if(sourceView==='tasks'&&activeTaskTab==='flyer'&&taskViewLevel===1&&selectedFlyerFolder&&doesItemMatchFlyerFolder(item, selectedFlyerFolder, activeFlyerFolderTab)){
-                    flyerFolderActionBtn=`<div class="mt-3 flex items-center justify-between gap-2"><span class="text-[10px] font-black uppercase tracking-wider text-indigo-500">Folder Row</span><button type="button" class="inline-flex items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-red-700 shadow-sm active:scale-[0.98]" onclick="event.stopPropagation(); return removeFlyerRow('${safeUidJs}')"><i class="ph-bold ph-trash text-base"></i>Remove Row</button></div>`;
-                }
-                return `<div class="flex items-center w-full mb-3 item-row app-smart-card relative bg-white p-4 rounded-xl border border-gray-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-grow items-start justify-between min-w-0"><div class="app-card-main flex-grow min-w-0 pr-2"><div class="font-black text-gray-800 text-[16px] leading-tight break-words mb-0.5">${item.COMMONNAME||'Unknown'}</div><div class="app-card-subtitle font-bold text-[#007a4d] text-sm mb-2">${item.CONTSIZE||'-'}</div><div class="text-[11px] font-mono text-gray-500 mb-2 flex items-center bg-gray-100 px-2 py-0.5 rounded w-max"><i class="ph-bold ph-barcode mr-1.5 text-gray-400"></i>${item.ITEMCODE||'-'}</div><div class="app-card-chip-row flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600"><span class="bg-gray-100 px-1.5 py-0.5 rounded">LOC AVA: <span class="text-gray-900">${item.PTRAVAILABLE||'0'}</span></span><span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">Loc: ${item.LOCATIONCODE||'No Loc'}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded">Lot: ${item.LOTCODE||'-'}</span><span class="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-100">s_LTS: ${item.S_LTS||'0'}</span><span class="bg-orange-50 text-orange-700 px-1.5 py-0.5 rounded border border-orange-100">Pri: ${item.PRIORITY||'-'}</span></div>${extraData}${noteHtml}${quickRequestBtn}${flyerFolderActionBtn}</div>${inlineThumbHtml}</div></div>`;
+                return `<div class="flex items-center w-full mb-3 item-row app-smart-card relative bg-white p-4 rounded-xl border border-gray-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-grow items-start justify-between min-w-0"><div class="app-card-main flex-grow min-w-0 pr-2"><div class="font-black text-gray-800 text-[16px] leading-tight break-words mb-0.5">${item.COMMONNAME||'Unknown'}</div><div class="app-card-subtitle font-bold text-[#007a4d] text-sm mb-2">${item.CONTSIZE||'-'}</div><div class="text-[11px] font-mono text-gray-500 mb-2 flex items-center bg-gray-100 px-2 py-0.5 rounded w-max"><i class="ph-bold ph-barcode mr-1.5 text-gray-400"></i>${item.ITEMCODE||'-'}</div><div class="app-card-chip-row flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600"><span class="bg-gray-100 px-1.5 py-0.5 rounded">LOC AVA: <span class="text-gray-900">${item.PTRAVAILABLE||'0'}</span></span><span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">Loc: ${item.LOCATIONCODE||'No Loc'}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded">Lot: ${item.LOTCODE||'-'}</span><span class="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-100">s_LTS: ${item.S_LTS||'0'}</span><span class="bg-orange-50 text-orange-700 px-1.5 py-0.5 rounded border border-orange-100">Pri: ${item.PRIORITY||'-'}</span></div>${extraData}${noteHtml}${quickRequestBtn}</div>${inlineThumbHtml}</div></div>`;
             }
 
             return `<div class="flex items-center w-full mb-2 item-row overflow-hidden" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="inv-card app-smart-card ${colorClass} flex items-start justify-between flex-grow !mb-0 transition-transform active:scale-[0.99]"><div class="app-card-main flex-grow min-w-0 text-[#007a4d]"><div class="flex justify-between font-bold text-sm mb-1"><span class="truncate pr-2">${item.COMMONNAME||'Unknown'} &bull; ${item.CONTSIZE||'-'} &bull; Loc: ${item.LOCATIONCODE||'No Loc'}</span><span class="whitespace-nowrap bg-[#007a4d]/10 px-1.5 py-0.5 rounded text-xs border border-[#007a4d]/20 h-max">Pri: ${item.PRIORITY||'-'}</span></div><div class="text-[11px] font-semibold truncate mt-0.5">Tag: ${tagColor} | Lot: ${item.LOTCODE||'-'} | PTR-Ava: ${item.PTRAVAILABLE||'0'} | s_LTS: ${item.S_LTS||'0'} | Supply: ${item.SEASONSUPPLY||'0'}</div><div class="text-[11px] font-semibold truncate mt-0.5">Item: ${item.ITEMCODE||'-'}</div></div>${inlineThumbHtml}</div></div>`;
@@ -18416,10 +18068,10 @@ ${folderNote ? `Folder Note: ${folderNote}
                         return String(a.COMMONNAME || '').localeCompare(String(b.COMMONNAME || ''));
                     });
                     const folderAssignees = getFlyerFolderAssignedNames(selectedFlyerFolder, folderItems, activeFlyerFolderTab).join(', ') || 'Unassigned';
-                    const folderActionButtons = getFlyerFolderTabValue(activeFlyerFolderTab) === 'archive'
-                        ? `<div class="flex w-full sm:w-auto flex-col sm:flex-row gap-2"><button class="w-full sm:w-auto min-h-[42px] px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-[0.14em] transition-colors duration-150 bg-white border border-emerald-200 text-emerald-700 shadow-sm hover:bg-emerald-50" onclick="return setFlyerFolderArchiveState('${esc(selectedFlyerFolder || '')}', 'active', { currentTab: 'archive', keepOpen: true })">Restore Folder</button><button class="w-full sm:w-auto min-h-[42px] px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-[0.14em] transition-colors duration-150 bg-white border border-red-200 text-red-700 shadow-sm hover:bg-red-50" onclick="return deleteFlyerFolder('${esc(selectedFlyerFolder || '')}', { currentTab: 'archive' })">Delete Folder</button></div>`
-                        : `<div class="flex w-full sm:w-auto flex-col sm:flex-row gap-2"><button class="w-full sm:w-auto min-h-[42px] px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-[0.14em] transition-colors duration-150 bg-white border border-indigo-200 text-indigo-700 shadow-sm hover:bg-indigo-100" onclick="return startAddRowsToFlyerFolder('${esc(selectedFlyerFolder || '')}')">Add Rows To Folder</button><button class="w-full sm:w-auto min-h-[42px] px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-[0.14em] transition-colors duration-150 bg-white border border-amber-200 text-amber-700 shadow-sm hover:bg-amber-50" onclick="return setFlyerFolderArchiveState('${esc(selectedFlyerFolder || '')}', 'archive', { currentTab: 'active' })">Archive Folder</button><button class="w-full sm:w-auto min-h-[42px] px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-[0.14em] transition-colors duration-150 bg-white border border-red-200 text-red-700 shadow-sm hover:bg-red-50" onclick="return deleteFlyerFolder('${esc(selectedFlyerFolder || '')}', { currentTab: 'active' })">Delete Folder</button></div>`;
-                    const folderHeader = `<div class="mb-3 rounded-xl border border-indigo-200 bg-indigo-50 p-4"><div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-indigo-600">${getFlyerFolderTabValue(activeFlyerFolderTab) === 'archive' ? 'Archived Flyer Folder' : 'Flyer Folder'}</div><div class="text-lg font-black text-indigo-900 truncate mt-1">${selectedFlyerFolder || ''}</div><div class="text-[11px] font-semibold text-indigo-500 mt-1">${folderItems.length} row${folderItems.length === 1 ? '' : 's'} | ${folderAssignees}</div></div>${folderActionButtons}</div></div>`;
+                    const folderActionButton = getFlyerFolderTabValue(activeFlyerFolderTab) === 'archive'
+                        ? `<button class="w-full sm:w-auto min-h-[42px] px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-[0.14em] transition-colors duration-150 bg-white border border-emerald-200 text-emerald-700 shadow-sm hover:bg-emerald-50" onclick="return setFlyerFolderArchiveState('${esc(selectedFlyerFolder || '')}', 'active', { currentTab: 'archive', keepOpen: true })">Restore Folder</button>`
+                        : `<button class="w-full sm:w-auto min-h-[42px] px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-[0.14em] transition-colors duration-150 bg-white border border-indigo-200 text-indigo-700 shadow-sm hover:bg-indigo-100" onclick="return startAddRowsToFlyerFolder('${esc(selectedFlyerFolder || '')}')">Add Rows To Folder</button>`;
+                    const folderHeader = `<div class="mb-3 rounded-xl border border-indigo-200 bg-indigo-50 p-4"><div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-indigo-600">${getFlyerFolderTabValue(activeFlyerFolderTab) === 'archive' ? 'Archived Flyer Folder' : 'Flyer Folder'}</div><div class="text-lg font-black text-indigo-900 truncate mt-1">${selectedFlyerFolder || ''}</div><div class="text-[11px] font-semibold text-indigo-500 mt-1">${folderItems.length} row${folderItems.length === 1 ? '' : 's'} | ${folderAssignees}</div></div>${folderActionButton}</div></div>`;
                     const prefixHtml = `${flyerTabsHtml}<div class="back-btn" onclick="return backToFlyerFolderList()"><i class="ph-bold ph-arrow-left"></i> Back to Folders</div>${folderHeader}`;
                     renderMarkupChunkedByKey('tasks-flyer-folder-items', container, null, folderItems, '', (item) => generateCard(item, 'tasks', 'status-indigo'), {
                         prefixHtml,
