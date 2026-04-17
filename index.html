@@ -457,7 +457,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-        <div id="header-version" class="nav-version-pill">V2026.04.17.01</div>
+        <div id="header-version" class="nav-version-pill">V2026.04.17.02</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -1066,7 +1066,7 @@
         function getRealtimeSignatureFieldList(tableName = '') {
             const safeTable = String(tableName || '').trim().toLowerCase();
             if (safeTable === 'v2_active_request') {
-                return ['UNIQUE_ID','DATE_COMPLETED','REQ_STATUS','REQ_ARCHIVED','REQ_REP_ACTION','REQUEST_FOLDER','REQ_CUSTOMER','REQ_QTY','REQ_MATCH','REQ_SPEC','REQ_CALIPER','REQ_PICK','REQ_COMMENTS','REQ_PHOTO_LINK','REQ_PHOTO_NAME','MASTER_ID','MASTER_UNIQUE_ID','MASTER_APP_TAB_ASSIGNMENT','APP_TAB_ASSIGNMENT','ASSIGNEDTO'];
+                return ['UNIQUE_ID','DATE_COMPLETED','REQ_STATUS','REQ_ARCHIVED','REQ_REP_ACTION','REQUEST_FOLDER','REQ_CUSTOMER','REQ_QTY','REQ_MATCH','REQ_SPEC','REQ_CALIPER','REQ_PICK','REQ_COMMENTS','REQ_PHOTO_LINK','REQ_PHOTO_NAME','REQ_PHOTO_MODE','MASTER_ID','MASTER_UNIQUE_ID','MASTER_APP_TAB_ASSIGNMENT','APP_TAB_ASSIGNMENT','ASSIGNEDTO'];
             }
             if (safeTable === 'v2_sales_office') {
                 return ['UNIQUE_ID','DATE_COMPLETED','AV_NOTE','SALES_NOTE','SPEC','CALIPER','SAVED_PHOTO_LINK','SAVED_PHOTO_NAME','MASTER_ID','MASTER_UNIQUE_ID','SO_SOURCE'];
@@ -1794,6 +1794,7 @@
             item.SAVED_PHOTO_NAME = firstNonEmptyValue(item.SAVED_PHOTO_NAME, item.PHOTO_NAME, item.PHOTONAME, item['PHOTO NAME']);
             item.REQ_PHOTO_LINK = firstNonEmptyValue(item.REQ_PHOTO_LINK, item.REQUEST_PHOTO_LINK, item.REQUESTPHOTO_LINK);
             item.REQ_PHOTO_NAME = firstNonEmptyValue(item.REQ_PHOTO_NAME, item.REQUEST_PHOTO_NAME, item.REQUESTPHOTONAME);
+            item.REQ_PHOTO_MODE = normalizeRequestPhotoMode(firstNonEmptyValue(item.REQ_PHOTO_MODE, item.req_photo_mode, item.REQUEST_PHOTO_MODE, item.request_photo_mode, ''));
             item.DOCK_PHOTO_LINK = firstNonEmptyValue(item.DOCK_PHOTO_LINK, item.DOCKPHOTO_LINK);
             item.DOCK_PHOTO_NAME = firstNonEmptyValue(item.DOCK_PHOTO_NAME, item.DOCKPHOTO_NAME);
             item.FLYER_PHOTO_LINK = firstNonEmptyValue(item.FLYER_PHOTO_LINK, item.FLYERPHOTO_LINK);
@@ -1817,7 +1818,7 @@
         function clonePhotoFields(source, target, options = {}) {
             if (!source || !target) return target;
             const exact = !!(options && options.exact);
-            ['SAVED_PHOTO_LINK','SAVED_PHOTO_NAME','REQ_PHOTO_LINK','REQ_PHOTO_NAME','DOCK_PHOTO_LINK','DOCK_PHOTO_NAME','FLYER_PHOTO_LINK','FLYER_PHOTO_NAME','ROW_PHOTO_LINK','ROW_PHOTO_NAME'].forEach((key) => {
+            ['SAVED_PHOTO_LINK','SAVED_PHOTO_NAME','REQ_PHOTO_LINK','REQ_PHOTO_NAME','REQ_PHOTO_MODE','DOCK_PHOTO_LINK','DOCK_PHOTO_NAME','FLYER_PHOTO_LINK','FLYER_PHOTO_NAME','ROW_PHOTO_LINK','ROW_PHOTO_NAME'].forEach((key) => {
                 if (exact) target[key] = source[key] || '';
                 else if (firstNonEmptyValue(source[key]) !== '') target[key] = source[key];
             });
@@ -1834,7 +1835,7 @@ function syncSharedFlyerPhotoFields(item, prefix = '') {
 
         const LINKED_ROW_SYNC_KEYS = ['COMMONNAME','CONTSIZE','LOCATIONCODE','LOTCODE','ITEMCODE','PTRAVAILABLE','SEASONSUPPLY','PRIORITY','QUALITYCODE','FIELDTAGCOLOR','PLANTGROUPCODE','BLOCKALPHA','SEASON','S_LTS','AV_NOTE','SALES_NOTE','MATCH','SPEC','CALIPER','PICK','LOC_MATCH_QTY','INITIAL_PTR'];
         const EXACT_ROW_SYNC_KEYS = LINKED_ROW_SYNC_KEYS.concat(getFlyerShadowKeys(), ['APP_TAB_ASSIGNMENT','PRODUCTIVITY_ORIGIN_ASSIGNMENT','DATE_COMPLETED','FLYER_CAT','FLYER_TITLE','FLYER_INST','FLYER_ASSIGNED','FLYER_NOTES','FLYER_COMPLETED','ASSIGNEDTO']);
-        const ROW_SYNC_SNAPSHOT_EXTRA_KEYS = ['SAVED_PHOTO_LINK','SAVED_PHOTO_NAME','REQ_PHOTO_LINK','REQ_PHOTO_NAME','DOCK_PHOTO_LINK','DOCK_PHOTO_NAME','FLYER_PHOTO_LINK','FLYER_PHOTO_NAME','ROW_PHOTO_LINK','ROW_PHOTO_NAME','REQ_STATUS','REQ_MATCH','REQ_SPEC','REQ_CALIPER','REQ_PICK','REQ_COMMENTS','REQ_RESERVE'];
+        const ROW_SYNC_SNAPSHOT_EXTRA_KEYS = ['SAVED_PHOTO_LINK','SAVED_PHOTO_NAME','REQ_PHOTO_LINK','REQ_PHOTO_NAME','REQ_PHOTO_MODE','DOCK_PHOTO_LINK','DOCK_PHOTO_NAME','FLYER_PHOTO_LINK','FLYER_PHOTO_NAME','ROW_PHOTO_LINK','ROW_PHOTO_NAME','REQ_STATUS','REQ_MATCH','REQ_SPEC','REQ_CALIPER','REQ_PICK','REQ_COMMENTS','REQ_RESERVE'];
         const ROW_SYNC_STORAGE_KEY = 'gnc_row_state_sync_v1';
         const ROW_SYNC_EVENT_NAME = 'gnc-row-state-sync';
         let rowSyncListenersInitialized = false;
@@ -1937,7 +1938,8 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 INITIAL_PTR: normalizeRuleText(row.INITIAL_PTR),
                 DATE_COMPLETED: normalizeRuleText(row.DATE_COMPLETED),
                 REQ_PHOTO_LINK: normalizeRuleText(row.REQ_PHOTO_LINK),
-                REQ_PHOTO_NAME: normalizeRuleText(row.REQ_PHOTO_NAME)
+                REQ_PHOTO_NAME: normalizeRuleText(row.REQ_PHOTO_NAME),
+                REQ_PHOTO_MODE: normalizeRequestPhotoMode(row.REQ_PHOTO_MODE)
             };
             syncMasterFieldsToRow(masterItem, row, LINKED_ROW_SYNC_KEYS, { attachMasterLink: true, exactPhotoClone: false, photoPrefix: 'req-' });
             Object.keys(preservedValues).forEach((key) => {
@@ -2013,18 +2015,42 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             if (!item) return '';
             return String(firstNonEmptyValue(item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK'], '')).trim();
         }
+        function normalizeRequestPhotoMode(value = '') {
+            const normalized = String(firstNonEmptyValue(value, '') || '').trim().toLowerCase();
+            return normalized === 'copied' || normalized === 'none' || normalized === 'request_only' ? normalized : '';
+        }
+        function getRequestPhotoMode(item = null) {
+            if (!item) return '';
+            return normalizeRequestPhotoMode(firstNonEmptyValue(item.REQ_PHOTO_MODE, item.req_photo_mode, item.REQUEST_PHOTO_MODE, item.request_photo_mode, ''));
+        }
+        function hasStrictRequestPhotoMode(item = null) {
+            return getRequestPhotoMode(item) !== '';
+        }
+        function getRequestActivePhotoLink(item = null) {
+            if (!item) return '';
+            const mode = getRequestPhotoMode(item);
+            if (mode === 'copied' || mode === 'request_only' || mode === 'none') return String(firstNonEmptyValue(item.REQ_PHOTO_LINK, '')).trim();
+            return String(firstNonEmptyValue(item.REQ_PHOTO_LINK, item.ROW_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK'], '')).trim();
+        }
+        function getRequestActivePhotoName(item = null) {
+            if (!item) return '';
+            const mode = getRequestPhotoMode(item);
+            if (mode === 'copied' || mode === 'request_only' || mode === 'none') return String(firstNonEmptyValue(item.REQ_PHOTO_NAME, '')).trim();
+            return String(firstNonEmptyValue(item.REQ_PHOTO_NAME, item.ROW_PHOTO_NAME, item.SAVED_PHOTO_NAME, item.PHOTO_NAME, item.PHOTONAME, item['PHOTO NAME'], '')).trim();
+        }
         function getRowPhotoLink(item, sourceView='') {
             if (!item) return '';
             const normalizedSource = String(sourceView || '').toLowerCase();
             const savedBaseLink = getMasterSavedPhotoBaseLink(item);
             const savedDisplayLink = getDisplayPhotoLinkCsv(savedBaseLink, item, 'saved');
             if (isMasterPhotoSourceView(normalizedSource)) return getMasterPhotoVisibilityReasons(item, savedBaseLink).length ? '' : savedDisplayLink;
-            if (sourceView === 'request') return getDisplayPhotoLinkCsv(firstNonEmptyValue(item.REQ_PHOTO_LINK, item.ROW_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']), item, 'req');
+            if (sourceView === 'request') return getDisplayPhotoLinkCsv(getRequestActivePhotoLink(item), item, 'req');
             if (sourceView === 'docks') return getDisplayPhotoLinkCsv(firstNonEmptyValue(item.DOCK_PHOTO_LINK, item.ROW_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']), item, 'dock');
             const preferFlyerFields = shouldPreferFlyerOwnedFields(item, sourceView);
             if (sourceView === 'flyer' || preferFlyerFields) return getDisplayPhotoLinkCsv(firstNonEmptyValue(item.FLYER_PHOTO_LINK, item.ROW_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']), item, 'flyer');
             if (sourceView === 'sales-office') return savedDisplayLink;
-            const requestLink = getDisplayPhotoLinkCsv(item.REQ_PHOTO_LINK || '', item, 'req');
+            const requestLink = getDisplayPhotoLinkCsv(getRequestActivePhotoLink(item), item, 'req');
+            if (!normalizedSource && hasStrictRequestPhotoMode(item) && String(firstNonEmptyValue(item.REQUEST_FOLDER, item.REQ_STATUS, item.REQ_CUSTOMER, '')).trim() !== '') return requestLink;
             const dockLink = getDisplayPhotoLinkCsv(item.DOCK_PHOTO_LINK || '', item, 'dock');
             const savedLink = savedDisplayLink;
             return firstNonEmptyValue(requestLink, dockLink, savedLink, item.ROW_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.REQ_PHOTO_LINK, item.DOCK_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']);
@@ -2645,6 +2671,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 if (scopedIds && !scopedIds.has(uniqueId) && !scopedIds.has(masterId)) return item;
                 if (!item.DOM_ID) item.DOM_ID = 'req_' + (item.UNIQUE_ID || '');
                 item.REQ_STATUS = normalizeRequestStatus(firstNonEmptyValue(item.REQ_STATUS, item.req_status, item.STATUS, 'Pending')) || 'Pending';
+                item.REQ_PHOTO_MODE = normalizeRequestPhotoMode(firstNonEmptyValue(item.REQ_PHOTO_MODE, item.req_photo_mode, ''));
                 item.REQ_ARCHIVED = item.REQ_ARCHIVED === true || item.REQ_ARCHIVED === 1 || item.REQ_ARCHIVED === '1' || String(item.REQ_ARCHIVED || '').trim().toLowerCase() === 'true';
                 const masterItem = findLinkedMasterRow(item);
                 if (!masterItem) {
@@ -4052,6 +4079,49 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             })();
             return requestEmailThreadSchemaPromise;
         }
+        function maybeWarnRequestPhotoModeSchemaMissing() {
+            if (requestPhotoModeSchemaWarningShown || !currentUser) return;
+            requestPhotoModeSchemaWarningShown = true;
+            showToast('Schema Required', 'Run request_photo_mode_migration.sql in Supabase to enable request-only retake photos.', true);
+        }
+        async function ensureRequestPhotoModeColumnReady(force = false) {
+            if (requestPhotoModeColumnReady === true && !force) return true;
+            if (requestPhotoModeColumnReady === false && !force) return false;
+            if (requestPhotoModeColumnSchemaPromise && !force) return requestPhotoModeColumnSchemaPromise;
+            requestPhotoModeColumnSchemaPromise = (async () => {
+                if (navigator.onLine === false) return false;
+                try {
+                    const url = `${SUPABASE_URL}/rest/v1/v2_active_request?select=unique_id,req_photo_mode&limit=1`;
+                    const response = await fetchWithTimeout(url, {
+                        method: 'GET',
+                        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }
+                    }, SUPABASE_READ_TIMEOUT_MS, 'Request Photo Mode Schema');
+                    if (!response.ok) {
+                        const errorText = await getResponseError(response, `Supabase read failed (${response.status})`);
+                        const normalizedError = String(errorText || '').toLowerCase();
+                        if (normalizedError.includes('req_photo_mode') || normalizedError.includes('v2_active_request') || normalizedError.includes('relation') || normalizedError.includes('column')) {
+                            requestPhotoModeColumnReady = false;
+                            maybeWarnRequestPhotoModeSchemaMissing();
+                            return false;
+                        }
+                        return false;
+                    }
+                    requestPhotoModeColumnReady = true;
+                    return true;
+                } catch (error) {
+                    const normalizedError = String(error && error.message ? error.message : error || '').toLowerCase();
+                    if (normalizedError.includes('req_photo_mode') || normalizedError.includes('v2_active_request') || normalizedError.includes('relation') || normalizedError.includes('column')) {
+                        requestPhotoModeColumnReady = false;
+                        maybeWarnRequestPhotoModeSchemaMissing();
+                        return false;
+                    }
+                    return false;
+                } finally {
+                    requestPhotoModeColumnSchemaPromise = null;
+                }
+            })();
+            return requestPhotoModeColumnSchemaPromise;
+        }
         async function tryLocalCachedLoginRecord(username, password) {
             const normalizedUsername = String(username || '').trim().toLowerCase();
             const normalizedPassword = String(password || '').trim();
@@ -4327,7 +4397,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         let avRuleColumnsReady=null; let avRuleColumnsProbePromise=null; let avRuleSchemaWarningShown=false; let avRuleCleanupInFlight=new Set(); let flyerShadowColumnsReady=null; let flyerShadowColumnsProbePromise=null; let flyerShadowSchemaWarningShown=false;
         let activeSalesOfficeTab='season'; let salesOfficeOrderColumnsReady=null; let salesOfficeOrderSchemaPromise=null; let salesOfficeOrderSchemaWarningShown=false;
         let activeHomeTab='dashboard'; let selectedProductivityUser=''; let productivityViewMode='cards'; let productivityHistoryByUser=new Map(); let productivityHistoryLoadState=new Map(); let productivityHistorySchemaReady=null; let productivityHistorySchemaPromise=null; let productivityHistorySchemaWarningShown=false; let productivityHistoryBackfillPromise=null;
-        let requestEmailThreadCache=new Map(); let requestEmailThreadSchemaReady=null; let requestEmailThreadSchemaPromise=null; let requestEmailThreadSchemaWarningShown=false;
+        let requestEmailThreadCache=new Map(); let requestEmailThreadSchemaReady=null; let requestEmailThreadSchemaPromise=null; let requestEmailThreadSchemaWarningShown=false; let requestPhotoModeColumnReady=null; let requestPhotoModeColumnSchemaPromise=null; let requestPhotoModeSchemaWarningShown=false;
 
         function isLagSensitiveDetailPrefix(prefix) {
             return prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-' || prefix === 'req-' || prefix === 'dock-' || prefix === 'flyer-';
@@ -4579,7 +4649,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         const REQUEST_EMAIL_THREAD_SELECT_FIELDS = 'request_folder,request_customer,sales_rep_name,sales_rep_email,recipients,initial_thread_id,initial_message_id,initial_email_sent_at,last_reply_sent_at,status,metadata';
         const REQUEST_EMAIL_INTERNAL_RECIPIENTS = Object.freeze(['dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com']);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-const APP_VERSION = 'V2026.04.17.01';
+const APP_VERSION = 'V2026.04.17.02';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -4910,8 +4980,10 @@ const APP_VERSION = 'V2026.04.17.01';
                 const folder = String(firstNonEmptyValue(row.REQUEST_FOLDER, row.request_folder, '')).trim();
                 const customer = String(firstNonEmptyValue(row.REQ_CUSTOMER, row.req_customer, '')).trim();
                 const qty = String(firstNonEmptyValue(row.REQ_QTY, row.req_qty, '')).trim();
+                const photoMode = normalizeRequestPhotoMode(firstNonEmptyValue(row.REQ_PHOTO_MODE, row.req_photo_mode, ''));
+                const photoLink = String(firstNonEmptyValue(row.REQ_PHOTO_LINK, row.req_photo_link, '')).trim();
                 const completedAt = String(firstNonEmptyValue(row.DATE_COMPLETED, row.date_completed, '')).trim();
-                return [uniqueId, status, archived ? '1' : '0', repAction, folder, customer, qty, completedAt].join('|');
+                return [uniqueId, status, archived ? '1' : '0', repAction, folder, customer, qty, photoMode, photoLink, completedAt].join('|');
             }).sort().join('||');
         }
 
@@ -4935,6 +5007,7 @@ const APP_VERSION = 'V2026.04.17.01';
                     obj.REQ_PICK = firstNonEmptyValue(obj.REQ_PICK, obj.REQ_PIC_NOTE, '');
                     obj.REQ_EST_SHIP = firstNonEmptyValue(obj.REQ_EST_SHIP, obj.EST_SHIP, '');
                     obj.REQ_STATUS = normalizeRequestStatus(firstNonEmptyValue(obj.REQ_STATUS, obj.STATUS, 'Pending')) || 'Pending';
+                    obj.REQ_PHOTO_MODE = normalizeRequestPhotoMode(firstNonEmptyValue(obj.REQ_PHOTO_MODE, obj.req_photo_mode, ''));
                     obj.REQ_ARCHIVED = obj.REQ_ARCHIVED === true || obj.REQ_ARCHIVED === 1 || obj.REQ_ARCHIVED === '1' || String(obj.REQ_ARCHIVED || '').trim().toLowerCase() === 'true';
                 }
                 normalizeRowPhotoFields(obj);
@@ -7367,8 +7440,8 @@ function toggleDriveQuickRequestItem(domId) {
             const caliper = String(firstNonEmptyValue(item.REQ_CALIPER, item.CALIPER, '')).trim();
             const pick = String(firstNonEmptyValue(item.REQ_PICK, item.REQ_PIC_NOTE, item.PICK, '')).trim();
             const match = String(firstNonEmptyValue(item.REQ_MATCH, item.MATCH, item.MATCHPCT, '')).trim();
-            const photoLink = String(firstNonEmptyValue(item.REQ_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.ROW_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK'], '')).trim();
-            const photoName = String(firstNonEmptyValue(item.REQ_PHOTO_NAME, item.SAVED_PHOTO_NAME, item.ROW_PHOTO_NAME, '')).trim();
+            const photoLink = String(getMasterSavedPhotoBaseLink(item)).trim();
+            const photoName = String(firstNonEmptyValue(item.SAVED_PHOTO_NAME, item.PHOTO_NAME, item.PHOTONAME, item['PHOTO NAME'], '')).trim();
             const badges = [];
             if (avNote) badges.push('AV Note');
             if (spec) badges.push('Spec');
@@ -7400,7 +7473,21 @@ function toggleDriveQuickRequestItem(domId) {
             const reusable = getRequestReusableData(item);
             if (!reusable.hasData) return '';
             const badgeHtml = reusable.badges.map(label => `<span class="rounded-full border border-blue-200 bg-white px-2 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-blue-700">${label}</span>`).join('');
-            return `<div class="col-span-3 rounded-xl border border-blue-200 bg-blue-50/70 p-3 shadow-sm"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-blue-700">Existing Season / Location Data Found</div><div class="mt-2 flex flex-wrap gap-2">${badgeHtml}</div><label class="mt-3 block text-[9px] font-bold text-gray-500 uppercase ml-1">Use Existing Pictures & Data For This Request?</label><select class="item-reuse-data-input w-full p-2 border border-blue-200 rounded-md text-sm font-bold focus:border-blue-500 focus:outline-none" data-uid="${safeUidHtml}"><option value="YES">YES - Use saved note, photos, and specs</option><option value="NO">NO - Start this request blank</option></select></div>`;
+            const photoPromptHtml = reusable.photoLink ? `<label class="mt-3 block text-[9px] font-bold text-gray-500 uppercase ml-1">Use Current Row Photos For This Request?</label><select class="item-reuse-photo-input w-full p-2 border border-blue-200 rounded-md text-sm font-bold focus:border-blue-500 focus:outline-none" data-uid="${safeUidHtml}"><option value="YES">YES - Use current row photos for this request</option><option value="NO">NO - Retake request-only photos for this rep/customer</option></select>` : '';
+            return `<div class="col-span-3 rounded-xl border border-blue-200 bg-blue-50/70 p-3 shadow-sm"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-blue-700">Existing Season / Location Data Found</div><div class="mt-2 flex flex-wrap gap-2">${badgeHtml}</div><label class="mt-3 block text-[9px] font-bold text-gray-500 uppercase ml-1">Use Existing Row Data For This Request?</label><select class="item-reuse-data-input w-full p-2 border border-blue-200 rounded-md text-sm font-bold focus:border-blue-500 focus:outline-none" data-uid="${safeUidHtml}"><option value="YES">YES - Use saved note and specs</option><option value="NO">NO - Start this request data blank</option></select>${photoPromptHtml}</div>`;
+        }
+        function resolveRequestPhotoReuseChoice(item, dataObj = {}, options = {}) {
+            const opts = options || {};
+            const reusable = opts.reusable || getRequestReusableData(item);
+            const hasCurrentPhotos = String(firstNonEmptyValue(reusable && reusable.photoLink, '')).trim() !== '';
+            if (!hasCurrentPhotos) return 'NONE';
+            const explicitChoice = String(firstNonEmptyValue(dataObj && dataObj.photoReuse, dataObj && dataObj.photoChoice, '')).trim().toUpperCase();
+            if (explicitChoice === 'YES' || explicitChoice === 'NO') return explicitChoice;
+            if (opts.quickMode) {
+                const itemLabel = String(firstNonEmptyValue(item && item.COMMONNAME, item && item.commonname, 'this row')).trim() || 'this row';
+                return window.confirm(`Use current row photos for ${itemLabel}? Click Cancel to retake request-only photos.`) ? 'YES' : 'NO';
+            }
+            return 'YES';
         }
         function dismissSearchKeyboard(event) {
             if (!event) return;
@@ -7570,7 +7657,7 @@ function toggleDriveQuickRequestItem(domId) {
         function sectionHasProtectedData(prefix, item = activeItem) {
             if (!item) return false;
             if (prefix === 'req-') {
-                return [item.AV_NOTE, item.REQ_SPEC || item.SPEC, item.REQ_CALIPER || item.CALIPER, item.REQ_PHOTO_LINK || item.SAVED_PHOTO_LINK].some(value => String(value || '').trim() !== '');
+                return [item.AV_NOTE, item.REQ_SPEC || item.SPEC, item.REQ_CALIPER || item.CALIPER, getRequestActivePhotoLink(item)].some(value => String(value || '').trim() !== '');
             }
             if (prefix === 'dock-') {
                 return [item.DOCK_SPEC, item.DOCK_CALIPER, item.DOCK_PHOTO_LINK].some(value => String(value || '').trim() !== '');
@@ -10220,7 +10307,7 @@ activeDriveTab = tab;
                     av_note: firstNonEmptyValue(item && item.AV_NOTE, item && item.av_note, ''),
                     spec: firstNonEmptyValue(item && item.REQ_SPEC, item && item.req_spec, item && item.SPEC, ''),
                     caliper: firstNonEmptyValue(item && item.REQ_CALIPER, item && item.req_caliper, item && item.CALIPER, ''),
-                    photo: firstNonEmptyValue(item && item.REQ_PHOTO_LINK, item && item.req_photo_link, item && item.SAVED_PHOTO_LINK, item && item.saved_photo_link, '')
+                    photo: getRequestActivePhotoLink(item)
                 })).filter((item) => item.unique_id || item.commonname || item.itemcode);
             }
             if (requestIdSet.size) payload.requestIds = Array.from(requestIdSet);
@@ -13054,6 +13141,7 @@ activeDriveTab = tab;
                 activeItem.REQ_RESERVE = 'NO';
                 activeItem.REQ_PHOTO_LINK = '';
                 activeItem.REQ_PHOTO_NAME = '';
+                activeItem.REQ_PHOTO_MODE = 'none';
                 activeItem.REQ_STATUS = 'Pending';
                 activeItem.DATE_COMPLETED = '';
                 payload.req_match = null;
@@ -13064,6 +13152,7 @@ activeDriveTab = tab;
                 payload.req_reserve = 'NO';
                 payload.req_photo_link = null;
                 payload.req_photo_name = null;
+                payload.req_photo_mode = 'none';
                 payload.req_status = 'Pending';
             } else if (prefix === 'dock-') {
                 activeItem.DOCK_SPEC = '';
@@ -13125,6 +13214,7 @@ activeDriveTab = tab;
                 payload.photo_link = null;
                 payload.photo_name = null;
             }
+            if (prefix === 'req-' && !(await ensureRequestPhotoModeColumnReady().catch(() => false))) delete payload.req_photo_mode;
             const changedDatasetKeys = getDatasetKeysForTable(targetTable);
             const visibleAffectedViews = getVisibleAffectedViewIds(changedDatasetKeys);
             if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-' || prefix === 'flyer-') syncSharedFlyerPhotoFields(activeItem, prefix);
@@ -14055,7 +14145,8 @@ activeDriveTab = tab;
             const holdCode = firstNonEmptyValue(item.HOLD, item.HOLDCODE, item.HOLD_CODE, '');
             const holdReason = firstNonEmptyValue(item.HOLD_REASON, item.HOLDREASON, item.CUSTOMERHOLDREASON, '');
             const salesNote = firstNonEmptyValue(item.SALES_NOTE, item.SALESNOTE, '');
-            const photoLink = firstNonEmptyValue(item.REQ_PHOTO_LINK, item.ROW_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, '');
+            const photoLink = getRequestActivePhotoLink(item);
+            const photoMode = getRequestPhotoMode(item);
             return [
                 clean(item.UNIQUE_ID),
                 clean(item.DOM_ID),
@@ -14067,6 +14158,7 @@ activeDriveTab = tab;
                 clean(item.REQ_CUSTOMER),
                 clean(item.REQ_QTY),
                 clean(item.REQ_STATUS),
+                clean(photoMode),
                 item.REQ_ARCHIVED ? '1' : '0',
                 clean(item.REQ_RESERVE),
                 clean(item.REQ_REP_ACTION),
@@ -14581,7 +14673,7 @@ activeDriveTab = tab;
         function getProductivitySnapshotPhotoState(item = null, completionContext = '') {
             if (!item) return { link: '', name: '' };
             const normalizedKind = String(completionContext || '').toLowerCase();
-            if (normalizedKind === 'request') return { link: String(firstNonEmptyValue(item.REQ_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.ROW_PHOTO_LINK, '')).trim(), name: String(firstNonEmptyValue(item.REQ_PHOTO_NAME, item.SAVED_PHOTO_NAME, item.ROW_PHOTO_NAME, '')).trim() };
+            if (normalizedKind === 'request') return { link: getRequestActivePhotoLink(item), name: getRequestActivePhotoName(item) };
             if (normalizedKind === 'flyer') return { link: String(firstNonEmptyValue(item.FLYER_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.ROW_PHOTO_LINK, '')).trim(), name: String(firstNonEmptyValue(item.FLYER_PHOTO_NAME, item.SAVED_PHOTO_NAME, item.ROW_PHOTO_NAME, '')).trim() };
             return { link: String(firstNonEmptyValue(item.SAVED_PHOTO_LINK, item.ROW_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK'], '')).trim(), name: String(firstNonEmptyValue(item.SAVED_PHOTO_NAME, item.ROW_PHOTO_NAME, item.PHOTO_NAME, item.PHOTONAME, item['PHOTO NAME'], '')).trim() };
         }
@@ -16286,6 +16378,7 @@ activeDriveTab = tab;
             document.querySelectorAll('.item-est-ship-input').forEach(input=>{let uid=input.getAttribute('data-uid');if(!itemsData[uid])itemsData[uid]={};itemsData[uid].estShip=input.value.trim()});
             document.querySelectorAll('.item-reserve-input').forEach(input=>{let uid=input.getAttribute('data-uid');if(!itemsData[uid])itemsData[uid]={};itemsData[uid].reserve=input.value.trim()});
             document.querySelectorAll('.item-reuse-data-input').forEach(input=>{let uid=input.getAttribute('data-uid');if(!itemsData[uid])itemsData[uid]={};itemsData[uid].reuse=input.value.trim()||'YES'});
+            document.querySelectorAll('.item-reuse-photo-input').forEach(input=>{let uid=input.getAttribute('data-uid');if(!itemsData[uid])itemsData[uid]={};itemsData[uid].photoReuse=input.value.trim()||'YES'});
             finalizeRequestAction(tempReqAppendToExistingFolder ? tempReqFolder : null,tempReqCust,itemsData)
         }
 
@@ -16561,12 +16654,15 @@ activeDriveTab = tab;
                     let dataObj=itemsDataObj[item.UNIQUE_ID]||{};
                     const reusable=getRequestReusableData(item);
                     const useExistingData=dataObj.reuse!=='NO';
+                    const photoReuseChoice=resolveRequestPhotoReuseChoice(item, dataObj, { reusable, quickMode });
+                    const useCurrentRequestPhotos=photoReuseChoice==='YES';
+                    const requestPhotoMode=useCurrentRequestPhotos?'copied':'none';
                     const requestSpec=String(dataObj.spec||'').trim()||(useExistingData?reusable.spec:'');
                     const requestCaliper=String(dataObj.caliper||'').trim()||(useExistingData?reusable.caliper:'');
                     const requestMatch=useExistingData?reusable.match:'';
                     const requestPick=useExistingData?reusable.pick:'';
-                    const requestPhotoLink=useExistingData?reusable.photoLink:'';
-                    const requestPhotoName=useExistingData?reusable.photoName:'';
+                    const requestPhotoLink=useCurrentRequestPhotos?reusable.photoLink:'';
+                    const requestPhotoName=useCurrentRequestPhotos?reusable.photoName:'';
                     const requestAvNote=useExistingData?firstNonEmptyValue(reusable.avNote, item.AV_NOTE, ''):'';
                     const autoCompleteOnCreate = useExistingData && isReadyRequestDataForAutoComplete({
                         assignment: firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, item.app_tab_assignment, ''),
@@ -16609,6 +16705,7 @@ activeDriveTab = tab;
                         av_note:requestAvNote||null,
                         req_photo_link:requestPhotoLink||'',
                         req_photo_name:requestPhotoName||'',
+                        req_photo_mode:requestPhotoMode||null,
                         req_archived:false,
                         date_completed:autoCompletedAt||null,
                         req_status:autoCompleteOnCreate ? 'Complete' : 'Pending'
@@ -16637,6 +16734,7 @@ activeDriveTab = tab;
                     clone.DATE_COMPLETED=autoCompletedAt;
                     clone.REQ_PHOTO_LINK=newReq.req_photo_link;
                     clone.REQ_PHOTO_NAME=newReq.req_photo_name;
+                    clone.REQ_PHOTO_MODE=requestPhotoMode;
                     if (useExistingData) {
                         clone.AV_NOTE=requestAvNote||clone.AV_NOTE||'';
                         clone.MATCH=requestMatch||clone.MATCH||'';
@@ -16649,14 +16747,10 @@ activeDriveTab = tab;
                         clone.SPEC='';
                         clone.CALIPER='';
                         clone.PICK='';
-                        clone.SAVED_PHOTO_LINK='';
-                        clone.SAVED_PHOTO_NAME='';
+                    }
+                    if (!useCurrentRequestPhotos) {
                         clone.REQ_PHOTO_LINK='';
                         clone.REQ_PHOTO_NAME='';
-                        clone.PHOTO_LINK='';
-                        clone.PHOTO_NAME='';
-                        clone.PHOTOLINK='';
-                        clone.PHOTONAME='';
                     }
                     normalizeRowPhotoFields(clone);
                     requestsInventory.push(clone);
@@ -16690,6 +16784,8 @@ activeDriveTab = tab;
                     .map((requestId) => requestsInventory.find((item) => String((item && item.UNIQUE_ID) || '').trim() === String(requestId || '').trim()))
                     .filter(Boolean);
                 let firstError = null;
+                const canPersistRequestPhotoMode = await ensureRequestPhotoModeColumnReady().catch(() => false);
+                if (!canPersistRequestPhotoMode) insertPayloads.forEach((payload) => { delete payload.req_photo_mode; });
                 for (const payload of insertPayloads) {
                     const payloadId = String(payload.unique_id || '').trim();
                     if (!payloadId) continue;
@@ -16779,7 +16875,7 @@ activeDriveTab = tab;
         }
 
         function getRequestSharePhotoEntries(item) {
-            return extractSharePhotoUrls(firstNonEmptyValue(item && item.REQ_PHOTO_LINK, item && item.SAVED_PHOTO_LINK, item && item.ROW_PHOTO_LINK, item && item['PHOTO LINK'], item && item.PHOTOLINK, ''), item);
+            return extractSharePhotoUrls(getRequestActivePhotoLink(item), item);
         }
 
         function formatRequestItemsText(items, headerLabel = '', options = {}) {
@@ -18863,6 +18959,7 @@ function handleDriveSearch() {
                 const canPersistFlyerShadow = prefix === 'flyer-' && String(itemToSave.SOURCE_TABLE || 'v2_master_inventory') === 'v2_master_inventory'
                     ? await ensureFlyerShadowColumnsReady().catch(() => false)
                     : false;
+                const canPersistRequestPhotoMode = prefix === 'req-' ? await ensureRequestPhotoModeColumnReady().catch(() => false) : false;
                 const trackedStateAfterSave = captureTrackedAvState(itemToSave);
                 const trackedChangeFlags = getTrackedAvChangeFlags(trackedStateBeforeSave, trackedStateAfterSave, saveOptions);
                 const setVal = (val) => (val === '' || val === undefined) ? null : val;
@@ -18918,6 +19015,7 @@ function handleDriveSearch() {
                     const needsCaliper = effectivePlantGroup && String(effectivePlantGroup).includes('330_TREES') && ['#7','#10','#15','#25','#45'].includes(effectiveContSize);
                     if (isComplete && isAvEligibleRequest) {
                         const reusableRequestData = getRequestReusableData(itemToSave);
+                        const hasStrictPhotoMode = hasStrictRequestPhotoMode(itemToSave);
                         const shouldOfferCurrentData = parseAppNumber(itemToSave.REQ_MATCH) == null && reusableRequestData.hasData && parseAppNumber(reusableRequestData.match) != null;
                         if (shouldOfferCurrentData) {
                             const useCurrentData = window.confirm('Use current data for this request?');
@@ -18950,11 +19048,11 @@ function handleDriveSearch() {
                                 const reqPickEl = document.getElementById('req-pick');
                                 if (reqPickEl) reqPickEl.value = reusableRequestData.pick;
                             }
-                            if (String(itemToSave.REQ_PHOTO_LINK || '').trim() === '' && reusableRequestData.photoLink) itemToSave.REQ_PHOTO_LINK = reusableRequestData.photoLink;
-                            if (String(itemToSave.REQ_PHOTO_NAME || '').trim() === '' && reusableRequestData.photoName) itemToSave.REQ_PHOTO_NAME = reusableRequestData.photoName;
+                            if (!hasStrictPhotoMode && String(itemToSave.REQ_PHOTO_LINK || '').trim() === '' && reusableRequestData.photoLink) itemToSave.REQ_PHOTO_LINK = reusableRequestData.photoLink;
+                            if (!hasStrictPhotoMode && String(itemToSave.REQ_PHOTO_NAME || '').trim() === '' && reusableRequestData.photoName) itemToSave.REQ_PHOTO_NAME = reusableRequestData.photoName;
                             calculateMatchQty('req-');
                         }
-                        if (String(itemToSave.REQ_PHOTO_LINK || '').trim() === '') {
+                        if (!hasStrictPhotoMode && String(itemToSave.REQ_PHOTO_LINK || '').trim() === '') {
                             const fallbackReqPhotoLink = String(firstNonEmptyValue(itemToSave.SAVED_PHOTO_LINK, requestMasterItem ? requestMasterItem.SAVED_PHOTO_LINK : '', itemToSave.PHOTO_LINK, itemToSave.PHOTOLINK, itemToSave['PHOTO LINK'])).trim();
                             const fallbackReqPhotoName = String(firstNonEmptyValue(itemToSave.SAVED_PHOTO_NAME, requestMasterItem ? requestMasterItem.SAVED_PHOTO_NAME : '', itemToSave.PHOTO_NAME, itemToSave.PHOTONAME, itemToSave['PHOTO NAME'])).trim();
                             if (fallbackReqPhotoLink) {
@@ -18986,6 +19084,7 @@ function handleDriveSearch() {
                     payload.req_pic_note = setVal(itemToSave.REQ_PICK);
                     payload.req_comments = setVal(itemToSave.REQ_COMMENTS);
                     payload.req_reserve = setVal(itemToSave.REQ_RESERVE);
+                    if (canPersistRequestPhotoMode) payload.req_photo_mode = setVal(itemToSave.REQ_PHOTO_MODE);
                     payload.av_note = setVal(itemToSave.AV_NOTE);
                     if (isComplete) {
                         itemToSave._SHOW_IN_AV = isAvEligibleRequest;
@@ -19124,12 +19223,12 @@ function handleDriveSearch() {
                         ''
                     ) || '').toLowerCase();
                     const salesRulePhotoLink = prefix === 'req-'
-                        ? firstNonEmptyValue(itemToSave.REQ_PHOTO_LINK, itemToSave.SAVED_PHOTO_LINK, salesRuleItem.SAVED_PHOTO_LINK)
+                        ? firstNonEmptyValue(itemToSave.SAVED_PHOTO_LINK, salesRuleItem.SAVED_PHOTO_LINK)
                         : (prefix === 'flyer-'
                             ? firstNonEmptyValue(itemToSave.FLYER_PHOTO_LINK, itemToSave.SAVED_PHOTO_LINK)
                             : firstNonEmptyValue(itemToSave.SAVED_PHOTO_LINK));
                     const salesRulePhotoName = prefix === 'req-'
-                        ? firstNonEmptyValue(itemToSave.REQ_PHOTO_NAME, itemToSave.SAVED_PHOTO_NAME, salesRuleItem.SAVED_PHOTO_NAME)
+                        ? firstNonEmptyValue(itemToSave.SAVED_PHOTO_NAME, salesRuleItem.SAVED_PHOTO_NAME)
                         : (prefix === 'flyer-'
                             ? firstNonEmptyValue(itemToSave.FLYER_PHOTO_NAME, itemToSave.SAVED_PHOTO_NAME)
                             : firstNonEmptyValue(itemToSave.SAVED_PHOTO_NAME));
@@ -19186,10 +19285,8 @@ function handleDriveSearch() {
                             artifacts.masterSyncPayload.pic_note = setVal(itemToSave.REQ_PICK || itemToSave.PICK);
                             artifacts.masterSyncPayload.loc_match_qty = derivedRequestLocQty == null ? null : derivedRequestLocQty;
                             artifacts.masterSyncPayload.initial_ptr = initialPtrValue == null ? null : initialPtrValue;
-                            artifacts.masterSyncPayload.photo_link = setVal(itemToSave.REQ_PHOTO_LINK || itemToSave.SAVED_PHOTO_LINK);
-                            artifacts.masterSyncPayload.photo_name = setVal(itemToSave.REQ_PHOTO_NAME || itemToSave.SAVED_PHOTO_NAME);
                             if (avRuleColumnsReady == null) ensureAvRuleColumnsReady().catch(() => {});
-                            applyAvRuleTouchPayload(artifacts.masterSyncItem || requestMasterItem || itemToSave, artifacts.masterSyncPayload, { avNote: true, match: true, spec: true, caliper: true, photo: true });
+                            applyAvRuleTouchPayload(artifacts.masterSyncItem || requestMasterItem || itemToSave, artifacts.masterSyncPayload, { avNote: true, match: true, spec: true, caliper: true, photo: false });
                         }
                     }
 
@@ -19311,8 +19408,6 @@ function handleDriveSearch() {
                                 artifacts.masterSyncItem.PICK = itemToSave.REQ_PICK || itemToSave.PICK;
                                 artifacts.masterSyncItem.LOC_MATCH_QTY = firstNonEmptyValue(artifacts.masterSyncPayload.loc_match_qty, artifacts.masterSyncItem.LOC_MATCH_QTY, '');
                                 artifacts.masterSyncItem.INITIAL_PTR = firstNonEmptyValue(artifacts.masterSyncPayload.initial_ptr, artifacts.masterSyncItem.INITIAL_PTR, '');
-                                artifacts.masterSyncItem.SAVED_PHOTO_LINK = itemToSave.REQ_PHOTO_LINK || itemToSave.SAVED_PHOTO_LINK;
-                                artifacts.masterSyncItem.SAVED_PHOTO_NAME = itemToSave.REQ_PHOTO_NAME || itemToSave.SAVED_PHOTO_NAME;
                             }
                             normalizeRowPhotoFields(artifacts.masterSyncItem);
                             propagateCommittedEdit('v2_master_inventory', artifacts.masterSyncItem, changedDatasetKeys, visibleAffectedViews, { prefix, delay: 0, typingDelay: 140 });
@@ -19643,8 +19738,14 @@ function handleDriveSearch() {
                                 const { data: publicUrlData } = supabaseClient.storage.from(bucketName).getPublicUrl(filePath);
                                 const publicUrl = publicUrlData.publicUrl;
                                 if (prefix === 'req-') {
+                                    const currentRequestPhotoMode = getRequestPhotoMode(itemToUpload);
+                                    if (currentRequestPhotoMode === 'copied' || currentRequestPhotoMode === 'none') {
+                                        itemToUpload.REQ_PHOTO_LINK = '';
+                                        itemToUpload.REQ_PHOTO_NAME = '';
+                                    }
                                     itemToUpload.REQ_PHOTO_LINK = appendCsvValue(itemToUpload.REQ_PHOTO_LINK, publicUrl);
                                     itemToUpload.REQ_PHOTO_NAME = appendCsvValue(itemToUpload.REQ_PHOTO_NAME, fileName);
+                                    itemToUpload.REQ_PHOTO_MODE = 'request_only';
                                 } else if (prefix === 'dock-') {
                                     itemToUpload.DOCK_PHOTO_LINK = appendCsvValue(itemToUpload.DOCK_PHOTO_LINK, publicUrl);
                                     itemToUpload.DOCK_PHOTO_NAME = appendCsvValue(itemToUpload.DOCK_PHOTO_NAME, fileName);
