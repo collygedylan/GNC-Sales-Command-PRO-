@@ -903,26 +903,29 @@
             auth: { persistSession: false, autoRefreshToken: false },
             realtime: { params: { eventsPerSecond: 8 } }
         });
-        const CORE_REALTIME_TABLES = ['v2_master_inventory', 'v2_active_request', 'v2_sales_office'];
-        const OPTIONAL_REALTIME_TABLES = ['v2_av_notes', 'v2_dock_team_status', 'v2_dock_item_status'];
-        const REALTIME_TABLES = [...CORE_REALTIME_TABLES, ...OPTIONAL_REALTIME_TABLES];
-        const REALTIME_TABLES_BY_VIEW = Object.freeze({
-            home: CORE_REALTIME_TABLES,
-            drive: CORE_REALTIME_TABLES,
-            tasks: CORE_REALTIME_TABLES,
-            request: CORE_REALTIME_TABLES,
-            'sales-office': CORE_REALTIME_TABLES,
-            av: CORE_REALTIME_TABLES,
-            reserves: CORE_REALTIME_TABLES,
-            // Docks needs additional dock-specific tables; normalizeRealtimeTableList deduplicates at runtime
-            docks: [...new Set([...CORE_REALTIME_TABLES, 'v2_soc_master', 'v2_dock_team_status', 'v2_dock_item_status'])],
-            reports: CORE_REALTIME_TABLES,
-            review: CORE_REALTIME_TABLES,
-            'low-stock': CORE_REALTIME_TABLES,
-            hours: []
+        const LIVE_SYNC_POLL_STANDALONE_MS = 10000;
+        const LIVE_SYNC_POLL_BROWSER_MS = 12000;
+        const LIVE_SYNC_VIEW_POLICY = Object.freeze({
+            home: { realtimeTables: [], pollMs: 0 },
+            drive: { realtimeTables: [], pollMs: 'visible-default' },
+            tasks: { realtimeTables: [], pollMs: 'visible-default' },
+            request: { realtimeTables: ['v2_active_request'], pollMs: 0 },
+            'sales-office': { realtimeTables: ['v2_sales_office'], pollMs: 'visible-default' },
+            av: { realtimeTables: [], pollMs: 'visible-default' },
+            reserves: { realtimeTables: [], pollMs: 'visible-default' },
+            docks: { realtimeTables: ['v2_soc_master', 'v2_dock_team_status', 'v2_dock_item_status'], pollMs: 0 },
+            reports: { realtimeTables: [], pollMs: 'visible-default' },
+            review: { realtimeTables: [], pollMs: 'visible-default' },
+            'low-stock': { realtimeTables: [], pollMs: 'visible-default' },
+            hours: { realtimeTables: [], pollMs: 0 }
         });
-        let activeRealtimeTables = [...REALTIME_TABLES];
+        const REALTIME_TABLES = Array.from(new Set(Object.values(LIVE_SYNC_VIEW_POLICY).flatMap((policy) => Array.isArray(policy && policy.realtimeTables) ? policy.realtimeTables : [])));
+        let activeRealtimeTables = [];
         let activeRealtimeViewId = '';
+        let activeRealtimeContextViewId = 'home';
+        let visibleViewPollTimer = null;
+        let activeVisibleViewPollViewId = '';
+        let activeVisibleViewPollMs = 0;
         const VIEW_ENTER_REFRESH_MIN_INTERVAL_MS = 12000;
         const VIEW_ENTER_REFRESH_REALTIME_HEALTHY_MS = 60000;
         const viewEnterRefreshAt = new Map();
@@ -1248,16 +1251,40 @@
             return next;
         }
 
-        function hasHealthyRealtimeSubscriptions(tables = null) {
-            const tableList = normalizeRealtimeTableList((tables && tables.length) ? tables : (activeRealtimeTables && activeRealtimeTables.length ? activeRealtimeTables : REALTIME_TABLES));
-            return tableList.some((tableName) => isRealtimeTableHealthy(tableName));
+        function resolveRealtimeContextViewId(viewId = '') {
+            let key = String(viewId || '').trim() || 'home';
+            if (key === 'detail') {
+                const fallbackView = String(lastView || '').trim();
+                key = (fallbackView && fallbackView !== 'detail') ? fallbackView : 'home';
+            }
+            return key;
         }
 
-        function hasHealthyCoreRealtimeSubscriptions() {
-            const fallbackList = (activeRealtimeTables && activeRealtimeTables.length) ? activeRealtimeTables : CORE_REALTIME_TABLES;
-            const coreActive = CORE_REALTIME_TABLES.filter((tableName) => fallbackList.includes(tableName));
-            const targetList = coreActive.length ? coreActive : fallbackList;
-            return hasHealthyRealtimeSubscriptions(targetList);
+        function getLiveSyncPollIntervalMs(pollMs = 0) {
+            if (pollMs === 'visible-default') return (isIOSDevice() || isStandaloneApp()) ? LIVE_SYNC_POLL_STANDALONE_MS : LIVE_SYNC_POLL_BROWSER_MS;
+            return Math.max(0, Number(pollMs) || 0);
+        }
+
+        function getLiveSyncPolicy(viewId = '') {
+            const resolvedViewId = resolveRealtimeContextViewId(viewId);
+            const policy = LIVE_SYNC_VIEW_POLICY[resolvedViewId] || LIVE_SYNC_VIEW_POLICY.home || { realtimeTables: [], pollMs: 0 };
+            return {
+                viewId: resolvedViewId,
+                realtimeTables: normalizeRealtimeTableList(policy.realtimeTables || []),
+                pollMs: getLiveSyncPollIntervalMs(policy.pollMs)
+            };
+        }
+
+        function hasHealthyRealtimeSubscriptions(tables = null) {
+            const tableList = normalizeRealtimeTableList((tables && tables.length) ? tables : (activeRealtimeTables && activeRealtimeTables.length ? activeRealtimeTables : []));
+            if (!tableList.length) return false;
+            return tableList.every((tableName) => isRealtimeTableHealthy(tableName));
+        }
+
+        function hasHealthyCoreRealtimeSubscriptions(viewId = '') {
+            const policy = getLiveSyncPolicy(viewId || activeRealtimeContextViewId || activeRealtimeViewId || 'home');
+            if (!policy.realtimeTables.length) return false;
+            return hasHealthyRealtimeSubscriptions(policy.realtimeTables);
         }
 
         function isRealtimeStartupPending() {
@@ -3020,6 +3047,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
 
         function cleanupRealtime() {
             clearRealtimeReconnectTimer();
+            clearVisibleViewPollSync();
             realtimeChannels.forEach(channel => {
                 try { supabaseClient.removeChannel(channel); } catch (e) {}
             });
@@ -3060,6 +3088,104 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             }, Math.max(0, Number(delay) || 0));
         }
 
+        function getViewRefreshTargets(viewId, options = {}) {
+            const targetView = resolveRealtimeContextViewId(viewId);
+            const config = getViewLoadingConfig(targetView);
+            if (!config) return [];
+            const includeBackground = !options || options.includeBackground !== false;
+            const loadedOnly = !!(options && options.loadedOnly);
+            const targetMap = new Map();
+            (config.required || []).forEach((item) => addRefreshTarget(targetMap, item.key, item.mode));
+            if (includeBackground) (config.background || []).forEach((item) => addRefreshTarget(targetMap, item.key, item.mode));
+            return Array.from(targetMap.values()).filter((item) => {
+                if (!loadedOnly) return true;
+                const state = getDatasetState(item.key);
+                return !!(state && (state.initialLoaded || state.fullLoaded));
+            });
+        }
+
+        async function forceRefreshViewDatasets(viewId, options = {}) {
+            const targetView = resolveRealtimeContextViewId(viewId);
+            const targets = getViewRefreshTargets(targetView, { includeBackground: options.includeBackground !== false, loadedOnly: true });
+            if (!targets.length || backgroundRefreshInFlight) return false;
+            backgroundRefreshInFlight = true;
+            updateSyncDiagnostics('refreshing');
+            try {
+                await Promise.all(targets.map((item) => ensureDatasetLoaded(item.key, item.mode, { force: true })));
+                lastBackgroundRefreshAt = Date.now();
+                const nextMode = hasHealthyCoreRealtimeSubscriptions(targetView) ? 'realtime' : 'polling';
+                liveSyncMode = nextMode;
+                updateSyncDiagnostics(nextMode);
+                return true;
+            } finally {
+                backgroundRefreshInFlight = false;
+            }
+        }
+
+        function clearVisibleViewPollSync() {
+            if (visibleViewPollTimer) {
+                clearTimeout(visibleViewPollTimer);
+                visibleViewPollTimer = null;
+            }
+            activeVisibleViewPollViewId = '';
+            activeVisibleViewPollMs = 0;
+        }
+
+        async function runVisibleViewPollSync(viewId = '') {
+            const policy = getLiveSyncPolicy(viewId || activeVisibleViewPollViewId || activeRealtimeContextViewId || activeRealtimeViewId || 'home');
+            if (!policy.pollMs || !currentUser || document.hidden) {
+                clearVisibleViewPollSync();
+                return;
+            }
+            const currentContextView = resolveRealtimeContextViewId(typeof getCurrentVisibleViewId === 'function' ? getCurrentVisibleViewId() : (activeRealtimeViewId || policy.viewId));
+            if (currentContextView !== policy.viewId) {
+                clearVisibleViewPollSync();
+                return;
+            }
+            if (navigator.onLine === false) {
+                liveSyncMode = 'offline';
+                updateSyncDiagnostics('offline');
+                clearVisibleViewPollSync();
+                return;
+            }
+            if (backgroundRefreshInFlight || shouldDeferInteractiveBackgroundWork()) {
+                syncVisibleViewPoll(policy.viewId, { delay: Math.max(800, INTERACTION_REFRESH_DEFER_MS) });
+                return;
+            }
+            try {
+                await forceRefreshViewDatasets(policy.viewId, { includeBackground: true });
+            } catch (error) {
+            } finally {
+                syncVisibleViewPoll(policy.viewId);
+            }
+        }
+
+        function syncVisibleViewPoll(viewId, options = {}) {
+            if (visibleViewPollTimer) {
+                clearTimeout(visibleViewPollTimer);
+                visibleViewPollTimer = null;
+            }
+            const policy = getLiveSyncPolicy(viewId);
+            activeVisibleViewPollViewId = policy.viewId;
+            activeVisibleViewPollMs = policy.pollMs;
+            if (!policy.pollMs || !currentUser || document.hidden) {
+                if (!policy.realtimeTables.length) {
+                    liveSyncMode = document.hidden ? liveSyncMode : 'idle';
+                    if (!document.hidden) updateSyncDiagnostics(liveSyncMode === 'offline' ? 'offline' : 'idle');
+                }
+                return;
+            }
+            if (!policy.realtimeTables.length || !hasHealthyCoreRealtimeSubscriptions(policy.viewId)) {
+                liveSyncMode = navigator.onLine === false ? 'offline' : 'polling';
+                updateSyncDiagnostics(liveSyncMode);
+            }
+            const nextDelay = Math.max(600, Number(options && options.delay !== undefined ? options.delay : policy.pollMs) || policy.pollMs);
+            visibleViewPollTimer = setTimeout(() => {
+                visibleViewPollTimer = null;
+                runVisibleViewPollSync(policy.viewId).catch(() => {});
+            }, nextDelay);
+        }
+
         function startFallbackSync(intervalMs = getFallbackSyncInterval(), requiredTables = activeRealtimeTables) {
             if (fallbackSyncInterval) {
                 clearInterval(fallbackSyncInterval);
@@ -3069,8 +3195,8 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             const tableList = normalizeRealtimeTableList(requiredTables);
             if (!tableList.length) {
                 realtimeStartupUntil = 0;
-                liveSyncMode = 'idle';
-                updateSyncDiagnostics('idle');
+                liveSyncMode = activeVisibleViewPollMs > 0 ? 'polling' : 'idle';
+                updateSyncDiagnostics(liveSyncMode);
                 return;
             }
             if (navigator.onLine === false) {
@@ -3105,16 +3231,12 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             }, pollMs);
             queueVisibleDatasetCatchup(180);
         }
-
         function shouldUseRealtime() {
             return 'WebSocket' in window && navigator.onLine !== false;
         }
 
         function getRealtimeTablesForView(viewId) {
-            const key = String(viewId || '').trim() || 'home';
-            const config = REALTIME_TABLES_BY_VIEW[key];
-            if (Array.isArray(config)) return normalizeRealtimeTableList(config);
-            return normalizeRealtimeTableList(CORE_REALTIME_TABLES);
+            return getLiveSyncPolicy(viewId).realtimeTables;
         }
 
         function realtimeTableListsEqual(listA = [], listB = []) {
@@ -3126,16 +3248,31 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
 
         function setRealtimeSubscriptionsForView(viewId, force = false) {
             const nextView = String(viewId || '').trim() || 'home';
-            const desiredTables = getRealtimeTablesForView(nextView);
+            const policy = getLiveSyncPolicy(nextView);
+            const desiredTables = policy.realtimeTables;
+            const desiredPollMs = policy.pollMs;
             const sameTables = realtimeTableListsEqual(activeRealtimeTables, desiredTables);
-            if (!force && sameTables && activeRealtimeViewId === nextView && !document.hidden) return;
+            const samePoll = activeVisibleViewPollViewId === policy.viewId && Number(activeVisibleViewPollMs || 0) === Number(desiredPollMs || 0);
+            if (!force && sameTables && samePoll && activeRealtimeViewId === nextView && activeRealtimeContextViewId === policy.viewId && !document.hidden) return;
             activeRealtimeViewId = nextView;
+            activeRealtimeContextViewId = policy.viewId;
             activeRealtimeTables = desiredTables;
-            if (document.hidden || !activeRealtimeTables.length) {
+            if (document.hidden) {
                 cleanupRealtime();
                 return;
             }
-            initializeRealtime(activeRealtimeTables);
+            if (!desiredTables.length) {
+                cleanupRealtime();
+                if (desiredPollMs > 0) syncVisibleViewPoll(policy.viewId, { delay: Math.min(220, desiredPollMs) });
+                else {
+                    liveSyncMode = 'idle';
+                    updateSyncDiagnostics('idle');
+                }
+                return;
+            }
+            initializeRealtime(desiredTables);
+            if (desiredPollMs > 0) syncVisibleViewPoll(policy.viewId, { delay: desiredPollMs });
+            else if (visibleViewPollTimer) clearVisibleViewPollSync();
         }
 
         function refreshRealtimeSubscriptionsForCurrentView(force = false) {
@@ -3145,15 +3282,15 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
 
         function initializeRealtime(tables = null) {
             const tableList = normalizeRealtimeTableList((tables && tables.length) ? tables : activeRealtimeTables);
-            activeRealtimeTables = tableList.length ? tableList : activeRealtimeTables;
+            activeRealtimeTables = tableList;
             cleanupRealtime();
             if (!shouldUseRealtime()) {
                 startFallbackSync(getFallbackSyncInterval(), tableList);
                 return;
             }
             if (!tableList.length) {
-                liveSyncMode = 'idle';
-                updateSyncDiagnostics('idle');
+                liveSyncMode = activeVisibleViewPollMs > 0 ? 'polling' : 'idle';
+                updateSyncDiagnostics(liveSyncMode);
                 return;
             }
             realtimeStartupUntil = Date.now() + REALTIME_STARTUP_GRACE_MS;
@@ -3167,11 +3304,11 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                     })
                     .subscribe((status) => {
                         const channelStatus = String(status || '').trim().toUpperCase();
-                        const isCoreTable = activeRealtimeTables.includes(tableName);
+                        const isRequiredTable = activeRealtimeTables.includes(tableName);
                         setRealtimeTableStatus(tableName, channelStatus);
                         if (channelStatus === 'SUBSCRIBED') {
                             clearRealtimeReconnectTimer();
-                            if (hasHealthyCoreRealtimeSubscriptions()) {
+                            if (hasHealthyCoreRealtimeSubscriptions(activeRealtimeContextViewId)) {
                                 realtimeStartupUntil = 0;
                                 liveSyncMode = 'realtime';
                                 updateSyncDiagnostics('realtime');
@@ -3188,17 +3325,20 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                         }
                         if (channelStatus === 'TIMED_OUT' || channelStatus === 'CHANNEL_ERROR' || channelStatus === 'CLOSED') {
                             if (tableName === 'v2_active_request') syncRequestViewLiveSync(140);
-                            if (isCoreTable) {
+                            if (isRequiredTable) {
                                 const retryDelay = isRealtimeStartupPending()
                                     ? Math.max(REALTIME_RECOVERY_GRACE_MS, realtimeStartupUntil - Date.now())
                                     : REALTIME_RECOVERY_GRACE_MS;
                                 if (DISABLE_POLLING_WHEN_REALTIME_SUPPORTED) scheduleRealtimeReconnect(retryDelay);
                                 else setTimeout(() => {
-                                    if (!hasHealthyCoreRealtimeSubscriptions()) startFallbackSync(getFallbackSyncInterval(), activeRealtimeTables);
+                                    if (!hasHealthyCoreRealtimeSubscriptions(activeRealtimeContextViewId)) startFallbackSync(getFallbackSyncInterval(), activeRealtimeTables);
                                 }, Math.max(300, retryDelay));
-                            } else if (hasHealthyCoreRealtimeSubscriptions()) {
+                            } else if (hasHealthyCoreRealtimeSubscriptions(activeRealtimeContextViewId)) {
                                 liveSyncMode = 'realtime';
                                 updateSyncDiagnostics('realtime');
+                            } else if (activeVisibleViewPollMs > 0) {
+                                liveSyncMode = 'polling';
+                                updateSyncDiagnostics('polling');
                             }
                         }
                     });
@@ -4834,6 +4974,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
 
         window.addEventListener('offline', () => {
             clearRequestViewLiveSync();
+            clearVisibleViewPollSync();
             updateSyncDiagnostics('offline');
         });
 
@@ -5485,13 +5626,10 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             }
         }
         function refreshViewDatasetsOnEnter(viewId, options = {}) {
-            const targetView = String(viewId || '').trim();
+            const targetView = resolveRealtimeContextViewId(viewId);
             if (!targetView) return;
             const now = Date.now();
-            // When realtime is healthy, data arrives via push - use a much longer interval to
-            // avoid hammering Supabase on every navigation. Only force-fetch when explicitly
-            // requested or when we have no live push channel.
-            const realtimeHealthy = !options.force && hasHealthyCoreRealtimeSubscriptions();
+            const realtimeHealthy = !options.force && hasHealthyCoreRealtimeSubscriptions(targetView);
             const defaultInterval = realtimeHealthy ? VIEW_ENTER_REFRESH_REALTIME_HEALTHY_MS : VIEW_ENTER_REFRESH_MIN_INTERVAL_MS;
             const minInterval = Number(options.minInterval !== undefined ? options.minInterval : defaultInterval);
             const last = viewEnterRefreshAt.get(targetView) || 0;
@@ -14182,6 +14320,10 @@ activeDriveTab = tab;
             updateSyncDiagnostics('queued');
             foregroundRefreshTimer = setTimeout(() => {
                 foregroundRefreshTimer = null;
+                const currentSyncView = resolveRealtimeContextViewId(typeof getCurrentVisibleViewId === 'function' ? getCurrentVisibleViewId() : (activeRealtimeViewId || 'home'));
+                const liveSyncPolicy = getLiveSyncPolicy(currentSyncView);
+                const requiresRealtime = liveSyncPolicy.realtimeTables.length > 0;
+                const usesVisiblePolling = liveSyncPolicy.pollMs > 0;
                 if (navigator.onLine === false) {
                     liveSyncMode = 'offline';
                     updateSyncDiagnostics('offline');
@@ -14193,22 +14335,31 @@ activeDriveTab = tab;
                     return;
                 }
                 if (shouldUseRealtime()) {
-                    if (hasHealthyCoreRealtimeSubscriptions()) updateSyncDiagnostics('realtime');
-                    else if (!isRealtimeStartupPending()) refreshRealtimeSubscriptionsForCurrentView(true);
-                    else updateSyncDiagnostics('queued');
+                    if (requiresRealtime) {
+                        if (hasHealthyCoreRealtimeSubscriptions(currentSyncView)) updateSyncDiagnostics('realtime');
+                        else if (!isRealtimeStartupPending()) refreshRealtimeSubscriptionsForCurrentView(true);
+                        else updateSyncDiagnostics('queued');
+                    } else if (usesVisiblePolling) {
+                        liveSyncMode = 'polling';
+                        updateSyncDiagnostics('polling');
+                        syncVisibleViewPoll(currentSyncView, { delay: Math.min(220, liveSyncPolicy.pollMs) });
+                    } else {
+                        liveSyncMode = 'idle';
+                        updateSyncDiagnostics('idle');
+                    }
                     return;
                 }
                 const throttleMs = (isIOSDevice() || isStandaloneApp()) ? 14000 : 18000;
                 if (backgroundRefreshInFlight || (lastBackgroundRefreshAt && (Date.now() - lastBackgroundRefreshAt) < throttleMs)) {
-                    updateSyncDiagnostics('idle');
-                    if (!hasHealthyCoreRealtimeSubscriptions() && !isRealtimeStartupPending()) refreshRealtimeSubscriptionsForCurrentView(true);
+                    updateSyncDiagnostics(usesVisiblePolling ? 'polling' : 'idle');
+                    if (requiresRealtime && !hasHealthyCoreRealtimeSubscriptions(currentSyncView) && !isRealtimeStartupPending()) refreshRealtimeSubscriptionsForCurrentView(true);
                     return;
                 }
-                fetchBackgroundData('background').catch(() => {});
-                if (!hasHealthyCoreRealtimeSubscriptions() && !isRealtimeStartupPending()) refreshRealtimeSubscriptionsForCurrentView(true);
+                if (usesVisiblePolling) forceRefreshViewDatasets(currentSyncView, { includeBackground: true }).catch(() => {});
+                else fetchBackgroundData('background').catch(() => {});
+                if (requiresRealtime && !hasHealthyCoreRealtimeSubscriptions(currentSyncView) && !isRealtimeStartupPending()) refreshRealtimeSubscriptionsForCurrentView(true);
             }, delay);
         }
-
         function formatDiagnosticsTime(value) {
             if (!value) return 'Awaiting first sync';
             try {
