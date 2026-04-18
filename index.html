@@ -698,11 +698,11 @@
                     <div id="task-crumb" class="text-xs font-bold text-[#007a4d] mb-3"></div>
                     <div id="team-selector" class="hidden mb-4 grid grid-cols-1 gap-3"></div>
                     <div id="task-tabs-container" class="mb-3 grid grid-cols-1 gap-2 md:grid-cols-2">
-                        <div id="task-tab-dropdown-host"></div>
-                        <div id="task-subtabs-container" class="hidden"></div>
-                        <div id="task-genus-filters" class="hidden"></div>
-                        <div id="task-contsize-filters" class="hidden"></div>
-                        <div id="task-location-detail-filters" class="hidden"></div>
+                        <div id="task-tab-dropdown-host" class="snap-start"></div>
+                        <div id="task-subtabs-container" class="hidden snap-start"></div>
+                        <div id="task-genus-filters" class="hidden snap-start"></div>
+                        <div id="task-contsize-filters" class="hidden snap-start"></div>
+                        <div id="task-location-detail-filters" class="hidden snap-start"></div>
                     </div>
                     <div id="task-shared-filters" class="hidden mb-3 space-y-3">
 
@@ -18248,10 +18248,15 @@ ${folderNote ? `Folder Note: ${folderNote}
             const shouldShowDetailFilters = shouldShowTaskInlineDetailFilters(tab, taskViewLevel);
             const wasHidden = container.classList.contains('hidden');
             const visibleCount = 1 + (shouldShowSubview ? 1 : 0) + (shouldShowGenus ? 1 : 0) + (shouldShowContSize ? 1 : 0) + (shouldShowDetailFilters ? 1 : 0);
-            const nextClasses = ['mb-3', 'grid', 'grid-cols-1', 'gap-2'];
-            if (visibleCount >= 2) nextClasses.push('md:grid-cols-2');
-            if (visibleCount === 3) nextClasses.push('xl:grid-cols-3');
-            if (visibleCount >= 4) nextClasses.push('xl:grid-cols-4');
+            const nextClasses = ['mb-3', 'gap-2'];
+            if (visibleCount <= 1) {
+                nextClasses.push('grid', 'grid-cols-1');
+            } else {
+                nextClasses.push('grid', 'grid-flow-col', 'auto-cols-[minmax(16rem,1fr)]', 'overflow-x-auto', 'pb-1', 'md:grid-flow-row', 'md:auto-cols-auto', 'md:overflow-visible', 'md:pb-0');
+                nextClasses.push('md:grid-cols-2');
+                if (visibleCount === 3) nextClasses.push('xl:grid-cols-3');
+                if (visibleCount >= 4) nextClasses.push('xl:grid-cols-4');
+            }
             if (wasHidden) nextClasses.push('hidden');
             container.className = nextClasses.join(' ');
         }
