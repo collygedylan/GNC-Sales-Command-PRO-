@@ -457,7 +457,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-<div id="header-version" class="nav-version-pill">V2026.04.16.02</div>
+<div id="header-version" class="nav-version-pill">V2026.04.17.25</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -693,22 +693,13 @@
                     <div class="freeze-panel">
                     <div id="task-crumb" class="text-xs font-bold text-[#007a4d] mb-3"></div>
                     <div id="team-selector" class="hidden mb-4 grid grid-cols-1 gap-3"></div>
-                    <div id="task-tabs-container" class="task-tabs">
-                        <div id="tab-season" class="task-tab active" onclick="setTaskTab('season')">Season Notes</div>
-                        <div id="tab-location" class="task-tab" onclick="setTaskTab('location')">Location Notes</div>
-                        <div id="tab-colorwalk" class="task-tab" onclick="setTaskTab('colorwalk')">Color Walk</div>
-                        <div id="tab-endcap" class="task-tab" onclick="setTaskTab('endcap')">End Cap</div>
-                        <div id="tab-flyer" class="task-tab" onclick="setTaskTab('flyer')">Flyer</div>
-                    </div>
-                    <div id="task-subtabs-container" class="task-tabs hidden">
-                        <div id="task-subtab-all" class="task-tab active" onclick="return setTaskSubview('all')">All</div>
-                        <div id="task-subtab-positive-lts" class="task-tab" onclick="return setTaskSubview('positive-lts')">Positive LTS</div>
-                        <div id="task-subtab-hold" class="task-tab" onclick="return setTaskSubview('hold')">Hold</div>
-                        <div id="task-subtab-av-blanks" class="task-tab hidden" onclick="return setTaskSubview('av-blanks')">AV Blanks</div>
+                    <div id="task-tabs-container" class="mb-3 grid grid-cols-1 gap-2 md:grid-cols-2">
+                        <div id="task-tab-dropdown-host"></div>
+                        <div id="task-subtabs-container" class="hidden"></div>
                     </div>
                     <div id="task-colorwalk-filters" class="hidden mb-3"></div>
                     <div id="task-genus-filters" class="hidden mb-3"></div>
-                    </div>
+                    <div id="task-location-detail-filters" class="hidden mb-3"></div>
                     <div id="task-content"></div>
                 </div>
 
@@ -948,6 +939,9 @@
         let realtimeTableStatus = Object.create(null);
         const SUPABASE_READ_TIMEOUT_MS = 30000;
         const LOGIN_READ_TIMEOUT_MS = 8000;
+        const LOGIN_FETCH_RETRY_COUNT = 2;
+        const LOGIN_FETCH_RETRY_DELAY_MS = 450;
+        const VERIFIED_LOGIN_STORAGE_KEY = 'gnc_verified_login_v1';
         const SUPABASE_WRITE_TIMEOUT_MS = 22000;
         const DETAIL_ROW_WRITE_TIMEOUT_MS = 30000;
         const DETAIL_ROW_TOUCH_WRITE_TIMEOUT_MS = 40000;
@@ -1126,6 +1120,10 @@
                 || message.includes('load failed')
                 || message.includes('fetch failed')
                 || message.includes('connection');
+        }
+
+        function isRetryableLoginReadError(error) {
+            return isRetryableSupabaseWriteError(error);
         }
 
         function delayMs(duration = 0) {
@@ -1456,7 +1454,7 @@
             }
         }
         async function clearLegacyOfflineState(force = false) {
-            if (!force && (isIOSDevice() || isStandaloneApp())) return;
+            if (!force && isIOSDevice()) return;
             if ('serviceWorker' in navigator) {
                 const registrations = await navigator.serviceWorker.getRegistrations();
                 for (let registration of registrations) {
@@ -2002,12 +2000,12 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         function getRowPhotoLink(item, sourceView='') {
             if (!item) return '';
             if (sourceView === 'av' || sourceView === 'av-photo') return getDisplayPhotoLinkCsv(firstNonEmptyValue(item.SAVED_PHOTO_LINK, item.ROW_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']), item, 'saved');
-            if (sourceView === 'request') return getDisplayPhotoLinkCsv(firstNonEmptyValue(item.REQ_PHOTO_LINK, item.ROW_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']), item, 'req');
+            if (sourceView === 'request') return getRequestPhotoLinkCsv(item);
             if (sourceView === 'docks') return getDisplayPhotoLinkCsv(firstNonEmptyValue(item.DOCK_PHOTO_LINK, item.ROW_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']), item, 'dock');
             const preferFlyerFields = shouldPreferFlyerOwnedFields(item, sourceView);
             if (sourceView === 'flyer' || preferFlyerFields) return getDisplayPhotoLinkCsv(firstNonEmptyValue(item.FLYER_PHOTO_LINK, item.ROW_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']), item, 'flyer');
             if (sourceView === 'sales-office') return getDisplayPhotoLinkCsv(firstNonEmptyValue(item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']), item, 'saved');
-            const requestLink = getDisplayPhotoLinkCsv(item.REQ_PHOTO_LINK || '', item, 'req');
+            const requestLink = getRequestPhotoLinkCsv(item);
             const dockLink = getDisplayPhotoLinkCsv(item.DOCK_PHOTO_LINK || '', item, 'dock');
             const savedLink = getDisplayPhotoLinkCsv(firstNonEmptyValue(item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']), item, 'saved');
             return firstNonEmptyValue(requestLink, dockLink, savedLink, item.ROW_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.REQ_PHOTO_LINK, item.DOCK_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']);
@@ -2070,9 +2068,10 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             return normalizeHoldStopSnapshotValue(firstNonEmptyValue(item && item.HOLDSTOPCODE, item && item.HOLD_STOP_CODE, item && item.HOLDSTOP, ''));
         }
 
-        function hasHoldStopBlockCode(value) {
+        function hasBlockingHoldStopCodeForAv(value) {
             const snapshot = normalizeHoldStopSnapshotValue(value);
-            return snapshot.includes('H');
+            if (!snapshot) return false;
+            return snapshot.includes('S');
         }
 
         function getPrioritySnapshotFromItem(item) {
@@ -2251,12 +2250,26 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
 
             if (effectiveLocMatchQty != null) item.LOC_MATCH_QTY = effectiveLocMatchQty;
             if (effectiveLocMatchQty != null && effectiveLocMatchQty <= 0) reasons.push('loc_match_qty_zero');
-            if (hasHoldStopBlockCode(currentHold)) reasons.push('holdstop_blocked');
+            if (hasBlockingHoldStopCodeForAv(currentHold)) reasons.push('holdstop_blocked');
             if (bundleUpdatedAt) {
                 const ageMs = Date.now() - Date.parse(bundleUpdatedAt);
                 if (ageMs > AV_RULE_MAX_AGE_MS) reasons.push('stale_10_day');
             }
             return [...new Set(reasons)];
+        }
+
+        function getMasterAvOpenLtsValue(item) {
+            return parseFloat(String(firstNonEmptyValue(item && item.S_LTS, '0')).replace(/,/g,'')) || 0;
+        }
+
+        function shouldIncludeMasterItemInAvOpen(item) {
+            return getMasterAvOpenLtsValue(item) > 0 && !getMasterAvInvalidationReasons(item).length;
+        }
+
+        function shouldIncludeMasterItemInAvOpenView(item) {
+            if (!shouldIncludeMasterItemInAvOpen(item)) return false;
+            const season = String(firstNonEmptyValue(item && item.SEASON, item && item.season, '')).toUpperCase();
+            return !season.includes('Y') && !season.includes('Z');
         }
 
         function buildMasterAvRuleClearPayload(item, reasonText = '', clearedAt = new Date().toISOString()) {
@@ -2741,7 +2754,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             dirtyIds.forEach((uid) => {
                 const masterItem = uid ? findItemByUniqueId(uid) : null;
                 if (!masterItem) return;
-                const includeInAv = (parseFloat(String(firstNonEmptyValue(masterItem.S_LTS, '0')).replace(/,/g,'')) || 0) > 0 && !getMasterAvInvalidationReasons(masterItem).length;
+                const includeInAv = shouldIncludeMasterItemInAvOpen(masterItem);
                 if (!includeInAv) return;
                 const nextItem = { ...masterItem, DOM_ID: 'avo_' + uid };
                 normalizeRowPhotoFields(nextItem);
@@ -2881,14 +2894,17 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                     changed = removeRealtimeRow(avOpenInventory, uniqueId) || changed;
                 } else if (nextRow) {
                     changed = upsertRealtimeRow(fullInventory, nextRow, tableName) || changed;
-                    const sLts = parseFloat(String(nextRow.S_LTS || 0).replace(/,/g, '')) || 0;
-                    if (sLts > 0) changed = upsertRealtimeRow(avOpenInventory, nextRow, tableName) || changed;
+                    if (shouldIncludeMasterItemInAvOpen(nextRow)) changed = upsertRealtimeRow(avOpenInventory, nextRow, tableName) || changed;
                     else changed = removeRealtimeRow(avOpenInventory, uniqueId) || changed;
                 }
             } else if (tableName === 'v2_active_request') {
-                changed = eventType === 'DELETE'
-                    ? removeRealtimeRow(requestsInventory, uniqueId)
-                    : upsertRealtimeRow(requestsInventory, nextRow, tableName);
+                if (eventType === 'DELETE') {
+                    clearOptimisticRequestIds([uniqueId]);
+                    changed = removeRealtimeRow(requestsInventory, uniqueId);
+                } else {
+                    clearOptimisticRequestIds([uniqueId]);
+                    changed = upsertRealtimeRow(requestsInventory, nextRow, tableName);
+                }
             } else if (tableName === 'v2_reserves') {
                 changed = eventType === 'DELETE'
                     ? removeRealtimeRow(reservesInventory, uniqueId)
@@ -3479,6 +3495,20 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             return merged.join(',');
         }
 
+        function mergePhotoCsvList(values = []) {
+            const merged = [];
+            const seen = new Set();
+            (Array.isArray(values) ? values : [values]).forEach((value) => {
+                parsePhotoCsvValues(value).forEach((entry) => {
+                    const cleanEntry = String(entry || '').trim();
+                    if (!cleanEntry || seen.has(cleanEntry)) return;
+                    seen.add(cleanEntry);
+                    merged.push(cleanEntry);
+                });
+            });
+            return merged.join(',');
+        }
+
         function getPendingPhotoUploadKey(item, prefix = '') {
             if (!item) return '';
             const uniqueId = String(item.UNIQUE_ID || '').trim();
@@ -3577,6 +3607,27 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         function getDisplayPhotoLinkCsv(baseLink = '', item = null, prefix = '') {
             const pendingCsv = getPendingPhotoPreviewEntries(item, prefix).map((entry) => entry.url).join(',');
             return mergePhotoCsvValues(pendingCsv, baseLink, true);
+        }
+
+        function getRequestPhotoLinkCsv(item, options = {}) {
+            if (!item) return '';
+            const includePending = options.includePending !== false;
+            const requestCsv = mergePhotoCsvList([
+                item.REQ_PHOTO_LINK,
+                item.REQUEST_PHOTO_LINK,
+                item.REQUESTPHOTO_LINK
+            ]);
+            const rowCsv = mergePhotoCsvList([
+                item.ROW_PHOTO_LINK
+            ]);
+            const savedCsv = mergePhotoCsvList([
+                item.SAVED_PHOTO_LINK,
+                item.PHOTO_LINK,
+                item.PHOTOLINK,
+                item['PHOTO LINK']
+            ]);
+            const mergedBase = mergePhotoCsvList([requestCsv, rowCsv, savedCsv]);
+            return includePending ? getDisplayPhotoLinkCsv(mergedBase, item, 'req') : mergedBase;
         }
 
         function getDisplayPhotoEntries(prefix, item = activeItem, baseLinkOverride = null) {
@@ -3925,6 +3976,55 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             })();
             return productivityHistorySchemaPromise;
         }
+        function buildTrustedLoginUserRecord(username, role, source = 'local-cache') {
+            return {
+                username: String(username || '').trim(),
+                role: String(role || '').trim(),
+                _fromLocalCache: source !== 'remote',
+                _deferCacheWarm: true,
+                _trustedSource: source
+            };
+        }
+
+        function readVerifiedLoginRecord() {
+            try {
+                const raw = localStorage.getItem(VERIFIED_LOGIN_STORAGE_KEY);
+                if (!raw) return null;
+                const parsed = JSON.parse(raw);
+                if (!parsed || typeof parsed !== 'object') return null;
+                const username = String(parsed.username || '').trim();
+                const password = String(parsed.password || '').trim();
+                const role = String(parsed.role || '').trim();
+                if (!username || !password || !role) return null;
+                return {
+                    username,
+                    password,
+                    role,
+                    verifiedAt: String(parsed.verifiedAt || '').trim()
+                };
+            } catch (error) {
+                return null;
+            }
+        }
+
+        function persistVerifiedLoginRecord(username, password, role) {
+            const normalizedUsername = String(username || '').trim().toLowerCase();
+            const normalizedPassword = String(password || '').trim();
+            const normalizedRole = String(role || '').trim();
+            if (!normalizedUsername || !normalizedPassword || !normalizedRole) return false;
+            try {
+                localStorage.setItem(VERIFIED_LOGIN_STORAGE_KEY, JSON.stringify({
+                    username: normalizedUsername,
+                    password: normalizedPassword,
+                    role: normalizedRole,
+                    verifiedAt: new Date().toISOString()
+                }));
+                return true;
+            } catch (error) {
+                return false;
+            }
+        }
+
         async function tryLocalCachedLoginRecord(username, password) {
             const normalizedUsername = String(username || '').trim().toLowerCase();
             const normalizedPassword = String(password || '').trim();
@@ -3934,7 +4034,71 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             if (!savedUser || !savedPassword || !savedRole) return null;
             if (savedUser.toLowerCase() !== normalizedUsername) return null;
             if (savedPassword !== normalizedPassword) return null;
-            return { username: savedUser, role: savedRole, _fromLocalCache: true, _deferCacheWarm: true };
+            return buildTrustedLoginUserRecord(savedUser, savedRole, 'local-cache');
+        }
+
+        async function tryVerifiedLoginRecord(username, password) {
+            const normalizedUsername = String(username || '').trim().toLowerCase();
+            const normalizedPassword = String(password || '').trim();
+            const record = readVerifiedLoginRecord();
+            if (!record) return null;
+            if (String(record.username || '').trim().toLowerCase() !== normalizedUsername) return null;
+            if (String(record.password || '') !== normalizedPassword) return null;
+            return buildTrustedLoginUserRecord(record.username, record.role, 'verified-cache');
+        }
+
+        function getLoginReadHeaders() {
+            return {
+                'apikey': SUPABASE_KEY,
+                'Authorization': 'Bearer ' + SUPABASE_KEY,
+                'Content-Type': 'application/json'
+            };
+        }
+
+        async function fetchLoginRowsWithRetry(url, label = 'Login') {
+            let lastError = null;
+            for (let attempt = 0; attempt <= LOGIN_FETCH_RETRY_COUNT; attempt += 1) {
+                try {
+                    const response = await fetchWithTimeout(url, {
+                        method: 'GET',
+                        headers: getLoginReadHeaders()
+                    }, LOGIN_READ_TIMEOUT_MS, label);
+                    if (!response.ok) throw new Error(await getResponseError(response, `Supabase read failed (${response.status})`));
+                    const text = await response.text();
+                    return text ? JSON.parse(text) : [];
+                } catch (error) {
+                    lastError = error;
+                    if (attempt >= LOGIN_FETCH_RETRY_COUNT || !isRetryableLoginReadError(error)) throw error;
+                    await delayMs(LOGIN_FETCH_RETRY_DELAY_MS * (attempt + 1));
+                }
+            }
+            throw lastError;
+        }
+
+        async function fetchRemoteLoginUser(normalizedUsername, normalizedPassword) {
+            const exactUrl = `${SUPABASE_URL}/rest/v1/v2_app_users?select=username,role,password&username=eq.${encodeURIComponent(normalizedUsername)}&limit=1`;
+            let rows = await fetchLoginRowsWithRetry(exactUrl, 'Login');
+            if ((!Array.isArray(rows) || rows.length === 0) && normalizedUsername) {
+                const fallbackUrl = `${SUPABASE_URL}/rest/v1/v2_app_users?select=username,role,password&username=ilike.${encodeURIComponent(normalizedUsername)}&limit=3`;
+                rows = await fetchLoginRowsWithRetry(fallbackUrl, 'Login');
+            }
+            const matchedUser = Array.isArray(rows)
+                ? rows.find((row) => String(row.username || '').trim().toLowerCase() === normalizedUsername && String(row.password || '').trim() === normalizedPassword)
+                : null;
+            if (!matchedUser) return { ok: false, reason: 'mismatch' };
+            return { ok: true, user: matchedUser, source: 'remote' };
+        }
+
+        function getLoginFailureMessage(error) {
+            const rawMessage = String(error && error.message || '').trim();
+            const lowerMessage = rawMessage.toLowerCase();
+            if (navigator.onLine === false || lowerMessage.includes('failed to fetch') || lowerMessage.includes('network') || lowerMessage.includes('load failed') || lowerMessage.includes('fetch failed') || lowerMessage.includes('connection')) {
+                return 'Could not reach the login service. Check your connection and try again.';
+            }
+            if (lowerMessage.includes('timed out')) {
+                return 'Login timed out. Please try again.';
+            }
+            return rawMessage ? `Login failed: ${rawMessage}` : 'Could not reach the login service.';
         }
 
         async function fetchLoginUser(username, password) {
@@ -3944,29 +4108,17 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 const normalizedPassword = String(password || '').trim();
                 const cachedUser = await tryLocalCachedLoginRecord(normalizedUsername, normalizedPassword);
                 if (cachedUser) return { ok: true, user: cachedUser, source: 'local-cache' };
-                const exactUrl = `${SUPABASE_URL}/rest/v1/v2_app_users?select=username,role,password&username=eq.${encodeURIComponent(normalizedUsername)}&limit=1`;
-                let response = await fetchWithTimeout(exactUrl, {
-                    method: 'GET',
-                    headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }
-                }, LOGIN_READ_TIMEOUT_MS, 'Login');
-                if (!response.ok) throw new Error(await getResponseError(response, `Supabase read failed (${response.status})`));
-                let text = await response.text();
-                let rows = text ? JSON.parse(text) : [];
-                if ((!Array.isArray(rows) || rows.length === 0) && normalizedUsername) {
-                    const fallbackUrl = `${SUPABASE_URL}/rest/v1/v2_app_users?select=username,role,password&username=ilike.${encodeURIComponent(normalizedUsername)}&limit=3`;
-                    response = await fetchWithTimeout(fallbackUrl, {
-                        method: 'GET',
-                        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }
-                    }, LOGIN_READ_TIMEOUT_MS, 'Login');
-                    if (!response.ok) throw new Error(await getResponseError(response, `Supabase read failed (${response.status})`));
-                    text = await response.text();
-                    rows = text ? JSON.parse(text) : [];
+                const verifiedUser = await tryVerifiedLoginRecord(normalizedUsername, normalizedPassword);
+                if (navigator.onLine === false) {
+                    if (verifiedUser) return { ok: true, user: verifiedUser, source: 'verified-cache' };
+                    return { ok: false, reason: 'network', error: new Error('No network connection.') };
                 }
-                const matchedUser = Array.isArray(rows)
-                    ? rows.find((row) => String(row.username || '').trim().toLowerCase() === normalizedUsername && String(row.password || '').trim() === normalizedPassword)
-                    : null;
-                if (!matchedUser) return { ok: false, reason: 'mismatch' };
-                return { ok: true, user: matchedUser };
+                try {
+                    return await fetchRemoteLoginUser(normalizedUsername, normalizedPassword);
+                } catch (error) {
+                    if (verifiedUser) return { ok: true, user: verifiedUser, source: 'verified-cache', warning: error };
+                    return { ok: false, reason: 'network', error: error };
+                }
             } catch (e) {
                 return { ok: false, reason: 'network', error: e };
             } finally {
@@ -4182,7 +4334,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             };
         }
 
-        let fullInventory=[]; let avOpenInventory=[]; let lowStockInventory=[]; let socInventory=[]; let reservesInventory=[]; let requestsInventory=[]; let managerReviewInventory=[]; let salesOfficeInventory=[]; let cavInventory=[]; let avNotesDb=[]; let avNotesCommonNameIndex=new Map(); let avNotesCommonNameIndexVersion=-1; let avNoteFilterTimers={}; let avNoteFilterResultCache=new Map(); let avNoteRenderedKeys={};
+        let fullInventory=[]; let avOpenInventory=[]; let lowStockInventory=[]; let socInventory=[]; let reservesInventory=[]; let requestsInventory=[]; let optimisticRequestIds=new Set(); let managerReviewInventory=[]; let salesOfficeInventory=[]; let cavInventory=[]; let avNotesDb=[]; let avNotesCommonNameIndex=new Map(); let avNotesCommonNameIndexVersion=-1; let avNoteFilterTimers={}; let avNoteFilterResultCache=new Map(); let avNoteRenderedKeys={};
         let masterInventoryById=new Map(); let masterInventoryByExactKey=new Map(); let lowStockInventoryDirty=true; let managerReviewInventoryDirty=true;
         let loginPrefetchPromise=null;
         let loginPrefetchMode='';
@@ -4416,7 +4568,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         let activeDriveMode='ok'; let activeDriveTab='name'; let selectedDriveBlock=null; let selectedDriveLoc=null; let driveQuickRequestCardMode=false; let driveQuickFilterName=''; let driveQuickFilterLocation=''; let driveQuickFilterLot=''; let driveQuickFilterSize=''; let driveQuickFilterPriority=''; let driveQuickFilterLtsMode=''; let driveQuickFilterLtsValue=''; let driveQuickHoldStopOnly=false; let driveQuickFilterOptionsCacheKey=''; let driveQuickFilterOptionsCache=null; let driveBaseFilterCacheKey=''; let driveBaseFilterCacheItems=[]; let driveBaseContextCacheKey=''; let driveBaseContextCacheItems=[]; let driveBaseSearchContextKey=''; let driveBaseLastSearchTerm=''; let driveBaseLastSearchItems=[]; let driveQuickFilterCacheKey=''; let driveQuickFilterCacheItems=[]; let driveQuickFiltersModalOpen=false;
         let driveViewLevel=0; let selectedDriveName=null; let selectedDriveSize=null; let selectedDriveCommonNames=new Set(); let driveCommonNameSearchTerm=''; let driveCommonNameFilterOpen=false; let selectedDriveGenusNames=new Set(); let driveGenusSearchTerm=''; let driveGenusFilterOpen=false; let selectedDriveContSizes=new Set(); let driveContSizeSearchTerm=''; let driveContSizeFilterOpen=false; let drivePlantFilterItemsCache=[]; let driveSelectedSeasons=new Set(['ALL']); const availableSeasons=["ALL","S1","F1","U1","U2","U3","X","Y","Z"];
 
-        let activeTaskTab="season"; let activeTaskSubview="all"; let taskViewTargetUser=null; let taskViewLevel=0; let selectedTaskBlock=null; let selectedTaskLoc=null; let selectedEndCapFolder=null; let selectedFlyerFolder=null; let activeFlyerFolderTab="active"; let selectedColorWalkContSize=""; let selectedColorWalkSearchTerm=""; let selectedTaskGenusNames=new Set(); let taskGenusSearchTerm=""; let taskGenusFilterOpen=false; let taskGenusFilterItemsCache=[]; let pendingFlyerFolderTarget=null; let pendingFlyerFolderAssignees="";
+        let activeTaskTab="season"; let activeTaskSubview="all"; let taskViewTargetUser=null; let taskViewLevel=0; let selectedTaskBlock=null; let selectedTaskLoc=null; let selectedEndCapFolder=null; let selectedFlyerFolder=null; let activeFlyerFolderTab="active"; let selectedColorWalkContSize=""; let selectedColorWalkSearchTerm=""; let selectedTaskGenusNames=new Set(); let taskGenusSearchTerm=""; let taskGenusFilterOpen=false; let taskGenusFilterItemsCache=[]; let taskLocationDetailSearchTerm=""; let selectedTaskLocationDetailContSize=""; let selectedTaskLocationDetailGenus=""; let selectedTaskLocationDetailLotCode=""; let taskTabDropdownOpen=false; let taskSubviewDropdownOpen=false; let pendingFlyerFolderTarget=null; let pendingFlyerFolderAssignees="";
         let detailReturnState = { viewId: '', scrollTop: 0 };
 
         let activeAVTab='open'; let activeAvOpenTab='name'; let avOpenLevel=0; let selectedAvOpenName=null; let selectedAvOpenSize=null; let selectedAvOpenSeason=null; let selectedAvOpenLot=null; let avResLevel=0; let selectedAvResRep=null; let selectedAvResDriveUid=null; let selectedAvResItemCode=null; let selectedAvResName=null; let selectedAvResSize=null; let selectedAvResCustomerKey=null; let activeAvReserveMode='current'; let activeAvReserveDetailTab='customer';
@@ -4451,7 +4603,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         const REQUEST_EMAIL_THREAD_SELECT_FIELDS = 'request_folder,request_customer,sales_rep_name,sales_rep_email,recipients,initial_thread_id,initial_message_id,initial_email_sent_at,last_reply_sent_at,status,metadata';
         const REQUEST_EMAIL_INTERNAL_RECIPIENTS = Object.freeze(['dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com']);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-        const APP_VERSION = 'V2026.04.16.02';
+        const APP_VERSION = 'V2026.04.17.25';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -4787,6 +4939,37 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             }).sort().join('||');
         }
 
+        function normalizeRequestIdList(requestIds = []) {
+            return (Array.isArray(requestIds) ? requestIds : [requestIds]).map((id) => String(id || '').trim()).filter(Boolean);
+        }
+
+        function trackOptimisticRequestIds(requestIds = []) {
+            normalizeRequestIdList(requestIds).forEach((id) => optimisticRequestIds.add(id));
+        }
+
+        function clearOptimisticRequestIds(requestIds = []) {
+            normalizeRequestIdList(requestIds).forEach((id) => optimisticRequestIds.delete(id));
+        }
+
+        function reconcileIncomingRequestRows(rows = []) {
+            const incomingRows = Array.isArray(rows) ? rows.filter(Boolean) : [];
+            if (!optimisticRequestIds.size) return incomingRows;
+            const nextRows = incomingRows.slice();
+            const seenIds = new Set();
+            nextRows.forEach((item) => {
+                const id = String(firstNonEmptyValue(item && item.UNIQUE_ID, item && item.unique_id, '')).trim();
+                if (!id) return;
+                seenIds.add(id);
+                if (optimisticRequestIds.has(id)) optimisticRequestIds.delete(id);
+            });
+            (Array.isArray(requestsInventory) ? requestsInventory : []).forEach((item) => {
+                const id = String(item && item.UNIQUE_ID || '').trim();
+                if (!id || !optimisticRequestIds.has(id) || seenIds.has(id)) return;
+                nextRows.push(item);
+                seenIds.add(id);
+            });
+            return nextRows;
+        }
         function formatFetchedRows(items, sourceTable) {
             if (!Array.isArray(items)) return [];
             return items.map((item, idx) => {
@@ -7174,7 +7357,7 @@ function toggleDriveQuickRequestItem(domId) {
             const caliper = String(firstNonEmptyValue(item.REQ_CALIPER, item.CALIPER, '')).trim();
             const pick = String(firstNonEmptyValue(item.REQ_PICK, item.REQ_PIC_NOTE, item.PICK, '')).trim();
             const match = String(firstNonEmptyValue(item.REQ_MATCH, item.MATCH, item.MATCHPCT, '')).trim();
-            const photoLink = String(firstNonEmptyValue(item.REQ_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.ROW_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK'], '')).trim();
+            const photoLink = String(getRequestPhotoLinkCsv(item, { includePending: false }) || '').trim();
             const photoName = String(firstNonEmptyValue(item.REQ_PHOTO_NAME, item.SAVED_PHOTO_NAME, item.ROW_PHOTO_NAME, '')).trim();
             const badges = [];
             if (avNote) badges.push('AV Note');
@@ -7255,7 +7438,20 @@ function toggleDriveQuickRequestItem(domId) {
             av_reserves: (item) => [item.COMMONNAME, item.CUSTOMERNAME, item.CONSIGNEENAME, item.SALESREPNAME || item.SALESREPID, item.ITEMCODE, item.CONTSIZE, item.LOCATIONCODE],
             docks: (item) => [item.DOCK_NUM, item.COMMONNAME, item.LOCATIONCODE, item.ITEMCODE, item.STOPNUMBER, item.TRIPNUMBER, item.CUSTOMERNAME, item.CONSIGNEENAME],
             reserves: (item) => [item.COMMONNAME, item.CUSTOMERNAME, item.CONSIGNEENAME, item.SALESREPNAME || item.SALESREPID, item.ITEMCODE, item.CONTSIZE, item.LOCATIONCODE],
-            colorwalk: (item) => [item.COMMONNAME, item.LOCATIONCODE, item.ITEMCODE, item.CONTSIZE, item.LOTCODE, item.PRIORITY]
+            colorwalk: (item) => [item.COMMONNAME, item.LOCATIONCODE, item.ITEMCODE, item.CONTSIZE, item.LOTCODE, item.PRIORITY],
+            task_location_detail: (item) => [
+                item.COMMONNAME,
+                item.ITEMCODE,
+                item.LOCATIONCODE,
+                item.CONTSIZE,
+                item.LOTCODE,
+                item.GENUSNAME,
+                item.genusname,
+                item.GENUS_NAME,
+                item.genus_name,
+                item.GENUS,
+                item.genus
+            ]
         };
         const STRICT_PREFIX_SEARCH_PROFILES = new Set(['drive_name']);
         function buildSearchIndex(item) {
@@ -7847,6 +8043,10 @@ function toggleDriveQuickRequestItem(domId) {
                     currentUser=String(userRecord.username || userRecord.USERNAME || inputUser).trim().toLowerCase();
                     currentUserDisplay=String(userRecord.username || userRecord.USERNAME || rawUser || currentUser).trim();
                     currentRole=userRecord.role||userRecord.ROLE||'User';
+                    if (result.source === 'verified-cache') {
+                        if (result.warning) console.warn('Login remote fetch failed; using verified cache.', result.warning);
+                        showToast('Success', 'Signed in with saved verified login.');
+                    }
                     safeRole=String(currentRole).toUpperCase().replace(/\s+/g,'');
                     const isDefaultPassword=['1234','12345','welcome','password',currentUser,currentUserDisplay].includes(inputPass);
                     const hasChangedLocally=localStorage.getItem('gnc_pw_changed_'+currentUser)==='true';
@@ -7874,16 +8074,16 @@ function toggleDriveQuickRequestItem(domId) {
                 } else {
                     finishInitialAppLoad();
                     setBootingSession(false);
-                    const rawError = result && result.error && result.error.message ? String(result.error.message) : '';
-                    showToast('Error', rawError ? `Login failed: ${rawError}` : 'Could not reach the login service.', true);
+                    if (result && result.error) console.warn('Login failed during remote validation.', result.error);
+                    showToast('Error', getLoginFailureMessage(result && result.error), true);
                     document.getElementById('login-inputs').classList.remove('hidden');
                     document.getElementById('loading-spinner').classList.add('hidden');
                 }
             }).catch(err=>{
                 finishInitialAppLoad();
                 setBootingSession(false);
-                const rawError = err && err.message ? String(err.message) : '';
-                showToast('Error', rawError ? `Login failed: ${rawError}` : 'Could not reach the login service.', true);
+                console.warn('Login crashed unexpectedly.', err);
+                showToast('Error', getLoginFailureMessage(err), true);
                 document.getElementById('login-inputs').classList.remove('hidden');
                 document.getElementById('loading-spinner').classList.add('hidden');
             });
@@ -8075,6 +8275,7 @@ function toggleDriveQuickRequestItem(domId) {
             localStorage.setItem('gnc_user_v3',user);
             localStorage.setItem('gnc_pin_v3',pass);
             localStorage.setItem('gnc_role_v3',currentRole);
+            persistVerifiedLoginRecord(user, pass, currentRole);
             document.getElementById('header-user').innerText=currentUserDisplay || currentUser;
             const roleAccess = getRoleAccessState();
             const deferHeavyLoginWarm = isTouchConstrainedDevice();
@@ -8191,16 +8392,9 @@ function toggleDriveQuickRequestItem(domId) {
                     const reqData = await reqRes.json();
                     let hash = JSON.stringify(reqData);
                     if(hash !== localStorage.getItem('last_req_hash')) {
-                        requestsInventory = reqData.map(item => {
-                            let obj = {SOURCE_TABLE: 'v2_active_request'};
-                            for(let k in item) { if(item[k]!==null) obj[k.toUpperCase()] = item[k]; }
-                            obj.DOM_ID = 'req_' + obj.UNIQUE_ID;
-                            normalizeRowPhotoFields(obj);
-                            obj.CONTSIZE=item.contsize || obj.CONTSIZE || item.itemspec || obj.ITEMSPEC || item.size || "-";
-                            obj.LOCATIONCODE=obj.LOCATIONCODE||obj.LOCATION||"No Loc";
-                            return obj;
-                        });
+                        processAndLoadData({ requestsData: formatFetchedRows(reqData, 'v2_active_request') });
                         localStorage.setItem('last_req_hash', hash);
+                        persistCurrentCache(false, 'realtime');
                         markViewDirty('request');
                         queueInteractiveViewRender('request', false, true, 48, 220);
                     }
@@ -8340,10 +8534,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function buildAvOpenInventoryFromMasterItems(items = []) {
-            return items.filter((item) => {
-                const ltsValue = (parseFloat(String(firstNonEmptyValue(item && item.S_LTS, '0')).replace(/,/g,'')) || 0);
-                return ltsValue > 0 && !getMasterAvInvalidationReasons(item).length;
-            });
+            return items.filter((item) => shouldIncludeMasterItemInAvOpen(item));
         }
 
         function collectMasterAvRuleClearOps(items = []) {
@@ -8446,15 +8637,13 @@ function toggleDriveQuickRequestItem(domId) {
                     .filter((item) => {
                         const sourceTable = String(firstNonEmptyValue(item && item.SOURCE_TABLE, item && item.source_table, 'v2_master_inventory')).toLowerCase();
                         if (sourceTable !== 'v2_master_inventory') return true;
-                        const ltsValue = (parseFloat(String(firstNonEmptyValue(item && item.S_LTS, '0')).replace(/,/g,'')) || 0);
-                        return ltsValue > 0 && !getMasterAvInvalidationReasons(item).length;
+                        return shouldIncludeMasterItemInAvOpen(item);
                     });
                 avOpenInventory = avOpenSource.map((item,idx)=>{item.DOM_ID='avo_'+(item.UNIQUE_ID || idx);return buildSearchIndex(normalizeRowPhotoFields(item));});
                 if (shouldRebuildAvOpenFromMaster && !changedDatasetKeys.includes('avOpen')) changedDatasetKeys.push('avOpen');
             }
-
             if (hasRequests || (hasMaster && requestsInventory.length)) {
-                const requestSource = hasRequests ? (res.requestsData || []) : requestsInventory;
+                const requestSource = hasRequests ? reconcileIncomingRequestRows(res.requestsData || []) : requestsInventory;
                 requestsInventory = requestSource.map((item) => {
                     if (!item.DOM_ID) item.DOM_ID = 'req_' + item.UNIQUE_ID;
                     item.REQ_STATUS = normalizeRequestStatus(firstNonEmptyValue(item.REQ_STATUS, item.req_status, item.STATUS, 'Pending')) || 'Pending';
@@ -8469,6 +8658,7 @@ function toggleDriveQuickRequestItem(domId) {
                     item.APP_TAB_ASSIGNMENT = firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, masterItem.APP_TAB_ASSIGNMENT);
                     return item;
                 });
+                if (hasRequests) clearOptimisticRequestIds((res.requestsData || []).map((item) => item && item.UNIQUE_ID));
                 applyPendingRequestArchives();
                 updateFooterRequestBadge();
                 requestViewLiveSyncSignature = buildRequestLiveSyncSignature(requestsInventory);
@@ -9432,6 +9622,7 @@ function toggleDriveQuickRequestItem(domId) {
 
         function switchView(viewId) {
             closeDriveQuickFiltersModal();
+            if (String(viewId || '').trim() !== 'tasks') closeTaskDropdowns(false);
             const requestedViewId = String(viewId || 'home').trim();
             const nextViewId = canAccessView(requestedViewId) ? requestedViewId : 'home';
             const currentViewId = getCurrentVisibleViewId();
@@ -9631,16 +9822,15 @@ function toggleDriveQuickRequestItem(domId) {
         function setTaskTab(tab) {
             const previousTaskTab = activeTaskTab;
             activeTaskTab=tab;
+            taskTabDropdownOpen = false;
+            taskSubviewDropdownOpen = false;
+            resetTaskLocationDetailFilters();
             if (!taskTabUsesBlockDrill(tab) || (tab !== 'season' && activeTaskSubview === 'av-blanks')) activeTaskSubview='all';
             if (tab !== 'colorwalk' && previousTaskTab === 'colorwalk') {
                 selectedColorWalkContSize='';
                 selectedColorWalkSearchTerm='';
             }
-            document.getElementById('tab-season').classList.toggle('active',tab==='season');
-            document.getElementById('tab-location').classList.toggle('active',tab==='location');
-            document.getElementById('tab-colorwalk').classList.toggle('active',tab==='colorwalk');
-            document.getElementById('tab-endcap').classList.toggle('active',tab==='endcap');
-            document.getElementById('tab-flyer').classList.toggle('active',tab==='flyer');
+            syncTaskModeControls(tab);
             syncTaskSubviewControls(tab);
             taskViewLevel=0;
             selectedTaskBlock=null;
@@ -9658,10 +9848,14 @@ function toggleDriveQuickRequestItem(domId) {
 
         function setTaskSubview(subview) {
             if (!taskTabUsesBlockDrill(activeTaskTab)) return false;
+            taskTabDropdownOpen = false;
+            taskSubviewDropdownOpen = false;
+            resetTaskLocationDetailFilters();
             const allowedSubviews = activeTaskTab === 'season'
                 ? ['all', 'positive-lts', 'hold', 'av-blanks']
                 : ['all', 'positive-lts', 'hold'];
             activeTaskSubview = allowedSubviews.includes(subview) ? subview : 'all';
+            syncTaskModeControls(activeTaskTab);
             syncTaskSubviewControls(activeTaskTab);
             scheduleUiRender('task-subview', () => renderTasks());
             return false;
@@ -10051,7 +10245,7 @@ activeDriveTab = tab;
                     av_note: firstNonEmptyValue(item && item.AV_NOTE, item && item.av_note, ''),
                     spec: firstNonEmptyValue(item && item.REQ_SPEC, item && item.req_spec, item && item.SPEC, ''),
                     caliper: firstNonEmptyValue(item && item.REQ_CALIPER, item && item.req_caliper, item && item.CALIPER, ''),
-                    photo: firstNonEmptyValue(item && item.REQ_PHOTO_LINK, item && item.req_photo_link, item && item.SAVED_PHOTO_LINK, item && item.saved_photo_link, '')
+                    photo: getRequestPhotoLinkCsv(item, { includePending: false })
                 })).filter((item) => item.unique_id || item.commonname || item.itemcode);
             }
             if (requestIdSet.size) payload.requestIds = Array.from(requestIdSet);
@@ -10440,11 +10634,7 @@ activeDriveTab = tab;
         }
 
         function getAvReserveOpenStockBaseItems() {
-            return (isDatasetLoaded('avOpen', 'initial') ? avOpenInventory : fullInventory).filter(i => {
-                let lts = Number(String(i.S_LTS || '0').replace(/,/g, ''));
-                let season = String(i.SEASON || '').toUpperCase();
-                return lts > 0 && !season.includes('Y') && !season.includes('Z');
-            });
+            return (isDatasetLoaded('avOpen', 'initial') ? avOpenInventory : fullInventory).filter(i => shouldIncludeMasterItemInAvOpenView(i));
         }
 
         function getAvReserveDriveRowsForSelection() {
@@ -10958,11 +11148,7 @@ activeDriveTab = tab;
             const useRepDrill = activeAVTab === 'reserves' && activeAvReserveMode !== 'cards' && canSelectAvReserveRep();
             let items = [];
             if (activeAVTab === 'open') {
-                items = (isDatasetLoaded('avOpen', 'initial') ? avOpenInventory : fullInventory).filter(i => {
-                    let lts = Number(String(i.S_LTS || '0').replace(/,/g, ''));
-                    let season = String(i.SEASON || '').toUpperCase();
-                    return lts > 0 && !season.includes('Y') && !season.includes('Z');
-                });
+                items = (isDatasetLoaded('avOpen', 'initial') ? avOpenInventory : fullInventory).filter(i => shouldIncludeMasterItemInAvOpenView(i));
                 if (activeAvOpenTab === 'photos') items = items.filter(avItemHasPhotos);
             } else {
                 items = reservesInventory;
@@ -12125,9 +12311,7 @@ activeDriveTab = tab;
             if (!item) return false;
             const domId = String(item.DOM_ID || '').trim();
             if (domId.startsWith('avo_')) return true;
-            const ltsValue = Number(String(firstNonEmptyValue(item.S_LTS, item.s_lts, '0') || '0').replace(/,/g, ''));
-            const season = String(firstNonEmptyValue(item.SEASON, item.season, '')).toUpperCase();
-            return ltsValue > 0 && !season.includes('Y') && !season.includes('Z');
+            return shouldIncludeMasterItemInAvOpenView(item);
         }
 
         function isBloomPickerSalesOfficeItem(item) {
@@ -13743,7 +13927,7 @@ activeDriveTab = tab;
             const holdCode = firstNonEmptyValue(item.HOLD, item.HOLDCODE, item.HOLD_CODE, '');
             const holdReason = firstNonEmptyValue(item.HOLD_REASON, item.HOLDREASON, item.CUSTOMERHOLDREASON, '');
             const salesNote = firstNonEmptyValue(item.SALES_NOTE, item.SALESNOTE, '');
-            const photoLink = firstNonEmptyValue(item.REQ_PHOTO_LINK, item.ROW_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, '');
+            const photoLink = getRequestPhotoLinkCsv(item);
             return [
                 clean(item.UNIQUE_ID),
                 clean(item.DOM_ID),
@@ -14269,7 +14453,7 @@ activeDriveTab = tab;
         function getProductivitySnapshotPhotoState(item = null, completionContext = '') {
             if (!item) return { link: '', name: '' };
             const normalizedKind = String(completionContext || '').toLowerCase();
-            if (normalizedKind === 'request') return { link: String(firstNonEmptyValue(item.REQ_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.ROW_PHOTO_LINK, '')).trim(), name: String(firstNonEmptyValue(item.REQ_PHOTO_NAME, item.SAVED_PHOTO_NAME, item.ROW_PHOTO_NAME, '')).trim() };
+            if (normalizedKind === 'request') return { link: String(getRequestPhotoLinkCsv(item, { includePending: false }) || '').trim(), name: String(firstNonEmptyValue(item.REQ_PHOTO_NAME, item.SAVED_PHOTO_NAME, item.ROW_PHOTO_NAME, '')).trim() };
             if (normalizedKind === 'flyer') return { link: String(firstNonEmptyValue(item.FLYER_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.ROW_PHOTO_LINK, '')).trim(), name: String(firstNonEmptyValue(item.FLYER_PHOTO_NAME, item.SAVED_PHOTO_NAME, item.ROW_PHOTO_NAME, '')).trim() };
             return { link: String(firstNonEmptyValue(item.SAVED_PHOTO_LINK, item.ROW_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK'], '')).trim(), name: String(firstNonEmptyValue(item.SAVED_PHOTO_NAME, item.ROW_PHOTO_NAME, item.PHOTO_NAME, item.PHOTONAME, item['PHOTO NAME'], '')).trim() };
         }
@@ -16179,13 +16363,15 @@ activeDriveTab = tab;
         }
 
         function rollbackOptimisticRequestIds(requestIds = []) {
-            const idSet = new Set((Array.isArray(requestIds) ? requestIds : []).map(id => String(id || '').trim()).filter(Boolean));
+            const idSet = new Set(normalizeRequestIdList(requestIds));
+            clearOptimisticRequestIds(Array.from(idSet));
             if (!idSet.size) return;
             requestsInventory = requestsInventory.filter(item => !idSet.has(String(item.UNIQUE_ID || '').trim()));
             if (activeItem && idSet.has(String(activeItem.UNIQUE_ID || '').trim())) activeItem = null;
             updateFooterRequestBadge();
             markViewDirty('request');
             requestViewLiveSyncSignature = buildRequestLiveSyncSignature(requestsInventory);
+            persistCurrentCache(true, 'request-rollback');
             if (isViewVisible('request')) queueViewRender('request', false, true);
         }
 
@@ -16325,8 +16511,10 @@ activeDriveTab = tab;
                     if (autoCompleteOnCreate) autoCompleteRequestIds.add(newReqId);
                 }
             });
+            trackOptimisticRequestIds(optimisticIds);
             updateFooterRequestBadge();
             requestViewLiveSyncSignature = buildRequestLiveSyncSignature(requestsInventory);
+            persistCurrentCache(true, 'request-submit');
             if(!insertPayloads.length){
                 if (quickMode) {
                     restoredDriveIds.forEach(domId => driveQuickRequestItems.add(domId));
@@ -16441,7 +16629,7 @@ activeDriveTab = tab;
         }
 
         function getRequestSharePhotoEntries(item) {
-            return extractSharePhotoUrls(firstNonEmptyValue(item && item.REQ_PHOTO_LINK, item && item.SAVED_PHOTO_LINK, item && item.ROW_PHOTO_LINK, item && item['PHOTO LINK'], item && item.PHOTOLINK, ''), item);
+            return extractSharePhotoUrls(getRequestPhotoLinkCsv(item), item);
         }
 
         function formatRequestItemsText(items, headerLabel = '', options = {}) {
@@ -17698,6 +17886,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 htmlCounts += `</div>`;
                 html += `<div class="bg-white border border-gray-200 p-4 rounded-xl shadow-sm mb-3 cursor-pointer active:scale-95 transition-transform" onclick="selectTaskUser('${esc(u)}')"><div class="flex justify-between items-center"><span class="font-black text-xl text-[#007a4d]">${u}</span><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${userTasks.length} Total</span></div>${htmlCounts}</div>`;
             });
+            closeTaskDropdowns(false);
             document.getElementById('task-tabs-container').classList.add('hidden');
             const subTabs = document.getElementById('task-subtabs-container');
             if (subTabs) subTabs.classList.add('hidden');
@@ -17706,6 +17895,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function selectTaskUser(u) {
+            closeTaskDropdowns(false);
             taskViewTargetUser = u;
             document.getElementById('task-tabs-container').classList.remove('hidden');
             scheduleUiRender('task-select-user', () => renderTasks());
@@ -17713,6 +17903,8 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function openTaskBlockView(block) {
+            closeTaskDropdowns(false);
+            resetTaskLocationDetailFilters();
             selectedTaskBlock = block;
             selectedTaskLoc = null;
             taskViewLevel = 1;
@@ -17722,6 +17914,8 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function openTaskLocationView(loc) {
+            closeTaskDropdowns(false);
+            resetTaskLocationDetailFilters();
             selectedTaskLoc = loc;
             taskViewLevel = 2;
             scheduleUiRender('task-open-location', () => renderTasks());
@@ -17730,6 +17924,8 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function backToTaskBlockList() {
+            closeTaskDropdowns(false);
+            resetTaskLocationDetailFilters();
             taskViewLevel = 0;
             selectedTaskBlock = null;
             selectedTaskLoc = null;
@@ -17739,6 +17935,8 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function backToTaskLocationList() {
+            closeTaskDropdowns(false);
+            resetTaskLocationDetailFilters();
             taskViewLevel = 1;
             selectedTaskLoc = null;
             scheduleUiRender('task-back-location-list', () => renderTasks());
@@ -17831,25 +18029,112 @@ ${folderNote ? `Folder Note: ${folderNote}
             return items.filter(item => taskRowMatchesSubview(item, subview));
         }
 
+        function getTaskModeDropdownOptions() {
+            return ['season', 'location', 'colorwalk', 'endcap', 'flyer'].map((value) => ({
+                value,
+                label: getTaskTabLabel(value)
+            }));
+        }
+
+        function shouldShowTaskSubviewDropdown(tab = activeTaskTab) {
+            return taskTabUsesBlockDrill(tab);
+        }
+
+        function getTaskSubviewDropdownOptions(tab = activeTaskTab) {
+            const safeTab = String(tab || activeTaskTab || '').trim().toLowerCase();
+            const values = safeTab === 'season'
+                ? ['all', 'positive-lts', 'hold', 'av-blanks']
+                : (shouldShowTaskSubviewDropdown(safeTab) ? ['all', 'positive-lts', 'hold'] : []);
+            return values.map((value) => ({ value, label: getTaskSubviewLabel(value) }));
+        }
+
+        function syncTaskSelectorRowLayout(tab = activeTaskTab) {
+            const container = document.getElementById('task-tabs-container');
+            if (!container) return;
+            const shouldShowSubview = shouldShowTaskSubviewDropdown(tab);
+            const wasHidden = container.classList.contains('hidden');
+            const nextClasses = ['mb-3', 'grid', 'grid-cols-1', 'gap-2'];
+            if (shouldShowSubview) nextClasses.push('md:grid-cols-2');
+            if (wasHidden) nextClasses.push('hidden');
+            container.className = nextClasses.join(' ');
+        }
+
+        function closeTaskDropdowns(syncUi = true) {
+            const hadOpen = taskTabDropdownOpen || taskSubviewDropdownOpen;
+            taskTabDropdownOpen = false;
+            taskSubviewDropdownOpen = false;
+            if (syncUi && hadOpen) {
+                syncTaskModeControls(activeTaskTab);
+                syncTaskSubviewControls(activeTaskTab);
+            }
+            return false;
+        }
+
+        function toggleTaskModeDropdown() {
+            const container = document.getElementById('task-tabs-container');
+            if (!container || container.classList.contains('hidden')) return false;
+            taskTabDropdownOpen = !taskTabDropdownOpen;
+            if (taskTabDropdownOpen) taskSubviewDropdownOpen = false;
+            syncTaskModeControls(activeTaskTab);
+            syncTaskSubviewControls(activeTaskTab);
+            return false;
+        }
+
+        function closeTaskModeDropdown() {
+            if (!taskTabDropdownOpen) return false;
+            taskTabDropdownOpen = false;
+            syncTaskModeControls(activeTaskTab);
+            return false;
+        }
+
+        function toggleTaskSubviewDropdown() {
+            if (!shouldShowTaskSubviewDropdown(activeTaskTab)) return false;
+            taskSubviewDropdownOpen = !taskSubviewDropdownOpen;
+            if (taskSubviewDropdownOpen) taskTabDropdownOpen = false;
+            syncTaskModeControls(activeTaskTab);
+            syncTaskSubviewControls(activeTaskTab);
+            return false;
+        }
+
+        function closeTaskSubviewDropdown() {
+            if (!taskSubviewDropdownOpen) return false;
+            taskSubviewDropdownOpen = false;
+            syncTaskSubviewControls(activeTaskTab);
+            return false;
+        }
+
+        function syncTaskModeControls(tab = activeTaskTab) {
+            const host = document.getElementById('task-tab-dropdown-host');
+            if (!host) return;
+            const safeTab = String(tab || activeTaskTab || '').trim().toLowerCase();
+            syncTaskSelectorRowLayout(safeTab);
+            const currentLabel = getTaskTabLabel(safeTab);
+            const optionsHtml = getTaskModeDropdownOptions().map((option) => {
+                const isSelected = option.value === safeTab;
+                return `<button type="button" class="flex w-full items-center justify-between gap-3 px-3 py-2 text-left ${isSelected ? 'bg-emerald-50 text-emerald-700' : 'text-slate-700 hover:bg-emerald-50'}" onclick="return setTaskTab('${option.value}')"><span class="text-[12px] font-bold">${esc(option.label)}</span>${isSelected ? '<i class="ph-bold ph-check text-sm"></i>' : ''}</button>`;
+            }).join('');
+            host.innerHTML = `<div class="rounded-[1.05rem] border border-emerald-100 bg-white/95 px-3 py-2.5 shadow-sm backdrop-blur-sm"><button type="button" class="inline-flex w-full items-center gap-2 rounded-full border border-emerald-200 bg-white px-3 py-2 text-left text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm" onclick="return toggleTaskModeDropdown()"><i class="ph-bold ph-squares-four text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="truncate">Task View</span><span class="mt-1 text-[9px] font-bold normal-case tracking-normal text-slate-500 truncate">${esc(currentLabel)}</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="mt-2 ${taskTabDropdownOpen ? '' : 'hidden '}overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm"><div class="max-h-72 overflow-y-auto">${optionsHtml}</div><div class="border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeTaskModeDropdown()">Done</button></div></div></div>`;
+        }
+
         function syncTaskSubviewControls(tab = activeTaskTab) {
             const container = document.getElementById('task-subtabs-container');
             if (!container) return;
-            const shouldShow = taskTabUsesBlockDrill(tab);
-            container.classList.toggle('hidden', !shouldShow);
-            const allTab = document.getElementById('task-subtab-all');
-            const positiveTab = document.getElementById('task-subtab-positive-lts');
-            const holdTab = document.getElementById('task-subtab-hold');
-            const avBlanksTab = document.getElementById('task-subtab-av-blanks');
-            if (allTab) allTab.classList.toggle('active', activeTaskSubview === 'all');
-            if (positiveTab) positiveTab.classList.toggle('active', activeTaskSubview === 'positive-lts');
-            if (holdTab) holdTab.classList.toggle('active', activeTaskSubview === 'hold');
-            if (avBlanksTab) {
-                const showAvBlanks = tab === 'season';
-                avBlanksTab.classList.toggle('hidden', !showAvBlanks);
-                avBlanksTab.classList.toggle('active', activeTaskSubview === 'av-blanks');
+            const shouldShow = shouldShowTaskSubviewDropdown(tab);
+            syncTaskSelectorRowLayout(tab);
+            if (!shouldShow) {
+                taskSubviewDropdownOpen = false;
+                container.classList.add('hidden');
+                container.innerHTML = '';
+                return;
             }
+            const currentLabel = getTaskSubviewLabel(activeTaskSubview);
+            const optionsHtml = getTaskSubviewDropdownOptions(tab).map((option) => {
+                const isSelected = option.value === activeTaskSubview;
+                return `<button type="button" class="flex w-full items-center justify-between gap-3 px-3 py-2 text-left ${isSelected ? 'bg-emerald-50 text-emerald-700' : 'text-slate-700 hover:bg-emerald-50'}" onclick="return setTaskSubview('${option.value}')"><span class="text-[12px] font-bold">${esc(option.label)}</span>${isSelected ? '<i class="ph-bold ph-check text-sm"></i>' : ''}</button>`;
+            }).join('');
+            container.classList.remove('hidden');
+            container.innerHTML = `<div class="rounded-[1.05rem] border border-emerald-100 bg-white/95 px-3 py-2.5 shadow-sm backdrop-blur-sm"><button type="button" class="inline-flex w-full items-center gap-2 rounded-full border border-emerald-200 bg-white px-3 py-2 text-left text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm" onclick="return toggleTaskSubviewDropdown()"><i class="ph-bold ph-funnel text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="truncate">Task Filter</span><span class="mt-1 text-[9px] font-bold normal-case tracking-normal text-slate-500 truncate">${esc(currentLabel)}</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="mt-2 ${taskSubviewDropdownOpen ? '' : 'hidden '}overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm"><div class="max-h-72 overflow-y-auto">${optionsHtml}</div><div class="border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeTaskSubviewDropdown()">Done</button></div></div></div>`;
         }
-
         function setColorWalkContSizeFilter(value = '') {
             selectedColorWalkContSize = String(value || '').trim();
             taskViewLevel = 0;
@@ -18071,6 +18356,127 @@ ${folderNote ? `Folder Note: ${folderNote}
             const state = buildTaskGenusFilterState(taskGenusFilterItemsCache);
             updateTaskGenusFilterUi(state, container);
         }
+        function resetTaskLocationDetailFilters() {
+            taskLocationDetailSearchTerm = '';
+            selectedTaskLocationDetailContSize = '';
+            selectedTaskLocationDetailGenus = '';
+            selectedTaskLocationDetailLotCode = '';
+        }
+
+        function shouldShowTaskLocationDetailFilters(tab = activeTaskTab, level = taskViewLevel) {
+            const safeTab = String(tab || activeTaskTab || '').trim().toLowerCase();
+            return level === 2 && (safeTab === 'season' || safeTab === 'location');
+        }
+
+        function hasActiveTaskLocationDetailFilters() {
+            return String(taskLocationDetailSearchTerm || '').trim() !== ''
+                || String(selectedTaskLocationDetailContSize || '').trim() !== ''
+                || String(selectedTaskLocationDetailGenus || '').trim() !== ''
+                || String(selectedTaskLocationDetailLotCode || '').trim() !== '';
+        }
+
+        function getTaskLocationDetailContSize(item) {
+            return String(firstNonEmptyValue(item && item.CONTSIZE, item && item.contsize, '-')).trim() || '-';
+        }
+
+        function getTaskLocationDetailLotCode(item) {
+            return String(firstNonEmptyValue(item && item.LOTCODE, item && item.lotcode, '-')).trim() || '-';
+        }
+
+        function buildTaskLocationDetailFilterState(items = []) {
+            const scopedItems = Array.isArray(items) ? items : [];
+            const compareOptionValues = (left, right) => String(left || '').localeCompare(String(right || ''), undefined, { numeric: true });
+            const contSizes = [...new Set(scopedItems.map(getTaskLocationDetailContSize).filter(Boolean))].sort(compareOptionValues);
+            const genusOptions = [...new Set(scopedItems.map(getTaskGenusName).filter(Boolean))].sort(compareOptionValues);
+            const lotCodes = [...new Set(scopedItems.map(getTaskLocationDetailLotCode).filter(Boolean))].sort(compareOptionValues);
+            if (selectedTaskLocationDetailContSize && !contSizes.includes(selectedTaskLocationDetailContSize)) selectedTaskLocationDetailContSize = '';
+            if (selectedTaskLocationDetailGenus && !genusOptions.includes(selectedTaskLocationDetailGenus)) selectedTaskLocationDetailGenus = '';
+            if (selectedTaskLocationDetailLotCode && !lotCodes.includes(selectedTaskLocationDetailLotCode)) selectedTaskLocationDetailLotCode = '';
+            return { contSizes, genusOptions, lotCodes };
+        }
+
+        function syncTaskLocationDetailFilterUi() {
+            const input = document.getElementById('task-location-detail-search-input');
+            if (input && document.activeElement !== input && input.value !== taskLocationDetailSearchTerm) {
+                input.value = taskLocationDetailSearchTerm;
+            }
+            const clearBtn = document.getElementById('task-location-detail-clear-filters');
+            if (clearBtn) {
+                const isActive = hasActiveTaskLocationDetailFilters();
+                clearBtn.disabled = !isActive;
+                clearBtn.classList.toggle('opacity-50', !isActive);
+                clearBtn.classList.toggle('cursor-not-allowed', !isActive);
+                clearBtn.classList.toggle('pointer-events-none', !isActive);
+            }
+        }
+
+        function setTaskLocationDetailSearchTerm(value = '') {
+            taskLocationDetailSearchTerm = String(value || '');
+            syncTaskLocationDetailFilterUi();
+            scheduleTypingAwareUiRender('task-location-detail-search', () => renderTasks({ skipTaskLocationDetailFilterRender: true }), 0, 180);
+        }
+
+        function setTaskLocationDetailContSizeFilter(value = '') {
+            selectedTaskLocationDetailContSize = String(value || '').trim();
+            scheduleUiRender('task-location-detail-filter', () => renderTasks());
+            return false;
+        }
+
+        function setTaskLocationDetailGenusFilter(value = '') {
+            selectedTaskLocationDetailGenus = String(value || '').trim();
+            scheduleUiRender('task-location-detail-filter', () => renderTasks());
+            return false;
+        }
+
+        function setTaskLocationDetailLotCodeFilter(value = '') {
+            selectedTaskLocationDetailLotCode = String(value || '').trim();
+            scheduleUiRender('task-location-detail-filter', () => renderTasks());
+            return false;
+        }
+
+        function clearTaskLocationDetailFilters() {
+            if (!hasActiveTaskLocationDetailFilters()) return false;
+            resetTaskLocationDetailFilters();
+            scheduleUiRender('task-location-detail-clear', () => renderTasks());
+            return false;
+        }
+
+        function renderTaskLocationDetailFilters(items = []) {
+            const container = document.getElementById('task-location-detail-filters');
+            if (!container) return;
+            if (!shouldShowTaskLocationDetailFilters()) {
+                container.classList.add('hidden');
+                container.innerHTML = '';
+                return;
+            }
+            const state = buildTaskLocationDetailFilterState(items);
+            const buildOptionHtml = (label, values, selectedValue) => {
+                const defaultOption = `<option value="">${label}</option>`;
+                return [defaultOption].concat(values.map(value => `<option value="${esc(value)}" ${selectedValue === value ? 'selected' : ''}>${esc(value)}</option>`)).join('');
+            };
+            const hasSearch = String(taskLocationDetailSearchTerm || '').trim() !== '';
+            const hasContSize = String(selectedTaskLocationDetailContSize || '').trim() !== '';
+            const hasGenus = String(selectedTaskLocationDetailGenus || '').trim() !== '';
+            const hasLotCode = String(selectedTaskLocationDetailLotCode || '').trim() !== '';
+            container.innerHTML = `<div class="rounded-xl border border-green-100 bg-white px-3 py-3 shadow-sm"><div class="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1.15fr)_repeat(3,minmax(0,0.8fr))_auto]"><label class="min-w-0 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Search<input id="task-location-detail-search-input" type="text" class="input-field !mb-0 mt-2 border-green-200 bg-green-50/40" value="${esc(taskLocationDetailSearchTerm)}" placeholder="Name, item, size, genus, lot..." oninput="setTaskLocationDetailSearchTerm(this.value)" onkeydown="dismissSearchKeyboard(event)"></label><label class="min-w-0 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Cont Size<select class="input-field !mb-0 mt-2 border-green-200 bg-green-50/40" onchange="return setTaskLocationDetailContSizeFilter(this.value)">${buildOptionHtml('All Sizes', state.contSizes, selectedTaskLocationDetailContSize)}</select></label><label class="min-w-0 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Genus<select class="input-field !mb-0 mt-2 border-green-200 bg-green-50/40" onchange="return setTaskLocationDetailGenusFilter(this.value)">${buildOptionHtml('All Genus', state.genusOptions, selectedTaskLocationDetailGenus)}</select></label><label class="min-w-0 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Lot Code<select class="input-field !mb-0 mt-2 border-green-200 bg-green-50/40" onchange="return setTaskLocationDetailLotCodeFilter(this.value)">${buildOptionHtml('All Lots', state.lotCodes, selectedTaskLocationDetailLotCode)}</select></label><button id="task-location-detail-clear-filters" type="button" class="min-h-[42px] rounded-xl border border-green-200 bg-white px-4 text-[11px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm self-end ${hasSearch || hasContSize || hasGenus || hasLotCode ? '' : 'opacity-50 cursor-not-allowed pointer-events-none'}" onclick="return clearTaskLocationDetailFilters()">Clear Filters</button></div></div>`;
+            container.classList.remove('hidden');
+            syncTaskLocationDetailFilterUi();
+        }
+
+        function applyTaskLocationDetailFilters(items = []) {
+            let nextItems = Array.isArray(items) ? [...items] : [];
+            if (taskLocationDetailSearchTerm) nextItems = filterBySearch(nextItems, taskLocationDetailSearchTerm, 'task_location_detail');
+            if (selectedTaskLocationDetailContSize) {
+                nextItems = nextItems.filter(item => getTaskLocationDetailContSize(item) === selectedTaskLocationDetailContSize);
+            }
+            if (selectedTaskLocationDetailGenus) {
+                nextItems = nextItems.filter(item => getTaskGenusName(item) === selectedTaskLocationDetailGenus);
+            }
+            if (selectedTaskLocationDetailLotCode) {
+                nextItems = nextItems.filter(item => getTaskLocationDetailLotCode(item) === selectedTaskLocationDetailLotCode);
+            }
+            return nextItems;
+        }
         const COLOR_WALK_LOCATION_BUCKETS = new Set(['C.06', 'C.07', 'D.05', 'D.06', 'D.07', 'D.08', 'D.09', 'D.10']);
         const COLOR_WALK_PLANT_GROUPS = new Set(['150_ANNUAL', '151_PEREN', '155_SUCCUL', '160_TROPIC']);
 
@@ -18172,9 +18578,11 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function renderTasks(options = {}) {
             const skipColorWalkFilterRender = !!(options && options.skipColorWalkFilterRender);
+            const skipTaskLocationDetailFilterRender = !!(options && options.skipTaskLocationDetailFilterRender);
             if (ensureViewDataForRender('tasks')) return;
             const tabs = document.getElementById('task-tabs-container');
             if (tabs) tabs.classList.remove('hidden');
+            syncTaskModeControls(activeTaskTab);
             syncTaskSubviewControls(activeTaskTab);
 
             const useBlockDrill = taskTabUsesBlockDrill(activeTaskTab);
@@ -18226,13 +18634,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                 }
             }
 
-            if (activeTaskTab === 'season') {
-                renderTaskGenusFilter(seasonTaskItems);
-                if (selectedTaskGenusNames.size) {
-                    tabItems = tabItems.filter(i => selectedTaskGenusNames.has(getTaskGenusName(i)));
-                }
-            } else {
-                renderTaskGenusFilter([]);
+            if (activeTaskTab === 'season' && selectedTaskGenusNames.size) {
+                tabItems = tabItems.filter(i => selectedTaskGenusNames.has(getTaskGenusName(i)));
             }
 
             if (taskTabUsesBlockDrill(activeTaskTab)) {
@@ -18267,6 +18670,24 @@ ${folderNote ? `Folder Note: ${folderNote}
                     taskViewLevel = 0;
                     selectedEndCapFolder = null;
                 }
+            }
+
+                        if (activeTaskTab === 'season' && taskViewLevel !== 2) renderTaskGenusFilter(seasonTaskItems);
+            else renderTaskGenusFilter([]);
+
+            const shouldRenderTaskLocationDetailFilters = shouldShowTaskLocationDetailFilters(activeTaskTab, taskViewLevel);
+            let taskLocationDetailBaseItems = [];
+            let taskLocationDetailItems = [];
+            if (shouldRenderTaskLocationDetailFilters && selectedTaskLoc) {
+                taskLocationDetailBaseItems = tabItems.filter(i => getTaskLocationBucket(i) === selectedTaskLoc && (!selectedTaskBlock || getTaskBlockAlpha(i) === selectedTaskBlock));
+                if (!skipTaskLocationDetailFilterRender) renderTaskLocationDetailFilters(taskLocationDetailBaseItems);
+                else {
+                    buildTaskLocationDetailFilterState(taskLocationDetailBaseItems);
+                    syncTaskLocationDetailFilterUi();
+                }
+                taskLocationDetailItems = applyTaskLocationDetailFilters(taskLocationDetailBaseItems);
+            } else {
+                renderTaskLocationDetailFilters([]);
             }
 
             applyTaskCrumb();
@@ -18368,7 +18789,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                         return `<div class="drill-item" onclick="return openTaskLocationView('${esc(locationRow.locationCode)}')"><span class="font-bold text-lg text-gray-800">${locationRow.locationCode} <span class="text-gray-400 text-sm font-normal">(${locationRow.count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
                     }, { prefixHtml, approxCardHeight: 72, emptyHtml: `<div class="p-8 text-center text-gray-400">No locations found for this block.</div>` });
                 } else if (taskViewLevel === 2) {
-                    let fItems = tabItems.filter(i => getTaskLocationBucket(i) === selectedTaskLoc);
+                    let fItems = shouldRenderTaskLocationDetailFilters ? taskLocationDetailItems : tabItems.filter(i => getTaskLocationBucket(i) === selectedTaskLoc);
                     fItems.sort((a,b) => {
                         const locationCompare = compareLocationCodeValues(a.LOCATIONCODE, b.LOCATIONCODE);
                         if (locationCompare !== 0) return locationCompare;
@@ -18381,10 +18802,13 @@ ${folderNote ? `Folder Note: ${folderNote}
                     const renderRow = activeTaskTab === 'season' && activeTaskSubview === 'av-blanks'
                         ? (item) => renderTaskAvBlankCard(item)
                         : (item) => generateCard(item, 'tasks', colorClass);
+                    const emptyHtml = shouldRenderTaskLocationDetailFilters && hasActiveTaskLocationDetailFilters()
+                        ? `<div class="p-8 text-center text-gray-400">No rows match current filters.</div>`
+                        : `<div class="p-8 text-center text-gray-400">No rows found for this location.</div>`;
                     renderMarkupChunkedByKey('tasks-main', container, null, fItems, '', renderRow, {
                         prefixHtml,
                         approxCardHeight: activeTaskTab === 'season' && activeTaskSubview === 'av-blanks' ? 170 : 260,
-                        emptyHtml: `<div class="p-8 text-center text-gray-400">No rows found for this location.</div>`
+                        emptyHtml
                     });
                 }
             }
