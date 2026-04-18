@@ -698,7 +698,7 @@
                         <div id="task-subtabs-container" class="hidden"></div>
                     </div>
                     <div id="task-shared-filters" class="hidden mb-3 space-y-3">
-                        <div id="task-top-contsize-filters" class="hidden"></div>
+
                         <div id="task-colorwalk-filters" class="hidden"></div>
                         <div id="task-genus-filters" class="hidden"></div>
                         <div id="task-location-detail-filters" class="hidden"></div>
@@ -4711,7 +4711,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         let activeDriveMode='ok'; let activeDriveTab='name'; let selectedDriveBlock=null; let selectedDriveLoc=null; let driveQuickRequestCardMode=false; let driveQuickFilterName=''; let driveQuickFilterLocation=''; let driveQuickFilterLot=''; let driveQuickFilterSize=''; let driveQuickFilterPriority=''; let driveQuickFilterLtsMode=''; let driveQuickFilterLtsValue=''; let driveQuickHoldStopOnly=false; let driveQuickFilterOptionsCacheKey=''; let driveQuickFilterOptionsCache=null; let driveBaseFilterCacheKey=''; let driveBaseFilterCacheItems=[]; let driveBaseContextCacheKey=''; let driveBaseContextCacheItems=[]; let driveBaseSearchContextKey=''; let driveBaseLastSearchTerm=''; let driveBaseLastSearchItems=[]; let driveQuickFilterCacheKey=''; let driveQuickFilterCacheItems=[]; let driveQuickFiltersModalOpen=false;
         let driveViewLevel=0; let selectedDriveName=null; let selectedDriveSize=null; let selectedDriveCommonNames=new Set(); let driveCommonNameSearchTerm=''; let driveCommonNameFilterOpen=false; let selectedDriveGenusNames=new Set(); let driveGenusSearchTerm=''; let driveGenusFilterOpen=false; let selectedDriveContSizes=new Set(); let driveContSizeSearchTerm=''; let driveContSizeFilterOpen=false; let drivePlantFilterItemsCache=[]; let driveSelectedSeasons=new Set(['ALL']); const availableSeasons=["ALL","S1","F1","U1","U2","U3","X","Y","Z"];
 
-        let activeTaskTab="season"; let activeTaskSubview="all"; let taskViewTargetUser=null; let taskViewLevel=0; let selectedTaskBlock=null; let selectedTaskLoc=null; let selectedEndCapFolder=null; let selectedFlyerFolder=null; let activeFlyerFolderTab="active"; let selectedColorWalkContSize=""; let selectedColorWalkSearchTerm=""; let selectedTaskSharedContSize=""; let selectedTaskGenusNames=new Set(); let taskGenusSearchTerm=""; let taskGenusFilterOpen=false; let taskGenusFilterItemsCache=[]; let taskLocationDetailSearchTerm=""; let selectedTaskLocationDetailGenus=""; let selectedTaskLocationDetailLotCode=""; let taskTabDropdownOpen=false; let taskSubviewDropdownOpen=false; let pendingFlyerFolderTarget=null; let pendingFlyerFolderAssignees="";
+        let activeTaskTab="season"; let activeTaskSubview="all"; let taskViewTargetUser=null; let taskViewLevel=0; let selectedTaskBlock=null; let selectedTaskLoc=null; let selectedEndCapFolder=null; let selectedFlyerFolder=null; let activeFlyerFolderTab="active"; let selectedColorWalkSearchTerm=""; let selectedTaskGenusNames=new Set(); let taskGenusSearchTerm=""; let taskGenusFilterOpen=false; let taskGenusFilterItemsCache=[]; let taskLocationDetailSearchTerm=""; let selectedTaskLocationDetailGenus=""; let selectedTaskLocationDetailLotCode=""; let taskTabDropdownOpen=false; let taskSubviewDropdownOpen=false; let pendingFlyerFolderTarget=null; let pendingFlyerFolderAssignees="";
         let detailReturnState = { viewId: '', scrollTop: 0 };
 
         let activeAVTab='open'; let activeAvOpenTab='name'; let avOpenLevel=0; let selectedAvOpenName=null; let selectedAvOpenSize=null; let selectedAvOpenSeason=null; let selectedAvOpenLot=null; let avResLevel=0; let selectedAvResRep=null; let selectedAvResDriveUid=null; let selectedAvResItemCode=null; let selectedAvResName=null; let selectedAvResSize=null; let selectedAvResCustomerKey=null; let activeAvReserveMode='current'; let activeAvReserveDetailTab='customer';
@@ -9961,7 +9961,6 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function resetTaskSharedHeaderFilters() {
-            selectedTaskSharedContSize = '';
             taskLocationDetailSearchTerm = '';
             selectedTaskLocationDetailGenus = '';
             selectedTaskLocationDetailLotCode = '';
@@ -9978,7 +9977,6 @@ function toggleDriveQuickRequestItem(domId) {
             resetTaskSharedHeaderFilters();
             if (!taskTabUsesBlockDrill(tab) || (tab !== 'season' && activeTaskSubview === 'av-blanks')) activeTaskSubview='all';
             if (tab !== 'colorwalk' && previousTaskTab === 'colorwalk') {
-                selectedColorWalkContSize='';
                 selectedColorWalkSearchTerm='';
             }
             syncTaskModeControls(tab);
@@ -14028,9 +14026,6 @@ activeDriveTab = tab;
             }
             if (activeTaskTab === 'colorwalk') {
                 if (selectedColorWalkSearchTerm) tabItems = filterBySearch(tabItems, selectedColorWalkSearchTerm, 'colorwalk');
-                if (selectedColorWalkContSize) {
-                    tabItems = tabItems.filter(i => String(i.CONTSIZE || '-').trim() === selectedColorWalkContSize);
-                }
             }
 
             if (activeTaskTab === 'flyer') {
@@ -18303,76 +18298,15 @@ ${folderNote ? `Folder Note: ${folderNote}
             container.innerHTML = `<div class="rounded-[1.05rem] border border-emerald-100 bg-white/95 px-3 py-2.5 shadow-sm backdrop-blur-sm"><button type="button" class="inline-flex w-full items-center gap-2 rounded-full border border-emerald-200 bg-white px-3 py-2 text-left text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm" onclick="return toggleTaskSubviewDropdown()"><i class="ph-bold ph-funnel text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="truncate">Task Filter</span><span class="mt-1 text-[9px] font-bold normal-case tracking-normal text-slate-500 truncate">${esc(currentLabel)}</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="mt-2 ${taskSubviewDropdownOpen ? '' : 'hidden '}overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm"><div class="max-h-72 overflow-y-auto">${optionsHtml}</div><div class="border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeTaskSubviewDropdown()">Done</button></div></div></div>`;
         }
 
-        function shouldShowTaskSharedContSizeFilter(tab = activeTaskTab) {
-            const safeTab = String(tab || activeTaskTab || '').trim().toLowerCase();
-            return safeTab === 'season' || safeTab === 'location';
-        }
-
-        function getTaskSharedContSizeValue(item) {
-            return String(firstNonEmptyValue(item && item.CONTSIZE, item && item.contsize, item && item.ITEMSPEC, item && item.SIZE, '-')).trim() || '-';
-        }
-
-        function buildTaskSharedContSizeOptions(items = []) {
-            const options = [...new Set((Array.isArray(items) ? items : []).map(getTaskSharedContSizeValue).filter(Boolean))]
-                .sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true }));
-            if (selectedTaskSharedContSize && !options.includes(selectedTaskSharedContSize)) {
-                options.unshift(selectedTaskSharedContSize);
-            }
-            return options;
-        }
-
-        function hasActiveTaskSharedContSizeFilter() {
-            return String(selectedTaskSharedContSize || '').trim() !== '';
-        }
-
-        function setTaskSharedContSizeFilter(value = '') {
-            selectedTaskSharedContSize = String(value || '').trim();
-            scheduleUiRender('task-shared-contsize-filter', () => renderTasks());
-            return false;
-        }
-
-        function clearTaskSharedContSizeFilter() {
-            if (!hasActiveTaskSharedContSizeFilter()) return false;
-            selectedTaskSharedContSize = '';
-            scheduleUiRender('task-shared-contsize-clear', () => renderTasks());
-            return false;
-        }
-
-        function renderTaskSharedContSizeFilter(items = []) {
-            const container = document.getElementById('task-top-contsize-filters');
-            if (!container) return;
-            if (!shouldShowTaskSharedContSizeFilter()) {
-                container.classList.add('hidden');
-                container.innerHTML = '';
-                return;
-            }
-            const options = buildTaskSharedContSizeOptions(items);
-            const optionHtml = [`<option value="">All Sizes</option>`]
-                .concat(options.map((size) => `<option value="${esc(size)}" ${selectedTaskSharedContSize === size ? 'selected' : ''}>${esc(size)}</option>`))
-                .join('');
-            const hasSize = hasActiveTaskSharedContSizeFilter();
-            container.innerHTML = `<div class="rounded-xl border border-emerald-100 bg-white px-3 py-3 shadow-sm"><div class="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,0.95fr)_auto]"><label class="min-w-0 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Cont Size<select class="input-field !mb-0 mt-2 border-green-200 bg-green-50/40" onchange="return setTaskSharedContSizeFilter(this.value)">${optionHtml}</select></label><button type="button" class="min-h-[42px] rounded-xl border border-green-200 bg-white px-4 text-[11px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm self-end ${hasSize ? '' : 'opacity-50 cursor-not-allowed pointer-events-none'}" onclick="return clearTaskSharedContSizeFilter()">Clear</button></div></div>`;
-            container.classList.remove('hidden');
-        }
-
         function syncTaskSharedFilterArea() {
             const container = document.getElementById('task-shared-filters');
             if (!container) return;
-            const childIds = ['task-top-contsize-filters', 'task-colorwalk-filters', 'task-genus-filters', 'task-location-detail-filters'];
+            const childIds = ['task-colorwalk-filters', 'task-genus-filters', 'task-location-detail-filters'];
             const hasVisible = childIds.some((id) => {
                 const el = document.getElementById(id);
                 return !!(el && !el.classList.contains('hidden') && String(el.innerHTML || '').trim());
             });
             container.classList.toggle('hidden', !hasVisible);
-        }
-
-        function setColorWalkContSizeFilter(value = '') {
-            selectedColorWalkContSize = String(value || '').trim();
-            taskViewLevel = 0;
-            selectedTaskBlock = null;
-            selectedTaskLoc = null;
-            scheduleUiRender('task-colorwalk-filter', () => renderTasks());
-            return false;
         }
 
         function setColorWalkSearchTerm(value = '') {
@@ -18392,14 +18326,14 @@ ${folderNote ? `Folder Note: ${folderNote}
             }
             const clearBtn = document.getElementById('colorwalk-clear-filters');
             if (!clearBtn) return;
-            const isActive = String(selectedColorWalkSearchTerm || '').trim() !== '' || String(selectedColorWalkContSize || '').trim() !== '';
+            const isActive = String(selectedColorWalkSearchTerm || '').trim() !== '';
             clearBtn.disabled = !isActive;
             clearBtn.classList.toggle('opacity-50', !isActive);
             clearBtn.classList.toggle('cursor-not-allowed', !isActive);
             clearBtn.classList.toggle('pointer-events-none', !isActive);
         }
 
-        function renderColorWalkContSizeFilter(items = []) {
+        function renderColorWalkFilters() {
             const container = document.getElementById('task-colorwalk-filters');
             if (!container) return;
             if (activeTaskTab !== 'colorwalk') {
@@ -18407,15 +18341,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                 container.innerHTML = '';
                 return;
             }
-            const options = [...new Set(items.map(item => String(item.CONTSIZE || '-').trim() || '-'))]
-                .sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true }));
-            if (selectedColorWalkContSize && !options.includes(selectedColorWalkContSize)) selectedColorWalkContSize = '';
-            const optionHtml = [`<option value="">All Sizes</option>`]
-                .concat(options.map(size => `<option value="${esc(size)}" ${selectedColorWalkContSize === size ? 'selected' : ''}>${size}</option>`))
-                .join('');
             const hasSearch = String(selectedColorWalkSearchTerm || '').trim() !== '';
-            const hasSize = String(selectedColorWalkContSize || '').trim() !== '';
-            container.innerHTML = `<div class="rounded-xl border border-indigo-100 bg-white px-3 py-3 shadow-sm"><div class="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)_auto]"><label class="min-w-0 text-[10px] font-black uppercase tracking-[0.14em] text-indigo-700">Search<input id="colorwalk-search-input" type="text" class="input-field !mb-0 mt-2 border-indigo-200 bg-indigo-50/40" value="${esc(selectedColorWalkSearchTerm)}" placeholder="Name, item, loc, lot..." oninput="setColorWalkSearchTerm(this.value)" onkeydown="dismissSearchKeyboard(event)"></label><label class="min-w-0 text-[10px] font-black uppercase tracking-[0.14em] text-indigo-700">Cont Size<select class="input-field !mb-0 mt-2 border-indigo-200 bg-indigo-50/40" onchange="setColorWalkContSizeFilter(this.value)">${optionHtml}</select></label><button id="colorwalk-clear-filters" type="button" class="min-h-[42px] rounded-xl border border-indigo-200 bg-white px-4 text-[11px] font-black uppercase tracking-[0.12em] text-indigo-700 shadow-sm self-end ${hasSearch || hasSize ? '' : 'opacity-50 cursor-not-allowed pointer-events-none'}" onclick="setColorWalkSearchTerm(''); return setColorWalkContSizeFilter('')">Clear Filters</button></div></div>`;
+            container.innerHTML = `<div class="rounded-xl border border-indigo-100 bg-white px-3 py-3 shadow-sm"><div class="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_auto]"><label class="min-w-0 text-[10px] font-black uppercase tracking-[0.14em] text-indigo-700">Search<input id="colorwalk-search-input" type="text" class="input-field !mb-0 mt-2 border-indigo-200 bg-indigo-50/40" value="${esc(selectedColorWalkSearchTerm)}" placeholder="Name, item, loc, lot..." oninput="setColorWalkSearchTerm(this.value)" onkeydown="dismissSearchKeyboard(event)"></label><button id="colorwalk-clear-filters" type="button" class="min-h-[42px] rounded-xl border border-indigo-200 bg-white px-4 text-[11px] font-black uppercase tracking-[0.12em] text-indigo-700 shadow-sm self-end ${hasSearch ? '' : 'opacity-50 cursor-not-allowed pointer-events-none'}" onclick="return setColorWalkSearchTerm('')">Clear Filters</button></div></div>`;
             container.classList.remove('hidden');
             syncColorWalkFilterUi();
         }
@@ -18866,28 +18793,15 @@ ${folderNote ? `Folder Note: ${folderNote}
                 : [];
 
             if (activeTaskTab === 'colorwalk') {
-                if (!skipColorWalkFilterRender) renderColorWalkContSizeFilter(tabItems);
+                if (!skipColorWalkFilterRender) renderColorWalkFilters();
                 else syncColorWalkFilterUi();
-                renderTaskSharedContSizeFilter([]);
                 if (selectedColorWalkSearchTerm) tabItems = filterBySearch(tabItems, selectedColorWalkSearchTerm, 'colorwalk');
-                if (selectedColorWalkContSize) {
-                    tabItems = tabItems.filter(i => String(i.CONTSIZE || '-').trim() === selectedColorWalkContSize);
-                }
             } else {
-                renderColorWalkContSizeFilter([]);
+                renderColorWalkFilters();
             }
 
             if (activeTaskTab === 'season' && selectedTaskGenusNames.size) {
                 tabItems = tabItems.filter(i => selectedTaskGenusNames.has(getTaskGenusName(i)));
-            }
-
-            if (shouldShowTaskSharedContSizeFilter(activeTaskTab)) {
-                renderTaskSharedContSizeFilter(tabItems);
-                if (selectedTaskSharedContSize) {
-                    tabItems = tabItems.filter(i => getTaskSharedContSizeValue(i) === selectedTaskSharedContSize);
-                }
-            } else {
-                renderTaskSharedContSizeFilter([]);
             }
 
             if (taskTabUsesBlockDrill(activeTaskTab)) {
