@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -457,7 +457,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-<div id="header-version" class="nav-version-pill">V2026.04.17.25</div>
+<div id="header-version" class="nav-version-pill">V2026.04.18.01</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -580,6 +580,7 @@
                     </div>
                     <div class="task-tabs mt-2 mb-2">
                         <div id="tab-av-open" class="task-tab active" onclick="setAVTab('open')">Open Stock</div>
+                        <div id="tab-av-hotprice" class="task-tab" onclick="setAVTab('hotprice')">HOT PRICE</div>
                         <div id="tab-av-reserves" class="task-tab" onclick="setAVTab('reserves')">My Reserves</div>
                     </div>
                     <div id="av-open-sub-tabs" class="task-tabs mb-2">
@@ -2559,7 +2560,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             if (tableName === 'v2_reserves') return ['reserves'];
             if (tableName === 'v2_soc_master') return ['soc'];
             if (tableName === 'v2_sales_office') return ['salesOffice'];
-            if (tableName === 'v2_cav') return ['cav'];
+            if (tableName === 'v2_cav_import') return ['cav'];
             if (tableName === 'v2_av_notes') return ['avNotes'];
             return [];
         }
@@ -2714,7 +2715,9 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 item.COMMONNAME = firstNonEmptyValue(item.COMMONNAME, item.DESCRIPTION, item.PLANT_NAME, item.ITEMCODE, 'AV Blank');
                 item.CONTSIZE = firstNonEmptyValue(item.CONTSIZE, item.ITEMSPEC, item.SIZE, item.contsize, '-');
                 item.SEASON = firstNonEmptyValue(item.SEASON, item.season, '');
-                item._search = `${item.LOCATIONCODE || ''} ${item.ITEMCODE || ''} ${item.COMMONNAME || ''} ${item.CONTSIZE || ''} ${item.SEASON || ''}`.toLowerCase();
+                item.HOT_PRICE = getNormalizedAvHotPrice(firstNonEmptyValue(item.HOT_PRICE, item.HOTPRICE, item.hot_price, ''));
+                item.HOTPRICE = item.HOT_PRICE;
+                item._search = `${item.LOCATIONCODE || ''} ${item.ITEMCODE || ''} ${item.COMMONNAME || ''} ${item.CONTSIZE || ''} ${item.SEASON || ''} ${item.HOT_PRICE || ''}`.toLowerCase();
                 normalizeRowPhotoFields(item);
                 buildSearchIndex(item);
                 return item;
@@ -2849,7 +2852,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 syncRealtimeSalesOfficeRows();
                 changedDatasetKeys.add('salesOffice');
             }
-            if (tableSet.has('v2_cav')) {
+            if (tableSet.has('v2_cav_import')) {
                 syncRealtimeCavRows();
                 changedDatasetKeys.add('cav');
             }
@@ -2954,7 +2957,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 } else if (nextRow) {
                     changed = upsertRealtimeRow(salesOfficeInventory, nextRow, tableName);
                 }
-            } else if (tableName === 'v2_cav') {
+            } else if (tableName === 'v2_cav_import') {
                 changed = eventType === 'DELETE'
                     ? removeRealtimeRow(cavInventory, uniqueId)
                     : upsertRealtimeRow(cavInventory, nextRow, tableName);
@@ -4331,7 +4334,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             return items.map((item) => stripTransientCacheFields(item));
         }
 
-        const CACHE_SCHEMA_VERSION = 4;
+        const CACHE_SCHEMA_VERSION = 5;
         const INLINE_CACHE_RESERVE_LIMIT = 180;
         function buildCacheSnapshot() {
             const inlineReserveRows = buildCacheRows(reservesInventory.slice(0, INLINE_CACHE_RESERVE_LIMIT));
@@ -4392,13 +4395,24 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             return next;
         }
 
+        function normalizeCachedInventorySnapshot(cachedRes = {}) {
+            const cachedMeta = cachedRes && cachedRes.meta ? cachedRes.meta : {};
+            const schemaVersion = Number(cachedMeta.cacheSchemaVersion || 0);
+            const next = Object.assign({}, cachedRes || {});
+            if (schemaVersion < CACHE_SCHEMA_VERSION) {
+                delete next.cavData;
+            }
+            return next;
+        }
+
         function warmCachedInventory(force = false) {
             if (force) cacheWarmPromise = null;
             if (!cacheWarmPromise) {
                 cacheWarmPromise = loadFromCache().then((cachedRes) => {
                     if (!cachedRes) return false;
-                    processAndLoadData({ ...cachedRes, _fromCache: true });
-                    hydrateDatasetLoadState(getCachedDatasetLoadState(cachedRes));
+                    const normalizedCache = normalizeCachedInventorySnapshot(cachedRes);
+                    processAndLoadData({ ...normalizedCache, _fromCache: true });
+                    hydrateDatasetLoadState(getCachedDatasetLoadState(normalizedCache));
                     return true;
                 }).catch(() => false);
             }
@@ -4751,7 +4765,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         const REQUEST_EMAIL_THREAD_SELECT_FIELDS = 'request_folder,request_customer,sales_rep_name,sales_rep_email,recipients,initial_thread_id,initial_message_id,initial_email_sent_at,last_reply_sent_at,status,metadata';
         const REQUEST_EMAIL_INTERNAL_RECIPIENTS = Object.freeze(['dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com']);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-        const APP_VERSION = 'V2026.04.17.25';
+        const APP_VERSION = 'V2026.04.18.01';
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -5005,7 +5019,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             reserves: { table: 'v2_reserves', sourceTable: 'v2_reserves', initialQuery: buildReserveDatasetQuery, fullQuery: buildReserveDatasetQuery, initialLimit: getReserveDatasetInitialLimit },
             soc: { table: 'v2_soc_master', sourceTable: 'v2_soc_master', initialQuery: 'select=*', fullQuery: 'select=*' },
             salesOffice: { table: 'v2_sales_office', sourceTable: 'v2_sales_office', initialQuery: 'select=*', fullQuery: 'select=*' },
-            cav: { table: 'v2_cav', sourceTable: 'v2_cav', initialQuery: 'select=*', fullQuery: 'select=*' },
+            cav: { table: 'v2_cav_import', sourceTable: 'v2_cav_import', initialQuery: 'select=*', fullQuery: 'select=*' },
             avNotes: { table: 'v2_av_notes', sourceTable: 'v2_av_notes', initialQuery: 'select=*', fullQuery: 'select=*' }
         };
 
@@ -5508,6 +5522,9 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         function getViewLoadingConfig(viewId) {
             if (viewId === 'drive') return { required: [{ key: 'master', mode: 'initial' }], background: [{ key: 'master', mode: 'full' }], label: 'Loading Drive rows...' };
             if (viewId === 'av') {
+                if (activeAVTab === 'hotprice') {
+                    return { required: [{ key: 'master', mode: 'full' }, { key: 'cav', mode: 'full' }], background: [], label: 'Loading hot price rows...' };
+                }
                 if (activeAVTab === 'reserves') {
                     if (getRoleAccessState().isRep) {
                         return { required: [{ key: 'reserves', mode: 'initial' }], background: [{ key: 'reserves', mode: 'full' }], label: 'Loading your reserve rows...' };
@@ -7584,6 +7601,7 @@ function toggleDriveQuickRequestItem(domId) {
             drive_card: (item) => [item.COMMONNAME, item.LOCATIONCODE, item.ITEMCODE, item.CONTSIZE, item.LOTCODE],
             drive_loc: (item) => [item.LOCATIONCODE, item.COMMONNAME, item.ITEMCODE, item.CONTSIZE, item.LOTCODE],
             av_open: (item) => [item.COMMONNAME, item.LOCATIONCODE, item.ITEMCODE, item.CONTSIZE, item.LOTCODE],
+            av_hotprice: (item) => [item.COMMONNAME, item.LOCATIONCODE, item.ITEMCODE, item.CONTSIZE, item.LOTCODE, item.SEASON, item.HOT_PRICE, item.HOTPRICE],
             av_reserves: (item) => [item.COMMONNAME, item.CUSTOMERNAME, item.CONSIGNEENAME, item.SALESREPNAME || item.SALESREPID, item.ITEMCODE, item.CONTSIZE, item.LOCATIONCODE],
             docks: (item) => [item.DOCK_NUM, item.COMMONNAME, item.LOCATIONCODE, item.ITEMCODE, item.STOPNUMBER, item.TRIPNUMBER, item.CUSTOMERNAME, item.CONSIGNEENAME],
             reserves: (item) => [item.COMMONNAME, item.CUSTOMERNAME, item.CONSIGNEENAME, item.SALESREPNAME || item.SALESREPID, item.ITEMCODE, item.CONTSIZE, item.LOCATIONCODE],
@@ -8861,7 +8879,9 @@ function toggleDriveQuickRequestItem(domId) {
                     item.COMMONNAME = firstNonEmptyValue(item.COMMONNAME, item.DESCRIPTION, item.PLANT_NAME, item.ITEMCODE, 'AV Blank');
                     item.CONTSIZE = firstNonEmptyValue(item.CONTSIZE, item.ITEMSPEC, item.SIZE, item.contsize, '-');
                     item.SEASON = firstNonEmptyValue(item.SEASON, item.season, '');
-                    item._search = `${item.LOCATIONCODE || ''} ${item.ITEMCODE || ''} ${item.COMMONNAME || ''} ${item.CONTSIZE || ''} ${item.SEASON || ''}`.toLowerCase();
+                    item.HOT_PRICE = getNormalizedAvHotPrice(firstNonEmptyValue(item.HOT_PRICE, item.HOTPRICE, item.hot_price, ''));
+                    item.HOTPRICE = item.HOT_PRICE;
+                    item._search = `${item.LOCATIONCODE || ''} ${item.ITEMCODE || ''} ${item.COMMONNAME || ''} ${item.CONTSIZE || ''} ${item.SEASON || ''} ${item.HOT_PRICE || ''}`.toLowerCase();
                     normalizeRowPhotoFields(item);
                     buildSearchIndex(item);
                     return item;
@@ -10108,7 +10128,7 @@ activeDriveTab = tab;
             activeAVTab='open'; activeAvOpenTab='name';
             avResLevel=0; selectedAvResRep=null; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; selectedAvResCustomerKey=null; activeAvReserveMode='current'; activeAvReserveDetailTab='customer';
             avOpenLevel=0; selectedAvOpenName=null; selectedAvOpenSize=null; selectedAvOpenSeason=null; selectedAvOpenLot=null;
-            document.getElementById('tab-av-open').classList.add('active'); document.getElementById('tab-av-reserves').classList.remove('active');
+            document.getElementById('tab-av-open').classList.add('active'); document.getElementById('tab-av-hotprice').classList.remove('active'); document.getElementById('tab-av-reserves').classList.remove('active');
             document.getElementById('tab-av-open-name').classList.add('active'); document.getElementById('tab-av-open-photos').classList.remove('active');
             document.getElementById('av-open-sub-tabs').style.display = 'flex';
             document.getElementById('av-search').value=""; document.getElementById('av-search-clear').classList.add('hidden');
@@ -10118,7 +10138,7 @@ activeDriveTab = tab;
             activeAVTab=tab;
             avResLevel=0; selectedAvResRep=null; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; selectedAvResCustomerKey=null; activeAvReserveMode='current'; activeAvReserveDetailTab='customer';
             avOpenLevel=0; selectedAvOpenName=null; selectedAvOpenSize=null; selectedAvOpenSeason=null; selectedAvOpenLot=null;
-            document.getElementById('tab-av-open').classList.toggle('active',tab==='open'); document.getElementById('tab-av-reserves').classList.toggle('active',tab==='reserves');
+            document.getElementById('tab-av-open').classList.toggle('active',tab==='open'); document.getElementById('tab-av-hotprice').classList.toggle('active',tab==='hotprice'); document.getElementById('tab-av-reserves').classList.toggle('active',tab==='reserves');
             const subTabs = document.getElementById('av-open-sub-tabs');
             subTabs.style.display = tab==='open' ? 'flex' : 'none';
             scheduleUiRender('av-tab', () => renderAV());
@@ -11299,6 +11319,46 @@ activeDriveTab = tab;
             return nextItems;
         }
 
+        function getNormalizedAvHotPrice(value = '') {
+            const normalized = String(value || '').trim();
+            return normalized && normalized.toUpperCase() !== 'NULL' ? normalized : '';
+        }
+
+        function getAvHotPriceMatchKey(item = null) {
+            const itemCode = String(firstNonEmptyValue(item && item.ITEMCODE, item && item.itemcode, '')).trim().toUpperCase();
+            const season = String(firstNonEmptyValue(item && item.SEASON, item && item.season, '')).trim().toUpperCase();
+            if (!itemCode || !season) return '';
+            return `${itemCode}__${season}`;
+        }
+
+        function getAvHotPriceRows() {
+            const hotPriceIndex = new Map();
+            (Array.isArray(cavInventory) ? cavInventory : []).forEach((item) => {
+                const matchKey = getAvHotPriceMatchKey(item);
+                const hotPrice = getNormalizedAvHotPrice(firstNonEmptyValue(item && item.HOT_PRICE, item && item.HOTPRICE, item && item.hot_price, ''));
+                if (!matchKey || !hotPrice || hotPriceIndex.has(matchKey)) return;
+                hotPriceIndex.set(matchKey, {
+                    hotPrice,
+                    row: item
+                });
+            });
+            if (!hotPriceIndex.size) return [];
+            return (Array.isArray(fullInventory) ? fullInventory : [])
+                .filter((item) => hotPriceIndex.has(getAvHotPriceMatchKey(item)))
+                .map((item) => {
+                    const match = hotPriceIndex.get(getAvHotPriceMatchKey(item)) || {};
+                    const hotPrice = getNormalizedAvHotPrice(match.hotPrice || '');
+                    const nextItem = Object.assign({}, item, {
+                        HOT_PRICE: hotPrice,
+                        HOTPRICE: hotPrice,
+                        CAV_HOT_PRICE: hotPrice,
+                        CAV_HOT_PRICE_MATCH_KEY: getAvHotPriceMatchKey(item)
+                    });
+                    nextItem._search = `${String(item && item._search || '').trim()} ${hotPrice}`.trim().toLowerCase();
+                    return nextItem;
+                });
+        }
+
         function getCurrentAVBaseItems(options = {}) {
             const searchInput = document.getElementById('av-search');
             const term = String(searchInput ? searchInput.value : '').toLowerCase().trim();
@@ -11309,6 +11369,8 @@ activeDriveTab = tab;
             if (activeAVTab === 'open') {
                 items = (isDatasetLoaded('avOpen', 'initial') ? avOpenInventory : fullInventory).filter(i => shouldIncludeMasterItemInAvOpenView(i));
                 if (activeAvOpenTab === 'photos') items = items.filter(avItemHasPhotos);
+            } else if (activeAVTab === 'hotprice') {
+                items = getAvHotPriceRows();
             } else {
                 items = reservesInventory;
                 if (useRepDrill) {
@@ -11322,16 +11384,19 @@ activeDriveTab = tab;
                     }
                 }
             }
-            const allowReserveSearch = activeAVTab === 'open' || activeAvReserveMode === 'cards' || !useRepDrill || !!selectedAvResRep;
-            if (term && allowReserveSearch) items = filterBySearch(items, term, activeAVTab === 'open' ? 'av_open' : 'av_reserves');
+            const allowSearch = activeAVTab !== 'reserves' || activeAvReserveMode === 'cards' || !useRepDrill || !!selectedAvResRep;
+            const searchProfile = activeAVTab === 'open'
+                ? 'av_open'
+                : (activeAVTab === 'hotprice' ? 'av_hotprice' : 'av_reserves');
+            if (term && allowSearch) items = filterBySearch(items, term, searchProfile);
             return { items, term };
         }
 
         function buildAVExportContext(baseItems = null, term = '') {
             let rows = Array.isArray(baseItems) ? [...baseItems] : [];
             const searchTerm = String(term || '').trim();
-            let title = activeAVTab === 'open' ? 'AV Open Stock' : 'AV My Reserves';
-            let fileLabel = activeAVTab === 'open' ? 'av-open-stock' : 'av-my-reserves';
+            let title = activeAVTab === 'open' ? 'AV Open Stock' : (activeAVTab === 'hotprice' ? 'AV Hot Price' : 'AV My Reserves');
+            let fileLabel = activeAVTab === 'open' ? 'av-open-stock' : (activeAVTab === 'hotprice' ? 'av-hot-price' : 'av-my-reserves');
 
             if (activeAVTab === 'open') {
                 if (activeAvOpenTab === 'photos') {
@@ -11357,6 +11422,12 @@ activeDriveTab = tab;
                         if (sizeCompare !== 0) return sizeCompare;
                         return String(a.LOCATIONCODE || '').localeCompare(String(b.LOCATIONCODE || ''), undefined, { numeric: true });
                     });
+                }
+            } else if (activeAVTab === 'hotprice') {
+                rows = sortAvOpenItems(rows, 'name');
+                if (searchTerm) {
+                    title = 'AV Hot Price Search';
+                    fileLabel = 'av-hot-price-search';
                 }
             } else {
                 if (activeAvReserveMode !== 'cards' && canSelectAvReserveRep() && !selectedAvResRep) {
@@ -11397,7 +11468,7 @@ activeDriveTab = tab;
         }
         function getAVVisibleExportCount(baseItems = []) {
             const rows = Array.isArray(baseItems) ? baseItems : [];
-            if (activeAVTab === 'open') return rows.length;
+            if (activeAVTab === 'open' || activeAVTab === 'hotprice') return rows.length;
             if (activeAvReserveMode !== 'cards' && canSelectAvReserveRep() && !selectedAvResRep) return 0;
             if (selectedAvResItemCode && selectedAvResName && selectedAvResSize) {
                 if (selectedAvResCustomerKey) return getSelectedAvReserveCustomerRows(rows).length;
@@ -11406,8 +11477,8 @@ activeDriveTab = tab;
             return rows.length;
         }
         function getAVExportColumns() {
-            if (activeAVTab === 'open') {
-                return [
+            if (activeAVTab === 'open' || activeAVTab === 'hotprice') {
+                const openColumns = [
                     { label: 'Common Name', value: (row) => row.COMMONNAME || '' },
                     { label: 'Container Size', value: (row) => row.CONTSIZE || '' },
                     { label: 'Location', value: (row) => row.LOCATIONCODE || '' },
@@ -11428,6 +11499,10 @@ activeDriveTab = tab;
                     { label: 'Hold Reason', value: (row) => firstNonEmptyValue(row.HOLDSTOPREASON, row.HOLD_STOP_REASON, row.HOLDREASON) || '' },
                     { label: 'Photo Links', value: (row) => getPhotoUrlList(getRowPhotoLink(row, 'av')).join('\n') }
                 ];
+                if (activeAVTab === 'hotprice') {
+                    openColumns.splice(9, 0, { label: 'Hot Price', value: (row) => firstNonEmptyValue(row.CAV_HOT_PRICE, row.HOT_PRICE, row.HOTPRICE, '') || '' });
+                }
+                return openColumns;
             }
             return [
                 { label: 'Item Code', value: (row) => firstNonEmptyValue(row.ITEMCODE, '') || '' },
@@ -12028,10 +12103,14 @@ activeDriveTab = tab;
                 : [];
 
             if (items.length === 0) {
-                const emptyLabel = activeAVTab === 'open' ? (activeAvOpenTab === 'photos' ? 'open stock photos' : 'open stock') : 'reserves';
+                const emptyLabel = activeAVTab === 'open'
+                    ? (activeAvOpenTab === 'photos' ? 'open stock photos' : 'open stock')
+                    : (activeAVTab === 'hotprice' ? 'hot price rows' : 'reserves');
                 updateAVExportButton(0);
-                container.innerHTML = `<div class="p-8 text-center text-gray-400">No ${emptyLabel} found.</div>`;
-                crumb.innerText = 'No Results';
+                container.innerHTML = `<div class="p-8 text-center text-gray-400">${activeAVTab === 'hotprice' ? 'No hot price rows found.' : `No ${emptyLabel} found.`}</div>`;
+                crumb.innerText = activeAVTab === 'hotprice'
+                    ? (term.length > 0 ? 'Search Results (0)' : 'HOT PRICE (0 items)')
+                    : 'No Results';
                 return;
             }
 
@@ -12050,6 +12129,18 @@ activeDriveTab = tab;
                 }
                 crumb.innerText = crumbText;
                 container.innerHTML = openRows.map(i => generateCard(i, sourceView, 'status-teal')).join('');
+                return;
+            }
+            if (activeAVTab === 'hotprice') {
+                const hotPriceExportContext = buildAVExportContext(items, term);
+                const hotPriceRows = hotPriceExportContext.rows;
+                const crumbText = term.length > 0 ? `Search Results (${hotPriceRows.length})` : `HOT PRICE (${hotPriceRows.length} items)`;
+                if (shouldUseChunkedAVOpenRender(hotPriceRows)) {
+                    renderAVOpenCardsChunked(container, crumb, hotPriceRows, 'av', crumbText);
+                    return;
+                }
+                crumb.innerText = crumbText;
+                container.innerHTML = hotPriceRows.map(i => generateCard(i, 'av', 'status-teal')).join('');
                 return;
             }
             const reserveModeTabsHtml = getAvReserveModeTabsHtml();
@@ -15819,12 +15910,16 @@ activeDriveTab = tab;
             if(sourceView === 'av-photo' || sourceView === 'av') {
                 const holdHtml = buildHoldReasonHtml();
                 const salesNoteHtml = buildSalesNoteHtml();
+                const hotPriceText = getNormalizedAvHotPrice(firstNonEmptyValue(item.CAV_HOT_PRICE, item.HOT_PRICE, item.HOTPRICE, ''));
                 let avNoteHtml = '';
                 if (item.AV_NOTE && item.AV_NOTE.trim() !== '') {
                     avNoteHtml = `<div class="mt-2 bg-blue-50 border border-blue-200 rounded p-2"><div class="text-[10px] font-black text-blue-600 uppercase tracking-wider mb-0.5">AV NOTE</div><div class="text-[13px] font-bold text-blue-800 leading-snug">${item.AV_NOTE}</div></div>`;
                 }
+                const hotPriceHtml = sourceView === 'av' && activeAVTab === 'hotprice' && hotPriceText
+                    ? `<div class="mt-2 w-24 rounded-lg border border-rose-200 bg-rose-50 px-2 py-1.5 text-center text-rose-700 shadow-sm"><div class="text-[8px] font-black uppercase tracking-[0.16em]">HOT PRICE</div><div class="mt-0.5 text-[13px] font-black leading-tight break-words">${esc(hotPriceText)}</div></div>`
+                    : '';
 
-                let clickThumbHtml = `<div class="ml-3 flex-shrink-0 flex flex-col items-center"><div class="app-smart-thumb app-smart-thumb--feature w-24 h-24 rounded-lg border-2 border-teal-200 bg-slate-100 shadow-md flex items-center justify-center px-2 text-center text-[9px] font-black uppercase tracking-widest text-slate-400">No Photo</div></div>`;
+                let clickThumbHtml = `<div class="ml-3 flex-shrink-0 flex flex-col items-center"><div class="app-smart-thumb app-smart-thumb--feature w-24 h-24 rounded-lg border-2 border-teal-200 bg-slate-100 shadow-md flex items-center justify-center px-2 text-center text-[9px] font-black uppercase tracking-widest text-slate-400">No Photo</div>${hotPriceHtml}</div>`;
                 if(photoLink) {
                     let firstUrl = String(photoLink).split(',')[0];
                     let cleanUrl = firstUrl.trim();
@@ -15833,14 +15928,14 @@ activeDriveTab = tab;
                     let thumbUrl = getDirectImageUrl(cleanUrl);
                     if(thumbUrl.startsWith('http')){
                         let photoCount = String(photoLink).split(',').length;
-                        clickThumbHtml = `<div class="ml-3 flex-shrink-0 flex flex-col items-center" onclick="event.stopPropagation(); openPhotoModal('${photoLink}', '${esc(item.COMMONNAME)} - ${esc(item.CONTSIZE)}')"><div class="relative"><img src="${thumbUrl}" class="app-smart-thumb app-smart-thumb--feature w-24 h-24 rounded-lg object-cover border-2 border-teal-300 shadow-md active:scale-95 transition-transform" loading="lazy">${photoCount > 1 ? `<div class="absolute -top-2 -right-2 bg-teal-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full border-2 border-white shadow-sm">+${photoCount-1}</div>` : ''}</div>${photoDateHtml}<div class="text-center text-[9px] font-black text-teal-600 mt-1.5 uppercase tracking-widest bg-teal-50 px-2 py-0.5 rounded-md border border-teal-100 cursor-pointer active:bg-teal-200">VIEW</div></div>`;
+                        clickThumbHtml = `<div class="ml-3 flex-shrink-0 flex flex-col items-center" onclick="event.stopPropagation(); openPhotoModal('${photoLink}', '${esc(item.COMMONNAME)} - ${esc(item.CONTSIZE)}')"><div class="relative"><img src="${thumbUrl}" class="app-smart-thumb app-smart-thumb--feature w-24 h-24 rounded-lg object-cover border-2 border-teal-300 shadow-md active:scale-95 transition-transform" loading="lazy">${photoCount > 1 ? `<div class="absolute -top-2 -right-2 bg-teal-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full border-2 border-white shadow-sm">+${photoCount-1}</div>` : ''}</div>${photoDateHtml}<div class="text-center text-[9px] font-black text-teal-600 mt-1.5 uppercase tracking-widest bg-teal-50 px-2 py-0.5 rounded-md border border-teal-100 cursor-pointer active:bg-teal-200">VIEW</div>${hotPriceHtml}</div>`;
                     }
                 }
 
                 let ptr = parseInt(String(item.PTRAVAILABLE).replace(/,/g, '')) || 0;
                 let matchPct = parseFloat(item.MATCH || item.MATCHPCT);
                 let locPhotoMatch = !isNaN(matchPct) ? Math.round(ptr * (matchPct / 100)) : 'N/A';
-                const avLabel = sourceView === 'av-photo' ? 'Open Stock Photos' : 'Open Stock';
+                const avLabel = sourceView === 'av-photo' ? 'Open Stock Photos' : (activeAVTab === 'hotprice' ? 'HOT PRICE' : 'Open Stock');
                 const seasonChip = item.SEASON ? `<span class="bg-amber-50 text-amber-700 px-2 py-1 rounded border border-amber-200">Season ${item.SEASON}</span>` : '';
                 const priorityChip = item.PRIORITY ? `<span class="bg-orange-50 text-orange-700 px-2 py-1 rounded border border-orange-200">Pri ${item.PRIORITY}</span>` : '';
 
@@ -20250,5 +20345,13 @@ ${folderNote ? `Folder Note: ${folderNote}
     </script>
 </body>
 </html>
+
+
+
+
+
+
+
+
 
 
