@@ -18221,7 +18221,8 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function shouldShowTaskInlineDetailFilters(tab = activeTaskTab, level = taskViewLevel) {
-            return shouldShowTaskLocationDetailFilters(tab, level);
+            const safeTab = String(tab || activeTaskTab || '').trim().toLowerCase();
+            return level === 2 && safeTab === 'location';
         }
 
         function getTaskSubviewDropdownOptions(tab = activeTaskTab) {
@@ -18572,7 +18573,9 @@ ${folderNote ? `Folder Note: ${folderNote}
             const genusOptions = activeTaskTab === 'location'
                 ? [...new Set(scopedItems.map(getTaskGenusName).filter(Boolean))].sort(compareOptionValues)
                 : [];
-            const lotCodes = [...new Set(scopedItems.map(getTaskLocationDetailLotCode).filter(Boolean))].sort(compareOptionValues);
+            const lotCodes = activeTaskTab === 'location'
+                ? [...new Set(scopedItems.map(getTaskLocationDetailLotCode).filter(Boolean))].sort(compareOptionValues)
+                : [];
             if (selectedTaskLocationDetailGenus && !genusOptions.includes(selectedTaskLocationDetailGenus)) selectedTaskLocationDetailGenus = '';
             if (selectedTaskLocationDetailLotCode && !lotCodes.includes(selectedTaskLocationDetailLotCode)) selectedTaskLocationDetailLotCode = '';
             return { genusOptions, lotCodes };
@@ -18631,7 +18634,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         function renderTaskLocationDetailFilters(items = []) {
             const container = document.getElementById('task-location-detail-filters');
             if (!container) return;
-            if (!shouldShowTaskLocationDetailFilters()) {
+            if (!shouldShowTaskInlineDetailFilters(activeTaskTab, taskViewLevel)) {
                 container.classList.add('hidden');
                 container.innerHTML = '';
                 syncTaskLocationDetailFilterUi();
@@ -18662,7 +18665,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (activeTaskTab === 'location' && selectedTaskLocationDetailGenus) {
                 nextItems = nextItems.filter(item => getTaskGenusName(item) === selectedTaskLocationDetailGenus);
             }
-            if (selectedTaskLocationDetailLotCode) {
+            if (activeTaskTab === 'location' && selectedTaskLocationDetailLotCode) {
                 nextItems = nextItems.filter(item => getTaskLocationDetailLotCode(item) === selectedTaskLocationDetailLotCode);
             }
             return nextItems;
