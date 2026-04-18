@@ -457,7 +457,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-<div id="header-version" class="nav-version-pill">V2026.04.18.02</div>
+<div id="header-version" class="nav-version-pill">V2026.04.18.03</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -4777,7 +4777,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         const REQUEST_EMAIL_THREAD_SELECT_FIELDS = 'request_folder,request_customer,sales_rep_name,sales_rep_email,recipients,initial_thread_id,initial_message_id,initial_email_sent_at,last_reply_sent_at,status,metadata';
         const REQUEST_EMAIL_INTERNAL_RECIPIENTS = Object.freeze(['dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com']);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-        const APP_VERSION = 'V2026.04.18.02';
+        const APP_VERSION = 'V2026.04.18.03';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -9776,6 +9776,8 @@ function toggleDriveQuickRequestItem(domId) {
                 else renderAV();
             } else if (viewId === 'hours') {
                 resetHoursView();
+            } else if (viewId === 'detail') {
+                renderDetailView();
             }
 
             state.initialized = true;
@@ -12872,15 +12874,6 @@ activeDriveTab = tab;
             let item=findItemByUniqueId(uniqueId);
             if(sourceView==='av-photo'){
                 openAvGallery(item);
-            }else if(getRoleAccessState().isRep&&sourceView==='drive'){
-                if(item){
-                    let pLink=getRowPhotoLink(item, 'drive');
-                    if(pLink){
-                        openPhotoModal(pLink, `${esc(item.COMMONNAME)} (${esc(item.CONTSIZE)}) - Loc: ${item.LOCATIONCODE||'N/A'}`);
-                    }else{
-                        showToast("No Photo","There is no photo on file for this item.",true);
-                    }
-                }
             }else{
                 applyCameraPermissions(sourceView);
                 openDetail(uniqueId,sourceView);
@@ -13006,31 +12999,26 @@ activeDriveTab = tab;
             emptyEl.innerText = rows.length ? '' : 'No matching item detail fields.';
         }
 
-        function openDetail(uid, sourceView) {
-            const currentViewBeforeOpen = getCurrentVisibleViewId();
-            if (currentViewBeforeOpen && currentViewBeforeOpen !== 'detail') {
-                rememberDetailReturnPosition(sourceView || currentViewBeforeOpen);
+        function resolveDetailItemBySource(uid, sourceView = '') {
+            const normalizedSourceView = String(sourceView || '').trim();
+            const normalizedUid = String(uid || '').trim();
+            if (!normalizedUid) return null;
+            if (normalizedSourceView === 'request') {
+                return findRequestRowByUniqueId(normalizedUid) || findItemByUniqueId(normalizedUid);
             }
-            lastView = sourceView || currentViewBeforeOpen || lastView;
-            activeDetailSourceView = sourceView || currentViewBeforeOpen || activeDetailSourceView;
-            if (sourceView === 'request') {
-                activeItem = findRequestRowByUniqueId(uid) || findItemByUniqueId(uid);
-            } else if (sourceView === 'sales-office') {
-                activeItem = salesOfficeInventory.find(i => String(i.UNIQUE_ID || '').trim() === String(uid || '').trim()) || findItemByUniqueId(uid);
-            } else if (sourceView === 'docks') {
-                activeItem = socInventory.find(i => String(i.UNIQUE_ID || '').trim() === String(uid || '').trim()) || findItemByUniqueId(uid);
-            } else {
-                activeItem = findItemByUniqueId(uid);
+            if (normalizedSourceView === 'sales-office') {
+                return salesOfficeInventory.find(i => String(i.UNIQUE_ID || '').trim() === normalizedUid) || findItemByUniqueId(normalizedUid);
             }
-            if(!activeItem) return;
-            resetDetailOverviewFieldSearch();
+            if (normalizedSourceView === 'docks') {
+                return socInventory.find(i => String(i.UNIQUE_ID || '').trim() === normalizedUid) || findItemByUniqueId(normalizedUid);
+            }
+            return findItemByUniqueId(normalizedUid);
+        }
 
-            ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-docks','view-request','view-reserves','view-av', 'view-hours'].forEach(id=>{
-                const el = document.getElementById(id);
-                if(el) el.classList.add('hidden');
-            });
-            document.getElementById('view-detail').classList.remove('hidden');
-            updateGlobalBackButton();
+        function renderDetailView() {
+            if (!activeItem) return;
+            const detailSourceView = String(activeDetailSourceView || lastView || '').trim();
+            const detailUid = String(activeItem.UNIQUE_ID || '').trim();
 
             document.getElementById('det-common').innerText = activeItem.COMMONNAME || '--';
             document.getElementById('det-size').innerText = activeItem.CONTSIZE || '--';
@@ -13045,7 +13033,7 @@ activeDriveTab = tab;
             document.getElementById('ov-qual').innerText = activeItem.QUALITYCODE || '--';
             document.getElementById('ov-prior').innerText = activeItem.PRIORITY || '--';
             document.getElementById('ov-tag').innerText = activeItem.FIELDTAGCOLOR || '--';
-            document.getElementById('ov-season').innerText = activeItem.SEASONSUPPLY || '0';
+            document.getElementById('ov-season').innerText = firstNonEmptyValue(activeItem.SEASON_SUPPLY, activeItem.SEASONSUPPLY, '0');
 
             const detTabsContainer = document.getElementById('det-tabs-container');
             if (detTabsContainer) {
@@ -13055,46 +13043,47 @@ activeDriveTab = tab;
 
             document.getElementById('dtab-overview').classList.remove('hidden');
             const assignment = String(activeItem.APP_TAB_ASSIGNMENT || '').toLowerCase();
-            if (sourceView === 'drive') {
+            if (detailSourceView === 'drive') {
                 if (assignment === 'season') document.getElementById('dtab-season').classList.remove('hidden');
                 if (assignment === 'location') document.getElementById('dtab-location').classList.remove('hidden');
                 document.getElementById('dtab-notes').classList.remove('hidden');
                 document.getElementById('dtab-gallery').classList.remove('hidden');
-            } else if (sourceView === 'av') {
+            } else if (detailSourceView === 'av') {
                 if (activeAVTab === 'reserves') document.getElementById('dtab-request').classList.remove('hidden');
                 document.getElementById('dtab-gallery').classList.remove('hidden');
-            } else if (sourceView === 'low-stock') {
+            } else if (detailSourceView === 'low-stock') {
                 document.getElementById('dtab-season').classList.remove('hidden');
                 document.getElementById('dtab-location').classList.remove('hidden');
                 document.getElementById('dtab-request').classList.remove('hidden');
                 document.getElementById('dtab-notes').classList.remove('hidden');
                 document.getElementById('dtab-gallery').classList.remove('hidden');
-            } else if (sourceView === 'tasks') {
+            } else if (detailSourceView === 'tasks') {
                 const taskDetailTab = activeTaskTab === 'colorwalk' ? 'location' : activeTaskTab;
                 let t = document.getElementById('dtab-' + taskDetailTab);
                 if(t) t.classList.remove('hidden');
                 document.getElementById('dtab-gallery').classList.remove('hidden');
-            } else if (sourceView === 'docks') {
+            } else if (detailSourceView === 'docks') {
                 document.getElementById('dtab-docks').classList.remove('hidden');
                 document.getElementById('dtab-gallery').classList.remove('hidden');
-            } else if (sourceView === 'request') {
+            } else if (detailSourceView === 'request') {
                 document.getElementById('dtab-request').classList.remove('hidden');
                 document.getElementById('dtab-gallery').classList.remove('hidden');
             }
 
             let primaryDetailTab = 'overview';
-            if (sourceView === 'tasks' && activeTaskTab) {
+            if (detailSourceView === 'tasks' && activeTaskTab) {
                 primaryDetailTab = activeTaskTab === 'colorwalk' ? 'location' : activeTaskTab;
-            } else if (sourceView === 'request') {
+            } else if (detailSourceView === 'request') {
                 primaryDetailTab = 'request';
-            } else if (sourceView === 'docks') {
+            } else if (detailSourceView === 'docks') {
                 primaryDetailTab = 'docks';
-            } else if (sourceView === 'low-stock') {
+            } else if (detailSourceView === 'low-stock') {
                 if (assignment === 'season') primaryDetailTab = 'season';
                 else if (assignment === 'location') primaryDetailTab = 'location';
-            } else if (sourceView === 'av' && activeAVTab === 'reserves') {
+            } else if (detailSourceView === 'av' && activeAVTab === 'reserves') {
                 primaryDetailTab = 'request';
             }
+
             reorderVisibleDetailTabs(primaryDetailTab);
             renderDriveDetailOverviewFields();
 
@@ -13141,17 +13130,57 @@ activeDriveTab = tab;
                 if(match) calculateMatchQty(p);
             });
 
-            renderSavedPhotos();
-            renderPhotoGallery();
+            applyCameraPermissions(detailSourceView);
+            switchDetailTab(primaryDetailTab);
 
-            if (sourceView === 'tasks' && activeTaskTab) {
-                switchDetailTab(activeTaskTab === 'colorwalk' ? 'location' : activeTaskTab);
-            } else if (sourceView === 'request') {
-                switchDetailTab('request');
-            } else {
-                switchDetailTab('overview');
+            try {
+                renderDetailOverviewMedia();
+            } catch (error) {
+                console.error('Detail overview media render failed', error);
+                const overviewMedia = document.getElementById('ov-large-photo');
+                if (overviewMedia) {
+                    overviewMedia.innerHTML = '';
+                    overviewMedia.classList.add('hidden');
+                }
             }
-            queueScrollMainAreaToTop(`detail:${sourceView}:${uid}`);
+
+            try {
+                renderSavedPhotos();
+            } catch (error) {
+                console.error('Detail saved photos render failed', error);
+            }
+
+            try {
+                renderPhotoGallery();
+            } catch (error) {
+                console.error('Detail photo gallery render failed', error);
+            }
+
+            queueScrollMainAreaToTop(`detail:${detailSourceView}:${detailUid}`);
+        }
+
+        function openDetail(uid, sourceView) {
+            const currentViewBeforeOpen = getCurrentVisibleViewId();
+            if (currentViewBeforeOpen && currentViewBeforeOpen !== 'detail') {
+                rememberDetailReturnPosition(currentViewBeforeOpen);
+            }
+            const resolvedSourceView = String(
+                sourceView ||
+                (currentViewBeforeOpen !== 'detail' ? currentViewBeforeOpen : '') ||
+                activeDetailSourceView ||
+                lastView ||
+                'drive'
+            ).trim();
+            const nextItem = resolveDetailItemBySource(uid, resolvedSourceView);
+            if(!nextItem) return false;
+            lastView = resolvedSourceView;
+            activeDetailSourceView = resolvedSourceView;
+            activeItem = nextItem;
+            resetDetailOverviewFieldSearch();
+            markViewDirty('detail');
+            switchView('detail');
+            renderViewContent('detail', false, true);
+            return false;
         }
 
         function renderSavedPhotos() {
@@ -13559,15 +13588,16 @@ activeDriveTab = tab;
         function goBackFromDetail() {
             if (document.activeElement && ['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) document.activeElement.blur();
             setDetailEditingChromeState(false);
-            const restoreViewId = lastView;
+            const restoreViewId = String(lastView || 'home').trim() || 'home';
             resetDetailOverviewFieldSearch();
             activeDetailSourceView = '';
+            activeDetailTab = 'overview';
             activeItem = null;
-            document.getElementById('view-detail').classList.add('hidden');
-            document.getElementById('view-' + restoreViewId).classList.remove('hidden');
+            switchView(restoreViewId === 'detail' ? 'home' : restoreViewId);
             restoreDetailReturnPosition(restoreViewId);
-            updateGlobalBackButton();
+            return false;
         }
+
         function toggleExpand() {
             const section = document.getElementById('expand-section');
             if(section) {
@@ -20483,6 +20513,7 @@ ${folderNote ? `Folder Note: ${folderNote}
     </script>
 </body>
 </html>
+
 
 
 

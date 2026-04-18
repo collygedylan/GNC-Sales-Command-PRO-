@@ -2,8 +2,8 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_URL = './index.html?shellv=V2026.04.18.02';
-const CACHE_NAME = 'greenleaf-v4.2-rebuild-V2026.04.18.02';
+const APP_SHELL_URL = './index.html?shellv=V2026.04.18.03';
+const CACHE_NAME = 'greenleaf-v4.2-rebuild-V2026.04.18.03';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -13,23 +13,6 @@ const ASSETS_TO_CACHE = [
   'https://cdn.tailwindcss.com',
   'https://unpkg.com/@phosphor-icons/web'
 ];
-
-const CACHEABLE_DESTINATIONS = new Set(['style', 'script', 'image', 'font', 'manifest', 'worker']);
-const CACHEABLE_PATH_EXTENSIONS = /\.(?:css|js|mjs|png|jpe?g|gif|webp|svg|ico|woff2?|ttf|otf|json|webmanifest)$/i;
-
-function shouldCacheRequest(request, response) {
-  if (!request || !response || response.status !== 200 || response.type === 'opaque') return false;
-  let parsedUrl;
-  try {
-    parsedUrl = new URL(request.url);
-  } catch (error) {
-    return false;
-  }
-  if (parsedUrl.origin !== self.location.origin) return false;
-  if (request.mode === 'navigate') return true;
-  if (CACHEABLE_DESTINATIONS.has(request.destination)) return true;
-  return CACHEABLE_PATH_EXTENSIONS.test(parsedUrl.pathname);
-}
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -65,11 +48,11 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   event.respondWith(
-      fetch(event.request).then((networkResponse) => {
-        if (shouldCacheRequest(event.request, networkResponse)) {
-          const responseClone = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone)).catch(() => {});
-        }
+    fetch(event.request).then((networkResponse) => {
+      if (networkResponse && networkResponse.status === 200) {
+        const responseClone = networkResponse.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone)).catch(() => {});
+      }
       return networkResponse;
     }).catch(() => caches.match(event.request))
   );
@@ -126,38 +109,6 @@ self.addEventListener('pushsubscriptionchange', (event) => {
     })))
   );
 });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
