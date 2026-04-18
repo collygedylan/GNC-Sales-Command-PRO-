@@ -18251,10 +18251,35 @@ ${folderNote ? `Folder Note: ${folderNote}
             const nextClasses = ['mb-3', 'grid', 'gap-2'];
             if (visibleCount <= 1) nextClasses.push('grid-cols-1');
             else if (visibleCount === 2) nextClasses.push('grid-cols-2');
-            else if (visibleCount === 3) nextClasses.push('grid-cols-3');
-            else nextClasses.push('grid-cols-4');
+            else if (visibleCount === 3) nextClasses.push('grid-cols-2', 'xl:grid-cols-3');
+            else nextClasses.push('grid-cols-2', 'xl:grid-cols-4');
             if (wasHidden) nextClasses.push('hidden');
             container.className = nextClasses.join(' ');
+
+            const setHostClasses = (id, extras = '') => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                const isHidden = el.classList.contains('hidden');
+                const next = ['min-w-0'];
+                if (extras) next.push(...extras.split(' ').filter(Boolean));
+                if (isHidden) next.unshift('hidden');
+                el.className = next.join(' ');
+            };
+
+            let genusExtra = '';
+            let contSizeExtra = '';
+            let detailExtra = '';
+            if (visibleCount === 3) {
+                if (shouldShowDetailFilters) detailExtra = 'col-span-2';
+                else if (shouldShowContSize) contSizeExtra = 'col-span-2';
+                else if (shouldShowGenus) genusExtra = 'col-span-2';
+            }
+
+            setHostClasses('task-tab-dropdown-host');
+            setHostClasses('task-subtabs-container');
+            setHostClasses('task-genus-filters', genusExtra);
+            setHostClasses('task-contsize-filters', contSizeExtra);
+            setHostClasses('task-location-detail-filters', detailExtra);
         }
 
         function closeTaskDropdowns(syncUi = true) {
@@ -18311,7 +18336,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 const isSelected = option.value === safeTab;
                 return `<button type="button" class="flex w-full items-center justify-between gap-3 px-3 py-2 text-left ${isSelected ? 'bg-emerald-50 text-emerald-700' : 'text-slate-700 hover:bg-emerald-50'}" onclick="return setTaskTab('${option.value}')"><span class="text-[12px] font-bold">${esc(option.label)}</span>${isSelected ? '<i class="ph-bold ph-check text-sm"></i>' : ''}</button>`;
             }).join('');
-            host.innerHTML = `<div class="rounded-[1.05rem] border border-emerald-100 bg-white/95 px-3 py-2.5 shadow-sm backdrop-blur-sm"><button type="button" class="inline-flex w-full items-center gap-2 rounded-full border border-emerald-200 bg-white px-3 py-2 text-left text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm" onclick="return toggleTaskModeDropdown()"><i class="ph-bold ph-squares-four text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="truncate">Task View</span><span class="mt-1 text-[9px] font-bold normal-case tracking-normal text-slate-500 truncate">${esc(currentLabel)}</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="mt-2 ${taskTabDropdownOpen ? '' : 'hidden '}overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm"><div class="max-h-72 overflow-y-auto">${optionsHtml}</div><div class="border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeTaskModeDropdown()">Done</button></div></div></div>`;
+            host.innerHTML = `<div class="h-full rounded-[1.05rem] border border-emerald-100 bg-white/95 px-2.5 py-2 shadow-sm backdrop-blur-sm sm:px-3 sm:py-2.5"><button type="button" class="inline-flex min-h-[54px] w-full items-center gap-2 rounded-full border border-emerald-200 bg-white px-2.5 py-2 text-left text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm sm:px-3 sm:text-[10px]" onclick="return toggleTaskModeDropdown()"><i class="ph-bold ph-squares-four text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="truncate">Task View</span><span class="mt-1 text-[9px] font-bold normal-case tracking-normal text-slate-500 truncate">${esc(currentLabel)}</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="mt-2 ${taskTabDropdownOpen ? '' : 'hidden '}overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm"><div class="max-h-72 overflow-y-auto">${optionsHtml}</div><div class="border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeTaskModeDropdown()">Done</button></div></div></div>`;
         }
 
         function syncTaskSubviewControls(tab = activeTaskTab) {
@@ -18331,7 +18356,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 return `<button type="button" class="flex w-full items-center justify-between gap-3 px-3 py-2 text-left ${isSelected ? 'bg-emerald-50 text-emerald-700' : 'text-slate-700 hover:bg-emerald-50'}" onclick="return setTaskSubview('${option.value}')"><span class="text-[12px] font-bold">${esc(option.label)}</span>${isSelected ? '<i class="ph-bold ph-check text-sm"></i>' : ''}</button>`;
             }).join('');
             container.classList.remove('hidden');
-            container.innerHTML = `<div class="rounded-[1.05rem] border border-emerald-100 bg-white/95 px-3 py-2.5 shadow-sm backdrop-blur-sm"><button type="button" class="inline-flex w-full items-center gap-2 rounded-full border border-emerald-200 bg-white px-3 py-2 text-left text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm" onclick="return toggleTaskSubviewDropdown()"><i class="ph-bold ph-funnel text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="truncate">Task Filter</span><span class="mt-1 text-[9px] font-bold normal-case tracking-normal text-slate-500 truncate">${esc(currentLabel)}</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="mt-2 ${taskSubviewDropdownOpen ? '' : 'hidden '}overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm"><div class="max-h-72 overflow-y-auto">${optionsHtml}</div><div class="border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeTaskSubviewDropdown()">Done</button></div></div></div>`;
+            container.innerHTML = `<div class="h-full rounded-[1.05rem] border border-emerald-100 bg-white/95 px-2.5 py-2 shadow-sm backdrop-blur-sm sm:px-3 sm:py-2.5"><button type="button" class="inline-flex min-h-[54px] w-full items-center gap-2 rounded-full border border-emerald-200 bg-white px-2.5 py-2 text-left text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm sm:px-3 sm:text-[10px]" onclick="return toggleTaskSubviewDropdown()"><i class="ph-bold ph-funnel text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="truncate">Task Filter</span><span class="mt-1 text-[9px] font-bold normal-case tracking-normal text-slate-500 truncate">${esc(currentLabel)}</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="mt-2 ${taskSubviewDropdownOpen ? '' : 'hidden '}overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm"><div class="max-h-72 overflow-y-auto">${optionsHtml}</div><div class="border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeTaskSubviewDropdown()">Done</button></div></div></div>`;
         }
 
         function syncTaskSharedFilterArea() {
@@ -18545,7 +18570,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             taskGenusFilterItemsCache = Array.isArray(items) ? items : [];
             if (!container.dataset.genusReady) {
                 container.dataset.genusReady = '1';
-                container.innerHTML = `<div class="rounded-[1.05rem] border border-emerald-100 bg-white/95 px-3 py-2.5 shadow-sm backdrop-blur-sm"><button type="button" class="inline-flex w-full items-center gap-2 rounded-full border border-emerald-200 bg-white px-3 py-2 text-left text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm" onclick="return toggleTaskGenusDropdown()"><i class="ph-bold ph-funnel text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="truncate">Genus Filter</span><span class="mt-1 text-[9px] font-bold normal-case tracking-normal text-slate-500 truncate" data-genus-summary>All Genus</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div data-genus-chips></div><div class="mt-2 overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm ${taskGenusFilterOpen ? '' : 'hidden '}" data-genus-panel><div class="p-2 border-b border-emerald-100"><input id="task-genus-search" type="text" class="input-field !mb-0 border-emerald-200 bg-white" placeholder="Search genus..." value="${esc(taskGenusSearchTerm)}" oninput="setTaskGenusSearchTerm(this.value)" onkeydown="dismissSearchKeyboard(event)"></div><div class="max-h-60 overflow-y-auto" data-genus-options></div><div class="grid grid-cols-2 gap-2 border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm" data-genus-clear onclick="return clearTaskGenusFilters()">Clear</button><button type="button" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeTaskGenusDropdown()">Done</button></div></div></div>`;
+                container.innerHTML = `<div class="h-full rounded-[1.05rem] border border-emerald-100 bg-white/95 px-2.5 py-2 shadow-sm backdrop-blur-sm sm:px-3 sm:py-2.5"><button type="button" class="inline-flex min-h-[54px] w-full items-center gap-2 rounded-full border border-emerald-200 bg-white px-2.5 py-2 text-left text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm sm:px-3 sm:text-[10px]" onclick="return toggleTaskGenusDropdown()"><i class="ph-bold ph-funnel text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="truncate">Genus Filter</span><span class="mt-1 text-[9px] font-bold normal-case tracking-normal text-slate-500 truncate" data-genus-summary>All Genus</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div data-genus-chips></div><div class="mt-2 overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm ${taskGenusFilterOpen ? '' : 'hidden '}" data-genus-panel><div class="p-2 border-b border-emerald-100"><input id="task-genus-search" type="text" class="input-field !mb-0 border-emerald-200 bg-white" placeholder="Search genus..." value="${esc(taskGenusSearchTerm)}" oninput="setTaskGenusSearchTerm(this.value)" onkeydown="dismissSearchKeyboard(event)"></div><div class="max-h-60 overflow-y-auto" data-genus-options></div><div class="grid grid-cols-2 gap-2 border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm" data-genus-clear onclick="return clearTaskGenusFilters()">Clear</button><button type="button" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeTaskGenusDropdown()">Done</button></div></div></div>`;
             }
             const state = buildTaskGenusFilterState(taskGenusFilterItemsCache);
             updateTaskGenusFilterUi(state, container);
@@ -18576,7 +18601,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             const optionHtml = ['<option value="">All Sizes</option>']
                 .concat(state.options.map((value) => `<option value="${esc(value)}" ${selectedTaskContSize === value ? 'selected' : ''}>${esc(value)}</option>`))
                 .join('');
-            container.innerHTML = `<div class="rounded-[1.05rem] border border-green-100 bg-white/95 px-3 py-2.5 shadow-sm backdrop-blur-sm"><label class="min-w-0 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Cont Size<select class="input-field !mb-0 mt-2 border-green-200 bg-green-50/40" onchange="return setTaskContSizeFilter(this.value)">${optionHtml}</select></label></div>`;
+            container.innerHTML = `<div class="h-full rounded-[1.05rem] border border-green-100 bg-white/95 px-2.5 py-2 shadow-sm backdrop-blur-sm sm:px-3 sm:py-2.5"><label class="flex min-h-[54px] flex-col justify-center min-w-0 text-[9px] font-black uppercase tracking-[0.14em] text-[#007a4d] sm:text-[10px]">Cont Size<select class="input-field !mb-0 mt-2 border-green-200 bg-green-50/40" onchange="return setTaskContSizeFilter(this.value)">${optionHtml}</select></label></div>`;
             container.classList.remove('hidden');
         }
 
