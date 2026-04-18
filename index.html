@@ -696,11 +696,11 @@
                     <div id="task-tabs-container" class="mb-3 grid grid-cols-1 gap-2 md:grid-cols-2">
                         <div id="task-tab-dropdown-host"></div>
                         <div id="task-subtabs-container" class="hidden"></div>
+                        <div id="task-genus-filters" class="hidden"></div>
                     </div>
                     <div id="task-shared-filters" class="hidden mb-3 space-y-3">
 
                         <div id="task-colorwalk-filters" class="hidden"></div>
-                        <div id="task-genus-filters" class="hidden"></div>
                         <div id="task-location-detail-filters" class="hidden"></div>
                     </div>
                     <div id="task-content"></div>
@@ -18202,6 +18202,10 @@ ${folderNote ? `Folder Note: ${folderNote}
             return taskTabUsesBlockDrill(tab);
         }
 
+        function shouldShowTaskInlineGenusFilter(tab = activeTaskTab) {
+            return String(tab || activeTaskTab || '').trim().toLowerCase() === 'season';
+        }
+
         function getTaskSubviewDropdownOptions(tab = activeTaskTab) {
             const safeTab = String(tab || activeTaskTab || '').trim().toLowerCase();
             const values = safeTab === 'season'
@@ -18214,9 +18218,11 @@ ${folderNote ? `Folder Note: ${folderNote}
             const container = document.getElementById('task-tabs-container');
             if (!container) return;
             const shouldShowSubview = shouldShowTaskSubviewDropdown(tab);
+            const shouldShowGenus = shouldShowTaskInlineGenusFilter(tab);
             const wasHidden = container.classList.contains('hidden');
             const nextClasses = ['mb-3', 'grid', 'grid-cols-1', 'gap-2'];
-            if (shouldShowSubview) nextClasses.push('md:grid-cols-2');
+            if (shouldShowSubview && shouldShowGenus) nextClasses.push('md:grid-cols-2', 'xl:grid-cols-3');
+            else if (shouldShowSubview || shouldShowGenus) nextClasses.push('md:grid-cols-2');
             if (wasHidden) nextClasses.push('hidden');
             container.className = nextClasses.join(' ');
         }
@@ -18301,7 +18307,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         function syncTaskSharedFilterArea() {
             const container = document.getElementById('task-shared-filters');
             if (!container) return;
-            const childIds = ['task-colorwalk-filters', 'task-genus-filters', 'task-location-detail-filters'];
+            const childIds = ['task-colorwalk-filters', 'task-location-detail-filters'];
             const hasVisible = childIds.some((id) => {
                 const el = document.getElementById(id);
                 return !!(el && !el.classList.contains('hidden') && String(el.innerHTML || '').trim());
@@ -18509,7 +18515,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             taskGenusFilterItemsCache = Array.isArray(items) ? items : [];
             if (!container.dataset.genusReady) {
                 container.dataset.genusReady = '1';
-                container.innerHTML = `<div class="rounded-xl border border-emerald-100 bg-white px-3 py-3 shadow-sm"><div class="flex flex-wrap items-center gap-2"><button type="button" class="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm" onclick="return toggleTaskGenusDropdown()"><i class="ph-bold ph-funnel text-sm"></i>Genus Filter</button><span class="text-[10px] font-black uppercase tracking-[0.14em] text-gray-500" data-genus-summary>All Genus</span><button type="button" class="ml-auto inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm" data-genus-clear onclick="return clearTaskGenusFilters()">Clear</button></div><div data-genus-chips></div><div class="mt-3 rounded-xl border border-emerald-100 bg-emerald-50/30 hidden" data-genus-panel><div class="p-2 border-b border-emerald-100"><input id="task-genus-search" type="text" class="input-field !mb-0 border-emerald-200 bg-white" placeholder="Search genus..." value="${esc(taskGenusSearchTerm)}" oninput="setTaskGenusSearchTerm(this.value)" onkeydown="dismissSearchKeyboard(event)"></div><div class="max-h-60 overflow-y-auto" data-genus-options></div><div class="p-2 border-t border-emerald-100 bg-white/80"><button type="button" class="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeTaskGenusDropdown()">Done</button></div></div></div>`;
+                container.innerHTML = `<div class="rounded-[1.05rem] border border-emerald-100 bg-white/95 px-3 py-2.5 shadow-sm backdrop-blur-sm"><button type="button" class="inline-flex w-full items-center gap-2 rounded-full border border-emerald-200 bg-white px-3 py-2 text-left text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm" onclick="return toggleTaskGenusDropdown()"><i class="ph-bold ph-funnel text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="truncate">Genus Filter</span><span class="mt-1 text-[9px] font-bold normal-case tracking-normal text-slate-500 truncate" data-genus-summary>All Genus</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div data-genus-chips></div><div class="mt-2 overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm ${taskGenusFilterOpen ? '' : 'hidden '}" data-genus-panel><div class="p-2 border-b border-emerald-100"><input id="task-genus-search" type="text" class="input-field !mb-0 border-emerald-200 bg-white" placeholder="Search genus..." value="${esc(taskGenusSearchTerm)}" oninput="setTaskGenusSearchTerm(this.value)" onkeydown="dismissSearchKeyboard(event)"></div><div class="max-h-60 overflow-y-auto" data-genus-options></div><div class="grid grid-cols-2 gap-2 border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm" data-genus-clear onclick="return clearTaskGenusFilters()">Clear</button><button type="button" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeTaskGenusDropdown()">Done</button></div></div></div>`;
             }
             const state = buildTaskGenusFilterState(taskGenusFilterItemsCache);
             updateTaskGenusFilterUi(state, container);
@@ -20132,4 +20138,5 @@ ${folderNote ? `Folder Note: ${folderNote}
     </script>
 </body>
 </html>
+
 
