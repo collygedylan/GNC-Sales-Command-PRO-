@@ -691,17 +691,21 @@
 
                 <div id="view-tasks" class="hidden">
                     <div class="freeze-panel">
+                    <div id="tasks-search-container" class="sticky-search relative mb-2 hidden">
+                        <input type="text" id="tasks-search-input" class="input-field w-full pr-10 !mb-0" placeholder="Search name, item, genus, lot..." oninput="setTaskLocationDetailSearchTerm(this.value)" onkeydown="dismissSearchKeyboard(event)">
+                        <i id="tasks-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="return clearTaskLocationDetailSearch()"></i>
+                    </div>
                     <div id="task-crumb" class="text-xs font-bold text-[#007a4d] mb-3"></div>
                     <div id="team-selector" class="hidden mb-4 grid grid-cols-1 gap-3"></div>
                     <div id="task-tabs-container" class="mb-3 grid grid-cols-1 gap-2 md:grid-cols-2">
                         <div id="task-tab-dropdown-host"></div>
                         <div id="task-subtabs-container" class="hidden"></div>
                         <div id="task-genus-filters" class="hidden"></div>
+                        <div id="task-location-detail-filters" class="hidden"></div>
                     </div>
                     <div id="task-shared-filters" class="hidden mb-3 space-y-3">
 
                         <div id="task-colorwalk-filters" class="hidden"></div>
-                        <div id="task-location-detail-filters" class="hidden"></div>
                     </div>
                     <div id="task-content"></div>
                 </div>
@@ -4751,7 +4755,8 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
             docks: 'docks-search-container',
-            drive: 'drive-search-container'
+            drive: 'drive-search-container',
+            tasks: 'tasks-search-container'
         };
 
         const AMAZON_HEADER_META = {
@@ -4901,9 +4906,11 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             const showHomeBack = currentView === 'home' && shouldShowHomeProductivityBackButton();
             if (backBtn) backBtn.classList.toggle('hidden', currentView === 'home' ? !showHomeBack : false);
             if (searchSlot) clearNodeChildren(searchSlot);
-            const searchContainerId = GLOBAL_HEADER_SEARCH_CONFIG[currentView];
+            const searchContainerId = currentView === 'tasks'
+                ? (shouldShowTaskHeaderSearch() ? GLOBAL_HEADER_SEARCH_CONFIG.tasks : '')
+                : GLOBAL_HEADER_SEARCH_CONFIG[currentView];
             const searchContainer = searchContainerId ? document.getElementById(searchContainerId) : null;
-            if (searchSlot && searchContainer) {
+            if (searchSlot && searchContainer && !searchContainer.classList.contains('hidden')) {
                 if (searchRow) searchRow.classList.remove('hidden');
                 searchSlot.classList.remove('hidden');
                 searchSlot.appendChild(searchContainer);
@@ -18202,8 +18209,19 @@ ${folderNote ? `Folder Note: ${folderNote}
             return taskTabUsesBlockDrill(tab);
         }
 
-        function shouldShowTaskInlineGenusFilter(tab = activeTaskTab) {
-            return String(tab || activeTaskTab || '').trim().toLowerCase() === 'season';
+        function shouldShowTaskHeaderSearch(tab = activeTaskTab, level = taskViewLevel) {
+            const safeTab = String(tab || activeTaskTab || '').trim().toLowerCase();
+            return level === 2 && (safeTab === 'season' || safeTab === 'location');
+        }
+
+        function shouldShowTaskInlineGenusFilter(tab = activeTaskTab, level = taskViewLevel) {
+            const safeTab = String(tab || activeTaskTab || '').trim().toLowerCase();
+            if (safeTab !== 'season') return false;
+            return level < 2;
+        }
+
+        function shouldShowTaskInlineDetailFilters(tab = activeTaskTab, level = taskViewLevel) {
+            return shouldShowTaskLocationDetailFilters(tab, level);
         }
 
         function getTaskSubviewDropdownOptions(tab = activeTaskTab) {
@@ -18218,11 +18236,14 @@ ${folderNote ? `Folder Note: ${folderNote}
             const container = document.getElementById('task-tabs-container');
             if (!container) return;
             const shouldShowSubview = shouldShowTaskSubviewDropdown(tab);
-            const shouldShowGenus = shouldShowTaskInlineGenusFilter(tab);
+            const shouldShowGenus = shouldShowTaskInlineGenusFilter(tab, taskViewLevel);
+            const shouldShowDetailFilters = shouldShowTaskInlineDetailFilters(tab, taskViewLevel);
             const wasHidden = container.classList.contains('hidden');
+            const visibleCount = 1 + (shouldShowSubview ? 1 : 0) + (shouldShowGenus ? 1 : 0) + (shouldShowDetailFilters ? 1 : 0);
             const nextClasses = ['mb-3', 'grid', 'grid-cols-1', 'gap-2'];
-            if (shouldShowSubview && shouldShowGenus) nextClasses.push('md:grid-cols-2', 'xl:grid-cols-3');
-            else if (shouldShowSubview || shouldShowGenus) nextClasses.push('md:grid-cols-2');
+            if (visibleCount >= 2) nextClasses.push('md:grid-cols-2');
+            if (visibleCount === 3) nextClasses.push('xl:grid-cols-3');
+            if (visibleCount >= 4) nextClasses.push('xl:grid-cols-4');
             if (wasHidden) nextClasses.push('hidden');
             container.className = nextClasses.join(' ');
         }
@@ -18307,7 +18328,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         function syncTaskSharedFilterArea() {
             const container = document.getElementById('task-shared-filters');
             if (!container) return;
-            const childIds = ['task-colorwalk-filters', 'task-location-detail-filters'];
+            const childIds = ['task-colorwalk-filters'];
             const hasVisible = childIds.some((id) => {
                 const el = document.getElementById(id);
                 return !!(el && !el.classList.contains('hidden') && String(el.innerHTML || '').trim());
@@ -18558,10 +18579,14 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function syncTaskLocationDetailFilterUi() {
-            const input = document.getElementById('task-location-detail-search-input');
+            const input = document.getElementById('tasks-search-input');
             if (input && document.activeElement !== input && input.value !== taskLocationDetailSearchTerm) {
                 input.value = taskLocationDetailSearchTerm;
             }
+            const searchContainer = document.getElementById('tasks-search-container');
+            if (searchContainer) searchContainer.classList.toggle('hidden', !shouldShowTaskHeaderSearch());
+            const searchClear = document.getElementById('tasks-search-clear');
+            if (searchClear) searchClear.classList.toggle('hidden', String(taskLocationDetailSearchTerm || '').trim() === '');
             const clearBtn = document.getElementById('task-location-detail-clear-filters');
             if (clearBtn) {
                 const isActive = hasActiveTaskLocationDetailFilters();
@@ -18576,6 +18601,12 @@ ${folderNote ? `Folder Note: ${folderNote}
             taskLocationDetailSearchTerm = String(value || '');
             syncTaskLocationDetailFilterUi();
             scheduleTypingAwareUiRender('task-location-detail-search', () => renderTasks({ skipTaskLocationDetailFilterRender: true }), 0, 180);
+        }
+
+        function clearTaskLocationDetailSearch() {
+            if (!String(taskLocationDetailSearchTerm || '').trim()) return false;
+            setTaskLocationDetailSearchTerm('');
+            return false;
         }
 
         function setTaskLocationDetailGenusFilter(value = '') {
@@ -18603,6 +18634,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (!shouldShowTaskLocationDetailFilters()) {
                 container.classList.add('hidden');
                 container.innerHTML = '';
+                syncTaskLocationDetailFilterUi();
                 return;
             }
             const state = buildTaskLocationDetailFilterState(items);
@@ -18615,16 +18647,15 @@ ${folderNote ? `Folder Note: ${folderNote}
                 ? `<label class="min-w-0 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Genus<select class="input-field !mb-0 mt-2 border-green-200 bg-green-50/40" onchange="return setTaskLocationDetailGenusFilter(this.value)">${buildOptionHtml('All Genus', state.genusOptions, selectedTaskLocationDetailGenus)}</select></label>`
                 : '';
             const gridClass = showGenusField
-                ? 'xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_auto]'
-                : 'xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.8fr)_auto]';
+                ? 'grid-cols-1 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,0.95fr)_auto]'
+                : 'grid-cols-1 xl:grid-cols-[minmax(0,1fr)_auto]';
             const hasSearch = String(taskLocationDetailSearchTerm || '').trim() !== '';
             const hasGenus = String(selectedTaskLocationDetailGenus || '').trim() !== '';
             const hasLotCode = String(selectedTaskLocationDetailLotCode || '').trim() !== '';
-            container.innerHTML = `<div class="rounded-xl border border-green-100 bg-white px-3 py-3 shadow-sm"><div class="grid grid-cols-1 gap-3 ${gridClass}"><label class="min-w-0 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Search<input id="task-location-detail-search-input" type="text" class="input-field !mb-0 mt-2 border-green-200 bg-green-50/40" value="${esc(taskLocationDetailSearchTerm)}" placeholder="Name, item, size, genus, lot..." oninput="setTaskLocationDetailSearchTerm(this.value)" onkeydown="dismissSearchKeyboard(event)"></label>${genusFieldHtml}<label class="min-w-0 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Lot Code<select class="input-field !mb-0 mt-2 border-green-200 bg-green-50/40" onchange="return setTaskLocationDetailLotCodeFilter(this.value)">${buildOptionHtml('All Lots', state.lotCodes, selectedTaskLocationDetailLotCode)}</select></label><button id="task-location-detail-clear-filters" type="button" class="min-h-[42px] rounded-xl border border-green-200 bg-white px-4 text-[11px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm self-end ${hasSearch || hasGenus || hasLotCode ? '' : 'opacity-50 cursor-not-allowed pointer-events-none'}" onclick="return clearTaskLocationDetailFilters()">Clear Filters</button></div></div>`;
+            container.innerHTML = `<div class="rounded-[1.05rem] border border-green-100 bg-white/95 px-3 py-2.5 shadow-sm backdrop-blur-sm"><div class="grid gap-3 ${gridClass}">${genusFieldHtml}<label class="min-w-0 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Lot Code<select class="input-field !mb-0 mt-2 border-green-200 bg-green-50/40" onchange="return setTaskLocationDetailLotCodeFilter(this.value)">${buildOptionHtml('All Lots', state.lotCodes, selectedTaskLocationDetailLotCode)}</select></label><button id="task-location-detail-clear-filters" type="button" class="min-h-[42px] rounded-xl border border-green-200 bg-white px-4 text-[11px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm self-end ${hasSearch || hasGenus || hasLotCode ? '' : 'opacity-50 cursor-not-allowed pointer-events-none'}" onclick="return clearTaskLocationDetailFilters()">Clear Filters</button></div></div>`;
             container.classList.remove('hidden');
             syncTaskLocationDetailFilterUi();
         }
-
         function applyTaskLocationDetailFilters(items = []) {
             let nextItems = Array.isArray(items) ? [...items] : [];
             if (taskLocationDetailSearchTerm) nextItems = filterBySearch(nextItems, taskLocationDetailSearchTerm, 'task_location_detail');
@@ -18862,6 +18893,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                 renderTaskLocationDetailFilters([]);
             }
             syncTaskSharedFilterArea();
+            syncTaskLocationDetailFilterUi();
+            syncGlobalHeaderChrome();
 
 
             applyTaskCrumb();
