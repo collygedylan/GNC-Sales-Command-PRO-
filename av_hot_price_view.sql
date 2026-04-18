@@ -1,4 +1,4 @@
-create or replace view public.v2_view_av_hot_price as
+create or replace view public.v2_view_av_hot_price_keys as
 with ranked_cav as (
   select
     c.unique_id,
@@ -16,24 +16,15 @@ with ranked_cav as (
     and upper(trim(c.hot_price)) <> 'NULL'
     and coalesce(trim(c.itemcode), '') <> ''
     and upper(trim(c.itemcode)) <> 'NULL'
-),
-hot_cav as (
-  select
-    cav_itemcode,
-    hot_price,
-    cav_filename,
-    cav_last_updated,
-    itemcode_key
-  from ranked_cav
-  where rn = 1
 )
 select
-  m.*, 
-  hot_cav.hot_price,
-  hot_cav.cav_itemcode,
-  hot_cav.cav_filename,
-  hot_cav.cav_last_updated
-from public.v2_master_inventory m
-join hot_cav
-  on upper(regexp_replace(coalesce(m.itemcode, ''), '[^A-Za-z0-9]', '', 'g')) = hot_cav.itemcode_key
-where coalesce(trim(m.itemcode), '') <> '';
+  itemcode_key,
+  cav_itemcode,
+  hot_price,
+  cav_filename,
+  cav_last_updated
+from ranked_cav
+where rn = 1;
+
+grant select on public.v2_view_av_hot_price_keys to anon, authenticated;
+notify pgrst, 'reload schema';

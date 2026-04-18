@@ -457,7 +457,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-<div id="header-version" class="nav-version-pill">V2026.04.18.10</div>
+<div id="header-version" class="nav-version-pill">V2026.04.18.11</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -950,7 +950,7 @@
         const REALTIME_STARTUP_GRACE_MS = 12000;
         const REALTIME_RECOVERY_GRACE_MS = 3200;
         const DISABLE_POLLING_WHEN_REALTIME_SUPPORTED = true;
-        const HEAVY_DATASET_KEYS = new Set(['master', 'avOpen', 'reserves', 'soc', 'salesOffice', 'cav', 'avHotPrice', 'avNotes']);
+        const HEAVY_DATASET_KEYS = new Set(['master', 'avOpen', 'reserves', 'soc', 'salesOffice', 'cav', 'avHotPriceKeys', 'avNotes']);
         let realtimeChannels = [];
         let realtimeChangeTimer = null;
         let realtimeChangeQueue = [];
@@ -2511,7 +2511,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             if (tableName === 'v2_soc_master') return ['soc'];
             if (tableName === 'v2_sales_office') return ['salesOffice'];
             if (tableName === 'v2_cav_import') return ['cav'];
-            if (tableName === 'v2_view_av_hot_price') return ['avHotPrice'];
+            if (tableName === 'v2_view_av_hot_price_keys') return ['avHotPriceKeys'];
             if (tableName === 'v2_av_notes') return ['avNotes'];
             return [];
         }
@@ -2675,25 +2675,21 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             });
         }
 
-        function normalizeAvHotPriceInventoryRows(rows = []) {
-            avHotPriceInventory = (Array.isArray(rows) ? rows : []).map((item, idx) => {
+        function normalizeAvHotPriceKeyRows(rows = []) {
+            avHotPriceKeysInventory = (Array.isArray(rows) ? rows : []).map((item, idx) => {
                 if (!item) return item;
-                item.DOM_ID = item.DOM_ID || ('avhp_' + (item.UNIQUE_ID || idx));
-                item.UNIQUE_ID = item.UNIQUE_ID || ('avhp_uid_' + idx);
-                item.LOCATIONCODE = firstNonEmptyValue(item.LOCATIONCODE, item.LOCATION, item.LOC, 'No Loc');
-                item.ITEMCODE = firstNonEmptyValue(item.ITEMCODE, item.itemcode, item.ITEM, '');
-                item.COMMONNAME = firstNonEmptyValue(item.COMMONNAME, item.DESCRIPTION, item.PLANT_NAME, item.ITEMCODE, 'Unknown');
-                item.CONTSIZE = firstNonEmptyValue(item.CONTSIZE, item.ITEMSPEC, item.SIZE, item.contsize, '-');
-                item.SEASON = firstNonEmptyValue(item.SEASON, item.season, '');
+                item.DOM_ID = item.DOM_ID || ('avhpk_' + (item.UNIQUE_ID || idx));
+                item.UNIQUE_ID = item.UNIQUE_ID || ('avhpk_uid_' + idx);
+                item.ITEMCODE_KEY = normalizeAvHotPriceItemCode(firstNonEmptyValue(item.ITEMCODE_KEY, item.itemcode_key, item.CAV_ITEMCODE, item.cav_itemcode, item.ITEMCODE, item.itemcode, ''));
+                item.CAV_ITEMCODE = firstNonEmptyValue(item.CAV_ITEMCODE, item.cav_itemcode, item.ITEMCODE, item.itemcode, '');
                 item.HOT_PRICE = getNormalizedAvHotPrice(firstNonEmptyValue(item.HOT_PRICE, item.HOTPRICE, item.hot_price, ''));
                 item.HOTPRICE = item.HOT_PRICE;
                 item.CAV_HOT_PRICE = firstNonEmptyValue(item.CAV_HOT_PRICE, item.HOT_PRICE, item.HOTPRICE, '');
-                item._search = `${item.LOCATIONCODE || ''} ${item.ITEMCODE || ''} ${item.COMMONNAME || ''} ${item.CONTSIZE || ''} ${item.SEASON || ''} ${item.HOT_PRICE || ''}`.toLowerCase();
-                normalizeRowPhotoFields(item);
-                buildSearchIndex(item);
+                item.CAV_FILENAME = firstNonEmptyValue(item.CAV_FILENAME, item.cav_filename, '');
+                item.CAV_LAST_UPDATED = firstNonEmptyValue(item.CAV_LAST_UPDATED, item.cav_last_updated, '');
                 return item;
-            }).filter(Boolean);
-            return avHotPriceInventory;
+            }).filter((item) => item && item.ITEMCODE_KEY && item.HOT_PRICE);
+            return avHotPriceKeysInventory;
         }
 
         function refreshChangedMasterRealtimeSlices(changedMasterIds = new Set()) {
@@ -4318,7 +4314,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 socData: buildCacheRows(socInventory),
                 salesOfficeData: buildCacheRows(salesOfficeInventory),
                 cavData: buildCacheRows(cavInventory),
-                avHotPriceData: buildCacheRows(avHotPriceInventory),
+                avHotPriceKeysData: buildCacheRows(avHotPriceKeysInventory),
                 avNotesData: buildCacheRows(avNotesDb),
                 meta: {
                     cacheSchemaVersion: CACHE_SCHEMA_VERSION,
@@ -4344,7 +4340,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 soc: { initialLoaded: hasRows(cachedRes.socData), fullLoaded: false },
                 salesOffice: { initialLoaded: hasRows(cachedRes.salesOfficeData), fullLoaded: false },
                 cav: { initialLoaded: hasRows(cachedRes.cavData), fullLoaded: false },
-                avHotPrice: { initialLoaded: hasRows(cachedRes.avHotPriceData), fullLoaded: false },
+                avHotPriceKeys: { initialLoaded: hasRows(cachedRes.avHotPriceKeysData), fullLoaded: false },
                 avNotes: { initialLoaded: hasRows(cachedRes.avNotesData), fullLoaded: false }
             };
         }
@@ -4375,7 +4371,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             const next = Object.assign({}, cachedRes || {});
             if (schemaVersion < CACHE_SCHEMA_VERSION) {
                 delete next.cavData;
-                delete next.avHotPriceData;
+                delete next.avHotPriceKeysData;
             }
             return next;
         }
@@ -4467,12 +4463,12 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 soc: createDatasetLoadEntry(),
                 salesOffice: createDatasetLoadEntry(),
                 cav: createDatasetLoadEntry(),
-                avHotPrice: createDatasetLoadEntry(),
+                avHotPriceKeys: createDatasetLoadEntry(),
                 avNotes: createDatasetLoadEntry()
             };
         }
 
-        let fullInventory=[]; let avOpenInventory=[]; let avHotPriceInventory=[]; let lowStockInventory=[]; let socInventory=[]; let reservesInventory=[]; let requestsInventory=[]; let optimisticRequestIds=new Set(); let managerReviewInventory=[]; let salesOfficeInventory=[]; let cavInventory=[]; let avNotesDb=[]; let avNotesCommonNameIndex=new Map(); let avNotesCommonNameIndexVersion=-1; let avNoteFilterTimers={}; let avNoteFilterResultCache=new Map(); let avNoteRenderedKeys={};
+        let fullInventory=[]; let avOpenInventory=[]; let avHotPriceKeysInventory=[]; let lowStockInventory=[]; let socInventory=[]; let reservesInventory=[]; let requestsInventory=[]; let optimisticRequestIds=new Set(); let managerReviewInventory=[]; let salesOfficeInventory=[]; let cavInventory=[]; let avNotesDb=[]; let avNotesCommonNameIndex=new Map(); let avNotesCommonNameIndexVersion=-1; let avNoteFilterTimers={}; let avNoteFilterResultCache=new Map(); let avNoteRenderedKeys={};
         let masterInventoryById=new Map(); let masterInventoryByExactKey=new Map(); let lowStockInventoryDirty=true; let managerReviewInventoryDirty=true;
         let loginPrefetchPromise=null;
         let loginPrefetchMode='';
@@ -4741,7 +4737,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         const REQUEST_EMAIL_THREAD_SELECT_FIELDS = 'request_folder,request_customer,sales_rep_name,sales_rep_email,recipients,initial_thread_id,initial_message_id,initial_email_sent_at,last_reply_sent_at,status,metadata';
         const REQUEST_EMAIL_INTERNAL_RECIPIENTS = Object.freeze(['dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com']);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-        const APP_VERSION = 'V2026.04.18.10';
+        const APP_VERSION = 'V2026.04.18.11';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -5016,7 +5012,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             soc: { table: 'v2_soc_master', sourceTable: 'v2_soc_master', initialQuery: 'select=*', fullQuery: 'select=*' },
             salesOffice: { table: 'v2_sales_office', sourceTable: 'v2_sales_office', initialQuery: 'select=*', fullQuery: 'select=*' },
             cav: { table: 'v2_cav_import', sourceTable: 'v2_cav_import', initialQuery: 'select=*', fullQuery: 'select=*' },
-            avHotPrice: { table: 'v2_view_av_hot_price', sourceTable: 'v2_master_inventory', initialQuery: 'select=*', fullQuery: 'select=*' },
+            avHotPriceKeys: { table: 'v2_view_av_hot_price_keys', sourceTable: 'v2_view_av_hot_price_keys', initialQuery: 'select=*', fullQuery: 'select=*' },
             avNotes: { table: 'v2_av_notes', sourceTable: 'v2_av_notes', initialQuery: 'select=*', fullQuery: 'select=*' }
         };
 
@@ -5311,7 +5307,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             if (key === 'soc') return { socData: formatted };
             if (key === 'salesOffice') return { salesOfficeData: formatted };
             if (key === 'cav') return { cavData: formatted };
-            if (key === 'avHotPrice') return { avHotPriceData: formatted };
+            if (key === 'avHotPriceKeys') return { avHotPriceKeysData: formatted };
             if (key === 'avNotes') return { avNotesData: formatted };
             return {};
         }
@@ -5521,7 +5517,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             if (viewId === 'drive') return { required: [{ key: 'master', mode: 'initial' }], background: [{ key: 'master', mode: 'full' }], label: 'Loading Drive rows...' };
             if (viewId === 'av') {
                 if (activeAVTab === 'hotprice') {
-                    return { required: [{ key: 'avHotPrice', mode: 'full' }], background: [], label: 'Loading hot price rows...' };
+                    return { required: [{ key: 'master', mode: 'full' }, { key: 'avHotPriceKeys', mode: 'full' }], background: [], label: 'Loading hot price rows...' };
                 }
                 if (activeAVTab === 'reserves') {
                     if (getRoleAccessState().isRep) {
@@ -5682,7 +5678,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             const masterItem = normalizedUid ? (masterInventoryById.get(normalizedUid) || fullInventory.find(i=>i.UNIQUE_ID===uid)) : null;
             if (masterItem) return masterItem;
             return avOpenInventory.find(i=>i.UNIQUE_ID===uid)
-                || avHotPriceInventory.find(i=>i.UNIQUE_ID===uid)
+                || avHotPriceKeysInventory.find(i=>i.UNIQUE_ID===uid)
                 || lowStockInventory.find(i=>i.UNIQUE_ID===uid)
                 || reservesInventory.find(i=>i.UNIQUE_ID===uid)
                 || cavInventory.find(i=>i.UNIQUE_ID===uid)
@@ -5869,7 +5865,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         function findItemByDomId(domId) {
             return fullInventory.find(i=>i.DOM_ID===domId)
                 || avOpenInventory.find(i=>i.DOM_ID===domId)
-                || avHotPriceInventory.find(i=>i.DOM_ID===domId)
+                || avHotPriceKeysInventory.find(i=>i.DOM_ID===domId)
                 || lowStockInventory.find(i=>i.DOM_ID===domId)
                 || reservesInventory.find(i=>i.DOM_ID===domId)
                 || cavInventory.find(i=>i.DOM_ID===domId)
@@ -8756,7 +8752,7 @@ function toggleDriveQuickRequestItem(domId) {
             const hasSoc = hasKey('socData');
             const hasSalesOffice = hasKey('salesOfficeData');
             const hasCav = hasKey('cavData');
-            const hasAvHotPrice = hasKey('avHotPriceData');
+            const hasAvHotPrice = hasKey('avHotPriceKeysData');
             const hasAvNotes = hasKey('avNotesData');
             const didStructuralDataChange = hasMaster || hasAvOpen || hasRequests || hasReserves || hasSoc || hasSalesOffice || hasCav || hasAvHotPrice || hasAvNotes;
             const changedDatasetKeys = [];
@@ -8767,7 +8763,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (hasSoc) changedDatasetKeys.push('soc');
             if (hasSalesOffice) changedDatasetKeys.push('salesOffice');
             if (hasCav) changedDatasetKeys.push('cav');
-            if (hasAvHotPrice) changedDatasetKeys.push('avHotPrice');
+            if (hasAvHotPrice) changedDatasetKeys.push('avHotPriceKeys');
             let avRuleClearOps = [];
 
             if (hasAvNotes) {
@@ -8891,7 +8887,7 @@ function toggleDriveQuickRequestItem(domId) {
             }
 
             if (hasAvHotPrice) {
-                normalizeAvHotPriceInventoryRows(res.avHotPriceData || []);
+                normalizeAvHotPriceKeyRows(res.avHotPriceKeysData || []);
             }
 
             if (avRuleClearOps.length) {
@@ -11339,8 +11335,8 @@ activeDriveTab = tab;
         function logAvHotPriceDiagnostics(summary = {}, level = 'log') {
             try {
                 const signature = JSON.stringify(summary || {});
-                if (window.__avHotPriceDebugSignature === signature) return;
-                window.__avHotPriceDebugSignature = signature;
+                if (window.__avHotPriceKeysDebugSignature === signature) return;
+                window.__avHotPriceKeysDebugSignature = signature;
                 const logger = level === 'warn' ? console.warn : console.log;
                 logger('[AV HOT PRICE]', summary);
             } catch (error) {
@@ -11349,13 +11345,67 @@ activeDriveTab = tab;
         }
 
         function getAvHotPriceMatchKey(item = null) {
-            return normalizeAvHotPriceItemCode(firstNonEmptyValue(item && item.ITEMCODE, item && item.itemcode, ''));
+            return normalizeAvHotPriceItemCode(firstNonEmptyValue(item && item.ITEMCODE_KEY, item && item.itemcode_key, item && item.ITEMCODE, item && item.itemcode, ''));
         }
 
         function getAvHotPriceRows() {
-            const rows = Array.isArray(avHotPriceInventory) ? avHotPriceInventory : [];
-            logAvHotPriceDiagnostics({ source: 'v2_view_av_hot_price', rows: rows.length });
-            return rows;
+            const hotPriceKeyRows = Array.isArray(avHotPriceKeysInventory) ? avHotPriceKeysInventory : [];
+            const masterRows = Array.isArray(fullInventory) ? fullInventory : [];
+            const hotPriceIndex = new Map();
+
+            hotPriceKeyRows.forEach((item) => {
+                const matchKey = getAvHotPriceMatchKey(item);
+                const hotPrice = getNormalizedAvHotPrice(firstNonEmptyValue(item && item.CAV_HOT_PRICE, item && item.HOT_PRICE, item && item.HOTPRICE, item && item.hot_price, ''));
+                if (!matchKey || !hotPrice || hotPriceIndex.has(matchKey)) return;
+                hotPriceIndex.set(matchKey, {
+                    hotPrice,
+                    cavItemcode: firstNonEmptyValue(item && item.CAV_ITEMCODE, item && item.cav_itemcode, item && item.ITEMCODE, item && item.itemcode, ''),
+                    cavFilename: firstNonEmptyValue(item && item.CAV_FILENAME, item && item.cav_filename, ''),
+                    cavLastUpdated: firstNonEmptyValue(item && item.CAV_LAST_UPDATED, item && item.cav_last_updated, '')
+                });
+            });
+
+            if (!hotPriceIndex.size) {
+                logAvHotPriceDiagnostics({ source: 'v2_view_av_hot_price_keys', keyRows: hotPriceKeyRows.length, uniqueHotPriceItemcodes: 0, matchedMasterRows: 0 }, 'warn');
+                return [];
+            }
+
+            const matchedRows = masterRows
+                .filter((item) => hotPriceIndex.has(getAvHotPriceMatchKey(item)))
+                .map((item) => {
+                    const matchKey = getAvHotPriceMatchKey(item);
+                    const match = hotPriceIndex.get(matchKey) || {};
+                    const hotPrice = getNormalizedAvHotPrice(match.hotPrice || '');
+                    const nextItem = Object.assign({}, item, {
+                        HOT_PRICE: hotPrice,
+                        HOTPRICE: hotPrice,
+                        CAV_HOT_PRICE: hotPrice,
+                        CAV_ITEMCODE: firstNonEmptyValue(match.cavItemcode, ''),
+                        CAV_FILENAME: firstNonEmptyValue(match.cavFilename, ''),
+                        CAV_LAST_UPDATED: firstNonEmptyValue(match.cavLastUpdated, ''),
+                        CAV_HOT_PRICE_MATCH_KEY: matchKey
+                    });
+                    nextItem._search = (String(item && item._search || '').trim() + ' ' + hotPrice + ' ' + firstNonEmptyValue(match.cavItemcode, '')).trim().toLowerCase();
+                    return nextItem;
+                });
+
+            const diagnosticSummary = {
+                source: 'v2_view_av_hot_price_keys',
+                keyRows: hotPriceKeyRows.length,
+                uniqueHotPriceItemcodes: hotPriceIndex.size,
+                masterRows: masterRows.length,
+                matchedMasterRows: matchedRows.length
+            };
+
+            if (!matchedRows.length) {
+                diagnosticSummary.sampleHotPriceItemcodes = Array.from(hotPriceIndex.keys()).slice(0, 5);
+                diagnosticSummary.sampleMasterItemcodes = Array.from(new Set(masterRows.map((item) => getAvHotPriceMatchKey(item)).filter(Boolean))).slice(0, 5);
+                logAvHotPriceDiagnostics(diagnosticSummary, 'warn');
+                return [];
+            }
+
+            logAvHotPriceDiagnostics(diagnosticSummary);
+            return matchedRows;
         }
 
         function getCurrentAVBaseItems(options = {}) {
