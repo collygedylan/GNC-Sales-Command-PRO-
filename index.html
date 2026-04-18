@@ -457,7 +457,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-<div id="header-version" class="nav-version-pill">V2026.04.18.05</div>
+<div id="header-version" class="nav-version-pill">V2026.04.18.06</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -762,7 +762,6 @@
                             <div class="overview-card"><div class="overview-label">Tag Color</div><div id="ov-tag" class="overview-val">--</div></div>
                             <div class="overview-card"><div class="overview-label">Season Supply</div><div id="ov-season" class="overview-val">--</div></div>
                         </div>
-                        <div id="ov-large-photo" class="mt-4 hidden mb-4"></div>
                         <div id="detail-overview-drive-fields" class="hidden mt-6 rounded-[1.35rem] border border-sky-100 bg-white p-4 shadow-sm">
                             <div class="flex flex-wrap items-center gap-2">
                                 <div class="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-sky-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-sky-700"><i class="ph-bold ph-list-bullets text-sm"></i><span>Item Details</span></div>
@@ -2426,68 +2425,6 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             detailRequestSourceDomIds = [activeItem.DOM_ID];
             openRequestModal('detail');
             return false;
-        }
-        function renderDetailOverviewMedia() {
-            const container = document.getElementById('ov-large-photo');
-            if (!container) return;
-            if (!activeItem) {
-                container.innerHTML = '';
-                container.classList.add('hidden');
-                return;
-            }
-
-            const photoUrls = getDetailPhotoUrls(activeItem, lastView);
-            const combinedPhotoLink = photoUrls.join(',');
-            const photoCount = photoUrls.length;
-            const inBag = selectedItems.has(activeItem.DOM_ID);
-            const canRequest = canUseCartInventoryActions([activeItem]);
-            const itemLabel = `${activeItem.COMMONNAME || 'Item'}${activeItem.CONTSIZE ? ` (${activeItem.CONTSIZE})` : ''}`;
-            const bagBtnClass = inBag
-                ? 'bg-[#007a4d] text-white border-[#007a4d] shadow-[0_14px_28px_rgba(0,122,77,0.18)]'
-                : 'bg-white text-[#007a4d] border-green-200';
-            const requestBtnHtml = canRequest
-                ? `<button type="button" class="flex-1 inline-flex items-center justify-center gap-2 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-[12px] font-black uppercase tracking-[0.12em] text-orange-700 shadow-sm active:scale-[0.98]" onclick="openDetailRequestAction(event)"><i class="ph-bold ph-chat-circle-text text-lg"></i>Make Request</button>`
-                : '';
-            const detailSourceView = String(lastView || '').trim();
-            const shareButtonsHtml = (detailSourceView === 'drive' || detailSourceView === 'tasks')
-                ? `<div class="mt-2 grid grid-cols-3 gap-2"><button type="button" class="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-[10px] font-black uppercase tracking-[0.12em] text-slate-700 shadow-sm active:scale-[0.98]" onclick="shareActiveInventoryItem('copy')"><i class="ph-bold ph-copy text-base"></i>Copy</button><button type="button" class="inline-flex items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2.5 text-[10px] font-black uppercase tracking-[0.12em] text-blue-700 shadow-sm active:scale-[0.98]" onclick="shareActiveInventoryItem('email')"><i class="ph-bold ph-envelope-simple text-base"></i>Email</button><button type="button" class="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm active:scale-[0.98]" onclick="shareActiveInventoryItem('text')"><i class="ph-bold ph-chat-circle-dots text-base"></i>Text</button></div>`
-                : '';
-            const mediaHtml = photoCount
-                ? `<div class="flex gap-3 overflow-x-auto scrollbar-none snap-x snap-mandatory pb-2">${photoUrls.map((url, index) => `<button type="button" class="relative flex-shrink-0 w-[78vw] max-w-[320px] aspect-[4/3] overflow-hidden rounded-[1.25rem] border border-slate-200 bg-slate-100 shadow-sm snap-center" onclick="openPhotoModal('${esc(combinedPhotoLink)}', '${esc(itemLabel)}')"><img src="${url}" class="h-full w-full object-contain bg-slate-100" loading="${index === 0 ? 'eager' : 'lazy'}"><div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent px-3 py-3 text-left"><div class="text-[10px] font-black uppercase tracking-[0.18em] text-white">${photoCount > 1 ? `Photo ${index + 1} of ${photoCount}` : 'Tap To Expand'}</div></div></button>`).join('')}</div>`
-                : `<div class="flex min-h-[200px] items-center justify-center rounded-[1.25rem] border border-dashed border-slate-300 bg-slate-100 px-6 text-center text-[12px] font-black uppercase tracking-[0.16em] text-slate-400">No Photos On File Yet</div>`;
-            const helperCopy = photoCount > 1
-                ? `Swipe to scroll ${photoCount} photos`
-                : (photoCount === 1 ? 'Tap photo to expand' : 'Use the buttons below to add it to Bloom Picker or create a request');
-            const countBadgeHtml = photoCount
-                ? `<div class="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600">${photoCount} photo${photoCount === 1 ? '' : 's'}</div>`
-                : '';
-
-            container.classList.remove('hidden');
-            container.innerHTML = `
-                <div class="app-card-shell overflow-hidden border border-slate-200">
-                    <div class="border-b border-slate-200 bg-gradient-to-r from-slate-50 to-white px-4 py-3">
-                        <div class="flex items-start justify-between gap-3">
-                            <div class="min-w-0">
-                                <div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Item Media</div>
-                                <div class="mt-1 text-[13px] font-bold text-slate-500">${photoCount ? `${photoCount} photo${photoCount === 1 ? '' : 's'} available` : 'Photos will show here when they are attached'}</div>
-                            </div>
-                            ${photoCount ? `<button type="button" class="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600 shadow-sm active:scale-[0.98]" onclick="openPhotoModal('${esc(combinedPhotoLink)}', '${esc(itemLabel)}')"><i class="ph-bold ph-arrows-out-simple text-sm"></i>Open</button>` : ''}
-                        </div>
-                    </div>
-                    <div class="p-3">
-                        ${mediaHtml}
-                        <div class="mt-3 flex items-center justify-between gap-3 text-[11px] font-bold text-slate-500">
-                            <div>${helperCopy}</div>
-                            ${countBadgeHtml}
-                        </div>
-                        <div class="mt-3 flex flex-col gap-2 sm:flex-row">
-                            <button type="button" class="flex-1 inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-[12px] font-black uppercase tracking-[0.12em] transition active:scale-[0.98] ${bagBtnClass}" onclick="handleDetailBagToggle(event)"><i class="ph-bold ${inBag ? 'ph-check' : 'ph-handbag'} text-lg"></i>${inBag ? 'In Bloom Picker' : 'Add To Bloom Picker'}</button>
-                            ${requestBtnHtml}
-                        </div>
-                        ${shareButtonsHtml}
-                    </div>
-                </div>
-            `;
         }
         function syncRowDataAcrossViews(masterItem) {
             if (!masterItem) return;
@@ -4778,7 +4715,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         const REQUEST_EMAIL_THREAD_SELECT_FIELDS = 'request_folder,request_customer,sales_rep_name,sales_rep_email,recipients,initial_thread_id,initial_message_id,initial_email_sent_at,last_reply_sent_at,status,metadata';
         const REQUEST_EMAIL_INTERNAL_RECIPIENTS = Object.freeze(['dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com']);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-        const APP_VERSION = 'V2026.04.18.05';
+        const APP_VERSION = 'V2026.04.18.06';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -12761,7 +12698,6 @@ activeDriveTab = tab;
             cartPanelOpen=false;
             updateGlobalActionBar();
             refreshCartButtons();
-            if (activeItem) renderDetailOverviewMedia();
             openBloomPickerModal();
             return false;
         }
@@ -12816,7 +12752,6 @@ activeDriveTab = tab;
             cartPanelOpen=false;
             updateGlobalActionBar();
             refreshCartButtons();
-            if (activeItem) renderDetailOverviewMedia();
         }
         function toggleGlobalItem(domId,isChecked=null) {
             const hadItem = selectedItems.has(domId);
@@ -12833,7 +12768,6 @@ activeDriveTab = tab;
             } else if(hadItem && !hasItemNow){
                 showToast('Removed', `${selectedItems.size} row${selectedItems.size === 1 ? '' : 's'} left in Bloom Picker.`);
             }
-            if (activeItem) renderDetailOverviewMedia();
         }
         function applyCameraPermissions(sourceView) {
             const camSsn = document.getElementById('camera-btn-ssn');
@@ -13234,7 +13168,6 @@ activeDriveTab = tab;
             makeThumbs(rLink || sLink, 'req-photo-list-container', 'req-photo-preview', 'req-', allowPhotoEdits('req-') && !!(rLink || sLink || getPendingPhotoPreviewEntries(activeItem, 'req-').length), 'Request Photos');
             makeThumbs(dLink || sLink, 'dock-photo-list-container', 'dock-photo-preview', 'dock-', allowPhotoEdits('dock-') && !!(dLink || sLink || getPendingPhotoPreviewEntries(activeItem, 'dock-').length), 'Dock Photos');
             makeThumbs(fLink || sLink, 'flyer-photo-list-container', 'flyer-photo-preview', 'flyer-', allowPhotoEdits('flyer-') && !!(fLink || sLink || getPendingPhotoPreviewEntries(activeItem, 'flyer-').length), 'Flyer Photos');
-            renderDetailOverviewMedia();
             refreshProtectedSections();
         }
         function getEffectivePhotoFieldState(prefix, item = activeItem) {
