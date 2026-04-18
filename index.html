@@ -457,7 +457,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-<div id="header-version" class="nav-version-pill">V2026.04.18.01</div>
+<div id="header-version" class="nav-version-pill">V2026.04.18.02</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -762,6 +762,18 @@
                             <div class="overview-card"><div class="overview-label">Season Supply</div><div id="ov-season" class="overview-val">--</div></div>
                         </div>
                         <div id="ov-large-photo" class="mt-4 hidden mb-4"></div>
+                        <div id="detail-overview-drive-fields" class="hidden mt-6 rounded-[1.35rem] border border-sky-100 bg-white p-4 shadow-sm">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <div class="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-sky-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-sky-700"><i class="ph-bold ph-list-bullets text-sm"></i><span>Item Details</span></div>
+                                <div id="detail-overview-field-count" class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">0 Fields</div>
+                            </div>
+                            <div id="detail-overview-search-wrap" class="hidden relative mt-3">
+                                <input type="text" id="detail-overview-search" class="input-field w-full pr-10 !mb-0" placeholder="Quick Search Column Header..." oninput="handleDetailOverviewFieldSearch()" onkeydown="dismissSearchKeyboard(event)">
+                                <i id="detail-overview-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearDetailOverviewFieldSearch()"></i>
+                            </div>
+                            <div id="detail-overview-fields-empty" class="hidden mt-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-[11px] font-semibold text-slate-400">No matching item detail fields.</div>
+                            <div id="detail-overview-fields-list" class="mt-3 grid grid-cols-1 gap-2"></div>
+                        </div>
                         <div id="expand-section" class="mt-6">
                             <div class="expand-trigger" onclick="toggleExpand()"><span>All Data</span><i class="ph-bold ph-caret-down"></i></div>
                             <div id="expand-content" class="expand-content"></div>
@@ -4506,7 +4518,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         let lastBackgroundRefreshAt=0;
         let cacheWarmPromise=null;
         let cachePersistTimer=null; let cachePersistIdleHandle=null; let lastCachePersistAt=0; let pendingCachePersist=false;
-        let currentUser=""; let currentUserDisplay=""; let currentRole=""; let safeRole=""; let repPermutations=[]; let activeItem=null; let lastView=""; let activeDetailTab="overview"; let selectedItems=new Set(); let cartPanelOpen=false; let cartUiObserver=null; let cartUiRefreshQueued=false; let lastCartToggleAt=0; let lastCartToggleDomId=""; let isMultiSelectMode=false; let pressTimer=null; let isLongPress=false; let touchStartX=0; let touchStartY=0; let pendingAction=null; let pendingTabType=null; let hasAppliedInitialHomeView=false;
+        let currentUser=""; let currentUserDisplay=""; let currentRole=""; let safeRole=""; let repPermutations=[]; let activeItem=null; let lastView=""; let activeDetailTab="overview"; let activeDetailSourceView=""; let detailOverviewFieldSearchTerm=""; let selectedItems=new Set(); let cartPanelOpen=false; let cartUiObserver=null; let cartUiRefreshQueued=false; let lastCartToggleAt=0; let lastCartToggleDomId=""; let isMultiSelectMode=false; let pressTimer=null; let isLongPress=false; let touchStartX=0; let touchStartY=0; let pendingAction=null; let pendingTabType=null; let hasAppliedInitialHomeView=false;
         let dockAssignableUsers=[]; let dockAssignableUsersPromise=null;
         let dockTeamStatusByDock=new Map(); let dockTeamStatusPromise=null; let dockTeamStatusLoaded=false; let dockTeamSchemaReady=null; let dockTeamSchemaPromise=null; let dockTeamSchemaWarningShown=false;
         let dockItemProgressByUid=new Map(); let dockItemProgressPromise=null; let dockItemProgressLoaded=false; let dockItemSchemaReady=null; let dockItemSchemaPromise=null; let dockItemSchemaWarningShown=false;
@@ -4765,7 +4777,27 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         const REQUEST_EMAIL_THREAD_SELECT_FIELDS = 'request_folder,request_customer,sales_rep_name,sales_rep_email,recipients,initial_thread_id,initial_message_id,initial_email_sent_at,last_reply_sent_at,status,metadata';
         const REQUEST_EMAIL_INTERNAL_RECIPIENTS = Object.freeze(['dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com']);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-        const APP_VERSION = 'V2026.04.18.01';
+        const APP_VERSION = 'V2026.04.18.02';
+        const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
+            'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
+            'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
+            'PTRONHAND', 'PTRREVIEWED', 'PTRAVAILABLE', 'HOLDSTOPCODE', 'HOLDSTOPBEGINDATE',
+            'HOLDSTOPREASON', 'HRSSEASONBEGIN', 'SEASON_SUPPLY', 'SEASON_OH', 'SEASON_DEMAND',
+            'S_LTS', 'OVERSELLPERCENTAGE', 'ITEMSPEC', 'LOCATIONNOTE', 'LOCATIONNOTEDATE',
+            'SUSPEND', 'SUSPENDTO', 'SPECIALPULLER', 'PULLTAGNOTE1', 'PULLTAGNOTE2', 'FIELDTAGCOLOR',
+            'SALESNOTE', 'INVENTORYNOTE', 'LOCATIONPTN1', 'LOCATIONPTN2', 'PRISETBY', 'PRIUPDATED',
+            'BYPASSLOC', 'LARGEPTRQTY', 'MAXORDERQUANTITY', 'LOCHOLD', 'LISTPRICE', 'EXT_PTRONHAND',
+            'VARIETYCODE', 'GENUSNAME', 'BOTANICALNAME', 'REVERSECOMMON', 'SORTNAMEVARIETY',
+            'CONTAINERSORT', 'SALEYEAR', 'SEASON', 'BLOCKALPHA', 'BLOCKNUMBER', 'BAY',
+            'PULLERRESPONSIBILITY', 'GROWER', 'SI_LTS', 'A_LTS', 'AI_LTS', 'SEASON_AVAILABLE',
+            'HOLDSTOPENDDATE', 'SALESNOTE_1', 'FNSALESNOTE', 'WAREHOUSENAME', 'MCSTATUS', 'HZ',
+            'INTERCOPO', 'INSURANCEGROUP', 'BRAND', 'PRINTEDCONTAINERCODE', 'SALESNOTEBEGINDATE'
+        ]);
+        const DRIVE_DETAIL_ITEM_FIELD_ALIASES = Object.freeze({
+            HRSSEASONBEGIN: Object.freeze(['HRSSEASONBEGIN', 'HSREASONBEGIN']),
+            SEASON_SUPPLY: Object.freeze(['SEASON_SUPPLY', 'SEASONSUPPLY']),
+            SUSPENDTO: Object.freeze(['SUSPEND_TO', 'SUSPENDTO'])
+        });
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
             reserves: 'reserves-search-container',
@@ -12873,12 +12905,114 @@ activeDriveTab = tab;
             });
         }
 
+        function getDriveDetailFieldKeys(label = '') {
+            return DRIVE_DETAIL_ITEM_FIELD_ALIASES[label] || [label];
+        }
+
+        function getDriveDetailFieldRawValue(item, label = '') {
+            const row = item || activeItem;
+            if (!row) return '';
+            const keys = getDriveDetailFieldKeys(label);
+            for (const key of keys) {
+                const candidates = [row[key], row[String(key || '').toLowerCase()]];
+                for (const value of candidates) {
+                    if (value === null || value === undefined) continue;
+                    const text = String(value).trim();
+                    if (!text || text.toUpperCase() === 'NULL') continue;
+                    return value;
+                }
+            }
+            return '';
+        }
+
+        function formatDriveDetailFieldValue(value) {
+            if (value === null || value === undefined) return '--';
+            const text = String(value).trim();
+            if (!text || text.toUpperCase() === 'NULL') return '--';
+            return text;
+        }
+
+        function syncDetailOverviewSearchUi() {
+            const isDriveDetail = activeDetailSourceView === 'drive';
+            const searchWrap = document.getElementById('detail-overview-search-wrap');
+            const input = document.getElementById('detail-overview-search');
+            const clearBtn = document.getElementById('detail-overview-search-clear');
+            if (searchWrap) searchWrap.classList.toggle('hidden', !isDriveDetail);
+            if (input && !isDriveDetail && input.value) input.value = '';
+            if (clearBtn) clearBtn.classList.toggle('hidden', !(isDriveDetail && String(detailOverviewFieldSearchTerm || '').trim().length > 0));
+        }
+
+        function resetDetailOverviewFieldSearch() {
+            detailOverviewFieldSearchTerm = '';
+            const input = document.getElementById('detail-overview-search');
+            if (input) input.value = '';
+            syncDetailOverviewSearchUi();
+        }
+
+        function handleDetailOverviewFieldSearch() {
+            const input = document.getElementById('detail-overview-search');
+            detailOverviewFieldSearchTerm = String((input && input.value) || '');
+            syncDetailOverviewSearchUi();
+            renderDriveDetailOverviewFields();
+        }
+
+        function clearDetailOverviewFieldSearch() {
+            detailOverviewFieldSearchTerm = '';
+            const input = document.getElementById('detail-overview-search');
+            if (input) input.value = '';
+            syncDetailOverviewSearchUi();
+            renderDriveDetailOverviewFields();
+            return false;
+        }
+
+        function renderDriveDetailOverviewFields() {
+            const wrap = document.getElementById('detail-overview-drive-fields');
+            const countEl = document.getElementById('detail-overview-field-count');
+            const listEl = document.getElementById('detail-overview-fields-list');
+            const emptyEl = document.getElementById('detail-overview-fields-empty');
+            const expandSection = document.getElementById('expand-section');
+            const isDriveDetail = activeDetailSourceView === 'drive';
+
+            if (wrap) wrap.classList.toggle('hidden', !isDriveDetail);
+            if (expandSection) expandSection.classList.toggle('hidden', isDriveDetail);
+            syncDetailOverviewSearchUi();
+
+            if (!isDriveDetail || !activeItem || !listEl || !emptyEl) {
+                if (countEl) countEl.innerText = '0 Fields';
+                if (listEl) listEl.innerHTML = '';
+                if (emptyEl) {
+                    emptyEl.classList.add('hidden');
+                    emptyEl.innerText = 'No matching item detail fields.';
+                }
+                return;
+            }
+
+            const term = String(detailOverviewFieldSearchTerm || '').trim().toUpperCase();
+            const rows = DRIVE_DETAIL_ITEM_FIELD_ORDER
+                .filter((label) => !term || label.includes(term))
+                .map((label) => ({
+                    label,
+                    value: formatDriveDetailFieldValue(getDriveDetailFieldRawValue(activeItem, label))
+                }));
+
+            if (countEl) countEl.innerText = `${rows.length} Field${rows.length === 1 ? '' : 's'}`;
+            listEl.innerHTML = rows.map((row) => `
+                <div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 shadow-sm">
+                    <div class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">${escapeShareHtml(row.label)}</div>
+                    <div class="mt-1 text-[13px] font-bold text-slate-800 break-words whitespace-pre-wrap">${escapeShareHtml(row.value)}</div>
+                </div>
+            `).join('');
+            emptyEl.classList.toggle('hidden', rows.length !== 0);
+            emptyEl.innerText = rows.length ? '' : 'No matching item detail fields.';
+        }
+
         function openDetail(uid, sourceView) {
             const currentViewBeforeOpen = getCurrentVisibleViewId();
             if (currentViewBeforeOpen && currentViewBeforeOpen !== 'detail') {
                 rememberDetailReturnPosition(sourceView || currentViewBeforeOpen);
             }
             lastView = sourceView || currentViewBeforeOpen || lastView;
+            activeDetailSourceView = sourceView || currentViewBeforeOpen || activeDetailSourceView;
             if (sourceView === 'request') {
                 activeItem = findRequestRowByUniqueId(uid) || findItemByUniqueId(uid);
             } else if (sourceView === 'sales-office') {
@@ -12889,6 +13023,7 @@ activeDriveTab = tab;
                 activeItem = findItemByUniqueId(uid);
             }
             if(!activeItem) return;
+            resetDetailOverviewFieldSearch();
 
             ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-docks','view-request','view-reserves','view-av', 'view-hours'].forEach(id=>{
                 const el = document.getElementById(id);
@@ -12954,14 +13089,14 @@ activeDriveTab = tab;
                 primaryDetailTab = 'request';
             } else if (sourceView === 'docks') {
                 primaryDetailTab = 'docks';
-            } else if (sourceView === 'drive' || sourceView === 'low-stock') {
+            } else if (sourceView === 'low-stock') {
                 if (assignment === 'season') primaryDetailTab = 'season';
                 else if (assignment === 'location') primaryDetailTab = 'location';
-                else if (sourceView === 'drive') primaryDetailTab = 'notes';
             } else if (sourceView === 'av' && activeAVTab === 'reserves') {
                 primaryDetailTab = 'request';
             }
             reorderVisibleDetailTabs(primaryDetailTab);
+            renderDriveDetailOverviewFields();
 
             const globalAvContainer = document.getElementById('global-av-container');
             if (globalAvContainer) globalAvContainer.classList.add('hidden');
@@ -13417,6 +13552,7 @@ activeDriveTab = tab;
 
             const contentEl = document.getElementById('det-' + tab + '-content');
             if(contentEl) contentEl.classList.remove('hidden');
+            if (tab === 'overview' && activeItem) renderDriveDetailOverviewFields();
             queueScrollMainAreaToTop(`detail-tab:${tab}`);
         }
 
@@ -13424,6 +13560,8 @@ activeDriveTab = tab;
             if (document.activeElement && ['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) document.activeElement.blur();
             setDetailEditingChromeState(false);
             const restoreViewId = lastView;
+            resetDetailOverviewFieldSearch();
+            activeDetailSourceView = '';
             activeItem = null;
             document.getElementById('view-detail').classList.add('hidden');
             document.getElementById('view-' + restoreViewId).classList.remove('hidden');
@@ -20345,6 +20483,13 @@ ${folderNote ? `Folder Note: ${folderNote}
     </script>
 </body>
 </html>
+
+
+
+
+
+
+
 
 
 
