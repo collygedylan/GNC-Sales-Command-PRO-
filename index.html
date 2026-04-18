@@ -457,7 +457,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-<div id="header-version" class="nav-version-pill">V2026.04.18.11</div>
+<div id="header-version" class="nav-version-pill">V2026.04.18.12</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -4737,7 +4737,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         const REQUEST_EMAIL_THREAD_SELECT_FIELDS = 'request_folder,request_customer,sales_rep_name,sales_rep_email,recipients,initial_thread_id,initial_message_id,initial_email_sent_at,last_reply_sent_at,status,metadata';
         const REQUEST_EMAIL_INTERNAL_RECIPIENTS = Object.freeze(['dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com']);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-        const APP_VERSION = 'V2026.04.18.11';
+        const APP_VERSION = 'V2026.04.18.12';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -5882,14 +5882,42 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             if (!match) match = String(url).match(/\/d\/([a-zA-Z0-9_-]+)/);
             return match && match[1] ? match[1] : '';
         }
-        function getDirectImageUrl(url, width = 520) {
+        const THUMBNAIL_PRESET_WIDTHS = Object.freeze({
+            'card-corner': 168,
+            'card-inline': 224,
+            'card-feature': 384,
+            'gallery-tile': 320
+        });
+        function getThumbnailBaseWidth(sizeOrPreset = 'card-inline') {
+            if (typeof sizeOrPreset === 'string') {
+                const presetWidth = THUMBNAIL_PRESET_WIDTHS[sizeOrPreset];
+                if (presetWidth) return presetWidth;
+            }
+            const numericWidth = Number(sizeOrPreset);
+            return Math.max(160, Math.min(1600, Number.isFinite(numericWidth) && numericWidth > 0 ? numericWidth : THUMBNAIL_PRESET_WIDTHS['card-inline']));
+        }
+        function applySizedImageUrl(url = '', thumbWidth = 0) {
+            const requestedWidth = Math.max(160, Math.min(4096, Number(thumbWidth) || 0));
+            let nextUrl = String(url || '').trim();
+            if (!nextUrl || !requestedWidth) return nextUrl;
+            if (/[?&]sz=w\d+/i.test(nextUrl)) {
+                nextUrl = nextUrl.replace(/([?&])sz=w\d+/i, `$1sz=w${requestedWidth}`);
+            }
+            if (/=w\d+(-h\d+)?/i.test(nextUrl)) {
+                nextUrl = nextUrl.replace(/=w\d+(-h\d+)?/i, `=w${requestedWidth}`);
+            } else if (/=s\d+/i.test(nextUrl)) {
+                nextUrl = nextUrl.replace(/=s\d+/i, `=w${requestedWidth}`);
+            }
+            return nextUrl.replace(/[?&]$/, '');
+        }
+        function getDirectImageUrl(url, sizeOrPreset = 'card-inline') {
             if(!url)return"";
-            const baseWidth = Math.max(160, Math.min(1600, Number(width) || 520));
-            const deviceScale = Math.max(1, Math.min(2.5, Number(window.devicePixelRatio) || 1));
-            const thumbWidth = Math.max(160, Math.min(3200, Math.round(baseWidth * deviceScale)));
+            const baseWidth = getThumbnailBaseWidth(sizeOrPreset);
+            const deviceScale = Math.max(1, Math.min(4, Number(window.devicePixelRatio) || 1));
+            const thumbWidth = Math.max(240, Math.min(4096, Math.round(baseWidth * deviceScale)));
             const driveId = getDriveImageId(url);
             if(driveId){ return `https://drive.google.com/thumbnail?id=${driveId}&sz=w${thumbWidth}`; }
-            return String(url).replace(/([?&])sz=w\d+/i, `$1sz=w${thumbWidth}`).replace(/[?&]$/, '');
+            return applySizedImageUrl(String(url), thumbWidth);
         }
         function getExpandedImageUrl(url='') {
             if (!url) return '';
@@ -10877,9 +10905,9 @@ activeDriveTab = tab;
                 let firstUrl = String(photoLink).split(',')[0].trim();
                 let urlMatch = firstUrl.match(/(https?:\/\/[^"\s>]+)/);
                 if (urlMatch) firstUrl = urlMatch[1];
-                const thumbUrl = getDirectImageUrl(firstUrl);
+                const thumbUrl = getDirectImageUrl(firstUrl, 'card-corner');
                 if (thumbUrl.startsWith('http')) {
-                    thumbHtml = `<div class="absolute top-3 right-3 flex flex-col items-end"><div class="h-12 w-12 sm:h-14 sm:w-14 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 shadow-sm"><img src="${thumbUrl}" class="h-full w-full object-cover" loading="lazy"></div>${photoDateHtml}</div>`;
+                    thumbHtml = `<div class="absolute top-3 right-3 flex flex-col items-end"><div class="h-12 w-12 sm:h-14 sm:w-14 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 shadow-sm"><img src="${thumbUrl}" class="h-full w-full object-cover" loading="lazy" decoding="async"></div>${photoDateHtml}</div>`;
                 }
             }
             const cornerThumbHtml = thumbHtml || `<div class="absolute top-3 right-3 flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-xl border border-slate-200 bg-slate-100 px-1 text-center text-[8px] font-black uppercase tracking-[0.14em] text-slate-400">No Photo</div>`;
@@ -11138,9 +11166,9 @@ activeDriveTab = tab;
                 let firstUrl = String(previewLink).split(',')[0].trim();
                 let urlMatch = firstUrl.match(/(https?:\/\/[^"\s>]+)/);
                 if (urlMatch) firstUrl = urlMatch[1];
-                const thumbUrl = getDirectImageUrl(firstUrl);
+                const thumbUrl = getDirectImageUrl(firstUrl, 'card-corner');
                 if (thumbUrl.startsWith('http')) {
-                    thumbHtml = `<div class="absolute top-3 right-3 flex flex-col items-end" onclick="event.stopPropagation(); openPhotoModal('${previewLink}', '${esc(customerName)} - ${esc(selectedAvResName || 'My Reserves')}')"><div class="flex h-14 w-14 items-center justify-center rounded-xl overflow-hidden border border-gray-300 shadow-sm bg-white"><img src="${thumbUrl}" class="app-smart-thumb h-full w-full object-cover active:scale-95 transition-transform" loading="lazy"></div><div class="mt-1 rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.12em] text-slate-500">Photo Ready</div></div>`;
+                    thumbHtml = `<div class="absolute top-3 right-3 flex flex-col items-end" onclick="event.stopPropagation(); openPhotoModal('${previewLink}', '${esc(customerName)} - ${esc(selectedAvResName || 'My Reserves')}')"><div class="flex h-14 w-14 items-center justify-center rounded-xl overflow-hidden border border-gray-300 shadow-sm bg-white"><img src="${thumbUrl}" class="app-smart-thumb h-full w-full object-cover active:scale-95 transition-transform" loading="lazy" decoding="async"></div><div class="mt-1 rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.12em] text-slate-500">Photo Ready</div></div>`;
                 }
             }
             const cornerThumbHtml = thumbHtml || `<div class="absolute top-3 right-3 flex h-14 w-14 items-center justify-center rounded-xl border border-slate-200 bg-slate-100 px-1 text-center text-[8px] font-black uppercase tracking-[0.14em] text-slate-400">No Photo</div>`;
@@ -11201,9 +11229,9 @@ activeDriveTab = tab;
                 let firstUrl = String(photoLink).split(',')[0].trim();
                 let urlMatch = firstUrl.match(/(https?:\/\/[^"\s>]+)/);
                 if (urlMatch) firstUrl = urlMatch[1];
-                const thumbUrl = getDirectImageUrl(firstUrl);
+                const thumbUrl = getDirectImageUrl(firstUrl, 'card-inline');
                 if (thumbUrl.startsWith('http')) {
-                    thumbHtml = `<div class="ml-3 flex-shrink-0 flex flex-col items-center" onclick="event.stopPropagation(); openPhotoModal('${photoLink}', '${esc(commonName)} - ${esc(contSize)}')"><img src="${thumbUrl}" class="app-smart-thumb w-16 h-16 rounded-md object-cover border border-gray-300 shadow-sm active:scale-95 transition-transform" loading="lazy">${photoDateHtml}</div>`;
+                    thumbHtml = `<div class="ml-3 flex-shrink-0 flex flex-col items-center" onclick="event.stopPropagation(); openPhotoModal('${photoLink}', '${esc(commonName)} - ${esc(contSize)}')"><img src="${thumbUrl}" class="app-smart-thumb w-16 h-16 rounded-md object-cover border border-gray-300 shadow-sm active:scale-95 transition-transform" loading="lazy" decoding="async">${photoDateHtml}</div>`;
                 }
             }
             const inlineThumbHtml = thumbHtml || `<div class="ml-3 flex-shrink-0"><div class="app-smart-thumb w-16 h-16 rounded-md border border-gray-300 bg-slate-100 shadow-sm flex items-center justify-center text-[8px] font-black uppercase tracking-[0.12em] text-slate-400">No Photo</div></div>`;
@@ -11238,9 +11266,9 @@ activeDriveTab = tab;
                 let firstUrl = String(photoLink).split(',')[0].trim();
                 let urlMatch = firstUrl.match(/(https?:\/\/[^"\s>]+)/);
                 if (urlMatch) firstUrl = urlMatch[1];
-                const thumbUrl = getDirectImageUrl(firstUrl);
+                const thumbUrl = getDirectImageUrl(firstUrl, 'card-corner');
                 if (thumbUrl.startsWith('http')) {
-                    thumbHtml = `<div class="absolute top-3 right-3 flex flex-col items-end" onclick="event.stopPropagation(); openPhotoModal('${photoLink}', '${esc(commonName)} - ${esc(contSize)}')"><div class="flex h-14 w-14 items-center justify-center rounded-xl overflow-hidden border border-gray-300 shadow-sm bg-white"><img src="${thumbUrl}" class="app-smart-thumb h-full w-full object-cover active:scale-95 transition-transform" loading="lazy"></div>${photoDateHtml}</div>`;
+                    thumbHtml = `<div class="absolute top-3 right-3 flex flex-col items-end" onclick="event.stopPropagation(); openPhotoModal('${photoLink}', '${esc(commonName)} - ${esc(contSize)}')"><div class="flex h-14 w-14 items-center justify-center rounded-xl overflow-hidden border border-gray-300 shadow-sm bg-white"><img src="${thumbUrl}" class="app-smart-thumb h-full w-full object-cover active:scale-95 transition-transform" loading="lazy" decoding="async"></div>${photoDateHtml}</div>`;
                 }
             }
             const cornerThumbHtml = thumbHtml || `<div class="absolute top-3 right-3 flex h-14 w-14 items-center justify-center rounded-xl border border-slate-200 bg-slate-100 px-1 text-center text-[8px] font-black uppercase tracking-[0.14em] text-slate-400">No Photo</div>`;
@@ -13220,7 +13248,7 @@ activeDriveTab = tab;
                     entries.forEach((entry) => {
                         const cleanUrl = getPhotoUrlList(entry.url)[0] || '';
                         if (!cleanUrl) return;
-                        const thumb = getDirectImageUrl(cleanUrl);
+                        const thumb = getDirectImageUrl(cleanUrl, 'gallery-tile');
                         const canRemoveThis = allowRemove && !entry.pending && entry.persistedIndex > -1;
                         const pressAttrs = canRemoveThis ? ` oncontextmenu="event.preventDefault(); return false;" onmousedown="startPhotoDeletePress(event, '${prefix}', ${entry.persistedIndex})" onmouseup="cancelPhotoDeletePress('${prefix}', ${entry.persistedIndex})" onmouseleave="cancelPhotoDeletePress('${prefix}', ${entry.persistedIndex})" ontouchstart="startPhotoDeletePress(event, '${prefix}', ${entry.persistedIndex})" ontouchend="cancelPhotoDeletePress('${prefix}', ${entry.persistedIndex})" ontouchcancel="cancelPhotoDeletePress('${prefix}', ${entry.persistedIndex})" ontouchmove="cancelPhotoDeletePress('${prefix}', ${entry.persistedIndex})"` : '';
                         const statusHtml = canRemoveThis
@@ -13228,7 +13256,7 @@ activeDriveTab = tab;
                             : (entry.pending ? `<div class="mt-1 text-[9px] font-bold text-emerald-500 uppercase text-center">Uploading</div>` : '');
                         const dateHtml = entry.dateLabel ? `<div class="mt-1 text-[9px] font-bold text-slate-400 uppercase text-center">Photo ${entry.dateLabel}</div>` : '';
                         const reorderHtml = allowReorder && !entry.pending && persistedEntries.length > 1 ? `<div class="mt-1 flex items-center justify-center gap-1"><button class="px-2 py-1 text-[10px] font-black rounded-md border border-gray-300 bg-white text-slate-700 ${entry.persistedIndex === 0 ? 'opacity-30 pointer-events-none' : ''}" onclick="event.stopPropagation(); movePhotoInSet('${prefix}', ${entry.persistedIndex}, -1)">LEFT</button><button class="px-2 py-1 text-[10px] font-black rounded-md border border-gray-300 bg-white text-slate-700 ${entry.persistedIndex === persistedEntries.length - 1 ? 'opacity-30 pointer-events-none' : ''}" onclick="event.stopPropagation(); movePhotoInSet('${prefix}', ${entry.persistedIndex}, 1)">RIGHT</button></div>` : '';
-                        html += `<div class="relative shrink-0"><img src="${thumb}" class="w-20 h-20 object-cover rounded-lg border border-gray-300 cursor-pointer shadow-sm active:scale-95" onclick="handlePhotoThumbClick('${openLink}', '${title}')"${pressAttrs}>${statusHtml}${dateHtml}${reorderHtml}</div>`;
+                        html += `<div class="relative shrink-0"><img src="${thumb}" class="w-20 h-20 object-cover rounded-lg border border-gray-300 cursor-pointer shadow-sm active:scale-95" loading="lazy" decoding="async" onclick="handlePhotoThumbClick('${openLink}', '${title}')"${pressAttrs}>${statusHtml}${dateHtml}${reorderHtml}</div>`;
                     });
                     html += `</div>`;
                     el.innerHTML = html;
@@ -13558,7 +13586,7 @@ activeDriveTab = tab;
                 let tiles = '';
                 getPhotoUrlList(group.link).forEach((cleanUrl) => {
                     if (!cleanUrl) return;
-                    const thumb = getDirectImageUrl(cleanUrl);
+                    const thumb = getDirectImageUrl(cleanUrl, 'gallery-tile');
                     tiles += `<img src="${esc(thumb)}" sizes="96px" loading="lazy" decoding="async" fetchpriority="low" class="w-24 h-24 object-cover rounded-xl border border-gray-300 shadow-sm cursor-pointer active:scale-95" onclick="openPhotoModal('${esc(group.link)}', '${esc(group.label)}')">`;
                 });
                 if (!tiles) return;
@@ -16115,10 +16143,10 @@ activeDriveTab = tab;
                     let cleanUrl = firstUrl.trim();
                     let urlMatch = cleanUrl.match(/(https?:\/\/[^"\s>]+)/);
                     if(urlMatch) cleanUrl = urlMatch[1];
-                    let thumbUrl = getDirectImageUrl(cleanUrl);
+                    let thumbUrl = getDirectImageUrl(cleanUrl, 'card-feature');
                     if(thumbUrl.startsWith('http')){
                         let photoCount = String(photoLink).split(',').length;
-                        clickThumbHtml = `<div class="ml-3 flex-shrink-0 flex flex-col items-center" onclick="event.stopPropagation(); openPhotoModal('${photoLink}', '${esc(item.COMMONNAME)} - ${esc(item.CONTSIZE)}')"><div class="relative"><img src="${thumbUrl}" class="app-smart-thumb app-smart-thumb--feature w-24 h-24 rounded-lg object-cover border-2 border-teal-300 shadow-md active:scale-95 transition-transform" loading="lazy">${photoCount > 1 ? `<div class="absolute -top-2 -right-2 bg-teal-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full border-2 border-white shadow-sm">+${photoCount-1}</div>` : ''}</div>${photoDateHtml}<div class="text-center text-[9px] font-black text-teal-600 mt-1.5 uppercase tracking-widest bg-teal-50 px-2 py-0.5 rounded-md border border-teal-100 cursor-pointer active:bg-teal-200">VIEW</div>${hotPriceHtml}</div>`;
+                        clickThumbHtml = `<div class="ml-3 flex-shrink-0 flex flex-col items-center" onclick="event.stopPropagation(); openPhotoModal('${photoLink}', '${esc(item.COMMONNAME)} - ${esc(item.CONTSIZE)}')"><div class="relative"><img src="${thumbUrl}" class="app-smart-thumb app-smart-thumb--feature w-24 h-24 rounded-lg object-cover border-2 border-teal-300 shadow-md active:scale-95 transition-transform" loading="lazy" decoding="async">${photoCount > 1 ? `<div class="absolute -top-2 -right-2 bg-teal-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full border-2 border-white shadow-sm">+${photoCount-1}</div>` : ''}</div>${photoDateHtml}<div class="text-center text-[9px] font-black text-teal-600 mt-1.5 uppercase tracking-widest bg-teal-50 px-2 py-0.5 rounded-md border border-teal-100 cursor-pointer active:bg-teal-200">VIEW</div>${hotPriceHtml}</div>`;
                     }
                 }
 
@@ -16136,9 +16164,9 @@ activeDriveTab = tab;
                 let cleanUrl=firstUrl.trim();
                 let urlMatch=cleanUrl.match(/(https?:\/\/[^"\s>]+)/);
                 if(urlMatch)cleanUrl=urlMatch[1];
-                let thumbUrl=getDirectImageUrl(cleanUrl);
+                let thumbUrl=getDirectImageUrl(cleanUrl, 'card-inline');
                 if(thumbUrl.startsWith('http')){
-                    thumbHtml=`<div class="ml-3 flex-shrink-0 flex flex-col items-center" onclick="event.stopPropagation(); openPhotoModal('${photoLink}', '${esc(item.COMMONNAME)} - ${esc(item.CONTSIZE)}')"><img src="${thumbUrl}" class="app-smart-thumb w-16 h-16 rounded-md object-cover border border-gray-300 shadow-sm active:scale-95 transition-transform" loading="lazy">${photoDateHtml}</div>`;
+                    thumbHtml=`<div class="ml-3 flex-shrink-0 flex flex-col items-center" onclick="event.stopPropagation(); openPhotoModal('${photoLink}', '${esc(item.COMMONNAME)} - ${esc(item.CONTSIZE)}')"><img src="${thumbUrl}" class="app-smart-thumb w-16 h-16 rounded-md object-cover border border-gray-300 shadow-sm active:scale-95 transition-transform" loading="lazy" decoding="async">${photoDateHtml}</div>`;
                 }
             }
             const inlineThumbHtml = thumbHtml || `<div class="ml-3 flex-shrink-0"><div class="app-smart-thumb w-16 h-16 rounded-md border border-gray-300 bg-slate-100 shadow-sm flex items-center justify-center text-[8px] font-black uppercase tracking-[0.12em] text-slate-400">No Photo</div></div>`;
