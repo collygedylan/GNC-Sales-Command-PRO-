@@ -457,7 +457,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-<div id="header-version" class="nav-version-pill">V2026.04.18.07</div>
+<div id="header-version" class="nav-version-pill">V2026.04.18.08</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -4715,7 +4715,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         const REQUEST_EMAIL_THREAD_SELECT_FIELDS = 'request_folder,request_customer,sales_rep_name,sales_rep_email,recipients,initial_thread_id,initial_message_id,initial_email_sent_at,last_reply_sent_at,status,metadata';
         const REQUEST_EMAIL_INTERNAL_RECIPIENTS = Object.freeze(['dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com']);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-        const APP_VERSION = 'V2026.04.18.07';
+        const APP_VERSION = 'V2026.04.18.08';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -11296,36 +11296,89 @@ activeDriveTab = tab;
             return normalized && normalized.toUpperCase() !== 'NULL' ? normalized : '';
         }
 
+        function normalizeAvHotPriceItemCode(value = '') {
+            return String(value || '').trim().toUpperCase().replace(/\s+/g, '');
+        }
+
+        function logAvHotPriceDiagnostics(summary = {}, level = 'log') {
+            try {
+                const signature = JSON.stringify(summary || {});
+                if (window.__avHotPriceDebugSignature === signature) return;
+                window.__avHotPriceDebugSignature = signature;
+                const logger = level === 'warn' ? console.warn : console.log;
+                logger('[AV HOT PRICE]', summary);
+            } catch (error) {
+                console.warn('[AV HOT PRICE] Diagnostics logging failed.', error);
+            }
+        }
+
         function getAvHotPriceMatchKey(item = null) {
-            return String(firstNonEmptyValue(item && item.ITEMCODE, item && item.itemcode, '')).trim().toUpperCase();
+            return normalizeAvHotPriceItemCode(firstNonEmptyValue(item && item.ITEMCODE, item && item.itemcode, ''));
         }
 
         function getAvHotPriceRows() {
+            const cavRows = Array.isArray(cavInventory) ? cavInventory : [];
+            const masterRows = Array.isArray(fullInventory) ? fullInventory : [];
             const hotPriceIndex = new Map();
-            (Array.isArray(cavInventory) ? cavInventory : []).forEach((item) => {
-                const matchKey = getAvHotPriceMatchKey(item);
+            let hotPriceSourceRows = 0;
+
+            cavRows.forEach((item) => {
                 const hotPrice = getNormalizedAvHotPrice(firstNonEmptyValue(item && item.HOT_PRICE, item && item.HOTPRICE, item && item.hot_price, ''));
-                if (!matchKey || !hotPrice || hotPriceIndex.has(matchKey)) return;
+                if (!hotPrice) return;
+                hotPriceSourceRows += 1;
+                const matchKey = getAvHotPriceMatchKey(item);
+                if (!matchKey || hotPriceIndex.has(matchKey)) return;
                 hotPriceIndex.set(matchKey, {
                     hotPrice,
                     row: item
                 });
             });
-            if (!hotPriceIndex.size) return [];
-            return (Array.isArray(fullInventory) ? fullInventory : [])
+
+            const sampleMasterItemcodes = Array.from(new Set(masterRows.map((item) => getAvHotPriceMatchKey(item)).filter(Boolean))).slice(0, 5);
+            if (!hotPriceIndex.size) {
+                logAvHotPriceDiagnostics({
+                    cavRows: cavRows.length,
+                    hotPriceRows: hotPriceSourceRows,
+                    uniqueHotPriceItemcodes: 0,
+                    matchedMasterRows: 0,
+                    sampleHotPriceItemcodes: [],
+                    sampleMasterItemcodes
+                }, 'warn');
+                return [];
+            }
+
+            const matchedRows = masterRows
                 .filter((item) => hotPriceIndex.has(getAvHotPriceMatchKey(item)))
                 .map((item) => {
-                    const match = hotPriceIndex.get(getAvHotPriceMatchKey(item)) || {};
+                    const matchKey = getAvHotPriceMatchKey(item);
+                    const match = hotPriceIndex.get(matchKey) || {};
                     const hotPrice = getNormalizedAvHotPrice(match.hotPrice || '');
                     const nextItem = Object.assign({}, item, {
                         HOT_PRICE: hotPrice,
                         HOTPRICE: hotPrice,
                         CAV_HOT_PRICE: hotPrice,
-                        CAV_HOT_PRICE_MATCH_KEY: getAvHotPriceMatchKey(item)
+                        CAV_HOT_PRICE_MATCH_KEY: matchKey
                     });
-                    nextItem._search = `${String(item && item._search || '').trim()} ${hotPrice}`.trim().toLowerCase();
+                    nextItem._search = (String(item && item._search || '').trim() + ' ' + hotPrice).trim().toLowerCase();
                     return nextItem;
                 });
+
+            const diagnosticSummary = {
+                cavRows: cavRows.length,
+                hotPriceRows: hotPriceSourceRows,
+                uniqueHotPriceItemcodes: hotPriceIndex.size,
+                matchedMasterRows: matchedRows.length
+            };
+
+            if (!matchedRows.length) {
+                diagnosticSummary.sampleHotPriceItemcodes = Array.from(hotPriceIndex.keys()).slice(0, 5);
+                diagnosticSummary.sampleMasterItemcodes = sampleMasterItemcodes;
+                logAvHotPriceDiagnostics(diagnosticSummary, 'warn');
+                return [];
+            }
+
+            logAvHotPriceDiagnostics(diagnosticSummary);
+            return matchedRows;
         }
 
         function getCurrentAVBaseItems(options = {}) {
