@@ -701,6 +701,7 @@
                         <div id="task-tab-dropdown-host"></div>
                         <div id="task-subtabs-container" class="hidden"></div>
                         <div id="task-genus-filters" class="hidden"></div>
+                        <div id="task-contsize-filters" class="hidden"></div>
                         <div id="task-location-detail-filters" class="hidden"></div>
                     </div>
                     <div id="task-shared-filters" class="hidden mb-3 space-y-3">
@@ -4715,7 +4716,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         let activeDriveMode='ok'; let activeDriveTab='name'; let selectedDriveBlock=null; let selectedDriveLoc=null; let driveQuickRequestCardMode=false; let driveQuickFilterName=''; let driveQuickFilterLocation=''; let driveQuickFilterLot=''; let driveQuickFilterSize=''; let driveQuickFilterPriority=''; let driveQuickFilterLtsMode=''; let driveQuickFilterLtsValue=''; let driveQuickHoldStopOnly=false; let driveQuickFilterOptionsCacheKey=''; let driveQuickFilterOptionsCache=null; let driveBaseFilterCacheKey=''; let driveBaseFilterCacheItems=[]; let driveBaseContextCacheKey=''; let driveBaseContextCacheItems=[]; let driveBaseSearchContextKey=''; let driveBaseLastSearchTerm=''; let driveBaseLastSearchItems=[]; let driveQuickFilterCacheKey=''; let driveQuickFilterCacheItems=[]; let driveQuickFiltersModalOpen=false;
         let driveViewLevel=0; let selectedDriveName=null; let selectedDriveSize=null; let selectedDriveCommonNames=new Set(); let driveCommonNameSearchTerm=''; let driveCommonNameFilterOpen=false; let selectedDriveGenusNames=new Set(); let driveGenusSearchTerm=''; let driveGenusFilterOpen=false; let selectedDriveContSizes=new Set(); let driveContSizeSearchTerm=''; let driveContSizeFilterOpen=false; let drivePlantFilterItemsCache=[]; let driveSelectedSeasons=new Set(['ALL']); const availableSeasons=["ALL","S1","F1","U1","U2","U3","X","Y","Z"];
 
-        let activeTaskTab="season"; let activeTaskSubview="all"; let taskViewTargetUser=null; let taskViewLevel=0; let selectedTaskBlock=null; let selectedTaskLoc=null; let selectedEndCapFolder=null; let selectedFlyerFolder=null; let activeFlyerFolderTab="active"; let selectedColorWalkSearchTerm=""; let selectedTaskGenusNames=new Set(); let taskGenusSearchTerm=""; let taskGenusFilterOpen=false; let taskGenusFilterItemsCache=[]; let taskLocationDetailSearchTerm=""; let selectedTaskLocationDetailGenus=""; let selectedTaskLocationDetailLotCode=""; let taskTabDropdownOpen=false; let taskSubviewDropdownOpen=false; let pendingFlyerFolderTarget=null; let pendingFlyerFolderAssignees="";
+        let activeTaskTab="season"; let activeTaskSubview="all"; let taskViewTargetUser=null; let taskViewLevel=0; let selectedTaskBlock=null; let selectedTaskLoc=null; let selectedEndCapFolder=null; let selectedFlyerFolder=null; let activeFlyerFolderTab="active"; let selectedColorWalkSearchTerm=""; let selectedTaskGenusNames=new Set(); let taskGenusSearchTerm=""; let taskGenusFilterOpen=false; let taskGenusFilterItemsCache=[]; let selectedTaskContSize=""; let taskLocationDetailSearchTerm=""; let selectedTaskLocationDetailGenus=""; let selectedTaskLocationDetailLotCode=""; let taskTabDropdownOpen=false; let taskSubviewDropdownOpen=false; let pendingFlyerFolderTarget=null; let pendingFlyerFolderAssignees="";
         let detailReturnState = { viewId: '', scrollTop: 0 };
 
         let activeAVTab='open'; let activeAvOpenTab='name'; let avOpenLevel=0; let selectedAvOpenName=null; let selectedAvOpenSize=null; let selectedAvOpenSeason=null; let selectedAvOpenLot=null; let avResLevel=0; let selectedAvResRep=null; let selectedAvResDriveUid=null; let selectedAvResItemCode=null; let selectedAvResName=null; let selectedAvResSize=null; let selectedAvResCustomerKey=null; let activeAvReserveMode='current'; let activeAvReserveDetailTab='customer';
@@ -9971,6 +9972,7 @@ function toggleDriveQuickRequestItem(domId) {
             taskLocationDetailSearchTerm = '';
             selectedTaskLocationDetailGenus = '';
             selectedTaskLocationDetailLotCode = '';
+            selectedTaskContSize = '';
             selectedTaskGenusNames = new Set();
             taskGenusSearchTerm = '';
             taskGenusFilterOpen = false;
@@ -18216,8 +18218,12 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function shouldShowTaskInlineGenusFilter(tab = activeTaskTab, level = taskViewLevel) {
             const safeTab = String(tab || activeTaskTab || '').trim().toLowerCase();
-            if (safeTab !== 'season') return false;
-            return level < 2;
+            return safeTab === 'season';
+        }
+
+        function shouldShowTaskInlineContSizeFilter(tab = activeTaskTab, level = taskViewLevel) {
+            const safeTab = String(tab || activeTaskTab || '').trim().toLowerCase();
+            return level === 2 && safeTab === 'season';
         }
 
         function shouldShowTaskInlineDetailFilters(tab = activeTaskTab, level = taskViewLevel) {
@@ -18238,9 +18244,10 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (!container) return;
             const shouldShowSubview = shouldShowTaskSubviewDropdown(tab);
             const shouldShowGenus = shouldShowTaskInlineGenusFilter(tab, taskViewLevel);
+            const shouldShowContSize = shouldShowTaskInlineContSizeFilter(tab, taskViewLevel);
             const shouldShowDetailFilters = shouldShowTaskInlineDetailFilters(tab, taskViewLevel);
             const wasHidden = container.classList.contains('hidden');
-            const visibleCount = 1 + (shouldShowSubview ? 1 : 0) + (shouldShowGenus ? 1 : 0) + (shouldShowDetailFilters ? 1 : 0);
+            const visibleCount = 1 + (shouldShowSubview ? 1 : 0) + (shouldShowGenus ? 1 : 0) + (shouldShowContSize ? 1 : 0) + (shouldShowDetailFilters ? 1 : 0);
             const nextClasses = ['mb-3', 'grid', 'grid-cols-1', 'gap-2'];
             if (visibleCount >= 2) nextClasses.push('md:grid-cols-2');
             if (visibleCount === 3) nextClasses.push('xl:grid-cols-3');
@@ -18542,10 +18549,41 @@ ${folderNote ? `Folder Note: ${folderNote}
             const state = buildTaskGenusFilterState(taskGenusFilterItemsCache);
             updateTaskGenusFilterUi(state, container);
         }
+
+        function buildTaskContSizeFilterState(items = []) {
+            const options = [...new Set((items || []).map(getTaskLocationDetailContSize).filter(Boolean))]
+                .sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true }));
+            if (selectedTaskContSize && !options.includes(selectedTaskContSize)) selectedTaskContSize = '';
+            return { options };
+        }
+
+        function setTaskContSizeFilter(value = '') {
+            selectedTaskContSize = String(value || '').trim();
+            scheduleUiRender('task-contsize-filter', () => renderTasks());
+            return false;
+        }
+
+        function renderTaskContSizeFilter(items = []) {
+            const container = document.getElementById('task-contsize-filters');
+            if (!container) return;
+            if (!shouldShowTaskInlineContSizeFilter(activeTaskTab, taskViewLevel)) {
+                container.classList.add('hidden');
+                container.innerHTML = '';
+                return;
+            }
+            const state = buildTaskContSizeFilterState(items);
+            const optionHtml = ['<option value="">All Sizes</option>']
+                .concat(state.options.map((value) => `<option value="${esc(value)}" ${selectedTaskContSize === value ? 'selected' : ''}>${esc(value)}</option>`))
+                .join('');
+            container.innerHTML = `<div class="rounded-[1.05rem] border border-green-100 bg-white/95 px-3 py-2.5 shadow-sm backdrop-blur-sm"><label class="min-w-0 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Cont Size<select class="input-field !mb-0 mt-2 border-green-200 bg-green-50/40" onchange="return setTaskContSizeFilter(this.value)">${optionHtml}</select></label></div>`;
+            container.classList.remove('hidden');
+        }
+
         function resetTaskLocationDetailFilters() {
             taskLocationDetailSearchTerm = '';
             selectedTaskLocationDetailGenus = '';
             selectedTaskLocationDetailLotCode = '';
+            selectedTaskContSize = '';
         }
 
         function shouldShowTaskLocationDetailFilters(tab = activeTaskTab, level = taskViewLevel) {
@@ -18667,6 +18705,9 @@ ${folderNote ? `Folder Note: ${folderNote}
             }
             if (activeTaskTab === 'location' && selectedTaskLocationDetailLotCode) {
                 nextItems = nextItems.filter(item => getTaskLocationDetailLotCode(item) === selectedTaskLocationDetailLotCode);
+            }
+            if (activeTaskTab === 'season' && selectedTaskContSize) {
+                nextItems = nextItems.filter(item => getTaskLocationDetailContSize(item) === selectedTaskContSize);
             }
             return nextItems;
         }
@@ -18844,6 +18885,12 @@ ${folderNote ? `Folder Note: ${folderNote}
                 tabItems = tabItems.filter(i => selectedTaskGenusNames.has(getTaskGenusName(i)));
             }
 
+            const seasonContSizeBaseItems = activeTaskTab === 'season'
+                ? (selectedTaskGenusNames.size
+                    ? seasonGenusBaseItems.filter(i => selectedTaskGenusNames.has(getTaskGenusName(i)))
+                    : seasonGenusBaseItems)
+                : [];
+
             if (taskTabUsesBlockDrill(activeTaskTab)) {
                 const hasSelectedBlock = !!(selectedTaskBlock && tabItems.some(i => getTaskBlockAlpha(i) === selectedTaskBlock));
                 if (taskViewLevel === 2) {
@@ -18880,6 +18927,9 @@ ${folderNote ? `Folder Note: ${folderNote}
 
             if (activeTaskTab === 'season') renderTaskGenusFilter(seasonGenusBaseItems);
             else renderTaskGenusFilter([]);
+
+            if (activeTaskTab === 'season') renderTaskContSizeFilter(seasonContSizeBaseItems);
+            else renderTaskContSizeFilter([]);
 
             const shouldRenderTaskLocationDetailFilters = shouldShowTaskLocationDetailFilters(activeTaskTab, taskViewLevel);
             let taskLocationDetailBaseItems = [];
