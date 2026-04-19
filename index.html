@@ -69,7 +69,7 @@
         body.viewport-compact .app-smart-card .app-card-chip-row > span{min-height:1.42rem;padding:.18rem .55rem !important;font-size:.61rem !important}
         body.viewport-compact .app-smart-card .app-smart-thumb{width:3.25rem;height:3.25rem;border-radius:.85rem !important}
         body.viewport-compact .app-smart-card .app-smart-thumb--feature{width:4.55rem;height:4.55rem;border-radius:.95rem !important}
-        body.viewport-compact .app-smart-card.app-smart-card--av{border-radius:22px !important}
+        body.viewport-compact .app-smart-card.app-smart-card--av{border-radius:22px !important;padding:1rem !important}
         body.viewport-compact .app-smart-card.app-smart-card--av .card-checkbox-container{width:auto;min-width:42px;margin-right:14px}
         body.viewport-compact .app-smart-card.app-smart-card--av .app-card-main,
         body.viewport-compact .app-smart-card.app-smart-card--av .app-av-card-main{padding-left:.42rem}
@@ -81,7 +81,14 @@
         body.viewport-compact .app-smart-card.app-smart-card--av .app-card-chip-row > span{min-height:1.65rem;padding:.28rem .72rem !important;font-size:inherit !important}
         body.viewport-compact .app-smart-card.app-smart-card--av .app-smart-thumb{width:4.1rem;height:4.1rem;border-radius:1rem !important}
         body.viewport-compact .app-smart-card.app-smart-card--av .app-smart-thumb--feature{width:5.85rem;height:5.85rem;border-radius:1.05rem !important}
-        body.viewport-compact .app-smart-card.app-smart-card--av .app-av-card-layout{gap:.75rem}
+        body.viewport-compact .app-smart-card.app-smart-card--av .app-av-card-layout{display:grid !important;grid-template-columns:minmax(0,1fr) 6rem;gap:.75rem;align-items:flex-start}
+        body.viewport-compact .app-smart-card.app-smart-card--av .app-av-card-thumb-column{width:6rem;min-width:6rem;margin-left:0 !important}
+        body.viewport-compact .app-smart-card.app-smart-card--av .app-av-card-thumb-column > .w-24,
+        body.viewport-compact .app-smart-card.app-smart-card--av .app-av-card-thumb-column > div > .w-24{width:6rem !important}
+        body.viewport-compact .app-smart-card.app-smart-card--av .app-av-card-main > .flex.flex-wrap.items-center.gap-x-3.gap-y-1{align-items:flex-start}
+        body.viewport-compact .app-smart-card.app-smart-card--av .app-av-card-main > .flex.flex-wrap.items-center.gap-x-3.gap-y-1 span:nth-child(1){font-size:1.75rem !important;line-height:1.05 !important}
+        body.viewport-compact .app-smart-card.app-smart-card--av .app-av-card-main > .flex.flex-wrap.items-center.gap-x-3.gap-y-1 span:nth-child(2){font-size:1.9rem !important;line-height:1.02 !important}
+        body.viewport-compact .app-smart-card.app-smart-card--av .app-av-card-main > .flex.flex-wrap.items-center.gap-x-3.gap-y-1 span:nth-child(3){font-size:1.75rem !important;line-height:1.05 !important}
         #view-wrapper{width:var(--shell-width);max-width:var(--shell-width);min-width:0;overflow-x:hidden;overflow-y:visible;margin:0 auto}#view-wrapper > div{width:100%;max-width:var(--content-width);margin:0 auto}
         .sticky-search{position:-webkit-sticky;position:sticky;top:0;z-index:35;background:#f9fafb;padding-top:max(4px,env(safe-area-inset-top));padding-bottom:10px;box-shadow:0 6px 12px rgba(15,23,42,.05);transform:translateZ(0);-webkit-transform:translateZ(0);backface-visibility:hidden}
         .request-swipe-row{display:block !important;padding:0 !important;position:relative;overflow:hidden;background:#ffffff !important;touch-action:pan-y;overscroll-behavior-x:contain;-webkit-user-select:none;user-select:none}
@@ -477,7 +484,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-            <div id="header-version" class="nav-version-pill">V2026.04.18.18</div>
+            <div id="header-version" class="nav-version-pill">V2026.04.18.19</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -4805,7 +4812,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         const REQUEST_EMAIL_THREAD_SELECT_FIELDS = 'request_folder,request_customer,sales_rep_name,sales_rep_email,recipients,initial_thread_id,initial_message_id,initial_email_sent_at,last_reply_sent_at,status,metadata';
         const REQUEST_EMAIL_INTERNAL_RECIPIENTS = Object.freeze(['dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com']);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-        const APP_VERSION = 'V2026.04.18.18';
+        const APP_VERSION = 'V2026.04.18.19';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -12045,6 +12052,68 @@ activeDriveTab = tab;
             return false;
         }
         const chunkRenderTokensByKey = Object.create(null);
+        const DEFAULT_RENDER_SIGNATURE_FIELDS = ['UNIQUE_ID','DOM_ID','COMMONNAME','CONTSIZE','LOCATIONCODE','LOTCODE','ITEMCODE','PRIORITY','PTRAVAILABLE','S_LTS','SEASON','AV_NOTE','HOLDSTOPREASON','LISTPRICE','HOT_PRICE','HOTPRICE','REQ_STATUS','REQ_QTY','REQ_MATCH','REQ_SPEC','REQ_CALIPER','REQ_PICK','REQ_COMMENTS','DOCK_NUM','STOPNUMBER','CUSTOMERNAME','SALESREPNAME','FOLDERNAME','COUNT','LABEL','NAME','LOCATIONBUCKET','BLOCKALPHA','STATUS','LINECOUNT','TOTALQTY','ROW_PHOTO_LINK','REQ_PHOTO_LINK','DOCK_PHOTO_LINK','FLYER_PHOTO_LINK'];
+
+        function normalizeRenderSignature(value = '') {
+            return String(value || '').trim();
+        }
+
+        function getContainerRenderSignature(container) {
+            if (!container || !container.dataset) return '';
+            return normalizeRenderSignature(container.dataset.renderSignature || '');
+        }
+
+        function setContainerRenderSignature(container, signature = '') {
+            if (!container || !container.dataset) return;
+            const safeSignature = normalizeRenderSignature(signature);
+            if (!safeSignature) {
+                delete container.dataset.renderSignature;
+                return;
+            }
+            container.dataset.renderSignature = safeSignature;
+        }
+
+        function clearContainerRenderSignature(container) {
+            if (!container || !container.dataset) return;
+            delete container.dataset.renderSignature;
+        }
+
+        function updateRenderSignatureHash(hash = 2166136261, value = '') {
+            let nextHash = Number(hash) >>> 0;
+            const input = String(value || '');
+            for (let i = 0; i < input.length; i += 1) {
+                nextHash ^= input.charCodeAt(i);
+                nextHash = Math.imul(nextHash, 16777619) >>> 0;
+            }
+            return nextHash >>> 0;
+        }
+
+        function buildRowsRenderSignature(prefix = '', rows = [], extraFields = []) {
+            const safeRows = Array.isArray(rows) ? rows : [];
+            const signatureFields = Array.from(new Set([...(Array.isArray(extraFields) ? extraFields : []), ...DEFAULT_RENDER_SIGNATURE_FIELDS]));
+            let hash = 2166136261;
+            hash = updateRenderSignatureHash(hash, prefix);
+            hash = updateRenderSignatureHash(hash, safeRows.length);
+            safeRows.forEach((row, index) => {
+                if (!row || typeof row !== 'object') {
+                    hash = updateRenderSignatureHash(hash, `row:${index}:${String(row || '')}`);
+                    return;
+                }
+                hash = updateRenderSignatureHash(hash, firstNonEmptyValue(row.UNIQUE_ID, row.unique_id, row.DOM_ID, row.dom_id, index));
+                signatureFields.forEach((field) => {
+                    hash = updateRenderSignatureHash(hash, firstNonEmptyValue(row[field], row[String(field || '').toLowerCase()], ''));
+                });
+            });
+            return `${normalizeRenderSignature(prefix)}:${safeRows.length}:${(hash >>> 0).toString(16)}`;
+        }
+
+        function setContainerHtmlWithSignature(container, html, signature = '') {
+            const safeSignature = normalizeRenderSignature(signature);
+            if (safeSignature && getContainerRenderSignature(container) === safeSignature) return false;
+            setContainerHtml(container, html);
+            if (safeSignature) setContainerRenderSignature(container, safeSignature);
+            return true;
+        }
 
         function bumpChunkRenderTokenByKey(key = 'default') {
             const tokenKey = String(key || 'default');
@@ -12072,6 +12141,7 @@ activeDriveTab = tab;
 
         function setContainerHtml(container, html) {
             if (!container) return;
+            clearContainerRenderSignature(container);
             if (!html) {
                 if (typeof container.replaceChildren === 'function') container.replaceChildren();
                 else container.innerHTML = '';
@@ -12101,6 +12171,7 @@ activeDriveTab = tab;
             const onComplete = typeof options.onComplete === 'function' ? options.onComplete : null;
             const reserveSpace = options.reserveSpace !== false;
             const reserveOffset = Number(options.reserveOffset) || 0;
+            const renderSignature = normalizeRenderSignature(options.renderSignature || buildRowsRenderSignature(`${key}|${String(crumbText || '')}|${prefixHtml}`, rows));
             const chunkSize = touchOptimized
                 ? (total > 1800 ? 28 : (total > 900 ? 36 : 44))
                 : (total > 1400 ? 20 : (total > 700 ? 24 : 32));
@@ -12113,6 +12184,15 @@ activeDriveTab = tab;
 
             if (crumb && typeof crumbText === 'string') crumb.innerText = crumbText;
 
+            if (renderSignature && getContainerRenderSignature(container) === renderSignature) {
+                if (reserveSpace) container.style.minHeight = '';
+                if (onComplete) requestAnimationFrame(() => {
+                    if (getContainerRenderSignature(container) !== renderSignature) return;
+                    onComplete();
+                });
+                return true;
+            }
+
             if (reserveSpace) {
                 const minHeight = Math.max(0, Math.round((total * approxCardHeight) + reserveOffset));
                 container.style.minHeight = minHeight ? `${minHeight}px` : '';
@@ -12121,7 +12201,7 @@ activeDriveTab = tab;
             }
 
             if (!total) {
-                setContainerHtml(container, prefixHtml + emptyHtml);
+                setContainerHtmlWithSignature(container, prefixHtml + emptyHtml, renderSignature);
                 return true;
             }
 
@@ -12152,6 +12232,7 @@ activeDriveTab = tab;
             const fireComplete = () => {
                 finishChunkRender();
                 if (reserveSpace) container.style.minHeight = '';
+                setContainerRenderSignature(container, renderSignature);
                 if (!onComplete) return;
                 requestAnimationFrame(() => {
                     if (Number(chunkRenderTokensByKey[key] || 0) !== token) return;
@@ -12196,6 +12277,7 @@ activeDriveTab = tab;
             avRenderChunkToken += 1;
             const token = avRenderChunkToken;
             const total = Array.isArray(rows) ? rows.length : 0;
+            const renderSignature = buildRowsRenderSignature(`av-open|${sourceView}|${String(crumbText || '')}`, rows, ['CAV_HOT_PRICE','CAV_ITEMCODE','CAV_HOT_PRICE_MATCH_KEY']);
             const touchOptimized = isIOSDevice() || isStandaloneApp() || window.matchMedia('(pointer: coarse)').matches;
             const viewportHeight = Math.max(640, Math.round((window.visualViewport && window.visualViewport.height) || window.innerHeight || document.documentElement.clientHeight || 640));
             const approxCardHeight = sourceView === 'reserves_drill' ? 255 : (activeAvOpenTab === 'photos' ? 230 : 245);
@@ -12208,11 +12290,15 @@ activeDriveTab = tab;
             const frameBudgetMs = touchOptimized ? 10 : 7;
             let index = 0;
             crumb.innerText = crumbText;
+            if (renderSignature && getContainerRenderSignature(container) === renderSignature) {
+                container.style.minHeight = '';
+                return;
+            }
             const reserveHeight = Math.max(0, Math.round(total * approxCardHeight));
             container.style.minHeight = reserveHeight ? `${reserveHeight}px` : '';
             if (!total) {
                 container.style.minHeight = '';
-                setContainerHtml(container, `<div class="p-6 text-center text-gray-400">No rows found.</div>`);
+                setContainerHtmlWithSignature(container, `<div class="p-6 text-center text-gray-400">No rows found.</div>`, renderSignature);
                 return;
             }
             const renderBatch = (targetCount, useBudget) => {
@@ -12233,10 +12319,16 @@ activeDriveTab = tab;
                 const html = renderBatch(perFrameLimit, true);
                 if (html) appendHtmlFragment(container, html);
                 if (index < total) requestAnimationFrame(renderNextChunk);
-                else container.style.minHeight = '';
+                else {
+                    container.style.minHeight = '';
+                    setContainerRenderSignature(container, renderSignature);
+                }
             };
             if (index < total) requestAnimationFrame(renderNextChunk);
-            else container.style.minHeight = '';
+            else {
+                container.style.minHeight = '';
+                setContainerRenderSignature(container, renderSignature);
+            }
         }
 
         function renderAVMarkupChunked(container, crumb, rows, crumbText, renderRow, options = {}) {
@@ -12244,6 +12336,7 @@ activeDriveTab = tab;
             avRenderChunkToken += 1;
             const token = avRenderChunkToken;
             const total = Array.isArray(rows) ? rows.length : 0;
+            const renderSignature = normalizeRenderSignature(options.renderSignature || buildRowsRenderSignature(`av-generic|${String(crumbText || '')}`, rows));
             const touchOptimized = isIOSDevice() || isStandaloneApp() || window.matchMedia('(pointer: coarse)').matches;
             const viewportHeight = Math.max(640, Math.round((window.visualViewport && window.visualViewport.height) || window.innerHeight || document.documentElement.clientHeight || 640));
             const approxCardHeight = Math.max(120, Number(options.approxCardHeight) || 185);
@@ -12257,11 +12350,15 @@ activeDriveTab = tab;
             const frameBudgetMs = touchOptimized ? 10 : 7;
             let index = 0;
             crumb.innerText = crumbText;
+            if (renderSignature && getContainerRenderSignature(container) === renderSignature) {
+                container.style.minHeight = '';
+                return;
+            }
             const reserveHeight = Math.max(0, Math.round(total * approxCardHeight));
             container.style.minHeight = reserveHeight ? `${reserveHeight}px` : '';
             if (!total) {
                 container.style.minHeight = '';
-                setContainerHtml(container, emptyHtml);
+                setContainerHtmlWithSignature(container, emptyHtml, renderSignature);
                 return;
             }
             const renderBatch = (targetCount, useBudget) => {
@@ -12282,10 +12379,16 @@ activeDriveTab = tab;
                 const html = renderBatch(perFrameLimit, true);
                 if (html) appendHtmlFragment(container, html);
                 if (index < total) requestAnimationFrame(renderNextChunk);
-                else container.style.minHeight = '';
+                else {
+                    container.style.minHeight = '';
+                    setContainerRenderSignature(container, renderSignature);
+                }
             };
             if (index < total) requestAnimationFrame(renderNextChunk);
-            else container.style.minHeight = '';
+            else {
+                container.style.minHeight = '';
+                setContainerRenderSignature(container, renderSignature);
+            }
         }
 
         function renderAV() {
@@ -12307,7 +12410,8 @@ activeDriveTab = tab;
                     ? (activeAvOpenTab === 'photos' ? 'open stock photos' : 'open stock')
                     : (activeAVTab === 'hotprice' ? 'hot price rows' : 'reserves');
                 updateAVExportButton(0);
-                container.innerHTML = `<div class="p-8 text-center text-gray-400">${activeAVTab === 'hotprice' ? 'No hot price rows found.' : `No ${emptyLabel} found.`}</div>`;
+                const emptySignature = buildRowsRenderSignature(`av-empty|${activeAVTab}|${activeAvOpenTab}|${activeAvReserveMode}|${term}|${emptyLabel}`, []);
+                setContainerHtmlWithSignature(container, `<div class="p-8 text-center text-gray-400">${activeAVTab === 'hotprice' ? 'No hot price rows found.' : `No ${emptyLabel} found.`}</div>`, emptySignature);
                 crumb.innerText = activeAVTab === 'hotprice'
                     ? (term.length > 0 ? 'Search Results (0)' : 'HOT PRICE (0 items)')
                     : 'No Results';
@@ -12323,24 +12427,26 @@ activeDriveTab = tab;
                 const crumbText = activeAvOpenTab === 'photos'
                     ? (term.length > 0 ? `Search Results (${openRows.length})` : `Open Stock Photos (${openRows.length} items)`)
                     : (term.length > 0 ? `Search Results (${openRows.length})` : `Open Stock (${openRows.length} items)`);
+                const renderSignature = buildRowsRenderSignature(`av-open|${sourceView}|${activeAvOpenTab}|${term}|${crumbText}`, openRows, ['CAV_HOT_PRICE','CAV_ITEMCODE','CAV_HOT_PRICE_MATCH_KEY']);
                 if (shouldUseChunkedAVOpenRender(openRows)) {
                     renderAVOpenCardsChunked(container, crumb, openRows, sourceView, crumbText);
                     return;
                 }
                 crumb.innerText = crumbText;
-                container.innerHTML = openRows.map(i => generateCard(i, sourceView, 'status-teal')).join('');
+                setContainerHtmlWithSignature(container, openRows.map(i => generateCard(i, sourceView, 'status-teal')).join(''), renderSignature);
                 return;
             }
             if (activeAVTab === 'hotprice') {
                 const hotPriceExportContext = buildAVExportContext(items, term);
                 const hotPriceRows = hotPriceExportContext.rows;
                 const crumbText = term.length > 0 ? `Search Results (${hotPriceRows.length})` : `HOT PRICE (${hotPriceRows.length} items)`;
+                const renderSignature = buildRowsRenderSignature(`av-hotprice|${term}|${crumbText}`, hotPriceRows, ['CAV_HOT_PRICE','CAV_ITEMCODE','CAV_HOT_PRICE_MATCH_KEY']);
                 if (shouldUseChunkedAVOpenRender(hotPriceRows)) {
                     renderAVOpenCardsChunked(container, crumb, hotPriceRows, 'av', crumbText);
                     return;
                 }
                 crumb.innerText = crumbText;
-                container.innerHTML = hotPriceRows.map(i => generateCard(i, 'av', 'status-teal')).join('');
+                setContainerHtmlWithSignature(container, hotPriceRows.map(i => generateCard(i, 'av', 'status-teal')).join(''), renderSignature);
                 return;
             }
             const reserveModeTabsHtml = getAvReserveModeTabsHtml();
