@@ -107,7 +107,7 @@
         body.viewport-compact #task-tabs-container.task-top-inline #task-contsize-filters .task-top-control-panel{left:auto;right:0}
         body.viewport-compact #task-tabs-container.task-top-inline #task-genus-filters .task-top-control-panel{width:min(17rem,calc(100vw - (var(--shell-gutter) * 2)))}
         #drive-season-filters.drive-top-inline{display:block;overflow:visible !important;padding:0 !important;margin-bottom:.35rem !important}
-        #drive-season-filters.drive-top-inline .drive-top-controls-row{display:grid;grid-template-columns:minmax(0,1.28fr) minmax(0,1.22fr) minmax(0,1.04fr) minmax(0,1.04fr) minmax(0,.98fr);gap:.42rem;align-items:start}
+        #drive-season-filters.drive-top-inline .drive-top-controls-row{display:grid;grid-template-columns:minmax(0,1.34fr) minmax(0,1.22fr) minmax(0,1.12fr) minmax(0,.9fr);gap:.42rem;align-items:start}
         #drive-season-filters.drive-top-inline .task-top-control-shell{position:relative;height:100%;padding:.38rem .4rem;border-radius:1rem;min-width:0}
         #drive-season-filters.drive-top-inline .task-top-control-button{position:relative;min-height:46px;padding:.42rem .48rem;gap:.38rem;border-radius:999px}
         #drive-season-filters.drive-top-inline .task-top-control-button i{font-size:.82rem}
@@ -121,14 +121,14 @@
         #drive-season-filters.drive-top-inline [data-drive-filter-shell="genus"] .task-top-control-panel{width:min(17rem,calc(100vw - (var(--shell-gutter) * 2)))}
         #drive-season-filters.drive-top-inline [data-drive-filter-shell="contsize"] .task-top-control-panel{width:min(15rem,calc(100vw - (var(--shell-gutter) * 2)))}
         #drive-season-filters.drive-top-inline .drive-filter-shell--toggle .task-top-control-button{justify-content:flex-start}
-        body.viewport-compact #drive-season-filters.drive-top-inline .drive-top-controls-row{grid-template-columns:minmax(0,1.34fr) minmax(0,1.28fr) minmax(0,1.06fr) minmax(0,1.06fr) minmax(0,1fr) !important;gap:.34rem !important}
-        body.viewport-compact #drive-season-filters.drive-top-inline .task-top-control-shell{padding:.32rem .3rem !important;border-radius:.96rem !important}
-        body.viewport-compact #drive-season-filters.drive-top-inline .task-top-control-button{min-height:44px !important;padding:.4rem .42rem !important;gap:.32rem !important;border-radius:999px !important}
+        body.viewport-compact #drive-season-filters.drive-top-inline .drive-top-controls-row{grid-template-columns:minmax(0,1.38fr) minmax(0,1.24fr) minmax(0,1.12fr) minmax(0,.92fr) !important;gap:.38rem !important}
+        body.viewport-compact #drive-season-filters.drive-top-inline .task-top-control-shell{padding:.36rem .34rem !important;border-radius:1rem !important}
+        body.viewport-compact #drive-season-filters.drive-top-inline .task-top-control-button{min-height:46px !important;padding:.44rem .48rem !important;gap:.34rem !important;border-radius:999px !important}
         body.viewport-compact #drive-season-filters.drive-top-inline .task-top-control-button i{font-size:.8rem !important}
-        body.viewport-compact #drive-season-filters.drive-top-inline .task-top-control-title{font-size:.46rem !important;letter-spacing:.1em !important}
-        body.viewport-compact #drive-season-filters.drive-top-inline .task-top-control-summary{margin-top:.12rem !important;font-size:.62rem !important;line-height:1.08 !important}
-        body.viewport-compact #drive-season-filters.drive-top-inline [data-drive-filter-shell="hold"] .task-top-control-title{font-size:.43rem !important;letter-spacing:.08em !important}
-        body.viewport-compact #drive-season-filters.drive-top-inline [data-drive-filter-shell="hold"] .task-top-control-summary{font-size:.58rem !important}
+        body.viewport-compact #drive-season-filters.drive-top-inline .task-top-control-title{font-size:.5rem !important;letter-spacing:.1em !important}
+        body.viewport-compact #drive-season-filters.drive-top-inline .task-top-control-summary{margin-top:.14rem !important;font-size:.68rem !important;line-height:1.08 !important}
+        body.viewport-compact #drive-season-filters.drive-top-inline [data-drive-filter-shell="hold"] .task-top-control-title{font-size:.48rem !important;letter-spacing:.08em !important}
+        body.viewport-compact #drive-season-filters.drive-top-inline [data-drive-filter-shell="hold"] .task-top-control-summary{font-size:.64rem !important}
         body.viewport-compact #drive-season-filters.drive-top-inline .task-top-control-panel{top:calc(100% + .24rem);width:min(15rem,calc(100vw - (var(--shell-gutter) * 2)));max-width:calc(100vw - (var(--shell-gutter) * 2))}
         body.viewport-compact #drive-season-filters.drive-top-inline [data-drive-filter-shell="genus"] .task-top-control-panel{width:min(16rem,calc(100vw - (var(--shell-gutter) * 2)))}
         #drive-plant-filters.drive-top-inline .drive-plant-filter-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.5rem}
@@ -197,7 +197,7 @@
         .freeze-panel #drive-search-container,.freeze-panel #av-search-container,.freeze-panel #reserves-search-container,.freeze-panel #docks-search-container{position:relative;top:auto;z-index:auto}
         .freeze-panel .task-tabs,.freeze-panel .detail-tabs{background:transparent}
         .freeze-panel > :last-child{margin-bottom:0 !important}
-        #view-drive #drive-search-container.drive-search-static,#view-tasks #tasks-search-container.tasks-search-static{position:relative;top:auto;z-index:auto}
+        #view-drive #drive-search-container.drive-search-static,#view-tasks #tasks-search-container.tasks-search-static{position:-webkit-sticky;position:sticky;top:0;z-index:54}
         #view-drive .drive-controls-sticky,#view-tasks .task-controls-sticky{--freeze-panel-offset:0px;padding:.12rem 0 .35rem;margin:0 0 .55rem;z-index:48}
         #view-drive .drive-controls-sticky #drive-drill-tabs{margin-bottom:.35rem}
         #view-drive .drive-controls-sticky #drive-season-filters{margin-bottom:.35rem}
@@ -546,7 +546,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-<div id="header-version" class="nav-version-pill">V2026.04.19.07</div>
+<div id="header-version" class="nav-version-pill">V2026.04.19.08</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -3632,7 +3632,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 const targetView = document.getElementById('view-' + safeViewId);
                 if (!targetView || targetView.classList.contains('hidden')) return;
                 renderViewContent(safeViewId, forceReset, forceRender);
-            }, Math.max(0, Number(delay) || 0), typingDelay, { touchDelayMs: 140, scrollDelayMs: 120 });
+            }, Math.max(0, Number(delay) || 0), typingDelay, { touchDelayMs: 220, scrollDelayMs: 180 });
         }
 
         function queueVisibleTrackedViewRefresh(reason = 'tracked-refresh', delay = 0, typingDelay = 180) {
@@ -4879,7 +4879,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             }, 60);
         }
         const DRIVE_MODE_LABELS = { ok: 'Drive Mode' };
-        let activeDriveMode='ok'; let activeDriveTab='name'; let selectedDriveBlock=null; let selectedDriveLoc=null; let driveQuickRequestCardMode=false; let driveQuickFilterName=''; let driveQuickFilterLocation=''; let driveQuickFilterLot=''; let driveQuickFilterSize=''; let driveQuickFilterPriority=''; let driveQuickFilterLtsMode=''; let driveQuickFilterLtsValue=''; let driveQuickHoldStopOnly=false; let driveQuickFilterOptionsCacheKey=''; let driveQuickFilterOptionsCache=null; let driveBaseFilterCacheKey=''; let driveBaseFilterCacheItems=[]; let driveBaseContextCacheKey=''; let driveBaseContextCacheItems=[]; let driveBaseSearchContextKey=''; let driveBaseLastSearchTerm=''; let driveBaseLastSearchItems=[]; let driveQuickFilterCacheKey=''; let driveQuickFilterCacheItems=[]; let driveQuickFiltersModalOpen=false;
+let activeDriveMode='ok'; let activeDriveTab='card'; let selectedDriveBlock=null; let selectedDriveLoc=null; let driveQuickRequestCardMode=false; let driveQuickFilterName=''; let driveQuickFilterLocation=''; let driveQuickFilterLot=''; let driveQuickFilterSize=''; let driveQuickFilterPriority=''; let driveQuickFilterLtsMode=''; let driveQuickFilterLtsValue=''; let driveQuickHoldStopOnly=false; let driveQuickFilterOptionsCacheKey=''; let driveQuickFilterOptionsCache=null; let driveBaseFilterCacheKey=''; let driveBaseFilterCacheItems=[]; let driveBaseContextCacheKey=''; let driveBaseContextCacheItems=[]; let driveBaseSearchContextKey=''; let driveBaseLastSearchTerm=''; let driveBaseLastSearchItems=[]; let driveQuickFilterCacheKey=''; let driveQuickFilterCacheItems=[]; let driveQuickFiltersModalOpen=false;
         let driveViewLevel=0; let selectedDriveName=null; let selectedDriveSize=null; let selectedDriveCommonNames=new Set(); let driveCommonNameSearchTerm=''; let driveCommonNameFilterOpen=false; let selectedDriveGenusNames=new Set(); let driveGenusSearchTerm=''; let driveGenusFilterOpen=false; let selectedDriveContSizes=new Set(); let driveContSizeSearchTerm=''; let driveContSizeFilterOpen=false; let drivePlantFilterItemsCache=[]; let driveViewDropdownOpen=false; let driveSeasonDropdownOpen=false; const DRIVE_SEASON_OPTIONS=Object.freeze(["S1","F1","U1","U2","U3","X","Y","Z"]); let driveSelectedSeasons=new Set(DRIVE_SEASON_OPTIONS);
 
 let activeTaskTab="season"; let activeTaskSubview="all"; let taskViewTargetUser=null; let taskViewLevel=0; let selectedTaskBlock=null; let selectedTaskLoc=null; let selectedEndCapFolder=null; let selectedFlyerFolder=null; let activeFlyerFolderTab="active"; let selectedColorWalkSearchTerm=""; let selectedTaskGenusNames=new Set(); let taskGenusSearchTerm=""; let taskGenusFilterOpen=false; let taskGenusFilterItemsCache=[]; let selectedTaskContSize=""; let taskContSizeDropdownOpen=false; let taskContSizeFilterItemsCache=[]; let taskLocationDetailSearchTerm=""; let selectedTaskLocationDetailGenus=""; let selectedTaskLocationDetailLotCode=""; let taskTabDropdownOpen=false; let taskSubviewDropdownOpen=false; let pendingFlyerFolderTarget=null; let pendingFlyerFolderAssignees="";
@@ -4917,7 +4917,7 @@ let activeTaskTab="season"; let activeTaskSubview="all"; let taskViewTargetUser=
         const REQUEST_EMAIL_THREAD_SELECT_FIELDS = 'request_folder,request_customer,sales_rep_name,sales_rep_email,recipients,initial_thread_id,initial_message_id,initial_email_sent_at,last_reply_sent_at,status,metadata';
         const REQUEST_EMAIL_INTERNAL_RECIPIENTS = Object.freeze(['dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com']);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-const APP_VERSION = 'V2026.04.19.07';
+const APP_VERSION = 'V2026.04.19.08';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -6410,7 +6410,8 @@ const APP_VERSION = 'V2026.04.19.07';
 
         function disableDriveQuickRequestCardMode() {
             resetDriveQuickCardViewState();
-            setDriveTab('name');
+            closeDriveQuickFiltersModal();
+            scheduleUiRender('drive-quick-card-disable', () => renderDrive());
             return false;
         }
 
@@ -6507,7 +6508,7 @@ return false;
         }
 
         function getDriveSearchProfile() {
-            return activeDriveTab === 'loc' ? 'drive_loc' : (activeDriveTab === 'card' ? 'drive_card' : 'drive_name');
+            return 'drive_card';
         }
 
         function getDriveBaseFilterKey() {
@@ -6678,7 +6679,7 @@ function renderDriveQuickFiltersModal() {
                 <div class="sticky top-0 bg-white pb-3">
                     <div class="flex items-start justify-between gap-3">
                         <div class="min-w-0">
-                            <div class="text-[10px] font-black text-emerald-700 uppercase tracking-[0.16em]">Drive Card View Filters</div>
+                            <div class="text-[10px] font-black text-emerald-700 uppercase tracking-[0.16em]">Drive Filters</div>
                             <div class="text-lg font-black text-slate-900 mt-1">${matchingCount} matching row${matchingCount === 1 ? '' : 's'}</div>
                             <div class="text-[11px] font-semibold text-slate-500 mt-1">${activeFilters.length} active filter${activeFilters.length === 1 ? '' : 's'} | changes apply live</div>
                         </div>
@@ -6718,9 +6719,8 @@ function renderDriveQuickRequestBar() {
     const validIds = Array.from(driveQuickRequestItems).filter(domId => !!findItemByDomId(domId));
     if (validIds.length !== driveQuickRequestItems.size) driveQuickRequestItems = new Set(validIds);
     const canUseQuick = canUseDriveQuickRequest() && activeDriveMode === 'ok';
-    const showCardMode = activeDriveTab === 'card';
     const count = driveQuickRequestItems.size;
-    if (!canUseQuick || !showCardMode) {
+    if (!canUseQuick) {
         closeDriveQuickFiltersModal();
         bar.classList.add('hidden');
         bar.innerHTML = '';
@@ -6747,7 +6747,7 @@ function renderDriveQuickRequestBar() {
         ? `<button class="${disabledBtn}" disabled>Assign Items</button>`
         : `<button class="${secondaryBtn}" onclick="startDriveQuickAssignFlow()">Assign Items</button>`;
     const clearRowsBtn = `<button class="${secondaryBtn}" onclick="clearDriveQuickRequestItems()">Clear Rows</button>`;
-    const headerHtml = `<div class="min-w-0"><div class="text-[10px] font-black text-emerald-700 uppercase tracking-[0.16em]">Card View Tools</div><div class="text-base font-black text-slate-900 mt-1">${matchingCount} matching row${matchingCount === 1 ? '' : 's'} | ${count} row${count === 1 ? '' : 's'} ready</div><div class="text-[11px] font-semibold text-slate-500 mt-1">Filters open only when you need them.</div></div>`;
+    const headerHtml = `<div class="min-w-0"><div class="text-[10px] font-black text-emerald-700 uppercase tracking-[0.16em]">Drive Tools</div><div class="text-base font-black text-slate-900 mt-1">${matchingCount} matching row${matchingCount === 1 ? '' : 's'} | ${count} row${count === 1 ? '' : 's'} ready</div><div class="text-[11px] font-semibold text-slate-500 mt-1">Filters open only when you need them.</div></div>`;
     const activeFilterChips = activeFilters.length
         ? `<div class="flex gap-2 overflow-x-auto scrollbar-none pb-1">${activeFilters.map(filter => `<span class="shrink-0 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-[11px] font-black text-emerald-700 uppercase tracking-[0.08em]">${esc(filter.label)}: ${esc(filter.value)}</span>`).join('')}</div>`
         : '';
@@ -10053,38 +10053,6 @@ function toggleDriveQuickRequestItem(domId) {
                 return false;
             }
             if (currentView === 'drive') {
-                if (activeDriveMode === 'ok' && activeDriveTab === 'name') {
-                    if (driveViewLevel === 2) {
-                        backToDriveSizes();
-                        updateGlobalBackButton();
-                        return false;
-                    }
-                    if (driveViewLevel === 1) {
-                        driveViewLevel = 0;
-                        selectedDriveName = null;
-                        selectedDriveSize = null;
-                        renderDrive();
-                        updateGlobalBackButton();
-                        return false;
-                    }
-                }
-                if (activeDriveMode === 'ok' && activeDriveTab === 'loc') {
-                    if (driveViewLevel === 2) {
-                        driveViewLevel = 1;
-                        selectedDriveLoc = null;
-                        renderDrive();
-                        updateGlobalBackButton();
-                        return false;
-                    }
-                    if (driveViewLevel === 1) {
-                        driveViewLevel = 0;
-                        selectedDriveBlock = null;
-                        selectedDriveLoc = null;
-                        renderDrive();
-                        updateGlobalBackButton();
-                        return false;
-                    }
-                }
                 switchView('home');
                 return false;
             }
@@ -10266,9 +10234,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function getDriveViewLabel(tab = activeDriveTab) {
-            if (tab === 'loc') return 'By Location';
-            if (tab === 'card') return 'Card View';
-            return 'By Name';
+            return 'Cards';
         }
 
         function normalizeDriveSelectedSeasons() {
@@ -10291,7 +10257,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function closeDriveTopControlDropdowns(syncUi = true) {
-            const hadOpen = driveViewDropdownOpen || driveSeasonDropdownOpen || driveGenusFilterOpen || driveContSizeFilterOpen;
+            const hadOpen = driveSeasonDropdownOpen || driveGenusFilterOpen || driveContSizeFilterOpen;
             driveViewDropdownOpen = false;
             driveSeasonDropdownOpen = false;
             driveGenusFilterOpen = false;
@@ -10301,20 +10267,10 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function toggleDriveViewDropdown() {
-            driveViewDropdownOpen = !driveViewDropdownOpen;
-            if (driveViewDropdownOpen) {
-                driveSeasonDropdownOpen = false;
-                driveGenusFilterOpen = false;
-                driveContSizeFilterOpen = false;
-            }
-            renderDriveTopControls(drivePlantFilterItemsCache);
             return false;
         }
 
         function closeDriveViewDropdown() {
-            if (!driveViewDropdownOpen) return false;
-            driveViewDropdownOpen = false;
-            renderDriveTopControls(drivePlantFilterItemsCache);
             return false;
         }
 
@@ -10348,6 +10304,7 @@ function toggleDriveQuickRequestItem(domId) {
             activeDriveMode = mode;
             resetDriveQuickCardViewState();
             syncDriveModeTabs();
+            activeDriveTab = 'card';
             driveViewLevel = 0;
             selectedDriveName = null;
             selectedDriveSize = null;
@@ -10370,9 +10327,9 @@ function toggleDriveQuickRequestItem(domId) {
             queueScrollMainAreaToTop(`drive-mode:${mode}`);
         }
         function setDriveTab(tab) {
-            if (tab !== 'card') closeDriveQuickFiltersModal();
-            activeDriveTab = tab;
-            driveQuickRequestCardMode = tab === 'card';
+            closeDriveQuickFiltersModal();
+            activeDriveTab = 'card';
+            driveQuickRequestCardMode = true;
             driveViewDropdownOpen = false;
             driveSeasonDropdownOpen = false;
             driveGenusFilterOpen = false;
@@ -10383,7 +10340,7 @@ function toggleDriveQuickRequestItem(domId) {
             selectedDriveBlock = null;
             selectedDriveLoc = null;
             scheduleUiRender('drive-tab', () => renderDrive());
-            queueScrollMainAreaToTop(`drive-tab:${tab}`);
+            queueScrollMainAreaToTop('drive-tab:card');
         }
 
         function toggleDriveHoldStopOnly() {
@@ -10406,7 +10363,7 @@ function toggleDriveQuickRequestItem(domId) {
             activeDriveMode = 'ok';
             resetDriveQuickCardViewState();
             syncDriveModeTabs();
-            activeDriveTab = 'name';
+            activeDriveTab = 'card';
             driveViewLevel = 0; selectedDriveName = null; selectedDriveSize = null; selectedDriveBlock = null; selectedDriveLoc = null;
             selectedDriveCommonNames = new Set(); driveCommonNameSearchTerm = ''; driveCommonNameFilterOpen = false; selectedDriveGenusNames = new Set(); driveGenusSearchTerm = ''; driveGenusFilterOpen = false; selectedDriveContSizes = new Set(); driveContSizeSearchTerm = ''; driveContSizeFilterOpen = false; drivePlantFilterItemsCache = [];
             driveViewDropdownOpen = false; driveSeasonDropdownOpen = false;
@@ -16725,6 +16682,7 @@ function toggleDriveQuickRequestItem(domId) {
                 const displayCaliper = getItemDisplayValue(item, 'CALIPER', displaySourceView);
                 const displayMatch = getItemDisplayValue(item, 'MATCH', displaySourceView);
                 const displayHoldStopCode = firstNonEmptyValue(item.HOLDSTOPCODE, item.holdstopcode, '-') || '-';
+                const displaySource = firstNonEmptyValue(item.SOURCE, item.source, '-') || '-';
                 let noteHtml='';
                 const holdHtml = buildHoldReasonHtml();
                 const salesNoteHtml = buildSalesNoteHtml();
@@ -16740,7 +16698,7 @@ function toggleDriveQuickRequestItem(domId) {
                     const isQueued=driveQuickRequestItems.has(item.DOM_ID);
                     quickRequestBtn=`<div class="mt-3 flex items-center justify-between"><span class="text-[10px] font-black uppercase tracking-wider ${isQueued?'text-orange-700':'text-gray-400'}">${isQueued?'Queued For Action':'Quick Add'}</span><button type="button" aria-label="${isQueued?'Remove from builder':'Add to builder'}" class="inline-flex items-center justify-center w-9 h-9 rounded-full shadow-sm border ${isQueued?'bg-orange-600 text-white border-orange-600':'bg-white text-orange-600 border-orange-300'} active:scale-95" onclick="event.stopPropagation(); toggleDriveQuickRequestItem('${item.DOM_ID}')"><i class="ph-bold ${isQueued?'ph-check':'ph-plus'} text-lg"></i></button></div>`;
                 }
-                return `<div class="flex items-center w-full mb-3 item-row app-smart-card relative bg-white p-4 rounded-xl border border-gray-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-grow items-start justify-between min-w-0"><div class="app-card-main flex-grow min-w-0 pr-2"><div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[#007a4d]"><span class="text-[17px] font-black leading-tight">${item.CONTSIZE||'-'}</span><span class="text-[17px] font-black leading-tight break-words">${item.COMMONNAME||'Unknown'}</span><span class="text-[15px] font-black leading-tight">${item.LOCATIONCODE||'No Loc'}</span><span class="text-[15px] font-black leading-tight">${item.SOURCE||'-'}</span></div><div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-black"><span class="text-[12px] font-black uppercase">PRI ${item.PRIORITY||'-'}</span><span class="text-[12px] font-black">${item.ITEMCODE||'-'}</span><span class="text-[12px] font-black">${item.LOTCODE||'-'}</span></div><div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-slate-700">PTRAVAILABLE <span class="text-slate-900">${item.PTRAVAILABLE||'0'}</span></span><span class="rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-purple-700">S_LTS <span class="text-purple-900">${item.S_LTS||'0'}</span></span><span class="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-amber-700">HOLDSTOPCODE <span class="text-amber-900">${displayHoldStopCode}</span></span></div>${extraData}${noteHtml}${quickRequestBtn}</div>${inlineThumbHtml}</div></div>`;
+                return `<div class="flex items-center w-full mb-3 item-row app-smart-card relative bg-white p-4 rounded-xl border border-gray-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-grow items-start justify-between min-w-0"><div class="app-card-main flex-grow min-w-0 pr-2"><div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[#007a4d]"><span class="text-[17px] font-black leading-tight">${item.CONTSIZE||'-'}</span><span class="text-[17px] font-black leading-tight break-words">${item.COMMONNAME||'Unknown'}</span><span class="text-[15px] font-black leading-tight">${item.LOCATIONCODE||'No Loc'}</span><span class="text-[15px] font-black leading-tight">${displaySource}</span></div><div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-black"><span class="text-[12px] font-black uppercase">PRI ${item.PRIORITY||'-'}</span><span class="text-[12px] font-black">${item.ITEMCODE||'-'}</span><span class="text-[12px] font-black">${item.LOTCODE||'-'}</span></div><div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-slate-700">PTRAVAILABLE <span class="text-slate-900">${item.PTRAVAILABLE||'0'}</span></span><span class="rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-purple-700">S_LTS <span class="text-purple-900">${item.S_LTS||'0'}</span></span><span class="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-amber-700">HOLDSTOPCODE <span class="text-amber-900">${displayHoldStopCode}</span></span></div>${extraData}${noteHtml}${quickRequestBtn}</div>${inlineThumbHtml}</div></div>`;
             }
             if(sourceView==='tasks'){
                 const displaySourceView = sourceView;
@@ -18180,7 +18138,6 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (!container) return buildDrivePlantFilterState(items);
             drivePlantFilterItemsCache = Array.isArray(items) ? items : [];
             const state = buildDrivePlantFilterState(drivePlantFilterItemsCache);
-            const driveViewSummary = getDriveViewLabel(activeDriveTab);
             const driveSeasonSummary = getDriveSeasonSummaryLabel();
             const genusSummary = state.genusOptions.length
                 ? (state.genusSelectedCount ? `${state.genusSelectedCount} selected` : 'All Genus')
@@ -18189,16 +18146,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                 ? (state.contSizeSelectedCount ? `${state.contSizeSelectedCount} selected` : 'All Sizes')
                 : 'No Sizes';
             const holdSummary = driveQuickHoldStopOnly ? 'Hold Only' : 'All Rows';
-            const controlButtonClass = (isActive = false) => `task-top-control-button inline-flex w-full items-center gap-2 rounded-full border px-2.5 py-2 text-left text-[9px] font-black uppercase tracking-[0.12em] sm:px-3 sm:text-[10px] ${isActive ? 'bg-emerald-600 border-emerald-600 text-white shadow-md' : 'bg-white border-emerald-200 text-emerald-700 shadow-sm'}`;
-            const holdButtonClass = `task-top-control-button inline-flex w-full items-center gap-2 rounded-full border px-2.5 py-2 text-left text-[9px] font-black uppercase tracking-[0.12em] sm:px-3 sm:text-[10px] ${driveQuickHoldStopOnly ? 'bg-amber-400 border-amber-500 text-amber-950 shadow-md' : 'bg-white border-amber-300 text-amber-700 shadow-sm'}`;
-            const viewOptionsHtml = [
-                { value: 'name', label: 'By Name' },
-                { value: 'loc', label: 'By Location' },
-                { value: 'card', label: 'Card View' }
-            ].map((option) => {
-                const isSelected = option.value === activeDriveTab;
-                return `<button type="button" class="flex w-full items-center justify-between gap-3 px-3 py-2 text-left ${isSelected ? 'bg-emerald-50 text-emerald-700' : 'text-slate-700 hover:bg-emerald-50'}" onclick="return setDriveTab('${option.value}')"><span class="text-[12px] font-bold">${esc(option.label)}</span>${isSelected ? '<i class="ph-bold ph-check text-sm"></i>' : ''}</button>`;
-            }).join('');
+            const controlButtonClass = (isActive = false) => `task-top-control-button inline-flex w-full items-center gap-2 rounded-full border px-3 py-2.5 text-left text-[10px] font-black uppercase tracking-[0.11em] sm:px-3.5 sm:text-[10px] ${isActive ? 'bg-emerald-600 border-emerald-600 text-white shadow-md' : 'bg-white border-emerald-200 text-emerald-700 shadow-sm'}`;
+            const holdButtonClass = `task-top-control-button inline-flex w-full items-center gap-2 rounded-full border px-3 py-2.5 text-left text-[10px] font-black uppercase tracking-[0.11em] sm:px-3.5 sm:text-[10px] ${driveQuickHoldStopOnly ? 'bg-amber-400 border-amber-500 text-amber-950 shadow-md' : 'bg-white border-amber-300 text-amber-700 shadow-sm'}`;
             const seasonOptionsHtml = DRIVE_SEASON_OPTIONS.map((season) => {
                 const checked = driveSelectedSeasons.has(season) ? 'checked' : '';
                 return `<label class="flex items-center justify-between gap-3 px-3 py-2.5 hover:bg-emerald-50"><span class="min-w-0 break-words text-[12px] font-bold text-slate-700">${esc(season)}</span><input type="checkbox" class="h-4 w-4 shrink-0 accent-emerald-600" data-season="${esc(season)}" ${checked} onclick="event.stopPropagation(); return toggleDriveSeason(this.dataset.season)"></label>`;
@@ -18209,7 +18158,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             const contSizeOptionHtml = state.sizeOptions.length
                 ? buildDrivePlantMultiSelectOptionsHtml(state.filteredSizeOptions, selectedDriveContSizes, 'contsize', 'toggleDriveContSizeSelection', 'No matching container sizes.')
                 : '<div class="px-3 py-4 text-center text-[11px] font-semibold text-gray-400">No CONTSIZE data available.</div>';
-            const markup = `<div class="drive-top-controls-row"><div class="task-top-control-shell drive-filter-shell rounded-[1.05rem] border border-emerald-100 bg-white/95 shadow-sm backdrop-blur-sm" data-drive-filter-shell="view"><button type="button" class="${controlButtonClass(driveViewDropdownOpen)}" onclick="return toggleDriveViewDropdown()"><i class="ph-bold ph-squares-four text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Drive View</span><span class="task-top-control-summary truncate">${esc(driveViewSummary)}</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="task-top-control-panel mt-2 ${driveViewDropdownOpen ? '' : 'hidden '}overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm"><div class="max-h-72 overflow-y-auto">${viewOptionsHtml}</div><div class="border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeDriveViewDropdown()">Done</button></div></div></div><div class="task-top-control-shell drive-filter-shell rounded-[1.05rem] border border-emerald-100 bg-white/95 shadow-sm backdrop-blur-sm" data-drive-filter-shell="season"><button type="button" class="${controlButtonClass(driveSeasonDropdownOpen)}" onclick="return toggleDriveSeasonDropdown()"><i class="ph-bold ph-calendar-blank text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Season</span><span class="task-top-control-summary truncate">${esc(driveSeasonSummary)}</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="task-top-control-panel mt-2 ${driveSeasonDropdownOpen ? '' : 'hidden '}overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm"><div class="max-h-72 overflow-y-auto">${seasonOptionsHtml}</div><div class="grid grid-cols-2 gap-2 border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm" onclick="return selectAllDriveSeasons()">Select All</button><button type="button" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeDriveSeasonDropdown()">Done</button></div></div></div><div class="task-top-control-shell drive-filter-shell rounded-[1.05rem] border border-emerald-100 bg-white/95 shadow-sm backdrop-blur-sm" data-drive-filter-shell="genus"><button type="button" class="${controlButtonClass(driveGenusFilterOpen)}" onclick="return toggleDriveGenusDropdown()"><i class="ph-bold ph-leaf text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Genus</span><span class="task-top-control-summary truncate">${esc(genusSummary)}</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="task-top-control-panel mt-2 ${driveGenusFilterOpen ? '' : 'hidden '}overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm"><div class="border-b border-emerald-100 p-2"><input id="drive-genus-search" type="text" class="input-field !mb-0 border-emerald-200 bg-white !py-2.5" placeholder="Search genus..." value="${esc(driveGenusSearchTerm)}" oninput="setDriveGenusSearchTerm(this.value)" onkeydown="dismissSearchKeyboard(event)"></div><div class="max-h-56 overflow-y-auto">${genusOptionHtml}</div><div class="grid grid-cols-2 gap-2 border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm ${state.genusSelectedCount === 0 && !String(driveGenusSearchTerm || '').trim() ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}" onclick="return clearDriveGenusFilters()">Clear</button><button type="button" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeDriveGenusDropdown()">Done</button></div></div></div><div class="task-top-control-shell drive-filter-shell rounded-[1.05rem] border border-emerald-100 bg-white/95 shadow-sm backdrop-blur-sm" data-drive-filter-shell="contsize"><button type="button" class="${controlButtonClass(driveContSizeFilterOpen)}" onclick="return toggleDriveContSizeDropdown()"><i class="ph-bold ph-ruler text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Cont Size</span><span class="task-top-control-summary truncate">${esc(contSizeSummary)}</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="task-top-control-panel mt-2 ${driveContSizeFilterOpen ? '' : 'hidden '}overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm"><div class="border-b border-emerald-100 p-2"><input id="drive-contsize-search" type="text" class="input-field !mb-0 border-emerald-200 bg-white !py-2.5" placeholder="Search cont size..." value="${esc(driveContSizeSearchTerm)}" oninput="setDriveContSizeSearchTerm(this.value)" onkeydown="dismissSearchKeyboard(event)"></div><div class="max-h-56 overflow-y-auto">${contSizeOptionHtml}</div><div class="grid grid-cols-2 gap-2 border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm ${state.contSizeSelectedCount === 0 && !String(driveContSizeSearchTerm || '').trim() ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}" onclick="return clearDriveContSizeFilters()">Clear</button><button type="button" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeDriveContSizeDropdown()">Done</button></div></div></div><div class="task-top-control-shell drive-filter-shell drive-filter-shell--toggle rounded-[1.05rem] border border-emerald-100 bg-white/95 shadow-sm backdrop-blur-sm" data-drive-filter-shell="hold"><button type="button" class="${holdButtonClass}" onclick="return toggleDriveHoldStopOnly()"><i class="ph-bold ph-warning-circle text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">H/S Hold</span><span class="task-top-control-summary truncate">${esc(holdSummary)}</span></span></button></div></div>`;
+            const markup = `<div class="drive-top-controls-row"><div class="task-top-control-shell drive-filter-shell rounded-[1.05rem] border border-emerald-100 bg-white/95 shadow-sm backdrop-blur-sm" data-drive-filter-shell="season"><button type="button" class="${controlButtonClass(driveSeasonDropdownOpen)}" onclick="return toggleDriveSeasonDropdown()"><i class="ph-bold ph-calendar-blank text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Season</span><span class="task-top-control-summary truncate">${esc(driveSeasonSummary)}</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="task-top-control-panel mt-2 ${driveSeasonDropdownOpen ? '' : 'hidden '}overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm"><div class="max-h-72 overflow-y-auto">${seasonOptionsHtml}</div><div class="grid grid-cols-2 gap-2 border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm" onclick="return selectAllDriveSeasons()">Select All</button><button type="button" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeDriveSeasonDropdown()">Done</button></div></div></div><div class="task-top-control-shell drive-filter-shell rounded-[1.05rem] border border-emerald-100 bg-white/95 shadow-sm backdrop-blur-sm" data-drive-filter-shell="genus"><button type="button" class="${controlButtonClass(driveGenusFilterOpen)}" onclick="return toggleDriveGenusDropdown()"><i class="ph-bold ph-leaf text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Genus</span><span class="task-top-control-summary truncate">${esc(genusSummary)}</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="task-top-control-panel mt-2 ${driveGenusFilterOpen ? '' : 'hidden '}overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm"><div class="border-b border-emerald-100 p-2"><input id="drive-genus-search" type="text" class="input-field !mb-0 border-emerald-200 bg-white !py-2.5" placeholder="Search genus..." value="${esc(driveGenusSearchTerm)}" oninput="setDriveGenusSearchTerm(this.value)" onkeydown="dismissSearchKeyboard(event)"></div><div class="max-h-56 overflow-y-auto">${genusOptionHtml}</div><div class="grid grid-cols-2 gap-2 border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm ${state.genusSelectedCount === 0 && !String(driveGenusSearchTerm || '').trim() ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}" onclick="return clearDriveGenusFilters()">Clear</button><button type="button" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeDriveGenusDropdown()">Done</button></div></div></div><div class="task-top-control-shell drive-filter-shell rounded-[1.05rem] border border-emerald-100 bg-white/95 shadow-sm backdrop-blur-sm" data-drive-filter-shell="contsize"><button type="button" class="${controlButtonClass(driveContSizeFilterOpen)}" onclick="return toggleDriveContSizeDropdown()"><i class="ph-bold ph-ruler text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Cont Size</span><span class="task-top-control-summary truncate">${esc(contSizeSummary)}</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="task-top-control-panel mt-2 ${driveContSizeFilterOpen ? '' : 'hidden '}overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm"><div class="border-b border-emerald-100 p-2"><input id="drive-contsize-search" type="text" class="input-field !mb-0 border-emerald-200 bg-white !py-2.5" placeholder="Search cont size..." value="${esc(driveContSizeSearchTerm)}" oninput="setDriveContSizeSearchTerm(this.value)" onkeydown="dismissSearchKeyboard(event)"></div><div class="max-h-56 overflow-y-auto">${contSizeOptionHtml}</div><div class="grid grid-cols-2 gap-2 border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm ${state.contSizeSelectedCount === 0 && !String(driveContSizeSearchTerm || '').trim() ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}" onclick="return clearDriveContSizeFilters()">Clear</button><button type="button" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeDriveContSizeDropdown()">Done</button></div></div></div><div class="task-top-control-shell drive-filter-shell drive-filter-shell--toggle rounded-[1.05rem] border border-emerald-100 bg-white/95 shadow-sm backdrop-blur-sm" data-drive-filter-shell="hold"><button type="button" class="${holdButtonClass}" onclick="return toggleDriveHoldStopOnly()"><i class="ph-bold ph-warning-circle text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">H/S Hold</span><span class="task-top-control-summary truncate">${esc(holdSummary)}</span></span></button></div></div>`;
             container.classList.add('drive-top-inline');
             container.classList.remove('hidden');
             syncDriveFilterStrip(container, markup, buildDriveTopControlsSignature(state));
@@ -18426,6 +18375,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 clean(item.CONTSIZE),
                 clean(item.ITEMCODE),
                 clean(item.LOCATIONCODE),
+                clean(item.SOURCE),
                 clean(item.LOTCODE),
                 clean(item.PTRAVAILABLE),
                 clean(item.PRIORITY),
@@ -18438,7 +18388,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                 clean(item.AV_NOTE),
                 clean(holdCode),
                 clean(photoLink),
-                selectedItems.has(item.DOM_ID) ? '1' : '0'
+                selectedItems.has(item.DOM_ID) ? '1' : '0',
+                'drive-cards-v2'
             ].join('|');
         }
 
@@ -18483,7 +18434,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         function renderDriveQuickCardResultsOnly() {
             const driveView = document.getElementById('view-drive');
             if (!driveView || driveView.classList.contains('hidden')) return false;
-            if (!(activeDriveMode === 'ok' && activeDriveTab === 'card')) return false;
+            if (activeDriveMode !== 'ok') return false;
             const container = document.getElementById('drive-content');
             const crumb = document.getElementById('drive-crumb');
             if (!container || !crumb) return false;
@@ -18491,11 +18442,11 @@ ${folderNote ? `Folder Note: ${folderNote}
             const baseItems = canUseDriveQuickRequest() ? getDriveFilteredItems(true) : getDriveFilteredItems(false);
             const drivePlantFilterState = renderDriveTopControls(baseItems);
             const finalItems = sortDriveCardItems(drivePlantFilterState.filteredItems);
-            const crumbText = `${driveModeLabel} > Card View (${finalItems.length} items)`;
+            const crumbText = `${driveModeLabel} (${finalItems.length} items)`;
             const renderKey = buildDriveRenderKey(`drive:quick-card:${canUseDriveQuickRequest() ? 'quick' : 'base'}`, crumbText, finalItems);
             if (finalItems.length === 0) {
                 const emptyMessage = canUseDriveQuickRequest()
-                    ? 'No rows match the current Card View filters.'
+                    ? 'No rows match the current Drive filters.'
                     : 'No items found matching the current search.';
                 applyDriveRenderMarkup(container, crumb, crumbText, `<div class="p-8 text-center text-gray-400">${emptyMessage}</div>`, 'drive:quick-card:empty');
                 return true;
@@ -18521,7 +18472,6 @@ ${folderNote ? `Folder Note: ${folderNote}
             const crumb = document.getElementById('drive-crumb');
             const driveModeLabel = DRIVE_MODE_LABELS[activeDriveMode] || 'Drive Mode';
             const drillTabs = document.getElementById('drive-drill-tabs');
-            const quickCardMode = activeDriveMode === 'ok' && activeDriveTab === 'card';
             bumpChunkRenderTokenByKey('drive-main-card');
             if (drillTabs) drillTabs.classList.add('hidden');
             renderDriveQuickRequestBar();
@@ -18538,150 +18488,27 @@ ${folderNote ? `Folder Note: ${folderNote}
             const drivePlantFilterState = renderDriveTopControls(baseSearchFilteredItems);
             hideDrivePlantFilters();
             const searchFilteredItems = drivePlantFilterState.filteredItems;
-
-            if (quickCardMode) {
-                const finalItems = sortDriveCardItems(canUseDriveQuickRequest() ? getDriveFilteredItems(true) : searchFilteredItems);
-                const crumbText = `${driveModeLabel} > Card View (${finalItems.length} items)`;
-                const renderKey = buildDriveRenderKey(`drive:card:${canUseDriveQuickRequest() ? 'quick' : 'base'}`, crumbText, finalItems);
-                if (finalItems.length === 0) {
-                    const emptyMessage = canUseDriveQuickRequest()
-                        ? 'No rows match the current Card View filters.'
-                        : 'No items found matching the current search.';
-                    applyDriveRenderMarkup(container, crumb, crumbText, `<div class="p-8 text-center text-gray-400">${emptyMessage}</div>`, 'drive:card:empty');
-                    return;
-                }
-                if (shouldUseChunkedCardRender(finalItems.length, 90, 170)) {
-                    syncDriveCrumb(crumb, crumbText);
-                    if (container.dataset && container.dataset.driveRenderKey === renderKey) return;
-                    if (container.dataset) container.dataset.driveRenderKey = renderKey;
-                    renderMarkupChunkedByKey('drive-main-card', container, crumb, finalItems, crumbText, (item) => generateCard(item, 'drive', 'status-blue'), {
-                        approxCardHeight: 310
-                    });
-                    return;
-                }
-                const html = finalItems.map((item) => generateCard(item, 'drive', 'status-blue')).join('');
-                applyDriveRenderMarkup(container, crumb, crumbText, html, renderKey);
+            const finalItems = sortDriveCardItems(canUseDriveQuickRequest() ? getDriveFilteredItems(true) : searchFilteredItems);
+            const crumbText = `${driveModeLabel} (${finalItems.length} items)`;
+            const renderKey = buildDriveRenderKey(`drive:cards:${canUseDriveQuickRequest() ? 'quick' : 'base'}`, crumbText, finalItems);
+            if (finalItems.length === 0) {
+                const emptyMessage = canUseDriveQuickRequest()
+                    ? 'No rows match the current Drive filters.'
+                    : 'No items found matching the current search.';
+                applyDriveRenderMarkup(container, crumb, crumbText, `<div class="p-8 text-center text-gray-400">${emptyMessage}</div>`, 'drive:cards:empty');
                 return;
             }
-
-            if (searchFilteredItems.length === 0) {
-                applyDriveRenderMarkup(container, crumb, `${driveModeLabel} > No Results`, `<div class="p-8 text-center text-gray-400">No items found matching the current search.</div>`, `drive:${activeDriveTab}:empty`);
+            if (shouldUseChunkedCardRender(finalItems.length, 90, 170)) {
+                syncDriveCrumb(crumb, crumbText);
+                if (container.dataset && container.dataset.driveRenderKey === renderKey) return;
+                if (container.dataset) container.dataset.driveRenderKey = renderKey;
+                renderMarkupChunkedByKey('drive-main-card', container, crumb, finalItems, crumbText, (item) => generateCard(item, 'drive', 'status-blue'), {
+                    approxCardHeight: 310
+                });
                 return;
             }
-            if (activeDriveTab === 'name') {
-                if (driveViewLevel === 0) {
-                    const crumbText = `${driveModeLabel} > Select Plant (${searchFilteredItems.length} items)`;
-                    const names = [...new Set(searchFilteredItems.map((item) => getDrivePlantCommonName(item)).filter(Boolean))].sort(compareDriveCommonName);
-                    const renderNameRow = (name) => `<div class="drill-item" onclick="selectDriveName('${esc(name)}')"><span class="font-bold text-lg">${name}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
-                    const renderKey = buildDriveRenderKey('drive:name:list', crumbText, names);
-                    if (shouldUseChunkedCardRender(names.length, 120, 220)) {
-                        syncDriveCrumb(crumb, crumbText);
-                        if (container.dataset && container.dataset.driveRenderKey === renderKey) return;
-                        if (container.dataset) container.dataset.driveRenderKey = renderKey;
-                        renderMarkupChunkedByKey('drive-name-list', container, crumb, names, crumbText, renderNameRow, { approxCardHeight: 70, reserveSpace: true });
-                        return;
-                    }
-                    const html = names.map(renderNameRow).join('');
-                    applyDriveRenderMarkup(container, crumb, crumbText, html, renderKey);
-                } else if (driveViewLevel === 1) {
-                    const crumbText = `${driveModeLabel} > ${selectedDriveName}`;
-                    const namedItems = searchFilteredItems.filter((item) => getDrivePlantCommonName(item) === selectedDriveName);
-                    const prefixHtml = `<div class="back-btn" onclick="backToDriveNames()"><i class="ph-bold ph-arrow-left"></i> Back to Names</div><div class="font-bold text-[#007a4d] mb-4 px-2 text-xl border-b pb-2">${selectedDriveName}</div>`;
-                    if (!namedItems.length) {
-                        applyDriveRenderMarkup(container, crumb, crumbText, `${prefixHtml}<div class="p-8 text-center text-gray-400">No items found.</div>`, `drive:name:sizes:${selectedDriveName}:empty`);
-                        return;
-                    }
-                    const sizeCounts = new Map();
-                    namedItems.forEach((item) => {
-                        const key = String(item.CONTSIZE || '-');
-                        sizeCounts.set(key, (sizeCounts.get(key) || 0) + 1);
-                    });
-                    const sizes = [...sizeCounts.keys()].sort(compareDrivePlantContSize);
-                    const renderSizeRow = (size) => `<div class="drill-item" onclick="selectDriveSize('${esc(size)}')"><span class="font-bold text-lg">${size} <span class="text-gray-400 text-sm font-normal">(${sizeCounts.get(size) || 0})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
-                    const sizeEntries = sizes.map((size) => ({ __driveRenderKeyValue: `${size}:${sizeCounts.get(size) || 0}` }));
-                    const renderKey = buildDriveRenderKey(`drive:name:sizes:${selectedDriveName}`, crumbText, sizeEntries);
-                    if (shouldUseChunkedCardRender(sizes.length, 120, 220)) {
-                        syncDriveCrumb(crumb, crumbText);
-                        if (container.dataset && container.dataset.driveRenderKey === renderKey) return;
-                        if (container.dataset) container.dataset.driveRenderKey = renderKey;
-                        renderMarkupChunkedByKey('drive-name-size-list', container, crumb, sizes, crumbText, renderSizeRow, { approxCardHeight: 72, prefixHtml, reserveSpace: true, reserveOffset: 60 });
-                        return;
-                    }
-                    const html = prefixHtml + sizes.map(renderSizeRow).join('');
-                    applyDriveRenderMarkup(container, crumb, crumbText, html, renderKey);
-                } else if (driveViewLevel === 2) {
-                    const crumbText = `${driveModeLabel} > ${selectedDriveName} / ${selectedDriveSize}`;
-                    const finalItems = sortDriveCardItems(searchFilteredItems.filter((item) => getDrivePlantCommonName(item) === selectedDriveName && String(item.CONTSIZE || '-') === selectedDriveSize));
-                    const prefixHtml = `<div class="back-btn" onclick="backToDriveSizes()"><i class="ph-bold ph-arrow-left"></i> Back to Sizes</div>`;
-                    const renderKey = buildDriveRenderKey(`drive:name:cards:${selectedDriveName}:${selectedDriveSize}`, crumbText, finalItems);
-                    if (shouldUseChunkedCardRender(finalItems.length, 80, 160)) {
-                        syncDriveCrumb(crumb, crumbText);
-                        if (container.dataset && container.dataset.driveRenderKey === renderKey) return;
-                        if (container.dataset) container.dataset.driveRenderKey = renderKey;
-                        renderMarkupChunkedByKey('drive-name-card-list', container, crumb, finalItems, crumbText, (item) => generateCard(item, 'drive', 'status-blue'), { approxCardHeight: 310, prefixHtml });
-                        return;
-                    }
-                    const html = prefixHtml + finalItems.map((item) => generateCard(item, 'drive', 'status-blue')).join('');
-                    applyDriveRenderMarkup(container, crumb, crumbText, html, renderKey);
-                }
-            } else if (activeDriveTab === 'loc') {
-                if (driveViewLevel === 0) {
-                    const crumbText = `${driveModeLabel} > Select Block (${searchFilteredItems.length} items)`;
-                    const blocks = {};
-                    searchFilteredItems.forEach((item) => {
-                        const loc = String(item.LOCATIONCODE || 'NoLoc').trim();
-                        let blockAlpha = loc.charAt(0).toUpperCase();
-                        if (!/[A-Z]/.test(blockAlpha)) blockAlpha = 'Other';
-                        if (!blocks[blockAlpha]) blocks[blockAlpha] = { count: 0 };
-                        blocks[blockAlpha].count++;
-                    });
-                    const blockKeys = Object.keys(blocks).sort();
-                    const blockEntries = blockKeys.map((blockKey) => ({ __driveRenderKeyValue: `${blockKey}:${blocks[blockKey].count}` }));
-                    const html = blockKeys.map((blockKey) => `<div class="bg-white border border-green-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectDriveBlock('${esc(blockKey)}')"><div class="flex items-center gap-3"><div class="bg-green-100 text-[#007a4d] px-3 py-1.5 rounded-lg font-black text-lg">${blockKey}</div><span class="font-bold text-lg text-gray-700">Block ${blockKey}</span></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${blocks[blockKey].count} Items</span></div>`).join('');
-                    applyDriveRenderMarkup(container, crumb, crumbText, html, buildDriveRenderKey('drive:loc:block-list', crumbText, blockEntries));
-                } else if (driveViewLevel === 1) {
-                    const crumbText = `${driveModeLabel} > Block ${selectedDriveBlock}`;
-                    const blockItems = searchFilteredItems.filter((item) => {
-                        const loc = String(item.LOCATIONCODE || 'NoLoc').trim();
-                        let alpha = loc.charAt(0).toUpperCase();
-                        if (!/[A-Z]/.test(alpha)) alpha = 'Other';
-                        return alpha === selectedDriveBlock;
-                    });
-                    const locCounts = new Map();
-                    blockItems.forEach((item) => {
-                        const key = String(item.LOCATIONCODE || 'NoLoc');
-                        locCounts.set(key, (locCounts.get(key) || 0) + 1);
-                    });
-                    const locs = [...locCounts.keys()].sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true }));
-                    const prefixHtml = `<div class="back-btn" onclick="backToDriveBlocks()"><i class="ph-bold ph-arrow-left"></i> Back to Blocks</div>`;
-                    const renderLocRow = (loc) => `<div class="drill-item" onclick="selectDriveLoc('${esc(loc)}')"><span class="font-bold text-lg text-gray-800">${loc} <span class="text-gray-400 text-sm font-normal">(${locCounts.get(loc) || 0})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
-                    const locEntries = locs.map((loc) => ({ __driveRenderKeyValue: `${loc}:${locCounts.get(loc) || 0}` }));
-                    const renderKey = buildDriveRenderKey(`drive:loc:list:${selectedDriveBlock}`, crumbText, locEntries);
-                    if (shouldUseChunkedCardRender(locs.length, 120, 220)) {
-                        syncDriveCrumb(crumb, crumbText);
-                        if (container.dataset && container.dataset.driveRenderKey === renderKey) return;
-                        if (container.dataset) container.dataset.driveRenderKey = renderKey;
-                        renderMarkupChunkedByKey('drive-loc-list', container, crumb, locs, crumbText, renderLocRow, { approxCardHeight: 72, prefixHtml });
-                        return;
-                    }
-                    const html = prefixHtml + locs.map(renderLocRow).join('');
-                    applyDriveRenderMarkup(container, crumb, crumbText, html, renderKey);
-                } else if (driveViewLevel === 2) {
-                    const crumbText = `${driveModeLabel} > Block ${selectedDriveBlock} / Loc ${selectedDriveLoc}`;
-                    const finalItems = sortDriveCardItems(searchFilteredItems.filter((item) => (item.LOCATIONCODE || 'NoLoc') === selectedDriveLoc));
-                    const prefixHtml = `<div class="back-btn" onclick="backToDriveLocations()"><i class="ph-bold ph-arrow-left"></i> Back to Locations</div>`;
-                    const renderKey = buildDriveRenderKey(`drive:loc:cards:${selectedDriveBlock}:${selectedDriveLoc}`, crumbText, finalItems);
-                    if (shouldUseChunkedCardRender(finalItems.length, 80, 160)) {
-                        syncDriveCrumb(crumb, crumbText);
-                        if (container.dataset && container.dataset.driveRenderKey === renderKey) return;
-                        if (container.dataset) container.dataset.driveRenderKey = renderKey;
-                        renderMarkupChunkedByKey('drive-loc-card-list', container, crumb, finalItems, crumbText, (item) => generateCard(item, 'drive', 'status-blue'), { approxCardHeight: 310, prefixHtml });
-                        return;
-                    }
-                    const html = prefixHtml + finalItems.map((item) => generateCard(item, 'drive', 'status-blue')).join('');
-                    applyDriveRenderMarkup(container, crumb, crumbText, html, renderKey);
-                }
-            }
+            const html = finalItems.map((item) => generateCard(item, 'drive', 'status-blue')).join('');
+            applyDriveRenderMarkup(container, crumb, crumbText, html, renderKey);
         }
 
         function toggleDriveSeason(s) {
