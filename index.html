@@ -106,6 +106,29 @@
         body.viewport-compact #task-tabs-container.task-top-inline #task-genus-filters .task-top-control-panel,
         body.viewport-compact #task-tabs-container.task-top-inline #task-contsize-filters .task-top-control-panel{left:auto;right:0}
         body.viewport-compact #task-tabs-container.task-top-inline #task-genus-filters .task-top-control-panel{width:min(17rem,calc(100vw - (var(--shell-gutter) * 2)))}
+        #drive-season-filters.drive-top-inline{display:block;overflow:visible !important;padding:0 !important;margin-bottom:.35rem !important}
+        #drive-season-filters.drive-top-inline .drive-top-controls-row{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:.42rem;align-items:start}
+        #drive-season-filters.drive-top-inline .task-top-control-shell{position:relative;height:100%;padding:.38rem .42rem;border-radius:1rem}
+        #drive-season-filters.drive-top-inline .task-top-control-button{position:relative;min-height:44px;padding:.42rem .45rem;gap:.38rem;border-radius:999px}
+        #drive-season-filters.drive-top-inline .task-top-control-button i{font-size:.82rem}
+        #drive-season-filters.drive-top-inline .task-top-control-title{font-size:.44rem;letter-spacing:.11em}
+        #drive-season-filters.drive-top-inline .task-top-control-summary{margin-top:.14rem;font-size:.58rem;line-height:1.05}
+        #drive-season-filters.drive-top-inline .task-top-control-panel{position:absolute;top:calc(100% + .28rem);left:0;z-index:80;width:min(16rem,calc(100vw - (var(--shell-gutter) * 2)));max-width:calc(100vw - (var(--shell-gutter) * 2))}
+        #drive-season-filters.drive-top-inline [data-drive-filter-shell="season"] .task-top-control-panel,
+        #drive-season-filters.drive-top-inline [data-drive-filter-shell="genus"] .task-top-control-panel,
+        #drive-season-filters.drive-top-inline [data-drive-filter-shell="contsize"] .task-top-control-panel{left:auto;right:0}
+        #drive-season-filters.drive-top-inline [data-drive-filter-shell="season"] .task-top-control-panel{width:min(14rem,calc(100vw - (var(--shell-gutter) * 2)))}
+        #drive-season-filters.drive-top-inline [data-drive-filter-shell="genus"] .task-top-control-panel{width:min(17rem,calc(100vw - (var(--shell-gutter) * 2)))}
+        #drive-season-filters.drive-top-inline [data-drive-filter-shell="contsize"] .task-top-control-panel{width:min(15rem,calc(100vw - (var(--shell-gutter) * 2)))}
+        #drive-season-filters.drive-top-inline .drive-filter-shell--toggle .task-top-control-button{justify-content:flex-start}
+        body.viewport-compact #drive-season-filters.drive-top-inline .drive-top-controls-row{gap:.3rem !important}
+        body.viewport-compact #drive-season-filters.drive-top-inline .task-top-control-shell{padding:.3rem .34rem !important;border-radius:.92rem !important}
+        body.viewport-compact #drive-season-filters.drive-top-inline .task-top-control-button{min-height:40px !important;padding:.34rem .38rem !important;gap:.28rem !important;border-radius:999px !important}
+        body.viewport-compact #drive-season-filters.drive-top-inline .task-top-control-button i{font-size:.74rem !important}
+        body.viewport-compact #drive-season-filters.drive-top-inline .task-top-control-title{font-size:.4rem !important;letter-spacing:.1em !important}
+        body.viewport-compact #drive-season-filters.drive-top-inline .task-top-control-summary{margin-top:.12rem !important;font-size:.54rem !important;line-height:1 !important}
+        body.viewport-compact #drive-season-filters.drive-top-inline .task-top-control-panel{top:calc(100% + .24rem);width:min(15rem,calc(100vw - (var(--shell-gutter) * 2)));max-width:calc(100vw - (var(--shell-gutter) * 2))}
+        body.viewport-compact #drive-season-filters.drive-top-inline [data-drive-filter-shell="genus"] .task-top-control-panel{width:min(16rem,calc(100vw - (var(--shell-gutter) * 2)))}
         #drive-plant-filters.drive-top-inline .drive-plant-filter-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.5rem}
         #drive-plant-filters .task-top-control-shell{position:relative;height:100%}
         #drive-plant-filters .task-top-control-button{position:relative}
@@ -521,7 +544,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-                                <div id="header-version" class="nav-version-pill">V2026.04.19.04</div>
+<div id="header-version" class="nav-version-pill">V2026.04.19.05</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -985,8 +1008,8 @@
             auth: { persistSession: false, autoRefreshToken: false },
             realtime: { params: { eventsPerSecond: 8 } }
         });
-        const LIVE_SYNC_POLL_STANDALONE_MS = 10000;
-        const LIVE_SYNC_POLL_BROWSER_MS = 12000;
+const LIVE_SYNC_POLL_STANDALONE_MS = 3000;
+const LIVE_SYNC_POLL_BROWSER_MS = 5000;
         const LIVE_SYNC_VIEW_POLICY = Object.freeze({
             home: { realtimeTables: [], pollMs: 0 },
             drive: { realtimeTables: [], pollMs: 'visible-default' },
@@ -4810,7 +4833,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         }
         const DRIVE_MODE_LABELS = { ok: 'Drive Mode' };
         let activeDriveMode='ok'; let activeDriveTab='name'; let selectedDriveBlock=null; let selectedDriveLoc=null; let driveQuickRequestCardMode=false; let driveQuickFilterName=''; let driveQuickFilterLocation=''; let driveQuickFilterLot=''; let driveQuickFilterSize=''; let driveQuickFilterPriority=''; let driveQuickFilterLtsMode=''; let driveQuickFilterLtsValue=''; let driveQuickHoldStopOnly=false; let driveQuickFilterOptionsCacheKey=''; let driveQuickFilterOptionsCache=null; let driveBaseFilterCacheKey=''; let driveBaseFilterCacheItems=[]; let driveBaseContextCacheKey=''; let driveBaseContextCacheItems=[]; let driveBaseSearchContextKey=''; let driveBaseLastSearchTerm=''; let driveBaseLastSearchItems=[]; let driveQuickFilterCacheKey=''; let driveQuickFilterCacheItems=[]; let driveQuickFiltersModalOpen=false;
-        let driveViewLevel=0; let selectedDriveName=null; let selectedDriveSize=null; let selectedDriveCommonNames=new Set(); let driveCommonNameSearchTerm=''; let driveCommonNameFilterOpen=false; let selectedDriveGenusNames=new Set(); let driveGenusSearchTerm=''; let driveGenusFilterOpen=false; let selectedDriveContSizes=new Set(); let driveContSizeSearchTerm=''; let driveContSizeFilterOpen=false; let drivePlantFilterItemsCache=[]; let driveSelectedSeasons=new Set(['ALL']); const availableSeasons=["ALL","S1","F1","U1","U2","U3","X","Y","Z"];
+        let driveViewLevel=0; let selectedDriveName=null; let selectedDriveSize=null; let selectedDriveCommonNames=new Set(); let driveCommonNameSearchTerm=''; let driveCommonNameFilterOpen=false; let selectedDriveGenusNames=new Set(); let driveGenusSearchTerm=''; let driveGenusFilterOpen=false; let selectedDriveContSizes=new Set(); let driveContSizeSearchTerm=''; let driveContSizeFilterOpen=false; let drivePlantFilterItemsCache=[]; let driveViewDropdownOpen=false; let driveSeasonDropdownOpen=false; const DRIVE_SEASON_OPTIONS=Object.freeze(["S1","F1","U1","U2","U3","X","Y","Z"]); let driveSelectedSeasons=new Set(DRIVE_SEASON_OPTIONS);
 
 let activeTaskTab="season"; let activeTaskSubview="all"; let taskViewTargetUser=null; let taskViewLevel=0; let selectedTaskBlock=null; let selectedTaskLoc=null; let selectedEndCapFolder=null; let selectedFlyerFolder=null; let activeFlyerFolderTab="active"; let selectedColorWalkSearchTerm=""; let selectedTaskGenusNames=new Set(); let taskGenusSearchTerm=""; let taskGenusFilterOpen=false; let taskGenusFilterItemsCache=[]; let selectedTaskContSize=""; let taskContSizeDropdownOpen=false; let taskContSizeFilterItemsCache=[]; let taskLocationDetailSearchTerm=""; let selectedTaskLocationDetailGenus=""; let selectedTaskLocationDetailLotCode=""; let taskTabDropdownOpen=false; let taskSubviewDropdownOpen=false; let pendingFlyerFolderTarget=null; let pendingFlyerFolderAssignees="";
         let detailReturnState = { viewId: '', scrollTop: 0 };
@@ -4847,7 +4870,7 @@ let activeTaskTab="season"; let activeTaskSubview="all"; let taskViewTargetUser=
         const REQUEST_EMAIL_THREAD_SELECT_FIELDS = 'request_folder,request_customer,sales_rep_name,sales_rep_email,recipients,initial_thread_id,initial_message_id,initial_email_sent_at,last_reply_sent_at,status,metadata';
         const REQUEST_EMAIL_INTERNAL_RECIPIENTS = Object.freeze(['dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com']);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-        const APP_VERSION = 'V2026.04.19.04';
+const APP_VERSION = 'V2026.04.19.05';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -5046,7 +5069,7 @@ let activeTaskTab="season"; let activeTaskSubview="all"; let taskViewTargetUser=
 
             document.querySelectorAll('.freeze-panel .task-tabs, .freeze-panel .detail-tabs').forEach((el) => el.classList.add('amazon-filter-strip'));
             const driveSeasonFilters = document.getElementById('drive-season-filters');
-            if (driveSeasonFilters) driveSeasonFilters.classList.add('amazon-filter-chip-row');
+            if (driveSeasonFilters) driveSeasonFilters.classList.remove('amazon-filter-chip-row');
             ['av-crumb','reports-crumb','request-crumb','reserves-crumb','docks-crumb','low-stock-crumb','drive-crumb','task-crumb','review-crumb'].forEach((id) => {
                 const el = document.getElementById(id);
                 if (el) el.classList.add('amazon-crumb');
@@ -6466,7 +6489,8 @@ return false;
                 baseItems = driveBaseContextCacheItems;
             } else {
                 baseItems = getDriveModeItems();
-                if (!driveSelectedSeasons.has('ALL')) {
+                normalizeDriveSelectedSeasons();
+                if (!areAllDriveSeasonsSelected()) {
                     baseItems = baseItems.filter(i => {
                         let s = String(i.SEASON || '').toUpperCase();
                         return driveSelectedSeasons.has(s);
@@ -10193,6 +10217,84 @@ function toggleDriveQuickRequestItem(domId) {
             if (driveModeTab) driveModeTab.classList.toggle('active', activeDriveMode === 'ok');
         }
 
+        function getDriveViewLabel(tab = activeDriveTab) {
+            if (tab === 'loc') return 'By Location';
+            if (tab === 'card') return 'Card View';
+            return 'By Name';
+        }
+
+        function normalizeDriveSelectedSeasons() {
+            const validSelections = [...driveSelectedSeasons].filter((season) => DRIVE_SEASON_OPTIONS.includes(String(season || '').trim().toUpperCase()))
+                .map((season) => String(season || '').trim().toUpperCase());
+            driveSelectedSeasons = new Set(validSelections);
+            if (!driveSelectedSeasons.size) driveSelectedSeasons = new Set(DRIVE_SEASON_OPTIONS);
+            return driveSelectedSeasons;
+        }
+
+        function areAllDriveSeasonsSelected() {
+            normalizeDriveSelectedSeasons();
+            return driveSelectedSeasons.size === DRIVE_SEASON_OPTIONS.length
+                && DRIVE_SEASON_OPTIONS.every((season) => driveSelectedSeasons.has(season));
+        }
+
+        function getDriveSeasonSummaryLabel() {
+            normalizeDriveSelectedSeasons();
+            return areAllDriveSeasonsSelected() ? 'All Seasons' : `${driveSelectedSeasons.size} selected`;
+        }
+
+        function closeDriveTopControlDropdowns(syncUi = true) {
+            const hadOpen = driveViewDropdownOpen || driveSeasonDropdownOpen || driveGenusFilterOpen || driveContSizeFilterOpen;
+            driveViewDropdownOpen = false;
+            driveSeasonDropdownOpen = false;
+            driveGenusFilterOpen = false;
+            driveContSizeFilterOpen = false;
+            if (syncUi && hadOpen) renderDriveTopControls(drivePlantFilterItemsCache);
+            return false;
+        }
+
+        function toggleDriveViewDropdown() {
+            driveViewDropdownOpen = !driveViewDropdownOpen;
+            if (driveViewDropdownOpen) {
+                driveSeasonDropdownOpen = false;
+                driveGenusFilterOpen = false;
+                driveContSizeFilterOpen = false;
+            }
+            renderDriveTopControls(drivePlantFilterItemsCache);
+            return false;
+        }
+
+        function closeDriveViewDropdown() {
+            if (!driveViewDropdownOpen) return false;
+            driveViewDropdownOpen = false;
+            renderDriveTopControls(drivePlantFilterItemsCache);
+            return false;
+        }
+
+        function toggleDriveSeasonDropdown() {
+            driveSeasonDropdownOpen = !driveSeasonDropdownOpen;
+            if (driveSeasonDropdownOpen) {
+                driveViewDropdownOpen = false;
+                driveGenusFilterOpen = false;
+                driveContSizeFilterOpen = false;
+            }
+            renderDriveTopControls(drivePlantFilterItemsCache);
+            return false;
+        }
+
+        function closeDriveSeasonDropdown() {
+            if (!driveSeasonDropdownOpen) return false;
+            driveSeasonDropdownOpen = false;
+            renderDriveTopControls(drivePlantFilterItemsCache);
+            return false;
+        }
+
+        function selectAllDriveSeasons() {
+            driveSelectedSeasons = new Set(DRIVE_SEASON_OPTIONS);
+            driveSeasonDropdownOpen = true;
+            scheduleUiRender('drive-season-select-all', () => renderDrive());
+            return false;
+        }
+
         function setDriveMode(mode) {
             closeDriveQuickFiltersModal();
             activeDriveMode = mode;
@@ -10213,37 +10315,35 @@ function toggleDriveQuickRequestItem(domId) {
             driveContSizeSearchTerm = '';
             driveContSizeFilterOpen = false;
             drivePlantFilterItemsCache = [];
+            driveViewDropdownOpen = false;
+            driveSeasonDropdownOpen = false;
+            driveSelectedSeasons = new Set(DRIVE_SEASON_OPTIONS);
             scheduleUiRender('drive-tab', () => renderDrive());
             queueScrollMainAreaToTop(`drive-mode:${mode}`);
         }
         function setDriveTab(tab) {
             if (tab !== 'card') closeDriveQuickFiltersModal();
-activeDriveTab = tab;
+            activeDriveTab = tab;
             driveQuickRequestCardMode = tab === 'card';
-            document.getElementById('tab-drive-name').classList.toggle('active', tab === 'name');
-            document.getElementById('tab-drive-loc').classList.toggle('active', tab === 'loc');
-            document.getElementById('tab-drive-card').classList.toggle('active', tab === 'card');
+            driveViewDropdownOpen = false;
+            driveSeasonDropdownOpen = false;
+            driveGenusFilterOpen = false;
+            driveContSizeFilterOpen = false;
             driveViewLevel = 0;
             selectedDriveName = null;
             selectedDriveSize = null;
             selectedDriveBlock = null;
             selectedDriveLoc = null;
-            selectedDriveCommonNames = new Set();
-            driveCommonNameSearchTerm = '';
-            driveCommonNameFilterOpen = false;
-            selectedDriveGenusNames = new Set();
-            driveGenusSearchTerm = '';
-            driveGenusFilterOpen = false;
-            selectedDriveContSizes = new Set();
-            driveContSizeSearchTerm = '';
-            driveContSizeFilterOpen = false;
-            drivePlantFilterItemsCache = [];
             scheduleUiRender('drive-tab', () => renderDrive());
             queueScrollMainAreaToTop(`drive-tab:${tab}`);
         }
 
         function toggleDriveHoldStopOnly() {
             driveQuickHoldStopOnly = !driveQuickHoldStopOnly;
+            driveViewDropdownOpen = false;
+            driveSeasonDropdownOpen = false;
+            driveGenusFilterOpen = false;
+            driveContSizeFilterOpen = false;
             driveViewLevel = 0;
             selectedDriveName = null;
             selectedDriveSize = null;
@@ -10259,13 +10359,11 @@ activeDriveTab = tab;
             resetDriveQuickCardViewState();
             syncDriveModeTabs();
             activeDriveTab = 'name';
-            document.getElementById('tab-drive-name').classList.add('active');
-            document.getElementById('tab-drive-loc').classList.remove('active');
-            document.getElementById('tab-drive-card').classList.remove('active');
             driveViewLevel = 0; selectedDriveName = null; selectedDriveSize = null; selectedDriveBlock = null; selectedDriveLoc = null;
             selectedDriveCommonNames = new Set(); driveCommonNameSearchTerm = ''; driveCommonNameFilterOpen = false; selectedDriveGenusNames = new Set(); driveGenusSearchTerm = ''; driveGenusFilterOpen = false; selectedDriveContSizes = new Set(); driveContSizeSearchTerm = ''; driveContSizeFilterOpen = false; drivePlantFilterItemsCache = [];
+            driveViewDropdownOpen = false; driveSeasonDropdownOpen = false;
             document.getElementById('drive-search').value = ""; document.getElementById('drive-search-clear').classList.add('hidden');
-            driveSelectedSeasons.clear(); driveSelectedSeasons.add('ALL');
+            driveSelectedSeasons = new Set(DRIVE_SEASON_OPTIONS);
             driveQuickHoldStopOnly = false;
             scheduleUiRender('drive-season-filter', () => renderDrive());
         }
@@ -17952,17 +18050,6 @@ ${folderNote ? `Folder Note: ${folderNote}
         function buildDrivePlantFilterState(items = []) {
             const baseItems = Array.isArray(items) ? items : [];
 
-            const commonNameOptions = [...new Set(baseItems.map((item) => getDrivePlantCommonName(item)).filter(Boolean))]
-                .sort(compareDriveCommonName);
-            const availableCommonNames = new Set(commonNameOptions);
-            if (selectedDriveCommonNames.size) {
-                selectedDriveCommonNames = new Set([...selectedDriveCommonNames].filter((name) => availableCommonNames.has(name)));
-            }
-            const commonNameSearchTerm = String(driveCommonNameSearchTerm || '').trim().toLowerCase();
-            const filteredCommonNameOptions = commonNameSearchTerm
-                ? commonNameOptions.filter((name) => String(name).toLowerCase().includes(commonNameSearchTerm))
-                : commonNameOptions;
-
             const genusOptions = [...new Set(baseItems.map((item) => getTaskGenusName(item)).filter(Boolean))]
                 .sort((a, b) => String(a).localeCompare(String(b)));
             const availableGenus = new Set(genusOptions);
@@ -17986,8 +18073,6 @@ ${folderNote ? `Folder Note: ${folderNote}
                 : sizeOptions;
 
             const filteredItems = baseItems.filter((item) => {
-                const commonName = getDrivePlantCommonName(item);
-                if (selectedDriveCommonNames.size && !selectedDriveCommonNames.has(commonName)) return false;
                 const genusName = getTaskGenusName(item);
                 if (selectedDriveGenusNames.size && !selectedDriveGenusNames.has(genusName)) return false;
                 const contSize = getDrivePlantContSize(item);
@@ -17998,17 +18083,14 @@ ${folderNote ? `Folder Note: ${folderNote}
             return {
                 baseItems,
                 filteredItems,
-                commonNameOptions,
-                filteredCommonNameOptions,
                 genusOptions,
                 filteredGenusOptions,
                 sizeOptions,
                 filteredSizeOptions,
-                commonNameSelectedCount: selectedDriveCommonNames.size,
                 genusSelectedCount: selectedDriveGenusNames.size,
                 contSizeSelectedCount: selectedDriveContSizes.size,
-                hasActiveFilters: !!(selectedDriveCommonNames.size || selectedDriveGenusNames.size || selectedDriveContSizes.size),
-                hasTypedSearch: !!(String(driveCommonNameSearchTerm || '').trim() || String(driveGenusSearchTerm || '').trim() || String(driveContSizeSearchTerm || '').trim())
+                hasActiveFilters: !!(selectedDriveGenusNames.size || selectedDriveContSizes.size),
+                hasTypedSearch: !!(String(driveGenusSearchTerm || '').trim() || String(driveContSizeSearchTerm || '').trim())
             };
         }
 
@@ -18020,154 +18102,63 @@ ${folderNote ? `Folder Note: ${folderNote}
             container.innerHTML = '';
             if (container.dataset) delete container.dataset.drivePlantFiltersReady;
         }
-        function updateDrivePlantFilterUi(state, container) {
-            if (!container) return;
-            const hasCommonNameOptions = !!(state && state.commonNameOptions && state.commonNameOptions.length);
-            const hasGenusOptions = !!(state && state.genusOptions && state.genusOptions.length);
-            const hasContSizeOptions = !!(state && state.sizeOptions && state.sizeOptions.length);
 
-            const commonNameSummaryLabel = hasCommonNameOptions
-                ? (state.commonNameSelectedCount ? `${state.commonNameSelectedCount} selected` : 'All names')
-                : 'No names';
-            const genusSummaryLabel = hasGenusOptions
-                ? (state.genusSelectedCount ? `${state.genusSelectedCount} selected` : 'All genus')
-                : 'No genus';
-            const contSizeSummaryLabel = hasContSizeOptions
-                ? (state.contSizeSelectedCount ? `${state.contSizeSelectedCount} selected` : 'All sizes')
-                : 'No sizes';
-
-            const commonNameChipsHtml = state.commonNameSelectedCount
-                ? buildDrivePlantMultiSelectChipsHtml([...selectedDriveCommonNames], 'commonname', 'toggleDriveCommonNameSelection', compareDriveCommonName)
-                : '';
-            const genusChipsHtml = state.genusSelectedCount
-                ? buildDrivePlantMultiSelectChipsHtml([...selectedDriveGenusNames], 'genus', 'toggleDriveGenusSelection', compareDriveCommonName)
-                : '';
-            const contSizeChipsHtml = state.contSizeSelectedCount
-                ? buildDrivePlantMultiSelectChipsHtml([...selectedDriveContSizes], 'contsize', 'toggleDriveContSizeSelection', compareDrivePlantContSize)
-                : '';
-
-            const commonNameOptionHtml = hasCommonNameOptions
-                ? buildDrivePlantMultiSelectOptionsHtml(state.filteredCommonNameOptions, selectedDriveCommonNames, 'commonname', 'toggleDriveCommonNameSelection', 'No matching common names.')
-                : '<div class="px-3 py-4 text-center text-[11px] font-semibold text-gray-400">No COMMONNAME data available.</div>';
-            const genusOptionHtml = hasGenusOptions
+        function renderDriveTopControls(items = []) {
+            const container = document.getElementById('drive-season-filters');
+            if (!container) return buildDrivePlantFilterState(items);
+            drivePlantFilterItemsCache = Array.isArray(items) ? items : [];
+            const state = buildDrivePlantFilterState(drivePlantFilterItemsCache);
+            const driveViewSummary = getDriveViewLabel(activeDriveTab);
+            const driveSeasonSummary = getDriveSeasonSummaryLabel();
+            const genusSummary = state.genusOptions.length
+                ? (state.genusSelectedCount ? `${state.genusSelectedCount} selected` : 'All Genus')
+                : 'No Genus';
+            const contSizeSummary = state.sizeOptions.length
+                ? (state.contSizeSelectedCount ? `${state.contSizeSelectedCount} selected` : 'All Sizes')
+                : 'No Sizes';
+            const holdSummary = driveQuickHoldStopOnly ? 'Hold Only' : 'All Rows';
+            const controlButtonClass = (isActive = false) => `task-top-control-button inline-flex w-full items-center gap-2 rounded-full border px-2.5 py-2 text-left text-[9px] font-black uppercase tracking-[0.12em] sm:px-3 sm:text-[10px] ${isActive ? 'bg-emerald-600 border-emerald-600 text-white shadow-md' : 'bg-white border-emerald-200 text-emerald-700 shadow-sm'}`;
+            const holdButtonClass = `task-top-control-button inline-flex w-full items-center gap-2 rounded-full border px-2.5 py-2 text-left text-[9px] font-black uppercase tracking-[0.12em] sm:px-3 sm:text-[10px] ${driveQuickHoldStopOnly ? 'bg-amber-400 border-amber-500 text-amber-950 shadow-md' : 'bg-white border-amber-300 text-amber-700 shadow-sm'}`;
+            const viewOptionsHtml = [
+                { value: 'name', label: 'By Name' },
+                { value: 'loc', label: 'By Location' },
+                { value: 'card', label: 'Card View' }
+            ].map((option) => {
+                const isSelected = option.value === activeDriveTab;
+                return `<button type="button" class="flex w-full items-center justify-between gap-3 px-3 py-2 text-left ${isSelected ? 'bg-emerald-50 text-emerald-700' : 'text-slate-700 hover:bg-emerald-50'}" onclick="return setDriveTab('${option.value}')"><span class="text-[12px] font-bold">${esc(option.label)}</span>${isSelected ? '<i class="ph-bold ph-check text-sm"></i>' : ''}</button>`;
+            }).join('');
+            const seasonOptionsHtml = DRIVE_SEASON_OPTIONS.map((season) => {
+                const checked = driveSelectedSeasons.has(season) ? 'checked' : '';
+                return `<label class="flex items-center justify-between gap-3 px-3 py-2.5 hover:bg-emerald-50"><span class="min-w-0 break-words text-[12px] font-bold text-slate-700">${esc(season)}</span><input type="checkbox" class="h-4 w-4 shrink-0 accent-emerald-600" data-season="${esc(season)}" ${checked} onclick="event.stopPropagation(); return toggleDriveSeason(this.dataset.season)"></label>`;
+            }).join('');
+            const genusOptionHtml = state.genusOptions.length
                 ? buildDrivePlantMultiSelectOptionsHtml(state.filteredGenusOptions, selectedDriveGenusNames, 'genus', 'toggleDriveGenusSelection', 'No matching genus names.')
                 : '<div class="px-3 py-4 text-center text-[11px] font-semibold text-gray-400">No GENUSNAME data available.</div>';
-            const contSizeOptionHtml = hasContSizeOptions
+            const contSizeOptionHtml = state.sizeOptions.length
                 ? buildDrivePlantMultiSelectOptionsHtml(state.filteredSizeOptions, selectedDriveContSizes, 'contsize', 'toggleDriveContSizeSelection', 'No matching container sizes.')
                 : '<div class="px-3 py-4 text-center text-[11px] font-semibold text-gray-400">No CONTSIZE data available.</div>';
-
-            const rowLabel = `${state.filteredItems.length} matching row${state.filteredItems.length === 1 ? '' : 's'}`;
-            const rowCountEl = container.querySelector('[data-drive-filter-rowcount]');
-            if (rowCountEl) rowCountEl.textContent = rowLabel;
-
-            const commonSummaryEl = container.querySelector('[data-drive-common-summary]');
-            if (commonSummaryEl) {
-                commonSummaryEl.textContent = commonNameSummaryLabel;
-                commonSummaryEl.classList.toggle('text-emerald-100', driveCommonNameFilterOpen);
-                commonSummaryEl.classList.toggle('text-slate-500', !driveCommonNameFilterOpen);
-            }
-            const genusSummaryEl = container.querySelector('[data-drive-genus-summary]');
-            if (genusSummaryEl) {
-                genusSummaryEl.textContent = genusSummaryLabel;
-                genusSummaryEl.classList.toggle('text-emerald-100', driveGenusFilterOpen);
-                genusSummaryEl.classList.toggle('text-slate-500', !driveGenusFilterOpen);
-            }
-            const contSizeSummaryEl = container.querySelector('[data-drive-contsize-summary]');
-            if (contSizeSummaryEl) {
-                contSizeSummaryEl.textContent = contSizeSummaryLabel;
-                contSizeSummaryEl.classList.toggle('text-emerald-100', driveContSizeFilterOpen);
-                contSizeSummaryEl.classList.toggle('text-slate-500', !driveContSizeFilterOpen);
-            }
-
-            const commonChipsEl = container.querySelector('[data-drive-common-chips]');
-            if (commonChipsEl) commonChipsEl.innerHTML = commonNameChipsHtml;
-            const genusChipsEl = container.querySelector('[data-drive-genus-chips]');
-            if (genusChipsEl) genusChipsEl.innerHTML = genusChipsHtml;
-            const contSizeChipsEl = container.querySelector('[data-drive-contsize-chips]');
-            if (contSizeChipsEl) contSizeChipsEl.innerHTML = contSizeChipsHtml;
-
-            const commonOptionsEl = container.querySelector('[data-drive-common-options]');
-            if (commonOptionsEl) commonOptionsEl.innerHTML = commonNameOptionHtml;
-            const genusOptionsEl = container.querySelector('[data-drive-genus-options]');
-            if (genusOptionsEl) genusOptionsEl.innerHTML = genusOptionHtml;
-            const contSizeOptionsEl = container.querySelector('[data-drive-contsize-options]');
-            if (contSizeOptionsEl) contSizeOptionsEl.innerHTML = contSizeOptionHtml;
-
-            const commonPanelEl = container.querySelector('[data-drive-common-panel]');
-            if (commonPanelEl) commonPanelEl.classList.toggle('hidden', !driveCommonNameFilterOpen);
-            const genusPanelEl = container.querySelector('[data-drive-genus-panel]');
-            if (genusPanelEl) genusPanelEl.classList.toggle('hidden', !driveGenusFilterOpen);
-            const contSizePanelEl = container.querySelector('[data-drive-contsize-panel]');
-            if (contSizePanelEl) contSizePanelEl.classList.toggle('hidden', !driveContSizeFilterOpen);
-
-            setDrivePlantFilterTriggerState(container, 'common', driveCommonNameFilterOpen);
-            setDrivePlantFilterTriggerState(container, 'genus', driveGenusFilterOpen);
-            setDrivePlantFilterTriggerState(container, 'contsize', driveContSizeFilterOpen);
-
-            const clearBtn = container.querySelector('[data-drive-filters-clear]');
-            const clearDisabled = !state.hasActiveFilters && !state.hasTypedSearch;
-            if (clearBtn) {
-                clearBtn.classList.toggle('opacity-50', clearDisabled);
-                clearBtn.classList.toggle('cursor-not-allowed', clearDisabled);
-                clearBtn.classList.toggle('pointer-events-none', clearDisabled);
-            }
-
-            const commonInput = container.querySelector('#drive-common-search');
-            if (commonInput && document.activeElement !== commonInput && commonInput.value !== driveCommonNameSearchTerm) {
-                commonInput.value = driveCommonNameSearchTerm;
-            }
-            const genusInput = container.querySelector('#drive-genus-search');
-            if (genusInput && document.activeElement !== genusInput && genusInput.value !== driveGenusSearchTerm) {
-                genusInput.value = driveGenusSearchTerm;
-            }
-            const contSizeInput = container.querySelector('#drive-contsize-search');
-            if (contSizeInput && document.activeElement !== contSizeInput && contSizeInput.value !== driveContSizeSearchTerm) {
-                contSizeInput.value = driveContSizeSearchTerm;
-            }
+            const markup = `<div class="drive-top-controls-row"><div class="task-top-control-shell drive-filter-shell rounded-[1.05rem] border border-emerald-100 bg-white/95 shadow-sm backdrop-blur-sm" data-drive-filter-shell="view"><button type="button" class="${controlButtonClass(driveViewDropdownOpen)}" onclick="return toggleDriveViewDropdown()"><i class="ph-bold ph-squares-four text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Drive View</span><span class="task-top-control-summary truncate">${esc(driveViewSummary)}</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="task-top-control-panel mt-2 ${driveViewDropdownOpen ? '' : 'hidden '}overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm"><div class="max-h-72 overflow-y-auto">${viewOptionsHtml}</div><div class="border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeDriveViewDropdown()">Done</button></div></div></div><div class="task-top-control-shell drive-filter-shell rounded-[1.05rem] border border-emerald-100 bg-white/95 shadow-sm backdrop-blur-sm" data-drive-filter-shell="season"><button type="button" class="${controlButtonClass(driveSeasonDropdownOpen)}" onclick="return toggleDriveSeasonDropdown()"><i class="ph-bold ph-calendar-blank text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Season</span><span class="task-top-control-summary truncate">${esc(driveSeasonSummary)}</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="task-top-control-panel mt-2 ${driveSeasonDropdownOpen ? '' : 'hidden '}overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm"><div class="max-h-72 overflow-y-auto">${seasonOptionsHtml}</div><div class="grid grid-cols-2 gap-2 border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm" onclick="return selectAllDriveSeasons()">Select All</button><button type="button" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeDriveSeasonDropdown()">Done</button></div></div></div><div class="task-top-control-shell drive-filter-shell rounded-[1.05rem] border border-emerald-100 bg-white/95 shadow-sm backdrop-blur-sm" data-drive-filter-shell="genus"><button type="button" class="${controlButtonClass(driveGenusFilterOpen)}" onclick="return toggleDriveGenusDropdown()"><i class="ph-bold ph-leaf text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Genus</span><span class="task-top-control-summary truncate">${esc(genusSummary)}</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="task-top-control-panel mt-2 ${driveGenusFilterOpen ? '' : 'hidden '}overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm"><div class="border-b border-emerald-100 p-2"><input id="drive-genus-search" type="text" class="input-field !mb-0 border-emerald-200 bg-white !py-2.5" placeholder="Search genus..." value="${esc(driveGenusSearchTerm)}" oninput="setDriveGenusSearchTerm(this.value)" onkeydown="dismissSearchKeyboard(event)"></div><div class="max-h-56 overflow-y-auto">${genusOptionHtml}</div><div class="grid grid-cols-2 gap-2 border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm ${state.genusSelectedCount === 0 && !String(driveGenusSearchTerm || '').trim() ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}" onclick="return clearDriveGenusFilters()">Clear</button><button type="button" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeDriveGenusDropdown()">Done</button></div></div></div><div class="task-top-control-shell drive-filter-shell rounded-[1.05rem] border border-emerald-100 bg-white/95 shadow-sm backdrop-blur-sm" data-drive-filter-shell="contsize"><button type="button" class="${controlButtonClass(driveContSizeFilterOpen)}" onclick="return toggleDriveContSizeDropdown()"><i class="ph-bold ph-ruler text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Cont Size</span><span class="task-top-control-summary truncate">${esc(contSizeSummary)}</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="task-top-control-panel mt-2 ${driveContSizeFilterOpen ? '' : 'hidden '}overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm"><div class="border-b border-emerald-100 p-2"><input id="drive-contsize-search" type="text" class="input-field !mb-0 border-emerald-200 bg-white !py-2.5" placeholder="Search cont size..." value="${esc(driveContSizeSearchTerm)}" oninput="setDriveContSizeSearchTerm(this.value)" onkeydown="dismissSearchKeyboard(event)"></div><div class="max-h-56 overflow-y-auto">${contSizeOptionHtml}</div><div class="grid grid-cols-2 gap-2 border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm ${state.contSizeSelectedCount === 0 && !String(driveContSizeSearchTerm || '').trim() ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}" onclick="return clearDriveContSizeFilters()">Clear</button><button type="button" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeDriveContSizeDropdown()">Done</button></div></div></div><div class="task-top-control-shell drive-filter-shell drive-filter-shell--toggle rounded-[1.05rem] border border-emerald-100 bg-white/95 shadow-sm backdrop-blur-sm" data-drive-filter-shell="hold"><button type="button" class="${holdButtonClass}" onclick="return toggleDriveHoldStopOnly()"><i class="ph-bold ph-warning-circle text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">H/S HOLD</span><span class="task-top-control-summary truncate">${esc(holdSummary)}</span></span></button></div></div>`;
+            container.classList.add('drive-top-inline');
             container.classList.remove('hidden');
+            syncDriveFilterStrip(container, markup);
+            return state;
         }
-
-        function toggleDriveCommonNameDropdown() {
-            const nextState = !driveCommonNameFilterOpen;
-            driveCommonNameFilterOpen = nextState;
-            if (nextState) {
-                driveGenusFilterOpen = false;
-                driveContSizeFilterOpen = false;
-            }
-            renderDrivePlantFilters(drivePlantFilterItemsCache);
-            return false;
-        }
-
-        function closeDriveCommonNameDropdown() {
-            if (!driveCommonNameFilterOpen) return false;
-            driveCommonNameFilterOpen = false;
-            const container = document.getElementById('drive-plant-filters');
-            if (container) {
-                const state = buildDrivePlantFilterState(drivePlantFilterItemsCache);
-                updateDrivePlantFilterUi(state, container);
-            }
-            return false;
-        }
-
         function toggleDriveGenusDropdown() {
             const nextState = !driveGenusFilterOpen;
             driveGenusFilterOpen = nextState;
             if (nextState) {
-                driveCommonNameFilterOpen = false;
+                driveViewDropdownOpen = false;
+                driveSeasonDropdownOpen = false;
                 driveContSizeFilterOpen = false;
             }
-            renderDrivePlantFilters(drivePlantFilterItemsCache);
+            renderDriveTopControls(drivePlantFilterItemsCache);
             return false;
         }
 
         function closeDriveGenusDropdown() {
             if (!driveGenusFilterOpen) return false;
             driveGenusFilterOpen = false;
-            const container = document.getElementById('drive-plant-filters');
-            if (container) {
-                const state = buildDrivePlantFilterState(drivePlantFilterItemsCache);
-                updateDrivePlantFilterUi(state, container);
-            }
+            renderDriveTopControls(drivePlantFilterItemsCache);
             return false;
         }
 
@@ -18175,108 +18166,50 @@ ${folderNote ? `Folder Note: ${folderNote}
             const nextState = !driveContSizeFilterOpen;
             driveContSizeFilterOpen = nextState;
             if (nextState) {
-                driveCommonNameFilterOpen = false;
+                driveViewDropdownOpen = false;
+                driveSeasonDropdownOpen = false;
                 driveGenusFilterOpen = false;
             }
-            renderDrivePlantFilters(drivePlantFilterItemsCache);
+            renderDriveTopControls(drivePlantFilterItemsCache);
             return false;
         }
 
         function closeDriveContSizeDropdown() {
             if (!driveContSizeFilterOpen) return false;
             driveContSizeFilterOpen = false;
-            const container = document.getElementById('drive-plant-filters');
-            if (container) {
-                const state = buildDrivePlantFilterState(drivePlantFilterItemsCache);
-                updateDrivePlantFilterUi(state, container);
-            }
-            return false;
-        }
-        function setDriveCommonNameSearchTerm(value = '') {
-            driveCommonNameSearchTerm = String(value || '');
-            const container = document.getElementById('drive-plant-filters');
-            if (container) {
-                const input = container.querySelector('#drive-common-search');
-                const cursorPos = input && typeof input.selectionStart === 'number' ? input.selectionStart : null;
-                const state = buildDrivePlantFilterState(drivePlantFilterItemsCache);
-                updateDrivePlantFilterUi(state, container);
-                if (input) {
-                    requestAnimationFrame(() => {
-                        const current = container.querySelector('#drive-common-search');
-                        if (!current) return;
-                        if (document.activeElement !== current) current.focus();
-                        if (cursorPos !== null && typeof current.setSelectionRange === 'function') {
-                            current.setSelectionRange(cursorPos, cursorPos);
-                        }
-                    });
-                }
-                return false;
-            }
-            renderDrivePlantFilters(drivePlantFilterItemsCache);
+            renderDriveTopControls(drivePlantFilterItemsCache);
             return false;
         }
 
         function setDriveGenusSearchTerm(value = '') {
             driveGenusSearchTerm = String(value || '');
-            const container = document.getElementById('drive-plant-filters');
-            if (container) {
-                const input = container.querySelector('#drive-genus-search');
-                const cursorPos = input && typeof input.selectionStart === 'number' ? input.selectionStart : null;
-                const state = buildDrivePlantFilterState(drivePlantFilterItemsCache);
-                updateDrivePlantFilterUi(state, container);
-                if (input) {
-                    requestAnimationFrame(() => {
-                        const current = container.querySelector('#drive-genus-search');
-                        if (!current) return;
-                        if (document.activeElement !== current) current.focus();
-                        if (cursorPos !== null && typeof current.setSelectionRange === 'function') {
-                            current.setSelectionRange(cursorPos, cursorPos);
-                        }
-                    });
+            const input = document.getElementById('drive-genus-search');
+            const cursorPos = input && typeof input.selectionStart === 'number' ? input.selectionStart : null;
+            renderDriveTopControls(drivePlantFilterItemsCache);
+            requestAnimationFrame(() => {
+                const current = document.getElementById('drive-genus-search');
+                if (!current) return;
+                if (document.activeElement !== current) current.focus();
+                if (cursorPos !== null && typeof current.setSelectionRange === 'function') {
+                    current.setSelectionRange(cursorPos, cursorPos);
                 }
-                return false;
-            }
-            renderDrivePlantFilters(drivePlantFilterItemsCache);
+            });
             return false;
         }
 
         function setDriveContSizeSearchTerm(value = '') {
             driveContSizeSearchTerm = String(value || '');
-            const container = document.getElementById('drive-plant-filters');
-            if (container) {
-                const input = container.querySelector('#drive-contsize-search');
-                const cursorPos = input && typeof input.selectionStart === 'number' ? input.selectionStart : null;
-                const state = buildDrivePlantFilterState(drivePlantFilterItemsCache);
-                updateDrivePlantFilterUi(state, container);
-                if (input) {
-                    requestAnimationFrame(() => {
-                        const current = container.querySelector('#drive-contsize-search');
-                        if (!current) return;
-                        if (document.activeElement !== current) current.focus();
-                        if (cursorPos !== null && typeof current.setSelectionRange === 'function') {
-                            current.setSelectionRange(cursorPos, cursorPos);
-                        }
-                    });
+            const input = document.getElementById('drive-contsize-search');
+            const cursorPos = input && typeof input.selectionStart === 'number' ? input.selectionStart : null;
+            renderDriveTopControls(drivePlantFilterItemsCache);
+            requestAnimationFrame(() => {
+                const current = document.getElementById('drive-contsize-search');
+                if (!current) return;
+                if (document.activeElement !== current) current.focus();
+                if (cursorPos !== null && typeof current.setSelectionRange === 'function') {
+                    current.setSelectionRange(cursorPos, cursorPos);
                 }
-                return false;
-            }
-            renderDrivePlantFilters(drivePlantFilterItemsCache);
-            return false;
-        }
-
-        function toggleDriveCommonNameSelection(commonName = '') {
-            const value = String(commonName || '').trim();
-            if (!value) return false;
-            if (selectedDriveCommonNames.has(value)) selectedDriveCommonNames.delete(value);
-            else selectedDriveCommonNames.add(value);
-            driveViewLevel = 0;
-            selectedDriveName = null;
-            selectedDriveSize = null;
-            driveCommonNameFilterOpen = true;
-            driveGenusFilterOpen = false;
-            driveContSizeFilterOpen = false;
-            scheduleUiRender('drive-common-filter-select', () => renderDrive());
-            queueScrollMainAreaToTop('drive-plant-filters');
+            });
             return false;
         }
 
@@ -18288,11 +18221,14 @@ ${folderNote ? `Folder Note: ${folderNote}
             driveViewLevel = 0;
             selectedDriveName = null;
             selectedDriveSize = null;
-            driveCommonNameFilterOpen = false;
+            selectedDriveBlock = null;
+            selectedDriveLoc = null;
+            driveViewDropdownOpen = false;
+            driveSeasonDropdownOpen = false;
             driveGenusFilterOpen = true;
             driveContSizeFilterOpen = false;
             scheduleUiRender('drive-genus-filter-select', () => renderDrive());
-            queueScrollMainAreaToTop('drive-plant-filters');
+            queueScrollMainAreaToTop('drive-top-controls');
             return false;
         }
 
@@ -18304,19 +18240,49 @@ ${folderNote ? `Folder Note: ${folderNote}
             driveViewLevel = 0;
             selectedDriveName = null;
             selectedDriveSize = null;
-            driveCommonNameFilterOpen = false;
+            selectedDriveBlock = null;
+            selectedDriveLoc = null;
+            driveViewDropdownOpen = false;
+            driveSeasonDropdownOpen = false;
             driveGenusFilterOpen = false;
             driveContSizeFilterOpen = true;
             scheduleUiRender('drive-contsize-filter-select', () => renderDrive());
-            queueScrollMainAreaToTop('drive-plant-filters');
+            queueScrollMainAreaToTop('drive-top-controls');
+            return false;
+        }
+
+        function clearDriveGenusFilters() {
+            if (!selectedDriveGenusNames.size && !String(driveGenusSearchTerm || '').trim()) return false;
+            selectedDriveGenusNames = new Set();
+            driveGenusSearchTerm = '';
+            driveGenusFilterOpen = false;
+            driveViewLevel = 0;
+            selectedDriveName = null;
+            selectedDriveSize = null;
+            selectedDriveBlock = null;
+            selectedDriveLoc = null;
+            scheduleUiRender('drive-genus-filter-clear', () => renderDrive());
+            queueScrollMainAreaToTop('drive-top-controls');
+            return false;
+        }
+
+        function clearDriveContSizeFilters() {
+            if (!selectedDriveContSizes.size && !String(driveContSizeSearchTerm || '').trim()) return false;
+            selectedDriveContSizes = new Set();
+            driveContSizeSearchTerm = '';
+            driveContSizeFilterOpen = false;
+            driveViewLevel = 0;
+            selectedDriveName = null;
+            selectedDriveSize = null;
+            selectedDriveBlock = null;
+            selectedDriveLoc = null;
+            scheduleUiRender('drive-contsize-filter-clear', () => renderDrive());
+            queueScrollMainAreaToTop('drive-top-controls');
             return false;
         }
 
         function clearDrivePlantFilters() {
-            if (!selectedDriveCommonNames.size && !selectedDriveGenusNames.size && !selectedDriveContSizes.size && !String(driveCommonNameSearchTerm || '').trim() && !String(driveGenusSearchTerm || '').trim() && !String(driveContSizeSearchTerm || '').trim()) return false;
-            selectedDriveCommonNames = new Set();
-            driveCommonNameSearchTerm = '';
-            driveCommonNameFilterOpen = false;
+            if (!selectedDriveGenusNames.size && !selectedDriveContSizes.size && !String(driveGenusSearchTerm || '').trim() && !String(driveContSizeSearchTerm || '').trim()) return false;
             selectedDriveGenusNames = new Set();
             driveGenusSearchTerm = '';
             driveGenusFilterOpen = false;
@@ -18327,32 +18293,17 @@ ${folderNote ? `Folder Note: ${folderNote}
             driveViewLevel = 0;
             selectedDriveName = null;
             selectedDriveSize = null;
+            selectedDriveBlock = null;
+            selectedDriveLoc = null;
             scheduleUiRender('drive-plant-filters-clear', () => renderDrive());
-            queueScrollMainAreaToTop('drive-plant-filters');
+            queueScrollMainAreaToTop('drive-top-controls');
             return false;
         }
 
         function renderDrivePlantFilters(items = []) {
-            const container = document.getElementById('drive-plant-filters');
-            if (!container) return buildDrivePlantFilterState(items);
-            if (activeDriveMode !== 'ok' || activeDriveTab !== 'name') {
-                hideDrivePlantFilters();
-                return buildDrivePlantFilterState(items);
-            }
             drivePlantFilterItemsCache = Array.isArray(items) ? items : [];
-            const state = buildDrivePlantFilterState(drivePlantFilterItemsCache);
-            const shouldShow = state.baseItems.length > 0 || state.hasActiveFilters || state.hasTypedSearch;
-            if (!shouldShow) {
-                hideDrivePlantFilters();
-                return state;
-            }
-            if (!container.dataset.drivePlantFiltersReady) {
-                container.dataset.drivePlantFiltersReady = '1';
-                container.innerHTML = `<div class="rounded-[1.05rem] border border-emerald-100 bg-white/95 px-3 py-2.5 shadow-sm backdrop-blur-sm"><div class="flex flex-wrap items-center gap-2"><div class="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-[9px] font-black uppercase tracking-[0.14em] text-emerald-700 shadow-sm"><i class="ph-bold ph-funnel text-[12px]"></i>Plant Filters</div><span class="text-[9px] font-black uppercase tracking-[0.16em] text-slate-400 sm:ml-auto" data-drive-filter-rowcount></span><button type="button" class="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-white px-2.5 py-1.5 text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm" data-drive-filters-clear onclick="return clearDrivePlantFilters()">Clear</button></div><div class="drive-plant-filter-row mt-2"><div class="task-top-control-shell drive-filter-shell h-full rounded-[1.05rem] border border-emerald-100 bg-white/95 px-2.5 py-2 shadow-sm backdrop-blur-sm sm:px-3 sm:py-2.5" data-drive-filter-shell="common"><button type="button" class="task-top-control-button inline-flex min-h-[54px] w-full items-center gap-2 rounded-full border border-emerald-200 bg-white px-2.5 py-2 text-left text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm sm:px-3 sm:text-[10px]" data-drive-filter-trigger="common" onclick="return toggleDriveCommonNameDropdown()"><i class="ph-bold ph-text-aa text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Common Name</span><span class="task-top-control-summary mt-1 text-[9px] font-bold normal-case tracking-normal text-slate-500 truncate" data-drive-common-summary>All names</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="task-top-control-panel mt-2 hidden overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm" data-drive-common-panel><div class="border-b border-emerald-100 p-2"><input id="drive-common-search" type="text" class="input-field !mb-0 border-emerald-200 bg-white !py-2.5" placeholder="Search common names..." value="${esc(driveCommonNameSearchTerm)}" oninput="setDriveCommonNameSearchTerm(this.value)" onkeydown="dismissSearchKeyboard(event)"></div><div class="max-h-56 overflow-y-auto" data-drive-common-options></div><div class="border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeDriveCommonNameDropdown()">Done</button></div></div></div><div class="task-top-control-shell drive-filter-shell h-full rounded-[1.05rem] border border-emerald-100 bg-white/95 px-2.5 py-2 shadow-sm backdrop-blur-sm sm:px-3 sm:py-2.5" data-drive-filter-shell="genus"><button type="button" class="task-top-control-button inline-flex min-h-[54px] w-full items-center gap-2 rounded-full border border-emerald-200 bg-white px-2.5 py-2 text-left text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm sm:px-3 sm:text-[10px]" data-drive-filter-trigger="genus" onclick="return toggleDriveGenusDropdown()"><i class="ph-bold ph-leaf text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Genus</span><span class="task-top-control-summary mt-1 text-[9px] font-bold normal-case tracking-normal text-slate-500 truncate" data-drive-genus-summary>All genus</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="task-top-control-panel mt-2 hidden overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm" data-drive-genus-panel><div class="border-b border-emerald-100 p-2"><input id="drive-genus-search" type="text" class="input-field !mb-0 border-emerald-200 bg-white !py-2.5" placeholder="Search genus..." value="${esc(driveGenusSearchTerm)}" oninput="setDriveGenusSearchTerm(this.value)" onkeydown="dismissSearchKeyboard(event)"></div><div class="max-h-56 overflow-y-auto" data-drive-genus-options></div><div class="border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeDriveGenusDropdown()">Done</button></div></div></div><div class="task-top-control-shell drive-filter-shell h-full rounded-[1.05rem] border border-emerald-100 bg-white/95 px-2.5 py-2 shadow-sm backdrop-blur-sm sm:px-3 sm:py-2.5" data-drive-filter-shell="contsize"><button type="button" class="task-top-control-button inline-flex min-h-[54px] w-full items-center gap-2 rounded-full border border-emerald-200 bg-white px-2.5 py-2 text-left text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm sm:px-3 sm:text-[10px]" data-drive-filter-trigger="contsize" onclick="return toggleDriveContSizeDropdown()"><i class="ph-bold ph-ruler text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Cont Size</span><span class="task-top-control-summary mt-1 text-[9px] font-bold normal-case tracking-normal text-slate-500 truncate" data-drive-contsize-summary>All sizes</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="task-top-control-panel mt-2 hidden overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm" data-drive-contsize-panel><div class="border-b border-emerald-100 p-2"><input id="drive-contsize-search" type="text" class="input-field !mb-0 border-emerald-200 bg-white !py-2.5" placeholder="Search cont size..." value="${esc(driveContSizeSearchTerm)}" oninput="setDriveContSizeSearchTerm(this.value)" onkeydown="dismissSearchKeyboard(event)"></div><div class="max-h-56 overflow-y-auto" data-drive-contsize-options></div><div class="border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeDriveContSizeDropdown()">Done</button></div></div></div></div><div class="mt-2 space-y-1"><div data-drive-common-chips></div><div data-drive-genus-chips></div><div data-drive-contsize-chips></div></div></div>`;
-            }
-            container.classList.add('drive-top-inline');
-            updateDrivePlantFilterUi(state, container);
-            return state;
+            hideDrivePlantFilters();
+            return buildDrivePlantFilterState(drivePlantFilterItemsCache);
         }
 
         function handleDriveSearch() {
@@ -18466,7 +18417,9 @@ ${folderNote ? `Folder Note: ${folderNote}
             const crumb = document.getElementById('drive-crumb');
             if (!container || !crumb) return false;
             const driveModeLabel = DRIVE_MODE_LABELS[activeDriveMode] || 'Drive Mode';
-            const finalItems = sortDriveCardItems(canUseDriveQuickRequest() ? getDriveFilteredItems(true) : getDriveFilteredItems(false));
+            const baseItems = canUseDriveQuickRequest() ? getDriveFilteredItems(true) : getDriveFilteredItems(false);
+            const drivePlantFilterState = renderDriveTopControls(baseItems);
+            const finalItems = sortDriveCardItems(drivePlantFilterState.filteredItems);
             const crumbText = `${driveModeLabel} > Card View (${finalItems.length} items)`;
             const renderKey = buildDriveRenderKey(`drive:quick-card:${canUseDriveQuickRequest() ? 'quick' : 'base'}`, crumbText, finalItems);
             if (finalItems.length === 0) {
@@ -18510,22 +18463,10 @@ ${folderNote ? `Folder Note: ${folderNote}
                 return;
             }
 
-            const driveTabButtonClass = (isActive) => `px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap cursor-pointer transition-colors ${isActive ? 'bg-[#007a4d] text-white shadow-md' : 'bg-white border border-emerald-300 text-emerald-700'}`;
-            const driveTabsHtml = [
-                { key: 'name', label: 'By Name' },
-                { key: 'loc', label: 'By Location' },
-                { key: 'card', label: 'Card View' }
-            ].map((tab) => `<button type="button" class="${driveTabButtonClass(activeDriveTab === tab.key)}" onclick="setDriveTab('${tab.key}')">${tab.label}</button>`).join('');
-            const seasonFiltersHtml = availableSeasons.map((s) => {
-                const active = driveSelectedSeasons.has(s);
-                return `<button type="button" class="px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap cursor-pointer transition-colors ${active ? 'bg-[#007a4d] text-white shadow-md' : 'bg-white border border-gray-300 text-gray-600'}" onclick="toggleDriveSeason('${s}')">${s}</button>`;
-            }).join('');
-            const holdStopToggleHtml = `<button type="button" class="px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap cursor-pointer transition-colors ${driveQuickHoldStopOnly ? 'bg-amber-400 text-amber-950 shadow-md border border-amber-500' : 'bg-white border border-amber-300 text-amber-700'}" onclick="toggleDriveHoldStopOnly()">H/S HOLD</button>`;
-            syncDriveFilterStrip(filtersDiv, driveTabsHtml + seasonFiltersHtml + holdStopToggleHtml);
-
             const baseSearchFilteredItems = getDriveFilteredItems(false);
-            const drivePlantFilterState = renderDrivePlantFilters(baseSearchFilteredItems);
-            const searchFilteredItems = activeDriveTab === 'name' ? drivePlantFilterState.filteredItems : baseSearchFilteredItems;
+            const drivePlantFilterState = renderDriveTopControls(baseSearchFilteredItems);
+            hideDrivePlantFilters();
+            const searchFilteredItems = drivePlantFilterState.filteredItems;
 
             if (quickCardMode) {
                 const finalItems = sortDriveCardItems(canUseDriveQuickRequest() ? getDriveFilteredItems(true) : searchFilteredItems);
@@ -18673,19 +18614,24 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function toggleDriveSeason(s) {
-            if(s === 'ALL'){
-                driveSelectedSeasons.clear();
-                driveSelectedSeasons.add('ALL');
-            } else {
-                driveSelectedSeasons.delete('ALL');
-                if(driveSelectedSeasons.has(s)){
-                    driveSelectedSeasons.delete(s);
-                    if(driveSelectedSeasons.size === 0) driveSelectedSeasons.add('ALL');
-                } else {
-                    driveSelectedSeasons.add(s);
-                }
-            }
+            const value = String(s || '').trim().toUpperCase();
+            if (!DRIVE_SEASON_OPTIONS.includes(value)) return false;
+            normalizeDriveSelectedSeasons();
+            if (driveSelectedSeasons.has(value)) driveSelectedSeasons.delete(value);
+            else driveSelectedSeasons.add(value);
+            if (!driveSelectedSeasons.size) driveSelectedSeasons = new Set(DRIVE_SEASON_OPTIONS);
+            driveViewLevel = 0;
+            selectedDriveName = null;
+            selectedDriveSize = null;
+            selectedDriveBlock = null;
+            selectedDriveLoc = null;
+            driveViewDropdownOpen = false;
+            driveSeasonDropdownOpen = true;
+            driveGenusFilterOpen = false;
+            driveContSizeFilterOpen = false;
             scheduleUiRender('drive-season-filter', () => renderDrive());
+            queueScrollMainAreaToTop('drive-top-controls');
+            return false;
         }
 
         function renderTeamSelector() {
@@ -19036,7 +18982,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                 const isSelected = option.value === safeTab;
                 return `<button type="button" class="flex w-full items-center justify-between gap-3 px-3 py-2 text-left ${isSelected ? 'bg-emerald-50 text-emerald-700' : 'text-slate-700 hover:bg-emerald-50'}" onclick="return setTaskTab('${option.value}')"><span class="text-[12px] font-bold">${esc(option.label)}</span>${isSelected ? '<i class="ph-bold ph-check text-sm"></i>' : ''}</button>`;
             }).join('');
-            host.innerHTML = `<div class="task-top-control-shell h-full rounded-[1.05rem] border border-emerald-100 bg-white/95 px-2.5 py-2 shadow-sm backdrop-blur-sm sm:px-3 sm:py-2.5"><button type="button" class="task-top-control-button inline-flex min-h-[54px] w-full items-center gap-2 rounded-full border border-emerald-200 bg-white px-2.5 py-2 text-left text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm sm:px-3 sm:text-[10px]" onclick="return toggleTaskModeDropdown()"><i class="ph-bold ph-squares-four text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Task View</span><span class="task-top-control-summary mt-1 text-[9px] font-bold normal-case tracking-normal text-slate-500 truncate">${esc(currentLabel)}</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="task-top-control-panel mt-2 ${taskTabDropdownOpen ? '' : 'hidden '}overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm"><div class="max-h-72 overflow-y-auto">${optionsHtml}</div><div class="border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeTaskModeDropdown()">Done</button></div></div></div>`;
+            const html = `<div class="task-top-control-shell h-full rounded-[1.05rem] border border-emerald-100 bg-white/95 px-2.5 py-2 shadow-sm backdrop-blur-sm sm:px-3 sm:py-2.5"><button type="button" class="task-top-control-button inline-flex min-h-[54px] w-full items-center gap-2 rounded-full border border-emerald-200 bg-white px-2.5 py-2 text-left text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm sm:px-3 sm:text-[10px]" onclick="return toggleTaskModeDropdown()"><i class="ph-bold ph-squares-four text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Task View</span><span class="task-top-control-summary mt-1 text-[9px] font-bold normal-case tracking-normal text-slate-500 truncate">${esc(currentLabel)}</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="task-top-control-panel mt-2 ${taskTabDropdownOpen ? '' : 'hidden '}overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm"><div class="max-h-72 overflow-y-auto">${optionsHtml}</div><div class="border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeTaskModeDropdown()">Done</button></div></div></div>`;
+            setContainerHtmlWithSignature(host, html, `task-mode:${safeTab}:${taskTabDropdownOpen ? 'open' : 'closed'}`);
         }
 
         function syncTaskSubviewControls(tab = activeTaskTab) {
@@ -19047,7 +18994,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (!shouldShow) {
                 taskSubviewDropdownOpen = false;
                 container.classList.add('hidden');
-                container.innerHTML = '';
+                setContainerHtmlWithSignature(container, '', 'task-subview:hidden');
                 return;
             }
             const currentLabel = getTaskSubviewLabel(activeTaskSubview);
@@ -19056,7 +19003,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                 return `<button type="button" class="flex w-full items-center justify-between gap-3 px-3 py-2 text-left ${isSelected ? 'bg-emerald-50 text-emerald-700' : 'text-slate-700 hover:bg-emerald-50'}" onclick="return setTaskSubview('${option.value}')"><span class="text-[12px] font-bold">${esc(option.label)}</span>${isSelected ? '<i class="ph-bold ph-check text-sm"></i>' : ''}</button>`;
             }).join('');
             container.classList.remove('hidden');
-            container.innerHTML = `<div class="task-top-control-shell h-full rounded-[1.05rem] border border-emerald-100 bg-white/95 px-2.5 py-2 shadow-sm backdrop-blur-sm sm:px-3 sm:py-2.5"><button type="button" class="task-top-control-button inline-flex min-h-[54px] w-full items-center gap-2 rounded-full border border-emerald-200 bg-white px-2.5 py-2 text-left text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm sm:px-3 sm:text-[10px]" onclick="return toggleTaskSubviewDropdown()"><i class="ph-bold ph-funnel text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Task Filter</span><span class="task-top-control-summary mt-1 text-[9px] font-bold normal-case tracking-normal text-slate-500 truncate">${esc(currentLabel)}</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="task-top-control-panel mt-2 ${taskSubviewDropdownOpen ? '' : 'hidden '}overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm"><div class="max-h-72 overflow-y-auto">${optionsHtml}</div><div class="border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeTaskSubviewDropdown()">Done</button></div></div></div>`;
+            const html = `<div class="task-top-control-shell h-full rounded-[1.05rem] border border-emerald-100 bg-white/95 px-2.5 py-2 shadow-sm backdrop-blur-sm sm:px-3 sm:py-2.5"><button type="button" class="task-top-control-button inline-flex min-h-[54px] w-full items-center gap-2 rounded-full border border-emerald-200 bg-white px-2.5 py-2 text-left text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm sm:px-3 sm:text-[10px]" onclick="return toggleTaskSubviewDropdown()"><i class="ph-bold ph-funnel text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Task Filter</span><span class="task-top-control-summary mt-1 text-[9px] font-bold normal-case tracking-normal text-slate-500 truncate">${esc(currentLabel)}</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="task-top-control-panel mt-2 ${taskSubviewDropdownOpen ? '' : 'hidden '}overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm"><div class="max-h-72 overflow-y-auto">${optionsHtml}</div><div class="border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeTaskSubviewDropdown()">Done</button></div></div></div>`;
+            setContainerHtmlWithSignature(container, html, `task-subview:${String(tab || activeTaskTab || '').trim().toLowerCase()}:${activeTaskSubview}:${taskSubviewDropdownOpen ? 'open' : 'closed'}`);
         }
 
         function syncTaskSharedFilterArea() {
@@ -19477,7 +19425,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (!container) return;
             if (!shouldShowTaskInlineDetailFilters(activeTaskTab, taskViewLevel)) {
                 container.classList.add('hidden');
-                container.innerHTML = '';
+                setContainerHtmlWithSignature(container, '', 'task-location-detail:hidden');
                 syncTaskLocationDetailFilterUi();
                 return;
             }
@@ -19496,8 +19444,9 @@ ${folderNote ? `Folder Note: ${folderNote}
             const hasSearch = String(taskLocationDetailSearchTerm || '').trim() !== '';
             const hasGenus = String(selectedTaskLocationDetailGenus || '').trim() !== '';
             const hasLotCode = String(selectedTaskLocationDetailLotCode || '').trim() !== '';
-            container.innerHTML = `<div class="rounded-[1.05rem] border border-green-100 bg-white/95 px-3 py-2.5 shadow-sm backdrop-blur-sm"><div class="grid gap-3 ${gridClass}">${genusFieldHtml}<label class="min-w-0 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Lot Code<select class="input-field !mb-0 mt-2 border-green-200 bg-green-50/40" onchange="return setTaskLocationDetailLotCodeFilter(this.value)">${buildOptionHtml('All Lots', state.lotCodes, selectedTaskLocationDetailLotCode)}</select></label><button id="task-location-detail-clear-filters" type="button" class="min-h-[42px] rounded-xl border border-green-200 bg-white px-4 text-[11px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm self-end ${hasSearch || hasGenus || hasLotCode ? '' : 'opacity-50 cursor-not-allowed pointer-events-none'}" onclick="return clearTaskLocationDetailFilters()">Clear Filters</button></div></div>`;
+            const html = `<div class="rounded-[1.05rem] border border-green-100 bg-white/95 px-3 py-2.5 shadow-sm backdrop-blur-sm"><div class="grid gap-3 ${gridClass}">${genusFieldHtml}<label class="min-w-0 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Lot Code<select class="input-field !mb-0 mt-2 border-green-200 bg-green-50/40" onchange="return setTaskLocationDetailLotCodeFilter(this.value)">${buildOptionHtml('All Lots', state.lotCodes, selectedTaskLocationDetailLotCode)}</select></label><button id="task-location-detail-clear-filters" type="button" class="min-h-[42px] rounded-xl border border-green-200 bg-white px-4 text-[11px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm self-end ${hasSearch || hasGenus || hasLotCode ? '' : 'opacity-50 cursor-not-allowed pointer-events-none'}" onclick="return clearTaskLocationDetailFilters()">Clear Filters</button></div></div>`;
             container.classList.remove('hidden');
+            setContainerHtmlWithSignature(container, html, `task-location-detail:${activeTaskTab}:${selectedTaskLocationDetailGenus}:${selectedTaskLocationDetailLotCode}:${state.genusOptions.join('|')}:${state.lotCodes.join('|')}`);
             syncTaskLocationDetailFilterUi();
         }
         function applyTaskLocationDetailFilters(items = []) {
