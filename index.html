@@ -118,6 +118,10 @@
         .freeze-panel #drive-search-container,.freeze-panel #av-search-container,.freeze-panel #reserves-search-container,.freeze-panel #docks-search-container{position:relative;top:auto;z-index:auto}
         .freeze-panel .task-tabs,.freeze-panel .detail-tabs{background:transparent}
         .freeze-panel > :last-child{margin-bottom:0 !important}
+        #view-av #av-search-container.av-search-static{position:relative;top:auto;z-index:auto}
+        #view-av .av-primary-tabs-sticky{padding:.12rem 0 .35rem;margin:0 0 .55rem;z-index:46}
+        #view-av .av-primary-tabs-sticky .task-tabs{margin-bottom:0}
+        #view-av .av-secondary-controls{margin-bottom:.15rem}
         #global-back-btn{display:none !important}
         .amazon-inline-back{flex:0 0 auto;width:42px;height:42px;border-radius:14px;border:1px solid rgba(255,255,255,.28);background:rgba(255,255,255,.92);color:#007a4d;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 14px rgba(7,94,63,.18);font-weight:900}
         .amazon-inline-back:active{transform:scale(.97)}
@@ -457,7 +461,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-<div id="header-version" class="nav-version-pill">V2026.04.18.15</div>
+<div id="header-version" class="nav-version-pill">V2026.04.18.16</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -573,17 +577,19 @@
                 </div>
 
                 <div id="view-av" class="hidden">
-                    <div class="freeze-panel">
-                    <div id="av-search-container" class="sticky-search relative mb-2">
+                    <div id="av-search-container" class="sticky-search relative mb-2 av-search-static">
                         <input type="text" id="av-search" class="input-field w-full pr-10 !mb-0" placeholder="Search AV Stock..." oninput="handleAVSearch()" onkeydown="dismissSearchKeyboard(event)">
                         <i id="av-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearAVSearch()"></i>
                     </div>
-                    <div class="task-tabs mt-2 mb-2">
+                    <div class="freeze-panel av-primary-tabs-sticky">
+                    <div class="task-tabs amazon-filter-strip mt-2 mb-0">
                         <div id="tab-av-open" class="task-tab active" onclick="setAVTab('open')">Open Stock</div>
                         <div id="tab-av-hotprice" class="task-tab" onclick="setAVTab('hotprice')">HOT PRICE</div>
                         <div id="tab-av-reserves" class="task-tab" onclick="setAVTab('reserves')">My Reserves</div>
                     </div>
-                    <div id="av-open-sub-tabs" class="task-tabs mb-2">
+                    </div>
+                    <div class="av-secondary-controls">
+                    <div id="av-open-sub-tabs" class="task-tabs amazon-filter-strip mb-2">
                         <div id="tab-av-open-name" class="task-tab active" onclick="setAvOpenTab('name')">By Name</div>
 
 
@@ -4783,7 +4789,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         const REQUEST_EMAIL_THREAD_SELECT_FIELDS = 'request_folder,request_customer,sales_rep_name,sales_rep_email,recipients,initial_thread_id,initial_message_id,initial_email_sent_at,last_reply_sent_at,status,metadata';
         const REQUEST_EMAIL_INTERNAL_RECIPIENTS = Object.freeze(['dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com']);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-        const APP_VERSION = 'V2026.04.18.15';
+        const APP_VERSION = 'V2026.04.18.16';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
