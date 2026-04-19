@@ -107,12 +107,12 @@
         body.viewport-compact #task-tabs-container.task-top-inline #task-contsize-filters .task-top-control-panel{left:auto;right:0}
         body.viewport-compact #task-tabs-container.task-top-inline #task-genus-filters .task-top-control-panel{width:min(17rem,calc(100vw - (var(--shell-gutter) * 2)))}
         #drive-season-filters.drive-top-inline{display:block;overflow:visible !important;padding:0 !important;margin-bottom:.35rem !important}
-        #drive-season-filters.drive-top-inline .drive-top-controls-row{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:.42rem;align-items:start}
-        #drive-season-filters.drive-top-inline .task-top-control-shell{position:relative;height:100%;padding:.38rem .42rem;border-radius:1rem}
-        #drive-season-filters.drive-top-inline .task-top-control-button{position:relative;min-height:44px;padding:.42rem .45rem;gap:.38rem;border-radius:999px}
+        #drive-season-filters.drive-top-inline .drive-top-controls-row{display:grid;grid-template-columns:minmax(0,1.28fr) minmax(0,1.22fr) minmax(0,1.04fr) minmax(0,1.04fr) minmax(0,.98fr);gap:.42rem;align-items:start}
+        #drive-season-filters.drive-top-inline .task-top-control-shell{position:relative;height:100%;padding:.38rem .4rem;border-radius:1rem;min-width:0}
+        #drive-season-filters.drive-top-inline .task-top-control-button{position:relative;min-height:46px;padding:.42rem .48rem;gap:.38rem;border-radius:999px}
         #drive-season-filters.drive-top-inline .task-top-control-button i{font-size:.82rem}
-        #drive-season-filters.drive-top-inline .task-top-control-title{font-size:.44rem;letter-spacing:.11em}
-        #drive-season-filters.drive-top-inline .task-top-control-summary{margin-top:.14rem;font-size:.58rem;line-height:1.05}
+        #drive-season-filters.drive-top-inline .task-top-control-title{font-size:.48rem;letter-spacing:.11em}
+        #drive-season-filters.drive-top-inline .task-top-control-summary{margin-top:.14rem;font-size:.66rem;line-height:1.08}
         #drive-season-filters.drive-top-inline .task-top-control-panel{position:absolute;top:calc(100% + .28rem);left:0;z-index:80;width:min(16rem,calc(100vw - (var(--shell-gutter) * 2)));max-width:calc(100vw - (var(--shell-gutter) * 2))}
         #drive-season-filters.drive-top-inline [data-drive-filter-shell="season"] .task-top-control-panel,
         #drive-season-filters.drive-top-inline [data-drive-filter-shell="genus"] .task-top-control-panel,
@@ -121,12 +121,14 @@
         #drive-season-filters.drive-top-inline [data-drive-filter-shell="genus"] .task-top-control-panel{width:min(17rem,calc(100vw - (var(--shell-gutter) * 2)))}
         #drive-season-filters.drive-top-inline [data-drive-filter-shell="contsize"] .task-top-control-panel{width:min(15rem,calc(100vw - (var(--shell-gutter) * 2)))}
         #drive-season-filters.drive-top-inline .drive-filter-shell--toggle .task-top-control-button{justify-content:flex-start}
-        body.viewport-compact #drive-season-filters.drive-top-inline .drive-top-controls-row{gap:.3rem !important}
-        body.viewport-compact #drive-season-filters.drive-top-inline .task-top-control-shell{padding:.3rem .34rem !important;border-radius:.92rem !important}
-        body.viewport-compact #drive-season-filters.drive-top-inline .task-top-control-button{min-height:40px !important;padding:.34rem .38rem !important;gap:.28rem !important;border-radius:999px !important}
-        body.viewport-compact #drive-season-filters.drive-top-inline .task-top-control-button i{font-size:.74rem !important}
-        body.viewport-compact #drive-season-filters.drive-top-inline .task-top-control-title{font-size:.4rem !important;letter-spacing:.1em !important}
-        body.viewport-compact #drive-season-filters.drive-top-inline .task-top-control-summary{margin-top:.12rem !important;font-size:.54rem !important;line-height:1 !important}
+        body.viewport-compact #drive-season-filters.drive-top-inline .drive-top-controls-row{grid-template-columns:minmax(0,1.34fr) minmax(0,1.28fr) minmax(0,1.06fr) minmax(0,1.06fr) minmax(0,1fr) !important;gap:.34rem !important}
+        body.viewport-compact #drive-season-filters.drive-top-inline .task-top-control-shell{padding:.32rem .3rem !important;border-radius:.96rem !important}
+        body.viewport-compact #drive-season-filters.drive-top-inline .task-top-control-button{min-height:44px !important;padding:.4rem .42rem !important;gap:.32rem !important;border-radius:999px !important}
+        body.viewport-compact #drive-season-filters.drive-top-inline .task-top-control-button i{font-size:.8rem !important}
+        body.viewport-compact #drive-season-filters.drive-top-inline .task-top-control-title{font-size:.46rem !important;letter-spacing:.1em !important}
+        body.viewport-compact #drive-season-filters.drive-top-inline .task-top-control-summary{margin-top:.12rem !important;font-size:.62rem !important;line-height:1.08 !important}
+        body.viewport-compact #drive-season-filters.drive-top-inline [data-drive-filter-shell="hold"] .task-top-control-title{font-size:.43rem !important;letter-spacing:.08em !important}
+        body.viewport-compact #drive-season-filters.drive-top-inline [data-drive-filter-shell="hold"] .task-top-control-summary{font-size:.58rem !important}
         body.viewport-compact #drive-season-filters.drive-top-inline .task-top-control-panel{top:calc(100% + .24rem);width:min(15rem,calc(100vw - (var(--shell-gutter) * 2)));max-width:calc(100vw - (var(--shell-gutter) * 2))}
         body.viewport-compact #drive-season-filters.drive-top-inline [data-drive-filter-shell="genus"] .task-top-control-panel{width:min(16rem,calc(100vw - (var(--shell-gutter) * 2)))}
         #drive-plant-filters.drive-top-inline .drive-plant-filter-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.5rem}
@@ -189,14 +191,14 @@
         .drive-card-filter-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.5rem}
         .drive-card-filter-grid .drive-card-filter-name{grid-column:span 2}
         .drive-card-filter-grid label{min-width:0}
-        .freeze-panel{position:-webkit-sticky;position:sticky;top:0;z-index:44;background:#f9fafb;margin:0 0 .75rem;padding:.15rem 0 .45rem;border-bottom:1px solid #d1fae5;box-shadow:0 8px 14px rgba(15,23,42,.04);isolation:isolate}
+        .freeze-panel{position:-webkit-sticky;position:sticky;top:var(--freeze-panel-offset,0px);z-index:44;background:#f9fafb;margin:0 0 .75rem;padding:.15rem 0 .45rem;border-bottom:1px solid #d1fae5;box-shadow:0 8px 14px rgba(15,23,42,.04);isolation:isolate}
         .freeze-panel::before{display:none}
         .freeze-panel .sticky-search{position:relative;top:auto;z-index:auto;box-shadow:none}
         .freeze-panel #drive-search-container,.freeze-panel #av-search-container,.freeze-panel #reserves-search-container,.freeze-panel #docks-search-container{position:relative;top:auto;z-index:auto}
         .freeze-panel .task-tabs,.freeze-panel .detail-tabs{background:transparent}
         .freeze-panel > :last-child{margin-bottom:0 !important}
         #view-drive #drive-search-container.drive-search-static,#view-tasks #tasks-search-container.tasks-search-static{position:relative;top:auto;z-index:auto}
-        #view-drive .drive-controls-sticky,#view-tasks .task-controls-sticky{padding:.12rem 0 .35rem;margin:0 0 .55rem;z-index:46}
+        #view-drive .drive-controls-sticky,#view-tasks .task-controls-sticky{--freeze-panel-offset:0px;padding:.12rem 0 .35rem;margin:0 0 .55rem;z-index:48}
         #view-drive .drive-controls-sticky #drive-drill-tabs{margin-bottom:.35rem}
         #view-drive .drive-controls-sticky #drive-season-filters{margin-bottom:.35rem}
         #view-drive .drive-controls-sticky #drive-plant-filters{margin-bottom:0 !important}
@@ -544,7 +546,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-<div id="header-version" class="nav-version-pill">V2026.04.19.05</div>
+        <div id="header-version" class="nav-version-pill">V2026.04.19.06</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -1498,6 +1500,51 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
             window.addEventListener('orientationchange', scheduleViewportModeSync, { passive: true });
             if (window.visualViewport) {
                 window.visualViewport.addEventListener('resize', scheduleViewportModeSync, { passive: true });
+            }
+        }
+
+        let stickyRailOffsetSyncInitialized = false;
+        let stickyRailOffsetFrameQueued = false;
+
+        function isStickyOffsetSourceVisible(el) {
+            return !!(el && !el.classList.contains('hidden') && el.getClientRects && el.getClientRects().length);
+        }
+
+        function getStickyRailOffsetPx(searchEl) {
+            if (!isStickyOffsetSourceVisible(searchEl)) return 0;
+            const styles = window.getComputedStyle(searchEl);
+            const marginBottom = parseFloat(styles.marginBottom || '0') || 0;
+            const height = Math.ceil(searchEl.getBoundingClientRect().height || searchEl.offsetHeight || 0);
+            return Math.max(0, Math.ceil(height + marginBottom));
+        }
+
+        function applyStickyRailOffset(railEl, searchEl) {
+            if (!railEl) return;
+            railEl.style.setProperty('--freeze-panel-offset', `${getStickyRailOffsetPx(searchEl)}px`);
+        }
+
+        function syncStickyRailOffsets() {
+            applyStickyRailOffset(document.querySelector('#view-drive .drive-controls-sticky'), document.getElementById('drive-search-container'));
+            applyStickyRailOffset(document.querySelector('#view-tasks .task-controls-sticky'), document.getElementById('tasks-search-container'));
+        }
+
+        function scheduleStickyRailOffsetSync() {
+            if (stickyRailOffsetFrameQueued) return;
+            stickyRailOffsetFrameQueued = true;
+            requestAnimationFrame(() => {
+                stickyRailOffsetFrameQueued = false;
+                syncStickyRailOffsets();
+            });
+        }
+
+        function initializeStickyRailOffsetSync() {
+            if (stickyRailOffsetSyncInitialized) return;
+            stickyRailOffsetSyncInitialized = true;
+            scheduleStickyRailOffsetSync();
+            window.addEventListener('resize', scheduleStickyRailOffsetSync, { passive: true });
+            window.addEventListener('orientationchange', scheduleStickyRailOffsetSync, { passive: true });
+            if (window.visualViewport) {
+                window.visualViewport.addEventListener('resize', scheduleStickyRailOffsetSync, { passive: true });
             }
         }
 
@@ -4870,7 +4917,7 @@ let activeTaskTab="season"; let activeTaskSubview="all"; let taskViewTargetUser=
         const REQUEST_EMAIL_THREAD_SELECT_FIELDS = 'request_folder,request_customer,sales_rep_name,sales_rep_email,recipients,initial_thread_id,initial_message_id,initial_email_sent_at,last_reply_sent_at,status,metadata';
         const REQUEST_EMAIL_INTERNAL_RECIPIENTS = Object.freeze(['dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com']);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-const APP_VERSION = 'V2026.04.19.05';
+const APP_VERSION = 'V2026.04.19.06';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -5103,6 +5150,7 @@ const APP_VERSION = 'V2026.04.19.05';
             updateDockAssignableTeamOptions();
             initializeViewportHeightSync();
             initializeViewportModeSync();
+            initializeStickyRailOffsetSync();
             initializeHorizontalViewportClamp();
             initializeInteractiveChrome();
             initializeDetailFieldFocusSupport();
@@ -18103,6 +18151,30 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (container.dataset) delete container.dataset.drivePlantFiltersReady;
         }
 
+        function buildDriveTopControlsSignature(state = {}) {
+            let hash = 2166136261;
+            [
+                activeDriveTab,
+                driveViewDropdownOpen ? '1' : '0',
+                driveSeasonDropdownOpen ? '1' : '0',
+                driveGenusFilterOpen ? '1' : '0',
+                driveContSizeFilterOpen ? '1' : '0',
+                driveQuickHoldStopOnly ? '1' : '0',
+                [...driveSelectedSeasons].sort().join('|'),
+                [...selectedDriveGenusNames].sort().join('|'),
+                String(driveGenusSearchTerm || '').trim().toLowerCase(),
+                Array.isArray(state.genusOptions) ? state.genusOptions.join('|') : '',
+                [...selectedDriveContSizes].sort().join('|'),
+                String(driveContSizeSearchTerm || '').trim().toLowerCase(),
+                Array.isArray(state.sizeOptions) ? state.sizeOptions.join('|') : '',
+                String(state.genusSelectedCount || 0),
+                String(state.contSizeSelectedCount || 0)
+            ].forEach((value) => {
+                hash = updateRenderSignatureHash(hash, value);
+            });
+            return `drive-top-controls:${(hash >>> 0).toString(16)}`;
+        }
+
         function renderDriveTopControls(items = []) {
             const container = document.getElementById('drive-season-filters');
             if (!container) return buildDrivePlantFilterState(items);
@@ -18137,10 +18209,10 @@ ${folderNote ? `Folder Note: ${folderNote}
             const contSizeOptionHtml = state.sizeOptions.length
                 ? buildDrivePlantMultiSelectOptionsHtml(state.filteredSizeOptions, selectedDriveContSizes, 'contsize', 'toggleDriveContSizeSelection', 'No matching container sizes.')
                 : '<div class="px-3 py-4 text-center text-[11px] font-semibold text-gray-400">No CONTSIZE data available.</div>';
-            const markup = `<div class="drive-top-controls-row"><div class="task-top-control-shell drive-filter-shell rounded-[1.05rem] border border-emerald-100 bg-white/95 shadow-sm backdrop-blur-sm" data-drive-filter-shell="view"><button type="button" class="${controlButtonClass(driveViewDropdownOpen)}" onclick="return toggleDriveViewDropdown()"><i class="ph-bold ph-squares-four text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Drive View</span><span class="task-top-control-summary truncate">${esc(driveViewSummary)}</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="task-top-control-panel mt-2 ${driveViewDropdownOpen ? '' : 'hidden '}overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm"><div class="max-h-72 overflow-y-auto">${viewOptionsHtml}</div><div class="border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeDriveViewDropdown()">Done</button></div></div></div><div class="task-top-control-shell drive-filter-shell rounded-[1.05rem] border border-emerald-100 bg-white/95 shadow-sm backdrop-blur-sm" data-drive-filter-shell="season"><button type="button" class="${controlButtonClass(driveSeasonDropdownOpen)}" onclick="return toggleDriveSeasonDropdown()"><i class="ph-bold ph-calendar-blank text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Season</span><span class="task-top-control-summary truncate">${esc(driveSeasonSummary)}</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="task-top-control-panel mt-2 ${driveSeasonDropdownOpen ? '' : 'hidden '}overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm"><div class="max-h-72 overflow-y-auto">${seasonOptionsHtml}</div><div class="grid grid-cols-2 gap-2 border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm" onclick="return selectAllDriveSeasons()">Select All</button><button type="button" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeDriveSeasonDropdown()">Done</button></div></div></div><div class="task-top-control-shell drive-filter-shell rounded-[1.05rem] border border-emerald-100 bg-white/95 shadow-sm backdrop-blur-sm" data-drive-filter-shell="genus"><button type="button" class="${controlButtonClass(driveGenusFilterOpen)}" onclick="return toggleDriveGenusDropdown()"><i class="ph-bold ph-leaf text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Genus</span><span class="task-top-control-summary truncate">${esc(genusSummary)}</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="task-top-control-panel mt-2 ${driveGenusFilterOpen ? '' : 'hidden '}overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm"><div class="border-b border-emerald-100 p-2"><input id="drive-genus-search" type="text" class="input-field !mb-0 border-emerald-200 bg-white !py-2.5" placeholder="Search genus..." value="${esc(driveGenusSearchTerm)}" oninput="setDriveGenusSearchTerm(this.value)" onkeydown="dismissSearchKeyboard(event)"></div><div class="max-h-56 overflow-y-auto">${genusOptionHtml}</div><div class="grid grid-cols-2 gap-2 border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm ${state.genusSelectedCount === 0 && !String(driveGenusSearchTerm || '').trim() ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}" onclick="return clearDriveGenusFilters()">Clear</button><button type="button" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeDriveGenusDropdown()">Done</button></div></div></div><div class="task-top-control-shell drive-filter-shell rounded-[1.05rem] border border-emerald-100 bg-white/95 shadow-sm backdrop-blur-sm" data-drive-filter-shell="contsize"><button type="button" class="${controlButtonClass(driveContSizeFilterOpen)}" onclick="return toggleDriveContSizeDropdown()"><i class="ph-bold ph-ruler text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Cont Size</span><span class="task-top-control-summary truncate">${esc(contSizeSummary)}</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="task-top-control-panel mt-2 ${driveContSizeFilterOpen ? '' : 'hidden '}overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm"><div class="border-b border-emerald-100 p-2"><input id="drive-contsize-search" type="text" class="input-field !mb-0 border-emerald-200 bg-white !py-2.5" placeholder="Search cont size..." value="${esc(driveContSizeSearchTerm)}" oninput="setDriveContSizeSearchTerm(this.value)" onkeydown="dismissSearchKeyboard(event)"></div><div class="max-h-56 overflow-y-auto">${contSizeOptionHtml}</div><div class="grid grid-cols-2 gap-2 border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm ${state.contSizeSelectedCount === 0 && !String(driveContSizeSearchTerm || '').trim() ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}" onclick="return clearDriveContSizeFilters()">Clear</button><button type="button" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeDriveContSizeDropdown()">Done</button></div></div></div><div class="task-top-control-shell drive-filter-shell drive-filter-shell--toggle rounded-[1.05rem] border border-emerald-100 bg-white/95 shadow-sm backdrop-blur-sm" data-drive-filter-shell="hold"><button type="button" class="${holdButtonClass}" onclick="return toggleDriveHoldStopOnly()"><i class="ph-bold ph-warning-circle text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">H/S HOLD</span><span class="task-top-control-summary truncate">${esc(holdSummary)}</span></span></button></div></div>`;
+            const markup = `<div class="drive-top-controls-row"><div class="task-top-control-shell drive-filter-shell rounded-[1.05rem] border border-emerald-100 bg-white/95 shadow-sm backdrop-blur-sm" data-drive-filter-shell="view"><button type="button" class="${controlButtonClass(driveViewDropdownOpen)}" onclick="return toggleDriveViewDropdown()"><i class="ph-bold ph-squares-four text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Drive View</span><span class="task-top-control-summary truncate">${esc(driveViewSummary)}</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="task-top-control-panel mt-2 ${driveViewDropdownOpen ? '' : 'hidden '}overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm"><div class="max-h-72 overflow-y-auto">${viewOptionsHtml}</div><div class="border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeDriveViewDropdown()">Done</button></div></div></div><div class="task-top-control-shell drive-filter-shell rounded-[1.05rem] border border-emerald-100 bg-white/95 shadow-sm backdrop-blur-sm" data-drive-filter-shell="season"><button type="button" class="${controlButtonClass(driveSeasonDropdownOpen)}" onclick="return toggleDriveSeasonDropdown()"><i class="ph-bold ph-calendar-blank text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Season</span><span class="task-top-control-summary truncate">${esc(driveSeasonSummary)}</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="task-top-control-panel mt-2 ${driveSeasonDropdownOpen ? '' : 'hidden '}overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm"><div class="max-h-72 overflow-y-auto">${seasonOptionsHtml}</div><div class="grid grid-cols-2 gap-2 border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm" onclick="return selectAllDriveSeasons()">Select All</button><button type="button" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeDriveSeasonDropdown()">Done</button></div></div></div><div class="task-top-control-shell drive-filter-shell rounded-[1.05rem] border border-emerald-100 bg-white/95 shadow-sm backdrop-blur-sm" data-drive-filter-shell="genus"><button type="button" class="${controlButtonClass(driveGenusFilterOpen)}" onclick="return toggleDriveGenusDropdown()"><i class="ph-bold ph-leaf text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Genus</span><span class="task-top-control-summary truncate">${esc(genusSummary)}</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="task-top-control-panel mt-2 ${driveGenusFilterOpen ? '' : 'hidden '}overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm"><div class="border-b border-emerald-100 p-2"><input id="drive-genus-search" type="text" class="input-field !mb-0 border-emerald-200 bg-white !py-2.5" placeholder="Search genus..." value="${esc(driveGenusSearchTerm)}" oninput="setDriveGenusSearchTerm(this.value)" onkeydown="dismissSearchKeyboard(event)"></div><div class="max-h-56 overflow-y-auto">${genusOptionHtml}</div><div class="grid grid-cols-2 gap-2 border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm ${state.genusSelectedCount === 0 && !String(driveGenusSearchTerm || '').trim() ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}" onclick="return clearDriveGenusFilters()">Clear</button><button type="button" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeDriveGenusDropdown()">Done</button></div></div></div><div class="task-top-control-shell drive-filter-shell rounded-[1.05rem] border border-emerald-100 bg-white/95 shadow-sm backdrop-blur-sm" data-drive-filter-shell="contsize"><button type="button" class="${controlButtonClass(driveContSizeFilterOpen)}" onclick="return toggleDriveContSizeDropdown()"><i class="ph-bold ph-ruler text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Cont Size</span><span class="task-top-control-summary truncate">${esc(contSizeSummary)}</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="task-top-control-panel mt-2 ${driveContSizeFilterOpen ? '' : 'hidden '}overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm"><div class="border-b border-emerald-100 p-2"><input id="drive-contsize-search" type="text" class="input-field !mb-0 border-emerald-200 bg-white !py-2.5" placeholder="Search cont size..." value="${esc(driveContSizeSearchTerm)}" oninput="setDriveContSizeSearchTerm(this.value)" onkeydown="dismissSearchKeyboard(event)"></div><div class="max-h-56 overflow-y-auto">${contSizeOptionHtml}</div><div class="grid grid-cols-2 gap-2 border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm ${state.contSizeSelectedCount === 0 && !String(driveContSizeSearchTerm || '').trim() ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}" onclick="return clearDriveContSizeFilters()">Clear</button><button type="button" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeDriveContSizeDropdown()">Done</button></div></div></div><div class="task-top-control-shell drive-filter-shell drive-filter-shell--toggle rounded-[1.05rem] border border-emerald-100 bg-white/95 shadow-sm backdrop-blur-sm" data-drive-filter-shell="hold"><button type="button" class="${holdButtonClass}" onclick="return toggleDriveHoldStopOnly()"><i class="ph-bold ph-warning-circle text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">H/S Hold</span><span class="task-top-control-summary truncate">${esc(holdSummary)}</span></span></button></div></div>`;
             container.classList.add('drive-top-inline');
             container.classList.remove('hidden');
-            syncDriveFilterStrip(container, markup);
+            syncDriveFilterStrip(container, markup, buildDriveTopControlsSignature(state));
             return state;
         }
         function toggleDriveGenusDropdown() {
@@ -18401,12 +18473,11 @@ ${folderNote ? `Folder Note: ${folderNote}
             return true;
         }
 
-        function syncDriveFilterStrip(container, html = '') {
+        function syncDriveFilterStrip(container, html = '', signature = '') {
             if (!container) return;
-            const nextKey = String(html || '');
-            if (container.dataset && container.dataset.driveFilterKey === nextKey) return;
-            setContainerHtml(container, html);
-            if (container.dataset) container.dataset.driveFilterKey = nextKey;
+            const nextSignature = String(signature || `drive-filters:${String(html || '').length}`);
+            setContainerHtmlWithSignature(container, html, nextSignature);
+            scheduleStickyRailOffsetSync();
         }
 
         function renderDriveQuickCardResultsOnly() {
@@ -18914,6 +18985,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             setHostClasses('task-genus-filters', genusExtra);
             setHostClasses('task-contsize-filters', contSizeExtra);
             setHostClasses('task-location-detail-filters', detailExtra);
+            scheduleStickyRailOffsetSync();
         }
 
         function closeTaskDropdowns(syncUi = true) {
@@ -19377,6 +19449,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             }
             const searchContainer = document.getElementById('tasks-search-container');
             if (searchContainer) searchContainer.classList.toggle('hidden', !shouldShowTaskHeaderSearch());
+            scheduleStickyRailOffsetSync();
             const searchClear = document.getElementById('tasks-search-clear');
             if (searchClear) searchClear.classList.toggle('hidden', String(taskLocationDetailSearchTerm || '').trim() === '');
             const clearBtn = document.getElementById('task-location-detail-clear-filters');
