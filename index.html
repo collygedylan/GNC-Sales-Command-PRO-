@@ -457,7 +457,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-<div id="header-version" class="nav-version-pill">V2026.04.18.13</div>
+<div id="header-version" class="nav-version-pill">V2026.04.18.14</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -1844,14 +1844,61 @@
                 if (!String(item.FLYER_PHOTO_LINK || '').trim() && String(item.SAVED_PHOTO_LINK || '').trim()) item.FLYER_PHOTO_LINK = item.SAVED_PHOTO_LINK;
                 if (!String(item.FLYER_PHOTO_NAME || '').trim() && String(item.SAVED_PHOTO_NAME || '').trim()) item.FLYER_PHOTO_NAME = item.SAVED_PHOTO_NAME;
             }
-            item.ROW_PHOTO_LINK = firstNonEmptyValue(item.REQ_PHOTO_LINK, item.DOCK_PHOTO_LINK, item.SAVED_PHOTO_LINK);
-            item.ROW_PHOTO_NAME = firstNonEmptyValue(item.REQ_PHOTO_NAME, item.DOCK_PHOTO_NAME, item.SAVED_PHOTO_NAME);
+            item.ROW_PHOTO_LINK = mergePhotoCsvList([item.REQ_PHOTO_LINK, item.DOCK_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.FLYER_PHOTO_LINK]);
+            item.ROW_PHOTO_NAME = getSharedAppPhotoName(item);
             const sourceTable = String(firstNonEmptyValue(item.SOURCE_TABLE, item.source_table, 'v2_master_inventory')).toLowerCase();
             if (sourceTable === 'v2_master_inventory') {
                 const derivedQty = calculateLocMatchQtyValue(item);
                 if (derivedQty != null) item.LOC_MATCH_QTY = derivedQty;
             }
             return item;
+        }
+
+        function getSharedAppPhotoName(item) {
+            if (!item) return '';
+            return firstNonEmptyValue(
+                item.REQ_PHOTO_NAME,
+                item.REQUEST_PHOTO_NAME,
+                item.REQUESTPHOTONAME,
+                item.DOCK_PHOTO_NAME,
+                item.DOCKPHOTO_NAME,
+                item.SAVED_PHOTO_NAME,
+                item.PHOTO_NAME,
+                item.PHOTONAME,
+                item['PHOTO NAME'],
+                item.FLYER_PHOTO_NAME,
+                item.FLYERPHOTONAME,
+                ''
+            );
+        }
+
+        function getSharedAppPhotoLinkCsvRaw(item, options = {}) {
+            if (!item) return '';
+            const includePending = options.includePending !== false;
+            const requestCsv = getRequestPhotoLinkCsv(item, { includePending });
+            const dockBase = mergePhotoCsvList([item.DOCK_PHOTO_LINK, item.DOCKPHOTO_LINK]);
+            const dockCsv = includePending ? getDisplayPhotoLinkCsv(dockBase, item, 'dock') : dockBase;
+            const savedBase = mergePhotoCsvList([item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']]);
+            const savedCsv = includePending ? getDisplayPhotoLinkCsv(savedBase, item, 'saved') : savedBase;
+            const flyerBase = mergePhotoCsvList([item.FLYER_PHOTO_LINK, item.FLYERPHOTO_LINK]);
+            const flyerCsv = includePending ? getDisplayPhotoLinkCsv(flyerBase, item, 'flyer') : flyerBase;
+            return mergePhotoCsvList([requestCsv, dockCsv, savedCsv, flyerCsv]);
+        }
+
+        function shouldHideSharedAppPhotoForExpiredAvRules(item) {
+            if (!item) return false;
+            const sourceTable = String(firstNonEmptyValue(item.SOURCE_TABLE, item.source_table, 'v2_master_inventory')).toLowerCase();
+            if (sourceTable !== 'v2_master_inventory') return false;
+            return getMasterAvInvalidationReasons(item).includes('stale_10_day');
+        }
+
+        function getSharedAppPhotoLinkCsv(item, options = {}) {
+            if (!item) return '';
+            const rawCsv = getSharedAppPhotoLinkCsvRaw(item, options);
+            if (!rawCsv) return '';
+            const respectRetention = options.respectRetention !== false;
+            if (respectRetention && shouldHideSharedAppPhotoForExpiredAvRules(item)) return '';
+            return rawCsv;
         }
 
         function clonePhotoFields(source, target, options = {}) {
@@ -2047,16 +2094,18 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         }
         function getRowPhotoLink(item, sourceView='') {
             if (!item) return '';
-            if (sourceView === 'av' || sourceView === 'av-photo') return getDisplayPhotoLinkCsv(firstNonEmptyValue(item.SAVED_PHOTO_LINK, item.ROW_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']), item, 'saved');
+            const sharedLink = getSharedAppPhotoLinkCsv(item);
+            if (sourceView === 'av' || sourceView === 'av-photo') return sharedLink;
             if (sourceView === 'request') return getRequestPhotoLinkCsv(item);
             if (sourceView === 'docks') return getDisplayPhotoLinkCsv(firstNonEmptyValue(item.DOCK_PHOTO_LINK, item.ROW_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']), item, 'dock');
             const preferFlyerFields = shouldPreferFlyerOwnedFields(item, sourceView);
             if (sourceView === 'flyer' || preferFlyerFields) return getDisplayPhotoLinkCsv(firstNonEmptyValue(item.FLYER_PHOTO_LINK, item.ROW_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']), item, 'flyer');
-            if (sourceView === 'sales-office') return getDisplayPhotoLinkCsv(firstNonEmptyValue(item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']), item, 'saved');
+            if (sourceView === 'sales-office') return sharedLink;
             const requestLink = getRequestPhotoLinkCsv(item);
             const dockLink = getDisplayPhotoLinkCsv(item.DOCK_PHOTO_LINK || '', item, 'dock');
             const savedLink = getDisplayPhotoLinkCsv(firstNonEmptyValue(item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']), item, 'saved');
-            return firstNonEmptyValue(requestLink, dockLink, savedLink, item.ROW_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.REQ_PHOTO_LINK, item.DOCK_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']);
+            const flyerLink = getDisplayPhotoLinkCsv(firstNonEmptyValue(item.FLYER_PHOTO_LINK, item.FLYERPHOTO_LINK, ''), item, 'flyer');
+            return firstNonEmptyValue(sharedLink, requestLink, dockLink, savedLink, flyerLink, item.ROW_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.REQ_PHOTO_LINK, item.DOCK_PHOTO_LINK, item.FLYER_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']);
         }
         function extractPhotoDateIsoFromText_(value = '') {
             const text = String(value || '').trim();
@@ -2158,6 +2207,8 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
 
         function hasTrackedAvPayload(item) {
             if (!item) return false;
+            const sharedPhotoLink = normalizeRuleText(getSharedAppPhotoLinkCsvRaw(item, { includePending: false }));
+            const sharedPhotoName = normalizeRuleText(getSharedAppPhotoName(item));
             return [
                 item.AV_NOTE,
                 item.SALES_NOTE,
@@ -2166,8 +2217,8 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 item.SPEC,
                 item.CALIPER,
                 item.PICK,
-                item.SAVED_PHOTO_LINK,
-                item.SAVED_PHOTO_NAME,
+                sharedPhotoLink,
+                sharedPhotoName,
                 item.LOC_MATCH_QTY,
                 item.INITIAL_PTR
             ].some(value => normalizeRuleText(value) !== '');
@@ -2182,12 +2233,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
 
         function getLatestPhotoDateIsoForRetention(item) {
             if (!item) return '';
-            const links = [
-                item.SAVED_PHOTO_LINK,
-                item.PHOTO_LINK,
-                item.PHOTOLINK,
-                item['PHOTO LINK']
-            ];
+            const links = [getSharedAppPhotoLinkCsvRaw(item, { includePending: false })];
             let winner = '';
             let winnerMs = -1;
             links.forEach((link) => {
@@ -2240,8 +2286,8 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 spec: normalizeRuleText(item && item.SPEC),
                 match: normalizeRuleText(item && item.MATCH),
                 caliper: normalizeRuleText(item && item.CALIPER),
-                photoLink: normalizeRuleText(firstNonEmptyValue(item && item.SAVED_PHOTO_LINK, item && item.PHOTO_LINK, item && item.PHOTOLINK, item && item['PHOTO LINK'])),
-                photoName: normalizeRuleText(firstNonEmptyValue(item && item.SAVED_PHOTO_NAME, item && item.PHOTO_NAME, item && item.PHOTONAME, item && item['PHOTO NAME']))
+                photoLink: normalizeRuleText(getSharedAppPhotoLinkCsvRaw(item, { includePending: false })),
+                photoName: normalizeRuleText(getSharedAppPhotoName(item))
             };
         }
 
@@ -4737,7 +4783,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         const REQUEST_EMAIL_THREAD_SELECT_FIELDS = 'request_folder,request_customer,sales_rep_name,sales_rep_email,recipients,initial_thread_id,initial_message_id,initial_email_sent_at,last_reply_sent_at,status,metadata';
         const REQUEST_EMAIL_INTERNAL_RECIPIENTS = Object.freeze(['dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com']);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-        const APP_VERSION = 'V2026.04.18.13';
+        const APP_VERSION = 'V2026.04.18.14';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
