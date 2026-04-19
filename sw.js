@@ -3,7 +3,7 @@
 */
 
 const APP_SHELL_URL = './index.html?shellv=V2026.04.18.17';
-const CACHE_NAME = 'greenleaf-v4.2-rebuild-V2026.04.19.03';
+const CACHE_NAME = 'greenleaf-v4.2-rebuild-V2026.04.19.04';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',

@@ -106,6 +106,20 @@
         body.viewport-compact #task-tabs-container.task-top-inline #task-genus-filters .task-top-control-panel,
         body.viewport-compact #task-tabs-container.task-top-inline #task-contsize-filters .task-top-control-panel{left:auto;right:0}
         body.viewport-compact #task-tabs-container.task-top-inline #task-genus-filters .task-top-control-panel{width:min(17rem,calc(100vw - (var(--shell-gutter) * 2)))}
+        #drive-plant-filters.drive-top-inline .drive-plant-filter-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.5rem}
+        #drive-plant-filters .task-top-control-shell{position:relative;height:100%}
+        #drive-plant-filters .task-top-control-button{position:relative}
+        body.viewport-compact #drive-plant-filters.drive-top-inline{margin-bottom:.35rem !important}
+        body.viewport-compact #drive-plant-filters.drive-top-inline .drive-plant-filter-row{gap:.35rem !important}
+        body.viewport-compact #drive-plant-filters.drive-top-inline .task-top-control-shell{padding:.32rem .38rem !important;border-radius:.92rem !important}
+        body.viewport-compact #drive-plant-filters.drive-top-inline .task-top-control-button{min-height:42px !important;padding:.38rem .42rem !important;gap:.35rem !important;border-radius:999px !important}
+        body.viewport-compact #drive-plant-filters.drive-top-inline .task-top-control-button i{font-size:.8rem !important}
+        body.viewport-compact #drive-plant-filters.drive-top-inline .task-top-control-title{font-size:.45rem !important;letter-spacing:.11em !important}
+        body.viewport-compact #drive-plant-filters.drive-top-inline .task-top-control-summary{margin-top:.14rem !important;font-size:.6rem !important;line-height:1.05 !important}
+        body.viewport-compact #drive-plant-filters.drive-top-inline .task-top-control-panel{position:absolute;top:calc(100% + .28rem);left:0;z-index:80;width:min(15rem,calc(100vw - (var(--shell-gutter) * 2)));max-width:calc(100vw - (var(--shell-gutter) * 2))}
+        body.viewport-compact #drive-plant-filters.drive-top-inline [data-drive-filter-shell=\"genus\"] .task-top-control-panel,
+        body.viewport-compact #drive-plant-filters.drive-top-inline [data-drive-filter-shell=\"contsize\"] .task-top-control-panel{left:auto;right:0}
+        body.viewport-compact #drive-plant-filters.drive-top-inline [data-drive-filter-shell=\"genus\"] .task-top-control-panel{width:min(17rem,calc(100vw - (var(--shell-gutter) * 2)))}
         #view-wrapper{width:var(--shell-width);max-width:var(--shell-width);min-width:0;overflow-x:hidden;overflow-y:visible;margin:0 auto}#view-wrapper > div{width:100%;max-width:var(--content-width);margin:0 auto}
         .sticky-search{position:-webkit-sticky;position:sticky;top:0;z-index:35;background:#f9fafb;padding-top:max(4px,env(safe-area-inset-top));padding-bottom:10px;box-shadow:0 6px 12px rgba(15,23,42,.05);transform:translateZ(0);-webkit-transform:translateZ(0);backface-visibility:hidden}
         .request-swipe-row{display:block !important;padding:0 !important;position:relative;overflow:hidden;background:#ffffff !important;touch-action:pan-y;overscroll-behavior-x:contain;-webkit-user-select:none;user-select:none}
@@ -158,6 +172,12 @@
         .freeze-panel #drive-search-container,.freeze-panel #av-search-container,.freeze-panel #reserves-search-container,.freeze-panel #docks-search-container{position:relative;top:auto;z-index:auto}
         .freeze-panel .task-tabs,.freeze-panel .detail-tabs{background:transparent}
         .freeze-panel > :last-child{margin-bottom:0 !important}
+        #view-drive #drive-search-container.drive-search-static,#view-tasks #tasks-search-container.tasks-search-static{position:relative;top:auto;z-index:auto}
+        #view-drive .drive-controls-sticky,#view-tasks .task-controls-sticky{padding:.12rem 0 .35rem;margin:0 0 .55rem;z-index:46}
+        #view-drive .drive-controls-sticky #drive-drill-tabs{margin-bottom:.35rem}
+        #view-drive .drive-controls-sticky #drive-season-filters{margin-bottom:.35rem}
+        #view-drive .drive-controls-sticky #drive-plant-filters{margin-bottom:0 !important}
+        #view-tasks .task-controls-sticky #task-tabs-container{margin-bottom:0 !important}
         #view-av #av-search-container.av-search-static{position:relative;top:auto;z-index:auto}
         #view-av .av-primary-tabs-sticky{padding:.12rem 0 .35rem;margin:0 0 .55rem;z-index:46}
         #view-av .av-primary-tabs-sticky .task-tabs{margin-bottom:0}
@@ -501,7 +521,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-<div id="header-version" class="nav-version-pill">V2026.04.19.03</div>
+                                <div id="header-version" class="nav-version-pill">V2026.04.19.04</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -629,11 +649,9 @@
                     </div>
                     </div>
                     <div class="av-secondary-controls">
-                    <div id="av-open-sub-tabs" class="task-tabs amazon-filter-strip mb-2">
-                        <div id="tab-av-open-name" class="task-tab active" onclick="setAvOpenTab('name')">By Name</div>
-
-
-                        <div id="tab-av-open-photos" class="task-tab" onclick="setAvOpenTab('photos')">Photos</div>
+                    <div id="av-secondary-sub-tabs" class="task-tabs amazon-filter-strip mb-2">
+                        <div id="tab-av-secondary-all" class="task-tab active" onclick="setAvSecondaryTab('all')">ALL Open Stock</div>
+                        <div id="tab-av-secondary-photos" class="task-tab" onclick="setAvSecondaryTab('photos')">Photos</div>
                     </div>
                     <div class="flex items-center justify-between gap-2 mb-3 mt-2">
                         <div id="av-crumb" class="text-xs font-bold text-[#007a4d] mb-0 mt-0 empty:hidden flex-1 min-w-0">Open Stock</div>
@@ -718,32 +736,32 @@
                 </div>
 
                 <div id="view-drive" class="hidden">
-                    <div class="freeze-panel">
-                    <div id="drive-search-container" class="sticky-search relative mb-2">
+                    <div id="drive-search-container" class="sticky-search relative mb-2 drive-search-static">
                         <input type="text" id="drive-search" class="input-field w-full pr-10 !mb-0" placeholder="Search Names or Locs..." oninput="handleDriveSearch()" onkeydown="dismissSearchKeyboard(event)">
                         <i id="drive-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearDriveSearch()"></i>
                     </div>
-                                        <div id="drive-drill-tabs" class="hidden">
+                    <div class="freeze-panel drive-controls-sticky">
+                    <div id="drive-drill-tabs" class="hidden">
                         <div id="tab-drive-name" class="task-tab active" onclick="setDriveTab('name')">By Name</div>
                         <div id="tab-drive-loc" class="task-tab" onclick="setDriveTab('loc')">By Location</div>
                         <div id="tab-drive-card" class="task-tab" onclick="setDriveTab('card')">Card View</div>
                     </div>
-                    <div id="drive-quick-request-bar" class="hidden mb-3"></div>
                     <div class="flex overflow-x-auto scrollbar-none gap-2 mb-3 pb-1" id="drive-season-filters"></div>
-                    <div id="drive-crumb" class="text-xs font-bold text-[#007a4d] mb-3 empty:hidden"></div>
                     <div id="drive-plant-filters" class="hidden mb-3"></div>
                     </div>
+                    <div id="drive-quick-request-bar" class="hidden mb-3"></div>
+                    <div id="drive-crumb" class="text-xs font-bold text-[#007a4d] mb-3 empty:hidden"></div>
                     <div id="drive-content"></div>
                 </div>
 
                 <div id="view-tasks" class="hidden">
-                    <div class="freeze-panel">
-                    <div id="tasks-search-container" class="sticky-search relative mb-2 hidden">
+                    <div id="tasks-search-container" class="sticky-search relative mb-2 hidden tasks-search-static">
                         <input type="text" id="tasks-search-input" class="input-field w-full pr-10 !mb-0" placeholder="Search name, item, genus, lot..." oninput="setTaskLocationDetailSearchTerm(this.value)" onkeydown="dismissSearchKeyboard(event)">
                         <i id="tasks-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="return clearTaskLocationDetailSearch()"></i>
                     </div>
                     <div id="task-crumb" class="text-xs font-bold text-[#007a4d] mb-3"></div>
                     <div id="team-selector" class="hidden mb-4 grid grid-cols-1 gap-3"></div>
+                    <div class="freeze-panel task-controls-sticky">
                     <div id="task-tabs-container" class="mb-3 grid grid-cols-1 gap-2 md:grid-cols-2">
                         <div id="task-tab-dropdown-host" class="min-w-0"></div>
                         <div id="task-subtabs-container" class="hidden min-w-0"></div>
@@ -751,10 +769,10 @@
                         <div id="task-contsize-filters" class="hidden min-w-0"></div>
                         <div id="task-location-detail-filters" class="hidden min-w-0"></div>
                     </div>
+                    </div>
                     <div id="task-shared-filters" class="hidden mb-3 space-y-3">
 
                         <div id="task-colorwalk-filters" class="hidden"></div>
-                    </div>
                     </div>
                     <div id="task-content"></div>
                 </div>
@@ -4797,7 +4815,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
 let activeTaskTab="season"; let activeTaskSubview="all"; let taskViewTargetUser=null; let taskViewLevel=0; let selectedTaskBlock=null; let selectedTaskLoc=null; let selectedEndCapFolder=null; let selectedFlyerFolder=null; let activeFlyerFolderTab="active"; let selectedColorWalkSearchTerm=""; let selectedTaskGenusNames=new Set(); let taskGenusSearchTerm=""; let taskGenusFilterOpen=false; let taskGenusFilterItemsCache=[]; let selectedTaskContSize=""; let taskContSizeDropdownOpen=false; let taskContSizeFilterItemsCache=[]; let taskLocationDetailSearchTerm=""; let selectedTaskLocationDetailGenus=""; let selectedTaskLocationDetailLotCode=""; let taskTabDropdownOpen=false; let taskSubviewDropdownOpen=false; let pendingFlyerFolderTarget=null; let pendingFlyerFolderAssignees="";
         let detailReturnState = { viewId: '', scrollTop: 0 };
 
-        let activeAVTab='open'; let activeAvOpenTab='name'; let avOpenLevel=0; let selectedAvOpenName=null; let selectedAvOpenSize=null; let selectedAvOpenSeason=null; let selectedAvOpenLot=null; let avResLevel=0; let selectedAvResRep=null; let selectedAvResDriveUid=null; let selectedAvResItemCode=null; let selectedAvResName=null; let selectedAvResSize=null; let selectedAvResCustomerKey=null; let activeAvReserveMode='current'; let activeAvReserveDetailTab='customer';
+        let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all'; let avOpenLevel=0; let selectedAvOpenName=null; let selectedAvOpenSize=null; let selectedAvOpenSeason=null; let selectedAvOpenLot=null; let avResLevel=0; let selectedAvResRep=null; let selectedAvResDriveUid=null; let selectedAvResItemCode=null; let selectedAvResName=null; let selectedAvResSize=null; let selectedAvResCustomerKey=null; let activeAvReserveMode='current'; let activeAvReserveDetailTab='customer';
 
         let lowStockViewLevel=0; let selectedLowStockName=null; let selectedLowStockSize=null; let reviewViewLevel=0; let selectedReviewItemCode=null; let selectedReviewCommonName=null; let selectedReviewContSize=null;
         let requestViewLevel=0; let reservesViewLevel=0; let reportViewLevel=0; let activeReqTab="pending"; let selectedReqRep=null; let selectedReqRepStatus=null; let selectedReqFolder=null; let tempSelectedReqRep=""; let tempReqFolder=null; let tempReqCust=null; let tempReqAppendToExistingFolder=false; let previousReqStep=""; let driveQuickRequestItems=new Set(); let driveQuickRequestFlow=false; let driveQuickAssignFlow=false;
@@ -4829,7 +4847,7 @@ let activeTaskTab="season"; let activeTaskSubview="all"; let taskViewTargetUser=
         const REQUEST_EMAIL_THREAD_SELECT_FIELDS = 'request_folder,request_customer,sales_rep_name,sales_rep_email,recipients,initial_thread_id,initial_message_id,initial_email_sent_at,last_reply_sent_at,status,metadata';
         const REQUEST_EMAIL_INTERNAL_RECIPIENTS = Object.freeze(['dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com']);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-        const APP_VERSION = 'V2026.04.19.03';
+        const APP_VERSION = 'V2026.04.19.04';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -10251,16 +10269,50 @@ activeDriveTab = tab;
             driveQuickHoldStopOnly = false;
             scheduleUiRender('drive-season-filter', () => renderDrive());
         }
+        function getIsAvPhotoSubview() {
+            return (activeAVTab === 'open' && activeAvOpenTab === 'photos')
+                || (activeAVTab === 'hotprice' && activeAvHotPriceTab === 'photos');
+        }
+
+        function syncAvSecondaryTabs() {
+            const subTabs = document.getElementById('av-secondary-sub-tabs');
+            const allTab = document.getElementById('tab-av-secondary-all');
+            const photosTab = document.getElementById('tab-av-secondary-photos');
+            if (!subTabs || !allTab || !photosTab) return;
+            const shouldShow = activeAVTab === 'open' || activeAVTab === 'hotprice';
+            subTabs.style.display = shouldShow ? 'flex' : 'none';
+            if (!shouldShow) return;
+            const isHotPrice = activeAVTab === 'hotprice';
+            const activeSecondaryTab = isHotPrice ? activeAvHotPriceTab : activeAvOpenTab;
+            allTab.textContent = isHotPrice ? 'ALL HOT PRICE' : 'ALL Open Stock';
+            photosTab.textContent = 'Photos';
+            allTab.classList.toggle('active', activeSecondaryTab !== 'photos');
+            photosTab.classList.toggle('active', activeSecondaryTab === 'photos');
+        }
+
+        function setAvSecondaryTab(tab) {
+            const nextTab = tab === 'photos' ? 'photos' : 'all';
+            if (activeAVTab === 'hotprice') activeAvHotPriceTab = nextTab;
+            else activeAvOpenTab = nextTab === 'photos' ? 'photos' : 'name';
+            syncAvSecondaryTabs();
+            avOpenLevel = 0;
+            selectedAvOpenName = null;
+            selectedAvOpenSize = null;
+            selectedAvOpenSeason = null;
+            selectedAvOpenLot = null;
+            scheduleUiRender('av-secondary-tab', () => renderAV());
+            queueScrollMainAreaToTop(`av-secondary-tab:${activeAVTab}:${nextTab}`);
+        }
+
         function clearAVSearch() { document.getElementById('av-search').value=""; document.getElementById('av-search-clear').classList.add('hidden'); avResLevel=0; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; selectedAvResCustomerKey=null; avOpenLevel=0; renderAV(); }
         function handleAVSearch() { const term=document.getElementById('av-search').value.toLowerCase(); const clearBtn=document.getElementById('av-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden'); avResLevel=0; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; selectedAvResCustomerKey=null; avOpenLevel=0;} else{clearBtn.classList.add('hidden'); avResLevel=0; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; selectedAvResCustomerKey=null; avOpenLevel=0;} scheduleSearchRender('av', () => renderAV(), term); }
 
         function resetAVView() {
-            activeAVTab='open'; activeAvOpenTab='name';
+            activeAVTab='open'; activeAvOpenTab='name'; activeAvHotPriceTab='all';
             avResLevel=0; selectedAvResRep=null; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; selectedAvResCustomerKey=null; activeAvReserveMode='current'; activeAvReserveDetailTab='customer';
             avOpenLevel=0; selectedAvOpenName=null; selectedAvOpenSize=null; selectedAvOpenSeason=null; selectedAvOpenLot=null;
             document.getElementById('tab-av-open').classList.add('active'); document.getElementById('tab-av-hotprice').classList.remove('active'); document.getElementById('tab-av-reserves').classList.remove('active');
-            document.getElementById('tab-av-open-name').classList.add('active'); document.getElementById('tab-av-open-photos').classList.remove('active');
-            document.getElementById('av-open-sub-tabs').style.display = 'flex';
+            syncAvSecondaryTabs();
             document.getElementById('av-search').value=""; document.getElementById('av-search-clear').classList.add('hidden');
             renderAV();
         }
@@ -10269,15 +10321,13 @@ activeDriveTab = tab;
             avResLevel=0; selectedAvResRep=null; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; selectedAvResCustomerKey=null; activeAvReserveMode='current'; activeAvReserveDetailTab='customer';
             avOpenLevel=0; selectedAvOpenName=null; selectedAvOpenSize=null; selectedAvOpenSeason=null; selectedAvOpenLot=null;
             document.getElementById('tab-av-open').classList.toggle('active',tab==='open'); document.getElementById('tab-av-hotprice').classList.toggle('active',tab==='hotprice'); document.getElementById('tab-av-reserves').classList.toggle('active',tab==='reserves');
-            const subTabs = document.getElementById('av-open-sub-tabs');
-            subTabs.style.display = tab==='open' ? 'flex' : 'none';
+            syncAvSecondaryTabs();
             scheduleUiRender('av-tab', () => renderAV());
             queueScrollMainAreaToTop(`av-tab:${tab}`);
         }
         function setAvOpenTab(tab) {
             activeAvOpenTab = tab === 'photos' ? 'photos' : 'name';
-            document.getElementById('tab-av-open-name').classList.toggle('active', activeAvOpenTab === 'name');
-            document.getElementById('tab-av-open-photos').classList.toggle('active', activeAvOpenTab === 'photos');
+            syncAvSecondaryTabs();
             avOpenLevel = 0;
             selectedAvOpenName=null; selectedAvOpenSize=null; selectedAvOpenSeason=null; selectedAvOpenLot=null;
             scheduleUiRender('av-open-tab', () => renderAV());
@@ -11434,7 +11484,11 @@ activeDriveTab = tab;
         function avItemHasPhotos(item) { return getPhotoUrlList(getRowPhotoLink(item, 'av')).length > 0; }
         function getAvOpenTabLabel(tab=activeAvOpenTab) {
             if (tab === 'photos') return 'Photos';
-            return 'By Name';
+            return 'ALL Open Stock';
+        }
+        function getAvHotPriceTabLabel(tab = activeAvHotPriceTab) {
+            if (tab === 'photos') return 'Photos';
+            return 'ALL HOT PRICE';
         }
         function sortAvOpenItems(items, tab=activeAvOpenTab) {
             const compareText = (left, right) => String(left || '').localeCompare(String(right || ''), undefined, { numeric: true });
@@ -11594,6 +11648,7 @@ activeDriveTab = tab;
                 if (activeAvOpenTab === 'photos') items = items.filter(avItemHasPhotos);
             } else if (activeAVTab === 'hotprice') {
                 items = getAvHotPriceRows();
+                if (activeAvHotPriceTab === 'photos') items = items.filter(avItemHasPhotos);
             } else {
                 items = reservesInventory;
                 if (useRepDrill) {
@@ -11648,7 +11703,10 @@ activeDriveTab = tab;
                 }
             } else if (activeAVTab === 'hotprice') {
                 rows = sortAvOpenItems(rows, 'name');
-                if (searchTerm) {
+                if (activeAvHotPriceTab === 'photos') {
+                    title = searchTerm ? 'AV Hot Price Photos Search' : 'AV Hot Price Photos';
+                    fileLabel = searchTerm ? 'av-hot-price-photos-search' : 'av-hot-price-photos';
+                } else if (searchTerm) {
                     title = 'AV Hot Price Search';
                     fileLabel = 'av-hot-price-search';
                 }
@@ -12284,7 +12342,7 @@ activeDriveTab = tab;
 
         function shouldUseChunkedAVOpenRender(rows = []) {
             if (!Array.isArray(rows)) return false;
-            const threshold = activeAvOpenTab === 'photos' ? 120 : 220;
+            const threshold = getIsAvPhotoSubview() ? 120 : 220;
             return rows.length > threshold;
         }
 
@@ -12296,7 +12354,7 @@ activeDriveTab = tab;
             const renderSignature = buildRowsRenderSignature(`av-open|${sourceView}|${String(crumbText || '')}`, rows, ['CAV_HOT_PRICE','CAV_ITEMCODE','CAV_HOT_PRICE_MATCH_KEY']);
             const touchOptimized = isIOSDevice() || isStandaloneApp() || window.matchMedia('(pointer: coarse)').matches;
             const viewportHeight = Math.max(640, Math.round((window.visualViewport && window.visualViewport.height) || window.innerHeight || document.documentElement.clientHeight || 640));
-            const approxCardHeight = sourceView === 'reserves_drill' ? 255 : (activeAvOpenTab === 'photos' ? 230 : 245);
+            const approxCardHeight = sourceView === 'reserves_drill' ? 255 : (getIsAvPhotoSubview() ? 230 : 245);
             const chunkSize = touchOptimized
                 ? (total > 1600 ? 56 : (total > 800 ? 64 : 72))
                 : (total > 1200 ? 32 : (total > 600 ? 40 : 48));
@@ -12410,6 +12468,7 @@ activeDriveTab = tab;
         function renderAV() {
             avRenderChunkToken += 1;
             if (ensureViewDataForRender('av')) return;
+            syncAvSecondaryTabs();
             if (activeAVTab === 'reserves' && !isDatasetLoaded('reserves', 'full')) ensureDatasetLoaded('reserves', 'full').catch(() => {});
             const container = document.getElementById('av-content');
             const crumb = document.getElementById('av-crumb');
@@ -12424,12 +12483,12 @@ activeDriveTab = tab;
             if (items.length === 0) {
                 const emptyLabel = activeAVTab === 'open'
                     ? (activeAvOpenTab === 'photos' ? 'open stock photos' : 'open stock')
-                    : (activeAVTab === 'hotprice' ? 'hot price rows' : 'reserves');
+                    : (activeAVTab === 'hotprice' ? (activeAvHotPriceTab === 'photos' ? 'hot price photos' : 'hot price rows') : 'reserves');
                 updateAVExportButton(0);
-                const emptySignature = buildRowsRenderSignature(`av-empty|${activeAVTab}|${activeAvOpenTab}|${activeAvReserveMode}|${term}|${emptyLabel}`, []);
-                setContainerHtmlWithSignature(container, `<div class="p-8 text-center text-gray-400">${activeAVTab === 'hotprice' ? 'No hot price rows found.' : `No ${emptyLabel} found.`}</div>`, emptySignature);
+                const emptySignature = buildRowsRenderSignature(`av-empty|${activeAVTab}|${activeAvOpenTab}|${activeAvHotPriceTab}|${activeAvReserveMode}|${term}|${emptyLabel}`, []);
+                setContainerHtmlWithSignature(container, `<div class="p-8 text-center text-gray-400">${activeAVTab === 'hotprice' ? (activeAvHotPriceTab === 'photos' ? 'No hot price photos found.' : 'No hot price rows found.') : `No ${emptyLabel} found.`}</div>`, emptySignature);
                 crumb.innerText = activeAVTab === 'hotprice'
-                    ? (term.length > 0 ? 'Search Results (0)' : 'HOT PRICE (0 items)')
+                    ? (term.length > 0 ? 'Search Results (0)' : (activeAvHotPriceTab === 'photos' ? 'HOT PRICE Photos (0 items)' : 'HOT PRICE (0 items)'))
                     : 'No Results';
                 return;
             }
@@ -12455,14 +12514,17 @@ activeDriveTab = tab;
             if (activeAVTab === 'hotprice') {
                 const hotPriceExportContext = buildAVExportContext(items, term);
                 const hotPriceRows = hotPriceExportContext.rows;
-                const crumbText = term.length > 0 ? `Search Results (${hotPriceRows.length})` : `HOT PRICE (${hotPriceRows.length} items)`;
-                const renderSignature = buildRowsRenderSignature(`av-hotprice|${term}|${crumbText}`, hotPriceRows, ['CAV_HOT_PRICE','CAV_ITEMCODE','CAV_HOT_PRICE_MATCH_KEY']);
+                const sourceView = activeAvHotPriceTab === 'photos' ? 'av-photo' : 'av';
+                const crumbText = activeAvHotPriceTab === 'photos'
+                    ? (term.length > 0 ? `Search Results (${hotPriceRows.length})` : `HOT PRICE Photos (${hotPriceRows.length} items)`)
+                    : (term.length > 0 ? `Search Results (${hotPriceRows.length})` : `HOT PRICE (${hotPriceRows.length} items)`);
+                const renderSignature = buildRowsRenderSignature(`av-hotprice|${sourceView}|${activeAvHotPriceTab}|${term}|${crumbText}`, hotPriceRows, ['CAV_HOT_PRICE','CAV_ITEMCODE','CAV_HOT_PRICE_MATCH_KEY']);
                 if (shouldUseChunkedAVOpenRender(hotPriceRows)) {
-                    renderAVOpenCardsChunked(container, crumb, hotPriceRows, 'av', crumbText);
+                    renderAVOpenCardsChunked(container, crumb, hotPriceRows, sourceView, crumbText);
                     return;
                 }
                 crumb.innerText = crumbText;
-                setContainerHtmlWithSignature(container, hotPriceRows.map(i => generateCard(i, 'av', 'status-teal')).join(''), renderSignature);
+                setContainerHtmlWithSignature(container, hotPriceRows.map(i => generateCard(i, sourceView, 'status-teal')).join(''), renderSignature);
                 return;
             }
             const reserveModeTabsHtml = getAvReserveModeTabsHtml();
@@ -17954,6 +18016,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             const container = document.getElementById('drive-plant-filters');
             if (!container) return;
             container.classList.add('hidden');
+            container.classList.remove('drive-top-inline');
             container.innerHTML = '';
             if (container.dataset) delete container.dataset.drivePlantFiltersReady;
         }
@@ -18285,8 +18348,9 @@ ${folderNote ? `Folder Note: ${folderNote}
             }
             if (!container.dataset.drivePlantFiltersReady) {
                 container.dataset.drivePlantFiltersReady = '1';
-                container.innerHTML = `<div class="rounded-[1.05rem] border border-emerald-100 bg-white/95 px-3 py-2.5 shadow-sm backdrop-blur-sm"><div class="flex flex-wrap items-center gap-2"><div class="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-[9px] font-black uppercase tracking-[0.14em] text-emerald-700 shadow-sm"><i class="ph-bold ph-funnel text-[12px]"></i>Plant Filters</div><span class="text-[9px] font-black uppercase tracking-[0.16em] text-slate-400 sm:ml-auto" data-drive-filter-rowcount></span><button type="button" class="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-white px-2.5 py-1.5 text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm" data-drive-filters-clear onclick="return clearDrivePlantFilters()">Clear</button></div><div class="mt-2 flex flex-wrap gap-2"><button type="button" class="inline-flex min-w-[10.5rem] flex-1 items-center gap-2 rounded-full border border-emerald-200 bg-white px-3 py-2 text-left text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm" data-drive-filter-trigger="common" onclick="return toggleDriveCommonNameDropdown()"><i class="ph-bold ph-text-aa text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="truncate">Common Name</span><span class="mt-1 text-[9px] font-bold normal-case tracking-normal text-slate-500" data-drive-common-summary>All names</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><button type="button" class="inline-flex min-w-[10.5rem] flex-1 items-center gap-2 rounded-full border border-emerald-200 bg-white px-3 py-2 text-left text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm" data-drive-filter-trigger="genus" onclick="return toggleDriveGenusDropdown()"><i class="ph-bold ph-leaf text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="truncate">Genus</span><span class="mt-1 text-[9px] font-bold normal-case tracking-normal text-slate-500" data-drive-genus-summary>All genus</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><button type="button" class="inline-flex min-w-[10.5rem] flex-1 items-center gap-2 rounded-full border border-emerald-200 bg-white px-3 py-2 text-left text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm" data-drive-filter-trigger="contsize" onclick="return toggleDriveContSizeDropdown()"><i class="ph-bold ph-ruler text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="truncate">Cont Size</span><span class="mt-1 text-[9px] font-bold normal-case tracking-normal text-slate-500" data-drive-contsize-summary>All sizes</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button></div><div class="mt-2 space-y-1"><div data-drive-common-chips></div><div data-drive-genus-chips></div><div data-drive-contsize-chips></div></div><div class="mt-2 space-y-2"><div class="hidden overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm" data-drive-common-panel><div class="border-b border-emerald-100 p-2"><input id="drive-common-search" type="text" class="input-field !mb-0 border-emerald-200 bg-white !py-2.5" placeholder="Search common names..." value="${esc(driveCommonNameSearchTerm)}" oninput="setDriveCommonNameSearchTerm(this.value)" onkeydown="dismissSearchKeyboard(event)"></div><div class="max-h-56 overflow-y-auto" data-drive-common-options></div><div class="border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeDriveCommonNameDropdown()">Done</button></div></div><div class="hidden overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm" data-drive-genus-panel><div class="border-b border-emerald-100 p-2"><input id="drive-genus-search" type="text" class="input-field !mb-0 border-emerald-200 bg-white !py-2.5" placeholder="Search genus..." value="${esc(driveGenusSearchTerm)}" oninput="setDriveGenusSearchTerm(this.value)" onkeydown="dismissSearchKeyboard(event)"></div><div class="max-h-56 overflow-y-auto" data-drive-genus-options></div><div class="border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeDriveGenusDropdown()">Done</button></div></div><div class="hidden overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm" data-drive-contsize-panel><div class="border-b border-emerald-100 p-2"><input id="drive-contsize-search" type="text" class="input-field !mb-0 border-emerald-200 bg-white !py-2.5" placeholder="Search cont size..." value="${esc(driveContSizeSearchTerm)}" oninput="setDriveContSizeSearchTerm(this.value)" onkeydown="dismissSearchKeyboard(event)"></div><div class="max-h-56 overflow-y-auto" data-drive-contsize-options></div><div class="border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeDriveContSizeDropdown()">Done</button></div></div></div></div>`;
+                container.innerHTML = `<div class="rounded-[1.05rem] border border-emerald-100 bg-white/95 px-3 py-2.5 shadow-sm backdrop-blur-sm"><div class="flex flex-wrap items-center gap-2"><div class="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-[9px] font-black uppercase tracking-[0.14em] text-emerald-700 shadow-sm"><i class="ph-bold ph-funnel text-[12px]"></i>Plant Filters</div><span class="text-[9px] font-black uppercase tracking-[0.16em] text-slate-400 sm:ml-auto" data-drive-filter-rowcount></span><button type="button" class="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-white px-2.5 py-1.5 text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm" data-drive-filters-clear onclick="return clearDrivePlantFilters()">Clear</button></div><div class="drive-plant-filter-row mt-2"><div class="task-top-control-shell drive-filter-shell h-full rounded-[1.05rem] border border-emerald-100 bg-white/95 px-2.5 py-2 shadow-sm backdrop-blur-sm sm:px-3 sm:py-2.5" data-drive-filter-shell="common"><button type="button" class="task-top-control-button inline-flex min-h-[54px] w-full items-center gap-2 rounded-full border border-emerald-200 bg-white px-2.5 py-2 text-left text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm sm:px-3 sm:text-[10px]" data-drive-filter-trigger="common" onclick="return toggleDriveCommonNameDropdown()"><i class="ph-bold ph-text-aa text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Common Name</span><span class="task-top-control-summary mt-1 text-[9px] font-bold normal-case tracking-normal text-slate-500 truncate" data-drive-common-summary>All names</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="task-top-control-panel mt-2 hidden overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm" data-drive-common-panel><div class="border-b border-emerald-100 p-2"><input id="drive-common-search" type="text" class="input-field !mb-0 border-emerald-200 bg-white !py-2.5" placeholder="Search common names..." value="${esc(driveCommonNameSearchTerm)}" oninput="setDriveCommonNameSearchTerm(this.value)" onkeydown="dismissSearchKeyboard(event)"></div><div class="max-h-56 overflow-y-auto" data-drive-common-options></div><div class="border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeDriveCommonNameDropdown()">Done</button></div></div></div><div class="task-top-control-shell drive-filter-shell h-full rounded-[1.05rem] border border-emerald-100 bg-white/95 px-2.5 py-2 shadow-sm backdrop-blur-sm sm:px-3 sm:py-2.5" data-drive-filter-shell="genus"><button type="button" class="task-top-control-button inline-flex min-h-[54px] w-full items-center gap-2 rounded-full border border-emerald-200 bg-white px-2.5 py-2 text-left text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm sm:px-3 sm:text-[10px]" data-drive-filter-trigger="genus" onclick="return toggleDriveGenusDropdown()"><i class="ph-bold ph-leaf text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Genus</span><span class="task-top-control-summary mt-1 text-[9px] font-bold normal-case tracking-normal text-slate-500 truncate" data-drive-genus-summary>All genus</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="task-top-control-panel mt-2 hidden overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm" data-drive-genus-panel><div class="border-b border-emerald-100 p-2"><input id="drive-genus-search" type="text" class="input-field !mb-0 border-emerald-200 bg-white !py-2.5" placeholder="Search genus..." value="${esc(driveGenusSearchTerm)}" oninput="setDriveGenusSearchTerm(this.value)" onkeydown="dismissSearchKeyboard(event)"></div><div class="max-h-56 overflow-y-auto" data-drive-genus-options></div><div class="border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeDriveGenusDropdown()">Done</button></div></div></div><div class="task-top-control-shell drive-filter-shell h-full rounded-[1.05rem] border border-emerald-100 bg-white/95 px-2.5 py-2 shadow-sm backdrop-blur-sm sm:px-3 sm:py-2.5" data-drive-filter-shell="contsize"><button type="button" class="task-top-control-button inline-flex min-h-[54px] w-full items-center gap-2 rounded-full border border-emerald-200 bg-white px-2.5 py-2 text-left text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm sm:px-3 sm:text-[10px]" data-drive-filter-trigger="contsize" onclick="return toggleDriveContSizeDropdown()"><i class="ph-bold ph-ruler text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Cont Size</span><span class="task-top-control-summary mt-1 text-[9px] font-bold normal-case tracking-normal text-slate-500 truncate" data-drive-contsize-summary>All sizes</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="task-top-control-panel mt-2 hidden overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm" data-drive-contsize-panel><div class="border-b border-emerald-100 p-2"><input id="drive-contsize-search" type="text" class="input-field !mb-0 border-emerald-200 bg-white !py-2.5" placeholder="Search cont size..." value="${esc(driveContSizeSearchTerm)}" oninput="setDriveContSizeSearchTerm(this.value)" onkeydown="dismissSearchKeyboard(event)"></div><div class="max-h-56 overflow-y-auto" data-drive-contsize-options></div><div class="border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeDriveContSizeDropdown()">Done</button></div></div></div></div><div class="mt-2 space-y-1"><div data-drive-common-chips></div><div data-drive-genus-chips></div><div data-drive-contsize-chips></div></div></div>`;
             }
+            container.classList.add('drive-top-inline');
             updateDrivePlantFilterUi(state, container);
             return state;
         }
