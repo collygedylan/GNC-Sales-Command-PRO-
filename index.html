@@ -486,7 +486,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-            <div id="header-version" class="nav-version-pill">V2026.04.19.01</div>
+<div id="header-version" class="nav-version-pill">V2026.04.19.02</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -4814,7 +4814,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         const REQUEST_EMAIL_THREAD_SELECT_FIELDS = 'request_folder,request_customer,sales_rep_name,sales_rep_email,recipients,initial_thread_id,initial_message_id,initial_email_sent_at,last_reply_sent_at,status,metadata';
         const REQUEST_EMAIL_INTERNAL_RECIPIENTS = Object.freeze(['dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com']);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-        const APP_VERSION = 'V2026.04.19.01';
+        const APP_VERSION = 'V2026.04.19.02';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -6487,7 +6487,7 @@ return false;
             let items = baseItems;
             if (driveQuickFilterName) {
                 const nameTerm = String(driveQuickFilterName || '').toLowerCase().trim();
-                items = items.filter(i => normalizeSearchValue(i.COMMONNAME).startsWith(nameTerm));
+                items = items.filter(i => normalizeSearchValue(i.COMMONNAME).includes(nameTerm));
             }
             if (driveQuickFilterLocation) items = items.filter(i => String(i.LOCATIONCODE || '').trim() === driveQuickFilterLocation);
             if (driveQuickFilterLot) items = items.filter(i => String(i.LOTCODE || '').trim() === driveQuickFilterLot);
@@ -7728,7 +7728,7 @@ function toggleDriveQuickRequestItem(domId) {
                 item.genus
             ]
         };
-        const STRICT_PREFIX_SEARCH_PROFILES = new Set(['drive_name']);
+        const STRICT_PREFIX_SEARCH_PROFILES = new Set([]);
         function buildSearchIndex(item) {
             if (!item) return item;
             const primaryFields = [
@@ -7803,11 +7803,9 @@ function toggleDriveQuickRequestItem(domId) {
                 if (!primaryValue.startsWith(terms[0])) return false;
                 return terms.slice(1).every((term) => wordStarts.some((word) => word.startsWith(term)));
             }
-            const fieldStartsWith = (term) => searchValues.some(value => value.startsWith(term));
-            const wordStartsWith = (term) => wordStarts.some(word => word.startsWith(term));
-            const [firstTerm, ...restTerms] = terms;
-            if (!fieldStartsWith(firstTerm)) return false;
-            return restTerms.every(term => fieldStartsWith(term) || wordStartsWith(term));
+            const fieldIncludes = (term) => searchValues.some(value => value.includes(term));
+            const wordIncludes = (term) => wordStarts.some(word => word.includes(term));
+            return terms.every(term => fieldIncludes(term) || wordIncludes(term));
         }
 
         function filterBySearch(items, rawTerm, profileName = '') {
@@ -16495,7 +16493,32 @@ activeDriveTab = tab;
             if(sourceView==='reserves_drill'){
                 return buildAvInventoryCard();
             }
-            if(sourceView==='drive'||sourceView==='tasks'){
+            if(sourceView==='drive'){
+                const displaySourceView = sourceView;
+                const displayLocMatchQty = getDisplayLocMatchQtyValue(item, displaySourceView);
+                const displayAvNote = getItemDisplayValue(item, 'AV_NOTE', displaySourceView);
+                const displaySpec = getItemDisplayValue(item, 'SPEC', displaySourceView);
+                const displayCaliper = getItemDisplayValue(item, 'CALIPER', displaySourceView);
+                const displayMatch = getItemDisplayValue(item, 'MATCH', displaySourceView);
+                const displayHoldStopCode = firstNonEmptyValue(item.HOLDSTOPCODE, item.holdstopcode, '-') || '-';
+                let noteHtml='';
+                const holdHtml = buildHoldReasonHtml();
+                const salesNoteHtml = buildSalesNoteHtml();
+                if(holdHtml) noteHtml += holdHtml;
+                if(salesNoteHtml) noteHtml += salesNoteHtml;
+                if(item.END_CAP_FOLDER&&String(item.END_CAP_FOLDER).trim()!==''){noteHtml+=`<div class="mt-2 text-[12px] text-yellow-800 bg-yellow-100 p-2 rounded border border-yellow-200 shadow-sm whitespace-pre-wrap"><span class="font-black">END CAP:</span> ${item.END_CAP_FOLDER} | QTY: ${item.END_CAP_QTY||'0'} | Lvl: ${item.END_CAP_LEVEL||'-'}</div>`}
+                if(displayLocMatchQty&&String(displayLocMatchQty).trim()!==''&&Number(displayLocMatchQty)>0){noteHtml+=`<div class="mt-2 text-[12px] text-green-800 bg-green-100 p-2 rounded border border-green-200 shadow-sm whitespace-pre-wrap"><span class="font-black">LOC PHOTO MATCH:</span> ${displayLocMatchQty}</div>`}
+                if(displayAvNote&&String(displayAvNote).trim()!==''){noteHtml+=`<div class="mt-2 text-[12px] text-blue-800 bg-blue-100 p-2 rounded border border-blue-200 shadow-sm whitespace-pre-wrap"><span class="font-black">AV NOTE:</span> ${displayAvNote}</div>`}
+                if(item.FLYER_TITLE&&String(item.FLYER_TITLE).trim()!==''){noteHtml+=`<div class="mt-2 text-[12px] text-indigo-800 bg-indigo-100 p-2 rounded border border-indigo-200 shadow-sm whitespace-pre-wrap"><span class="font-black">FOLDER:</span> ${getFlyerFolderName(item)}${isFlyerFolderArchived(item) ? ' <span class="font-black uppercase tracking-wide">(Archived)</span>' : ''}</div>`}
+                let extraData='';extraData=`<div class="mt-2 flex flex-wrap gap-2 text-[10px] font-bold text-gray-500 uppercase">${displaySpec?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Spec: ${displaySpec}</span>`:''}${displayCaliper?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Cal: ${displayCaliper}</span>`:''}${displayMatch?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">LOC MATCH %: ${displayMatch}%</span>`:''}</div>`;
+                let quickRequestBtn='';
+                if(canUseDriveQuickRequest()){
+                    const isQueued=driveQuickRequestItems.has(item.DOM_ID);
+                    quickRequestBtn=`<div class="mt-3 flex items-center justify-between"><span class="text-[10px] font-black uppercase tracking-wider ${isQueued?'text-orange-700':'text-gray-400'}">${isQueued?'Queued For Action':'Quick Add'}</span><button type="button" aria-label="${isQueued?'Remove from builder':'Add to builder'}" class="inline-flex items-center justify-center w-9 h-9 rounded-full shadow-sm border ${isQueued?'bg-orange-600 text-white border-orange-600':'bg-white text-orange-600 border-orange-300'} active:scale-95" onclick="event.stopPropagation(); toggleDriveQuickRequestItem('${item.DOM_ID}')"><i class="ph-bold ${isQueued?'ph-check':'ph-plus'} text-lg"></i></button></div>`;
+                }
+                return `<div class="flex items-center w-full mb-3 item-row app-smart-card relative bg-white p-4 rounded-xl border border-gray-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-grow items-start justify-between min-w-0"><div class="app-card-main flex-grow min-w-0 pr-2"><div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[#007a4d]"><span class="text-[17px] font-black leading-tight">${item.CONTSIZE||'-'}</span><span class="text-[17px] font-black leading-tight break-words">${item.COMMONNAME||'Unknown'}</span><span class="text-[15px] font-black leading-tight">${item.LOCATIONCODE||'No Loc'}</span></div><div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-black"><span class="text-[12px] font-black uppercase">PRI ${item.PRIORITY||'-'}</span><span class="text-[12px] font-black">${item.ITEMCODE||'-'}</span><span class="text-[12px] font-black">${item.LOTCODE||'-'}</span></div><div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-slate-700">PTRAVAILABLE <span class="text-slate-900">${item.PTRAVAILABLE||'0'}</span></span><span class="rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-purple-700">S_LTS <span class="text-purple-900">${item.S_LTS||'0'}</span></span><span class="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-amber-700">HOLDSTOPCODE <span class="text-amber-900">${displayHoldStopCode}</span></span></div>${extraData}${noteHtml}${quickRequestBtn}</div>${inlineThumbHtml}</div></div>`;
+            }
+            if(sourceView==='tasks'){
                 const displaySourceView = sourceView;
                 const displayLocMatchQty = getDisplayLocMatchQtyValue(item, displaySourceView);
                 const displayAvNote = getItemDisplayValue(item, 'AV_NOTE', displaySourceView);
@@ -16508,18 +16531,13 @@ activeDriveTab = tab;
                 const salesNoteHtml = buildSalesNoteHtml();
                 if(holdHtml) noteHtml += holdHtml;
                 if(salesNoteHtml) noteHtml += salesNoteHtml;
-                if(sourceView==='tasks' && activeTaskTab==='hotprice' && displayHotPrice){noteHtml+=`<div class="mt-2 text-[12px] text-rose-800 bg-rose-50 p-2 rounded border border-rose-200 shadow-sm whitespace-pre-wrap"><span class="font-black">HOT PRICE:</span> ${displayHotPrice}</div>`}
+                if(activeTaskTab==='hotprice' && displayHotPrice){noteHtml+=`<div class="mt-2 text-[12px] text-rose-800 bg-rose-50 p-2 rounded border border-rose-200 shadow-sm whitespace-pre-wrap"><span class="font-black">HOT PRICE:</span> ${displayHotPrice}</div>`}
                 if(item.END_CAP_FOLDER&&String(item.END_CAP_FOLDER).trim()!==''){noteHtml+=`<div class="mt-2 text-[12px] text-yellow-800 bg-yellow-100 p-2 rounded border border-yellow-200 shadow-sm whitespace-pre-wrap"><span class="font-black">END CAP:</span> ${item.END_CAP_FOLDER} | QTY: ${item.END_CAP_QTY||'0'} | Lvl: ${item.END_CAP_LEVEL||'-'}</div>`}
                 if(displayLocMatchQty&&String(displayLocMatchQty).trim()!==''&&Number(displayLocMatchQty)>0){noteHtml+=`<div class="mt-2 text-[12px] text-green-800 bg-green-100 p-2 rounded border border-green-200 shadow-sm whitespace-pre-wrap"><span class="font-black">LOC PHOTO MATCH:</span> ${displayLocMatchQty}</div>`}
                 if(displayAvNote&&String(displayAvNote).trim()!==''){noteHtml+=`<div class="mt-2 text-[12px] text-blue-800 bg-blue-100 p-2 rounded border border-blue-200 shadow-sm whitespace-pre-wrap"><span class="font-black">AV NOTE:</span> ${displayAvNote}</div>`}
                 if(item.FLYER_TITLE&&String(item.FLYER_TITLE).trim()!==''){noteHtml+=`<div class="mt-2 text-[12px] text-indigo-800 bg-indigo-100 p-2 rounded border border-indigo-200 shadow-sm whitespace-pre-wrap"><span class="font-black">FOLDER:</span> ${getFlyerFolderName(item)}${isFlyerFolderArchived(item) ? ' <span class="font-black uppercase tracking-wide">(Archived)</span>' : ''}</div>`}
-                let extraData='';if(sourceView==='tasks'||sourceView==='drive'){extraData=`<div class="mt-2 flex gap-2 text-[10px] font-bold text-gray-500 uppercase">${displaySpec?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Spec: ${displaySpec}</span>`:''}${displayCaliper?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Cal: ${displayCaliper}</span>`:''}${displayMatch?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">LOC MATCH %: ${displayMatch}%</span>`:''}</div>`}
-                let quickRequestBtn='';
-                if(sourceView==='drive'&&canUseDriveQuickRequest()){
-                    const isQueued=driveQuickRequestItems.has(item.DOM_ID);
-                    quickRequestBtn=`<div class="mt-3 flex items-center justify-between"><span class="text-[10px] font-black uppercase tracking-wider ${isQueued?'text-orange-700':'text-gray-400'}">${isQueued?'Queued For Action':'Quick Add'}</span><button type="button" aria-label="${isQueued?'Remove from builder':'Add to builder'}" class="inline-flex items-center justify-center w-9 h-9 rounded-full shadow-sm border ${isQueued?'bg-orange-600 text-white border-orange-600':'bg-white text-orange-600 border-orange-300'} active:scale-95" onclick="event.stopPropagation(); toggleDriveQuickRequestItem('${item.DOM_ID}')"><i class="ph-bold ${isQueued?'ph-check':'ph-plus'} text-lg"></i></button></div>`;
-                }
-                return `<div class="flex items-center w-full mb-3 item-row app-smart-card relative bg-white p-4 rounded-xl border border-gray-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-grow items-start justify-between min-w-0"><div class="app-card-main flex-grow min-w-0 pr-2"><div class="font-black text-gray-800 text-[16px] leading-tight break-words mb-0.5">${item.COMMONNAME||'Unknown'}</div><div class="app-card-subtitle font-bold text-[#007a4d] text-sm mb-2">${item.CONTSIZE||'-'}</div><div class="text-[11px] font-mono text-gray-500 mb-2 flex items-center bg-gray-100 px-2 py-0.5 rounded w-max"><i class="ph-bold ph-barcode mr-1.5 text-gray-400"></i>${item.ITEMCODE||'-'}</div><div class="app-card-chip-row flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600"><span class="bg-gray-100 px-1.5 py-0.5 rounded">LOC AVA: <span class="text-gray-900">${item.PTRAVAILABLE||'0'}</span></span><span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">Loc: ${item.LOCATIONCODE||'No Loc'}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded">Lot: ${item.LOTCODE||'-'}</span><span class="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-100">s_LTS: ${item.S_LTS||'0'}</span><span class="bg-orange-50 text-orange-700 px-1.5 py-0.5 rounded border border-orange-100">Pri: ${item.PRIORITY||'-'}</span></div>${extraData}${noteHtml}${quickRequestBtn}</div>${inlineThumbHtml}</div></div>`;
+                let extraData='';extraData=`<div class="mt-2 flex gap-2 text-[10px] font-bold text-gray-500 uppercase">${displaySpec?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Spec: ${displaySpec}</span>`:''}${displayCaliper?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Cal: ${displayCaliper}</span>`:''}${displayMatch?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">LOC MATCH %: ${displayMatch}%</span>`:''}</div>`;
+                return `<div class="flex items-center w-full mb-3 item-row app-smart-card relative bg-white p-4 rounded-xl border border-gray-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-grow items-start justify-between min-w-0"><div class="app-card-main flex-grow min-w-0 pr-2"><div class="font-black text-gray-800 text-[16px] leading-tight break-words mb-0.5">${item.COMMONNAME||'Unknown'}</div><div class="app-card-subtitle font-bold text-[#007a4d] text-sm mb-2">${item.CONTSIZE||'-'}</div><div class="text-[11px] font-mono text-gray-500 mb-2 flex items-center bg-gray-100 px-2 py-0.5 rounded w-max"><i class="ph-bold ph-barcode mr-1.5 text-gray-400"></i>${item.ITEMCODE||'-'}</div><div class="app-card-chip-row flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600"><span class="bg-gray-100 px-1.5 py-0.5 rounded">LOC AVA: <span class="text-gray-900">${item.PTRAVAILABLE||'0'}</span></span><span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">Loc: ${item.LOCATIONCODE||'No Loc'}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded">Lot: ${item.LOTCODE||'-'}</span><span class="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-100">s_LTS: ${item.S_LTS||'0'}</span><span class="bg-orange-50 text-orange-700 px-1.5 py-0.5 rounded border border-orange-100">Pri: ${item.PRIORITY||'-'}</span></div>${extraData}${noteHtml}</div>${inlineThumbHtml}</div></div>`;
             }
 
             return `<div class="flex items-center w-full mb-2 item-row overflow-hidden" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="inv-card app-smart-card ${colorClass} flex items-start justify-between flex-grow !mb-0 transition-transform active:scale-[0.99]"><div class="app-card-main flex-grow min-w-0 text-[#007a4d]"><div class="flex justify-between font-bold text-sm mb-1"><span class="truncate pr-2">${item.COMMONNAME||'Unknown'} &bull; ${item.CONTSIZE||'-'} &bull; Loc: ${item.LOCATIONCODE||'No Loc'}</span><span class="whitespace-nowrap bg-[#007a4d]/10 px-1.5 py-0.5 rounded text-xs border border-[#007a4d]/20 h-max">Pri: ${item.PRIORITY||'-'}</span></div><div class="text-[11px] font-semibold truncate mt-0.5">Tag: ${tagColor} | Lot: ${item.LOTCODE||'-'} | PTR-Ava: ${item.PTRAVAILABLE||'0'} | s_LTS: ${item.S_LTS||'0'} | Supply: ${item.SEASONSUPPLY||'0'}</div><div class="text-[11px] font-semibold truncate mt-0.5">Item: ${item.ITEMCODE||'-'}</div></div>${inlineThumbHtml}</div></div>`;
