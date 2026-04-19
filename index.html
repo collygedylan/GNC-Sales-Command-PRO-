@@ -477,7 +477,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-<div id="header-version" class="nav-version-pill">V2026.04.18.17</div>
+            <div id="header-version" class="nav-version-pill">V2026.04.18.18</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -4805,7 +4805,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         const REQUEST_EMAIL_THREAD_SELECT_FIELDS = 'request_folder,request_customer,sales_rep_name,sales_rep_email,recipients,initial_thread_id,initial_message_id,initial_email_sent_at,last_reply_sent_at,status,metadata';
         const REQUEST_EMAIL_INTERNAL_RECIPIENTS = Object.freeze(['dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com']);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-        const APP_VERSION = 'V2026.04.18.17';
+        const APP_VERSION = 'V2026.04.18.18';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -5605,6 +5605,13 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             }
             if (viewId === 'sales-office') return { required: [{ key: 'salesOffice', mode: 'initial' }], background: [{ key: 'salesOffice', mode: 'full' }, { key: 'master', mode: 'full' }], label: 'Loading sales office...' };
             if (viewId === 'tasks') {
+                if (activeTaskTab === 'hotprice') {
+                    return {
+                        required: [{ key: 'master', mode: 'full' }, { key: 'avHotPriceKeys', mode: 'full' }],
+                        background: [{ key: 'avNotes', mode: 'full' }],
+                        label: 'Loading HOT PRICE task rows...'
+                    };
+                }
                 const required = [{ key: 'master', mode: 'initial' }];
                 const background = [{ key: 'master', mode: 'full' }, { key: 'avNotes', mode: 'full' }];
                 if (activeTaskTab === 'season' && activeTaskSubview === 'av-blanks') {
@@ -11518,6 +11525,40 @@ activeDriveTab = tab;
             return matchedRows;
         }
 
+        function getTaskHotPriceRows(items = []) {
+            const scopedItems = Array.isArray(items) ? items : [];
+            if (!scopedItems.length) return [];
+            const hotPriceRows = getAvHotPriceRows();
+            if (!hotPriceRows.length) return [];
+            const scopedByUid = new Map();
+            scopedItems.forEach((item) => {
+                const uid = String(firstNonEmptyValue(item && item.UNIQUE_ID, '')).trim();
+                if (uid) scopedByUid.set(uid, item);
+            });
+            if (!scopedByUid.size) return [];
+            return hotPriceRows.reduce((results, hotPriceRow) => {
+                const uid = String(firstNonEmptyValue(hotPriceRow && hotPriceRow.UNIQUE_ID, '')).trim();
+                const sourceItem = scopedByUid.get(uid);
+                if (!sourceItem) return results;
+                const assignment = String(firstNonEmptyValue(sourceItem.APP_TAB_ASSIGNMENT, sourceItem.app_tab_assignment, hotPriceRow.APP_TAB_ASSIGNMENT, hotPriceRow.app_tab_assignment, '')).trim().toLowerCase();
+                if (assignment !== 'season' && assignment !== 'location') return results;
+                if (isSeasonBlockedFromTaskQueue(sourceItem)) return results;
+                const hotPriceText = getNormalizedAvHotPrice(firstNonEmptyValue(hotPriceRow.CAV_HOT_PRICE, hotPriceRow.HOT_PRICE, hotPriceRow.HOTPRICE, ''));
+                const nextItem = Object.assign({}, sourceItem, {
+                    HOT_PRICE: hotPriceText,
+                    HOTPRICE: hotPriceText,
+                    CAV_HOT_PRICE: hotPriceText,
+                    CAV_ITEMCODE: firstNonEmptyValue(hotPriceRow.CAV_ITEMCODE, hotPriceRow.cav_itemcode, ''),
+                    CAV_FILENAME: firstNonEmptyValue(hotPriceRow.CAV_FILENAME, hotPriceRow.cav_filename, ''),
+                    CAV_LAST_UPDATED: firstNonEmptyValue(hotPriceRow.CAV_LAST_UPDATED, hotPriceRow.cav_last_updated, ''),
+                    CAV_HOT_PRICE_MATCH_KEY: firstNonEmptyValue(hotPriceRow.CAV_HOT_PRICE_MATCH_KEY, hotPriceRow.cav_hot_price_match_key, '')
+                });
+                nextItem._search = (String(firstNonEmptyValue(sourceItem._search, '')) + ' ' + hotPriceText + ' HOT PRICE ' + String(firstNonEmptyValue(nextItem.CAV_ITEMCODE, ''))).trim().toLowerCase();
+                results.push(nextItem);
+                return results;
+            }, []);
+        }
+
         function getCurrentAVBaseItems(options = {}) {
             const searchInput = document.getElementById('av-search');
             const term = String(searchInput ? searchInput.value : '').toLowerCase().trim();
@@ -12956,7 +12997,17 @@ activeDriveTab = tab;
                 showToast('Removed', `${selectedItems.size} row${selectedItems.size === 1 ? '' : 's'} left in Bloom Picker.`);
             }
         }
-        function applyCameraPermissions(sourceView) {
+        function getTaskDetailTabForItem(item = activeItem, taskTab = activeTaskTab) {
+            const safeTaskTab = String(taskTab || activeTaskTab || '').trim().toLowerCase();
+            if (safeTaskTab === 'colorwalk') return 'location';
+            if (safeTaskTab === 'hotprice') {
+                const assignment = String(firstNonEmptyValue(item && item.APP_TAB_ASSIGNMENT, item && item.app_tab_assignment, '')).trim().toLowerCase();
+                if (assignment === 'season' || assignment === 'location') return assignment;
+                return 'overview';
+            }
+            return safeTaskTab;
+        }
+        function applyCameraPermissions(sourceView, taskContextItem = activeItem) {
             const camSsn = document.getElementById('camera-btn-ssn');
             const camLsn = document.getElementById('camera-btn-lsn');
             const camNa = document.getElementById('camera-btn-na');
@@ -12976,11 +13027,12 @@ activeDriveTab = tab;
             });
 
             if (sourceView === 'tasks') {
-                if (activeTaskTab === 'season') {
+                const taskDetailTab = getTaskDetailTabForItem(taskContextItem, activeTaskTab);
+                if (taskDetailTab === 'season') {
                     if(camLsn) camLsn.style.display = 'none';
                     if(camNa) camNa.style.display = 'none';
                     if(camReq) camReq.style.display = 'none';
-                } else if (activeTaskTab === 'location' || activeTaskTab === 'colorwalk') {
+                } else if (taskDetailTab === 'location') {
                     if(camSsn) camSsn.style.display = 'none';
                     if(camNa) camNa.style.display = 'none';
                     if(camReq) camReq.style.display = 'none';
@@ -12997,7 +13049,7 @@ activeDriveTab = tab;
             if(sourceView==='av-photo'){
                 openAvGallery(item);
             }else{
-                applyCameraPermissions(sourceView);
+                applyCameraPermissions(sourceView, item);
                 openDetail(uniqueId,sourceView);
             }
         }
@@ -13180,7 +13232,7 @@ activeDriveTab = tab;
                 document.getElementById('dtab-notes').classList.remove('hidden');
                 document.getElementById('dtab-gallery').classList.remove('hidden');
             } else if (detailSourceView === 'tasks') {
-                const taskDetailTab = activeTaskTab === 'colorwalk' ? 'location' : activeTaskTab;
+                const taskDetailTab = getTaskDetailTabForItem(activeItem, activeTaskTab);
                 let t = document.getElementById('dtab-' + taskDetailTab);
                 if(t) t.classList.remove('hidden');
                 document.getElementById('dtab-gallery').classList.remove('hidden');
@@ -13194,7 +13246,7 @@ activeDriveTab = tab;
 
             let primaryDetailTab = 'overview';
             if (detailSourceView === 'tasks' && activeTaskTab) {
-                primaryDetailTab = activeTaskTab === 'colorwalk' ? 'location' : activeTaskTab;
+                primaryDetailTab = getTaskDetailTabForItem(activeItem, activeTaskTab);
             } else if (detailSourceView === 'request') {
                 primaryDetailTab = 'request';
             } else if (detailSourceView === 'docks') {
@@ -13266,7 +13318,7 @@ activeDriveTab = tab;
             }
 
             if (detailSourceView === 'tasks' && activeTaskTab) {
-                switchDetailTab(activeTaskTab === 'colorwalk' ? 'location' : activeTaskTab);
+                switchDetailTab(getTaskDetailTabForItem(activeItem, activeTaskTab));
             } else if (detailSourceView === 'request') {
                 switchDetailTab('request');
             } else {
@@ -16342,11 +16394,13 @@ activeDriveTab = tab;
                 const displaySpec = getItemDisplayValue(item, 'SPEC', displaySourceView);
                 const displayCaliper = getItemDisplayValue(item, 'CALIPER', displaySourceView);
                 const displayMatch = getItemDisplayValue(item, 'MATCH', displaySourceView);
+                const displayHotPrice = getNormalizedAvHotPrice(firstNonEmptyValue(item.CAV_HOT_PRICE, item.HOT_PRICE, item.HOTPRICE, ''));
                 let noteHtml='';
                 const holdHtml = buildHoldReasonHtml();
                 const salesNoteHtml = buildSalesNoteHtml();
                 if(holdHtml) noteHtml += holdHtml;
                 if(salesNoteHtml) noteHtml += salesNoteHtml;
+                if(sourceView==='tasks' && activeTaskTab==='hotprice' && displayHotPrice){noteHtml+=`<div class="mt-2 text-[12px] text-rose-800 bg-rose-50 p-2 rounded border border-rose-200 shadow-sm whitespace-pre-wrap"><span class="font-black">HOT PRICE:</span> ${displayHotPrice}</div>`}
                 if(item.END_CAP_FOLDER&&String(item.END_CAP_FOLDER).trim()!==''){noteHtml+=`<div class="mt-2 text-[12px] text-yellow-800 bg-yellow-100 p-2 rounded border border-yellow-200 shadow-sm whitespace-pre-wrap"><span class="font-black">END CAP:</span> ${item.END_CAP_FOLDER} | QTY: ${item.END_CAP_QTY||'0'} | Lvl: ${item.END_CAP_LEVEL||'-'}</div>`}
                 if(displayLocMatchQty&&String(displayLocMatchQty).trim()!==''&&Number(displayLocMatchQty)>0){noteHtml+=`<div class="mt-2 text-[12px] text-green-800 bg-green-100 p-2 rounded border border-green-200 shadow-sm whitespace-pre-wrap"><span class="font-black">LOC PHOTO MATCH:</span> ${displayLocMatchQty}</div>`}
                 if(displayAvNote&&String(displayAvNote).trim()!==''){noteHtml+=`<div class="mt-2 text-[12px] text-blue-800 bg-blue-100 p-2 rounded border border-blue-200 shadow-sm whitespace-pre-wrap"><span class="font-black">AV NOTE:</span> ${displayAvNote}</div>`}
@@ -18449,9 +18503,9 @@ ${folderNote ? `Folder Note: ${folderNote}
                     return i.ASSIGNEDTO === u && !String(firstNonEmptyValue(i.DATE_COMPLETED, i.date_completed, '')).trim();
                 });
                 let htmlCounts = `<div class="flex gap-2 mt-2">`;
-                ['season','location','colorwalk','endcap','flyer'].forEach(t => {
+                ['season','location','hotprice','colorwalk','endcap','flyer'].forEach(t => {
                     let c = getTaskTabItems(userTasks, t).length;
-                    const label = t === 'colorwalk' ? 'color' : t;
+                    const label = t === 'colorwalk' ? 'color' : (t === 'hotprice' ? 'hot price' : t);
                     if(c > 0) htmlCounts += `<span class="text-[10px] font-bold px-2 py-1 rounded bg-gray-100 text-gray-600 uppercase">${label}: ${c}</span>`;
                 });
                 htmlCounts += `</div>`;
@@ -18547,7 +18601,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function taskTabUsesBlockDrill(tab = activeTaskTab) {
-            return tab === 'season' || tab === 'location' || tab === 'colorwalk';
+            return tab === 'season' || tab === 'location' || tab === 'hotprice' || tab === 'colorwalk';
         }
 
         function shouldUseSharedTaskQueue(tab = activeTaskTab) {
@@ -18602,8 +18656,19 @@ ${folderNote ? `Folder Note: ${folderNote}
             return items.filter(item => taskRowMatchesSubview(item, subview));
         }
 
+        function getTaskRowColorClass(item = null, tab = activeTaskTab) {
+            const safeTab = String(tab || activeTaskTab || '').trim().toLowerCase();
+            if (safeTab === 'season') return 'status-green';
+            if (safeTab === 'colorwalk') return 'status-indigo';
+            if (safeTab === 'hotprice') {
+                const assignment = String(firstNonEmptyValue(item && item.APP_TAB_ASSIGNMENT, item && item.app_tab_assignment, '')).trim().toLowerCase();
+                return assignment === 'location' ? 'status-blue' : 'status-green';
+            }
+            return 'status-blue';
+        }
+
         function getTaskModeDropdownOptions() {
-            return ['season', 'location', 'colorwalk', 'endcap', 'flyer'].map((value) => ({
+            return ['season', 'location', 'hotprice', 'colorwalk', 'endcap', 'flyer'].map((value) => ({
                 value,
                 label: getTaskTabLabel(value)
             }));
@@ -18615,7 +18680,7 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function shouldShowTaskHeaderSearch(tab = activeTaskTab, level = taskViewLevel) {
             const safeTab = String(tab || activeTaskTab || '').trim().toLowerCase();
-            return level === 2 && (safeTab === 'season' || safeTab === 'location');
+            return level === 2 && (safeTab === 'season' || safeTab === 'location' || safeTab === 'hotprice');
         }
 
         function shouldShowTaskInlineGenusFilter(tab = activeTaskTab, level = taskViewLevel) {
@@ -19016,7 +19081,7 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function shouldShowTaskLocationDetailFilters(tab = activeTaskTab, level = taskViewLevel) {
             const safeTab = String(tab || activeTaskTab || '').trim().toLowerCase();
-            return level === 2 && (safeTab === 'season' || safeTab === 'location');
+            return level === 2 && (safeTab === 'season' || safeTab === 'location' || safeTab === 'hotprice');
         }
 
         function hasActiveTaskLocationDetailFilters() {
@@ -19145,6 +19210,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         function getTaskTabLabel(tab = activeTaskTab) {
             if (tab === 'season') return 'Season Sales Notes';
             if (tab === 'location') return 'Location Sales Notes';
+            if (tab === 'hotprice') return 'HOT PRICE';
             if (tab === 'colorwalk') return 'Color Walk';
             if (tab === 'endcap') return 'End Cap';
             if (tab === 'flyer') return 'Flyer';
@@ -19166,6 +19232,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         function getTaskTabItems(items, tab = activeTaskTab) {
             if (tab === 'colorwalk') return items.filter(i => isColorWalkTaskItem(i));
             if (tab === 'flyer') return items.filter(i => isFlyerTaskItem(i));
+            if (tab === 'hotprice') return getTaskHotPriceRows(items);
             if (tab === 'season' || tab === 'location') return items.filter(i => i.APP_TAB_ASSIGNMENT === tab && !isSeasonBlockedFromTaskQueue(i));
             return items.filter(i => i.APP_TAB_ASSIGNMENT === tab);
         }
@@ -19485,17 +19552,16 @@ ${folderNote ? `Folder Note: ${folderNote}
                         if (nameCompare !== 0) return nameCompare;
                         return String(a.CONTSIZE || '').localeCompare(String(b.CONTSIZE || ''), undefined, { numeric: true });
                     });
-                    const colorClass = activeTaskTab === 'season' ? 'status-green' : (activeTaskTab === 'colorwalk' ? 'status-indigo' : 'status-blue');
                     const prefixHtml = `<div class="back-btn" onclick="return backToTaskLocationList()"><i class="ph-bold ph-arrow-left"></i> Back to Locations</div>`;
                     const renderRow = activeTaskTab === 'season' && activeTaskSubview === 'av-blanks'
                         ? (item) => renderTaskAvBlankCard(item)
-                        : (item) => generateCard(item, 'tasks', colorClass);
+                        : (item) => generateCard(item, 'tasks', getTaskRowColorClass(item, activeTaskTab));
                     const emptyHtml = shouldRenderTaskLocationDetailFilters && hasActiveTaskLocationDetailFilters()
                         ? `<div class="p-8 text-center text-gray-400">No rows match current filters.</div>`
                         : `<div class="p-8 text-center text-gray-400">No rows found for this location.</div>`;
                     renderMarkupChunkedByKey('tasks-main', container, null, fItems, '', renderRow, {
                         prefixHtml,
-                        approxCardHeight: activeTaskTab === 'season' && activeTaskSubview === 'av-blanks' ? 170 : 260,
+                        approxCardHeight: activeTaskTab === 'season' && activeTaskSubview === 'av-blanks' ? 170 : (activeTaskTab === 'hotprice' ? 290 : 260),
                         emptyHtml
                     });
                 }
