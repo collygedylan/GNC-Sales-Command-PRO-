@@ -1083,6 +1083,7 @@ body.viewport-compact #view-detail #det-location{font-size:clamp(.9rem,3.8vw,1.1
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
         const APP_SHELL_QUERY_PARAM = 'shellv';
+        const APP_BOOTED_VERSION_STORAGE_KEY = 'gnc_app_version_booted_v1';
         const DB_NAME="GNC_DDC_DB_V2"; const STORE_NAME="inventory_cache";
         const IOS_DEVICE_REGEX = /iPad|iPhone|iPod/;
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
@@ -1849,10 +1850,14 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
         async function ensureCurrentShellBuild() {
             const currentBuild = APP_SHELL_BUILD;
             if (!currentBuild) return false;
+            const currentVersion = (typeof APP_VERSION === 'string' && APP_VERSION.trim())
+                ? APP_VERSION.trim()
+                : currentBuild;
 
             const previousBuild = localStorage.getItem(APP_SHELL_BUILD_STORAGE_KEY) || '';
             const refreshedBuild = sessionStorage.getItem(APP_SHELL_REFRESH_STORAGE_KEY) || '';
             localStorage.setItem(APP_SHELL_BUILD_STORAGE_KEY, currentBuild);
+            try { localStorage.setItem(APP_BOOTED_VERSION_STORAGE_KEY, currentVersion); } catch (e) {}
 
             if (!previousBuild || previousBuild === currentBuild) {
                 if (refreshedBuild === currentBuild) {
@@ -22339,11 +22344,39 @@ ${folderNote ? `Folder Note: ${folderNote}
 <script>
         if ('serviceWorker' in navigator) {
             const shellBuild = String(window.__APP_SHELL_BUILD__ || '').trim() || 'local-shell';
+            const shellVersion = (typeof APP_VERSION === 'string' && APP_VERSION.trim()) ? APP_VERSION.trim() : shellBuild;
             const shellRefreshStorageKey = 'gnc_app_shell_refresh_v1';
+            const shellControllerReloadStorageKey = 'gnc_app_shell_controller_reload_v1';
             const shellQueryParam = 'shellv';
-            const markShellUpdateReady = () => {
+            const currentReloadMarker = `${shellVersion}::${shellBuild}`;
+            const hasReloadedCurrentShell = () => {
+                try { return sessionStorage.getItem(shellControllerReloadStorageKey) === currentReloadMarker; } catch (e) { return false; }
+            };
+            const markReloadedCurrentShell = () => {
+                try { sessionStorage.setItem(shellControllerReloadStorageKey, currentReloadMarker); } catch (e) {}
+            };
+            const clearStaleReloadMarker = () => {
+                try {
+                    const existing = sessionStorage.getItem(shellControllerReloadStorageKey) || '';
+                    if (existing && existing !== currentReloadMarker) sessionStorage.removeItem(shellControllerReloadStorageKey);
+                } catch (e) {}
+            };
+            clearStaleReloadMarker();
+            try { localStorage.setItem(APP_BOOTED_VERSION_STORAGE_KEY, shellVersion); } catch (e) {}
+            const requestWaitingShellActivation = (reg = window.__swReg) => {
+                const waiting = reg && reg.waiting;
+                if (!waiting) return false;
+                try {
+                    waiting.postMessage({ type: 'SKIP_WAITING', build: shellBuild, version: shellVersion });
+                    return true;
+                } catch (e) {
+                    return false;
+                }
+            };
+            const markShellUpdateReady = (reg = window.__swReg) => {
                 window.__gncShellUpdateReady = true;
                 try { sessionStorage.setItem(shellRefreshStorageKey, shellBuild); } catch (e) {}
+                requestWaitingShellActivation(reg);
                 if (typeof window.showToast === 'function' && !document.hidden && !window.__gncShellUpdateToastShown) {
                     window.__gncShellUpdateToastShown = true;
                     try { window.showToast('Update Ready', 'New code is staged and will apply when the app is backgrounded or reopened.', false); } catch (e) {}
@@ -22353,8 +22386,11 @@ ${folderNote ? `Folder Note: ${folderNote}
                 if (!window.__gncShellUpdateReady) return;
                 if (!document.hidden) return;
                 if ((window.pendingPhotoUploads && window.pendingPhotoUploads.size) || window.backgroundRefreshInFlight) return;
+                requestWaitingShellActivation();
                 window.__gncShellUpdateReady = false;
                 window.__gncShellUpdateToastShown = false;
+                if (hasReloadedCurrentShell()) return;
+                markReloadedCurrentShell();
                 try {
                     const nextUrl = new URL(window.location.href);
                     nextUrl.searchParams.set(shellQueryParam, shellBuild);
@@ -22365,12 +22401,12 @@ ${folderNote ? `Folder Note: ${folderNote}
             };
             navigator.serviceWorker.register('./sw.js?v=' + encodeURIComponent(shellBuild), { scope: './' }).then(reg => {
                 console.log('Service Worker Registered');
-                if (reg.waiting) markShellUpdateReady();
+                if (reg.waiting) markShellUpdateReady(reg);
                 reg.addEventListener('updatefound', () => {
                     const installing = reg.installing;
                     if (!installing) return;
                     installing.addEventListener('statechange', () => {
-                        if (installing.state === 'installed' && navigator.serviceWorker.controller) markShellUpdateReady();
+                        if (installing.state === 'installed' && navigator.serviceWorker.controller) markShellUpdateReady(reg);
                     });
                 });
                 window.__swReg = reg;
@@ -22388,8 +22424,9 @@ ${folderNote ? `Folder Note: ${folderNote}
                 }
             });
             navigator.serviceWorker.addEventListener('controllerchange', () => {
-                markShellUpdateReady();
-                tryApplyShellUpdateSilently();
+                if (hasReloadedCurrentShell()) return;
+                markShellUpdateReady(window.__swReg);
+                if (document.hidden) setTimeout(tryApplyShellUpdateSilently, 80);
             });
             document.addEventListener('visibilitychange', () => {
                 if (document.hidden) {

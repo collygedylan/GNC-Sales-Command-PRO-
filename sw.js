@@ -27,6 +27,14 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+self.addEventListener('message', (event) => {
+  const data = event && event.data ? event.data : {};
+  if (!data || typeof data !== 'object') return;
+  if (data.type === 'SKIP_WAITING') {
+    event.waitUntil(self.skipWaiting());
+  }
+});
+
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET' || !event.request.url.startsWith('http')) return;
   if (event.request.mode === 'navigate') {
