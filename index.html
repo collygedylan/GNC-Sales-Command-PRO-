@@ -624,7 +624,7 @@ body.viewport-compact #view-detail #det-location{font-size:clamp(.9rem,3.8vw,1.1
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-                            <div id="header-version" class="nav-version-pill">V2026.04.20.02</div>
+    <div id="header-version" class="nav-version-pill">V2026.04.20.03</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -5245,7 +5245,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
         const REQUEST_EMAIL_THREAD_SELECT_FIELDS = 'request_folder,request_customer,sales_rep_name,sales_rep_email,recipients,initial_thread_id,initial_message_id,initial_email_sent_at,last_reply_sent_at,status,metadata';
         const REQUEST_EMAIL_INTERNAL_RECIPIENTS = Object.freeze(['dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com']);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-        const APP_VERSION = 'V2026.04.20.02';
+const APP_VERSION = 'V2026.04.20.03';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -5390,11 +5390,22 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
                     requested_by: currentUserDisplay || currentUser || 'Unknown',
                     requested_at: new Date().toISOString()
                 };
-                await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) });
-                showToast('Started', 'Google Apps Script trigger sent.');
+                const responseData = await postGoogleScriptJsonPayload(payload, REQUEST_EMAIL_SCRIPT_TIMEOUT_MS, 'Manual Sync');
+                const responseStatus = String(firstNonEmptyValue(responseData && responseData.status, '')).trim().toLowerCase();
+                const responseMessage = String(firstNonEmptyValue(responseData && responseData.message, '')).trim();
+                if (responseData && responseData.ok === false) {
+                    throw new Error(responseMessage || `Manual sync failed (${responseData.status || 0})`);
+                }
+                if (responseStatus === 'busy') {
+                    showToast('Already Running', responseMessage || 'A manual sync is already running.', true);
+                } else if (responseStatus === 'queued') {
+                    showToast('Started', responseMessage || 'Google Apps Script queued successfully.');
+                } else {
+                    showToast('Started', responseMessage || 'Google Apps Script request sent.');
+                }
             } catch (err) {
                 console.error(err);
-                showToast('Error', 'Could not send the Google Apps Script request.', true);
+                showToast('Error', err && err.message ? err.message : 'Could not send the Google Apps Script request.', true);
             } finally {
                 window.googleScriptRunInFlight = false;
                 syncGoogleScriptButton();
@@ -11167,11 +11178,11 @@ function toggleDriveQuickRequestItem(domId) {
             }
         }
 
-        async function postRequestEmailPayload(payload = {}) {
+        async function postGoogleScriptJsonPayload(payload = {}, timeoutMs = REQUEST_EMAIL_SCRIPT_TIMEOUT_MS, label = 'Google Script') {
             const response = await fetchWithTimeout(GOOGLE_SCRIPT_URL, {
                 method: 'POST',
                 body: JSON.stringify(payload)
-            }, REQUEST_EMAIL_SCRIPT_TIMEOUT_MS, 'Request Email');
+            }, timeoutMs, label);
             let responseText = '';
             try { responseText = await response.text(); } catch (error) {}
             let parsed = {};
@@ -11183,6 +11194,10 @@ function toggleDriveQuickRequestItem(domId) {
                 }
             }
             return { ok: !!(response && response.ok), status: response ? response.status : 0, ...parsed };
+        }
+
+        async function postRequestEmailPayload(payload = {}) {
+            return postGoogleScriptJsonPayload(payload, REQUEST_EMAIL_SCRIPT_TIMEOUT_MS, 'Request Email');
         }
 
         async function persistRequestEmailThreadAfterSend(type = '', payload = {}, responseData = null, existingRecord = null) {
@@ -11225,7 +11240,11 @@ function toggleDriveQuickRequestItem(domId) {
             const targetFolderId = String(folderId || '').trim();
             const targetCustomer = normalizeSearchValue(customer);
             const existingThreadRecord = targetFolderId ? await getRequestEmailThreadRecord(targetFolderId) : null;
-            const { repEmail, recipientEmails, recipientDetails } = buildRequestEmailRecipients(repName, safeDetails);
+            const { repEmail, recipientEmails } = buildRequestEmailRecipients(repName, safeDetails);
+            const finalRecipientEmails = (safeType === 'request_complete' && existingThreadRecord && Array.isArray(existingThreadRecord.recipients) && existingThreadRecord.recipients.length)
+                ? dedupeRequestEmailRecipients(existingThreadRecord.recipients)
+                : recipientEmails;
+            const recipientDetails = finalRecipientEmails.map((email) => ({ email, role: email === repEmail ? 'sales-rep' : 'internal' }));
             let payload = {
                 type: 'email',
                 emailType: safeType,
@@ -11241,7 +11260,7 @@ function toggleDriveQuickRequestItem(domId) {
                 dylanEmail: REQUEST_EMAIL_INTERNAL_RECIPIENTS[0],
                 jdEmail: REQUEST_EMAIL_INTERNAL_RECIPIENTS[1],
                 internalRecipients: REQUEST_EMAIL_INTERNAL_RECIPIENTS.slice(),
-                recipientEmails: recipientEmails,
+                recipientEmails: finalRecipientEmails,
                 recipients: recipientDetails
             };
             const rawRequestItems = Array.isArray(safeDetails.items) ? safeDetails.items.filter(Boolean) : [];
@@ -11276,6 +11295,8 @@ function toggleDriveQuickRequestItem(domId) {
                     av_note: firstNonEmptyValue(item && item.AV_NOTE, item && item.av_note, ''),
                     spec: firstNonEmptyValue(item && item.REQ_SPEC, item && item.req_spec, item && item.SPEC, ''),
                     caliper: firstNonEmptyValue(item && item.REQ_CALIPER, item && item.req_caliper, item && item.CALIPER, ''),
+                    match: firstNonEmptyValue(item && item.REQ_MATCH, item && item.req_match, item && item.MATCH, item && item.match, ''),
+                    loc_match_qty: firstNonEmptyValue(item && item.LOC_MATCH_QTY, item && item.loc_match_qty, ''),
                     photo: getRequestPhotoLinkCsv(item, { includePending: false })
                 })).filter((item) => item.unique_id || item.commonname || item.itemcode);
             }
@@ -18796,6 +18817,7 @@ function toggleDriveQuickRequestItem(domId) {
                 });
                 getRequestSharePhotoEntries(item).forEach(photo => {
                     lines.push(`<div><strong>${escapeShareHtml(photo.label)}:</strong> <a href="${escapeShareHtml(photo.url)}">${escapeShareHtml(photo.displayName)}</a></div>`);
+                    lines.push(`<div style="margin-top:6px;"><img src="${escapeShareHtml(photo.url)}" alt="${escapeShareHtml(photo.displayName)}" style="max-width:220px;max-height:220px;border-radius:8px;border:1px solid #ddd;"></div>`);
                 });
                 blocks.push(`<div style="margin:0 0 18px 0;line-height:1.45;">${lines.join('')}</div>`);
             });
