@@ -490,6 +490,27 @@ body.viewport-compact #view-detail #det-location{font-size:clamp(.9rem,3.8vw,1.1
             </div>
         </div>
     </div>
+    <div id="request-publish-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4" onclick="if(event.target===this) closeRequestPublishModal('cancel')">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-lg text-left">
+            <div class="flex items-start justify-between gap-3 mb-4 border-b border-gray-100 pb-3">
+                <div>
+                    <div class="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]"><i class="ph-bold ph-broadcast text-sm"></i>Publish Decision</div>
+                    <h3 class="mt-3 text-lg font-black text-slate-900">Publish completed request in the app?</h3>
+                    <div id="request-publish-modal-label" class="mt-1 text-[11px] font-semibold text-slate-500"></div>
+                </div>
+                <button type="button" class="text-gray-500 font-bold py-2 px-3" onclick="closeRequestPublishModal('cancel')">Close</button>
+            </div>
+            <p class="text-sm leading-6 text-slate-600">
+                Choose <span class="font-black text-[#007a4d]">Yes, Publish in App</span> to make the completed photos and data visible through the normal Drive and AV master-row flow.
+                Choose <span class="font-black text-slate-700">No, Email Only</span> to keep the completed details only in the request email thread.
+            </p>
+            <div class="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                <button type="button" class="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-gray-600 shadow-sm active:scale-95" onclick="closeRequestPublishModal('cancel')">Cancel</button>
+                <button type="button" class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-slate-700 shadow-sm active:scale-95" onclick="closeRequestPublishModal('email')">No, Email Only</button>
+                <button type="button" id="request-publish-yes-btn" class="rounded-xl border border-emerald-200 bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95" onclick="closeRequestPublishModal('publish')">Yes, Publish in App</button>
+            </div>
+        </div>
+    </div>
     <div id="request-rep-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center flex flex-col max-h-[90vh] overflow-hidden">
             <div id="step-1-rep" class="flex flex-col min-h-0">
@@ -624,7 +645,7 @@ body.viewport-compact #view-detail #det-location{font-size:clamp(.9rem,3.8vw,1.1
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-<div id="header-version" class="nav-version-pill">V2026.04.20.05</div>
+<div id="header-version" class="nav-version-pill">V2026.04.20.06</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -5249,7 +5270,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
         const REQUEST_EMAIL_THREAD_SELECT_FIELDS = 'request_folder,request_customer,sales_rep_name,sales_rep_email,recipients,initial_thread_id,initial_message_id,initial_email_sent_at,last_reply_sent_at,status,metadata';
         const REQUEST_EMAIL_INTERNAL_RECIPIENTS = Object.freeze(['dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com']);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-        const APP_VERSION = 'V2026.04.20.05';
+const APP_VERSION = 'V2026.04.20.06';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -17684,6 +17705,45 @@ function toggleDriveQuickRequestItem(domId) {
             if (saveBtn) saveBtn.innerText = 'Save AV Note';
         }
 
+        let requestPublishPromptResolver = null;
+
+        function getRequestPublishModalRowLabel(item) {
+            if (!item) return '';
+            const commonName = String(firstNonEmptyValue(item.COMMONNAME, item.commonname, 'Unknown Item')).trim() || 'Unknown Item';
+            const contSize = String(firstNonEmptyValue(item.CONTSIZE, item.contsize, '')).trim();
+            const locationCode = String(firstNonEmptyValue(item.LOCATIONCODE, item.locationcode, '')).trim();
+            const parts = [commonName];
+            if (contSize) parts.push(contSize);
+            if (locationCode) parts.push(locationCode);
+            return parts.join(' • ');
+        }
+
+        function closeRequestPublishModal(choice = 'cancel') {
+            const modal = document.getElementById('request-publish-modal');
+            if (modal) modal.classList.add('hidden');
+            const resolver = requestPublishPromptResolver;
+            requestPublishPromptResolver = null;
+            if (resolver) resolver(String(choice || 'cancel').trim().toLowerCase() || 'cancel');
+        }
+
+        function openRequestPublishModal(item) {
+            const modal = document.getElementById('request-publish-modal');
+            if (!modal) return Promise.resolve('cancel');
+            const label = document.getElementById('request-publish-modal-label');
+            if (label) label.textContent = getRequestPublishModalRowLabel(item);
+            if (requestPublishPromptResolver) {
+                const previousResolver = requestPublishPromptResolver;
+                requestPublishPromptResolver = null;
+                previousResolver('cancel');
+            }
+            modal.classList.remove('hidden');
+            return new Promise((resolve) => {
+                requestPublishPromptResolver = resolve;
+                const publishBtn = document.getElementById('request-publish-yes-btn');
+                if (publishBtn) setTimeout(() => publishBtn.focus(), 0);
+            });
+        }
+
         async function saveSalesOfficeAvNote() {
             const uidField = document.getElementById('sales-office-av-uid');
             const textField = document.getElementById('sales-office-av-text');
@@ -21806,6 +21866,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 let requestAssignment = '';
                 let requestMasterId = '';
                 let requestMasterItem = null;
+                let requestShouldPublishInApp = false;
 
                 if ((prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-') && isComplete) {
                     const effectiveAvNote = String(itemToSave.AV_NOTE || '').trim();
@@ -21850,7 +21911,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                     const effectiveContSize = firstNonEmptyValue(itemToSave.CONTSIZE, requestMasterItem ? requestMasterItem.CONTSIZE : '');
                     qualifiesForOpenStockView = ltsValue > 0;
                     const needsCaliper = effectivePlantGroup && String(effectivePlantGroup).includes('330_TREES') && ['#7','#10','#15','#25','#45'].includes(effectiveContSize);
-                    if (isComplete && isAvEligibleRequest) {
+                    if (isComplete && assignment === 'season') {
+                        requestShouldPublishInApp = qualifiesForOpenStockView;
                         const reusableRequestData = getRequestReusableData(itemToSave);
                         const shouldOfferCurrentData = parseAppNumber(itemToSave.REQ_MATCH) == null && reusableRequestData.hasData && parseAppNumber(reusableRequestData.match) != null;
                         if (shouldOfferCurrentData) {
@@ -21904,6 +21966,18 @@ ${folderNote ? `Folder Note: ${folderNote}
                         if (!effectiveAvNote) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required','AV Note is required before completing this request.',true); return; }
                         if (!effectiveSpec) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required','Spec is required before completing this request.',true); return; }
                         if (needsCaliper && !effectiveCaliper) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required','Caliper is required for this request.',true); return; }
+                    } else if (isComplete) {
+                        const publishChoice = await openRequestPublishModal(itemToSave);
+                        if (publishChoice === 'cancel') {
+                            if (btnComp) btnComp.innerText = 'MARK DONE';
+                            return;
+                        }
+                        requestShouldPublishInApp = publishChoice === 'publish';
+                        if (requestShouldPublishInApp && !String(firstNonEmptyValue(requestMasterId, requestMasterItem && requestMasterItem.UNIQUE_ID, '')).trim()) {
+                            if (btnComp) btnComp.innerText = 'MARK DONE';
+                            showToast('Publish Blocked', 'This request is not linked to an app row, so it can only be sent by email.', true);
+                            return;
+                        }
                     }
                     const persistedRequestRep = String(itemToSave.REQUESTED_BY || getDefaultRequestRepName() || currentUserDisplay || currentUser || '').trim() || 'Unknown Rep';
                     const persistedRequestFolder = String(itemToSave.REQUEST_FOLDER || '').trim() || 'Unassigned';
@@ -21922,7 +21996,6 @@ ${folderNote ? `Folder Note: ${folderNote}
                     payload.req_reserve = setVal(itemToSave.REQ_RESERVE);
                     payload.av_note = setVal(itemToSave.AV_NOTE);
                     if (isComplete) {
-                        itemToSave._SHOW_IN_AV = isAvEligibleRequest;
                         payload.req_status = 'Complete';
                         itemToSave.REQ_STATUS = 'Complete';
                     }
@@ -22100,7 +22173,11 @@ ${folderNote ? `Folder Note: ${folderNote}
                         normalizeRowPhotoFields(artifacts.cloneSO);
                     }
 
-                    if (prefix === 'req-' && qualifiesForOpenStockView) {
+                    const shouldSyncRequestToMaster = prefix === 'req-' && (
+                        (salesRuleAssignment === 'season' && qualifiesForOpenStockView) ||
+                        (salesRuleAssignment !== 'season' && requestShouldPublishInApp)
+                    );
+                    if (shouldSyncRequestToMaster) {
                         artifacts.masterSyncId = requestMasterId || itemToSave.MASTER_ID || itemToSave.MASTER_UNIQUE_ID || itemToSave.master_id;
                         artifacts.masterSyncItem = requestMasterItem || findItemByUniqueId(artifacts.masterSyncId);
                         if (artifacts.masterSyncId) {
