@@ -54,11 +54,23 @@
         .app-smart-card .app-card-chip-row > span{display:inline-flex;align-items:center;min-height:1.65rem;padding:.28rem .72rem !important;border-radius:999px !important;box-shadow:inset 0 1px 0 rgba(255,255,255,.65)}
         .app-smart-card .app-smart-thumb{width:4.1rem;height:4.1rem;border-radius:1rem !important;box-shadow:0 10px 24px rgba(15,23,42,.12)}
         .app-smart-card .app-smart-thumb--feature{width:5.85rem;height:5.85rem;border-radius:1.05rem !important}
-        .app-smart-card--av .app-av-card-layout{display:flex;align-items:flex-start;justify-content:space-between;gap:.75rem;width:100%;min-width:0;flex-wrap:nowrap}
-        .app-smart-card--av .app-av-card-main{flex:1 1 auto;min-width:0}
-        .app-smart-card--av .app-av-card-thumb-column{flex:0 0 auto}
-        body.viewport-wide .app-smart-card:hover{transform:translateY(-2px);box-shadow:0 18px 40px rgba(15,23,42,.10),0 6px 14px rgba(15,23,42,.05) !important}
-        body.viewport-compact .app-smart-card{border-radius:18px !important}
+.app-smart-card--av .app-av-card-layout{display:flex;align-items:flex-start;justify-content:space-between;gap:.75rem;width:100%;min-width:0;flex-wrap:nowrap}
+.app-smart-card--av .app-av-card-main{flex:1 1 auto;min-width:0}
+.app-smart-card--av .app-av-card-thumb-column{flex:0 0 auto}
+.app-smart-card--inventory{padding:1rem !important}
+.app-smart-card--inventory .app-card-main{padding-left:.18rem}
+.app-smart-card--inventory.app-card-with-bottom-rail{padding-bottom:5.25rem !important}
+.app-card-topline{display:flex;align-items:baseline;gap:.45rem;min-width:0;flex-wrap:nowrap;color:#007a4d}
+.app-card-topline>span{white-space:nowrap}
+.app-card-topline-common{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:clamp(1.02rem,2.15vw,1.42rem);line-height:1.06;font-weight:900}
+.app-card-topline-size{flex:0 0 auto;font-size:clamp(.94rem,1.6vw,1.15rem);line-height:1.08;font-weight:900}
+.app-card-topline-meta{flex:0 0 auto;font-size:clamp(.82rem,1.3vw,.98rem);line-height:1.08;font-weight:900}
+.app-card-bottom-rail{position:absolute;left:0;right:0;bottom:0;padding:.72rem .95rem .82rem;background:linear-gradient(180deg,rgba(255,255,255,.08) 0%,rgba(255,255,255,.92) 28%,#fff 52%);border-top:1px solid #e2ebe4;box-shadow:0 -10px 20px rgba(15,23,42,.06);display:flex;align-items:center;justify-content:center;gap:.6rem;z-index:4}
+.app-card-bottom-btn{width:100%;min-height:2.65rem;border-radius:999px;padding:.72rem 1rem;border:1px solid #bfe6d2;background:#007a4d;color:#fff;font-size:.7rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase;display:inline-flex;align-items:center;justify-content:center;gap:.5rem;box-shadow:0 10px 18px rgba(0,122,77,.16)}
+.app-card-bottom-btn--secondary{background:#fff;color:#b45309;border-color:#fdba74;box-shadow:0 8px 16px rgba(217,119,6,.12)}
+.app-card-bottom-status{width:100%;min-height:2.65rem;border-radius:999px;padding:.72rem 1rem;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase}
+body.viewport-wide .app-smart-card:hover{transform:translateY(-2px);box-shadow:0 18px 40px rgba(15,23,42,.10),0 6px 14px rgba(15,23,42,.05) !important}
+body.viewport-compact .app-smart-card{border-radius:18px !important}
         body.viewport-compact .app-smart-card .card-checkbox-container{width:36px;min-width:36px;margin-right:10px}
         body.viewport-compact .app-smart-card .app-card-main{padding-left:.6rem}
         body.viewport-compact .app-smart-card .app-card-eyebrow{font-size:.54rem !important;letter-spacing:.15em !important}
@@ -89,8 +101,17 @@
         body.viewport-compact .app-smart-card.app-smart-card--av .app-av-card-main > .flex.flex-wrap.items-center.gap-x-3.gap-y-1 span:nth-child(1){font-size:clamp(1rem,4.4vw,1.18rem) !important;line-height:1.06 !important}
         body.viewport-compact .app-smart-card.app-smart-card--av .app-av-card-main > .flex.flex-wrap.items-center.gap-x-3.gap-y-1 span:nth-child(2){font-size:clamp(1.2rem,6vw,1.55rem) !important;line-height:1.02 !important}
         body.viewport-compact .app-smart-card.app-smart-card--av .app-av-card-main > .flex.flex-wrap.items-center.gap-x-3.gap-y-1 span:nth-child(3){font-size:clamp(1rem,4.8vw,1.22rem) !important;line-height:1.05 !important}
-        body.viewport-compact .app-smart-card.app-smart-card--av .app-av-card-main > .mt-2.flex.flex-wrap.items-center.gap-x-3.gap-y-1 span{font-size:clamp(.8rem,3.7vw,.95rem) !important;line-height:1.08 !important}
-        body.viewport-compact .app-smart-card.app-smart-card--av .app-av-card-main > .mt-3.flex.flex-wrap.gap-2{gap:.38rem !important;font-size:.62rem !important}
+body.viewport-compact .app-smart-card.app-smart-card--av .app-av-card-main > .mt-2.flex.flex-wrap.items-center.gap-x-3.gap-y-1 span{font-size:clamp(.8rem,3.7vw,.95rem) !important;line-height:1.08 !important}
+body.viewport-compact .app-smart-card.app-smart-card--av .app-av-card-main > .mt-3.flex.flex-wrap.gap-2{gap:.38rem !important;font-size:.62rem !important}
+body.viewport-compact .app-smart-card--inventory{padding:.92rem .95rem !important}
+body.viewport-compact .app-smart-card--inventory.app-card-with-bottom-rail{padding-bottom:5rem !important}
+body.viewport-compact .app-card-topline{gap:.32rem}
+body.viewport-compact .app-card-topline-common{font-size:clamp(.96rem,5vw,1.18rem)}
+body.viewport-compact .app-card-topline-size{font-size:clamp(.84rem,4vw,1rem)}
+body.viewport-compact .app-card-topline-meta{font-size:clamp(.72rem,3.5vw,.88rem)}
+body.viewport-compact .app-card-bottom-rail{padding:.62rem .78rem .72rem}
+body.viewport-compact .app-card-bottom-btn,
+body.viewport-compact .app-card-bottom-status{min-height:2.45rem;font-size:.62rem;letter-spacing:.1em}
         .task-top-control-shell{position:relative}
         .task-top-control-button{position:relative}
         .task-top-control-title{display:block}
@@ -228,12 +249,24 @@
         .amazon-filter-chip-row::-webkit-scrollbar{display:none}
         .amazon-filter-chip-row > *{flex:0 0 auto;box-shadow:0 1px 2px rgba(15,23,42,.08)}
         .amazon-crumb{display:inline-flex;align-items:center;min-height:24px;padding:.28rem .68rem;border-radius:999px;background:#ffffff;border:1px solid #a7f3d0;color:#007a4d !important;font-size:9px !important;font-weight:900 !important;letter-spacing:.08em;text-transform:uppercase;box-shadow:0 1px 2px rgba(15,23,42,.06);margin:.02rem 0 .42rem .12rem !important}
-        #drive-quick-request-bar{margin-bottom:.45rem !important}
+        #drive-quick-request-bar{display:none !important;margin-bottom:0 !important}
         #team-selector{margin-bottom:.55rem !important}
         #view-detail .freeze-panel > .back-btn.amazon-hidden-back{display:none}
-        #view-detail #det-season-content,#view-detail #det-location-content,#view-detail #det-notes-content,#view-detail #det-request-content,#view-detail #det-docks-content,#view-detail #det-flyer-content{max-width:780px;margin:0 auto;padding:.85rem 0 calc(12rem + env(safe-area-inset-bottom))}
-        #view-detail #det-season-content>div,#view-detail #det-location-content>div,#view-detail #det-notes-content>div,#view-detail #det-request-content>div,#view-detail #det-docks-content>div,#view-detail #det-flyer-content>div{background:#fff;border:1px solid #dbe4dc;border-radius:20px;padding:14px 14px;box-shadow:0 10px 24px rgba(15,23,42,.06);margin-bottom:14px}
-        #view-detail #det-season-content>div:last-child,#view-detail #det-location-content>div:last-child,#view-detail #det-notes-content>div:last-child,#view-detail #det-request-content>div:last-child,#view-detail #det-docks-content>div:last-child,#view-detail #det-flyer-content>div:last-child{margin-bottom:0}
+#view-detail #det-season-content,#view-detail #det-location-content,#view-detail #det-notes-content,#view-detail #det-request-content,#view-detail #det-docks-content,#view-detail #det-flyer-content{max-width:780px;margin:0 auto;padding:.85rem 0 calc(12rem + env(safe-area-inset-bottom))}
+#view-detail #det-season-content>div,#view-detail #det-location-content>div,#view-detail #det-notes-content>div,#view-detail #det-request-content>div,#view-detail #det-docks-content>div,#view-detail #det-flyer-content>div{background:#fff;border:1px solid #dbe4dc;border-radius:20px;padding:14px 14px;box-shadow:0 10px 24px rgba(15,23,42,.06);margin-bottom:14px}
+#view-detail #det-season-content>div:last-child,#view-detail #det-location-content>div:last-child,#view-detail #det-notes-content>div:last-child,#view-detail #det-request-content>div:last-child,#view-detail #det-docks-content>div:last-child,#view-detail #det-flyer-content>div:last-child{margin-bottom:0}
+#view-detail #det-title-row{display:flex;align-items:baseline;gap:.45rem;min-width:0;flex-wrap:nowrap;overflow:hidden;color:#007a4d}
+#view-detail #det-title-row>*{white-space:nowrap}
+#view-detail #det-common{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:clamp(1.35rem,5.4vw,2.4rem);line-height:1.04}
+#view-detail #det-size{flex:0 0 auto;font-size:clamp(1.05rem,4.5vw,1.55rem);line-height:1.08}
+#view-detail #det-location{flex:0 0 auto;font-size:clamp(1rem,4.1vw,1.45rem);line-height:1.08}
+#view-detail #det-extra-info .detail-meta-line{font-size:13px;font-weight:900;color:#007a4d}
+#view-detail #det-extra-info .detail-sales-note{margin-top:.55rem;border:1px solid #bfdbfe;background:#eff6ff;border-radius:14px;padding:.7rem .8rem;color:#1e3a8a;white-space:pre-wrap}
+#view-detail #det-extra-info .detail-sales-note-label{display:block;font-size:10px;font-weight:900;letter-spacing:.16em;text-transform:uppercase;color:#2563eb;margin-bottom:.2rem}
+body.viewport-compact #view-detail #det-title-row{gap:.32rem}
+body.viewport-compact #view-detail #det-common{font-size:clamp(1.18rem,5vw,1.7rem)}
+body.viewport-compact #view-detail #det-size{font-size:clamp(.94rem,4vw,1.2rem)}
+body.viewport-compact #view-detail #det-location{font-size:clamp(.9rem,3.8vw,1.12rem)}
         #view-detail #ssn-input-container,#view-detail #lsn-input-container,#view-detail #na-input-container,#view-detail #req-input-container,#view-detail #dock-input-container,#view-detail #flyer-input-container{display:grid;gap:.85rem}
         #view-detail .input-field{min-height:54px;padding:14px 16px;border-radius:14px;font-size:16px;line-height:1.4;margin-bottom:0;box-shadow:inset 0 1px 0 rgba(255,255,255,.8)}
         #view-detail textarea.input-field{min-height:120px;padding-top:14px;padding-bottom:14px;line-height:1.45;resize:vertical}
@@ -546,7 +579,7 @@
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-<div id="header-version" class="nav-version-pill">V2026.04.19.08</div>
+<div id="header-version" class="nav-version-pill">V2026.04.19.10</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -813,7 +846,7 @@
                     <div class="freeze-panel">
                     <div class="back-btn" onclick="goBackFromDetail()"><i class="ph-bold ph-arrow-left"></i> Back</div>
                     <div class="mb-4">
-                        <div id="det-title-row" class="flex items-baseline gap-x-3 whitespace-nowrap overflow-x-auto scrollbar-none mb-2 text-[#007a4d]">
+                        <div id="det-title-row" class="mb-2 text-[#007a4d]">
                             <h1 id="det-common" class="text-2xl font-black leading-none">--</h1>
                             <p id="det-size" class="font-black text-xl leading-none">--</p>
                             <p id="det-location" class="font-black text-xl leading-none">--</p>
@@ -1108,7 +1141,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
         let horizontalClampFrameQueued = false;
         let swipeCloseOnScrollFrame = null;
         let swipeCloseOnScrollTimer = null;
-        const ACTIVE_TYPING_GRACE_MS = 140;
+        const ACTIVE_TYPING_GRACE_MS = 240;
         const ACTIVE_SCROLL_GRACE_MS = 320;
         const ACTIVE_TOUCH_GRACE_MS = 850;
         const CHUNK_RENDER_GRACE_MS = 320;
@@ -1282,9 +1315,12 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
         }
         window.addEventListener('input', markTypingActivity, { passive: true });
 
+        function hasActiveTextEntryFocus() {
+            return isTextLikeElement(document.activeElement);
+        }
+
         function isUserActivelyTyping() {
-            const activeEl = document.activeElement;
-            if (!isTextLikeElement(activeEl)) return false;
+            if (!hasActiveTextEntryFocus()) return false;
             return (Date.now() - lastTypingAt) < ACTIVE_TYPING_GRACE_MS;
         }
 
@@ -3185,7 +3221,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             }
         }
         function shouldDeferInteractiveBackgroundWork() {
-            return !!(isUserActivelyTyping() || isUserActivelyScrolling() || isUserActivelyTouching() || isChunkRenderActive() || (window.pendingPhotoUploads && window.pendingPhotoUploads.size));
+            return !!(hasActiveTextEntryFocus() || isUserActivelyTyping() || isUserActivelyScrolling() || isUserActivelyTouching() || isChunkRenderActive() || (window.pendingPhotoUploads && window.pendingPhotoUploads.size));
         }
 
         function scheduleRealtimeReconnect(delay = REALTIME_RECOVERY_GRACE_MS) {
@@ -3639,6 +3675,10 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             const visibleViewIds = getVisibleTrackedViewIds();
             if (!visibleViewIds.length) return;
             visibleViewIds.forEach((viewId) => markViewDirty(viewId));
+            if (shouldDeferInteractiveBackgroundWork()) {
+                scheduleDeferredVisibleDirtyViewRefresh(reason, Math.max(0, Number(delay) || 0), Math.max(180, Number(typingDelay) || 0));
+                return;
+            }
             visibleViewIds.forEach((viewId) => queueInteractiveViewRender(viewId, false, true, Math.max(0, Number(delay) || 0), Math.max(140, Number(typingDelay) || 0)));
         }
         function scheduleDocksRender(delay = 32) {
@@ -4917,7 +4957,7 @@ let activeTaskTab="season"; let activeTaskSubview="all"; let taskViewTargetUser=
         const REQUEST_EMAIL_THREAD_SELECT_FIELDS = 'request_folder,request_customer,sales_rep_name,sales_rep_email,recipients,initial_thread_id,initial_message_id,initial_email_sent_at,last_reply_sent_at,status,metadata';
         const REQUEST_EMAIL_INTERNAL_RECIPIENTS = Object.freeze(['dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com']);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-const APP_VERSION = 'V2026.04.19.08';
+const APP_VERSION = 'V2026.04.19.10';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -6716,48 +6756,9 @@ function closeDriveQuickFiltersModal() {
 function renderDriveQuickRequestBar() {
     const bar = document.getElementById('drive-quick-request-bar');
     if (!bar) return;
-    const validIds = Array.from(driveQuickRequestItems).filter(domId => !!findItemByDomId(domId));
-    if (validIds.length !== driveQuickRequestItems.size) driveQuickRequestItems = new Set(validIds);
-    const canUseQuick = canUseDriveQuickRequest() && activeDriveMode === 'ok';
-    const count = driveQuickRequestItems.size;
-    if (!canUseQuick) {
-        closeDriveQuickFiltersModal();
-        bar.classList.add('hidden');
-        bar.innerHTML = '';
-        return;
-    }
-
-    const activeFilters = getDriveQuickActiveFilterEntries();
-    const matchingCount = getDriveFilteredItems(true).length;
-    const compactBtnBase = 'shrink-0 min-h-[38px] px-3.5 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.12em] transition-colors duration-150';
-    const primaryBtn = `${compactBtnBase} bg-[#007a4d] text-white shadow-sm hover:bg-[#006341]`;
-    const secondaryBtn = `${compactBtnBase} bg-white border border-emerald-200 text-[#007a4d] shadow-sm hover:bg-emerald-50`;
-    const disabledBtn = `${compactBtnBase} bg-emerald-100 text-emerald-300 shadow-sm cursor-not-allowed`;
-    const flyerTargetingFolder = String(pendingFlyerFolderTarget || '').trim();
-    const flyerActionLabel = flyerTargetingFolder ? 'Add To Folder' : 'Create Flyer';
-    const filtersBtn = `<button class="${secondaryBtn}" onclick="openDriveQuickFiltersModal()">Filters${activeFilters.length ? ` (${activeFilters.length})` : ''}</button>`;
-    const clearFiltersBtn = activeFilters.length ? `<button class="${secondaryBtn}" onclick="clearDriveQuickFilters()">Clear Filters</button>` : '';
-    const requestBtn = count === 0
-        ? `<button class="${disabledBtn}" disabled>Create Request</button>`
-        : `<button class="${primaryBtn}" onclick="openDriveQuickRequestModal()">Create Request</button>`;
-    const flyerBtn = count === 0
-        ? `<button class="${disabledBtn}" disabled>${flyerActionLabel}</button>`
-        : `<button class="${secondaryBtn}" onclick="createDriveQuickFlyers()">${flyerActionLabel}</button>`;
-    const assignBtn = count === 0
-        ? `<button class="${disabledBtn}" disabled>Assign Items</button>`
-        : `<button class="${secondaryBtn}" onclick="startDriveQuickAssignFlow()">Assign Items</button>`;
-    const clearRowsBtn = `<button class="${secondaryBtn}" onclick="clearDriveQuickRequestItems()">Clear Rows</button>`;
-    const headerHtml = `<div class="min-w-0"><div class="text-[10px] font-black text-emerald-700 uppercase tracking-[0.16em]">Drive Tools</div><div class="text-base font-black text-slate-900 mt-1">${matchingCount} matching row${matchingCount === 1 ? '' : 's'} | ${count} row${count === 1 ? '' : 's'} ready</div><div class="text-[11px] font-semibold text-slate-500 mt-1">Filters open only when you need them.</div></div>`;
-    const activeFilterChips = activeFilters.length
-        ? `<div class="flex gap-2 overflow-x-auto scrollbar-none pb-1">${activeFilters.map(filter => `<span class="shrink-0 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-[11px] font-black text-emerald-700 uppercase tracking-[0.08em]">${esc(filter.label)}: ${esc(filter.value)}</span>`).join('')}</div>`
-        : '';
-    const flyerTargetPanel = flyerTargetingFolder
-        ? `<div class="rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-indigo-600">Active Flyer Folder</div><div class="text-sm font-black text-indigo-900 truncate mt-1">${flyerTargetingFolder}</div></div><button class="${secondaryBtn}" onclick="clearPendingFlyerFolderTarget()">Choose Folder</button></div>`
-        : '';
-    const shellClass = 'rounded-xl border border-emerald-200 bg-white/95 p-3 shadow-sm backdrop-blur-sm';
-    bar.innerHTML = `<div class="${shellClass}"><div class="flex flex-col gap-3"><div class="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">${headerHtml}<div class="flex gap-2 overflow-x-auto scrollbar-none pb-1">${filtersBtn}${clearFiltersBtn}${clearRowsBtn}${requestBtn}${flyerBtn}${assignBtn}</div></div>${flyerTargetPanel}${activeFilterChips}</div></div>`;
-    bar.classList.remove('hidden');
-    if (driveQuickFiltersModalOpen) renderDriveQuickFiltersModal();
+    closeDriveQuickFiltersModal();
+    bar.classList.add('hidden');
+    bar.innerHTML = '';
 }
 
 function toggleDriveQuickRequestItem(domId) {
@@ -7930,16 +7931,23 @@ function toggleDriveQuickRequestItem(domId) {
             if (searchRenderFrame[safeKey]) cancelAnimationFrame(searchRenderFrame[safeKey]);
             const touchOptimized = isIOSDevice() || isStandaloneApp() || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
             const baseDelay = safeKey === 'drive-search'
-                ? (touchOptimized ? 70 : 45)
-                : (touchOptimized ? 55 : 35);
+                ? (touchOptimized ? 110 : 80)
+                : (touchOptimized ? 90 : 60);
             const debounceDelay = options && options.skipDebounce
                 ? 0
                 : Math.max(0, Number(options.debounceDelay) || baseDelay);
+            const typingDelay = Math.max(
+                ACTIVE_TYPING_GRACE_MS,
+                Number(options && options.typingDelay) || (touchOptimized ? 240 : 180)
+            );
             searchRenderTimer[safeKey] = setTimeout(() => {
                 delete searchRenderTimer[safeKey];
-                searchRenderFrame[safeKey] = requestAnimationFrame(() => {
-                    delete searchRenderFrame[safeKey];
+                scheduleTypingAwareUiRender(`search:${safeKey}`, () => {
+                    if (normalizedTerm !== null && searchRenderLastTerm[safeKey] !== normalizedTerm) return;
                     renderFn();
+                }, 0, typingDelay, {
+                    touchDelayMs: Math.max(typingDelay, 260),
+                    scrollDelayMs: Math.max(160, typingDelay - 20)
                 });
             }, debounceDelay);
         }
@@ -9830,6 +9838,10 @@ function toggleDriveQuickRequestItem(domId) {
             dirtyViews.forEach((viewId) => markViewDirty(viewId));
             const visibleDirtyViewIds = getVisibleTrackedViewIds().filter((viewId) => dirtyViews.includes(viewId));
             if (!visibleDirtyViewIds.length) return;
+            if (shouldDeferInteractiveBackgroundWork()) {
+                scheduleDeferredVisibleDirtyViewRefresh('dataset-refresh', 24, 240);
+                return;
+            }
             visibleDirtyViewIds.forEach((viewId) => {
                 scheduleTypingAwareUiRender(`data-refresh:${viewId}`, () => {
                     if (!isViewVisible(viewId)) return;
@@ -9862,7 +9874,13 @@ function toggleDriveQuickRequestItem(domId) {
             }
             if (!changedKeys.length) return targetVisibleViews;
             getAffectedViewsForDatasets(changedKeys).forEach((viewId) => markViewDirty(viewId));
-            targetVisibleViews.forEach((viewId) => queueInteractiveViewRender(viewId, false, true, Math.max(0, Number(options.delay) || 0), Math.max(140, Number(options.typingDelay) || 0)));
+            if (targetVisibleViews.length) {
+                if (shouldDeferInteractiveBackgroundWork()) {
+                    scheduleDeferredVisibleDirtyViewRefresh('committed-edit', Math.max(0, Number(options.delay) || 0), Math.max(180, Number(options.typingDelay) || 0));
+                } else {
+                    targetVisibleViews.forEach((viewId) => queueInteractiveViewRender(viewId, false, true, Math.max(0, Number(options.delay) || 0), Math.max(180, Number(options.typingDelay) || 0)));
+                }
+            }
             return targetVisibleViews;
         }
 
@@ -9875,6 +9893,21 @@ function toggleDriveQuickRequestItem(domId) {
 
         function markViewDirty(viewId) {
             ensureViewRenderState(viewId).dirty = true;
+        }
+
+        function scheduleDeferredVisibleDirtyViewRefresh(reason = 'interactive-refresh', delay = 0, typingDelay = 240) {
+            const safeReason = String(reason || 'interactive-refresh').trim() || 'interactive-refresh';
+            scheduleTypingAwareUiRender(`visible-dirty-refresh:${safeReason}`, () => {
+                const visibleDirtyViewIds = getVisibleTrackedViewIds().filter((viewId) => ensureViewRenderState(viewId).dirty);
+                if (!visibleDirtyViewIds.length) return;
+                visibleDirtyViewIds.forEach((viewId) => {
+                    if (!isViewVisible(viewId)) return;
+                    renderViewContent(viewId, false, true);
+                });
+            }, Math.max(0, Number(delay) || 0), Math.max(ACTIVE_TYPING_GRACE_MS, Number(typingDelay) || 0), {
+                touchDelayMs: 260,
+                scrollDelayMs: 220
+            });
         }
 
         function markHiddenViewsDirty(visibleViewIds = []) {
@@ -11163,9 +11196,9 @@ function toggleDriveQuickRequestItem(domId) {
             }
             const cornerThumbHtml = thumbHtml || `<div class="absolute top-3 right-3 flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-xl border border-slate-200 bg-slate-100 px-1 text-center text-[8px] font-black uppercase tracking-[0.14em] text-slate-400">No Photo</div>`;
             const driveOrderHtml = canSubmitDriveOrder
-                ? `<div class="mt-3 flex gap-2"><button type="button" class="inline-flex items-center justify-center gap-2 rounded-xl border ${inBag ? 'border-[#007a4d] bg-[#007a4d] text-white' : 'border-emerald-200 bg-emerald-50 text-emerald-700'} px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] shadow-sm active:scale-[0.98]" onclick="return startDriveModeBloomOrder(event, '${safeDomIdJs}')"><i class="ph-bold ${inBag ? 'ph-check' : 'ph-package'} text-base"></i>${inBag ? 'Open Bloom Picker' : 'Submit Order'}</button></div>`
+                ? `<div class="app-card-bottom-rail" onclick="event.stopPropagation();"><button type="button" class="app-card-bottom-btn ${inBag ? 'app-card-bottom-btn--secondary' : ''}" onclick="return startDriveModeBloomOrder(event, '${safeDomIdJs}')"><i class="ph-bold ${inBag ? 'ph-check' : 'ph-package'} text-base"></i>${inBag ? 'Open Bloom Picker' : 'Add To Bloom Picker'}</button></div>`
                 : '';
-            return `<div class="mb-3 app-card-shell app-smart-card rounded-[20px] border border-slate-200 bg-white p-3 pr-[3.75rem] sm:pr-[4.25rem] shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden relative" onclick="selectAvReserveDriveRow('${safeUidJs}')">${cornerThumbHtml}<div class="text-[9px] font-black uppercase tracking-[0.16em] text-sky-600">Drive Mode Row</div><div class="mt-1 font-black text-slate-900 text-[14px] leading-tight break-words">${item.COMMONNAME || 'Unknown'}</div><div class="font-bold text-[#007a4d] text-[12px] mt-0.5">${item.CONTSIZE || '-'}</div><div class="mt-1.5 inline-flex max-w-full items-center gap-1 rounded-lg border border-slate-200 bg-slate-100 px-2 py-1 text-[10px] font-mono font-bold text-slate-600"><i class="ph-bold ph-barcode text-slate-400"></i><span class="truncate">${item.ITEMCODE || '-'}</span></div><div class="mt-2 flex flex-wrap gap-1.5 text-[9px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-blue-100 bg-blue-50 px-2 py-1 text-blue-700">Loc ${item.LOCATIONCODE || 'No Loc'}</span><span class="rounded-full border border-slate-200 bg-slate-100 px-2 py-1 text-slate-700">Lot ${item.LOTCODE || '-'}</span><span class="rounded-full border border-emerald-100 bg-emerald-50 px-2 py-1 text-emerald-700">Ava ${item.PTRAVAILABLE || '0'}</span><span class="rounded-full border border-purple-100 bg-purple-50 px-2 py-1 text-purple-700">s_LTS ${item.S_LTS || '0'}</span><span class="rounded-full border border-orange-100 bg-orange-50 px-2 py-1 text-orange-700">Pri ${item.PRIORITY || '-'}</span></div>${driveOrderHtml}</div>`;
+            return `<div class="mb-3 app-card-shell app-smart-card app-smart-card--inventory ${driveOrderHtml ? 'app-card-with-bottom-rail' : ''} rounded-[20px] border border-slate-200 bg-white p-3 pr-[3.75rem] sm:pr-[4.25rem] shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden relative" onclick="selectAvReserveDriveRow('${safeUidJs}')">${cornerThumbHtml}<div class="text-[9px] font-black uppercase tracking-[0.16em] text-sky-600">Drive Mode Row</div><div class="app-card-topline mt-1"><span class="app-card-topline-common">${esc(item.COMMONNAME || 'Unknown')}</span><span class="app-card-topline-size">${esc(item.CONTSIZE || '-')}</span></div><div class="mt-1.5 inline-flex max-w-full items-center gap-1 rounded-lg border border-slate-200 bg-slate-100 px-2 py-1 text-[10px] font-mono font-bold text-slate-600"><i class="ph-bold ph-barcode text-slate-400"></i><span class="truncate">${item.ITEMCODE || '-'}</span></div><div class="mt-2 flex flex-wrap gap-1.5 text-[9px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-blue-100 bg-blue-50 px-2 py-1 text-blue-700">Loc ${item.LOCATIONCODE || 'No Loc'}</span><span class="rounded-full border border-slate-200 bg-slate-100 px-2 py-1 text-slate-700">Lot ${item.LOTCODE || '-'}</span><span class="rounded-full border border-emerald-100 bg-emerald-50 px-2 py-1 text-emerald-700">Ava ${item.PTRAVAILABLE || '0'}</span><span class="rounded-full border border-purple-100 bg-purple-50 px-2 py-1 text-purple-700">s_LTS ${item.S_LTS || '0'}</span><span class="rounded-full border border-orange-100 bg-orange-50 px-2 py-1 text-orange-700">Pri ${item.PRIORITY || '-'}</span></div>${driveOrderHtml}</div>`;
         }
 
         function formatAvReserveRequestDate(value = '') {
@@ -13485,7 +13518,8 @@ function toggleDriveQuickRequestItem(domId) {
             document.getElementById('det-size').innerText = activeItem.CONTSIZE || '--';
             const detLocation = document.getElementById('det-location');
             if (detLocation) detLocation.innerText = activeItem.LOCATIONCODE || '--';
-            document.getElementById('det-extra-info').innerHTML = `PRIORITY: ${activeItem.PRIORITY||'--'} &bull; PTRAVAILABLE: ${activeItem.PTRAVAILABLE||0} &bull; s_LTS: ${activeItem.S_LTS||0}`;
+            const detailSalesNote = String(firstNonEmptyValue(activeItem.SALES_NOTE, activeItem.SALESNOTE, activeItem.SALES_DESC, activeItem.SALESDESC, '') || '').trim();
+            document.getElementById('det-extra-info').innerHTML = `<div class="detail-meta-line">PRIORITY: ${activeItem.PRIORITY||'--'} &bull; PTRAVAILABLE: ${activeItem.PTRAVAILABLE||0} &bull; s_LTS: ${activeItem.S_LTS||0}</div>${detailSalesNote ? `<div class="detail-sales-note"><span class="detail-sales-note-label">Sales Note</span>${esc(detailSalesNote)}</div>` : ''}`;
 
             document.getElementById('ov-loc').innerText = activeItem.LOCATIONCODE || '--';
             document.getElementById('ov-avail').innerText = activeItem.PTRAVAILABLE || '0';
@@ -16552,6 +16586,24 @@ function toggleDriveQuickRequestItem(domId) {
                 if (!Number.isFinite(parsed)) return raw;
                 return `$${parsed.toFixed(2)}`;
             };
+            const buildInventoryToplineHtml = (commonName = '', contSize = '', extras = []) => {
+                const segments = [
+                    { value: commonName || 'Unknown', cls: 'app-card-topline-common' },
+                    { value: contSize || '-', cls: 'app-card-topline-size' },
+                    ...extras
+                        .map((entry) => {
+                            if (entry && typeof entry === 'object') return { value: entry.value, cls: entry.cls || 'app-card-topline-meta' };
+                            return { value: entry, cls: 'app-card-topline-meta' };
+                        })
+                        .filter((entry) => String(firstNonEmptyValue(entry && entry.value, '') || '').trim() !== '')
+                ];
+                return `<div class="app-card-topline">${segments.map((segment) => `<span class="${segment.cls}">${esc(String(firstNonEmptyValue(segment.value, '') || '').trim() || '-')}</span>`).join('')}</div>`;
+            };
+            const buildCardBottomRail = (innerHtml = '') => {
+                const markup = String(innerHtml || '').trim();
+                if (!markup) return '';
+                return `<div class="app-card-bottom-rail" onclick="event.stopPropagation();">${markup}</div>`;
+            };
             const buildAvInventoryCard = () => {
                 const hotPriceText = getNormalizedAvHotPrice(firstNonEmptyValue(item.CAV_HOT_PRICE, item.HOT_PRICE, item.HOTPRICE, ''));
                 const displayLocMatchQty = getDisplayLocMatchQtyValue(item, sourceView);
@@ -16582,7 +16634,7 @@ function toggleDriveQuickRequestItem(domId) {
                     }
                 }
 
-                return `<div class="flex items-start w-full mb-3 item-row app-smart-card app-smart-card--av relative bg-white p-4 rounded-xl border-2 border-teal-100 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView === 'reserves_drill' ? 'av' : sourceView}')"><div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-teal-600 focus:ring-teal-600 shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-col w-full min-w-0"><div class="app-av-card-layout flex justify-between items-start w-full"><div class="app-card-main app-av-card-main flex-grow min-w-0 pr-2"><div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[#007a4d]"><span class="text-[20px] font-black leading-tight">${item.CONTSIZE||'-'}</span><span class="text-[20px] font-black leading-tight break-words">${item.COMMONNAME||'Unknown'}</span><span class="text-[18px] font-black leading-tight">${item.LOCATIONCODE||'-'}</span></div><div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-black"><span class="text-[13px] font-black uppercase">PRI ${item.PRIORITY||'-'}</span><span class="text-[13px] font-black">${item.ITEMCODE||'-'}</span><span class="text-[13px] font-black">${item.LOTCODE||'-'}</span></div><div class="mt-3 flex flex-wrap gap-2 text-[11px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-slate-700">LOC AVA <span class="text-slate-900">${item.PTRAVAILABLE||'0'}</span></span><span class="rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-purple-700">OPEN STOCK <span class="text-purple-900">${item.S_LTS||'0'}</span></span><span class="rounded-full border border-green-200 bg-green-50 px-3 py-1 text-green-700">LOC PHOTO MATCH <span class="text-green-900">${locPhotoMatchText}</span></span></div>${rowFourHtml}${rowFiveHtml}</div>${thumbColumnHtml}</div></div></div>`;
+                return `<div class="flex items-start w-full mb-3 item-row app-smart-card app-smart-card--inventory app-smart-card--av relative bg-white p-4 rounded-xl border-2 border-teal-100 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView === 'reserves_drill' ? 'av' : sourceView}')"><div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-teal-600 focus:ring-teal-600 shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-col w-full min-w-0"><div class="app-av-card-layout flex justify-between items-start w-full"><div class="app-card-main app-av-card-main flex-grow min-w-0 pr-2">${buildInventoryToplineHtml(item.COMMONNAME || 'Unknown', item.CONTSIZE || '-', [{ value: item.LOCATIONCODE || '-', cls: 'app-card-topline-meta' }])}<div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-black"><span class="text-[13px] font-black uppercase">PRI ${item.PRIORITY||'-'}</span><span class="text-[13px] font-black">${item.ITEMCODE||'-'}</span><span class="text-[13px] font-black">${item.LOTCODE||'-'}</span></div><div class="mt-3 flex flex-wrap gap-2 text-[11px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-slate-700">LOC AVA <span class="text-slate-900">${item.PTRAVAILABLE||'0'}</span></span><span class="rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-purple-700">OPEN STOCK <span class="text-purple-900">${item.S_LTS||'0'}</span></span><span class="rounded-full border border-green-200 bg-green-50 px-3 py-1 text-green-700">LOC PHOTO MATCH <span class="text-green-900">${locPhotoMatchText}</span></span></div>${rowFourHtml}${rowFiveHtml}</div>${thumbColumnHtml}</div></div></div>`;
             };
 
             if(sourceView === 'av-photo' || sourceView === 'av') {
@@ -16626,7 +16678,7 @@ function toggleDriveQuickRequestItem(domId) {
                         actionBadge = `<div class="flex gap-2 mt-3"><button class="flex-1 bg-green-50 text-green-700 border border-green-200 font-bold py-2 rounded-lg shadow-sm hover:bg-green-100 active:scale-95 text-[10px] uppercase tracking-wider" onclick="event.stopPropagation(); setRepRequestAction('${safeUidJs}', 'Approved')">APPROVE</button><button class="flex-1 bg-red-50 text-red-700 border border-red-200 font-bold py-2 rounded-lg shadow-sm hover:bg-red-100 active:scale-95 text-[10px] uppercase tracking-wider" onclick="event.stopPropagation(); setRepRequestAction('${safeUidJs}', 'Rejected')">REJECT</button></div>`;
                     }
                 }
-                return `<div class="flex items-center w-full mb-3 item-row app-smart-card relative bg-white p-4 rounded-xl border border-purple-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full"><div class="app-card-main flex-grow min-w-0 pr-2"><div class="flex justify-between items-start mb-1 gap-2"><div class="app-card-title font-black text-gray-800 text-[16px] leading-tight break-words">${item.COMMONNAME||'Unknown'}</div><div class="font-black text-purple-700 bg-purple-50 px-2 py-1 rounded text-sm whitespace-nowrap ml-2 border border-purple-100">QTY: ${reqQty}</div></div><div class="app-card-subtitle font-bold text-[#007a4d] text-sm mb-2">${item.CONTSIZE||'-'}</div><div class="app-card-meta-grid grid grid-cols-2 gap-x-2 gap-y-1 mb-2 text-[11px] font-bold text-gray-600"><div class="truncate"><i class="ph-bold ph-user mr-1"></i>${rep}</div><div class="truncate"><i class="ph-bold ph-storefront mr-1"></i>${cust}</div></div><div class="app-card-chip-row flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600">${statusChip}${reserveBadge}<span class="bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded border border-gray-200">PTRAVAILABLE: ${item.PTRAVAILABLE||'0'}</span><span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">Loc: ${loc}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Lot: ${lot}</span><span class="bg-orange-50 text-orange-700 px-1.5 py-0.5 rounded border border-orange-100">Pri: ${priority}</span></div>${holdHtml}${requestSalesNoteHtml}</div>${inlineThumbHtml}</div>${actionBadge}</div></div>`;
+                return `<div class="flex items-center w-full mb-3 item-row app-smart-card app-smart-card--inventory relative bg-white p-4 rounded-xl border border-purple-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full"><div class="app-card-main flex-grow min-w-0 pr-2"><div class="flex justify-between items-start mb-1 gap-2"><div class="min-w-0 flex-1">${buildInventoryToplineHtml(item.COMMONNAME || 'Unknown', item.CONTSIZE || '-')}</div><div class="font-black text-purple-700 bg-purple-50 px-2 py-1 rounded text-sm whitespace-nowrap ml-2 border border-purple-100">QTY: ${reqQty}</div></div><div class="app-card-meta-grid grid grid-cols-2 gap-x-2 gap-y-1 mb-2 text-[11px] font-bold text-gray-600"><div class="truncate"><i class="ph-bold ph-user mr-1"></i>${rep}</div><div class="truncate"><i class="ph-bold ph-storefront mr-1"></i>${cust}</div></div><div class="app-card-chip-row flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600">${statusChip}${reserveBadge}<span class="bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded border border-gray-200">PTRAVAILABLE: ${item.PTRAVAILABLE||'0'}</span><span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">Loc: ${loc}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Lot: ${lot}</span><span class="bg-orange-50 text-orange-700 px-1.5 py-0.5 rounded border border-orange-100">Pri: ${priority}</span></div>${holdHtml}${requestSalesNoteHtml}</div>${inlineThumbHtml}</div>${actionBadge}</div></div>`;
             }
             if(sourceView === 'docks'){
                 let qty = item.QUANTITYORDERED || item.QTY_ORDERED || item.PTRAVAILABLE || '1';
@@ -16696,9 +16748,9 @@ function toggleDriveQuickRequestItem(domId) {
                 let quickRequestBtn='';
                 if(canUseDriveQuickRequest()){
                     const isQueued=driveQuickRequestItems.has(item.DOM_ID);
-                    quickRequestBtn=`<div class="mt-3 flex items-center justify-between"><span class="text-[10px] font-black uppercase tracking-wider ${isQueued?'text-orange-700':'text-gray-400'}">${isQueued?'Queued For Action':'Quick Add'}</span><button type="button" aria-label="${isQueued?'Remove from builder':'Add to builder'}" class="inline-flex items-center justify-center w-9 h-9 rounded-full shadow-sm border ${isQueued?'bg-orange-600 text-white border-orange-600':'bg-white text-orange-600 border-orange-300'} active:scale-95" onclick="event.stopPropagation(); toggleDriveQuickRequestItem('${item.DOM_ID}')"><i class="ph-bold ${isQueued?'ph-check':'ph-plus'} text-lg"></i></button></div>`;
+                    quickRequestBtn=buildCardBottomRail(`<button type="button" aria-label="${isQueued?'Open Bloom Picker':'Add to Bloom Picker'}" class="app-card-bottom-btn ${isQueued?'app-card-bottom-btn--secondary':''}" onclick="event.stopPropagation(); toggleDriveQuickRequestItem('${item.DOM_ID}')"><i class="ph-bold ${isQueued?'ph-check':'ph-package'} text-lg"></i>${isQueued?'Open Bloom Picker':'Add To Bloom Picker'}</button>`);
                 }
-                return `<div class="flex items-center w-full mb-3 item-row app-smart-card relative bg-white p-4 rounded-xl border border-gray-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-grow items-start justify-between min-w-0"><div class="app-card-main flex-grow min-w-0 pr-2"><div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[#007a4d]"><span class="text-[17px] font-black leading-tight">${item.CONTSIZE||'-'}</span><span class="text-[17px] font-black leading-tight break-words">${item.COMMONNAME||'Unknown'}</span><span class="text-[15px] font-black leading-tight">${item.LOCATIONCODE||'No Loc'}</span><span class="text-[15px] font-black leading-tight">${displaySource}</span></div><div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-black"><span class="text-[12px] font-black uppercase">PRI ${item.PRIORITY||'-'}</span><span class="text-[12px] font-black">${item.ITEMCODE||'-'}</span><span class="text-[12px] font-black">${item.LOTCODE||'-'}</span></div><div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-slate-700">PTRAVAILABLE <span class="text-slate-900">${item.PTRAVAILABLE||'0'}</span></span><span class="rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-purple-700">S_LTS <span class="text-purple-900">${item.S_LTS||'0'}</span></span><span class="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-amber-700">HOLDSTOPCODE <span class="text-amber-900">${displayHoldStopCode}</span></span></div>${extraData}${noteHtml}${quickRequestBtn}</div>${inlineThumbHtml}</div></div>`;
+                return `<div class="flex items-center w-full mb-3 item-row app-smart-card app-smart-card--inventory ${quickRequestBtn ? 'app-card-with-bottom-rail' : ''} relative bg-white p-4 rounded-xl border border-gray-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-grow items-start justify-between min-w-0"><div class="app-card-main flex-grow min-w-0 pr-2">${buildInventoryToplineHtml(item.COMMONNAME || 'Unknown', item.CONTSIZE || '-', [{ value: item.LOCATIONCODE || 'No Loc', cls: 'app-card-topline-meta' }, { value: displaySource, cls: 'app-card-topline-meta' }])}<div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-black"><span class="text-[12px] font-black uppercase">PRI ${item.PRIORITY||'-'}</span><span class="text-[12px] font-black">${item.ITEMCODE||'-'}</span><span class="text-[12px] font-black">${item.LOTCODE||'-'}</span></div><div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-slate-700">PTRAVAILABLE <span class="text-slate-900">${item.PTRAVAILABLE||'0'}</span></span><span class="rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-purple-700">S_LTS <span class="text-purple-900">${item.S_LTS||'0'}</span></span><span class="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-amber-700">HOLDSTOPCODE <span class="text-amber-900">${displayHoldStopCode}</span></span></div>${extraData}${noteHtml}</div>${inlineThumbHtml}</div>${quickRequestBtn}</div>`;
             }
             if(sourceView==='tasks'){
                 const displaySourceView = sourceView;
@@ -16710,19 +16762,17 @@ function toggleDriveQuickRequestItem(domId) {
                 const displayHotPrice = getNormalizedAvHotPrice(firstNonEmptyValue(item.CAV_HOT_PRICE, item.HOT_PRICE, item.HOTPRICE, ''));
                 let noteHtml='';
                 const holdHtml = buildHoldReasonHtml();
-                const salesNoteHtml = buildSalesNoteHtml();
                 if(holdHtml) noteHtml += holdHtml;
-                if(salesNoteHtml) noteHtml += salesNoteHtml;
                 if(activeTaskTab==='hotprice' && displayHotPrice){noteHtml+=`<div class="mt-2 text-[12px] text-rose-800 bg-rose-50 p-2 rounded border border-rose-200 shadow-sm whitespace-pre-wrap"><span class="font-black">HOT PRICE:</span> ${displayHotPrice}</div>`}
                 if(item.END_CAP_FOLDER&&String(item.END_CAP_FOLDER).trim()!==''){noteHtml+=`<div class="mt-2 text-[12px] text-yellow-800 bg-yellow-100 p-2 rounded border border-yellow-200 shadow-sm whitespace-pre-wrap"><span class="font-black">END CAP:</span> ${item.END_CAP_FOLDER} | QTY: ${item.END_CAP_QTY||'0'} | Lvl: ${item.END_CAP_LEVEL||'-'}</div>`}
                 if(displayLocMatchQty&&String(displayLocMatchQty).trim()!==''&&Number(displayLocMatchQty)>0){noteHtml+=`<div class="mt-2 text-[12px] text-green-800 bg-green-100 p-2 rounded border border-green-200 shadow-sm whitespace-pre-wrap"><span class="font-black">LOC PHOTO MATCH:</span> ${displayLocMatchQty}</div>`}
                 if(displayAvNote&&String(displayAvNote).trim()!==''){noteHtml+=`<div class="mt-2 text-[12px] text-blue-800 bg-blue-100 p-2 rounded border border-blue-200 shadow-sm whitespace-pre-wrap"><span class="font-black">AV NOTE:</span> ${displayAvNote}</div>`}
                 if(item.FLYER_TITLE&&String(item.FLYER_TITLE).trim()!==''){noteHtml+=`<div class="mt-2 text-[12px] text-indigo-800 bg-indigo-100 p-2 rounded border border-indigo-200 shadow-sm whitespace-pre-wrap"><span class="font-black">FOLDER:</span> ${getFlyerFolderName(item)}${isFlyerFolderArchived(item) ? ' <span class="font-black uppercase tracking-wide">(Archived)</span>' : ''}</div>`}
                 let extraData='';extraData=`<div class="mt-2 flex gap-2 text-[10px] font-bold text-gray-500 uppercase">${displaySpec?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Spec: ${displaySpec}</span>`:''}${displayCaliper?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Cal: ${displayCaliper}</span>`:''}${displayMatch?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">LOC MATCH %: ${displayMatch}%</span>`:''}</div>`;
-                return `<div class="flex items-center w-full mb-3 item-row app-smart-card relative bg-white p-4 rounded-xl border border-gray-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-grow items-start justify-between min-w-0"><div class="app-card-main flex-grow min-w-0 pr-2"><div class="font-black text-gray-800 text-[16px] leading-tight break-words mb-0.5">${item.COMMONNAME||'Unknown'}</div><div class="app-card-subtitle font-bold text-[#007a4d] text-sm mb-2">${item.CONTSIZE||'-'}</div><div class="text-[11px] font-mono text-gray-500 mb-2 flex items-center bg-gray-100 px-2 py-0.5 rounded w-max"><i class="ph-bold ph-barcode mr-1.5 text-gray-400"></i>${item.ITEMCODE||'-'}</div><div class="app-card-chip-row flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600"><span class="bg-gray-100 px-1.5 py-0.5 rounded">LOC AVA: <span class="text-gray-900">${item.PTRAVAILABLE||'0'}</span></span><span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">Loc: ${item.LOCATIONCODE||'No Loc'}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded">Lot: ${item.LOTCODE||'-'}</span><span class="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-100">s_LTS: ${item.S_LTS||'0'}</span><span class="bg-orange-50 text-orange-700 px-1.5 py-0.5 rounded border border-orange-100">Pri: ${item.PRIORITY||'-'}</span></div>${extraData}${noteHtml}</div>${inlineThumbHtml}</div></div>`;
+                return `<div class="flex items-center w-full mb-3 item-row app-smart-card app-smart-card--inventory relative bg-white p-4 rounded-xl border border-gray-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-grow items-start justify-between min-w-0"><div class="app-card-main flex-grow min-w-0 pr-2">${buildInventoryToplineHtml(item.COMMONNAME || 'Unknown', item.CONTSIZE || '-') }<div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-black"><span class="text-[12px] font-black uppercase">PRI ${item.PRIORITY||'-'}</span><span class="text-[12px] font-black">${item.ITEMCODE||'-'}</span><span class="text-[12px] font-black">${item.LOTCODE||'-'}</span></div><div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-slate-700">LOC AVA <span class="text-slate-900">${item.PTRAVAILABLE||'0'}</span></span><span class="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-blue-700">LOC <span class="text-blue-900">${item.LOCATIONCODE||'No Loc'}</span></span><span class="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-slate-700">LOT <span class="text-slate-900">${item.LOTCODE||'-'}</span></span><span class="rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-purple-700">S_LTS <span class="text-purple-900">${item.S_LTS||'0'}</span></span><span class="rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-orange-700">PRI <span class="text-orange-900">${item.PRIORITY||'-'}</span></span></div>${extraData}${noteHtml}</div>${inlineThumbHtml}</div></div>`;
             }
 
-            return `<div class="flex items-center w-full mb-2 item-row overflow-hidden" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="inv-card app-smart-card ${colorClass} flex items-start justify-between flex-grow !mb-0 transition-transform active:scale-[0.99]"><div class="app-card-main flex-grow min-w-0 text-[#007a4d]"><div class="flex justify-between font-bold text-sm mb-1"><span class="truncate pr-2">${item.COMMONNAME||'Unknown'} &bull; ${item.CONTSIZE||'-'} &bull; Loc: ${item.LOCATIONCODE||'No Loc'}</span><span class="whitespace-nowrap bg-[#007a4d]/10 px-1.5 py-0.5 rounded text-xs border border-[#007a4d]/20 h-max">Pri: ${item.PRIORITY||'-'}</span></div><div class="text-[11px] font-semibold truncate mt-0.5">Tag: ${tagColor} | Lot: ${item.LOTCODE||'-'} | PTR-Ava: ${item.PTRAVAILABLE||'0'} | s_LTS: ${item.S_LTS||'0'} | Supply: ${item.SEASONSUPPLY||'0'}</div><div class="text-[11px] font-semibold truncate mt-0.5">Item: ${item.ITEMCODE||'-'}</div></div>${inlineThumbHtml}</div></div>`;
+            return `<div class="flex items-center w-full mb-2 item-row overflow-hidden" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="inv-card app-smart-card app-smart-card--inventory ${colorClass} flex items-start justify-between flex-grow !mb-0 transition-transform active:scale-[0.99]"><div class="app-card-main flex-grow min-w-0 text-[#007a4d]">${buildInventoryToplineHtml(item.COMMONNAME || 'Unknown', item.CONTSIZE || '-', [{ value: item.LOCATIONCODE || 'No Loc', cls: 'app-card-topline-meta' }])}<div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-black"><span class="text-[12px] font-black uppercase">PRI ${item.PRIORITY||'-'}</span><span class="text-[12px] font-black">${item.ITEMCODE||'-'}</span><span class="text-[12px] font-black">${item.LOTCODE||'-'}</span></div><div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-slate-700">PTRAVAILABLE <span class="text-slate-900">${item.PTRAVAILABLE||'0'}</span></span><span class="rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-purple-700">S_LTS <span class="text-purple-900">${item.S_LTS||'0'}</span></span><span class="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-slate-700">SUPPLY <span class="text-slate-900">${item.SEASONSUPPLY||'0'}</span></span><span class="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-slate-700">TAG <span class="text-slate-900">${tagColor}</span></span></div><div class="mt-2 text-[12px] font-black text-black">${item.ITEMCODE||'-'}</div></div>${inlineThumbHtml}</div></div>`;
         }
 
         function initiateBatchAction(action) {
@@ -18206,14 +18256,16 @@ ${folderNote ? `Folder Note: ${folderNote}
             driveGenusSearchTerm = String(value || '');
             const input = document.getElementById('drive-genus-search');
             const cursorPos = input && typeof input.selectionStart === 'number' ? input.selectionStart : null;
-            renderDriveTopControls(drivePlantFilterItemsCache);
-            requestAnimationFrame(() => {
-                const current = document.getElementById('drive-genus-search');
-                if (!current) return;
-                if (document.activeElement !== current) current.focus();
-                if (cursorPos !== null && typeof current.setSelectionRange === 'function') {
-                    current.setSelectionRange(cursorPos, cursorPos);
-                }
+            scheduleUiRender('drive-genus-search-ui', () => {
+                renderDriveTopControls(drivePlantFilterItemsCache);
+                requestAnimationFrame(() => {
+                    const current = document.getElementById('drive-genus-search');
+                    if (!current) return;
+                    if (document.activeElement !== current) current.focus();
+                    if (cursorPos !== null && typeof current.setSelectionRange === 'function') {
+                        current.setSelectionRange(cursorPos, cursorPos);
+                    }
+                });
             });
             return false;
         }
@@ -18222,14 +18274,16 @@ ${folderNote ? `Folder Note: ${folderNote}
             driveContSizeSearchTerm = String(value || '');
             const input = document.getElementById('drive-contsize-search');
             const cursorPos = input && typeof input.selectionStart === 'number' ? input.selectionStart : null;
-            renderDriveTopControls(drivePlantFilterItemsCache);
-            requestAnimationFrame(() => {
-                const current = document.getElementById('drive-contsize-search');
-                if (!current) return;
-                if (document.activeElement !== current) current.focus();
-                if (cursorPos !== null && typeof current.setSelectionRange === 'function') {
-                    current.setSelectionRange(cursorPos, cursorPos);
-                }
+            scheduleUiRender('drive-contsize-search-ui', () => {
+                renderDriveTopControls(drivePlantFilterItemsCache);
+                requestAnimationFrame(() => {
+                    const current = document.getElementById('drive-contsize-search');
+                    if (!current) return;
+                    if (document.activeElement !== current) current.focus();
+                    if (cursorPos !== null && typeof current.setSelectionRange === 'function') {
+                        current.setSelectionRange(cursorPos, cursorPos);
+                    }
+                });
             });
             return false;
         }
@@ -18474,8 +18528,6 @@ ${folderNote ? `Folder Note: ${folderNote}
             const drillTabs = document.getElementById('drive-drill-tabs');
             bumpChunkRenderTokenByKey('drive-main-card');
             if (drillTabs) drillTabs.classList.add('hidden');
-            renderDriveQuickRequestBar();
-
             if (activeDriveMode !== 'ok') {
                 syncDriveFilterStrip(filtersDiv, '');
                 hideDrivePlantFilters();
@@ -19076,18 +19128,20 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (container) {
                 const input = container.querySelector('#task-genus-search');
                 const cursorPos = input && typeof input.selectionStart === 'number' ? input.selectionStart : null;
-                const state = buildTaskGenusFilterState(taskGenusFilterItemsCache);
-                updateTaskGenusFilterUi(state, container);
-                if (input) {
-                    requestAnimationFrame(() => {
-                        const current = container.querySelector('#task-genus-search');
-                        if (!current) return;
-                        if (document.activeElement !== current) current.focus();
-                        if (cursorPos !== null && typeof current.setSelectionRange === 'function') {
-                            current.setSelectionRange(cursorPos, cursorPos);
-                        }
-                    });
-                }
+                scheduleUiRender('task-genus-search-ui', () => {
+                    const state = buildTaskGenusFilterState(taskGenusFilterItemsCache);
+                    updateTaskGenusFilterUi(state, container);
+                    if (input) {
+                        requestAnimationFrame(() => {
+                            const current = container.querySelector('#task-genus-search');
+                            if (!current) return;
+                            if (document.activeElement !== current) current.focus();
+                            if (cursorPos !== null && typeof current.setSelectionRange === 'function') {
+                                current.setSelectionRange(cursorPos, cursorPos);
+                            }
+                        });
+                    }
+                });
                 return false;
             }
             renderTaskGenusFilter(taskGenusFilterItemsCache);
