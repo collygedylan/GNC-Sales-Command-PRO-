@@ -21861,7 +21861,6 @@ ${folderNote ? `Folder Note: ${folderNote}
                 const trackedChangeFlags = getTrackedAvChangeFlags(trackedStateBeforeSave, trackedStateAfterSave, saveOptions);
                 const setVal = (val) => (val === '' || val === undefined) ? null : val;
                 const payload = {};
-                let isAvEligibleRequest = false;
                 let qualifiesForOpenStockView = false;
                 let requestAssignment = '';
                 let requestMasterId = '';
@@ -21903,10 +21902,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                     }
                     const assignment = String(itemToSave.APP_TAB_ASSIGNMENT || (requestMasterItem ? requestMasterItem.APP_TAB_ASSIGNMENT : '') || '').toLowerCase();
                     requestAssignment = assignment;
-                    isAvEligibleRequest = assignment === 'season' || assignment === 'location';
                     const effectiveLts = firstNonEmptyValue(itemToSave.S_LTS, requestMasterItem ? requestMasterItem.S_LTS : '0');
                     const ltsValue = Number(String(effectiveLts || '0').replace(/,/g, ''));
-                    const requestSeason = String(firstNonEmptyValue(itemToSave.SEASON, requestMasterItem ? requestMasterItem.SEASON : '')).toUpperCase();
                     const effectivePlantGroup = firstNonEmptyValue(itemToSave.PLANTGROUPCODE, requestMasterItem ? requestMasterItem.PLANTGROUPCODE : '');
                     const effectiveContSize = firstNonEmptyValue(itemToSave.CONTSIZE, requestMasterItem ? requestMasterItem.CONTSIZE : '');
                     qualifiesForOpenStockView = ltsValue > 0;
