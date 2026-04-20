@@ -624,7 +624,7 @@ body.viewport-compact #view-detail #det-location{font-size:clamp(.9rem,3.8vw,1.1
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-    <div id="header-version" class="nav-version-pill">V2026.04.20.03</div>
+<div id="header-version" class="nav-version-pill">V2026.04.20.04</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -3268,11 +3268,15 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             updateFooterRequestBadge();
             markViewDirty('request');
             markViewDirty('reports');
-            scheduleTypingAwareUiRender('realtime:request-ui', () => {
-                updateFooterRequestBadge();
-                if (isViewVisible('request')) renderRequest();
-                if (isViewVisible('reports')) renderReports();
-            }, Math.max(0, Number(delay) || 0), 140, { touchDelayMs: 110, scrollDelayMs: 110 });
+            const nextDelay = Math.max(0, Number(delay) || 0);
+            if (shouldDeferInteractiveBackgroundWork()) {
+                incrementInternalPerfCounter('deferredBackgroundRefreshes');
+                incrementInternalPerfCounter('interactionBlockedRefreshes');
+                scheduleDeferredVisibleDirtyViewRefresh('realtime:request-ui', Math.max(24, nextDelay), Math.max(160, REQUEST_REALTIME_UI_DELAY_MS));
+                return;
+            }
+            if (isViewVisible('request')) queueInteractiveViewRender('request', false, false, nextDelay, Math.max(160, REQUEST_REALTIME_UI_DELAY_MS));
+            if (isViewVisible('reports')) queueInteractiveViewRender('reports', false, false, nextDelay, Math.max(160, REQUEST_REALTIME_UI_DELAY_MS));
         }
         function applyRealtimeChange(tableName = '', payload = null, deferVisualSync = false) {
             if (!payload || !payload.eventType) return false;
@@ -4969,7 +4973,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             };
         }
 
-        let fullInventory=[]; let avOpenInventory=[]; let avHotPriceKeysInventory=[]; let lowStockInventory=[]; let socInventory=[]; let reservesInventory=[]; let requestsInventory=[]; let optimisticRequestIds=new Set(); let managerReviewInventory=[]; let salesOfficeInventory=[]; let cavInventory=[]; let avNotesDb=[]; let avNotesCommonNameIndex=new Map(); let avNotesCommonNameIndexVersion=-1; let avNoteFilterTimers={}; let avNoteFilterResultCache=new Map(); let avNoteRenderedKeys={};
+        let fullInventory=[]; let avOpenInventory=[]; let avHotPriceKeysInventory=[]; let lowStockInventory=[]; let socInventory=[]; let reservesInventory=[]; let requestsInventory=[]; let optimisticRequestIds=new Set(); let optimisticCompletedRowIds=new Set(); let managerReviewInventory=[]; let salesOfficeInventory=[]; let cavInventory=[]; let avNotesDb=[]; let avNotesCommonNameIndex=new Map(); let avNotesCommonNameIndexVersion=-1; let avNoteFilterTimers={}; let avNoteFilterResultCache=new Map(); let avNoteRenderedKeys={};
         let masterInventoryById=new Map(); let masterInventoryByExactKey=new Map(); let lowStockInventoryDirty=true; let managerReviewInventoryDirty=true;
         let loginPrefetchPromise=null;
         let loginPrefetchMode='';
@@ -5245,7 +5249,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
         const REQUEST_EMAIL_THREAD_SELECT_FIELDS = 'request_folder,request_customer,sales_rep_name,sales_rep_email,recipients,initial_thread_id,initial_message_id,initial_email_sent_at,last_reply_sent_at,status,metadata';
         const REQUEST_EMAIL_INTERNAL_RECIPIENTS = Object.freeze(['dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com']);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-const APP_VERSION = 'V2026.04.20.03';
+        const APP_VERSION = 'V2026.04.20.04';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -5596,11 +5600,50 @@ const APP_VERSION = 'V2026.04.20.03';
             return normalized;
         }
 
-        function isRequestComplete(item) {
-            const statusComplete = normalizeRequestStatus(item && item.REQ_STATUS) === 'Complete';
-            if (statusComplete) return true;
+        function getItemUniqueId(itemOrId = null) {
+            if (typeof itemOrId === 'string' || typeof itemOrId === 'number') return String(itemOrId || '').trim();
+            return String(firstNonEmptyValue(itemOrId && itemOrId.UNIQUE_ID, itemOrId && itemOrId.unique_id, '')).trim();
+        }
+
+        function normalizeUniqueIdList(values = []) {
+            return (Array.isArray(values) ? values : [values]).map((value) => getItemUniqueId(value)).filter(Boolean);
+        }
+
+        function hasCompletionDateValue(item) {
             const completedAt = String(firstNonEmptyValue(item && item.DATE_COMPLETED, item && item.date_completed, '')).trim();
             return completedAt !== '';
+        }
+
+        function isOptimisticallyCompletedRow(itemOrId = null) {
+            const uniqueId = getItemUniqueId(itemOrId);
+            return !!(uniqueId && optimisticCompletedRowIds.has(uniqueId));
+        }
+
+        function trackOptimisticCompletedRows(values = []) {
+            let didChange = false;
+            normalizeUniqueIdList(values).forEach((uniqueId) => {
+                if (optimisticCompletedRowIds.has(uniqueId)) return;
+                optimisticCompletedRowIds.add(uniqueId);
+                didChange = true;
+            });
+            if (didChange) invalidateResolvedViewStateCaches();
+        }
+
+        function clearOptimisticCompletedRows(values = []) {
+            let didChange = false;
+            normalizeUniqueIdList(values).forEach((uniqueId) => {
+                if (!optimisticCompletedRowIds.has(uniqueId)) return;
+                optimisticCompletedRowIds.delete(uniqueId);
+                didChange = true;
+            });
+            if (didChange) invalidateResolvedViewStateCaches();
+        }
+
+        function isRequestComplete(item) {
+            if (isOptimisticallyCompletedRow(item)) return true;
+            const statusComplete = normalizeRequestStatus(item && item.REQ_STATUS) === 'Complete';
+            if (statusComplete) return true;
+            return hasCompletionDateValue(item);
         }
 
         function buildRequestLiveSyncSignature(rows = []) {
@@ -15292,6 +15335,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function isSalesOfficeComplete(item) {
+            if (isOptimisticallyCompletedRow(item) || hasCompletionDateValue(item)) return true;
             const status = String(firstNonEmptyValue(item && item.ORDER_STATUS, item && item.order_status, item && item.STATUS, item && item.status, '') || '').trim().toLowerCase();
             if (!status) return false;
             return status.includes('done') || status.includes('complete') || status.includes('closed') || status.includes('removed') || status.includes('archived');
@@ -16047,10 +16091,10 @@ function toggleDriveQuickRequestItem(domId) {
             if (!container) return false;
             syncRequestCrumb(crumb, crumbText);
             const nextKey = String(renderKey || (String(crumbText || '') + '::' + String(html || '')));
-            if (container.dataset && container.dataset.requestRenderKey === nextKey) return false;
-            setContainerHtml(container, html);
+            if (container.dataset && container.dataset.requestRenderKey === nextKey && getContainerRenderSignature(container) === nextKey) return false;
+            const didRender = setContainerHtmlWithSignature(container, html, nextKey);
             if (container.dataset) container.dataset.requestRenderKey = nextKey;
-            return true;
+            return didRender;
         }
 
         function renderRequest() {
@@ -16072,8 +16116,12 @@ function toggleDriveQuickRequestItem(domId) {
                 }
 
                 pendingItems.sort((a,b) => String(a.LOCATIONCODE||'').localeCompare(String(b.LOCATIONCODE||''), undefined, {numeric: true}));
-                const html = pendingItems.map(i => generateCard(i, 'request', 'status-purple')).join('');
-                if (applyRequestRenderMarkup(container, crumb, crumbText, html)) requestAnimationFrame(decorateRequestRows);
+                const renderKey = buildRequestChunkRenderKey('request:pending', crumbText, pendingItems);
+                renderMarkupChunkedByKey('request-main', container, crumb, pendingItems, crumbText, (item) => generateCard(item, 'request', 'status-purple'), {
+                    approxCardHeight: 360,
+                    renderSignature: renderKey,
+                    onComplete: decorateRequestRows
+                });
                 return;
 
             } else if (activeReqTab === 'reps') {
@@ -16136,19 +16184,12 @@ function toggleDriveQuickRequestItem(domId) {
                     const prefixHtml = `<div class="back-btn" onclick="return backToRequestFolderList()"><i class="ph-bold ph-arrow-left"></i> Back to Folders</div>`;
                     const cardTone = selectedReqStatus === 'Complete' ? 'status-green' : 'status-purple';
                     const renderKey = buildRequestChunkRenderKey(`request-folder:${selectedReqStatus}:${selectedReqRepView}:${selectedReqFolderView}:${cardTone}`, crumbText, folderItems);
-                    if (shouldUseChunkedCardRender(folderItems.length, 70, 140)) {
-                        syncRequestCrumb(crumb, crumbText);
-                        if (container && container.dataset && container.dataset.requestRenderKey === renderKey) return;
-                        if (container && container.dataset) container.dataset.requestRenderKey = renderKey;
-                        renderMarkupChunkedByKey('request-main', container, crumb, folderItems, crumbText, (item) => generateCard(item, 'request', cardTone), {
-                            prefixHtml,
-                            approxCardHeight: 360,
-                            onComplete: decorateRequestRows
-                        });
-                        return;
-                    }
-                    const html = prefixHtml + folderItems.map(i => generateCard(i, 'request', cardTone)).join('');
-                    if (applyRequestRenderMarkup(container, crumb, crumbText, html, renderKey)) requestAnimationFrame(decorateRequestRows);
+                    renderMarkupChunkedByKey('request-main', container, crumb, folderItems, crumbText, (item) => generateCard(item, 'request', cardTone), {
+                        prefixHtml,
+                        approxCardHeight: 360,
+                        renderSignature: renderKey,
+                        onComplete: decorateRequestRows
+                    });
                     return;
                 }
             }
@@ -20296,7 +20337,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         function getScopedTaskQueueItems(tab = activeTaskTab, targetUser = currentUser) {
             const safeTab = String(tab || activeTaskTab || '').trim().toLowerCase();
             const keepCompletedInTaskTab = safeTab === 'colorwalk' || safeTab === 'flyer';
-            const baseItems = fullInventory.filter(i => keepCompletedInTaskTab || !String(firstNonEmptyValue(i.DATE_COMPLETED, i.date_completed, '')).trim());
+            const baseItems = fullInventory.filter((item) => keepCompletedInTaskTab || (!hasCompletionDateValue(item) && !isOptimisticallyCompletedRow(item)));
             if (shouldUseSharedTaskQueue(safeTab)) {
                 return safeTab === 'flyer' ? baseItems.filter(i => isFlyerTaskItem(i)) : baseItems;
             }
@@ -21645,8 +21686,9 @@ ${folderNote ? `Folder Note: ${folderNote}
                 const previousDateCompleted = itemToSave.DATE_COMPLETED || '';
                 const previousReqStatus = itemToSave.REQ_STATUS;
                 const detailWasVisible = !!(document.getElementById('view-detail') && !document.getElementById('view-detail').classList.contains('hidden'));
-                const nextRequestId = (prefix === 'req-' && isComplete && isCurrentView && detailWasVisible && lastView === 'request') ? getNextRequestDetailId(itemToSave.UNIQUE_ID) : null;
-                const nextTaskId = (isComplete && isCurrentView && detailWasVisible && lastView === 'tasks') ? getNextTaskDetailId(itemToSave.UNIQUE_ID) : null;
+                const canOptimisticallyCompleteQueueRow = isComplete && ['req-', 'ssn-', 'lsn-', 'na-'].includes(prefix);
+                let nextRequestId = null;
+                let nextTaskId = null;
                 let didOptimisticClose = false;
                 let didOptimisticRender = false;
                 const trackedStateBeforeSave = captureTrackedAvState(itemToSave);
@@ -22091,6 +22133,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 const restoreFromFailedSave = (message) => {
                     itemToSave.DATE_COMPLETED = previousDateCompleted;
                     itemToSave.REQ_STATUS = previousReqStatus;
+                    if (canOptimisticallyCompleteQueueRow) clearOptimisticCompletedRows([itemToSave.UNIQUE_ID]);
                     if (isComplete && btnComp) btnComp.innerText = 'MARK DONE';
                     if (didOptimisticClose || didOptimisticRender) queueVisibleSaveRefresh(16);
                     recordInternalPerfDuration('saveDurations', savePerfStartedAt, `${prefix}${isComplete ? ':complete-error' : (isSilentAutoSave ? ':autosave-error' : ':save-error')}`);
@@ -22220,6 +22263,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                             else refreshDetailState();
                         }
                     }
+                    if (canOptimisticallyCompleteQueueRow) clearOptimisticCompletedRows([itemToSave.UNIQUE_ID]);
                     if (isComplete && btnComp) btnComp.innerText = 'MARK DONE';
                     if (!isSilentAutoSave && isCurrentView && isComplete && !didImmediateCleanup) showToast('Success', 'Task Completed!');
                     if (isComplete && !didOptimisticClose && !didOptimisticRender && !didImmediateCleanup) {
@@ -22268,13 +22312,20 @@ ${folderNote ? `Folder Note: ${folderNote}
 
                 if (isComplete) {
                     itemToSave.DATE_COMPLETED = payload.date_completed;
+                    if (canOptimisticallyCompleteQueueRow) {
+                        trackOptimisticCompletedRows([itemToSave.UNIQUE_ID]);
+                        if (prefix === 'req-') itemToSave.REQ_STATUS = 'Complete';
+                    }
+                    if (prefix === 'req-' && isCurrentView && detailWasVisible && lastView === 'request') nextRequestId = getNextRequestDetailId(itemToSave.UNIQUE_ID);
+                    if (canOptimisticallyCompleteQueueRow && isCurrentView && detailWasVisible && lastView === 'tasks') nextTaskId = getNextTaskDetailId(itemToSave.UNIQUE_ID);
                     if (isCurrentView && detailWasVisible) {
                         didOptimisticClose = true;
                         goBackFromDetail();
+                        queueVisibleSaveRefresh(0);
                     }
                     if (!didOptimisticClose && isLagSensitiveDetailPrefix(prefix)) {
                         didOptimisticRender = true;
-                        queueVisibleSaveRefresh(24);
+                        queueVisibleSaveRefresh(canOptimisticallyCompleteQueueRow ? 0 : 24);
                     } else if (!didOptimisticClose) {
                         didOptimisticRender = true;
                         queueVisibleSaveRefresh(0);
