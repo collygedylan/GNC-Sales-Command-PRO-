@@ -172,6 +172,31 @@ body.viewport-compact .app-av-card-thumb-action{font-size:.48rem;padding:.24rem 
         body.viewport-compact #drive-season-filters.drive-top-inline [data-drive-filter-shell="hold"] .task-top-control-summary{font-size:.64rem !important}
         body.viewport-compact #drive-season-filters.drive-top-inline .task-top-control-panel{top:calc(100% + .24rem);width:min(15rem,calc(100vw - (var(--shell-gutter) * 2)));max-width:calc(100vw - (var(--shell-gutter) * 2))}
         body.viewport-compact #drive-season-filters.drive-top-inline [data-drive-filter-shell="genus"] .task-top-control-panel{width:min(16rem,calc(100vw - (var(--shell-gutter) * 2)))}
+        #av-top-filters.av-top-inline{display:block;overflow:visible !important;padding:0 !important;margin-bottom:.55rem !important}
+        #av-top-filters.av-top-inline .av-top-controls-row{display:grid;grid-template-columns:minmax(0,1.18fr) minmax(0,1.15fr) minmax(0,1.12fr) minmax(0,.9fr);gap:.42rem;align-items:start}
+        #av-top-filters.av-top-inline .task-top-control-shell{position:relative;height:100%;padding:.38rem .4rem;border-radius:1rem;min-width:0}
+        #av-top-filters.av-top-inline .task-top-control-button{position:relative;min-height:46px;padding:.42rem .48rem;gap:.38rem;border-radius:999px}
+        #av-top-filters.av-top-inline .task-top-control-button i{font-size:.82rem}
+        #av-top-filters.av-top-inline .task-top-control-title{font-size:.48rem;letter-spacing:.11em}
+        #av-top-filters.av-top-inline .task-top-control-summary{margin-top:.14rem;font-size:.66rem;line-height:1.08}
+        #av-top-filters.av-top-inline .task-top-control-panel{position:absolute;top:calc(100% + .28rem);left:0;z-index:80;width:min(16rem,calc(100vw - (var(--shell-gutter) * 2)));max-width:calc(100vw - (var(--shell-gutter) * 2))}
+        #av-top-filters.av-top-inline [data-av-filter-shell="season"] .task-top-control-panel,
+        #av-top-filters.av-top-inline [data-av-filter-shell="genus"] .task-top-control-panel,
+        #av-top-filters.av-top-inline [data-av-filter-shell="contsize"] .task-top-control-panel{left:auto;right:0}
+        #av-top-filters.av-top-inline [data-av-filter-shell="season"] .task-top-control-panel{width:min(14rem,calc(100vw - (var(--shell-gutter) * 2)))}
+        #av-top-filters.av-top-inline [data-av-filter-shell="genus"] .task-top-control-panel{width:min(17rem,calc(100vw - (var(--shell-gutter) * 2)))}
+        #av-top-filters.av-top-inline [data-av-filter-shell="contsize"] .task-top-control-panel{width:min(15rem,calc(100vw - (var(--shell-gutter) * 2)))}
+        #av-top-filters.av-top-inline .av-filter-shell--toggle .task-top-control-button{justify-content:flex-start}
+        body.viewport-compact #av-top-filters.av-top-inline .av-top-controls-row{grid-template-columns:minmax(0,1.22fr) minmax(0,1.16fr) minmax(0,1.12fr) minmax(0,.9fr) !important;gap:.38rem !important}
+        body.viewport-compact #av-top-filters.av-top-inline .task-top-control-shell{padding:.36rem .34rem !important;border-radius:1rem !important}
+        body.viewport-compact #av-top-filters.av-top-inline .task-top-control-button{min-height:46px !important;padding:.44rem .48rem !important;gap:.34rem !important;border-radius:999px !important}
+        body.viewport-compact #av-top-filters.av-top-inline .task-top-control-button i{font-size:.8rem !important}
+        body.viewport-compact #av-top-filters.av-top-inline .task-top-control-title{font-size:.5rem !important;letter-spacing:.1em !important}
+        body.viewport-compact #av-top-filters.av-top-inline .task-top-control-summary{margin-top:.14rem !important;font-size:.68rem !important;line-height:1.08 !important}
+        body.viewport-compact #av-top-filters.av-top-inline [data-av-filter-shell="hold"] .task-top-control-title{font-size:.48rem !important;letter-spacing:.08em !important}
+        body.viewport-compact #av-top-filters.av-top-inline [data-av-filter-shell="hold"] .task-top-control-summary{font-size:.64rem !important}
+        body.viewport-compact #av-top-filters.av-top-inline .task-top-control-panel{top:calc(100% + .24rem);width:min(15rem,calc(100vw - (var(--shell-gutter) * 2)));max-width:calc(100vw - (var(--shell-gutter) * 2))}
+        body.viewport-compact #av-top-filters.av-top-inline [data-av-filter-shell="genus"] .task-top-control-panel{width:min(16rem,calc(100vw - (var(--shell-gutter) * 2)))}
         #drive-plant-filters.drive-top-inline .drive-plant-filter-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.5rem}
         #drive-plant-filters .task-top-control-shell{position:relative;height:100%}
         #drive-plant-filters .task-top-control-button{position:relative}
@@ -599,7 +624,7 @@ body.viewport-compact #view-detail #det-location{font-size:clamp(.9rem,3.8vw,1.1
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-        <div id="header-version" class="nav-version-pill">V2026.04.19.17</div>
+        <div id="header-version" class="nav-version-pill">V2026.04.19.18</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -731,6 +756,7 @@ body.viewport-compact #view-detail #det-location{font-size:clamp(.9rem,3.8vw,1.1
                         <div id="tab-av-secondary-all" class="task-tab active" onclick="setAvSecondaryTab('all')">ALL Open Stock</div>
                         <div id="tab-av-secondary-photos" class="task-tab" onclick="setAvSecondaryTab('photos')">Photos</div>
                     </div>
+                    <div id="av-top-filters" class="hidden mb-2"></div>
                     <div class="flex items-center justify-between gap-2 mb-3 mt-2">
                         <div id="av-crumb" class="text-xs font-bold text-[#007a4d] mb-0 mt-0 empty:hidden flex-1 min-w-0">Open Stock</div>
                         <button type="button" id="av-export-btn" class="inline-flex items-center gap-2 rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-95" onclick="exportCurrentAVToExcel()"><i class="ph-bold ph-download-simple text-base"></i><span id="av-export-btn-label">Export Excel</span></button>
@@ -3322,6 +3348,24 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 realtimeReconnectTimer = null;
             }
         }
+        function hasPendingFieldSaveActivity() {
+            return pendingFieldSaveCount > 0 || (Date.now() - lastFieldSaveAt) < FIELD_SAVE_GRACE_MS;
+        }
+
+        function beginFieldSaveActivity() {
+            pendingFieldSaveCount += 1;
+            lastFieldSaveAt = Date.now();
+        }
+
+        function endFieldSaveActivity() {
+            pendingFieldSaveCount = Math.max(0, pendingFieldSaveCount - 1);
+            lastFieldSaveAt = Date.now();
+        }
+
+        function isRecentViewSwitchActivity() {
+            return (Date.now() - lastViewSwitchAt) < VIEW_SWITCH_GRACE_MS;
+        }
+
         function shouldDeferInteractiveBackgroundWork() {
             return !!(
                 hasActiveTextEntryFocus()
@@ -3329,6 +3373,8 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 || isUserActivelyScrolling()
                 || isUserActivelyTouching()
                 || isUserInRecentInteractionWindow()
+                || isRecentViewSwitchActivity()
+                || hasPendingFieldSaveActivity()
                 || isChunkRenderActive()
                 || (window.pendingPhotoUploads && window.pendingPhotoUploads.size)
             );
@@ -5058,13 +5104,20 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             }, 60);
         }
         const DRIVE_MODE_LABELS = { ok: 'Drive Mode' };
-let activeDriveMode='ok'; let activeDriveTab='card'; let selectedDriveBlock=null; let selectedDriveLoc=null; let driveQuickRequestCardMode=false; let driveQuickFilterName=''; let driveQuickFilterLocation=''; let driveQuickFilterLot=''; let driveQuickFilterSize=''; let driveQuickFilterPriority=''; let driveQuickFilterLtsMode=''; let driveQuickFilterLtsValue=''; let driveQuickHoldStopOnly=false; let driveQuickFilterOptionsCacheKey=''; let driveQuickFilterOptionsCache=null; let driveBaseFilterCacheKey=''; let driveBaseFilterCacheItems=[]; let driveBaseContextCacheKey=''; let driveBaseContextCacheItems=[]; let driveBaseSearchContextKey=''; let driveBaseLastSearchTerm=''; let driveBaseLastSearchItems=[]; let driveQuickFilterCacheKey=''; let driveQuickFilterCacheItems=[]; let driveQuickFiltersModalOpen=false;
+let activeDriveMode='ok'; let activeDriveTab='name'; let selectedDriveBlock=null; let selectedDriveLoc=null; let driveQuickRequestCardMode=false; let driveQuickFilterName=''; let driveQuickFilterLocation=''; let driveQuickFilterLot=''; let driveQuickFilterSize=''; let driveQuickFilterPriority=''; let driveQuickFilterLtsMode=''; let driveQuickFilterLtsValue=''; let driveQuickHoldStopOnly=false; let driveQuickFilterOptionsCacheKey=''; let driveQuickFilterOptionsCache=null; let driveBaseFilterCacheKey=''; let driveBaseFilterCacheItems=[]; let driveBaseContextCacheKey=''; let driveBaseContextCacheItems=[]; let driveBaseSearchContextKey=''; let driveBaseLastSearchTerm=''; let driveBaseLastSearchItems=[]; let driveQuickFilterCacheKey=''; let driveQuickFilterCacheItems=[]; let driveQuickFiltersModalOpen=false;
 let driveViewLevel=0; let selectedDriveName=null; let selectedDriveSize=null; let selectedDriveSeason=null; let selectedDriveCommonNames=new Set(); let driveCommonNameSearchTerm=''; let driveCommonNameFilterOpen=false; let selectedDriveGenusNames=new Set(); let driveGenusSearchTerm=''; let driveGenusFilterOpen=false; let selectedDriveContSizes=new Set(); let driveContSizeSearchTerm=''; let driveContSizeFilterOpen=false; let drivePlantFilterItemsCache=[]; let drivePlantFilterGenusOptions=[]; let drivePlantFilterContSizeOptions=[]; let driveGenusSelectionMode='all'; let driveContSizeSelectionMode='all'; let driveViewDropdownOpen=false; let driveSeasonDropdownOpen=false; const DRIVE_SEASON_OPTIONS=Object.freeze(["S1","F1","U1","U2","U3","X","Y","Z"]); let driveSelectedSeasons=new Set(DRIVE_SEASON_OPTIONS); let driveResolvedCardStateKey=''; let driveResolvedCardStateCache=null;
 
 let activeTaskTab="season"; let activeTaskSubview="all"; let taskViewTargetUser=null; let taskViewLevel=0; let selectedTaskBlock=null; let selectedTaskLoc=null; let selectedEndCapFolder=null; let selectedFlyerFolder=null; let activeFlyerFolderTab="active"; let selectedColorWalkSearchTerm=""; let selectedTaskGenusNames=new Set(); let taskGenusSearchTerm=""; let taskGenusFilterOpen=false; let taskGenusFilterItemsCache=[]; let selectedTaskContSizes=new Set(); let taskContSizeSearchTerm=""; let taskContSizeDropdownOpen=false; let taskContSizeFilterItemsCache=[]; let taskLocationDetailSearchTerm=""; let selectedTaskLocationDetailGenus=""; let selectedTaskLocationDetailLotCode=""; let taskTabDropdownOpen=false; let taskSubviewDropdownOpen=false; let pendingFlyerFolderTarget=null; let pendingFlyerFolderAssignees="";
         let detailReturnState = { viewId: '', scrollTop: 0 };
+        let viewHistoryStack = [];
+        let pendingFieldSaveCount = 0;
+        let lastFieldSaveAt = 0;
+        let lastViewSwitchAt = 0;
+        const FIELD_SAVE_GRACE_MS = 900;
+        const VIEW_SWITCH_GRACE_MS = 480;
 
-        let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all'; let avOpenLevel=0; let selectedAvOpenName=null; let selectedAvOpenSize=null; let selectedAvOpenSeason=null; let selectedAvOpenLot=null; let avResLevel=0; let selectedAvResRep=null; let selectedAvResDriveUid=null; let selectedAvResItemCode=null; let selectedAvResName=null; let selectedAvResSize=null; let selectedAvResCustomerKey=null; let activeAvReserveMode='current'; let activeAvReserveDetailTab='customer';
+let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all'; let avOpenLevel=0; let selectedAvOpenName=null; let selectedAvOpenSize=null; let selectedAvOpenSeason=null; let selectedAvOpenLot=null; let avResLevel=0; let selectedAvResRep=null; let selectedAvResDriveUid=null; let selectedAvResItemCode=null; let selectedAvResName=null; let selectedAvResSize=null; let selectedAvResCustomerKey=null; let activeAvReserveMode='current'; let activeAvReserveDetailTab='customer';
+        let selectedAvSeasons=new Set(DRIVE_SEASON_OPTIONS); let avSeasonDropdownOpen=false; let selectedAvGenusNames=new Set(); let avGenusSearchTerm=''; let avGenusFilterOpen=false; let avGenusSelectionMode='all'; let selectedAvContSizes=new Set(); let avContSizeSearchTerm=''; let avContSizeFilterOpen=false; let avContSizeSelectionMode='all'; let avHoldStopOnly=false; let avFilterItemsCache=[]; let avFilterGenusOptions=[]; let avFilterContSizeOptions=[];
 
         let lowStockViewLevel=0; let selectedLowStockName=null; let selectedLowStockSize=null; let reviewViewLevel=0; let selectedReviewItemCode=null; let selectedReviewCommonName=null; let selectedReviewContSize=null;
         let requestViewLevel=0; let reservesViewLevel=0; let reportViewLevel=0; let activeReqTab="pending"; let selectedReqRep=null; let selectedReqRepStatus=null; let selectedReqFolder=null; let tempSelectedReqRep=""; let tempReqFolder=null; let tempReqCust=null; let tempReqAppendToExistingFolder=false; let previousReqStep=""; let driveQuickRequestItems=new Set(); let driveQuickRequestFlow=false; let driveQuickAssignFlow=false;
@@ -5096,7 +5149,7 @@ let activeTaskTab="season"; let activeTaskSubview="all"; let taskViewTargetUser=
         const REQUEST_EMAIL_THREAD_SELECT_FIELDS = 'request_folder,request_customer,sales_rep_name,sales_rep_email,recipients,initial_thread_id,initial_message_id,initial_email_sent_at,last_reply_sent_at,status,metadata';
         const REQUEST_EMAIL_INTERNAL_RECIPIENTS = Object.freeze(['dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com']);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-        const APP_VERSION = 'V2026.04.19.17';
+        const APP_VERSION = 'V2026.04.19.18';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -6687,7 +6740,7 @@ return false;
             return [
                 activeDriveMode,
                 activeDriveTab,
-                activeDriveTab === 'name' ? '' : [...driveSelectedSeasons].sort().join('|'),
+                [...driveSelectedSeasons].sort().join('|'),
                 driveQuickHoldStopOnly ? '1' : '0',
                 fullInventory.length,
                 masterState.lastLoadedAt || '',
@@ -6729,7 +6782,7 @@ return false;
             } else {
                 baseItems = getDriveModeItems();
                 normalizeDriveSelectedSeasons();
-                if (activeDriveTab !== 'name' && !areAllDriveSeasonsSelected()) {
+                if (!areAllDriveSeasonsSelected()) {
                     baseItems = baseItems.filter(i => {
                         let s = String(i.SEASON || '').toUpperCase();
                         return driveSelectedSeasons.has(s);
@@ -10231,11 +10284,53 @@ function toggleDriveQuickRequestItem(domId) {
             return 'home';
         }
 
+        function pruneViewHistoryStack() {
+            if (!Array.isArray(viewHistoryStack)) viewHistoryStack = [];
+            if (viewHistoryStack.length <= 40) return;
+            viewHistoryStack = viewHistoryStack.slice(-40);
+        }
+
+        function pushViewHistoryEntry(viewId = '', scrollTop = null) {
+            const safeViewId = String(viewId || '').trim();
+            if (!safeViewId || safeViewId === 'detail') return;
+            const nextScrollTop = scrollTop == null ? getMainAreaScrollTop() : Math.max(0, Number(scrollTop) || 0);
+            const lastEntry = viewHistoryStack.length ? viewHistoryStack[viewHistoryStack.length - 1] : null;
+            if (lastEntry && lastEntry.viewId === safeViewId) {
+                lastEntry.scrollTop = nextScrollTop;
+                lastEntry.at = Date.now();
+                return;
+            }
+            viewHistoryStack.push({ viewId: safeViewId, scrollTop: nextScrollTop, at: Date.now() });
+            pruneViewHistoryStack();
+        }
+
+        function peekPreviousViewHistoryEntry(currentViewId = '') {
+            const safeCurrentViewId = String(currentViewId || getCurrentVisibleViewId() || '').trim();
+            for (let index = viewHistoryStack.length - 1; index >= 0; index -= 1) {
+                const entry = viewHistoryStack[index];
+                if (!entry || !entry.viewId) continue;
+                if (entry.viewId === safeCurrentViewId) continue;
+                return entry;
+            }
+            return null;
+        }
+
+        function restorePreviousViewFromHistory() {
+            const currentViewId = getCurrentVisibleViewId();
+            while (viewHistoryStack.length) {
+                const entry = viewHistoryStack.pop();
+                if (!entry || !entry.viewId || entry.viewId === currentViewId) continue;
+                switchView(entry.viewId, { fromHistory: true, targetScrollTop: entry.scrollTop });
+                return true;
+            }
+            return false;
+        }
+
         function updateGlobalBackButton() {
             const backBtn = document.getElementById('global-back-btn');
             if (!backBtn) return;
             const currentView = getCurrentVisibleViewId();
-            const showBack = currentView === 'detail' || (currentView === 'home' && shouldShowHomeProductivityBackButton());
+            const showBack = currentView === 'detail' || currentView !== 'home' || (currentView === 'home' && shouldShowHomeProductivityBackButton());
             backBtn.classList.toggle('hidden', !showBack);
         }
 
@@ -10270,18 +10365,33 @@ function toggleDriveQuickRequestItem(domId) {
             });
         }
 
-        function switchView(viewId) {
+        function switchView(viewId, options = {}) {
             closeDriveQuickFiltersModal();
             if (String(viewId || '').trim() !== 'tasks') closeTaskDropdowns(false);
+            const switchOptions = (options && typeof options === 'object') ? options : {};
+            const fromHistory = !!switchOptions.fromHistory;
+            const targetScrollTop = switchOptions.targetScrollTop == null ? null : Math.max(0, Number(switchOptions.targetScrollTop) || 0);
             const requestedViewId = String(viewId || 'home').trim();
             const nextViewId = canAccessView(requestedViewId) ? requestedViewId : 'home';
             const currentViewId = getCurrentVisibleViewId();
+            if (nextViewId === 'drive' && currentViewId !== 'drive' && !fromHistory && activeDriveMode === 'ok') {
+                const driveWasNotCommon = activeDriveTab !== 'name' || driveViewLevel !== 0 || selectedDriveName || selectedDriveSize || selectedDriveSeason || selectedDriveBlock || selectedDriveLoc;
+                activeDriveTab = 'name';
+                driveQuickRequestCardMode = false;
+                resetDriveDrillSelectionState();
+                if (driveWasNotCommon) markViewDirty('drive');
+            }
             const nextState = ensureViewRenderState(nextViewId);
             if (currentViewId === 'home' && nextViewId !== 'home' && selectedProductivityUser) {
                 selectedProductivityUser = '';
                 markViewDirty('home');
             }
+            if (!fromHistory && currentViewId !== nextViewId && currentViewId && currentViewId !== 'detail') {
+                pushViewHistoryEntry(currentViewId, getMainAreaScrollTop());
+            }
+            lastViewSwitchAt = Date.now();
             if (currentViewId === nextViewId && nextState.initialized && !nextState.dirty) {
+                if (targetScrollTop != null) scheduleUiRender(`view-restore:${nextViewId}:${targetScrollTop}`, () => setMainAreaScrollTop(targetScrollTop));
                 updateGlobalBackButton();
                 syncGlobalHeaderChrome();
                 updateFooterNavState();
@@ -10296,7 +10406,14 @@ function toggleDriveQuickRequestItem(domId) {
             const targetView = document.getElementById('view-'+nextViewId);
             if (targetView) targetView.classList.remove('hidden');
             if (!nextState.initialized || nextState.dirty) queueViewRender(nextViewId);
-            queueScrollMainAreaToTop(`view:${nextViewId}`);
+            if (targetScrollTop != null) {
+                scheduleUiRender(`view-restore:${nextViewId}:${targetScrollTop}`, () => {
+                    setMainAreaScrollTop(targetScrollTop);
+                    requestAnimationFrame(() => setMainAreaScrollTop(targetScrollTop));
+                });
+            } else {
+                queueScrollMainAreaToTop(`view:${nextViewId}`);
+            }
             updateGlobalBackButton();
             syncGlobalHeaderChrome();
             updateFooterNavState();
@@ -10315,6 +10432,36 @@ function toggleDriveQuickRequestItem(domId) {
                 return false;
             }
             if (currentView === 'drive') {
+                if (activeDriveTab === 'name') {
+                    if (driveViewLevel >= 3 && selectedDriveSeason) {
+                        backToDriveSeasons();
+                        updateGlobalBackButton();
+                        return false;
+                    }
+                    if (driveViewLevel >= 2 && selectedDriveSize) {
+                        backToDriveSizes();
+                        updateGlobalBackButton();
+                        return false;
+                    }
+                    if (driveViewLevel >= 1 && selectedDriveName) {
+                        backToDriveNames();
+                        updateGlobalBackButton();
+                        return false;
+                    }
+                }
+                if (activeDriveTab === 'loc') {
+                    if (driveViewLevel >= 2 && selectedDriveLoc) {
+                        backToDriveLocations();
+                        updateGlobalBackButton();
+                        return false;
+                    }
+                    if (driveViewLevel >= 1 && selectedDriveBlock) {
+                        backToDriveBlocks();
+                        updateGlobalBackButton();
+                        return false;
+                    }
+                }
+                if (restorePreviousViewFromHistory()) return false;
                 switchView('home');
                 return false;
             }
@@ -10341,6 +10488,7 @@ function toggleDriveQuickRequestItem(domId) {
                     updateGlobalBackButton();
                     return false;
                 }
+                if (restorePreviousViewFromHistory()) return false;
                 switchView('home');
                 return false;
             }
@@ -10357,6 +10505,7 @@ function toggleDriveQuickRequestItem(domId) {
                     updateGlobalBackButton();
                     return false;
                 }
+                if (restorePreviousViewFromHistory()) return false;
                 switchView('home');
                 return false;
             }
@@ -10378,6 +10527,7 @@ function toggleDriveQuickRequestItem(domId) {
                         return false;
                     }
                 }
+                if (restorePreviousViewFromHistory()) return false;
                 switchView('home');
                 return false;
             }
@@ -10408,6 +10558,7 @@ function toggleDriveQuickRequestItem(domId) {
                         return false;
                     }
                 }
+                if (restorePreviousViewFromHistory()) return false;
                 switchView('home');
                 return false;
             }
@@ -10417,10 +10568,12 @@ function toggleDriveQuickRequestItem(domId) {
                     updateGlobalBackButton();
                     return false;
                 }
+                if (restorePreviousViewFromHistory()) return false;
                 switchView('home');
                 return false;
             }
             if (currentView === 'reserves' || currentView === 'sales-office' || currentView === 'reports' || currentView === 'hours' || currentView === 'low-stock') {
+                if (restorePreviousViewFromHistory()) return false;
                 switchView('home');
                 return false;
             }
@@ -10451,6 +10604,7 @@ function toggleDriveQuickRequestItem(domId) {
 
         function setTaskTab(tab) {
             const previousTaskTab = activeTaskTab;
+            lastViewSwitchAt = Date.now();
             activeTaskTab=tab;
             taskTabDropdownOpen = false;
             taskSubviewDropdownOpen = false;
@@ -10479,6 +10633,7 @@ function toggleDriveQuickRequestItem(domId) {
 
         function setTaskSubview(subview) {
             if (!taskTabUsesBlockDrill(activeTaskTab)) return false;
+            lastViewSwitchAt = Date.now();
             taskTabDropdownOpen = false;
             taskSubviewDropdownOpen = false;
             resetTaskLocationDetailFilters();
@@ -10587,10 +10742,11 @@ function toggleDriveQuickRequestItem(domId) {
 
         function setDriveMode(mode) {
             closeDriveQuickFiltersModal();
+            lastViewSwitchAt = Date.now();
             activeDriveMode = mode;
             resetDriveQuickCardViewState();
             syncDriveModeTabs();
-            activeDriveTab = 'card';
+            activeDriveTab = 'name';
             resetDriveDrillSelectionState();
             selectedDriveCommonNames = new Set();
             driveCommonNameSearchTerm = '';
@@ -10615,6 +10771,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
         function setDriveTab(tab) {
             closeDriveQuickFiltersModal();
+            lastViewSwitchAt = Date.now();
             const nextTab = ['name', 'loc', 'card'].includes(String(tab || '').trim()) ? String(tab || '').trim() : 'card';
             activeDriveTab = nextTab;
             driveQuickRequestCardMode = nextTab === 'card';
@@ -10645,7 +10802,7 @@ function toggleDriveQuickRequestItem(domId) {
             activeDriveMode = 'ok';
             resetDriveQuickCardViewState();
             syncDriveModeTabs();
-            activeDriveTab = 'card';
+            activeDriveTab = 'name';
             resetDriveDrillSelectionState();
             selectedDriveCommonNames = new Set(); driveCommonNameSearchTerm = ''; driveCommonNameFilterOpen = false; selectedDriveGenusNames = new Set(); driveGenusSelectionMode = 'all'; driveGenusSearchTerm = ''; driveGenusFilterOpen = false; selectedDriveContSizes = new Set(); driveContSizeSelectionMode = 'all'; driveContSizeSearchTerm = ''; driveContSizeFilterOpen = false; drivePlantFilterItemsCache = []; drivePlantFilterGenusOptions = []; drivePlantFilterContSizeOptions = [];
             driveViewDropdownOpen = false; driveSeasonDropdownOpen = false;
@@ -10697,15 +10854,20 @@ function toggleDriveQuickRequestItem(domId) {
             activeAVTab='open'; activeAvOpenTab='name'; activeAvHotPriceTab='all';
             avResLevel=0; selectedAvResRep=null; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; selectedAvResCustomerKey=null; activeAvReserveMode='current'; activeAvReserveDetailTab='customer';
             avOpenLevel=0; selectedAvOpenName=null; selectedAvOpenSize=null; selectedAvOpenSeason=null; selectedAvOpenLot=null;
+            selectedAvSeasons = new Set(DRIVE_SEASON_OPTIONS); avSeasonDropdownOpen = false; selectedAvGenusNames = new Set(); avGenusSearchTerm = ''; avGenusFilterOpen = false; avGenusSelectionMode = 'all'; selectedAvContSizes = new Set(); avContSizeSearchTerm = ''; avContSizeFilterOpen = false; avContSizeSelectionMode = 'all'; avHoldStopOnly = false; avFilterItemsCache = []; avFilterGenusOptions = []; avFilterContSizeOptions = []; avResolvedBaseStateKey = ''; avResolvedBaseStateCache = null;
             document.getElementById('tab-av-open').classList.add('active'); document.getElementById('tab-av-hotprice').classList.remove('active'); document.getElementById('tab-av-reserves').classList.remove('active');
             syncAvSecondaryTabs();
             document.getElementById('av-search').value=""; document.getElementById('av-search-clear').classList.add('hidden');
             renderAV();
         }
         function setAVTab(tab) {
+            lastViewSwitchAt = Date.now();
             activeAVTab=tab;
             avResLevel=0; selectedAvResRep=null; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; selectedAvResCustomerKey=null; activeAvReserveMode='current'; activeAvReserveDetailTab='customer';
             avOpenLevel=0; selectedAvOpenName=null; selectedAvOpenSize=null; selectedAvOpenSeason=null; selectedAvOpenLot=null;
+            closeAvTopControlDropdowns(false);
+            avResolvedBaseStateKey = '';
+            avResolvedBaseStateCache = null;
             document.getElementById('tab-av-open').classList.toggle('active',tab==='open'); document.getElementById('tab-av-hotprice').classList.toggle('active',tab==='hotprice'); document.getElementById('tab-av-reserves').classList.toggle('active',tab==='reserves');
             syncAvSecondaryTabs();
             scheduleUiRender('av-tab', () => renderAV());
@@ -11384,7 +11546,11 @@ function toggleDriveQuickRequestItem(domId) {
 
         function getAvReserveDriveRowsForSelection() {
             if (!selectedAvResItemCode || !selectedAvResName || !selectedAvResSize) return [];
-            const driveRows = getAvReserveOpenStockBaseItems().filter(i => {
+            const searchTerm = getAvSearchTerm();
+            const baseOpenRows = getAvRawTabItems('open', { ignoreSecondaryTab: true });
+            const filteredOpenRows = buildAvSharedFilterState(baseOpenRows).filteredItems;
+            const searchedOpenRows = searchTerm ? filterBySearch(filteredOpenRows, searchTerm, 'av_open') : filteredOpenRows;
+            const driveRows = searchedOpenRows.filter(i => {
                 const group = getAvReserveGroupFields(i);
                 return group.itemCode === selectedAvResItemCode && group.commonName === selectedAvResName && group.contSize === selectedAvResSize;
             });
@@ -11427,10 +11593,6 @@ function toggleDriveQuickRequestItem(domId) {
         function generateAvReserveDriveCard(item) {
             normalizeRowPhotoFields(item);
             const safeUidJs = esc(item.UNIQUE_ID);
-            const safeDomIdJs = esc(item.DOM_ID);
-            const access = getRoleAccessState();
-            const canSubmitDriveOrder = access.isAdmin && canUseBloomPicker([item]);
-            const inBag = selectedItems.has(item.DOM_ID);
             let thumbHtml = '';
             const photoLink = getRowPhotoLink(item, 'drive');
             const photoDateLabel = getRowPhotoDateLabel(item, 'drive', photoLink);
@@ -11445,9 +11607,7 @@ function toggleDriveQuickRequestItem(domId) {
                 }
             }
             const cornerThumbHtml = thumbHtml || `<div class="absolute top-3 right-3 flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-xl border border-slate-200 bg-slate-100 px-1 text-center text-[8px] font-black uppercase tracking-[0.14em] text-slate-400">No Photo</div>`;
-            const driveOrderHtml = canSubmitDriveOrder
-                ? `<div class="app-card-bottom-rail" onclick="event.stopPropagation();"><button type="button" class="app-card-bottom-btn ${inBag ? 'app-card-bottom-btn--secondary' : ''}" onclick="return startDriveModeBloomOrder(event, '${safeDomIdJs}')"><i class="ph-bold ${inBag ? 'ph-check' : 'ph-package'} text-base"></i>${inBag ? 'Open Bloom Picker' : 'Add To Bloom Picker'}</button></div>`
-                : '';
+            const driveOrderHtml = getInventoryCardBottomRailHtml(item.DOM_ID);
             return `<div class="mb-3 app-card-shell app-smart-card app-smart-card--inventory ${driveOrderHtml ? 'app-card-with-bottom-rail' : ''} rounded-[20px] border border-slate-200 bg-white p-3 pr-[3.75rem] sm:pr-[4.25rem] shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden relative" onclick="selectAvReserveDriveRow('${safeUidJs}')">${cornerThumbHtml}<div class="text-[9px] font-black uppercase tracking-[0.16em] text-sky-600">Drive Mode Row</div><div class="app-card-topline mt-1"><span class="app-card-topline-common">${esc(item.COMMONNAME || 'Unknown')}</span><span class="app-card-topline-size">${esc(item.CONTSIZE || '-')}</span></div><div class="mt-1.5 inline-flex max-w-full items-center gap-1 rounded-lg border border-slate-200 bg-slate-100 px-2 py-1 text-[10px] font-mono font-bold text-slate-600"><i class="ph-bold ph-barcode text-slate-400"></i><span class="truncate">${item.ITEMCODE || '-'}</span></div><div class="mt-2 flex flex-wrap gap-1.5 text-[9px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-blue-100 bg-blue-50 px-2 py-1 text-blue-700">Loc ${item.LOCATIONCODE || 'No Loc'}</span><span class="rounded-full border border-slate-200 bg-slate-100 px-2 py-1 text-slate-700">Lot ${item.LOTCODE || '-'}</span><span class="rounded-full border border-emerald-100 bg-emerald-50 px-2 py-1 text-emerald-700">Ava ${item.PTRAVAILABLE || '0'}</span><span class="rounded-full border border-purple-100 bg-purple-50 px-2 py-1 text-purple-700">s_LTS ${item.S_LTS || '0'}</span><span class="rounded-full border border-orange-100 bg-orange-50 px-2 py-1 text-orange-700">Pri ${item.PRIORITY || '-'}</span></div>${driveOrderHtml}</div>`;
         }
 
@@ -11770,7 +11930,8 @@ function toggleDriveQuickRequestItem(domId) {
             }
             const inlineThumbHtml = thumbHtml || `<div class="ml-3 flex-shrink-0"><div class="app-smart-thumb w-16 h-16 rounded-md border border-gray-300 bg-slate-100 shadow-sm flex items-center justify-center text-[8px] font-black uppercase tracking-[0.12em] text-slate-400">No Photo</div></div>`;
             const quickShareHtml = `<div class="mt-3 grid ${actionVisibility.showText ? 'grid-cols-3' : 'grid-cols-2'} gap-2"><button type="button" class="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-slate-700 shadow-sm active:scale-[0.98]" onclick="event.stopPropagation(); return shareAvReserveRow('copy', '${safeDomIdJs}')"><i class="ph-bold ph-copy text-base"></i>Copy</button><button type="button" class="inline-flex items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-blue-700 shadow-sm active:scale-[0.98]" onclick="event.stopPropagation(); return shareAvReserveRow('email', '${safeDomIdJs}')"><i class="ph-bold ph-envelope-simple text-base"></i>Email</button>${actionVisibility.showText ? `<button type="button" class="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm active:scale-[0.98]" onclick="event.stopPropagation(); return shareAvReserveRow('text', '${safeDomIdJs}')"><i class="ph-bold ph-chat-circle-dots text-base"></i>Text</button>` : ''}</div>`;
-            return `<div class="flex items-start w-full mb-3 item-row app-smart-card relative bg-white p-4 rounded-xl border border-indigo-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', 'av')"><div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-grow items-start justify-between min-w-0"><div class="app-card-main flex-grow min-w-0 pr-2"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-indigo-600">Item Code</div><div class="mt-1 font-mono font-black text-[16px] text-indigo-800 break-all">${esc(itemCode)}</div><div class="mt-3 font-black text-slate-900 text-[20px] leading-tight break-words">${esc(commonName)}</div><div class="mt-1 text-[14px] font-bold text-[#007a4d]">${esc(contSize)}</div><div class="mt-3 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">${detailCell('Customer Name', customerName)}${detailCell('Consignee Name', consigneeName)}${detailCell('Sales Rep Name', salesRepName)}${detailCell('Location', locationCode)}${detailCell('Request Date', requestDate)}${detailCell('Lot Code', lotCode)}${detailCell('Quantity Ordered', qtyOrdered)}${detailCell('Quantity Shipped', qtyShipped)}${detailCell('LOC PHOTO MATCH', locPhotoMatch)}${showSpecFields ? detailCell('Spec', specText) : ''}${showSpecFields ? detailCell('Caliper', caliperText) : ''}${detailCell('AV Note', avNote)}</div>${quickShareHtml}</div>${inlineThumbHtml}</div></div>`;
+            const bottomRailHtml = getInventoryCardBottomRailHtml(item.DOM_ID);
+            return `<div class="flex items-start w-full mb-3 item-row app-smart-card relative bg-white p-4 rounded-xl border border-indigo-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${bottomRailHtml ? 'app-card-with-bottom-rail' : ''}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', 'av')"><div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-grow items-start justify-between min-w-0"><div class="app-card-main flex-grow min-w-0 pr-2"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-indigo-600">Item Code</div><div class="mt-1 font-mono font-black text-[16px] text-indigo-800 break-all">${esc(itemCode)}</div><div class="mt-3 font-black text-slate-900 text-[20px] leading-tight break-words">${esc(commonName)}</div><div class="mt-1 text-[14px] font-bold text-[#007a4d]">${esc(contSize)}</div><div class="mt-3 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">${detailCell('Customer Name', customerName)}${detailCell('Consignee Name', consigneeName)}${detailCell('Sales Rep Name', salesRepName)}${detailCell('Location', locationCode)}${detailCell('Request Date', requestDate)}${detailCell('Lot Code', lotCode)}${detailCell('Quantity Ordered', qtyOrdered)}${detailCell('Quantity Shipped', qtyShipped)}${detailCell('LOC PHOTO MATCH', locPhotoMatch)}${showSpecFields ? detailCell('Spec', specText) : ''}${showSpecFields ? detailCell('Caliper', caliperText) : ''}${detailCell('AV Note', avNote)}</div>${quickShareHtml}</div>${inlineThumbHtml}</div>${bottomRailHtml}</div>`;
         }
 
         function generateAvReserveLocationCard(item) {
@@ -11806,7 +11967,8 @@ function toggleDriveQuickRequestItem(domId) {
                 }
             }
             const cornerThumbHtml = thumbHtml || `<div class="absolute top-3 right-3 flex h-14 w-14 items-center justify-center rounded-xl border border-slate-200 bg-slate-100 px-1 text-center text-[8px] font-black uppercase tracking-[0.14em] text-slate-400">No Photo</div>`;
-            return `<div class="mb-3 rounded-[22px] border border-sky-200 bg-white p-4 pr-[5.25rem] shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden relative" onclick="handleCardClick('${item.DOM_ID || ''}', '${safeUidJs}', 'drive')">${cornerThumbHtml}<div class="text-[10px] font-black uppercase tracking-[0.16em] text-sky-600">Drive Mode Location</div><div class="mt-1 font-black text-[20px] text-slate-900 break-words">${esc(locationCode)}</div><div class="mt-3 font-black text-[18px] leading-tight text-slate-900 break-words">${esc(commonName)}</div><div class="mt-1 text-[14px] font-bold text-[#007a4d]">${esc(contSize)}</div><div class="mt-2 inline-flex max-w-full items-center gap-1 rounded-lg border border-slate-200 bg-slate-100 px-2 py-1 text-[10px] font-mono font-bold text-slate-600"><i class="ph-bold ph-barcode text-slate-400"></i><span class="truncate">${esc(itemCode)}</span></div><div class="mt-3 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">${detailCell('Lot Code', lotCode)}${detailCell('Loc Avail', ptrAvailable)}${detailCell('s_LTS', sLts)}${detailCell('Priority', priority)}${detailCell('LOC PHOTO MATCH', locPhotoMatch)}${showSpecFields ? detailCell('Spec', specText) : ''}${showSpecFields ? detailCell('Caliper', caliperText) : ''}${detailCell('AV Note', avNote)}</div></div>`;
+            const bottomRailHtml = getInventoryCardBottomRailHtml(item.DOM_ID);
+            return `<div class="mb-3 rounded-[22px] border border-sky-200 bg-white p-4 pr-[5.25rem] shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden relative ${bottomRailHtml ? 'app-card-with-bottom-rail' : ''}" onclick="handleCardClick('${item.DOM_ID || ''}', '${safeUidJs}', 'drive')">${cornerThumbHtml}<div class="text-[10px] font-black uppercase tracking-[0.16em] text-sky-600">Drive Mode Location</div><div class="mt-1 font-black text-[20px] text-slate-900 break-words">${esc(locationCode)}</div><div class="mt-3 font-black text-[18px] leading-tight text-slate-900 break-words">${esc(commonName)}</div><div class="mt-1 text-[14px] font-bold text-[#007a4d]">${esc(contSize)}</div><div class="mt-2 inline-flex max-w-full items-center gap-1 rounded-lg border border-slate-200 bg-slate-100 px-2 py-1 text-[10px] font-mono font-bold text-slate-600"><i class="ph-bold ph-barcode text-slate-400"></i><span class="truncate">${esc(itemCode)}</span></div><div class="mt-3 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">${detailCell('Lot Code', lotCode)}${detailCell('Loc Avail', ptrAvailable)}${detailCell('s_LTS', sLts)}${detailCell('Priority', priority)}${detailCell('LOC PHOTO MATCH', locPhotoMatch)}${showSpecFields ? detailCell('Spec', specText) : ''}${showSpecFields ? detailCell('Caliper', caliperText) : ''}${detailCell('AV Note', avNote)}</div>${bottomRailHtml}</div>`;
         }
 
         function generateAvReserveRepCard(rep) {
@@ -12003,6 +12165,426 @@ function toggleDriveQuickRequestItem(domId) {
             return avHotPriceRowsCache;
         }
 
+        function getAvSearchTerm() {
+            const searchInput = document.getElementById('av-search');
+            return String(searchInput ? searchInput.value : '').toLowerCase().trim();
+        }
+
+        function getAvFilterSeasonValue(item = null) {
+            return String(firstNonEmptyValue(item && item.SEASON, item && item.season, '') || '').trim().toUpperCase();
+        }
+
+        function normalizeAvSelectedSeasons() {
+            const validSelections = [...selectedAvSeasons]
+                .filter((season) => DRIVE_SEASON_OPTIONS.includes(String(season || '').trim().toUpperCase()))
+                .map((season) => String(season || '').trim().toUpperCase());
+            selectedAvSeasons = new Set(validSelections);
+            if (!selectedAvSeasons.size) selectedAvSeasons = new Set(DRIVE_SEASON_OPTIONS);
+            return selectedAvSeasons;
+        }
+
+        function areAllAvSeasonsSelected() {
+            normalizeAvSelectedSeasons();
+            return selectedAvSeasons.size === DRIVE_SEASON_OPTIONS.length
+                && DRIVE_SEASON_OPTIONS.every((season) => selectedAvSeasons.has(season));
+        }
+
+        function getAvSeasonSummaryLabel() {
+            normalizeAvSelectedSeasons();
+            return areAllAvSeasonsSelected() ? 'All Seasons' : `${selectedAvSeasons.size} selected`;
+        }
+
+        function getAvGenusSummaryLabel(options = []) {
+            const normalizedOptions = Array.isArray(options) ? options : [];
+            const selectedCount = selectedAvGenusNames.size;
+            if (!normalizedOptions.length || (selectedCount && selectedCount === normalizedOptions.length)) return 'All Genus';
+            return selectedCount ? `${selectedCount} selected` : 'All Genus';
+        }
+
+        function getAvContSizeSummaryLabel(options = []) {
+            const normalizedOptions = Array.isArray(options) ? options : [];
+            const selectedCount = selectedAvContSizes.size;
+            if (!normalizedOptions.length || (selectedCount && selectedCount === normalizedOptions.length)) return 'All Sizes';
+            return selectedCount ? `${selectedCount} selected` : 'All Sizes';
+        }
+
+        function syncAvGenusSelectionState(options = []) {
+            const normalized = normalizeDriveExplicitSelections(options, selectedAvGenusNames, avGenusSelectionMode);
+            avGenusSelectionMode = normalized.mode;
+            selectedAvGenusNames = normalized.selected;
+            avFilterGenusOptions = normalized.options;
+            return normalized;
+        }
+
+        function syncAvContSizeSelectionState(options = []) {
+            const normalized = normalizeDriveExplicitSelections(options, selectedAvContSizes, avContSizeSelectionMode);
+            avContSizeSelectionMode = normalized.mode;
+            selectedAvContSizes = normalized.selected;
+            avFilterContSizeOptions = normalized.options;
+            return normalized;
+        }
+
+        function closeAvTopControlDropdowns(syncUi = true) {
+            const hadOpen = avSeasonDropdownOpen || avGenusFilterOpen || avContSizeFilterOpen;
+            avSeasonDropdownOpen = false;
+            avGenusFilterOpen = false;
+            avContSizeFilterOpen = false;
+            if (syncUi && hadOpen) renderAvTopControls(avFilterItemsCache);
+            return false;
+        }
+
+        function buildAvSharedFilterState(items = []) {
+            const baseItems = Array.isArray(items) ? items : [];
+            normalizeAvSelectedSeasons();
+            const genusOptions = [...new Set(baseItems.map((item) => getDrivePlantGenusValue(item)))]
+                .sort((a, b) => String(a).localeCompare(String(b)));
+            const genusState = syncAvGenusSelectionState(genusOptions);
+            const genusSearchTerm = String(avGenusSearchTerm || '').trim().toLowerCase();
+            const filteredGenusOptions = genusSearchTerm
+                ? genusOptions.filter((name) => String(name).toLowerCase().includes(genusSearchTerm))
+                : genusOptions;
+
+            const sizeOptions = [...new Set(baseItems.map((item) => getDrivePlantContSize(item)).filter(Boolean))]
+                .sort(compareDrivePlantContSize);
+            const sizeState = syncAvContSizeSelectionState(sizeOptions);
+            const contSizeSearchTerm = String(avContSizeSearchTerm || '').trim().toLowerCase();
+            const filteredSizeOptions = contSizeSearchTerm
+                ? sizeOptions.filter((size) => String(size).toLowerCase().includes(contSizeSearchTerm))
+                : sizeOptions;
+            const seasonAllSelected = areAllAvSeasonsSelected();
+
+            const filteredItems = baseItems.filter((item) => {
+                const seasonValue = getAvFilterSeasonValue(item);
+                if (!seasonAllSelected && !selectedAvSeasons.has(seasonValue)) return false;
+                if (avHoldStopOnly) {
+                    const holdCode = String(firstNonEmptyValue(item && item.HOLDSTOPCODE, item && item.HOLD_STOP_CODE, item && item.HOLDSTOP, '') || '').toUpperCase();
+                    if (!(holdCode.includes('H') || holdCode.includes('S'))) return false;
+                }
+                const genusName = getDrivePlantGenusValue(item);
+                if (!genusState.selected.has(genusName)) return false;
+                const contSize = getDrivePlantContSize(item);
+                if (!sizeState.selected.has(contSize)) return false;
+                return true;
+            });
+
+            const genusAllSelected = !!genusState.options.length && genusState.selected.size === genusState.options.length;
+            const contSizeAllSelected = !!sizeState.options.length && sizeState.selected.size === sizeState.options.length;
+            return {
+                baseItems,
+                filteredItems,
+                genusOptions: genusState.options,
+                filteredGenusOptions,
+                sizeOptions: sizeState.options,
+                filteredSizeOptions,
+                seasonSelectedCount: selectedAvSeasons.size,
+                genusSelectedCount: genusState.selected.size,
+                contSizeSelectedCount: sizeState.selected.size,
+                seasonAllSelected,
+                genusAllSelected,
+                contSizeAllSelected
+            };
+        }
+
+        function buildAvTopControlsSignature(state = {}) {
+            let hash = 2166136261;
+            [
+                activeAVTab,
+                activeAvOpenTab,
+                activeAvHotPriceTab,
+                activeAvReserveMode,
+                avSeasonDropdownOpen ? '1' : '0',
+                avGenusFilterOpen ? '1' : '0',
+                avContSizeFilterOpen ? '1' : '0',
+                avHoldStopOnly ? '1' : '0',
+                [...selectedAvSeasons].sort().join('|'),
+                [...selectedAvGenusNames].sort().join('|'),
+                [...selectedAvContSizes].sort().join('|'),
+                String(avGenusSearchTerm || '').trim().toLowerCase(),
+                String(avContSizeSearchTerm || '').trim().toLowerCase(),
+                Array.isArray(state.genusOptions) ? state.genusOptions.join('|') : '',
+                Array.isArray(state.sizeOptions) ? state.sizeOptions.join('|') : '',
+                String(state.seasonSelectedCount || 0),
+                String(state.genusSelectedCount || 0),
+                String(state.contSizeSelectedCount || 0)
+            ].forEach((value) => {
+                hash = updateRenderSignatureHash(hash, value);
+            });
+            return `av-top-controls:${(hash >>> 0).toString(16)}`;
+        }
+
+        function syncAvFilterStrip(container, html = '', signature = '') {
+            if (!container) return;
+            const nextSignature = String(signature || `av-filters:${String(html || '').length}`);
+            setContainerHtmlWithSignature(container, html, nextSignature);
+            scheduleStickyRailOffsetSync();
+        }
+
+        function renderAvTopControls(items = []) {
+            const container = document.getElementById('av-top-filters');
+            if (!container) return buildAvSharedFilterState(items);
+            avFilterItemsCache = Array.isArray(items) ? items : [];
+            const state = buildAvSharedFilterState(avFilterItemsCache);
+            const seasonSummary = getAvSeasonSummaryLabel();
+            const genusSummary = getAvGenusSummaryLabel(state.genusOptions);
+            const contSizeSummary = getAvContSizeSummaryLabel(state.sizeOptions);
+            const holdSummary = avHoldStopOnly ? 'Hold Only' : 'All Rows';
+            const controlButtonClass = (isActive = false) => `task-top-control-button inline-flex w-full items-center gap-2 rounded-full border px-3 py-2.5 text-left text-[10px] font-black uppercase tracking-[0.11em] sm:px-3.5 sm:text-[10px] ${isActive ? 'bg-emerald-600 border-emerald-600 text-white shadow-md' : 'bg-white border-emerald-200 text-emerald-700 shadow-sm'}`;
+            const holdButtonClass = `task-top-control-button inline-flex w-full items-center gap-2 rounded-full border px-3 py-2.5 text-left text-[10px] font-black uppercase tracking-[0.11em] sm:px-3.5 sm:text-[10px] ${avHoldStopOnly ? 'bg-amber-400 border-amber-500 text-amber-950 shadow-md' : 'bg-white border-amber-300 text-amber-700 shadow-sm'}`;
+            const seasonOptionsHtml = DRIVE_SEASON_OPTIONS.map((season) => {
+                const checked = selectedAvSeasons.has(season) ? 'checked' : '';
+                return `<label class="flex items-center justify-between gap-3 px-3 py-2.5 hover:bg-emerald-50"><span class="min-w-0 break-words text-[12px] font-bold text-slate-700">${esc(season)}</span><input type="checkbox" class="h-4 w-4 shrink-0 accent-emerald-600" data-season="${esc(season)}" ${checked} onclick="event.stopPropagation(); return toggleAvSeason(this.dataset.season)"></label>`;
+            }).join('');
+            const genusOptionHtml = state.genusOptions.length
+                ? buildDrivePlantMultiSelectOptionsHtml(state.filteredGenusOptions, selectedAvGenusNames, 'avgenus', 'toggleAvGenusSelection', 'No matching genus names.')
+                : '<div class="px-3 py-4 text-center text-[11px] font-semibold text-gray-400">No GENUSNAME data available.</div>';
+            const contSizeOptionHtml = state.sizeOptions.length
+                ? buildDrivePlantMultiSelectOptionsHtml(state.filteredSizeOptions, selectedAvContSizes, 'avcontsize', 'toggleAvContSizeSelection', 'No matching container sizes.')
+                : '<div class="px-3 py-4 text-center text-[11px] font-semibold text-gray-400">No CONTSIZE data available.</div>';
+            const markup = `<div class="av-top-controls-row"><div class="task-top-control-shell av-filter-shell rounded-[1.05rem] border border-emerald-100 bg-white/95 shadow-sm backdrop-blur-sm" data-av-filter-shell="season"><button type="button" class="${controlButtonClass(avSeasonDropdownOpen)}" onclick="return toggleAvSeasonDropdown()"><i class="ph-bold ph-calendar-blank text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Season</span><span class="task-top-control-summary truncate">${esc(seasonSummary)}</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="task-top-control-panel mt-2 ${avSeasonDropdownOpen ? '' : 'hidden '}overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm"><div class="max-h-72 overflow-y-auto">${seasonOptionsHtml}</div><div class="grid grid-cols-2 gap-2 border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm" onclick="return selectAllAvSeasons()">Select All</button><button type="button" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeAvSeasonDropdown()">Done</button></div></div></div><div class="task-top-control-shell av-filter-shell rounded-[1.05rem] border border-emerald-100 bg-white/95 shadow-sm backdrop-blur-sm" data-av-filter-shell="genus"><button type="button" class="${controlButtonClass(avGenusFilterOpen)}" onclick="return toggleAvGenusDropdown()"><i class="ph-bold ph-leaf text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Genus</span><span class="task-top-control-summary truncate">${esc(genusSummary)}</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="task-top-control-panel mt-2 ${avGenusFilterOpen ? '' : 'hidden '}overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm"><div class="border-b border-emerald-100 p-2"><input id="av-genus-search" type="text" class="input-field !mb-0 border-emerald-200 bg-white !py-2.5" placeholder="Search genus..." value="${esc(avGenusSearchTerm)}" oninput="setAvGenusSearchTerm(this.value)" onkeydown="handleAvGenusSearchKeydown(event)"></div><div class="max-h-56 overflow-y-auto">${genusOptionHtml}</div><div class="grid grid-cols-2 gap-2 border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm ${state.genusAllSelected ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}" onclick="return selectAllAvGenus()">Select All</button><button type="button" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeAvGenusDropdown()">Done</button></div></div></div><div class="task-top-control-shell av-filter-shell rounded-[1.05rem] border border-emerald-100 bg-white/95 shadow-sm backdrop-blur-sm" data-av-filter-shell="contsize"><button type="button" class="${controlButtonClass(avContSizeFilterOpen)}" onclick="return toggleAvContSizeDropdown()"><i class="ph-bold ph-ruler text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Cont Size</span><span class="task-top-control-summary truncate">${esc(contSizeSummary)}</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="task-top-control-panel mt-2 ${avContSizeFilterOpen ? '' : 'hidden '}overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm"><div class="border-b border-emerald-100 p-2"><input id="av-contsize-search" type="text" class="input-field !mb-0 border-emerald-200 bg-white !py-2.5" placeholder="Search cont size..." value="${esc(avContSizeSearchTerm)}" oninput="setAvContSizeSearchTerm(this.value)" onkeydown="handleAvContSizeSearchKeydown(event)"></div><div class="max-h-56 overflow-y-auto">${contSizeOptionHtml}</div><div class="grid grid-cols-2 gap-2 border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm ${state.contSizeAllSelected ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}" onclick="return selectAllAvContSizes()">Select All</button><button type="button" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeAvContSizeDropdown()">Done</button></div></div></div><div class="task-top-control-shell av-filter-shell av-filter-shell--toggle rounded-[1.05rem] border border-emerald-100 bg-white/95 shadow-sm backdrop-blur-sm" data-av-filter-shell="hold"><button type="button" class="${holdButtonClass}" onclick="return toggleAvHoldStopOnly()"><i class="ph-bold ph-warning-circle text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">H/S</span><span class="task-top-control-summary truncate">${esc(holdSummary)}</span></span></button></div></div>`;
+            container.classList.add('av-top-inline');
+            container.classList.remove('hidden');
+            syncAvFilterStrip(container, markup, buildAvTopControlsSignature(state));
+            return state;
+        }
+
+        function toggleAvSeasonDropdown() {
+            const nextState = !avSeasonDropdownOpen;
+            avSeasonDropdownOpen = nextState;
+            if (nextState) {
+                avGenusFilterOpen = false;
+                avContSizeFilterOpen = false;
+            }
+            renderAvTopControls(avFilterItemsCache);
+            return false;
+        }
+
+        function closeAvSeasonDropdown() {
+            if (!avSeasonDropdownOpen) return false;
+            avSeasonDropdownOpen = false;
+            renderAvTopControls(avFilterItemsCache);
+            return false;
+        }
+
+        function toggleAvGenusDropdown() {
+            const nextState = !avGenusFilterOpen;
+            avGenusFilterOpen = nextState;
+            if (nextState) {
+                avSeasonDropdownOpen = false;
+                avContSizeFilterOpen = false;
+            }
+            renderAvTopControls(avFilterItemsCache);
+            return false;
+        }
+
+        function closeAvGenusDropdown() {
+            if (!avGenusFilterOpen) return false;
+            avGenusFilterOpen = false;
+            renderAvTopControls(avFilterItemsCache);
+            return false;
+        }
+
+        function toggleAvContSizeDropdown() {
+            const nextState = !avContSizeFilterOpen;
+            avContSizeFilterOpen = nextState;
+            if (nextState) {
+                avSeasonDropdownOpen = false;
+                avGenusFilterOpen = false;
+            }
+            renderAvTopControls(avFilterItemsCache);
+            return false;
+        }
+
+        function closeAvContSizeDropdown() {
+            if (!avContSizeFilterOpen) return false;
+            avContSizeFilterOpen = false;
+            renderAvTopControls(avFilterItemsCache);
+            return false;
+        }
+
+        function toggleAvSeason(season = '') {
+            const value = String(season || '').trim().toUpperCase();
+            if (!DRIVE_SEASON_OPTIONS.includes(value)) return false;
+            normalizeAvSelectedSeasons();
+            if (selectedAvSeasons.has(value)) selectedAvSeasons.delete(value);
+            else selectedAvSeasons.add(value);
+            if (!selectedAvSeasons.size) selectedAvSeasons = new Set(DRIVE_SEASON_OPTIONS);
+            avSeasonDropdownOpen = true;
+            avGenusFilterOpen = false;
+            avContSizeFilterOpen = false;
+            avResolvedBaseStateKey = '';
+            avResolvedBaseStateCache = null;
+            scheduleUiRender('av-season-filter', () => renderAV());
+            queueScrollMainAreaToTop('av-top-controls');
+            return false;
+        }
+
+        function selectAllAvSeasons() {
+            selectedAvSeasons = new Set(DRIVE_SEASON_OPTIONS);
+            avSeasonDropdownOpen = true;
+            avResolvedBaseStateKey = '';
+            avResolvedBaseStateCache = null;
+            scheduleUiRender('av-season-select-all', () => renderAV());
+            return false;
+        }
+
+        function setAvGenusSearchTerm(value = '') {
+            avGenusSearchTerm = String(value || '');
+            const input = document.getElementById('av-genus-search');
+            const cursorPos = input && typeof input.selectionStart === 'number' ? input.selectionStart : null;
+            scheduleUiRender('av-genus-search-ui', () => {
+                renderAvTopControls(avFilterItemsCache);
+                requestAnimationFrame(() => {
+                    const current = document.getElementById('av-genus-search');
+                    if (!current) return;
+                    if (document.activeElement !== current) current.focus();
+                    if (cursorPos !== null && typeof current.setSelectionRange === 'function') current.setSelectionRange(cursorPos, cursorPos);
+                });
+            });
+            return false;
+        }
+
+        function setAvContSizeSearchTerm(value = '') {
+            avContSizeSearchTerm = String(value || '');
+            const input = document.getElementById('av-contsize-search');
+            const cursorPos = input && typeof input.selectionStart === 'number' ? input.selectionStart : null;
+            scheduleUiRender('av-contsize-search-ui', () => {
+                renderAvTopControls(avFilterItemsCache);
+                requestAnimationFrame(() => {
+                    const current = document.getElementById('av-contsize-search');
+                    if (!current) return;
+                    if (document.activeElement !== current) current.focus();
+                    if (cursorPos !== null && typeof current.setSelectionRange === 'function') current.setSelectionRange(cursorPos, cursorPos);
+                });
+            });
+            return false;
+        }
+
+        function applyVisibleAvGenusResults() {
+            const state = buildAvSharedFilterState(avFilterItemsCache);
+            if (!state.filteredGenusOptions.length) return false;
+            selectedAvGenusNames = new Set(state.filteredGenusOptions);
+            avGenusSelectionMode = state.filteredGenusOptions.length === state.genusOptions.length ? 'all' : 'custom';
+            avGenusSearchTerm = '';
+            closeAvTopControlDropdowns(false);
+            avResolvedBaseStateKey = '';
+            avResolvedBaseStateCache = null;
+            scheduleUiRender('av-genus-filter-enter', () => renderAV());
+            queueScrollMainAreaToTop('av-top-controls');
+            return true;
+        }
+
+        function applyVisibleAvContSizeResults() {
+            const state = buildAvSharedFilterState(avFilterItemsCache);
+            if (!state.filteredSizeOptions.length) return false;
+            selectedAvContSizes = new Set(state.filteredSizeOptions);
+            avContSizeSelectionMode = state.filteredSizeOptions.length === state.sizeOptions.length ? 'all' : 'custom';
+            avContSizeSearchTerm = '';
+            closeAvTopControlDropdowns(false);
+            avResolvedBaseStateKey = '';
+            avResolvedBaseStateCache = null;
+            scheduleUiRender('av-contsize-filter-enter', () => renderAV());
+            queueScrollMainAreaToTop('av-top-controls');
+            return true;
+        }
+
+        function handleAvGenusSearchKeydown(event) {
+            if (!isEnterKeypress(event)) return;
+            handleSearchEnterApply(event, applyVisibleAvGenusResults);
+        }
+
+        function handleAvContSizeSearchKeydown(event) {
+            if (!isEnterKeypress(event)) return;
+            handleSearchEnterApply(event, applyVisibleAvContSizeResults);
+        }
+
+        function toggleAvGenusSelection(genus = '') {
+            const value = String(genus || '').trim();
+            if (!value) return false;
+            syncAvGenusSelectionState(avFilterGenusOptions);
+            if (selectedAvGenusNames.has(value)) selectedAvGenusNames.delete(value);
+            else selectedAvGenusNames.add(value);
+            avGenusSelectionMode = 'custom';
+            avSeasonDropdownOpen = false;
+            avGenusFilterOpen = true;
+            avContSizeFilterOpen = false;
+            avResolvedBaseStateKey = '';
+            avResolvedBaseStateCache = null;
+            scheduleUiRender('av-genus-filter-select', () => renderAV());
+            queueScrollMainAreaToTop('av-top-controls');
+            return false;
+        }
+
+        function toggleAvContSizeSelection(contSize = '') {
+            const value = String(contSize || '').trim();
+            if (!value) return false;
+            syncAvContSizeSelectionState(avFilterContSizeOptions);
+            if (selectedAvContSizes.has(value)) selectedAvContSizes.delete(value);
+            else selectedAvContSizes.add(value);
+            avContSizeSelectionMode = 'custom';
+            avSeasonDropdownOpen = false;
+            avGenusFilterOpen = false;
+            avContSizeFilterOpen = true;
+            avResolvedBaseStateKey = '';
+            avResolvedBaseStateCache = null;
+            scheduleUiRender('av-contsize-filter-select', () => renderAV());
+            queueScrollMainAreaToTop('av-top-controls');
+            return false;
+        }
+
+        function selectAllAvGenus() {
+            avGenusSelectionMode = 'all';
+            selectedAvGenusNames = new Set(avFilterGenusOptions);
+            avResolvedBaseStateKey = '';
+            avResolvedBaseStateCache = null;
+            scheduleUiRender('av-genus-filter-select-all', () => renderAV());
+            return false;
+        }
+
+        function selectAllAvContSizes() {
+            avContSizeSelectionMode = 'all';
+            selectedAvContSizes = new Set(avFilterContSizeOptions);
+            avResolvedBaseStateKey = '';
+            avResolvedBaseStateCache = null;
+            scheduleUiRender('av-contsize-filter-select-all', () => renderAV());
+            return false;
+        }
+
+        function toggleAvHoldStopOnly() {
+            avHoldStopOnly = !avHoldStopOnly;
+            closeAvTopControlDropdowns(false);
+            avResolvedBaseStateKey = '';
+            avResolvedBaseStateCache = null;
+            scheduleUiRender('av-hold-filter', () => renderAV());
+            return false;
+        }
+
+        function getAvRawTabItems(tab = activeAVTab, options = {}) {
+            const safeTab = ['open', 'hotprice', 'reserves'].includes(String(tab || '').trim()) ? String(tab || '').trim() : 'open';
+            const { isRep } = getRoleAccessState();
+            const ignoreCardsRepFilter = !!(options && options.ignoreCardsRepFilter);
+            const ignoreSecondaryTab = !!(options && options.ignoreSecondaryTab);
+            const useRepDrill = safeTab === 'reserves' && activeAvReserveMode !== 'cards' && canSelectAvReserveRep();
+            let items = [];
+            if (safeTab === 'open') {
+                items = (isDatasetLoaded('avOpen', 'initial') ? avOpenInventory : fullInventory).filter(i => shouldIncludeMasterItemInAvOpenView(i));
+                if (!ignoreSecondaryTab && activeAvOpenTab === 'photos') items = items.filter(avItemHasPhotos);
+            } else if (safeTab === 'hotprice') {
+                items = getAvHotPriceRows();
+                if (!ignoreSecondaryTab && activeAvHotPriceTab === 'photos') items = items.filter(avItemHasPhotos);
+            } else {
+                items = reservesInventory;
+                if (useRepDrill) {
+                    if (selectedAvResRep) items = items.filter(i => isSelectedAvReserveRep(i, selectedAvResRep));
+                } else {
+                    if (isRep) items = items.filter(i => isMyRep(firstNonEmptyValue(i && i.SALESREPNAME, i && i.SALESREP, i && i.SALES_REP, i && i.SALESREPID, '')));
+                    if (activeAvReserveMode === 'cards' && selectedAvResRep && !ignoreCardsRepFilter) {
+                        items = items.filter(i => isSelectedAvReserveRep(i, selectedAvResRep));
+                    }
+                }
+            }
+            return Array.isArray(items) ? items : [];
+        }
+
         function isTaskHotPriceSubview(tab = activeTaskTab, subview = activeTaskSubview) {
             const safeTab = String(tab || activeTaskTab || '').trim().toLowerCase();
             return (safeTab === 'season' || safeTab === 'location') && String(subview || activeTaskSubview || '').trim().toLowerCase() === 'hot-price';
@@ -12082,14 +12664,14 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function buildResolvedAVBaseState(options = {}) {
-            const searchInput = document.getElementById('av-search');
-            const term = String(searchInput ? searchInput.value : '').toLowerCase().trim();
+            const term = getAvSearchTerm();
             const { isRep } = getRoleAccessState();
             const ignoreCardsRepFilter = !!(options && options.ignoreCardsRepFilter);
-            const useRepDrill = activeAVTab === 'reserves' && activeAvReserveMode !== 'cards' && canSelectAvReserveRep();
+            const safeTab = String(activeAVTab || 'open').trim();
+            const useRepDrill = safeTab === 'reserves' && activeAvReserveMode !== 'cards' && canSelectAvReserveRep();
             const cacheKey = [
                 resolvedViewStateEpoch,
-                activeAVTab,
+                safeTab,
                 activeAvOpenTab,
                 activeAvHotPriceTab,
                 activeAvReserveMode,
@@ -12097,6 +12679,12 @@ function toggleDriveQuickRequestItem(domId) {
                 ignoreCardsRepFilter ? '1' : '0',
                 isRep ? '1' : '0',
                 useRepDrill ? '1' : '0',
+                [...selectedAvSeasons].sort().join('|'),
+                avHoldStopOnly ? '1' : '0',
+                avGenusSelectionMode,
+                [...selectedAvGenusNames].sort().join('|'),
+                avContSizeSelectionMode,
+                [...selectedAvContSizes].sort().join('|'),
                 term,
                 getDatasetLoadSignature('master'),
                 getDatasetLoadSignature('avOpen'),
@@ -12107,33 +12695,16 @@ function toggleDriveQuickRequestItem(domId) {
                 incrementInternalPerfCounter('viewStateCacheHits');
                 return avResolvedBaseStateCache;
             }
-            let items = [];
-            if (activeAVTab === 'open') {
-                items = (isDatasetLoaded('avOpen', 'initial') ? avOpenInventory : fullInventory).filter(i => shouldIncludeMasterItemInAvOpenView(i));
-                if (activeAvOpenTab === 'photos') items = items.filter(avItemHasPhotos);
-            } else if (activeAVTab === 'hotprice') {
-                items = getAvHotPriceRows();
-                if (activeAvHotPriceTab === 'photos') items = items.filter(avItemHasPhotos);
-            } else {
-                items = reservesInventory;
-                if (useRepDrill) {
-                    if (selectedAvResRep) items = items.filter(i => isSelectedAvReserveRep(i, selectedAvResRep));
-                } else {
-                    if (isRep) {
-                        items = items.filter(i => isMyRep(firstNonEmptyValue(i && i.SALESREPNAME, i && i.SALESREP, i && i.SALES_REP, i && i.SALESREPID, '')));
-                    }
-                    if (activeAvReserveMode === 'cards' && selectedAvResRep && !ignoreCardsRepFilter) {
-                        items = items.filter(i => isSelectedAvReserveRep(i, selectedAvResRep));
-                    }
-                }
-            }
-            const allowSearch = activeAVTab !== 'reserves' || activeAvReserveMode === 'cards' || !useRepDrill || !!selectedAvResRep;
-            const searchProfile = activeAVTab === 'open'
+            const filterBaseItems = getAvRawTabItems(safeTab, { ignoreCardsRepFilter });
+            const avFilterState = buildAvSharedFilterState(filterBaseItems);
+            let items = avFilterState.filteredItems;
+            const allowSearch = safeTab !== 'reserves' || activeAvReserveMode === 'cards' || !useRepDrill || !!selectedAvResRep;
+            const searchProfile = safeTab === 'open'
                 ? 'av_open'
-                : (activeAVTab === 'hotprice' ? 'av_hotprice' : 'av_reserves');
+                : (safeTab === 'hotprice' ? 'av_hotprice' : 'av_reserves');
             if (term && allowSearch) items = filterBySearch(items, term, searchProfile);
             avResolvedBaseStateKey = cacheKey;
-            avResolvedBaseStateCache = { items, term };
+            avResolvedBaseStateCache = { items, term, filterBaseItems, avFilterState };
             return avResolvedBaseStateCache;
         }
 
@@ -12964,6 +13535,7 @@ function toggleDriveQuickRequestItem(domId) {
             const container = document.getElementById('av-content');
             const crumb = document.getElementById('av-crumb');
             const avState = getCurrentAVBaseItems();
+            renderAvTopControls(avState.filterBaseItems || []);
             const term = avState.term;
             let items = avState.items;
             const exportCount = getAVVisibleExportCount(items);
@@ -13525,6 +14097,29 @@ function toggleDriveQuickRequestItem(domId) {
             return;
         }
 
+        function getInventoryCardBottomRailHtml(domId = '') {
+            const safeDomId = String(domId || '').trim();
+            if (!safeDomId) return '';
+            const inBag = selectedItems.has(safeDomId);
+            return `<div class="app-card-bottom-rail" onclick="event.stopPropagation();"><button type="button" class="app-card-bottom-btn ${inBag ? 'app-card-bottom-btn--secondary' : ''}" onclick="return handleInventoryCardBottomCartAction(event, '${esc(safeDomId)}')"><i class="ph-bold ${inBag ? 'ph-check' : 'ph-package'} text-base"></i>${inBag ? 'Open Bloom Picker' : 'Add To Bloom Picker'}</button></div>`;
+        }
+
+        function handleInventoryCardBottomCartAction(event, domId) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+                if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
+            }
+            const safeDomId = String(domId || '').trim();
+            if (!safeDomId) return false;
+            const item = findItemByDomId(safeDomId);
+            if (!item) return false;
+            toggleGlobalItem(safeDomId, true);
+            cartPanelOpen = true;
+            updateGlobalActionBar();
+            return false;
+        }
+
         function scheduleCartUiRefresh() {
             if (cartUiRefreshQueued) return;
             cartUiRefreshQueued = true;
@@ -13998,6 +14593,7 @@ function toggleDriveQuickRequestItem(domId) {
             activeDetailSourceView = resolvedSourceView;
             activeItem = nextItem;
             resetDetailOverviewFieldSearch();
+            lastViewSwitchAt = Date.now();
             forceMainAreaToTopImmediate();
             ['view-home','view-drive','view-tasks','view-review','view-sales-office','view-reports','view-low-stock','view-docks','view-request','view-reserves','view-av', 'view-hours'].forEach(id => {
                 const el = document.getElementById(id);
@@ -14423,6 +15019,7 @@ function toggleDriveQuickRequestItem(domId) {
             activeDetailSourceView = '';
             activeDetailTab = 'overview';
             activeItem = null;
+            lastViewSwitchAt = Date.now();
             const safeRestoreViewId = restoreViewId === 'detail' ? 'home' : restoreViewId;
             const detailView = document.getElementById('view-detail');
             if (detailView) detailView.classList.add('hidden');
@@ -16961,8 +17558,8 @@ function toggleDriveQuickRequestItem(domId) {
                         thumbColumnHtml = `<div class="app-av-card-thumb-column" onclick="event.stopPropagation(); openPhotoModal('${photoLink}', '${esc(item.COMMONNAME)} - ${esc(item.CONTSIZE)}')"><div class="relative w-full"><div class="app-av-card-thumb-box"><img src="${thumbUrl}" class="active:scale-95 transition-transform" loading="lazy" decoding="async"></div>${photoCount > 1 ? `<div class="absolute -top-2 -right-2 bg-teal-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full border-2 border-white shadow-sm">+${photoCount-1}</div>` : ''}</div>${photoDateHtml}<div class="app-av-card-side-box text-slate-700"><div class="text-[8px] font-black uppercase tracking-[0.16em] text-slate-500">LIST PRICE</div><div class="mt-0.5 text-[13px] font-black leading-tight">${esc(listPriceText)}</div></div><div class="app-av-card-thumb-action cursor-pointer active:bg-teal-200">VIEW</div>${showHotPrice ? `<div class="app-av-card-side-box border-rose-200 bg-rose-50 text-rose-700"><div class="text-[8px] font-black uppercase tracking-[0.16em]">HOT PRICE</div><div class="mt-0.5 text-[13px] font-black leading-tight break-words">${esc(hotPriceText)}</div></div>` : ''}</div>`;
                     }
                 }
-
-                return `<div class="flex items-start w-full mb-3 item-row app-smart-card app-smart-card--inventory app-smart-card--av relative bg-white p-4 rounded-xl border-2 border-teal-100 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView === 'reserves_drill' ? 'av' : sourceView}')"><div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-teal-600 focus:ring-teal-600 shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-col w-full min-w-0"><div class="app-av-card-layout flex justify-between items-start w-full"><div class="app-card-main app-av-card-main flex-grow min-w-0 pr-2">${buildInventoryToplineHtml(item.COMMONNAME || 'Unknown', item.CONTSIZE || '-')}${buildInventorySecondarylineHtml(item.LOCATIONCODE || '-', firstNonEmptyValue(item.SOURCE, item.source, ''))}<div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-black"><span class="text-[13px] font-black uppercase">PRI ${item.PRIORITY||'-'}</span><span class="text-[13px] font-black">${item.ITEMCODE||'-'}</span><span class="text-[13px] font-black">${item.LOTCODE||'-'}</span></div><div class="mt-3 flex flex-wrap gap-2 text-[11px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-slate-700">LOC AVA <span class="text-slate-900">${item.PTRAVAILABLE||'0'}</span></span><span class="rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-purple-700">OPEN STOCK <span class="text-purple-900">${item.S_LTS||'0'}</span></span><span class="rounded-full border border-green-200 bg-green-50 px-3 py-1 text-green-700">LOC PHOTO MATCH <span class="text-green-900">${locPhotoMatchText}</span></span></div>${rowFourHtml}${rowFiveHtml}</div>${thumbColumnHtml}</div></div></div>`;
+                const bottomRailHtml = getInventoryCardBottomRailHtml(item.DOM_ID);
+                return `<div class="flex items-start w-full mb-3 item-row app-smart-card app-smart-card--inventory app-smart-card--av relative bg-white p-4 rounded-xl border-2 border-teal-100 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass} ${bottomRailHtml ? 'app-card-with-bottom-rail' : ''}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView === 'reserves_drill' ? 'av' : sourceView}')"><div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-teal-600 focus:ring-teal-600 shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-col w-full min-w-0"><div class="app-av-card-layout flex justify-between items-start w-full"><div class="app-card-main app-av-card-main flex-grow min-w-0 pr-2">${buildInventoryToplineHtml(item.COMMONNAME || 'Unknown', item.CONTSIZE || '-')}${buildInventorySecondarylineHtml(item.LOCATIONCODE || '-', firstNonEmptyValue(item.SOURCE, item.source, ''))}<div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-black"><span class="text-[13px] font-black uppercase">PRI ${item.PRIORITY||'-'}</span><span class="text-[13px] font-black">${item.ITEMCODE||'-'}</span><span class="text-[13px] font-black">${item.LOTCODE||'-'}</span></div><div class="mt-3 flex flex-wrap gap-2 text-[11px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-slate-700">LOC AVA <span class="text-slate-900">${item.PTRAVAILABLE||'0'}</span></span><span class="rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-purple-700">OPEN STOCK <span class="text-purple-900">${item.S_LTS||'0'}</span></span><span class="rounded-full border border-green-200 bg-green-50 px-3 py-1 text-green-700">LOC PHOTO MATCH <span class="text-green-900">${locPhotoMatchText}</span></span></div>${rowFourHtml}${rowFiveHtml}</div>${thumbColumnHtml}</div>${bottomRailHtml}</div></div>`;
             };
 
             if(sourceView === 'av-photo' || sourceView === 'av') {
@@ -18507,7 +19104,6 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function buildDrivePlantFilterState(items = []) {
             const baseItems = Array.isArray(items) ? items : [];
-            const isCommonNameTab = activeDriveTab === 'name';
 
             const genusOptions = [...new Set(baseItems.map((item) => getDrivePlantGenusValue(item)))]
                 .sort((a, b) => String(a).localeCompare(String(b)));
@@ -18529,12 +19125,12 @@ ${folderNote ? `Folder Note: ${folderNote}
                 const genusName = getDrivePlantGenusValue(item);
                 if (!genusState.selected.has(genusName)) return false;
                 const contSize = getDrivePlantContSize(item);
-                if (!isCommonNameTab && !sizeState.selected.has(contSize)) return false;
+                if (!sizeState.selected.has(contSize)) return false;
                 return true;
             });
 
             const genusAllSelected = !!genusState.options.length && genusState.selected.size === genusState.options.length;
-            const contSizeAllSelected = isCommonNameTab || (!!sizeState.options.length && sizeState.selected.size === sizeState.options.length);
+            const contSizeAllSelected = !!sizeState.options.length && sizeState.selected.size === sizeState.options.length;
 
             return {
                 baseItems,
@@ -18547,7 +19143,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 contSizeSelectedCount: sizeState.selected.size,
                 genusAllSelected,
                 contSizeAllSelected,
-                hasActiveFilters: isCommonNameTab ? !genusAllSelected : !(genusAllSelected && contSizeAllSelected),
+                hasActiveFilters: !(genusAllSelected && contSizeAllSelected),
                 hasTypedSearch: !!(String(driveGenusSearchTerm || '').trim() || String(driveContSizeSearchTerm || '').trim())
             };
         }
@@ -18960,8 +19556,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                 driveBaseFilterCacheKey,
                 driveGenusSelectionMode,
                 [...selectedDriveGenusNames].sort().join('|'),
-                activeDriveTab === 'name' ? '' : driveContSizeSelectionMode,
-                activeDriveTab === 'name' ? '' : [...selectedDriveContSizes].sort().join('|'),
+                driveContSizeSelectionMode,
+                [...selectedDriveContSizes].sort().join('|'),
                 String(driveQuickFilterName || '').toLowerCase().trim(),
                 String(driveQuickFilterLocation || '').trim(),
                 String(driveQuickFilterLot || '').trim(),
@@ -20781,6 +21377,8 @@ ${folderNote ? `Folder Note: ${folderNote}
         let autoSaveTimer = null;
 
         async function saveData(isComplete = false, prefix, isSilentAutoSave = false, specificItem = null, options = {}) {
+            beginFieldSaveActivity();
+            try {
             if (autoSaveTimer) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
             let itemToSave = specificItem || activeItem;
             if (!itemToSave) return;
@@ -20824,7 +21422,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 const queueVisibleSaveRefresh = (delay = 0) => {
                     const visibleViewIds = getVisibleTrackedViewIds();
                     if (!visibleViewIds.length) return;
-                    visibleViewIds.forEach((viewId) => queueInteractiveViewRender(viewId, false, true, delay, 180));
+                    visibleViewIds.forEach((viewId) => queueInteractiveViewRender(viewId, false, false, delay, 220));
                 };
 
                 if (!specificItem) {
@@ -21466,6 +22064,9 @@ ${folderNote ? `Folder Note: ${folderNote}
                 await runCoordinatedRowSave(rowSaveKey, runSaveNow, { isComplete, isAutoSave: isCoordinatedAutoSave });
             } catch (error) {
                 handleUnexpectedSaveError(error);
+            }
+            } finally {
+                endFieldSaveActivity();
             }
         }
 
