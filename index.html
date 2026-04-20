@@ -56,19 +56,27 @@
         .app-smart-card .app-smart-thumb--feature{width:5.85rem;height:5.85rem;border-radius:1.05rem !important}
 .app-smart-card--av .app-av-card-layout{display:flex;align-items:flex-start;justify-content:space-between;gap:.75rem;width:100%;min-width:0;flex-wrap:nowrap}
 .app-smart-card--av .app-av-card-main{flex:1 1 auto;min-width:0}
-.app-smart-card--av .app-av-card-thumb-column{flex:0 0 auto}
+.app-smart-card--av .app-av-card-thumb-column{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:.42rem;width:5.85rem;min-width:5.85rem;margin-left:.55rem;align-self:flex-start}
 .app-smart-card--inventory{padding:1rem !important}
 .app-smart-card--inventory .app-card-main{padding-left:.18rem}
-.app-smart-card--inventory.app-card-with-bottom-rail{padding-bottom:5.25rem !important}
-.app-card-topline{display:flex;align-items:baseline;gap:.45rem;min-width:0;flex-wrap:nowrap;color:#007a4d}
+.app-smart-card--inventory.app-card-with-bottom-rail{padding-bottom:1rem !important}
+.app-card-topline{display:flex;align-items:center;gap:.42rem;min-width:0;width:100%;flex-wrap:nowrap;color:#007a4d;overflow:hidden}
 .app-card-topline>span{white-space:nowrap}
-.app-card-topline-common{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:clamp(1.02rem,2.15vw,1.42rem);line-height:1.06;font-weight:900}
+.app-card-topline-common{flex:1 1 10rem;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:clamp(.98rem,2.05vw,1.32rem);line-height:1.06;font-weight:900}
 .app-card-topline-size{flex:0 0 auto;font-size:clamp(.94rem,1.6vw,1.15rem);line-height:1.08;font-weight:900}
-.app-card-topline-meta{flex:0 0 auto;font-size:clamp(.82rem,1.3vw,.98rem);line-height:1.08;font-weight:900}
-.app-card-bottom-rail{position:absolute;left:0;right:0;bottom:0;padding:.72rem .95rem .82rem;background:linear-gradient(180deg,rgba(255,255,255,.08) 0%,rgba(255,255,255,.92) 28%,#fff 52%);border-top:1px solid #e2ebe4;box-shadow:0 -10px 20px rgba(15,23,42,.06);display:flex;align-items:center;justify-content:center;gap:.6rem;z-index:4}
+.app-card-topline-meta{flex:0 1 auto;min-width:0;max-width:clamp(4.8rem,15vw,7.4rem);overflow:hidden;text-overflow:ellipsis;font-size:clamp(.76rem,1.15vw,.92rem);line-height:1.08;font-weight:900}
+.app-card-bottom-rail{position:static;margin-top:.95rem;padding:.82rem 0 0;background:transparent;border-top:1px solid #e2ebe4;box-shadow:none;display:flex;align-items:center;justify-content:center;gap:.6rem;z-index:auto}
 .app-card-bottom-btn{width:100%;min-height:2.65rem;border-radius:999px;padding:.72rem 1rem;border:1px solid #bfe6d2;background:#007a4d;color:#fff;font-size:.7rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase;display:inline-flex;align-items:center;justify-content:center;gap:.5rem;box-shadow:0 10px 18px rgba(0,122,77,.16)}
 .app-card-bottom-btn--secondary{background:#fff;color:#b45309;border-color:#fdba74;box-shadow:0 8px 16px rgba(217,119,6,.12)}
 .app-card-bottom-status{width:100%;min-height:2.65rem;border-radius:999px;padding:.72rem 1rem;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase}
+.app-inline-thumb-column{margin-left:.72rem;flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:.36rem;width:4.2rem;min-width:4.2rem;align-self:flex-start}
+.app-inline-thumb-box{width:100%;aspect-ratio:1 / 1;border-radius:.95rem;overflow:hidden;border:1px solid #cbd5e1;background:#f1f5f9;box-shadow:0 8px 18px rgba(15,23,42,.10);display:flex;align-items:center;justify-content:center}
+.app-inline-thumb-box img{width:100%;height:100%;object-fit:cover;display:block}
+.app-inline-thumb-label{width:100%;border-radius:.75rem;border:1px solid #e2e8f0;background:#fff;padding:.36rem .3rem;text-align:center;font-size:.54rem;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:#94a3b8;line-height:1.2}
+.app-av-card-thumb-box{width:100%;aspect-ratio:1 / 1;border-radius:1.05rem;overflow:hidden;border:2px solid #99f6e4;background:#f1f5f9;box-shadow:0 10px 24px rgba(15,23,42,.12);display:flex;align-items:center;justify-content:center}
+.app-av-card-thumb-box img{width:100%;height:100%;object-fit:cover;display:block}
+.app-av-card-side-box{width:100%;border-radius:.82rem;border:1px solid #e2e8f0;background:#fff;padding:.42rem .38rem;text-align:center;box-shadow:0 6px 16px rgba(15,23,42,.08)}
+.app-av-card-thumb-action{width:100%;text-align:center;font-size:.54rem;font-weight:900;letter-spacing:.16em;text-transform:uppercase;color:#0f766e;background:#ccfbf1;border:1px solid #99f6e4;border-radius:.62rem;padding:.3rem .35rem;line-height:1.2}
 body.viewport-wide .app-smart-card:hover{transform:translateY(-2px);box-shadow:0 18px 40px rgba(15,23,42,.10),0 6px 14px rgba(15,23,42,.05) !important}
 body.viewport-compact .app-smart-card{border-radius:18px !important}
         body.viewport-compact .app-smart-card .card-checkbox-container{width:36px;min-width:36px;margin-right:10px}
@@ -93,10 +101,8 @@ body.viewport-compact .app-smart-card{border-radius:18px !important}
         body.viewport-compact .app-smart-card.app-smart-card--av .app-card-chip-row > span{min-height:1.42rem;padding:.18rem .58rem !important;font-size:.68rem !important}
         body.viewport-compact .app-smart-card.app-smart-card--av .app-smart-thumb{width:3.55rem;height:3.55rem;border-radius:.92rem !important}
         body.viewport-compact .app-smart-card.app-smart-card--av .app-smart-thumb--feature{width:4.65rem;height:4.65rem;border-radius:1rem !important}
-        body.viewport-compact .app-smart-card.app-smart-card--av .app-av-card-layout{display:grid !important;grid-template-columns:minmax(0,1fr) minmax(4.65rem,5rem);gap:.6rem;align-items:flex-start}
-        body.viewport-compact .app-smart-card.app-smart-card--av .app-av-card-thumb-column{width:100%;max-width:5rem;min-width:4.65rem;margin-left:0 !important}
-        body.viewport-compact .app-smart-card.app-smart-card--av .app-av-card-thumb-column > .w-24,
-        body.viewport-compact .app-smart-card.app-smart-card--av .app-av-card-thumb-column > div > .w-24{width:100% !important}
+        body.viewport-compact .app-smart-card.app-smart-card--av .app-av-card-layout{display:grid !important;grid-template-columns:minmax(0,1fr) minmax(4.45rem,4.8rem);gap:.55rem;align-items:flex-start}
+        body.viewport-compact .app-smart-card.app-smart-card--av .app-av-card-thumb-column{width:4.45rem;max-width:4.8rem;min-width:4.45rem;margin-left:.2rem !important;gap:.34rem}
         body.viewport-compact .app-smart-card.app-smart-card--av .app-av-card-main > .flex.flex-wrap.items-center.gap-x-3.gap-y-1{gap:.2rem .45rem !important;align-items:flex-start}
         body.viewport-compact .app-smart-card.app-smart-card--av .app-av-card-main > .flex.flex-wrap.items-center.gap-x-3.gap-y-1 span:nth-child(1){font-size:clamp(1rem,4.4vw,1.18rem) !important;line-height:1.06 !important}
         body.viewport-compact .app-smart-card.app-smart-card--av .app-av-card-main > .flex.flex-wrap.items-center.gap-x-3.gap-y-1 span:nth-child(2){font-size:clamp(1.2rem,6vw,1.55rem) !important;line-height:1.02 !important}
@@ -104,14 +110,20 @@ body.viewport-compact .app-smart-card{border-radius:18px !important}
 body.viewport-compact .app-smart-card.app-smart-card--av .app-av-card-main > .mt-2.flex.flex-wrap.items-center.gap-x-3.gap-y-1 span{font-size:clamp(.8rem,3.7vw,.95rem) !important;line-height:1.08 !important}
 body.viewport-compact .app-smart-card.app-smart-card--av .app-av-card-main > .mt-3.flex.flex-wrap.gap-2{gap:.38rem !important;font-size:.62rem !important}
 body.viewport-compact .app-smart-card--inventory{padding:.92rem .95rem !important}
-body.viewport-compact .app-smart-card--inventory.app-card-with-bottom-rail{padding-bottom:5rem !important}
-body.viewport-compact .app-card-topline{gap:.32rem}
-body.viewport-compact .app-card-topline-common{font-size:clamp(.96rem,5vw,1.18rem)}
-body.viewport-compact .app-card-topline-size{font-size:clamp(.84rem,4vw,1rem)}
-body.viewport-compact .app-card-topline-meta{font-size:clamp(.72rem,3.5vw,.88rem)}
-body.viewport-compact .app-card-bottom-rail{padding:.62rem .78rem .72rem}
+body.viewport-compact .app-smart-card--inventory.app-card-with-bottom-rail{padding-bottom:.92rem !important}
+body.viewport-compact .app-card-topline{gap:.24rem}
+body.viewport-compact .app-card-topline-common{font-size:clamp(.92rem,4.25vw,1.08rem)}
+body.viewport-compact .app-card-topline-size{font-size:clamp(.78rem,3.45vw,.92rem)}
+body.viewport-compact .app-card-topline-meta{max-width:clamp(3.65rem,15vw,4.7rem);font-size:clamp(.62rem,2.7vw,.74rem)}
+body.viewport-compact .app-card-bottom-rail{margin-top:.78rem;padding:.68rem 0 0}
 body.viewport-compact .app-card-bottom-btn,
 body.viewport-compact .app-card-bottom-status{min-height:2.45rem;font-size:.62rem;letter-spacing:.1em}
+body.viewport-compact .app-inline-thumb-column{width:3.55rem;min-width:3.55rem;margin-left:.5rem;gap:.28rem}
+body.viewport-compact .app-inline-thumb-box{border-radius:.82rem}
+body.viewport-compact .app-inline-thumb-label{font-size:.46rem;padding:.28rem .24rem}
+body.viewport-compact .app-av-card-thumb-box{border-radius:.95rem}
+body.viewport-compact .app-av-card-side-box{padding:.34rem .26rem;border-radius:.72rem}
+body.viewport-compact .app-av-card-thumb-action{font-size:.48rem;padding:.24rem .25rem;border-radius:.58rem}
         .task-top-control-shell{position:relative}
         .task-top-control-button{position:relative}
         .task-top-control-title{display:block}
@@ -579,7 +591,7 @@ body.viewport-compact #view-detail #det-location{font-size:clamp(.9rem,3.8vw,1.1
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-<div id="header-version" class="nav-version-pill">V2026.04.19.11</div>
+<div id="header-version" class="nav-version-pill">V2026.04.19.12</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -4966,7 +4978,7 @@ let activeTaskTab="season"; let activeTaskSubview="all"; let taskViewTargetUser=
         const REQUEST_EMAIL_THREAD_SELECT_FIELDS = 'request_folder,request_customer,sales_rep_name,sales_rep_email,recipients,initial_thread_id,initial_message_id,initial_email_sent_at,last_reply_sent_at,status,metadata';
         const REQUEST_EMAIL_INTERNAL_RECIPIENTS = Object.freeze(['dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com']);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-const APP_VERSION = 'V2026.04.19.11';
+const APP_VERSION = 'V2026.04.19.12';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -16642,7 +16654,7 @@ function toggleDriveQuickRequestItem(domId) {
                     ? `<div class="mt-2 rounded-lg border px-3 py-2 ${rowFiveToneClass}"><div class="text-[9px] font-black uppercase tracking-[0.16em] ${rowFiveLabelClass}">HOLDSTOPREASON</div><div class="mt-1 text-[13px] font-bold leading-snug whitespace-pre-wrap">${holdReasonValue}</div></div>`
                     : '';
 
-                let thumbColumnHtml = `<div class="app-av-card-thumb-column ml-3 flex-shrink-0 flex flex-col items-center gap-1.5"><div class="app-smart-thumb app-smart-thumb--feature w-24 h-24 rounded-lg border-2 border-teal-200 bg-slate-100 shadow-md flex items-center justify-center px-2 text-center text-[9px] font-black uppercase tracking-widest text-slate-400">No Photo</div><div class="w-24 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-center text-slate-700 shadow-sm"><div class="text-[8px] font-black uppercase tracking-[0.16em] text-slate-500">LIST PRICE</div><div class="mt-0.5 text-[13px] font-black leading-tight">${esc(listPriceText)}</div></div>${showHotPrice ? `<div class="w-24 rounded-lg border border-rose-200 bg-rose-50 px-2 py-1.5 text-center text-rose-700 shadow-sm"><div class="text-[8px] font-black uppercase tracking-[0.16em]">HOT PRICE</div><div class="mt-0.5 text-[13px] font-black leading-tight break-words">${esc(hotPriceText)}</div></div>` : ''}</div>`;
+                let thumbColumnHtml = `<div class="app-av-card-thumb-column"><div class="app-av-card-thumb-box px-2 text-center text-[9px] font-black uppercase tracking-widest text-slate-400">No Photo</div><div class="app-av-card-side-box text-slate-700"><div class="text-[8px] font-black uppercase tracking-[0.16em] text-slate-500">LIST PRICE</div><div class="mt-0.5 text-[13px] font-black leading-tight">${esc(listPriceText)}</div></div>${showHotPrice ? `<div class="app-av-card-side-box border-rose-200 bg-rose-50 text-rose-700"><div class="text-[8px] font-black uppercase tracking-[0.16em]">HOT PRICE</div><div class="mt-0.5 text-[13px] font-black leading-tight break-words">${esc(hotPriceText)}</div></div>` : ''}</div>`;
                 if (photoLink) {
                     let firstUrl = String(photoLink).split(',')[0];
                     let cleanUrl = firstUrl.trim();
@@ -16651,7 +16663,7 @@ function toggleDriveQuickRequestItem(domId) {
                     const thumbUrl = getDirectImageUrl(cleanUrl, 'card-feature');
                     if (thumbUrl.startsWith('http')) {
                         const photoCount = String(photoLink).split(',').length;
-                        thumbColumnHtml = `<div class="app-av-card-thumb-column ml-3 flex-shrink-0 flex flex-col items-center gap-1.5" onclick="event.stopPropagation(); openPhotoModal('${photoLink}', '${esc(item.COMMONNAME)} - ${esc(item.CONTSIZE)}')"><div class="relative"><img src="${thumbUrl}" class="app-smart-thumb app-smart-thumb--feature w-24 h-24 rounded-lg object-cover border-2 border-teal-300 shadow-md active:scale-95 transition-transform" loading="lazy" decoding="async">${photoCount > 1 ? `<div class="absolute -top-2 -right-2 bg-teal-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full border-2 border-white shadow-sm">+${photoCount-1}</div>` : ''}</div>${photoDateHtml}<div class="w-24 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-center text-slate-700 shadow-sm"><div class="text-[8px] font-black uppercase tracking-[0.16em] text-slate-500">LIST PRICE</div><div class="mt-0.5 text-[13px] font-black leading-tight">${esc(listPriceText)}</div></div><div class="text-center text-[9px] font-black text-teal-600 uppercase tracking-widest bg-teal-50 px-2 py-0.5 rounded-md border border-teal-100 cursor-pointer active:bg-teal-200">VIEW</div>${showHotPrice ? `<div class="w-24 rounded-lg border border-rose-200 bg-rose-50 px-2 py-1.5 text-center text-rose-700 shadow-sm"><div class="text-[8px] font-black uppercase tracking-[0.16em]">HOT PRICE</div><div class="mt-0.5 text-[13px] font-black leading-tight break-words">${esc(hotPriceText)}</div></div>` : ''}</div>`;
+                        thumbColumnHtml = `<div class="app-av-card-thumb-column" onclick="event.stopPropagation(); openPhotoModal('${photoLink}', '${esc(item.COMMONNAME)} - ${esc(item.CONTSIZE)}')"><div class="relative w-full"><div class="app-av-card-thumb-box"><img src="${thumbUrl}" class="active:scale-95 transition-transform" loading="lazy" decoding="async"></div>${photoCount > 1 ? `<div class="absolute -top-2 -right-2 bg-teal-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full border-2 border-white shadow-sm">+${photoCount-1}</div>` : ''}</div>${photoDateHtml}<div class="app-av-card-side-box text-slate-700"><div class="text-[8px] font-black uppercase tracking-[0.16em] text-slate-500">LIST PRICE</div><div class="mt-0.5 text-[13px] font-black leading-tight">${esc(listPriceText)}</div></div><div class="app-av-card-thumb-action cursor-pointer active:bg-teal-200">VIEW</div>${showHotPrice ? `<div class="app-av-card-side-box border-rose-200 bg-rose-50 text-rose-700"><div class="text-[8px] font-black uppercase tracking-[0.16em]">HOT PRICE</div><div class="mt-0.5 text-[13px] font-black leading-tight break-words">${esc(hotPriceText)}</div></div>` : ''}</div>`;
                     }
                 }
 
@@ -16668,10 +16680,10 @@ function toggleDriveQuickRequestItem(domId) {
                 if(urlMatch)cleanUrl=urlMatch[1];
                 let thumbUrl=getDirectImageUrl(cleanUrl, 'card-inline');
                 if(thumbUrl.startsWith('http')){
-                    thumbHtml=`<div class="ml-3 flex-shrink-0 flex flex-col items-center" onclick="event.stopPropagation(); openPhotoModal('${photoLink}', '${esc(item.COMMONNAME)} - ${esc(item.CONTSIZE)}')"><img src="${thumbUrl}" class="app-smart-thumb w-16 h-16 rounded-md object-cover border border-gray-300 shadow-sm active:scale-95 transition-transform" loading="lazy" decoding="async">${photoDateHtml}</div>`;
+                    thumbHtml=`<div class="app-inline-thumb-column" onclick="event.stopPropagation(); openPhotoModal('${photoLink}', '${esc(item.COMMONNAME)} - ${esc(item.CONTSIZE)}')"><div class="app-inline-thumb-box"><img src="${thumbUrl}" class="active:scale-95 transition-transform" loading="lazy" decoding="async"></div>${photoDateHtml}</div>`;
                 }
             }
-            const inlineThumbHtml = thumbHtml || `<div class="ml-3 flex-shrink-0"><div class="app-smart-thumb w-16 h-16 rounded-md border border-gray-300 bg-slate-100 shadow-sm flex items-center justify-center text-[8px] font-black uppercase tracking-[0.12em] text-slate-400">No Photo</div></div>`;
+            const inlineThumbHtml = thumbHtml || `<div class="app-inline-thumb-column"><div class="app-inline-thumb-box px-1 text-center text-[8px] font-black uppercase tracking-[0.12em] text-slate-400">No Photo</div></div>`;
             if(sourceView === 'request') {
                 let reqQty = item.REQ_QTY || '0';
                 let cust = item.REQ_CUSTOMER || 'Unknown';
@@ -16771,7 +16783,7 @@ function toggleDriveQuickRequestItem(domId) {
                     const isQueued=driveQuickRequestItems.has(item.DOM_ID);
                     quickRequestBtn=buildCardBottomRail(`<button type="button" aria-label="${isQueued?'Open Bloom Picker':'Add to Bloom Picker'}" class="app-card-bottom-btn ${isQueued?'app-card-bottom-btn--secondary':''}" onclick="event.stopPropagation(); toggleDriveQuickRequestItem('${item.DOM_ID}')"><i class="ph-bold ${isQueued?'ph-check':'ph-package'} text-lg"></i>${isQueued?'Open Bloom Picker':'Add To Bloom Picker'}</button>`);
                 }
-                return `<div class="flex items-center w-full mb-3 item-row app-smart-card app-smart-card--inventory ${quickRequestBtn ? 'app-card-with-bottom-rail' : ''} relative bg-white p-4 rounded-xl border border-gray-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-grow items-start justify-between min-w-0"><div class="app-card-main flex-grow min-w-0 pr-2">${buildInventoryToplineHtml(item.COMMONNAME || 'Unknown', item.CONTSIZE || '-', [{ value: item.LOCATIONCODE || 'No Loc', cls: 'app-card-topline-meta' }, { value: displaySource, cls: 'app-card-topline-meta' }])}<div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-black"><span class="text-[12px] font-black uppercase">PRI ${item.PRIORITY||'-'}</span><span class="text-[12px] font-black">${item.ITEMCODE||'-'}</span><span class="text-[12px] font-black">${item.LOTCODE||'-'}</span></div><div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-slate-700">PTRAVAILABLE <span class="text-slate-900">${item.PTRAVAILABLE||'0'}</span></span><span class="rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-purple-700">S_LTS <span class="text-purple-900">${item.S_LTS||'0'}</span></span><span class="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-amber-700">HOLDSTOPCODE <span class="text-amber-900">${displayHoldStopCode}</span></span></div>${extraData}${noteHtml}</div>${inlineThumbHtml}</div>${quickRequestBtn}</div>`;
+                return `<div class="flex items-center w-full mb-3 item-row app-smart-card app-smart-card--inventory ${quickRequestBtn ? 'app-card-with-bottom-rail' : ''} relative bg-white p-4 rounded-xl border border-gray-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-grow min-w-0 flex-col"><div class="flex items-start justify-between min-w-0"><div class="app-card-main flex-grow min-w-0 pr-2">${buildInventoryToplineHtml(item.COMMONNAME || 'Unknown', item.CONTSIZE || '-', [{ value: item.LOCATIONCODE || 'No Loc', cls: 'app-card-topline-meta' }, { value: displaySource, cls: 'app-card-topline-meta' }])}<div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-black"><span class="text-[12px] font-black uppercase">PRI ${item.PRIORITY||'-'}</span><span class="text-[12px] font-black">${item.ITEMCODE||'-'}</span><span class="text-[12px] font-black">${item.LOTCODE||'-'}</span></div><div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-slate-700">PTRAVAILABLE <span class="text-slate-900">${item.PTRAVAILABLE||'0'}</span></span><span class="rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-purple-700">S_LTS <span class="text-purple-900">${item.S_LTS||'0'}</span></span><span class="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-amber-700">HOLDSTOPCODE <span class="text-amber-900">${displayHoldStopCode}</span></span></div>${extraData}${noteHtml}</div>${inlineThumbHtml}</div>${quickRequestBtn}</div></div>`;
             }
             if(sourceView==='tasks'){
                 const displaySourceView = sourceView;
