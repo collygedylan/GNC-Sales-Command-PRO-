@@ -624,7 +624,7 @@ body.viewport-compact #view-detail #det-location{font-size:clamp(.9rem,3.8vw,1.1
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-                            <div id="header-version" class="nav-version-pill">V2026.04.20.01</div>
+                            <div id="header-version" class="nav-version-pill">V2026.04.20.02</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -1156,7 +1156,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
         const PHOTO_MAX_WIDTH = 2048;
         const PHOTO_JPEG_QUALITY = 0.98;
         const PHOTO_FIELD_PERSIST_DEBOUNCE_MS = 100;
-        const INTERACTION_REFRESH_DEFER_MS = 900;
+        const INTERACTION_REFRESH_DEFER_MS = 1400;
         const LOCAL_REALTIME_ECHO_TTL_MS = 4200;
         const MAX_INTERNAL_PERF_SAMPLES = 40;
         const MAX_SEARCH_FILTER_CACHE_ENTRIES = 12;
@@ -1171,6 +1171,10 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
             searchCacheHits: 0,
             viewStateCacheHits: 0,
             chunkRenderSkips: 0,
+            interactionBlockedRefreshes: 0,
+            warmViewReuseHits: 0,
+            photoUiOnlyRefreshes: 0,
+            fieldUiOnlyRefreshes: 0,
             saveDurations: Object.create(null),
             realtimeApplyDurations: Object.create(null),
             viewRenderDurations: Object.create(null),
@@ -1189,6 +1193,9 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
         let lastTouchInteractionAt = 0;
         let lastTypingAt = 0;
         let lastScrollAt = 0;
+        let lastCameraActivityAt = 0;
+        let lastPhotoPersistAt = 0;
+        let activeSaveSurfaceId = '';
         let scrollFramePending = false;
         let viewportHeightSyncInitialized = false;
         let standaloneShellBaseHeight = 0;
@@ -1200,11 +1207,13 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
         let horizontalClampFrameQueued = false;
         let swipeCloseOnScrollFrame = null;
         let swipeCloseOnScrollTimer = null;
-        const ACTIVE_TYPING_GRACE_MS = 320;
-        const ACTIVE_SCROLL_GRACE_MS = 320;
-        const ACTIVE_TOUCH_GRACE_MS = 850;
-        const ACTIVE_INTERACTION_GRACE_MS = 260;
-        const CHUNK_RENDER_GRACE_MS = 320;
+        const ACTIVE_TYPING_GRACE_MS = 450;
+        const ACTIVE_SCROLL_GRACE_MS = 450;
+        const ACTIVE_TOUCH_GRACE_MS = 1100;
+        const ACTIVE_INTERACTION_GRACE_MS = 400;
+        const CHUNK_RENDER_GRACE_MS = 450;
+        const ACTIVE_CAMERA_GRACE_MS = 1500;
+        const ACTIVE_PHOTO_PERSIST_GRACE_MS = 1600;
         let activeChunkRenderCount = 0;
         let chunkRenderActivityByKey = Object.create(null);
         let lastChunkRenderAt = 0;
@@ -1218,6 +1227,17 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
         let taskResolvedStateCache = null;
         let taskHotPriceSubsetCacheKey = '';
         let taskHotPriceSubsetCache = null;
+        let docksScopedItemsCacheKey = '';
+        let docksScopedItemsCache = null;
+        let requestScopedItemsCacheKey = '';
+        let requestScopedItemsCache = null;
+        let reservesScopedItemsCacheKey = '';
+        let reservesScopedItemsCache = null;
+        let salesOfficeSeasonItemsCacheKey = '';
+        let salesOfficeSeasonItemsCache = null;
+        let salesOfficeOrderItemsCacheKey = '';
+        let salesOfficeOrderItemsCache = null;
+        let dockWorkflowStateEpoch = 0;
 
         function isIOSDevice() {
             return IOS_DEVICE_REGEX.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -1300,7 +1320,23 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
             taskResolvedStateCache = null;
             taskHotPriceSubsetCacheKey = '';
             taskHotPriceSubsetCache = null;
+            docksScopedItemsCacheKey = '';
+            docksScopedItemsCache = null;
+            requestScopedItemsCacheKey = '';
+            requestScopedItemsCache = null;
+            reservesScopedItemsCacheKey = '';
+            reservesScopedItemsCache = null;
+            salesOfficeSeasonItemsCacheKey = '';
+            salesOfficeSeasonItemsCache = null;
+            salesOfficeOrderItemsCacheKey = '';
+            salesOfficeOrderItemsCache = null;
             if (typeof invalidateDriveResolvedCardState === 'function') invalidateDriveResolvedCardState();
+        }
+
+        function invalidateDockWorkflowResolvedState() {
+            dockWorkflowStateEpoch += 1;
+            docksScopedItemsCacheKey = '';
+            docksScopedItemsCache = null;
         }
 
         function pruneRecentLocalRealtimeWrites(now = Date.now()) {
@@ -1453,6 +1489,47 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
 
         function isUserActivelyTouching() {
             return (Date.now() - lastTouchInteractionAt) < ACTIVE_TOUCH_GRACE_MS;
+        }
+
+        function markCameraActivity() {
+            const now = Date.now();
+            lastCameraActivityAt = now;
+            lastUserInteractionAt = now;
+        }
+
+        function isRecentCameraActivity() {
+            return (Date.now() - lastCameraActivityAt) < ACTIVE_CAMERA_GRACE_MS;
+        }
+
+        function markPhotoPersistActivity() {
+            const now = Date.now();
+            lastPhotoPersistAt = now;
+            lastUserInteractionAt = now;
+        }
+
+        function isRecentPhotoPersistActivity() {
+            return (Date.now() - lastPhotoPersistAt) < ACTIVE_PHOTO_PERSIST_GRACE_MS;
+        }
+
+        function markSaveSurfaceActivity(surface = '') {
+            activeSaveSurfaceId = String(surface || '').trim();
+            lastFieldSaveAt = Date.now();
+        }
+
+        function clearSaveSurfaceActivity(surface = '') {
+            const safeSurface = String(surface || '').trim();
+            if (!safeSurface || activeSaveSurfaceId === safeSurface || pendingFieldSaveCount <= 0) activeSaveSurfaceId = '';
+        }
+
+        function hasExtendedInteractionBlockers() {
+            return !!(
+                isRecentViewSwitchActivity()
+                || hasPendingFieldSaveActivity()
+                || isChunkRenderActive()
+                || (window.pendingPhotoUploads && window.pendingPhotoUploads.size)
+                || isRecentCameraActivity()
+                || isRecentPhotoPersistActivity()
+            );
         }
 
         function isUserInRecentInteractionWindow() {
@@ -3357,14 +3434,16 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             return pendingFieldSaveCount > 0 || (Date.now() - lastFieldSaveAt) < FIELD_SAVE_GRACE_MS;
         }
 
-        function beginFieldSaveActivity() {
+        function beginFieldSaveActivity(surface = '') {
             pendingFieldSaveCount += 1;
             lastFieldSaveAt = Date.now();
+            markSaveSurfaceActivity(surface);
         }
 
-        function endFieldSaveActivity() {
+        function endFieldSaveActivity(surface = '') {
             pendingFieldSaveCount = Math.max(0, pendingFieldSaveCount - 1);
             lastFieldSaveAt = Date.now();
+            if (!pendingFieldSaveCount) clearSaveSurfaceActivity(surface);
         }
 
         function isRecentViewSwitchActivity() {
@@ -3378,10 +3457,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 || isUserActivelyScrolling()
                 || isUserActivelyTouching()
                 || isUserInRecentInteractionWindow()
-                || isRecentViewSwitchActivity()
-                || hasPendingFieldSaveActivity()
-                || isChunkRenderActive()
-                || (window.pendingPhotoUploads && window.pendingPhotoUploads.size)
+                || hasExtendedInteractionBlockers()
             );
         }
 
@@ -3744,6 +3820,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             const safeTouchDelay = Math.max(80, Number(opts.touchDelayMs) || Math.max(ACTIVE_TOUCH_GRACE_MS, safeTypingDelay));
             const safeScrollDelay = Math.max(80, Number(opts.scrollDelayMs) || safeTypingDelay);
             const safeInteractionDelay = Math.max(60, Number(opts.interactionDelayMs) || ACTIVE_INTERACTION_GRACE_MS);
+            const safeBlockedDelay = Math.max(INTERACTION_REFRESH_DEFER_MS, safeInteractionDelay, safeScrollDelay);
             const runWhenReady = () => {
                 if (!opts.allowWhileTyping && isUserActivelyTyping()) {
                     incrementInternalPerfCounter('deferredInputAwareRenders');
@@ -3763,6 +3840,12 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 if (!hasActiveTextEntryFocus() && isUserInRecentInteractionWindow()) {
                     incrementInternalPerfCounter('deferredInputAwareRenders');
                     scheduleUiRender(key, runWhenReady, safeInteractionDelay);
+                    return;
+                }
+                if (!opts.allowDuringExtendedBlock && hasExtendedInteractionBlockers()) {
+                    incrementInternalPerfCounter('deferredInputAwareRenders');
+                    incrementInternalPerfCounter('interactionBlockedRefreshes');
+                    scheduleUiRender(key, runWhenReady, safeBlockedDelay);
                     return;
                 }
                 renderFn();
@@ -3866,6 +3949,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             visibleViewIds.forEach((viewId) => markViewDirty(viewId));
             if (shouldDeferInteractiveBackgroundWork()) {
                 incrementInternalPerfCounter('deferredBackgroundRefreshes');
+                incrementInternalPerfCounter('interactionBlockedRefreshes');
                 scheduleDeferredVisibleDirtyViewRefresh(reason, Math.max(0, Number(delay) || 0), Math.max(180, Number(typingDelay) || 0));
                 return;
             }
@@ -4203,13 +4287,18 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             if (sameActiveItem) {
                 const renderKey = `active-photo-preview-${String(item.UNIQUE_ID || '').trim()}-${getPhotoBucketKey(prefix)}`;
                 scheduleUiRender(renderKey, () => {
+                    incrementInternalPerfCounter('photoUiOnlyRefreshes');
                     renderSavedPhotos();
                     renderPhotoGallery();
                 }, 16);
                 return;
             }
             scheduleUiRender(`photo-preview-${String(item.UNIQUE_ID || '').trim()}-${getPhotoBucketKey(prefix)}`, () => {
-                queueVisibleTrackedViewRefresh('photo-preview', 0, 140);
+                const visibleViewId = getCurrentVisibleViewId();
+                if (!visibleViewId || visibleViewId === 'detail' || !TRACKED_VIEW_IDS.includes(visibleViewId)) return;
+                incrementInternalPerfCounter('photoUiOnlyRefreshes');
+                markViewDirty(visibleViewId);
+                queueInteractiveViewRender(visibleViewId, false, false, 0, 140);
             }, 16);
         }
 
@@ -4228,8 +4317,10 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             const persistKey = getPendingPhotoPersistKey(item, prefix);
             if (!persistKey || !item) return;
             clearScheduledPhotoFieldPersist(item, prefix);
+            markPhotoPersistActivity();
             pendingPhotoPersistTimers[persistKey] = setTimeout(() => {
                 delete pendingPhotoPersistTimers[persistKey];
+                markPhotoPersistActivity();
                 saveData(false, prefix, true, item, { photoChanged: true, backgroundPhotoSync: true });
             }, PHOTO_FIELD_PERSIST_DEBOUNCE_MS);
         }
@@ -5118,7 +5209,7 @@ let activeTaskTab="season"; let activeTaskSubview="all"; let taskViewTargetUser=
         let pendingFieldSaveCount = 0;
         let lastFieldSaveAt = 0;
         let lastViewSwitchAt = 0;
-        const FIELD_SAVE_GRACE_MS = 900;
+const FIELD_SAVE_GRACE_MS = 1400;
         const VIEW_SWITCH_GRACE_MS = 480;
 
 let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all'; let avOpenLevel=0; let selectedAvOpenName=null; let selectedAvOpenSize=null; let selectedAvOpenSeason=null; let selectedAvOpenLot=null; let avResLevel=0; let selectedAvResRep=null; let selectedAvResDriveUid=null; let selectedAvResItemCode=null; let selectedAvResName=null; let selectedAvResSize=null; let selectedAvResCustomerKey=null; let activeAvReserveMode='current'; let activeAvReserveDetailTab='customer';
@@ -5154,7 +5245,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
         const REQUEST_EMAIL_THREAD_SELECT_FIELDS = 'request_folder,request_customer,sales_rep_name,sales_rep_email,recipients,initial_thread_id,initial_message_id,initial_email_sent_at,last_reply_sent_at,status,metadata';
         const REQUEST_EMAIL_INTERNAL_RECIPIENTS = Object.freeze(['dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com']);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-        const APP_VERSION = 'V2026.04.20.01';
+        const APP_VERSION = 'V2026.04.20.02';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -8200,12 +8291,12 @@ function toggleDriveQuickRequestItem(domId) {
             if (searchRenderFrame[safeKey]) cancelAnimationFrame(searchRenderFrame[safeKey]);
             const touchOptimized = isIOSDevice() || isStandaloneApp() || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
             const baseDelay = safeKey === 'drive-search'
-                ? (touchOptimized ? 48 : 30)
-                : (touchOptimized ? 36 : 18);
+                ? (touchOptimized ? 24 : 16)
+                : (touchOptimized ? 16 : 8);
             const debounceDelay = options && options.skipDebounce
                 ? 0
                 : Math.max(0, Number(options.debounceDelay) || baseDelay);
-            const typingDelay = Math.max(45, Number(options && options.typingDelay) || (touchOptimized ? 90 : 70));
+            const typingDelay = Math.max(30, Number(options && options.typingDelay) || (touchOptimized ? 60 : 45));
             searchRenderTimer[safeKey] = setTimeout(() => {
                 delete searchRenderTimer[safeKey];
                 scheduleTypingAwareUiRender(`search:${safeKey}`, () => {
@@ -8215,9 +8306,10 @@ function toggleDriveQuickRequestItem(domId) {
                     recordInternalPerfDuration('searchRenderDurations', searchRenderStartedAt, safeKey);
                 }, 0, typingDelay, {
                     allowWhileTyping: true,
-                    touchDelayMs: Math.max(110, typingDelay),
-                    scrollDelayMs: Math.max(90, typingDelay - 10),
-                    interactionDelayMs: 90
+                    allowDuringExtendedBlock: true,
+                    touchDelayMs: Math.max(80, typingDelay + 20),
+                    scrollDelayMs: Math.max(70, typingDelay + 10),
+                    interactionDelayMs: 60
                 });
             }, debounceDelay);
         }
@@ -9451,6 +9543,7 @@ function toggleDriveQuickRequestItem(domId) {
             const normalized = normalizeDockTeamInfo(info);
             dockTeamStatusByDock.set(dockKey, normalized);
             localStorage.setItem('gnc_dock_team_' + dockKey, JSON.stringify(normalized));
+            invalidateDockWorkflowResolvedState();
             return normalized;
         }
 
@@ -9578,6 +9671,7 @@ function toggleDriveQuickRequestItem(domId) {
             const normalized = normalizeDockItemProgress(progress);
             dockItemProgressByUid.set(normalizedUid, normalized);
             localStorage.setItem('gnc_dock_item_' + normalizedUid, JSON.stringify(normalized));
+            invalidateDockWorkflowResolvedState();
             return normalized;
         }
 
@@ -9810,11 +9904,30 @@ function toggleDriveQuickRequestItem(domId) {
         function getScopedDocksItems(items = socInventory) {
             const { isAdmin, isRep, isQcSupervisor, isQc } = getRoleAccessState();
             let nextItems = Array.isArray(items) ? [...items] : [];
-            if (isRep) {
-                return nextItems.filter(item => isMyRep(firstNonEmptyValue(item && item.SALESREPNAME, item && item.SALESREP, item && item.SALES_REP, item && item.SALESREPID, '')));
+            const canUseCache = items === socInventory;
+            const cacheKey = canUseCache ? [
+                resolvedViewStateEpoch,
+                dockWorkflowStateEpoch,
+                getDatasetLoadSignature('soc'),
+                currentUser,
+                currentUserDisplay,
+                isAdmin ? '1' : '0',
+                isRep ? '1' : '0',
+                isQcSupervisor ? '1' : '0',
+                isQc ? '1' : '0'
+            ].join('|') : '';
+            if (canUseCache && docksScopedItemsCacheKey === cacheKey && Array.isArray(docksScopedItemsCache)) {
+                incrementInternalPerfCounter('viewStateCacheHits');
+                return docksScopedItemsCache.slice();
             }
-            if (isQc && !isAdmin && !isQcSupervisor) {
-                return nextItems.filter(item => !isDockRowComplete(item) && isDockRowQueuedForCurrentUser(item));
+            if (isRep) {
+                nextItems = nextItems.filter(item => isMyRep(firstNonEmptyValue(item && item.SALESREPNAME, item && item.SALESREP, item && item.SALES_REP, item && item.SALESREPID, '')));
+            } else if (isQc && !isAdmin && !isQcSupervisor) {
+                nextItems = nextItems.filter(item => !isDockRowComplete(item) && isDockRowQueuedForCurrentUser(item));
+            }
+            if (canUseCache) {
+                docksScopedItemsCacheKey = cacheKey;
+                docksScopedItemsCache = nextItems.slice();
             }
             return nextItems;
         }
@@ -10111,6 +10224,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (!visibleDirtyViewIds.length) return;
             if (shouldDeferInteractiveBackgroundWork()) {
                 incrementInternalPerfCounter('deferredBackgroundRefreshes');
+                incrementInternalPerfCounter('interactionBlockedRefreshes');
                 scheduleDeferredVisibleDirtyViewRefresh('dataset-refresh', 24, 240);
                 return;
             }
@@ -10150,6 +10264,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (targetVisibleViews.length) {
                 if (shouldDeferInteractiveBackgroundWork()) {
                     incrementInternalPerfCounter('deferredBackgroundRefreshes');
+                    incrementInternalPerfCounter('interactionBlockedRefreshes');
                     scheduleDeferredVisibleDirtyViewRefresh('committed-edit', Math.max(0, Number(options.delay) || 0), Math.max(180, Number(options.typingDelay) || 0));
                 } else {
                     targetVisibleViews.forEach((viewId) => queueInteractiveViewRender(viewId, false, false, Math.max(0, Number(options.delay) || 0), Math.max(180, Number(options.typingDelay) || 0)));
@@ -10235,7 +10350,10 @@ function toggleDriveQuickRequestItem(domId) {
 
         function renderViewContent(viewId, forceReset = false, forceRender = false) {
             const state = ensureViewRenderState(viewId);
-            if (!forceReset && !forceRender && state.initialized && !state.dirty) return;
+            if (!forceReset && !forceRender && state.initialized && !state.dirty) {
+                incrementInternalPerfCounter('warmViewReuseHits');
+                return;
+            }
             const renderStartedAt = beginInternalPerfMeasure();
 
             if (viewId === 'home') {
@@ -10396,6 +10514,7 @@ function toggleDriveQuickRequestItem(domId) {
             }
             lastViewSwitchAt = Date.now();
             if (currentViewId === nextViewId && nextState.initialized && !nextState.dirty) {
+                incrementInternalPerfCounter('warmViewReuseHits');
                 if (targetScrollTop != null) scheduleUiRender(`view-restore:${nextViewId}:${targetScrollTop}`, () => setMainAreaScrollTop(targetScrollTop));
                 updateGlobalBackButton();
                 syncGlobalHeaderChrome();
@@ -13338,7 +13457,7 @@ function toggleDriveQuickRequestItem(domId) {
             const renderBatch = (targetCount, useBudget) => {
                 let html = '';
                 let rendered = 0;
-                const interactionSlowMode = isUserActivelyTouching() || isUserActivelyScrolling();
+                const interactionSlowMode = isUserActivelyTouching() || isUserActivelyScrolling() || isRecentViewSwitchActivity();
                 const batchTarget = interactionSlowMode ? Math.min(targetCount, Math.max(12, Math.ceil(targetCount / 3))) : targetCount;
                 const timeBudget = interactionSlowMode ? Math.max(2.5, frameBudgetMs - 1.5) : frameBudgetMs;
                 const startTime = useBudget && typeof performance !== 'undefined' && performance.now ? performance.now() : 0;
@@ -13370,9 +13489,9 @@ function toggleDriveQuickRequestItem(domId) {
             };
 
             const queueNextChunkFrame = () => {
-                const interactionSlowMode = isUserActivelyTouching() || isUserActivelyScrolling();
+                const interactionSlowMode = isUserActivelyTouching() || isUserActivelyScrolling() || isRecentViewSwitchActivity();
                 if (interactionSlowMode) {
-                    setTimeout(() => requestAnimationFrame(renderNextChunk), 18);
+                    setTimeout(() => requestAnimationFrame(renderNextChunk), 24);
                     return;
                 }
                 requestAnimationFrame(renderNextChunk);
@@ -13437,28 +13556,39 @@ function toggleDriveQuickRequestItem(domId) {
             const renderBatch = (targetCount, useBudget) => {
                 let html = '';
                 let rendered = 0;
+                const interactionSlowMode = isUserActivelyTouching() || isUserActivelyScrolling() || isRecentViewSwitchActivity();
+                const batchTarget = interactionSlowMode ? Math.min(targetCount, Math.max(Math.ceil(chunkSize / 2), Math.ceil(targetCount / 3))) : targetCount;
+                const timeBudget = interactionSlowMode ? Math.max(3, frameBudgetMs - 3) : frameBudgetMs;
                 const startTime = useBudget && typeof performance !== 'undefined' && performance.now ? performance.now() : 0;
-                while (index < total && rendered < targetCount) {
+                while (index < total && rendered < batchTarget) {
                     html += generateCard(rows[index], sourceView, 'status-teal');
                     index += 1;
                     rendered += 1;
-                    if (useBudget && rendered >= chunkSize && typeof performance !== 'undefined' && performance.now && (performance.now() - startTime) >= frameBudgetMs) break;
+                    if (useBudget && rendered >= Math.max(12, Math.ceil(chunkSize / 2)) && typeof performance !== 'undefined' && performance.now && (performance.now() - startTime) >= timeBudget) break;
                 }
                 return html;
             };
             setContainerHtml(container, renderBatch(initialTarget, false));
+            const queueNextChunkFrame = () => {
+                const interactionSlowMode = isUserActivelyTouching() || isUserActivelyScrolling() || isRecentViewSwitchActivity();
+                if (interactionSlowMode) {
+                    setTimeout(() => requestAnimationFrame(renderNextChunk), 24);
+                    return;
+                }
+                requestAnimationFrame(renderNextChunk);
+            };
             const renderNextChunk = () => {
                 if (token !== avRenderChunkToken) return;
                 const html = renderBatch(perFrameLimit, true);
                 if (html) appendHtmlFragment(container, html);
-                if (index < total) requestAnimationFrame(renderNextChunk);
+                if (index < total) queueNextChunkFrame();
                 else {
                     container.style.minHeight = '';
                     setContainerRenderSignature(container, renderSignature);
                     recordInternalPerfDuration('chunkRenderDurations', renderStartedAt, `av-open:${sourceView}`);
                 }
             };
-            if (index < total) requestAnimationFrame(renderNextChunk);
+            if (index < total) queueNextChunkFrame();
             else {
                 container.style.minHeight = '';
                 setContainerRenderSignature(container, renderSignature);
@@ -13503,28 +13633,39 @@ function toggleDriveQuickRequestItem(domId) {
             const renderBatch = (targetCount, useBudget) => {
                 let html = '';
                 let rendered = 0;
+                const interactionSlowMode = isUserActivelyTouching() || isUserActivelyScrolling() || isRecentViewSwitchActivity();
+                const batchTarget = interactionSlowMode ? Math.min(targetCount, Math.max(Math.ceil(chunkSize / 2), Math.ceil(targetCount / 3))) : targetCount;
+                const timeBudget = interactionSlowMode ? Math.max(3, frameBudgetMs - 3) : frameBudgetMs;
                 const startTime = useBudget && typeof performance !== 'undefined' && performance.now ? performance.now() : 0;
-                while (index < total && rendered < targetCount) {
+                while (index < total && rendered < batchTarget) {
                     html += renderRow(rows[index], index);
                     index += 1;
                     rendered += 1;
-                    if (useBudget && rendered >= chunkSize && typeof performance !== 'undefined' && performance.now && (performance.now() - startTime) >= frameBudgetMs) break;
+                    if (useBudget && rendered >= Math.max(12, Math.ceil(chunkSize / 2)) && typeof performance !== 'undefined' && performance.now && (performance.now() - startTime) >= timeBudget) break;
                 }
                 return html;
             };
             setContainerHtml(container, renderBatch(initialTarget, false));
+            const queueNextChunkFrame = () => {
+                const interactionSlowMode = isUserActivelyTouching() || isUserActivelyScrolling() || isRecentViewSwitchActivity();
+                if (interactionSlowMode) {
+                    setTimeout(() => requestAnimationFrame(renderNextChunk), 24);
+                    return;
+                }
+                requestAnimationFrame(renderNextChunk);
+            };
             const renderNextChunk = () => {
                 if (token !== avRenderChunkToken) return;
                 const html = renderBatch(perFrameLimit, true);
                 if (html) appendHtmlFragment(container, html);
-                if (index < total) requestAnimationFrame(renderNextChunk);
+                if (index < total) queueNextChunkFrame();
                 else {
                     container.style.minHeight = '';
                     setContainerRenderSignature(container, renderSignature);
                     recordInternalPerfDuration('chunkRenderDurations', renderStartedAt, String(options.chunkKey || 'av-generic'));
                 }
             };
-            if (index < total) requestAnimationFrame(renderNextChunk);
+            if (index < total) queueNextChunkFrame();
             else {
                 container.style.minHeight = '';
                 setContainerRenderSignature(container, renderSignature);
@@ -15148,8 +15289,19 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function getSalesOfficeSeasonItems() {
+            const cacheKey = [
+                resolvedViewStateEpoch,
+                getDatasetLoadSignature('salesOffice'),
+                'season'
+            ].join('|');
+            if (salesOfficeSeasonItemsCacheKey === cacheKey && Array.isArray(salesOfficeSeasonItemsCache)) {
+                incrementInternalPerfCounter('viewStateCacheHits');
+                return salesOfficeSeasonItemsCache.slice();
+            }
             const items = salesOfficeInventory.filter((item) => isSeasonSalesOfficeItem(item));
             items.sort((a, b) => new Date(b.COMPLETED_AT || 0).getTime() - new Date(a.COMPLETED_AT || 0).getTime());
+            salesOfficeSeasonItemsCacheKey = cacheKey;
+            salesOfficeSeasonItemsCache = items.slice();
             return items;
         }
 
@@ -15212,11 +15364,27 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function getSalesOfficeOrderItems() {
+            const roleAccess = getRoleAccessState();
+            const cacheKey = [
+                resolvedViewStateEpoch,
+                getDatasetLoadSignature('salesOffice'),
+                'orders',
+                roleAccess.isRep ? '1' : '0',
+                currentUser,
+                currentUserDisplay
+            ].join('|');
+            if (salesOfficeOrderItemsCacheKey === cacheKey && Array.isArray(salesOfficeOrderItemsCache)) {
+                incrementInternalPerfCounter('viewStateCacheHits');
+                return salesOfficeOrderItemsCache.slice();
+            }
             let items = salesOfficeInventory.filter((item) => isBloomPickerSalesOfficeItem(item) && !isSalesOfficeComplete(item));
-            if (getRoleAccessState().isRep) {
+            if (roleAccess.isRep) {
                 items = items.filter((item) => isSalesOfficeSubmittedByCurrentRep(firstNonEmptyValue(item.ORDER_SUBMITTED_BY, item.SALESREPNAME, item.SALESREP, item.SALES_REP, item.SALESREPID, '')));
             }
-            return items.sort((a, b) => new Date(firstNonEmptyValue(b.ORDER_SUBMITTED_AT, b.UPDATED_AT, b.COMPLETED_AT, 0)).getTime() - new Date(firstNonEmptyValue(a.ORDER_SUBMITTED_AT, a.UPDATED_AT, a.COMPLETED_AT, 0)).getTime());
+            items = items.sort((a, b) => new Date(firstNonEmptyValue(b.ORDER_SUBMITTED_AT, b.UPDATED_AT, b.COMPLETED_AT, 0)).getTime() - new Date(firstNonEmptyValue(a.ORDER_SUBMITTED_AT, a.UPDATED_AT, a.COMPLETED_AT, 0)).getTime());
+            salesOfficeOrderItemsCacheKey = cacheKey;
+            salesOfficeOrderItemsCache = items.slice();
+            return items;
         }
 
         function getSalesOfficeOrderGroupKey(item) {
@@ -15615,8 +15783,46 @@ function toggleDriveQuickRequestItem(domId) {
 
         function getScopedRequestItems(items = requestsInventory) {
             let nextItems = Array.isArray(items) ? [...items] : [];
-            if (!getRoleAccessState().isRep) return nextItems;
-            return nextItems.filter(item => isMyRep(getRequestAssignedRep(item)));
+            const roleAccess = getRoleAccessState();
+            const canUseCache = items === requestsInventory;
+            const cacheKey = canUseCache ? [
+                resolvedViewStateEpoch,
+                getDatasetLoadSignature('requests'),
+                roleAccess.isRep ? '1' : '0',
+                currentUser,
+                currentUserDisplay
+            ].join('|') : '';
+            if (canUseCache && requestScopedItemsCacheKey === cacheKey && Array.isArray(requestScopedItemsCache)) {
+                incrementInternalPerfCounter('viewStateCacheHits');
+                return requestScopedItemsCache.slice();
+            }
+            if (roleAccess.isRep) nextItems = nextItems.filter(item => isMyRep(getRequestAssignedRep(item)));
+            if (canUseCache) {
+                requestScopedItemsCacheKey = cacheKey;
+                requestScopedItemsCache = nextItems.slice();
+            }
+            return nextItems;
+        }
+
+        function getScopedReservesItems(items = reservesInventory) {
+            let nextItems = Array.isArray(items) ? [...items] : [];
+            const cacheKey = items === reservesInventory ? [
+                resolvedViewStateEpoch,
+                getDatasetLoadSignature('reserves'),
+                safeRole,
+                currentUser,
+                currentUserDisplay
+            ].join('|') : '';
+            if (items === reservesInventory && reservesScopedItemsCacheKey === cacheKey && Array.isArray(reservesScopedItemsCache)) {
+                incrementInternalPerfCounter('viewStateCacheHits');
+                return reservesScopedItemsCache.slice();
+            }
+            if (safeRole === 'SALESREP') nextItems = nextItems.filter(i => isMyRep(firstNonEmptyValue(i.SALESREPNAME, i.SALESREP, i.SALES_REP, i.SALESREPID, '')));
+            if (items === reservesInventory) {
+                reservesScopedItemsCacheKey = cacheKey;
+                reservesScopedItemsCache = nextItems.slice();
+            }
+            return nextItems;
         }
 
         function getRequestCustomerConsigneeFolder(item) {
@@ -21266,8 +21472,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             const crumb = document.getElementById('reserves-crumb');
             if (!container || !crumb) return;
 
-            let items = reservesInventory;
-            if (safeRole === 'SALESREP') items = items.filter(i => isMyRep(firstNonEmptyValue(i.SALESREPNAME, i.SALESREP, i.SALES_REP, i.SALESREPID, '')));
+            let items = getScopedReservesItems(reservesInventory);
             const term = document.getElementById('reserves-search') ? document.getElementById('reserves-search').value.toLowerCase().trim() : '';
             if (term) items = filterBySearch(items, term, 'reserves');
 
@@ -21381,7 +21586,6 @@ ${folderNote ? `Folder Note: ${folderNote}
         let autoSaveTimer = null;
 
         async function saveData(isComplete = false, prefix, isSilentAutoSave = false, specificItem = null, options = {}) {
-            beginFieldSaveActivity();
             try {
             if (autoSaveTimer) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
             let itemToSave = specificItem || activeItem;
@@ -21395,6 +21599,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 }
             }
             const rowSaveKey = getRowSaveCoordinatorKey(prefix, itemToSave);
+            beginFieldSaveActivity(rowSaveKey);
             const saveOptions = options || {};
             const isBackgroundPhotoSync = !!saveOptions.backgroundPhotoSync;
             const isCoordinatedAutoSave = !!(isSilentAutoSave && !isBackgroundPhotoSync);
@@ -21424,9 +21629,20 @@ ${folderNote ? `Folder Note: ${folderNote}
                 let didOptimisticRender = false;
                 const trackedStateBeforeSave = captureTrackedAvState(itemToSave);
                 const queueVisibleSaveRefresh = (delay = 0) => {
+                    const currentViewId = getCurrentVisibleViewId();
+                    if (currentViewId && currentViewId !== 'detail' && TRACKED_VIEW_IDS.includes(currentViewId)) {
+                        incrementInternalPerfCounter('fieldUiOnlyRefreshes');
+                        markViewDirty(currentViewId);
+                        queueInteractiveViewRender(currentViewId, false, false, delay, 220);
+                        return;
+                    }
                     const visibleViewIds = getVisibleTrackedViewIds();
                     if (!visibleViewIds.length) return;
-                    visibleViewIds.forEach((viewId) => queueInteractiveViewRender(viewId, false, false, delay, 220));
+                    incrementInternalPerfCounter('fieldUiOnlyRefreshes', visibleViewIds.length);
+                    visibleViewIds.forEach((viewId) => {
+                        markViewDirty(viewId);
+                        queueInteractiveViewRender(viewId, false, false, delay, 220);
+                    });
                 };
 
                 if (!specificItem) {
@@ -22070,7 +22286,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 handleUnexpectedSaveError(error);
             }
             } finally {
-                endFieldSaveActivity();
+                endFieldSaveActivity(rowSaveKey);
             }
         }
 
@@ -22172,6 +22388,7 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         async function handlePhotoUpload(input, prefix) {
             if (!input.files || input.files.length === 0 || !activeItem) return;
+            markCameraActivity();
             if (!canEditRowDetails(prefix)) {
                 showRowEditRestrictedToast(prefix);
                 input.value = '';
@@ -22205,6 +22422,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             refreshPendingPhotoUiForItem(itemToUpload, prefix);
 
             const startUpload = () => {
+                markCameraActivity();
                 const uploadPromise = new Promise((resolve, reject) => {
                     let bitmap = null;
                     let img = null;
@@ -22288,6 +22506,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                                 syncSharedFlyerPhotoFields(itemToUpload, prefix);
                                 normalizeRowPhotoFields(itemToUpload);
                                 broadcastRowSyncSnapshot(itemToUpload, prefix);
+                                markPhotoPersistActivity();
                                 cleanupUploadResources();
                                 finishPreview(true);
                                 schedulePhotoFieldPersist(itemToUpload, prefix);
