@@ -645,7 +645,7 @@ body.viewport-compact #view-detail #det-location{font-size:clamp(.9rem,3.8vw,1.1
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-<div id="header-version" class="nav-version-pill">V2026.04.20.07</div>
+                <div id="header-version" class="nav-version-pill">V2026.04.20.08</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -2760,6 +2760,94 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             if (!shouldIncludeMasterItemInAvOpen(item)) return false;
             const season = String(firstNonEmptyValue(item && item.SEASON, item && item.season, '')).toUpperCase();
             return !season.includes('Y') && !season.includes('Z');
+        }
+
+        function buildCompletionMasterSyncValues(prefix = '', item = null, masterItem = null, payload = {}) {
+            if (!item) return null;
+            const safePrefix = String(prefix || '').trim().toLowerCase();
+            const isRequest = safePrefix === 'req-';
+            const ptrAvailableValue = firstNonEmptyValue(masterItem && masterItem.PTRAVAILABLE, item.PTRAVAILABLE, '0');
+            const matchValue = isRequest
+                ? ((item.REQ_MATCH === '' || item.REQ_MATCH == null) ? null : parseFloat(item.REQ_MATCH))
+                : ((item.MATCH === '' || item.MATCH == null) ? null : parseFloat(item.MATCH));
+            const locMatchQtyValue = isRequest
+                ? calculateLocMatchQtyValue({ MATCH: matchValue, PTRAVAILABLE: ptrAvailableValue })
+                : parseAppNumber(firstNonEmptyValue(payload && payload.loc_match_qty, item.LOC_MATCH_QTY, ''));
+            const initialPtrValue = isRequest
+                ? parseAppNumber(ptrAvailableValue)
+                : parseAppNumber(firstNonEmptyValue(payload && payload.initial_ptr, item.INITIAL_PTR, ''));
+            return {
+                dateCompleted: String(firstNonEmptyValue(payload && payload.date_completed, item.DATE_COMPLETED, item.date_completed, '')).trim(),
+                avNote: String(firstNonEmptyValue(item.AV_NOTE, '')).trim(),
+                match: matchValue,
+                spec: String(firstNonEmptyValue(isRequest ? item.REQ_SPEC : item.SPEC, item.SPEC, '')).trim(),
+                caliper: String(firstNonEmptyValue(isRequest ? item.REQ_CALIPER : item.CALIPER, item.CALIPER, '')).trim(),
+                pick: String(firstNonEmptyValue(isRequest ? item.REQ_PICK : item.PICK, item.PICK, '')).trim(),
+                locMatchQty: locMatchQtyValue == null ? null : locMatchQtyValue,
+                initialPtr: initialPtrValue == null ? null : initialPtrValue,
+                photoLink: String(firstNonEmptyValue(
+                    isRequest ? item.REQ_PHOTO_LINK : item.SAVED_PHOTO_LINK,
+                    item.SAVED_PHOTO_LINK,
+                    item.PHOTO_LINK,
+                    item.PHOTOLINK,
+                    ''
+                )).trim(),
+                photoName: String(firstNonEmptyValue(
+                    isRequest ? item.REQ_PHOTO_NAME : item.SAVED_PHOTO_NAME,
+                    item.SAVED_PHOTO_NAME,
+                    item.PHOTO_NAME,
+                    item.PHOTONAME,
+                    ''
+                )).trim()
+            };
+        }
+
+        function buildCompletionMasterSyncPayload(masterItem = null, syncValues = null) {
+            if (!syncValues || typeof syncValues !== 'object') return null;
+            const payload = {
+                date_completed: syncValues.dateCompleted || new Date().toISOString(),
+                av_note: syncValues.avNote || null,
+                match: syncValues.match == null ? null : syncValues.match,
+                spec: syncValues.spec || null,
+                caliper: syncValues.caliper || null,
+                pic_note: syncValues.pick || null,
+                loc_match_qty: syncValues.locMatchQty == null ? null : syncValues.locMatchQty,
+                initial_ptr: syncValues.initialPtr == null ? null : syncValues.initialPtr,
+                photo_link: syncValues.photoLink || null,
+                photo_name: syncValues.photoName || null
+            };
+            applyAvRuleTouchPayload(masterItem || syncValues.sourceItem || null, payload, { avNote: true, match: true, spec: true, caliper: true, photo: true });
+            return payload;
+        }
+
+        function buildCompletionMasterSyncPreviewItem(masterItem = null, syncValues = null) {
+            if (!masterItem || !syncValues || typeof syncValues !== 'object') return null;
+            const preview = { ...masterItem };
+            preview.DATE_COMPLETED = syncValues.dateCompleted || '';
+            preview.date_completed = syncValues.dateCompleted || '';
+            preview.AV_NOTE = syncValues.avNote || '';
+            preview.MATCH = syncValues.match == null ? '' : syncValues.match;
+            preview.SPEC = syncValues.spec || '';
+            preview.CALIPER = syncValues.caliper || '';
+            preview.PICK = syncValues.pick || '';
+            preview.LOC_MATCH_QTY = syncValues.locMatchQty == null ? '' : syncValues.locMatchQty;
+            preview.INITIAL_PTR = syncValues.initialPtr == null ? '' : syncValues.initialPtr;
+            preview.SAVED_PHOTO_LINK = syncValues.photoLink || '';
+            preview.SAVED_PHOTO_NAME = syncValues.photoName || '';
+            const touchPayload = {};
+            applyAvRuleTouchPayload(masterItem, touchPayload, { avNote: true, match: true, spec: true, caliper: true, photo: true });
+            Object.keys(touchPayload).forEach((key) => {
+                preview[key] = touchPayload[key];
+                preview[key.toUpperCase()] = touchPayload[key];
+            });
+            normalizeRowPhotoFields(preview);
+            return preview;
+        }
+
+        function shouldPublishCompletionToAvOpen(masterItem = null, syncValues = null) {
+            const previewItem = buildCompletionMasterSyncPreviewItem(masterItem, syncValues);
+            if (!previewItem) return false;
+            return shouldIncludeMasterItemInAvOpenView(previewItem);
         }
 
         function buildMasterAvRuleClearPayload(item, reasonText = '', clearedAt = new Date().toISOString()) {
@@ -5270,7 +5358,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
         const REQUEST_EMAIL_THREAD_SELECT_FIELDS = 'request_folder,request_customer,sales_rep_name,sales_rep_email,recipients,initial_thread_id,initial_message_id,initial_email_sent_at,last_reply_sent_at,status,metadata';
         const REQUEST_EMAIL_INTERNAL_RECIPIENTS = Object.freeze(['dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com']);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-const APP_VERSION = 'V2026.04.20.07';
+        const APP_VERSION = 'V2026.04.20.08';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -17833,6 +17921,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         let optimisticSalesOfficeSnapshots = new Map();
+        let optimisticMasterSyncSnapshots = new Map();
 
         function invalidateSalesOfficeLocalState(delay = 16, typingDelay = 160) {
             invalidateResolvedViewStateCaches();
@@ -17916,6 +18005,116 @@ function toggleDriveQuickRequestItem(domId) {
             const uid = String(firstNonEmptyValue(preparedRow.UNIQUE_ID, '')).trim();
             if (uid) optimisticSalesOfficeSnapshots.delete(uid);
             return upsertLocalSalesOfficeRow(preparedRow, { delay: 8, typingDelay: 140 });
+        }
+
+        function resolveOptimisticMasterSyncItem(artifacts = null) {
+            if (!artifacts) return null;
+            const uid = String(firstNonEmptyValue(artifacts.masterSyncId, artifacts.masterSyncItem && artifacts.masterSyncItem.UNIQUE_ID, '')).trim();
+            if (!uid) return null;
+            const masterItem = (masterInventoryById.get(uid) || fullInventory.find((item) => String(item && item.UNIQUE_ID || '').trim() === uid) || artifacts.masterSyncItem || null);
+            if (masterItem) artifacts.masterSyncItem = masterItem;
+            return masterItem;
+        }
+
+        function applyMasterSyncPayloadToLocalRow(masterItem = null, payload = null) {
+            if (!masterItem || !payload || typeof payload !== 'object') return null;
+            if (Object.prototype.hasOwnProperty.call(payload, 'date_completed')) {
+                const completedAt = payload.date_completed || '';
+                masterItem.DATE_COMPLETED = completedAt;
+                masterItem.date_completed = completedAt;
+            }
+            if (Object.prototype.hasOwnProperty.call(payload, 'av_note')) masterItem.AV_NOTE = payload.av_note || '';
+            if (Object.prototype.hasOwnProperty.call(payload, 'match')) masterItem.MATCH = payload.match == null ? '' : payload.match;
+            if (Object.prototype.hasOwnProperty.call(payload, 'spec')) masterItem.SPEC = payload.spec || '';
+            if (Object.prototype.hasOwnProperty.call(payload, 'caliper')) masterItem.CALIPER = payload.caliper || '';
+            if (Object.prototype.hasOwnProperty.call(payload, 'pic_note')) masterItem.PICK = payload.pic_note || '';
+            if (Object.prototype.hasOwnProperty.call(payload, 'loc_match_qty')) masterItem.LOC_MATCH_QTY = payload.loc_match_qty == null ? '' : payload.loc_match_qty;
+            if (Object.prototype.hasOwnProperty.call(payload, 'initial_ptr')) masterItem.INITIAL_PTR = payload.initial_ptr == null ? '' : payload.initial_ptr;
+            if (Object.prototype.hasOwnProperty.call(payload, 'photo_link')) {
+                masterItem.SAVED_PHOTO_LINK = payload.photo_link || '';
+                masterItem.photo_link = payload.photo_link || null;
+            }
+            if (Object.prototype.hasOwnProperty.call(payload, 'photo_name')) {
+                masterItem.SAVED_PHOTO_NAME = payload.photo_name || '';
+                masterItem.photo_name = payload.photo_name || null;
+            }
+            Object.keys(payload).forEach((key) => {
+                if (!/^av_rule_/i.test(key)) return;
+                const value = payload[key];
+                masterItem[key] = value;
+                masterItem[key.toUpperCase()] = value;
+            });
+            normalizeRowPhotoFields(masterItem);
+            buildSearchIndex(masterItem);
+            return masterItem;
+        }
+
+        function restoreLocalMasterSyncSnapshot(target, snapshotRow = null) {
+            if (!target || !snapshotRow || typeof snapshotRow !== 'object') return target;
+            Object.keys(target).forEach((key) => {
+                if (Object.prototype.hasOwnProperty.call(snapshotRow, key)) return;
+                delete target[key];
+            });
+            Object.keys(snapshotRow).forEach((key) => {
+                target[key] = snapshotRow[key];
+            });
+            normalizeFlyerShadowFields(target);
+            normalizeRowPhotoFields(target);
+            buildSearchIndex(target);
+            return target;
+        }
+
+        function refreshOptimisticMasterSyncState(masterItem = null, prefix = '') {
+            const target = masterItem || null;
+            const uid = String(firstNonEmptyValue(target && target.UNIQUE_ID, '')).trim();
+            if (!uid) return [];
+            const refreshResult = refreshChangedMasterRealtimeSlices(new Set([uid]));
+            const linkedSyncIds = refreshResult && refreshResult.linkedSyncIds instanceof Set
+                ? refreshResult.linkedSyncIds
+                : new Set([uid]);
+            if (requestsInventory.length) syncRealtimeRequestRows(linkedSyncIds);
+            if (socInventory.length) syncRealtimeSocRows(linkedSyncIds);
+            if (salesOfficeInventory.length) syncRealtimeSalesOfficeRows(linkedSyncIds);
+            const changedKeys = refreshResult && Array.isArray(refreshResult.changedDatasetKeys) && refreshResult.changedDatasetKeys.length
+                ? refreshResult.changedDatasetKeys
+                : ['master', 'avOpen'];
+            return propagateCommittedEdit('v2_master_inventory', target, changedKeys, getVisibleAffectedViewIds(changedKeys), { prefix, delay: 0, typingDelay: 140 });
+        }
+
+        function applyOptimisticMasterSyncArtifacts(artifacts = null, prefix = '') {
+            if (!artifacts || !artifacts.masterSyncPayload) return null;
+            const masterItem = resolveOptimisticMasterSyncItem(artifacts);
+            const uid = String(firstNonEmptyValue(masterItem && masterItem.UNIQUE_ID, artifacts.masterSyncId, '')).trim();
+            if (!masterItem || !uid) return null;
+            if (!optimisticMasterSyncSnapshots.has(uid)) {
+                optimisticMasterSyncSnapshots.set(uid, { row: { ...masterItem } });
+            }
+            applyMasterSyncPayloadToLocalRow(masterItem, artifacts.masterSyncPayload);
+            refreshOptimisticMasterSyncState(masterItem, prefix);
+            return masterItem;
+        }
+
+        function rollbackOptimisticMasterSyncArtifacts(artifacts = null, prefix = '') {
+            const masterItem = resolveOptimisticMasterSyncItem(artifacts);
+            const uid = String(firstNonEmptyValue(masterItem && masterItem.UNIQUE_ID, artifacts && artifacts.masterSyncId, '')).trim();
+            if (!masterItem || !uid) return false;
+            const snapshot = optimisticMasterSyncSnapshots.get(uid) || null;
+            optimisticMasterSyncSnapshots.delete(uid);
+            if (!snapshot || !snapshot.row) return false;
+            restoreLocalMasterSyncSnapshot(masterItem, snapshot.row);
+            refreshOptimisticMasterSyncState(masterItem, prefix);
+            return true;
+        }
+
+        function finalizeOptimisticMasterSyncArtifacts(artifacts = null, prefix = '') {
+            if (!artifacts || !artifacts.masterSyncPayload) return null;
+            const masterItem = resolveOptimisticMasterSyncItem(artifacts);
+            const uid = String(firstNonEmptyValue(masterItem && masterItem.UNIQUE_ID, artifacts && artifacts.masterSyncId, '')).trim();
+            if (!masterItem || !uid) return null;
+            optimisticMasterSyncSnapshots.delete(uid);
+            applyMasterSyncPayloadToLocalRow(masterItem, artifacts.masterSyncPayload);
+            refreshOptimisticMasterSyncState(masterItem, prefix);
+            return masterItem;
         }
 
         function markSalesOfficeComplete(uniqueId,domId) {
@@ -22191,7 +22390,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 }
 
                 const buildCompletionArtifacts = () => {
-                    const artifacts = { soPayload: null, cloneSO: null, masterSyncId: null, masterSyncItem: null, masterSyncPayload: null, applyAvSync: false };
+                    const artifacts = { soPayload: null, cloneSO: null, masterSyncId: null, masterSyncItem: null, masterSyncPayload: null, applyAvSync: false, masterSyncMissing: false, skipRemoteMasterSync: false };
                     if (!isComplete) return artifacts;
 
                     const linkedMasterItem = findLinkedMasterRow(itemToSave) || requestMasterItem || null;
@@ -22257,34 +22456,37 @@ ${folderNote ? `Folder Note: ${folderNote}
                         normalizeRowPhotoFields(artifacts.cloneSO);
                     }
 
-                    const shouldSyncRequestToMaster = prefix === 'req-' && (
-                        (salesRuleAssignment === 'season' && qualifiesForOpenStockView) ||
-                        (salesRuleAssignment !== 'season' && requestShouldPublishInApp)
-                    );
-                    if (shouldSyncRequestToMaster) {
-                        artifacts.masterSyncId = requestMasterId || itemToSave.MASTER_ID || itemToSave.MASTER_UNIQUE_ID || itemToSave.master_id;
-                        artifacts.masterSyncItem = requestMasterItem || findItemByUniqueId(artifacts.masterSyncId);
+                    const isSeasonQualifiedCompletion = ['req-','ssn-','lsn-','na-'].includes(prefix) && salesRuleAssignment === 'season';
+                    const shouldSyncRequestToMaster = prefix === 'req-' && salesRuleAssignment !== 'season' && requestShouldPublishInApp;
+                    if (isSeasonQualifiedCompletion || shouldSyncRequestToMaster) {
+                        artifacts.masterSyncId = String(firstNonEmptyValue(
+                            requestMasterId,
+                            salesRuleId,
+                            itemToSave.MASTER_ID,
+                            itemToSave.MASTER_UNIQUE_ID,
+                            itemToSave.master_id,
+                            itemToSave.UNIQUE_ID,
+                            ''
+                        ) || '').trim();
+                        artifacts.masterSyncItem = linkedMasterItem
+                            || (artifacts.masterSyncId ? findItemByUniqueId(artifacts.masterSyncId) : null)
+                            || (String(firstNonEmptyValue(itemToSave.SOURCE_TABLE, itemToSave.source_table, 'v2_master_inventory')).toLowerCase() === 'v2_master_inventory' ? itemToSave : null);
                         if (artifacts.masterSyncId) {
-                            const requestMatchValue = (itemToSave.REQ_MATCH === '' || itemToSave.REQ_MATCH == null) ? null : parseFloat(itemToSave.REQ_MATCH);
-                            const matchQtySeed = {
-                                MATCH: requestMatchValue,
-                                PTRAVAILABLE: firstNonEmptyValue(artifacts.masterSyncItem ? artifacts.masterSyncItem.PTRAVAILABLE : '', itemToSave.PTRAVAILABLE, '')
-                            };
-                            const derivedRequestLocQty = calculateLocMatchQtyValue(matchQtySeed);
-                            const initialPtrValue = parseAppNumber(matchQtySeed.PTRAVAILABLE);
-                            artifacts.masterSyncPayload = { date_completed: payload.date_completed };
-                            artifacts.applyAvSync = true;
-                            artifacts.masterSyncPayload.av_note = setVal(itemToSave.AV_NOTE);
-                            artifacts.masterSyncPayload.match = requestMatchValue;
-                            artifacts.masterSyncPayload.spec = setVal(itemToSave.REQ_SPEC || itemToSave.SPEC);
-                            artifacts.masterSyncPayload.caliper = setVal(itemToSave.REQ_CALIPER || itemToSave.CALIPER);
-                            artifacts.masterSyncPayload.pic_note = setVal(itemToSave.REQ_PICK || itemToSave.PICK);
-                            artifacts.masterSyncPayload.loc_match_qty = derivedRequestLocQty == null ? null : derivedRequestLocQty;
-                            artifacts.masterSyncPayload.initial_ptr = initialPtrValue == null ? null : initialPtrValue;
-                            artifacts.masterSyncPayload.photo_link = setVal(itemToSave.REQ_PHOTO_LINK || itemToSave.SAVED_PHOTO_LINK);
-                            artifacts.masterSyncPayload.photo_name = setVal(itemToSave.REQ_PHOTO_NAME || itemToSave.SAVED_PHOTO_NAME);
-                            if (avRuleColumnsReady == null) ensureAvRuleColumnsReady().catch(() => {});
-                            applyAvRuleTouchPayload(artifacts.masterSyncItem || requestMasterItem || itemToSave, artifacts.masterSyncPayload, { avNote: true, match: true, spec: true, caliper: true, photo: true });
+                            const syncValues = buildCompletionMasterSyncValues(prefix, itemToSave, artifacts.masterSyncItem || linkedMasterItem || salesRuleItem || null, payload);
+                            const shouldPublishToMaster = shouldSyncRequestToMaster || shouldPublishCompletionToAvOpen(artifacts.masterSyncItem || linkedMasterItem || salesRuleItem || null, syncValues);
+                            if (shouldPublishToMaster) {
+                                artifacts.masterSyncPayload = buildCompletionMasterSyncPayload(artifacts.masterSyncItem || linkedMasterItem || salesRuleItem || itemToSave, syncValues);
+                                artifacts.applyAvSync = true;
+                                artifacts.skipRemoteMasterSync = String(firstNonEmptyValue(itemToSave.SOURCE_TABLE, itemToSave.source_table, prefix === 'req-' ? 'v2_active_request' : 'v2_master_inventory')).toLowerCase() === 'v2_master_inventory'
+                                    && String(firstNonEmptyValue(itemToSave.UNIQUE_ID, '')).trim() === String(artifacts.masterSyncId).trim();
+                            } else if (isSeasonQualifiedCompletion && !artifacts.masterSyncItem) {
+                                artifacts.masterSyncMissing = true;
+                            }
+                        } else if (isSeasonQualifiedCompletion) {
+                            artifacts.masterSyncMissing = true;
+                        }
+                        if (isSeasonQualifiedCompletion && !artifacts.masterSyncPayload && artifacts.masterSyncId && !artifacts.masterSyncItem) {
+                            artifacts.masterSyncMissing = true;
                         }
                     }
 
@@ -22323,6 +22525,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     itemToSave.DATE_COMPLETED = previousDateCompleted;
                     itemToSave.REQ_STATUS = previousReqStatus;
                     if (completionArtifacts && completionArtifacts.soPayload) rollbackOptimisticSalesOfficeArtifacts(completionArtifacts);
+                    if (completionArtifacts && completionArtifacts.masterSyncPayload) rollbackOptimisticMasterSyncArtifacts(completionArtifacts, prefix);
                     if (canOptimisticallyCompleteQueueRow) clearOptimisticCompletedRows([itemToSave.UNIQUE_ID]);
                     if (isComplete && btnComp) btnComp.innerText = 'MARK DONE';
                     if (didOptimisticClose || didOptimisticRender) queueVisibleSaveRefresh(16);
@@ -22379,26 +22582,15 @@ ${folderNote ? `Folder Note: ${folderNote}
                     }
 
                     if (artifacts.masterSyncPayload && artifacts.masterSyncId) {
-                        if (artifacts.masterSyncItem) {
-                            artifacts.masterSyncItem.DATE_COMPLETED = payload.date_completed;
-                            if (artifacts.applyAvSync) {
-                                artifacts.masterSyncItem.AV_NOTE = itemToSave.AV_NOTE;
-                                artifacts.masterSyncItem.MATCH = itemToSave.REQ_MATCH || artifacts.masterSyncItem.MATCH;
-                                artifacts.masterSyncItem.SPEC = itemToSave.REQ_SPEC || itemToSave.SPEC;
-                                artifacts.masterSyncItem.CALIPER = itemToSave.REQ_CALIPER || itemToSave.CALIPER;
-                                artifacts.masterSyncItem.PICK = itemToSave.REQ_PICK || itemToSave.PICK;
-                                artifacts.masterSyncItem.LOC_MATCH_QTY = firstNonEmptyValue(artifacts.masterSyncPayload.loc_match_qty, artifacts.masterSyncItem.LOC_MATCH_QTY, '');
-                                artifacts.masterSyncItem.INITIAL_PTR = firstNonEmptyValue(artifacts.masterSyncPayload.initial_ptr, artifacts.masterSyncItem.INITIAL_PTR, '');
-                                artifacts.masterSyncItem.SAVED_PHOTO_LINK = itemToSave.REQ_PHOTO_LINK || itemToSave.SAVED_PHOTO_LINK;
-                                artifacts.masterSyncItem.SAVED_PHOTO_NAME = itemToSave.REQ_PHOTO_NAME || itemToSave.SAVED_PHOTO_NAME;
-                            }
-                            normalizeRowPhotoFields(artifacts.masterSyncItem);
-                            propagateCommittedEdit('v2_master_inventory', artifacts.masterSyncItem, changedDatasetKeys, visibleAffectedViews, { prefix, delay: 0, typingDelay: 140 });
+                        if (artifacts.masterSyncItem) finalizeOptimisticMasterSyncArtifacts(artifacts, prefix);
+                        if (!artifacts.skipRemoteMasterSync) {
+                            deferNonCriticalWork('master-sync', () => {
+                                runDetailWriteWithRetry('v2_master_inventory', 'PATCH', artifacts.masterSyncPayload, 'unique_id=eq.' + encodeURIComponent(artifacts.masterSyncId), saveRequestOptions).catch(() => {});
+                            }, 42);
                         }
-
-                        deferNonCriticalWork('master-sync', () => {
-                            runDetailWriteWithRetry('v2_master_inventory', 'PATCH', artifacts.masterSyncPayload, 'unique_id=eq.' + encodeURIComponent(artifacts.masterSyncId), saveRequestOptions).catch(() => {});
-                        }, 42);
+                    }
+                    if (artifacts.masterSyncMissing && !isSilentAutoSave) {
+                        showToast('Publish Warning', 'Completed in Sales Office, but the linked app row was not found so AV could not update yet.', true);
                     }
                     const shouldQueueGenericCatchup = !isLagSensitiveDetailPrefix(prefix);
                     if (shouldQueueGenericCatchup) deferNonCriticalWork('dataset-catchup', () => queueVisibleDatasetCatchup(POST_SAVE_DATASET_CATCHUP_MS), 96);
@@ -22488,6 +22680,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                         if (prefix === 'req-') itemToSave.REQ_STATUS = 'Complete';
                     }
                     if (completionArtifacts && completionArtifacts.soPayload) applyOptimisticSalesOfficeArtifacts(completionArtifacts);
+                    if (completionArtifacts && completionArtifacts.masterSyncPayload) applyOptimisticMasterSyncArtifacts(completionArtifacts, prefix);
                     if (prefix === 'req-' && isCurrentView && detailWasVisible && lastView === 'request') nextRequestId = getNextRequestDetailId(itemToSave.UNIQUE_ID);
                     if (canOptimisticallyCompleteQueueRow && isCurrentView && detailWasVisible && lastView === 'tasks') nextTaskId = getNextTaskDetailId(itemToSave.UNIQUE_ID);
                     if (isCurrentView && detailWasVisible) {
