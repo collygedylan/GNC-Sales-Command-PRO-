@@ -297,9 +297,9 @@ body.viewport-compact .app-av-card-thumb-action{font-size:.48rem;padding:.24rem 
         #drive-quick-request-bar{display:none !important;margin-bottom:0 !important}
         #team-selector{margin-bottom:.55rem !important}
         #view-detail .freeze-panel > .back-btn.amazon-hidden-back{display:none}
-#view-detail #det-season-content,#view-detail #det-location-content,#view-detail #det-notes-content,#view-detail #det-request-content,#view-detail #det-docks-content,#view-detail #det-flyer-content{max-width:780px;margin:0 auto;padding:.85rem 0 calc(12rem + env(safe-area-inset-bottom))}
-#view-detail #det-season-content>div,#view-detail #det-location-content>div,#view-detail #det-notes-content>div,#view-detail #det-request-content>div,#view-detail #det-docks-content>div,#view-detail #det-flyer-content>div{background:#fff;border:1px solid #dbe4dc;border-radius:20px;padding:14px 14px;box-shadow:0 10px 24px rgba(15,23,42,.06);margin-bottom:14px}
-#view-detail #det-season-content>div:last-child,#view-detail #det-location-content>div:last-child,#view-detail #det-notes-content>div:last-child,#view-detail #det-request-content>div:last-child,#view-detail #det-docks-content>div:last-child,#view-detail #det-flyer-content>div:last-child{margin-bottom:0}
+#view-detail #det-season-content,#view-detail #det-location-content,#view-detail #det-notes-content,#view-detail #det-request-content,#view-detail #det-ncr-content,#view-detail #det-docks-content,#view-detail #det-flyer-content{max-width:780px;margin:0 auto;padding:.85rem 0 calc(12rem + env(safe-area-inset-bottom))}
+#view-detail #det-season-content>div,#view-detail #det-location-content>div,#view-detail #det-notes-content>div,#view-detail #det-request-content>div,#view-detail #det-ncr-content>div,#view-detail #det-docks-content>div,#view-detail #det-flyer-content>div{background:#fff;border:1px solid #dbe4dc;border-radius:20px;padding:14px 14px;box-shadow:0 10px 24px rgba(15,23,42,.06);margin-bottom:14px}
+#view-detail #det-season-content>div:last-child,#view-detail #det-location-content>div:last-child,#view-detail #det-notes-content>div:last-child,#view-detail #det-request-content>div:last-child,#view-detail #det-ncr-content>div:last-child,#view-detail #det-docks-content>div:last-child,#view-detail #det-flyer-content>div:last-child{margin-bottom:0}
 #view-detail #det-title-row{display:flex;align-items:baseline;gap:.45rem;min-width:0;flex-wrap:nowrap;overflow:hidden;color:#007a4d}
 #view-detail #det-title-row>*{white-space:nowrap}
 #view-detail #det-common{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:clamp(1.35rem,5.4vw,2.4rem);line-height:1.04}
@@ -511,6 +511,27 @@ body.viewport-compact #view-detail #det-location{font-size:clamp(.9rem,3.8vw,1.1
             </div>
         </div>
     </div>
+    <div id="ncr-email-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4" onclick="if(event.target===this) closeNcrEmailModal('cancel')">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-lg text-left">
+            <div class="flex items-start justify-between gap-3 mb-4 border-b border-gray-100 pb-3">
+                <div>
+                    <div class="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-amber-700"><i class="ph-bold ph-envelope-simple text-sm"></i>New Crop Release</div>
+                    <h3 class="mt-3 text-lg font-black text-slate-900">Send this completed row to JD?</h3>
+                    <div id="ncr-email-modal-label" class="mt-1 text-[11px] font-semibold text-slate-500"></div>
+                </div>
+                <button type="button" class="text-gray-500 font-bold py-2 px-3" onclick="closeNcrEmailModal('cancel')">Close</button>
+            </div>
+            <p class="text-sm leading-6 text-slate-600">
+                Choose <span class="font-black text-[#007a4d]">Yes, Send Email</span> to upload NCR photos to the private bucket and email JD the completed row details.
+                Choose <span class="font-black text-slate-700">No, Mark Done Only</span> to finish the row privately without sending an email.
+            </p>
+            <div class="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                <button type="button" class="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-gray-600 shadow-sm active:scale-95" onclick="closeNcrEmailModal('cancel')">Cancel</button>
+                <button type="button" class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-slate-700 shadow-sm active:scale-95" onclick="closeNcrEmailModal('done')">No, Mark Done Only</button>
+                <button type="button" id="ncr-email-yes-btn" class="rounded-xl border border-emerald-200 bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95" onclick="closeNcrEmailModal('email')">Yes, Send Email</button>
+            </div>
+        </div>
+    </div>
     <div id="request-rep-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center flex flex-col max-h-[90vh] overflow-hidden">
             <div id="step-1-rep" class="flex flex-col min-h-0">
@@ -645,7 +666,7 @@ body.viewport-compact #view-detail #det-location{font-size:clamp(.9rem,3.8vw,1.1
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-    <div id="header-version" class="nav-version-pill">V2026.04.20.17</div>
+    <div id="header-version" class="nav-version-pill">V2026.04.20.18</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -903,6 +924,10 @@ body.viewport-compact #view-detail #det-location{font-size:clamp(.9rem,3.8vw,1.1
 
                 <div id="view-review" class="hidden">
                     <div class="freeze-panel">
+                    <div id="review-search-container" class="sticky-search relative mb-2">
+                        <input type="text" id="review-search" class="input-field w-full pr-10 !mb-0" placeholder="Search New Crop Release..." oninput="handleReviewSearch()" onkeydown="dismissSearchKeyboard(event)">
+                        <i id="review-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearReviewSearch()"></i>
+                    </div>
                     <div id="review-crumb" class="text-xs font-bold text-[#007a4d] mb-3"></div>
                     </div>
                     <div id="review-content"></div>
@@ -930,6 +955,7 @@ body.viewport-compact #view-detail #det-location{font-size:clamp(.9rem,3.8vw,1.1
                     </div>
                     <div id="det-tabs-container" class="detail-tabs hidden">
                         <div class="detail-tab active" onclick="switchDetailTab('overview')" id="dtab-overview">Item Details</div>
+                        <div class="detail-tab hidden" onclick="switchDetailTab('ncr')" id="dtab-ncr">New Crop Release</div>
                         <div class="detail-tab hidden" onclick="switchDetailTab('season')" id="dtab-season">Season</div>
                         <div class="detail-tab hidden" onclick="switchDetailTab('location')" id="dtab-location">Location</div>
                         <div class="detail-tab hidden" onclick="switchDetailTab('request')" id="dtab-request">Request</div>
@@ -1029,6 +1055,22 @@ body.viewport-compact #view-detail #det-location{font-size:clamp(.9rem,3.8vw,1.1
                         </div>
                         <div id="req-matching-inventory-container"></div>
                     </div>
+                    <div id="det-ncr-content" class="hidden py-4">
+                        <div id="ncr-photo-preview" class="mb-4 hidden"><p class="text-[10px] font-bold text-amber-600 mb-2 uppercase">NCR Draft Photos</p><div id="ncr-photo-list-container" class="space-y-2"></div></div>
+                        <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-ncr" class="bg-amber-50 border-2 border-dashed border-amber-400 text-amber-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="handleNcrPhotoSelect(this)"></label></div>
+                        <div id="ncr-input-container">
+                            <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="ncr-spec" class="input-field" placeholder="e.g. 24-30 inch" oninput="handleNcrDraftInput('spec', this.value)"></div>
+                            <div id="ncr-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="ncr-caliper" class="input-field" placeholder="e.g. 2 inch" oninput="handleNcrDraftInput('caliper', this.value)"></div>
+                            <div class="mb-3 relative"><label class="text-[10px] font-bold text-gray-500 uppercase">LOC MATCH %</label><input type="number" id="ncr-match" class="input-field !mb-0 pr-20" placeholder="e.g. 95" oninput="handleNcrMatchInput(this.value)"><div id="ncr-match-display" class="pointer-events-none absolute right-3 bottom-3 text-[10px] font-bold text-[#007a4d] hidden">LOC PHOTO MATCH: <span id="ncr-match-qty-val">0</span></div></div>
+                        </div>
+                        <div><label class="text-[10px] font-bold text-blue-700 uppercase">AV Note</label><input type="text" id="ncr-av-note" class="input-field border-blue-500 bg-blue-50 uppercase" placeholder="TYPE AV NOTE..." oninput="this.value=this.value.toUpperCase(); handleNcrDraftInput('avNote', this.value)"></div>
+                        <div><label class="text-[10px] font-bold text-gray-500 uppercase">Reserve</label><select id="ncr-reserve" class="input-field bg-white" onchange="handleNcrDraftInput('reserve', this.value)"><option value="NO">NO</option><option value="YES">YES</option></select></div>
+                        <div><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="ncr-pick" class="input-field" placeholder="e.g. Needs spacing" oninput="handleNcrDraftInput('pick', this.value)"></div>
+                        <div><label class="text-[10px] font-bold text-gray-500 uppercase">Comments</label><textarea id="ncr-comments" class="input-field resize-y" placeholder="Any additional comments..." oninput="handleNcrDraftInput('comments', this.value)"></textarea></div>
+                        <div class="mt-4">
+                            <button id="ncr-btn-save-complete" class="w-full bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform" onclick="saveNcrCompletion()">DONE</button>
+                        </div>
+                    </div>
                     <div id="det-docks-content" class="hidden py-4">
                         <div id="dock-photo-preview" class="mb-4 hidden"><p class="text-[10px] font-bold text-orange-600 mb-2 uppercase">Photos on file</p><div id="dock-photo-list-container" class="space-y-2"></div></div>
                         <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-dock" class="bg-orange-50 border-2 border-dashed border-orange-500 text-orange-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="handlePhotoUpload(this, 'dock-')"></label></div>
@@ -1098,6 +1140,8 @@ body.viewport-compact #view-detail #det-location{font-size:clamp(.9rem,3.8vw,1.1
             'flyer-': 'flyer_photos',
             'default': 'flyer_photos'
         };
+        const NCR_PHOTO_BUCKET = 'ncr';
+        const NCR_COMPLETION_FALLBACK_STORAGE_KEY = 'gnc_ncr_completed_rows_v1';
         const esc = (s) => String(s || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || '').trim() || 'local-shell';
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
@@ -4717,6 +4761,98 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             })();
             return salesOfficeOrderSchemaPromise;
         }
+        function maybeWarnNcrCompletionSchemaMissing() {
+            if (ncrCompletionSchemaWarningShown || !currentUser) return;
+            ncrCompletionSchemaWarningShown = true;
+            showToast('Schema Required', 'Run ncr_completions_migration.sql in Supabase to enable private New Crop Release completion tracking across devices.', true);
+        }
+
+        function loadFallbackNcrCompletedRows(force = false) {
+            if (!force && fallbackNcrCompletedRowIds.size) return fallbackNcrCompletedRowIds;
+            fallbackNcrCompletedRowIds = new Set();
+            try {
+                const parsed = JSON.parse(localStorage.getItem(NCR_COMPLETION_FALLBACK_STORAGE_KEY) || '[]');
+                if (Array.isArray(parsed)) {
+                    parsed.forEach((value) => {
+                        const uid = String(value || '').trim();
+                        if (uid) fallbackNcrCompletedRowIds.add(uid);
+                    });
+                }
+            } catch (error) {}
+            return fallbackNcrCompletedRowIds;
+        }
+
+        function persistFallbackNcrCompletedRows() {
+            try {
+                localStorage.setItem(NCR_COMPLETION_FALLBACK_STORAGE_KEY, JSON.stringify(Array.from(fallbackNcrCompletedRowIds)));
+            } catch (error) {}
+        }
+
+        async function ensureNcrCompletionSchemaReady(force = false) {
+            if (ncrCompletionSchemaReady === true && !force) return true;
+            if (ncrCompletionSchemaReady === false && !force) return false;
+            if (ncrCompletionSchemaPromise && !force) return ncrCompletionSchemaPromise;
+            ncrCompletionSchemaPromise = (async () => {
+                if (navigator.onLine === false) return false;
+                try {
+                    await supabaseFetch(NCR_COMPLETIONS_TABLE, 'GET', null, `select=${NCR_COMPLETION_SELECT_FIELDS}&limit=1`);
+                    ncrCompletionSchemaReady = true;
+                    return true;
+                } catch (error) {
+                    const normalizedError = String(error && error.message ? error.message : error || '').toLowerCase();
+                    if (normalizedError.includes('v2_ncr_completions') || normalizedError.includes('source_unique_id') || normalizedError.includes('emailed_jd') || normalizedError.includes('relation') || normalizedError.includes('column')) {
+                        ncrCompletionSchemaReady = false;
+                        maybeWarnNcrCompletionSchemaMissing();
+                        return false;
+                    }
+                    return false;
+                } finally {
+                    ncrCompletionSchemaPromise = null;
+                }
+            })();
+            return ncrCompletionSchemaPromise;
+        }
+
+        async function ensureNcrCompletionIndexLoaded(force = false) {
+            loadFallbackNcrCompletedRows();
+            if (ncrCompletionsLoaded && !force) return true;
+            if (ncrCompletionLoadPromise && !force) return ncrCompletionLoadPromise;
+            ncrCompletionLoadPromise = (async () => {
+                const schemaReady = await ensureNcrCompletionSchemaReady(force);
+                if (!schemaReady) {
+                    ncrCompletionsLoaded = true;
+                    return false;
+                }
+                try {
+                    const rows = await supabaseFetch(NCR_COMPLETIONS_TABLE, 'GET', null, `select=${NCR_COMPLETION_SELECT_FIELDS}&order=completed_at.desc`);
+                    ncrCompletionRecordsByUid = new Map();
+                    (Array.isArray(rows) ? rows : []).forEach((row) => {
+                        const uid = String(firstNonEmptyValue(row && row.source_unique_id, '')).trim();
+                        if (!uid) return;
+                        ncrCompletionRecordsByUid.set(uid, {
+                            source_unique_id: uid,
+                            itemcode: String(firstNonEmptyValue(row && row.itemcode, '')).trim(),
+                            locationcode: String(firstNonEmptyValue(row && row.locationcode, '')).trim(),
+                            completed_by: String(firstNonEmptyValue(row && row.completed_by, '')).trim(),
+                            completed_at: String(firstNonEmptyValue(row && row.completed_at, '')).trim(),
+                            emailed_jd: !!(row && row.emailed_jd)
+                        });
+                    });
+                    ncrCompletionsLoaded = true;
+                    return true;
+                } catch (error) {
+                    const normalizedError = String(error && error.message ? error.message : error || '').toLowerCase();
+                    if (normalizedError.includes('v2_ncr_completions') || normalizedError.includes('source_unique_id') || normalizedError.includes('emailed_jd') || normalizedError.includes('relation') || normalizedError.includes('column')) {
+                        ncrCompletionSchemaReady = false;
+                        maybeWarnNcrCompletionSchemaMissing();
+                    }
+                    return false;
+                } finally {
+                    ncrCompletionLoadPromise = null;
+                }
+            })();
+            return ncrCompletionLoadPromise;
+        }
         function maybeWarnProductivitySchemaMissing() {
             if (productivityHistorySchemaWarningShown || !currentUser) return;
             productivityHistorySchemaWarningShown = true;
@@ -5137,6 +5273,9 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
 
         let fullInventory=[]; let avOpenInventory=[]; let avHotPriceKeysInventory=[]; let lowStockInventory=[]; let socInventory=[]; let reservesInventory=[]; let requestsInventory=[]; let optimisticRequestIds=new Set(); let optimisticCompletedRowIds=new Set(); let managerReviewInventory=[]; let salesOfficeInventory=[]; let cavInventory=[]; let avNotesDb=[]; let avNotesCommonNameIndex=new Map(); let avNotesCommonNameIndexVersion=-1; let avNoteFilterTimers={}; let avNoteFilterResultCache=new Map(); let avNoteRenderedKeys={};
         let masterInventoryById=new Map(); let masterInventoryByExactKey=new Map(); let lowStockInventoryDirty=true; let managerReviewInventoryDirty=true;
+        let reviewSearchTerm=''; let ncrDraftState=new Map(); let ncrCompletionRecordsByUid=new Map(); let optimisticNcrCompletedRowIds=new Set(); let fallbackNcrCompletedRowIds=new Set();
+        let ncrCompletionSchemaReady=null; let ncrCompletionSchemaPromise=null; let ncrCompletionSchemaWarningShown=false; let ncrCompletionLoadPromise=null; let ncrCompletionsLoaded=false;
+        let ncrEmailPromptResolver=null;
         let loginPrefetchPromise=null;
         let loginPrefetchMode='';
         let datasetLoadState=createDatasetLoadState();
@@ -5410,8 +5549,11 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
         const REQUEST_EMAIL_THREAD_TABLE = 'v2_request_email_threads';
         const REQUEST_EMAIL_THREAD_SELECT_FIELDS = 'request_folder,request_customer,sales_rep_name,sales_rep_email,recipients,initial_thread_id,initial_message_id,initial_email_sent_at,last_reply_sent_at,status,metadata';
         const REQUEST_EMAIL_INTERNAL_RECIPIENTS = Object.freeze(['dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com']);
+        const NCR_COMPLETIONS_TABLE = 'v2_ncr_completions';
+        const NCR_COMPLETION_SELECT_FIELDS = 'source_unique_id,itemcode,locationcode,completed_by,completed_at,emailed_jd';
+        const NCR_EMAIL_RECIPIENTS = Object.freeze(['jd_jones@greenleafnursery.com']);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-        const APP_VERSION = 'V2026.04.20.17';
+        const APP_VERSION = 'V2026.04.20.18';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -6586,17 +6728,40 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
             return `<div class="rounded-[1.5rem] border border-emerald-100 bg-white p-4 shadow-sm"><div class="flex flex-col gap-3"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">NCR</div><div class="mt-1 text-lg font-black text-slate-900 leading-tight break-words">${safeName}</div><div class="mt-1 text-sm font-semibold text-slate-500 break-words">${safeSize}</div><div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-600">Item ${safeItemCode}</span><span class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-700">Current ${esc(group.currentSeason || '')}</span><span class="rounded-full border border-red-200 bg-red-50 px-3 py-1 text-red-600">Min S_LTS ${minSltsLabel}</span><span class="rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-600">${esc(String(group.rowCount || 0))} Row${group.rowCount === 1 ? '' : 's'}</span></div></div><div class="rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-3"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Current ${esc(group.currentSeason || '')} Location Codes</div><div class="mt-1 text-sm font-bold text-slate-800 break-words">${currentLocationsLabel}</div></div><div><div class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500 mb-2">Future Season Location Codes</div><div class="space-y-2">${futureHtml}</div></div></div></div>`;
         }
 
+        function getNcrSourceUniqueId(itemOrUid = null) {
+            if (typeof itemOrUid === 'string') return String(itemOrUid || '').trim();
+            return String(firstNonEmptyValue(itemOrUid && itemOrUid.UNIQUE_ID, itemOrUid && itemOrUid.unique_id, '')).trim();
+        }
+
+        function isNcrCompletedUid(uid = '') {
+            const safeUid = getNcrSourceUniqueId(uid);
+            if (!safeUid) return false;
+            loadFallbackNcrCompletedRows();
+            return optimisticNcrCompletedRowIds.has(safeUid) || fallbackNcrCompletedRowIds.has(safeUid) || ncrCompletionRecordsByUid.has(safeUid);
+        }
+
         function ensureManagerReviewInventoryBuilt() {
             if (!managerReviewInventoryDirty) return managerReviewInventory;
+            if (!ncrCompletionsLoaded && !ncrCompletionLoadPromise) {
+                ensureNcrCompletionIndexLoaded().then(() => {
+                    managerReviewInventoryDirty = true;
+                    markViewDirty('review');
+                    queueInteractiveViewRender('review', false, false, 0, 120);
+                }).catch(() => {});
+            }
             const itemCodesWithPositiveSlts = new Set();
             fullInventory.forEach((item) => {
                 const itemCode = String(firstNonEmptyValue(item.ITEMCODE, item.ITEM, '')).trim();
                 if (!itemCode) return;
+                const uid = getNcrSourceUniqueId(item);
+                if (uid && isNcrCompletedUid(uid)) return;
                 const sltsValue = parseAppNumber(firstNonEmptyValue(item.S_LTS, item.s_lts, ''));
                 if (sltsValue != null && sltsValue > 0) itemCodesWithPositiveSlts.add(itemCode);
             });
             let nextIndex = 0;
             managerReviewInventory = fullInventory.reduce((rows, item) => {
+                const uid = getNcrSourceUniqueId(item);
+                if (uid && isNcrCompletedUid(uid)) return rows;
                 const itemCode = String(firstNonEmptyValue(item.ITEMCODE, item.ITEM, '')).trim();
                 if (!itemCodesWithPositiveSlts.has(itemCode)) return rows;
                 const seasonCode = String(firstNonEmptyValue(item.SEASON, item.season, '')).trim().toUpperCase();
@@ -6608,6 +6773,42 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
             }, []);
             managerReviewInventoryDirty = false;
             return managerReviewInventory;
+        }
+
+        function getReviewSearchableText(item = null) {
+            if (!item) return '';
+            return [
+                firstNonEmptyValue(item.COMMONNAME, item.commonname, ''),
+                firstNonEmptyValue(item.ITEMCODE, item.itemcode, item.ITEM, ''),
+                firstNonEmptyValue(item.CONTSIZE, item.contsize, ''),
+                firstNonEmptyValue(item.LOCATIONCODE, item.locationcode, ''),
+                firstNonEmptyValue(item.LOTCODE, item.lotcode, '')
+            ].map((value) => String(value || '').trim()).filter(Boolean).join(' ').toUpperCase();
+        }
+
+        function filterReviewItemsBySearch(items = []) {
+            const normalizedTerm = normalizeSearchValue(reviewSearchTerm);
+            if (!normalizedTerm) return Array.isArray(items) ? items.slice() : [];
+            return (Array.isArray(items) ? items : []).filter((item) => getReviewSearchableText(item).includes(normalizedTerm));
+        }
+
+        function getReviewDrilldownItems(itemCode = selectedReviewItemCode) {
+            const safeItemCode = String(itemCode || '').trim();
+            if (!safeItemCode) return [];
+            let detailIndex = 0;
+            const items = fullInventory.reduce((rows, item) => {
+                if (String(item.ITEMCODE || '') !== safeItemCode) return rows;
+                const uid = getNcrSourceUniqueId(item);
+                if (uid && isNcrCompletedUid(uid)) return rows;
+                const sltsValue = parseAppNumber(firstNonEmptyValue(item.S_LTS, item.s_lts, ''));
+                if (sltsValue != null && sltsValue > 0) rows.push({ ...item, DOM_ID: 'mr_detail_' + detailIndex++ });
+                return rows;
+            }, []);
+            return filterReviewItemsBySearch(items).sort((a,b) => {
+                const locationCompare = String(a.LOCATIONCODE || "").localeCompare(String(b.LOCATIONCODE || ""), undefined, {numeric: true});
+                if (locationCompare !== 0) return locationCompare;
+                return String(a.LOTCODE || "").localeCompare(String(b.LOTCODE || ""), undefined, {numeric: true});
+            });
         }
 
         function findLinkedMasterRow(item) {
@@ -6885,6 +7086,10 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
                 return;
             }
             showToast('Restricted', 'You cannot update this row.', true);
+        }
+
+        function canEditNcrWorkflow() {
+            return canAccessView('review');
         }
         function getPendingRequestCount() {
             let items = getScopedRequestItems(requestsInventory);
@@ -10584,6 +10789,23 @@ function toggleDriveQuickRequestItem(domId) {
             if (shouldRender) scheduleReviewRender();
         }
 
+        function clearReviewSearch() {
+            const input = document.getElementById('review-search');
+            if (input) input.value = '';
+            reviewSearchTerm = '';
+            const clearBtn = document.getElementById('review-search-clear');
+            if (clearBtn) clearBtn.classList.add('hidden');
+            scheduleTrackedSearchViewRender('review', 'review', '', { force: true, debounceDelay: 0 });
+        }
+
+        function handleReviewSearch() {
+            const input = document.getElementById('review-search');
+            reviewSearchTerm = input ? String(input.value || '').trim() : '';
+            const clearBtn = document.getElementById('review-search-clear');
+            if (clearBtn) clearBtn.classList.toggle('hidden', !reviewSearchTerm);
+            scheduleTrackedSearchViewRender('review', 'review', reviewSearchTerm);
+        }
+
         function selectReviewItem(itemCode, commonName, contSize) {
             selectedReviewItemCode = itemCode;
             selectedReviewCommonName = commonName;
@@ -10591,6 +10813,362 @@ function toggleDriveQuickRequestItem(domId) {
             reviewViewLevel = 1;
             scheduleReviewRender(0);
             queueScrollMainAreaToTop(`review-item:${itemCode}`);
+        }
+
+        function getNcrDraftDefaults(item = null) {
+            const standardPick = getStandardPickNoteForItem(item);
+            return {
+                avNote: String(firstNonEmptyValue(item && item.AV_NOTE, '') || '').trim().toUpperCase(),
+                match: String(firstNonEmptyValue(item && item.MATCH, '') || '').trim(),
+                spec: String(firstNonEmptyValue(item && item.SPEC, '') || '').trim(),
+                caliper: String(firstNonEmptyValue(item && item.CALIPER, '') || '').trim(),
+                reserve: String(firstNonEmptyValue(item && item.REQ_RESERVE, 'NO') || 'NO').trim().toUpperCase() === 'YES' ? 'YES' : 'NO',
+                pick: String(firstNonEmptyValue(item && item.PICK, standardPick, '') || '').trim(),
+                comments: String(firstNonEmptyValue(item && item.SALES_NOTE, item && item.SALESNOTE, '') || '').trim(),
+                photos: []
+            };
+        }
+
+        function getNcrDraft(item = activeItem, create = true) {
+            const uid = getNcrSourceUniqueId(item);
+            if (!uid) return null;
+            if (!ncrDraftState.has(uid) && create) ncrDraftState.set(uid, getNcrDraftDefaults(item));
+            return ncrDraftState.get(uid) || null;
+        }
+
+        function clearNcrDraft(item = activeItem) {
+            const uid = getNcrSourceUniqueId(item);
+            if (!uid || !ncrDraftState.has(uid)) return;
+            const draft = ncrDraftState.get(uid);
+            (draft && Array.isArray(draft.photos) ? draft.photos : []).forEach((entry) => {
+                const previewUrl = String(entry && entry.previewUrl || '').trim();
+                if (previewUrl.startsWith('blob:')) {
+                    try { URL.revokeObjectURL(previewUrl); } catch (error) {}
+                }
+            });
+            ncrDraftState.delete(uid);
+        }
+
+        function getNcrDraftPhotoEntries(item = activeItem) {
+            const draft = getNcrDraft(item, false);
+            return draft && Array.isArray(draft.photos) ? draft.photos : [];
+        }
+
+        function getNcrDraftDisplayPhotoUrls(item = activeItem) {
+            return getNcrDraftPhotoEntries(item).map((entry) => String(firstNonEmptyValue(entry && entry.uploadedUrl, entry && entry.previewUrl, '')).trim()).filter(Boolean);
+        }
+
+        function updateNcrMatchPreview(item = activeItem) {
+            const draft = getNcrDraft(item, false);
+            const matchEl = document.getElementById('ncr-match');
+            const displayEl = document.getElementById('ncr-match-display');
+            const valEl = document.getElementById('ncr-match-qty-val');
+            const nextValue = String(firstNonEmptyValue(draft && draft.match, matchEl && matchEl.value, '') || '').trim();
+            if (matchEl && matchEl.value !== nextValue) matchEl.value = nextValue;
+            if (nextValue) {
+                const qty = calculateLocMatchQtyValue(item, nextValue);
+                if (qty == null) {
+                    if (displayEl) displayEl.classList.add('hidden');
+                    return;
+                }
+                if (valEl) valEl.innerText = qty;
+                if (displayEl) displayEl.classList.remove('hidden');
+            } else if (displayEl) {
+                displayEl.classList.add('hidden');
+            }
+        }
+
+        function renderNcrDraftPhotos(item = activeItem) {
+            const wrap = document.getElementById('ncr-photo-preview');
+            const container = document.getElementById('ncr-photo-list-container');
+            if (!wrap || !container) return;
+            const entries = getNcrDraftPhotoEntries(item);
+            if (!entries.length) {
+                container.innerHTML = '';
+                wrap.classList.add('hidden');
+                return;
+            }
+            container.innerHTML = `<div class="flex gap-2 overflow-x-auto pb-2">${entries.map((entry, index) => {
+                const imageUrl = esc(firstNonEmptyValue(entry && entry.uploadedUrl, entry && entry.previewUrl, ''));
+                const label = esc(String(firstNonEmptyValue(entry && entry.uploadedName, entry && entry.fileName, `PHOTO ${index + 1}`)).trim());
+                const statusLabel = String(entry && entry.uploadedUrl || '').trim() ? 'Uploaded' : 'Ready to Send';
+                return `<div class="relative shrink-0"><img src="${imageUrl}" class="w-20 h-20 object-cover rounded-lg border border-gray-300 shadow-sm" loading="lazy" decoding="async"><button type="button" class="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-white border border-red-200 text-red-500 text-xs font-black shadow-sm active:scale-95" onclick="removeNcrDraftPhoto(${index})">X</button><div class="mt-1 text-[9px] font-bold text-slate-500 text-center uppercase">${label}</div><div class="mt-1 text-[9px] font-bold text-emerald-600 text-center uppercase">${esc(statusLabel)}</div></div>`;
+            }).join('')}</div>`;
+            wrap.classList.remove('hidden');
+        }
+
+        function syncNcrDraftInputs(item = activeItem) {
+            const draft = getNcrDraft(item);
+            if (!draft) return;
+            const isTree = item && item.PLANTGROUPCODE && String(item.PLANTGROUPCODE).includes('330_TREES');
+            const isCaliperSize = item && ["#7","#10","#15","#25","#45"].includes(item.CONTSIZE);
+            const caliperWrap = document.getElementById('ncr-container-caliper');
+            if (caliperWrap) caliperWrap.classList.toggle('hidden', !(isTree && isCaliperSize));
+            const avNote = document.getElementById('ncr-av-note'); if (avNote) avNote.value = draft.avNote || '';
+            const match = document.getElementById('ncr-match'); if (match) match.value = draft.match || '';
+            const spec = document.getElementById('ncr-spec'); if (spec) spec.value = draft.spec || '';
+            const caliper = document.getElementById('ncr-caliper'); if (caliper) caliper.value = draft.caliper || '';
+            const reserve = document.getElementById('ncr-reserve'); if (reserve) reserve.value = draft.reserve || 'NO';
+            const pick = document.getElementById('ncr-pick'); if (pick) pick.value = draft.pick || '';
+            const comments = document.getElementById('ncr-comments'); if (comments) comments.value = draft.comments || '';
+            updateNcrMatchPreview(item);
+            renderNcrDraftPhotos(item);
+        }
+
+        function handleNcrDraftInput(field = '', value = '') {
+            if (!canEditNcrWorkflow() || !activeItem) return;
+            const draft = getNcrDraft(activeItem);
+            if (!draft) return;
+            if (field === 'avNote') draft.avNote = String(value || '').trim().toUpperCase();
+            else if (field === 'reserve') draft.reserve = String(value || 'NO').trim().toUpperCase() === 'YES' ? 'YES' : 'NO';
+            else draft[field] = String(value || '').trim();
+            if (field === 'match') updateNcrMatchPreview(activeItem);
+            renderPhotoGallery();
+        }
+
+        function handleNcrMatchInput(value = '') {
+            handleNcrDraftInput('match', value);
+        }
+
+        function removeNcrDraftPhoto(index = -1) {
+            if (!activeItem) return false;
+            const draft = getNcrDraft(activeItem, false);
+            if (!draft || !Array.isArray(draft.photos)) return false;
+            const targetIndex = Number(index);
+            if (!Number.isFinite(targetIndex) || targetIndex < 0 || targetIndex >= draft.photos.length) return false;
+            const [removed] = draft.photos.splice(targetIndex, 1);
+            const previewUrl = String(removed && removed.previewUrl || '').trim();
+            if (previewUrl.startsWith('blob:')) {
+                try { URL.revokeObjectURL(previewUrl); } catch (error) {}
+            }
+            renderNcrDraftPhotos(activeItem);
+            renderPhotoGallery();
+            return false;
+        }
+
+        function handleNcrPhotoSelect(input) {
+            if (!canEditNcrWorkflow()) {
+                showToast('Restricted', 'You cannot update this New Crop Release row.', true);
+                if (input) input.value = '';
+                return;
+            }
+            if (!activeItem || !input || !input.files || !input.files.length) return;
+            markCameraActivity();
+            const file = input.files[0];
+            const previewUrl = URL.createObjectURL(file);
+            const draft = getNcrDraft(activeItem);
+            if (!draft) return;
+            draft.photos.push({
+                id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+                file,
+                previewUrl,
+                fileName: String(file && file.name || `ncr-photo-${draft.photos.length + 1}.jpg`).trim(),
+                mimeType: String(file && file.type || 'image/jpeg').trim(),
+                uploadedUrl: '',
+                uploadedName: ''
+            });
+            renderNcrDraftPhotos(activeItem);
+            renderPhotoGallery();
+            input.value = '';
+        }
+
+        function getNcrEmailModalRowLabel(item = activeItem) {
+            if (!item) return '';
+            return [
+                String(firstNonEmptyValue(item.COMMONNAME, 'Unknown Item')).trim(),
+                String(firstNonEmptyValue(item.CONTSIZE, '')).trim(),
+                String(firstNonEmptyValue(item.LOCATIONCODE, '')).trim()
+            ].filter(Boolean).join(' • ');
+        }
+
+        function closeNcrEmailModal(choice = 'cancel') {
+            const modal = document.getElementById('ncr-email-modal');
+            if (modal) modal.classList.add('hidden');
+            const resolver = ncrEmailPromptResolver;
+            ncrEmailPromptResolver = null;
+            if (resolver) resolver(String(choice || 'cancel').trim().toLowerCase() || 'cancel');
+        }
+
+        function openNcrEmailModal(item = activeItem) {
+            const modal = document.getElementById('ncr-email-modal');
+            if (!modal) return Promise.resolve('cancel');
+            const label = document.getElementById('ncr-email-modal-label');
+            if (label) label.textContent = getNcrEmailModalRowLabel(item);
+            if (ncrEmailPromptResolver) {
+                const previousResolver = ncrEmailPromptResolver;
+                ncrEmailPromptResolver = null;
+                previousResolver('cancel');
+            }
+            modal.classList.remove('hidden');
+            return new Promise((resolve) => {
+                ncrEmailPromptResolver = resolve;
+                const yesBtn = document.getElementById('ncr-email-yes-btn');
+                if (yesBtn) setTimeout(() => yesBtn.focus(), 0);
+            });
+        }
+
+        function buildNcrCompletionRecord(item = activeItem, emailedJd = false) {
+            return {
+                source_unique_id: getNcrSourceUniqueId(item),
+                itemcode: String(firstNonEmptyValue(item && item.ITEMCODE, '')).trim() || null,
+                locationcode: String(firstNonEmptyValue(item && item.LOCATIONCODE, '')).trim() || null,
+                completed_by: String(currentUserDisplay || currentUser || 'Unknown').trim() || null,
+                completed_at: new Date().toISOString(),
+                emailed_jd: !!emailedJd
+            };
+        }
+
+        async function persistNcrCompletionRecord(record = null) {
+            const safeRecord = record && typeof record === 'object' ? record : null;
+            const uid = getNcrSourceUniqueId(safeRecord && safeRecord.source_unique_id);
+            if (!safeRecord || !uid) throw new Error('Missing NCR completion record.');
+            const schemaReady = await ensureNcrCompletionSchemaReady();
+            if (schemaReady) {
+                await supabaseFetch(NCR_COMPLETIONS_TABLE, 'POST', safeRecord, 'on_conflict=source_unique_id');
+            } else {
+                maybeWarnNcrCompletionSchemaMissing();
+            }
+            fallbackNcrCompletedRowIds.add(uid);
+            persistFallbackNcrCompletedRows();
+            ncrCompletionRecordsByUid.set(uid, { ...safeRecord, source_unique_id: uid, emailed_jd: !!safeRecord.emailed_jd });
+            ncrCompletionsLoaded = true;
+            return true;
+        }
+
+        function finalizeNcrCompletion(record = null, item = activeItem) {
+            const uid = getNcrSourceUniqueId(record && record.source_unique_id);
+            if (!uid) return false;
+            optimisticNcrCompletedRowIds.delete(uid);
+            managerReviewInventoryDirty = true;
+            const sameItemCode = String(firstNonEmptyValue(item && item.ITEMCODE, '')).trim();
+            if (reviewViewLevel === 1 && sameItemCode && String(selectedReviewItemCode || '') === sameItemCode && !getReviewDrilldownItems(sameItemCode).length) {
+                resetReviewView(false);
+            }
+            clearNcrDraft(item);
+            markViewDirty('review');
+            scheduleReviewRender(0);
+            if (getCurrentVisibleViewId() === 'detail') goBackFromDetail();
+            return true;
+        }
+
+        async function uploadNcrDraftPhotos(item = activeItem) {
+            const draft = getNcrDraft(item);
+            if (!draft) return [];
+            const uploadedUrls = [];
+            for (const entry of (draft.photos || [])) {
+                if (!entry) continue;
+                if (String(entry.uploadedUrl || '').trim()) {
+                    uploadedUrls.push(String(entry.uploadedUrl).trim());
+                    continue;
+                }
+                if (!entry.file) continue;
+                const clean = (value) => String(value || 'NA').replace(/[^a-zA-Z0-9_-]/g, '');
+                const originalName = String(entry.fileName || 'ncr-photo.jpg').trim();
+                const extMatch = originalName.match(/(\.[a-z0-9]+)$/i);
+                const extension = extMatch ? extMatch[1].toLowerCase() : '.jpg';
+                const fileName = `${clean(firstNonEmptyValue(item && item.ITEMCODE, item && item.COMMONNAME, 'NCR'))}-${clean(firstNonEmptyValue(item && item.LOCATIONCODE, 'ROW'))}-${Date.now()}${extension}`;
+                const filePath = `${new Date().toISOString().split('T')[0]}/${fileName}`;
+                const uploadResult = await withTimeout(
+                    supabaseClient.storage.from(NCR_PHOTO_BUCKET).upload(filePath, entry.file, {
+                        contentType: entry.mimeType || entry.file.type || 'application/octet-stream',
+                        upsert: true
+                    }),
+                    SUPABASE_UPLOAD_TIMEOUT_MS,
+                    'NCR photo upload'
+                );
+                const uploadError = uploadResult && uploadResult.error ? uploadResult.error : null;
+                if (uploadError) throw uploadError;
+                const { data: publicUrlData } = supabaseClient.storage.from(NCR_PHOTO_BUCKET).getPublicUrl(filePath);
+                const publicUrl = String(publicUrlData && publicUrlData.publicUrl || '').trim();
+                if (!publicUrl) throw new Error('Could not resolve NCR photo URL.');
+                entry.uploadedUrl = publicUrl;
+                entry.uploadedName = fileName;
+                uploadedUrls.push(publicUrl);
+                markPhotoPersistActivity();
+            }
+            return uploadedUrls;
+        }
+
+        function buildNcrEmailItemPayload(item = activeItem, photoUrls = []) {
+            const draft = getNcrDraft(item);
+            const matchValue = String(firstNonEmptyValue(draft && draft.match, '')).trim();
+            const locMatchQty = calculateLocMatchQtyValue(item, matchValue);
+            return {
+                commonname: String(firstNonEmptyValue(item && item.COMMONNAME, 'Unknown Item')).trim(),
+                contsize: String(firstNonEmptyValue(item && item.CONTSIZE, '-')).trim(),
+                itemcode: String(firstNonEmptyValue(item && item.ITEMCODE, '')).trim(),
+                loc: String(firstNonEmptyValue(item && item.LOCATIONCODE, '')).trim(),
+                locationcode: String(firstNonEmptyValue(item && item.LOCATIONCODE, '')).trim(),
+                lotcode: String(firstNonEmptyValue(item && item.LOTCODE, '')).trim(),
+                season: String(firstNonEmptyValue(item && item.SEASON, '')).trim(),
+                s_lts: String(firstNonEmptyValue(item && item.S_LTS, '')).trim(),
+                spec: String(firstNonEmptyValue(draft && draft.spec, '')).trim(),
+                caliper: String(firstNonEmptyValue(draft && draft.caliper, '')).trim(),
+                match: matchValue,
+                loc_match_qty: locMatchQty == null ? '' : String(locMatchQty),
+                av_note: String(firstNonEmptyValue(draft && draft.avNote, '')).trim(),
+                reserve: String(firstNonEmptyValue(draft && draft.reserve, 'NO')).trim(),
+                pick_note: String(firstNonEmptyValue(draft && draft.pick, '')).trim(),
+                comments: String(firstNonEmptyValue(draft && draft.comments, '')).trim(),
+                photo: (photoUrls || []).map((url) => String(url || '').trim()).filter(Boolean).join(',')
+            };
+        }
+
+        async function sendNcrCompletionEmail(item = activeItem, photoUrls = []) {
+            const payload = {
+                type: 'email',
+                emailType: 'ncr_complete',
+                subject: `GNC PARK HILL: New Crop Release (${String(firstNonEmptyValue(item && item.ITEMCODE, 'NCR')).trim()})`,
+                folderId: getNcrSourceUniqueId(item),
+                requestFolder: getNcrSourceUniqueId(item),
+                customer: 'New Crop Release',
+                itemsCount: 1,
+                completedBy: String(currentUserDisplay || currentUser || 'Unknown').trim(),
+                recipientEmails: NCR_EMAIL_RECIPIENTS.slice(),
+                recipients: NCR_EMAIL_RECIPIENTS.map((email) => ({ email, role: 'internal' })),
+                requestItems: [buildNcrEmailItemPayload(item, photoUrls)]
+            };
+            const responseData = await postGoogleScriptJsonPayload(payload, REQUEST_EMAIL_SCRIPT_TIMEOUT_MS, 'NCR Email');
+            if (responseData && responseData.ok === false) {
+                throw new Error(String(firstNonEmptyValue(responseData.message, 'NCR email failed.')).trim());
+            }
+            return responseData;
+        }
+
+        async function saveNcrCompletion() {
+            if (!activeItem) return false;
+            if (!canEditNcrWorkflow()) {
+                showToast('Restricted', 'You cannot update this New Crop Release row.', true);
+                return false;
+            }
+            const item = activeItem;
+            const button = document.getElementById('ncr-btn-save-complete');
+            if (button) button.innerText = 'WORKING...';
+            try {
+                const choice = await openNcrEmailModal(item);
+                if (choice === 'cancel') return false;
+                let emailedJd = false;
+                let photoUrls = [];
+                if (choice === 'email') {
+                    if (button) button.innerText = 'UPLOADING...';
+                    photoUrls = await uploadNcrDraftPhotos(item);
+                    if (button) button.innerText = 'SENDING...';
+                    await sendNcrCompletionEmail(item, photoUrls);
+                    emailedJd = true;
+                }
+                if (button) button.innerText = 'FINALIZING...';
+                const record = buildNcrCompletionRecord(item, emailedJd);
+                await persistNcrCompletionRecord(record);
+                finalizeNcrCompletion(record, item);
+                showToast('Success', emailedJd ? 'New Crop Release row emailed to JD and marked done.' : 'New Crop Release row marked done.');
+                return true;
+            } catch (error) {
+                console.error('NCR completion failed', error);
+                showToast('Error', error && error.message ? error.message : 'Could not complete this New Crop Release row.', true);
+                return false;
+            } finally {
+                if (button) button.innerText = 'DONE';
+            }
         }
 
         function resetRequestView(shouldRender = true) {
@@ -14660,6 +15238,7 @@ function toggleDriveQuickRequestItem(domId) {
             const camReq = document.getElementById('camera-btn-req');
             const camDock = document.getElementById('camera-btn-dock');
             const camFlyer = document.getElementById('camera-btn-flyer');
+            const camNcr = document.getElementById('camera-btn-ncr');
 
             [
                 [camSsn, 'ssn-'],
@@ -14671,6 +15250,7 @@ function toggleDriveQuickRequestItem(domId) {
             ].forEach(([el, prefix]) => {
                 if (el) el.style.display = canEditRowDetails(prefix) ? 'flex' : 'none';
             });
+            if (camNcr) camNcr.style.display = sourceView === 'review' && canEditNcrWorkflow() ? 'flex' : 'none';
 
             if (sourceView === 'tasks') {
                 const taskDetailTab = getTaskDetailTabForItem(taskContextItem, activeTaskTab);
@@ -14704,7 +15284,7 @@ function toggleDriveQuickRequestItem(domId) {
         function reorderVisibleDetailTabs(primaryTab = '') {
             const detTabsContainer = document.getElementById('det-tabs-container');
             if (!detTabsContainer) return;
-            const baseOrder = ['dtab-overview','dtab-notes','dtab-season','dtab-location','dtab-request','dtab-docks','dtab-flyer','dtab-gallery'];
+            const baseOrder = ['dtab-overview','dtab-ncr','dtab-notes','dtab-season','dtab-location','dtab-request','dtab-docks','dtab-flyer','dtab-gallery'];
             const desiredOrder = [];
             const primaryId = primaryTab ? `dtab-${primaryTab}` : '';
             if (primaryId && baseOrder.includes(primaryId)) desiredOrder.push(primaryId);
@@ -14894,6 +15474,10 @@ function toggleDriveQuickRequestItem(domId) {
                 document.getElementById('dtab-overview').classList.remove('hidden');
                 document.getElementById('dtab-request').classList.remove('hidden');
                 document.getElementById('dtab-gallery').classList.remove('hidden');
+            } else if (detailSourceView === 'review') {
+                document.getElementById('dtab-overview').classList.remove('hidden');
+                document.getElementById('dtab-ncr').classList.remove('hidden');
+                document.getElementById('dtab-gallery').classList.remove('hidden');
             } else {
                 document.getElementById('dtab-overview').classList.remove('hidden');
             }
@@ -14910,6 +15494,8 @@ function toggleDriveQuickRequestItem(domId) {
                 primaryDetailTab = 'request';
             } else if (detailSourceView === 'docks') {
                 primaryDetailTab = 'docks';
+            } else if (detailSourceView === 'review') {
+                primaryDetailTab = 'ncr';
             } else if (detailSourceView === 'low-stock') {
                 if (assignment === 'season') primaryDetailTab = 'season';
                 else if (assignment === 'location') primaryDetailTab = 'location';
@@ -14975,11 +15561,14 @@ function toggleDriveQuickRequestItem(domId) {
             } catch (error) {
                 console.error('Detail photo gallery render failed', error);
             }
+            if (detailSourceView === 'review') syncNcrDraftInputs(activeItem);
 
             if (detailSourceView === 'tasks' && activeTaskTab) {
                 switchDetailTab(getTaskDetailTabForItem(activeItem, activeTaskTab));
             } else if (detailSourceView === 'request') {
                 switchDetailTab('request');
+            } else if (detailSourceView === 'review') {
+                switchDetailTab('ncr');
             } else if (detailSourceView === 'av' && activeAVTab === 'reserves') {
                 switchDetailTab('request');
             } else {
@@ -15072,6 +15661,7 @@ function toggleDriveQuickRequestItem(domId) {
             makeThumbs(rLink || sLink, 'req-photo-list-container', 'req-photo-preview', 'req-', allowPhotoEdits('req-') && !!(rLink || sLink || getPendingPhotoPreviewEntries(activeItem, 'req-').length), 'Request Photos');
             makeThumbs(dLink || sLink, 'dock-photo-list-container', 'dock-photo-preview', 'dock-', allowPhotoEdits('dock-') && !!(dLink || sLink || getPendingPhotoPreviewEntries(activeItem, 'dock-').length), 'Dock Photos');
             makeThumbs(fLink || sLink, 'flyer-photo-list-container', 'flyer-photo-preview', 'flyer-', allowPhotoEdits('flyer-') && !!(fLink || sLink || getPendingPhotoPreviewEntries(activeItem, 'flyer-').length), 'Flyer Photos');
+            renderNcrDraftPhotos(activeItem);
             refreshProtectedSections();
         }
         function getEffectivePhotoFieldState(prefix, item = activeItem) {
@@ -15378,6 +15968,8 @@ function toggleDriveQuickRequestItem(domId) {
                 { label: 'Dock Photos', link: getDisplayPhotoLinkCsv(activeItem.DOCK_PHOTO_LINK || '', activeItem, 'dock') },
                 { label: 'Flyer Photos', link: getDisplayPhotoLinkCsv(activeItem.FLYER_PHOTO_LINK || '', activeItem, 'flyer') }
             ];
+            const ncrDraftUrls = getNcrDraftDisplayPhotoUrls(activeItem);
+            if (ncrDraftUrls.length) photoGroups.push({ label: 'NCR Draft Photos', link: ncrDraftUrls.join(',') });
 
             let html = '';
             photoGroups.forEach(group => {
@@ -15417,6 +16009,7 @@ function toggleDriveQuickRequestItem(domId) {
             document.getElementById('det-season-content').classList.add('hidden');
             document.getElementById('det-location-content').classList.add('hidden');
             document.getElementById('det-request-content').classList.add('hidden');
+            document.getElementById('det-ncr-content').classList.add('hidden');
             document.getElementById('det-notes-content').classList.add('hidden');
             document.getElementById('det-docks-content').classList.add('hidden');
             document.getElementById('det-flyer-content').classList.add('hidden');
@@ -15425,6 +16018,7 @@ function toggleDriveQuickRequestItem(domId) {
             const contentEl = document.getElementById('det-' + tab + '-content');
             if(contentEl) contentEl.classList.remove('hidden');
             if (tab === 'overview' && activeItem) renderDriveDetailOverviewFields();
+            if (tab === 'ncr' && activeItem) syncNcrDraftInputs(activeItem);
             queueScrollMainAreaToTop(`detail-tab:${tab}`);
         }
 
@@ -22054,6 +22648,10 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (ensureViewDataForRender('review')) return;
             const container = document.getElementById('review-content');
             const crumb = document.getElementById('review-crumb');
+            const searchInput = document.getElementById('review-search');
+            if (searchInput && searchInput.value !== reviewSearchTerm) searchInput.value = reviewSearchTerm;
+            const clearBtn = document.getElementById('review-search-clear');
+            if (clearBtn) clearBtn.classList.toggle('hidden', !String(reviewSearchTerm || '').trim());
             const reviewItems = ensureManagerReviewInventoryBuilt();
             if(reviewItems.length === 0){
                 container.innerHTML = `<div class="p-8 text-center text-gray-400">No items require New Crop Release review.</div>`;
@@ -22062,7 +22660,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             }
             if(reviewViewLevel === 0){
                 let groups = {};
-                reviewItems.forEach(i => {
+                filterReviewItemsBySearch(reviewItems).forEach(i => {
                     let code = i.ITEMCODE || "UNKNOWN";
                     if(!groups[code]) {
                         groups[code] = {code: code, name: i.COMMONNAME || "Unknown", size: i.CONTSIZE || "-", count: 0};
@@ -22074,16 +22672,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     return `<div class="bg-yellow-50 border border-yellow-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectReviewItem('${esc(group.code)}', '${esc(group.name)}', '${esc(group.size)}')"><div class="flex-grow min-w-0 pr-3"><div class="font-bold text-[15px] text-yellow-800 truncate">${group.name}</div><div class="text-xs font-semibold text-yellow-600 mt-1">${group.size} <span class="mx-2 text-yellow-300">|</span> <span class="font-mono text-yellow-700">${group.code}</span></div></div><div class="bg-white px-3 py-1 rounded-lg shadow-sm border border-yellow-100 text-yellow-600 font-bold text-xs whitespace-nowrap">${group.count} Locs</div></div>`;
                 }, { approxCardHeight: 92, emptyHtml: `<div class="p-8 text-center text-gray-400">No items require New Crop Release review.</div>` });
             } else if(reviewViewLevel === 1){
-                let detailIndex = 0;
-                let items = fullInventory.reduce((rows, item) => {
-                    if (String(item.ITEMCODE || '') !== String(selectedReviewItemCode || '')) return rows;
-                    const sltsValue = parseAppNumber(firstNonEmptyValue(item.S_LTS, item.s_lts, ''));
-                    if (sltsValue != null && sltsValue > 0) {
-                        rows.push({ ...item, DOM_ID: 'mr_detail_' + detailIndex++ });
-                    }
-                    return rows;
-                }, []);
-                items.sort((a,b) => String(a.LOCATIONCODE || "").localeCompare(String(b.LOCATIONCODE || ""), undefined, {numeric: true}));
+                let items = getReviewDrilldownItems(selectedReviewItemCode);
                 renderMarkupChunkedByKey('review-detail', container, crumb, items, `${selectedReviewCommonName} / ${selectedReviewContSize}`, (item) => generateCard(item, 'review', 'status-yellow'), {
                     prefixHtml: `<div class="back-btn" onclick="resetReviewView()"><i class="ph-bold ph-arrow-left"></i> Back to List</div>`,
                     approxCardHeight: 305,
