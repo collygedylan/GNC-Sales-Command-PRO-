@@ -10551,95 +10551,70 @@ function toggleDriveQuickRequestItem(domId) {
             if (mode === 'critical' || mode === 'supplemental') return true;
             return refreshLoadedDatasets(mode === 'full' || mode === 'force');
         }
-        function applyMasterAppTabAssignments(items = []) {
-            let icGroups = {};
-            items.forEach(item => {
-                let eStr = String(item.END_CAP_FOLDER || '').toUpperCase().trim();
-                let hasEndCap = (eStr !== '' && eStr !== 'NULL' && eStr !== 'N/A' && eStr !== '-');
-                if (hasEndCap) {
+        function hasUsableEndCapFolderValue(value = '') {
+            const text = String(value || '').trim().toUpperCase();
+            return text !== '' && text !== 'NULL' && text !== 'N/A' && text !== '-';
+        }
+        function getSingleDigitSeasonPriority(item = null) {
+            const priorityText = String(firstNonEmptyValue(item && item.PRIORITY, item && item.priority, '') || '').trim();
+            return /^[1-9]$/.test(priorityText) ? parseInt(priorityText, 10) : null;
+        }
+        function getSeasonWinnerPtrAvailable(item = null) {
+            return parseAppNumber(firstNonEmptyValue(item && item.PTRAVAILABLE, item && item.ptravailable, '0'));
+        }
+        function isOpenMasterSeasonCandidate(item = null) {
+            if (!item) return false;
+            if (hasUsableEndCapFolderValue(firstNonEmptyValue(item.END_CAP_FOLDER, item.end_cap_folder, ''))) return false;
+            if (hasCompletionDateValue(item) || isOptimisticallyCompletedRow(item)) return false;
+            return getSingleDigitSeasonPriority(item) != null;
+        }
+        function compareSeasonWinnerCandidates(a, b) {
+            const priorityA = getSingleDigitSeasonPriority(a);
+            const priorityB = getSingleDigitSeasonPriority(b);
+            const safePriorityA = Number.isFinite(priorityA) ? priorityA : 999;
+            const safePriorityB = Number.isFinite(priorityB) ? priorityB : 999;
+            if (safePriorityA !== safePriorityB) return safePriorityA - safePriorityB;
+            const ptrA = getSeasonWinnerPtrAvailable(a);
+            const ptrB = getSeasonWinnerPtrAvailable(b);
+            if (ptrA !== ptrB) return ptrB - ptrA;
+            const locationCompare = compareLocationCodeValues(
+                firstNonEmptyValue(a && a.LOCATIONCODE, a && a.locationcode, ''),
+                firstNonEmptyValue(b && b.LOCATIONCODE, b && b.locationcode, '')
+            );
+            if (locationCompare !== 0) return locationCompare;
+            return String(firstNonEmptyValue(a && a.UNIQUE_ID, '')).localeCompare(String(firstNonEmptyValue(b && b.UNIQUE_ID, '')));
+        }
+        function assignSeasonWinnersForItemGroups(items = [], allowedItemCodes = null) {
+            const allowedCodes = allowedItemCodes instanceof Set ? allowedItemCodes : null;
+            const itemGroups = new Map();
+            (Array.isArray(items) ? items : []).forEach((item) => {
+                if (!item) return;
+                const itemCode = String(firstNonEmptyValue(item.ITEMCODE, item.itemcode, 'UNKNOWN')).trim().toUpperCase();
+                if (!itemCode || itemCode === 'UNKNOWN') return;
+                if (allowedCodes && !allowedCodes.has(itemCode)) return;
+                if (hasUsableEndCapFolderValue(firstNonEmptyValue(item.END_CAP_FOLDER, item.end_cap_folder, ''))) {
                     item.APP_TAB_ASSIGNMENT = 'endcap';
-                } else {
-                    let prio = String(item.PRIORITY || '').toUpperCase().trim();
-                    if (prio && prio !== 'NULL' && prio !== 'N/A' && prio !== '-') {
-                        let ic = String(item.ITEMCODE || 'UNKNOWN').trim().toUpperCase();
-                        if (!icGroups[ic]) icGroups[ic] = [];
-                        icGroups[ic].push(item);
-                    } else {
-                        item.APP_TAB_ASSIGNMENT = 'location';
-                    }
+                    return;
                 }
+                if (!itemGroups.has(itemCode)) itemGroups.set(itemCode, []);
+                itemGroups.get(itemCode).push(item);
             });
-
-            for (let ic in icGroups) {
-                let rows = icGroups[ic];
-                let eligible = rows.filter(r => {
-                    let ptr = parseFloat(String(r.PTRAVAILABLE).replace(/,/g,'')) || 0;
-                    let ss = parseFloat(String(r.SEASONSUPPLY || r.SEASON_SUPPLY).replace(/,/g,'')) || 0;
-                    return ptr > (0.10 * ss);
+            itemGroups.forEach((rows) => {
+                const candidates = rows.filter((row) => isOpenMasterSeasonCandidate(row)).sort(compareSeasonWinnerCandidates);
+                const winner = candidates.length ? candidates[0] : null;
+                rows.forEach((row) => {
+                    row.APP_TAB_ASSIGNMENT = winner && row.UNIQUE_ID === winner.UNIQUE_ID ? 'season' : 'location';
                 });
-                let pool = eligible.length > 0 ? eligible : rows;
-                pool.sort((a,b) => {
-                    let pa = parseFloat(a.PRIORITY); if (isNaN(pa)) pa = 999;
-                    let pb = parseFloat(b.PRIORITY); if (isNaN(pb)) pb = 999;
-                    if (pa !== pb) return pa - pb;
-                    let ptra = parseFloat(String(a.PTRAVAILABLE).replace(/,/g,'')) || 0;
-                    let ptrb = parseFloat(String(b.PTRAVAILABLE).replace(/,/g,'')) || 0;
-                    return ptrb - ptra;
-                });
-                let winner = pool[0];
-                rows.forEach(r => {
-                    if (r.UNIQUE_ID === winner.UNIQUE_ID) r.APP_TAB_ASSIGNMENT = 'season';
-                    else r.APP_TAB_ASSIGNMENT = 'location';
-                });
-            }
+            });
+        }
+        function applyMasterAppTabAssignments(items = []) {
+            assignSeasonWinnersForItemGroups(items);
         }
 
         function applyMasterAppTabAssignmentsForItemCodes(items = [], itemCodes = []) {
             const normalizedCodes = new Set((Array.isArray(itemCodes) ? itemCodes : []).map((value) => String(value || '').trim().toUpperCase()).filter(Boolean));
             if (!normalizedCodes.size) return;
-            let icGroups = {};
-            items.forEach((item) => {
-                if (!item) return;
-                let ic = String(item.ITEMCODE || 'UNKNOWN').trim().toUpperCase();
-                if (!ic || !normalizedCodes.has(ic)) return;
-                let eStr = String(item.END_CAP_FOLDER || '').toUpperCase().trim();
-                let hasEndCap = (eStr !== '' && eStr !== 'NULL' && eStr !== 'N/A' && eStr !== '-');
-                if (hasEndCap) {
-                    item.APP_TAB_ASSIGNMENT = 'endcap';
-                    return;
-                }
-                let prio = String(item.PRIORITY || '').toUpperCase().trim();
-                if (prio && prio !== 'NULL' && prio !== 'N/A' && prio !== '-') {
-                    if (!icGroups[ic]) icGroups[ic] = [];
-                    icGroups[ic].push(item);
-                } else {
-                    item.APP_TAB_ASSIGNMENT = 'location';
-                }
-            });
-
-            normalizedCodes.forEach((ic) => {
-                let rows = icGroups[ic] || [];
-                if (!rows.length) return;
-                let eligible = rows.filter(r => {
-                    let ptr = parseFloat(String(r.PTRAVAILABLE).replace(/,/g,'')) || 0;
-                    let ss = parseFloat(String(r.SEASONSUPPLY || r.SEASON_SUPPLY).replace(/,/g,'')) || 0;
-                    return ptr > (0.10 * ss);
-                });
-                let pool = eligible.length > 0 ? eligible : rows;
-                pool.sort((a,b) => {
-                    let pa = parseFloat(a.PRIORITY); if (isNaN(pa)) pa = 999;
-                    let pb = parseFloat(b.PRIORITY); if (isNaN(pb)) pb = 999;
-                    if (pa !== pb) return pa - pb;
-                    let ptra = parseFloat(String(a.PTRAVAILABLE).replace(/,/g,'')) || 0;
-                    let ptrb = parseFloat(String(b.PTRAVAILABLE).replace(/,/g,'')) || 0;
-                    return ptrb - ptra;
-                });
-                let winner = pool[0];
-                rows.forEach(r => {
-                    if (r.UNIQUE_ID === winner.UNIQUE_ID) r.APP_TAB_ASSIGNMENT = 'season';
-                    else r.APP_TAB_ASSIGNMENT = 'location';
-                });
-            });
+            assignSeasonWinnersForItemGroups(items, normalizedCodes);
         }
 
         function buildAvOpenInventoryFromMasterItems(items = []) {
@@ -23222,15 +23197,15 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (!seasonRows.length) return [];
             const qualifyingItemCodes = new Set((Array.isArray(cavInventory) ? cavInventory : [])
                 .filter((item) => {
-                    const itemCode = String(firstNonEmptyValue(item && item.ITEMCODE, item && item.itemcode, '')).trim();
+                    const itemCode = String(firstNonEmptyValue(item && item.ITEMCODE, item && item.itemcode, '')).trim().toUpperCase();
                     const seasonValue = normalizeSeasonTaskValue(firstNonEmptyValue(item && item.SEASON, item && item.season, ''));
                     const holdStopReason = firstNonEmptyValue(item && item.HOLDSTOPREASON, item && item.holdstopreason, item && item.HOLD_STOP_REASON, item && item.hold_stop_reason, item && item.HOLDREASON, item && item.holdreason, '');
                     return !!itemCode && seasonValue === 'S1' && isBlankishCavValue(holdStopReason);
                 })
-                .map((item) => String(firstNonEmptyValue(item && item.ITEMCODE, item && item.itemcode, '')).trim())
+                .map((item) => String(firstNonEmptyValue(item && item.ITEMCODE, item && item.itemcode, '')).trim().toUpperCase())
                 .filter(Boolean));
             if (!qualifyingItemCodes.size) return [];
-            return seasonRows.filter((item) => qualifyingItemCodes.has(String(firstNonEmptyValue(item && item.ITEMCODE, item && item.itemcode, '')).trim()));
+            return seasonRows.filter((item) => qualifyingItemCodes.has(String(firstNonEmptyValue(item && item.ITEMCODE, item && item.itemcode, '')).trim().toUpperCase()));
         }
 
         function buildResolvedTaskState() {
