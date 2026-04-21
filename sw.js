@@ -2,8 +2,8 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_URL = './index.html?shellv=V2026.04.21.04';
-const CACHE_NAME = 'greenleaf-v4.2-rebuild-V2026.04.21.04';
+const APP_SHELL_URL = './index.html?shellv=V2026.04.21.05';
+const CACHE_NAME = 'greenleaf-v4.2-rebuild-V2026.04.21.05';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -39,19 +39,28 @@ self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET' || !event.request.url.startsWith('http')) return;
   if (event.request.mode === 'navigate') {
     event.respondWith(
-      fetch(event.request).then((networkResponse) => {
-        if (networkResponse && networkResponse.status === 200) {
-          const responseClone = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(APP_SHELL_URL, responseClone)).catch(() => {});
+      (async () => {
+        try {
+          const networkResponse = await fetch(APP_SHELL_URL, { cache: 'no-store' });
+          if (networkResponse && networkResponse.status === 200) {
+            const responseClone = networkResponse.clone();
+            const responseCloneForIndex = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => Promise.all([
+              cache.put(APP_SHELL_URL, responseClone),
+              cache.put('./index.html', responseCloneForIndex)
+            ])).catch(() => {});
+          }
+          return networkResponse;
+        } catch (error) {
         }
-        return networkResponse;
-      }).catch(async () => {
         const cachedShell = await caches.match(APP_SHELL_URL);
         if (cachedShell) return cachedShell;
+        const cachedRequestedShell = await caches.match(event.request);
+        if (cachedRequestedShell) return cachedRequestedShell;
         const cachedIndex = await caches.match('./index.html');
         if (cachedIndex) return cachedIndex;
         return Response.error();
-      })
+      })()
     );
     return;
   }

@@ -670,7 +670,7 @@ body.viewport-compact #view-detail #det-location{font-size:clamp(.9rem,3.8vw,1.1
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-<div id="header-version" class="nav-version-pill">V2026.04.21.04</div>
+<div id="header-version" class="nav-version-pill">V2026.04.21.05</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -1152,6 +1152,9 @@ body.viewport-compact #view-detail #det-location{font-size:clamp(.9rem,3.8vw,1.1
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
         const APP_SHELL_QUERY_PARAM = 'shellv';
         const APP_BOOTED_VERSION_STORAGE_KEY = 'gnc_app_version_booted_v1';
+        const APP_SHELL_TARGET_BUILD_STORAGE_KEY = 'gnc_app_shell_target_build_v1';
+        const APP_SHELL_FORCE_REFRESH_STORAGE_KEY = 'gnc_app_shell_force_refresh_v1';
+        const APP_SHELL_MANIFEST_CHECK_TTL_MS = 15000;
         const DB_NAME="GNC_DDC_DB_V2"; const STORE_NAME="inventory_cache";
         const IOS_DEVICE_REGEX = /iPad|iPhone|iPod/;
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
@@ -1255,6 +1258,9 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
         let pendingPhotoUploads = new Map();
         let pendingPhotoPreviews = new Map();
         let pendingPhotoPersistTimers = Object.create(null);
+        let latestShellManifestInfoCache = null;
+        let latestShellManifestInfoPromise = null;
+        let latestShellManifestInfoAt = 0;
         const searchFilterCache = new WeakMap();
         window.pendingPhotoUploads = pendingPhotoUploads;
         let lastUserInteractionAt = Date.now();
@@ -2028,6 +2034,179 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
             } catch (e) {}
         }
 
+        function extractShellBuildFromUrl(urlValue = '') {
+            const safeUrlValue = String(urlValue || '').trim();
+            if (!safeUrlValue) return '';
+            try {
+                return String(new URL(safeUrlValue, window.location.href).searchParams.get(APP_SHELL_QUERY_PARAM) || '').trim();
+            } catch (error) {
+                return '';
+            }
+        }
+
+        function getCurrentShellUrlBuild() {
+            return extractShellBuildFromUrl(window.location.href);
+        }
+
+        function getStoredTargetShellBuild() {
+            try {
+                return String(localStorage.getItem(APP_SHELL_TARGET_BUILD_STORAGE_KEY) || '').trim();
+            } catch (error) {
+                return '';
+            }
+        }
+
+        function setStoredTargetShellBuild(build = '') {
+            const safeBuild = String(build || '').trim();
+            try {
+                if (safeBuild) {
+                    localStorage.setItem(APP_SHELL_TARGET_BUILD_STORAGE_KEY, safeBuild);
+                } else {
+                    localStorage.removeItem(APP_SHELL_TARGET_BUILD_STORAGE_KEY);
+                }
+            } catch (error) {}
+        }
+
+        function clearShellForceRefreshMarkerIfCurrent(build = '') {
+            const safeBuild = String(build || '').trim();
+            try {
+                const existing = String(sessionStorage.getItem(APP_SHELL_FORCE_REFRESH_STORAGE_KEY) || '').trim();
+                if (!safeBuild || existing === safeBuild) {
+                    sessionStorage.removeItem(APP_SHELL_FORCE_REFRESH_STORAGE_KEY);
+                }
+            } catch (error) {}
+        }
+
+        function logShellDiagnostics(context = '', extra = {}) {
+            const safeContext = String(context || '').trim() || 'shell';
+            const payload = {
+                context: safeContext,
+                appVersion: String(typeof APP_VERSION === 'string' ? APP_VERSION : '').trim(),
+                appBuild: String(APP_SHELL_BUILD || '').trim(),
+                urlBuild: getCurrentShellUrlBuild(),
+                storedBuild: (() => {
+                    try { return String(localStorage.getItem(APP_SHELL_BUILD_STORAGE_KEY) || '').trim(); } catch (error) { return ''; }
+                })(),
+                storedVersion: (() => {
+                    try { return String(localStorage.getItem(APP_BOOTED_VERSION_STORAGE_KEY) || '').trim(); } catch (error) { return ''; }
+                })(),
+                storedTargetBuild: getStoredTargetShellBuild(),
+                ...((extra && typeof extra === 'object') ? extra : {})
+            };
+            try { console.info('[Shell]', payload); } catch (error) {}
+            return payload;
+        }
+
+        function isShellReloadBlocked() {
+            return !!(
+                (document.body && document.body.classList.contains('detail-field-active'))
+                || hasActiveTextEntryFocus()
+                || shouldDeferInteractiveBackgroundWork()
+                || (window.pendingPhotoUploads && window.pendingPhotoUploads.size)
+                || window.backgroundRefreshInFlight
+                || window.googleScriptRunInFlight
+                || pendingRequestArchiveFlushInFlight
+            );
+        }
+
+        async function fetchLatestShellManifestInfo(force = false) {
+            const shouldForce = !!force;
+            const now = Date.now();
+            if (!shouldForce && latestShellManifestInfoCache && (now - latestShellManifestInfoAt) < APP_SHELL_MANIFEST_CHECK_TTL_MS) {
+                return latestShellManifestInfoCache;
+            }
+            if (!shouldForce && latestShellManifestInfoPromise) {
+                return latestShellManifestInfoPromise;
+            }
+            latestShellManifestInfoPromise = (async () => {
+                try {
+                    const response = await fetch(`./manifest.json?v=${encodeURIComponent(String(APP_SHELL_BUILD || '').trim() || 'shell')}&check=${now}`, {
+                        cache: 'no-store'
+                    });
+                    if (!response || !response.ok) throw new Error(`manifest fetch failed (${response ? response.status : 0})`);
+                    const manifest = await response.json();
+                    const startUrl = String(firstNonEmptyValue(manifest && manifest.start_url, manifest && manifest.startUrl, '')).trim();
+                    const build = extractShellBuildFromUrl(startUrl);
+                    const info = { startUrl, build };
+                    latestShellManifestInfoCache = info;
+                    latestShellManifestInfoAt = Date.now();
+                    return info;
+                } catch (error) {
+                    logShellDiagnostics('manifest-check-failed', {
+                        error: String(error && error.message ? error.message : error || '').trim()
+                    });
+                    return latestShellManifestInfoCache;
+                } finally {
+                    latestShellManifestInfoPromise = null;
+                }
+            })();
+            return latestShellManifestInfoPromise;
+        }
+
+        async function forceShellBuildReload(targetBuild = '', reason = '', options = {}) {
+            const safeTargetBuild = String(targetBuild || '').trim();
+            if (!safeTargetBuild) return false;
+            const safeReason = String(reason || '').trim() || 'shell-refresh';
+            const opts = options || {};
+            if (!opts.ignoreBusy && isShellReloadBlocked()) {
+                setStoredTargetShellBuild(safeTargetBuild);
+                logShellDiagnostics('shell-refresh-deferred', { reason: safeReason, targetBuild: safeTargetBuild });
+                return false;
+            }
+            const currentMarker = (() => {
+                try { return String(sessionStorage.getItem(APP_SHELL_FORCE_REFRESH_STORAGE_KEY) || '').trim(); } catch (error) { return ''; }
+            })();
+            if (!opts.allowRepeat && currentMarker === safeTargetBuild) {
+                logShellDiagnostics('shell-refresh-skipped-repeat', { reason: safeReason, targetBuild: safeTargetBuild });
+                return false;
+            }
+            try { sessionStorage.setItem(APP_SHELL_FORCE_REFRESH_STORAGE_KEY, safeTargetBuild); } catch (error) {}
+            setStoredTargetShellBuild(safeTargetBuild);
+            logShellDiagnostics('shell-refresh-start', { reason: safeReason, targetBuild: safeTargetBuild });
+            if (typeof window.showToast === 'function' && !document.hidden && !opts.silentToast) {
+                try { window.showToast('Updating', 'Updating app shell...', false); } catch (error) {}
+            }
+            try { syncShellBuildUrl(safeTargetBuild); } catch (error) {}
+            try { await clearBootCacheForShellUpdate(); } catch (error) {}
+            await new Promise((resolve) => setTimeout(resolve, Number(opts.delayMs) || 120));
+            try {
+                const nextUrl = new URL(window.location.href);
+                nextUrl.searchParams.set(APP_SHELL_QUERY_PARAM, safeTargetBuild);
+                nextUrl.searchParams.set('shellts', String(Date.now()));
+                window.location.replace(nextUrl.toString());
+            } catch (error) {
+                window.location.reload();
+            }
+            return true;
+        }
+
+        async function maybeForceLatestStandaloneShell(reason = '', options = {}) {
+            if (!isStandaloneApp()) return false;
+            if (navigator.onLine === false) return false;
+            const safeReason = String(reason || '').trim() || 'standalone-shell-check';
+            const opts = options || {};
+            const currentBuild = String(APP_SHELL_BUILD || '').trim();
+            const currentUrlBuild = getCurrentShellUrlBuild();
+            const storedTargetBuild = getStoredTargetShellBuild();
+            if (storedTargetBuild && storedTargetBuild === currentBuild) {
+                setStoredTargetShellBuild('');
+                clearShellForceRefreshMarkerIfCurrent(currentBuild);
+            }
+            const manifestInfo = await fetchLatestShellManifestInfo(!!opts.forceManifest);
+            const manifestBuild = String(firstNonEmptyValue(manifestInfo && manifestInfo.build, '')).trim();
+            logShellDiagnostics(safeReason, { manifestBuild, currentUrlBuild });
+            if (manifestBuild && manifestBuild !== currentBuild) {
+                return forceShellBuildReload(manifestBuild, `${safeReason}:manifest-mismatch`, opts);
+            }
+            if (storedTargetBuild && storedTargetBuild !== currentBuild) {
+                return forceShellBuildReload(storedTargetBuild, `${safeReason}:stored-target`, opts);
+            }
+            if (currentUrlBuild && currentUrlBuild !== currentBuild) {
+                return forceShellBuildReload(currentBuild, `${safeReason}:url-mismatch`, { ...opts, silentToast: true });
+            }
+            return false;
+        }
+
         function deleteAppCacheDatabase() {
             return new Promise((resolve) => {
                 try {
@@ -2060,26 +2239,49 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
             const currentVersion = (typeof APP_VERSION === 'string' && APP_VERSION.trim())
                 ? APP_VERSION.trim()
                 : currentBuild;
-
+            const currentUrlBuild = getCurrentShellUrlBuild();
             const previousBuild = localStorage.getItem(APP_SHELL_BUILD_STORAGE_KEY) || '';
             const refreshedBuild = sessionStorage.getItem(APP_SHELL_REFRESH_STORAGE_KEY) || '';
+            const storedTargetBuild = getStoredTargetShellBuild();
+            if (storedTargetBuild && storedTargetBuild === currentBuild) {
+                setStoredTargetShellBuild('');
+                clearShellForceRefreshMarkerIfCurrent(currentBuild);
+            }
             localStorage.setItem(APP_SHELL_BUILD_STORAGE_KEY, currentBuild);
             try { localStorage.setItem(APP_BOOTED_VERSION_STORAGE_KEY, currentVersion); } catch (e) {}
+            logShellDiagnostics('ensure-current-shell-build', { previousBuild, refreshedBuild, currentUrlBuild });
+
+            if (isStandaloneApp()) {
+                const recoveredStandaloneShell = await maybeForceLatestStandaloneShell('startup', { forceManifest: true });
+                if (recoveredStandaloneShell) return true;
+            }
+
+            if (currentUrlBuild && currentUrlBuild !== currentBuild && isStandaloneApp()) {
+                const forcedUrlSync = await forceShellBuildReload(currentBuild, 'startup:url-mismatch', { silentToast: true });
+                if (forcedUrlSync) return true;
+            }
 
             if (!previousBuild || previousBuild === currentBuild) {
                 if (refreshedBuild === currentBuild) {
                     sessionStorage.removeItem(APP_SHELL_REFRESH_STORAGE_KEY);
                 }
+                clearShellForceRefreshMarkerIfCurrent(currentBuild);
                 syncShellBuildUrl(currentBuild);
                 return false;
             }
 
             if (refreshedBuild === currentBuild) {
                 sessionStorage.removeItem(APP_SHELL_REFRESH_STORAGE_KEY);
+                clearShellForceRefreshMarkerIfCurrent(currentBuild);
                 syncShellBuildUrl(currentBuild);
                 return false;
             }
 
+            setStoredTargetShellBuild(currentBuild);
+            if (isStandaloneApp()) {
+                const forcedRefresh = await forceShellBuildReload(currentBuild, 'startup:build-mismatch');
+                if (forcedRefresh) return true;
+            }
             sessionStorage.setItem(APP_SHELL_REFRESH_STORAGE_KEY, currentBuild);
             syncShellBuildUrl(currentBuild);
             setTimeout(() => {
@@ -5815,7 +6017,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
         const NCR_COMPLETION_SELECT_FIELDS = 'source_unique_id,itemcode,locationcode,completed_by,completed_at,emailed_jd';
         const NCR_EMAIL_RECIPIENTS = Object.freeze(['jd_jones@greenleafnursery.com']);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-        const APP_VERSION = 'V2026.04.21.04';
+        const APP_VERSION = 'V2026.04.21.05';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -6088,8 +6290,10 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
         });
         window.addEventListener('pageshow', () => {
             ensureLoginInteractionHealth();
+            maybeForceLatestStandaloneShell('pageshow', { forceManifest: true }).catch(() => {});
         });
         window.addEventListener('online', () => {
+            maybeForceLatestStandaloneShell('online', { forceManifest: true }).catch(() => {});
             if (currentUser) {
                 flushPendingRequestArchives().catch(() => {});
                 schedulePendingRequestArchiveFlush(2800);
@@ -6113,7 +6317,10 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
             }
             if (document.hidden && pendingCachePersist) persistCurrentCache(true);
             if (document.hidden) flushPendingEditsCache(true);
-            if (!document.hidden) updateSyncDiagnostics();
+            if (!document.hidden) {
+                updateSyncDiagnostics();
+                maybeForceLatestStandaloneShell('foreground', { forceManifest: true, silentToast: true }).catch(() => {});
+            }
         });
 
         const DATASET_DEFINITIONS = {
@@ -24155,6 +24362,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             };
             navigator.serviceWorker.register('./sw.js?v=' + encodeURIComponent(shellBuild), { scope: './' }).then(reg => {
                 console.log('Service Worker Registered');
+                try { reg.update(); } catch (error) {}
                 if (reg.waiting) markShellUpdateReady(reg);
                 reg.addEventListener('updatefound', () => {
                     const installing = reg.installing;
@@ -24181,6 +24389,11 @@ ${folderNote ? `Folder Note: ${folderNote}
                 if (hasReloadedCurrentShell()) return;
                 markShellUpdateReady(window.__swReg);
                 if (document.hidden) setTimeout(tryApplyShellUpdateSilently, 80);
+                if (!document.hidden && typeof window.maybeForceLatestStandaloneShell === 'function') {
+                    setTimeout(() => {
+                        window.maybeForceLatestStandaloneShell('controllerchange', { forceManifest: true, silentToast: true }).catch(() => {});
+                    }, 120);
+                }
             });
             document.addEventListener('visibilitychange', () => {
                 if (document.hidden) {
@@ -24192,6 +24405,9 @@ ${folderNote ? `Folder Note: ${folderNote}
                 } else {
                     if (!window.__swUpdateIntervalId && window.__swReg) {
                         window.__swUpdateIntervalId = setInterval(() => { window.__swReg.update(); }, 1000 * 60 * 30);
+                    }
+                    if (window.__swReg) {
+                        try { window.__swReg.update(); } catch (error) {}
                     }
                 }
             }, { passive: true });
