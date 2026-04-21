@@ -319,6 +319,10 @@ body.viewport-compact #view-detail #det-location{font-size:clamp(.9rem,3.8vw,1.1
         #view-detail #req-comments{min-height:132px}
         body.detail-field-active #bottom-nav,body.detail-field-active #global-action-bar{opacity:0;pointer-events:none;transform:translateY(120%);transition:transform .18s ease,opacity .18s ease}
         body.detail-field-active #main-scroll-area{padding-bottom:calc(4rem + env(safe-area-inset-bottom))}
+        #view-login,#view-change-password{pointer-events:auto;isolation:isolate}
+        #view-login .login-card,#view-change-password .login-card{position:relative;z-index:1;pointer-events:auto}
+        #login-inputs,#loading-spinner{position:relative;z-index:2;pointer-events:auto}
+        #username-input,#pin-code,#login-button,#btn-fingerprint,#new-password,#confirm-password,#save-password-button{position:relative;z-index:3;pointer-events:auto;touch-action:manipulation}
         @media (min-width: 768px){
             .login-card{max-width:390px;border-radius:24px;box-shadow:0 24px 48px rgba(15,23,42,.2)}
             #main-scroll-area{padding-top:.35rem}
@@ -666,7 +670,7 @@ body.viewport-compact #view-detail #det-location{font-size:clamp(.9rem,3.8vw,1.1
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-    <div id="header-version" class="nav-version-pill">V2026.04.20.18</div>
+                    <div id="header-version" class="nav-version-pill">V2026.04.21.01</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -2138,6 +2142,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
             return false;
         }
         let lastUiActionAt = 0;
+        let loginUiHandlersBound = false;
         let photoModalState = {
             urls: [],
             index: 0,
@@ -2183,6 +2188,146 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
             }
             blurActiveField();
             return runUiActionOnce(() => submitNewPassword());
+        }
+
+        function isElementVisiblyShown(element) {
+            return !!element && !element.classList.contains('hidden') && getComputedStyle(element).display !== 'none';
+        }
+
+        function forceHideUiLayer(id) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.classList.add('hidden');
+            el.classList.remove('open');
+            if (id === 'drawer-overlay') el.style.display = '';
+        }
+
+        function closeLoginBlockingLayers() {
+            try { closePhotoModal(); } catch (e) {}
+            try { toggleMenu(false); } catch (e) {}
+            ['tab-select-modal', 'assign-modal', 'endcap-modal', 'dock-mistake-modal', 'dock-info-modal', 'sales-office-av-modal', 'request-publish-modal', 'ncr-email-modal', 'request-rep-modal', 'bloom-picker-modal', 'drawer-overlay', 'side-drawer'].forEach(forceHideUiLayer);
+        }
+
+        function resetLoginUiState() {
+            const loginView = document.getElementById('view-login');
+            const changePasswordView = document.getElementById('view-change-password');
+            const loginInputs = document.getElementById('login-inputs');
+            const spinner = document.getElementById('loading-spinner');
+            const loadingText = document.getElementById('loading-text');
+            const progressWrap = document.getElementById('login-progress-wrap');
+            const progressBar = document.getElementById('login-progress-bar');
+            const progressLabel = document.getElementById('login-progress-label');
+            const appWrapper = document.getElementById('app-wrapper');
+
+            closeLoginBlockingLayers();
+            setBootingSession(false);
+            clearInterval(fetchProgressInterval);
+            fetchProgressInterval = null;
+            activeFetches = 0;
+            currentProgress = 0;
+            initialAppLoadActive = false;
+            initialAppLoadComplete = false;
+            lastUiActionAt = 0;
+
+            if (appWrapper) appWrapper.classList.add('hidden');
+            if (loginView) loginView.style.display = 'flex';
+            if (changePasswordView) changePasswordView.style.display = 'none';
+            if (loginInputs) loginInputs.classList.remove('hidden');
+            if (spinner) spinner.classList.add('hidden');
+            if (loadingText) loadingText.innerText = 'Syncing Database...';
+            if (progressWrap) progressWrap.classList.add('hidden');
+            if (progressBar) progressBar.style.width = '0%';
+            if (progressLabel) progressLabel.innerText = 'Starting...';
+
+            ['username-input', 'pin-code', 'login-button', 'save-password-button', 'new-password', 'confirm-password'].forEach((id) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.disabled = false;
+                el.removeAttribute('aria-disabled');
+                el.classList.remove('opacity-60', 'cursor-not-allowed', 'cursor-wait');
+            });
+        }
+
+        function bindLoginUiEvent(element, key, type, handler, options) {
+            if (!element) return;
+            const prop = `__login_${key}_${type}`;
+            if (element[prop]) return;
+            element[prop] = true;
+            element.addEventListener(type, handler, options);
+        }
+
+        function bindLoginUiHandlers() {
+            if (loginUiHandlersBound) return;
+            loginUiHandlersBound = true;
+
+            const loginButton = document.getElementById('login-button');
+            const savePasswordButton = document.getElementById('save-password-button');
+            const usernameInput = document.getElementById('username-input');
+            const pinInput = document.getElementById('pin-code');
+            const newPasswordInput = document.getElementById('new-password');
+            const confirmPasswordInput = document.getElementById('confirm-password');
+
+            ['click', 'pointerup', 'touchend'].forEach((type) => {
+                bindLoginUiEvent(loginButton, 'login', type, triggerLoginFromUI, { passive: false });
+                bindLoginUiEvent(savePasswordButton, 'save-password', type, triggerPasswordChangeFromUI, { passive: false });
+            });
+
+            const bindFocusRecovery = (inputEl) => {
+                ['click', 'pointerup', 'touchend'].forEach((type) => {
+                    bindLoginUiEvent(inputEl, 'focus-recovery', type, () => {
+                        if (!inputEl || inputEl.disabled) return;
+                        closeLoginBlockingLayers();
+                        setTimeout(() => {
+                            try {
+                                inputEl.focus({ preventScroll: true });
+                            } catch (e) {
+                                inputEl.focus();
+                            }
+                        }, 0);
+                    }, { passive: true });
+                });
+            };
+
+            [usernameInput, pinInput, newPasswordInput, confirmPasswordInput].forEach(bindFocusRecovery);
+
+            bindLoginUiEvent(usernameInput, 'keydown', 'keydown', (event) => {
+                if (event.key !== 'Enter') return;
+                event.preventDefault();
+                const nextField = document.getElementById('pin-code');
+                if (nextField) nextField.focus();
+            });
+            bindLoginUiEvent(pinInput, 'keydown', 'keydown', (event) => {
+                if (event.key !== 'Enter') return;
+                triggerLoginFromUI(event);
+            });
+            bindLoginUiEvent(newPasswordInput, 'keydown', 'keydown', (event) => {
+                if (event.key !== 'Enter') return;
+                event.preventDefault();
+                const nextField = document.getElementById('confirm-password');
+                if (nextField) nextField.focus();
+            });
+            bindLoginUiEvent(confirmPasswordInput, 'keydown', 'keydown', (event) => {
+                if (event.key !== 'Enter') return;
+                triggerPasswordChangeFromUI(event);
+            });
+        }
+
+        function ensureLoginInteractionHealth(options = {}) {
+            const { forceReset = false } = options || {};
+            bindLoginUiHandlers();
+            const loginView = document.getElementById('view-login');
+            const changePasswordView = document.getElementById('view-change-password');
+            if (forceReset || isElementVisiblyShown(loginView)) {
+                resetLoginUiState();
+                return;
+            }
+            if (isElementVisiblyShown(changePasswordView)) {
+                closeLoginBlockingLayers();
+                ['save-password-button', 'new-password', 'confirm-password'].forEach((id) => {
+                    const el = document.getElementById(id);
+                    if (el) el.disabled = false;
+                });
+            }
         }
 
         function setBootingSession(isBooting) {
@@ -5553,7 +5698,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
         const NCR_COMPLETION_SELECT_FIELDS = 'source_unique_id,itemcode,locationcode,completed_by,completed_at,emailed_jd';
         const NCR_EMAIL_RECIPIENTS = Object.freeze(['jd_jones@greenleafnursery.com']);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-        const APP_VERSION = 'V2026.04.20.18';
+        const APP_VERSION = 'V2026.04.21.01';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -5777,20 +5922,19 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
                 if (shellUpdated) return;
                 await clearLegacyOfflineState();
                 const savedUser=localStorage.getItem('gnc_user_v3'); const savedPin=localStorage.getItem('gnc_pin_v3');
-                document.getElementById('login-inputs').classList.remove('hidden');
-                document.getElementById('loading-spinner').classList.add('hidden');
+                resetLoginUiState();
                 runAfterShellInteractive(() => warmCachedInventory().catch(() => {}), isTouchConstrainedDevice() ? 60 : 0);
                 if(savedUser) document.getElementById('username-input').value=savedUser;
                 if(savedPin) document.getElementById('pin-code').value=savedPin;
             } catch (err) {
                 console.error('Startup failed', err);
-                document.getElementById('login-inputs').classList.remove('hidden');
-                document.getElementById('loading-spinner').classList.add('hidden');
+                resetLoginUiState();
                 showToast("Error","Startup failed. Please log in again.",true);
             }
         };
 
         window.addEventListener('DOMContentLoaded', () => {
+            ensureLoginInteractionHealth({ forceReset: true });
             if (localStorage.getItem('gnc_bio_enabled')==='true' && window.PublicKeyCredential) {
                 const bioBtn=document.getElementById('btn-fingerprint'); if (bioBtn) bioBtn.classList.remove('hidden');
             }
@@ -5804,6 +5948,9 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
             installAmazonHeaderChrome();
             updateSyncDiagnostics();
             initializeCartUi();
+        });
+        window.addEventListener('pageshow', () => {
+            ensureLoginInteractionHealth();
         });
         window.addEventListener('online', () => {
             if (currentUser) {
@@ -9289,23 +9436,20 @@ function toggleDriveQuickRequestItem(domId) {
                     setBootingSession(false);
                     alert("MISMATCH DETECTED!\n\nIncorrect Username or Password.");
                     document.getElementById('pin-code').value="";
-                    document.getElementById('login-inputs').classList.remove('hidden');
-                    document.getElementById('loading-spinner').classList.add('hidden');
+                    resetLoginUiState();
                 } else {
                     finishInitialAppLoad();
                     setBootingSession(false);
                     if (result && result.error) console.warn('Login failed during remote validation.', result.error);
                     showToast('Error', getLoginFailureMessage(result && result.error), true);
-                    document.getElementById('login-inputs').classList.remove('hidden');
-                    document.getElementById('loading-spinner').classList.add('hidden');
+                    resetLoginUiState();
                 }
             }).catch(err=>{
                 finishInitialAppLoad();
                 setBootingSession(false);
                 console.warn('Login crashed unexpectedly.', err);
                 showToast('Error', getLoginFailureMessage(err), true);
-                document.getElementById('login-inputs').classList.remove('hidden');
-                document.getElementById('loading-spinner').classList.add('hidden');
+                resetLoginUiState();
             });
         }
 
