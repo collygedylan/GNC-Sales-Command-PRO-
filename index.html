@@ -6015,9 +6015,12 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
         const REQUEST_EMAIL_INTERNAL_RECIPIENTS = Object.freeze(['dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com']);
         const NCR_COMPLETIONS_TABLE = 'v2_ncr_completions';
         const NCR_COMPLETION_SELECT_FIELDS = 'source_unique_id,itemcode,locationcode,completed_by,completed_at,emailed_jd';
-        const NCR_EMAIL_RECIPIENTS = Object.freeze(['jd_jones@greenleafnursery.com']);
+        const NCR_EMAIL_RECIPIENTS = Object.freeze([
+            'jd_jones@greenleafnursery.com',
+            'dylan_collyge@greenleafnursery.com'
+        ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-        const APP_VERSION = 'V2026.04.21.05';
+        const APP_VERSION = 'V2026.04.21.06';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -7112,12 +7115,99 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
             managerReviewInventoryDirty = true;
         }
 
-        function getCurrentNcrSeasonCode(now = new Date()) {
+        const NCR_CHICAGO_DATE_FORMATTER = typeof Intl !== 'undefined' && typeof Intl.DateTimeFormat === 'function'
+            ? new Intl.DateTimeFormat('en-US', {
+                timeZone: 'America/Chicago',
+                year: 'numeric',
+                month: 'numeric',
+                day: 'numeric'
+            })
+            : null;
+        const NCR_NEXT_UP_LOT_SUFFIXES = Object.freeze(['F1', 'U1', 'U2', 'U3']);
+        const NCR_NEXT_UP_LOT_SUFFIX_ORDER = Object.freeze(NCR_NEXT_UP_LOT_SUFFIXES.reduce((map, suffix, index) => {
+            map[suffix] = index;
+            return map;
+        }, {}));
+
+        function getChicagoDatePartsForNcr(now = new Date()) {
             const currentDate = now instanceof Date ? now : new Date(now);
-            const month = currentDate.getMonth() + 1;
-            const day = currentDate.getDate();
+            if (NCR_CHICAGO_DATE_FORMATTER && currentDate instanceof Date && !Number.isNaN(currentDate.getTime())) {
+                const parts = NCR_CHICAGO_DATE_FORMATTER.formatToParts(currentDate);
+                const values = parts.reduce((accumulator, part) => {
+                    if (part && part.type) accumulator[part.type] = part.value;
+                    return accumulator;
+                }, {});
+                return {
+                    year: parseInt(values.year, 10) || currentDate.getFullYear(),
+                    month: parseInt(values.month, 10) || (currentDate.getMonth() + 1),
+                    day: parseInt(values.day, 10) || currentDate.getDate()
+                };
+            }
+            return {
+                year: currentDate.getFullYear(),
+                month: currentDate.getMonth() + 1,
+                day: currentDate.getDate()
+            };
+        }
+
+        function getCurrentNcrSeasonCode(now = new Date()) {
+            const currentDate = getChicagoDatePartsForNcr(now);
+            const month = currentDate.month;
+            const day = currentDate.day;
             if ((month === 12 && day >= 15) || month < 6 || (month === 6 && day <= 15)) return 'S1';
             return 'F1';
+        }
+
+        function parseNcrLotCode(lotCode = '') {
+            const raw = String(lotCode || '').trim().toUpperCase();
+            const match = raw.match(/^(\d{2})\s*\.\s*([A-Z0-9]+)$/);
+            if (!match) {
+                return {
+                    raw,
+                    yearText: '',
+                    year: null,
+                    suffix: '',
+                    normalizedLot: raw
+                };
+            }
+            const yearText = String(match[1] || '').trim();
+            const suffix = String(match[2] || '').trim().toUpperCase();
+            const year = parseInt(yearText, 10);
+            return {
+                raw,
+                yearText,
+                year: Number.isFinite(year) ? year : null,
+                suffix,
+                normalizedLot: `${yearText}.${suffix}`
+            };
+        }
+
+        function getNcrLotInfo(item = null) {
+            return parseNcrLotCode(firstNonEmptyValue(item && item.LOTCODE, item && item.lotcode, ''));
+        }
+
+        function getNcrNextUpLotSuffixes() {
+            return NCR_NEXT_UP_LOT_SUFFIXES.slice();
+        }
+
+        function isNcrNextUpLotSuffix(suffix = '') {
+            return Object.prototype.hasOwnProperty.call(NCR_NEXT_UP_LOT_SUFFIX_ORDER, String(suffix || '').trim().toUpperCase());
+        }
+
+        function compareNcrLotCodes(a = '', b = '') {
+            const lotA = parseNcrLotCode(a);
+            const lotB = parseNcrLotCode(b);
+            const orderA = Object.prototype.hasOwnProperty.call(NCR_NEXT_UP_LOT_SUFFIX_ORDER, lotA.suffix) ? NCR_NEXT_UP_LOT_SUFFIX_ORDER[lotA.suffix] : Number.MAX_SAFE_INTEGER;
+            const orderB = Object.prototype.hasOwnProperty.call(NCR_NEXT_UP_LOT_SUFFIX_ORDER, lotB.suffix) ? NCR_NEXT_UP_LOT_SUFFIX_ORDER[lotB.suffix] : Number.MAX_SAFE_INTEGER;
+            if (orderA !== orderB) return orderA - orderB;
+            const yearA = lotA.year == null ? Number.MAX_SAFE_INTEGER : lotA.year;
+            const yearB = lotB.year == null ? Number.MAX_SAFE_INTEGER : lotB.year;
+            if (yearA !== yearB) return yearA - yearB;
+            return String(lotA.normalizedLot || lotA.raw || '').localeCompare(String(lotB.normalizedLot || lotB.raw || ''), undefined, { numeric: true, sensitivity: 'base' });
+        }
+
+        function sortNcrLotCodes(codes = []) {
+            return [...new Set((codes || []).map((code) => String(code || '').trim().toUpperCase()).filter(Boolean))].sort(compareNcrLotCodes);
         }
 
         function getNcrFutureSeasonCodes() {
@@ -7131,6 +7221,83 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
 
         function sortNcrLocationCodes(codes = []) {
             return [...new Set((codes || []).map((code) => String(code || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+        }
+
+        function getNcrActionableItemCodes() {
+            const actionableItemCodes = new Set();
+            fullInventory.forEach((item) => {
+                const itemCode = String(firstNonEmptyValue(item.ITEMCODE, item.ITEM, '')).trim();
+                if (!itemCode) return;
+                const uid = getNcrSourceUniqueId(item);
+                if (uid && isNcrCompletedUid(uid)) return;
+                const lotInfo = getNcrLotInfo(item);
+                if (!isNcrNextUpLotSuffix(lotInfo.suffix)) return;
+                const sltsValue = parseAppNumber(firstNonEmptyValue(item.S_LTS, item.s_lts, ''));
+                if (sltsValue != null && sltsValue > 0) actionableItemCodes.add(itemCode);
+            });
+            return actionableItemCodes;
+        }
+
+        function getNcrCurrentSeasonSummaryByItemCode() {
+            const currentSuffix = getCurrentNcrSeasonCode();
+            const summaries = new Map();
+            fullInventory.forEach((item) => {
+                const uid = getNcrSourceUniqueId(item);
+                if (uid && isNcrCompletedUid(uid)) return;
+                const itemCode = String(firstNonEmptyValue(item.ITEMCODE, item.ITEM, '')).trim();
+                if (!itemCode) return;
+                const lotInfo = getNcrLotInfo(item);
+                if (lotInfo.suffix !== currentSuffix) return;
+                if (!summaries.has(itemCode)) {
+                    summaries.set(itemCode, {
+                        currentSeasonSuffix: currentSuffix,
+                        ptrAvailableTotal: 0,
+                        lotcodes: new Set()
+                    });
+                }
+                const summary = summaries.get(itemCode);
+                const ptrAvailableValue = parseAppNumber(firstNonEmptyValue(item.PTRAVAILABLE, item.ptravailable, ''));
+                if (ptrAvailableValue != null) summary.ptrAvailableTotal += ptrAvailableValue;
+                if (lotInfo.normalizedLot) summary.lotcodes.add(lotInfo.normalizedLot);
+            });
+            return summaries;
+        }
+
+        function buildReviewCardGroups(rows = []) {
+            const currentSeasonSummaries = getNcrCurrentSeasonSummaryByItemCode();
+            const groups = new Map();
+            (rows || []).forEach((item) => {
+                const itemCode = String(firstNonEmptyValue(item.ITEMCODE, item.ITEM, '')).trim();
+                if (!itemCode) return;
+                if (!groups.has(itemCode)) {
+                    groups.set(itemCode, {
+                        code: itemCode,
+                        name: String(firstNonEmptyValue(item.COMMONNAME, item.commonname, 'Unknown')).trim() || 'Unknown',
+                        size: String(firstNonEmptyValue(item.CONTSIZE, item.contsize, '-')).trim() || '-',
+                        count: 0
+                    });
+                }
+                groups.get(itemCode).count += 1;
+            });
+            return Array.from(groups.values()).map((group) => {
+                const currentSeasonSummary = currentSeasonSummaries.get(group.code) || {
+                    currentSeasonSuffix: getCurrentNcrSeasonCode(),
+                    ptrAvailableTotal: 0,
+                    lotcodes: new Set()
+                };
+                return {
+                    ...group,
+                    currentSeasonSuffix: currentSeasonSummary.currentSeasonSuffix,
+                    ptrAvailableTotal: currentSeasonSummary.ptrAvailableTotal,
+                    currentSeasonLotcodes: sortNcrLotCodes(Array.from(currentSeasonSummary.lotcodes || []))
+                };
+            }).sort((a, b) => {
+                const nameCompare = String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity: 'base' });
+                if (nameCompare !== 0) return nameCompare;
+                const sizeCompare = String(a.size || '').localeCompare(String(b.size || ''), undefined, { numeric: true, sensitivity: 'base' });
+                if (sizeCompare !== 0) return sizeCompare;
+                return String(a.code || '').localeCompare(String(b.code || ''), undefined, { numeric: true, sensitivity: 'base' });
+            });
         }
 
         function ensureLowStockInventoryBuilt() {
@@ -7240,21 +7407,13 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
                     queueInteractiveViewRender('review', false, false, 0, 120);
                 }).catch(() => {});
             }
-            const itemCodesWithPositiveSlts = new Set();
-            fullInventory.forEach((item) => {
-                const itemCode = String(firstNonEmptyValue(item.ITEMCODE, item.ITEM, '')).trim();
-                if (!itemCode) return;
-                const uid = getNcrSourceUniqueId(item);
-                if (uid && isNcrCompletedUid(uid)) return;
-                const sltsValue = parseAppNumber(firstNonEmptyValue(item.S_LTS, item.s_lts, ''));
-                if (sltsValue != null && sltsValue > 0) itemCodesWithPositiveSlts.add(itemCode);
-            });
+            const actionableItemCodes = getNcrActionableItemCodes();
             let nextIndex = 0;
             managerReviewInventory = fullInventory.reduce((rows, item) => {
                 const uid = getNcrSourceUniqueId(item);
                 if (uid && isNcrCompletedUid(uid)) return rows;
                 const itemCode = String(firstNonEmptyValue(item.ITEMCODE, item.ITEM, '')).trim();
-                if (!itemCodesWithPositiveSlts.has(itemCode)) return rows;
+                if (!actionableItemCodes.has(itemCode)) return rows;
                 const seasonCode = String(firstNonEmptyValue(item.SEASON, item.season, '')).trim().toUpperCase();
                 const sltsValue = parseAppNumber(firstNonEmptyValue(item.S_LTS, item.s_lts, ''));
                 if (seasonCode === 'S1' && sltsValue != null && sltsValue < 50) {
@@ -7288,17 +7447,27 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
             if (!safeItemCode) return [];
             let detailIndex = 0;
             const items = fullInventory.reduce((rows, item) => {
-                if (String(item.ITEMCODE || '') !== safeItemCode) return rows;
+                if (String(firstNonEmptyValue(item.ITEMCODE, item.ITEM, '') || '').trim() !== safeItemCode) return rows;
                 const uid = getNcrSourceUniqueId(item);
                 if (uid && isNcrCompletedUid(uid)) return rows;
+                const lotInfo = getNcrLotInfo(item);
+                if (!isNcrNextUpLotSuffix(lotInfo.suffix)) return rows;
                 const sltsValue = parseAppNumber(firstNonEmptyValue(item.S_LTS, item.s_lts, ''));
                 if (sltsValue != null && sltsValue > 0) rows.push({ ...item, DOM_ID: 'mr_detail_' + detailIndex++ });
                 return rows;
             }, []);
             return filterReviewItemsBySearch(items).sort((a,b) => {
+                const lotA = getNcrLotInfo(a);
+                const lotB = getNcrLotInfo(b);
+                const lotSuffixOrderA = NCR_NEXT_UP_LOT_SUFFIX_ORDER[lotA.suffix];
+                const lotSuffixOrderB = NCR_NEXT_UP_LOT_SUFFIX_ORDER[lotB.suffix];
+                if (lotSuffixOrderA !== lotSuffixOrderB) return lotSuffixOrderA - lotSuffixOrderB;
+                const lotYearA = lotA.year == null ? Number.MAX_SAFE_INTEGER : lotA.year;
+                const lotYearB = lotB.year == null ? Number.MAX_SAFE_INTEGER : lotB.year;
+                if (lotYearA !== lotYearB) return lotYearA - lotYearB;
                 const locationCompare = String(a.LOCATIONCODE || "").localeCompare(String(b.LOCATIONCODE || ""), undefined, {numeric: true});
                 if (locationCompare !== 0) return locationCompare;
-                return String(a.LOTCODE || "").localeCompare(String(b.LOTCODE || ""), undefined, {numeric: true});
+                return compareNcrLotCodes(String(a.LOTCODE || ''), String(b.LOTCODE || ''));
             });
         }
 
@@ -11681,6 +11850,7 @@ function toggleDriveQuickRequestItem(domId) {
                 lotcode: String(firstNonEmptyValue(item && item.LOTCODE, '')).trim(),
                 season: String(firstNonEmptyValue(item && item.SEASON, '')).trim(),
                 s_lts: String(firstNonEmptyValue(item && item.S_LTS, '')).trim(),
+                ptravailable: String(firstNonEmptyValue(item && item.PTRAVAILABLE, item && item.ptravailable, '')).trim(),
                 spec: String(firstNonEmptyValue(draft && draft.spec, '')).trim(),
                 caliper: String(firstNonEmptyValue(draft && draft.caliper, '')).trim(),
                 match: matchValue,
@@ -11694,10 +11864,15 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         async function sendNcrCompletionEmail(item = activeItem, photoUrls = []) {
+            const subject = [
+                String(firstNonEmptyValue(item && item.COMMONNAME, '')).trim(),
+                String(firstNonEmptyValue(item && item.CONTSIZE, '')).trim(),
+                String(firstNonEmptyValue(item && item.LOCATIONCODE, '')).trim()
+            ].filter(Boolean).join(' ').trim() || 'New Crop Release';
             const payload = {
                 type: 'email',
                 emailType: 'ncr_complete',
-                subject: `GNC PARK HILL: New Crop Release (${String(firstNonEmptyValue(item && item.ITEMCODE, 'NCR')).trim()})`,
+                subject,
                 folderId: getNcrSourceUniqueId(item),
                 requestFolder: getNcrSourceUniqueId(item),
                 customer: 'New Crop Release',
@@ -23302,24 +23477,22 @@ ${folderNote ? `Folder Note: ${folderNote}
                 return;
             }
             if(reviewViewLevel === 0){
-                let groups = {};
-                filterReviewItemsBySearch(reviewItems).forEach(i => {
-                    let code = i.ITEMCODE || "UNKNOWN";
-                    if(!groups[code]) {
-                        groups[code] = {code: code, name: i.COMMONNAME || "Unknown", size: i.CONTSIZE || "-", count: 0};
-                    }
-                    groups[code].count++;
-                });
-                let sorted = Object.values(groups).sort((a,b) => String(a.name).localeCompare(String(b.name)));
+                const sorted = buildReviewCardGroups(filterReviewItemsBySearch(reviewItems));
                 renderMarkupChunkedByKey('review-main', container, crumb, sorted, 'Needs Location Priority Review', (group) => {
-                    return `<div class="bg-yellow-50 border border-yellow-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectReviewItem('${esc(group.code)}', '${esc(group.name)}', '${esc(group.size)}')"><div class="flex-grow min-w-0 pr-3"><div class="font-bold text-[15px] text-yellow-800 truncate">${group.name}</div><div class="text-xs font-semibold text-yellow-600 mt-1">${group.size} <span class="mx-2 text-yellow-300">|</span> <span class="font-mono text-yellow-700">${group.code}</span></div></div><div class="bg-white px-3 py-1 rounded-lg shadow-sm border border-yellow-100 text-yellow-600 font-bold text-xs whitespace-nowrap">${group.count} Locs</div></div>`;
-                }, { approxCardHeight: 92, emptyHtml: `<div class="p-8 text-center text-gray-400">No items require New Crop Release review.</div>` });
+                    const currentSeasonPtrLabel = Number.isFinite(group.ptrAvailableTotal)
+                        ? Number(group.ptrAvailableTotal).toLocaleString()
+                        : String(group.ptrAvailableTotal || '0');
+                    const currentSeasonLotcodesLabel = group.currentSeasonLotcodes && group.currentSeasonLotcodes.length
+                        ? esc(group.currentSeasonLotcodes.join(', '))
+                        : 'None';
+                    return `<div class="bg-yellow-50 border border-yellow-200 rounded-xl shadow-sm mb-3 p-4 cursor-pointer active:scale-95 transition-transform" onclick="selectReviewItem('${esc(group.code)}', '${esc(group.name)}', '${esc(group.size)}')"><div class="flex items-start justify-between gap-3"><div class="min-w-0 flex-grow pr-3"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-yellow-500">Current ${esc(group.currentSeasonSuffix || '')} PTRAVAILABLE</div><div class="mt-1 text-2xl font-black text-yellow-700 leading-none">${esc(currentSeasonPtrLabel)}</div><div class="mt-3 font-bold text-[15px] text-yellow-800 truncate">${group.name}</div><div class="text-xs font-semibold text-yellow-600 mt-1">${group.size} <span class="mx-2 text-yellow-300">|</span> <span class="font-mono text-yellow-700">${group.code}</span></div><div class="mt-3 text-[10px] font-black uppercase tracking-[0.14em] text-yellow-500">Current ${esc(group.currentSeasonSuffix || '')} Lotcodes</div><div class="mt-1 text-xs font-semibold text-yellow-700 break-words">${currentSeasonLotcodesLabel}</div></div><div class="bg-white px-3 py-1 rounded-lg shadow-sm border border-yellow-100 text-yellow-600 font-bold text-xs whitespace-nowrap">${group.count} Locs</div></div></div>`;
+                }, { approxCardHeight: 132, emptyHtml: `<div class="p-8 text-center text-gray-400">No items require New Crop Release review.</div>` });
             } else if(reviewViewLevel === 1){
                 let items = getReviewDrilldownItems(selectedReviewItemCode);
                 renderMarkupChunkedByKey('review-detail', container, crumb, items, `${selectedReviewCommonName} / ${selectedReviewContSize}`, (item) => generateCard(item, 'review', 'status-yellow'), {
                     prefixHtml: `<div class="back-btn" onclick="resetReviewView()"><i class="ph-bold ph-arrow-left"></i> Back to List</div>`,
                     approxCardHeight: 305,
-                    emptyHtml: `<div class="p-8 text-center text-gray-400">No rows with S_LTS greater than 0 found for this item.</div>`
+                    emptyHtml: `<div class="p-8 text-center text-gray-400">No next-up F1, U1, U2, or U3 rows with S_LTS greater than 0 were found for this item.</div>`
                 });
             }
         }
