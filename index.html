@@ -645,7 +645,7 @@ body.viewport-compact #view-detail #det-location{font-size:clamp(.9rem,3.8vw,1.1
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-    <div id="header-version" class="nav-version-pill">V2026.04.20.15</div>
+<div id="header-version" class="nav-version-pill">V2026.04.20.14</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -5381,7 +5381,7 @@ const FIELD_SAVE_GRACE_MS = 1400;
 let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all'; let avOpenLevel=0; let selectedAvOpenName=null; let selectedAvOpenSize=null; let selectedAvOpenSeason=null; let selectedAvOpenLot=null; let avResLevel=0; let selectedAvResRep=null; let selectedAvResDriveUid=null; let selectedAvResItemCode=null; let selectedAvResName=null; let selectedAvResSize=null; let selectedAvResCustomerKey=null; let activeAvReserveMode='current'; let activeAvReserveDetailTab='customer';
         let selectedAvSeasons=new Set(DRIVE_SEASON_OPTIONS); let avSeasonDropdownOpen=false; let selectedAvGenusNames=new Set(); let avGenusSearchTerm=''; let avGenusFilterOpen=false; let avGenusSelectionMode='all'; let selectedAvContSizes=new Set(); let avContSizeSearchTerm=''; let avContSizeFilterOpen=false; let avContSizeSelectionMode='all'; let avHoldStopOnly=false; let avFilterItemsCache=[]; let avFilterGenusOptions=[]; let avFilterContSizeOptions=[];
 
-        let lowStockViewLevel=0; let selectedLowStockName=null; let selectedLowStockSize=null; let reviewViewLevel=0; let selectedReviewGroupKey=null; let selectedReviewItemCode=null; let selectedReviewCommonName=null; let selectedReviewContSize=null;
+        let lowStockViewLevel=0; let selectedLowStockName=null; let selectedLowStockSize=null; let reviewViewLevel=0; let selectedReviewItemCode=null; let selectedReviewCommonName=null; let selectedReviewContSize=null;
         let requestViewLevel=0; let reservesViewLevel=0; let reportViewLevel=0; let activeReqTab="pending"; let selectedReqRep=null; let selectedReqRepStatus=null; let selectedReqFolder=null; let tempSelectedReqRep=""; let tempReqFolder=null; let tempReqCust=null; let tempReqAppendToExistingFolder=false; let previousReqStep=""; let driveQuickRequestItems=new Set(); let driveQuickRequestFlow=false; let driveQuickAssignFlow=false;
         let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqFolderView=null; let selectedReqStatus='Pending';
         let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pendingDockNum=null; let selectedDockName=null; let selectedDockSize=null; let selectedDockItemCode=null; let selectedDockCustomer=""; let selectedDockTrip=""; let selectedDockRep=""; let lastSyncTime=new Date().toISOString();
@@ -5411,7 +5411,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
         const REQUEST_EMAIL_THREAD_SELECT_FIELDS = 'request_folder,request_customer,sales_rep_name,sales_rep_email,recipients,initial_thread_id,initial_message_id,initial_email_sent_at,last_reply_sent_at,status,metadata';
         const REQUEST_EMAIL_INTERNAL_RECIPIENTS = Object.freeze(['dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com']);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-        const APP_VERSION = 'V2026.04.20.15';
+        const APP_VERSION = 'V2026.04.20.14';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -6559,7 +6559,6 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
                 const seedRow = group.rows[0] || null;
                 return {
                     ...group,
-                    groupKey: seedRow ? buildNcrItemKey(seedRow) : '',
                     currentLocations: sortNcrLocationCodes(Array.from(group.currentLocations || [])),
                     rowCount: group.rows.length,
                     minSlts: group.sltsValues.length ? Math.min(...group.sltsValues) : '',
@@ -6589,54 +6588,9 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
 
         function ensureManagerReviewInventoryBuilt() {
             if (!managerReviewInventoryDirty) return managerReviewInventory;
-            const currentSeason = getCurrentNcrSeasonCode();
-            let nextIndex = 0;
-            managerReviewInventory = fullInventory.reduce((rows, item) => {
-                const seasonCode = String(firstNonEmptyValue(item.SEASON, item.season, '')).trim().toUpperCase();
-                const sltsValue = parseAppNumber(firstNonEmptyValue(item.S_LTS, item.s_lts, ''));
-                if (seasonCode === currentSeason && sltsValue != null && sltsValue < 100) {
-                    rows.push({ ...item, DOM_ID: 'mr_' + nextIndex++ });
-                }
-                return rows;
-            }, []);
+            managerReviewInventory = fullInventory.map((item, idx) => ({ ...item, DOM_ID: 'mr_' + idx }));
             managerReviewInventoryDirty = false;
             return managerReviewInventory;
-        }
-
-        function buildReviewFutureSeasonRows(groupKey = '') {
-            const normalizedGroupKey = String(groupKey || '').trim().toUpperCase();
-            if (!normalizedGroupKey) return [];
-            const futureSeasonOrder = getNcrFutureSeasonCodes();
-            const seasonIndex = new Map(futureSeasonOrder.map((seasonCode, idx) => [seasonCode, idx]));
-            return fullInventory
-                .filter((item) => {
-                    if (buildNcrItemKey(item) !== normalizedGroupKey) return false;
-                    const seasonCode = String(firstNonEmptyValue(item.SEASON, item.season, '')).trim().toUpperCase();
-                    if (!seasonIndex.has(seasonCode)) return false;
-                    const sltsValue = parseAppNumber(firstNonEmptyValue(item.S_LTS, item.s_lts, ''));
-                    return sltsValue != null && sltsValue > 1;
-                })
-                .sort((a, b) => {
-                    const aSeasonIndex = seasonIndex.has(String(firstNonEmptyValue(a.SEASON, a.season, '')).trim().toUpperCase())
-                        ? seasonIndex.get(String(firstNonEmptyValue(a.SEASON, a.season, '')).trim().toUpperCase())
-                        : Number.MAX_SAFE_INTEGER;
-                    const bSeasonIndex = seasonIndex.has(String(firstNonEmptyValue(b.SEASON, b.season, '')).trim().toUpperCase())
-                        ? seasonIndex.get(String(firstNonEmptyValue(b.SEASON, b.season, '')).trim().toUpperCase())
-                        : Number.MAX_SAFE_INTEGER;
-                    if (aSeasonIndex !== bSeasonIndex) return aSeasonIndex - bSeasonIndex;
-                    const locationCompare = String(firstNonEmptyValue(a.LOCATIONCODE, a.locationcode, '')).localeCompare(
-                        String(firstNonEmptyValue(b.LOCATIONCODE, b.locationcode, '')),
-                        undefined,
-                        { numeric: true, sensitivity: 'base' }
-                    );
-                    if (locationCompare !== 0) return locationCompare;
-                    return String(firstNonEmptyValue(a.LOTCODE, a.lotcode, '')).localeCompare(
-                        String(firstNonEmptyValue(b.LOTCODE, b.lotcode, '')),
-                        undefined,
-                        { numeric: true, sensitivity: 'base' }
-                    );
-                })
-                .map((item, idx) => ({ ...item, DOM_ID: 'mr_detail_' + idx }));
         }
 
         function findLinkedMasterRow(item) {
@@ -10607,21 +10561,19 @@ function toggleDriveQuickRequestItem(domId) {
 
         function resetReviewView(shouldRender = true) {
             reviewViewLevel = 0;
-            selectedReviewGroupKey = null;
             selectedReviewItemCode = null;
             selectedReviewCommonName = null;
             selectedReviewContSize = null;
             if (shouldRender) scheduleReviewRender();
         }
 
-        function selectReviewItem(groupKey, itemCode, commonName, contSize) {
-            selectedReviewGroupKey = groupKey;
+        function selectReviewItem(itemCode, commonName, contSize) {
             selectedReviewItemCode = itemCode;
             selectedReviewCommonName = commonName;
             selectedReviewContSize = contSize;
             reviewViewLevel = 1;
             scheduleReviewRender(0);
-            queueScrollMainAreaToTop(`review-item:${groupKey || itemCode}`);
+            queueScrollMainAreaToTop(`review-item:${itemCode}`);
         }
 
         function resetRequestView(shouldRender = true) {
@@ -22086,26 +22038,31 @@ ${folderNote ? `Folder Note: ${folderNote}
             const container = document.getElementById('review-content');
             const crumb = document.getElementById('review-crumb');
             const reviewItems = ensureManagerReviewInventoryBuilt();
-            const reviewGroups = buildNcrCardGroups(reviewItems);
             if(reviewItems.length === 0){
                 container.innerHTML = `<div class="p-8 text-center text-gray-400">No items require New Crop Release review.</div>`;
                 crumb.innerText = "All Clear";
                 return;
             }
             if(reviewViewLevel === 0){
-                renderMarkupChunkedByKey('review-main', container, crumb, reviewGroups, 'New Crop Release', (group) => {
-                    const groupKeyJs = JSON.stringify(group.groupKey || '');
-                    const itemCodeJs = JSON.stringify(group.itemcode || '');
-                    const commonNameJs = JSON.stringify(group.commonname || 'Unknown');
-                    const contSizeJs = JSON.stringify(group.contsize || '-');
-                    return `<div class="mb-3 cursor-pointer active:scale-[0.99] transition-transform" onclick="selectReviewItem(${esc(groupKeyJs)}, ${esc(itemCodeJs)}, ${esc(commonNameJs)}, ${esc(contSizeJs)})">${renderNcrCard(group)}</div>`;
-                }, { approxCardHeight: 260, emptyHtml: `<div class="p-8 text-center text-gray-400">No items require New Crop Release review.</div>` });
+                let groups = {};
+                reviewItems.forEach(i => {
+                    let code = i.ITEMCODE || "UNKNOWN";
+                    if(!groups[code]) {
+                        groups[code] = {code: code, name: i.COMMONNAME || "Unknown", size: i.CONTSIZE || "-", count: 0};
+                    }
+                    groups[code].count++;
+                });
+                let sorted = Object.values(groups).sort((a,b) => String(a.name).localeCompare(String(b.name)));
+                renderMarkupChunkedByKey('review-main', container, crumb, sorted, 'Needs Location Priority Review', (group) => {
+                    return `<div class="bg-yellow-50 border border-yellow-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectReviewItem('${esc(group.code)}', '${esc(group.name)}', '${esc(group.size)}')"><div class="flex-grow min-w-0 pr-3"><div class="font-bold text-[15px] text-yellow-800 truncate">${group.name}</div><div class="text-xs font-semibold text-yellow-600 mt-1">${group.size} <span class="mx-2 text-yellow-300">|</span> <span class="font-mono text-yellow-700">${group.code}</span></div></div><div class="bg-white px-3 py-1 rounded-lg shadow-sm border border-yellow-100 text-yellow-600 font-bold text-xs whitespace-nowrap">${group.count} Locs</div></div>`;
+                }, { approxCardHeight: 92, emptyHtml: `<div class="p-8 text-center text-gray-400">No items require New Crop Release review.</div>` });
             } else if(reviewViewLevel === 1){
-                let items = buildReviewFutureSeasonRows(selectedReviewGroupKey);
+                let items = reviewItems.filter(i => i.ITEMCODE === selectedReviewItemCode);
+                items.sort((a,b) => String(a.LOCATIONCODE || "").localeCompare(String(b.LOCATIONCODE || ""), undefined, {numeric: true}));
                 renderMarkupChunkedByKey('review-detail', container, crumb, items, `${selectedReviewCommonName} / ${selectedReviewContSize}`, (item) => generateCard(item, 'review', 'status-yellow'), {
                     prefixHtml: `<div class="back-btn" onclick="resetReviewView()"><i class="ph-bold ph-arrow-left"></i> Back to List</div>`,
                     approxCardHeight: 305,
-                    emptyHtml: `<div class="p-8 text-center text-gray-400">No future-season release rows found.</div>`
+                    emptyHtml: `<div class="p-8 text-center text-gray-400">No review rows found.</div>`
                 });
             }
         }
