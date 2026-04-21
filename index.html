@@ -1106,10 +1106,15 @@ body.viewport-compact #view-detail #det-location{font-size:clamp(.9rem,3.8vw,1.1
 
             <div id="global-action-bar" class="hidden fixed bottom-[60px] left-0 w-full bg-white p-3 shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.15)] z-[45] border-t border-gray-200">
                 <div class="flex justify-between items-center mb-2 px-1"><span class="text-xs font-bold text-[#007a4d]"><span id="sel-count">0</span> Rows In Bloom Picker</span><span class="text-[10px] font-bold text-red-500 cursor-pointer bg-red-50 px-3 py-1 rounded-md uppercase" onclick="clearSelection()">Clear Bloom Picker</span></div>
-                <div class="flex gap-1 overflow-x-auto scrollbar-none pb-1">
-                    <button id="batch-btn-copy" onclick="initiateBatchAction('copy')" class="flex-1 min-w-[60px] bg-gray-100 text-gray-700 p-2 rounded-lg text-[10px] font-bold hover:bg-gray-200"><i class="ph-bold ph-copy block text-lg mb-1"></i> Copy</button>
-                    <button id="batch-btn-email" onclick="initiateBatchAction('email')" class="flex-1 min-w-[60px] bg-blue-100 text-blue-700 p-2 rounded-lg text-[10px] font-bold hover:bg-blue-200"><i class="ph-bold ph-envelope block text-lg mb-1"></i> Email</button>
-                    <button id="batch-btn-text" onclick="initiateBatchAction('text')" class="flex-1 min-w-[60px] bg-green-100 text-green-700 p-2 rounded-lg text-[10px] font-bold hover:bg-green-200"><i class="ph-bold ph-chat block text-lg mb-1"></i> Text</button>
+                <div class="flex gap-1 overflow-x-auto overflow-y-visible scrollbar-none pb-1">
+                    <div id="batch-share-menu-wrap" class="relative flex-1 min-w-[72px] hidden">
+                        <button id="batch-btn-share" type="button" onclick="return toggleBloomShareMenu(event)" aria-haspopup="menu" aria-expanded="false" class="w-full bg-slate-100 text-slate-700 p-2 rounded-lg text-[10px] font-bold hover:bg-slate-200"><i class="ph-bold ph-share-network block text-lg mb-1"></i> Share</button>
+                        <div id="batch-share-menu" class="hidden absolute bottom-full left-0 z-30 mb-2 flex min-w-[132px] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
+                            <button id="batch-share-option-text" type="button" onclick="return handleBloomShareMenuSelection(event, 'text')" class="hidden border-b border-slate-100 px-3 py-3 text-left text-[11px] font-black uppercase tracking-[0.14em] text-green-700 bg-white hover:bg-green-50"><i class="ph-bold ph-chat mr-2"></i>Text</button>
+                            <button id="batch-share-option-copy" type="button" onclick="return handleBloomShareMenuSelection(event, 'copy')" class="hidden border-b border-slate-100 px-3 py-3 text-left text-[11px] font-black uppercase tracking-[0.14em] text-slate-700 bg-white hover:bg-slate-50"><i class="ph-bold ph-copy mr-2"></i>Copy</button>
+                            <button id="batch-share-option-email" type="button" onclick="return handleBloomShareMenuSelection(event, 'email')" class="hidden px-3 py-3 text-left text-[11px] font-black uppercase tracking-[0.14em] text-blue-700 bg-white hover:bg-blue-50"><i class="ph-bold ph-envelope mr-2"></i>Email</button>
+                        </div>
+                    </div>
                     <button id="batch-btn-assign" onclick="initiateBatchAction('assign')" class="flex-1 min-w-[60px] bg-purple-100 text-purple-700 p-2 rounded-lg text-[10px] font-bold hover:bg-purple-200 hidden"><i class="ph-bold ph-user-plus block text-lg mb-1"></i> Assign</button>
                     <button id="batch-btn-bloom-order" onclick="initiateBatchAction('bloom_order')" class="flex-1 min-w-[72px] bg-[#007a4d] text-white p-2 rounded-lg text-[10px] font-bold shadow-md hidden"><i class="ph-bold ph-package block text-lg mb-1"></i> Submit Order</button>
                     <button id="batch-btn-request" onclick="initiateBatchAction('request_action')" class="flex-1 min-w-[60px] bg-orange-500 text-white p-2 rounded-lg text-[10px] font-bold shadow-md hidden"><i class="ph-bold ph-warning-circle block text-lg mb-1"></i> Request</button>
@@ -5842,7 +5847,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         let lastBackgroundRefreshAt=0;
         let cacheWarmPromise=null;
         let cachePersistTimer=null; let cachePersistIdleHandle=null; let lastCachePersistAt=0; let pendingCachePersist=false;
-        let currentUser=""; let currentUserDisplay=""; let currentRole=""; let safeRole=""; let repPermutations=[]; let activeItem=null; let lastView=""; let activeDetailTab="overview"; let activeDetailSourceView=""; let detailOverviewFieldSearchTerm=""; let selectedItems=new Set(); let cartPanelOpen=false; let cartUiObserver=null; let cartUiRefreshQueued=false; let lastCartToggleAt=0; let lastCartToggleDomId=""; let isMultiSelectMode=false; let pressTimer=null; let isLongPress=false; let touchStartX=0; let touchStartY=0; let pendingAction=null; let pendingActionOptions=null; let pendingTabType=null; let hasAppliedInitialHomeView=false;
+        let currentUser=""; let currentUserDisplay=""; let currentRole=""; let safeRole=""; let repPermutations=[]; let activeItem=null; let lastView=""; let activeDetailTab="overview"; let activeDetailSourceView=""; let detailOverviewFieldSearchTerm=""; let selectedItems=new Set(); let cartPanelOpen=false; let cartUiObserver=null; let cartUiRefreshQueued=false; let lastCartToggleAt=0; let lastCartToggleDomId=""; let isMultiSelectMode=false; let pressTimer=null; let isLongPress=false; let touchStartX=0; let touchStartY=0; let pendingAction=null; let pendingActionOptions=null; let pendingTabType=null; let bloomShareMenuOpen=false; let hasAppliedInitialHomeView=false;
         let dockAssignableUsers=[]; let dockAssignableUsersPromise=null;
         let dockTeamStatusByDock=new Map(); let dockTeamStatusPromise=null; let dockTeamStatusLoaded=false; let dockTeamSchemaReady=null; let dockTeamSchemaPromise=null; let dockTeamSchemaWarningShown=false;
         let dockItemProgressByUid=new Map(); let dockItemProgressPromise=null; let dockItemProgressLoaded=false; let dockItemSchemaReady=null; let dockItemSchemaPromise=null; let dockItemSchemaWarningShown=false;
@@ -16043,6 +16048,73 @@ function toggleDriveQuickRequestItem(domId) {
             return false;
         }
 
+        function syncBloomShareMenuUi(actionVisibility = null) {
+            const shareWrap = document.getElementById('batch-share-menu-wrap');
+            const shareBtn = document.getElementById('batch-btn-share');
+            const shareMenu = document.getElementById('batch-share-menu');
+            const textOption = document.getElementById('batch-share-option-text');
+            const copyOption = document.getElementById('batch-share-option-copy');
+            const emailOption = document.getElementById('batch-share-option-email');
+            const visibility = actionVisibility || getBloomPickerActionVisibility(getCartSelectedItems());
+            const hasShareOptions = !!(visibility.showCopy || visibility.showEmail || visibility.showText);
+            const shouldShowMenu = !!(bloomShareMenuOpen && hasShareOptions && cartPanelOpen && selectedItems.size);
+            if (!hasShareOptions || !cartPanelOpen || !selectedItems.size) bloomShareMenuOpen = false;
+            if (shareWrap) shareWrap.classList.toggle('hidden', !selectedItems.size || !hasShareOptions);
+            if (textOption) textOption.classList.toggle('hidden', !visibility.showText);
+            if (copyOption) copyOption.classList.toggle('hidden', !visibility.showCopy);
+            if (emailOption) emailOption.classList.toggle('hidden', !visibility.showEmail);
+            if (shareMenu) shareMenu.classList.toggle('hidden', !shouldShowMenu);
+            if (shareBtn) {
+                shareBtn.setAttribute('aria-expanded', shouldShowMenu ? 'true' : 'false');
+                shareBtn.classList.toggle('ring-2', shouldShowMenu);
+                shareBtn.classList.toggle('ring-slate-300', shouldShowMenu);
+            }
+        }
+
+        function closeBloomShareMenu() {
+            if (!bloomShareMenuOpen) {
+                syncBloomShareMenuUi();
+                return false;
+            }
+            bloomShareMenuOpen = false;
+            syncBloomShareMenuUi();
+            return false;
+        }
+
+        function toggleBloomShareMenu(event) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            const actionVisibility = getBloomPickerActionVisibility(getCartSelectedItems());
+            if (!selectedItems.size || !(actionVisibility.showCopy || actionVisibility.showEmail || actionVisibility.showText)) {
+                bloomShareMenuOpen = false;
+                syncBloomShareMenuUi(actionVisibility);
+                return false;
+            }
+            bloomShareMenuOpen = !bloomShareMenuOpen;
+            syncBloomShareMenuUi(actionVisibility);
+            return false;
+        }
+
+        function handleBloomShareMenuSelection(event, action) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            bloomShareMenuOpen = false;
+            syncBloomShareMenuUi();
+            initiateBatchAction(action);
+            return false;
+        }
+
+        document.addEventListener('pointerdown', function(event) {
+            if (!bloomShareMenuOpen) return;
+            const shareWrap = document.getElementById('batch-share-menu-wrap');
+            if (shareWrap && shareWrap.contains(event.target)) return;
+            closeBloomShareMenu();
+        }, true);
+
         function startPress(e,domId) {
             isLongPress=false;
             cancelPress();
@@ -19252,9 +19324,7 @@ function toggleDriveQuickRequestItem(domId) {
             const footerCartBadge=document.getElementById('footer-cart-badge');
             const countLabel=document.getElementById('sel-count');
             const helper=document.getElementById('cart-helper-text');
-            const btnCopy=document.getElementById('batch-btn-copy');
-            const btnEmail=document.getElementById('batch-btn-email');
-            const btnText=document.getElementById('batch-btn-text');
+            const shareWrap=document.getElementById('batch-share-menu-wrap');
             const btnAssign=document.getElementById('batch-btn-assign');
             const btnRequest=document.getElementById('batch-btn-request');
             const btnFlyer=document.getElementById('batch-btn-flyer');
@@ -19263,6 +19333,7 @@ function toggleDriveQuickRequestItem(domId) {
             const hasItems=selectedItems.size>0;
             const items=getCartSelectedItems();
             const actionVisibility=getBloomPickerActionVisibility(items);
+            const hasShareOptions=!!(actionVisibility.showCopy || actionVisibility.showEmail || actionVisibility.showText);
             if(countLabel)countLabel.innerText=selectedItems.size;
             if(footerCartBtn){
                 footerCartBtn.classList.toggle('hidden', !currentUser);
@@ -19272,9 +19343,7 @@ function toggleDriveQuickRequestItem(domId) {
                 footerCartBadge.innerText=selectedItems.size>99?'99+':String(selectedItems.size);
                 footerCartBadge.classList.toggle('hidden', !hasItems);
             }
-            if(btnCopy)btnCopy.classList.toggle('hidden', !hasItems || !actionVisibility.showCopy);
-            if(btnEmail)btnEmail.classList.toggle('hidden', !hasItems || !actionVisibility.showEmail);
-            if(btnText)btnText.classList.toggle('hidden', !hasItems || !actionVisibility.showText);
+            if(shareWrap)shareWrap.classList.toggle('hidden', !hasItems || !hasShareOptions);
             if(btnAssign)btnAssign.classList.toggle('hidden', !actionVisibility.showAssign);
             if(btnRequest)btnRequest.classList.toggle('hidden', !actionVisibility.showRequest);
             if(btnFlyer)btnFlyer.classList.toggle('hidden', !actionVisibility.showFlyer);
@@ -19282,6 +19351,7 @@ function toggleDriveQuickRequestItem(domId) {
             if(btnBloomOrder)btnBloomOrder.classList.toggle('hidden', !actionVisibility.showBloomOrder);
             if(helper)helper.classList.toggle('hidden', !hasItems || actionVisibility.canUseInventoryActions || actionVisibility.canUseBloomOrders);
             if(bar)bar.classList.toggle('hidden', !hasItems||!cartPanelOpen);
+            syncBloomShareMenuUi(actionVisibility);
             updateFooterNavState();
         }
 
