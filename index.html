@@ -540,7 +540,7 @@ body.viewport-compact #view-detail #det-location{font-size:clamp(.9rem,3.8vw,1.1
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center flex flex-col max-h-[90vh] overflow-hidden">
             <div id="step-1-rep" class="flex flex-col min-h-0">
                 <h3 class="font-bold text-lg mb-2 text-orange-600">Who requested this?</h3>
-                <input type="text" id="rep-search-input" class="input-field mb-3 border-orange-200 focus:border-orange-500" placeholder="Search name..." oninput="debouncedFilterRepList()" onkeydown="handleRepSearchKeydown(event)">
+                <input type="text" id="rep-search-input" class="input-field mb-3 border-orange-200 focus:border-orange-500" placeholder="Search name..." oninput="handleRequestRepSearchInput(this.value)" onkeydown="handleRepSearchKeydown(event)">
                 <div id="rep-list-container" class="grid grid-cols-1 gap-2 mb-4 max-h-[40vh] overflow-y-auto px-2 py-1"></div>
                 <button id="custom-rep-btn" class="hidden w-full bg-orange-600 text-white font-bold p-3 rounded-lg mb-4 shadow-sm" onclick="selectRepForRequest(document.getElementById('rep-search-input').value.trim())">Assign to: <span></span></button>
             </div>
@@ -553,7 +553,7 @@ body.viewport-compact #view-detail #det-location{font-size:clamp(.9rem,3.8vw,1.1
                     <h3 class="font-bold text-lg text-orange-600">Customer</h3>
                 </div>
                 <label id="request-customer-label" class="text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Customer / Consignee</label>
-                <input type="text" id="cust-search-input" class="input-field mb-2 border-orange-200" placeholder="Search customer..." oninput="debouncedPopulateCustomerList()" onkeydown="dismissSearchKeyboard(event)">
+                <input type="text" id="cust-search-input" class="input-field mb-2 border-orange-200" placeholder="Search customer..." oninput="handleRequestCustomerSearchInput(this.value)" onkeydown="dismissSearchKeyboard(event)">
                 <div id="cust-list-container" class="grid grid-cols-1 gap-2 mb-4 max-h-[28vh] overflow-y-auto px-1 py-1"></div>
                 <div id="quick-consignee-wrap" class="hidden mb-5">
                     <label class="text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Consignee Name</label>
@@ -670,7 +670,7 @@ body.viewport-compact #view-detail #det-location{font-size:clamp(.9rem,3.8vw,1.1
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-                    <div id="header-version" class="nav-version-pill">V2026.04.21.02</div>
+<div id="header-version" class="nav-version-pill">V2026.04.21.03</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -5590,7 +5590,15 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
 
         function shouldUseDebouncedDetailInputSave(inputId = '') {
             const safeId = String(inputId || '').trim();
-            return safeId.endsWith('-av-note');
+            if (safeId === 'flyer-notes' || safeId === 'dock-sales-desc') return true;
+            const prefix = extractDetailPrefixFromInputId(safeId);
+            if (!isLagSensitiveDetailPrefix(prefix)) return false;
+            return safeId.endsWith('-av-note')
+                || safeId.endsWith('-spec')
+                || safeId.endsWith('-caliper')
+                || safeId.endsWith('-match')
+                || safeId.endsWith('-pick')
+                || safeId.endsWith('-comments');
         }
 
         function buildRowSaveSignature(prefix = '', item = null, payload = {}, isComplete = false) {
@@ -5773,6 +5781,20 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
         const PENDING_EDITS_STORAGE_KEY = 'gnc_pending_edits';
         const PENDING_EDITS_PERSIST_DEBOUNCE_MS = 400;
         const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Maschino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
+        const REQUEST_MODAL_REP_OPTIONS = Object.freeze(
+            [...new Set(salesRepList.map((rep) => String(rep || '').trim()).filter(Boolean))]
+                .sort((a, b) => a.localeCompare(b))
+                .map((label) => {
+                    const token = normalizeRepMatchToken(label);
+                    return {
+                        label,
+                        token,
+                        collapsedToken: token.replace(/\s+/g, '')
+                    };
+                })
+        );
+        let requestModalCustomerOptionsCacheKey = '';
+        let requestModalCustomerOptionsByRepCache = new Map();
         const PRODUCTIVITY_HOME_VIEWERS = new Set(['dylan_collyge','jd_jones']);
         const PRODUCTIVITY_TRACKED_USERS = Object.freeze([
             { username: 'dylan_collyge', display: 'dylan_collyge' },
@@ -5793,7 +5815,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
         const NCR_COMPLETION_SELECT_FIELDS = 'source_unique_id,itemcode,locationcode,completed_by,completed_at,emailed_jd';
         const NCR_EMAIL_RECIPIENTS = Object.freeze(['jd_jones@greenleafnursery.com']);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-        const APP_VERSION = 'V2026.04.21.02';
+        const APP_VERSION = 'V2026.04.21.03';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -8153,7 +8175,7 @@ function toggleDriveQuickRequestItem(domId) {
             showRequestModalBase();
         }
 
-                function configureRequestCustomerStep() {
+        function configureRequestCustomerStep() {
             const label = document.getElementById('request-customer-label');
             const nextBtn = document.getElementById('request-customer-next-btn');
             const quickWrap = document.getElementById('quick-consignee-wrap');
@@ -8162,6 +8184,92 @@ function toggleDriveQuickRequestItem(domId) {
             if (nextBtn) nextBtn.innerText = isQuickDriveRequestMode() ? 'CREATE QUICK REQUEST' : 'NEXT: ITEM DETAILS';
             if (quickWrap) quickWrap.classList.add('hidden');
             if (custInput) custInput.placeholder = 'Search customer or consignee...';
+        }
+
+        function resolveCanonicalRequestRepName(repName = '') {
+            const rawValue = String(repName || '').trim();
+            if (!rawValue) return '';
+            const token = normalizeRepMatchToken(rawValue);
+            const collapsedToken = token.replace(/\s+/g, '');
+            const matchedOption = REQUEST_MODAL_REP_OPTIONS.find((option) => option.token === token || option.collapsedToken === collapsedToken);
+            return matchedOption ? matchedOption.label : rawValue;
+        }
+
+        function getRequestModalCustomerOptionsCacheSignature() {
+            return `${resolvedViewStateEpoch}|${getDatasetLoadSignature('soc')}|${getDatasetLoadSignature('reserves')}`;
+        }
+
+        function buildRequestModalCustomerSearchOption(customer = '', consignee = '') {
+            const customerName = String(customer || '').trim();
+            const consigneeName = String(consignee || '').trim();
+            const label = String(buildRequestCustomerValue(customerName, consigneeName) || customerName || consigneeName || '').trim();
+            if (!label) return null;
+            return {
+                label,
+                customerName,
+                consigneeName,
+                searchToken: normalizeRepMatchToken(`${customerName} ${consigneeName} ${label}`)
+            };
+        }
+
+        function buildRequestModalCustomerOptionsCache(force = false) {
+            const nextCacheKey = getRequestModalCustomerOptionsCacheSignature();
+            if (!force && requestModalCustomerOptionsCacheKey === nextCacheKey && requestModalCustomerOptionsByRepCache instanceof Map) {
+                return requestModalCustomerOptionsByRepCache;
+            }
+            const repBuckets = new Map();
+            const appendRow = (item = null) => {
+                if (!item) return;
+                const repLabel = resolveCanonicalRequestRepName(firstNonEmptyValue(item.SALESREPNAME, item.SALESREP, item.SALES_REP, item.SALESREPID, ''));
+                if (!repLabel) return;
+                const repKey = normalizeRepMatchToken(repLabel);
+                if (!repKey) return;
+                const option = buildRequestModalCustomerSearchOption(
+                    firstNonEmptyValue(item.CUSTOMERNAME, item.CUSTOMER, ''),
+                    firstNonEmptyValue(item.CONSIGNEENAME, item.CONSIGNEE, '')
+                );
+                if (!option) return;
+                if (!repBuckets.has(repKey)) repBuckets.set(repKey, new Map());
+                const repMap = repBuckets.get(repKey);
+                const optionKey = `${normalizeRepMatchToken(option.customerName)}|||${normalizeRepMatchToken(option.consigneeName)}|||${normalizeRepMatchToken(option.label)}`;
+                if (!repMap.has(optionKey)) repMap.set(optionKey, option);
+            };
+            (socInventory || []).forEach(appendRow);
+            (reservesInventory || []).forEach(appendRow);
+            const finalizedCache = new Map();
+            repBuckets.forEach((optionMap, repKey) => {
+                finalizedCache.set(repKey, Array.from(optionMap.values()).sort((a, b) => String(a.label || '').localeCompare(String(b.label || ''))));
+            });
+            requestModalCustomerOptionsCacheKey = nextCacheKey;
+            requestModalCustomerOptionsByRepCache = finalizedCache;
+            return requestModalCustomerOptionsByRepCache;
+        }
+
+        function getRequestModalCustomerOptionsForRep(repName = '') {
+            const canonicalRepName = resolveCanonicalRequestRepName(repName);
+            const repKey = normalizeRepMatchToken(canonicalRepName);
+            if (!repKey) return [];
+            const cache = buildRequestModalCustomerOptionsCache();
+            return Array.isArray(cache.get(repKey)) ? cache.get(repKey).slice() : [];
+        }
+
+        function scheduleRequestModalSearchRender(searchKey = 'rep', term = '', renderFn = null, options = {}) {
+            if (typeof renderFn !== 'function') return false;
+            const touchOptimized = isIOSDevice() || isStandaloneApp() || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+            return scheduleSearchRender(`request-modal:${String(searchKey || 'search')}`, renderFn, term, {
+                force: !!options.force,
+                skipDebounce: true,
+                debounceDelay: 0,
+                typingDelay: touchOptimized ? 34 : 22
+            });
+        }
+
+        function handleRequestRepSearchInput(value = '') {
+            return scheduleRequestModalSearchRender('rep', value, () => filterRepList(value));
+        }
+
+        function handleRequestCustomerSearchInput(value = '') {
+            return scheduleRequestModalSearchRender('customer', value, () => populateCustomerList(value));
         }
 
         function showRequestModalBase() {
@@ -8178,7 +8286,8 @@ function toggleDriveQuickRequestItem(domId) {
             document.getElementById('rep-search-input').value = '';
             document.getElementById('cust-search-input').value = '';
             configureRequestCustomerStep();
-            filterRepList();
+            buildRequestModalCustomerOptionsCache(true);
+            scheduleRequestModalSearchRender('rep', '', () => filterRepList(''), { force: true });
         }
 
         function closeRequestModal() {
@@ -8194,6 +8303,8 @@ function toggleDriveQuickRequestItem(domId) {
             tempReqCust = null;
             tempReqAppendToExistingFolder = false;
             previousReqStep = '';
+            requestModalCustomerOptionsCacheKey = '';
+            requestModalCustomerOptionsByRepCache = new Map();
             detailRequestSourceDomIds = [];
             resetQuickDriveRequestState();
             configureRequestCustomerStep();
@@ -8765,7 +8876,8 @@ function toggleDriveQuickRequestItem(domId) {
             const consigneeInput = document.getElementById('quick-consignee-input');
             if (consigneeInput) consigneeInput.value = '';
             configureRequestCustomerStep();
-            populateCustomerList();
+            buildRequestModalCustomerOptionsCache();
+            scheduleRequestModalSearchRender('customer', '', () => populateCustomerList(''), { force: true });
         }
 
         function goBackFromCustomerStep() {
@@ -19432,26 +19544,24 @@ function toggleDriveQuickRequestItem(domId) {
             }
         }
 
-        const debouncedFilterRepList=debounce(()=>requestAnimationFrame(filterRepList),150);
-
-        function filterRepList() {
-            const rawVal = document.getElementById('rep-search-input').value;
+        function filterRepList(searchValue = null) {
+            const input = document.getElementById('rep-search-input');
+            const rawVal = String(searchValue == null ? (input && input.value) : searchValue || '').trim();
             const val = normalizeRepMatchToken(rawVal);
             const collapsedVal = val.replace(/\s+/g, '');
             const container = document.getElementById('rep-list-container');
             const customBtn = document.getElementById('custom-rep-btn');
-            let html = '';
+            if (!container || !customBtn) return;
             let exactMatch = false;
-            const repOptions = [...new Set(salesRepList.map(rep => String(rep || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
-            repOptions.forEach(rep => {
-                const repToken = normalizeRepMatchToken(rep);
-                const repCollapsed = repToken.replace(/\s+/g, '');
-                if (!val || repToken.includes(val) || repCollapsed.includes(collapsedVal)) {
-                    if (repToken === val || repCollapsed === collapsedVal) exactMatch = true;
-                    html += `<button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm text-left" onclick="selectRepForRequest('${esc(rep)}')">${rep}</button>`;
-                }
+            const filteredOptions = REQUEST_MODAL_REP_OPTIONS.filter((option) => {
+                if (!val) return true;
+                return option.token.includes(val) || option.collapsedToken.includes(collapsedVal);
             });
-            container.innerHTML = html;
+            const html = filteredOptions.map((option) => {
+                if (option.token === val || option.collapsedToken === collapsedVal) exactMatch = true;
+                return `<button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm text-left" onclick="selectRepForRequest('${esc(option.label)}')">${option.label}</button>`;
+            }).join('');
+            container.innerHTML = html || `<div class="text-xs text-gray-400 p-2 text-center">No matching sales reps found. Type above to use a custom name.</div>`;
             if (val.length > 0 && !exactMatch) {
                 customBtn.classList.remove('hidden');
                 customBtn.querySelector('span').innerText = rawVal.trim();
@@ -19461,14 +19571,14 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function selectRepForRequest(repName) {
-            tempSelectedReqRep=repName;
+            tempSelectedReqRep = resolveCanonicalRequestRepName(repName);
             document.getElementById('step-1-rep').classList.add('hidden');
             document.getElementById('request-rep-modal').classList.remove('hidden');
             if (isQuickDriveRequestMode()) {
                 showRequestCustomerStep('step-1-rep');
                 return;
             }
-            let repReqs=requestsInventory.filter(i=>doesRequestRepMatchValue(i.REQUESTED_BY, repName)&&!i.REQ_ARCHIVED);
+            let repReqs=requestsInventory.filter(i=>doesRequestRepMatchValue(i.REQUESTED_BY, tempSelectedReqRep)&&!i.REQ_ARCHIVED);
             let uniqueFolders={};
             repReqs.forEach(i=>{if(i.REQUEST_FOLDER)uniqueFolders[i.REQUEST_FOLDER]=i.REQ_CUSTOMER||"Unknown"});
             const folderKeys=Object.keys(uniqueFolders);
@@ -19492,42 +19602,24 @@ function toggleDriveQuickRequestItem(domId) {
             }
         }
 
-        const debouncedPopulateCustomerList=debounce(()=>requestAnimationFrame(populateCustomerList),150);
-
-        function populateCustomerList() {
-            const rawVal = document.getElementById('cust-search-input').value;
+        function populateCustomerList(searchValue = null) {
+            const input = document.getElementById('cust-search-input');
+            const rawVal = String(searchValue == null ? (input && input.value) : searchValue || '').trim();
             const val = normalizeRepMatchToken(rawVal);
             const container = document.getElementById('cust-list-container');
-            let custSet = new Set();
-            const scan = (arr) => {
-                arr.forEach(i => {
-                    const sheetRep = String(i.SALESREPNAME || i.SALESREP || i.SALES_REP || '').trim();
-                    if (!doesRequestRepMatchValue(sheetRep, tempSelectedReqRep)) return;
-                    const c = String(i.CUSTOMERNAME || i.CUSTOMER || '').trim();
-                    const cons = String(i.CONSIGNEENAME || i.CONSIGNEE || '').trim();
-                    if (c || cons) {
-                        const display = buildRequestCustomerValue(c, cons) || c || cons;
-                        custSet.add(display);
-                    }
-                });
-            };
-            scan(socInventory);
-            scan(reservesInventory);
-            const sorted = Array.from(custSet).sort((a, b) => a.localeCompare(b));
-            let html = '';
-            sorted.forEach(c => {
-                const labelToken = normalizeRepMatchToken(c);
-                if (!val || labelToken.includes(val)) {
-                    html += `<div class="bg-orange-50 text-orange-800 font-bold p-3 rounded-lg border border-orange-200 shadow-sm text-left cursor-pointer active:bg-orange-100 mb-2" onclick="setCustomerInput('${esc(c)}')">${c}</div>`;
-                }
-            });
+            if (!container) return;
+            const options = getRequestModalCustomerOptionsForRep(tempSelectedReqRep);
+            let html = options
+                .filter((option) => !val || String(option.searchToken || '').includes(val))
+                .map((option) => `<div class="bg-orange-50 text-orange-800 font-bold p-3 rounded-lg border border-orange-200 shadow-sm text-left cursor-pointer active:bg-orange-100 mb-2" onclick="setCustomerInput('${esc(option.label)}')">${option.label}</div>`)
+                .join('');
             if (html === '') html = `<div class="text-xs text-gray-400 p-2 text-center">No matching customers found. Type above to use a custom name.</div>`;
             container.innerHTML = html;
         }
 
         function setCustomerInput(val) {
-            document.getElementById('cust-search-input').value=val;
-            populateCustomerList()
+            document.getElementById('cust-search-input').value = val;
+            scheduleRequestModalSearchRender('customer', val, () => populateCustomerList(val), { force: true });
         }
 
         function processCustStep() {
