@@ -30,7 +30,7 @@
         :root{--shell-max-width:920px;--content-max-width:820px;--shell-gutter:clamp(12px,2vw,24px);--shell-width:min(calc(100% - (var(--shell-gutter) * 2)),var(--shell-max-width));--content-width:min(100%,var(--content-max-width))}
         #main-scroll-area{min-height:0;width:100%;max-width:100%;min-width:0;overflow-x:hidden;overflow-y:auto;overscroll-behavior-x:none;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;scroll-padding-top:calc(5.5rem + env(safe-area-inset-top));scroll-padding-bottom:calc(7rem + env(safe-area-inset-bottom));padding:0 var(--shell-gutter) calc(10rem + env(safe-area-inset-bottom));background:linear-gradient(180deg,#f8fbf9 0%,#f4f7f5 100%)}
         #global-action-bar{padding-bottom:calc(.75rem + env(safe-area-inset-bottom))}#cart-helper-text{margin-top:.6rem;font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#6b7280}
-        body.app-standalone #app-wrapper{height:var(--app-height);min-height:var(--app-height)}body.app-standalone #main-scroll-area{padding-bottom:calc(10rem + env(safe-area-inset-bottom))}body.app-standalone.keyboard-open #bottom-nav,body.app-standalone.keyboard-open #global-action-bar{opacity:0;pointer-events:none;transform:translateY(140%);transition:transform .18s ease,opacity .18s ease}body.app-standalone.keyboard-open #main-scroll-area{padding-bottom:calc(1.5rem + var(--keyboard-offset));scroll-padding-bottom:calc(1.5rem + var(--keyboard-offset))}#bottom-nav{left:50%;right:auto;bottom:0;transform:translateX(-50%);width:min(760px,calc(100% - (var(--shell-gutter) * 2)));max-width:calc(100% - (var(--shell-gutter) * 2));padding:10px 10px calc(.75rem + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:.5rem;background:rgba(255,255,255,.98);backdrop-filter:saturate(150%) blur(12px);border-top-left-radius:22px;border-top-right-radius:22px;box-sizing:border-box;box-shadow:0 -12px 28px rgba(15,23,42,.14)}body.app-standalone.ios-device #bottom-nav{padding-top:.45rem;padding-bottom:max(.2rem, env(safe-area-inset-bottom));align-items:end;width:min(760px,calc(100vw - (var(--shell-gutter) * 2)));max-width:calc(100vw - (var(--shell-gutter) * 2))}body.ios-device,body.ios-device #app-wrapper,body.ios-device #main-scroll-area,body.ios-device #view-wrapper,body.ios-device .freeze-panel{overflow-x:clip !important;overscroll-behavior-x:none !important;max-width:100vw !important}body.ios-device #view-wrapper{width:min(var(--shell-width),100vw)}body.ios-device #view-wrapper>div{max-width:min(var(--content-width),calc(100vw - (var(--shell-gutter) * 2)))}body.ios-device #main-scroll-area{touch-action:pan-y !important}
+        body.app-standalone #app-wrapper{height:var(--app-height);min-height:var(--app-height)}body.app-standalone #main-scroll-area{padding-bottom:calc(10rem + env(safe-area-inset-bottom))}body.app-standalone.keyboard-open #bottom-nav,body.app-standalone.keyboard-open #global-action-bar{opacity:0;pointer-events:none;transform:translateY(140%);transition:transform .18s ease,opacity .18s ease}body.app-standalone.keyboard-open #main-scroll-area{padding-bottom:calc(1.5rem + var(--keyboard-offset));scroll-padding-bottom:calc(1.5rem + var(--keyboard-offset))}#bottom-nav{left:50%;right:auto;bottom:0;transform:translateX(-50%);width:min(760px,calc(100% - (var(--shell-gutter) * 2)));max-width:calc(100% - (var(--shell-gutter) * 2));padding:10px 10px calc(.75rem + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:.5rem;background:rgba(255,255,255,.98);backdrop-filter:saturate(150%) blur(12px);border-top-left-radius:22px;border-top-right-radius:22px;box-sizing:border-box;box-shadow:0 -12px 28px rgba(15,23,42,.14)}body.app-standalone.ios-device #bottom-nav{padding-top:.45rem;padding-bottom:max(.2rem, env(safe-area-inset-bottom));align-items:end;width:min(760px,calc(100vw - (var(--shell-gutter) * 2)));max-width:calc(100vw - (var(--shell-gutter) * 2))}body.ios-device,body.ios-device #app-wrapper,body.ios-device #main-scroll-area,body.ios-device #view-wrapper,body.ios-device .freeze-panel{overflow-x:clip !important;overscroll-behavior-x:none !important;max-width:100vw !important}body.ios-device #view-wrapper{width:min(var(--shell-width),100vw)}body.ios-device #view-wrapper>div{max-width:min(var(--content-width),calc(100vw - (var(--shell-gutter) * 2)))}body.ios-device #main-scroll-area{touch-action:pan-y !important}body.ios-device .sticky-search{transform:none !important;-webkit-transform:none !important;backface-visibility:visible !important;box-shadow:none !important}body.ios-device .nav-header{box-shadow:0 4px 10px rgba(7,94,63,.12) !important}body.ios-device #global-header-search-row,body.ios-device .freeze-panel{box-shadow:none !important}body.ios-device #bottom-nav{backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:0 -8px 18px rgba(15,23,42,.10)}
         .footer-nav-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.18rem;min-height:52px;border-radius:16px;border:1px solid transparent;background:transparent;color:#6b7280;font-size:10px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;transition:background .16s ease,color .16s ease,border-color .16s ease,transform .16s ease;position:relative}
         .footer-nav-btn i{font-size:22px;line-height:1}
         .footer-nav-btn:active{transform:scale(.97)}
@@ -670,7 +670,7 @@ body.viewport-compact #view-detail #det-location{font-size:clamp(.9rem,3.8vw,1.1
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-                    <div id="header-version" class="nav-version-pill">V2026.04.21.01</div>
+                    <div id="header-version" class="nav-version-pill">V2026.04.21.02</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -1273,6 +1273,11 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
         let viewportSyncFrameQueued = false;
         let viewportModeCompact = null;
         let horizontalClampFrameQueued = false;
+        let deferredChromeSyncTimers = Object.create(null);
+        let deferredMainAreaScrollTimer = null;
+        let deferredMainAreaScrollTarget = null;
+        let pendingTasksRenderOptions = null;
+        let lastGlobalHeaderChromeSignature = '';
         let swipeCloseOnScrollFrame = null;
         let swipeCloseOnScrollTimer = null;
         const ACTIVE_TYPING_GRACE_MS = 450;
@@ -1559,6 +1564,39 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
             return (Date.now() - lastTouchInteractionAt) < ACTIVE_TOUCH_GRACE_MS;
         }
 
+        function normalizeUiSyncReason(reason = '') {
+            return String(reason || '').trim().toLowerCase();
+        }
+
+        function shouldDeferChromeSyncWork(reason = '') {
+            const safeReason = normalizeUiSyncReason(reason);
+            if (!isIOSDevice()) return false;
+            if (
+                safeReason.includes('force')
+                || safeReason.includes('orientation')
+                || safeReason.includes('pageshow')
+                || safeReason.includes('focus')
+                || safeReason.includes('keyboard')
+                || safeReason.includes('login')
+                || safeReason.includes('visibility')
+                || safeReason.includes('manual')
+                || safeReason.includes('restore')
+            ) {
+                return false;
+            }
+            return isUserActivelyScrolling();
+        }
+
+        function scheduleDeferredChromeSyncTask(key = '', callback = null, delay = ACTIVE_SCROLL_GRACE_MS + 90) {
+            const safeKey = String(key || '').trim();
+            if (!safeKey || typeof callback !== 'function') return;
+            if (deferredChromeSyncTimers[safeKey]) clearTimeout(deferredChromeSyncTimers[safeKey]);
+            deferredChromeSyncTimers[safeKey] = setTimeout(() => {
+                deferredChromeSyncTimers[safeKey] = null;
+                callback();
+            }, Math.max(ACTIVE_SCROLL_GRACE_MS + 60, Number(delay) || 0));
+        }
+
         function markCameraActivity() {
             const now = Date.now();
             lastCameraActivityAt = now;
@@ -1705,8 +1743,14 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
             return !!(target && ['INPUT','TEXTAREA','SELECT'].includes(target.tagName) && !target.disabled && !target.readOnly && target.type !== 'hidden' && target.type !== 'file');
         }
 
-        function syncViewportHeight() {
+        function syncViewportHeight(options = {}) {
             viewportSyncFrameQueued = false;
+            const nextOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
+            const syncReason = normalizeUiSyncReason(nextOptions.reason);
+            if (!nextOptions.force && shouldDeferChromeSyncWork(syncReason)) {
+                scheduleDeferredChromeSyncTask('viewport-height', () => syncViewportHeight({ reason: `deferred:${syncReason || 'viewport-height'}`, force: true }));
+                return;
+            }
             const viewport = window.visualViewport;
             const layoutHeight = Math.max(320, Math.round(window.innerHeight || document.documentElement.clientHeight || 0));
             const visualHeight = Math.max(320, Math.round(viewport ? (viewport.height + (viewport.offsetTop || 0)) : layoutHeight));
@@ -1748,6 +1792,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
                 document.body.classList.toggle('keyboard-open', keyboardOpen);
             }
 
+            const previousViewportShellState = viewportShellState;
             viewportShellState = {
                 appHeight: nextHeight,
                 visualHeight,
@@ -1756,26 +1801,36 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
                 ios: iosDevice,
                 keyboardOpen
             };
+            if (
+                previousViewportShellState.visualHeight !== visualHeight
+                || previousViewportShellState.keyboardOpen !== keyboardOpen
+                || previousViewportShellState.appHeight !== nextHeight
+            ) {
+                scheduleStickyRailOffsetSync('viewport-height');
+            }
         }
 
         function initializeViewportHeightSync() {
             if (viewportHeightSyncInitialized) return;
             viewportHeightSyncInitialized = true;
-            const syncViewportShell = () => {
+            const syncViewportShell = (reason = 'resize') => {
                 if (viewportSyncFrameQueued) return;
                 viewportSyncFrameQueued = true;
-                requestAnimationFrame(syncViewportHeight);
+                requestAnimationFrame(() => syncViewportHeight({ reason }));
             };
-            syncViewportHeight();
-            window.addEventListener("resize", syncViewportShell, { passive: true });
+            syncViewportHeight({ reason: 'init', force: true });
+            window.addEventListener("resize", () => syncViewportShell('window-resize'), { passive: true });
             window.addEventListener("orientationchange", () => {
                 standaloneShellBaseHeight = 0;
-                syncViewportShell();
+                syncViewportShell('orientation');
             }, { passive: true });
-            document.addEventListener("focusin", syncViewportShell);
-            document.addEventListener("focusout", () => setTimeout(syncViewportShell, 160));
+            document.addEventListener("focusin", () => syncViewportShell('keyboard-focusin'));
+            document.addEventListener("focusout", () => setTimeout(() => syncViewportShell('keyboard-focusout'), 160));
             if (window.visualViewport) {
-                window.visualViewport.addEventListener("resize", syncViewportShell, { passive: true });
+                window.visualViewport.addEventListener("resize", () => {
+                    if (!hasActiveTextEntryFocus() && !document.body.classList.contains('keyboard-open')) return;
+                    syncViewportShell('visual-viewport-keyboard');
+                }, { passive: true });
             }
         }
 
@@ -1783,7 +1838,13 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
             return window.matchMedia('(max-width: 640px)').matches;
         }
 
-        function syncViewportMode() {
+        function syncViewportMode(options = {}) {
+            const nextOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
+            const syncReason = normalizeUiSyncReason(nextOptions.reason);
+            if (!nextOptions.force && shouldDeferChromeSyncWork(syncReason)) {
+                scheduleDeferredChromeSyncTask('viewport-mode', () => syncViewportMode({ reason: `deferred:${syncReason || 'viewport-mode'}`, force: true }));
+                return viewportModeCompact;
+            }
             const compact = isCompactViewport();
             if (viewportModeCompact === compact) return compact;
             viewportModeCompact = compact;
@@ -1794,17 +1855,14 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
 
         function initializeViewportModeSync() {
             let viewportSyncPending = false;
-            const scheduleViewportModeSync = () => {
+            const scheduleViewportModeSync = (reason = 'resize') => {
                 if (viewportSyncPending) return;
                 viewportSyncPending = true;
-                requestAnimationFrame(() => { viewportSyncPending = false; syncViewportMode(); });
+                requestAnimationFrame(() => { viewportSyncPending = false; syncViewportMode({ reason }); });
             };
-            syncViewportMode();
-            window.addEventListener('resize', scheduleViewportModeSync, { passive: true });
-            window.addEventListener('orientationchange', scheduleViewportModeSync, { passive: true });
-            if (window.visualViewport) {
-                window.visualViewport.addEventListener('resize', scheduleViewportModeSync, { passive: true });
-            }
+            syncViewportMode({ reason: 'init', force: true });
+            window.addEventListener('resize', () => scheduleViewportModeSync('window-resize'), { passive: true });
+            window.addEventListener('orientationchange', () => scheduleViewportModeSync('orientation'), { passive: true });
         }
 
         let stickyRailOffsetSyncInitialized = false;
@@ -1833,7 +1891,12 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
             applyStickyRailOffset(document.querySelector('#view-detail .freeze-panel'), document.getElementById('global-header-search-row'));
         }
 
-        function scheduleStickyRailOffsetSync() {
+        function scheduleStickyRailOffsetSync(reason = 'default', force = false) {
+            const syncReason = normalizeUiSyncReason(reason);
+            if (!force && shouldDeferChromeSyncWork(syncReason)) {
+                scheduleDeferredChromeSyncTask('sticky-rail-offset', () => scheduleStickyRailOffsetSync(`deferred:${syncReason || 'sticky-rail-offset'}`, true));
+                return;
+            }
             if (stickyRailOffsetFrameQueued) return;
             stickyRailOffsetFrameQueued = true;
             requestAnimationFrame(() => {
@@ -1845,12 +1908,9 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
         function initializeStickyRailOffsetSync() {
             if (stickyRailOffsetSyncInitialized) return;
             stickyRailOffsetSyncInitialized = true;
-            scheduleStickyRailOffsetSync();
-            window.addEventListener('resize', scheduleStickyRailOffsetSync, { passive: true });
-            window.addEventListener('orientationchange', scheduleStickyRailOffsetSync, { passive: true });
-            if (window.visualViewport) {
-                window.visualViewport.addEventListener('resize', scheduleStickyRailOffsetSync, { passive: true });
-            }
+            scheduleStickyRailOffsetSync('init', true);
+            window.addEventListener('resize', () => scheduleStickyRailOffsetSync('window-resize'), { passive: true });
+            window.addEventListener('orientationchange', () => scheduleStickyRailOffsetSync('orientation', true), { passive: true });
         }
 
         let horizontalViewportClampInitialized = false;
@@ -1861,7 +1921,12 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
             if (window.scrollX) window.scrollTo(0, window.scrollY || 0);
         }
 
-        function scheduleHorizontalViewportClamp() {
+        function scheduleHorizontalViewportClamp(reason = 'default', force = false) {
+            const syncReason = normalizeUiSyncReason(reason);
+            if (!force && shouldDeferChromeSyncWork(syncReason)) {
+                scheduleDeferredChromeSyncTask('horizontal-clamp', () => scheduleHorizontalViewportClamp(`deferred:${syncReason || 'horizontal-clamp'}`, true));
+                return;
+            }
             if (horizontalClampFrameQueued) return;
             horizontalClampFrameQueued = true;
             requestAnimationFrame(() => {
@@ -1873,17 +1938,14 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
         function initializeHorizontalViewportClamp() {
             if (horizontalViewportClampInitialized) return;
             horizontalViewportClampInitialized = true;
-            scheduleHorizontalViewportClamp();
-            window.addEventListener('resize', scheduleHorizontalViewportClamp, { passive: true });
-            window.addEventListener('orientationchange', scheduleHorizontalViewportClamp, { passive: true });
-            window.addEventListener('pageshow', scheduleHorizontalViewportClamp, { passive: true });
-            window.addEventListener('focus', scheduleHorizontalViewportClamp, { passive: true });
+            scheduleHorizontalViewportClamp('init', true);
+            window.addEventListener('resize', () => scheduleHorizontalViewportClamp('window-resize'), { passive: true });
+            window.addEventListener('orientationchange', () => scheduleHorizontalViewportClamp('orientation', true), { passive: true });
+            window.addEventListener('pageshow', () => scheduleHorizontalViewportClamp('pageshow', true), { passive: true });
+            window.addEventListener('focus', () => scheduleHorizontalViewportClamp('focus', true), { passive: true });
             document.addEventListener('visibilitychange', () => {
-                if (!document.hidden) scheduleHorizontalViewportClamp();
+                if (!document.hidden) scheduleHorizontalViewportClamp('visibility', true);
             });
-            if (window.visualViewport) {
-                window.visualViewport.addEventListener('resize', scheduleHorizontalViewportClamp, { passive: true });
-            }
         }
         function isDetailEditableField(target) {
             return !!(target && ['INPUT','TEXTAREA','SELECT'].includes(target.tagName) && target.closest('#view-detail') && !target.disabled && target.type !== 'hidden' && target.type !== 'file');
@@ -4183,9 +4245,28 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         }
 
         function queueScrollMainAreaToTop(key = 'global') {
+            if (Math.abs(getMainAreaScrollTop()) <= 2) return;
+            if (isUserActivelyScrolling()) {
+                deferredMainAreaScrollTarget = 0;
+                if (deferredMainAreaScrollTimer) clearTimeout(deferredMainAreaScrollTimer);
+                deferredMainAreaScrollTimer = setTimeout(() => {
+                    deferredMainAreaScrollTimer = null;
+                    if (isUserActivelyScrolling()) {
+                        queueScrollMainAreaToTop(`${key}:deferred`);
+                        return;
+                    }
+                    deferredMainAreaScrollTarget = null;
+                    queueScrollMainAreaToTop(`${key}:settled`);
+                }, ACTIVE_SCROLL_GRACE_MS + 80);
+                return;
+            }
             scheduleUiRender(`scroll-top:${key}`, () => {
+                if (Math.abs(getMainAreaScrollTop()) <= 2) return;
                 scrollMainAreaToTop();
-                requestAnimationFrame(() => scrollMainAreaToTop());
+                requestAnimationFrame(() => {
+                    if (Math.abs(getMainAreaScrollTop()) <= 2) return;
+                    scrollMainAreaToTop();
+                });
             });
         }
 
@@ -4200,12 +4281,15 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         function setMainAreaScrollTop(value = 0) {
             const nextTop = Math.max(0, Number(value || 0));
             const scrollArea = document.getElementById('main-scroll-area');
-            if (scrollArea) scrollArea.scrollTop = nextTop;
+            if (scrollArea && Math.abs(Number(scrollArea.scrollTop || 0) - nextTop) > 1) scrollArea.scrollTop = nextTop;
             const wrapper = document.getElementById('view-wrapper');
-            if (wrapper) wrapper.scrollTop = nextTop;
-            if (document.documentElement) document.documentElement.scrollTop = nextTop;
-            if (document.body) document.body.scrollTop = nextTop;
-            try { window.scrollTo(0, nextTop); } catch (err) {}
+            if (wrapper && Math.abs(Number(wrapper.scrollTop || 0) - nextTop) > 1) wrapper.scrollTop = nextTop;
+            if (document.documentElement && Math.abs(Number(document.documentElement.scrollTop || 0) - nextTop) > 1) document.documentElement.scrollTop = nextTop;
+            if (document.body && Math.abs(Number(document.body.scrollTop || 0) - nextTop) > 1) document.body.scrollTop = nextTop;
+            const windowScrollTop = Number(window.pageYOffset || 0);
+            if (Math.abs(windowScrollTop - nextTop) > 1) {
+                try { window.scrollTo(0, nextTop); } catch (err) {}
+            }
         }
 
         function rememberDetailReturnPosition(viewId = '') {
@@ -4324,6 +4408,17 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
 
         function scheduleAVRender(delay = 24) {
             return scheduleTrackedViewRender('av', 'av:render', { delay, typingDelay: 160 });
+        }
+
+        function scheduleTasksRenderWithOptions(options = {}, delay = 0, typingDelay = 160, forceRender = false, renderKey = 'tasks:render:options') {
+            pendingTasksRenderOptions = { ...(pendingTasksRenderOptions || {}), ...((options && typeof options === 'object') ? options : {}) };
+            markViewDirty('tasks');
+            scheduleTypingAwareUiRender(`tracked-view:${renderKey}`, () => {
+                const targetView = document.getElementById('view-tasks');
+                if (!targetView || targetView.classList.contains('hidden')) return;
+                renderViewContent('tasks', false, forceRender);
+            }, Math.max(0, Number(delay) || 0), typingDelay, { touchDelayMs: 220, scrollDelayMs: 180 });
+            return false;
         }
 
         let activeFetches=0; let fetchProgressInterval; let currentProgress=0;
@@ -5698,7 +5793,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
         const NCR_COMPLETION_SELECT_FIELDS = 'source_unique_id,itemcode,locationcode,completed_by,completed_at,emailed_jd';
         const NCR_EMAIL_RECIPIENTS = Object.freeze(['jd_jones@greenleafnursery.com']);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-        const APP_VERSION = 'V2026.04.21.01';
+        const APP_VERSION = 'V2026.04.21.02';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -5866,9 +5961,14 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
             return false;
         }
 
-        function syncGlobalHeaderChrome() {
+        function syncGlobalHeaderChrome(options = {}) {
+            const nextOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
+            const syncReason = normalizeUiSyncReason(nextOptions.reason);
+            if (!nextOptions.force && shouldDeferChromeSyncWork(syncReason)) {
+                scheduleDeferredChromeSyncTask('global-header', () => syncGlobalHeaderChrome({ reason: `deferred:${syncReason || 'global-header'}`, force: true }));
+                return;
+            }
             ensureGlobalHeaderSearchPlaceholders();
-            restoreGlobalHeaderSearchContainers();
             const currentView = getCurrentVisibleViewId();
             const meta = AMAZON_HEADER_META[currentView] || { title: formatGlobalHeaderTitle(currentView) };
             const headerUser = document.getElementById('header-user');
@@ -5884,11 +5984,25 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
             if (title) title.innerText = meta.title || formatGlobalHeaderTitle(currentView);
             const showHomeBack = currentView === 'home' && shouldShowHomeProductivityBackButton();
             if (backBtn) backBtn.classList.toggle('hidden', currentView === 'home' ? !showHomeBack : false);
-            if (searchSlot) clearNodeChildren(searchSlot);
             const searchContainerId = currentView === 'tasks'
                 ? (shouldShowTaskHeaderSearch() ? GLOBAL_HEADER_SEARCH_CONFIG.tasks : '')
                 : GLOBAL_HEADER_SEARCH_CONFIG[currentView];
             const searchContainer = searchContainerId ? document.getElementById(searchContainerId) : null;
+            const nextSignature = [
+                currentView,
+                meta.title || formatGlobalHeaderTitle(currentView),
+                showHomeBack ? 'home-back' : 'no-home-back',
+                searchContainerId || 'no-search',
+                searchContainer && !searchContainer.classList.contains('hidden') ? 'search-visible' : 'search-hidden',
+                currentUserDisplay || currentUser || 'User',
+                APP_VERSION
+            ].join('|');
+            if (!nextOptions.force && nextSignature === lastGlobalHeaderChromeSignature) {
+                return;
+            }
+            lastGlobalHeaderChromeSignature = nextSignature;
+            restoreGlobalHeaderSearchContainers();
+            if (searchSlot) clearNodeChildren(searchSlot);
             if (searchSlot && searchContainer && !searchContainer.classList.contains('hidden')) {
                 if (searchRow) searchRow.classList.remove('hidden');
                 searchSlot.classList.remove('hidden');
@@ -5899,6 +6013,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
                 if (inlineTitle) inlineTitle.classList.toggle('hidden', currentView === 'home');
                 if (searchRow) searchRow.classList.toggle('hidden', currentView === 'home');
             }
+            scheduleStickyRailOffsetSync('global-header');
         }
 
         function installAmazonHeaderChrome() {
@@ -6455,12 +6570,12 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
                     processAndLoadData(buildDatasetPayload(key, rows));
                 }
                 if (key === 'reserves') {
-                    if (isViewVisible('av') && activeAVTab === 'reserves') scheduleTypingAwareUiRender('av-reserves-refresh', () => renderAV(), wantsFull ? 18 : 8, 220);
+                    if (isViewVisible('av') && activeAVTab === 'reserves') queueInteractiveViewRender('av', false, true, wantsFull ? 18 : 8, 220);
                     if (isViewVisible('reserves')) queueInteractiveViewRender('reserves', false, true, wantsFull ? 18 : 8, 220);
                     if (isViewVisible('reports')) queueInteractiveViewRender('reports', false, true, wantsFull ? 18 : 8, 220);
                 }
                 if (key === 'cav') {
-                    if (isViewVisible('tasks') && activeTaskTab === 'season') scheduleTypingAwareUiRender('tasks-cav-refresh', () => renderTasks(), wantsFull ? 18 : 8, 220);
+                    if (isViewVisible('tasks') && activeTaskTab === 'season') queueInteractiveViewRender('tasks', false, true, wantsFull ? 18 : 8, 220);
                 }
                 persistCurrentCache();
                 touchSyncTimestamp();
@@ -11351,8 +11466,10 @@ function toggleDriveQuickRequestItem(domId) {
                 if (forceReset || !state.initialized) resetDriveView(false);
                 renderDrive();
             } else if (viewId === 'tasks') {
+                const taskRenderOptions = pendingTasksRenderOptions || {};
+                pendingTasksRenderOptions = null;
                 if (shouldShowAdminTaskTeamSelector(activeTaskTab)) renderTeamSelector();
-                else renderTasks();
+                else renderTasks(taskRenderOptions);
             } else if (viewId === 'reports') {
                 if (forceReset || !state.initialized) resetReportsView(false);
                 if (typeof renderReports === 'function') renderReports();
@@ -18006,16 +18123,25 @@ function toggleDriveQuickRequestItem(domId) {
             };
             scrollArea.addEventListener('scroll', onMainScroll, { passive: true });
             window.addEventListener('pageshow', () => {
-                syncViewportHeight();
+                syncViewportHeight({ reason: 'pageshow', force: true });
+                syncGlobalHeaderChrome({ reason: 'pageshow', force: true });
+                scheduleStickyRailOffsetSync('pageshow', true);
+                scheduleHorizontalViewportClamp('pageshow', true);
                 queueForegroundRefresh(120);
             }, { passive: true });
             window.addEventListener('focus', () => {
-                syncViewportHeight();
+                syncViewportHeight({ reason: 'focus', force: true });
+                syncGlobalHeaderChrome({ reason: 'focus', force: true });
+                scheduleStickyRailOffsetSync('focus', true);
+                scheduleHorizontalViewportClamp('focus', true);
                 queueForegroundRefresh(120);
             }, { passive: true });
             window.addEventListener('orientationchange', () => {
-                syncViewportHeight();
-                syncViewportMode();
+                syncViewportHeight({ reason: 'orientation', force: true });
+                syncViewportMode({ reason: 'orientation', force: true });
+                syncGlobalHeaderChrome({ reason: 'orientation', force: true });
+                scheduleStickyRailOffsetSync('orientation', true);
+                scheduleHorizontalViewportClamp('orientation', true);
                 closeAllRequestSwipes();
                 closeAllFlyerSwipes();
                 setPullRefreshIndicator('hidden');
@@ -18026,6 +18152,7 @@ function toggleDriveQuickRequestItem(domId) {
                     cleanupRealtime();
                     return;
                 }
+                syncGlobalHeaderChrome({ reason: 'visibility', force: true });
                 refreshRealtimeSubscriptionsForCurrentView(true);
                 queueForegroundRefresh(120);
             }, { passive: true });
@@ -21768,7 +21895,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             selectedTaskBlock = null;
             selectedTaskLoc = null;
             syncColorWalkFilterUi();
-            scheduleTypingAwareUiRender('task-colorwalk-search', () => renderTasks({ skipColorWalkFilterRender: true }), 0, 180);
+            scheduleTasksRenderWithOptions({ skipColorWalkFilterRender: true }, 0, 180, false, 'tasks:colorwalk-search');
             return false;
         }
 
@@ -22224,7 +22351,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         function setTaskLocationDetailSearchTerm(value = '') {
             taskLocationDetailSearchTerm = String(value || '');
             syncTaskLocationDetailFilterUi();
-            scheduleTypingAwareUiRender('task-location-detail-search', () => renderTasks({ skipTaskLocationDetailFilterRender: true }), 0, 180);
+            scheduleTasksRenderWithOptions({ skipTaskLocationDetailFilterRender: true }, 0, 180, false, 'tasks:location-detail-search');
         }
 
         function clearTaskLocationDetailSearch() {
