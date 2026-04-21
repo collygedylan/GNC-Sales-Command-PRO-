@@ -3646,23 +3646,30 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             });
         }
 
+        function hydrateCavInventoryRow(item, idx = 0) {
+            if (!item) return item;
+            item.DOM_ID = item.DOM_ID || ('cav_' + (item.UNIQUE_ID || idx));
+            item.UNIQUE_ID = item.UNIQUE_ID || ('cav_uid_' + idx);
+            item.LOCATIONCODE = firstNonEmptyValue(item.LOCATIONCODE, item.LOCATION, item.LOC, 'No Loc');
+            item.ITEMCODE = firstNonEmptyValue(item.ITEMCODE, item.itemcode, item.ITEM, '');
+            item.COMMONNAME = firstNonEmptyValue(item.COMMONNAME, item.DESCRIPTION, item.PLANT_NAME, item.ITEMCODE, 'AV Blank');
+            item.CONTSIZE = firstNonEmptyValue(item.CONTSIZE, item.ITEMSPEC, item.SIZE, item.contsize, '-');
+            item.CAV_HOLD_REASON = firstNonEmptyValue(item['Hold Reason'], item.HOLD_REASON, item.HOLDREASON, item.hold_reason, '');
+            item.CAV_NOTES = firstNonEmptyValue(item.Notes, item.NOTES, item.notes, '');
+            item.CAV_COMMENTS = firstNonEmptyValue(item.Comments, item.COMMENTS, item.comments, '');
+            item.CAV_H = firstNonEmptyValue(item.H, item.h, '');
+            item.CAV_SEASON = firstNonEmptyValue(item['*Season'], item.SEASON, item.season, '');
+            item.SEASON = firstNonEmptyValue(item.SEASON, item.CAV_SEASON, item.season, '');
+            item.HOT_PRICE = getNormalizedAvHotPrice(firstNonEmptyValue(item.HOT_PRICE, item.HOTPRICE, item.hot_price, ''));
+            item.HOTPRICE = item.HOT_PRICE;
+            item._search = `${item.LOCATIONCODE || ''} ${item.ITEMCODE || ''} ${item.COMMONNAME || ''} ${item.CONTSIZE || ''} ${item.SEASON || ''} ${item.HOT_PRICE || ''} ${item.CAV_HOLD_REASON || ''} ${item.CAV_NOTES || ''} ${item.CAV_COMMENTS || ''} ${item.CAV_H || ''}`.toLowerCase();
+            normalizeRowPhotoFields(item);
+            buildSearchIndex(item);
+            return item;
+        }
+
         function syncRealtimeCavRows() {
-            cavInventory = (Array.isArray(cavInventory) ? cavInventory : []).map((item, idx) => {
-                if (!item) return item;
-                item.DOM_ID = item.DOM_ID || ('cav_' + (item.UNIQUE_ID || idx));
-                item.UNIQUE_ID = item.UNIQUE_ID || ('cav_uid_' + idx);
-                item.LOCATIONCODE = firstNonEmptyValue(item.LOCATIONCODE, item.LOCATION, item.LOC, 'No Loc');
-                item.ITEMCODE = firstNonEmptyValue(item.ITEMCODE, item.itemcode, item.ITEM, '');
-                item.COMMONNAME = firstNonEmptyValue(item.COMMONNAME, item.DESCRIPTION, item.PLANT_NAME, item.ITEMCODE, 'AV Blank');
-                item.CONTSIZE = firstNonEmptyValue(item.CONTSIZE, item.ITEMSPEC, item.SIZE, item.contsize, '-');
-                item.SEASON = firstNonEmptyValue(item.SEASON, item.season, '');
-                item.HOT_PRICE = getNormalizedAvHotPrice(firstNonEmptyValue(item.HOT_PRICE, item.HOTPRICE, item.hot_price, ''));
-                item.HOTPRICE = item.HOT_PRICE;
-                item._search = `${item.LOCATIONCODE || ''} ${item.ITEMCODE || ''} ${item.COMMONNAME || ''} ${item.CONTSIZE || ''} ${item.SEASON || ''} ${item.HOT_PRICE || ''}`.toLowerCase();
-                normalizeRowPhotoFields(item);
-                buildSearchIndex(item);
-                return item;
-            });
+            cavInventory = (Array.isArray(cavInventory) ? cavInventory : []).map((item, idx) => hydrateCavInventoryRow(item, idx));
         }
 
         function normalizeAvHotPriceKeyRows(rows = []) {
@@ -6020,7 +6027,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
             'dylan_collyge@greenleafnursery.com'
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-        const APP_VERSION = 'V2026.04.21.06';
+const APP_VERSION = 'V2026.04.21.07';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -10673,21 +10680,7 @@ function toggleDriveQuickRequestItem(domId) {
             }
 
             if (hasCav) {
-                cavInventory = (res.cavData || []).map((item, idx) => {
-                    item.DOM_ID = 'cav_' + (item.UNIQUE_ID || idx);
-                    item.UNIQUE_ID = item.UNIQUE_ID || ('cav_uid_' + idx);
-                    item.LOCATIONCODE = firstNonEmptyValue(item.LOCATIONCODE, item.LOCATION, item.LOC, 'No Loc');
-                    item.ITEMCODE = firstNonEmptyValue(item.ITEMCODE, item.itemcode, item.ITEM, '');
-                    item.COMMONNAME = firstNonEmptyValue(item.COMMONNAME, item.DESCRIPTION, item.PLANT_NAME, item.ITEMCODE, 'AV Blank');
-                    item.CONTSIZE = firstNonEmptyValue(item.CONTSIZE, item.ITEMSPEC, item.SIZE, item.contsize, '-');
-                    item.SEASON = firstNonEmptyValue(item.SEASON, item.season, '');
-                    item.HOT_PRICE = getNormalizedAvHotPrice(firstNonEmptyValue(item.HOT_PRICE, item.HOTPRICE, item.hot_price, ''));
-                    item.HOTPRICE = item.HOT_PRICE;
-                    item._search = `${item.LOCATIONCODE || ''} ${item.ITEMCODE || ''} ${item.COMMONNAME || ''} ${item.CONTSIZE || ''} ${item.SEASON || ''} ${item.HOT_PRICE || ''}`.toLowerCase();
-                    normalizeRowPhotoFields(item);
-                    buildSearchIndex(item);
-                    return item;
-                });
+                cavInventory = (res.cavData || []).map((item, idx) => hydrateCavInventoryRow(item, idx));
             }
 
             if (hasAvHotPrice) {
@@ -23047,25 +23040,36 @@ ${folderNote ? `Folder Note: ${folderNote}
             return String(value || '').trim().toUpperCase();
         }
 
-        function getSeasonAvBlankItems(seasonTaskItems = []) {
-            const allowedSeasons = new Set((Array.isArray(seasonTaskItems) ? seasonTaskItems : [])
-                .map(item => normalizeSeasonTaskValue(firstNonEmptyValue(item && item.SEASON, '')))
-                .filter(Boolean));
-            if (!allowedSeasons.size) return [];
-            return cavInventory.filter((item) => {
-                const seasonValue = normalizeSeasonTaskValue(firstNonEmptyValue(item && item.SEASON, item && item.season, ''));
-                const locationValue = String(firstNonEmptyValue(item && item.LOCATIONCODE, item && item.LOCATION, item && item.LOC, '')).trim();
-                return !!locationValue && !!seasonValue && allowedSeasons.has(seasonValue);
-            });
+        function isBlankCavFieldValue(value = '') {
+            if (value === null || value === undefined) return true;
+            const normalizedValue = String(value || '').trim();
+            if (!normalizedValue) return true;
+            return normalizedValue.toUpperCase() === 'NULL';
         }
 
-        function renderTaskAvBlankCard(item) {
-            const locationCode = String(firstNonEmptyValue(item && item.LOCATIONCODE, item && item.LOCATION, item && item.LOC, 'No Loc')).trim() || 'No Loc';
-            const itemCode = String(firstNonEmptyValue(item && item.ITEMCODE, item && item.itemcode, '')).trim();
-            const commonName = String(firstNonEmptyValue(item && item.COMMONNAME, item && item.DESCRIPTION, itemCode, 'AV Blank')).trim();
-            const contSize = String(firstNonEmptyValue(item && item.CONTSIZE, item && item.ITEMSPEC, item && item.SIZE, '-')).trim() || '-';
-            const seasonValue = String(firstNonEmptyValue(item && item.SEASON, item && item.season, '-')).trim() || '-';
-            return `<div class="bg-white border border-emerald-200 rounded-xl shadow-sm mb-3 p-4"><div class="flex items-start justify-between gap-3"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-600">AV Blank</div><div class="mt-1 font-black text-lg text-slate-900">${esc(locationCode)}</div><div class="mt-2 text-sm font-bold text-slate-700 break-words">${esc(commonName)}</div><div class="mt-1 text-xs font-semibold text-slate-500">${esc(contSize)}${itemCode ? ` &bull; ${esc(itemCode)}` : ''}</div></div><div class="shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">Season ${esc(seasonValue)}</div></div></div>`;
+        function isQualifyingSeasonAvBlankCavRow(item = null) {
+            if (!item) return false;
+            const itemCode = String(firstNonEmptyValue(item.ITEMCODE, item.itemcode, item.ITEM, '')).trim();
+            if (!itemCode) return false;
+            const seasonValue = normalizeSeasonTaskValue(firstNonEmptyValue(item.CAV_SEASON, item['*Season'], item.SEASON, item.season, ''));
+            if (seasonValue !== 'S1') return false;
+            if (!isBlankCavFieldValue(firstNonEmptyValue(item.CAV_HOLD_REASON, item['Hold Reason'], item.HOLD_REASON, item.HOLDREASON, item.hold_reason, ''))) return false;
+            if (!isBlankCavFieldValue(firstNonEmptyValue(item.CAV_NOTES, item.Notes, item.NOTES, item.notes, ''))) return false;
+            if (!isBlankCavFieldValue(firstNonEmptyValue(item.CAV_COMMENTS, item.Comments, item.COMMENTS, item.comments, ''))) return false;
+            if (!isBlankCavFieldValue(firstNonEmptyValue(item.CAV_H, item.H, item.h, ''))) return false;
+            return true;
+        }
+
+        function getSeasonAvBlankItems(seasonTaskItems = []) {
+            const matchedItemCodes = new Set((Array.isArray(cavInventory) ? cavInventory : [])
+                .filter((item) => isQualifyingSeasonAvBlankCavRow(item))
+                .map((item) => String(firstNonEmptyValue(item && item.ITEMCODE, item && item.itemcode, item && item.ITEM, '')).trim())
+                .filter(Boolean));
+            if (!matchedItemCodes.size) return [];
+            return (Array.isArray(seasonTaskItems) ? seasonTaskItems : []).filter((item) => {
+                const itemCode = String(firstNonEmptyValue(item && item.ITEMCODE, item && item.ITEM, '')).trim();
+                return !!itemCode && matchedItemCodes.has(itemCode);
+            });
         }
 
         function buildResolvedTaskState() {
@@ -23258,8 +23262,12 @@ ${folderNote ? `Folder Note: ${folderNote}
 
             applyTaskCrumb();
 
+            const isSeasonAvBlankSubview = activeTaskTab === 'season' && activeTaskSubview === 'av-blanks';
             if (activeTaskTab !== 'flyer' && tabItems.length === 0) {
-                container.innerHTML = `<div class="p-8 text-center text-gray-400">No active ${notesTitle} rows.</div>`;
+                const emptyTaskSubviewHtml = isSeasonAvBlankSubview
+                    ? `<div class="p-8 text-center text-gray-400">No Season Sales Notes rows matched qualifying AV Blank CAV rows.</div>`
+                    : `<div class="p-8 text-center text-gray-400">No active ${notesTitle} rows.</div>`;
+                container.innerHTML = emptyTaskSubviewHtml;
                 return;
             }
             if (activeTaskTab === 'endcap') {
@@ -23364,15 +23372,15 @@ ${folderNote ? `Folder Note: ${folderNote}
                         return String(a.CONTSIZE || '').localeCompare(String(b.CONTSIZE || ''), undefined, { numeric: true });
                     });
                     const prefixHtml = `<div class="back-btn" onclick="return backToTaskLocationList()"><i class="ph-bold ph-arrow-left"></i> Back to Locations</div>`;
-                    const renderRow = activeTaskTab === 'season' && activeTaskSubview === 'av-blanks'
-                        ? (item) => renderTaskAvBlankCard(item)
-                        : (item) => generateCard(item, 'tasks', getTaskRowColorClass(item, activeTaskTab));
+                    const renderRow = (item) => generateCard(item, 'tasks', getTaskRowColorClass(item, activeTaskTab));
                     const emptyHtml = shouldRenderTaskLocationDetailFilters && hasActiveTaskLocationDetailFilters()
                         ? `<div class="p-8 text-center text-gray-400">No rows match current filters.</div>`
-                        : `<div class="p-8 text-center text-gray-400">No rows found for this location.</div>`;
+                        : (isSeasonAvBlankSubview
+                            ? `<div class="p-8 text-center text-gray-400">No matched Season Sales Notes rows were found for this location.</div>`
+                            : `<div class="p-8 text-center text-gray-400">No rows found for this location.</div>`);
                     renderMarkupChunkedByKey('tasks-main', container, null, fItems, '', renderRow, {
                         prefixHtml,
-                        approxCardHeight: activeTaskTab === 'season' && activeTaskSubview === 'av-blanks' ? 170 : (isTaskHotPriceSubview(activeTaskTab, activeTaskSubview) ? 290 : 260),
+                        approxCardHeight: isTaskHotPriceSubview(activeTaskTab, activeTaskSubview) ? 290 : 260,
                         emptyHtml
                     });
                 }
