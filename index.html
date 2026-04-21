@@ -645,7 +645,7 @@ body.viewport-compact #view-detail #det-location{font-size:clamp(.9rem,3.8vw,1.1
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-<div id="header-version" class="nav-version-pill">V2026.04.20.12</div>
+<div id="header-version" class="nav-version-pill">V2026.04.20.13</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -678,7 +678,7 @@ body.viewport-compact #view-detail #det-location{font-size:clamp(.9rem,3.8vw,1.1
             <div class="drawer-item text-emerald-600 font-bold role-access role-admin hidden" onclick="switchView('reports'); toggleMenu();"><i class="ph-bold ph-chart-bar"></i> Reports</div>
             <div class="drawer-item text-emerald-600 font-bold role-access role-admin hidden" onclick="switchView('hours'); toggleMenu();"><i class="ph-bold ph-clock"></i> Labor Hours</div>
             <div class="drawer-item text-red-600 font-bold role-access role-admin hidden" onclick="switchView('low-stock'); toggleMenu();"><i class="ph-bold ph-trend-down"></i> NCR</div>
-            <div class="drawer-item text-yellow-600 font-bold role-access role-admin hidden" onclick="switchView('review'); toggleMenu();"><i class="ph-bold ph-warning-circle"></i> Manager Review</div>
+            <div class="drawer-item text-yellow-600 font-bold role-access role-admin hidden" onclick="switchView('review'); toggleMenu();"><i class="ph-bold ph-warning-circle"></i> New Crop Release</div>
             <hr class="my-3 border-gray-200">
             <div class="drawer-item text-red-600 bg-red-50 font-bold justify-center rounded-lg mx-4 mt-2 mb-8" onclick="performLogout()"><i class="ph-bold ph-sign-out text-xl"></i> Log Out</div>
         </div>
@@ -731,7 +731,7 @@ body.viewport-compact #view-detail #det-location{font-size:clamp(.9rem,3.8vw,1.1
                                 <div onclick="openSalesOfficeView()" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep hidden"><i class="ph-bold ph-briefcase text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Sales Office</span></div>
                                 <div onclick="switchView('reports')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-chart-bar text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Reports</span></div>
                                 <div onclick="switchView('hours')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-clock text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Labor Hours</span></div>
-                                <div onclick="switchView('review')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform col-span-2 cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-warning-circle text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Manager Review</span></div>
+                                <div onclick="switchView('review')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform col-span-2 cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-warning-circle text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">New Crop Release</span></div>
                             </div>
                         </div>
                     </div>
@@ -5411,7 +5411,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
         const REQUEST_EMAIL_THREAD_SELECT_FIELDS = 'request_folder,request_customer,sales_rep_name,sales_rep_email,recipients,initial_thread_id,initial_message_id,initial_email_sent_at,last_reply_sent_at,status,metadata';
         const REQUEST_EMAIL_INTERNAL_RECIPIENTS = Object.freeze(['dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com']);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-        const APP_VERSION = 'V2026.04.20.12';
+        const APP_VERSION = 'V2026.04.20.13';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -5451,7 +5451,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
             reports: { eyebrow: 'Amazon Filters', title: 'Reports' },
             'low-stock': { eyebrow: 'Amazon Filters', title: 'NCR' },
             'sales-office': { eyebrow: 'Amazon Filters', title: 'Sales Office' },
-            review: { eyebrow: 'Amazon Filters', title: 'Manager Review' },
+            review: { eyebrow: 'Amazon Filters', title: 'New Crop Release' },
             detail: { eyebrow: 'Amazon Actions', title: 'Item Detail' },
             hours: { eyebrow: 'Amazon Actions', title: 'Labor Hours' }
         };
@@ -22039,7 +22039,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             const crumb = document.getElementById('review-crumb');
             const reviewItems = ensureManagerReviewInventoryBuilt();
             if(reviewItems.length === 0){
-                container.innerHTML = `<div class="p-8 text-center text-gray-400">No items require manager review.</div>`;
+                container.innerHTML = `<div class="p-8 text-center text-gray-400">No items require New Crop Release review.</div>`;
                 crumb.innerText = "All Clear";
                 return;
             }
@@ -22055,7 +22055,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 let sorted = Object.values(groups).sort((a,b) => String(a.name).localeCompare(String(b.name)));
                 renderMarkupChunkedByKey('review-main', container, crumb, sorted, 'Needs Location Priority Review', (group) => {
                     return `<div class="bg-yellow-50 border border-yellow-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectReviewItem('${esc(group.code)}', '${esc(group.name)}', '${esc(group.size)}')"><div class="flex-grow min-w-0 pr-3"><div class="font-bold text-[15px] text-yellow-800 truncate">${group.name}</div><div class="text-xs font-semibold text-yellow-600 mt-1">${group.size} <span class="mx-2 text-yellow-300">|</span> <span class="font-mono text-yellow-700">${group.code}</span></div></div><div class="bg-white px-3 py-1 rounded-lg shadow-sm border border-yellow-100 text-yellow-600 font-bold text-xs whitespace-nowrap">${group.count} Locs</div></div>`;
-                }, { approxCardHeight: 92, emptyHtml: `<div class="p-8 text-center text-gray-400">No items require manager review.</div>` });
+                }, { approxCardHeight: 92, emptyHtml: `<div class="p-8 text-center text-gray-400">No items require New Crop Release review.</div>` });
             } else if(reviewViewLevel === 1){
                 let items = reviewItems.filter(i => i.ITEMCODE === selectedReviewItemCode);
                 items.sort((a,b) => String(a.LOCATIONCODE || "").localeCompare(String(b.LOCATIONCODE || ""), undefined, {numeric: true}));
