@@ -645,7 +645,7 @@ body.viewport-compact #view-detail #det-location{font-size:clamp(.9rem,3.8vw,1.1
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-    <div id="header-version" class="nav-version-pill">V2026.04.20.16</div>
+    <div id="header-version" class="nav-version-pill">V2026.04.20.17</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -5411,7 +5411,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
         const REQUEST_EMAIL_THREAD_SELECT_FIELDS = 'request_folder,request_customer,sales_rep_name,sales_rep_email,recipients,initial_thread_id,initial_message_id,initial_email_sent_at,last_reply_sent_at,status,metadata';
         const REQUEST_EMAIL_INTERNAL_RECIPIENTS = Object.freeze(['dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com']);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-        const APP_VERSION = 'V2026.04.20.16';
+        const APP_VERSION = 'V2026.04.20.17';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -6588,8 +6588,17 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
 
         function ensureManagerReviewInventoryBuilt() {
             if (!managerReviewInventoryDirty) return managerReviewInventory;
+            const itemCodesWithPositiveSlts = new Set();
+            fullInventory.forEach((item) => {
+                const itemCode = String(firstNonEmptyValue(item.ITEMCODE, item.ITEM, '')).trim();
+                if (!itemCode) return;
+                const sltsValue = parseAppNumber(firstNonEmptyValue(item.S_LTS, item.s_lts, ''));
+                if (sltsValue != null && sltsValue > 0) itemCodesWithPositiveSlts.add(itemCode);
+            });
             let nextIndex = 0;
             managerReviewInventory = fullInventory.reduce((rows, item) => {
+                const itemCode = String(firstNonEmptyValue(item.ITEMCODE, item.ITEM, '')).trim();
+                if (!itemCodesWithPositiveSlts.has(itemCode)) return rows;
                 const seasonCode = String(firstNonEmptyValue(item.SEASON, item.season, '')).trim().toUpperCase();
                 const sltsValue = parseAppNumber(firstNonEmptyValue(item.S_LTS, item.s_lts, ''));
                 if (seasonCode === 'S1' && sltsValue != null && sltsValue < 50) {
