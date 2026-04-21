@@ -645,7 +645,7 @@ body.viewport-compact #view-detail #det-location{font-size:clamp(.9rem,3.8vw,1.1
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-<div id="header-version" class="nav-version-pill">V2026.04.20.14</div>
+    <div id="header-version" class="nav-version-pill">V2026.04.20.16</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -5411,7 +5411,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
         const REQUEST_EMAIL_THREAD_SELECT_FIELDS = 'request_folder,request_customer,sales_rep_name,sales_rep_email,recipients,initial_thread_id,initial_message_id,initial_email_sent_at,last_reply_sent_at,status,metadata';
         const REQUEST_EMAIL_INTERNAL_RECIPIENTS = Object.freeze(['dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com']);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-        const APP_VERSION = 'V2026.04.20.14';
+        const APP_VERSION = 'V2026.04.20.16';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -6588,7 +6588,15 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
 
         function ensureManagerReviewInventoryBuilt() {
             if (!managerReviewInventoryDirty) return managerReviewInventory;
-            managerReviewInventory = fullInventory.map((item, idx) => ({ ...item, DOM_ID: 'mr_' + idx }));
+            let nextIndex = 0;
+            managerReviewInventory = fullInventory.reduce((rows, item) => {
+                const seasonCode = String(firstNonEmptyValue(item.SEASON, item.season, '')).trim().toUpperCase();
+                const sltsValue = parseAppNumber(firstNonEmptyValue(item.S_LTS, item.s_lts, ''));
+                if (seasonCode === 'S1' && sltsValue != null && sltsValue < 50) {
+                    rows.push({ ...item, DOM_ID: 'mr_' + nextIndex++ });
+                }
+                return rows;
+            }, []);
             managerReviewInventoryDirty = false;
             return managerReviewInventory;
         }
@@ -22057,12 +22065,20 @@ ${folderNote ? `Folder Note: ${folderNote}
                     return `<div class="bg-yellow-50 border border-yellow-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectReviewItem('${esc(group.code)}', '${esc(group.name)}', '${esc(group.size)}')"><div class="flex-grow min-w-0 pr-3"><div class="font-bold text-[15px] text-yellow-800 truncate">${group.name}</div><div class="text-xs font-semibold text-yellow-600 mt-1">${group.size} <span class="mx-2 text-yellow-300">|</span> <span class="font-mono text-yellow-700">${group.code}</span></div></div><div class="bg-white px-3 py-1 rounded-lg shadow-sm border border-yellow-100 text-yellow-600 font-bold text-xs whitespace-nowrap">${group.count} Locs</div></div>`;
                 }, { approxCardHeight: 92, emptyHtml: `<div class="p-8 text-center text-gray-400">No items require New Crop Release review.</div>` });
             } else if(reviewViewLevel === 1){
-                let items = reviewItems.filter(i => i.ITEMCODE === selectedReviewItemCode);
+                let detailIndex = 0;
+                let items = fullInventory.reduce((rows, item) => {
+                    if (String(item.ITEMCODE || '') !== String(selectedReviewItemCode || '')) return rows;
+                    const sltsValue = parseAppNumber(firstNonEmptyValue(item.S_LTS, item.s_lts, ''));
+                    if (sltsValue != null && sltsValue > 0) {
+                        rows.push({ ...item, DOM_ID: 'mr_detail_' + detailIndex++ });
+                    }
+                    return rows;
+                }, []);
                 items.sort((a,b) => String(a.LOCATIONCODE || "").localeCompare(String(b.LOCATIONCODE || ""), undefined, {numeric: true}));
                 renderMarkupChunkedByKey('review-detail', container, crumb, items, `${selectedReviewCommonName} / ${selectedReviewContSize}`, (item) => generateCard(item, 'review', 'status-yellow'), {
                     prefixHtml: `<div class="back-btn" onclick="resetReviewView()"><i class="ph-bold ph-arrow-left"></i> Back to List</div>`,
                     approxCardHeight: 305,
-                    emptyHtml: `<div class="p-8 text-center text-gray-400">No review rows found.</div>`
+                    emptyHtml: `<div class="p-8 text-center text-gray-400">No rows with S_LTS greater than 0 found for this item.</div>`
                 });
             }
         }
