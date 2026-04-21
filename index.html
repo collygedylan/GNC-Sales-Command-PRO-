@@ -2405,6 +2405,84 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
             }
             return false;
         }
+        function sanitizeShareFileNamePart(value = '', fallback = 'photo') {
+            const cleaned = String(value || '')
+                .replace(/[<>:"/\\|?*\x00-\x1f]+/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim()
+                .replace(/\s/g, '_')
+                .replace(/_+/g, '_')
+                .replace(/^[_\.]+|[_\.]+$/g, '');
+            return cleaned || fallback;
+        }
+        function getSharePhotoFileExtension(mimeType = '', url = '') {
+            const normalizedType = String(mimeType || '').trim().toLowerCase();
+            if (normalizedType === 'image/jpeg' || normalizedType === 'image/jpg') return 'jpg';
+            if (normalizedType === 'image/png') return 'png';
+            if (normalizedType === 'image/webp') return 'webp';
+            if (normalizedType === 'image/gif') return 'gif';
+            if (normalizedType === 'image/heic') return 'heic';
+            if (normalizedType === 'image/heif') return 'heif';
+            if (normalizedType === 'image/bmp') return 'bmp';
+            const extensionMatch = String(url || '').match(/\.([a-z0-9]{2,5})(?:[?#]|$)/i);
+            return extensionMatch && extensionMatch[1] ? String(extensionMatch[1]).toLowerCase() : 'jpg';
+        }
+        async function buildSharePhotoFile(photo) {
+            if (typeof File === 'undefined') throw new Error('File sharing is not supported on this device.');
+            const photoUrl = String(photo && photo.url || '').trim();
+            if (!photoUrl) throw new Error('Photo URL is missing.');
+            const response = await fetchWithTimeout(photoUrl, { method: 'GET', credentials: 'omit' }, 15000, 'Share photo');
+            if (!response || !response.ok) {
+                throw new Error(`Photo download failed${response ? ` (${response.status})` : ''}.`);
+            }
+            const blob = await response.blob();
+            const mimeType = String(firstNonEmptyValue(blob && blob.type, response.headers && response.headers.get && response.headers.get('content-type'), '') || '')
+                .split(';')[0]
+                .trim()
+                .toLowerCase();
+            if (!mimeType || !/^image\//i.test(mimeType)) {
+                throw new Error('Photo download did not return an image file.');
+            }
+            const baseName = sanitizeShareFileNamePart(firstNonEmptyValue(photo && photo.displayName, photo && photo.label, 'photo'));
+            const extension = getSharePhotoFileExtension(mimeType, photoUrl);
+            const fileName = /\.[a-z0-9]{2,5}$/i.test(baseName) ? baseName : `${baseName}.${extension}`;
+            return new File([blob], fileName, { type: mimeType, lastModified: Date.now() });
+        }
+        async function buildInventorySharePhotoFiles(items = []) {
+            const files = [];
+            for (const item of (items || [])) {
+                const photoEntries = getInventorySharePhotoEntries(item);
+                for (const photo of photoEntries) {
+                    files.push(await buildSharePhotoFile(photo));
+                }
+            }
+            return files;
+        }
+        async function tryShareInventoryTextWithPhotoAttachments(subject, text, items = []) {
+            if (!navigator.share || typeof navigator.canShare !== 'function' || typeof File === 'undefined') {
+                return { shared: false, reason: 'unsupported' };
+            }
+            const files = await buildInventorySharePhotoFiles(items);
+            if (!files.length) {
+                return { shared: false, reason: 'no_photos' };
+            }
+            let canShareFiles = false;
+            try {
+                canShareFiles = !!navigator.canShare({ files });
+            } catch (err) {
+                canShareFiles = false;
+            }
+            if (!canShareFiles) {
+                return { shared: false, reason: 'file_share_unsupported', files };
+            }
+            await navigator.share({ title: subject, text, files });
+            return {
+                shared: true,
+                reason: 'attachments',
+                files,
+                toastMessage: `Use the share sheet to send the text with ${files.length} attached photo${files.length === 1 ? '' : 's'}.`
+            };
+        }
         let lastUiActionAt = 0;
         let loginUiHandlersBound = false;
         let photoModalState = {
@@ -5764,7 +5842,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         let lastBackgroundRefreshAt=0;
         let cacheWarmPromise=null;
         let cachePersistTimer=null; let cachePersistIdleHandle=null; let lastCachePersistAt=0; let pendingCachePersist=false;
-        let currentUser=""; let currentUserDisplay=""; let currentRole=""; let safeRole=""; let repPermutations=[]; let activeItem=null; let lastView=""; let activeDetailTab="overview"; let activeDetailSourceView=""; let detailOverviewFieldSearchTerm=""; let selectedItems=new Set(); let cartPanelOpen=false; let cartUiObserver=null; let cartUiRefreshQueued=false; let lastCartToggleAt=0; let lastCartToggleDomId=""; let isMultiSelectMode=false; let pressTimer=null; let isLongPress=false; let touchStartX=0; let touchStartY=0; let pendingAction=null; let pendingTabType=null; let hasAppliedInitialHomeView=false;
+        let currentUser=""; let currentUserDisplay=""; let currentRole=""; let safeRole=""; let repPermutations=[]; let activeItem=null; let lastView=""; let activeDetailTab="overview"; let activeDetailSourceView=""; let detailOverviewFieldSearchTerm=""; let selectedItems=new Set(); let cartPanelOpen=false; let cartUiObserver=null; let cartUiRefreshQueued=false; let lastCartToggleAt=0; let lastCartToggleDomId=""; let isMultiSelectMode=false; let pressTimer=null; let isLongPress=false; let touchStartX=0; let touchStartY=0; let pendingAction=null; let pendingActionOptions=null; let pendingTabType=null; let hasAppliedInitialHomeView=false;
         let dockAssignableUsers=[]; let dockAssignableUsersPromise=null;
         let dockTeamStatusByDock=new Map(); let dockTeamStatusPromise=null; let dockTeamStatusLoaded=false; let dockTeamSchemaReady=null; let dockTeamSchemaPromise=null; let dockTeamSchemaWarningShown=false;
         let dockItemProgressByUid=new Map(); let dockItemProgressPromise=null; let dockItemProgressLoaded=false; let dockItemSchemaReady=null; let dockItemSchemaPromise=null; let dockItemSchemaWarningShown=false;
@@ -19841,6 +19919,9 @@ function toggleDriveQuickRequestItem(domId) {
                 showToast('Bloom Picker Empty', 'Add one or more rows to Bloom Picker first.', true);
                 return;
             }
+            const batchActionOptions = {
+                preferBloomTextPhotoAttachments: action === 'text' && canUseBloomPicker(items)
+            };
             const access = getRoleAccessState();
             if (access.isCsr && action === 'text') {
                 showToast('Restricted', 'CSR users can use Copy or Email from Bloom Picker.', true);
@@ -19855,6 +19936,7 @@ function toggleDriveQuickRequestItem(domId) {
             const docksOnly = items.every((item) => isDockLikeItem(item));
             toggleCartPanel(false);
             if(action==='bloom_order'){
+                pendingActionOptions = null;
                 if(!canUseBloomPicker(items)){
                     showToast('Open Stock Only', 'Bloom Picker orders can only be created from AV Open Stock rows.', true);
                     return;
@@ -19862,12 +19944,13 @@ function toggleDriveQuickRequestItem(domId) {
                 openBloomPickerModal();
                 return;
             }
-            if(action==='request_action'){openRequestModal('selection');return}
-            if(action==='flyer'){createCartFlyers();return}
-            if(action==='endcap'){openEndCapModal();return}
-            if(requestOnly){executeBatchAction(action,'request');return}
-            if(docksOnly){executeBatchAction(action,'docks');return}
+            if(action==='request_action'){pendingActionOptions = null; openRequestModal('selection');return}
+            if(action==='flyer'){pendingActionOptions = null; createCartFlyers();return}
+            if(action==='endcap'){pendingActionOptions = null; openEndCapModal();return}
+            if(requestOnly){pendingActionOptions = batchActionOptions; executeBatchAction(action,'request', batchActionOptions); pendingActionOptions = null; return}
+            if(docksOnly){pendingActionOptions = batchActionOptions; executeBatchAction(action,'docks', batchActionOptions); pendingActionOptions = null; return}
             pendingAction=action;
+            pendingActionOptions=batchActionOptions;
             document.getElementById('tab-select-modal').classList.remove('hidden')
         }
         function openEndCapModal() {
@@ -20626,7 +20709,11 @@ function toggleDriveQuickRequestItem(domId) {
             pendingTabType=tab;
             document.getElementById('tab-select-modal').classList.add('hidden');
             if(pendingAction==='assign'){openAssignModal()}
-            else{executeBatchAction(pendingAction,pendingTabType)}
+            else{
+                const shareOptions = pendingActionOptions || {};
+                pendingActionOptions = null;
+                executeBatchAction(pendingAction,pendingTabType, shareOptions)
+            }
         }
         function getRequestShareFieldRows(item) {
             return [
@@ -21032,9 +21119,10 @@ ${folderNote ? `Folder Note: ${folderNote}
             let headerLabel = ((lastView==='drive' || lastView==='tasks') ? 'DRIVE MODE DATA' : 'SELECTED ROWS');
             return formatInventoryItemsText(items, headerLabel);
         }
-        async function shareInventoryItems(action, items, subject = 'Drive Mode Data') {
+        async function shareInventoryItems(action, items, subject = 'Drive Mode Data', options = {}) {
             const copyHeaderLabel = items.length > 1 ? subject.toUpperCase() : '';
             const textHeaderLabel = subject.toUpperCase();
+            const preferBloomTextPhotoAttachments = action === 'text' && !!(options && options.preferBloomTextPhotoAttachments);
             if (action === 'copy') {
                 const copyText = formatInventoryItemsText(items, copyHeaderLabel, { includePhotoUrls: true });
                 const copyHtml = formatInventoryItemsHtml(items, copyHeaderLabel);
@@ -21042,10 +21130,27 @@ ${folderNote ? `Folder Note: ${folderNote}
                 showToast('Success', 'Copied to clipboard!');
                 return;
             }
+            let attachmentShareResult = null;
+            if (preferBloomTextPhotoAttachments) {
+                const attachmentText = formatInventoryItemsText(items, textHeaderLabel, { includePhotoUrls: false });
+                attachmentShareResult = await tryShareInventoryTextWithPhotoAttachments(subject, attachmentText, items);
+                if (attachmentShareResult && attachmentShareResult.shared) {
+                    showToast('Ready', attachmentShareResult.toastMessage || 'Use the share sheet to send the text with attached photos.');
+                    return attachmentShareResult;
+                }
+            }
             const text = formatInventoryItemsText(items, textHeaderLabel, { includePhotoUrls: true });
             const shared = await handleMobileShare(action, subject, text);
             if (shared) {
-                showToast('Ready', action === 'email' ? 'Use the share sheet to send the email text.' : 'Use the share sheet to send the text.');
+                const usedLinkFallback = preferBloomTextPhotoAttachments && attachmentShareResult && attachmentShareResult.reason && attachmentShareResult.reason !== 'no_photos';
+                showToast(
+                    'Ready',
+                    action === 'email'
+                        ? 'Use the share sheet to send the email text.'
+                        : usedLinkFallback
+                            ? 'Photo attachments were unavailable, so the text includes photo links.'
+                            : 'Use the share sheet to send the text.'
+                );
                 return;
             }
             if (action === 'email') {
@@ -21071,7 +21176,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 }
             }
         }
-        async function executeBatchAction(action,tabType) {
+        async function executeBatchAction(action,tabType, options = {}) {
             const isInventoryLikeTab = tabType !== 'request' && tabType !== 'docks';
             const isRequestTab = tabType === 'request';
             const selectedInventoryItems = [];
@@ -21121,6 +21226,21 @@ ${folderNote ? `Folder Note: ${folderNote}
                 }
                 clearSelection()
             }else if(action==='text'){
+                if (isInventoryLikeTab) {
+                    const subject = (lastView==='drive' || lastView==='tasks') ? 'Drive Mode Data' : 'Selected Rows';
+                    try {
+                        await shareInventoryItems('text', selectedInventoryItems, subject, options);
+                    } catch (err) {
+                        try {
+                            await copyTextWithFallback(formatInventoryItemsText(selectedInventoryItems, subject.toUpperCase(), { includePhotoUrls: true }));
+                            showToast("Copied", "Text copied so you can paste it into Messages without leaving the app.");
+                        } catch (copyErr) {
+                            showToast("Error", "Could not prepare the text message.", true);
+                        }
+                    }
+                    clearSelection();
+                    return;
+                }
                 try {
                     const shared = await handleMobileShare('text', 'Text Message', text);
                     if (!shared) {
