@@ -3654,15 +3654,17 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             item.ITEMCODE = firstNonEmptyValue(item.ITEMCODE, item.itemcode, item.ITEM, '');
             item.COMMONNAME = firstNonEmptyValue(item.COMMONNAME, item.DESCRIPTION, item.PLANT_NAME, item.ITEMCODE, 'AV Blank');
             item.CONTSIZE = firstNonEmptyValue(item.CONTSIZE, item.ITEMSPEC, item.SIZE, item.contsize, '-');
-            item.CAV_HOLD_REASON = firstNonEmptyValue(item['Hold Reason'], item.HOLD_REASON, item.HOLDREASON, item.hold_reason, '');
-            item.CAV_NOTES = firstNonEmptyValue(item.Notes, item.NOTES, item.notes, '');
-            item.CAV_COMMENTS = firstNonEmptyValue(item.Comments, item.COMMENTS, item.comments, '');
-            item.CAV_H = firstNonEmptyValue(item.H, item.h, '');
+            item.CAV_HOLD_REASON_NOTES_COMMENTS = firstNonEmptyValue(
+                item['Hold Reason/Notes/Comments'],
+                item.HOLD_REASON_NOTES_COMMENTS,
+                item.hold_reason_notes_comments,
+                ''
+            );
             item.CAV_SEASON = firstNonEmptyValue(item['*Season'], item.SEASON, item.season, '');
             item.SEASON = firstNonEmptyValue(item.SEASON, item.CAV_SEASON, item.season, '');
             item.HOT_PRICE = getNormalizedAvHotPrice(firstNonEmptyValue(item.HOT_PRICE, item.HOTPRICE, item.hot_price, ''));
             item.HOTPRICE = item.HOT_PRICE;
-            item._search = `${item.LOCATIONCODE || ''} ${item.ITEMCODE || ''} ${item.COMMONNAME || ''} ${item.CONTSIZE || ''} ${item.SEASON || ''} ${item.HOT_PRICE || ''} ${item.CAV_HOLD_REASON || ''} ${item.CAV_NOTES || ''} ${item.CAV_COMMENTS || ''} ${item.CAV_H || ''}`.toLowerCase();
+            item._search = `${item.LOCATIONCODE || ''} ${item.ITEMCODE || ''} ${item.COMMONNAME || ''} ${item.CONTSIZE || ''} ${item.SEASON || ''} ${item.HOT_PRICE || ''} ${item.CAV_HOLD_REASON_NOTES_COMMENTS || ''}`.toLowerCase();
             normalizeRowPhotoFields(item);
             buildSearchIndex(item);
             return item;
@@ -6027,7 +6029,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
             'dylan_collyge@greenleafnursery.com'
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-const APP_VERSION = 'V2026.04.21.07';
+const APP_VERSION = 'V2026.04.21.08';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -23053,10 +23055,13 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (!itemCode) return false;
             const seasonValue = normalizeSeasonTaskValue(firstNonEmptyValue(item.CAV_SEASON, item['*Season'], item.SEASON, item.season, ''));
             if (seasonValue !== 'S1') return false;
-            if (!isBlankCavFieldValue(firstNonEmptyValue(item.CAV_HOLD_REASON, item['Hold Reason'], item.HOLD_REASON, item.HOLDREASON, item.hold_reason, ''))) return false;
-            if (!isBlankCavFieldValue(firstNonEmptyValue(item.CAV_NOTES, item.Notes, item.NOTES, item.notes, ''))) return false;
-            if (!isBlankCavFieldValue(firstNonEmptyValue(item.CAV_COMMENTS, item.Comments, item.COMMENTS, item.comments, ''))) return false;
-            if (!isBlankCavFieldValue(firstNonEmptyValue(item.CAV_H, item.H, item.h, ''))) return false;
+            if (!isBlankCavFieldValue(firstNonEmptyValue(
+                item.CAV_HOLD_REASON_NOTES_COMMENTS,
+                item['Hold Reason/Notes/Comments'],
+                item.HOLD_REASON_NOTES_COMMENTS,
+                item.hold_reason_notes_comments,
+                ''
+            ))) return false;
             return true;
         }
 
