@@ -670,7 +670,7 @@ body.viewport-compact #view-detail #det-location{font-size:clamp(.9rem,3.8vw,1.1
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-<div id="header-version" class="nav-version-pill">V2026.04.21.03</div>
+<div id="header-version" class="nav-version-pill">V2026.04.21.04</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -5815,7 +5815,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
         const NCR_COMPLETION_SELECT_FIELDS = 'source_unique_id,itemcode,locationcode,completed_by,completed_at,emailed_jd';
         const NCR_EMAIL_RECIPIENTS = Object.freeze(['jd_jones@greenleafnursery.com']);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-        const APP_VERSION = 'V2026.04.21.03';
+        const APP_VERSION = 'V2026.04.21.04';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -10813,6 +10813,7 @@ function toggleDriveQuickRequestItem(domId) {
         let pushSchemaProbePromise = null;
         let pushSchemaWarningShown = false;
         let requestEmailThreadCache = new Map();
+        let requestFolderResendInFlight = new Set();
         let requestEmailThreadSchemaReady = null;
         let requestEmailThreadSchemaPromise = null;
         let requestEmailThreadSchemaWarningShown = false;
@@ -12435,9 +12436,10 @@ function toggleDriveQuickRequestItem(domId) {
             return upsertRequestEmailThreadRecord(record, { skipEnsure: true });
         }
 
-        async function sendEmailNotification(type, folderId, repName, customer, itemsCount, details = null) {
+        async function sendEmailNotification(type, folderId, repName, customer, itemsCount, details = null, options = null) {
             const safeType = String(type || '').trim().toLowerCase();
             const safeDetails = details || {};
+            const safeOptions = options || {};
             const targetFolderId = String(folderId || '').trim();
             const targetCustomer = normalizeSearchValue(customer);
             const existingThreadRecord = targetFolderId ? await getRequestEmailThreadRecord(targetFolderId) : null;
@@ -12520,12 +12522,19 @@ function toggleDriveQuickRequestItem(domId) {
             try {
                 const responseData = await postRequestEmailPayload(payload);
                 if (responseData && responseData.ok === false) {
-                    throw new Error(`Request email failed (${responseData.status || 0})`);
+                    const error = new Error(`Request email failed (${responseData.status || 0})`);
+                    error.responseData = responseData;
+                    throw error;
                 }
                 await persistRequestEmailThreadAfterSend(safeType, payload, responseData, existingThreadRecord);
+                return { ok: true, responseData, payload };
             } catch (error) {
+                const responseData = error && error.responseData ? error.responseData : null;
                 console.error('Request email send failed', { type: safeType, folderId: targetFolderId, error });
-                showToast('Email Warning', safeType === 'request_complete' ? 'Completion email could not be sent.' : 'Request email could not be sent.', true);
+                if (!safeOptions.suppressFailureToast) {
+                    showToast('Email Warning', safeType === 'request_complete' ? 'Completion email could not be sent.' : 'Request email could not be sent.', true);
+                }
+                return { ok: false, responseData, payload, error };
             }
         }
         function sendFlyerCreatedEmail(folderName, assignedTo, items = [], createdBy = '') {
@@ -17343,7 +17352,8 @@ function toggleDriveQuickRequestItem(domId) {
                         let count = statusItems.filter(i => ((i.REQUEST_FOLDER || 'Unassigned')) === f).length;
                         const folderNote = getRequestFolderNote(f, selectedReqStatus, selectedReqRepView);
                         const noteHtml = folderNote ? `<div class="mt-3 bg-amber-50 border border-amber-200 rounded-lg p-2 text-[11px] font-semibold text-amber-900 whitespace-pre-wrap"><span class="font-black uppercase text-[10px] tracking-wider text-amber-700">Folder Note</span><div class="mt-1">${esc(folderNote)}</div></div>` : '';
-                        const shareActions = canShareRequestFolders() ? `<div class="grid grid-cols-4 gap-2 mt-3"><button class="bg-white border border-purple-200 text-purple-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); shareRequestFolder('copy', '${esc(f)}', '${selectedReqStatus}', '${esc(selectedReqRepView)}')">Copy</button><button class="bg-white border border-indigo-200 text-indigo-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); shareRequestFolder('email', '${esc(f)}', '${selectedReqStatus}', '${esc(selectedReqRepView)}')">Email</button><button class="bg-white border border-emerald-200 text-emerald-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); shareRequestFolder('text', '${esc(f)}', '${selectedReqStatus}', '${esc(selectedReqRepView)}')">Text</button><button class="bg-white border border-amber-200 text-amber-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); setRequestFolderNote('${esc(f)}', '${selectedReqStatus}', '${esc(selectedReqRepView)}')">Note</button></div>` : '';
+                        const showResendAction = selectedReqStatus === 'Complete';
+                        const shareActions = canShareRequestFolders() ? `<div class="grid ${showResendAction ? 'grid-cols-2 sm:grid-cols-5' : 'grid-cols-2 sm:grid-cols-4'} gap-2 mt-3"><button class="bg-white border border-purple-200 text-purple-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); shareRequestFolder('copy', '${esc(f)}', '${selectedReqStatus}', '${esc(selectedReqRepView)}')">Copy</button><button class="bg-white border border-indigo-200 text-indigo-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); shareRequestFolder('email', '${esc(f)}', '${selectedReqStatus}', '${esc(selectedReqRepView)}')">Email</button><button class="bg-white border border-emerald-200 text-emerald-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); shareRequestFolder('text', '${esc(f)}', '${selectedReqStatus}', '${esc(selectedReqRepView)}')">Text</button>${showResendAction ? `<button class="bg-white border border-sky-200 text-sky-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); resendRequestCompletionEmail('${esc(f)}', '${esc(selectedReqRepView)}')">Resend</button>` : ''}<button class="bg-white border border-amber-200 text-amber-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); setRequestFolderNote('${esc(f)}', '${selectedReqStatus}', '${esc(selectedReqRepView)}')">Note</button></div>` : '';
                         return `<div class="bg-white border border-purple-200 rounded-xl shadow-sm mb-3 p-4 cursor-pointer active:scale-95 transition-transform" onclick="return openRequestFolderView('${esc(f)}')"><div class="flex justify-between items-center"><div class="flex items-center gap-3 min-w-0"><div class="bg-purple-50 p-2 rounded-lg"><i class="ph-fill ph-folder text-2xl text-purple-500"></i></div><span class="font-bold text-sm text-purple-800 break-all">${f}</span></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg min-w-max ml-2">${count} Items</span></div>${noteHtml}${shareActions}</div>`;
                     }).join('');
                     applyRequestRenderMarkup(container, crumb, crumbText, html);
@@ -20322,6 +20332,69 @@ ${folderNote ? `Folder Note: ${folderNote}
                         showToast('Error', 'Could not prepare the folder text.', true);
                     }
                 }
+            }
+        }
+
+        async function resendRequestCompletionEmail(folderName, repName = selectedReqRepView) {
+            if (!canShareRequestFolders()) {
+                showToast('Restricted', 'Only Dylan and JD can resend completion emails.', true);
+                return false;
+            }
+            const safeFolderName = String(folderName || '').trim();
+            const safeRepName = String(repName || '').trim();
+            if (!safeFolderName) {
+                showToast('Email Warning', 'Request folder name is missing.', true);
+                return false;
+            }
+            const resendKey = `${normalizeSearchValue(safeRepName)}::${normalizeSearchValue(safeFolderName)}`;
+            if (requestFolderResendInFlight.has(resendKey)) {
+                showToast('Sending...', 'That completion email resend is already in progress.');
+                return false;
+            }
+            const items = getRequestFolderItems(safeFolderName, 'Complete', safeRepName);
+            if (!items.length) {
+                showToast('Empty', 'No request rows found in that folder.', true);
+                return false;
+            }
+            requestFolderResendInFlight.add(resendKey);
+            showToast('Sending...', `Resending completion email for ${safeFolderName}.`);
+            try {
+                const folderNote = getRequestFolderNote(safeFolderName, 'Complete', safeRepName);
+                const threadRecord = await getRequestEmailThreadRecord(safeFolderName, true);
+                const threadId = String(firstNonEmptyValue(threadRecord && threadRecord.initial_thread_id, '')).trim();
+                const messageId = String(firstNonEmptyValue(threadRecord && threadRecord.initial_message_id, '')).trim();
+                if (!threadId || !messageId) {
+                    showToast('Email Warning', 'Cannot resend: original request email thread was not saved for this folder.', true);
+                    return false;
+                }
+                const lead = items[0] || {};
+                const resendResult = await sendEmailNotification(
+                    'request_complete',
+                    safeFolderName,
+                    safeRepName || String(firstNonEmptyValue(lead.REQUESTED_BY, lead.requested_by, '')).trim(),
+                    String(firstNonEmptyValue(lead.REQ_CUSTOMER, lead.req_customer, '')).trim(),
+                    items.length,
+                    { items, folderNote, threadId, messageId },
+                    { suppressFailureToast: true }
+                );
+                if (!resendResult || resendResult.ok !== true) {
+                    const responseData = resendResult && resendResult.responseData ? resendResult.responseData : null;
+                    const failureMode = String(firstNonEmptyValue(responseData && responseData.mode, '')).trim().toLowerCase();
+                    if (failureMode === 'missing_thread_metadata') {
+                        showToast('Email Warning', 'Cannot resend: original request email thread was not saved for this folder.', true);
+                    } else {
+                        showToast('Email Warning', 'Completion email could not be resent.', true);
+                    }
+                    return false;
+                }
+                showToast('Success', 'Completion email resent.');
+                return true;
+            } catch (error) {
+                console.error('Request completion resend failed', { folderName: safeFolderName, repName: safeRepName, error });
+                showToast('Email Warning', 'Completion email could not be resent.', true);
+                return false;
+            } finally {
+                requestFolderResendInFlight.delete(resendKey);
             }
         }
 
