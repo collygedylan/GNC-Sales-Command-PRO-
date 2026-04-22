@@ -686,7 +686,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-<div id="header-version" class="nav-version-pill">V2026.04.22.06</div>
+<div id="header-version" class="nav-version-pill">V2026.04.22.07</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -6535,7 +6535,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
             'dylan_collyge@greenleafnursery.com'
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-const APP_VERSION = 'V2026.04.22.06';
+        const APP_VERSION = 'V2026.04.22.07';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -17912,6 +17912,54 @@ function toggleDriveQuickRequestItem(domId) {
             return false;
         }
 
+        function getBloomDirectShareSelectionKind(items = getCartSelectedItems()) {
+            const rows = Array.isArray(items) ? items.filter(Boolean) : [];
+            if (!rows.length) return 'empty';
+            const requestOnly = rows.every((item) => isRequestLikeItem(item));
+            if (requestOnly) return 'request';
+            const docksOnly = rows.every((item) => isDockLikeItem(item));
+            if (docksOnly) return 'docks';
+            const inventoryLikeOnly = rows.every((item) => !isRequestLikeItem(item) && !isDockLikeItem(item));
+            if (inventoryLikeOnly) return 'inventory';
+            return 'mixed';
+        }
+
+        function executeBloomDirectShareAction(action) {
+            const items = getCartSelectedItems();
+            if (!items.length) {
+                showToast('Bloom Picker Empty', 'Add one or more rows to Bloom Picker first.', true);
+                return false;
+            }
+            const access = getRoleAccessState();
+            if (access.isCsr && action === 'text') {
+                showToast('Restricted', 'CSR users can use Copy or Email from Bloom Picker.', true);
+                return false;
+            }
+            const selectionKind = getBloomDirectShareSelectionKind(items);
+            if (selectionKind === 'mixed') {
+                showToast('Share One Type', 'Share one row type at a time from Bloom Picker.', true);
+                return false;
+            }
+            const batchActionOptions = {
+                preferBloomTextPhotoAttachments: action === 'text' && canUseBloomPicker(items)
+            };
+            toggleCartPanel(false);
+            if (selectionKind === 'request') {
+                void executeBatchAction(action, 'request', batchActionOptions);
+                return false;
+            }
+            if (selectionKind === 'docks') {
+                void executeBatchAction(action, 'docks', batchActionOptions);
+                return false;
+            }
+            if (selectionKind === 'inventory') {
+                void executeBatchAction(action, 'inventory', batchActionOptions);
+                return false;
+            }
+            showToast('Share Unavailable', 'Those Bloom Picker rows cannot be shared right now.', true);
+            return false;
+        }
+
         function handleBloomShareMenuSelection(event, action) {
             if (event) {
                 event.preventDefault();
@@ -17919,8 +17967,7 @@ function toggleDriveQuickRequestItem(domId) {
             }
             bloomShareMenuOpen = false;
             syncBloomShareMenuUi();
-            initiateBatchAction(action);
-            return false;
+            return executeBloomDirectShareAction(action);
         }
 
         document.addEventListener('pointerdown', function(event) {
