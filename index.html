@@ -700,7 +700,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-<div id="header-version" class="nav-version-pill">V2026.04.22.11</div>
+<div id="header-version" class="nav-version-pill">V2026.04.22.12</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -1488,6 +1488,8 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
             dockResolvedStateCache = null;
             dockDisplayInventory = [];
             dockDisplayInventoryById = new Map();
+            dockIssueSourceRowsCacheKey = '';
+            dockIssueSourceRowsById = new Map();
             requestScopedItemsCacheKey = '';
             requestScopedItemsCache = null;
             reservesScopedItemsCacheKey = '';
@@ -1507,6 +1509,8 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
             dockResolvedStateCache = null;
             dockDisplayInventory = [];
             dockDisplayInventoryById = new Map();
+            dockIssueSourceRowsCacheKey = '';
+            dockIssueSourceRowsById = new Map();
         }
 
         function pruneRecentLocalRealtimeWrites(now = Date.now()) {
@@ -6240,7 +6244,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         let dockAssignableUsers=[]; let dockAssignableUsersPromise=null;
         let dockTeamStatusByDock=new Map(); let dockTeamStatusPromise=null; let dockTeamStatusLoaded=false; let dockTeamSchemaReady=null; let dockTeamSchemaPromise=null; let dockTeamSchemaWarningShown=false;
         let dockItemProgressByUid=new Map(); let dockItemProgressPromise=null; let dockItemProgressLoaded=false; let dockItemSchemaReady=null; let dockItemSchemaPromise=null; let dockItemSchemaWarningShown=false;
-        let dockIssueStatusByUid=new Map(); let dockIssueAllocationsBySourceUid=new Map(); let dockIssueAllocationsById=new Map(); let dockIssueDataPromise=null; let dockIssueDataLoaded=false; let dockIssueStatusSchemaReady=null; let dockIssueStatusSchemaPromise=null; let dockIssueAllocationSchemaReady=null; let dockIssueAllocationSchemaPromise=null; let dockIssueSchemaWarningShown=false; let dockViewMode='docks'; let selectedDockIssueUid=null; let dockResolvedStateCacheKey=''; let dockResolvedStateCache=null; let dockDisplayInventory=[]; let dockDisplayInventoryById=new Map();
+        let dockIssueStatusByUid=new Map(); let dockIssueAllocationsBySourceUid=new Map(); let dockIssueAllocationsById=new Map(); let dockIssueDataPromise=null; let dockIssueDataLoaded=false; let dockIssueStatusSchemaReady=null; let dockIssueStatusSchemaPromise=null; let dockIssueAllocationSchemaReady=null; let dockIssueAllocationSchemaPromise=null; let dockIssueSchemaWarningShown=false; let dockViewMode='docks'; let selectedDockIssueUid=null; let dockResolvedStateCacheKey=''; let dockResolvedStateCache=null; let dockDisplayInventory=[]; let dockDisplayInventoryById=new Map(); let dockIssueSourceRowsCacheKey=''; let dockIssueSourceRowsById=new Map();
         let detailRequestSourceDomIds=[];
         let avRuleColumnsReady=null; let avRuleColumnsProbePromise=null; let avRuleSchemaWarningShown=false; let avRuleCleanupInFlight=new Set(); let flyerShadowColumnsReady=null; let flyerShadowColumnsProbePromise=null; let flyerShadowSchemaWarningShown=false;
         let activeSalesOfficeTab='season'; let salesOfficeOrderColumnsReady=null; let salesOfficeOrderSchemaPromise=null; let salesOfficeOrderSchemaWarningShown=false;
@@ -6544,7 +6548,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
             'dylan_collyge@greenleafnursery.com'
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-const APP_VERSION = 'V2026.04.22.11';
+const APP_VERSION = 'V2026.04.22.12';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -12431,16 +12435,67 @@ function toggleDriveQuickRequestItem(domId) {
             return { allocations, totalAllocatedQty };
         }
 
+        function getCurrentDockIssueSourceRowsById() {
+            const cacheKey = [
+                getDatasetLoadSignature('soc'),
+                Array.isArray(socInventory) ? socInventory.length : 0
+            ].join('|');
+            if (dockIssueSourceRowsCacheKey === cacheKey && dockIssueSourceRowsById instanceof Map && dockIssueSourceRowsById.size >= 0) {
+                return dockIssueSourceRowsById;
+            }
+            const nextMap = new Map();
+            (Array.isArray(socInventory) ? socInventory : []).forEach((item, idx) => {
+                const uniqueId = normalizeDockIssueSourceUniqueId(firstNonEmptyValue(item && item.UNIQUE_ID, item && item.unique_id, ''));
+                if (!uniqueId) return;
+                nextMap.set(uniqueId, cloneDockRowWithMeta(item, {
+                    UNIQUE_ID: uniqueId,
+                    DOM_ID: firstNonEmptyValue(item && item.DOM_ID, 'dock_' + uniqueId, 'dock_' + idx),
+                    DOCK_ISSUE_SOURCE_UID: uniqueId
+                }));
+            });
+            dockIssueSourceRowsCacheKey = cacheKey;
+            dockIssueSourceRowsById = nextMap;
+            return dockIssueSourceRowsById;
+        }
+
+        function applyDockIssueStateToRow(item = null, issue = null) {
+            if (!item) return null;
+            if (!issue) return cloneDockRowWithMeta(item);
+            return cloneDockRowWithMeta(item, {
+                DOCK_NOTE: firstNonEmptyValue(issue.issueNote, item.DOCK_ISSUE_NOTE, item.DOCK_NOTE, ''),
+                DOCK_ISSUE_NOTE: firstNonEmptyValue(issue.issueNote, item.DOCK_ISSUE_NOTE, item.DOCK_NOTE, ''),
+                DOCK_ISSUE_STATE: normalizeDockIssueState(firstNonEmptyValue(issue.issueState, item.DOCK_ISSUE_STATE, 'open')),
+                DOCK_ISSUE_SOURCE_UID: normalizeDockIssueSourceUniqueId(firstNonEmptyValue(issue.issueSourceUniqueId, item.DOCK_ISSUE_SOURCE_UID, item.UNIQUE_ID, item.unique_id, ''))
+            });
+        }
+
+        function refreshDockIssueUi(reasonKey = 'issue-refresh') {
+            updateDockModeToggleUi();
+            markViewDirty('docks');
+            scheduleTrackedViewRender('docks', `docks:${String(reasonKey || 'issue-refresh').trim() || 'issue-refresh'}`, {
+                delay: 0,
+                forceRender: true,
+                userAction: true,
+                allowWhileTouching: true,
+                allowDuringRecentInteraction: true,
+                touchDelayMs: 32,
+                interactionDelayMs: 32,
+                scrollDelayMs: 120
+            });
+        }
+
         function findDockMistakeSourceRowByUniqueId(uniqueId = '') {
             const normalizedUid = normalizeDockIssueSourceUniqueId(uniqueId);
             if (!normalizedUid) return null;
+            const sourceMap = getCurrentDockIssueSourceRowsById();
             const sourceRow =
-                socInventoryById.get(normalizedUid)
-                || (Array.isArray(socInventory) ? socInventory.find((row) => normalizeDockIssueSourceUniqueId(firstNonEmptyValue(row && row.UNIQUE_ID, '')) === normalizedUid) : null)
+                sourceMap.get(normalizedUid)
+                || socInventoryById.get(normalizedUid)
+                || (Array.isArray(socInventory) ? socInventory.find((row) => normalizeDockIssueSourceUniqueId(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '')) === normalizedUid) : null)
                 || dockDisplayInventoryById.get(normalizedUid)
                 || (() => {
                     const fallbackRow = findItemByUniqueId(normalizedUid);
-                    return normalizeDockIssueSourceUniqueId(firstNonEmptyValue(fallbackRow && fallbackRow.UNIQUE_ID, '')) === normalizedUid ? fallbackRow : null;
+                    return normalizeDockIssueSourceUniqueId(firstNonEmptyValue(fallbackRow && fallbackRow.UNIQUE_ID, fallbackRow && fallbackRow.unique_id, '')) === normalizedUid ? fallbackRow : null;
                 })();
             if (!sourceRow || sourceRow.IS_SYNTHETIC_DOCK_ROW) return null;
             return cloneDockRowWithMeta(sourceRow, {
@@ -12456,9 +12511,14 @@ function toggleDriveQuickRequestItem(domId) {
             if (!sourceRow) return null;
             const { allocations, totalAllocatedQty } = getDockIssueAllocationTotals(issue.issueSourceUniqueId);
             const sourceQty = Math.max(0, parseAppNumber(firstNonEmptyValue(issue.sourceQty, getDockDisplayQty(sourceRow), '0')) || 0);
+            const displaySourceRow = applyDockIssueStateToRow(sourceRow, issue);
             return {
                 ...issue,
-                sourceRow,
+                UNIQUE_ID: issue.issueSourceUniqueId,
+                DOCK_ISSUE_NOTE: issue.issueNote,
+                DOCK_ISSUE_STATE: issue.issueState,
+                DOCK_ISSUE_SOURCE_UID: issue.issueSourceUniqueId,
+                sourceRow: displaySourceRow,
                 allocations,
                 totalAllocatedQty,
                 sourceQty,
@@ -12554,11 +12614,7 @@ function toggleDriveQuickRequestItem(domId) {
                 const sourceRow = rowMap.get(issue.issueSourceUniqueId);
                 if (!sourceRow) return;
                 if (issue.issueState === 'open') {
-                    rowMap.set(issue.issueSourceUniqueId, cloneDockRowWithMeta(sourceRow, {
-                        DOCK_ISSUE_NOTE: issue.issueNote,
-                        DOCK_ISSUE_STATE: issue.issueState,
-                        DOCK_ISSUE_SOURCE_UID: issue.issueSourceUniqueId
-                    }));
+                    rowMap.set(issue.issueSourceUniqueId, applyDockIssueStateToRow(sourceRow, issue));
                     openIssues.push({
                         ...issue,
                         sourceRow: rowMap.get(issue.issueSourceUniqueId),
@@ -16673,7 +16729,7 @@ function toggleDriveQuickRequestItem(domId) {
             return false;
         }
         const chunkRenderTokensByKey = Object.create(null);
-        const DEFAULT_RENDER_SIGNATURE_FIELDS = ['UNIQUE_ID','DOM_ID','COMMONNAME','CONTSIZE','LOCATIONCODE','LOTCODE','ITEMCODE','PRIORITY','PTRAVAILABLE','S_LTS','SEASON','AV_NOTE','HOLDSTOPREASON','LISTPRICE','HOT_PRICE','HOTPRICE','REQ_STATUS','REQ_QTY','REQ_MATCH','REQ_SPEC','REQ_CALIPER','REQ_PICK','REQ_COMMENTS','DOCK_NUM','STOPNUMBER','CUSTOMERNAME','SALESREPNAME','FOLDERNAME','COUNT','LABEL','NAME','LOCATIONBUCKET','BLOCKALPHA','STATUS','LINECOUNT','TOTALQTY','ROW_PHOTO_LINK','REQ_PHOTO_LINK','DOCK_PHOTO_LINK','FLYER_PHOTO_LINK'];
+        const DEFAULT_RENDER_SIGNATURE_FIELDS = ['UNIQUE_ID','DOM_ID','COMMONNAME','CONTSIZE','LOCATIONCODE','LOTCODE','ITEMCODE','PRIORITY','PTRAVAILABLE','S_LTS','SEASON','AV_NOTE','HOLDSTOPREASON','LISTPRICE','HOT_PRICE','HOTPRICE','REQ_STATUS','REQ_QTY','REQ_MATCH','REQ_SPEC','REQ_CALIPER','REQ_PICK','REQ_COMMENTS','DOCK_NUM','STOPNUMBER','CUSTOMERNAME','SALESREPNAME','FOLDERNAME','COUNT','LABEL','NAME','LOCATIONBUCKET','BLOCKALPHA','STATUS','LINECOUNT','TOTALQTY','ROW_PHOTO_LINK','REQ_PHOTO_LINK','DOCK_PHOTO_LINK','FLYER_PHOTO_LINK','DOCK_NOTE','DOCK_ISSUE_NOTE','DOCK_ISSUE_STATE','DOCK_ISSUE_SOURCE_UID','issueSourceUniqueId','issueState','issueNote','sourceQty','remainingQty'];
 
         function normalizeRenderSignature(value = '') {
             return String(value || '').trim();
@@ -17347,9 +17403,8 @@ function toggleDriveQuickRequestItem(domId) {
             }
             cacheDockIssueStatus(uid, payload);
             dockIssueDataLoaded = true;
-            markViewDirty('docks');
             document.getElementById('dock-mistake-modal').classList.add('hidden');
-            scheduleDocksRender(16);
+            refreshDockIssueUi(`issue-save:${uid}`);
             showToast("Saving...", "Updating dock issue...", false);
             try {
                 await supabaseFetch('v2_dock_issue_status', 'POST', [payload]);
@@ -17535,7 +17590,11 @@ function toggleDriveQuickRequestItem(domId) {
                 const safeUid = esc(issue.issueSourceUniqueId || '');
                 const remainingQty = Math.max(0, parseAppNumber(issue.remainingQty) || 0);
                 return `<div class="rounded-2xl border border-red-200 bg-white p-4 shadow-sm cursor-pointer active:scale-[0.99] transition-transform mb-3" onclick="openDockIssueDetail('${safeUid}')"><div class="flex items-start justify-between gap-3"><div class="min-w-0 flex-1"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-red-500">Flagged Issue</div><div class="mt-1 text-lg font-black text-slate-900 leading-tight break-words">${esc(issue.sourceCommonName || 'Dock Item')}</div><div class="mt-1 text-sm font-semibold text-slate-500 break-words">${esc(issue.sourceContSize || '-')}</div></div><div class="rounded-full border border-red-200 bg-red-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-red-600">Qty ${esc(formatDockDisplayQty(issue.sourceQty))}</div></div><div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.14em]"><span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700">Dock ${esc(issue.dockNum || '-')}</span><span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700">Stop ${esc(issue.stopNumber || '-')}</span><span class="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-blue-700">Loc ${esc(issue.sourceLocationCode || '-')}</span><span class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-700">Remain ${esc(formatDockDisplayQty(remainingQty))}</span></div><div class="mt-3 rounded-xl border border-orange-200 bg-orange-50 px-3 py-3 text-[12px] font-semibold text-orange-800 whitespace-pre-wrap"><span class="font-black">Issue:</span> ${esc(issue.issueNote || 'No note provided')}</div><div class="mt-3 flex items-center justify-between text-[10px] font-black uppercase tracking-[0.14em] text-slate-400"><span>${esc(issue.sourceCustomerName || 'Unknown Customer')}</span><span><i class="ph-bold ph-caret-right text-lg align-middle text-slate-300"></i></span></div></div>`;
-            }, { approxCardHeight: 215, emptyHtml: `<div class="p-8 text-center text-gray-400">No open dock issues.</div>` });
+            }, {
+                approxCardHeight: 215,
+                emptyHtml: `<div class="p-8 text-center text-gray-400">No open dock issues.</div>`,
+                renderSignature: buildRowsRenderSignature(`dock-mistakes|${term}`, queueItems, ['issueSourceUniqueId','issueState','issueNote','sourceQty','remainingQty','sourceCommonName','sourceContSize','sourceLocationCode','dockNum','stopNumber','DOCK_ISSUE_NOTE','DOCK_ISSUE_STATE','DOCK_ISSUE_SOURCE_UID'])
+            });
         }
 
         function renderDockMistakeDetail(container, crumb, term = '') {
