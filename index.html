@@ -335,8 +335,9 @@ body.viewport-compact #view-detail #det-location{font-size:clamp(.9rem,3.8vw,1.1
     </style>
     <style>
         html,body,#app-wrapper,#main-scroll-area{-webkit-overflow-scrolling:touch}
-        #main-scroll-area{scroll-behavior:smooth}
-        a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.drawer-item,.drill-item,.menu-btn{touch-action:manipulation}
+#main-scroll-area{scroll-behavior:auto}
+a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.drawer-item,.drill-item,.menu-btn{touch-action:manipulation}
+@media (pointer: coarse){.sticky-search,.freeze-panel,#global-header-search-row,.nav-header{box-shadow:none !important}.sticky-search{transform:none !important;-webkit-transform:none !important;backface-visibility:visible !important}#bottom-nav{backdrop-filter:none !important;-webkit-backdrop-filter:none !important;box-shadow:0 -8px 18px rgba(15,23,42,.10)!important}}
         input,textarea,select{-webkit-user-select:text;user-select:text}
     </style>
 </head>
@@ -671,7 +672,7 @@ body.viewport-compact #view-detail #det-location{font-size:clamp(.9rem,3.8vw,1.1
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-        <div id="header-version" class="nav-version-pill">V2026.04.22.03</div>
+<div id="header-version" class="nav-version-pill">V2026.04.22.04</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -1257,12 +1258,14 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
             warmViewReuseHits: 0,
             photoUiOnlyRefreshes: 0,
             fieldUiOnlyRefreshes: 0,
+            scrollBlockedChunkFrames: 0,
             saveDurations: Object.create(null),
             realtimeApplyDurations: Object.create(null),
             viewSwitchDurations: Object.create(null),
             viewRenderDurations: Object.create(null),
             searchRenderDurations: Object.create(null),
             chunkRenderDurations: Object.create(null),
+            touchToRenderDurations: Object.create(null),
             viewActivationDurations: Object.create(null),
             visibleRefreshDurations: Object.create(null),
             deferredDatasetLoads: 0,
@@ -1273,6 +1276,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
             taskHotCacheHits: 0,
             detailLookupDurations: Object.create(null),
             detailShellDurations: Object.create(null),
+            detailTapToShellDurations: Object.create(null),
             detailHydrationDurations: Object.create(null),
             taskStateBuildDurations: Object.create(null),
             taskDrilldownDurations: Object.create(null),
@@ -1289,6 +1293,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
         window.pendingPhotoUploads = pendingPhotoUploads;
         let lastUserInteractionAt = Date.now();
         let lastTouchInteractionAt = 0;
+        let activeTouchSession = false;
         let lastTypingAt = 0;
         let lastScrollAt = 0;
         let lastCameraActivityAt = 0;
@@ -1306,13 +1311,14 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
         let deferredChromeSyncTimers = Object.create(null);
         let deferredMainAreaScrollTimer = null;
         let deferredMainAreaScrollTarget = null;
+        let pendingDetailTapStartedAt = 0;
         let pendingTasksRenderOptions = null;
         let lastGlobalHeaderChromeSignature = '';
         let swipeCloseOnScrollFrame = null;
         let swipeCloseOnScrollTimer = null;
         const ACTIVE_TYPING_GRACE_MS = 450;
         const ACTIVE_SCROLL_GRACE_MS = 450;
-        const ACTIVE_TOUCH_GRACE_MS = 1100;
+        const ACTIVE_TOUCH_GRACE_MS = 90;
         const ACTIVE_INTERACTION_GRACE_MS = 400;
         const CHUNK_RENDER_GRACE_MS = 450;
         const ACTIVE_CAMERA_GRACE_MS = 1500;
@@ -1356,6 +1362,10 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
 
         function isStandaloneApp() {
             return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+        }
+
+        function isCoarsePointerDevice() {
+            return !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
         }
 
         function beginInternalPerfMeasure() {
@@ -1563,12 +1573,33 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
             return false;
         }
 
+        function isTouchLikeInteractionStartEvent(event) {
+            if (!isTouchLikeInteractionEvent(event)) return false;
+            const eventType = String(event && event.type || '').toLowerCase();
+            return eventType === 'touchstart' || eventType === 'pointerdown';
+        }
+
+        function isTouchLikeInteractionEndEvent(event) {
+            if (!isTouchLikeInteractionEvent(event)) return false;
+            const eventType = String(event && event.type || '').toLowerCase();
+            return eventType === 'touchend' || eventType === 'touchcancel' || eventType === 'pointerup' || eventType === 'pointercancel';
+        }
+
         function markUserInteractionActivity(event) {
             const now = Date.now();
             lastUserInteractionAt = now;
-            if (isTouchLikeInteractionEvent(event)) lastTouchInteractionAt = now;
+            if (isTouchLikeInteractionStartEvent(event)) {
+                activeTouchSession = true;
+                return;
+            }
+            if (isTouchLikeInteractionEndEvent(event)) {
+                activeTouchSession = false;
+                lastTouchInteractionAt = now;
+            }
         }
         window.addEventListener('pointerdown', markUserInteractionActivity, { passive: true });
+        window.addEventListener('pointerup', markUserInteractionActivity, { passive: true });
+        window.addEventListener('pointercancel', markUserInteractionActivity, { passive: true });
         window.addEventListener('touchstart', markUserInteractionActivity, { passive: true });
         window.addEventListener('touchmove', markUserInteractionActivity, { passive: true });
         window.addEventListener('touchend', markUserInteractionActivity, { passive: true });
@@ -1610,7 +1641,11 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
         }
 
         function isUserActivelyTouching() {
-            return (Date.now() - lastTouchInteractionAt) < ACTIVE_TOUCH_GRACE_MS;
+            return activeTouchSession || ((Date.now() - lastTouchInteractionAt) < ACTIVE_TOUCH_GRACE_MS);
+        }
+
+        function isUserInLiveTouchScrollGesture() {
+            return activeTouchSession || isUserActivelyScrolling();
         }
 
         function normalizeUiSyncReason(reason = '') {
@@ -1619,7 +1654,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
 
         function shouldDeferChromeSyncWork(reason = '') {
             const safeReason = normalizeUiSyncReason(reason);
-            if (!isIOSDevice()) return false;
+            if (!(isIOSDevice() || isCoarsePointerDevice())) return false;
             if (
                 safeReason.includes('force')
                 || safeReason.includes('orientation')
@@ -1633,7 +1668,40 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
             ) {
                 return false;
             }
-            return isUserActivelyScrolling();
+            return isUserInLiveTouchScrollGesture();
+        }
+
+        function getChunkRenderPacing(targetCount = 0, frameBudgetMs = 0, options = {}) {
+            const safeTargetCount = Math.max(1, Number(targetCount) || 1);
+            const safeFrameBudget = Math.max(1, Number(frameBudgetMs) || 1);
+            const minBatch = Math.max(1, Number(options && options.minBatch) || 6);
+            const liveGestureActive = isUserInLiveTouchScrollGesture();
+            const interactionSlowMode = liveGestureActive || shouldDeferInteractiveBackgroundWork() || isRecentViewSwitchActivity();
+            if (liveGestureActive) {
+                return {
+                    liveGestureActive: true,
+                    interactionSlowMode: true,
+                    batchTarget: Math.min(safeTargetCount, Math.max(minBatch, Math.ceil(safeTargetCount / 6))),
+                    timeBudget: Math.max(1.4, safeFrameBudget - 2.6),
+                    frameDelayMs: 72
+                };
+            }
+            if (interactionSlowMode) {
+                return {
+                    liveGestureActive: false,
+                    interactionSlowMode: true,
+                    batchTarget: Math.min(safeTargetCount, Math.max(minBatch, Math.ceil(safeTargetCount / 4))),
+                    timeBudget: Math.max(1.8, safeFrameBudget - 1.75),
+                    frameDelayMs: 48
+                };
+            }
+            return {
+                liveGestureActive: false,
+                interactionSlowMode: false,
+                batchTarget: safeTargetCount,
+                timeBudget: safeFrameBudget,
+                frameDelayMs: 0
+            };
         }
 
         function scheduleDeferredChromeSyncTask(key = '', callback = null, delay = ACTIVE_SCROLL_GRACE_MS + 90) {
@@ -4574,17 +4642,17 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                     scheduleUiRender(key, runWhenReady, safeTypingDelay);
                     return;
                 }
-                if (isUserActivelyTouching()) {
+                if (!opts.allowWhileTouching && isUserActivelyTouching()) {
                     incrementInternalPerfCounter('deferredInputAwareRenders');
                     scheduleUiRender(key, runWhenReady, safeTouchDelay);
                     return;
                 }
-                if (isUserActivelyScrolling()) {
+                if (!opts.allowWhileScrolling && isUserActivelyScrolling()) {
                     incrementInternalPerfCounter('deferredInputAwareRenders');
                     scheduleUiRender(key, runWhenReady, safeScrollDelay);
                     return;
                 }
-                if (!hasActiveTextEntryFocus() && isUserInRecentInteractionWindow()) {
+                if (!opts.allowDuringRecentInteraction && !hasActiveTextEntryFocus() && isUserInRecentInteractionWindow()) {
                     incrementInternalPerfCounter('deferredInputAwareRenders');
                     scheduleUiRender(key, runWhenReady, safeInteractionDelay);
                     return;
@@ -4778,13 +4846,18 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             const nextOptions = (options && typeof options === 'object') ? options : {};
             const delay = Math.max(0, Number(nextOptions.delay) || 0);
             const typingDelay = Math.max(90, Number(nextOptions.typingDelay) || 180);
+            const touchRenderStartedAt = nextOptions.userAction ? beginInternalPerfMeasure() : 0;
             markViewDirty(safeViewId);
             scheduleTypingAwareUiRender(`tracked-view:${safeViewId}:${String(renderKey || 'render')}`, () => {
                 const targetView = document.getElementById('view-' + safeViewId);
                 if (!targetView || targetView.classList.contains('hidden')) return;
                 renderViewContent(safeViewId, !!nextOptions.forceReset, !!nextOptions.forceRender);
+                if (touchRenderStartedAt) recordInternalPerfDuration('touchToRenderDurations', touchRenderStartedAt, safeViewId);
             }, delay, typingDelay, {
                 allowWhileTyping: !!nextOptions.allowWhileTyping,
+                allowWhileTouching: !!nextOptions.allowWhileTouching,
+                allowWhileScrolling: !!nextOptions.allowWhileScrolling,
+                allowDuringRecentInteraction: !!nextOptions.allowDuringRecentInteraction,
                 touchDelayMs: Math.max(180, Number(nextOptions.touchDelayMs) || 220),
                 scrollDelayMs: Math.max(160, Number(nextOptions.scrollDelayMs) || 200),
                 interactionDelayMs: Math.max(120, Number(nextOptions.interactionDelayMs) || 150)
@@ -4805,53 +4878,55 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         }
 
         function scheduleDriveRender(delay = 0, typingDelay = 160, forceRender = false) {
-            return scheduleTrackedViewRender('drive', 'drive:render', { delay, typingDelay, forceRender });
+            return scheduleTrackedViewRender('drive', 'drive:render', { delay, typingDelay, forceRender, userAction: true, allowWhileTouching: true, allowDuringRecentInteraction: true, touchDelayMs: 32, interactionDelayMs: 32, scrollDelayMs: 120 });
         }
 
         function scheduleTasksRender(delay = 0, typingDelay = 160, forceRender = false) {
-            return scheduleTrackedViewRender('tasks', 'tasks:render', { delay, typingDelay, forceRender });
+            return scheduleTrackedViewRender('tasks', 'tasks:render', { delay, typingDelay, forceRender, userAction: true, allowWhileTouching: true, allowDuringRecentInteraction: true, touchDelayMs: 32, interactionDelayMs: 32, scrollDelayMs: 120 });
         }
 
         function scheduleRequestRender(delay = 0, typingDelay = 180, forceRender = false) {
-            return scheduleTrackedViewRender('request', 'request:render', { delay, typingDelay, forceRender });
+            return scheduleTrackedViewRender('request', 'request:render', { delay, typingDelay, forceRender, userAction: true, allowWhileTouching: true, allowDuringRecentInteraction: true, touchDelayMs: 32, interactionDelayMs: 32, scrollDelayMs: 120 });
         }
 
         function scheduleSalesOfficeRender(delay = 0, typingDelay = 180, forceRender = false) {
-            return scheduleTrackedViewRender('sales-office', 'sales-office:render', { delay, typingDelay, forceRender });
+            return scheduleTrackedViewRender('sales-office', 'sales-office:render', { delay, typingDelay, forceRender, userAction: true, allowWhileTouching: true, allowDuringRecentInteraction: true, touchDelayMs: 32, interactionDelayMs: 32, scrollDelayMs: 120 });
         }
 
         function scheduleReviewRender(delay = 0, typingDelay = 180, forceRender = false) {
-            return scheduleTrackedViewRender('review', 'review:render', { delay, typingDelay, forceRender });
+            return scheduleTrackedViewRender('review', 'review:render', { delay, typingDelay, forceRender, userAction: true, allowWhileTouching: true, allowDuringRecentInteraction: true, touchDelayMs: 32, interactionDelayMs: 32, scrollDelayMs: 120 });
         }
 
         function scheduleReportsRender(delay = 0, typingDelay = 180, forceRender = false) {
-            return scheduleTrackedViewRender('reports', 'reports:render', { delay, typingDelay, forceRender });
+            return scheduleTrackedViewRender('reports', 'reports:render', { delay, typingDelay, forceRender, userAction: true, allowWhileTouching: true, allowDuringRecentInteraction: true, touchDelayMs: 32, interactionDelayMs: 32, scrollDelayMs: 120 });
         }
 
         function scheduleReservesRender(delay = 0, typingDelay = 180, forceRender = false) {
-            return scheduleTrackedViewRender('reserves', 'reserves:render', { delay, typingDelay, forceRender });
+            return scheduleTrackedViewRender('reserves', 'reserves:render', { delay, typingDelay, forceRender, userAction: true, allowWhileTouching: true, allowDuringRecentInteraction: true, touchDelayMs: 32, interactionDelayMs: 32, scrollDelayMs: 120 });
         }
 
         function scheduleLowStockRender(delay = 0, typingDelay = 180, forceRender = false) {
-            return scheduleTrackedViewRender('low-stock', 'low-stock:render', { delay, typingDelay, forceRender });
+            return scheduleTrackedViewRender('low-stock', 'low-stock:render', { delay, typingDelay, forceRender, userAction: true, allowWhileTouching: true, allowDuringRecentInteraction: true, touchDelayMs: 32, interactionDelayMs: 32, scrollDelayMs: 120 });
         }
 
         function scheduleDocksRender(delay = 32) {
-            return scheduleTrackedViewRender('docks', 'docks:render', { delay, typingDelay: 180 });
+            return scheduleTrackedViewRender('docks', 'docks:render', { delay, typingDelay: 180, userAction: true, allowWhileTouching: true, allowDuringRecentInteraction: true, touchDelayMs: 32, interactionDelayMs: 32, scrollDelayMs: 120 });
         }
 
         function scheduleAVRender(delay = 24) {
-            return scheduleTrackedViewRender('av', 'av:render', { delay, typingDelay: 160 });
+            return scheduleTrackedViewRender('av', 'av:render', { delay, typingDelay: 160, userAction: true, allowWhileTouching: true, allowDuringRecentInteraction: true, touchDelayMs: 32, interactionDelayMs: 32, scrollDelayMs: 120 });
         }
 
         function scheduleTasksRenderWithOptions(options = {}, delay = 0, typingDelay = 160, forceRender = false, renderKey = 'tasks:render:options') {
             pendingTasksRenderOptions = { ...(pendingTasksRenderOptions || {}), ...((options && typeof options === 'object') ? options : {}) };
             markViewDirty('tasks');
+            const touchRenderStartedAt = beginInternalPerfMeasure();
             scheduleTypingAwareUiRender(`tracked-view:${renderKey}`, () => {
                 const targetView = document.getElementById('view-tasks');
                 if (!targetView || targetView.classList.contains('hidden')) return;
                 renderViewContent('tasks', false, forceRender);
-            }, Math.max(0, Number(delay) || 0), typingDelay, { touchDelayMs: 220, scrollDelayMs: 180 });
+                recordInternalPerfDuration('touchToRenderDurations', touchRenderStartedAt, 'tasks');
+            }, Math.max(0, Number(delay) || 0), typingDelay, { allowWhileTouching: true, allowDuringRecentInteraction: true, touchDelayMs: 32, scrollDelayMs: 120, interactionDelayMs: 32 });
             return false;
         }
 
@@ -6265,7 +6340,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
             'dylan_collyge@greenleafnursery.com'
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-        const APP_VERSION = 'V2026.04.22.03';
+        const APP_VERSION = 'V2026.04.22.04';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -14314,7 +14389,7 @@ function toggleDriveQuickRequestItem(domId) {
             const inlineThumbHtml = thumbHtml || `<div class="ml-3 flex-shrink-0"><div class="app-smart-thumb w-16 h-16 rounded-md border border-gray-300 bg-slate-100 shadow-sm flex items-center justify-center text-[8px] font-black uppercase tracking-[0.12em] text-slate-400">No Photo</div></div>`;
             const quickShareHtml = `<div class="mt-3 grid ${actionVisibility.showText ? 'grid-cols-3' : 'grid-cols-2'} gap-2"><button type="button" class="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-slate-700 shadow-sm active:scale-[0.98]" onclick="event.stopPropagation(); return shareAvReserveRow('copy', '${safeDomIdJs}')"><i class="ph-bold ph-copy text-base"></i>Copy</button><button type="button" class="inline-flex items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-blue-700 shadow-sm active:scale-[0.98]" onclick="event.stopPropagation(); return shareAvReserveRow('email', '${safeDomIdJs}')"><i class="ph-bold ph-envelope-simple text-base"></i>Email</button>${actionVisibility.showText ? `<button type="button" class="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm active:scale-[0.98]" onclick="event.stopPropagation(); return shareAvReserveRow('text', '${safeDomIdJs}')"><i class="ph-bold ph-chat-circle-dots text-base"></i>Text</button>` : ''}</div>`;
             const bottomRailHtml = getInventoryCardBottomRailHtml(item.DOM_ID);
-            return `<div class="flex items-start w-full mb-3 item-row app-smart-card relative bg-white p-4 rounded-xl border border-indigo-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${bottomRailHtml ? 'app-card-with-bottom-rail' : ''}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', 'av')"><div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-grow items-start justify-between min-w-0"><div class="app-card-main flex-grow min-w-0 pr-2"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-indigo-600">Item Code</div><div class="mt-1 font-mono font-black text-[16px] text-indigo-800 break-all">${esc(itemCode)}</div><div class="mt-3 font-black text-slate-900 text-[20px] leading-tight break-words">${esc(commonName)}</div><div class="mt-1 text-[14px] font-bold text-[#007a4d]">${esc(contSize)}</div><div class="mt-3 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">${detailCell('Customer Name', customerName)}${detailCell('Consignee Name', consigneeName)}${detailCell('Sales Rep Name', salesRepName)}${detailCell('Location', locationCode)}${detailCell('Request Date', requestDate)}${detailCell('Lot Code', lotCode)}${detailCell('Quantity Ordered', qtyOrdered)}${detailCell('Quantity Shipped', qtyShipped)}${detailCell('LOC PHOTO MATCH', locPhotoMatch)}${showSpecFields ? detailCell('Spec', specText) : ''}${showSpecFields ? detailCell('Caliper', caliperText) : ''}${detailCell('AV Note', avNote)}</div>${quickShareHtml}</div>${inlineThumbHtml}</div>${bottomRailHtml}</div>`;
+        return `<div class="flex items-start w-full mb-3 item-row app-smart-card relative bg-white p-4 rounded-xl border border-indigo-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${bottomRailHtml ? 'app-card-with-bottom-rail' : ''}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', 'av')"><div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-grow items-start justify-between min-w-0"><div class="app-card-main flex-grow min-w-0 pr-2"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-indigo-600">Item Code</div><div class="mt-1 font-mono font-black text-[16px] text-indigo-800 break-all">${esc(itemCode)}</div><div class="mt-3 font-black text-slate-900 text-[20px] leading-tight break-words">${esc(commonName)}</div><div class="mt-1 text-[14px] font-bold text-[#007a4d]">${esc(contSize)}</div><div class="mt-3 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">${detailCell('Customer Name', customerName)}${detailCell('Consignee Name', consigneeName)}${detailCell('Sales Rep Name', salesRepName)}${detailCell('Location', locationCode)}${detailCell('Request Date', requestDate)}${detailCell('Lot Code', lotCode)}${detailCell('Quantity Ordered', qtyOrdered)}${detailCell('Quantity Shipped', qtyShipped)}${detailCell('LOC PHOTO MATCH', locPhotoMatch)}${showSpecFields ? detailCell('Spec', specText) : ''}${showSpecFields ? detailCell('Caliper', caliperText) : ''}${detailCell('AV Note', avNote)}</div>${quickShareHtml}</div>${inlineThumbHtml}</div>${bottomRailHtml}</div>`;
         }
 
         function generateAvReserveLocationCard(item) {
@@ -15719,9 +15794,9 @@ function toggleDriveQuickRequestItem(domId) {
             const renderBatch = (targetCount, useBudget) => {
                 let html = '';
                 let rendered = 0;
-                const interactionSlowMode = shouldDeferInteractiveBackgroundWork() || isRecentViewSwitchActivity();
-                const batchTarget = interactionSlowMode ? Math.min(targetCount, Math.max(8, Math.ceil(targetCount / 4))) : targetCount;
-                const timeBudget = interactionSlowMode ? Math.max(2, frameBudgetMs - 1.75) : frameBudgetMs;
+                const pacing = getChunkRenderPacing(targetCount, frameBudgetMs, { minBatch: 8 });
+                const batchTarget = pacing.batchTarget;
+                const timeBudget = pacing.timeBudget;
                 const startTime = useBudget && typeof performance !== 'undefined' && performance.now ? performance.now() : 0;
                 while (index < total && rendered < batchTarget) {
                     html += renderRow(rows[index], index);
@@ -15751,9 +15826,10 @@ function toggleDriveQuickRequestItem(domId) {
             };
 
             const queueNextChunkFrame = () => {
-                const interactionSlowMode = shouldDeferInteractiveBackgroundWork() || isRecentViewSwitchActivity();
-                if (interactionSlowMode) {
-                    setTimeout(() => requestAnimationFrame(renderNextChunk), 48);
+                const pacing = getChunkRenderPacing(perFrameLimit, frameBudgetMs, { minBatch: 8 });
+                if (pacing.frameDelayMs > 0) {
+                    if (pacing.liveGestureActive) incrementInternalPerfCounter('scrollBlockedChunkFrames');
+                    setTimeout(() => requestAnimationFrame(renderNextChunk), pacing.frameDelayMs);
                     return;
                 }
                 requestAnimationFrame(renderNextChunk);
@@ -15818,9 +15894,9 @@ function toggleDriveQuickRequestItem(domId) {
             const renderBatch = (targetCount, useBudget) => {
                 let html = '';
                 let rendered = 0;
-                const interactionSlowMode = shouldDeferInteractiveBackgroundWork() || isRecentViewSwitchActivity();
-                const batchTarget = interactionSlowMode ? Math.min(targetCount, Math.max(10, Math.ceil(targetCount / 4))) : targetCount;
-                const timeBudget = interactionSlowMode ? Math.max(2.5, frameBudgetMs - 2.5) : frameBudgetMs;
+                const pacing = getChunkRenderPacing(targetCount, frameBudgetMs, { minBatch: 10 });
+                const batchTarget = pacing.batchTarget;
+                const timeBudget = pacing.timeBudget;
                 const startTime = useBudget && typeof performance !== 'undefined' && performance.now ? performance.now() : 0;
                 while (index < total && rendered < batchTarget) {
                     html += generateCard(rows[index], sourceView, 'status-teal');
@@ -15832,9 +15908,10 @@ function toggleDriveQuickRequestItem(domId) {
             };
             setContainerHtml(container, renderBatch(initialTarget, false));
             const queueNextChunkFrame = () => {
-                const interactionSlowMode = shouldDeferInteractiveBackgroundWork() || isRecentViewSwitchActivity();
-                if (interactionSlowMode) {
-                    setTimeout(() => requestAnimationFrame(renderNextChunk), 48);
+                const pacing = getChunkRenderPacing(perFrameLimit, frameBudgetMs, { minBatch: 10 });
+                if (pacing.frameDelayMs > 0) {
+                    if (pacing.liveGestureActive) incrementInternalPerfCounter('scrollBlockedChunkFrames');
+                    setTimeout(() => requestAnimationFrame(renderNextChunk), pacing.frameDelayMs);
                     return;
                 }
                 requestAnimationFrame(renderNextChunk);
@@ -15895,9 +15972,9 @@ function toggleDriveQuickRequestItem(domId) {
             const renderBatch = (targetCount, useBudget) => {
                 let html = '';
                 let rendered = 0;
-                const interactionSlowMode = shouldDeferInteractiveBackgroundWork() || isRecentViewSwitchActivity();
-                const batchTarget = interactionSlowMode ? Math.min(targetCount, Math.max(10, Math.ceil(targetCount / 4))) : targetCount;
-                const timeBudget = interactionSlowMode ? Math.max(2.5, frameBudgetMs - 2.5) : frameBudgetMs;
+                const pacing = getChunkRenderPacing(targetCount, frameBudgetMs, { minBatch: 10 });
+                const batchTarget = pacing.batchTarget;
+                const timeBudget = pacing.timeBudget;
                 const startTime = useBudget && typeof performance !== 'undefined' && performance.now ? performance.now() : 0;
                 while (index < total && rendered < batchTarget) {
                     html += renderRow(rows[index], index);
@@ -15909,9 +15986,10 @@ function toggleDriveQuickRequestItem(domId) {
             };
             setContainerHtml(container, renderBatch(initialTarget, false));
             const queueNextChunkFrame = () => {
-                const interactionSlowMode = shouldDeferInteractiveBackgroundWork() || isRecentViewSwitchActivity();
-                if (interactionSlowMode) {
-                    setTimeout(() => requestAnimationFrame(renderNextChunk), 48);
+                const pacing = getChunkRenderPacing(perFrameLimit, frameBudgetMs, { minBatch: 10 });
+                if (pacing.frameDelayMs > 0) {
+                    if (pacing.liveGestureActive) incrementInternalPerfCounter('scrollBlockedChunkFrames');
+                    setTimeout(() => requestAnimationFrame(renderNextChunk), pacing.frameDelayMs);
                     return;
                 }
                 requestAnimationFrame(renderNextChunk);
@@ -16751,6 +16829,7 @@ function toggleDriveQuickRequestItem(domId) {
             }
         }
         function handleCardClick(domId,uniqueId,sourceView) {
+            pendingDetailTapStartedAt = beginInternalPerfMeasure();
             if(sourceView==='av-photo'){
                 const item=findItemByUniqueId(uniqueId);
                 openAvGallery(item);
@@ -17214,6 +17293,8 @@ function toggleDriveQuickRequestItem(domId) {
             clearPendingDetailHydration();
             detailHydrationToken += 1;
             const currentDetailHydrationToken = detailHydrationToken;
+            const detailTapStartedAt = pendingDetailTapStartedAt;
+            pendingDetailTapStartedAt = 0;
             markDetailTransitionActivity();
             lastView = resolvedSourceView;
             activeDetailSourceView = resolvedSourceView;
@@ -17221,6 +17302,7 @@ function toggleDriveQuickRequestItem(domId) {
             resetDetailOverviewFieldSearch();
             lastViewSwitchAt = Date.now();
             renderDetailShellView();
+            if (detailTapStartedAt) recordInternalPerfDuration('detailTapToShellDurations', detailTapStartedAt, resolvedSourceView || 'detail');
             showOnlyPrimaryView('detail');
             if (Math.abs(getMainAreaScrollTop()) > 2) setMainAreaScrollTop(0);
             schedulePrimaryViewChromeRefresh('detail');
@@ -20516,7 +20598,7 @@ function toggleDriveQuickRequestItem(domId) {
                     }
                 }
                 const bottomRailHtml = getInventoryCardBottomRailHtml(item.DOM_ID);
-                return `<div class="flex items-start w-full mb-3 item-row app-smart-card app-smart-card--inventory app-smart-card--av relative bg-white p-4 rounded-xl border-2 border-teal-100 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass} ${bottomRailHtml ? 'app-card-with-bottom-rail' : ''}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView === 'reserves_drill' ? 'av' : sourceView}')"><div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-teal-600 focus:ring-teal-600 shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-col w-full min-w-0"><div class="app-av-card-layout flex justify-between items-start w-full"><div class="app-card-main app-av-card-main flex-grow min-w-0 pr-2">${buildInventoryToplineHtml(item.COMMONNAME || 'Unknown', item.CONTSIZE || '-')}${buildInventorySecondarylineHtml(item.LOCATIONCODE || '-', firstNonEmptyValue(item.SOURCE, item.source, ''))}<div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-black"><span class="text-[13px] font-black uppercase">PRI ${item.PRIORITY||'-'}</span><span class="text-[13px] font-black">${item.ITEMCODE||'-'}</span><span class="text-[13px] font-black">${item.LOTCODE||'-'}</span></div><div class="mt-3 flex flex-wrap gap-2 text-[11px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-slate-700">LOC AVA <span class="text-slate-900">${item.PTRAVAILABLE||'0'}</span></span><span class="rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-purple-700">OPEN STOCK <span class="text-purple-900">${item.S_LTS||'0'}</span></span><span class="rounded-full border border-green-200 bg-green-50 px-3 py-1 text-green-700">LOC PHOTO MATCH <span class="text-green-900">${locPhotoMatchText}</span></span></div>${rowFourHtml}${rowFiveHtml}</div>${thumbColumnHtml}</div>${bottomRailHtml}</div></div>`;
+        return `<div class="flex items-start w-full mb-3 item-row app-smart-card app-smart-card--inventory app-smart-card--av relative bg-white p-4 rounded-xl border-2 border-teal-100 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass} ${bottomRailHtml ? 'app-card-with-bottom-rail' : ''}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView === 'reserves_drill' ? 'av' : sourceView}')"><div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-teal-600 focus:ring-teal-600 shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-col w-full min-w-0"><div class="app-av-card-layout flex justify-between items-start w-full"><div class="app-card-main app-av-card-main flex-grow min-w-0 pr-2">${buildInventoryToplineHtml(item.COMMONNAME || 'Unknown', item.CONTSIZE || '-')}${buildInventorySecondarylineHtml(item.LOCATIONCODE || '-', firstNonEmptyValue(item.SOURCE, item.source, ''))}<div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-black"><span class="text-[13px] font-black uppercase">PRI ${item.PRIORITY||'-'}</span><span class="text-[13px] font-black">${item.ITEMCODE||'-'}</span><span class="text-[13px] font-black">${item.LOTCODE||'-'}</span></div><div class="mt-3 flex flex-wrap gap-2 text-[11px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-slate-700">LOC AVA <span class="text-slate-900">${item.PTRAVAILABLE||'0'}</span></span><span class="rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-purple-700">OPEN STOCK <span class="text-purple-900">${item.S_LTS||'0'}</span></span><span class="rounded-full border border-green-200 bg-green-50 px-3 py-1 text-green-700">LOC PHOTO MATCH <span class="text-green-900">${locPhotoMatchText}</span></span></div>${rowFourHtml}${rowFiveHtml}</div>${thumbColumnHtml}</div>${bottomRailHtml}</div></div>`;
             };
 
             if(sourceView === 'av-photo' || sourceView === 'av') {
@@ -20560,7 +20642,7 @@ function toggleDriveQuickRequestItem(domId) {
                         actionBadge = `<div class="flex gap-2 mt-3"><button class="flex-1 bg-green-50 text-green-700 border border-green-200 font-bold py-2 rounded-lg shadow-sm hover:bg-green-100 active:scale-95 text-[10px] uppercase tracking-wider" onclick="event.stopPropagation(); setRepRequestAction('${safeUidJs}', 'Approved')">APPROVE</button><button class="flex-1 bg-red-50 text-red-700 border border-red-200 font-bold py-2 rounded-lg shadow-sm hover:bg-red-100 active:scale-95 text-[10px] uppercase tracking-wider" onclick="event.stopPropagation(); setRepRequestAction('${safeUidJs}', 'Rejected')">REJECT</button></div>`;
                     }
                 }
-                return `<div class="flex items-center w-full mb-3 item-row app-smart-card app-smart-card--inventory relative bg-white p-4 rounded-xl border border-purple-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full"><div class="app-card-main flex-grow min-w-0 pr-2"><div class="flex justify-between items-start mb-1 gap-2"><div class="min-w-0 flex-1">${buildInventoryToplineHtml(item.COMMONNAME || 'Unknown', item.CONTSIZE || '-')}</div><div class="font-black text-purple-700 bg-purple-50 px-2 py-1 rounded text-sm whitespace-nowrap ml-2 border border-purple-100">QTY: ${reqQty}</div></div><div class="app-card-meta-grid grid grid-cols-2 gap-x-2 gap-y-1 mb-2 text-[11px] font-bold text-gray-600"><div class="truncate"><i class="ph-bold ph-user mr-1"></i>${rep}</div><div class="truncate"><i class="ph-bold ph-storefront mr-1"></i>${cust}</div></div><div class="app-card-chip-row flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600">${statusChip}${reserveBadge}<span class="bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded border border-gray-200">PTRAVAILABLE: ${item.PTRAVAILABLE||'0'}</span><span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">Loc: ${loc}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Lot: ${lot}</span><span class="bg-orange-50 text-orange-700 px-1.5 py-0.5 rounded border border-orange-100">Pri: ${priority}</span></div>${holdHtml}${requestSalesNoteHtml}</div>${inlineThumbHtml}</div>${actionBadge}</div></div>`;
+        return `<div class="flex items-center w-full mb-3 item-row app-smart-card app-smart-card--inventory relative bg-white p-4 rounded-xl border border-purple-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full"><div class="app-card-main flex-grow min-w-0 pr-2"><div class="flex justify-between items-start mb-1 gap-2"><div class="min-w-0 flex-1">${buildInventoryToplineHtml(item.COMMONNAME || 'Unknown', item.CONTSIZE || '-')}</div><div class="font-black text-purple-700 bg-purple-50 px-2 py-1 rounded text-sm whitespace-nowrap ml-2 border border-purple-100">QTY: ${reqQty}</div></div><div class="app-card-meta-grid grid grid-cols-2 gap-x-2 gap-y-1 mb-2 text-[11px] font-bold text-gray-600"><div class="truncate"><i class="ph-bold ph-user mr-1"></i>${rep}</div><div class="truncate"><i class="ph-bold ph-storefront mr-1"></i>${cust}</div></div><div class="app-card-chip-row flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600">${statusChip}${reserveBadge}<span class="bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded border border-gray-200">PTRAVAILABLE: ${item.PTRAVAILABLE||'0'}</span><span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">Loc: ${loc}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Lot: ${lot}</span><span class="bg-orange-50 text-orange-700 px-1.5 py-0.5 rounded border border-orange-100">Pri: ${priority}</span></div>${holdHtml}${requestSalesNoteHtml}</div>${inlineThumbHtml}</div>${actionBadge}</div></div>`;
             }
             if(sourceView === 'docks'){
                 let qty = item.QUANTITYORDERED || item.QTY_ORDERED || item.PTRAVAILABLE || '1';
@@ -20575,7 +20657,7 @@ function toggleDriveQuickRequestItem(domId) {
 
                 let actionBtns = `<div class="flex gap-2 mt-3 pt-3 border-t border-gray-100"><button class="flex-1 py-2.5 rounded-lg text-[10px] uppercase font-black border shadow-sm transition-colors ${chkClass} active:scale-95" onclick="event.stopPropagation(); toggleDockItemState('${safeUidJs}', 'checker')"><i class="ph-bold ph-check-square mr-1 text-lg align-middle"></i> Verified</button><button class="flex-1 py-2.5 rounded-lg text-[10px] uppercase font-black border shadow-sm transition-colors ${inspClass} active:scale-95" onclick="event.stopPropagation(); toggleDockItemState('${safeUidJs}', 'inspector')"><i class="ph-bold ph-magnifying-glass mr-1 text-lg align-middle"></i> Inspect</button><button class="flex-1 py-2.5 rounded-lg text-[10px] uppercase font-black border border-red-200 bg-red-50 text-red-600 shadow-sm transition-colors hover:bg-red-100 active:scale-95" onclick="event.stopPropagation(); openDockItemMistakeModal('${safeUidJs}')"><i class="ph-bold ph-flag mr-1 text-lg align-middle"></i> Flag Issue</button></div>`;
 
-                return `<div class="flex items-start w-full item-row app-smart-card relative bg-white p-4 rounded-xl border border-gray-300 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${cardOpacity}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start border-b border-gray-100 pb-2 mb-2 w-full"><div class="app-card-main flex-grow min-w-0 pr-2"><div class="app-card-title font-black text-gray-800 text-[18px] leading-tight break-words mb-1">${item.COMMONNAME||'Unknown'}</div><div class="text-[10px] font-mono text-gray-400 uppercase tracking-widest bg-gray-50 px-2 py-0.5 rounded border border-gray-200 w-max">ID: ${item.ITEMCODE||'-'}</div></div>${inlineThumbHtml}</div><div class="app-card-meta-grid grid grid-cols-2 gap-3 mb-2"><div><div class="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Quantity & Specs</div><div class="font-bold text-sm text-[#007a4d]">${qty} EA &bull; ${item.CONTSIZE||'-'}</div></div><div><div class="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Location</div><div class="font-bold text-sm text-blue-700">${item.LOCATIONCODE||'No Loc'}</div></div></div>${item.DOCK_SPEC || item.DOCK_CALIPER ? `<div class="text-[11px] font-bold text-gray-600 bg-gray-50 px-2 py-1 rounded border border-gray-100 mb-2 w-max">Spec: ${item.DOCK_SPEC||'N/A'} | Caliper: ${item.DOCK_CALIPER||'N/A'}</div>` : ''}${noteHtml}${actionBtns}</div></div>`;
+        return `<div class="flex items-start w-full item-row app-smart-card relative bg-white p-4 rounded-xl border border-gray-300 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${cardOpacity}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start border-b border-gray-100 pb-2 mb-2 w-full"><div class="app-card-main flex-grow min-w-0 pr-2"><div class="app-card-title font-black text-gray-800 text-[18px] leading-tight break-words mb-1">${item.COMMONNAME||'Unknown'}</div><div class="text-[10px] font-mono text-gray-400 uppercase tracking-widest bg-gray-50 px-2 py-0.5 rounded border border-gray-200 w-max">ID: ${item.ITEMCODE||'-'}</div></div>${inlineThumbHtml}</div><div class="app-card-meta-grid grid grid-cols-2 gap-3 mb-2"><div><div class="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Quantity & Specs</div><div class="font-bold text-sm text-[#007a4d]">${qty} EA &bull; ${item.CONTSIZE||'-'}</div></div><div><div class="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Location</div><div class="font-bold text-sm text-blue-700">${item.LOCATIONCODE||'No Loc'}</div></div></div>${item.DOCK_SPEC || item.DOCK_CALIPER ? `<div class="text-[11px] font-bold text-gray-600 bg-gray-50 px-2 py-1 rounded border border-gray-100 mb-2 w-max">Spec: ${item.DOCK_SPEC||'N/A'} | Caliper: ${item.DOCK_CALIPER||'N/A'}</div>` : ''}${noteHtml}${actionBtns}</div></div>`;
             }
             if(sourceView==='sales-office-order'){
                 const orderQty = firstNonEmptyValue(item.ORDER_QTY, item.REQ_QTY, '0');
@@ -20593,7 +20675,7 @@ function toggleDriveQuickRequestItem(domId) {
                     `<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Reserve: ${orderReserve}</span>`
                 ].filter(Boolean).join('');
                 const statusTone = String(orderStatus || '').toLowerCase().includes('done') ? 'bg-green-100 text-green-700 border-green-200' : 'bg-amber-50 text-amber-700 border-amber-100';
-                return `<div class="flex items-center w-full mb-3 item-row app-smart-card relative bg-white p-4 rounded-xl border border-emerald-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full"><div class="app-card-main flex-grow min-w-0 pr-2"><div class="app-card-eyebrow text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d] mb-1">Bloom Picker</div><div class="app-card-title font-black text-gray-800 text-[16px] leading-tight break-words mb-1">${item.COMMONNAME||'Unknown'}</div><div class="app-card-subtitle font-bold text-[#007a4d] text-sm mb-2">${item.CONTSIZE||'-'}</div><div class="app-card-chip-row flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600"><span class="bg-emerald-50 text-emerald-700 px-2 py-1 rounded border border-emerald-200">Qty ${orderQty}</span><span class="bg-white text-slate-600 px-2 py-1 rounded border border-slate-200">Order ${item.ORDER_NUMBER||'-'}</span><span class="bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-100">Loc ${item.LOCATIONCODE||'-'}</span><span class="bg-gray-100 text-gray-700 px-2 py-1 rounded border border-gray-200">Lot ${item.LOTCODE||'-'}</span><span class="px-2 py-1 rounded border ${statusTone}">${orderStatus}</span></div>${orderDetailBits ? `<div class="mt-2 flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-wider text-gray-600">${orderDetailBits}</div>` : ''}<div class="mt-2 text-[11px] font-semibold text-slate-500">Submitted ${submittedAt}</div>${holdHtml}${salesNoteHtml}${avNoteHtml}</div>${inlineThumbHtml}</div><div class="flex gap-2 mt-3"><button class="flex-1 bg-[#007a4d] hover:bg-green-700 text-white text-[10px] font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-md active:scale-95" onclick="event.stopPropagation(); markSalesOfficeComplete('${safeUidJs}', '${item.DOM_ID}')"><i class="ph-bold ph-check-circle text-lg"></i>DONE</button></div></div></div>`;
+        return `<div class="flex items-center w-full mb-3 item-row app-smart-card relative bg-white p-4 rounded-xl border border-emerald-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full"><div class="app-card-main flex-grow min-w-0 pr-2"><div class="app-card-eyebrow text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d] mb-1">Bloom Picker</div><div class="app-card-title font-black text-gray-800 text-[16px] leading-tight break-words mb-1">${item.COMMONNAME||'Unknown'}</div><div class="app-card-subtitle font-bold text-[#007a4d] text-sm mb-2">${item.CONTSIZE||'-'}</div><div class="app-card-chip-row flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600"><span class="bg-emerald-50 text-emerald-700 px-2 py-1 rounded border border-emerald-200">Qty ${orderQty}</span><span class="bg-white text-slate-600 px-2 py-1 rounded border border-slate-200">Order ${item.ORDER_NUMBER||'-'}</span><span class="bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-100">Loc ${item.LOCATIONCODE||'-'}</span><span class="bg-gray-100 text-gray-700 px-2 py-1 rounded border border-gray-200">Lot ${item.LOTCODE||'-'}</span><span class="px-2 py-1 rounded border ${statusTone}">${orderStatus}</span></div>${orderDetailBits ? `<div class="mt-2 flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-wider text-gray-600">${orderDetailBits}</div>` : ''}<div class="mt-2 text-[11px] font-semibold text-slate-500">Submitted ${submittedAt}</div>${holdHtml}${salesNoteHtml}${avNoteHtml}</div>${inlineThumbHtml}</div><div class="flex gap-2 mt-3"><button class="flex-1 bg-[#007a4d] hover:bg-green-700 text-white text-[10px] font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-md active:scale-95" onclick="event.stopPropagation(); markSalesOfficeComplete('${safeUidJs}', '${item.DOM_ID}')"><i class="ph-bold ph-check-circle text-lg"></i>DONE</button></div></div></div>`;
             }
             if(sourceView==='sales-office'){
                 let avNoteText = getSalesOfficeDisplayAvNote(item, 'No AV Note Provided');
@@ -20603,7 +20685,7 @@ function toggleDriveQuickRequestItem(domId) {
                 let lotCode = item.LOTCODE || '-';
                 let safeAvNote = esc(avNoteText);
 
-                return `<div class="flex items-center w-full mb-3 item-row relative" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="inv-card app-smart-card status-purple flex-grow !mb-0 bg-purple-50/40 border border-purple-200 transition-transform active:scale-[0.99]"><div class="flex justify-between items-start mb-3"><div class="app-card-main font-bold text-lg text-[#007a4d] leading-tight pr-2 select-text" style="-webkit-user-select: text; user-select: text;"><div class="mb-2 flex flex-wrap gap-2"><span class="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]"><i class="ph-bold ph-handbag text-sm"></i>Bloom Picker</span><span class="inline-flex items-center rounded-full border border-purple-200 bg-white px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-purple-700">Season Sales Notes</span></div>${item.COMMONNAME||'Unknown'}<br><span class="text-sm text-gray-500 font-semibold">${item.CONTSIZE||'-'}</span></div>${inlineThumbHtml}</div><div class="bg-white p-3 rounded-lg border border-purple-200 shadow-sm mb-3 select-text cursor-text" style="-webkit-user-select: text; user-select: text;" onclick="event.stopPropagation();"><div class="flex justify-between items-center mb-1"><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Item Code</span><span class="font-black text-purple-700 font-mono tracking-wide text-sm">${itemCode}</span></div><div class="flex justify-between items-center mb-1 border-b border-gray-100 pb-1"><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Location / Lot</span><span class="font-bold text-gray-600 text-xs">${locCode} / ${lotCode}</span></div><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5 mt-2">AV Note</div><div class="text-[14px] font-bold text-blue-800 leading-snug mb-2 whitespace-pre-wrap">${avNoteText}</div><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Sales Note</div><div class="text-[14px] font-bold text-green-800 leading-snug whitespace-pre-wrap">${displaySalesNote}</div></div><div class="flex flex-wrap gap-2"><button class="flex-1 min-w-[calc(50%-0.25rem)] bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-700 text-[10px] font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 active:bg-indigo-200" onclick="event.stopPropagation(); copyTextToClipboard('${itemCode}', 'ITEM CODE')"><i class="ph-bold ph-barcode text-lg"></i> COPY ITEMCODE</button><button class="flex-1 min-w-[calc(50%-0.25rem)] bg-blue-50 border border-blue-200 hover:bg-blue-100 text-blue-700 text-[10px] font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 active:bg-blue-200" onclick="event.stopPropagation(); openSalesOfficeAvNoteModal('${safeUidJs}')"><i class="ph-bold ph-pencil-simple-line text-lg"></i> EDIT AV NOTE</button><button class="flex-1 min-w-[calc(50%-0.25rem)] bg-purple-50 border border-purple-200 hover:bg-purple-100 text-purple-700 text-[10px] font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 active:bg-purple-200" onclick="event.stopPropagation(); copyTextToClipboard('${safeAvNote}', 'AV NOTE')"><i class="ph-bold ph-chat-text text-lg"></i> COPY AV NOTE</button><button class="flex-1 min-w-[calc(50%-0.25rem)] bg-[#007a4d] hover:bg-green-700 text-white text-[10px] font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-md active:scale-95" onclick="event.stopPropagation(); markSalesOfficeComplete('${safeUidJs}', '${item.DOM_ID}')"><i class="ph-bold ph-check-circle text-lg"></i> DONE</button></div></div></div>`;
+        return `<div class="flex items-center w-full mb-3 item-row relative" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="inv-card app-smart-card status-purple flex-grow !mb-0 bg-purple-50/40 border border-purple-200 transition-transform active:scale-[0.99]"><div class="flex justify-between items-start mb-3"><div class="app-card-main font-bold text-lg text-[#007a4d] leading-tight pr-2 select-text" style="-webkit-user-select: text; user-select: text;"><div class="mb-2 flex flex-wrap gap-2"><span class="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]"><i class="ph-bold ph-handbag text-sm"></i>Bloom Picker</span><span class="inline-flex items-center rounded-full border border-purple-200 bg-white px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-purple-700">Season Sales Notes</span></div>${item.COMMONNAME||'Unknown'}<br><span class="text-sm text-gray-500 font-semibold">${item.CONTSIZE||'-'}</span></div>${inlineThumbHtml}</div><div class="bg-white p-3 rounded-lg border border-purple-200 shadow-sm mb-3 select-text cursor-text" style="-webkit-user-select: text; user-select: text;" onclick="event.stopPropagation();"><div class="flex justify-between items-center mb-1"><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Item Code</span><span class="font-black text-purple-700 font-mono tracking-wide text-sm">${itemCode}</span></div><div class="flex justify-between items-center mb-1 border-b border-gray-100 pb-1"><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Location / Lot</span><span class="font-bold text-gray-600 text-xs">${locCode} / ${lotCode}</span></div><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5 mt-2">AV Note</div><div class="text-[14px] font-bold text-blue-800 leading-snug mb-2 whitespace-pre-wrap">${avNoteText}</div><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Sales Note</div><div class="text-[14px] font-bold text-green-800 leading-snug whitespace-pre-wrap">${displaySalesNote}</div></div><div class="flex flex-wrap gap-2"><button class="flex-1 min-w-[calc(50%-0.25rem)] bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-700 text-[10px] font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 active:bg-indigo-200" onclick="event.stopPropagation(); copyTextToClipboard('${itemCode}', 'ITEM CODE')"><i class="ph-bold ph-barcode text-lg"></i> COPY ITEMCODE</button><button class="flex-1 min-w-[calc(50%-0.25rem)] bg-blue-50 border border-blue-200 hover:bg-blue-100 text-blue-700 text-[10px] font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 active:bg-blue-200" onclick="event.stopPropagation(); openSalesOfficeAvNoteModal('${safeUidJs}')"><i class="ph-bold ph-pencil-simple-line text-lg"></i> EDIT AV NOTE</button><button class="flex-1 min-w-[calc(50%-0.25rem)] bg-purple-50 border border-purple-200 hover:bg-purple-100 text-purple-700 text-[10px] font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 active:bg-purple-200" onclick="event.stopPropagation(); copyTextToClipboard('${safeAvNote}', 'AV NOTE')"><i class="ph-bold ph-chat-text text-lg"></i> COPY AV NOTE</button><button class="flex-1 min-w-[calc(50%-0.25rem)] bg-[#007a4d] hover:bg-green-700 text-white text-[10px] font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-md active:scale-95" onclick="event.stopPropagation(); markSalesOfficeComplete('${safeUidJs}', '${item.DOM_ID}')"><i class="ph-bold ph-check-circle text-lg"></i> DONE</button></div></div></div>`;
             }
             if(sourceView==='reserves_drill'){
                 return buildAvInventoryCard();
@@ -20631,7 +20713,7 @@ function toggleDriveQuickRequestItem(domId) {
                 if(canUseDriveQuickRequest()){
                     quickRequestBtn=getInventoryCardBottomRailHtml(item.DOM_ID);
                 }
-                return `<div class="flex items-center w-full mb-3 item-row app-smart-card app-smart-card--inventory ${quickRequestBtn ? 'app-card-with-bottom-rail' : ''} relative bg-white p-4 rounded-xl border border-gray-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-grow min-w-0 flex-col"><div class="flex items-start justify-between min-w-0"><div class="app-card-main flex-grow min-w-0 pr-2">${buildInventoryToplineHtml(item.COMMONNAME || 'Unknown', item.CONTSIZE || '-')}${buildInventorySecondarylineHtml(item.LOCATIONCODE || 'No Loc', displaySource)}<div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-black"><span class="text-[12px] font-black uppercase">PRI ${item.PRIORITY||'-'}</span><span class="text-[12px] font-black">${item.ITEMCODE||'-'}</span><span class="text-[12px] font-black">${item.LOTCODE||'-'}</span></div><div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-slate-700">PTRAVAILABLE <span class="text-slate-900">${item.PTRAVAILABLE||'0'}</span></span><span class="rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-purple-700">S_LTS <span class="text-purple-900">${item.S_LTS||'0'}</span></span><span class="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-amber-700">HOLDSTOPCODE <span class="text-amber-900">${displayHoldStopCode}</span></span></div>${extraData}${noteHtml}</div>${inlineThumbHtml}</div>${quickRequestBtn}</div></div>`;
+        return `<div class="flex items-center w-full mb-3 item-row app-smart-card app-smart-card--inventory ${quickRequestBtn ? 'app-card-with-bottom-rail' : ''} relative bg-white p-4 rounded-xl border border-gray-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-grow min-w-0 flex-col"><div class="flex items-start justify-between min-w-0"><div class="app-card-main flex-grow min-w-0 pr-2">${buildInventoryToplineHtml(item.COMMONNAME || 'Unknown', item.CONTSIZE || '-')}${buildInventorySecondarylineHtml(item.LOCATIONCODE || 'No Loc', displaySource)}<div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-black"><span class="text-[12px] font-black uppercase">PRI ${item.PRIORITY||'-'}</span><span class="text-[12px] font-black">${item.ITEMCODE||'-'}</span><span class="text-[12px] font-black">${item.LOTCODE||'-'}</span></div><div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-slate-700">PTRAVAILABLE <span class="text-slate-900">${item.PTRAVAILABLE||'0'}</span></span><span class="rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-purple-700">S_LTS <span class="text-purple-900">${item.S_LTS||'0'}</span></span><span class="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-amber-700">HOLDSTOPCODE <span class="text-amber-900">${displayHoldStopCode}</span></span></div>${extraData}${noteHtml}</div>${inlineThumbHtml}</div>${quickRequestBtn}</div></div>`;
             }
             if(sourceView==='tasks'){
                 const displaySourceView = sourceView;
@@ -20650,10 +20732,10 @@ function toggleDriveQuickRequestItem(domId) {
                 if(displayAvNote&&String(displayAvNote).trim()!==''){noteHtml+=`<div class="mt-2 text-[12px] text-blue-800 bg-blue-100 p-2 rounded border border-blue-200 shadow-sm whitespace-pre-wrap"><span class="font-black">AV NOTE:</span> ${displayAvNote}</div>`}
                 if(item.FLYER_TITLE&&String(item.FLYER_TITLE).trim()!==''){noteHtml+=`<div class="mt-2 text-[12px] text-indigo-800 bg-indigo-100 p-2 rounded border border-indigo-200 shadow-sm whitespace-pre-wrap"><span class="font-black">FOLDER:</span> ${getFlyerFolderName(item)}${isFlyerFolderArchived(item) ? ' <span class="font-black uppercase tracking-wide">(Archived)</span>' : ''}</div>`}
                 let extraData='';extraData=`<div class="mt-2 flex gap-2 text-[10px] font-bold text-gray-500 uppercase">${displaySpec?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Spec: ${displaySpec}</span>`:''}${displayCaliper?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Cal: ${displayCaliper}</span>`:''}${displayMatch?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">LOC MATCH %: ${displayMatch}%</span>`:''}</div>`;
-                return `<div class="flex items-center w-full mb-3 item-row app-smart-card app-smart-card--inventory relative bg-white p-4 rounded-xl border border-gray-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-grow items-start justify-between min-w-0"><div class="app-card-main flex-grow min-w-0 pr-2">${buildInventoryToplineHtml(item.COMMONNAME || 'Unknown', item.CONTSIZE || '-')}${buildInventorySecondarylineHtml(item.LOCATIONCODE || 'No Loc', firstNonEmptyValue(item.SOURCE, item.source, ''))}<div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-black"><span class="text-[12px] font-black uppercase">PRI ${item.PRIORITY||'-'}</span><span class="text-[12px] font-black">${item.ITEMCODE||'-'}</span><span class="text-[12px] font-black">${item.LOTCODE||'-'}</span></div><div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-slate-700">LOC AVA <span class="text-slate-900">${item.PTRAVAILABLE||'0'}</span></span><span class="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-blue-700">LOC <span class="text-blue-900">${item.LOCATIONCODE||'No Loc'}</span></span><span class="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-slate-700">LOT <span class="text-slate-900">${item.LOTCODE||'-'}</span></span><span class="rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-purple-700">S_LTS <span class="text-purple-900">${item.S_LTS||'0'}</span></span><span class="rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-orange-700">PRI <span class="text-orange-900">${item.PRIORITY||'-'}</span></span></div>${extraData}${noteHtml}</div>${inlineThumbHtml}</div></div>`;
+        return `<div class="flex items-center w-full mb-3 item-row app-smart-card app-smart-card--inventory relative bg-white p-4 rounded-xl border border-gray-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-grow items-start justify-between min-w-0"><div class="app-card-main flex-grow min-w-0 pr-2">${buildInventoryToplineHtml(item.COMMONNAME || 'Unknown', item.CONTSIZE || '-')}${buildInventorySecondarylineHtml(item.LOCATIONCODE || 'No Loc', firstNonEmptyValue(item.SOURCE, item.source, ''))}<div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-black"><span class="text-[12px] font-black uppercase">PRI ${item.PRIORITY||'-'}</span><span class="text-[12px] font-black">${item.ITEMCODE||'-'}</span><span class="text-[12px] font-black">${item.LOTCODE||'-'}</span></div><div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-slate-700">LOC AVA <span class="text-slate-900">${item.PTRAVAILABLE||'0'}</span></span><span class="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-blue-700">LOC <span class="text-blue-900">${item.LOCATIONCODE||'No Loc'}</span></span><span class="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-slate-700">LOT <span class="text-slate-900">${item.LOTCODE||'-'}</span></span><span class="rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-purple-700">S_LTS <span class="text-purple-900">${item.S_LTS||'0'}</span></span><span class="rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-orange-700">PRI <span class="text-orange-900">${item.PRIORITY||'-'}</span></span></div>${extraData}${noteHtml}</div>${inlineThumbHtml}</div></div>`;
             }
 
-            return `<div class="flex items-center w-full mb-2 item-row overflow-hidden" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onmousedown="startPress(event, '${item.DOM_ID}')" onmouseup="cancelPress()" onmousemove="checkMove(event)" onmouseleave="cancelPress()" ontouchstart="startPress(event, '${item.DOM_ID}')" ontouchend="cancelPress()" ontouchcancel="cancelPress()" ontouchmove="checkMove(event)" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="inv-card app-smart-card app-smart-card--inventory ${colorClass} flex items-start justify-between flex-grow !mb-0 transition-transform active:scale-[0.99]"><div class="app-card-main flex-grow min-w-0 text-[#007a4d]">${buildInventoryToplineHtml(item.COMMONNAME || 'Unknown', item.CONTSIZE || '-')}${buildInventorySecondarylineHtml(item.LOCATIONCODE || 'No Loc', firstNonEmptyValue(item.SOURCE, item.source, ''))}<div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-black"><span class="text-[12px] font-black uppercase">PRI ${item.PRIORITY||'-'}</span><span class="text-[12px] font-black">${item.ITEMCODE||'-'}</span><span class="text-[12px] font-black">${item.LOTCODE||'-'}</span></div><div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-slate-700">PTRAVAILABLE <span class="text-slate-900">${item.PTRAVAILABLE||'0'}</span></span><span class="rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-purple-700">S_LTS <span class="text-purple-900">${item.S_LTS||'0'}</span></span><span class="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-slate-700">SUPPLY <span class="text-slate-900">${item.SEASONSUPPLY||'0'}</span></span><span class="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-slate-700">TAG <span class="text-slate-900">${tagColor}</span></span></div><div class="mt-2 text-[12px] font-black text-black">${item.ITEMCODE||'-'}</div></div>${inlineThumbHtml}</div></div>`;
+        return `<div class="flex items-center w-full mb-2 item-row overflow-hidden" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="inv-card app-smart-card app-smart-card--inventory ${colorClass} flex items-start justify-between flex-grow !mb-0 transition-transform active:scale-[0.99]"><div class="app-card-main flex-grow min-w-0 text-[#007a4d]">${buildInventoryToplineHtml(item.COMMONNAME || 'Unknown', item.CONTSIZE || '-')}${buildInventorySecondarylineHtml(item.LOCATIONCODE || 'No Loc', firstNonEmptyValue(item.SOURCE, item.source, ''))}<div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-black"><span class="text-[12px] font-black uppercase">PRI ${item.PRIORITY||'-'}</span><span class="text-[12px] font-black">${item.ITEMCODE||'-'}</span><span class="text-[12px] font-black">${item.LOTCODE||'-'}</span></div><div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-slate-700">PTRAVAILABLE <span class="text-slate-900">${item.PTRAVAILABLE||'0'}</span></span><span class="rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-purple-700">S_LTS <span class="text-purple-900">${item.S_LTS||'0'}</span></span><span class="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-slate-700">SUPPLY <span class="text-slate-900">${item.SEASONSUPPLY||'0'}</span></span><span class="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-slate-700">TAG <span class="text-slate-900">${tagColor}</span></span></div><div class="mt-2 text-[12px] font-black text-black">${item.ITEMCODE||'-'}</div></div>${inlineThumbHtml}</div></div>`;
         }
 
         function initiateBatchAction(action) {
