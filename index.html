@@ -700,7 +700,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-<div id="header-version" class="nav-version-pill">V2026.04.22.10</div>
+<div id="header-version" class="nav-version-pill">V2026.04.22.11</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -6544,7 +6544,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
             'dylan_collyge@greenleafnursery.com'
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-const APP_VERSION = 'V2026.04.22.10';
+const APP_VERSION = 'V2026.04.22.11';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -11686,6 +11686,16 @@ function toggleDriveQuickRequestItem(domId) {
 
         function normalizeDockTeamDockKey(dockNum = '') {
             return String(dockNum || '').trim();
+        }
+
+        function normalizeDockViewDockKey(dockNum = '') {
+            const normalized = String(dockNum || '').trim();
+            return normalized || 'Unassigned';
+        }
+
+        function normalizeDockViewStopKey(stopNum = '') {
+            const normalized = String(stopNum || '').trim();
+            return normalized || 'Unassigned';
         }
 
         function normalizeDockTeamInfo(info = null) {
@@ -17236,8 +17246,8 @@ function toggleDriveQuickRequestItem(domId) {
         function clearDocksSearch(){ document.getElementById('docks-search').value=""; document.getElementById('docks-search-clear').classList.add('hidden'); if (dockViewMode === 'docks') { dockViewLevel=0; selectedDockNum=null; selectedDockStop=null; } scheduleDocksRender(0); }
         function handleDocksSearch(){ const term=document.getElementById('docks-search').value.toLowerCase(); const clearBtn=document.getElementById('docks-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden'); if (dockViewMode === 'docks' && !selectedDockIssueUid) dockViewLevel=0;}else{clearBtn.classList.add('hidden'); if (dockViewMode === 'docks' && !selectedDockIssueUid) dockViewLevel=0;} scheduleTrackedSearchViewRender('docks', 'docks', term); }
         function resetDockView(shouldRender = true) { dockViewMode = 'docks'; selectedDockIssueUid = null; dockViewLevel = 0; selectedDockNum = null; selectedDockStop = null; document.getElementById('docks-search').value = ""; document.getElementById('docks-search-clear').classList.add('hidden'); updateDockModeToggleUi(); if (shouldRender) scheduleDocksRender(0); }
-        function selectDock(dock) { dockViewMode = 'docks'; selectedDockIssueUid = null; updateDockModeToggleUi(); selectedDockNum = dock; selectedDockStop = null; dockViewLevel = 1; scheduleDocksRender(0); queueScrollMainAreaToTop(`dock:${dock}`); }
-        function selectDockStop(stop) { dockViewMode = 'docks'; selectedDockIssueUid = null; updateDockModeToggleUi(); selectedDockStop = stop; dockViewLevel = 2; scheduleDocksRender(0); queueScrollMainAreaToTop(`dock-stop:${stop}`); }
+        function selectDock(dock) { const normalizedDock = normalizeDockViewDockKey(dock); dockViewMode = 'docks'; selectedDockIssueUid = null; updateDockModeToggleUi(); selectedDockNum = normalizedDock; selectedDockStop = null; dockViewLevel = 1; scheduleDocksRender(0); queueScrollMainAreaToTop(`dock:${normalizedDock}`); }
+        function selectDockStop(stop) { const normalizedStop = normalizeDockViewStopKey(stop); dockViewMode = 'docks'; selectedDockIssueUid = null; updateDockModeToggleUi(); selectedDockStop = normalizedStop; dockViewLevel = 2; scheduleDocksRender(0); queueScrollMainAreaToTop(`dock-stop:${normalizedStop}`); }
 
         function openDockInfoModal(dockNum) {
             if (!canEditDockWorkflow()) {
@@ -17454,8 +17464,8 @@ function toggleDriveQuickRequestItem(domId) {
             dockIssueDataLoaded = true;
             dockViewMode = 'docks';
             selectedDockIssueUid = null;
-            selectedDockNum = firstNonEmptyValue(sourceRow.DOCK_NUM, payload.dock_num, null);
-            selectedDockStop = firstNonEmptyValue(sourceRow.STOPNUMBER, payload.stop_number, null);
+            selectedDockNum = normalizeDockViewDockKey(firstNonEmptyValue(sourceRow.DOCK_NUM, payload.dock_num, ''));
+            selectedDockStop = normalizeDockViewStopKey(firstNonEmptyValue(sourceRow.STOPNUMBER, payload.stop_number, ''));
             dockViewLevel = selectedDockStop ? 2 : (selectedDockNum ? 1 : 0);
             updateDockModeToggleUi();
             markViewDirty('docks');
@@ -17632,8 +17642,8 @@ function toggleDriveQuickRequestItem(domId) {
             };
 
             if (dockViewLevel === 0) {
-                const dockCards = [...new Set(items.map(i => i.DOCK_NUM || 'Unassigned'))].sort(sortStops).map((dockNum) => {
-                    const dItems = items.filter(i => (i.DOCK_NUM || 'Unassigned') === dockNum);
+                const dockCards = [...new Set(items.map(i => normalizeDockViewDockKey(i && i.DOCK_NUM)))].sort(sortStops).map((dockNum) => {
+                    const dItems = items.filter(i => normalizeDockViewDockKey(i && i.DOCK_NUM) === dockNum);
                     const savedInfo = getDockTeamInfo(dockNum);
                     let statusColor = 'text-blue-600 bg-blue-50';
                     if (savedInfo.status.includes('Missing')) statusColor = 'text-red-600 bg-red-50';
@@ -17653,9 +17663,11 @@ function toggleDriveQuickRequestItem(domId) {
                 return;
             }
 
-            let dItems = items.filter(i => (i.DOCK_NUM || 'Unassigned') === selectedDockNum).sort(sortDockRows);
+            const selectedDockKey = normalizeDockViewDockKey(selectedDockNum);
+            let dItems = items.filter(i => normalizeDockViewDockKey(i && i.DOCK_NUM) === selectedDockKey).sort(sortDockRows);
             if (!dItems.length) {
                 dockViewLevel = 0;
+                selectedDockNum = null;
                 selectedDockStop = null;
                 scheduleDocksRender(0);
                 return;
@@ -17663,7 +17675,7 @@ function toggleDriveQuickRequestItem(domId) {
 
             const groupedStops = {};
             dItems.forEach((item) => {
-                const stopKey = item.STOPNUMBER || 'Unassigned';
+                const stopKey = normalizeDockViewStopKey(item && item.STOPNUMBER);
                 if (!groupedStops[stopKey]) groupedStops[stopKey] = [];
                 groupedStops[stopKey].push(item);
             });
@@ -17685,9 +17697,11 @@ function toggleDriveQuickRequestItem(domId) {
                 return;
             }
 
-            const stopItems = (groupedStops[selectedDockStop] || []).slice().sort(sortDockRows);
+            const selectedStopKey = normalizeDockViewStopKey(selectedDockStop);
+            const stopItems = (groupedStops[selectedStopKey] || []).slice().sort(sortDockRows);
             if (!stopItems.length) {
                 dockViewLevel = 1;
+                selectedDockStop = null;
                 scheduleDocksRender(0);
                 return;
             }
