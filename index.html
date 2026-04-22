@@ -143,6 +143,7 @@ body.viewport-compact .app-av-card-thumb-action{font-size:.48rem;padding:.24rem 
         body.viewport-compact #task-tabs-container.task-top-inline .task-top-control-title{font-size:.45rem !important;letter-spacing:.11em !important}
         body.viewport-compact #task-tabs-container.task-top-inline .task-top-control-summary{margin-top:.14rem !important;font-size:.6rem !important;line-height:1.05 !important}
         body.viewport-compact #task-tabs-container.task-top-inline .task-top-control-panel{position:absolute;top:calc(100% + .28rem);left:0;z-index:80;width:min(15rem,calc(100vw - (var(--shell-gutter) * 2)));max-width:calc(100vw - (var(--shell-gutter) * 2))}
+        body.viewport-compact #task-tabs-container.task-top-inline #task-tab-dropdown-host .task-top-control-panel,
         body.viewport-compact #task-tabs-container.task-top-inline #task-subtabs-container .task-top-control-panel,
         body.viewport-compact #task-tabs-container.task-top-inline #task-genus-filters .task-top-control-panel,
         body.viewport-compact #task-tabs-container.task-top-inline #task-contsize-filters .task-top-control-panel{left:auto;right:0}
@@ -912,8 +913,8 @@ body.viewport-compact #view-detail #det-location{font-size:clamp(.9rem,3.8vw,1.1
                     <div id="team-selector" class="hidden mb-4 grid grid-cols-1 gap-3"></div>
                     <div class="freeze-panel task-controls-sticky">
                     <div id="task-tabs-container" class="mb-3 grid grid-cols-1 gap-2 md:grid-cols-2">
-                        <div id="task-tab-dropdown-host" class="min-w-0"></div>
                         <div id="task-subtabs-container" class="hidden min-w-0"></div>
+                        <div id="task-tab-dropdown-host" class="min-w-0"></div>
                         <div id="task-genus-filters" class="hidden min-w-0"></div>
                         <div id="task-contsize-filters" class="hidden min-w-0"></div>
                         <div id="task-location-detail-filters" class="hidden min-w-0"></div>
@@ -12445,7 +12446,7 @@ function toggleDriveQuickRequestItem(domId) {
             taskSubviewDropdownOpen = false;
             resetTaskSharedHeaderFilters();
             const allowedSubviews = getTaskSubviewValues(tab);
-            if (!taskTabUsesBlockDrill(tab) || !allowedSubviews.includes(activeTaskSubview)) activeTaskSubview='all';
+            if (!allowedSubviews.includes(activeTaskSubview)) activeTaskSubview='all';
             if (tab !== 'colorwalk' && previousTaskTab === 'colorwalk') {
                 selectedColorWalkSearchTerm='';
             }
@@ -12462,12 +12463,11 @@ function toggleDriveQuickRequestItem(domId) {
 
 
         function setTaskSubview(subview) {
-            if (!taskTabUsesBlockDrill(activeTaskTab)) return false;
             lastViewSwitchAt = Date.now();
             taskTabDropdownOpen = false;
             taskSubviewDropdownOpen = false;
             resetTaskLocationDetailFilters();
-            const allowedSubviews = getTaskSubviewValues(activeTaskTab);
+            const allowedSubviews = getTaskSubviewDropdownOptions(activeTaskTab).map((option) => option.value);
             activeTaskSubview = allowedSubviews.includes(subview) ? subview : 'all';
             syncTaskModeControls(activeTaskTab);
             syncTaskSubviewControls(activeTaskTab);
@@ -22429,6 +22429,11 @@ ${folderNote ? `Folder Note: ${folderNote}
             return [];
         }
 
+        function getTaskSubviewControlValues(tab = activeTaskTab) {
+            const values = getTaskSubviewValues(tab);
+            return values.length ? values : ['all'];
+        }
+
         function taskRowMatchesSubview(item, subview = activeTaskSubview) {
             if (subview === 'positive-lts') {
                 const ltsValue = parseFloat(String(firstNonEmptyValue(item && item.S_LTS, '0')).replace(/,/g, '')) || 0;
@@ -22472,13 +22477,11 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function shouldShowTaskInlineGenusFilter(tab = activeTaskTab, level = taskViewLevel) {
-            const safeTab = String(tab || activeTaskTab || '').trim().toLowerCase();
-            return safeTab === 'season';
+            return true;
         }
 
         function shouldShowTaskInlineContSizeFilter(tab = activeTaskTab, level = taskViewLevel) {
-            const safeTab = String(tab || activeTaskTab || '').trim().toLowerCase();
-            return level === 2 && safeTab === 'season';
+            return true;
         }
 
         function shouldShowTaskInlineDetailFilters(tab = activeTaskTab, level = taskViewLevel) {
@@ -22487,19 +22490,20 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function getTaskSubviewDropdownOptions(tab = activeTaskTab) {
-            return getTaskSubviewValues(tab).map((value) => ({ value, label: getTaskSubviewLabel(value) }));
+            return getTaskSubviewControlValues(tab).map((value) => ({ value, label: getTaskSubviewLabel(value) }));
         }
 
         function syncTaskSelectorRowLayout(tab = activeTaskTab) {
             const container = document.getElementById('task-tabs-container');
             if (!container) return;
-            const shouldShowSubview = shouldShowTaskSubviewDropdown(tab);
+            const shouldShowSubview = true;
             const shouldShowGenus = shouldShowTaskInlineGenusFilter(tab, taskViewLevel);
             const shouldShowContSize = shouldShowTaskInlineContSizeFilter(tab, taskViewLevel);
             const shouldShowDetailFilters = shouldShowTaskInlineDetailFilters(tab, taskViewLevel);
             const wasHidden = container.classList.contains('hidden');
             const visibleCount = 1 + (shouldShowSubview ? 1 : 0) + (shouldShowGenus ? 1 : 0) + (shouldShowContSize ? 1 : 0) + (shouldShowDetailFilters ? 1 : 0);
             const inlineTopControls = !shouldShowDetailFilters && visibleCount > 1 && visibleCount <= 4;
+            const isCompactViewport = !!(document.body && document.body.classList.contains('viewport-compact'));
             const nextClasses = ['mb-3', 'grid', 'gap-2'];
             if (inlineTopControls) nextClasses.push('task-top-inline');
             if (!inlineTopControls) {
@@ -22511,7 +22515,8 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (wasHidden) nextClasses.push('hidden');
             container.className = nextClasses.join(' ');
             if (inlineTopControls) {
-                container.style.gridTemplateColumns = `repeat(${visibleCount}, minmax(0, 1fr))`;
+                const inlineColumnCount = isCompactViewport && visibleCount >= 3 ? 2 : visibleCount;
+                container.style.gridTemplateColumns = `repeat(${inlineColumnCount}, minmax(0, 1fr))`;
                 container.style.columnGap = '.35rem';
                 container.style.rowGap = '.35rem';
                 container.style.alignItems = 'start';
@@ -22584,7 +22589,8 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function toggleTaskSubviewDropdown() {
-            if (!shouldShowTaskSubviewDropdown(activeTaskTab)) return false;
+            const container = document.getElementById('task-subtabs-container');
+            if (!container || container.classList.contains('hidden')) return false;
             taskSubviewDropdownOpen = !taskSubviewDropdownOpen;
             if (taskSubviewDropdownOpen) taskTabDropdownOpen = false;
             if (taskSubviewDropdownOpen) {
@@ -22622,16 +22628,11 @@ ${folderNote ? `Folder Note: ${folderNote}
         function syncTaskSubviewControls(tab = activeTaskTab) {
             const container = document.getElementById('task-subtabs-container');
             if (!container) return;
-            const shouldShow = shouldShowTaskSubviewDropdown(tab);
             syncTaskSelectorRowLayout(tab);
-            if (!shouldShow) {
-                taskSubviewDropdownOpen = false;
-                container.classList.add('hidden');
-                setContainerHtmlWithSignature(container, '', 'task-subview:hidden');
-                return;
-            }
-            const currentLabel = getTaskSubviewLabel(activeTaskSubview);
-            const optionsHtml = getTaskSubviewDropdownOptions(tab).map((option) => {
+            const options = getTaskSubviewDropdownOptions(tab);
+            const currentValue = options.some((option) => option.value === activeTaskSubview) ? activeTaskSubview : 'all';
+            const currentLabel = getTaskSubviewLabel(currentValue);
+            const optionsHtml = options.map((option) => {
                 const isSelected = option.value === activeTaskSubview;
                 return `<button type="button" class="flex w-full items-center justify-between gap-3 px-3 py-2 text-left ${isSelected ? 'bg-emerald-50 text-emerald-700' : 'text-slate-700 hover:bg-emerald-50'}" onclick="return setTaskSubview('${option.value}')"><span class="text-[12px] font-bold">${esc(option.label)}</span>${isSelected ? '<i class="ph-bold ph-check text-sm"></i>' : ''}</button>`;
             }).join('');
@@ -22867,12 +22868,6 @@ ${folderNote ? `Folder Note: ${folderNote}
         function renderTaskGenusFilter(items = []) {
             const container = document.getElementById('task-genus-filters');
             if (!container) return;
-            if (activeTaskTab !== 'season') {
-                container.classList.add('hidden');
-                container.innerHTML = '';
-                if (container.dataset) delete container.dataset.genusReady;
-                return;
-            }
             taskGenusFilterItemsCache = Array.isArray(items) ? items : [];
             if (!container.dataset.genusReady) {
                 container.dataset.genusReady = '1';
@@ -23033,18 +23028,11 @@ ${folderNote ? `Folder Note: ${folderNote}
         function renderTaskContSizeFilter(items = []) {
             const container = document.getElementById('task-contsize-filters');
             if (!container) return;
-            if (!shouldShowTaskInlineContSizeFilter(activeTaskTab, taskViewLevel)) {
-                taskContSizeDropdownOpen = false;
-                container.classList.add('hidden');
-                container.innerHTML = '';
-                if (container.dataset) delete container.dataset.contsizeReady;
-                return;
-            }
             taskContSizeFilterItemsCache = Array.isArray(items) ? items : [];
             const state = buildTaskContSizeFilterState(items);
             if (!container.dataset.contsizeReady) {
                 container.dataset.contsizeReady = '1';
-                container.innerHTML = `<div class="task-top-control-shell h-full rounded-[1.05rem] border border-green-100 bg-white/95 px-2.5 py-2 shadow-sm backdrop-blur-sm sm:px-3 sm:py-2.5"><button type="button" class="task-top-control-button inline-flex min-h-[54px] w-full items-center gap-2 rounded-full border border-emerald-200 bg-white px-2.5 py-2 text-left text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm sm:px-3 sm:text-[10px]" onclick="return toggleTaskContSizeDropdown()"><i class="ph-bold ph-ruler text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Cont Size</span><span class="task-top-control-summary mt-1 text-[9px] font-bold normal-case tracking-normal text-slate-500 truncate" data-contsize-summary>All Sizes</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="task-top-control-panel mt-2 overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm ${taskContSizeDropdownOpen ? '' : 'hidden '}" data-contsize-panel><div class="p-2 border-b border-emerald-100"><input id="task-contsize-search" type="text" class="input-field !mb-0 border-emerald-200 bg-white" placeholder="Search cont size..." value="${esc(taskContSizeSearchTerm)}" oninput="setTaskContSizeSearchTerm(this.value)" onkeydown="handleTaskContSizeSearchKeydown(event)"></div><div class="max-h-60 overflow-y-auto" data-contsize-options></div><div class="grid grid-cols-2 gap-2 border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm" data-contsize-clear onclick="return clearTaskContSizeFilter()">Clear</button><button type="button" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeTaskContSizeDropdown()">Done</button></div></div></div>`;
+                container.innerHTML = `<div class="task-top-control-shell h-full rounded-[1.05rem] border border-green-100 bg-white/95 px-2.5 py-2 shadow-sm backdrop-blur-sm sm:px-3 sm:py-2.5"><button type="button" class="task-top-control-button inline-flex min-h-[54px] w-full items-center gap-2 rounded-full border border-emerald-200 bg-white px-2.5 py-2 text-left text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm sm:px-3 sm:text-[10px]" onclick="return toggleTaskContSizeDropdown()"><i class="ph-bold ph-ruler text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">CONTSIZE</span><span class="task-top-control-summary mt-1 text-[9px] font-bold normal-case tracking-normal text-slate-500 truncate" data-contsize-summary>All Sizes</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="task-top-control-panel mt-2 overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm ${taskContSizeDropdownOpen ? '' : 'hidden '}" data-contsize-panel><div class="p-2 border-b border-emerald-100"><input id="task-contsize-search" type="text" class="input-field !mb-0 border-emerald-200 bg-white" placeholder="Search cont size..." value="${esc(taskContSizeSearchTerm)}" oninput="setTaskContSizeSearchTerm(this.value)" onkeydown="handleTaskContSizeSearchKeydown(event)"></div><div class="max-h-60 overflow-y-auto" data-contsize-options></div><div class="grid grid-cols-2 gap-2 border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm" data-contsize-clear onclick="return clearTaskContSizeFilter()">Clear</button><button type="button" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeTaskContSizeDropdown()">Done</button></div></div></div>`;
             }
             updateTaskContSizeFilterUi(state, container);
         }
@@ -23053,8 +23041,6 @@ ${folderNote ? `Folder Note: ${folderNote}
             taskLocationDetailSearchTerm = '';
             selectedTaskLocationDetailGenus = '';
             selectedTaskLocationDetailLotCode = '';
-            selectedTaskContSizes = new Set();
-            taskContSizeSearchTerm = '';
         }
 
         function shouldShowTaskLocationDetailFilters(tab = activeTaskTab, level = taskViewLevel) {
@@ -23306,7 +23292,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                 selectedEndCapFolder || '',
                 activeFlyerFolderTab || '',
                 String(selectedColorWalkSearchTerm || '').trim().toLowerCase(),
-                buildSelectionStateKey(selectedTaskGenusNames)
+                buildSelectionStateKey(selectedTaskGenusNames),
+                buildSelectionStateKey(selectedTaskContSizes)
             ].join('::');
             if (taskResolvedStateKey === resolvedStateKey && taskResolvedStateCache) {
                 incrementInternalPerfCounter('viewStateCacheHits');
@@ -23318,24 +23305,27 @@ ${folderNote ? `Folder Note: ${folderNote}
                 ? getResolvedTaskSubviewItems(scopedItems, 'season', activeTaskSubview, { targetUser, useSharedTaskQueue })
                 : [];
             let tabItems = getResolvedTaskSubviewItems(scopedItems, activeTaskTab, activeTaskSubview, { targetUser, useSharedTaskQueue });
-            const seasonGenusBaseItems = activeTaskTab === 'season'
-                ? seasonSubviewItems.filter((item) => {
-                    if (taskViewLevel >= 1 && selectedTaskBlock && getTaskBlockAlpha(item) !== selectedTaskBlock) return false;
-                    if (taskViewLevel >= 2 && selectedTaskLoc && getTaskLocationBucket(item) !== selectedTaskLoc) return false;
-                    return true;
-                })
-                : [];
             if (activeTaskTab === 'colorwalk' && selectedColorWalkSearchTerm) {
                 tabItems = filterBySearch(tabItems, selectedColorWalkSearchTerm, 'colorwalk');
             }
-            if (activeTaskTab === 'season' && selectedTaskGenusNames.size) {
+            const taskGenusBaseItems = tabItems.filter((item) => {
+                if (taskTabUsesBlockDrill(activeTaskTab)) {
+                    if (taskViewLevel >= 1 && selectedTaskBlock && getTaskBlockAlpha(item) !== selectedTaskBlock) return false;
+                    if (taskViewLevel >= 2 && selectedTaskLoc && getTaskLocationBucket(item) !== selectedTaskLoc) return false;
+                }
+                if (activeTaskTab === 'flyer' && taskViewLevel === 1 && selectedFlyerFolder && getFlyerFolderName(item) !== selectedFlyerFolder) return false;
+                if (activeTaskTab === 'endcap' && taskViewLevel === 1 && selectedEndCapFolder && (item.END_CAP_FOLDER || 'Unassigned') !== selectedEndCapFolder) return false;
+                return true;
+            });
+            if (selectedTaskGenusNames.size) {
                 tabItems = tabItems.filter(i => selectedTaskGenusNames.has(getTaskGenusName(i)));
             }
-            const seasonContSizeBaseItems = activeTaskTab === 'season'
-                ? (selectedTaskGenusNames.size
-                    ? seasonGenusBaseItems.filter(i => selectedTaskGenusNames.has(getTaskGenusName(i)))
-                    : seasonGenusBaseItems)
-                : [];
+            const taskContSizeBaseItems = selectedTaskGenusNames.size
+                ? taskGenusBaseItems.filter(i => selectedTaskGenusNames.has(getTaskGenusName(i)))
+                : taskGenusBaseItems;
+            if (selectedTaskContSizes.size) {
+                tabItems = tabItems.filter(i => selectedTaskContSizes.has(getTaskLocationDetailContSize(i)));
+            }
             taskResolvedStateKey = resolvedStateKey;
             taskResolvedStateCache = {
                 useBlockDrill,
@@ -23348,8 +23338,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                 seasonTaskItems,
                 seasonSubviewItems,
                 tabItems,
-                seasonGenusBaseItems,
-                seasonContSizeBaseItems
+                taskGenusBaseItems,
+                taskContSizeBaseItems
             };
             return taskResolvedStateCache;
         }
@@ -23370,8 +23360,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                 notesTitle,
                 flyerFolderTabLabel,
                 tabItems: resolvedTabItems,
-                seasonGenusBaseItems,
-                seasonContSizeBaseItems
+                taskGenusBaseItems,
+                taskContSizeBaseItems
             } = buildResolvedTaskState();
             if (!useSharedTaskQueue && !targetUser) return;
 
@@ -23441,11 +23431,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                 }
             }
 
-            if (activeTaskTab === 'season') renderTaskGenusFilter(seasonGenusBaseItems);
-            else renderTaskGenusFilter([]);
-
-            if (activeTaskTab === 'season') renderTaskContSizeFilter(seasonContSizeBaseItems);
-            else renderTaskContSizeFilter([]);
+            renderTaskGenusFilter(taskGenusBaseItems);
+            renderTaskContSizeFilter(taskContSizeBaseItems);
 
             const shouldRenderTaskLocationDetailFilters = shouldShowTaskLocationDetailFilters(activeTaskTab, taskViewLevel);
             let taskLocationDetailBaseItems = [];
